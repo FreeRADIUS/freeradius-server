@@ -46,8 +46,10 @@ ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_md5*),)
     $(shell ln -s $(CONFIG_PATH)/methods-available/md5 $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_pwd*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-pwd*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/pwd $(CONFIG_PATH)/methods-enabled/)
+    ifneq "$(shell strings `which eapol_test` | grep pwd)" ""
+      EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-pwd*.conf)
+      $(shell ln -s $(CONFIG_PATH)/methods-available/pwd $(CONFIG_PATH)/methods-enabled/)
+    endif
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_mschapv2*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-mschapv2*.conf)
