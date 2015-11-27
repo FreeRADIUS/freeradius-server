@@ -1054,7 +1054,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 		return NULL;
 	}
 
-	data_len = rad_recvfrom(fd, packet, flags);
+	data_len = rad_recvfrom(fd, packet, UDP_FLAGS_NONE);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
