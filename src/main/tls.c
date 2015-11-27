@@ -1953,6 +1953,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	if (now.tv_sec == 0) gettimeofday(&now, NULL);
 	next = ocsp_asn1time_to_epoch(next_update);
 	if (now.tv_sec < next){
+		RDEBUG2("ocsp: Adding OCSP TTL attribute");
 		RINDENT();
 		vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
 		vp->vp_integer = next - now.tv_sec;
