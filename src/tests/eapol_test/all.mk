@@ -34,33 +34,33 @@ $(shell mkdir -p $(CONFIG_PATH)/methods-enabled/)
 $(shell rm -f $(CONFIG_PATH)/methods-enabled/*)
 
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_gtc*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-gtc*.conf)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/gtc*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/gtc $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_leap*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-leap*.conf)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/leap*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/leap $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_md5*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-md5*.conf)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/md5*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/md5 $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_pwd*),)
     ifneq "$(shell strings `which eapol_test` | grep pwd)" ""
-      EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-pwd*.conf)
+      EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/pwd*.conf)
       $(shell ln -s $(CONFIG_PATH)/methods-available/pwd $(CONFIG_PATH)/methods-enabled/)
     endif
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_mschapv2*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-mschapv2*.conf)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/mschapv2*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/mschapv2 $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_tls*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-tls*.conf)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/tls*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/tls $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_ttls*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-ttls*.conf)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/ttls*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/ttls $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_peap*),)
