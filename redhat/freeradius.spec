@@ -606,7 +606,6 @@ fi
 %{_libdir}/freeradius/rlm_cache.so
 %{_libdir}/freeradius/rlm_cache_rbtree.so
 %{_libdir}/freeradius/rlm_chap.so
-%{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_cram.so
 %{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
@@ -627,7 +626,6 @@ fi
 %{_libdir}/freeradius/rlm_expiration.so
 %{_libdir}/freeradius/rlm_expr.so
 %{_libdir}/freeradius/rlm_files.so
-%{_libdir}/freeradius/rlm_ippool.so
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logintime.so
 %{_libdir}/freeradius/rlm_mschap.so
