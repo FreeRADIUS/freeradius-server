@@ -1057,10 +1057,23 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	data_len = rad_recvfrom(fd, packet, UDP_FLAGS_NONE);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
 	}
+
+#ifdef WITH_VERIFY_PTR
+	/*
+	 *	Double-check that the fields we want are filled in.
+	 */
+	if ((packet->src_ipaddr.af == AF_UNSPEC) ||
+	    (packet->src_port == 0) ||
+	    (packet->dst_ipaddr.af == AF_UNSPEC) ||
+	    (packet->dst_port == 0)) {
+		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
+		rad_free(&packet);
+		return NULL;
+	}
+#endif
 
 	packet->data_len = data_len; /* unsigned vs signed */
 
@@ -1071,7 +1084,6 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
 		FR_DEBUG_STRERROR_PRINTF("Discarding packet: Larger than RFC limitation of 4096 bytes");
-		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
 	}
