@@ -1631,7 +1631,7 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out, cha
 	return found_uri ? -1 : 0;
 }
 
-/** Drain errors from an OpenSSL bio and print them to the error log
+/** Drain log messages from an OpenSSL bio and print them using the specified logging macro
  *
  * @param _macro Logging macro e.g. RDEBUG.
  * @param _prefix Prefix, should be "" if not used.
@@ -1639,13 +1639,29 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out, cha
  */
 #define SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue) \
 do {\
-	char const *_p, *_q; \
+	char const *_p = NULL, *_q, *_end; \
 	size_t _len; \
-	ERR_print_errors(_queue); \
 	_len = BIO_get_mem_data(_queue, &_p); \
-	if (_p && _len) for (_q = strchr(_p, '\n'); _q; _p = _q + 1, _q = strchr(_p, '\n')) { \
-		_macro(_prefix "%.*s", (int)(_q - _p), _p); \
+	_end = _p + _len; \
+	if (!_p) break; \
+	while ((_q = memchr(_p, '\n', _end - _p))) { \
+		_macro(_prefix "%.*s", (int) (_q - _p), _p); \
+		_p = _q + 1; \
 	} \
+	if (_p != _end) _macro(_prefix "%.*s", (int) (_end - _p), _p); \
+	BIO_reset(_queue); \
+} while (0)
+
+/** Drain errors from an OpenSSL bio and print print them using the specified logging macro
+ *
+ * @param _macro Logging macro e.g. RDEBUG.
+ * @param _prefix Prefix, should be "" if not used.
+ * @param _queue OpenSSL BIO.
+ */
+#define SSL_DRAIN_ERROR_QUEUE(_macro, _prefix, _queue) \
+do {\
+	ERR_print_errors(_queue); \
+	SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
 } while (0)
 
 /* Maximum leeway in validity period: default 5 minutes */
@@ -1666,7 +1682,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		      fr_tls_server_conf_t *conf)
 {
 	OCSP_CERTID	*certid;
-	OCSP_REQUEST	*req;
+	OCSP_REQUEST	*req = NULL;
 	OCSP_RESPONSE	*resp = NULL;
 	OCSP_BASICRESP	*bresp = NULL;
 	char		*host = NULL;
@@ -1675,7 +1691,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	char		host_header[1024];
 	int		use_ssl = -1;
 	long		this_fudge = MAX_VALIDITY_PERIOD, this_max_age = -1;
-	BIO		*conn, *ssl_log = NULL;
+	BIO		*conn = NULL, *ssl_log = NULL;
 	int		ocsp_status = 0;
 	ocsp_status_t	status;
 	ASN1_GENERALIZEDTIME *rev, *this_update, *next_update;
@@ -1736,6 +1752,11 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	 *	Setup logging for this OCSP operation
 	 */
 	ssl_log = BIO_new(BIO_s_mem());
+	if (!ssl_log) {
+		REDEBUG("Failed creating log queue");
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
+	}
 
 	/*
 	 *	Create OCSP Request
@@ -1813,7 +1834,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	rc = BIO_do_connect(conn);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(conn))) {
 		REDEBUG("ocsp: Couldn't connect to OCSP responder");
-		SSL_DRAIN_LOG_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto finish;
 	}
@@ -1858,7 +1879,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 
 	if (rc == 0) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		SSL_DRAIN_LOG_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto finish;
 	}
@@ -1903,14 +1924,14 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		RATE_LIMIT(RERROR("ocsp: Delta +/- between OCSP response time and our time is greater than %li "
 				  "seconds.  Check servers are synchronised to a common time source",
 				  this_fudge));
-		SSL_DRAIN_LOG_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
 		goto finish;
 	}
 
 	/*
 	 *	Print any messages we may have accumulated
 	 */
-	SSL_DRAIN_LOG_QUEUE(RDEBUG, "ocsp: ", ssl_log);
+	SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
 	if (RDEBUG_ENABLED) {
 		RDEBUG2("ocsp: OCSP response valid from:");
 		ASN1_GENERALIZEDTIME_print(ssl_log, this_update);
@@ -1932,9 +1953,11 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	if (now.tv_sec == 0) gettimeofday(&now, NULL);
 	next = ocsp_asn1time_to_epoch(next_update);
 	if (now.tv_sec < next){
+		RINDENT();
 		vp = pair_make_reply("TLS-OCSP-Next-Update", NULL, T_OP_SET);
 		vp->vp_integer = next - now.tv_sec;
-		rdebug_pair(L_DBG_LVL_2, request, vp, "ocsp:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
+		REXDENT();
 	} else {
 		RDEBUG2("ocsp: Update time is in the past.  Not adding &reply:TLS-OCSP-Next-Update");
 	}
