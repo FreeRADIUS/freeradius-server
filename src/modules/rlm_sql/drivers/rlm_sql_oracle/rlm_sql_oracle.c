@@ -113,19 +113,17 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	return 1;
 }
 
-static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	char errbuff[512];
 
-	if (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
+	if (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) < 0) return -1;
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
 		return RLM_SQL_RECONNECT;
 	}
 
-unknown:
-	ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
 	return -1;
 }
 
@@ -275,7 +273,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	if (status == OCI_ERROR) {
 		ERROR("rlm_sql_oracle: execute query failed in sql_query");
 
-		return sql_check_error(handle, config);
+		return sql_check_reconnect(handle, config);
 	}
 
 	return RLM_SQL_ERROR;
@@ -316,7 +314,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	if (status != OCI_SUCCESS) {
 		ERROR("rlm_sql_oracle: query failed in sql_select_query");
 
-		return sql_check_error(handle, config);
+		return sql_check_reconnect(handle, config);
 	}
 
 	/*
@@ -451,7 +449,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 
 	if (status == OCI_ERROR) {
 		ERROR("rlm_sql_oracle: fetch failed in sql_fetch_row");
-		return sql_check_error(handle, config);
+		return sql_check_reconnect(handle, config);
 	}
 
 	return RLM_SQL_ERROR;
