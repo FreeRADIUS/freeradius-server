@@ -84,7 +84,6 @@ Description: FreeRADIUS client utilities
   - radtest
   - radwho
   - radzap
-  - rlm_ippool_tool
   - smbencrypt
 
 Package: libfreeradius3
