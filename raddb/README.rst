@@ -154,3 +154,19 @@ rlm_sql_postgresql
 Now calls ``PQescapeStringConn`` and no longer produces ``=<hexit><hexit>``
 escape sequences in expanded values.  The ``safe_characters`` config item will
 have no effect when used with this driver.
+
+Deleted Modules
+---------------
+
+The following modules have been deleted
+
+rlm_counter
+~~~~~~~~~~~
+
+Please use rlm_sqlcounter with sqlite.
+
+
+rlm_ippool
+~~~~~~~~~~~
+
+Please use rlm_sql_ippool with sqlite.

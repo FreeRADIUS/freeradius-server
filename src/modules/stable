@@ -2,7 +2,6 @@ rlm_always
 rlm_attr_filter
 rlm_cache
 rlm_chap
-rlm_counter
 rlm_csv
 rlm_detail
 rlm_dhcp
@@ -13,7 +12,6 @@ rlm_exec
 rlm_expiration
 rlm_expr
 rlm_files
-rlm_ippool
 rlm_json
 rlm_krb5
 rlm_ldap
