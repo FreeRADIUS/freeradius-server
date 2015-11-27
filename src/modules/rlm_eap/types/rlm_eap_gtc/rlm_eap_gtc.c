@@ -197,7 +197,6 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		 */
 	} else if (eap_round->response->type.length <= 128) {
 		int rcode;
-		char *p;
 
 		/*
 		 *	If there was a User-Password in the request,
@@ -209,11 +208,8 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		if (!vp) {
 			return 0;
 		}
-		vp->vp_length = eap_round->response->type.length;
-		vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
-		vp->type = VT_DATA;
-		memcpy(p, eap_round->response->type.data, vp->vp_length);
-		p[vp->vp_length] = 0;
+
+		fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
 
 		/*
 		 *	Add the password to the request, and allow
