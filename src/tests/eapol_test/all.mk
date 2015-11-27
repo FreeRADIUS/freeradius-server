@@ -29,7 +29,7 @@ SECRET := testing123
 EAP_TARGETS	:= $(filter rlm_eap_%,$(ALL_TGTS))
 EAP_TYPES	:= $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 
-#EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(TEST_PATH)/$(x)*.conf))
+EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(TEST_PATH)/$(x)*.conf))
 EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
 
 .PHONY: $(CONFIG_PATH)/methods-enabled
@@ -38,39 +38,6 @@ $(CONFIG_PATH)/methods-enabled:
 
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
 	@ln -s $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
-
-#
-#   Only enable methods/tests if the relevant module was built
-#
-$(shell mkdir -p $(CONFIG_PATH)/methods-enabled/)
-$(shell rm -f $(CONFIG_PATH)/methods-enabled/*)
-
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_gtc*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/gtc*.conf)
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_leap*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/leap*.conf)
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_md5*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/md5*.conf)
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_pwd*),)
-  ifneq "$(shell strings `which eapol_test` | grep pwd)" ""
-      EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/pwd*.conf)
-    endif
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_mschapv2*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/mschapv2*.conf)
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_tls*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/tls*.conf)
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_ttls*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/ttls*.conf)
-endif
-ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_peap*),)
-    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/peap-*.conf)
-endif
 
 .PHONY: eap dictionary clean tests.eap.clean
 clean: tests.eap.clean
