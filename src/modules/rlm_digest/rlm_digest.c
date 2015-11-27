@@ -108,7 +108,6 @@ static int digest_fix(REQUEST *request)
 		int length = i->vp_length;
 		int attrlen;
 		uint8_t const *p = &i->vp_octets[0];
-		char *q;
 		VALUE_PAIR *sub;
 
 		/*
@@ -149,10 +148,7 @@ static int digest_fix(REQUEST *request)
 			 */
 			sub = radius_pair_create(request->packet, &request->packet->vps,
 						PW_DIGEST_REALM - 1 + p[0], 0);
-			sub->vp_length = attrlen - 2;
-			sub->vp_strvalue = q = talloc_array(sub, char, sub->vp_length + 1);
-			memcpy(q, p + 2, attrlen - 2);
-			q[attrlen - 2] = '\0';
+			fr_pair_value_bstrncpy(sub, p + 2, attrlen - 2);
 
 			if ((rad_debug_lvl > 1) && fr_log_fp) {
 				vp_print(fr_log_fp, sub);
