@@ -6,17 +6,16 @@
 ##	$Id$
 ##
 #
-BUILD_PATH := $(top_builddir)/build
-TEST_PATH := $(top_builddir)/src/tests/eapol_test
+TEST_PATH := ${top_srcdir}/src/tests/eapol_test
 CONFIG_PATH := $(TEST_PATH)/config
 RADIUS_LOG := $(TEST_PATH)/radius.log
 GDB_LOG := $(TEST_PATH)/gdb.log
-BIN_PATH := $(BUILD_PATH)/bin/local
+BIN_PATH := $(BUILD_DIR)/bin/local
 
 #
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
-FR_LIBRARY_PATH := $(BUILD_PATH)/lib/local/.libs/
+FR_LIBRARY_PATH := $(BUILD_DIR)/lib/local/.libs/
 export FR_LIBRARY_PATH
 
 #
