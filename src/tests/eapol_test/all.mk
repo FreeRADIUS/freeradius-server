@@ -26,6 +26,19 @@ RADDB_PATH := $(top_builddir)/raddb
 PORT := 12350
 SECRET := testing123
 
+EAP_TARGETS	:= $(filter rlm_eap_%,$(ALL_TGTS))
+EAP_TYPES	:= $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
+
+#EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(TEST_PATH)/$(x)*.conf))
+EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
+
+.PHONY: $(CONFIG_PATH)/methods-enabled
+$(CONFIG_PATH)/methods-enabled:
+	@mkdir -p $@
+
+$(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
+	@ln -s $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
+
 #
 #   Only enable methods/tests if the relevant module was built
 #
@@ -34,37 +47,29 @@ $(shell rm -f $(CONFIG_PATH)/methods-enabled/*)
 
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_gtc*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/gtc*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/gtc $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_leap*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/leap*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/leap $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_md5*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/md5*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/md5 $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_pwd*),)
-    ifneq "$(shell strings `which eapol_test` | grep pwd)" ""
+  ifneq "$(shell strings `which eapol_test` | grep pwd)" ""
       EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/pwd*.conf)
-      $(shell ln -s $(CONFIG_PATH)/methods-available/pwd $(CONFIG_PATH)/methods-enabled/)
     endif
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_mschapv2*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/mschapv2*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/mschapv2 $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_tls*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/tls*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/tls $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_ttls*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/ttls*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/ttls $(CONFIG_PATH)/methods-enabled/)
 endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_peap*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/peap-*.conf)
-    $(shell ln -s $(CONFIG_PATH)/methods-available/peap $(CONFIG_PATH)/methods-enabled/)
 endif
 
 .PHONY: eap dictionary clean tests.eap.clean
@@ -138,7 +143,7 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 $(RADDB_PATH)/certs/%:
 	@make -C $(shell dirname $@)
 
-$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem
+$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES)
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
 	@printf "Starting EAP test server... "
 	@if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
