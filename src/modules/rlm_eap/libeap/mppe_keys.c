@@ -193,9 +193,7 @@ void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	vp = fr_pair_afrom_num(packet, 0, PW_EAP_SESSION_ID);
 	if (!vp) return;
 
-	vp->vp_length = 1 + 2 * SSL3_RANDOM_SIZE;
-	p = talloc_array(vp, uint8_t, vp->vp_length);
-
+	p = talloc_array(vp, uint8_t, 1 + 2 * SSL3_RANDOM_SIZE);
 	p[0] = header & 0xff;
 
 #ifdef HAVE_SSL_GET_CLIENT_RANDOM
@@ -206,6 +204,6 @@ void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	memcpy(p + 1 + SSL3_RANDOM_SIZE,
 	       s->s3->server_random, SSL3_RANDOM_SIZE);
 #endif
-	vp->vp_octets = p;
+	fr_pair_value_memsteal(vp, p);
 	fr_pair_add(&packet->vps, vp);
 }

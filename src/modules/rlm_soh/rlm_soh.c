@@ -155,15 +155,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 					RDEBUG("SoH adding NAP marker to DHCP reply");
 					/* client probe; send "NAP" in the reply */
 					vp = fr_pair_afrom_num(request->reply, DHCP_MAGIC_VENDOR, 43);
-					vp->vp_length = 5;
-					vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
-
+					p = talloc_array(vp, uint8_t, 5);
 					p[0] = 220;
 					p[1] = 3;
 					p[4] = 'N';
 					p[3] = 'A';
 					p[2] = 'P';
-
+					fr_pair_value_memsteal(vp, p);
 					fr_pair_add(&request->reply->vps, vp);
 
 				} else {

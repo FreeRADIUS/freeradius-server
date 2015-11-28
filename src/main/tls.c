@@ -651,7 +651,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 			return 0;
 		}
 	} else {
-		RDEBUG2("TLS Application Data");
+		RDEBUG2("Recived TLS Application Data");
 		/* Its clean application data, do whatever we want */
 		record_init(&session->clean_out);
 	}

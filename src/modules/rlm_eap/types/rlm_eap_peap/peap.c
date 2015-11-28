@@ -282,15 +282,13 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
-	vp->vp_length = EAP_HEADER_LEN + total;
-	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
-
+	p = talloc_array(vp, uint8_t, EAP_HEADER_LEN + total);
 	p[0] = PW_EAP_RESPONSE;
 	p[1] = eap_round->response->id;
 	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
-
 	memcpy(p + EAP_HEADER_LEN, data, total);
+	fr_pair_value_memsteal(vp, p);
 
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_insert(&cursor, vp);
@@ -920,18 +918,17 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		t->status = PEAP_STATUS_PHASE2;
 
 		vp = fr_pair_afrom_num(fake->packet, 0, PW_EAP_MESSAGE);
-		vp->vp_length = len;
-		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->vp_length);
 
+		q = talloc_array(vp, uint8_t, len);
 		q[0] = PW_EAP_RESPONSE;
 		q[1] = eap_round->response->id;
 		q[2] = (len >> 8) & 0xff;
 		q[3] = len & 0xff;
 		q[4] = PW_EAP_IDENTITY;
-
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
 
+		fr_pair_value_memsteal(vp, q);
 		fr_pair_add(&fake->packet->vps, vp);
 
 		if (t->default_method != 0) {

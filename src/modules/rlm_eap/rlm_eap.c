@@ -338,14 +338,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	terminated string in Access-Accept.
 		 */
 		if (inst->mod_accounting_username_bug) {
-			char const *old = vp->vp_strvalue;
-			char *new = talloc_zero_array(vp, char, vp->vp_length + 1);
+			char *new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
 
-			memcpy(new, old, vp->vp_length);
-			vp->vp_strvalue = new;
-			vp->vp_length++;
-
-			rad_const_free(old);
+			memcpy(new, vp->vp_strvalue, vp->vp_length);
+			fr_pair_value_strsteal(vp, new);	/* Also frees existing buffer */
 		}
 	}
 

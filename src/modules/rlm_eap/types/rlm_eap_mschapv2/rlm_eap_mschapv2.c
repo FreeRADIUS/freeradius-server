@@ -243,11 +243,9 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 		/*
 		 *	Get a random challenge.
 		 */
-		challenge->vp_length = MSCHAPV2_CHALLENGE_LEN;
-		challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
-		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
-			p[i] = fr_rand();
-		}
+		p = talloc_array(challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
+		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
+		fr_pair_value_memsteal(challenge, p);
 	}
 	RDEBUG2("Issuing Challenge");
 
@@ -426,12 +424,11 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 			fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
 			cpw = pair_make_request("MS-CHAP2-CPW", NULL, T_OP_EQ);
-			cpw->vp_length = 68;
-
-			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->vp_length);
+			p = talloc_array(cpw, uint8_t, 68);
 			p[0] = 7;
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_round->response->type.data + 520, 66);
+			fr_pair_value_memsteal(cpw, p);
 
 			/*
 			 * break the encoded password into VPs (3 of them)
@@ -443,16 +440,14 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 				if (to_copy > 243) to_copy = 243;
 
 				nt_enc = pair_make_request("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
-				nt_enc->vp_length = 4 + to_copy;
-
-				nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->vp_length);
-
+				p = talloc_array(nt_enc, uint8_t, 4 + to_copy);
 				p[0] = 6;
 				p[1] = mschap_id;
 				p[2] = 0;
 				p[3] = seq++;
-
 				memcpy(p + 4, eap_round->response->type.data + 4 + copied, to_copy);
+				fr_pair_value_memsteal(nt_enc, p);
+
 				copied += to_copy;
 			}
 
@@ -573,12 +568,12 @@ failure:
 
 	response = pair_make_request("MS-CHAP2-Response", NULL, T_OP_EQ);
 	if (!response) return 0;
-	response->vp_length = MSCHAPV2_RESPONSE_LEN;
-	response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
 
+	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_round->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
+	fr_pair_value_memsteal(response, p);
 
 	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
 	if (!name) return 0;

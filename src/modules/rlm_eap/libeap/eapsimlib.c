@@ -310,10 +310,8 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	attrlen  -= 3;
 
 	/* now, loop processing each attribute that we find */
-	while(attrlen > 0) {
-		uint8_t *p;
-
-		if(attrlen < 2) {
+	while (attrlen > 0) {
+		if (attrlen < 2) {
 			ERROR("eap: EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
 			return 0;
 		}
@@ -328,7 +326,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			return 0;
 		}
 
-		if(eapsim_len > MAX_STRING_LEN) {
+		if (eapsim_len > MAX_STRING_LEN) {
 			eapsim_len = MAX_STRING_LEN;
 		}
 		if (eapsim_len < 2) {
@@ -338,9 +336,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		}
 
 		newvp = fr_pair_afrom_num(r, 0, eapsim_attribute + PW_EAP_SIM_BASE);
-		newvp->vp_length = eapsim_len-2;
-		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
-		memcpy(p, &attr[2], eapsim_len-2);
+		fr_pair_value_memcpy(newvp, &attr[2], eapsim_len - 2);
 		fr_pair_add(&(r->vps), newvp);
 		newvp = NULL;
 

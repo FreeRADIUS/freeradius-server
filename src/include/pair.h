@@ -240,7 +240,7 @@ bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter,
 FR_TOKEN	fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 VALUE_PAIR	*fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from);
-VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
+VALUE_PAIR	*fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 				     unsigned int vendor, unsigned int attr, int8_t tag);
 void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
@@ -253,6 +253,7 @@ int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);
 void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t len);
 void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
+void		fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len);
 void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len);
 void		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));

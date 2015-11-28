@@ -51,7 +51,7 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 	 */
 	vps = radius_list(request, list);
 	if (!vps) {
-		RWDEBUG("List '%s' doesn't exist for this packet", fr_int2str(pair_lists, list, "<INVALID>"));
+		RWDEBUG("List \"%s\" doesn't exist for this packet", fr_int2str(pair_lists, list, "<INVALID>"));
 		rcode = RLM_MODULE_INVALID;
 		goto error;
 	}
@@ -65,6 +65,8 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
+		RDEBUG2("Will replicate attribute(s)");
+		rdebug_proto_pair_list(L_DBG_LVL_2, request, packet->vps, NULL);
 	}
 
 	/*
@@ -210,7 +212,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 		/*
 		 *	Encode, sign and then send the packet.
 		 */
-		RDEBUG("Replicating list '%s' to Realm '%s'", fr_int2str(pair_lists, list, "<INVALID>"), realm->name);
+		RDEBUG("Replicating %s list to Realm \"%s\"", fr_int2str(pair_lists, list, "<INVALID>"), realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			REDEBUG("Failed replicating packet: %s", fr_strerror());
 			rcode = RLM_MODULE_FAIL;

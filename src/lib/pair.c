@@ -1878,7 +1878,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
  *
  * @param vp to fixup.
  */
-static void fr_pair_value_set_type(VALUE_PAIR *vp)
+inline static void fr_pair_value_set_type(VALUE_PAIR *vp)
 {
 	if (!vp->data.ptr) return;
 
@@ -1921,6 +1921,8 @@ void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 	vp->vp_length = size;
 
 	if (size > 0) fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
 }
 
 /** Reparent an allocated octet buffer to a VALUE_PAIR
@@ -1941,6 +1943,8 @@ void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src)
 	vp->type = VT_DATA;
 	vp->vp_length = talloc_array_length(vp->vp_strvalue);
 	fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
 }
 
 /** Reparent an allocated char buffer to a VALUE_PAIR
@@ -1961,6 +1965,44 @@ void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
 	vp->type = VT_DATA;
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 	fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
+}
+
+/** Reparent an allocated char buffer to a VALUE_PAIR reallocating the buffer to the correct size
+ *
+ * If len is larger than the current buffer, the additional space will be filled with '\0'
+ *
+ * @param[in,out] vp to update
+ * @param[in] src buffer to steal.
+ * @param[in] len of data in buffer.
+ */
+void fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len)
+{
+	uint8_t	*q;
+	char	*p;
+	size_t	buf_len;
+
+	VERIFY_VP(vp);
+
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	talloc_free(q);
+
+	buf_len = talloc_array_length(src);
+	if (buf_len > (len + 1)) {
+		vp->vp_strvalue = talloc_realloc_size(vp, src, len + 1);
+	} else if (buf_len < (len + 1)) {
+		vp->vp_strvalue = p = talloc_realloc_size(vp, src, len + 1);
+		memset(p + (buf_len - 1), '\0', (len + 1) - (buf_len - 1));
+	} else {
+		vp->vp_strvalue = talloc_steal(vp, src);
+	}
+	vp->vp_strvalue = talloc_steal(vp, src);
+	vp->type = VT_DATA;
+	vp->vp_length = len;
+	fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
 }
 
 /** Copy data into an "string" data type.
@@ -1985,6 +2027,8 @@ void fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
 	vp->type = VT_DATA;
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 	fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
 }
 
 /** Copy data into an "string" data type.
@@ -2015,6 +2059,8 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 	vp->type = VT_DATA;
 	vp->vp_length = len;
 	fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
 }
 
 /** Print data into an "string" data type.
@@ -2043,6 +2089,8 @@ void fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
 
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 	fr_pair_value_set_type(vp);
+
+	VERIFY_VP(vp);
 }
 
 /** Print the value of an attribute to a string
@@ -2060,9 +2108,7 @@ size_t fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, cha
 {
 	VERIFY_VP(vp);
 
-	if (vp->type == VT_XLAT) {
-		return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
-	}
+	if (vp->type == VT_XLAT) return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
 
 	return value_data_snprint(out, outlen, vp->da->type, vp->da, &vp->data, quote);
 }

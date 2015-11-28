@@ -99,11 +99,10 @@ static int eap_sim_sendstart(eap_session_t *eap_session)
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
 	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_FULLAUTH_ID_REQ);
-	newvp->vp_length = 2;
-	newvp->vp_octets = p = talloc_array(newvp, uint8_t, 2);
-
+	p = talloc_array(newvp, uint8_t, 2);
 	p[0] = 0;
 	p[0] = 1;
+	fr_pair_value_memsteal(newvp, p);
 	fr_pair_add(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
@@ -297,9 +296,7 @@ static int eap_sim_sendchallenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
 	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_RAND);
-	newvp->vp_length = 2 + (EAPSIM_RAND_SIZE * 3);
-	newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
-
+	p = talloc_array(newvp, uint8_t, 2 + (EAPSIM_RAND_SIZE * 3));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
 	memcpy(p, ess->keys.rand[0], EAPSIM_RAND_SIZE);
@@ -307,6 +304,7 @@ static int eap_sim_sendchallenge(eap_session_t *eap_session)
 	memcpy(p, ess->keys.rand[1], EAPSIM_RAND_SIZE);
 	p += EAPSIM_RAND_SIZE;
 	memcpy(p, ess->keys.rand[2], EAPSIM_RAND_SIZE);
+	fr_pair_value_memsteal(newvp, p);
 	fr_pair_add(outvps, newvp);
 
 	/*

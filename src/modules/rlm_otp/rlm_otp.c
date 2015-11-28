@@ -260,12 +260,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			talloc_free(expanded);
 			return RLM_MODULE_FAIL;
 		}
-
-		(void) talloc_steal(vp, expanded);
-		vp->vp_strvalue = expanded;
-		vp->vp_length = len;
+		fr_pair_value_strnsteal(vp, expanded, len);
 		vp->op = T_OP_SET;
-		vp->type = VT_DATA;
 
 		fr_pair_add(&request->reply->vps, vp);
 	}

@@ -68,15 +68,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY);
 	if (vp && (vp->vp_length == 6)) {
-		int i;
-		char *p;
-		uint8_t buffer[6];
+		int	i;
+		char	*p;
+		uint8_t	buffer[6];
 
 		memcpy(buffer, vp->vp_strvalue, 6);
-		vp->vp_length = (5*3)+2;
-		vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
-		vp->type = VT_DATA;
 
+		p = talloc_array(vp, char, (5 * 3) + 2 + 1);
 		/*
 		 *	RFC 3580 Section 3.20 says this is the preferred
 		 *	format.  Everyone *SANE* is using this format,
@@ -88,6 +86,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		}
 
 		p[(5*3)+2] = '\0';
+		fr_pair_value_strsteal(vp, p);
 
 		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
 		       vp->vp_strvalue);

@@ -209,7 +209,7 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 	char const	*p, *q;
 	size_t		len;
 
-	uint8_t		digest[257];	/* +1 for \0 */
+	uint8_t		digest[256];
 	ssize_t		decoded;
 
 	char		buffer[256];
@@ -290,7 +290,7 @@ redo:
 	 *
 	 *	See if it's base64, if it is, decode it and check again!
 	 */
-	decoded = fr_base64_decode(digest, sizeof(digest) - 1, vp->vp_strvalue, len);
+	decoded = fr_base64_decode(digest, sizeof(digest), vp->vp_strvalue, len);
 	if ((decoded > 0) && (digest[0] == '{') && (memchr(digest, '}', decoded) != NULL)) {
 		RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
 			vp->da->name, vp->vp_length, decoded);
@@ -299,9 +299,7 @@ redo:
 		 *	Even though we're handling binary data, the buffer
 		 *	must be \0 terminated.
 		 */
-		digest[decoded] = '\0';
-		fr_pair_value_memcpy(vp, digest, decoded + 1);
-		vp->vp_length = decoded;		/* lie about the length */
+		fr_pair_value_bstrncpy(vp, digest, decoded);
 
 		goto redo;
 	}

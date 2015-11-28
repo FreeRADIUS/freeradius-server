@@ -688,21 +688,21 @@ void mschap_add_reply(REQUEST *request, unsigned char ident,
 		return;
 	}
 
-	/* Account for the ident byte */
-	vp->vp_length = len + 1;
 	if (vp->da->type == PW_TYPE_STRING) {
 		char *p;
 
-		vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
-		p[vp->vp_length] = '\0';	/* Always \0 terminate */
+		p = talloc_array(vp, char, len + 1 + 1);	/* Account for the ident byte */
+		p[vp->vp_length] = '\0';			/* Always \0 terminate */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
+		fr_pair_value_strsteal(vp, p);
 	} else {
 		uint8_t *p;
 
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
+		p = talloc_array(vp, uint8_t, len + 1);		/* Account for the ident byte */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
+		fr_pair_value_memsteal(vp, p);
 	}
 }
 
@@ -987,8 +987,8 @@ ntlm_auth_err:
 		 *  cleartext password as it avoids unicode hassles.
 		 */
 		new_hash = pair_make_request("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
-		new_hash->vp_length = NT_DIGEST_LENGTH;
-		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->vp_length);
+		q = talloc_array(new_hash, uint8_t, NT_DIGEST_LENGTH);
+		fr_pair_value_memsteal(new_hash, q);
 		fr_md4_calc(q, p, passlen);
 
 		/*
@@ -1597,8 +1597,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				RERROR("No memory");
 				return RLM_MODULE_FAIL;
 			}
-			nt_password->vp_length = NT_DIGEST_LENGTH;
-			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->vp_length);
+			p = talloc_array(nt_password, uint8_t, NT_DIGEST_LENGTH);
+			fr_pair_value_memsteal(nt_password, p);
 
 			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
 				RERROR("Failed generating NT-Password");
@@ -1648,8 +1648,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			} else {
 				uint8_t *p;
 
-				lm_password->vp_length = LM_DIGEST_LENGTH;
-				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->vp_length);
+				p = talloc_array(lm_password, uint8_t, LM_DIGEST_LENGTH);
+				fr_pair_value_memsteal(lm_password, p);
 				smbdes_lmpwdhash(password->vp_strvalue, p);
 			}
 		/*
@@ -1781,14 +1781,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		response = radius_pair_create(request->packet, &request->packet->vps,
 					     PW_MSCHAP2_RESPONSE,
 					     VENDORPEC_MICROSOFT);
-		response->vp_length = 50;
-		response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
+		p = talloc_array(response, uint8_t, 50);
 
 		/* ident & flags */
 		p[0] = cpw->vp_octets[1];
 		p[1] = 0;
 		/* peer challenge and client NT response */
 		memcpy(p + 2, cpw->vp_octets + 18, 48);
+
+		fr_pair_value_memsteal(response, p);
 	}
 
 	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);

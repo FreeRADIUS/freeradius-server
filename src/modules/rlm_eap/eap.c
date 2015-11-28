@@ -682,14 +682,13 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		/*
 		 *	Manually create an EAP Identity request
 		 */
-		vp->vp_length = 5;
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
-
+		p = talloc_array(vp, uint8_t, 5);
 		p[0] = PW_EAP_REQUEST;
 		p[1] = 0; /* ID */
 		p[2] = 0;
 		p[3] = 5; /* length */
 		p[4] = PW_EAP_IDENTITY;
+		fr_pair_value_memsteal(vp, p);
 
 		return EAP_FOUND;
 	} /* end of handling EAP-Start */

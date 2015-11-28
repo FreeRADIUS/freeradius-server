@@ -1178,14 +1178,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_STRING:
-			vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i] + 1);
-			vp->type = VT_DATA;
+			q = talloc_array(vp, char, dhcp_header_sizes[i] + 1);
 			memcpy(q, p, dhcp_header_sizes[i]);
 			q[dhcp_header_sizes[i]] = '\0';
-			vp->vp_length = strlen(vp->vp_strvalue);
-			if (vp->vp_length == 0) {
-				fr_pair_list_free(&vp);
-			}
+			fr_pair_value_strsteal(vp, q);
+
+			if (vp->vp_length == 0) fr_pair_list_free(&vp);
 			break;
 
 		case PW_TYPE_OCTETS:

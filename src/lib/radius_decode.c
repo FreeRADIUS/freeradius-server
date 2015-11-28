@@ -323,12 +323,12 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
-	vp->vp_length = total;
-	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
+	p = talloc_array(vp, uint8_t, total);
 	if (!p) {
 		fr_pair_list_free(&vp);
 		return -1;
 	}
+	fr_pair_value_memsteal(vp, p);
 
 	total = 0;
 	ptr = data;
@@ -817,7 +817,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*vp;
 	uint8_t const		*p = data;
-	char			*str_p;
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*this = decoder_ctx;
 
@@ -1228,14 +1227,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	switch (parent->type) {
 	case PW_TYPE_STRING:
-		str_p = talloc_array(vp, char, vp->vp_length + 1);
-		memcpy(str_p, p, vp->vp_length);
-		str_p[vp->vp_length] = '\0';
-		vp->vp_strvalue = str_p;
+		fr_pair_value_bstrncpy(vp, p, datalen);
 		break;
 
 	case PW_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, p, vp->vp_length);
+		fr_pair_value_memcpy(vp, p, datalen);
 		break;
 
 	case PW_TYPE_ABINARY:
