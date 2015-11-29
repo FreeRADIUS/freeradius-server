@@ -37,7 +37,7 @@ $(CONFIG_PATH)/methods-enabled:
 	@mkdir -p $@
 
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
-	@ln -s $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
+	@ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
 .PHONY: eap dictionary clean clean.tests.eap
 clean: clean.tests.eap
