@@ -95,8 +95,8 @@ $(CONFIG_PATH)/dictionary:
 
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
-	@echo "testdir =" $(CONFIG_PATH) >> $@
-	@echo 'logdir = $${testdir}' >> $@
+	@echo 'testdir =' $(CONFIG_PATH) >> $@
+	@echo 'logdir =' $(OUTPUT_DIR) >> $@
 	@echo 'maindir = ${top_builddir}/raddb/' >> $@
 	@echo 'radacctdir = $${testdir}' >> $@
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
