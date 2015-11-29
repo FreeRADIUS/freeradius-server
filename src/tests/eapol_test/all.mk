@@ -106,7 +106,7 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 #  Build snakoil certs if they don't exist
 #
 $(RADDB_PATH)/certs/%:
-	@make -C $(shell dirname $@)
+	@make -C $(dir $@)
 
 $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES)
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
