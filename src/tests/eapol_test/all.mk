@@ -8,8 +8,10 @@
 #
 TEST_PATH := ${top_srcdir}/src/tests/eapol_test
 CONFIG_PATH := $(TEST_PATH)/config
-RADIUS_LOG := $(TEST_PATH)/radius.log
-GDB_LOG := $(TEST_PATH)/gdb.log
+
+OUTPUT_DIR := $(BUILD_DIR)/tests/eapol_test
+RADIUS_LOG := $(OUTPUT_DIR)/radius.log
+GDB_LOG := $(OUTPUT_DIR)/gdb.log
 BIN_PATH := $(BUILD_DIR)/bin/local
 
 #
@@ -29,8 +31,14 @@ SECRET := testing123
 EAP_TARGETS	:= $(filter rlm_eap_%,$(ALL_TGTS))
 EAP_TYPES	:= $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 
-EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(TEST_PATH)/$(x)*.conf))
+EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
+EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT_DIR)/%.ok,$(EAPOL_TEST_FILES))
 EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
+
+
+.PHONY: $(OUTPUT_DIR)
+$(OUTPUT_DIR):
+	@mkdir -p $@
 
 .PHONY: $(CONFIG_PATH)/methods-enabled
 $(CONFIG_PATH)/methods-enabled:
@@ -53,7 +61,7 @@ endif
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
 .PHONY: radiusd.kill
-radiusd.kill:
+radiusd.kill: | $(OUTPUT_DIR)
 	@if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
 		ret=0; \
 		if ! ps `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
@@ -71,8 +79,8 @@ radiusd.kill:
 		exit $$ret; \
 	fi
 
-tests.eap.clean:
-	@rm -f "$(TEST_PATH)/"*.ok "$(TEST_PATH)/"*.log
+clean.tests.eap:
+	@rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log
 	@rm -f "$(CONFIG_PATH)/test.conf"
 	@rm -f "$(CONFIG_PATH)/dictionary"
 	@rm -rf "$(CONFIG_PATH)/methods-enabled"
@@ -108,7 +116,7 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 $(RADDB_PATH)/certs/%:
 	@make -C $(dir $@)
 
-$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES)
+$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT_DIR)
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
 	@printf "Starting EAP test server... "
 	@if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
@@ -122,7 +130,7 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
-$(TEST_PATH)/%.ok: $(TEST_PATH)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
+$(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && \
 		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$<) 2>&1 ) || \
@@ -137,7 +145,7 @@ $(TEST_PATH)/%.ok: $(TEST_PATH)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 		exit 1;\
 	fi
 
-tests.eap: $(patsubst %.conf,%.ok, $(EAPOL_TEST_FILES))
+tests.eap: $(EAPOL_OK_FILES)
 	@$(MAKE) radiusd.kill
 else
 tests.eap:
