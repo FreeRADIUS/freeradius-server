@@ -7,10 +7,9 @@
 ##
 #
 TEST_PATH := ${top_srcdir}/src/tests/eapol_test
-BUILD_PATH := $(BUILD_DIR)/tests/eapol_test
 CONFIG_PATH := $(TEST_PATH)/config
-RADIUS_LOG := $(BUILD_PATH)/radius.log
-GDB_LOG := $(BUILD_PATH)/gdb.log
+RADIUS_LOG := $(TEST_PATH)/radius.log
+GDB_LOG := $(TEST_PATH)/gdb.log
 BIN_PATH := $(BUILD_DIR)/bin/local
 
 #
@@ -33,25 +32,15 @@ EAP_TYPES	:= $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(TEST_PATH)/$(x)*.conf))
 EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
 
-#
-#  Create the output directory
-#
-.PHONY: $(BUILD_PATH)
-$(BUILD_PATH):
-	@mkdir -p $@
-
-#
-#  Methods enabled directory
-#
 .PHONY: $(CONFIG_PATH)/methods-enabled
 $(CONFIG_PATH)/methods-enabled:
 	@mkdir -p $@
 
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
-	@ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
+	@ln -s $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
-.PHONY: eap dictionary clean tests.eap.clean
-clean: tests.eap.clean
+.PHONY: eap dictionary clean clean.tests.eap
+clean: clean.tests.eap
 
 #
 #   Only run EAP tests if we have a "test" target
@@ -83,7 +72,7 @@ radiusd.kill:
 	fi
 
 tests.eap.clean:
-	@rm -f "$(BUILD_PATH)/"*.ok "$(BUILD_PATH)/"*.log
+	@rm -f "$(TEST_PATH)/"*.ok "$(TEST_PATH)/"*.log
 	@rm -f "$(CONFIG_PATH)/test.conf"
 	@rm -f "$(CONFIG_PATH)/dictionary"
 	@rm -rf "$(CONFIG_PATH)/methods-enabled"
@@ -99,8 +88,7 @@ $(CONFIG_PATH)/dictionary:
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
 	@echo "testdir =" $(CONFIG_PATH) >> $@
-	@echo "builddir =" $(BUILD_PATH) >> $@
-	@echo 'logdir = $${builddir}' >> $@
+	@echo 'logdir = $${testdir}' >> $@
 	@echo 'maindir = ${top_builddir}/raddb/' >> $@
 	@echo 'radacctdir = $${testdir}' >> $@
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
@@ -134,11 +122,11 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
-$(BUILD_PATH)/%.ok: $(TEST_PATH)/%.conf $(wildcard $(TEST_PATH)/config/methods-available/*) $(wildcard $(TEST_PATH)/config/*) | radiusd.kill $(CONFIG_PATH)/radiusd.pid $(BUILD_PATH)
+$(TEST_PATH)/%.ok: $(TEST_PATH)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && \
-		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.ok,%.log,$@) 2>&1 ) || \
-		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.ok,%.log,$@) 2>&1; then\
+		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$<) 2>&1 ) || \
+		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1; then\
 		touch $@; \
 	else \
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$<)):"; \
@@ -149,7 +137,7 @@ $(BUILD_PATH)/%.ok: $(TEST_PATH)/%.conf $(wildcard $(TEST_PATH)/config/methods-a
 		exit 1;\
 	fi
 
-tests.eap: $(addprefix $(BUILD_PATH)/,$(notdir $(patsubst %.conf,%.ok, $(EAPOL_TEST_FILES))))
+tests.eap: $(patsubst %.conf,%.ok, $(EAPOL_TEST_FILES))
 	@$(MAKE) radiusd.kill
 else
 tests.eap:
