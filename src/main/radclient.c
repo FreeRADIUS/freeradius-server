@@ -330,7 +330,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			goto error;
 		}
 
-		request->packet = rad_alloc(request, true);
+		request->packet = fr_radius_alloc(request, true);
 		if (!request->packet) {
 			ERROR("Out of memory");
 			goto error;
@@ -802,7 +802,7 @@ static void deallocate_id(rc_request_t *request)
 	 *	authentication vector.
 	 */
 	if (request->packet->data) TALLOC_FREE(request->packet->data);
-	if (request->reply) rad_free(&request->reply);
+	if (request->reply) fr_radius_free(&request->reply);
 }
 
 /*
@@ -957,7 +957,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Send the packet.
 	 */
-	if (rad_send(request->packet, NULL, secret) < 0) {
+	if (fr_radius_send(request->packet, NULL, secret) < 0) {
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
 		deallocate_id(request);
 		request->done = true;
@@ -1042,7 +1042,7 @@ static int recv_one_packet(int wait_time)
 	if (!packet_p) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
 		      reply->id, reply->sockfd);
-		rad_free(&reply);
+		fr_radius_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
 	request = fr_packet2myptr(rc_request_t, packet, packet_p);
@@ -1051,7 +1051,7 @@ static int recv_one_packet(int wait_time)
 	 *	Fails the signature validation: not a real reply.
 	 *	FIXME: Silently drop it and listen for another packet.
 	 */
-	if (rad_verify(reply, request->packet, secret) < 0) {
+	if (fr_radius_verify(reply, request->packet, secret) < 0) {
 		REDEBUG("Reply verification failed");
 		stats.lost++;
 		goto packet_done; /* shared secret is incorrect */
@@ -1068,7 +1068,7 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (rad_decode(request->reply, request->packet, secret) != 0) {
+	if (fr_radius_decode(request->reply, request->packet, secret) != 0) {
 		REDEBUG("Reply decode failed");
 		stats.lost++;
 		goto packet_done;
@@ -1132,8 +1132,8 @@ static int recv_one_packet(int wait_time)
 	}
 
 packet_done:
-	rad_free(&request->reply);
-	rad_free(&reply);	/* may be NULL */
+fr_radius_free(&request->reply);
+	fr_radius_free(&reply);	/* may be NULL */
 
 	return 0;
 }

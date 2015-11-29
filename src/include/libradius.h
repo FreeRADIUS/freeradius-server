@@ -133,11 +133,11 @@ typedef void (*sig_t)(int);
 /*
  *	vector:		Request authenticator from access-request packet
  *			Put in there by rad_decode, and must be put in the
- *			response RADIUS_PACKET as well before calling rad_send
+ *			response RADIUS_PACKET as well before calling fr_radius_send
  *
  *	verified:	Filled in by rad_decode for accounting-request packets
  *
- *	data,data_len:	Used between rad_recv and rad_decode.
+ *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
 typedef struct radius_packet {
 	int			sockfd;			//!< Socket this packet was read from.
@@ -226,26 +226,35 @@ do { \
 extern FR_NAME_NUMBER const fr_request_types[];
 
 void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
-void		rad_print_hex(RADIUS_PACKET *packet);
-int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
-ssize_t		rad_packet_size(uint8_t const *data, size_t data_len);
-bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
-RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
-ssize_t		rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
-void		rad_recv_discard(int sockfd);
-int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-			   char const *secret);
-int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
-int		rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			   char const *secret);
-int		rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			 char const *secret);
 
-int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
-RADIUS_PACKET	*rad_alloc(TALLOC_CTX *ctx, bool new_vector);
-RADIUS_PACKET	*rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
-RADIUS_PACKET	*rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
-void		rad_free(RADIUS_PACKET **);
+void		fr_radius_print_hex(RADIUS_PACKET *packet);
+
+int		fr_radius_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
+
+ssize_t		fr_radius_len(uint8_t const *data, size_t data_len);
+
+bool		fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
+
+RADIUS_PACKET	*fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags);
+
+ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
+
+void		fr_radius_recv_discard(int sockfd);
+
+int		fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
+
+int		fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
+
+int		fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
+
+int		fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
+
+int		fr_radius_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
+
+RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
+RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
+RADIUS_PACKET	*fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
+void		fr_radius_free(RADIUS_PACKET **);
 
 typedef struct fr_radius_ctx {
 	RADIUS_PACKET const	*packet;

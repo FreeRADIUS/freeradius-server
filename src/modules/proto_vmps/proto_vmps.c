@@ -63,7 +63,7 @@ static int vqp_socket_recv(rad_listen_t *listener)
 	if ((client = client_listener_find(listener,
 					   &packet->src_ipaddr,
 					   packet->src_port)) == NULL) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -73,7 +73,7 @@ static int vqp_socket_recv(rad_listen_t *listener)
 	fun = vmps_process;
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 

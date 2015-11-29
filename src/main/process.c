@@ -1756,7 +1756,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 		ERROR("No memory");
 		return NULL;
 	}
-	request->reply = rad_alloc(request, false);
+	request->reply = fr_radius_alloc(request, false);
 	if (!request->reply) {
 		ERROR("No memory");
 		talloc_free(request);
@@ -2450,8 +2450,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	server core, but I guess we can fix that later.
 	 */
 	if (!request->proxy_reply &&
-	    (rad_verify(packet, request->proxy,
-			request->home_server->secret) != 0)) {
+	    (fr_radius_verify(packet, request->proxy,
+			      request->home_server->secret) != 0)) {
 		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return 0;
 	}
@@ -3439,7 +3439,7 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	request->number = request_num_counter++;
 	NO_CHILD_THREAD;
 
-	request->proxy = rad_alloc(request, true);
+	request->proxy = fr_radius_alloc(request, true);
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
@@ -4106,8 +4106,8 @@ static void request_coa_originate(REQUEST *request)
 	rad_assert(coa->packet != NULL);
 	rad_assert(coa->packet->vps == NULL);
 
-	coa->packet = rad_copy_packet(coa, request->packet);
-	coa->reply = rad_copy_packet(coa, request->reply);
+	coa->packet = fr_radius_copy(coa, request->packet);
+	coa->reply = fr_radius_copy(coa, request->reply);
 
 	coa->config = fr_pair_list_copy(coa, request->config);
 	coa->num_coa_requests = 0;

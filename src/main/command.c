@@ -2081,7 +2081,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	fake->decode = null_socket_dencode;
 	fake->send = null_socket_send;
 
-	packet = rad_alloc(NULL, false);
+	packet = fr_radius_alloc(NULL, false);
 	packet->src_ipaddr = sock->src_ipaddr;
 	packet->src_port = 0;
 
@@ -2100,7 +2100,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		fun = rad_accounting;
 #else
 		cprintf_error(listener, "This server was built without accounting support.\n");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		free(fake);
 		return 0;
 #endif
@@ -2126,7 +2126,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 
 	if (!request_receive(NULL, fake, packet, sock->inject_client, fun)) {
 		cprintf_error(listener, "Failed to inject request.  See log file for details\n");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		free(fake);
 		return 0;
 	}
@@ -3482,7 +3482,7 @@ static int command_tcp_recv(rad_listen_t *this)
 			    strlen(sock->client->secret),
 			    (uint8_t *) co->buffer, 16);
 
-		if (rad_digest_cmp(expected,
+		if (fr_radius_digest_cmp(expected,
 				   (uint8_t *) co->buffer + 16, 16 != 0)) {
 			ERROR("radmin failed challenge: Closing socket");
 			goto do_close;

@@ -1087,7 +1087,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			request->proxy->src_port = 0;
 			request->proxy->dst_port = 0;
 			fake->packet = NULL;
-			rad_free(&fake->reply);
+			fr_radius_free(&fake->reply);
 			fake->reply = NULL;
 
 			/*

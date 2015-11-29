@@ -118,7 +118,7 @@ static REQUEST *request_setup(FILE *fp)
 	gettimeofday(&now, NULL);
 	request->timestamp = now;
 
-	request->packet = rad_alloc(request, false);
+	request->packet = fr_radius_alloc(request, false);
 	if (!request->packet) {
 		ERROR("No memory");
 		talloc_free(request);
@@ -126,7 +126,7 @@ static REQUEST *request_setup(FILE *fp)
 	}
 	request->packet->timestamp = now;
 
-	request->reply = rad_alloc(request, false);
+	request->reply = fr_radius_alloc(request, false);
 	if (!request->reply) {
 		ERROR("No memory");
 		talloc_free(request);

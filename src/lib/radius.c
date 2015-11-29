@@ -169,7 +169,7 @@ void fr_printf_log(char const *fmt, ...)
 	return;
 }
 
-void rad_print_hex(RADIUS_PACKET *packet)
+void fr_radius_print_hex(RADIUS_PACKET *packet)
 {
 	int i;
 
@@ -296,7 +296,7 @@ void fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *s
  *	- 1 on decode error.
  *	- >= RADIUS_HDR_LEN on success. This is the packet length as specified in the header.
  */
-ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code)
+ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code)
 {
 	ssize_t			data_len, packet_len;
 	uint8_t			header[4];
@@ -364,7 +364,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 {
 	ssize_t			data_len;
 
-	data_len = rad_recv_header(sockfd, &packet->src_ipaddr, &packet->src_port, &packet->code);
+	data_len = fr_radius_recv_header(sockfd, &packet->src_ipaddr, &packet->src_port, &packet->code);
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
 		return -1;
@@ -386,8 +386,8 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 /** Sign a previously encoded packet
  *
  */
-int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-	     char const *secret)
+int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+		   char const *secret)
 {
 	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
 
@@ -401,7 +401,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	if (!packet->data || (packet->data_len < RADIUS_HDR_LEN) ||
 	    (packet->offset < 0)) {
-		fr_strerror_printf("ERROR: You must call rad_encode() before rad_sign()");
+		fr_strerror_printf("ERROR: You must call fr_radius_encode() before fr_radius_sign()");
 		return -1;
 	}
 
@@ -503,8 +503,8 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
  *
  * Also attach reply attribute value pairs and any user message provided.
  */
-int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-	     char const *secret)
+int fr_radius_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+		   char const *secret)
 {
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
@@ -520,7 +520,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		/*
 		 *	Encode the packet.
 		 */
-		if (rad_encode(packet, original, secret) < 0) {
+		if (fr_radius_encode(packet, original, secret) < 0) {
 			return -1;
 		}
 
@@ -528,7 +528,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Re-sign it, including updating the
 		 *	Message-Authenticator.
 		 */
-		if (rad_sign(packet, original, secret) < 0) {
+		if (fr_radius_sign(packet, original, secret) < 0) {
 			return -1;
 		}
 
@@ -539,7 +539,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	}
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) rad_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
 #endif
 
 #ifdef WITH_TCP
@@ -575,7 +575,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
  *
  * http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
  */
-int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
+int fr_radius_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 {
 	int result = 0;
 	size_t i;
@@ -616,7 +616,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	if (rad_digest_cmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
+	if (fr_radius_digest_cmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
 
@@ -660,7 +660,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	if (rad_digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
+	if (fr_radius_digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
 
@@ -676,7 +676,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	<= 0 packet is bad.
  *      >0 how much of the data is a packet (can be larger than data_len)
  */
-ssize_t rad_packet_size(uint8_t const *data, size_t data_len)
+ssize_t fr_radius_len(uint8_t const *data, size_t data_len)
 {
 	size_t totallen;
 	uint8_t const *attr, *end;
@@ -728,7 +728,7 @@ ssize_t rad_packet_size(uint8_t const *data, size_t data_len)
  *	- True on success.
  *	- False on failure.
  */
-bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
+bool fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 {
 	uint8_t			*attr;
 	size_t			totallen;
@@ -1040,7 +1040,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 /** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
  *
  */
-RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
+RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags)
 {
 	ssize_t data_len;
 	RADIUS_PACKET		*packet;
@@ -1048,7 +1048,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = rad_alloc(ctx, false);
+	packet = fr_radius_alloc(ctx, false);
 	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;
@@ -1057,7 +1057,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	data_len = rad_recvfrom(fd, packet, UDP_FLAGS_NONE);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -1070,7 +1070,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	    (packet->dst_ipaddr.af == AF_UNSPEC) ||
 	    (packet->dst_port == 0)) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 #endif
@@ -1084,7 +1084,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
 		FR_DEBUG_STRERROR_PRINTF("Discarding packet: Larger than RFC limitation of 4096 bytes");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -1096,15 +1096,15 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
 		FR_DEBUG_STRERROR_PRINTF("Empty packet: Socket is not ready");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!rad_packet_ok(packet, flags, NULL)) {
-		rad_free(&packet);
+	if (!fr_radius_ok(packet, flags, NULL)) {
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -1125,7 +1125,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	packet->vps = NULL;
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) rad_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
 #endif
 
 	return packet;
@@ -1134,7 +1134,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
 	uint8_t		*ptr;
 	int		length;
@@ -1203,8 +1203,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 
 			fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
 				    (uint8_t const *) secret, strlen(secret));
-			if (rad_digest_cmp(calc_auth_vector, msg_auth_vector,
-				   sizeof(calc_auth_vector)) != 0) {
+			if (fr_radius_digest_cmp(calc_auth_vector, msg_auth_vector,
+						 sizeof(calc_auth_vector)) != 0) {
 				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  "
 						   "(Shared secret is incorrect.)",
 						   inet_ntop(packet->src_ipaddr.af,
@@ -1308,8 +1308,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 /** Encode a packet
  *
  */
-int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-	       char const *secret)
+int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+		     char const *secret)
 {
 	radius_packet_t		*hdr;
 	uint8_t			*ptr;
@@ -1475,7 +1475,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
 	int			packet_length;
 	uint32_t		num_attributes;
@@ -1521,7 +1521,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 
 		/*
 		 *	VSA's may not have been counted properly in
-		 *	rad_packet_ok() above, as it is hard to count
+		 *	fr_radius_ok() above, as it is hard to count
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */
@@ -1641,7 +1641,7 @@ uint32_t fr_rand(void)
  *	- New RADIUS_PACKET.
  *	- NULL on error.
  */
-RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, bool new_vector)
+RADIUS_PACKET *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 {
 	RADIUS_PACKET	*rp;
 
@@ -1681,13 +1681,13 @@ RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, bool new_vector)
  *	- New RADIUS_PACKET.
  *	- NULL on error.
  */
-RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
+RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 {
 	RADIUS_PACKET *reply;
 
 	if (!packet) return NULL;
 
-	reply = rad_alloc(ctx, false);
+	reply = fr_radius_alloc(ctx, false);
 	if (!reply) return NULL;
 
 	/*
@@ -1717,7 +1717,7 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 /** Free a RADIUS_PACKET
  *
  */
-void rad_free(RADIUS_PACKET **radius_packet_ptr)
+void fr_radius_free(RADIUS_PACKET **radius_packet_ptr)
 {
 	RADIUS_PACKET *radius_packet;
 
@@ -1741,11 +1741,11 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
  *	- New RADIUS_PACKET.
  *	- NULL on error.
  */
-RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
+RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 {
 	RADIUS_PACKET *out;
 
-	out = rad_alloc(ctx, false);
+	out = fr_radius_alloc(ctx, false);
 	if (!out) return NULL;
 
 	/*

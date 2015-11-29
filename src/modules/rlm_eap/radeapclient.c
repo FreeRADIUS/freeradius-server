@@ -719,7 +719,7 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	talloc_steal(trans, vps_entry); /* It's ours now. */
 
 	RADIUS_PACKET *packet;
-	MEM(packet = rad_alloc(trans, 1));
+	MEM(packet = fr_radius_alloc(trans, 1));
 	trans->packet = packet;
 
 	/* Fill in the packet value pairs. */
@@ -1402,7 +1402,7 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 
 	gettimeofday(&packet->timestamp, NULL); /* set outgoing packet timestamp. */
 
-	if (rad_send(packet, NULL, secret) < 0) {
+	if (fr_radius_send(packet, NULL, secret) < 0) {
 		ERROR("Failed to send packet (sockfd: %d, id: %d): %s",
 			packet->sockfd, packet->id, fr_strerror());
 	}
@@ -1470,7 +1470,7 @@ static void rc_deallocate_id(rc_transaction_t *trans)
 		packet->data = NULL;
 	}
 
-	if (trans->reply) rad_free(&trans->reply);
+	if (trans->reply) fr_radius_free(&trans->reply);
 }
 
 /** Receive one packet, maybe.
@@ -1535,7 +1535,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		DEBUG("No outstanding request was found for reply from %s, port %d (sockfd: %d, id: %d)",
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->src_port, reply->sockfd, reply->id);
-		rad_free(&reply);
+		fr_radius_free(&reply);
 		return -1;
 	}
 
@@ -1548,7 +1548,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	/*
 	 *	Fails the signature validation: not a valid reply.
 	 */
-	if (rad_verify(reply, trans->packet, secret) < 0) {
+	if (fr_radius_verify(reply, trans->packet, secret) < 0) {
 		/* shared secret is incorrect.
 		 * (or maybe this is a response to another packet we sent, for which we got no response,
 		 * freed the ID, then reused it. Then server responds to first packet.)
@@ -1567,7 +1567,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	trans->reply = reply;
 	reply = NULL;
 
-	if (rad_decode(trans->reply, trans->packet, secret) != 0) {
+	if (fr_radius_decode(trans->reply, trans->packet, secret) != 0) {
 		/* This can fail if packet contains too many attributes. */
 		DEBUG("Failed decoding reply");
 		goto packet_done;
@@ -1670,8 +1670,8 @@ packet_done:
 		}
 	}
 
-	rad_free(&trans->reply);
-	rad_free(&reply);	/* may be NULL */
+	fr_radius_free(&trans->reply);
+	fr_radius_free(&reply);	/* may be NULL */
 
 	if (!ongoing_trans) {
 		rc_deallocate_id(trans);

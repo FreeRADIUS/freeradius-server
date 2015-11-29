@@ -40,7 +40,7 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 
 	*out = NULL;
 
-	packet = rad_alloc(request, true);
+	packet = fr_radius_alloc(request, true);
 	if (!packet) {
 		return RLM_MODULE_FAIL;
 	}
@@ -213,7 +213,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 		 *	Encode, sign and then send the packet.
 		 */
 		RDEBUG("Replicating %s list to Realm \"%s\"", fr_int2str(pair_lists, list, "<INVALID>"), realm->name);
-		if (rad_send(packet, NULL, home->secret) < 0) {
+		if (fr_radius_send(packet, NULL, home->secret) < 0) {
 			REDEBUG("Failed replicating packet: %s", fr_strerror());
 			rcode = RLM_MODULE_FAIL;
 			goto done;

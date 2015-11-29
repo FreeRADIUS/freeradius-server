@@ -155,7 +155,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 	DEBUG("ARP received on interface %s", sock->lsock.interface);
 
 	if (!request_receive(NULL, listener, packet, &sock->client, arp_process)) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 

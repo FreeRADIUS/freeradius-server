@@ -133,7 +133,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
-		sock->packet = rad_alloc(sock, false);
+		sock->packet = fr_radius_alloc(sock, false);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;
@@ -161,7 +161,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 		request->component = "<tls-connect>";
 
-		request->reply = rad_alloc(request, false);
+		request->reply = fr_radius_alloc(request, false);
 		if (!request->reply) return 0;
 
 		rad_assert(sock->tls_session == NULL);
@@ -287,7 +287,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	if (!rad_packet_ok(packet, 0, NULL)) {
+	if (!fr_radius_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		DEBUG("Closing TLS socket from client");
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
@@ -297,7 +297,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 *	Copied from src/lib/radius.c, rad_recv();
+	 *	Copied from src/lib/radius.c, fr_radius_recv();
 	 */
 	if (fr_debug_lvl) {
 		char host_ipaddr[INET6_ADDRSTRLEN];
@@ -381,7 +381,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
-			rad_free(&packet);
+			fr_radius_free(&packet);
 			return 0;
 		}
 		fun = rad_status_server;
@@ -393,13 +393,13 @@ int dual_tls_recv(rad_listen_t *listener)
 
 		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	} /* switch over packet types */
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -432,8 +432,8 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Pack the VPs
 	 */
-	if (rad_encode(request->reply, request->packet,
-		       request->client->secret) < 0) {
+	if (fr_radius_encode(request->reply, request->packet,
+			     request->client->secret) < 0) {
 		RERROR("Failed encoding packet: %s", fr_strerror());
 		return 0;
 	}
@@ -441,8 +441,8 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Sign the packet.
 	 */
-	if (rad_sign(request->reply, request->packet,
-		       request->client->secret) < 0) {
+	if (fr_radius_sign(request->reply, request->packet,
+			   request->client->secret) < 0) {
 		RERROR("Failed signing packet: %s", fr_strerror());
 		return 0;
 	}
@@ -623,7 +623,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 	data = sock->data;
 
-	packet = rad_alloc(sock, false);
+	packet = fr_radius_alloc(sock, false);
 	packet->sockfd = listener->fd;
 	packet->src_ipaddr = sock->other_ipaddr;
 	packet->src_port = sock->other_port;
@@ -659,12 +659,12 @@ int proxy_tls_recv(rad_listen_t *listener)
 		       packet->code,
 		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
 	if (!request_proxy_reply(packet)) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 

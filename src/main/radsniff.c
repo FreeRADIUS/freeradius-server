@@ -477,7 +477,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		 *	Print out verbose HEX output
 		 */
 		if (conf->print_packet && (fr_debug_lvl > 3)) {
-			rad_print_hex(packet);
+			fr_radius_print_hex(packet);
 		}
 
 		if (conf->print_packet && (fr_debug_lvl > 1)) {
@@ -1010,9 +1010,9 @@ static int _request_free(rs_request_t *request)
 		RS_ASSERT(ret);
 	}
 
-	rad_free(&request->packet);
-	rad_free(&request->expect);
-	rad_free(&request->linked);
+	fr_radius_free(&request->packet);
+	fr_radius_free(&request->expect);
+	fr_radius_free(&request->linked);
 
 	return 0;
 }
@@ -1319,7 +1319,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	recover once some requests timeout, so make an effort to deal
 	 *	with allocation failures gracefully.
 	 */
-	current = rad_alloc(conf, false);
+	current = fr_radius_alloc(conf, false);
 	if (!current) {
 		REDEBUG("Failed allocating memory to hold decoded packet");
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
@@ -1352,12 +1352,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	current->src_port = ntohs(udp->src);
 	current->dst_port = ntohs(udp->dst);
 
-	if (!rad_packet_ok(current, 0, &reason)) {
+	if (!fr_radius_ok(current, 0, &reason)) {
 		REDEBUG("%s", fr_strerror());
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
 		}
-		rad_free(&current);
+		fr_radius_free(&current);
 
 		return;
 	}
@@ -1383,7 +1383,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (conf->filter_response_code && (conf->filter_response_code != current->code)) {
 			drop_response:
 			RDEBUG2("Response dropped by filter");
-			rad_free(&current);
+			fr_radius_free(&current);
 
 			/* We now need to cleanup the original request too */
 			if (original) {
@@ -1394,17 +1394,17 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	rad_packet_ok does checks to verify the packet is actually valid.
+		 *	fr_radius_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = rad_decode(current, original ? original->expect : NULL, conf->radius_secret);
+			ret = fr_radius_decode(current, original ? original->expect : NULL, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
-				rad_free(&current);
+				fr_radius_free(&current);
 				REDEBUG("Failed decoding");
 				return;
 			}
@@ -1431,7 +1431,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				status = RS_RTX;
 				original->rt_rsp++;
 
-				rad_free(&original->linked);
+				fr_radius_free(&original->linked);
 				fr_event_delete(event->list, &original->event);
 			/*
 			 *	...nope it's the first response to a request.
@@ -1467,7 +1467,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	complexity, reduces max capture rate, and is generally a PITA.
 			 */
 			if (conf->filter_request) {
-				rad_free(&current);
+				fr_radius_free(&current);
 				RDEBUG2("Original request dropped by filter");
 				return;
 			}
@@ -1494,25 +1494,25 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			drop_request:
 
 			RDEBUG2("Request dropped by filter");
-			rad_free(&current);
+			fr_radius_free(&current);
 
 			return;
 		}
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	rad_packet_ok does checks to verify the packet is actually valid.
+		 *	fr_radius_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = rad_decode(current, NULL, conf->radius_secret);
+			ret = fr_radius_decode(current, NULL, conf->radius_secret);
 			fr_log_fp = log_fp;
 
 			if (ret != 0) {
-				rad_free(&current);
+				fr_radius_free(&current);
 				REDEBUG("Failed decoding");
 				return;
 			}
@@ -1523,11 +1523,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Save the request for later matching
 		 */
-		search.expect = rad_alloc_reply(current, current);
+		search.expect = fr_radius_alloc_reply(current, current);
 		if (!search.expect) {
 			REDEBUG("Failed allocating memory to hold expected reply");
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
-			rad_free(&current);
+			fr_radius_free(&current);
 			return;
 		}
 		search.expect->code = current->code;
@@ -1538,7 +1538,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					   conf->link_da_num);
 			if (ret < 0) {
 				ERROR("Failed extracting RTX linking pairs from request");
-				rad_free(&current);
+				fr_radius_free(&current);
 				return;
 			}
 		}
@@ -1601,10 +1601,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			status = RS_RTX;
 			original->rt_req++;
 
-			rad_free(&original->packet);
+			fr_radius_free(&original->packet);
 
 			/* We may of seen the response, but it may of been lost upstream */
-			rad_free(&original->linked);
+			fr_radius_free(&original->linked);
 
 			original->packet = talloc_steal(original, current);
 
@@ -1613,7 +1613,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				rbtree_deletebydata(request_tree, original);
 			}
 
-			rad_free(&original->expect);
+			fr_radius_free(&original->expect);
 			original->expect = talloc_steal(original, search.expect);
 
 			/* Disarm the timer for the cleanup event for the original request */
@@ -1692,7 +1692,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	default:
 		REDEBUG("Unsupported code %i", current->code);
-		rad_free(&current);
+		fr_radius_free(&current);
 
 		return;
 	}
@@ -1755,7 +1755,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	not be done by the event queue.
 	 */
 	if (response && !original) {
-		rad_free(&current);
+		fr_radius_free(&current);
 	}
 
 	captured++;

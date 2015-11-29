@@ -31,14 +31,14 @@ RCSID("$Id$")
 
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 {
-	RADIUS_PACKET *packet = rad_alloc(NULL, false);
+	RADIUS_PACKET *packet = fr_radius_alloc(NULL, false);
 
 	if (!packet) return NULL;
 
 	packet->sockfd = sockfd;
 
 	if (fr_tcp_read_packet(packet, flags) != 1) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -143,7 +143,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!rad_packet_ok(packet, flags, NULL)) {
+	if (!fr_radius_ok(packet, flags, NULL)) {
 		return -1;
 	}
 

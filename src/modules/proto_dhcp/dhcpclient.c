@@ -144,13 +144,13 @@ static RADIUS_PACKET *request_init(char const *filename)
 		fp = stdin;
 	}
 
-	request = rad_alloc(NULL, false);
+	request = fr_radius_alloc(NULL, false);
 	/*
 	 *	Read the VP's.
 	 */
 	if (fr_pair_list_afrom_file(NULL, &request->vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
-		rad_free(&request);
+		fr_radius_free(&request);
 		if (fp != stdin) fclose(fp);
 		return NULL;
 	}

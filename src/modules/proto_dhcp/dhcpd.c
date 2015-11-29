@@ -840,7 +840,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 
 	if (!request_receive(NULL, listener, packet, &sock->dhcp_client, dhcp_process)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 

@@ -133,7 +133,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
-	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1, CHAP_VALUE_LENGTH) != 0) {
+	if (fr_radius_digest_cmp(pass_str + 1, chap->vp_octets + 1, CHAP_VALUE_LENGTH) != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 		return RLM_MODULE_REJECT;
 	}

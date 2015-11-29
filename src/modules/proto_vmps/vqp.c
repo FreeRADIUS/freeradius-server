@@ -128,7 +128,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = rad_alloc(NULL, false);
+	packet = fr_radius_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;
@@ -137,7 +137,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	packet->data_len = data_len;
 	packet->data = talloc_array(packet, uint8_t, data_len);
 	if (!packet->data_len) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -146,7 +146,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 			    &packet->dst_ipaddr, &packet->dst_port,
 			    &packet->if_index);
 	if (data_len <= 0) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -182,7 +182,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	while (data_len > 0) {
 		if (data_len < 7) {
 			fr_strerror_printf("Packet contains malformed attribute");
-			rad_free(&packet);
+			fr_radius_free(&packet);
 			return NULL;
 		}
 
@@ -193,7 +193,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 		if ((ptr[0] != 0) || (ptr[1] != 0) ||
 		    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
 			fr_strerror_printf("Packet contains invalid attribute");
-			rad_free(&packet);
+			fr_radius_free(&packet);
 			return NULL;
 		}
 
@@ -209,7 +209,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 		if ((ptr[3] != 5) &&
 		    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
 			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
-			rad_free(&packet);
+			fr_radius_free(&packet);
 			return NULL;
 		}
 

@@ -145,13 +145,13 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	 */
 	fake->server = request->server;
 
-	fake->packet = rad_alloc(fake, true);
+	fake->packet = fr_radius_alloc(fake, true);
 	if (!fake->packet) {
 		talloc_free(fake);
 		return NULL;
 	}
 
-	fake->reply = rad_alloc(fake, false);
+	fake->reply = fr_radius_alloc(fake, false);
 	if (!fake->reply) {
 		talloc_free(fake);
 		return NULL;
@@ -221,7 +221,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	request->coa->options = RAD_REQUEST_OPTION_COA;	/* is a CoA packet */
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;
-	request->coa->proxy = rad_alloc(request->coa, false);
+	request->coa->proxy = fr_radius_alloc(request->coa, false);
 	if (!request->coa->proxy) {
 		TALLOC_FREE(request->coa);
 		return NULL;

@@ -140,7 +140,7 @@ static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
 	RADIUS_PACKET *request;
 
-	request = rad_alloc(conf, true);
+	request = fr_radius_alloc(conf, true);
 
 	request->code = conf->code;
 
@@ -695,11 +695,11 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			unsigned int	ret;
 			unsigned int	i;
 
-			if (rad_encode(request, NULL, conf->secret) < 0) {
+			if (fr_radius_encode(request, NULL, conf->secret) < 0) {
 				ERROR("Failed encoding request: %s", fr_strerror());
 				return EXIT_FAILURE;
 			}
-			if (rad_sign(request, NULL, conf->secret) < 0) {
+			if (fr_radius_sign(request, NULL, conf->secret) < 0) {
 				ERROR("Failed signing request: %s", fr_strerror());
 				return EXIT_FAILURE;
 			}
@@ -710,7 +710,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			if (fr_log_fp) fr_packet_header_print(fr_log_fp, request, false);
 			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->vps);
 #ifndef NDEBUG
-			if (fr_log_fp && (fr_debug_lvl > 3)) rad_print_hex(request);
+			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_print_hex(request);
 #endif
 
 			FD_ZERO(&set); /* clear the set */
@@ -739,7 +739,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = rad_recv(request, request->sockfd, 0);
+					reply = fr_radius_recv(request, request->sockfd, 0);
 					if (!reply) {
 						ERROR("Failed receiving reply: %s", fr_strerror());
 					recv_error:
@@ -747,7 +747,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 						talloc_free(request);
 						continue;
 					}
-					if (rad_decode(reply, request, conf->secret) < 0) {
+					if (fr_radius_decode(reply, request, conf->secret) < 0) {
 						ERROR("Failed decoding reply: %s", fr_strerror());
 						goto recv_error;
 					}
@@ -771,7 +771,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			if (fr_log_fp) fr_packet_header_print(fr_log_fp, reply, true);
 			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, reply->vps);
 #ifndef NDEBUG
-			if (fr_log_fp && (fr_debug_lvl > 3)) rad_print_hex(reply);
+			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_print_hex(reply);
 #endif
 
 			switch (command) {

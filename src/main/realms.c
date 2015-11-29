@@ -2305,7 +2305,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	module, and encapsulated into an EAP packet.
 	 */
 	if (!request->proxy) {
-		request->proxy = rad_alloc(request, true);
+		request->proxy = fr_radius_alloc(request, true);
 		if (!request->proxy) {
 			ERROR("no memory");
 			fr_exit(1);

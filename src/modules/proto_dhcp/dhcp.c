@@ -80,7 +80,7 @@ static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 		fprintf(stdout, ## __VA_ARGS__); \
 		fprintf(stdout, "\n"); \
 	} \
-	rad_free(&packet); \
+	fr_radius_free(&packet); \
 	return NULL; \
 }
 #endif
@@ -388,7 +388,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	}
 
 	/* Now that checks are done, allocate packet */
-	packet = rad_alloc(NULL, false);
+	packet = fr_radius_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_printf("Failed allocating packet");
 		return NULL;
@@ -2049,7 +2049,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	size_t			dhcp_data_len;
 	socklen_t		sock_len;
 
-	packet = rad_alloc(NULL, false);
+	packet = fr_radius_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_printf("Failed allocating packet");
 		return NULL;
@@ -2058,7 +2058,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	raw_packet = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
 	if (!raw_packet) {
 		fr_strerror_printf("Out of memory");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
@@ -2160,13 +2160,13 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	code = dhcp_get_option((dhcp_packet_t const *) packet->data, packet->data_len, PW_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
 		fr_strerror_printf("Unknown value for message-type option");
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return NULL;
 	}
 

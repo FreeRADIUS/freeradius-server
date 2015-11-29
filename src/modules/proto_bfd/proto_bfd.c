@@ -667,7 +667,7 @@ static int bfd_verify_md5(bfd_state_t *session, bfd_packet_t *bfd)
 	memcpy(digest, md5->digest, sizeof(digest));
 
 	bfd_calc_md5(session, bfd);
-	rcode = rad_digest_cmp(digest, md5->digest, sizeof(digest));
+	rcode = fr_radius_digest_cmp(digest, md5->digest, sizeof(digest));
 
 	memcpy(md5->digest, digest, sizeof(md5->digest)); /* pedantic */
 
@@ -736,7 +736,7 @@ static int bfd_verify_sha1(bfd_state_t *session, bfd_packet_t *bfd)
 	memcpy(digest, sha1->digest, sizeof(digest));
 
 	bfd_calc_sha1(session, bfd);
-	rcode = rad_digest_cmp(digest, sha1->digest, sizeof(digest));
+	rcode = fr_radius_digest_cmp(digest, sha1->digest, sizeof(digest));
 
 	memcpy(sha1->digest, digest, sizeof(sha1->digest)); /* pedantic */
 
@@ -1358,8 +1358,8 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		RADIUS_PACKET *packet, *reply;
 
 		request = request_alloc(session);
-		packet = rad_alloc(request, 0);
-		reply = rad_alloc(request, 0);
+		packet = fr_radius_alloc(request, 0);
+		reply = fr_radius_alloc(request, 0);
 
 		bfd_request(session, request, packet);
 

@@ -500,14 +500,14 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = rad_recv(NULL, listener->fd, UDP_FLAGS_PEEK);
+	request->packet = fr_radius_recv(NULL, listener->fd, UDP_FLAGS_PEEK);
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		goto unknown;
 	}
 	(void) talloc_steal(request, request->packet);
-	request->reply = rad_alloc_reply(request, request->packet);
+	request->reply = fr_radius_alloc_reply(request, request->packet);
 	if (!request->reply) {
 		talloc_free(request);
 		goto unknown;
@@ -711,7 +711,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 *	Allocate a packet for partial reads.
 	 */
 	if (!sock->packet) {
-		sock->packet = rad_alloc(sock, false);
+		sock->packet = fr_radius_alloc(sock, false);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;
@@ -786,7 +786,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
-			rad_free(&sock->packet);
+			fr_radius_free(&sock->packet);
 			return 0;
 		}
 		fun = rad_status_server;
@@ -798,13 +798,13 @@ static int dual_tcp_recv(rad_listen_t *listener)
 
 		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
-		rad_free(&sock->packet);
+		fr_radius_free(&sock->packet);
 		return 0;
 	} /* switch over packet types */
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&sock->packet);
+		fr_radius_free(&sock->packet);
 		return 0;
 	}
 
@@ -1650,8 +1650,8 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	}
 #endif
 
-	if (rad_send(request->reply, request->packet,
-		     request->client->secret) < 0) {
+	if (fr_radius_send(request->reply, request->packet,
+			   request->client->secret) < 0) {
 		RERROR("Failed sending reply: %s",
 			       fr_strerror());
 		return -1;
@@ -1690,8 +1690,8 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	}
 #  endif
 
-	if (rad_send(request->reply, request->packet,
-		     request->client->secret) < 0) {
+	if (fr_radius_send(request->reply, request->packet,
+			   request->client->secret) < 0) {
 		RERROR("Failed sending reply: %s",
 			       fr_strerror());
 		return -1;
@@ -1712,8 +1712,8 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 
-	if (rad_send(request->proxy, NULL,
-		     request->home_server->secret) < 0) {
+	if (fr_radius_send(request->proxy, NULL,
+			   request->home_server->secret) < 0) {
 		RERROR("Failed sending proxied request: %s",
 			       fr_strerror());
 		return -1;
@@ -1739,7 +1739,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
 
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	rcode = fr_radius_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
 	FR_STATS_INC(auth, total_requests);
@@ -1774,7 +1774,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
+	packet = fr_radius_recv(NULL, listener->fd, 1); /* require message authenticator */
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1783,7 +1783,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 
 	if (!request_receive(NULL, listener, packet, client, rad_status_server)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -1809,7 +1809,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	fr_ipaddr_t	src_ipaddr;
 	TALLOC_CTX	*ctx;
 
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	rcode = fr_radius_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
 	FR_STATS_INC(auth, total_requests);
@@ -1868,7 +1868,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
+	packet = fr_radius_recv(ctx, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1885,7 +1885,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *
 	 *	This hack works ONLY if the clients are global.  If
 	 *	each listener has the same client IP, but with
-	 *	different secrets, then it will fail the rad_recv()
+	 *	different secrets, then it will fail the fr_radius_recv()
 	 *	check above, and there's nothing you can do.
 	 */
 	{
@@ -1923,7 +1923,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	fr_ipaddr_t	src_ipaddr;
 	TALLOC_CTX	*ctx;
 
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	rcode = fr_radius_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
 	FR_STATS_INC(acct, total_requests);
@@ -1983,7 +1983,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, 0);
+	packet = fr_radius_recv(ctx, listener->fd, 0);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1996,7 +1996,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 */
 	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(acct, total_packets_dropped);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		talloc_free(ctx);
 		return 0;
 	}
@@ -2209,7 +2209,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	fr_ipaddr_t	src_ipaddr;
 	TALLOC_CTX	*ctx;
 
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	rcode = fr_radius_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
@@ -2260,7 +2260,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
+	packet = fr_radius_recv(ctx, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2270,7 +2270,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 
 	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(coa, total_packets_dropped);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		talloc_free(ctx);
 		return 0;
 	}
@@ -2291,7 +2291,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #  endif
 	char		buffer[128];
 
-	packet = rad_recv(NULL, listener->fd, 0);
+	packet = fr_radius_recv(NULL, listener->fd, 0);
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
@@ -2327,7 +2327,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #  ifdef WITH_STATS
 		listener->stats.total_unknown_types++;
 #  endif
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -2340,7 +2340,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #  ifdef WITH_STATS
 		listener->stats.total_packets_dropped++;
 #  endif
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -2389,7 +2389,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 		       packet->code,
 		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -2406,7 +2406,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	 *	Close the socket on bad packets...
 	 */
 	if (!request_proxy_reply(packet)) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		return 0;
 	}
 
@@ -2422,13 +2422,13 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (!request->reply->code) return 0;
 
-	if (rad_encode(request->reply, request->packet, request->client->secret) < 0) {
+	if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
 		RERROR("Failed encoding packet: %s", fr_strerror());
 
 		return -1;
 	}
 
-	if (rad_sign(request->reply, request->packet, request->client->secret) < 0) {
+	if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
 		RERROR("Failed signing packet: %s", fr_strerror());
 
 		return -1;
@@ -2444,8 +2444,8 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	listen_socket_t *sock;
 #endif
 
-	if (rad_verify(request->packet, NULL,
-		       request->client->secret) < 0) {
+	if (fr_radius_verify(request->packet, NULL,
+			     request->client->secret) < 0) {
 		return -1;
 	}
 
@@ -2469,20 +2469,20 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 #endif
 
-	return rad_decode(request->packet, NULL,
-			  request->client->secret);
+	return fr_radius_decode(request->packet, NULL,
+				request->client->secret);
 }
 
 #ifdef WITH_PROXY
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	if (rad_encode(request->proxy, NULL, request->home_server->secret) < 0) {
+	if (fr_radius_encode(request->proxy, NULL, request->home_server->secret) < 0) {
 		RERROR("Failed encoding proxied packet: %s", fr_strerror());
 
 		return -1;
 	}
 
-	if (rad_sign(request->proxy, NULL, request->home_server->secret) < 0) {
+	if (fr_radius_sign(request->proxy, NULL, request->home_server->secret) < 0) {
 		RERROR("Failed signing proxied packet: %s", fr_strerror());
 
 		return -1;
@@ -2495,11 +2495,11 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	/*
-	 *	rad_verify is run in event.c, received_proxy_response()
+	 *	fr_radius_verify is run in event.c, received_proxy_response()
 	 */
 
-	return rad_decode(request->proxy_reply, request->proxy,
-			   request->home_server->secret);
+	return fr_radius_decode(request->proxy_reply, request->proxy,
+				request->home_server->secret);
 }
 #endif
 
@@ -2524,7 +2524,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_PROXY
 	/* proxying */
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, rad_packet_size,
+	  TRANSPORT_DUAL, true, fr_radius_len,
 	  common_socket_parse, common_socket_open, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, common_packet_debug, proxy_socket_encode, proxy_socket_decode },
@@ -2534,7 +2534,7 @@ static fr_protocol_t master_listen[] = {
 
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, rad_packet_size,
+	  TRANSPORT_DUAL, true, fr_radius_len,
 	  common_socket_parse, common_socket_open, common_socket_free,
 	  auth_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
@@ -2542,7 +2542,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, rad_packet_size,
+	  TRANSPORT_DUAL, true, fr_radius_len,
 	  common_socket_parse, common_socket_open, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode},
@@ -2579,7 +2579,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_COA
 	/* Change of Authorization */
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, rad_packet_size,
+	  TRANSPORT_DUAL, true, fr_radius_len,
 	  common_socket_parse, common_socket_open, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },

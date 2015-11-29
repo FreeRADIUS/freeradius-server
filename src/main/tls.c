@@ -1525,8 +1525,8 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	 *	invent one.
 	 */
 	request = request_alloc(NULL);
-	request->packet = rad_alloc(request, false);
-	request->reply = rad_alloc(request, false);
+	request->packet = fr_radius_alloc(request, false);
+	request->reply = fr_radius_alloc(request, false);
 
 	slen = tls_session_id(buffer, sizeof(buffer), sess);
 	if (slen < 0) {

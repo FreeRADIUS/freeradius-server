@@ -352,7 +352,7 @@ int detail_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		data->state = STATE_REPLIED;
 		return 0;
 	}
@@ -361,7 +361,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	Don't bother doing limit checks, etc.
 	 */
 	if (!request_receive(NULL, listener, packet, &data->detail_client, fun)) {
-		rad_free(&packet);
+		fr_radius_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
 	}
@@ -415,7 +415,7 @@ int detail_recv(rad_listen_t *listener)
 		data->state = STATE_NO_REPLY;	/* try again later */
 
 	signal_thread:
-		rad_free(&packet);
+	fr_radius_free(&packet);
 		if (write(data->child_pipe[1], &c, 1) < 0) {
 			ERROR("detail (%s): Failed writing ack to reader thread: %s", data->name,
 			      fr_syserror(errno));
@@ -789,7 +789,7 @@ open_file:
 	 *	Allocate the packet.  If we fail, it's a serious
 	 *	problem.
 	 */
-	packet = rad_alloc(NULL, true);
+	packet = fr_radius_alloc(NULL, true);
 	if (!packet) {
 		ERROR("detail (%s): FATAL: Failed allocating memory for detail", data->name);
 		fr_exit(1);
