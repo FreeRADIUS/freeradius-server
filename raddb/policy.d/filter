@@ -102,7 +102,7 @@ filter_username {
 #  This poliocy filters them out.
 #
 filter_password {
-	if (&User-Password &&
+	if (&User-Password && \
 	   (&User-Password != "%{string:User-Password}")) {
 		update request {
 			&Tmp-String-0 := "%{string:User-Password}"
