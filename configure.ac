@@ -37,10 +37,7 @@ RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
 RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
 RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
 
-RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
--v minor="$RADIUSD_MINOR_VERSION" \
--v incrm="$RADIUSD_INCRM_VERSION" \
-'{ printf "%02i%02i%02i", major, minor, incrm }'`
+RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_MAJOR_VERSION $RADIUSD_MINOR_VERSION $RADIUSD_INCRM_VERSION`
 
 dnl #
 dnl #  Still useful for custom builds
