@@ -1,0 +1,19 @@
+#
+#  PRE: cmp
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update request {
+	Tmp-String-0 := "this\000is\000a\000string"
+}
+
+#
+#  %{string:...} is explicitly not binary safe
+#
+if ("%{string:Tmp-String-0}" == "this") {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
