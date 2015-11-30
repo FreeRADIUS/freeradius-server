@@ -93,3 +93,19 @@ filter_username {
 		reject
 	}
 }
+
+#
+#	Filter the User-Password
+#
+#  Some equipment sends passwords with embedded zeros.
+#  This poliocy filters them out.
+#
+filter_password {
+	if (&User-Password &&
+	   (&User-Password != "%{string:User-Password}")) {
+		update request {
+			&Tmp-String-0 := "%{string:User-Password}"
+			&User-Password := "%{string:Tmp-String-0}"
+		}
+	 }
+}

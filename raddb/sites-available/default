@@ -262,6 +262,16 @@ authorize {
 	filter_username
 
 	#
+	#  Some broken equipment sends passwords with embedded zeros.
+	#  i.e. the debug output will show
+	#
+	#	User-Password = "password\000\000"
+	#
+	#  This policy will fix it to just be "password".
+	#
+#	filter_password
+
+	#
 	#  The preprocess module takes care of sanitizing some bizarre
 	#  attributes in the request, and turning them into attributes
 	#  which are more standard.

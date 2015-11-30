@@ -623,6 +623,10 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 		len = fr_prints(out, outlen, (char const *) p, vp->vp_length, '"');
 		break;
 
+		/*
+		 *	Note that "%{string:...}" is NOT binary safe!
+		 *	It is explicitly used to get rid of embedded zeros.
+		 */
 	case PW_TYPE_STRING:
 		len = strlcpy(out, vp->vp_strvalue, outlen);
 		break;
