@@ -42,7 +42,9 @@ RCSID("$Id$")
  */
 #undef HAVE_CRYPT
 
+#ifdef __clang__
 DIAG_OFF(disabled-macro-expansion)
+#endif
 #include <ruby.h>
 
 /*
