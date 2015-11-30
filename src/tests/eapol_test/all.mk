@@ -133,7 +133,7 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 #  methods-available.
 #
 define EAPOL_TEST_FILE_PREREQ
-$(TEST): $(CONFIG_PATH)/methods-available/$(shell echo $(basename $(notdir $(TEST)) | sed -e 's/-.*//'))
+$(TEST): $(CONFIG_PATH)/methods-available/$(shell echo $(basename $(notdir $(TEST) | sed -e 's/-.*//')))
 	@touch $(TEST)
 endef
 $(foreach TEST,$(EAPOL_TEST_FILES),$(eval $(EAPOL_TEST_FILE_PREREQ)))
