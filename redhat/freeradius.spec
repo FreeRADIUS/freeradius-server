@@ -1,6 +1,13 @@
 %bcond_with rlm_yubikey
 #%bcond_with experimental_modules
 
+# Many distributions have extremely old versions of OpenSSL
+# if you'd like to build with the FreeRADIUS openssl packages
+# which are installed in /opt/openssl you should pass
+# _with_freeradius_openssl
+
+%{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
+
 %{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
@@ -59,7 +66,12 @@ BuildRequires: autoconf
 BuildRequires: gdbm-devel
 BuildRequires: libtool
 BuildRequires: libtool-ltdl-devel
+%if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
+BuildRequires: freeradius-openssl-devel
+%else
 BuildRequires: openssl-devel
+%endif
+
 BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
@@ -73,7 +85,11 @@ Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig
 Requires(preun): /sbin/chkconfig
 Requires: freeradius-config = %{version}-%{release}
+%if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
+Requires: freeradius-openssl
+%else
 Requires: openssl
+%endif
 Requires: libpcap
 Requires: readline
 Requires: libtalloc
@@ -374,6 +390,10 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_db2 \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
+%if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
+        --with-openssl-lib-dir=/opt/openssl/lib \
+        --with-openssl-include-dir=/opt/openssl/include \
+%endif 
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
         %{?_with_rlm_sql_oracle} \
