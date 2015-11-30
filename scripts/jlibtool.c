@@ -79,7 +79,7 @@
 #  define LD_LIBRARY_PATH_LOCAL		"DYLD_FALLBACK_LIBRARY_PATH"
 #endif
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__GNUC__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || (defined(__sun) && defined(__GNUC__))
 #  define SHELL_CMD 			"/bin/sh"
 #  define DYNAMIC_LIB_EXT		"so"
 #  define MODULE_LIB_EXT		"so"
@@ -93,7 +93,11 @@
 #  define SHARED_OPTS			"-shared"
 #  define MODULE_OPTS			"-shared"
 #  define LINKER_FLAG_PREFIX		"-Wl,"
+#if !defined(__sun)
 #  define DYNAMIC_LINK_OPTS		LINKER_FLAG_PREFIX "-export-dynamic"
+#else
+#  define DYNAMIC_LINK_OPTS		""
+#endif
 #  define ADD_MINUS_L
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
