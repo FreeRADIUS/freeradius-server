@@ -117,12 +117,9 @@ static FR_NAME_NUMBER mode_names[] = {
 	{ NULL, 0 }
 };
 
-#ifndef HAVE_GETPEEREID
+#if !defined(HAVE_GETPEEREID) && defined(SO_PEERCRED)
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
 {
-#ifndef SO_PEERCRED
-	return -1;
-#else
 	struct ucred cr;
 	socklen_t cl = sizeof(cr);
 
@@ -133,8 +130,11 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 	*euid = cr.uid;
 	*egid = cr.gid;
 	return 0;
-#endif /* SO_PEERCRED */
 }
+
+/* we now have getpeereid() in this file */
+#define HAVE_GETPEEREID (1)
+
 #endif /* HAVE_GETPEEREID */
 
 /** Initialise a socket for use with peercred authentication
@@ -2691,7 +2691,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Can't get uid or gid of connecting user, so can't do
 	 *	peercred authentication.
 	 */
-#if !defined(HAVE_GETPEEREID) && !defined(SO_PEERCRED)
+#ifndef HAVE_GETPEEREID
 	if (sock->peercred && (sock->uid_name || sock->gid_name)) {
 		ERROR("System does not support uid or gid authentication for sockets");
 		return -1;
@@ -3164,7 +3164,7 @@ static int command_domain_accept(rad_listen_t *listener)
 		return 0;
 	}
 
-#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
+#ifdef HAVE_GETPEEREID
 	/*
 	 *	Perform user authentication.
 	 */
