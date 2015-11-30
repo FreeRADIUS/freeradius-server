@@ -128,15 +128,19 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 	fi
 
 #
-#  Automatically generate rules such that the eapol_test
-#  conf files have dependencies on the correct file in
-#  methods-available.
+#  We want the tests to depend on the method configuration used by the
+#  server, too.
 #
-define EAPOL_TEST_FILE_PREREQ
-$(TEST): $(CONFIG_PATH)/methods-available/$(shell echo $(basename $(notdir $(TEST) | sed -e 's/-.*//')))
-	@touch $(TEST)
-endef
-$(foreach TEST,$(EAPOL_TEST_FILES),$(eval $(EAPOL_TEST_FILE_PREREQ)))
+#  This monstrosity does that.  Note that:
+#
+#  eapol_test configuration files are named "method" or "method-foo"
+#
+#  radiusd configuration files are named "method".
+#
+$(foreach x,$(EAPOL_TEST_FILES),$(eval \
+	$(patsubst $(DIR)/%.conf,$(OUTPUT_DIR)/%.ok,${x}): ${CONFIG_PATH}/methods-enabled/$(basename $(notdir $(word 1,$(subst -, ,$(x))))) \
+))
+
 
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
