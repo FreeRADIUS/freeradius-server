@@ -16,7 +16,7 @@ radiusStatMIB MODULE-IDENTITY
              "The MIB module for entities implementing the statistics
               side of the Remote Access Dialin User Service (RADIUS)
               authentication protocol."
-       REVISION "0001020000Z"    
+       REVISION "0001020000Z"
        DESCRIPTION "Experimental Version"
        ::= { radiusStatistics 1 }
 
@@ -101,25 +101,25 @@ radiusStatNASTable OBJECT-TYPE
        ::= { radiusStatMIB 7 }
 
 radiusStatNASEntry OBJECT-TYPE
-       SYNTAX     RadiusNASStatEntry
+       SYNTAX     RadiusStatNASEntry
        MAX-ACCESS not-accessible
        STATUS     current
        DESCRIPTION
              "An entry (conceptual row) representing a Network
               Access Server"
-       INDEX      { NASIndex }
+       INDEX      { nasIndex }
        ::= { radiusStatNASTable 1 }
 
 RadiusStatNASEntry ::= SEQUENCE {
-       NASIndex                           Integer32,
-       NASAddress                         IpAddress,
-       NASID                              SnmpAdminString,
-       NASLines                           Counter32,
-       NASLinesInUse                      Counter32,
-       NASLinesIdle                       Counter32,
+       nasIndex                           Integer32,
+       nasAddress                         IpAddress,
+       nasID                              SnmpAdminString,
+       nasLines                           Counter32,
+       nasLinesInUse                      Counter32,
+       nasLinesIdle                       Counter32,
 }
 
-NASIndex OBJECT-TYPE
+nasIndex OBJECT-TYPE
        SYNTAX     Integer32 (1..2147483647)
        MAX-ACCESS not-accessible
        STATUS     current
@@ -127,7 +127,7 @@ NASIndex OBJECT-TYPE
              "A number uniquely identifying each NAS"
        ::= { radiusStatNASEntry 1 }
 
-NASAddress OBJECT-TYPE
+nasAddress OBJECT-TYPE
        SYNTAX     IpAddress
        MAX-ACCESS read-only
        STATUS     current
@@ -135,7 +135,7 @@ NASAddress OBJECT-TYPE
              "The NAS-IP-Address"
        ::= { radiusStatNASEntry 2 }
 
-NASID OBJECT-TYPE
+nasID OBJECT-TYPE
        SYNTAX     SnmpAdminString
        MAX-ACCESS read-only
        STATUS     current
@@ -143,7 +143,7 @@ NASID OBJECT-TYPE
              "The NAS-Identifier"
        ::= { radiusStatNASEntry 3 }
 
-NASLines OBJECT-TYPE
+nasLines OBJECT-TYPE
        SYNTAX Counter32
        MAX-ACCESS read-only
        STATUS current
@@ -151,7 +151,7 @@ NASLines OBJECT-TYPE
              "The number of lines served by the NAS"
        ::= { radiusStatNASEntry 4 }
 
-NASLinesInUse OBJECT-TYPE
+nasLinesInUse OBJECT-TYPE
        SYNTAX Counter32
        MAX-ACCESS read-only
        STATUS current
@@ -159,7 +159,7 @@ NASLinesInUse OBJECT-TYPE
              "The number of lines currently in use on this NAS"
        ::= { radiusStatNASEntry 5 }
 
-NASLinesIdle OBJECT-TYPE
+nasLinesIdle OBJECT-TYPE
        SYNTAX Counter32
        MAX-ACCESS read-only
        STATUS current
@@ -190,10 +190,10 @@ RadiusStatNASPortEntry ::= SEQUENCE {
        radiusStatPortID                              Integer32,
        radiusStatPortFramedAddress		     IpAddress,
        radiusStatPortTotalLogins                     Counter32,
-       radiusStatPortStatus                          Counter32,
+       radiusStatPortStatus                          INTEGER,
        radiusStatPortStatusDate                      SnmpAdminString,
        radiusStatPortUpTime                          TimeTicks,
-       radiusStatPortLastLogin                       SnmpAdminString,
+       radiusStatPortLastLoginName                   SnmpAdminString,
        radiusStatPortLastLoginDate                   SnmpAdminString,
        radiusStatPortLastLogoutDate                  SnmpAdminString,
        radiusStatPortIdleTotalTime                   TimeTicks,
