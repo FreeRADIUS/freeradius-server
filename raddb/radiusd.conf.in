@@ -640,7 +640,7 @@ thread pool {
 	#  situations.  As not everyones needs are the same,
 	#  we offer multiple options for priority calculations.
 	#
-	#	time	order packets by when they are received
+	#	time	Order packets by when they are received
 	#		Note that replies from a home server
 	#		are ordered by when the *original*
 	#		packet came in, so they are prioritized.
@@ -660,7 +660,8 @@ thread pool {
 	#		are ordered by "default"
 	#
 	#  For systems which are doing EAP / 802.1X authentication
-	#  and not accounting, we recommend using "eap".
+	#  and not accounting, we recommend using "eap".  If most
+	#  of the packets are proxied, you should NOT use "eap".
 	#
 	#  The danger with the prioritization process is that
 	#  in overload situations, the "eap" priority can cause
