@@ -14,8 +14,8 @@ RCSID("$Id$")
  */
 
 struct fr_heap_t {
-	int size;
-	int num_elements;
+	size_t size;
+	size_t num_elements;
 	size_t offset;
 	fr_heap_cmp_t cmp;
 	void **p;
@@ -31,7 +31,7 @@ struct fr_heap_t {
 /* #define HEAP_RIGHT(x) ( 2*(x) + 2 ) */
 #define	HEAP_SWAP(a, b) { void *_tmp = a; a = b; b = _tmp; }
 
-static int fr_heap_bubble(fr_heap_t *hp, int child);
+static int fr_heap_bubble(fr_heap_t *hp, size_t child);
 
 void fr_heap_delete(fr_heap_t *hp)
 {
@@ -91,7 +91,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
-	int child = hp->num_elements;
+	size_t child = hp->num_elements;
 
 	/*
 	 *	Heap is full.  Double it's size.
@@ -115,13 +115,13 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 }
 
 
-static int fr_heap_bubble(fr_heap_t *hp, int child)
+static int fr_heap_bubble(fr_heap_t *hp, size_t child)
 {
 	/*
 	 *	Bubble up the element.
 	 */
 	while (child > 0) {
-		int parent = HEAP_PARENT(child);
+		size_t parent = HEAP_PARENT(child);
 
 		/*
 		 *	Parent is smaller than the child.  We're done.
@@ -146,8 +146,8 @@ static int fr_heap_bubble(fr_heap_t *hp, int child)
  */
 int fr_heap_extract(fr_heap_t *hp, void *data)
 {
-	int child, parent;
-	int max;
+	size_t child, parent;
+	size_t  max;
 
 	if (!hp || (hp->num_elements == 0)) return 0;
 
@@ -167,7 +167,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		/*
 		 *	Out of bounds.
 		 */
-		if (parent < 0 || parent >= hp->num_elements) return 0;
+		if (parent >= hp->num_elements) return 0;
 	}
 
 	RESET_OFFSET(hp, parent);
@@ -214,7 +214,7 @@ void *fr_heap_peek(fr_heap_t *hp)
 	return hp->p[0];
 }
 
-int fr_heap_num_elements(fr_heap_t *hp)
+size_t fr_heap_num_elements(fr_heap_t *hp)
 {
 	if (!hp) return 0;
 
