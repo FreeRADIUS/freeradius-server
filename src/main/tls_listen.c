@@ -347,6 +347,8 @@ int dual_tls_recv(rad_listen_t *listener)
 	packet = talloc_steal(NULL, sock->packet);
 	sock->packet = NULL;
 
+	gettimeofday(&packet->timestamp, NULL);
+
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 *

@@ -1534,9 +1534,8 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	/*
 	 *	Set the last packet received.
 	 */
-	gettimeofday(&now, NULL);
-
-	packet->timestamp = now;
+	now = packet->timestamp;
+	rad_assert(packet->timestamp.tv_sec != 0);
 
 #ifdef WITH_ACCOUNTING
 	if (listener->type != RAD_LISTEN_DETAIL)
@@ -2499,7 +2498,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	request.
 	 */
 	request->proxy_reply = talloc_steal(request, packet);
-	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
 
 #ifdef WITH_STATS

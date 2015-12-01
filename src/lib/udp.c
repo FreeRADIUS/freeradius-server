@@ -174,7 +174,8 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
  */
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, UDP_UNUSED int *if_index)
+		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, UDP_UNUSED int *if_index,
+		 struct timeval *when)
 {
 	int			sock_flags = 0;
 	struct sockaddr_storage	src;
@@ -195,6 +196,11 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		return recv(sockfd, data, data_len, sock_flags);
 	}
 
+	if (when) {
+		when->tv_sec = 0;
+		when->tv_usec = 0;
+	}
+
 	/*
 	 *	Receive the packet.  The OS will discard any data in the
 	 *	packet after "len" bytes.
@@ -204,7 +210,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		received = recvfromto(sockfd, data, data_len, sock_flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst,
-				      if_index, NULL);
+				      if_index, when);
 	} else {
 		received = recvfrom(sockfd, data, data_len, sock_flags,
 				    (struct sockaddr *)&src, &sizeof_src);
@@ -232,6 +238,8 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		return -1;
 	}
 	*src_port = port;
+
+	if (when && !when->tv_sec) gettimeofday(when, NULL);
 
 	if (dst_ipaddr) {
 		fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);

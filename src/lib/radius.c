@@ -380,7 +380,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 	return udp_recv(sockfd, packet->data, packet->data_len, flags,
 			&packet->src_ipaddr, &packet->src_port,
 			&packet->dst_ipaddr, &packet->dst_port,
-			&packet->if_index);
+			&packet->if_index, &packet->timestamp);
 }
 
 /** Sign a previously encoded packet

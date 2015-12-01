@@ -144,7 +144,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	data_len = udp_recv(sockfd, packet->data, packet->data_len, 0,
 			    &packet->src_ipaddr, &packet->src_port,
 			    &packet->dst_ipaddr, &packet->dst_port,
-			    &packet->if_index);
+			    &packet->if_index, &packet->timestamp);
 	if (data_len <= 0) {
 		fr_radius_free(&packet);
 		return NULL;

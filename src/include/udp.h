@@ -36,6 +36,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *if_index);
+		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, int *if_index,
+		 struct timeval *when);
 
 #endif /* _FR_UDP_H */

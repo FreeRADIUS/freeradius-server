@@ -168,6 +168,8 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 
 	}
 
+	gettimeofday(&packet->timestamp, NULL);
+
 	return 1;		/* done reading the packet */
 }
 
