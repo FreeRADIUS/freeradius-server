@@ -889,7 +889,7 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	    (strcmp(thread_pool.queue_priority, "default") == 0)) {
 		thread_pool.heap_cmp = default_cmp;
 
-	} else if (strcmp(thread_pool.queue_priority, "802.1X") == 0) {
+	} else if (strcmp(thread_pool.queue_priority, "eap") == 0) {
 		thread_pool.heap_cmp = state_cmp;
 
 	} else if (strcmp(thread_pool.queue_priority, "time") == 0) {
