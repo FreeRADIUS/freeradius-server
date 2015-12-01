@@ -626,6 +626,53 @@ thread pool {
 	#  any other method is likely to cause network meltdowns.
 	#
 	auto_limit_acct = no
+
+	#  In some cases, the "offered" load to the server can be
+	#  higher than the "accepted" load.  This usually happens
+	#  when either the database back-end is overload, or when
+	#  10,000 users log in at the same time.
+	#
+	#  When the server cannot process packets quickly enough,
+	#  the incoming packets are placed onto a queue for later
+	#  processing.  These packets are ordered by priority,
+	#  which is configurable.  The different priorities allow
+	#  you to control how the server behaves in overload
+	#  situations.  As not everyones needs are the same,
+	#  we offer multiple options for priority calculations.
+	#
+	#	time	order packets by when they are received
+	#		Note that replies from a home server
+	#		are ordered by when the *original*
+	#		packet came in, so they are prioritized.
+	#
+	#	default	Order by listener type
+	#		  proxy > auth > acct > detail > coa
+	#		Packets from the same listener are
+	#		ordered by "time".
+	#
+	#	eap	Order by ongoing EAP sessions.
+	#		EAP authentication takes multiple
+	#		rounds.  This priority ensures
+	#		that EAP sessions which are "further along"
+	#		in the authentication process are
+	#		handled with a higher priority.
+	#		Packets with the same eap priority
+	#		are ordered by "default"
+	#
+	#  For systems which are doing EAP / 802.1X authentication
+	#  and not accounting, we recommend using "eap".
+	#
+	#  The danger with the prioritization process is that
+	#  in overload situations, the "eap" priority can cause
+	#  accounting packets to be ignored for extended periods
+	#  of time, until the EAP overload stops.
+	#
+	#  However, setting the "eap" priority ensures that users
+	#  can get on the net as quickly as possible, which is
+	#  usually what you want.
+	#
+	queue_priority = default
+
 }
 
 ######################################################################
