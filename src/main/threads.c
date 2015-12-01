@@ -808,8 +808,11 @@ static int state_cmp(void const *one, void const *two)
 	REQUEST const *a = one;
 	REQUEST const *b = two;
 
-	if (a->packet->rounds < b->packet->rounds) return -1;
-	if (a->packet->rounds > b->packet->rounds) return +1;
+	/*
+	 *	Rounds which are further along go higher in the heap.
+	 */
+	if (a->packet->rounds > b->packet->rounds) return -1;
+	if (a->packet->rounds < b->packet->rounds) return +1;
 
 	return default_cmp(one, two);
 }
