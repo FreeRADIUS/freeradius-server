@@ -26,6 +26,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
+#include <freeradius-devel/heap.h>
 #include <freeradius-devel/rad_assert.h>
 
 /*
@@ -81,8 +82,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  define THREAD_RUNNING	(1)
 #  define THREAD_CANCELLED	(2)
 #  define THREAD_EXITED		(3)
-
-#  define NUM_FIFOS	       RAD_LISTEN_MAX
 
 /*
  *  A data structure which contains the information about
@@ -173,8 +172,7 @@ typedef struct THREAD_POOL {
 	pthread_mutex_t	queue_mutex;
 
 	uint32_t	max_queue_size;
-	uint32_t	num_queued;
-	fr_fifo_t	*fifo[NUM_FIFOS];
+	fr_heap_t	*heap;
 #endif	/* WITH_GCD */
 } THREAD_POOL;
 
@@ -311,7 +309,7 @@ int request_enqueue(REQUEST *request)
 		 *	SOME of the new accounting packets.
 		 */
 		if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
-		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
+		    (fr_heap_num_elements(thread_pool.heap) > (thread_pool.max_queue_size / 2)) &&
 		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
 			uint32_t prob;
 			uint32_t keep;
@@ -332,7 +330,7 @@ int request_enqueue(REQUEST *request)
 			 *	If the queue is larger than our dice
 			 *	roll, we throw the packet away.
 			 */
-			if (thread_pool.num_queued > keep) {
+			if (fr_heap_num_elements(thread_pool.heap) > keep) {
 				pthread_mutex_unlock(&thread_pool.queue_mutex);
 				return 0;
 			}
@@ -355,14 +353,14 @@ int request_enqueue(REQUEST *request)
 
 	thread_pool.request_count++;
 
-	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
+	if (fr_heap_num_elements(thread_pool.heap) >= thread_pool.max_queue_size) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*
 		 *	Mark the request as done.
 		 */
-		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
-				 "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued));
+		RATE_LIMIT(ERROR("Something is blocking the server.  There are %zd packets in the queue, "
+				 "waiting to be processed.  Ignoring the new request.", fr_heap_num_elements(thread_pool.heap)));
 		return 0;
 	}
 	request->component = "<core>";
@@ -370,15 +368,13 @@ int request_enqueue(REQUEST *request)
 	request->child_state = REQUEST_QUEUED;
 
 	/*
-	 *	Push the request onto the appropriate fifo for that
+	 *	Push the request onto the incoming heap
 	 */
-	if (!fr_fifo_push(thread_pool.fifo[request->priority], request)) {
+	if (!fr_heap_insert(thread_pool.heap, request)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		ERROR("!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		return 0;
 	}
-
-	thread_pool.num_queued++;
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
@@ -405,7 +401,6 @@ static int request_dequeue(REQUEST **prequest)
 	static time_t last_complained = 0;
 	static time_t total_blocked = 0;
 	int num_blocked = 0;
-	RAD_LISTEN_TYPE i, start;
 	REQUEST *request = NULL;
 	reap_children();
 
@@ -429,56 +424,32 @@ static int request_dequeue(REQUEST **prequest)
 	}
 #  endif
 
+retry:
 	/*
-	 *	Clear old requests from all queues.
-	 *
-	 *	We only do one pass over the queue, in order to
-	 *	amortize the work across the child threads.  Since we
-	 *	do N checks for one request de-queued, the old
-	 *	requests will be quickly cleared.
+	 *	Grab the first entry.
 	 */
-	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		request = fr_fifo_peek(thread_pool.fifo[i]);
-		if (!request) continue;
-
-		VERIFY_REQUEST(request);
-
-		if (request->master_state != REQUEST_STOP_PROCESSING) {
-			continue;
-		}
-
-		/*
-		 *	This entry was marked to be stopped.  Acknowledge it.
-		 */
-		request = fr_fifo_pop(thread_pool.fifo[i]);
-		rad_assert(request != NULL);
-		VERIFY_REQUEST(request);
-		request->child_state = REQUEST_DONE;
-		thread_pool.num_queued--;
-	}
-
-	start = 0;
- retry:
-	/*
-	 *	Pop results from the top of the queue
-	 */
-	for (i = start; i < RAD_LISTEN_MAX; i++) {
-		request = fr_fifo_pop(thread_pool.fifo[i]);
-		if (request) {
-			VERIFY_REQUEST(request);
-			start = i;
-			break;
-		}
-	}
-
+	request = fr_heap_peek(thread_pool.heap);
 	if (!request) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		*prequest = NULL;
 		return 0;
 	}
 
-	rad_assert(thread_pool.num_queued > 0);
-	thread_pool.num_queued--;
+	(void) fr_heap_extract(thread_pool.heap, request);
+
+	VERIFY_REQUEST(request);
+
+	/*
+	 *	Too late.  Mark it as done, and continue.
+	 *
+	 *	@fixme: with a heap, we can dynamically remove it from the heap!
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		request->module = "<done>";
+		request->child_state = REQUEST_DONE;
+		goto retry;
+	}
+
 	*prequest = request;
 
 	rad_assert(*prequest != NULL);
@@ -487,20 +458,6 @@ static int request_dequeue(REQUEST **prequest)
 	request->component = "<core>";
 	request->module = "";
 	request->child_state = REQUEST_RUNNING;
-
-	/*
-	 *	If the request has sat in the queue for too long,
-	 *	kill it.
-	 *
-	 *	The main clean-up code can't delete the request from
-	 *	the queue, and therefore won't clean it up until we
-	 *	have acknowledged it as "done".
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request->module = "<done>";
-		request->child_state = REQUEST_DONE;
-		goto retry;
-	}
 
 	/*
 	 *	The thread is currently processing a request.
@@ -618,7 +575,7 @@ static void *request_handler_thread(void *arg)
 			vp = radius_pair_create(request, &request->config,
 					       183, VENDORPEC_FREERADIUS);
 			if (vp) {
-				vp->vp_integer = thread_pool.max_queue_size - thread_pool.num_queued;
+				vp->vp_integer = thread_pool.max_queue_size - fr_heap_num_elements(thread_pool.heap);
 				vp->vp_integer *= 100;
 				vp->vp_integer /= thread_pool.max_queue_size;
 			}
@@ -882,6 +839,22 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	return 0;
 }
 
+
+static int default_cmp(void const *one, void const *two)
+{
+	REQUEST const *a = one;
+	REQUEST const *b = two;
+
+	if (a->priority < b->priority) return -1;
+	if (a->priority > b->priority) return +1;
+
+	if (timercmp(&a->timestamp, &b->timestamp, < )) return -1;
+	if (timercmp(&a->timestamp, &b->timestamp, > )) return +1;
+
+	return 0;
+}
+
+
 /*
  *	Allocate the thread pool, and seed it with an initial number
  *	of threads.
@@ -947,15 +920,10 @@ int thread_pool_init(void)
 		return -1;
 	}
 
-	/*
-	 *	Allocate multiple fifos.
-	 */
-	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		thread_pool.fifo[i] = fr_fifo_create(NULL, thread_pool.max_queue_size, NULL);
-		if (!thread_pool.fifo[i]) {
-			ERROR("FATAL: Failed to set up request fifo");
-			return -1;
-		}
+	thread_pool.heap = fr_heap_create(default_cmp, offsetof(REQUEST, heap_id));
+	if (!thread_pool.heap) {
+		ERROR("FATAL: Failed to initialize the incoming queue.");
+		return -1;
 	}
 #endif
 
@@ -1020,9 +988,7 @@ void thread_pool_stop(void)
 		delete_thread(handle);
 	}
 
-	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		fr_fifo_free(thread_pool.fifo[i]);
-	}
+	fr_heap_delete(thread_pool.heap);
 
 #  ifdef WNOHANG
 	fr_hash_table_free(thread_pool.waiters);
@@ -1297,9 +1263,12 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 	if (pool_initialized) {
 		struct timeval now;
 
-		for (i = 0; i < RAD_LISTEN_MAX; i++) {
-			array[i] = fr_fifo_num_elements(thread_pool.fifo[i]);
-		}
+		/*
+		 *	@fixme: the list of listeners is no longer
+		 *	fixed in size.
+		 */
+		memset(array, 0, sizeof(array[0]) * RAD_LISTEN_MAX);
+		array[0] = fr_heap_num_elements(thread_pool.heap);
 
 		gettimeofday(&now, NULL);
 
