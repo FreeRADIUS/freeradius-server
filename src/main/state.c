@@ -389,7 +389,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 			entry->tries = old_tries + 1;
 		}
 
-		entry->state[0] = entry->tries;
+		entry->state[0] = entry->tries + 1;
 		entry->state[1] = entry->state[0] ^ entry->tries;
 		entry->state[8] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
 		entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);

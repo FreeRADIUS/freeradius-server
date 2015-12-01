@@ -157,6 +157,9 @@ typedef struct radius_packet {
 	size_t			data_len;		//!< Length of packet data.
 	VALUE_PAIR		*vps;			//!< Result of decoding the packet into VALUE_PAIRs.
 	ssize_t			offset;
+
+	uint32_t       		rounds;			//!< for State[0]
+
 #ifdef WITH_TCP
 	size_t			partial;
 	int			proto;

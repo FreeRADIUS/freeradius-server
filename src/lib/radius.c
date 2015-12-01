@@ -939,6 +939,13 @@ bool fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			break;
 
 			/*
+			 *	Track this for prioritizing ongoing EAP sessions.
+			 */
+		case PW_STATE:
+			if (attr[1] > 2) packet->rounds = attr[2];
+			break;
+
+			/*
 			 *	If there's an EAP-Message, we require
 			 *	a Message-Authenticator.
 			 */
