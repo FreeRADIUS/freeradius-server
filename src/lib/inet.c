@@ -665,7 +665,7 @@ int fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 	 *	Host, IPv4 or IPv6 with no port
 	 */
 	q = memchr(p, ':', len);
-	if (!q || !memchr(p, '.', len)) return fr_inet_pton(out, p, len, af, resolve, mask);
+	if (!q) return fr_inet_pton(out, p, len, af, resolve, mask);
 
 	/*
 	 *	IPv4 or host, with port
