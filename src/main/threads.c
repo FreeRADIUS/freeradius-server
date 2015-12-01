@@ -781,6 +781,17 @@ static int pid_cmp(void const *one, void const *two)
 }
 #endif
 
+static int timestamp_cmp(void const *one, void const *two)
+{
+	REQUEST const *a = one;
+	REQUEST const *b = two;
+
+	if (timercmp(&a->timestamp, &b->timestamp, < )) return -1;
+	if (timercmp(&a->timestamp, &b->timestamp, > )) return +1;
+
+	return 0;
+}
+
 /*
  *	Smaller entries go to the top of the heap.
  *	Larger ones to the bottom of the heap.
@@ -793,10 +804,7 @@ static int default_cmp(void const *one, void const *two)
 	if (a->priority < b->priority) return -1;
 	if (a->priority > b->priority) return +1;
 
-	if (timercmp(&a->timestamp, &b->timestamp, < )) return -1;
-	if (timercmp(&a->timestamp, &b->timestamp, > )) return +1;
-
-	return 0;
+	return timestamp_cmp(one, two);
 }
 
 
@@ -883,6 +891,9 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 
 	} else if (strcmp(thread_pool.queue_priority, "802.1X") == 0) {
 		thread_pool.heap_cmp = state_cmp;
+
+	} else if (strcmp(thread_pool.queue_priority, "time") == 0) {
+		thread_pool.heap_cmp = timestamp_cmp;
 
 	} else {
 		ERROR("FATAL: Invalid queue_priority '%s'", thread_pool.queue_priority);
