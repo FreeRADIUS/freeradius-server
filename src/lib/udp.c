@@ -49,8 +49,6 @@ RCSID("$Id$")
  * @param[in] if_index of the packet.
  * @param[in] dst_ipaddr of the packet.
  * @param[in] dst_port of the packet.
- * 
- *
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 		 UDP_UNUSED fr_ipaddr_t *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int if_index,
@@ -171,6 +169,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
  * @param[out] dst_ipaddr of the packet.
  * @param[out] dst_port of the packet.
  * @param[out] if_index where the packet was received
+ * @param[out] when timestamp when the packet was received
  */
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
