@@ -63,3 +63,23 @@
  
  	#
  	#  Access mode.
+--- a/src/main/radiusd.c
++++ b/src/main/radiusd.c
+@@ -126,12 +126,11 @@ int main(int argc, char *argv[])
+ 	main_config.daemonize = true;
+ 	main_config.spawn_workers = true;
+ 
+-	p = strrchr(argv[0], FR_DIR_SEP);
+-	if (!p) {
+-		main_config.name = argv[0];
+-	} else {
+-		main_config.name = p + 1;
+-	}
++	/*
++	 *	Debian changes the binary name to "freeradius", but
++	 *	leaves the configuration file as "radiusd.conf".
++	 */
++	main_config.name = "radiusd";
+ 
+ 	/*
+ 	 *	Don't put output anywhere until we get told a little
