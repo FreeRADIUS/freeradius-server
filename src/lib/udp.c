@@ -168,8 +168,11 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
  * @param[out] src_port of the packet.
  * @param[out] dst_ipaddr of the packet.
  * @param[out] dst_port of the packet.
- * @param[out] if_index where the packet was received
- * @param[out] when timestamp when the packet was received
+ * @param[out] if_index of the interface that received the packet.
+ * @param[out] when the packet was received.
+ * @return
+ *	- > 0 on success (number of bytes read).
+ *	- < 0 on failure.
  */
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
@@ -184,16 +187,12 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	ssize_t			received;
 	uint16_t		port;
 
-	if ((flags & UDP_FLAGS_PEEK) != 0) {
-		sock_flags |= MSG_PEEK;
-	}
+	if ((flags & UDP_FLAGS_PEEK) != 0) sock_flags |= MSG_PEEK;
 
 	/*
 	 *	Connected sockets already know src/dst IP/port
 	 */
-	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
-		return recv(sockfd, data, data_len, sock_flags);
-	}
+	if ((flags & UDP_FLAGS_CONNECTED) != 0) return recv(sockfd, data, data_len, sock_flags);
 
 	if (when) {
 		when->tv_sec = 0;
@@ -221,21 +220,14 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	/*
 	 *	Get the destination address, if requested.
 	 */
-	if (dst_ipaddr) {
-		if (getsockname(sockfd, (struct sockaddr *)&dst,
-				&sizeof_dst) < 0) {
-			return -1;
-		}
-	}
+	if (dst_ipaddr && (getsockname(sockfd, (struct sockaddr *)&dst, &sizeof_dst) < 0)) return -1;
 
 	if (if_index) *if_index = 0;
 #endif
 
 	if (received < 0) return received;
 
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) {
-		return -1;
-	}
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) return -1;
 	*src_port = port;
 
 	if (when && !when->tv_sec) gettimeofday(when, NULL);
