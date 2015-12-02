@@ -144,10 +144,12 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	size_t		offset;
 	size_t		size;
 	size_t		data_left = data_len;
+	ssize_t		decoded;
 	VALUE_PAIR	*first = NULL;
 	VALUE_PAIR	*vp = NULL;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 	vp_cursor_t	out;
+	fr_dict_attr_t const *da;
 
 	fr_cursor_init(&out, &first);
 
@@ -225,7 +227,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 *	EXCEPT for the MS-CHAP attributes.
 		 */
 		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
-			ssize_t		decoded;
 			uint8_t		buffer[256];
 			vp_cursor_t	cursor;
 
@@ -239,16 +240,14 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			if (decoded < 0) {
 				REDEBUG2("diameter2vp failed decoding attr: %s",
 					fr_strerror());
-				goto do_octets;
+				goto raw;
 			}
 
 			if ((size_t) decoded != size + 2) {
 				REDEBUG2("diameter2vp failed to entirely decode VSA");
 				fr_pair_list_free(&vp);
-				goto do_octets;
+				goto raw;
 			}
-
-			fr_cursor_merge(&out, vp);
 
 			goto next_attr;
 		}
@@ -256,111 +255,31 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		/*
 		 *	Create it.  If this fails, it's because we're OOM.
 		 */
-	do_octets:
-		vp = fr_pair_afrom_num(packet, vendor, attr);
-		if (!vp) {
-			RDEBUG2("Failure in creating VP");
-			fr_pair_list_free(&first);
-			return NULL;
-		}
+		da = fr_dict_attr_by_num(NULL, vendor, attr);
+		if (da) {
+			decoded = fr_radius_decode_pair_value(packet, &out, da, data, size, data_left, NULL);
+			if (decoded < 0) goto raw;
 
-		/*
-		 *	If it's a type from our dictionary, then
-		 *	we need to put the data in a relevant place.
-		 *
-		 *	@todo: Export the lib/radius.c decoder, and use it here!
-		 */
-		switch (vp->da->type) {
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_DATE:
-			if (size != vp->vp_length) {
-				fr_dict_attr_t const *da;
-
-				/*
-				 *	Bad format.  Create a "raw"
-				 *	attribute.
-				 */
+		} else {
 		raw:
-				if (vp) fr_pair_list_free(&vp);
-				da = fr_dict_unknown_afrom_fields(packet, fr_dict_root(fr_dict_internal), vendor, attr);
-				if (!da) return NULL;
-				vp = fr_pair_afrom_da(packet, da);
-				if (!vp) return NULL;
-				fr_pair_value_memcpy(vp, data, size);
-				break;
-			}
-			memcpy(&vp->vp_integer, data, vp->vp_length);
-
-			/*
-			 *	Stored in host byte order: change it.
-			 */
-			vp->vp_integer = ntohl(vp->vp_integer);
-			break;
-
-		case PW_TYPE_INTEGER64:
-			if (size != vp->vp_length) goto raw;
-			memcpy(&vp->vp_integer64, data, vp->vp_length);
-
-			/*
-			 *	Stored in host byte order: change it.
-			 */
-			vp->vp_integer64 = ntohll(vp->vp_integer64);
-			break;
-
-		case PW_TYPE_IPV4_ADDR:
-			if (size != vp->vp_length) {
-				RDEBUG2("Invalid length attribute %d",
-				       attr);
-				fr_pair_list_free(&first);
-				fr_pair_list_free(&vp);
+			da = fr_dict_unknown_afrom_fields(packet, fr_dict_root(fr_dict_internal), vendor, attr);
+			if (!da) {
+				RDEBUG("Failed creating unknown attribute %u %u", vendor, attr);
 				return NULL;
 			}
-			memcpy(&vp->vp_ipaddr, data, vp->vp_length);
 
-			/*
-			 *	Stored in network byte order: don't change it.
-			 */
-			break;
+			vp = fr_pair_afrom_da(packet, da);
+			if (!vp) {
+				RDEBUG("Failed creating VP from unknown attribute %u %u", vendor, attr);
+				return NULL;
+			}
 
-		case PW_TYPE_BYTE:
-			if (size != vp->vp_length) goto raw;
-			vp->vp_byte = data[0];
-			break;
-
-		case PW_TYPE_SHORT:
-			if (size != vp->vp_length) goto raw;
-			vp->vp_short = (data[0] * 256) + data[1];
-			break;
-
-		case PW_TYPE_SIGNED:
-			if (size != vp->vp_length) goto raw;
-			memcpy(&vp->vp_signed, data, vp->vp_length);
-			vp->vp_signed = ntohl(vp->vp_signed);
-			break;
-
-		case PW_TYPE_IPV6_ADDR:
-			if (size != vp->vp_length) goto raw;
-			memcpy(&vp->vp_ipv6addr, data, vp->vp_length);
-			break;
-
-		case PW_TYPE_IPV6_PREFIX:
-			if (size != vp->vp_length) goto raw;
-			memcpy(vp->vp_ipv6prefix, data, vp->vp_length);
-			break;
-
-		case PW_TYPE_STRING:
-			fr_pair_value_bstrncpy(vp, data, size);
-			vp->vp_length = strlen(vp->vp_strvalue); /* embedded zeros are NOT allowed */
-			break;
-
-			/*
-			 *	Copy it over verbatim.
-			 */
-		case PW_TYPE_OCTETS:
-		default:
 			fr_pair_value_memcpy(vp, data, size);
-			break;
+			fr_cursor_insert(&out, vp);
+			goto next_attr;
 		}
+
+		vp = fr_cursor_current(&out);
 
 		/*
 		 *	Ensure that the client is using the
@@ -392,7 +311,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			    (vp->vp_length > 16)) {
 				RDEBUG("Tunneled challenge has invalid length");
 				fr_pair_list_free(&first);
-				fr_pair_list_free(&vp);
 				return NULL;
 			}
 
@@ -403,17 +321,22 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				   vp->vp_length) != 0) {
 				RDEBUG("Tunneled challenge is incorrect");
 				fr_pair_list_free(&first);
-				fr_pair_list_free(&vp);
 				return NULL;
 			}
 		}
 
 		/*
-		 *	Update the list.
+		 *	Diameter pads strings (i.e. User-Password) with trailing zeros.
 		 */
-		fr_cursor_insert(&out, vp);
+		if (vp->da->type == PW_TYPE_STRING) {
+			fr_pair_value_strcpy(vp, vp->vp_strvalue);
+		}
 
 	next_attr:
+		while (fr_cursor_next(&out)) {
+			/* nothing */
+		}
+
 		/*
 		 *	Catch non-aligned attributes.
 		 */
