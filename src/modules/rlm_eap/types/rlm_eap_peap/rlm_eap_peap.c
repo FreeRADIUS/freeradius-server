@@ -30,6 +30,8 @@ typedef struct rlm_eap_peap_t {
 	fr_tls_server_conf_t *tls_conf;
 	char const *default_method_name;	//!< Default tunneled EAP type.
 	int default_method;
+
+	int auth_type_eap;
 	bool use_tunneled_reply;		//!< Use the reply attributes from the tunneled session in
 						//!< the non-tunneled reply to the client.
 
@@ -67,6 +69,7 @@ static CONF_PARSER module_config[] = {
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, req_client_cert), "no" },
 
 	{ "soh_virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, soh_virtual_server), NULL },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -77,6 +80,7 @@ static CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_peap_t		*inst;
+	DICT_VALUE const	*dv;
 
 	*instance = inst = talloc_zero(cs, rlm_eap_peap_t);
 	if (!inst) return -1;
@@ -110,6 +114,12 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	dv = dict_valbyname(PW_AUTH_TYPE, 0, "eap");
+	if (!dv) {
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type mschap' section.  Cannot authenticate users.");
+		return -1;
+	}
+	inst->auth_type_eap = dv->value;
 	return 0;
 }
 
@@ -300,7 +310,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eappeap_process(handler, tls_session);
+	rcode = eappeap_process(handler, tls_session, inst->auth_type_eap);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eaptls_fail(handler, 0);

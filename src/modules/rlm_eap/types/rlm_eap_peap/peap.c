@@ -722,7 +722,7 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
+rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, int auth_type_eap)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake;
@@ -1051,7 +1051,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	Run the EAP authentication.
 				 */
 				RDEBUG2("Calling authenticate in order to initiate tunneled EAP session");
-				rcode = process_authenticate(PW_AUTH_TYPE_EAP, fake);
+				rcode = process_authenticate(auth_type_eap, fake);
 				if (rcode == RLM_MODULE_OK) {
 					/*
 					 *	Authentication succeeded! Rah!

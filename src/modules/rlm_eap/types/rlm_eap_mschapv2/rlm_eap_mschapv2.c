@@ -33,6 +33,7 @@ typedef struct rlm_eap_mschapv2_t {
 	bool with_ntdomain_hack;
 	bool send_error;
 	char const *identity;
+	int  auth_type_mschap;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER module_config[] = {
@@ -58,6 +59,7 @@ static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_mschapv2_t *inst;
+	DICT_VALUE const *dv;
 
 	*instance = inst = talloc_zero(cs, rlm_eap_mschapv2_t);
 	if (!inst) return -1;
@@ -77,6 +79,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	if (!inst->identity) {
 		inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
 	}
+
+	dv = dict_valbyname(PW_AUTH_TYPE, 0, "MSCHAP");
+	if (!dv) dv = dict_valbyname(PW_AUTH_TYPE, 0, "MS-CHAP");
+	if (!dv) {
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
+		return -1;
+	}
+	inst->auth_type_mschap = dv->value;
 
 	return 0;
 }
@@ -662,7 +672,7 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	rcode = process_authenticate(PW_AUTH_TYPE_MS_CHAP, request);
+	rcode = process_authenticate(inst->auth_type_mschap, request);
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
