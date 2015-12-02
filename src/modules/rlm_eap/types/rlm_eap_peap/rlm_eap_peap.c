@@ -30,6 +30,7 @@ typedef struct rlm_eap_peap_t {
 	fr_tls_server_conf_t *tls_conf;
 	char const *default_method_name;	//!< Default tunneled EAP type.
 	int default_method;
+	int auth_type_eap;
 	bool use_tunneled_reply;		//!< Use the reply attributes from the tunneled session in
 						//!< the non-tunneled reply to the client.
 
@@ -77,6 +78,7 @@ static CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_peap_t		*inst;
+	fr_dict_enum_t		*dv;
 
 	*instance = inst = talloc_zero(cs, rlm_eap_peap_t);
 	if (!inst) return -1;
@@ -109,6 +111,13 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		ERROR("rlm_eap_peap: Failed initializing SSL context");
 		return -1;
 	}
+
+	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "EAP");
+	if (!dv) {
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type EAP' section.  Cannot authenticate users.");
+		return -1;
+	}
+	inst->auth_type_eap = dv->value;
 
 	return 0;
 }
@@ -290,7 +299,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eap_peap_process(eap_session, tls_session);
+	rcode = eap_peap_process(eap_session, tls_session, inst->auth_type_eap);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(eap_session);
