@@ -594,7 +594,6 @@ fi
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
-%{_libdir}/freeradius/rlm_sqlhpwippool.so
 %{_libdir}/freeradius/rlm_sql_null.so
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
