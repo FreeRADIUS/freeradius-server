@@ -87,6 +87,8 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/dict.h>
 #include <freeradius-devel/pair.h>
 #include <freeradius-devel/proto.h>
+#include <freeradius-devel/conf.h>
+#include <freeradius-devel/radpaths.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #  if SIZEOF_UNSIGNED_INT != 4
