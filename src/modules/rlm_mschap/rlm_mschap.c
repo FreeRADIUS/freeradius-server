@@ -1750,7 +1750,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		RDEBUG2("Password change payload valid");
 
 		/* perform the actual password change */
-		rad_assert(nt_password);
 		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, auth_method) < 0) {
 			char buffer[128];
 
