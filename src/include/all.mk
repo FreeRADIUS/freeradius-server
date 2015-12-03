@@ -141,7 +141,9 @@ $(SRC_INCLUDE_DIR):
 ${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
-	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
+# Expression must deal with indentation after the hash and copy it to the substitution string.
+# Hash not anchored to allow substitution in function documentation.
+	@sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $< > $@
 	@chmod 644 $@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
