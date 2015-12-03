@@ -23,13 +23,14 @@
  *
  * @copyright 1999-2014 The FreeRADIUS server project
  */
-RCSIDH(libradius_h, "$Id$")
 
 /*
  *  Compiler hinting macros.  Included here for 3rd party consumers
  *  of libradius.h.
  */
 #include <freeradius-devel/build.h>
+
+RCSIDH(libradius_h, "$Id$")
 
 /*
  *  Let any external program building against the library know what
