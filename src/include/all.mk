@@ -42,6 +42,13 @@ HEADERS	= \
 	base64.h \
 	map.h \
 	udp.h \
+	tcp.h \
+	threads.h \
+	regex.h \
+	inet.h \
+	dict.h \
+	pair.h \
+	proto.h \
 	$(HEADERS_DY)
 
 #
