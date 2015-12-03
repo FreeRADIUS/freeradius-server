@@ -141,7 +141,7 @@ $(SRC_INCLUDE_DIR):
 ${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
-	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
+	@sed -e 's/^#\(\s*\)include <freeradius-devel/#\1include <freeradius/' < $< > $@
 	@chmod 644 $@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
