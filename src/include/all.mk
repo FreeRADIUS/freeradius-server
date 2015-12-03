@@ -40,6 +40,9 @@ HEADERS	= \
 	udpfromto.h \
 	base64.h \
 	map.h \
+	threads.h \
+	regex.h \
+	tcp.h \
 	$(HEADERS_DY)
 
 #
