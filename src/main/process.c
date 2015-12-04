@@ -1746,6 +1746,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	REQUEST *request;
+	bool check_packet_code;
 
 	/*
 	 *	Create and initialize the new request.
@@ -1784,15 +1785,17 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
-	if (packet->code == PW_CODE_ACCESS_REQUEST) {
+	check_packet_code = (packet->code == PW_CODE_ACCESS_REQUEST);
+	if (check_packet_code) {
 		request->client->auth.last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
+	}
 #ifdef WITH_ACCOUNTING
-	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+	if ( !(check_packet_code) && (packet->code == PW_CODE_ACCOUNTING_REQUEST)) {
 		request->client->acct.last_packet = request->packet->timestamp.tv_sec;
 		radius_acct_stats.last_packet = request->packet->timestamp.tv_sec;
-#endif
 	}
+#endif
 #endif	/* WITH_STATS */
 
 	/*
