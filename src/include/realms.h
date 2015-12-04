@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file includes/realms.h
+ * @file include/realms.h
  * @brief Request forwarding API.
  *
  * @copyright 2015 The FreeRADIUS server project
