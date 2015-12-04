@@ -90,7 +90,9 @@ char const *fr_errno_macro_names[] = {
 	[ENETUNREACH] = "ENETUNREACH",
 	[ENFILE] = "ENFILE",
 	[ENOBUFS] = "ENOBUFS",
+#ifdef ENODATA
 	[ENODATA] = "ENODATA",
+#endif
 	[ENODEV] = "ENODEV",
 	[ENOENT] = "ENOENT",
 	[ENOEXEC] = "ENOEXEC",
@@ -100,8 +102,12 @@ char const *fr_errno_macro_names[] = {
 	[ENOMSG] = "ENOMSG",
 	[ENOPROTOOPT] = "ENOPROTOOPT",
 	[ENOSPC] = "ENOSPC",
+#ifdef ENOSR
 	[ENOSR] = "ENOSR",
+#endif
+#ifdef ENOSTR
 	[ENOSTR] = "ENOSTR",
+#endif
 	[ENOSYS] = "ENOSYS",
 	[ENOTCONN] = "ENOTCONN",
 	[ENOTDIR] = "ENOTDIR",
@@ -128,7 +134,9 @@ char const *fr_errno_macro_names[] = {
 	[ESPIPE] = "ESPIPE",
 	[ESRCH] = "ESRCH",
 	[ESTALE] = "ESTALE",
+#ifdef ETIME
 	[ETIME] = "ETIME",
+#endif
 	[ETIMEDOUT] = "ETIMEDOUT",
 	[ETXTBSY] = "ETXTBSY",
 	[EXDEV] = "EXDEV"
