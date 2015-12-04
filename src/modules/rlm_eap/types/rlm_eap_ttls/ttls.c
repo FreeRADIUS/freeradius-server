@@ -175,8 +175,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 
 			data += 4; /* skip the vendor field, it's zero */
 			offset += 4; /* offset to value field */
-
-			if (attr > 65535) goto next_attr;
 		}
 
 		/*
@@ -197,10 +195,9 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		size = length - offset;
 
 		/*
-		 *	Vendor attributes can be larger than 255.
-		 *	Normal attributes cannot be.
+		 *	We don't allow attributes larger than 255.
 		 */
-		if ((attr > 255) && (vendor == 0)) {
+		if (attr > 255) {
 			RWDEBUG2("Skipping Diameter attribute %u", attr);
 			goto next_attr;
 		}
