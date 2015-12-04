@@ -191,6 +191,7 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  */
 bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+  bool check_names;
 	RADCLIENT *old;
 	char buffer[FR_IPADDR_PREFIX_STRLEN];
 
@@ -300,21 +301,23 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		 *	If it's a complete duplicate, then free the new
 		 *	one, and return "OK".
 		 */
-		if ((fr_ipaddr_cmp(&old->ipaddr, &client->ipaddr) == 0) &&
-		    (old->ipaddr.prefix == client->ipaddr.prefix) &&
-		    namecmp(longname) && namecmp(secret) &&
-		    namecmp(shortname) && namecmp(nas_type) &&
-		    namecmp(login) && namecmp(password) && namecmp(server) &&
+		check_names = ((fr_ipaddr_cmp(&old->ipaddr, &client->ipaddr) == 0)
+		               && (old->ipaddr.prefix == client->ipaddr.prefix)
+									 && namecmp(longname) && namecmp(secret)
+									 && namecmp(shortname) && namecmp(nas_type)
+									 && namecmp(login) && namecmp(password) && namecmp(server));
 #ifdef WITH_DYNAMIC_CLIENTS
-		    (old->lifetime == client->lifetime) &&
-		    namecmp(client_server) &&
+    check_names = (check_names
+			             && ((old->lifetime == client->lifetime)
+									 && namecmp(client_server)));
 #endif
 #ifdef WITH_COA
-		    namecmp(coa_name) &&
-		    (old->coa_server == client->coa_server) &&
-		    (old->coa_pool == client->coa_pool) &&
+    check_names = (check_names
+			             && (namecmp(coa_name)
+									 && (old->coa_server == client->coa_server)
+									 && (old->coa_pool == client->coa_pool)));
 #endif
-		    (old->message_authenticator == client->message_authenticator)) {
+		if (check_names && (old->message_authenticator == client->message_authenticator)) {
 			WARN("Ignoring duplicate client %s", client->longname);
 			client_free(client);
 			return true;
@@ -1494,4 +1497,3 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 	return c;
 }
 #endif
-
