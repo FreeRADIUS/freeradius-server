@@ -102,4 +102,4 @@ void		xlat_free(void);
 #ifdef __cplusplus
 }
 #endif
-#endif	/* FR_XLAT_H */
+#endif	/* _FR_XLAT_H */
