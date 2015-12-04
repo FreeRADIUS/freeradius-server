@@ -15,7 +15,7 @@
  */
 #ifndef _FR_CLIENTS_H
 #define _FR_CLIENTS_H
-/*
+/**
  * $Id$
  *
  * @file include/clients.h

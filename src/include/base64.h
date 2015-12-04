@@ -15,7 +15,7 @@
  */
 #ifndef _FR_BASE64_H
 #define _FR_BASE64_H
-/*
+/**
  * $Id$
  *
  * @file include/base64.h
