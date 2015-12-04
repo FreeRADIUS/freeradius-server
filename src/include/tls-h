@@ -369,6 +369,7 @@ struct fr_tls_server_conf_t {
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 	time_t		session_last_flushed;
 
+	bool		verify_skip_if_ocsp_ok;
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
