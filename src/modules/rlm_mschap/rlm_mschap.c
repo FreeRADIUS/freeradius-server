@@ -1676,7 +1676,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		if (cpw->vp_length != 68) {
 			REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
 			return RLM_MODULE_INVALID;
-		} else if (cpw->vp_octets[0]!=7) {
+		}
+
+		if (cpw->vp_octets[0] != 7) {
 			REDEBUG("MS-CHAP2-CPW has the wrong format: code %d != 7", cpw->vp_octets[0]);
 			return RLM_MODULE_INVALID;
 		}
@@ -1707,7 +1709,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 					REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
 					return RLM_MODULE_INVALID;
 				}
-				if (nt_enc->vp_octets[2]==0 && nt_enc->vp_octets[3]==seq) {
+
+				if ((nt_enc->vp_octets[2] == 0) && (nt_enc->vp_octets[3] == seq)) {
 					found = 1;
 					break;
 				}
@@ -1718,7 +1721,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				return RLM_MODULE_INVALID;
 			}
 
-			if ((new_nt_enc_len + nt_enc->vp_length - 4)>= sizeof(new_nt_encrypted)) {
+			if ((new_nt_enc_len + nt_enc->vp_length - 4) >= sizeof(new_nt_encrypted)) {
 				REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length > 516");
 				return RLM_MODULE_INVALID;
 			}
