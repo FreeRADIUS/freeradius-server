@@ -13,8 +13,8 @@
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef LIBRADIUS_H
-#define LIBRADIUS_H
+#ifndef _FR_LIBRADIUS_H
+#define _FR_LIBRADIUS_H
 /*
  * $Id$
  *
@@ -587,4 +587,4 @@ int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char cons
 #  include <freeradius-devel/tcp.h>
 #endif
 
-#endif /*LIBRADIUS_H*/
+#endif /* _FR_LIBRADIUS_H */
