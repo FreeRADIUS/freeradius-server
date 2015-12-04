@@ -1668,7 +1668,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 */
 		uint8_t		new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
 		VALUE_PAIR	*nt_enc=NULL;
-		int		seq, new_nt_enc_len=0;
+		int		seq, new_nt_enc_len;
 		uint8_t		*p;
 
 		RDEBUG("MS-CHAPv2 password change request received");
@@ -1689,6 +1689,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *  06:<mschapid>:00:02:<2nd chunk>
 		 *  06:<mschapid>:00:03:<3rd chunk>
 		 */
+		new_nt_enc_len = 0;
 		for (seq = 1; seq < 4; seq++) {
 			vp_cursor_t cursor;
 			int found = 0;
@@ -1717,12 +1718,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				return RLM_MODULE_INVALID;
 			}
 
-			/*
-			 * copy the data into the buffer
-			 */
+			if ((new_nt_enc_len + nt_enc->vp_length - 4)>= sizeof(new_nt_encrypted)) {
+				REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length > 516");
+				return RLM_MODULE_INVALID;
+			}
+
 			memcpy(new_nt_encrypted + new_nt_enc_len, nt_enc->vp_octets + 4, nt_enc->vp_length - 4);
 			new_nt_enc_len += nt_enc->vp_length - 4;
 		}
+
 		if (new_nt_enc_len != 516) {
 			REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length != 516");
 			return RLM_MODULE_INVALID;
