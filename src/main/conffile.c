@@ -2059,25 +2059,10 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
-			break;
-
 		case PW_TYPE_IPV4_PREFIX:
-			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
-			break;
-
 		case PW_TYPE_IPV6_ADDR:
-			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
-			break;
-
 		case PW_TYPE_IPV6_PREFIX:
-			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
-			break;
-
 		case PW_TYPE_COMBO_IP_ADDR:
-			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
-			break;
-
 		case PW_TYPE_COMBO_IP_PREFIX:
 			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
 			break;
