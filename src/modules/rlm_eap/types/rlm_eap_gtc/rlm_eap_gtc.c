@@ -191,10 +191,10 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 			return 0;
 		}
 
-		/*
-		 *	EAP packets can be ~64k long maximum, and
-		 *	we don't like that.
-		 */
+	/*
+	 *	EAP packets can be ~64k long maximum, and
+	 *	we don't like that.
+	 */
 	} else if (eap_round->response->type.length <= 128) {
 		int rcode;
 
@@ -205,9 +205,7 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		fr_pair_delete_by_num(&request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
 
 		vp = pair_make_request("User-Password", NULL, T_OP_EQ);
-		if (!vp) {
-			return 0;
-		}
+		if (!vp) return 0;
 
 		fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
 
