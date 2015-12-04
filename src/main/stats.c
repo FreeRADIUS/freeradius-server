@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include <stdbool.h>
 
 #ifdef WITH_STATS
 
@@ -109,19 +110,22 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 
 void request_stats_final(REQUEST *request)
 {
+  bool check_listener_type;
+
 	if (request->master_state == REQUEST_COUNTED) return;
 
 	if (!request->listener) return;
 	if (!request->client) return;
 
-	if ((request->listener->type != RAD_LISTEN_NONE) &&
+  check_listener_type = (request->listener->type != RAD_LISTEN_NONE);
 #ifdef WITH_ACCOUNTING
-	    (request->listener->type != RAD_LISTEN_ACCT) &&
+  check_listener_type = (check_listener_type && (request->listener->type != RAD_LISTEN_ACCT));
 #endif
 #ifdef WITH_COA
-	    (request->listener->type != RAD_LISTEN_COA) &&
+  check_listener_type = (check_listener_type && (request->listener->type != RAD_LISTEN_COA));
 #endif
-	    (request->listener->type != RAD_LISTEN_AUTH)) return;
+  check_listener_type = (check_listener_type && (request->listener->type != RAD_LISTEN_AUTH));
+  if (check_listener_type) return;
 
 	/* don't count statistic requests */
 	if (request->packet->code == PW_CODE_STATUS_SERVER)
