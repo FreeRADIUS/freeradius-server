@@ -1,35 +1,42 @@
-#ifndef FR_NET_H
-#define FR_NET_H
 /*
- *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, version 2 of the
- *   License as published by the Free Software Foundation.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _FR_NET_H
+#define _FR_NET_H
 /**
  * $Id$
+ *
  * @file include/net.h
  * @brief Structures and functions for parsing raw network packets.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSIDH(net_h, "$Id$")
 
+#ifdef HAVE_LIBPCAP
+#  include <pcap.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*
  *	If we don't have libpcap, we still need an enumeration of link layers.
  */
-#ifdef HAVE_LIBPCAP
-#  include <pcap.h>
-#else
+#ifndef HAVE_LIBPCAP
 typedef enum {
 	DLT_RAW,
 	DLT_NULL,
@@ -144,4 +151,4 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
-#endif /* FR_NET_H */
+#endif /* _FR_NET_H */

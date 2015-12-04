@@ -1,31 +1,34 @@
 /*
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef LISTEN_H
-#define LISTEN_H
-
+#ifndef _FR_LISTEN_H
+#define _FR_LISTEN_H
 #include <freeradius-devel/pcap.h>
-
 /**
  * $Id$
  *
- * @file listen.h
- * @brief The listener API.
+ * @file include/listen.h
+ * @brief Listener API.  Binds sockets to protocol encoders/decoders.
  *
  * @copyright 2015  The FreeRADIUS server project
  */
+RCSIDH(listen_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  *	Types of listeners.
@@ -144,7 +147,6 @@ typedef struct listen_socket_t {
 						//!< configuration of SO_RCVBUF, as SO_SNDBUF
 						//!< controls the maximum datagram size.
 
-
 #ifdef WITH_TCP
 	/* for a proxy connecting to home servers */
 	time_t			last_packet;
@@ -178,4 +180,7 @@ int listen_init(rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener, fr_ipaddr_t const *ipaddr, uint16_t src_port);
 
-#endif /* LISTEN_H */
+#ifdef __cplusplus
+}
+#endif
+#endif /* _FR_LISTEN_H */

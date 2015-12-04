@@ -1,29 +1,36 @@
 /*
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _PROTO_H
-#define _PROTO_H
+#ifndef _FR_PROTO_H
+#define _FR_PROTO_H
 /**
  * $Id$
+ *
  * @file include/proto.h
  * @brief Protocol encoder/decoder support functions
  *
  * @copyright 2015 The FreeRADIUS server project
  */
+RCSIDH(proto_h, "$Id$")
+
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/dict.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef NDEBUG
 #  define FR_PROTO_TRACE(_x, ...)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_print(__FILE__, __LINE__, _x, ## __VA_ARGS__)
@@ -42,4 +49,8 @@ void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_
 void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **tlv_stack, unsigned int depth);
 
 void fr_proto_tlv_stack_build(fr_dict_attr_t const **tlv_stack, fr_dict_attr_t const *da);
-#endif /* _PROTO_H */
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* _FR_PROTO_H */

@@ -1,29 +1,28 @@
-#ifndef FR_DHCP_H
-#define FR_DHCP_H
-
 /*
- * dhcp.h	Structures and prototypes for DHCP.
- *		Why DHCP in a RADIUS server?
- *		Why not?
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- * Version:	$Id$
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+#ifndef _FR_DHCP_H
+#define _FR_DHCP_H
+/**
+ * $Id$
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ * @file include/dhcp.h
+ * @brief Implementation of the DHCPv4 protocol.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2008 The FreeRADIUS server project
- * Copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * @copyright 2008  The FreeRADIUS server project
+ * @copyright 2008  Alan DeKok <aland@deployingradius.com>
  */
 RCSIDH(dhcp_h, "$Id$")
 
@@ -111,4 +110,4 @@ extern char const *dhcp_message_types[];
 }
 #endif
 
-#endif /* FR_DHCP_H */
+#endif /* _FR_DHCP_H */

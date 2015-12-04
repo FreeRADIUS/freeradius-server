@@ -1,32 +1,38 @@
-#ifndef FR_INET_H
-#define FR_INET_H
 /*
- *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, version 2 of the
- *   License as published by the Free Software Foundation.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software Foundation,
+ *  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-
+#ifndef _FR_INET_H
+#define _FR_INET_H
 /**
  * $Id$
+ *
  * @file include/inet.h
  * @brief Structures and functions for parsing, printing, masking and retrieving IP addresses.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSIDH(inet_h, "$Id$")
+
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /** IPv4/6 prefix
  *
  * Abstraction around the standard in_addr/in6_addr structures to
@@ -119,4 +125,8 @@ int	fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 
 int	fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 				fr_ipaddr_t *ipaddr, uint16_t *port);
+
+#ifdef __cplusplus
+}
 #endif
+#endif /* _FR_INET_H */

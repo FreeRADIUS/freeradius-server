@@ -1,24 +1,24 @@
 /*
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef TMPL_H
-#define TMPL_H
+#ifndef _FR_TMPL_H
+#define _FR_TMPL_H
 /**
  * $Id$
  *
- * @file tmpl.h
+ * @file include/tmpl.h
  * @brief Structures and prototypes for templates
  *
  * These functions are used to work with #vp_tmpl_t structs.
@@ -69,7 +69,6 @@
  *
  * @copyright 2014-2015 The FreeRADIUS server project
  */
-
 RCSIDH(tmpl_h, "$Id$")
 
 #include <freeradius-devel/xlat.h>
@@ -77,7 +76,7 @@ RCSIDH(tmpl_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-#
+
 typedef enum pair_lists {
 	PAIR_LIST_UNKNOWN = 0,		//!< Unknown list.
 	PAIR_LIST_REQUEST,		//!< Attributes in incoming or internally proxied
@@ -418,7 +417,8 @@ int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *v
 int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
 int			tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_flags_t const *flags);
+
 #ifdef __cplusplus
 }
 #endif
-#endif	/* TMPL_H */
+#endif	/* _FR_TMPL_H */

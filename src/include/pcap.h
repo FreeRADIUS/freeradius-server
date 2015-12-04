@@ -1,34 +1,41 @@
-#ifndef FR_PCAP_H
-#define FR_PCAP_H
-#ifdef HAVE_LIBPCAP
 /*
- *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, version 2 of the
- *   License as published by the Free Software Foundation.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _FR_PCAP_H
+#define _FR_PCAP_H
+#ifdef HAVE_LIBPCAP
 /**
  * $Id$
+ *
  * @file include/pcap.h
  * @brief Prototypes and constants for PCAP functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSIDH(pcap_h, "$Id$")
+
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/net.h>
 
 #include <sys/types.h>
 #include <pcap.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define SNAPLEN ETHER_HDR_LEN + IP_HDR_LEN + sizeof(struct udp_header) + MAX_RADIUS_LEN
 #define PCAP_BUFFER_DEFAULT (10000)
@@ -97,4 +104,8 @@ int		fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char		*fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
 int		fr_pcap_mac_addr(uint8_t *macaddr, char *ifname);
 #endif
+
+#ifdef __cplusplus
+}
 #endif
+#endif /* _PCAP_H */

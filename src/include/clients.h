@@ -1,31 +1,34 @@
 /*
- *   This library is free software; you can redistribute it and/or
- *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
- *   version 2.1 of the License, or (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This library is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *   Lesser General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU Lesser General Public
- *   License along with this library; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef CLIENTS_H
-#define CLIENTS_H
+#ifndef _FR_CLIENTS_H
+#define _FR_CLIENTS_H
 /*
  * $Id$
  *
- * @file clients.h
- * @brief Function declarations and structures to manage clients.
+ * @file include/clients.h
+ * @brief API to add client definitions to the server, both on startup and at runtime.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 The FreeRADIUS server project
  */
+RCSIDH(clients_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /** Describes a host allowed to send packets to the server
  *
  */
@@ -165,4 +168,7 @@ RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
 bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 
 RADCLIENT	*client_read(char const *filename, int in_server, int flag);
-#endif	/* CLIENTS_H */
+#ifdef __cplusplus
+}
+#endif
+#endif	/* _FR_CLIENTS_H */

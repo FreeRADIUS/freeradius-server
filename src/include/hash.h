@@ -1,29 +1,28 @@
-#ifndef FR_HASH_H
-#define FR_HASH_H
-
 /*
- * hash.h	Structures and prototypes
- *		for fast hashing.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- * Version:	$Id$
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2005,2006  The FreeRADIUS server project
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _FR_HASH_H
+#define _FR_HASH_H
+/**
+ * $Id$
+ *
+ * @file include/hash.h
+ * @brief Structures and prototypes for fast hashing.
+ *
+ * @copyright 2005,2006  The FreeRADIUS server project
+ */
 RCSIDH(hash_h, "$Id$")
 
 #ifdef __cplusplus
@@ -63,4 +62,4 @@ int		fr_hash_table_walk(fr_hash_table_t *ht,
 }
 #endif
 
-#endif /* FR_HASH_H */
+#endif /* _FR_HASH_H */

@@ -1,12 +1,28 @@
-#ifndef DETAIL_H
-#define DETAIL_H
 /*
- *	detail.h	Routines to handle detail files.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- * Version:	$Id$
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _FR_DETAIL_H
+#define _FR_DETAIL_H
+/**
+ * $Id$
+ *
+ * @file include/detail.h
+ * @brief API to deserialise packets in detail file format and inject them into the server.
+ *
+ * @copyright 2015  The FreeRADIUS server project
+ */
 RCSIDH(detail_h, "$Id$")
 
 #ifdef __cplusplus
@@ -93,4 +109,4 @@ int detail_socket_open(CONF_SECTION *cs, rad_listen_t *this);
 }
 #endif
 
-#endif /* DETAIL_H */
+#endif /* _FR_DETAIL_H */

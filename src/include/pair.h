@@ -1,28 +1,36 @@
 /*
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _PAIR_H
-#define _PAIR_H
+#ifndef _FR_PAIR_H
+#define _FR_PAIR_H
 /**
  * $Id$
- * @file include/proto.h
- * @brief Protocol encoder/decoder support functions
+ *
+ * @file include/pair.h
+ * @brief AVP manipulation and search API.
  *
  * @copyright 2015 The FreeRADIUS server project
  */
+RCSIDH(pair_h, "$Id$")
+
 #include <freeradius-devel/libradius.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef WITH_VERIFY_PTR
 #  define VERIFY_VP(_x)		fr_pair_verify(__FILE__,  __LINE__, _x)
 #  define VERIFY_LIST(_x)	fr_pair_list_verify(__FILE__,  __LINE__, NULL, _x)
@@ -271,4 +279,8 @@ char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 /* Hacky raw pair thing that needs to go away */
 FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* _PAIR_H */

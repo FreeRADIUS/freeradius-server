@@ -1,8 +1,13 @@
 #ifndef _FR_SHA1_H
 #define _FR_SHA1_H
-
+/**
+ * $Id$
+ *
+ * @file include/sha1.h
+ * @brief Local implementation of the SHA1 hashing scheme.
+ */
 #ifdef WITH_OPENSSL_SHA1
-#include <openssl/sha.h>
+#  include <openssl/sha.h>
 #endif
 
 #ifdef __cplusplus
@@ -53,5 +58,4 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 #ifdef __cplusplus
 }
 #endif
-
 #endif /* _FR_SHA1_H */

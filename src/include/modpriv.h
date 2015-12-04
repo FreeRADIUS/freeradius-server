@@ -1,9 +1,30 @@
-/* modpriv.h: Stuff needed by both modules.c and modcall.c, but should not be
- * accessed from anywhere else.
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- * Version: $Id$ */
-#ifndef FR_MODPRIV_H
-#define FR_MODPRIV_H
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+#ifndef _FR_MODPRIV_H
+#define _FR_MODPRIV_H
+/**
+ * $Id$
+ *
+ * @file modpriv.h
+ * @brief Stuff needed by both modules.c and modcall.c, but should not be
+ *	accessed from anywhere else.
+ *
+ * @copyright 2015 The FreeRADIUS server project
+ */
+RCSIDH(modpriv_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
@@ -66,4 +87,4 @@ int			module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
 }
 #endif
 
-#endif	/* FR_MODPRIV_H */
+#endif	/* _FR_MODPRIV_H */

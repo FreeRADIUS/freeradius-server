@@ -1,28 +1,30 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License, version 2 of the
- *   License as published by the Free Software Foundation.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _FR_RADSNIFF_H
+#define _FR_RADSNIFF_H
 /**
  * $Id$
- * @file radsniff.h
+ *
+ * @file include/radsniff.h
  * @brief Structures and prototypes for the RADIUS sniffer.
  *
  * @copyright 2013 Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
  * @copyright 2006 The FreeRADIUS server project
  * @copyright 2006 Nicolas Baradakis <nicolas.baradakis@cegetel.net>
  */
-
 RCSIDH(radsniff_h, "$Id$")
 
 #include <sys/types.h>
@@ -337,4 +339,5 @@ void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timev
 int rs_stats_collectd_open(rs_t *conf);
 int rs_stats_collectd_close(rs_t *conf);
 
+#endif
 #endif

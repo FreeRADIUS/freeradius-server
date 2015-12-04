@@ -1,15 +1,13 @@
+#ifndef _FR_MD5_H
+#define _FR_MD5_H
 /**
  * $Id$
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file md5.h
+ * @file include/md5.h
  * @brief Structures and prototypes for md5.
  */
-
-#ifndef _FR_MD5_H
-#define _FR_MD5_H
-
 RCSIDH(md5_h, "$Id$")
 
 #ifdef HAVE_INTTYPES_H

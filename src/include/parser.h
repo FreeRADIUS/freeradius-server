@@ -1,27 +1,28 @@
-#ifndef FR_PARSER_H
-#define FR_PARSER_H
-
 /*
- * parser.h	Structures and prototypes for parsing
- * Version:	$Id$
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2013 Alan DeKok <aland@freeradius.org>
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _FR_PARSER_H
+#define _FR_PARSER_H
+/**
+ * $Id$
+ *
+ * @file include/parser.h
+ * @brief Condition parser API
+ *
+ * @copyright 2013 Alan DeKok <aland@freeradius.org>
+ */
 RCSIDH(parser_h, "$Id$")
 
 #ifdef __cplusplus
@@ -40,7 +41,6 @@ typedef enum {
 	COND_AND = '&',
 	COND_OR = '|'
 } fr_cond_op_t;
-
 
 typedef enum {
 	COND_TYPE_INVALID = 0,
@@ -68,24 +68,23 @@ typedef enum {
  *	(COND1 OP COND2)	no LHS/RHS, next is COND2, next OP is OP
  */
 struct fr_cond_t {
-	fr_cond_type_t	type;
+	fr_cond_type_t		type;
 
-	CONF_ITEM const *ci;
+	CONF_ITEM const		*ci;
 	union {
-		vp_map_t *map;
-		vp_tmpl_t *vpt;
-		fr_cond_t  	*child;
+		vp_map_t		*map;
+		vp_tmpl_t		*vpt;
+		fr_cond_t  		*child;
 	} data;
 
-	bool		negate;
-	fr_cond_pass2_t	pass2_fixup;
+	bool			negate;
+	fr_cond_pass2_t		pass2_fixup;
 
-	fr_dict_attr_t const *cast;
+	fr_dict_attr_t const	*cast;
 
-	fr_cond_op_t	next_op;
-	fr_cond_t	*next;
+	fr_cond_op_t		next_op;
+	fr_cond_t		*next;
 };
-
 
 /*
  *	One pass over the conditions means that all references must
@@ -105,5 +104,4 @@ bool fr_condition_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), v
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* FR_PARSER_H */
+#endif /* _FR_PARSER_H */

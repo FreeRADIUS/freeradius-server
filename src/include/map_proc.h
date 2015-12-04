@@ -1,30 +1,29 @@
 /*
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef MAP_PROC_H
-#define MAP_PROC_H
+#ifndef _MAP_PROC_H
+#define _MAP_PROC_H
 /**
  * $Id$
  *
- * @file map_proc.h
+ * @file include/map_proc.h
  * @brief Structures and prototypes for map functions
  *
  * @copyright 2015 The FreeRADIUS server project
  * @copyright 2015 Arran Cudbard-bell <a.cudbardb@freeradius.org>
  */
-
 RCSIDH(map_proc_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
@@ -80,4 +79,4 @@ rlm_rcode_t	map_proc(REQUEST *request, map_proc_inst_t const *inst);
 #ifdef __cplusplus
 }
 #endif
-#endif	/* MAP_PROC_H */
+#endif	/* _FR_MAP_PROC_H */

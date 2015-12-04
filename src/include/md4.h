@@ -1,15 +1,13 @@
+#ifndef _FR_MD4_H
+#define _FR_MD4_H
 /**
  * $Id$
  *
  * @note license is LGPL, but largely derived from a public domain source.
  *
- * @file md4.h
+ * @file include/md4.h
  * @brief Structures and prototypes for md4.
  */
-
-#ifndef _FR_MD4_H
-#define _FR_MD4_H
-
 RCSIDH(md4_h, "$Id$")
 
 #ifdef HAVE_INTTYPES_H
