@@ -420,7 +420,7 @@ typedef struct uint128_t {
 	union {
 		uint8_t v[16];
 		struct {
-#ifdef FR_LITTLE_ENDIAN
+#ifndef WORDS_BIGENDIAN
 			uint64_t l;
 			uint64_t h;
 #else
@@ -434,7 +434,7 @@ typedef struct int128_t {
 	union {
 		uint8_t v[16];
 		struct {
-#ifdef FR_LITTLE_ENDIAN
+#ifndef WORDS_BIGENDIAN
 			uint64_t l;
 			int64_t h;
 #else
@@ -451,7 +451,7 @@ typedef struct int128_t {
 
 /* abcd efgh -> dcba hgfe -> hgfe dcba */
 #ifndef HAVE_HTONLL
-#  ifdef FR_LITTLE_ENDIAN
+#  ifndef WORDS_BIGENDIAN
 #    ifdef HAVE_BUILTIN_BSWAP64
 #      define ntohll(x) __builtin_bswap64(x)
 #    else
@@ -464,7 +464,7 @@ typedef struct int128_t {
 #endif
 
 #ifndef HAVE_HTONLLL
-#  ifdef FR_LITTLE_ENDIAN
+#  ifndef WORDS_BIGENDIAN
 #    ifdef HAVE_128BIT_INTEGERS
 #      define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
 #    else

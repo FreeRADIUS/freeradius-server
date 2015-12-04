@@ -173,7 +173,7 @@ typedef union bfd_auth_t {
  *	A packet
  */
 typedef struct bfd_packet_t {
-#if BYTE_ORDER == BIG_ENDIAN
+#ifdef WORDS_BIGENDIAN
 	unsigned int	version : 3;
 	unsigned int	diag : 5;
 	unsigned int	state : 2;
@@ -183,7 +183,7 @@ typedef struct bfd_packet_t {
 	unsigned int	auth_present : 1;
 	unsigned int	demand : 1;
 	unsigned int	multipoint : 1;
-#elif BYTE_ORDER == LITTLE_ENDIAN
+#else
 	unsigned int	diag : 5;
 	unsigned int	version : 3;
 
@@ -194,8 +194,6 @@ typedef struct bfd_packet_t {
 	unsigned int	final : 1;
 	unsigned int	poll : 1;
 	unsigned int	state : 2;
-#else
-#error "Please define BYTE_ORDER"
 #endif
 	uint8_t		detect_multi;
 	uint8_t		length;

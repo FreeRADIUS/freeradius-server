@@ -10,8 +10,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <freeradius-devel/autoconf.h> /* Needed for endian macros */
-
 /*
  *	The ubiquitous stringify macros
  */
@@ -120,28 +118,6 @@ extern "C" {
 #  define RCSID(id)
 #  define RCSIDH(h, id)
 #endif
-
-/*
- *	Try and determine endianness of the target system.
- *
- *	Other projects seem to use endian.h and variants, but these are
- *	in non standard locations, and may mess up cross compiling.
- *
- *	Here at least the endianess can be set explicitly with
- *	-DLITTLE_ENDIAN or -DBIG_ENDIAN.
- */
-#if !defined(FR_LITTLE_ENDIAN) && !defined(FR_BIG_ENDIAN)
-#  if defined(__LITTLE_ENDIAN__) || \
-      (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
-#    define FR_LITTLE_ENDIAN 1
-#  elif defined(__BIG_ENDIAN__) || \
-      (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
-#    define FR_BIG_ENDIAN 1
-#  else
-#    error Failed determining endianness of system
-#  endif
-#endif
-
 #ifdef __cplusplus
 }
 #endif

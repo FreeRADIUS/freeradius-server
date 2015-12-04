@@ -636,7 +636,7 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 	uint64_t n[2];
 	char *p = buff;
 	int i;
-#ifdef FR_LITTLE_ENDIAN
+#ifndef WORDS_BIGENDIAN
 	const size_t l = 0;
 	const size_t h = 1;
 #else

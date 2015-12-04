@@ -49,7 +49,7 @@ void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen
  * will fill a supplied 16-byte array with the digest.
  */
 
-#ifdef FR_LITTLE_ENDIAN
+#ifndef WORDS_BIGENDIAN
 #  define htole32_4(buf)		/* Nothing */
 #  define htole32_14(buf)		/* Nothing */
 #  define htole32_16(buf)		/* Nothing */

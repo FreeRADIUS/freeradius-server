@@ -596,12 +596,10 @@ void version_print(void)
 		talloc_free(versions);
 
 		DEBUG2("Endianness:");
-#if defined(FR_LITTLE_ENDIAN)
-		DEBUG2("  little");
-#elif defined(FR_BIG_ENDIAN)
+#ifdef WORDS_BIGENDIAN
 		DEBUG2("  big");
 #else
-		DEBUG2("  unknown");
+		DEBUG2("  little");
 #endif
 
 		DEBUG2("Compilation flags:");
