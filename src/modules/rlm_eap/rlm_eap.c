@@ -34,15 +34,16 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_t, default_method_name), .dflt = "md5" },
 	{ FR_CONF_DEPRECATED("timer_expire", PW_TYPE_INTEGER, rlm_eap_t, timer_limit), .dflt = "60" },
 	{ FR_CONF_OFFSET("ignore_unknown_eap_types", PW_TYPE_BOOLEAN, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
-	{ FR_CONF_OFFSET("cisco_accounting_username_bug", PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), .dflt = "no" },
+	{ FR_CONF_OFFSET("cisco_accounting_username_bug", PW_TYPE_BOOLEAN, rlm_eap_t,
+			 mod_accounting_username_bug), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("max_sessions", PW_TYPE_INTEGER, rlm_eap_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
 
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
 
-/*
- * read the config section and load all the eap authentication types present.
- */
 static int mod_instantiate(CONF_SECTION *cs, void *instance)
 {
 	int		i, ret;
@@ -54,9 +55,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	/*
 	 *	Create our own random pool.
 	 */
-	for (i = 0; i < 256; i++) {
-		inst->rand_pool.randrsl[i] = fr_rand();
-	}
+	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
 	fr_randinit(&inst->rand_pool, 1);
 	inst->rand_pool.randcnt = 0;
 
@@ -65,16 +64,16 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 
 	/* Load all the configured EAP-Types */
 	num_methods = 0;
-	for(scs = cf_subsection_find_next(cs, NULL, NULL);
-	    scs != NULL;
-	    scs = cf_subsection_find_next(cs, scs, NULL)) {
+	for (scs = cf_subsection_find_next(cs, NULL, NULL);
+	     scs != NULL;
+	     scs = cf_subsection_find_next(cs, scs, NULL)) {
 
 		char const *name;
 
 		name = cf_section_name1(scs);
-		if (!name)  continue;
+		if (!name) continue;
 
-		if (!strcmp(name, TLS_CONFIG_SECTION))  continue;
+		if (!strcmp(name, TLS_CONFIG_SECTION)) continue;
 
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
@@ -119,15 +118,15 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 */
 		ret = eap_module_instantiate(inst, &inst->methods[method], method, scs);
 
-		(void) talloc_get_type_abort(inst->methods[method], eap_module_t);
+		(void)talloc_get_type_abort(inst->methods[method], eap_module_t);
 
 		if (ret < 0) {
-			(void) talloc_steal(inst, inst->methods[method]);
+			(void)talloc_steal(inst, inst->methods[method]);
 			return -1;
 		}
 
-		(void) talloc_steal(inst, inst->methods[method]);
-		num_methods++;	/* successfully loaded one more methods */
+		(void)talloc_steal(inst, inst->methods[method]);
+		num_methods++;        /* successfully loaded one more methods */
 	}
 
 	if (num_methods == 0) {
@@ -141,13 +140,13 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	method = eap_name2type(inst->default_method_name);
 	if (method == PW_EAP_INVALID) {
 		cf_log_err_cs(cs, "No dictionary definition for default EAP method '%s'",
-		       inst->default_method_name);
+			      inst->default_method_name);
 		return -1;
 	}
 
 	if (!inst->methods[method]) {
 		cf_log_err_cs(cs, "No such sub-type for default EAP method %s",
-		       inst->default_method_name);
+			      inst->default_method_name);
 		return -1;
 	}
 	inst->default_method = method; /* save the numerical method */
@@ -155,11 +154,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	return 0;
 }
 
-
-/*
- *	For backwards compatibility.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t		*inst;
 	eap_session_t		*eap_session;
@@ -167,11 +162,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	eap_rcode_t		status;
 	rlm_rcode_t		rcode;
 
-	inst = (rlm_eap_t *) instance;
+	inst = (rlm_eap_t *)instance;
 
 	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY)) {
-		REDEBUG("You set 'Auth-Type = EAP' for a request that does "
-			"not contain an EAP-Message attribute!");
+		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -191,7 +185,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	eap_session = eap_session_get(inst, &eap_packet, request);
 	if (!eap_session) {
-		RDEBUG2("Failed in eap_session");
+		REDEBUG("Failed allocating or retrieving EAP session");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -207,7 +201,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	if (status == EAP_INVALID) {
 		eap_fail(eap_session);
 		TALLOC_FREE(eap_session);
-		RDEBUG2("Failed in EAP select");
+		REDEBUG("Failed in EAP select");
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
@@ -232,9 +226,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		rcode = RLM_MODULE_HANDLED;
 		goto finish;
 	}
-#endif
 
-#ifdef WITH_PROXY
 	/*
 	 *	Maybe the request was marked to be proxied.  If so,
 	 *	proxy it.
@@ -263,10 +255,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		if (vp) {
 			vp = fr_pair_find_by_num(request->proxy->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 			if (!vp) {
-				fr_pair_make(request->proxy,
-					 &request->proxy->vps,
-					 "Message-Authenticator",
-					 NULL, T_OP_EQ);
+				fr_pair_make(request->proxy, &request->proxy->vps,
+					     "Message-Authenticator", NULL, T_OP_EQ);
 			}
 		}
 
@@ -342,7 +332,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			char *new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
 
 			memcpy(new, vp->vp_strvalue, vp->vp_length);
-			fr_pair_value_strsteal(vp, new);	/* Also frees existing buffer */
+			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
 		}
 	}
 
@@ -362,7 +352,7 @@ finish:
  * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initilization.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	int		status;
@@ -428,13 +418,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	return RLM_MODULE_UPDATED;
 }
 
-
 #ifdef WITH_PROXY
 /*
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
@@ -608,7 +597,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 }
 #endif
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_eap_t		*inst = instance;
 	VALUE_PAIR		*vp;

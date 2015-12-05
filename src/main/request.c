@@ -269,8 +269,7 @@ static int _request_data_free(request_data_t *this)
  *				data is also parented by the request or state.
  * @param[in] persist		If true, before the request is freed, the opaque data will be
  *				transferred to an #fr_state_entry_t, and restored to a
- *				subsequent linked request
- *				should we receive one.
+ *				subsequent linked request should we receive one.
  * @return
  *	- -2 on bad arguments.
  *	- -1 on memory allocation error.
