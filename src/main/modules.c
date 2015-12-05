@@ -2067,7 +2067,7 @@ int modules_init(CONF_SECTION *config)
 	CONF_SECTION	*modules;
 
 	modules = cf_section_sub_find(config, "modules");
-	rad_assert(modules != NULL);
+	if (!modules) return 0;
 
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
