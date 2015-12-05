@@ -229,7 +229,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 					  false, false, false);
 		rad_assert(status == 0);
 
-		return RLM_MODULE_HANDLED; /* do NOT set eap_session->request = NULL */
+		rcode = RLM_MODULE_HANDLED;
+		goto finish;
 	}
 #endif
 
@@ -277,7 +278,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		fr_pair_delete_by_num(&request->proxy->vps, VENDORPEC_FREERADIUS, PW_FREERADIUS_PROXIED_TO, TAG_ANY);
 
 		RDEBUG2("Tunneled session will be proxied.  Not doing EAP");
-		return RLM_MODULE_HANDLED; /* do NOT set eap_session->request = NULL */
+		rcode = RLM_MODULE_HANDLED;
+		goto finish;
 	}
 #endif
 
@@ -468,7 +470,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	Do the callback...
 		 */
 		RDEBUG2("Doing post-proxy callback");
+
+		eap_session->request = request;
 		rcode = data->callback(eap_session, data->tls_session);
+		eap_session->request = NULL;
+
 		talloc_free(data);
 		if (rcode == 0) {
 			RDEBUG2("Failed in post-proxy callback");
