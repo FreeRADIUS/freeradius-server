@@ -1434,22 +1434,37 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 */
 	} else {
 		CONF_PAIR *next = cp;
+
 		value = cp->value;
 		cp->parsed = true;
 		c_item = &cp->item;
 
-		/*
-		 *	@fixme We should actually validate
-		 *	the value of the pairs too
-		 */
-		if (multi) while ((next = cf_pair_find_next(cs, next, name))) {
-			next->parsed = true;
-		}
-
 		if (deprecated) {
 			cf_log_err(c_item, "Configuration item \"%s\" is deprecated", name);
-
 			return -2;
+		}
+
+		/*
+		 *	A quick check to see if the next item is the same.
+		 */
+		if (!multi && cp->item.next && (cp->item.next->type == CONF_ITEM_PAIR)) {
+			next = cf_item_to_pair(cp->item.next);
+
+			if (strcmp(next->attr, name) == 0) {
+				WARN("%s[%d]: Ignoring duplicate configuration item '%s'",
+				     next->item.filename ? next->item.filename : "unknown",
+				     next->item.lineno, name);
+			}
+		}
+										   
+		if (multi) {
+			while ((next = cf_pair_find_next(cs, next, name)) != NULL) {
+				/*
+				 *	@fixme We should actually validate
+				 *	the value of the pairs too
+				 */
+				next->parsed = true;
+			};
 		}
 	}
 
