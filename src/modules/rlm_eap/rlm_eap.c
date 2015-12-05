@@ -179,9 +179,10 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Create the eap eap_session.  The eap_packet will end up being
-	 *	"swallowed" into the eap_session, so we can't access it after
-	 *	this call.
+	 *	Allocate a new eap_session, or if this request
+	 *	is part of an ongoing authentication session,
+	 *	retrieve the existing eap_session from the request
+	 *	data.
 	 */
 	eap_session = eap_session_get(inst, &eap_packet, request);
 	if (!eap_session) {
@@ -190,33 +191,36 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Select the appropriate method or default to the
-	 *	configured one
+	 *	Call an EAP submodule to process the request,
+	 *	or with simple types like Identity and NAK,
+	 *	process it ourselves.
 	 */
 	status = eap_method_select(inst, eap_session);
 
 	/*
-	 *	If it failed, die.
+	 *	The submodule failed.  Die.
 	 */
 	if (status == EAP_INVALID) {
-		eap_fail(eap_session);
-		TALLOC_FREE(eap_session);
-		REDEBUG("Failed in EAP select");
+		REDEBUG("Failed continuing EAP session");
+
+		eap_fail(eap_session);		/* Compose an EAP-Failure */
+		TALLOC_FREE(eap_session);	/* Free the session and disassociate it from the request */
+
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
 #ifdef WITH_PROXY
 	/*
-	 *	If we're doing horrible tunneling work, remember it.
+	 *	If we're doing horrible tunnelling work, remember it.
 	 */
 	if ((request->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
 		RDEBUG2("Proxy EAP as non-EAP.  Not composing EAP");
 
 		/*
-		 *	Add the handle to the proxied list, so that we
-		 *	can retrieve it in the post-proxy stage, and
-		 *	send a response.
+		 *	Add request data to mark the request as having
+		 *	been proxied, and having been processed
+		 *	by the rlm_eap module before being proxied.
 		 */
 		eap_session->inst = inst;
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
@@ -236,13 +240,13 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 		rad_assert(!request->proxy_reply);
 
-		/*
-		 *	Add the handle to the proxied list, so that we
-		 *	can retrieve it in the post-proxy stage, and
-		 *	send a response.
-		 */
 		eap_session->inst = inst;
 
+		/*
+		 *	Add request data to mark the request as having
+		 *	been proxied, and having been processed
+		 *	by the rlm_eap module before being proxied.
+		 */
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
 					  false, false, false);
 		rad_assert(status == 0);
