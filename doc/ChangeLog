@@ -13,6 +13,10 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Portability fixes for Solaris.
 	* More errors from ntlm_auth gets passed to MS-CHAP.
 	* Update abfab-tr-idp virtual server.
+	* Added "filter_password" in policy.d/filter.  This
+	  removes embedded zeros in User-Password.
+	* The server now issues a WARNING message if duplicate
+	  configuration items are found.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
@@ -37,6 +41,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Fixed SoH. Attributes were not being copied to the virtual server.
 	* Used a wrong list to global statistics in "stats".
 	* Create EAP-PWD identity correctly.  Prevents segfaults.
+	* Dynamically validate authentication types for PEAP and EAP-MSCHAPv2.
+	* Fix includes in installed headers.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
