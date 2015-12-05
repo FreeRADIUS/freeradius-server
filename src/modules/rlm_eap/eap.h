@@ -68,7 +68,9 @@ struct _eap_session {
 
 	eap_type_t	type;				//!< EAP method number.
 
-	REQUEST		*request;			//!< Request that contains the response we're processing.
+	REQUEST		*request;			//!< Current request.  Only used by OpenSSL callbacks to
+							//!< access the current request.  Must be NULL if eap_session
+							//!< is not being processed by rlm_eap.
 
 	char		*identity;			//!< NAI (User-Name) from EAP-Identity
 
