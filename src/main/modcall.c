@@ -457,6 +457,7 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
 			    modcall_stack_entry_t *entry, bool do_next_sibling)
 {
 	bool if_taken, was_if;
+	bool check_c_type;
 	modcallable *c;
 	int priority;
 	rlm_rcode_t result;
@@ -801,11 +802,11 @@ redo:
 	/*
 	 *	Child is a group that has children of it's own.
 	 */
-	if ((c->type == MOD_GROUP) || (c->type == MOD_POLICY)
+	check_c_type = ((c->type == MOD_GROUP) || (c->type == MOD_POLICY));
 #ifdef WITH_UNLANG
-	    || (c->type == MOD_CASE)
+  check_c_type = (check_c_type || (c->type == MOD_CASE));
 #endif
-		) {
+	if (check_c_type) {
 		modgroup *g;
 
 #ifdef WITH_UNLANG
