@@ -170,7 +170,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Get the eap packet  to start with
+	 *	Reconstruct the EAP packet from EAP-Message fragments
+	 *	in the request.
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
@@ -333,8 +334,9 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	terminated string in Access-Accept.
 		 */
 		if (inst->mod_accounting_username_bug) {
-			char *new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
+			char *new;
 
+			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
 			memcpy(new, vp->vp_strvalue, vp->vp_length);
 			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
 		}
@@ -609,7 +611,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	eap_packet_raw_t	*eap_packet;
 
 	/*
-	 * Only build a failure message if something previously rejected the request
+	 *	Only build a failure message if something previously rejected the request
 	 */
 	vp = fr_pair_find_by_num(request->config, 0, PW_POST_AUTH_TYPE, TAG_ANY);
 
@@ -625,25 +627,35 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
+	/*
+	 *	Reconstruct the EAP packet from EAP-Message fragments
+	 *	in the request.
+	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
 		RERROR("Malformed EAP Message: %s", fr_strerror());
 		return RLM_MODULE_FAIL;
 	}
 
+
+	/*
+	 *	Retrieve pre-existing eap_session from request
+	 *	data.  This will have been added to the request
+	 *	data by the state API.
+	 */
 	eap_session = eap_session_get(inst, &eap_packet, request);
 	if (!eap_session) {
 		RDEBUG2("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG2("Request was previously rejected, inserting EAP-Failure");
-	eap_fail(eap_session);
-	talloc_free(eap_session);
+	REDEBUG("Request was previously rejected, inserting EAP-Failure");
+	eap_fail(eap_session);		/* Compose an EAP failure */
+	talloc_free(eap_session);	/* Free the EAP session */
 
 	/*
-	 * Make sure there's a message authenticator attribute in the response
-	 * RADIUS protocol code will calculate the correct value later...
+	 *	Make sure there's a message authenticator attribute in the response
+	 *	RADIUS protocol code will calculate the correct value later...
 	 */
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {

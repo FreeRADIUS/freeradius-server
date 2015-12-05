@@ -1009,11 +1009,11 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 /*
  *	Create our Request-Response data structure with the eap packet
  */
-static eap_round_t *eap_buildds(eap_session_t *eap_session, eap_packet_raw_t **eap_packet_p)
+static eap_round_t *eap_round_build(eap_session_t *eap_session, eap_packet_raw_t **eap_packet_p)
 {
 	eap_round_t		*eap_round = NULL;
-	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 	int			typelen;
+	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 	uint16_t		len;
 
 	eap_round = eap_round_alloc(eap_session);
@@ -1057,13 +1057,24 @@ static eap_round_t *eap_buildds(eap_session_t *eap_session, eap_packet_raw_t **e
 	return eap_round;
 }
 
-/*
- * If identity response then create a fresh eap_session & fill the identity
- * else eap_session MUST be in our list, get that.
- * This eap_session creation cannot fail
+/** Retrieve or allocate a new eap_session_t
  *
- * username contains REQUEST->username which might have been stripped.
- * identity contains the one sent in EAP-Identity response
+ * If eap_packet is an Identity-Response then allocate a new eap_session
+ * and fill the identity.
+ *
+ * If eap_packet is not an identity response, retrieve the pre-existing
+ * eap_session_t from request data.
+ *
+ * If no User-Name attribute is present in the request, one will be created
+ * from the Identity-Response received when the eap_session was allocated.
+ *
+ * @param inst of the rlm_eap module.
+ * @param eap_packet_p extracted from the RADIUS Access-Request.  Consumed or freed by this
+ *	function.  Do not access after calling this function.
+ * @param request The current request.
+ * @return
+ *	- A newly allocated eap_session_t, or the one associated with the current request.
+ *	- NULL on error.
  */
 eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p, REQUEST *request)
 {
@@ -1141,7 +1152,8 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	correctly
 			*/
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", eap_session->identity, T_OP_EQ);
+		       vp = fr_pair_make(request->packet, &request->packet->vps,
+		       			 "User-Name", eap_session->identity, T_OP_EQ);
 		       if (!vp) {
 			       goto error;
 		       }
@@ -1208,7 +1220,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	       }
 	}
 
-	eap_session->this_round = eap_buildds(eap_session, eap_packet_p);
+	eap_session->this_round = eap_round_build(eap_session, eap_packet_p);
 	if (!eap_session->this_round) {
 		REDEBUG("Failed allocating memory for round");
 		goto error2;
