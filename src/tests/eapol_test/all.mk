@@ -100,7 +100,7 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 	@echo 'maindir = ${top_builddir}/raddb/' >> $@
 	@echo 'radacctdir = $${testdir}' >> $@
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
-	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > $(GDB_LOG) 2>&1; cat $(GDB_LOG)"' >> $@
+	@echo 'panic_action = "gdb -batch -x $${testdir}/panic.gdb %e %p > $(GDB_LOG) 2>&1; cat $(GDB_LOG)"' >> $@
 	@echo 'security {' >> $@
 	@echo '        allow_vulnerable_openssl = yes' >> $@
 	@echo '}' >> $@
