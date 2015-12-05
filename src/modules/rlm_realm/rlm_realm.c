@@ -75,6 +75,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	char *ptr;
 	VALUE_PAIR *vp;
 	REALM *realm;
+	bool check_request;
 
 	struct rlm_realm_t *inst = instance;
 
@@ -91,12 +92,11 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Also, if there's no User-Name attribute, we can't
 	 *	proxy it, either.
 	 */
-	if ((!request->username)
+  check_request = (!request->username);
 #ifdef WITH_PROXY
-	    || (request->proxy != NULL)
+  check_request = (check_request || (request->proxy != NULL));
 #endif
-	    ) {
-
+	if (check_request) {
 		RDEBUG2("Proxy reply, or no User-Name.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
@@ -515,4 +515,3 @@ module_t rlm_realm = {
 #endif
 	},
 };
-
