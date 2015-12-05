@@ -93,14 +93,14 @@ $(CONFIG_PATH)/dictionary:
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> $@
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> $@
 
-$(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
+$(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
 	@echo 'testdir =' $(CONFIG_PATH) >> $@
 	@echo 'logdir =' $(OUTPUT_DIR) >> $@
 	@echo 'maindir = ${top_builddir}/raddb/' >> $@
 	@echo 'radacctdir = $${testdir}' >> $@
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
-	@echo 'panic_action = "gdb -batch -x $${testdir}/panic.gdb %e %p > $(GDB_LOG) 2>&1; cat $(GDB_LOG)"' >> $@
+	@echo 'panic_action = "gdb -batch -x ${top_srcdir}/src/tests/panic.gdb %e %p > $(GDB_LOG) 2>&1; cat $(GDB_LOG)"' >> $@
 	@echo 'security {' >> $@
 	@echo '        allow_vulnerable_openssl = yes' >> $@
 	@echo '}' >> $@
