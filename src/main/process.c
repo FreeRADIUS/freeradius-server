@@ -3389,12 +3389,14 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	struct timeval when;
+	bool check_home;
 
-	if ((home->state == HOME_STATE_ALIVE) ||
+  check_home = (home->state == HOME_STATE_ALIVE);
 #ifdef WITH_TCP
-	    (home->proto == IPPROTO_TCP) ||
+  check_home = (check_home || (home->proto == IPPROTO_TCP));
 #endif
-	    (home->ev != NULL)) {
+  check_home = (check_home || (home->ev != NULL));
+	if (check_home) {
 		return;
 	}
 
@@ -3725,6 +3727,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
  */
 static void proxy_wait_for_reply(REQUEST *request, int action)
 {
+  bool check_home_state;
 	struct timeval now, when;
 	struct timeval *response_window = NULL;
 	home_server_t *home = request->home_server;
@@ -3889,12 +3892,11 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	This check should really be part of a home
 		 *	server state machine.
 		 */
-		if (((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN))
+		check_home_state = ((home->state == HOME_STATE_ALIVE) || (home->state == HOME_STATE_UNKNOWN));
 #ifdef WITH_TCP
-		    && (home->proto != IPPROTO_TCP)
+    check_home_state = (check_home_state && (home->proto != IPPROTO_TCP));
 #endif
-			) {
+			if (check_home_state) {
 			home->response_timeouts++;
 			if (home->response_timeouts >= home->max_response_timeouts)
 				mark_home_server_zombie(home, &now, response_window);
@@ -4524,17 +4526,18 @@ static void coa_running(REQUEST *request, int action)
  ***********************************************************************/
 static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
+  bool check_listener;
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
 	rad_assert(xel == el);
 
-	if ((listener->fd < 0)
+  check_listener = (listener->fd < 0);
 #ifdef WITH_DETAIL
 #ifndef WITH_DETAIL_THREAD
-	    && (listener->type != RAD_LISTEN_DETAIL)
+  check_listener = (check_listener && (listener->type != RAD_LISTEN_DETAIL));
 #endif
 #endif
-		) {
+		if (check_listener) {
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));
