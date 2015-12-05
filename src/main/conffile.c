@@ -2106,7 +2106,7 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 		next = cf_pair_find_next(cs, cp, name);
 		if (next) {
-			cf_log_err(&(next->item), "Single instance of \"%s\" is allowed in this section", name);
+			cf_log_err(&(next->item), "Invalid duplicate configuration item '%s'", name);
 			return -1;
 		}
 
