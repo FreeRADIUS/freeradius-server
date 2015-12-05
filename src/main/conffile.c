@@ -2090,6 +2090,8 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	the data pointer directly.
 	 */
 	} else {
+		CONF_PAIR *next;
+
 		cp = cf_pair_find(cs, name);
 		if (!cp) {
 			if (deprecated) return 0;
@@ -2100,6 +2102,12 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 			if (cf_pair_default(&dflt_cp, cs, name, type, dflt, dflt_quote) < 0) return -1;
 			cp = dflt_cp;
+		}
+
+		next = cf_pair_find_next(cs, cp, name);
+		if (next) {
+			cf_log_err(&(next->item), "Single instance of \"%s\" is allowed in this section", name);
+			return -1;
 		}
 
 		if (deprecated) goto deprecated;

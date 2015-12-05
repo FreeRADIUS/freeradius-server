@@ -57,19 +57,19 @@ test.conf: dictionary
 	@echo 'modconfdir = $${maindir}mods-config' >> $@
 	@echo 'certdir = $${maindir}/certs' >> $@
 	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
 	@echo '$$INCLUDE $${testdir}/config/' >> $@
 
 
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
-	@printf "Starting server... "
+	@printf "TEST-SERVER Starting server... "
 	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D $(TEST_PATH); then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
 	fi
 	@echo "ok"
+	@echo "Server logging to \"$(TEST_PATH)/radius.log\""
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
