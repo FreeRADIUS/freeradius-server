@@ -277,8 +277,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		fr_pair_delete_by_num(&request->proxy->vps, VENDORPEC_FREERADIUS, PW_FREERADIUS_PROXIED_TO, TAG_ANY);
 
 		RDEBUG2("Tunneled session will be proxied.  Not doing EAP");
-		rcode = RLM_MODULE_HANDLED;
-		goto finish;
+		return RLM_MODULE_HANDLED; /* do NOT set eap_session->request = NULL */
 	}
 #endif
 
