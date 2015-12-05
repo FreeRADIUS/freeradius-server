@@ -298,6 +298,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /* assign new IP address, if required */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
+  bool check_inst;
 	VALUE_PAIR *vp;
 	char const *pname;       /* name of requested IP pool */
 	uint32_t nasip;	     /* NAS IP in host byte order */
@@ -369,11 +370,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	nvp_select_finish(inst, sqlsock);
 
 	/* synchronize with radacct db, if needed */
-	if (++inst->sincesync >= inst->sync_after
+	  check_inst = (++inst->sincesync >= inst->sync_after);
 #ifdef HAVE_PTHREAD_D
-	    && (pthread_mutex_trylock(&inst->mutex)) == 0
+    check_inst = (check_inst && (pthread_mutex_trylock(&inst->mutex)) == 0);
 #endif
-	   ) {
+	  if (check_inst) {
 		int r;
 
 		inst->sincesync = 0;
