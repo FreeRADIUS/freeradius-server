@@ -528,6 +528,7 @@ static void proxy_reply_too_late(REQUEST *request)
 static void request_done(REQUEST *request, int action)
 {
 	struct timeval now, when;
+	bool check_request;
 
 	VERIFY_REQUEST(request);
 
@@ -670,11 +671,13 @@ static void request_done(REQUEST *request, int action)
 		 *	We haven't received all responses, AND there's still
 		 *	time to wait.  Do so.
 		 */
-		if ((request->num_proxied_requests > request->num_proxied_responses) &&
+		check_request = (request->num_proxied_requests > request->num_proxied_responses);
 #ifdef WITH_TCP
-		    (request->home_server->proto != IPPROTO_TCP) &&
+    check_request = (check_request && (request->home_server->proto != IPPROTO_TCP));
 #endif
-		    timercmp(&now, &when, <)) {
+    check_request = (check_request && timercmp(&now, &when, <));
+
+		if (check_request) {
 			RDEBUG("Waiting for more responses from the home server");
 			goto wait_some_more;
 		}
