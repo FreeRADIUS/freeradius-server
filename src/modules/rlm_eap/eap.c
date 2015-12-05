@@ -889,7 +889,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	if ((len <= EAP_HEADER_LEN) ||
 	    ((eap_packet->code != PW_EAP_RESPONSE) &&
 	     (eap_packet->code != PW_EAP_REQUEST))) {
-		RAUTH("Badly formatted EAP Message: Ignoring the packet");
+		REDEBUG("Badly formatted EAP Message: Ignoring the packet");
 		return EAP_INVALID;
 	}
 
@@ -903,32 +903,32 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 			uint8_t *p, *q;
 
 			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
-				RAUTH("Expanded EAP type is too short: ignoring the packet");
+				REDEBUG("Expanded EAP type is too short: ignoring the packet");
 				return EAP_INVALID;
 			}
 
 			if ((eap_packet->data[1] != 0) ||
 			    (eap_packet->data[2] != 0) ||
 			    (eap_packet->data[3] != 0)) {
-				RAUTH("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
+				REDEBUG("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
 				return EAP_INVALID;
 			}
 
 			if ((eap_packet->data[4] != 0) ||
 			    (eap_packet->data[5] != 0) ||
 			    (eap_packet->data[6] != 0)) {
-				RAUTH("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
+				REDEBUG("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
 				return EAP_INVALID;
 			}
 
 			if ((eap_packet->data[7] == 0) ||
 			    (eap_packet->data[7] >= PW_EAP_MAX_TYPES)) {
-				RAUTH("Unsupported Expanded EAP type %u: ignoring the packet", eap_packet->data[7]);
+				REDEBUG("Unsupported Expanded EAP type %u: ignoring the packet", eap_packet->data[7]);
 				return EAP_INVALID;
 			}
 
 			if (eap_packet->data[7] == PW_EAP_NAK) {
-				RAUTH("Unsupported Expanded EAP-NAK: ignoring the packet");
+				REDEBUG("Unsupported Expanded EAP-NAK: ignoring the packet");
 				return EAP_INVALID;
 			}
 
@@ -940,7 +940,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 
 			p = talloc_realloc(talloc_parent(eap_packet), eap_packet, uint8_t, len - 7);
 			if (!p) {
-				RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
+				REDEBUG("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
 				return EAP_INVALID;
 			}
 
@@ -955,14 +955,13 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 			return EAP_VALID;
 		}
 
-		RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
+		REDEBUG("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
 		return EAP_INVALID;
 	}
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == PW_EAP_NOTIFICATION) {
-		RAUTH("Got NOTIFICATION, "
-			       "Ignoring the packet");
+		REDEBUG("Got NOTIFICATION, Ignoring the packet");
 		return EAP_INVALID;
 	}
 
