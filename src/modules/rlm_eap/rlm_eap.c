@@ -441,6 +441,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 		eap_tunnel_data_t	*data;
 
 		eap_session = eap_session_thaw(request);
+		rad_assert(eap_session);
 
 		/*
 		 *	Grab the tunnel callbacks from the request.
