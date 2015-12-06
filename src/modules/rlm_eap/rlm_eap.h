@@ -78,19 +78,31 @@ typedef struct rlm_eap {
 #define pthread_mutex_unlock(_x)
 #endif
 
-/* function definitions */
-/* EAP-Type */
+/*
+ *	EAP Method selection
+ */
 int      	eap_module_instantiate(rlm_eap_t *inst, eap_module_t **method, eap_type_t num, CONF_SECTION *cs);
 eap_rcode_t	eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session);
 
-/* EAP */
+/*
+ *	EAP Method composition
+ */
 int  		eap_start(rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
 void 		eap_fail(eap_session_t *eap_session) CC_HINT(nonnull);
 void 		eap_success(eap_session_t *eap_session) CC_HINT(nonnull);
 rlm_rcode_t 	eap_compose(eap_session_t *eap_session) CC_HINT(nonnull);
-eap_session_t 	*eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet, REQUEST *request) CC_HINT(nonnull);
 
-/* Memory Management */
+/*
+ *	Session management
+ */
+void		eap_session_destroy(eap_session_t **eap_session);
+void		eap_session_freeze(eap_session_t **eap_session);
+eap_session_t	*eap_session_thaw(REQUEST *request);
+eap_session_t 	*eap_session_continue(eap_packet_raw_t **eap_packet, rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
+
+/*
+ *	Memory management
+ */
 eap_round_t	*eap_round_alloc(eap_session_t *eap_session);
 eap_session_t	*eap_session_alloc(rlm_eap_t *inst, REQUEST *request);
 

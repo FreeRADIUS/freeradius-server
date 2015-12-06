@@ -185,7 +185,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	retrieve the existing eap_session from the request
 	 *	data.
 	 */
-	eap_session = eap_session_get(inst, &eap_packet, request);
+	eap_session = eap_session_continue(&eap_packet, inst, request);
 	if (!eap_session) {
 		REDEBUG("Failed allocating or retrieving EAP session");
 		return RLM_MODULE_INVALID;
@@ -203,10 +203,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (status == EAP_INVALID) {
 		REDEBUG("Failed continuing EAP session");
-
-		eap_fail(eap_session);		/* Compose an EAP-Failure */
-		TALLOC_FREE(eap_session);	/* Free the session and disassociate it from the request */
-
+		eap_fail(eap_session);
+		eap_session_destroy(&eap_session);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
@@ -219,12 +217,10 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		RDEBUG2("Proxy EAP as non-EAP.  Not composing EAP");
 
 		/*
-		 *	Add request data to mark the request as having
-		 *	been proxied, and having been processed
-		 *	by the rlm_eap module before being proxied.
+		 *	Mark the request up as having been see by the EAP
+		 *	module before proxying.
 		 */
-		eap_session->inst = inst;
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
 					  false, false, false);
 		rad_assert(status == 0);
 
@@ -241,14 +237,11 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 		rad_assert(!request->proxy_reply);
 
-		eap_session->inst = inst;
-
 		/*
-		 *	Add request data to mark the request as having
-		 *	been proxied, and having been processed
-		 *	by the rlm_eap module before being proxied.
+		 *	Mark the request up as having been see by the EAP
+		 *	module before proxying.
 		 */
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
 					  false, false, false);
 		rad_assert(status == 0);
 
@@ -309,7 +302,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		eap_session->this_round = NULL;
 	} else {
 		RDEBUG2("Freeing eap_session");
-		TALLOC_FREE(eap_session);
+		eap_session_destroy(&eap_session);
 	}
 
 	/*
@@ -349,7 +342,7 @@ finish:
 	 *	state entry, the destructor knows it's not associated
 	 *	with a request.
 	 */
-	if (eap_session) eap_session->request = NULL;
+	eap_session_freeze(&eap_session);
 	return rcode;
 }
 
@@ -457,7 +450,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
 			RERROR("Failed to retrieve callback for tunneled session!");
-			talloc_free(eap_session);
+			eap_session_destroy(&eap_session);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -474,7 +467,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 		if (rcode == 0) {
 			RDEBUG2("Failed in post-proxy callback");
 			eap_fail(eap_session);
-			talloc_free(eap_session);
+			eap_session_destroy(&eap_session);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -495,7 +488,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 			eap_session->this_round = NULL;
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			RDEBUG2("Freeing eap_session");
-			talloc_free(eap_session);
+			eap_session_destroy(&eap_session);
 		}
 
 		/*
@@ -643,15 +636,15 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 *	data.  This will have been added to the request
 	 *	data by the state API.
 	 */
-	eap_session = eap_session_get(inst, &eap_packet, request);
+	eap_session = eap_session_continue(&eap_packet, inst, request);
 	if (!eap_session) {
 		RDEBUG2("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
 	REDEBUG("Request was previously rejected, inserting EAP-Failure");
-	eap_fail(eap_session);		/* Compose an EAP failure */
-	talloc_free(eap_session);	/* Free the EAP session */
+	eap_fail(eap_session);				/* Compose an EAP failure */
+	eap_session_destroy(&eap_session);		/* Free the EAP session, and dissociate it from the request */
 
 	/*
 	 *	Make sure there's a message authenticator attribute in the response

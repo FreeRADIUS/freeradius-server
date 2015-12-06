@@ -1057,26 +1057,139 @@ static eap_round_t *eap_round_build(eap_session_t *eap_session, eap_packet_raw_t
 	return eap_round;
 }
 
-/** Retrieve or allocate a new eap_session_t
+/** 'destroy' an EAP session and dissasociate it from the current request
  *
- * If eap_packet is an Identity-Response then allocate a new eap_session
- * and fill the identity.
+ * @note This could be done in the eap_session_t destructor (and was done previously)
+ *	but this made the code too hard to follow, and too fragile.
  *
- * If eap_packet is not an identity response, retrieve the pre-existing
- * eap_session_t from request data.
+ * @see eap_session_continue
+ * @see eap_session_freeze
+ * @see eap_session_thaw
  *
- * If no User-Name attribute is present in the request, one will be created
- * from the Identity-Response received when the eap_session was allocated.
+ * @param eap_session to destroy (disassociate and free).
+ */
+void eap_session_destroy(eap_session_t **eap_session)
+{
+	if (!*eap_session) return;
+
+	if (!(*eap_session)->request) {
+		TALLOC_FREE(*eap_session);
+		return;
+	}
+
+#ifndef NDEBUG
+	{
+		eap_session_t *in_request;
+
+		in_request = request_data_get((*eap_session)->request, NULL, REQUEST_DATA_EAP_SESSION);
+
+		/*
+		 *	Additional sanity check.  Either there's no eap_session
+		 *	associated with the request, or it matches the one we're
+		 *	about to free.
+		 */
+		rad_assert(!in_request || (*eap_session == in_request));
+	}
+#else
+	(void) request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+#endif
+
+	TALLOC_FREE(*eap_session);
+}
+
+/** Freeze an #eap_session_t so that it can continue later
  *
- * @param inst of the rlm_eap module.
+ * Sets the request and pointer to the eap_session to NULL. Primarily here to help track
+ * the lifecycle of an #eap_session_t.
+ *
+ * The actual freezing/thawing and management (ensuring it's available during multiple
+ * rounds of EAP) of the #eap_session_t associated with REQUEST_DATA_EAP_SESSION, is
+ * done by the state API.
+ *
+ * @note must be called before the mod_* function rlm_eap returns.
+ *
+ * @see eap_session_continue
+ * @see eap_session_thaw
+ * @see eap_session_destroy
+ *
+ * @param eap_session to freeze.
+ */
+void eap_session_freeze(eap_session_t **eap_session)
+{
+	if (!*eap_session) return;
+
+	rad_assert((*eap_session)->request);
+	(*eap_session)->request = NULL;
+	*eap_session = NULL;
+}
+
+/** Thaw an eap_session_t so it can be continued
+ *
+ * Retrieve an #eap_session_t from the request data, and set relevant fields. Primarily
+ * here to help track the lifecycle of an #eap_session_t.
+ *
+ * The actual freezing/thawing and management (ensuring it's available during multiple
+ * rounds of EAP) of the #eap_session_t associated with REQUEST_DATA_EAP_SESSION, is
+ * done by the state API.
+ *
+ * @note #eap_session_continue should be used instead if ingesting an #eap_packet_raw_t.
+ *
+ * @see eap_session_continue
+ * @see eap_session_freeze
+ * @see eap_session_destroy
+ *
+ * @param request to retrieve session from.
+ * @return
+ *	- The #eap_session_t associated with this request.
+ *	  MUST be freed with #eap_session_destroy if being disposed of, OR
+ *	  MUST be re-frozen with #eap_session_freeze if the authentication session will
+ *	  continue when a future request is received.
+ *	- NULL if no #eap_session_t associated with this request.
+ */
+eap_session_t *eap_session_thaw(REQUEST *request)
+{
+	eap_session_t *eap_session;
+
+	eap_session = request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
+	if (!eap_session) {
+		/* Either send EAP_Identity or EAP-Fail */
+		REDEBUG("No EAP session matching state");
+		return NULL;
+	}
+
+	rad_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
+	eap_session->request = request;
+	eap_session->updated = request->timestamp.tv_sec;
+
+	return eap_session;
+}
+
+/** Ingest an eap_packet into a thawed or newly allocated session
+ *
+ * If eap_packet is an Identity-Response then allocate a new eap_session and fill the identity.
+ *
+ * If eap_packet is not an identity response, retrieve the pre-existing eap_session_t from request
+ * data.
+ *
+ * If no User-Name attribute is present in the request, one will be created from the
+ * Identity-Response received when the eap_session was allocated.
+ *
+ * @see eap_session_freeze
+ * @see eap_session_thaw
+ * @see eap_session_destroy
+ *
  * @param eap_packet_p extracted from the RADIUS Access-Request.  Consumed or freed by this
  *	function.  Do not access after calling this function.
+ * @param inst of the rlm_eap module.
  * @param request The current request.
  * @return
  *	- A newly allocated eap_session_t, or the one associated with the current request.
+ *	  MUST be freed with #eap_session_destroy if being disposed of, OR
+ *	  MUST be re-frozen with #eap_session_freeze if the authentication session will
+ *	  continue when a future request is received.
  *	- NULL on error.
  */
-eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p, REQUEST *request)
+eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *inst, REQUEST *request)
 {
 	eap_session_t	*eap_session = NULL;
 	eap_packet_raw_t *eap_packet;
@@ -1099,19 +1212,8 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	 *	EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		eap_session = request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
-		if (!eap_session) {
-			/* Either send EAP_Identity or EAP-Fail */
-			REDEBUG("No EAP session matching state");
-			goto error;
-		}
-		/*
-		 *	This *MUST* be kept up to date, so that
-		 *	request data is removed correctly when
-		 *	the eap_session_t is freed.
-		 */
-		eap_session->request = request;
-		eap_session->updated = request->timestamp.tv_sec;
+		eap_session = eap_session_thaw(request);
+		if (!eap_session) goto error;
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 #ifdef WITH_VERIFY_PTR
@@ -1120,7 +1222,8 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		eap_session->rounds++;
 		if (eap_session->rounds >= 50) {
 			RERROR("Failing EAP session due to too many round trips");
-			talloc_free(eap_session);
+		error2:
+			eap_session_destroy(&eap_session);
 			goto error;
 		}
 
@@ -1141,40 +1244,8 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			RERROR("Your Supplicant or NAS is probably broken");
 			goto error;
 		}
-
-	       vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-	       if (!vp) {
-		       /*
-			*	NAS did not set the User-Name
-			*	attribute, so we set it here and
-			*	prepend it to the beginning of the
-			*	request vps so that autz's work
-			*	correctly
-			*/
-		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-		       vp = fr_pair_make(request->packet, &request->packet->vps,
-		       			 "User-Name", eap_session->identity, T_OP_EQ);
-		       if (!vp) {
-			       goto error;
-		       }
-	       } else {
-		       /*
-			*      A little more paranoia.  If the NAS
-			*      *did* set the User-Name, and it doesn't
-			*      match the identity, (i.e. If they
-			*      change their User-Name part way through
-			*      the EAP transaction), then reject the
-			*      request as the NAS is doing something
-			*      funny.
-			*/
-		       if (strncmp(eap_session->identity, vp->vp_strvalue, MAX_STRING_LEN) != 0) {
-			       RDEBUG("Identity does not match User-Name.  Authentication failed");
-			       goto error;
-		       }
-	       }
-
 	/*
-	 *	Packet was EAP identity
+	 *	Packet was EAP identity, allocate a new eap_session.
 	 */
 	} else {
 		eap_session = eap_session_alloc(inst, request);
@@ -1188,35 +1259,51 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		eap_session->identity = eap_identity(request, eap_session, eap_packet);
 		if (!eap_session->identity) {
 			RDEBUG("Identity Unknown, authentication failed");
-		error2:
-			talloc_free(eap_session);
-			goto error;
+			goto error2;
 		}
 
-	       vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+		/*
+		 *	If the index is removed by something else
+		 *	like the state being cleaned up, then we
+		 *	still want the eap_session to be freed, which
+		 *	is why we set free_opaque to true.
+		 *
+		 *	We must pass a NULL pointer to associate the
+		 *	the EAP_SESSION data with, else we'll break
+		 *	tunelled EAP, where the inner EAP module is
+		 *	a different instance to the outer one.
+		 */
+		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true, true);
+	}
+
+	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+	if (!vp) {
+	       /*
+		*	NAS did not set the User-Name
+		*	attribute, so we set it here and
+		*	prepend it to the beginning of the
+		*	request vps so that autz's work
+		*	correctly
+		*/
+	       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
+	       vp = fr_pair_make(request->packet, &request->packet->vps,
+				 "User-Name", eap_session->identity, T_OP_EQ);
 	       if (!vp) {
-		       /*
-			*	NAS did not set the User-Name
-			*	attribute, so we set it here and
-			*	prepend it to the beginning of the
-			*	request vps so that autz's work
-			*	correctly
-			*/
-		       RWDEBUG2("NAS did not set User-Name.  Setting it locally from EAP Identity");
-		       vp = fr_pair_make(request->packet, &request->packet->vps,
-		       			 "User-Name", eap_session->identity, T_OP_EQ);
-		       if (!vp) goto error2;
-	       } else {
-		       /*
-			*      Paranoia.  If the NAS *did* set the
-			*      User-Name, and it doesn't match the
-			*      identity, the NAS is doing something
-			*      funny, so reject the request.
-			*/
-		       if (strncmp(eap_session->identity, vp->vp_strvalue, MAX_STRING_LEN) != 0) {
-			       RDEBUG("Identity does not match User-Name, setting from EAP Identity");
-			       goto error2;
-		       }
+		       goto error;
+	       }
+	} else {
+	       /*
+		*      A little more paranoia.  If the NAS
+		*      *did* set the User-Name, and it doesn't
+		*      match the identity, (i.e. If they
+		*      change their User-Name part way through
+		*      the EAP transaction), then reject the
+		*      request as the NAS is doing something
+		*      funny.
+		*/
+	       if (strncmp(eap_session->identity, vp->vp_strvalue, MAX_STRING_LEN) != 0) {
+		       RDEBUG("Identity does not match User-Name.  Authentication failed");
+		       goto error;
 	       }
 	}
 
