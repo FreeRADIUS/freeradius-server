@@ -148,8 +148,8 @@ $(foreach x,$(EAPOL_TEST_FILES),$(eval \
 $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && \
-		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
-		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$@) 2>&1; then\
+		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
+		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$@) 2>&1; then\
 		touch $@; \
 	else \
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$<)):"; \
