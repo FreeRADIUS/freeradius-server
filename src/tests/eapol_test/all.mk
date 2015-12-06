@@ -156,7 +156,9 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 		tail -n 40 "$(patsubst %.conf,%.log,$<)"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
+		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -PX -d \"$(CONFIG_PATH)\" -n test -D \"$(CONFIG_PATH)\""; \
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)"; \
+		$(MAKE) radiusd.kill \
 		exit 1;\
 	fi
 
