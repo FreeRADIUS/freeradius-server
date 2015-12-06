@@ -439,8 +439,9 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 	 */
 	eap_session = request_data_get(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED);
 	if (eap_session != NULL) {
-		rlm_rcode_t rcode;
-		eap_tunnel_data_t *data;
+		rlm_rcode_t		rcode;
+		eap_tunnel_data_t	*data;
+
 
 		/*
 		 *	Grab the tunnel callbacks from the request.
