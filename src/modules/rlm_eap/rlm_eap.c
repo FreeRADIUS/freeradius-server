@@ -437,11 +437,11 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 	 *	If there was a eap_session associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
-	eap_session = request_data_get(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED);
-	if (eap_session != NULL) {
+	if (request_data_get(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED)) {
 		rlm_rcode_t		rcode;
 		eap_tunnel_data_t	*data;
 
+		eap_session = eap_session_thaw(request);
 
 		/*
 		 *	Grab the tunnel callbacks from the request.
@@ -459,10 +459,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 		 *	Do the callback...
 		 */
 		RDEBUG2("Doing post-proxy callback");
-
-		eap_session->request = request;
 		rcode = data->callback(eap_session, data->tls_session);
-		eap_session->request = NULL;
 
 		talloc_free(data);
 		if (rcode == 0) {
@@ -506,6 +503,8 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 				pair_make_reply("User-Name", request->username->vp_strvalue, T_OP_EQ);
 			}
 		}
+
+		eap_session_freeze(&eap_session);
 
 		return RLM_MODULE_OK;
 	} else {
