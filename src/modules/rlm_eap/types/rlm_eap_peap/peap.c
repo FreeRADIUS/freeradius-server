@@ -223,11 +223,7 @@ static int eap_peap_verify(REQUEST *request,
 	eap_method = *data;
 	switch (eap_method) {
 	case PW_EAP_IDENTITY:
-		if (data_len == 1) {
-			RDEBUG2("Identity - ");
-			return 1;
-		}
-		RDEBUG2("Identity - %*s", data_len - 1, data + 1);
+		RDEBUG2("Received EAP-Identity-Response");
 		return 1;
 
 	/*

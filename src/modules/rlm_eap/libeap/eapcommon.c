@@ -392,8 +392,7 @@ void eap_add_reply(REQUEST *request,
 
 	vp = pair_make_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
-		REDEBUG("Did not create attribute %s: %s\n",
-			name, fr_strerror());
+		REDEBUG("Did not create attribute %s: %s", name, fr_strerror());
 		return;
 	}
 
@@ -418,7 +417,7 @@ void eap_add_reply(REQUEST *request,
 rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 			       eap_session_t *eap_session, char const *virtual_server)
 {
-	eap_session_t	*inner_eap;
+	eap_session_t	*eap_session_inner;
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
@@ -426,9 +425,9 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	fake->server = vp ? vp->vp_strvalue : virtual_server;
 
 	if (fake->server) {
-		RDEBUG2("Sending tunneled request to %s", fake->server);
+		RDEBUG2("Proxying tunneled request to virtual server \"%s\"", fake->server);
 	} else {
-		RDEBUG2("Sending tunnelled request");
+		RDEBUG2("Proxying tunnelled request");
 	}
 
 	/*
@@ -440,14 +439,16 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 		RDEBUG4("Adding eap_session_t %p to fake request", eap_session->child);
 		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, false, false, false);
 	}
+
 	rcode = rad_virtual_server(fake);
-	inner_eap = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
-	if (inner_eap) {
-		if (!eap_session->child || (eap_session->child != inner_eap)) {
+
+	eap_session_inner = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
+	if (eap_session_inner) {
+		if (!eap_session->child || (eap_session->child != eap_session_inner)) {
 			RDEBUG4("Binding lifetime of child eap_session %p to parent eap_session %p",
-				inner_eap, eap_session);
-			fr_talloc_link_ctx(eap_session, inner_eap);
-			eap_session->child = inner_eap;
+				eap_session_inner, eap_session);
+			fr_talloc_link_ctx(eap_session, eap_session_inner);
+			eap_session->child = eap_session_inner;
 		} else {
 			RDEBUG4("Got eap_session_t %p back unmolested", eap_session->child);
 		}

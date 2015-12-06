@@ -337,12 +337,11 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 finish:
 	/*
-	 *	Set the request pointer to NULL, so that if the EAP
-	 *	session gets cleaned up later as part of freeing a
-	 *	state entry, the destructor knows it's not associated
-	 *	with a request.
+	 *	Freeze the eap_session so we can continue
+	 *	the authentication session later.
 	 */
 	eap_session_freeze(&eap_session);
+
 	return rcode;
 }
 

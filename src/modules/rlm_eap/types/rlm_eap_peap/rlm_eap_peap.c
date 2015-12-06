@@ -286,7 +286,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	Session is established, proceed with decoding
 	 *	tunneled data.
 	 */
-	RDEBUG2("Session established.  Decoding tunneled attributes");
+	RDEBUG2("Session established.  Decoding tunneled data");
 
 	/*
 	 *	We may need PEAP data associated with the session, so

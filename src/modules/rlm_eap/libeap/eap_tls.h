@@ -79,6 +79,7 @@ typedef enum tls_op {
 } tls_op_t;
 
 #define TLS_HEADER_LEN	  4
+#define TLS_HEADER_LENGTH_FIELD_LEN 4
 
 typedef struct tls_data_t {
 	uint8_t		flags;

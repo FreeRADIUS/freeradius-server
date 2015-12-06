@@ -302,6 +302,7 @@ int eap_tls_request(eap_session_t *eap_session)
 	uint8_t		flags = tls_session->base_flags;
 	size_t		frag_len;
 	bool		length_included = false;
+	REQUEST		*request = eap_session->request;
 
 	/*
 	 *	We don't need to always include the length
@@ -314,21 +315,36 @@ int eap_tls_request(eap_session_t *eap_session)
 	 *	If this is the first fragment, record the complete
 	 *	TLS record length.
 	 */
-	if (tls_session->record_out_started == false) tls_session->record_out_total_len = tls_session->dirty_out.used;
+	if (tls_session->record_out_started == false) {
+		tls_session->record_out_total_len = tls_session->dirty_out.used;
+		length_included = true;
+	}
 
 	/*
 	 *	If the data we're sending is greater than the MTU
 	 *	then we need to fragment it.
 	 */
-	if (tls_session->dirty_out.used > tls_session->mtu) {
-		frag_len = tls_session->mtu;		/* Data we're draining for this fragment */
+	if ((tls_session->dirty_out.used + (length_included ? TLS_HEADER_LENGTH_FIELD_LEN : 0)) > tls_session->mtu) {
+		/*
+		 *	Data we're draining for this fragment
+		 */
+		frag_len = length_included ? tls_session->mtu - TLS_HEADER_LENGTH_FIELD_LEN:
+					     tls_session->mtu;
 		flags = SET_MORE_FRAGMENTS(flags);
 
 		/*
 		 *	Length MUST be included if we're record_out_started
 		 *	and this is the first fragment.
 		 */
-		if (tls_session->record_out_started == false) length_included = true;
+		if (tls_session->record_out_started == false) {
+			RDEBUG2("Complete TLS record (%zu bytes) larger than MTU (%zu bytes), will fragment",
+				tls_session->record_out_total_len, frag_len);	/* frag_len is correct here */
+			RDEBUG2("Sending first TLS record fragment (%zu bytes), %zu bytes remaining",
+				frag_len, tls_session->dirty_out.used - frag_len);
+		} else {
+			RDEBUG2("Sending additional TLS record fragment (%zu bytes), %zu bytes remaining",
+				frag_len, tls_session->dirty_out.used - frag_len);
+		}
 		tls_session->record_out_started = true;	/* Start a new series of fragments */
 	/*
 	 *	Otherwise, we're either sending a record smaller
@@ -336,6 +352,12 @@ int eap_tls_request(eap_session_t *eap_session)
 	 */
 	} else {
 		frag_len = tls_session->dirty_out.used;	/* Remaining data to drain */
+
+		if (tls_session->record_out_started == false) {
+			RDEBUG2("Sending complete TLS record (%zu bytes)", frag_len);
+		} else {
+			RDEBUG2("Sending final TLS record fragment (%zu bytes)", frag_len);
+		}
 		tls_session->record_out_started = false;
 	}
 
@@ -580,8 +602,8 @@ ignore_length:
 		 *	If this is an ongoing transfer, and we have the M flag,
 		 *	then this is just an additional fragment.
 		 */
-		RDEBUG2("Got additional TLS record fragment (%zu bytes).  "
-			"Peer indicated more fragments to follow", frag_len);
+		RDEBUG2("Got additional TLS record fragment (%zu bytes).  Peer indicated more fragments to follow",
+			frag_len);
 		tls_session->record_in_recvd_len += frag_len;
 		if (tls_session->record_in_recvd_len > tls_session->record_in_total_len) {
 			REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
