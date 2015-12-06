@@ -259,17 +259,14 @@ static int _request_data_free(request_data_t *this)
  * @param[in] request		to associate data with.
  * @param[in] unique_ptr	Identifier for the data.
  * @param[in] unique_int	Qualifier for the identifier.
- * @param[in] opaque		Data to associate with the request
- * @param[in] free_on_replace	If true and the opaque data is replaced via a subsequent call
- *				to #request_data_add, talloc_free will be called to free the
- *				opaque data pointer.
- * @param[in] free_on_parent	If True and the request data is present in the request
- *				or state when it is freed, free the opaque data too.
- *				Must not be set if the opaque
- *				data is also parented by the request or state.
- * @param[in] persist		If true, before the request is freed, the opaque data will be
- *				transferred to an #fr_state_entry_t, and restored to a
- *				subsequent linked request should we receive one.
+ * @param[in] opaque		Data to associate with the request.  May be NULL.
+ * @param[in] free_on_replace	Free opaque data if the request_data is replaced.
+ * @param[in] free_on_parent	Free opaque data if the request is freed.
+ *				Must not be set if the opaque data is also parented by
+ *				the request or state (double free).
+ * @param[in] persist		Transfer request data to an #fr_state_entry_t, and
+ *				add it back to the next request we receive for the
+ *				session.
  * @return
  *	- -2 on bad arguments.
  *	- -1 on memory allocation error.
