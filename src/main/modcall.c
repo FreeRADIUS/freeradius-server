@@ -606,7 +606,7 @@ redo:
 		sp = mod_callabletosingle(c);
 
 		result = call_modsingle(c->method, sp, request);
-		RDEBUG2("[%s] = %s", c->name ? c->name : "",
+		RDEBUG2("%s (%s)", c->name ? c->name : "",
 			fr_int2str(mod_rcode_table, result, "<invalid>"));
 		goto calculate_result;
 	} /* MOD_SINGLE */
