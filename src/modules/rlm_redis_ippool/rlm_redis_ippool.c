@@ -21,6 +21,17 @@
  *
  * @author Arran Cudbard-Bell
  *
+ * Performs lease management using a Redis backed.
+ *
+ * Creates three types of objects:
+ * - {<pool name>:<pool type>}:pool (zset) contains IP addresses with priority set by expiry time.
+ * - {<pool name>:<pool type>}:ip:<address> (hash) contains four keys
+ *     * range   - Range identifier, used to lookup attributes associated with a range within a pool.
+ *     * device  - Device identifier for the device which last bound this address.
+ *     * gateway - Gateway of device which last bound this address.
+ *     * counter - How many times this IP address has been bound.
+ * - {<pool name>:<pool type>}:device:<client id> (string) contains last IP address bound by this client.
+ *
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 The FreeRADIUS server project
  */
