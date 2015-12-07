@@ -59,7 +59,7 @@ typedef struct dict_enum_fixup_t {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
-	dict_enum_fixup_t		*value_fixup;
+	dict_enum_fixup_t		*enum_fixup;
 
 	dict_stat_t		*stat_head;
 	dict_stat_t		*stat_tail;
@@ -1247,8 +1247,8 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		/*
 		 *	Insert to the head of the list.
 		 */
-		fixup->next = dict->value_fixup;
-		dict->value_fixup = fixup;
+		fixup->next = dict->enum_fixup;
+		dict->enum_fixup = fixup;
 
 		return 0;
 	}
@@ -2221,15 +2221,15 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	dict->root->flags.type_size = 1;
 	dict->root->flags.length = 1;
 
-	dict->value_fixup = NULL;        /* just to be safe. */
+	dict->enum_fixup = NULL;        /* just to be safe. */
 
 	if (dict_read_init(dict, dir, fn, NULL, 0) < 0) goto error;
 
-	if (dict->value_fixup) {
+	if (dict->enum_fixup) {
 		fr_dict_attr_t const *a;
 		dict_enum_fixup_t *this, *next;
 
-		for (this = dict->value_fixup; this != NULL; this = next) {
+		for (this = dict->enum_fixup; this != NULL; this = next) {
 			next = this->next;
 
 			a = fr_dict_attr_by_name(dict, this->attrstr);
@@ -2266,7 +2266,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 			/*
 			 *	Just so we don't lose track of things.
 			 */
-			dict->value_fixup = next;
+			dict->enum_fixup = next;
 		}
 	}
 
