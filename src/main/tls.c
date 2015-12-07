@@ -1426,8 +1426,14 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
 /* Maximum leeway in validity period: default 5 minutes */
 #define MAX_VALIDITY_PERIOD     (5 * 60)
 
-static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
-		      fr_tls_server_conf_t *conf)
+typedef enum {
+	OCSP_STATUS_FAILED	= 0,
+	OCSP_STATUS_OK		= 1,
+	OCSP_STATUS_SKIPPED	= 2,
+} ocsp_status_t;
+
+static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
+				fr_tls_server_conf_t *conf)
 {
 	OCSP_CERTID	*certid;
 	OCSP_REQUEST	*req;
@@ -1440,7 +1446,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	int		use_ssl = -1;
 	long		nsec = MAX_VALIDITY_PERIOD, maxage = -1;
 	BIO		*cbio, *bio_out;
-	int		ocsp_ok = 0;
+	ocsp_status_t	ocsp_status = OCSP_STATUS_FAILED;
 	int		status;
 	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
 	int		reason;
@@ -1473,8 +1479,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
 		if (!host || !port || !path) {
 			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
-			ocsp_ok = 2;
-			goto ocsp_skip;
+			goto skipped;
 		}
 	} else {
 		int ret;
@@ -1491,8 +1496,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 				goto use_ocsp_url;
 			}
 			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
-			ocsp_ok = 2;
-			goto ocsp_skip;
+			goto skipped;
 
 		case 1:
 			break;
@@ -1504,7 +1508,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	/* Check host and port length are sane, then create Host: HTTP header */
 	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
 		RWDEBUG("ocsp: Host and port too long");
-		goto ocsp_skip;
+		goto skipped;
 	}
 	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
 
@@ -1528,7 +1532,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_SATUS_SKIPPED;
 		goto ocsp_end;
 	}
 #else
@@ -1538,26 +1542,26 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	rc = BIO_do_connect(cbio);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
 		REDEBUG("ocsp: Couldn't connect to OCSP responder");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 
 	ctx = OCSP_sendreq_new(cbio, path, NULL, -1);
 	if (!ctx) {
 		REDEBUG("ocsp: Couldn't create OCSP request");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 
 	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", hostheader)) {
 		REDEBUG("ocsp: Couldn't set Host header");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 
 	if (!OCSP_REQ_CTX_set1_req(ctx, req)) {
 		REDEBUG("ocsp: Couldn't add data to OCSP request");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 
@@ -1575,7 +1579,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 
 	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
 		REDEBUG("ocsp: Response timed out");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 
@@ -1583,7 +1587,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 
 	if (rc == 0) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_ok = 2;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 #endif
@@ -1632,7 +1636,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
 		RDEBUG2("ocsp: Cert status: good");
-		ocsp_ok = 1;
+		ocsp_status = OCSP_STATUS_OK;
 		break;
 
 	default:
@@ -1659,25 +1663,24 @@ ocsp_end:
 	if (bio_out) BIO_free(bio_out);
 	OCSP_BASICRESP_free(bresp);
 
- ocsp_skip:
-	switch (ocsp_ok) {
-	case 1:
+	switch (ocsp_status) {
+	case OCSP_STATUS_OK:
 		RDEBUG2("ocsp: Certificate is valid");
 		break;
 
-	case 2:
+	case OCSP_STATUS_SKIPPED:
+	skipped:
 		if (conf->ocsp_softfail) {
-			/*
-			 *	Leave my_ok as 2, so that the caller can know it's a soft fail.
-			 */
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
 
 			/* Remove OpenSSL errors from queue or handshake will fail */
 			while (ERR_get_error());
+
+			ocsp_status = OCSP_STATUS_SKIPPED;
 		} else {
 			REDEBUG("ocsp: Unable to check certificate, failing");
-			ocsp_ok = 0;
+			ocsp_status = OCSP_STATUS_FAILED;
 		}
 		break;
 
@@ -1686,7 +1689,7 @@ ocsp_end:
 		break;
 	}
 
-	return ocsp_ok;
+	return ocsp_status;
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
 
@@ -2088,7 +2091,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 */
 		if ((my_ok != 0)
 #ifdef HAVE_OPENSSL_OCSP_H
-		    && conf->ocsp_enable && (conf->verify_skip_if_ocsp_ok) && (my_ok == 2)
+		    && conf->ocsp_enable && (my_ok != OCSP_STATUS_OK) && conf->verify_skip_if_ocsp_ok
 #endif
 			) while (conf->verify_client_cert_cmd) {
 			char filename[256];
