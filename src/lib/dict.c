@@ -2178,7 +2178,6 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
 	if (!dict->vendors_by_name) {
 	error:
-		if (dict->value_fixup) free(dict->value_fixup);
 		talloc_free(dict);
 		return -1;
 	}
