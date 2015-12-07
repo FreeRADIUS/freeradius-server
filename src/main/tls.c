@@ -1670,6 +1670,9 @@ ocsp_end:
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
 			ocsp_ok = 1;
+
+			/* Remove OpenSSL errors from queue or handshake will fail */
+			while (ERR_get_error());
 		} else {
 			REDEBUG("ocsp: Unable to check certificate, failing");
 			ocsp_ok = 0;
