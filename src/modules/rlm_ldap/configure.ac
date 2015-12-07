@@ -54,6 +54,11 @@ if test x$with_[]modname != xno; then
 	dnl # Check for libraries
 	dnl ############################################################
 
+	dnl #  We set this in rlm_ldap.h when we include ldap.h, so for
+	dnl #  consistency we need to set it here too,  else we might
+	dnl #  get differing results for DECL checks.
+	CFLAGS="-DLDAP_DEPRECATED=1 ${CFLAGS}"
+
 	dnl #
 	dnl #  Official word from those who represent OpenLDAP say
 	dnl #  libldap_r is unsupported for use outside the OpenLDAP
@@ -101,6 +106,7 @@ if test x$with_[]modname != xno; then
 			ldap_is_ldap_url \
 			ldap_url_desc2str
 		)
+
 		AC_CHECK_DECLS([ldap_create_session_tracking_control])
 		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
 			AC_TRY_COMPILE([
