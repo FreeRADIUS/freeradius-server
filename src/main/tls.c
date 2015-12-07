@@ -991,6 +991,7 @@ static CONF_PARSER cache_config[] = {
 };
 
 static CONF_PARSER verify_config[] = {
+	{ "skip_if_ocsp_ok", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, verify_skip_if_ocsp_ok), "no" },
 	{ "tmpdir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, verify_tmp_dir), NULL },
 	{ "client", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, verify_client_cert_cmd), NULL },
 	CONF_PARSER_TERMINATOR
@@ -1425,6 +1426,10 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
 /* Maximum leeway in validity period: default 5 minutes */
 #define MAX_VALIDITY_PERIOD     (5 * 60)
 
+#define OCSP_INVALID 0
+#define OCSP_VALID 1
+#define OCSP_FAILED 2
+
 static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		      fr_tls_server_conf_t *conf)
 {
@@ -1439,7 +1444,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	int		use_ssl = -1;
 	long		nsec = MAX_VALIDITY_PERIOD, maxage = -1;
 	BIO		*cbio, *bio_out;
-	int		ocsp_ok = 0;
+	int		ocsp_ret = OCSP_INVALID;
 	int		status;
 	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
 	int		reason;
@@ -1472,7 +1477,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
 		if (!host || !port || !path) {
 			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
-			ocsp_ok = 2;
+			ocsp_ret = OCSP_FAILED;
 			goto ocsp_skip;
 		}
 	} else {
@@ -1490,7 +1495,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 				goto use_ocsp_url;
 			}
 			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
-			ocsp_ok = 2;
+			ocsp_ret = OCSP_FAILED;
 			goto ocsp_skip;
 
 		case 1:
@@ -1527,7 +1532,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 #else
@@ -1537,26 +1542,26 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	rc = BIO_do_connect(cbio);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
 		REDEBUG("ocsp: Couldn't connect to OCSP responder");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 
 	ctx = OCSP_sendreq_new(cbio, path, NULL, -1);
 	if (!ctx) {
 		REDEBUG("ocsp: Couldn't create OCSP request");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 
 	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", hostheader)) {
 		REDEBUG("ocsp: Couldn't set Host header");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 
 	if (!OCSP_REQ_CTX_set1_req(ctx, req)) {
 		REDEBUG("ocsp: Couldn't add data to OCSP request");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 
@@ -1574,7 +1579,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 
 	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
 		REDEBUG("ocsp: Response timed out");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 
@@ -1582,7 +1587,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 
 	if (rc == 0) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_ok = 2;
+		ocsp_ret = OCSP_FAILED;
 		goto ocsp_end;
 	}
 #endif
@@ -1631,7 +1636,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
 		RDEBUG2("ocsp: Cert status: good");
-		ocsp_ok = 1;
+		ocsp_ret = OCSP_VALID;
 		break;
 
 	default:
@@ -1659,19 +1664,20 @@ ocsp_end:
 	OCSP_BASICRESP_free(bresp);
 
  ocsp_skip:
-	switch (ocsp_ok) {
-	case 1:
+	switch (ocsp_ret) {
+	case OCSP_VALID:
 		RDEBUG2("ocsp: Certificate is valid");
 		break;
 
-	case 2:
+	case OCSP_FAILED:
 		if (conf->ocsp_softfail) {
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
-			ocsp_ok = 1;
+			/* Remove OpenSSL errors from queue or handshake will fail */
+			while (ERR_get_error());
 		} else {
 			REDEBUG("ocsp: Unable to check certificate, failing");
-			ocsp_ok = 0;
+			ocsp_ret = OCSP_INVALID;
 		}
 		break;
 
@@ -1680,7 +1686,7 @@ ocsp_end:
 		break;
 	}
 
-	return ocsp_ok;
+	return ocsp_ret;
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
 
@@ -2075,55 +2081,62 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 *	command.  The user will be rejected no matter
 		 *	what, so we might as well do less work.
 		 */
-		if (my_ok) while (conf->verify_client_cert_cmd) {
-			char filename[256];
-			int fd;
-			FILE *fp;
+		if (my_ok) {
+#ifdef HAVE_OPENSSL_OCSP_H
+			if (conf->ocsp_enable && conf->verify_skip_if_ocsp_ok && my_ok == OCSP_VALID) {
+				RDEBUG("OCSP request ok, skipping verify section");
+			} else 
+#endif
+			while (conf->verify_client_cert_cmd) {
+				char filename[256];
+				int fd;
+				FILE *fp;
 
-			snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
-				 conf->verify_tmp_dir, main_config.name);
-			fd = mkstemp(filename);
-			if (fd < 0) {
-				RDEBUG("Failed creating file in %s: %s",
-				       conf->verify_tmp_dir, fr_syserror(errno));
-				break;
-			}
+				snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
+					 conf->verify_tmp_dir, main_config.name);
+				fd = mkstemp(filename);
+				if (fd < 0) {
+					RDEBUG("Failed creating file in %s: %s",
+					       conf->verify_tmp_dir, fr_syserror(errno));
+					break;
+				}
 
-			fp = fdopen(fd, "w");
-			if (!fp) {
-				close(fd);
-				RDEBUG("Failed opening file %s: %s",
-				       filename, fr_syserror(errno));
-				break;
-			}
+				fp = fdopen(fd, "w");
+				if (!fp) {
+					close(fd);
+					RDEBUG("Failed opening file %s: %s",
+					       filename, fr_syserror(errno));
+					break;
+				}
 
-			if (!PEM_write_X509(fp, client_cert)) {
+				if (!PEM_write_X509(fp, client_cert)) {
+					fclose(fp);
+					RDEBUG("Failed writing certificate to file");
+					goto do_unlink;
+				}
 				fclose(fp);
-				RDEBUG("Failed writing certificate to file");
-				goto do_unlink;
+
+				if (!pair_make_request("TLS-Client-Cert-Filename",
+						     filename, T_OP_SET)) {
+					RDEBUG("Failed creating TLS-Client-Cert-Filename");
+
+					goto do_unlink;
+				}
+
+				RDEBUG("Verifying client certificate: %s", conf->verify_client_cert_cmd);
+				if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
+							request->packet->vps,
+							true, true, EXEC_TIMEOUT) != 0) {
+					AUTH(LOG_PREFIX ": Certificate CN (%s) fails external verification!", common_name);
+					my_ok = 0;
+				} else {
+					RDEBUG("Client certificate CN %s passed external validation", common_name);
+				}
+
+			do_unlink:
+				unlink(filename);
+				break;
 			}
-			fclose(fp);
-
-			if (!pair_make_request("TLS-Client-Cert-Filename",
-					     filename, T_OP_SET)) {
-				RDEBUG("Failed creating TLS-Client-Cert-Filename");
-
-				goto do_unlink;
-			}
-
-			RDEBUG("Verifying client certificate: %s", conf->verify_client_cert_cmd);
-			if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
-						request->packet->vps,
-						true, true, EXEC_TIMEOUT) != 0) {
-				AUTH(LOG_PREFIX ": Certificate CN (%s) fails external verification!", common_name);
-				my_ok = 0;
-			} else {
-				RDEBUG("Client certificate CN %s passed external validation", common_name);
-			}
-
-		do_unlink:
-			unlink(filename);
-			break;
 		}
 
 
@@ -2139,7 +2152,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		RDEBUG3("issuer        : %s", issuer);
 		RDEBUG3("verify return : %d", my_ok);
 	}
-	return my_ok;
+	return (my_ok != 0);
 }
 
 
