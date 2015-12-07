@@ -739,8 +739,8 @@ print_msg:
 	/*
 	 *	Make sure the indent isn't set to something crazy
 	 */
-	indent = request->log.indent > sizeof(spaces) ?
-		 sizeof(spaces) :
+	indent = request->log.indent > sizeof(spaces) - 1 ?
+		 sizeof(spaces) - 1 :
 		 request->log.indent;
 
 	/*
@@ -800,8 +800,8 @@ print_msg:
 	}
 
 	if (request->module && (request->module[0] != '\0')) {
-		radlog_always(type, "(%u) %s: %.*s%s%s", request->number,
-			      request->module, indent, spaces, extra, buffer);
+		radlog_always(type, "(%u) %.*s  %s - %s%s", request->number,
+			      indent, spaces, request->module, extra, buffer);
 	} else {
 		radlog_always(type, "(%u) %.*s%s%s", request->number,
 			      indent, spaces, extra, buffer);

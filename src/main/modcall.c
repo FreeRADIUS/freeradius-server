@@ -300,7 +300,6 @@ static void safe_unlock(module_instance_t *instance)
 static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int blocked;
-	int indent = request->log.indent;
 
 	/*
 	 *	If the request should stop, refuse to do anything.
@@ -311,7 +310,6 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
 		comp2str[component], sp->modinst->name,
 		sp->modinst->entry->name, request->number);
-	request->log.indent = 0;
 
 	if (sp->modinst->force) {
 		request->rcode = sp->modinst->code;
@@ -338,7 +336,6 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	}
 
  fail:
-	request->log.indent = indent;
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
