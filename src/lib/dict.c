@@ -1234,13 +1234,12 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 	} else {
 		value_fixup_t *fixup;
 
-		fixup = (value_fixup_t *)malloc(sizeof(*fixup));
+		fixup = talloc_zero(dict->pool, value_fixup_t);
 		if (!fixup) {
 			talloc_free(dval);
 			fr_strerror_printf("fr_dict_enum_add: out of memory");
 			return -1;
 		}
-		memset(fixup, 0, sizeof(*fixup));
 
 		strlcpy(fixup->attrstr, attr, sizeof(fixup->attrstr));
 		fixup->dval = dval;
@@ -1821,7 +1820,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 	/*
 	 *	If fopen works, this works.
 	 */
-	if (stat(fn, &statbuf) < 0) { 
+	if (stat(fn, &statbuf) < 0) {
 		fclose(fp);
 		return -1;
 	}
@@ -2262,7 +2261,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 					fr_hash_table_replace(dict->values_by_da, this->dval);
 				}
 			}
-			free(this);
+			talloc_free(this);
 
 			/*
 			 *	Just so we don't lose track of things.
