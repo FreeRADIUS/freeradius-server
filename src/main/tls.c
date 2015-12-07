@@ -1699,7 +1699,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	int		use_ssl = -1;
 	long		this_fudge = MAX_VALIDITY_PERIOD, this_max_age = -1;
 	BIO		*conn = NULL, *ssl_log = NULL;
-	int		ocsp_status = 0;
+	ocsp_status_t   ocsp_status = OCSP_STATUS_FAILED;
 	ocsp_status_t	status;
 	ASN1_GENERALIZEDTIME *rev, *this_update, *next_update;
 	int		reason;
