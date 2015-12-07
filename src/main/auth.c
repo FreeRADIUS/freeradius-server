@@ -184,7 +184,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 
-		RDEBUG2("Found Auth-Type = %s", fr_dict_enum_name_by_da(NULL, auth_type_pair->da, auth_type));
+		RDEBUG2("Using 'Auth-Type = %s' for authenticate {...}", fr_dict_enum_name_by_da(NULL, auth_type_pair->da, auth_type));
 		if (auth_type == PW_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
 
