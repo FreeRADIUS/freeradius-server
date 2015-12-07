@@ -48,8 +48,8 @@ typedef struct rlm_files_t {
 	rbtree_t *auth_users;
 
 	/* preacct */
-	char const *acctusersfile;
-	rbtree_t *acctusers;
+	char const *acct_usersfile;
+	rbtree_t *acct_users;
 
 #ifdef WITH_PROXY
 	/* pre-proxy */
@@ -81,7 +81,7 @@ static int fall_through(VALUE_PAIR *vp)
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, usersfile) },
-	{ FR_CONF_OFFSET("acctusersfile", PW_TYPE_FILE_INPUT, rlm_files_t, acctusersfile) },
+	{ FR_CONF_OFFSET("acctusersfile", PW_TYPE_FILE_INPUT, rlm_files_t, acct_usersfile) },
 #ifdef WITH_PROXY
 	{ FR_CONF_OFFSET("preproxy_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile) },
 	{ FR_CONF_OFFSET("postproxy_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile) },
@@ -326,7 +326,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 
 	READFILE(filename, common);
 	READFILE(usersfile, users);
-	READFILE(acctusersfile, acctusers);
+	READFILE(acct_usersfile, acct_users);
 
 #ifdef WITH_PROXY
 	READFILE(preproxy_usersfile, preproxy_users);
@@ -421,7 +421,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 		}
 
 		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
-			RDEBUG2("%s: Matched entry %s at line %d", filename, match, pl->lineno);
+			RDEBUG2("Found match \"%s\" one line %d of %s", match, pl->lineno, filename);
 			found = true;
 
 			/* ctx may be reply or proxy */
@@ -464,7 +464,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "users",
+	return file_common(inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
 			   request->packet, request->reply);
 }
@@ -479,8 +479,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "acct_users",
-			   inst->acctusers ? inst->acctusers : inst->common,
+	return file_common(inst, request, inst->acct_usersfile,
+			   inst->acct_users ? inst->acct_users : inst->common,
 			   request->packet, request->reply);
 }
 
@@ -489,7 +489,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "preproxy_users",
+	return file_common(inst, request, inst->preproxy_usersfile,
 			   inst->preproxy_users ? inst->preproxy_users : inst->common,
 			   request->packet, request->proxy);
 }
@@ -498,7 +498,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "postproxy_users",
+	return file_common(inst, request, inst->postproxy_usersfile,
 			   inst->postproxy_users ? inst->postproxy_users : inst->common,
 			   request->proxy_reply, request->reply);
 }
@@ -508,7 +508,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "auth_users",
+	return file_common(inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
 			   request->packet, request->reply);
 }
@@ -517,7 +517,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "postauth_users",
+	return file_common(inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,
 			   request->packet, request->reply);
 }
