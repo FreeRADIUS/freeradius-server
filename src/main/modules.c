@@ -1232,19 +1232,8 @@ static int virtual_server_compile(CONF_SECTION *cs)
 		if (comp == MOD_SESSION) continue;
 #endif
 
-		if (rad_debug_lvl <= 3) {
-			cf_log_module(cs, "Loading %s {...}",
-				      section_type_value[comp].section);
-		} else {
-			DEBUG(" %s {", section_type_value[comp].section);
-		}
-
 		if (load_component_section(subcs, components, comp) < 0) {
 			goto error;
-		}
-
-		if (rad_debug_lvl > 3) {
-			DEBUG(" } # %s", section_type_value[comp].section);
 		}
 
 		/*
