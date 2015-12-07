@@ -1,6 +1,6 @@
 /**
  * $Id$
- * @file ldap.h
+ * @file rlm_ldap.h
  * @brief LDAP authorization and authentication module headers.
  *
  * @note Do not rename to ldap.h.  This causes configure checks to break
