@@ -27,7 +27,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include <ctype.h>
 
-#include	"ldap.h"
+#include "rlm_ldap.h"
 
 /** Convert multiple group names into a DNs
  *

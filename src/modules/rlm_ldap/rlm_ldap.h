@@ -3,6 +3,10 @@
  * @file ldap.h
  * @brief LDAP authorization and authentication module headers.
  *
+ * @note Do not rename to ldap.h.  This causes configure checks to break
+ *	in stupid ways, where the configure script will use the local ldap.h
+ *	file, instead of the one from libldap.
+ *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>

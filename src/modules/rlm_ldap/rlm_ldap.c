@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <stdarg.h>
 #include <ctype.h>
 
-#include	"ldap.h"
+#include "rlm_ldap.h"
 
 #include <freeradius-devel/map_proc.h>
 

@@ -26,7 +26,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include <ctype.h>
 
-#include	"ldap.h"
+#include "rlm_ldap.h"
 
 /** Iterate over pairs in mapping section recording their values in an array
  *

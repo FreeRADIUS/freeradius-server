@@ -22,7 +22,7 @@
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include "ldap.h"
+#include "rlm_ldap.h"
 
 /** Merge connection and call specific client and server controls
  *

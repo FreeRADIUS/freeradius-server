@@ -25,7 +25,7 @@
  */
 
 #include <freeradius-devel/rad_assert.h>
-#include "ldap.h"
+#include "rlm_ldap.h"
 
 /** Callback for map_to_request
  *

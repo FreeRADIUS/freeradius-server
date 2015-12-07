@@ -31,7 +31,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-#include "ldap.h"
+#include "rlm_ldap.h"
 
 static const char specials[] = ",+\"\\<>;*=()";
 static const char hextab[] = "0123456789abcdef";
