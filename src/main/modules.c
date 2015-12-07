@@ -943,11 +943,21 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 
 	if (server->subcs[comp]) {
 		if (idx == 0) {
-			RDEBUG("# Executing section %s from file %s",
+			RDEBUG("Running section %s from file %s",
 			       section_type_value[comp].section,
 			       cf_section_filename(server->subcs[comp]));
 		} else {
-			RDEBUG("# Executing group from file %s",
+			fr_dict_attr_t const *da;
+			fr_dict_enum_t const *dv;
+
+			da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
+			if (!da) return RLM_MODULE_FAIL;
+
+			dv = fr_dict_enum_by_da(NULL, da, idx);
+			if (!dv) return RLM_MODULE_FAIL;
+
+			RDEBUG("Running %s %s from file %s",
+			       da->name, dv->name,
 			       cf_section_filename(server->subcs[comp]));
 		}
 	}
