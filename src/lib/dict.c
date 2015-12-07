@@ -44,11 +44,11 @@ typedef struct dict_stat_t {
 	struct stat stat_buf;
 } dict_stat_t;
 
-typedef struct value_fixup_t {
+typedef struct dict_enum_fixup_t {
 	char			attrstr[FR_DICT_ATTR_MAX_NAME_LEN];
 	fr_dict_enum_t		*dval;
-	struct value_fixup_t	*next;
-} value_fixup_t;
+	struct dict_enum_fixup_t	*next;
+} dict_enum_fixup_t;
 
 /** Vendors and attribute names
  *
@@ -59,7 +59,7 @@ typedef struct value_fixup_t {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
-	value_fixup_t		*value_fixup;
+	dict_enum_fixup_t		*value_fixup;
 
 	dict_stat_t		*stat_head;
 	dict_stat_t		*stat_tail;
@@ -1232,9 +1232,9 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 			return -1;
 		}
 	} else {
-		value_fixup_t *fixup;
+		dict_enum_fixup_t *fixup;
 
-		fixup = talloc_zero(dict->pool, value_fixup_t);
+		fixup = talloc_zero(dict->pool, dict_enum_fixup_t);
 		if (!fixup) {
 			talloc_free(dval);
 			fr_strerror_printf("fr_dict_enum_add: out of memory");
@@ -2227,7 +2227,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 
 	if (dict->value_fixup) {
 		fr_dict_attr_t const *a;
-		value_fixup_t *this, *next;
+		dict_enum_fixup_t *this, *next;
 
 		for (this = dict->value_fixup; this != NULL; this = next) {
 			next = this->next;
