@@ -991,6 +991,7 @@ static CONF_PARSER cache_config[] = {
 };
 
 static CONF_PARSER verify_config[] = {
+	{ "skip_if_ocsp_ok", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, verify_skip_if_ocsp_ok), "no" },
 	{ "tmpdir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, verify_tmp_dir), NULL },
 	{ "client", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, verify_client_cert_cmd), NULL },
 	CONF_PARSER_TERMINATOR
@@ -2074,8 +2075,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 *	If OCSP checks fail, don't run the verify
 		 *	command.  The user will be rejected no matter
 		 *	what, so we might as well do less work.
+		 *
+		 *	If OCSP checks succeed, we may want to skip the verify section.
 		 */
-		if (my_ok) while (conf->verify_client_cert_cmd) {
+		if (my_ok
+#ifdef HAVE_OPENSSL_OCSP_H
+		    && conf->ocsp_enable && (conf->verify_skip_if_ocsp_ok) && (my_ok == 1)
+#endif
+			) while (conf->verify_client_cert_cmd) {
 			char filename[256];
 			int fd;
 			FILE *fp;

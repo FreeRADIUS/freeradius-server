@@ -197,6 +197,8 @@ eap {
 		#
 		ca_file = ${cadir}/ca.pem
 
+		ca_file = foo
+
 	 	#  OpenSSL will automatically create certificate chains,
 	 	#  unless we tell it to not do that.  The problem is that
 	 	#  it sometimes gets the chains right from a certificate
@@ -424,7 +426,18 @@ eap {
 		#  default configuration.  Uncomment it, and configure
 		#  the correct paths below to enable it.
 		#
+		#  If OCSP checking is enabled, and the OCSP checks fail,
+		#  the verify section is skipped.
+		#
 		verify {
+			#  If the OCSP checks succeed, the verify section
+			#  is run to allow additional checks.
+			#
+			#  If you want to skip verify on OCSP success,
+			#  uncomment this configuration item, and set it
+			#  to "yes".
+	#		skip_if_ocsp_ok = no
+
 			#  A temporary directory where the client
 			#  certificates are stored.  This directory
 			#  MUST be owned by the UID of the server,
