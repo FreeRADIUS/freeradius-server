@@ -1667,9 +1667,11 @@ ocsp_end:
 
 	case 2:
 		if (conf->ocsp_softfail) {
+			/*
+			 *	Leave my_ok as 2, so that the caller can know it's a soft fail.
+			 */
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
-			ocsp_ok = 1;
 
 			/* Remove OpenSSL errors from queue or handshake will fail */
 			while (ERR_get_error());
@@ -2075,15 +2077,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #endif
 
 		/*
-		 *	If OCSP checks fail, don't run the verify
-		 *	command.  The user will be rejected no matter
-		 *	what, so we might as well do less work.
+		 *	If OCSP returns fail (0), the certificate has expired.
+		 *	Don't run the verify routines/
 		 *
-		 *	If OCSP checks succeed, we may want to skip the verify section.
+		 *	If OCSP returns success (1), we MAY want to run the verify section.
+		 *	but only if verify_skip_if_ocsp_ok is false.
+		 *
+		 *	If OCSP returns skipped (2), we run the verify command, unless
+		 *	conf->verify_skip_if_ocsp_ok is true.
 		 */
-		if (my_ok
+		if ((my_ok != 0)
 #ifdef HAVE_OPENSSL_OCSP_H
-		    && conf->ocsp_enable && (conf->verify_skip_if_ocsp_ok) && (my_ok == 1)
+		    && conf->ocsp_enable && (conf->verify_skip_if_ocsp_ok) && (my_ok == 2)
 #endif
 			) while (conf->verify_client_cert_cmd) {
 			char filename[256];
