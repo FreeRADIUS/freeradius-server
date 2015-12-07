@@ -29,14 +29,14 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include	<stdarg.h>
-#include	<ctype.h>
+#include <stdarg.h>
+#include <ctype.h>
 
 #include	"ldap.h"
 
-#include	<freeradius-devel/map_proc.h>
+#include <freeradius-devel/map_proc.h>
 
 /*
  *	Scopes
