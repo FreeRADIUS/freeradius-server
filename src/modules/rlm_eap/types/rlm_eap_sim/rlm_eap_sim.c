@@ -329,7 +329,7 @@ static int eap_sim_sendchallenge(eap_session_t *eap_session)
 
 		memcpy(&len, newvp->vp_octets, sizeof(uint16_t));
 		len = ntohs(len);
-		if (len <= newvp->vp_length - 2 && len <= MAX_STRING_LEN) {
+		if (len <= newvp->vp_length - 2 && len <= FR_MAX_STRING_LEN) {
 			ess->keys.identitylen = len;
 			memcpy(ess->keys.identity, newvp->vp_octets + 2, ess->keys.identitylen);
 		}

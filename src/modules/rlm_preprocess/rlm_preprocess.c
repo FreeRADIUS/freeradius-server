@@ -106,7 +106,7 @@ static void cisco_vsa_hack(REQUEST *request)
 {
 	int		vendorcode;
 	char		*ptr;
-	char		newattr[MAX_STRING_LEN];
+	char		newattr[FR_MAX_STRING_LEN];
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
@@ -276,7 +276,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 
 	if (inst->with_ntdomain_hack) {
 		char *ptr;
-		char newname[MAX_STRING_LEN];
+		char newname[FR_MAX_STRING_LEN];
 
 		/*
 		 *	Windows NT machines often authenticate themselves as

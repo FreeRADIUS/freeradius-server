@@ -64,7 +64,7 @@ static int presufcmp(UNUSED void *instance,
 {
 	VALUE_PAIR *vp;
 	char const *name;
-	char rest[MAX_STRING_LEN];
+	char rest[FR_MAX_STRING_LEN];
 	int len, namelen;
 	int ret = -1;
 

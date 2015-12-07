@@ -447,7 +447,7 @@ autz_redo:
 	case RLM_MODULE_USERLOCK:
 	default:
 		if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
-			char msg[MAX_STRING_LEN + 16];
+			char msg[FR_MAX_STRING_LEN + 16];
 			snprintf(msg, sizeof(msg), "Invalid user (%s)",
 				 module_msg->vp_strvalue);
 			rad_authlog(msg,request,0);
@@ -532,7 +532,7 @@ authenticate:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
 
 		if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
-			char msg[MAX_STRING_LEN+19];
+			char msg[FR_MAX_STRING_LEN+19];
 
 			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
 				 module_msg->vp_strvalue);
@@ -568,7 +568,7 @@ authenticate:
 	    (check_item = fr_pair_find_by_num(request->config, 0, PW_SIMULTANEOUS_USE, TAG_ANY)) != NULL) {
 		int r, session_type = 0;
 		char		logstr[1024];
-		char		umsg[MAX_STRING_LEN + 1];
+		char		umsg[FR_MAX_STRING_LEN + 1];
 
 		tmp = fr_pair_find_by_num(request->config, 0, PW_SESSION_TYPE, TAG_ANY);
 		if (tmp) {
@@ -640,7 +640,7 @@ authenticate:
 	  request->reply->code = PW_CODE_ACCESS_ACCEPT;
 
 	if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
-		char msg[MAX_STRING_LEN+12];
+		char msg[FR_MAX_STRING_LEN+12];
 
 		snprintf(msg, sizeof(msg), "Login OK (%s)",
 			 module_msg->vp_strvalue);

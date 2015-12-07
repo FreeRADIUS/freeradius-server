@@ -129,7 +129,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 {
 	VALUE_PAIR *vp;
 	char const *ptr, *value;
-	char buf[MAX_STRING_LEN];
+	char buf[FR_MAX_STRING_LEN];
 	char do_xlat = 0;
 	FR_TOKEN token, operator = T_EOL;
 

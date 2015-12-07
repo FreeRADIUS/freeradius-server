@@ -199,9 +199,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 {
 	int i;
 	size_t a1_len, a2_len, kd_len;
-	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
-	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
-	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
+	uint8_t a1[(FR_MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
+	uint8_t a2[(FR_MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
+	uint8_t kd[(FR_MAX_STRING_LEN + 1) * 5];
 	uint8_t hash[16];	/* MD5 output */
 	VALUE_PAIR *vp, *passwd, *algo;
 	VALUE_PAIR *qop, *nonce;

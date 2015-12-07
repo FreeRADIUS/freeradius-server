@@ -131,7 +131,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 		  uint8_t *challenge)
 {
 	char	*ptr;
-	char	string[1 + MAX_STRING_LEN*2];
+	char	string[1 + FR_MAX_STRING_LEN*2];
 	uint8_t digest[16];
 	unsigned short len;
 

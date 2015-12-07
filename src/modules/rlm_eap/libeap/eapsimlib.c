@@ -326,8 +326,8 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			return 0;
 		}
 
-		if (eapsim_len > MAX_STRING_LEN) {
-			eapsim_len = MAX_STRING_LEN;
+		if (eapsim_len > FR_MAX_STRING_LEN) {
+			eapsim_len = FR_MAX_STRING_LEN;
 		}
 		if (eapsim_len < 2) {
 			ERROR("eap: EAP-Sim attribute %d (no.%d) has length too small", eapsim_attribute,

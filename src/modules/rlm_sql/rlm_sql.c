@@ -1467,7 +1467,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 	char const		*attr = NULL;
 	char const		*value;
 
-	char			path[MAX_STRING_LEN];
+	char			path[FR_MAX_STRING_LEN];
 	char			*p = path;
 	char			*expanded = NULL;
 

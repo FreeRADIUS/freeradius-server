@@ -886,8 +886,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, 
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
-	uint8_t buff[MAX_STRING_LEN];
-	char buff2[MAX_STRING_LEN + 50];
+	uint8_t buff[FR_MAX_STRING_LEN];
+	char buff2[FR_MAX_STRING_LEN + 50];
 
 	RDEBUG("Using NT-MTA-MD5-Password");
 

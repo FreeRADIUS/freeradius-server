@@ -81,7 +81,7 @@ typedef struct _pwd_session_t {
     uint16_t group_num;
     uint32_t ciphersuite;
     uint32_t token;
-    char peer_id[MAX_STRING_LEN];
+    char peer_id[FR_MAX_STRING_LEN];
     size_t peer_id_len;
     size_t mtu;
     uint8_t *in;      /* reassembled fragments */

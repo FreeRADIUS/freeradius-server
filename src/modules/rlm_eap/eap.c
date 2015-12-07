@@ -1301,7 +1301,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 		*      request as the NAS is doing something
 		*      funny.
 		*/
-	       if (strncmp(eap_session->identity, vp->vp_strvalue, MAX_STRING_LEN) != 0) {
+	       if (strncmp(eap_session->identity, vp->vp_strvalue, FR_MAX_STRING_LEN) != 0) {
 		       RDEBUG("Identity does not match User-Name.  Authentication failed");
 		       goto error;
 	       }

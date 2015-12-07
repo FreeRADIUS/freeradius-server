@@ -445,7 +445,7 @@ static int do_logging(REQUEST *request, char const *str, int rcode)
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
-	char allocation[MAX_STRING_LEN];
+	char allocation[FR_MAX_STRING_LEN];
 	int allocation_len;
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *handle;
