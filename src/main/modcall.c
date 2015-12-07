@@ -83,7 +83,7 @@ struct modcallable {
 
 #define MOD_LOG_OPEN_BRACE RDEBUG2("%s {", c->debug_name)
 
-#define MOD_LOG_CLOSE_BRACE RDEBUG2("} # %s = %s", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"))
+#define MOD_LOG_CLOSE_BRACE RDEBUG2("} # %s (%s)", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
 	modcallable		mc;		//!< Self.
@@ -493,11 +493,12 @@ redo:
 		int condition;
 		modgroup *g;
 
+		MOD_LOG_OPEN_BRACE;
+
 	mod_if:
+
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
-
-		RDEBUG2("%s %s{", unlang_keyword[c->type], c->name);
 
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
@@ -513,16 +514,14 @@ redo:
 				break;
 			}
 			condition = 0;
-		} else {
-			RDEBUG2("%s %s -> %s",
-				unlang_keyword[c->type],
-				c->name, condition ? "TRUE" : "FALSE");
 		}
 
 		/*
 		 *	Didn't pass.  Remember that.
 		 */
 		if (!condition) {
+			RDEBUG2("  ...");
+			RDEBUG2("}");
 			was_if = true;
 			if_taken = false;
 			goto next_sibling;
@@ -543,12 +542,14 @@ redo:
 	if (c->type == MOD_ELSIF) {
 		if (!was_if) goto elsif_error;
 
+		MOD_LOG_OPEN_BRACE;
+
 		/*
 		 *	Like MOD_ELSE, but allow for a later "else"
 		 */
 		if (if_taken) {
-			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
-				unlang_keyword[c->type], request->number);
+			RDEBUG2("  ...");
+			RDEBUG2("}");
 			was_if = true;
 			if_taken = true;
 			goto next_sibling;
