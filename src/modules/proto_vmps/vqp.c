@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include	"vqp.h"
 
-#define MAX_VMPS_LEN (MAX_STRING_LEN - 1)
+#define MAX_VMPS_LEN (FR_MAX_STRING_LEN - 1)
 
 /* @todo: this is a hack */
 #  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \

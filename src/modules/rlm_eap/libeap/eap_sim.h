@@ -85,13 +85,13 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrle
 
 struct eapsim_keys {
 	/* inputs */
-	uint8_t identity[MAX_STRING_LEN];
+	uint8_t identity[FR_MAX_STRING_LEN];
 	unsigned int  identitylen;
 	uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
 	uint8_t rand[3][EAPSIM_RAND_SIZE];
 	uint8_t sres[3][EAPSIM_SRES_SIZE];
 	uint8_t Kc[3][EAPSIM_KC_SIZE];
-	uint8_t versionlist[MAX_STRING_LEN];
+	uint8_t versionlist[FR_MAX_STRING_LEN];
 	uint8_t versionlistlen;
 	uint8_t versionselect[2];
 

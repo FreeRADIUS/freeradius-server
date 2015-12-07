@@ -2547,8 +2547,8 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 		type += PW_EAP_TYPE_BASE;
 		len -= 5;
 
-		if (len > MAX_STRING_LEN) {
-			len = MAX_STRING_LEN;
+		if (len > FR_MAX_STRING_LEN) {
+			len = FR_MAX_STRING_LEN;
 		}
 
 		eap1 = fr_pair_afrom_num(rep, 0, type);

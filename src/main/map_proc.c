@@ -36,7 +36,7 @@ static rbtree_t *map_proc_root = NULL;
  */
 struct map_proc {
 	void			*mod_inst;		//!< Module instance.
-	char			name[MAX_STRING_LEN];	//!< Name of the map function.
+	char			name[FR_MAX_STRING_LEN];	//!< Name of the map function.
 	int			length;			//!< Length of name.
 
 	map_proc_func_t		evaluate;		//!< Module's map processor function.

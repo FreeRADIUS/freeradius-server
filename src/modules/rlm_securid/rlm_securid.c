@@ -455,7 +455,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 {
 	int rcode;
 	rlm_securid_t *inst = instance;
-	char  buffer[MAX_STRING_LEN]="";
+	char  buffer[FR_MAX_STRING_LEN]="";
 	char const *username=NULL, *password=NULL;
 	VALUE_PAIR *vp;
 

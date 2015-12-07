@@ -52,7 +52,7 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 {
 	int		i;
 	uint8_t		*ptr;
-	uint8_t		string[MAX_STRING_LEN * 2 + 1];
+	uint8_t		string[FR_MAX_STRING_LEN * 2 + 1];
 	VALUE_PAIR	*challenge;
 
 	/*
@@ -105,7 +105,7 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
  */
 int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
-	uint8_t		buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
+	uint8_t		buffer[AUTH_VECTOR_LEN + FR_MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
 	char		*salt;
 	int		i, n, secretlen;
@@ -179,7 +179,7 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
  * We assume that the passwd buffer passed is big enough.
  * RFC2138 says the password is max 128 chars, so the size
  * of the passwd buffer must be at least 129 characters.
- * Preferably it's just MAX_STRING_LEN.
+ * Preferably it's just FR_MAX_STRING_LEN.
  *
  * int *pwlen is updated to the new length of the encrypted
  * password - a multiple of 16 bytes.

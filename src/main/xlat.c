@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 typedef struct xlat_t {
-	char			name[MAX_STRING_LEN];	//!< Name of the xlat expansion.
+	char			name[FR_MAX_STRING_LEN];	//!< Name of the xlat expansion.
 	int			length;			//!< Length of name.
 	void			*mod_inst;		//!< Module instance passed to xlat and escape functions.
 	xlat_func_t		func;			//!< xlat function.
