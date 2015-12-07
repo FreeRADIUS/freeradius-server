@@ -2146,7 +2146,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		RDEBUG3("issuer        : %s", issuer);
 		RDEBUG3("verify return : %d", my_ok);
 	}
-	return my_ok;
+
+	return (my_ok != 0);
 }
 
 
