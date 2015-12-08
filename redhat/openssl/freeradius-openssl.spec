@@ -20,7 +20,7 @@
 %global _performance_build 1
 Summary: Utilities from the general purpose cryptography library with TLS implementation
 Name: freeradius-openssl
-Version: 1.0.2d
+Version: %{_version}
 Release: 0%{?dist}
 Epoch: 1
 Source: openssl-%{version}.tar.gz
@@ -270,7 +270,6 @@ rm -rf $RPM_BUILD_ROOT/%{_libdir}/fipscanister.*
 %defattr(-,root,root)
 %doc FAQ LICENSE CHANGES NEWS INSTALL README
 %doc doc/c-indentation.el doc/openssl.txt
-%doc doc/openssl_button.html doc/openssl_button.gif
 %doc doc/ssleay.txt
 %{_sysconfdir}/pki/tls/certs/make-dummy-cert
 %{_sysconfdir}/pki/tls/certs/renew-dummy-cert
@@ -318,8 +317,8 @@ rm -rf $RPM_BUILD_ROOT/%{_libdir}/fipscanister.*
 %postun libs -p /sbin/ldconfig
 
 %changelog
-* Wed Nov  25 2015 Arran Cudbard-Bell <a.cudbardb@networkradius.com> 1.0.2d-0
-- Package OpenSSL 1.0.2d 
+* Wed Nov  25 2015 Arran Cudbard-Bell <a.cudbardb@networkradius.com> %{_version}-0
+- Package OpenSSL %{_version} 
 
 * Tue Apr  8 2014 Tomáš Mráz <tmraz@redhat.com> 1.0.1e-34
 - fix CVE-2014-0160 - information disclosure in TLS heartbeat extension
