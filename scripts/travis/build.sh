@@ -34,7 +34,7 @@ make -j8
 #  If this is not a Coverity build (which would duplicate the parameters of another build)
 #  and we're building with clang, run the clang scanner over the source.
 #
-if [ "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then
+if [ "${COVERITY_SCAN_BRANCH}" != 1 -a "${CC}" = 'clang' ]; then
     echo "Starting clang scan"
     make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ];
 fi
