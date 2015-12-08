@@ -43,6 +43,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Create EAP-PWD identity correctly.  Prevents segfaults.
 	* Dynamically validate authentication types for PEAP and EAP-MSCHAPv2.
 	* Fix includes in installed headers.
+	* OpenSSL 1.0.1f and 1.0.1g do NOT calculate TLS 1.2 keys correctly.
+	  See raddb/mods-available/eap, "disable_tlsv1_2"
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
