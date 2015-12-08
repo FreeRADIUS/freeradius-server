@@ -197,8 +197,6 @@ eap {
 		#
 		ca_file = ${cadir}/ca.pem
 
-		ca_file = foo
-
 	 	#  OpenSSL will automatically create certificate chains,
 	 	#  unless we tell it to not do that.  The problem is that
 	 	#  it sometimes gets the chains right from a certificate
