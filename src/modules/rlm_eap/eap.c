@@ -1091,7 +1091,7 @@ void eap_session_destroy(eap_session_t **eap_session)
 		rad_assert(!in_request || (*eap_session == in_request));
 	}
 #else
-	(void) request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+	(void) request_data_get((*eap_session)->request, NULL, REQUEST_DATA_EAP_SESSION);
 #endif
 
 	TALLOC_FREE(*eap_session);
