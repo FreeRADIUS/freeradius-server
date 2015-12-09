@@ -2830,7 +2830,8 @@ static int listen_bind(rad_listen_t *this)
 
 static int _listener_free(rad_listen_t *this)
 {
-	/*
+  bool  check_type;
+  /*
 	 *	Other code may have eaten the FD.
 	 */
 	if (this->fd >= 0) close(this->fd);
@@ -2840,18 +2841,18 @@ static int _listener_free(rad_listen_t *this)
 	}
 
 #ifdef WITH_TCP
-	if ((this->type == RAD_LISTEN_AUTH)
+  check_type = (this->type == RAD_LISTEN_AUTH);
 #ifdef WITH_ACCT
-	    || (this->type == RAD_LISTEN_ACCT)
+  check_type = (check_type || (this->type == RAD_LISTEN_ACCT));
 #endif
 #ifdef WITH_PROXY
-	    || (this->type == RAD_LISTEN_PROXY)
+  check_type = (check_type || (this->type == RAD_LISTEN_PROXY));
 #endif
 #ifdef WITH_COMMAND_SOCKET
-	    || ((this->type == RAD_LISTEN_COMMAND) &&
-		(((fr_command_socket_t *) this->data)->magic != COMMAND_SOCKET_MAGIC))
+  check_type = (check_type || ((this->type == RAD_LISTEN_COMMAND)
+                               && (((fr_command_socket_t *) this->data)->magic != COMMAND_SOCKET_MAGIC)));
 #endif
-		) {
+		if (check_type) {
 		listen_socket_t *sock = this->data;
 
 		rad_assert(talloc_parent(sock) == this);

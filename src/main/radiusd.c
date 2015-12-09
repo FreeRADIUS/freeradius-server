@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 	int		rcode = EXIT_SUCCESS;
 	int		status;
 	int		argval;
+	bool check_signal;
 	bool		display_version = false;
 	int		from_child[2] = {-1, -1};
 	char		*p;
@@ -493,11 +494,11 @@ int main(int argc, char *argv[])
 	 *  that case.
 	 */
 	if (main_config.debug_memory || (rad_debug_lvl == 0)) {
-		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
+		check_signal = (fr_set_signal(SIGINT, sig_fatal) < 0);
 #ifdef SIGQUIT
-		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
+    check_signal = (check_signal || (fr_set_signal(SIGQUIT, sig_fatal) < 0));
 #endif
-		) {
+		if (check_signal) {
 			ERROR("%s", fr_strerror());
 			exit(EXIT_FAILURE);
 		}

@@ -170,6 +170,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *auth_type_pair;
+	bool check_directive;
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
@@ -206,11 +207,11 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	rejected in the above loop. So that means it is accepted and we
 	 *	do no further authentication.
 	 */
-	if ((auth_type == PW_AUTH_TYPE_ACCEPT)
+	check_directive = (auth_type == PW_AUTH_TYPE_ACCEPT);
 #ifdef WITH_PROXY
-	    || (request->proxy)
+  check_directive = (check_directive || (request->proxy));
 #endif
-	    ) {
+	if (check_directive) {
 		RDEBUG2("Auth-Type = Accept, accepting the user");
 		return 0;
 	}
@@ -347,6 +348,7 @@ int rad_postauth(REQUEST *request)
  */
 int rad_authenticate(REQUEST *request)
 {
+	bool check_request_proxy;
 #ifdef WITH_SESSION_MGMT
 	VALUE_PAIR	*check_item;
 #endif
@@ -474,11 +476,12 @@ autz_redo:
 	 *	modules has decided that a proxy should be used. If
 	 *	so, get out of here and send the packet.
 	 */
-	if (
+	check_request_proxy = ((tmp = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY)) != NULL) ;
 #ifdef WITH_PROXY
-	    (request->proxy == NULL) &&
+	check_request_proxy = ((request->proxy == NULL) && check_request_proxy);
 #endif
-	    ((tmp = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY)) != NULL)) {
+
+		if (check_request_proxy)	{
 		REALM *realm;
 
 		realm = realm_find2(tmp->vp_strvalue);

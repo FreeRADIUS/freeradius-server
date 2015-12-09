@@ -169,6 +169,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	socklen_t socklen;
 	struct sockaddr_un salocal;
 	struct stat buf;
+	bool check_buf;
 
 	if (!path) {
 		fr_strerror_printf("No path provided, was NULL");
@@ -208,11 +209,11 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	} else {		/* it exists */
 		int client_fd;
 
-		if (!S_ISREG(buf.st_mode)
+      check_buf = (!S_ISREG(buf.st_mode));
 #ifdef S_ISSOCK
-		    && !S_ISSOCK(buf.st_mode)
+      check_buf = (check_buf && !S_ISSOCK(buf.st_mode));
 #endif
-			) {
+			if (check_buf) {
 			fr_strerror_printf("Cannot turn %s into socket", path);
 			close(sockfd);
 			return -1;

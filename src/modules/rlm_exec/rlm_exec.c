@@ -287,6 +287,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	rlm_exec_t	*inst = (rlm_exec_t *)instance;
 	rlm_rcode_t	rcode;
 	int		status;
+	bool check_directive;
 
 	VALUE_PAIR	**input_pairs = NULL, **output_pairs = NULL;
 	VALUE_PAIR	*answer = NULL;
@@ -304,13 +305,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	/*
 	 *	See if we're supposed to execute it now.
 	 */
-	if (!((inst->packet_code == 0) || (request->packet->code == inst->packet_code) ||
-	      (request->reply->code == inst->packet_code)
+	check_directive = (!((inst->packet_code == 0) || (request->packet->code == inst->packet_code) ||
+	                  (request->reply->code == inst->packet_code)));
 #ifdef WITH_PROXY
-	      || (request->proxy && (request->proxy->code == inst->packet_code)) ||
-	      (request->proxy_reply && (request->proxy_reply->code == inst->packet_code))
+  check_directive = (check_directive || ((request->proxy && (request->proxy->code == inst->packet_code)) ||
+	                  (request->proxy_reply && (request->proxy_reply->code == inst->packet_code))));
 #endif
-		    )) {
+	if (check_directive) {
 		RDEBUG2("Packet type is not %s. Not executing.", inst->packet_type);
 
 		return RLM_MODULE_NOOP;

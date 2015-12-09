@@ -1198,6 +1198,7 @@ static int load_component_section(CONF_SECTION *cs,
 static int virtual_server_compile(CONF_SECTION *cs)
 {
 	rlm_components_t comp, found;
+	bool check_comp;
 	char const *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
@@ -1239,12 +1240,12 @@ static int virtual_server_compile(CONF_SECTION *cs)
 		 *	Skip pre/post-proxy sections if we're not
 		 *	proxying.
 		 */
-		if (
+		check_comp = ((comp == MOD_PRE_PROXY) || (comp == MOD_POST_PROXY));
 #ifdef WITH_PROXY
-		    !main_config.proxy_requests &&
+		check_comp = (!main_config.proxy_requests && check_comp);
 #endif
-		    ((comp == MOD_PRE_PROXY) ||
-		     (comp == MOD_POST_PROXY))) {
+
+		if (check_comp) {
 			continue;
 		}
 

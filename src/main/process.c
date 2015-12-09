@@ -528,6 +528,7 @@ static void proxy_reply_too_late(REQUEST *request)
 static void request_done(REQUEST *request, int action)
 {
 	struct timeval now, when;
+	bool check_request;
 
 	VERIFY_REQUEST(request);
 
@@ -670,11 +671,13 @@ static void request_done(REQUEST *request, int action)
 		 *	We haven't received all responses, AND there's still
 		 *	time to wait.  Do so.
 		 */
-		if ((request->num_proxied_requests > request->num_proxied_responses) &&
+		check_request = (request->num_proxied_requests > request->num_proxied_responses);
 #ifdef WITH_TCP
-		    (request->home_server->proto != IPPROTO_TCP) &&
+    check_request = (check_request && (request->home_server->proto != IPPROTO_TCP));
 #endif
-		    timercmp(&now, &when, <)) {
+    check_request = (check_request && timercmp(&now, &when, <));
+
+		if (check_request) {
 			RDEBUG("Waiting for more responses from the home server");
 			goto wait_some_more;
 		}
@@ -1746,6 +1749,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	REQUEST *request;
+	bool check_packet_code;
 
 	/*
 	 *	Create and initialize the new request.
@@ -1784,15 +1788,17 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
-	if (packet->code == PW_CODE_ACCESS_REQUEST) {
+	check_packet_code = (packet->code == PW_CODE_ACCESS_REQUEST);
+	if (check_packet_code) {
 		request->client->auth.last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
+	}
 #ifdef WITH_ACCOUNTING
-	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+	if ( !(check_packet_code) && (packet->code == PW_CODE_ACCOUNTING_REQUEST)) {
 		request->client->acct.last_packet = request->packet->timestamp.tv_sec;
 		radius_acct_stats.last_packet = request->packet->timestamp.tv_sec;
-#endif
 	}
+#endif
 #endif	/* WITH_STATS */
 
 	/*
@@ -3383,12 +3389,14 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	struct timeval when;
+	bool check_home;
 
-	if ((home->state == HOME_STATE_ALIVE) ||
+  check_home = (home->state == HOME_STATE_ALIVE);
 #ifdef WITH_TCP
-	    (home->proto == IPPROTO_TCP) ||
+  check_home = (check_home || (home->proto == IPPROTO_TCP));
 #endif
-	    (home->ev != NULL)) {
+  check_home = (check_home || (home->ev != NULL));
+	if (check_home) {
 		return;
 	}
 
@@ -3719,6 +3727,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
  */
 static void proxy_wait_for_reply(REQUEST *request, int action)
 {
+  bool check_home_state;
 	struct timeval now, when;
 	struct timeval *response_window = NULL;
 	home_server_t *home = request->home_server;
@@ -3883,12 +3892,11 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	This check should really be part of a home
 		 *	server state machine.
 		 */
-		if (((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN))
+		check_home_state = ((home->state == HOME_STATE_ALIVE) || (home->state == HOME_STATE_UNKNOWN));
 #ifdef WITH_TCP
-		    && (home->proto != IPPROTO_TCP)
+    check_home_state = (check_home_state && (home->proto != IPPROTO_TCP));
 #endif
-			) {
+			if (check_home_state) {
 			home->response_timeouts++;
 			if (home->response_timeouts >= home->max_response_timeouts)
 				mark_home_server_zombie(home, &now, response_window);
@@ -4518,17 +4526,18 @@ static void coa_running(REQUEST *request, int action)
  ***********************************************************************/
 static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
+  bool check_listener;
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
 	rad_assert(xel == el);
 
-	if ((listener->fd < 0)
+  check_listener = (listener->fd < 0);
 #ifdef WITH_DETAIL
 #ifndef WITH_DETAIL_THREAD
-	    && (listener->type != RAD_LISTEN_DETAIL)
+  check_listener = (check_listener && (listener->type != RAD_LISTEN_DETAIL));
 #endif
 #endif
-		) {
+		if (check_listener) {
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));

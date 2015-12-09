@@ -484,6 +484,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
  */
 bool realm_home_server_add(home_server_t *home)
 {
+	bool check_home;
 	/*
 	 *	The structs aren't mutex protected.  Refuse to destroy
 	 *	the server.
@@ -526,11 +527,11 @@ bool realm_home_server_add(home_server_t *home)
 	 *	accounting server for UDP sockets, and leave
 	 *	everything alone for TLS sockets.
 	 */
-	if (home->dual
+	  check_home = (home->dual);
 #ifdef WITH_TLS
-	    && !home->tls
+    check_home = (check_home && !home->tls);
 #endif
-) {
+    if (check_home) {
 		home_server_t *home2 = talloc(talloc_parent(home), home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
