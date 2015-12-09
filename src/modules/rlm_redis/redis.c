@@ -468,7 +468,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *o
 	rad_assert(out_len >= (size_t)pipelined);
 
 #ifdef NDEBUG
-	if (pipelined > out_len) {
+	if ((size_t) pipelined > out_len) {
 		for (i = 0; i < (size_t)pipelined; i++) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
 			fr_redis_reply_free(reply);
