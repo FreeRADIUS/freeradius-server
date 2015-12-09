@@ -538,6 +538,8 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	return 0;
 }
 
+extern char const *unlang_keyword[];
+
 /** Bootstrap a module.
  *
  *  Load the module shared library, allocate instance memory for it,
@@ -545,6 +547,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
  */
 static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
 {
+	int i;
 	char const *name1, *instance_name;
 	module_instance_t *node;
 
@@ -554,6 +557,17 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	name1 = cf_section_name1(cs);
 	instance_name = cf_section_name2(cs);
 	if (!instance_name) instance_name = name1;
+
+	/*
+	 *	Don't allow modules to use reserved words.
+	 */
+	for (i = 1; unlang_keyword[i] != NULL; i++) {
+		if (strcmp(instance_name, unlang_keyword[i]) == 0) {
+			ERROR("Module names cannot use a reserved word '%s'",
+			      unlang_keyword[i]);
+			return NULL;
+		}
+	}
 
 	/*
 	 *	See if the module already exists.
@@ -1725,8 +1739,6 @@ int modules_hup(CONF_SECTION *modules)
 	return 1;
 }
 
-
-extern char const *unlang_keyword[];
 
 static bool is_reserved_word(const char *name)
 {
