@@ -503,10 +503,8 @@ char *fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
  * @note this requires reworking some of the condition code to accept
  *	callbacks to retrieve virtual attributes, so is not yet implemented.
  */
-static ssize_t jpath_filter_expr_parse(jpath_selector_t *selector, UNUSED char const *in, UNUSED size_t inlen)
+static ssize_t jpath_filter_expr_parse(UNUSED jpath_selector_t *selector, UNUSED char const *in, UNUSED size_t inlen)
 {
-	rad_assert(selector);
-
 	/* selector->type = JPATH_SELECTOR_FILTER_EXPRESSION; */
 
 	fr_strerror_printf("Filter expressions not yet implemented");
@@ -518,10 +516,8 @@ static ssize_t jpath_filter_expr_parse(jpath_selector_t *selector, UNUSED char c
  * @note this requires reworking some of the condition code to accept
  *	callbacks to retrieve virtual attributes, so is not yet implemented.
  */
-static ssize_t jpath_expr_parse(jpath_selector_t *selector, UNUSED char const *in, UNUSED size_t inlen)
+static ssize_t jpath_expr_parse(UNUSED jpath_selector_t *selector, UNUSED char const *in, UNUSED size_t inlen)
 {
-	rad_assert(selector);
-
 	/* selector->type = JPATH_SELECTOR_EXPRESSION; */
 
 	fr_strerror_printf("Expressions not yet implemented");
