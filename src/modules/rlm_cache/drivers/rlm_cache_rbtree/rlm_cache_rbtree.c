@@ -375,10 +375,10 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
  */
 #ifdef HAVE_PTHREAD_H
 static void cache_release(UNUSED rlm_cache_config_t const *config, void *driver_inst, REQUEST *request,
-			  rlm_cache_handle_t *handle)
+			  UNUSED rlm_cache_handle_t *handle)
 #else
 static void cache_release(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst, REQUEST *request,
-			  rlm_cache_handle_t *handle)
+			  UNUSED rlm_cache_handle_t *handle)
 #endif
 {
 #ifdef HAVE_PTHREAD_H
