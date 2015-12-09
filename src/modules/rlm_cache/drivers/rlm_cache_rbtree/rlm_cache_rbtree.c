@@ -373,10 +373,6 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, UNUSED void *
 	rlm_cache_rbtree_t *driver = driver_inst;
 #endif
 
-#ifdef NDEBUG
-	if (!request) return CACHE_ERROR;
-#endif
-
 	PTHREAD_MUTEX_UNLOCK(&driver->mutex);
 
 	RDEBUG3("Mutex released");
