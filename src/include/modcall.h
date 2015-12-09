@@ -44,18 +44,16 @@ typedef struct modcallable modcallable;
 
 int modcall_fixup_update(vp_map_t *map, void *ctx);
 
-int modcall(rlm_components_t component, modcallable *c, REQUEST *request);
-
 /* Parse a module-method's config section (e.g. authorize{}) into a tree that
  * may be called with modcall() */
-modcallable *compile_modgroup(modcallable *parent,
-			      rlm_components_t component, CONF_SECTION *cs);
+modcallable *modcall_compile_section(modcallable *parent,
+			     rlm_components_t component, CONF_SECTION *cs);
 
 /* Create a single modcallable node that references a module instance. This
  * may be a CONF_SECTION containing action specifiers like "notfound = return"
  * or a simple CONF_PAIR, in which case the default actions are used. */
-modcallable *compile_modsingle(TALLOC_CTX *ctx, modcallable **parent, rlm_components_t component, CONF_ITEM *ci,
-			       char const **modname);
+modcallable *modcall_compile(TALLOC_CTX *ctx, modcallable **parent, rlm_components_t component, CONF_ITEM *ci,
+				     char const **modname);
 
 /*
  *	Do the second pass on compiling the modules.
@@ -63,7 +61,7 @@ modcallable *compile_modsingle(TALLOC_CTX *ctx, modcallable **parent, rlm_compon
 bool modcall_pass2(modcallable *mc);
 
 /* Add an entry to the end of a modgroup */
-void add_to_modcallable(modcallable *parent, modcallable *this);
+void modcall_append(modcallable *parent, modcallable *this);
 
 void modcall_debug(modcallable *mc, int depth);
 

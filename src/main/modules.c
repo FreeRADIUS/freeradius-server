@@ -26,9 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/modcall.h>
+#include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
-#include <freeradius-devel/rad_assert.h>
 
 /** Path to search for modules in
  *
@@ -1007,7 +1006,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	/*
 	 *	Compile the group.
 	 */
-	ml = compile_modgroup(NULL, comp, cs);
+	ml = modcall_compile_section(NULL, comp, cs);
 	if (!ml) {
 		return 0;
 	}
@@ -1149,7 +1148,7 @@ static int load_component_section(CONF_SECTION *cs,
 		/*
 		 *	Try to compile one entry.
 		 */
-		this = compile_modsingle(subcomp, &subcomp->modulelist, comp, modref, &modname);
+		this = modcall_compile(subcomp, &subcomp->modulelist, comp, modref, &modname);
 
 		/*
 		 *	It's OK for the module to not exist.
@@ -1188,7 +1187,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 		if (rad_debug_lvl > 2) modcall_debug(this, 2);
 
-		add_to_modcallable(subcomp->modulelist, this);
+		modcall_append(subcomp->modulelist, this);
 	}
 
 

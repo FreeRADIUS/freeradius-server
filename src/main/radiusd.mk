@@ -1,6 +1,7 @@
 TARGET	:= radiusd
 SOURCES := acct.c auth.c client.c crypt.c files.c \
 		  listen.c  mainconfig.c modules.c modcall.c \
+		  interpreter.c \
 		  radiusd.c state.c stats.c soh.c \
 		  session.c channel.c \
 		  process.c realms.c detail.c
