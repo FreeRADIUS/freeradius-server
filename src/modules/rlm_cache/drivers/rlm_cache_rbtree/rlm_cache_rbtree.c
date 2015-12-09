@@ -225,6 +225,10 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	rad_assert(handle == request);
 
+#ifdef NDEBUG
+	if (!request) return CACHE_ERROR;
+#endif
+
 	my_c.key = key;
 	my_c.key_len = key_len;
 	c = rbtree_finddata(driver->cache, &my_c);
@@ -253,6 +257,10 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	rlm_cache_entry_t *my_c;
 
 	rad_assert(handle == request);
+
+#ifdef NDEBUG
+	if (!request) return CACHE_ERROR;
+#endif
 
 	memcpy(&my_c, &c, sizeof(my_c));
 
@@ -293,6 +301,10 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 	rlm_cache_rbtree_t *driver = driver_inst;
 	int ret;
 
+#ifdef NDEBUG
+	if (!request) return CACHE_ERROR;
+#endif
+
 	ret = fr_heap_extract(driver->heap, c);
 	rad_assert(ret == 1);
 	if (ret != 1) {					/* Need this check if we're not building with asserts */
@@ -320,6 +332,10 @@ static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
 	rlm_cache_rbtree_t *driver = driver_inst;
 
 	rad_assert(handle == request);
+
+#ifdef NDEBUG
+	if (!request) return CACHE_ERROR;
+#endif
 
 	return rbtree_num_elements(driver->cache);
 }
@@ -369,7 +385,9 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, UNUSED void *
 	rlm_cache_rbtree_t *driver = driver_inst;
 #endif
 
-	rad_assert(handle == request);
+#ifdef NDEBUG
+	if (!request) return CACHE_ERROR;
+#endif
 
 	PTHREAD_MUTEX_UNLOCK(&driver->mutex);
 
