@@ -125,8 +125,79 @@ do { \
 	_p += strlcpy((char *)_p, _ip_str, sizeof(_buff) - (_p - _buff)); \
 } while (0)
 
+#define EOL "\n"
 
 static char const *name;
+/** Lua script for releasing a lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] IP address to release.
+ *
+ * Removes the IP entry in the ZSET, then removes the address hash, and the device key
+ * if one exists.
+ *
+ * Will do nothing if the lease is not found in the ZSET.
+ *
+ * Returns
+ * - 0 if no ip addresses were removed.
+ * - 1 if an ip address was removed.
+ */
+static char lua_release_cmd[] =
+	"local found" EOL								/* 1 */
+	"local ret" EOL									/* 2 */
+
+	/*
+	 *	Set expiry time to 0
+	 */
+	"ret = redis.call('ZADD', '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"', 'XX', 'CH', 0, ARGV[1])" EOL	/* 3 */
+	"if ret == 0 then" EOL								/* 4 */
+	"  return 0" EOL								/* 5 */
+	"end" EOL									/* 6 */
+	"found = redis.call('HGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":'"
+			    " .. ARGV[1], 'device')" EOL				/* 7 */
+	"if not found then" EOL								/* 8 */
+	"  return ret"	EOL								/* 9 */
+	"end" EOL									/* 10 */
+
+	/*
+	 *	Remove the association between the device and a lease
+	 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. found)" EOL	/* 11 */
+	"return 1";									/* 12 */
+
+/** Lua script for removing a lease
+ *
+ * - KEYS[1] The pool name.
+ * - ARGV[1] IP address to remove.
+ *
+ * Removes the IP entry in the ZSET, then removes the address hash, and the device key
+ * if one exists.
+ *
+ * Will work with partially removed IP addresses (where the ZSET entry is absent but other
+ * elements weren't cleaned up).
+ *
+ * Returns
+ * - 0 if no ip addresses were removed.
+ * - 1 if an ip address was removed.
+ */
+static char lua_remove_cmd[] =
+	"local found" EOL								/* 1 */
+	"local ret" EOL									/* 2 */
+	"local address_key" EOL								/* 3 */
+
+	"ret = redis.call('ZREM', '{' .. KEYS[1] .. '}:"IPPOOL_POOL_KEY"', ARGV[1])" EOL	/* 4 */
+	"address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. ARGV[1]" EOL	/* 5 */
+	"found = redis.call('HGET', address_key, 'device')" EOL				/* 6 */
+	"if not found then" EOL								/* 7 */
+	"  return ret"	EOL								/* 8 */
+	"end" EOL									/* 9 */
+	"redis.call('DEL', address_key)" EOL						/* 10 */
+
+	/*
+	 *	Remove the association between the device and a lease
+	 */
+	"redis.call('DEL', '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. found)" EOL	/* 11 */
+	"return 1" EOL;									/* 12 */
 
 static void NEVER_RETURNS usage(int ret) {
 	INFO("Usage: %s [[-a|-d|-r] -p] [options] <server[:port]> <pool> [<range>]", name);
@@ -385,7 +456,6 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 	REQUEST				*request = request_alloc(inst);
 	redisReply			**replies = NULL;
 
-
 	while (more) {
 		size_t	reply_cnt = 0;
 
@@ -538,6 +608,7 @@ static int _driver_release_lease_process(void *out, UNUSED fr_ipaddr_t const *ip
 	if (reply->type != REDIS_REPLY_INTEGER) return -1;
 
 	*modified += reply->integer;
+
 	return 0;
 }
 
@@ -549,16 +620,12 @@ static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_re
 					 UNUSED uint8_t const *range, UNUSED size_t range_len,
 					 fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
-	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t		*key_p = key;
-
 	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
-	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 
-	DEBUG("Releasing %s to pool %s", ip_buff, key_prefix);
-	redisAppendCommand(conn->handle, "ZADD %b XX CH 0 %s", key, key_p - key, ip_buff);
+	DEBUG("Releasing %s to pool \"%s\"", ip_buff, key_prefix);
+	redisAppendCommand(conn->handle, "EVAL %s 1 %b %s", lua_release_cmd, key_prefix, key_prefix_len, ip_buff);
 	return 1;
 }
 
@@ -580,15 +647,14 @@ static int _driver_remove_lease_process(void *out, UNUSED fr_ipaddr_t const *ipa
 {
 	uint64_t *modified = out;
 	/*
-	 *	Record the actual number of addresses modified.
-	 *	Existing addresses won't be included in this
-	 *	count.
+	 *	Record the actual number of addresses released.
+	 *	Leases with a score of zero shouldn't be included,
+	 *	in this count.
 	 */
-	if (reply->type != REDIS_REPLY_ARRAY) return -1;
+	if (reply->type != REDIS_REPLY_INTEGER) return -1;
 
-	if ((reply->elements > 0) && (reply->element[0]->type == REDIS_REPLY_INTEGER)) {
-		*modified += reply->element[0]->integer;
-	}
+	*modified += reply->integer;
+
 	return 0;
 }
 
@@ -602,23 +668,13 @@ static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 					UNUSED uint8_t const *range, UNUSED size_t range_len,
 					fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
-	uint8_t	key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t	*key_p = key;
-	char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
+	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
-	uint8_t	ip_key[IPPOOL_MAX_IP_KEY_SIZE];
-	uint8_t	*ip_key_p = ip_key;
-
-	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
-	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Removing %s from pool %s, and removing hash at %s", ip_buff, key_prefix, ip_key);
-	redisAppendCommand(conn->handle, "MULTI");
-	redisAppendCommand(conn->handle, "ZREM %b %s", key, key_p - key, ip_buff);
-	redisAppendCommand(conn->handle, "DEL %b", ip_key, ip_key_p - ip_key);
-	redisAppendCommand(conn->handle, "EXEC");
-	return 4;
+	DEBUG("Removing %s from pool \"%s\"", ip_buff, key_prefix);
+	redisAppendCommand(conn->handle, "EVAL %s 1 %b %s", lua_remove_cmd, key_prefix, key_prefix_len, ip_buff);
+	return 1;
 }
 
 /** Remove a range of leases
