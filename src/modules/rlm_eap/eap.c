@@ -270,6 +270,12 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
 
+			RWARN("!!! We requested to use an EAP type as normal.");
+			RWARN("!!! The supplicant rejected that, and requested to use the same EAP type.");
+			RWARN("!!!     i.e. the supplicant said 'I don't like X, please use X instead.");
+			RWARN("!!! The supplicant software is broken and does not work properly.");
+			RWARN("!!! Please upgrade it to software that works.");
+
 			continue;
 		}
 
