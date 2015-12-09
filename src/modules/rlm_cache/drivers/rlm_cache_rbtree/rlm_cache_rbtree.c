@@ -177,13 +177,11 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *driver_inst,
-				       REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
+				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;
 
 	rlm_cache_entry_t *c, my_c;
-
-	rad_assert(handle == request);
 
 	/*
 	 *	Clear out old entries
@@ -217,18 +215,14 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
-					 REQUEST *request, void *handle,
+					 UNUSED REQUEST *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;
 	rlm_cache_entry_t *c, my_c;
 
-	rad_assert(handle == request);
-
-#ifdef NDEBUG
 	if (!request) return CACHE_ERROR;
-#endif
-
+	
 	my_c.key = key;
 	my_c.key_len = key_len;
 	c = rbtree_finddata(driver->cache, &my_c);
@@ -258,9 +252,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 
 	rad_assert(handle == request);
 
-#ifdef NDEBUG
 	if (!request) return CACHE_ERROR;
-#endif
 
 	memcpy(&my_c, &c, sizeof(my_c));
 
@@ -327,15 +319,11 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
  * @copydetails cache_entry_count_t
  */
 static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *driver_inst,
-				  REQUEST *request, void *handle)
+				  REQUEST *request, UNUSED void *handle)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;
 
-	rad_assert(handle == request);
-
-#ifdef NDEBUG
 	if (!request) return CACHE_ERROR;
-#endif
 
 	return rbtree_num_elements(driver->cache);
 }
