@@ -1103,9 +1103,10 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
  * @param line where fr_exit() was called.
  * @param status we're exiting with.
  */
+#ifndef NDEBUG
 void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 {
-#ifndef NDEBUG
+
 	char const *error = fr_strerror();
 
 	if (error && (status != 0)) {
@@ -1113,11 +1114,19 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 	} else {
 		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
-#endif
+
 	fr_debug_break(false);	/* If running under GDB we'll break here */
 
 	exit(status);
 }
+#else
+void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, UNUSED int status)
+{
+	fr_debug_break(false);	/* If running under GDB we'll break here */
+
+	exit(status);
+}
+#endif
 
 /** Exit possibly printing a message about why we're exiting.
  *
@@ -1127,9 +1136,9 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
  * @param line where fr_exit_now() was called.
  * @param status we're exiting with.
  */
+#ifndef NDEBUG
 void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 {
-#ifndef NDEBUG
 	char const *error = fr_strerror();
 
 	if (error && (status != 0)) {
@@ -1137,8 +1146,16 @@ void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 	} else {
 		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
-#endif
+
 	fr_debug_break(false);	/* If running under GDB we'll break here */
 
 	_exit(status);
 }
+#else
+void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, UNUSED int status)
+{
+	fr_debug_break(false);	/* If running under GDB we'll break here */
+
+	_exit(status);
+}
+#endif
