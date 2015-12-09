@@ -84,7 +84,7 @@ static int vqp_socket_recv(rad_listen_t *listener)
 /*
  *	Send an authentication response packet
  */
-static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
+static int vqp_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == vqp_socket_send);

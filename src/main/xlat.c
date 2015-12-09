@@ -896,7 +896,7 @@ typedef struct xlat_redundant_t {
 } xlat_redundant_t;
 
 
-static ssize_t xlat_redundant(char **out, size_t outlen,
+static ssize_t xlat_redundant(char **out, NDEBUG_UNUSED size_t outlen,
 			      void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
@@ -947,7 +947,7 @@ static ssize_t xlat_redundant(char **out, size_t outlen,
 }
 
 
-static ssize_t xlat_load_balance(char **out, size_t outlen,
+static ssize_t xlat_load_balance(char **out, NDEBUG_UNUSED size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {

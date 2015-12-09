@@ -132,6 +132,11 @@ typedef void (*sig_t)(int);
 #define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
 #define NEVER_RETURNS		CC_HINT(noreturn)
 #define UNUSED			CC_HINT(unused)
+#ifndef NDEBUG
+#define NDEBUG_UNUSED
+#else
+#define NDEBUG_UNUSED		UNUSED
+#endif
 #define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
 /*

@@ -749,9 +749,8 @@ process_error:
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, ldap_sasl *sasl, bool retry,
-			   LDAPControl **serverctrls, LDAPControl **clientctrls
-			   )
+			   char const *password, NDEBUG_UNUSED ldap_sasl *sasl, bool retry,
+			   LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
 

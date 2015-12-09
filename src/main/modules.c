@@ -401,7 +401,7 @@ static int _module_entry_free(module_entry_t *this)
 	 */
 	if (!main_config.debug_memory)
 #endif
-		dlclose(this->handle);	/* ignore any errors */
+	dlclose(this->handle);	/* ignore any errors */
 	return 0;
 }
 

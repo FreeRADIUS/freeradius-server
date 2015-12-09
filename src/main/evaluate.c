@@ -158,8 +158,8 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
  *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         PW_TYPE lhs_type, value_data_t const *lhs,
-		         PW_TYPE rhs_type, value_data_t const *rhs)
+		         NDEBUG_UNUSED PW_TYPE lhs_type, value_data_t const *lhs,
+		         NDEBUG_UNUSED PW_TYPE rhs_type, value_data_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 

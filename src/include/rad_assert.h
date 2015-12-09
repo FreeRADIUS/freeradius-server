@@ -32,15 +32,14 @@ extern "C" {
 void rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
 
 #ifdef NDEBUG
-	#define rad_assert(expr) ((void) (0))
+#  define rad_assert(expr) ((void) (0))
 
 #elif !defined(__clang_analyzer__)
-	#define rad_assert(expr) \
-		((void) ((expr) ? (void) 0 : \
-			(void) rad_assert_fail (__FILE__, __LINE__, #expr)))
-
+#  define rad_assert(expr) \
+	((void) ((expr) ? (void) 0 : \
+	(void) rad_assert_fail (__FILE__, __LINE__, #expr)))
 #else
-#include <assert.h>
+#  include <assert.h>
 #define rad_assert assert
 #endif
 

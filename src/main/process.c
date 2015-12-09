@@ -4516,7 +4516,7 @@ static void coa_running(REQUEST *request, int action)
  *	Event handlers.
  *
  ***********************************************************************/
-static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
+static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 

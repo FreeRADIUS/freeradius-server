@@ -1631,7 +1631,7 @@ int common_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 /*
  *	Send an authentication response packet
  */
-static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
+static int auth_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
@@ -1665,7 +1665,7 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 /*
  *	Send an accounting response packet (or not)
  */
-static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
+static int acct_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == acct_socket_send);
@@ -1707,7 +1707,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
  *
  *	FIXME: have different code for proxy auth & acct!
  */
-static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
+static int proxy_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);

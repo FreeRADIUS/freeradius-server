@@ -245,7 +245,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
-static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
 			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	char			state[6];

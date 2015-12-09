@@ -478,7 +478,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tls_session_t *tls_session,
+static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;

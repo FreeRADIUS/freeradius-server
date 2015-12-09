@@ -34,11 +34,7 @@ RCSID("$Id$")
  * @param vp to free.
  * @return 0
  */
-#ifndef NDEBUG
-static int _fr_pair_free(VALUE_PAIR *vp)
-#else
-static int _fr_pair_free(UNUSED VALUE_PAIR *vp)
-#endif
+static int _fr_pair_free(NDEBUG_UNUSED VALUE_PAIR *vp)
 {
 #ifndef NDEBUG
 	vp->vp_integer = FREE_MAGIC;
