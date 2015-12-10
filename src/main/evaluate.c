@@ -150,10 +150,6 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 }
 
 #ifdef HAVE_REGEX
-static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         NDEBUG_UNUSED PW_TYPE lhs_type, value_data_t const *lhs,
-		         NDEBUG_UNUSED PW_TYPE rhs_type, value_data_t const *rhs) CC_HINT(nonnull);
-
 /** Perform a regular expressions comparison between two operands
  *
  * @return
@@ -187,7 +183,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	default:
 		rad_assert(rhs_type == PW_TYPE_STRING);
-		rad_assert(rhs->strvalue);
+		rad_assert(rhs && rhs->strvalue);
 		slen = regex_compile(request, &rreg, rhs->strvalue, rhs->length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
