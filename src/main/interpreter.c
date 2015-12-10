@@ -919,7 +919,7 @@ redo:
 			if (entry->unwind != 0) goto done;
 
 		case MODCALL_NEXT_SIBLING:
-			if ((action == MODCALL_NEXT_SIBLING && modcall_brace[c->type])) RDEBUG2("}");
+			if ((action == MODCALL_NEXT_SIBLING) && modcall_brace[c->type]) RDEBUG2("}");
 
 		next_sibling:
 			if (!entry->do_next_sibling) goto done;
