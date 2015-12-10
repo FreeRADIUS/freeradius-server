@@ -149,6 +149,7 @@ typedef struct modcall_stack_t {
 } modcall_stack_t;
 
 typedef enum modcall_action_t {
+	MODCALL_INVALID = 0,
 	MODCALL_CALCULATE_RESULT,
 	MODCALL_NEXT_SIBLING,
 	MODCALL_DO_CHILDREN,
@@ -797,7 +798,7 @@ static void modcall_recurse(REQUEST *request, modcall_stack_t *stack, rlm_rcode_
 	rlm_rcode_t result;
 	modgroup *g;
 	modcall_stack_entry_t *entry;
-	modcall_action_t action;
+	modcall_action_t action = MODCALL_INVALID;
 
 redo:
 	result = RLM_MODULE_UNKNOWN;
