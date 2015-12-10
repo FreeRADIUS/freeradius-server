@@ -5,7 +5,7 @@
 #
 
 #
-#  Totalmem limit should be lowered to 200.0 if none of the 
+#  Totalmem limit should be lowered to 200.0 if none of the
 #  interpreted language modules or rlm_cache are being used.
 #
 check process radiusd with pidfile /var/run/radiusd/radiusd.pid
