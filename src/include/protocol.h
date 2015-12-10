@@ -13,8 +13,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef FR_PROTOCOL_H
-#define FR_PROTOCOL_H
+#ifndef _FR_PROTOCOL_H
+#define _FR_PROTOCOL_H
 /**
  * $Id$
  *
@@ -74,4 +74,4 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 }
 #endif
 
-#endif /* FR_PROTOCOL_H */
+#endif /* _FR_PROTOCOL_H */
