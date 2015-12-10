@@ -534,7 +534,7 @@ ATTRIBUTE	TLS-PSK-Identity			1933	string
 # 1940 - 1949: reserved for TLS session caching, mostly in 3.1
 
 # Set by EAP-TLS code
-ATTRIBUTE	TLS-OCSP-Cert-Valid			1943    integer internal
+ATTRIBUTE	TLS-OCSP-Cert-Valid			1943    integer
 VALUE	TLS-OCSP-Cert-Valid		unknown			3
 VALUE	TLS-OCSP-Cert-Valid		skipped			2
 VALUE	TLS-OCSP-Cert-Valid		yes			1
