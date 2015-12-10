@@ -795,7 +795,6 @@ static void modcall_recurse(REQUEST *request, modcall_stack_t *stack, rlm_rcode_
 	modcallable *c;
 	int priority;
 	rlm_rcode_t result;
-	rlm_components_t component;
 	modgroup *g;
 	modcall_stack_entry_t *entry;
 	modcall_action_t action;
@@ -805,7 +804,6 @@ redo:
 	priority = -1;
 
 	entry = &stack->entry[stack->depth];
-	component = stack->component;
 
 	RINDENT();
 
