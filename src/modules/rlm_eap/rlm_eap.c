@@ -214,18 +214,20 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	If we're doing horrible tunnelling work, remember it.
 	 */
 	if ((request->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+		int ret;
+
 		RDEBUG2("Proxy EAP as non-EAP.  Not composing EAP");
 
 		/*
 		 *	Mark the request up as having been see by the EAP
 		 *	module before proxying.
 		 */
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
-					  false, false, false);
+		ret = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
+				       false, false, false);
 #ifndef NDEBUG
-		rad_assert(status == 0);
+		rad_assert(ret == 0);
 #else
-		UNUSED_VAR(status);
+		UNUSED_VAR(ret);
 #endif
 		rcode = RLM_MODULE_HANDLED;
 		goto finish;
@@ -236,7 +238,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	proxy it.
 	 */
 	if (request->proxy != NULL) {
-		VALUE_PAIR *vp = NULL;
+		VALUE_PAIR 	*vp = NULL;
+		int		ret;
 
 		rad_assert(!request->proxy_reply);
 
@@ -244,12 +247,12 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	Mark the request up as having been see by the EAP
 		 *	module before proxying.
 		 */
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
-					  false, false, false);
+		ret = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
+				       false, false, false);
 #ifndef NDEBUG
-		rad_assert(status == 0);
+		rad_assert(ret == 0);
 #else
-		UNUSED_VAR(status);
+		UNUSED_VAR(ret);
 #endif
 
 		/*

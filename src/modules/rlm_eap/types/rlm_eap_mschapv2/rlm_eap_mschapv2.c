@@ -610,8 +610,9 @@ packet_ready:
 	 *	home server.
 	 */
 	if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
-		char *username = NULL;
-		eap_tunnel_data_t *tunnel;
+		int			ret;
+		char			*username = NULL;
+		eap_tunnel_data_t	*tunnel;
 
 		RDEBUG2("Cancelling authentication and letting it be proxied");
 
@@ -626,9 +627,13 @@ packet_ready:
 		/*
 		 *	Associate the callback with the request.
 		 */
-		rcode = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					 tunnel, false, false, false);
-		rad_assert(rcode == 0);
+		ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+				       tunnel, false, false, false);
+#ifdef NDEBUG
+		rad_assert(ret == 0);
+#else
+		UNUSED_VAR(ret);
+#endif
 
 		/*
 		 *	The State attribute is NOT supposed to
