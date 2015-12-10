@@ -177,7 +177,7 @@ typedef struct main_config {
 	fr_dict_t	*dict;				//!< Main dictionary.
 } main_config_t;
 
-#if defined(WITH_VERIFY_PTR)
+#ifdef WITH_VERIFY_PTR
 #  define VERIFY_REQUEST(_x) verify_request(__FILE__, __LINE__, _x)
 #else
 /*
@@ -434,7 +434,9 @@ char const	*rad_default_run_dir(void);
 char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
 
+#ifdef WITH_VERIFY_PTR
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
+#endif
 void		rad_mode_to_str(char out[10], mode_t mode);
 void		rad_mode_to_oct(char out[5], mode_t mode);
 int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);

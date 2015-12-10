@@ -865,7 +865,7 @@ char const *rad_radacct_dir(void)
 	return RADIR;
 }
 
-#ifndef NDEBUG
+#ifdef WITH_VERIFY_PTR
 /*
  *	Verify a packet.
  */
