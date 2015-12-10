@@ -811,121 +811,122 @@ redo:
 	 *	Loop over all modules in this list.
 	 */
 	while (entry->c != NULL) {
-	c = entry->c;
+		c = entry->c;
 
-	rad_assert(c->debug_name != NULL); /* if this happens, all bets are off. */
-
-	/*
-	 *	We've been asked to stop.  Do so.
-	 */
-	if ((request->master_state == REQUEST_STOP_PROCESSING) ||
-	    (request->parent &&
-	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
-		entry->result = RLM_MODULE_FAIL;
-		entry->priority = 9999;
-		entry->unwind = MOD_RETURN;
-		break;
-	}
-
-	if (modcall_brace[c->type]) RDEBUG2("%s {", c->debug_name);
-
-	action = modcall_functions[c->type](request, stack, &result, &priority);
-
-	switch (action) {
-	case MODCALL_DO_CHILDREN:
-		g = mod_callabletogroup(c);
+		rad_assert(c->debug_name != NULL); /* if this happens, all bets are off. */
 
 		/*
-		 *	This should really have been caught in the
-		 *	compiler, and the node never generated.  But
-		 *	doing that requires changing it's API so that
-		 *	it returns a flag instead of the compiled
-		 *	MOD_GROUP.
+		 *	We've been asked to stop.  Do so.
 		 */
-		if (!g->children) {
-			RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
-			goto next_sibling;
+		if ((request->master_state == REQUEST_STOP_PROCESSING) ||
+		    (request->parent &&
+		     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
+			entry->result = RLM_MODULE_FAIL;
+			entry->priority = 9999;
+			entry->unwind = MOD_RETURN;
+			break;
 		}
 
-		modcall_push(stack, g->children, entry->result, true);
+		if (modcall_brace[c->type]) RDEBUG2("%s {", c->debug_name);
 
-	case MODCALL_ITERATIVE:
-		(entry + 1)->iterative = true;
-		goto redo;
+		action = modcall_functions[c->type](request, stack, &result, &priority);
 
-	do_pop:
-		modcall_pop(stack);
+		switch (action) {
+		case MODCALL_DO_CHILDREN:
+			g = mod_callabletogroup(c);
 
-		entry = &stack->entry[stack->depth];
+			/*
+			 *	This should really have been caught in the
+			 *	compiler, and the node never generated.  But
+			 *	doing that requires changing it's API so that
+			 *	it returns a flag instead of the compiled
+			 *	MOD_GROUP.
+			 */
+			if (!g->children) {
+				RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
+				goto next_sibling;
+			}
 
-		c = entry->c;
-		rad_assert(c != NULL);
+			modcall_push(stack, g->children, entry->result, true);
 
-		/* FALL-THROUGH */
+		case MODCALL_ITERATIVE:
+			(entry + 1)->iterative = true;
+			goto redo;
 
-	case MODCALL_CALCULATE_RESULT:
-		if (modcall_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"));
+		do_pop:
+			modcall_pop(stack);
+
+			entry = &stack->entry[stack->depth];
+
+			c = entry->c;
+			rad_assert(c != NULL);
+
+			/* FALL-THROUGH */
+
+		case MODCALL_CALCULATE_RESULT:
+			if (modcall_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
+							    fr_int2str(mod_rcode_table, result, "<invalid>"));
 
 #if 0
-		RDEBUG("(%s, %d) ? (%s, %d)",
-		       fr_int2str(mod_rcode_table, result, "<invalid>"),
-		       priority,
-		       fr_int2str(mod_rcode_table, entry->result, "<invalid>"),
-		       entry->priority);
+			RDEBUG("(%s, %d) ? (%s, %d)",
+			       fr_int2str(mod_rcode_table, result, "<invalid>"),
+			       priority,
+			       fr_int2str(mod_rcode_table, entry->result, "<invalid>"),
+			       entry->priority);
 #endif
 
-		rad_assert(result != RLM_MODULE_UNKNOWN);
+			rad_assert(result != RLM_MODULE_UNKNOWN);
 
-		/*
-		 *	The child's action says return.  Do so.
-		 */
-		if (c->actions[result] == MOD_ACTION_RETURN) {
-	 case MODCALL_BREAK:
-			entry->result = result;
-			goto done;
-		}
+			/*
+			 *	The child's action says return.  Do so.
+			 */
+			if (c->actions[result] == MOD_ACTION_RETURN) {
+		 case MODCALL_BREAK:
+				entry->result = result;
+				goto done;
+			}
 
-		/*
-		 *	If "reject", break out of the loop and return
-		 *	reject.
-		 */
-		if (c->actions[result] == MOD_ACTION_REJECT) {
-			entry->result = RLM_MODULE_REJECT;
-			goto done;
-		}
+			/*
+			 *	If "reject", break out of the loop and return
+			 *	reject.
+			 */
+			if (c->actions[result] == MOD_ACTION_REJECT) {
+				entry->result = RLM_MODULE_REJECT;
+				goto done;
+			}
 
-		/*
-		 *	The array holds a default priority for this return
-		 *	code.  Grab it in preference to any unset priority.
-		 */
-		if (priority < 0) {
-			priority = c->actions[result];
-		}
+			/*
+			 *	The array holds a default priority for this return
+			 *	code.  Grab it in preference to any unset priority.
+			 */
+			if (priority < 0) {
+				priority = c->actions[result];
+			}
 
-		/*
-		 *	We're higher than any previous priority, remember this
-		 *	return code and priority.
-		 */
-		if (priority > entry->priority) {
-			entry->result = result;
-			entry->priority = priority;
-		}
+			/*
+			 *	We're higher than any previous priority, remember this
+			 *	return code and priority.
+			 */
+			if (priority > entry->priority) {
+				entry->result = result;
+				entry->priority = priority;
+			}
 
-		/*
-		 *	If we've been told to stop processing
-		 *	it, do so.
-		 */
-		if (entry->unwind != 0) goto done;
+			/*
+			 *	If we've been told to stop processing
+			 *	it, do so.
+			 */
+			if (entry->unwind != 0) goto done;
 
-	case MODCALL_NEXT_SIBLING:
-		if ((action == MODCALL_NEXT_SIBLING && modcall_brace[c->type])) RDEBUG2("}");
+		case MODCALL_NEXT_SIBLING:
+			if ((action == MODCALL_NEXT_SIBLING && modcall_brace[c->type])) RDEBUG2("}");
 
-	next_sibling:
-		if (!entry->do_next_sibling) goto done;
+		next_sibling:
+			if (!entry->do_next_sibling) goto done;
 
-	} /* switch over return code from the interpretor function */
+		} /* switch over return code from the interpretor function */
 
-	entry->c = entry->c->next;
+		entry->c = entry->c->next;
 	}
 
 	/*
