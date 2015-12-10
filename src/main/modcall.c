@@ -1636,6 +1636,33 @@ static modcallable *compile_csingle(modcallable *parent, rlm_components_t compon
 	return compile_action_override(ci, c);
 }
 
+typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+					 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type);
+typedef struct modcall_compile_t {
+	char const			*name;
+	modcall_compile_function_t	compile;
+	grouptype_t			grouptype;
+	mod_type_t			mod_type;
+} modcall_compile_t;
+
+static modcall_compile_t compile_table[] = {
+	{ "group",		compile_group, GROUPTYPE_SIMPLE, MOD_GROUP },
+	{ "redundant",		compile_redundant, GROUPTYPE_REDUNDANT, MOD_GROUP },
+	{ "load-balance",	compile_redundant, GROUPTYPE_SIMPLE, MOD_LOAD_BALANCE },
+	{ "redundant-load-balance", compile_redundant, GROUPTYPE_REDUNDANT, MOD_REDUNDANT_LOAD_BALANCE },
+
+	{ "if",			compile_if, GROUPTYPE_SIMPLE, MOD_IF },
+	{ "elsif",		compile_elsif, GROUPTYPE_SIMPLE, MOD_ELSIF },
+	{ "else",		compile_else, GROUPTYPE_SIMPLE, MOD_ELSE },
+	{ "update",		compile_update, GROUPTYPE_SIMPLE, MOD_UPDATE },
+	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
+	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
+	{ "case",		compile_case, GROUPTYPE_SIMPLE, MOD_CASE },
+	{ "foreach",		compile_foreach, GROUPTYPE_SIMPLE, MOD_FOREACH },
+
+	{ NULL, NULL, 0, 0 }
+};
+
 
 /*
  *	Compile one entry of a module call.
@@ -1653,6 +1680,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	rlm_components_t method = component;
 
 	if (cf_item_is_section(ci)) {
+		int i;
 		char const *name2;
 
 		cs = cf_item_to_section(ci);
@@ -1660,62 +1688,17 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		name2 = cf_section_name2(cs);
 		if (!name2) name2 = "";
 
-		/*
-		 *	group{}, redundant{}, or append{} may appear
-		 *	where a single module instance was expected.
-		 *	In that case, we hand it off to
-		 *	compile_group
-		 */
-		if (strcmp(modrefname, "group") == 0) {
-			*modname = name2;
-			return compile_group(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_GROUP);
-
-		} else if (strcmp(modrefname, "redundant") == 0) {
-			*modname = name2;
-			return compile_redundant(parent, component, cs, GROUPTYPE_REDUNDANT, grouptype, MOD_GROUP);
-
-		} else if (strcmp(modrefname, "load-balance") == 0) {
-			*modname = name2;
-			return compile_redundant(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_LOAD_BALANCE);
-
-		} else if (strcmp(modrefname, "redundant-load-balance") == 0) {
-			*modname = name2;
-			return compile_redundant(parent, component, cs, GROUPTYPE_REDUNDANT, grouptype, MOD_REDUNDANT_LOAD_BALANCE);
+		for (i = 0; compile_table[i].name != NULL; i++) {
+			if (strcmp(modrefname, compile_table[i].name) == 0) {
+				*modname = name2;
+				return compile_table[i].compile(parent, component, cs,
+								  compile_table[i].grouptype, grouptype,
+								  compile_table[i].mod_type);
+			}
+		}
 
 #ifdef WITH_UNLANG
-		} else 	if (strcmp(modrefname, "if") == 0) {
-			*modname = name2;
-			return compile_if(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_IF);
-
-		} else 	if (strcmp(modrefname, "elsif") == 0) {
-			*modname = name2;
-			return compile_elsif(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_ELSIF);
-
-		} else 	if (strcmp(modrefname, "else") == 0) {
-			*modname = name2;
-			return compile_else(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_ELSE);
-
-		} else 	if (strcmp(modrefname, "update") == 0) {
-			*modname = name2;
-			return compile_update(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_UPDATE);
-			
-		} else 	if (strcmp(modrefname, "map") == 0) {
-			*modname = name2;
-			return compile_map(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_MAP);
-
-		} else 	if (strcmp(modrefname, "switch") == 0) {
-			*modname = name2;
-			return compile_switch(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_SWITCH);
-
-		} else 	if (strcmp(modrefname, "case") == 0) {
-			*modname = name2;
-			return compile_case(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_CASE);
-
-		} else 	if (strcmp(modrefname, "foreach") == 0) {
-			*modname = name2;
-			return compile_foreach(parent, component, cs, GROUPTYPE_SIMPLE, grouptype, MOD_FOREACH);
-
-		} else if (strcmp(modrefname, "break") == 0) {
+		if (strcmp(modrefname, "break") == 0) {
 			cf_log_err(ci, "Invalid use of 'break'");
 			return NULL;
 
@@ -1723,8 +1706,8 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 			cf_log_err(ci, "Invalid use of 'return'");
 			return NULL;
 
-#endif
 		} /* else it's something like sql { fail = 1 ...} */
+#endif
 
 	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
 		return NULL;
