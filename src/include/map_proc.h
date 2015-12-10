@@ -13,8 +13,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _MAP_PROC_H
-#define _MAP_PROC_H
+#ifndef _FR_MAP_PROC_H
+#define _FR_MAP_PROC_H
 /**
  * $Id$
  *
