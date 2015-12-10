@@ -150,6 +150,10 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 }
 
 #ifdef HAVE_REGEX
+static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
+		         NDEBUG_UNUSED PW_TYPE lhs_type, value_data_t const *lhs,
+		         NDEBUG_UNUSED PW_TYPE rhs_type, value_data_t const *rhs) CC_HINT(nonnull);
+
 /** Perform a regular expressions comparison between two operands
  *
  * @return
@@ -171,7 +175,6 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
 	rad_assert(lhs_type == PW_TYPE_STRING);
-	rad_assert(lhs != NULL);
 
 	EVAL_DEBUG("CMP WITH REGEX %s %s",
 		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
