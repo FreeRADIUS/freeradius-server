@@ -1167,7 +1167,9 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		rad_assert(0);
 		return 0;	/* 0 is an error here too */
 	}
-	rad_assert(vpt);
+
+	if (!vpt) return 0;
+
 	vpt->quote = type;
 
 	rad_assert(slen >= 0);
