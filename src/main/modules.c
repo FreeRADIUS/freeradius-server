@@ -537,8 +537,6 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	return 0;
 }
 
-extern char const *unlang_keyword[];
-
 /** Bootstrap a module.
  *
  *  Load the module shared library, allocate instance memory for it,
