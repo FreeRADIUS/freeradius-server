@@ -172,7 +172,7 @@ static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, Stringify(0) },
 	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, Stringify(0) },
 	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
+#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
 	{ "allow_vulnerable_openssl", PW_TYPE_BOOLEAN, 0, &mainconfig.allow_vulnerable_openssl, "no"},
 #endif
 	{ NULL, -1, 0, NULL, NULL }

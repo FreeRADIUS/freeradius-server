@@ -293,9 +293,22 @@ int main(int argc, char *argv[])
 	 *	Mismatch between build time OpenSSL and linked SSL,
 	 *	better to die here than segfault later.
 	 */
-	if (ssl_check_version(mainconfig.allow_vulnerable_openssl) < 0) {
+	if (ssl_check_version() < 0) {
 		exit(1);
 	}
+
+	/*
+	 *	Check for known vulnerabilities that compromise the 
+	 *	security of the server.
+	 */
+#  ifdef ENABLE_OPENSSL_VERSION_CHECK
+	if (!mainconfig.allow_vulnerable_openssl) {
+		if (ssl_check_vulnerable() < 0) {
+			exit(1);
+		}
+	}
+#  endif
+
 #endif
 
 	/*  Load the modules AFTER doing SSL checks */
