@@ -42,7 +42,6 @@ typedef struct rlm_eap_gtc_t {
 
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("challenge", PW_TYPE_STRING, rlm_eap_gtc_t, challenge), .dflt = "Password: " },
-
 	{ FR_CONF_OFFSET("auth_type", PW_TYPE_STRING, rlm_eap_gtc_t, auth_type_name), .dflt = "PAP" },
 	CONF_PARSER_TERMINATOR
 };
@@ -88,10 +87,10 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
  */
 static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
-	char challenge_str[1024];
-	int length;
-	eap_round_t *eap_round = eap_session->this_round;
-	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
+	char		challenge_str[1024];
+	int		length;
+	eap_round_t	*eap_round = eap_session->this_round;
+	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *) instance;
 
 	if (radius_xlat(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
 		return 0;
@@ -104,11 +103,8 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	 */
 	eap_round->request->code = PW_EAP_REQUEST;
 
-	eap_round->request->type.data = talloc_array(eap_round->request,
-						  uint8_t, length);
-	if (!eap_round->request->type.data) {
-		return 0;
-	}
+	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+	if (!eap_round->request->type.data) return 0;
 
 	memcpy(eap_round->request->type.data, challenge_str, length);
 	eap_round->request->type.length = length;
@@ -131,10 +127,10 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
  */
 static int mod_process(void *instance, eap_session_t *eap_session)
 {
-	VALUE_PAIR *vp;
-	eap_round_t *eap_round = eap_session->this_round;
-	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
-	REQUEST *request = eap_session->request;
+	VALUE_PAIR	*vp;
+	eap_round_t	*eap_round = eap_session->this_round;
+	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *)instance;
+	REQUEST		*request = eap_session->request;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
@@ -149,20 +145,6 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		eap_round->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
-
-#if 0
-	if ((rad_debug_lvl > 2) && fr_log_fp) {
-		int i;
-
-		for (i = 0; i < eap_round->response->length - 4; i++) {
-			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "%d: ", i);
-
-			fprintf(fr_log_fp, "%02x ", eap_round->response->type.data[i]);
-
-			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
-		}
-	}
-#endif
 
 	/*
 	 *	Handle passwords here.
@@ -179,13 +161,13 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		}
 
 		if (eap_round->response->type.length != vp->vp_length) {
-			REDEBUG2("Passwords are of different length. %u %u", (unsigned) eap_round->response->type.length, (unsigned) vp->vp_length);
+			REDEBUG2("Passwords are of different length. %u %u",
+				 (unsigned)eap_round->response->type.length, (unsigned)vp->vp_length);
 			eap_round->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
-		if (memcmp(eap_round->response->type.data,
-			   vp->vp_strvalue, vp->vp_length) != 0) {
+		if (memcmp(eap_round->response->type.data, vp->vp_strvalue, vp->vp_length) != 0) {
 			REDEBUG2("Passwords are different");
 			eap_round->request->code = PW_EAP_FAILURE;
 			return 0;
