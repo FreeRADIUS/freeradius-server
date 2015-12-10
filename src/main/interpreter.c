@@ -830,7 +830,6 @@ redo:
 		if (modcall_brace[c->type]) RDEBUG2("%s {", c->debug_name);
 
 		action = modcall_functions[c->type](request, stack, &result, &priority);
-
 		switch (action) {
 		case MODCALL_DO_CHILDREN:
 			g = mod_callabletogroup(c);
@@ -917,6 +916,8 @@ redo:
 			 *	it, do so.
 			 */
 			if (entry->unwind != 0) goto done;
+
+			/* FALL-THROUGH */
 
 		case MODCALL_NEXT_SIBLING:
 			if ((action == MODCALL_NEXT_SIBLING) && modcall_brace[c->type]) RDEBUG2("}");
