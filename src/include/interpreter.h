@@ -91,12 +91,6 @@ typedef struct {
 
 typedef struct {
 	modcallable mc;
-	char const *ref_name;
-	CONF_SECTION *ref_cs;
-} modref;
-
-typedef struct {
-	modcallable mc;
 	int exec;
 	char *xlat_name;
 } modxlat;
