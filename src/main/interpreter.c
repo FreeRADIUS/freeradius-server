@@ -630,7 +630,7 @@ static modcall_action_t modcall_single(REQUEST *request, modcall_stack_t *stack,
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 	return MODCALL_CALCULATE_RESULT;
 }
-	
+
 
 static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 				   rlm_rcode_t *result, UNUSED int *priority)
@@ -695,7 +695,7 @@ static modcall_action_t modcall_elsif(REQUEST *request, modcall_stack_t *stack,
 		entry->if_taken = true;
 		return MODCALL_NEXT_SIBLING;
 	}
-	
+
 	/*
 	 *	Check the "if" condition.
 	 */
