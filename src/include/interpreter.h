@@ -1,5 +1,5 @@
-#ifndef FR_INTERPRETER_H
-#define FR_INTERPRETER_H
+#ifndef _FR_INTERPRETER_H
+#define _FR_INTERPRETER_H
 
 /* interpreter.h: the outside interface to interpreter
  *
