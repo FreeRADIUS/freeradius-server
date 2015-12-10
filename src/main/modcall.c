@@ -1266,17 +1266,13 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 
 static modcallable *compile_break(modcallable *parent, rlm_components_t component, CONF_ITEM const *ci)
 {
-	CONF_SECTION const *cs;
+	modcallable *foreach;
 
-	for (cs = cf_item_parent(ci);
-	     cs != NULL;
-	     cs = cf_item_parent(cf_section_to_item(cs))) {
-		if (strcmp(cf_section_name1(cs), "foreach") == 0) {
-			break;
-		}
+	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
+		if (foreach->type == MOD_FOREACH) break;
 	}
 
-	if (!cs) {
+	if (!foreach) {
 		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
 		return NULL;
 	}
