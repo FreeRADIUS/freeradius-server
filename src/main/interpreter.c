@@ -803,6 +803,9 @@ redo:
 	result = RLM_MODULE_UNKNOWN;
 	priority = -1;
 
+	rad_assert(stack->depth > 0);
+	rad_assert(stack->depth < MODCALL_STACK_MAX);
+
 	entry = &stack->entry[stack->depth];
 
 	RINDENT();
@@ -938,6 +941,11 @@ done:
 
 	*presult = entry->result;
 	*ppriority = priority;
+
+	/*
+	 *	Done the top stack frame, return
+	 */
+	if (stack->depth == 1) return;
 
 	if (entry->iterative) {
 		result = entry->result;
