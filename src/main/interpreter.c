@@ -797,7 +797,7 @@ static void modcall_recurse(REQUEST *request, modcall_stack_t *stack, rlm_rcode_
 	rlm_rcode_t result;
 	modgroup *g;
 	modcall_stack_entry_t *entry;
-	modcall_action_t action;
+	modcall_action_t action = MODCALL_BREAK;
 
 redo:
 	result = RLM_MODULE_UNKNOWN;
