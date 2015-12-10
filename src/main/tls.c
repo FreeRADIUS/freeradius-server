@@ -2150,9 +2150,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			unlink(filename);
 			break;
 		}
-
-
 	} /* depth == 0 */
+
+	if (certs && request && !my_ok) {
+		fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *certs));
+	}
 
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("chain-depth   : %d", depth);
