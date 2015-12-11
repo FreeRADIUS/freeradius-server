@@ -287,7 +287,12 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 			state.close_conn = true;
 		}
 	}
-	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+		ret = -1;
+		goto finish;
+	}
+
+	if (!rad_cond_assert(reply)) {
 		ret = -1;
 		goto finish;
 	}

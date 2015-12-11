@@ -129,17 +129,19 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
 		status = fr_redis_command_status(conn, reply);
 	}
-	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+	error:
 		RERROR("Failed retrieving entry");
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
 
+	if (!rad_cond_assert(reply)) goto error;
+
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Bad result type, expected array, got %s",
 			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-		fr_redis_reply_free(reply);
-		return CACHE_ERROR;
+		goto error;
 	}
 
 	RDEBUG3("Entry contains %zu elements", reply->elements);
@@ -153,8 +155,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		REDEBUG("Invalid number of reply elements (%zu).  "
 			"Reply must contain triplets of keys operators and values",
 			reply->elements);
-		fr_redis_reply_free(reply);
-		return CACHE_ERROR;
+		goto error;
 	}
 
 #ifdef HAVE_TALLOC_POOLED_OBJECT
@@ -427,11 +428,14 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	     	reply = redisCommand(conn->handle, "DEL %b", key, key_len);
 	     	status = fr_redis_command_status(conn, reply);
 	}
-	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
+
+	if (s_ret != REDIS_RCODE_SUCCESS) {
 		RERROR("Failed expiring entry");
+	error:
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
+	if (!rad_cond_assert(reply)) goto error;
 
 	if (reply->type == REDIS_REPLY_INTEGER) {
 		fr_redis_reply_free(reply);
