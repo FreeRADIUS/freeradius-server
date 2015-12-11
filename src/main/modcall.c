@@ -28,11 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/parser.h>
 
 
-/* mutually-recursive static functions need a prototype up front */
-static modcallable *compile_group(modcallable *,
-				  rlm_components_t, CONF_SECTION *,
-				  grouptype_t, grouptype_t, mod_type_t);
-
 /* modgroups are grown by adding a modcallable to the end */
 static void add_child(modgroup *g, modcallable *c)
 {
@@ -66,63 +61,6 @@ const FR_NAME_NUMBER mod_rcode_table[] = {
 	{ NULL, 0 }
 };
 
-
-/*
- *	Compile action && rcode for later use.
- */
-static int compile_action(modcallable *c, CONF_PAIR *cp)
-{
-	int action;
-	char const *attr, *value;
-
-	attr = cf_pair_attr(cp);
-	value = cf_pair_value(cp);
-	if (!value) return 0;
-
-	if (!strcasecmp(value, "return"))
-		action = MOD_ACTION_RETURN;
-
-	else if (!strcasecmp(value, "break"))
-		action = MOD_ACTION_RETURN;
-
-	else if (!strcasecmp(value, "reject"))
-		action = MOD_ACTION_REJECT;
-
-	else if (strspn(value, "0123456789")==strlen(value)) {
-		action = atoi(value);
-
-		/*
-		 *	Don't allow priority zero, for future use.
-		 */
-		if (action == 0) return 0;
-	} else {
-		cf_log_err_cp(cp, "Unknown action '%s'.\n",
-			   value);
-		return 0;
-	}
-
-	if (strcasecmp(attr, "default") != 0) {
-		int rcode;
-
-		rcode = fr_str2int(mod_rcode_table, attr, -1);
-		if (rcode < 0) {
-			cf_log_err_cp(cp,
-				   "Unknown module rcode '%s'.\n",
-				   attr);
-			return 0;
-		}
-		c->actions[rcode] = action;
-
-	} else {		/* set all unset values to the default */
-		int i;
-
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			if (!c->actions[i]) c->actions[i] = action;
-		}
-	}
-
-	return 1;
-}
 
 /* Some short names for debugging output */
 char const * const comp2str[] = {
@@ -502,6 +440,7 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 
+#ifdef WITH_UNLANG
 /** Validate and fixup a map that's part of an map section.
  *
  * @param map to validate.
@@ -757,7 +696,6 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 }
 
 
-#ifdef WITH_UNLANG
 static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
 {
@@ -949,6 +887,232 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 	return csingle;
 }
 
+/*
+ *	Compile action && rcode for later use.
+ */
+static int compile_action(modcallable *c, CONF_PAIR *cp)
+{
+	int action;
+	char const *attr, *value;
+
+	attr = cf_pair_attr(cp);
+	value = cf_pair_value(cp);
+	if (!value) return 0;
+
+	if (!strcasecmp(value, "return"))
+		action = MOD_ACTION_RETURN;
+
+	else if (!strcasecmp(value, "break"))
+		action = MOD_ACTION_RETURN;
+
+	else if (!strcasecmp(value, "reject"))
+		action = MOD_ACTION_REJECT;
+
+	else if (strspn(value, "0123456789")==strlen(value)) {
+		action = atoi(value);
+
+		/*
+		 *	Don't allow priority zero, for future use.
+		 */
+		if (action == 0) return 0;
+	} else {
+		cf_log_err_cp(cp, "Unknown action '%s'.\n",
+			   value);
+		return 0;
+	}
+
+	if (strcasecmp(attr, "default") != 0) {
+		int rcode;
+
+		rcode = fr_str2int(mod_rcode_table, attr, -1);
+		if (rcode < 0) {
+			cf_log_err_cp(cp,
+				   "Unknown module rcode '%s'.\n",
+				   attr);
+			return 0;
+		}
+		c->actions[rcode] = action;
+
+	} else {		/* set all unset values to the default */
+		int i;
+
+		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+			if (!c->actions[i]) c->actions[i] = action;
+		}
+	}
+
+	return 1;
+}
+
+static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
+{
+	int i;
+
+	/*
+	 *	Set the default actions, if they haven't already been
+	 *	set.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (!c->actions[i]) {
+			if (!parent || (component != MOD_AUTHENTICATE)) {
+				c->actions[i] = defaultactions[component][parentgrouptype][i];
+			} else { /* inside Auth-Type has different rules */
+				c->actions[i] = authtype_actions[parentgrouptype][i];
+			}
+		}
+	}
+
+	/*
+	 *	FIXME: If there are no children, return NULL?
+	 */
+	return c;
+}
+
+static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
+				  fr_cond_type_t cond_type)
+{
+	modgroup *g;
+	modcallable *c;
+
+	g = talloc_zero(parent, modgroup);
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+
+	c = mod_grouptocallable(g);
+	c->parent = parent;
+	c->type = mod_type;
+	c->next = NULL;
+
+	if (cs) {
+		c->name = cf_section_name2(cs);
+		if (!c->name) c->name = cf_section_name1(cs);
+	} else {
+		c->name = "";
+	}
+
+	if (cond_type != COND_TYPE_INVALID) {
+		g->cond = talloc_zero(g, fr_cond_t);
+		g->cond->type = cond_type;
+	}
+
+	return compile_defaultactions(c, parent, component, parentgrouptype);
+}
+
+
+static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
+				 grouptype_t parent_grouptype, char const **modname);
+
+/*
+ *	Generic "compile a section with more unlang inside of it".
+ */
+static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	modgroup *g;
+	modcallable *c;
+	CONF_ITEM *ci;
+
+	g = talloc_zero(parent, modgroup);
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+
+	c = mod_grouptocallable(g);
+	c->parent = parent;
+	c->type = mod_type;
+	c->next = NULL;
+	memset(c->actions, 0, sizeof(c->actions));
+
+	/*
+	 *	Remember the name for printing, etc.
+	 *
+	 *	FIXME: We may also want to put the names into a
+	 *	rbtree, so that groups can reference each other...
+	 */
+	c->name = cf_section_name2(cs);
+	if (!c->name) {
+		c->name = cf_section_name1(cs);
+		if ((strcmp(c->name, "group") == 0) ||
+		    (strcmp(c->name, "redundant") == 0)) {
+			c->name = "";
+		} else if (c->type == MOD_GROUP) {
+			c->type = MOD_POLICY;
+		}
+	}
+
+	/*
+	 *	Loop over the children of this group.
+	 */
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+
+		/*
+		 *	Sections are references to other groups, or
+		 *	to modules with updated return codes.
+		 */
+		if (cf_item_is_section(ci)) {
+			char const *junk = NULL;
+			modcallable *single;
+			CONF_SECTION *subcs = cf_item_to_section(ci);
+
+			single = compile_item(c, component, ci, grouptype, &junk);
+			if (!single) {
+				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
+				       cf_section_name1(subcs));
+				talloc_free(c);
+				return NULL;
+			}
+			add_child(g, single);
+
+		} else if (!cf_item_is_pair(ci)) { /* CONF_DATA */
+			continue;
+
+		} else {
+			char const *attr, *value;
+			CONF_PAIR *cp = cf_item_to_pair(ci);
+
+			attr = cf_pair_attr(cp);
+			value = cf_pair_value(cp);
+
+			/*
+			 *	A CONF_PAIR is either a module
+			 *	instance with no actions
+			 *	specified ...
+			 */
+			if (!value) {
+				modcallable *single;
+				char const *junk = NULL;
+
+				single = compile_item(c, component, ci, grouptype, &junk);
+				if (!single) {
+					if (cf_item_is_pair(ci) &&
+					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
+						continue;
+					}
+
+					cf_log_err(ci,
+						   "Failed to parse \"%s\" entry.",
+						   attr);
+					talloc_free(c);
+					return NULL;
+				}
+				add_child(g, single);
+
+				/*
+				 *	Or a module instance with action.
+				 */
+			} else if (!compile_action(c, cp)) {
+				talloc_free(c);
+				return NULL;
+			} /* else it worked */
+		}
+	}
+
+	return compile_defaultactions(c, parent, component, parentgrouptype);
+}
 
 static modcallable *compile_switch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
 				   grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
@@ -1196,62 +1360,6 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 	return csingle;
 }
 
-
-static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
-{
-	int i;
-
-	/*
-	 *	Set the default actions, if they haven't already been
-	 *	set.
-	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (!c->actions[i]) {
-			if (!parent || (component != MOD_AUTHENTICATE)) {
-				c->actions[i] = defaultactions[component][parentgrouptype][i];
-			} else { /* inside Auth-Type has different rules */
-				c->actions[i] = authtype_actions[parentgrouptype][i];
-			}
-		}
-	}
-
-	/*
-	 *	FIXME: If there are no children, return NULL?
-	 */
-	return c;
-}
-
-static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
-				  fr_cond_type_t cond_type)
-{
-	modgroup *g;
-	modcallable *c;
-
-	g = talloc_zero(parent, modgroup);
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-
-	c = mod_grouptocallable(g);
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-
-	if (cs) {
-		c->name = cf_section_name2(cs);
-		if (!c->name) c->name = cf_section_name1(cs);
-	} else {
-		c->name = "";
-	}
-
-	if (cond_type != COND_TYPE_INVALID) {
-		g->cond = talloc_zero(g, fr_cond_t);
-		g->cond->type = cond_type;
-	}
-
-	return compile_defaultactions(c, parent, component, parentgrouptype);
-}
 
 
 static modcallable *compile_break(modcallable *parent, rlm_components_t component, CONF_ITEM const *ci)
@@ -1659,7 +1767,6 @@ static modcall_compile_t compile_table[] = {
  */
 static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
 				 grouptype_t parent_grouptype, char const **modname)
-				   
 {
 	char const *modrefname, *p;
 	modcallable *c;
@@ -1952,116 +2059,6 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 	return ret;
 }
 
-
-/*
- *	Internal compile group code.
- */
-static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	modgroup *g;
-	modcallable *c;
-	CONF_ITEM *ci;
-
-	g = talloc_zero(parent, modgroup);
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-
-	c = mod_grouptocallable(g);
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-	memset(c->actions, 0, sizeof(c->actions));
-
-	/*
-	 *	Remember the name for printing, etc.
-	 *
-	 *	FIXME: We may also want to put the names into a
-	 *	rbtree, so that groups can reference each other...
-	 */
-	c->name = cf_section_name2(cs);
-	if (!c->name) {
-		c->name = cf_section_name1(cs);
-		if ((strcmp(c->name, "group") == 0) ||
-		    (strcmp(c->name, "redundant") == 0)) {
-			c->name = "";
-		} else if (c->type == MOD_GROUP) {
-			c->type = MOD_POLICY;
-		}
-	}
-
-	/*
-	 *	Loop over the children of this group.
-	 */
-	for (ci=cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
-
-		/*
-		 *	Sections are references to other groups, or
-		 *	to modules with updated return codes.
-		 */
-		if (cf_item_is_section(ci)) {
-			char const *junk = NULL;
-			modcallable *single;
-			CONF_SECTION *subcs = cf_item_to_section(ci);
-
-			single = compile_item(c, component, ci, grouptype, &junk);
-			if (!single) {
-				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
-				       cf_section_name1(subcs));
-				talloc_free(c);
-				return NULL;
-			}
-			add_child(g, single);
-
-		} else if (!cf_item_is_pair(ci)) { /* CONF_DATA */
-			continue;
-
-		} else {
-			char const *attr, *value;
-			CONF_PAIR *cp = cf_item_to_pair(ci);
-
-			attr = cf_pair_attr(cp);
-			value = cf_pair_value(cp);
-
-			/*
-			 *	A CONF_PAIR is either a module
-			 *	instance with no actions
-			 *	specified ...
-			 */
-			if (!value) {
-				modcallable *single;
-				char const *junk = NULL;
-
-				single = compile_item(c, component, ci, grouptype, &junk);
-				if (!single) {
-					if (cf_item_is_pair(ci) &&
-					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
-						continue;
-					}
-
-					cf_log_err(ci,
-						   "Failed to parse \"%s\" entry.",
-						   attr);
-					talloc_free(c);
-					return NULL;
-				}
-				add_child(g, single);
-
-				/*
-				 *	Or a module instance with action.
-				 */
-			} else if (!compile_action(c, cp)) {
-				talloc_free(c);
-				return NULL;
-			} /* else it worked */
-		}
-	}
-
-	return compile_defaultactions(c, parent, component, parentgrouptype);
-}
 
 modcallable *modcall_compile_section(modcallable *parent,
 				   rlm_components_t component, CONF_SECTION *cs)
