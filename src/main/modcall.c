@@ -968,11 +968,6 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
-	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "'switch' statements cannot be empty");
-		return NULL;
-	}
-
 	/*
 	 *	Create the template.  If we fail, AND it's a bare word
 	 *	with &Foo-Bar, it MAY be an attribute defined by a
@@ -1145,11 +1140,6 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 	if (!name2) {
 		cf_log_err_cs(cs,
 			   "You must specify an attribute to loop over in 'foreach'");
-		return NULL;
-	}
-
-	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "'foreach' blocks cannot be empty");
 		return NULL;
 	}
 
@@ -1651,14 +1641,14 @@ static modcall_compile_t compile_table[] = {
 	{ "load-balance",	compile_redundant, GROUPTYPE_SIMPLE, MOD_LOAD_BALANCE },
 	{ "redundant-load-balance", compile_redundant, GROUPTYPE_REDUNDANT, MOD_REDUNDANT_LOAD_BALANCE },
 
+	{ "case",		compile_case, GROUPTYPE_SIMPLE, MOD_CASE },
+	{ "foreach",		compile_foreach, GROUPTYPE_SIMPLE, MOD_FOREACH },
 	{ "if",			compile_if, GROUPTYPE_SIMPLE, MOD_IF },
 	{ "elsif",		compile_elsif, GROUPTYPE_SIMPLE, MOD_ELSIF },
 	{ "else",		compile_else, GROUPTYPE_SIMPLE, MOD_ELSE },
 	{ "update",		compile_update, GROUPTYPE_SIMPLE, MOD_UPDATE },
 	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
 	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
-	{ "case",		compile_case, GROUPTYPE_SIMPLE, MOD_CASE },
-	{ "foreach",		compile_foreach, GROUPTYPE_SIMPLE, MOD_FOREACH },
 
 	{ NULL, NULL, 0, 0 }
 };
@@ -1691,9 +1681,22 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		for (i = 0; compile_table[i].name != NULL; i++) {
 			if (strcmp(modrefname, compile_table[i].name) == 0) {
 				*modname = name2;
+
+				/*
+				 *	Some blocks can be empty.  The rest need
+				 *	to have contents.
+				 */
+				if (!cf_item_find_next(cs, NULL) &&
+				    !((compile_table[i].mod_type == MOD_CASE) ||
+				      (compile_table[i].mod_type == MOD_IF) ||
+				      (compile_table[i].mod_type == MOD_ELSIF))) {
+					cf_log_err(ci, "'%s' sections cannot be empty", modrefname);
+					return NULL;
+				}
+
 				return compile_table[i].compile(parent, component, cs,
-								  compile_table[i].grouptype, grouptype,
-								  compile_table[i].mod_type);
+								compile_table[i].grouptype, grouptype,
+								compile_table[i].mod_type);
 			}
 		}
 
