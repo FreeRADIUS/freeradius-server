@@ -129,7 +129,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
 		status = fr_redis_command_status(conn, reply);
 	}
-	if (!reply || (s_ret != REDIS_RCODE_SUCCESS)) {
+	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
 		RERROR("Failed retrieving entry");
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
@@ -427,13 +427,12 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	     	reply = redisCommand(conn->handle, "DEL %b", key, key_len);
 	     	status = fr_redis_command_status(conn, reply);
 	}
-	if (s_ret != REDIS_RCODE_SUCCESS) {
+	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
 		RERROR("Failed expiring entry");
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
 
-	rad_assert(reply);	/* clang scan */
 	if (reply->type == REDIS_REPLY_INTEGER) {
 		fr_redis_reply_free(reply);
 		if (reply->integer) return CACHE_OK;	/* Affected */

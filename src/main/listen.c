@@ -703,7 +703,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 
-	rad_assert(client != NULL);
+	if (!rad_cond_assert(client != NULL)) return 0;
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 

@@ -506,8 +506,8 @@ void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
 void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
 #  endif
 
-bool		fr_assert_cond(char const *file, int line, char const *expr, bool cond);
-#  define	fr_assert(_x) fr_assert_cond(__FILE__,  __LINE__, #_x, (_x))
+bool		fr_assert_fail(char const *file, int line, char const *expr);
+#define		fr_assert(_x) (bool)((_x) ? true : (fr_assert_fail(__FILE__,  __LINE__, #_x) && false))
 
 void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #  define	fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))

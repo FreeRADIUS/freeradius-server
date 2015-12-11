@@ -287,13 +287,12 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 			state.close_conn = true;
 		}
 	}
-	if (s_ret != REDIS_RCODE_SUCCESS) {
+	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
 		ret = -1;
 		goto finish;
 	}
 
 reply_parse:
-	rad_assert(reply);	/* clang scan */
 	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:
 		ret = snprintf(*out, outlen, "%lld", reply->integer);

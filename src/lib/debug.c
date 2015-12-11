@@ -1079,20 +1079,15 @@ void fr_fault_set_log_fd(int fd)
  * @param file the assertion failed in.
  * @param line of the assertion in the file.
  * @param expr that was evaluated.
- * @param cond Result of evaluating the expression.
  * @return the value of cond.
  */
-bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
+bool fr_assert_fail(char const *file, int line, char const *expr)
 {
-	if (!cond) {
-		FR_FAULT_LOG("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
-#if !defined(NDEBUG)
-		fr_fault(SIGABRT);
+	FR_FAULT_LOG("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
+#ifndef NDEBUG
+	fr_fault(SIGABRT);
 #endif
-		return false;
-	}
-
-	return cond;
+	return false;
 }
 
 /** Exit possibly printing a message about why we're exiting.

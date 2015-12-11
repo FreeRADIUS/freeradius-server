@@ -224,11 +224,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		ret = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
 				       false, false, false);
-#ifndef NDEBUG
-		rad_assert(ret == 0);
-#else
-		UNUSED_VAR(ret);
-#endif
+		rad_cond_assert(ret == 0);
 		rcode = RLM_MODULE_HANDLED;
 		goto finish;
 	}
@@ -249,11 +245,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		ret = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, NULL,
 				       false, false, false);
-#ifndef NDEBUG
-		rad_assert(ret == 0);
-#else
-		UNUSED_VAR(ret);
-#endif
+		rad_cond_assert(ret == 0);
 
 		/*
 		 *	Some simple sanity checks.  These should really

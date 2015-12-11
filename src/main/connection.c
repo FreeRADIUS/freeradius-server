@@ -743,24 +743,24 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	unused for the longest.
 	 */
 	if (extra && (now >= (pool->state.last_spawned + pool->delay_interval))) {
-		fr_connection_t *found;
+		fr_connection_t *found = NULL;
 
-		for (this = found = pool->tail; this != NULL; this = this->prev) {
+		for (this = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
 
-			if (!found ||
-			    timercmp(&this->last_reserved, &found->last_reserved, <)) {
+			if (!found || timercmp(&this->last_reserved, &found->last_reserved, <)) {
 				found = this;
 			}
 		}
+
+		if (!rad_cond_assert(found)) goto done;
 
 		INFO("%s: Closing connection (%" PRIu64 "), from %d unused connections", pool->log_prefix,
 		     found->number, extra);
 		fr_connection_close_internal(pool, found);
 
 		/*
-		 *	Decrease the delay for the next time we clean
-		 *	up.
+		 *	Decrease the delay for the next time we clean up.
 		 */
 		pool->state.next_delay >>= 1;
 		if (pool->state.next_delay == 0) pool->state.next_delay = 1;
@@ -777,6 +777,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	}
 
 	pool->state.last_checked = now;
+done:
 	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 	return 1;

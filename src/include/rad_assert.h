@@ -15,6 +15,7 @@
  */
 #ifndef _FR_RAD_ASSERT_H
 #define _FR_RAD_ASSERT_H
+#include <stdbool.h>
 /**
  * $Id$
  *
@@ -29,19 +30,26 @@ RCSIDH(rad_assert_h, "$Id$")
 extern "C" {
 #endif
 
-void rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
+#ifndef NDEBUG
+bool rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
+#else
+bool rad_assert_fail(char const *file, unsigned int line, char const *expr);
+#endif
+
 
 #ifdef NDEBUG
-#  define rad_assert(expr) ((void) (0))
-
+#  define rad_assert(_expr)
 #elif !defined(__clang_analyzer__)
-#  define rad_assert(expr) \
-	((void) ((expr) ? (void) 0 : \
-	(void) rad_assert_fail (__FILE__, __LINE__, #expr)))
+#  define rad_assert(_expr) ((void) ((_expr) ? (void) 0 : (void) rad_assert_fail(__FILE__, __LINE__, #_expr)))
 #else
 #  include <assert.h>
-#define rad_assert assert
+#  define rad_assert assert
 #endif
+
+/** Use for conditions that should result in an assert in dev builds, and return in non-dev builds
+ *
+ */
+#define rad_cond_assert(_x) (bool)((_x) ? true : (rad_assert_fail(__FILE__,  __LINE__, #_x) && false))
 
 #ifdef __cplusplus
 }

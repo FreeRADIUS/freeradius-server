@@ -1850,9 +1850,9 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		cluster_node_t *new;
 
-		rad_assert(*reply);
-
 		fr_connection_release(state->node->pool, *conn);	/* Always release the old connection */
+
+		if (!rad_cond_assert(*reply)) return REDIS_RCODE_ERROR;
 
 		RDEBUG("[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
 		if (state->redirects++ >= cluster->conf->max_redirects) {

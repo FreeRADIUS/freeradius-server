@@ -1108,11 +1108,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 					       tunnel, false, false, false);
-#ifdef NDEBUG
-			rad_assert(ret == 0);
-#else
-			UNUSED_VAR(ret);
-#endif
+			rad_cond_assert(ret == 0);
 
 			/*
 			 *	rlm_eap.c has taken care of associating
@@ -1123,11 +1119,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
 					       fake, true, false, false);
-#ifdef NDEBUG
-			rad_assert(ret == 0);
-#else
-			UNUSED_VAR(ret);
-#endif
+			rad_cond_assert(ret == 0);
 
 			fake = NULL;
 

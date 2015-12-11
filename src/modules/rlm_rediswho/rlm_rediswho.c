@@ -120,13 +120,12 @@ static int rediswho_command(rlm_rediswho_t *inst, REQUEST *request, char const *
 		reply = redisCommandArgv(conn->handle, argc, argv, NULL);
 		status = fr_redis_command_status(conn, reply);
 	}
-	if (s_ret != REDIS_RCODE_SUCCESS) {
+	if (!rad_cond_assert(reply) || (s_ret != REDIS_RCODE_SUCCESS)) {
 		RERROR("Failed inserting accounting data");
 		fr_redis_reply_free(reply);
 		return -1;
 	}
 
-	rad_assert(reply);	/* clang scan */
 	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:
 		RDEBUG2("Query response %lld", reply->integer);

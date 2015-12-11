@@ -756,8 +756,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	*out = NULL;
 
 	VERIFY_MAP(map);
-	rad_assert(map->lhs != NULL);
-	rad_assert(map->rhs != NULL);
+	if (!rad_cond_assert(map->lhs != NULL)) return -1;
+	if (!rad_cond_assert(map->rhs != NULL)) return -1;
 
 	rad_assert((map->lhs->type == TMPL_TYPE_LIST) || (map->lhs->type == TMPL_TYPE_ATTR));
 
@@ -1518,7 +1518,7 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 		return p - out;
 	}
 
-	rad_assert(map->rhs != NULL);
+	if (!rad_cond_assert(map->rhs != NULL)) return -1;
 
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
@@ -1545,8 +1545,8 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	char buffer[1024];
 
 	VERIFY_MAP(map);
-	rad_assert(map->lhs != NULL);
-	rad_assert(map->rhs != NULL);
+	if (!rad_cond_assert(map->lhs != NULL)) return;
+	if (!rad_cond_assert(map->rhs != NULL)) return;
 
 	rad_assert(vp || (map->rhs->type == TMPL_TYPE_NULL));
 

@@ -334,11 +334,9 @@ int dual_tls_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 
+	if (!rad_cond_assert(client != NULL)) return 0;
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
-	if (!tls_socket_recv(listener)) {
-		return 0;
-	}
+	if (!tls_socket_recv(listener)) return 0;
 
 	rad_assert(sock->packet != NULL);
 	rad_assert(sock->tls_session != NULL);

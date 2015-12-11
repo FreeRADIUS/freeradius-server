@@ -336,7 +336,7 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
 	 */
-	if (!*cursor->first) {
+	if (!*(cursor->first)) {
 		*cursor->first = vp;
 		cursor->current = vp;
 
