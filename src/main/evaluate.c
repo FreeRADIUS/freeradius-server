@@ -170,8 +170,8 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
 	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
-	rad_assert(lhs != NULL);
-	rad_assert(lhs_type == PW_TYPE_STRING);
+	if (!rad_cond_assert(lhs != NULL)) return -1;
+	if (!rad_cond_assert(lhs_type == PW_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX %s %s",
 		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
@@ -183,8 +183,8 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 
 	default:
-		rad_assert(rhs_type == PW_TYPE_STRING);
-		rad_assert(rhs && rhs->strvalue);
+		if (!rad_cond_assert(rhs_type == PW_TYPE_STRING)) return -1;
+		if (!rad_cond_assert(rhs && rhs->strvalue)) return -1;
 		slen = regex_compile(request, &rreg, rhs->strvalue, rhs->length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {

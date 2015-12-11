@@ -586,7 +586,7 @@ static void request_done(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_DUP:
 #ifdef WITH_DETAIL
-		rad_assert(request->listener != NULL);
+		if (!rad_cond_assert(request->listener != NULL)) return;
 #endif
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
@@ -4767,7 +4767,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		case RAD_LISTEN_PROXY:
 #ifdef WITH_TCP
-			rad_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL));
+			if (rad_cond_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL))) fr_exit(1);
 
 			/*
 			 *	Add timers to outgoing child sockets, if necessary.
