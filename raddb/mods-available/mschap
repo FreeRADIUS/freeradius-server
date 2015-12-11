@@ -78,14 +78,6 @@ mschap {
 #	winbind_username = "%{mschap:User-Name}"
 #	winbind_domain = "%{mschap:NT-Domain}"
 
-	# When using the winbind daemon directly, it is possible to
-	# force accepting MSCHAPv2 authentication. This makes it
-	# possible to authenticate to an Active Directory that uses
-	# the local security policy 'Network Security: LAN Manager
-	# authentication level' setting was changed to 'Send NTLMv2
-	# Response Only. Refuse LM & NTLM'
-#	winbind_allow_mschapv2 = no
-
 	#
 	#  Information for the winbind connection pool.  The configuration
 	#  items below are the same for all modules which use the new
