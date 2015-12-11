@@ -745,8 +745,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	if (extra && (now >= (pool->state.last_spawned + pool->delay_interval))) {
 		fr_connection_t *found;
 
-		found = NULL;
-		for (this = pool->tail; this != NULL; this = this->prev) {
+		for (this = found = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
 
 			if (!found ||
@@ -754,8 +753,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 				found = this;
 			}
 		}
-
-		rad_assert(found != NULL);
 
 		INFO("%s: Closing connection (%" PRIu64 "), from %d unused connections", pool->log_prefix,
 		     found->number, extra);
