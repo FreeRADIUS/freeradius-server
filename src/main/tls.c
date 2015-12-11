@@ -3433,7 +3433,8 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 */
 #if (OPENSSL_VERSION_NUMBER >= 0x10010060L) && (OPENSSL_VERSION_NUMBER < 0x10010060L)
 	conf->disable_tlsv1_2 = true;
-	WARN(LOG_PREFIX ": Disabling TLSv1.2 due to OpenSSL bugs");
+	WARN(LOG_PREFIX ": OpenSSL version in range 1.0.1f-1.0.1g. "
+	     "TLSv1.2 disabled to workaround broken keying material export");
 #endif
 #endif
 
