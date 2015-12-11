@@ -229,6 +229,8 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 			goto close_conn;
 		}
 
+		if (!reply) goto fail;
+
 		switch (status) {
 		case REDIS_RCODE_SUCCESS:
 			goto reply_parse;
@@ -240,6 +242,7 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 			goto finish;
 
 		default:
+		fail:
 			fr_connection_release(pool, conn);
 			ret = -1;
 			goto finish;
