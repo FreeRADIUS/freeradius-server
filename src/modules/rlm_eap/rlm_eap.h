@@ -103,7 +103,7 @@ eap_session_t 	*eap_session_continue(eap_packet_raw_t **eap_packet, rlm_eap_t *i
 /*
  *	Memory management
  */
-eap_round_t	*eap_round_alloc(eap_session_t *eap_session);
-eap_session_t	*eap_session_alloc(rlm_eap_t *inst, REQUEST *request);
+eap_round_t	*eap_round_alloc(eap_session_t *eap_session) CC_HINT(nonnull);
+eap_session_t	*eap_session_alloc(rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
 
 #endif /*_RLM_EAP_H*/

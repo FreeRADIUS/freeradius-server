@@ -99,15 +99,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(eap_session_t *eap_session, VALUE_PAIR *reply) CC_HINT(nonnull);
-static int eapmschapv2_compose(eap_session_t *eap_session, VALUE_PAIR *reply)
+static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, VALUE_PAIR *reply) CC_HINT(nonnull);
+static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, VALUE_PAIR *reply)
 {
 	uint8_t			*ptr;
 	int16_t			length;
 	mschapv2_header_t	*hdr;
 	eap_round_t		*eap_round = eap_session->this_round;
 	REQUEST			*request = eap_session->request;
-	rlm_eap_mschapv2_t	*inst = eap_session->inst;
 
 	eap_round->request->code = PW_EAP_REQUEST;
 	eap_round->request->type.num = PW_EAP_MSCHAPV2;
@@ -230,7 +229,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	int			i;
 	VALUE_PAIR		*challenge;
@@ -238,6 +237,8 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	uint8_t 		*p;
 	bool			created_challenge = false;
+
+	if (!rad_cond_assert(instance)) return 0;
 
 	challenge = fr_pair_find_by_num(request->config, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
 	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
@@ -278,7 +279,7 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmschapv2_compose(eap_session, challenge);
+	eapmschapv2_compose(instance, eap_session, challenge);
 	if (created_challenge) fr_pair_list_free(&challenge);
 
 #ifdef WITH_PROXY
@@ -353,7 +354,8 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	eapmschapv2_compose(eap_session, response);
+	if (!rad_cond_assert(eap_session->inst)) return 0;
+	eapmschapv2_compose(eap_session->inst, eap_session, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	/*
@@ -395,6 +397,8 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 	VALUE_PAIR *challenge, *response, *name;
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = eap_session->request;
+
+	if (!rad_cond_assert(eap_session->inst)) return 0;
 
 	data = (mschapv2_opaque_t *) eap_session->opaque;
 
@@ -733,7 +737,7 @@ packet_ready:
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eapmschapv2_compose(eap_session, response);
+	eapmschapv2_compose(eap_session->inst, eap_session, response);
 	fr_pair_list_free(&response);
 
 	return 1;
