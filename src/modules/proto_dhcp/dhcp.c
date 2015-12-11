@@ -1870,6 +1870,13 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 		return -1;
 	}
 
+	/*
+	 *	Seems to be a bug in older versions of clang scan
+	 */
+#ifdef __clang_analyzer__
+	if (!macaddr) return -1;
+#endif
+
 	if (!fr_assert(macaddr) ||
 	    !fr_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
 		fr_strerror_printf("Wrong VP type (%s) for chaddr",
