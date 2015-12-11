@@ -1416,6 +1416,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	char *p;
 	xlat_exp_t *node;
 
+	*error = "";		/* quiet gcc */
+
 	if (!*fmt) return 0;
 
 	XLAT_DEBUG("LITERAL <-- %s", fmt);
