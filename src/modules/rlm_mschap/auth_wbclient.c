@@ -106,6 +106,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 	memcpy(authparams.password.response.challenge, challenge,
 	       sizeof(authparams.password.response.challenge));
 
+	authparams.parameter_control |= WBC_MSV1_0_ALLOW_MSVCHAPV2;
 
 	/*
 	 * Send auth request across to winbind
