@@ -409,7 +409,9 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
 	uint16_t	port;
 	fr_ipaddr_t	ipaddr;
 
-	rad_assert(redirect && (redirect->type == REDIS_REPLY_ERROR));
+	if (!redirect || (redirect->type != REDIS_REPLY_ERROR)) {
+		return CLUSTER_OP_BAD_INPUT;
+	}
 
 	p = redirect->str;
 	if (strncmp(REDIS_ERROR_MOVED_STR, redirect->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
