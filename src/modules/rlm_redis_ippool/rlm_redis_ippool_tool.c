@@ -799,7 +799,10 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		}
 
 		len = strlcpy(start_buff, ip_str, (p - ip_str) + 1);
-		rad_assert(!is_truncated(len, sizeof(start_buff)));
+		if (is_truncated(len, sizeof(start_buff))) {
+			ERROR("Start address too long");
+			return -1;
+		}
 
 		len = strlcpy(end_buff, p + 1, sizeof(end_buff));
 		if (is_truncated(len, sizeof(end_buff))) {
