@@ -477,20 +477,15 @@ char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
  *	Logs an error message and aborts the program
  *
  */
-#ifndef NDEBUG
-void rad_assert_fail(char const *file, unsigned int line, char const *expr)
-{
-	ERROR("ASSERT FAILED %s[%u]: %s", file, line, expr);
-	fr_fault(SIGABRT);
-	fr_exit_now(1);
-}
-#else
 bool rad_assert_fail(char const *file, unsigned int line, char const *expr)
 {
-	ERROR("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
+	ERROR("ASSERT FAILED %s[%u]: %s", file, line, expr);
+#ifndef NDEBUG
+	fr_fault(SIGABRT);
+	fr_exit_now(1);
+#endif
 	return false;
 }
-#endif
 
 /*
  *	Copy a quoted string.

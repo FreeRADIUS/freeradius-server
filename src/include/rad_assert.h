@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 #ifndef NDEBUG
-void rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
+bool rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
 #else
 bool rad_assert_fail(char const *file, unsigned int line, char const *expr);
 #endif
