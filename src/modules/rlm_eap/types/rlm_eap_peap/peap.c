@@ -999,7 +999,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
-			int ret;
 
 			/*
 			 *	The tunneled request was NOT handled,
@@ -1097,13 +1096,8 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			/*
 			 *	Associate the callback with the request.
 			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+			(void) request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 					       tunnel, false, false, false);
-#ifdef NDEBUG
-			rad_assert(ret == 0);
-#else
-			UNUSED_VAR(ret);
-#endif
 
 			/*
 			 *	We're not proxying it as EAP, so we've got
@@ -1119,14 +1113,9 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	So we associate the fake request with
 				 *	this request.
 				 */
-				ret = request_data_add(request, request->proxy,
-						       REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-						       fake, true, false, false);
-#ifdef NDEBUG
-				rad_assert(ret == 0);
-#else
-				UNUSED_VAR(ret);
-#endif
+				(void) request_data_add(request, request->proxy,
+							REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
+							fake, true, false, false);
 
 				/*
 				 *	Do NOT free the fake request!
