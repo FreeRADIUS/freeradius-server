@@ -234,7 +234,7 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	/*
 	 *	Choose a child at random.
 	 */
-	for (this = g->children; this; this = this->next) {
+	for (this = found = g->children; this; this = this->next) {
 		count++;
 
 		if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
