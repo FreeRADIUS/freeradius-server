@@ -610,7 +610,6 @@ packet_ready:
 	 *	home server.
 	 */
 	if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
-		int			ret;
 		char			*username = NULL;
 		eap_tunnel_data_t	*tunnel;
 
@@ -627,13 +626,8 @@ packet_ready:
 		/*
 		 *	Associate the callback with the request.
 		 */
-		ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-				       tunnel, false, false, false);
-#ifdef NDEBUG
-		rad_assert(ret == 0);
-#else
-		UNUSED_VAR(ret);
-#endif
+		(void) request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+					tunnel, false, false, false);
 
 		/*
 		 *	The State attribute is NOT supposed to
