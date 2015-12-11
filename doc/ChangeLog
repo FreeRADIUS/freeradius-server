@@ -19,8 +19,6 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  configuration items are found.
 	* TLS can skip the "verify" section if OCSP returns OK.
 	  See raddb/mods-available/eap, "skip_if_ocsp_ok".
-	* Added winbind_allow_mschapv2 to mschap module.
-	  See raddb/mods-available/mschap for an explanation.
 	* Set TLS-OCSP-Cert-Valid = yes / no / skipped, which
 	  is the result from the OCSP check.
 
