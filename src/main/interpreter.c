@@ -228,7 +228,6 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	modcallable *this, *found;
 
 	g = mod_callabletogroup(c);
-	found = g->children;
 	rad_assert(g->children != NULL);
 
 	/*
