@@ -228,7 +228,11 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	modcallable *this, *found;
 
 	g = mod_callabletogroup(c);
-	rad_assert(g->children != NULL);
+	if (!g->children) {
+		*presult = RLM_MODULE_NOOP;
+		*priority = c->actions[*presult];
+		return MODCALL_CALCULATE_RESULT;
+	}
 
 	/*
 	 *	Choose a child at random.
@@ -245,20 +249,21 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 		modcall_push(stack, found, entry->result, false);
 		return MODCALL_ITERATIVE;
 
-	} else {
-		this = found;
-
-		do {
-			modcall_child(request, stack, this,
-				      presult, priority, false);
-			if (this->actions[*presult] == MOD_ACTION_RETURN) {
-				return MODCALL_CALCULATE_RESULT;
-			}
-
-			this = this->next;
-			if (!this) this = g->children;
-		} while (this != found);
 	}
+
+	this = found;
+
+	do {
+		modcall_child(request, stack, this,
+			      presult, priority, false);
+		if (this->actions[*presult] == MOD_ACTION_RETURN) {
+			return MODCALL_CALCULATE_RESULT;
+		}
+
+		this = this->next;
+		if (!this) this = g->children;
+	} while (this != found);
+
 	return MODCALL_CALCULATE_RESULT;
 }
 
