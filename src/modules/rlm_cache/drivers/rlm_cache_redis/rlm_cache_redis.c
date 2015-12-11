@@ -129,12 +129,11 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
 		status = fr_redis_command_status(conn, reply);
 	}
-	if (s_ret != REDIS_RCODE_SUCCESS) {
+	if (!reply || (s_ret != REDIS_RCODE_SUCCESS)) {
 		RERROR("Failed retrieving entry");
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
-	rad_assert(reply);	/* clang scan */
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Bad result type, expected array, got %s",
