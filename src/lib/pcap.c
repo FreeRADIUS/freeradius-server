@@ -330,7 +330,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 #endif
 	case PCAP_INVALID:
 	default:
-		fr_assert(0);
+		(void)fr_assert(0);
 		fr_strerror_printf("Bad handle type (%i)", pcap->type);
 		return -1;
 	}

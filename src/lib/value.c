@@ -157,7 +157,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 	case PW_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_STRUCTURAL:
 	case PW_TYPE_BAD:
-		fr_assert(0);	/* unknown type */
+		(void)fr_assert(0);	/* unknown type */
 		return -2;
 
 	/*
@@ -1047,7 +1047,7 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
 
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:
-		fr_assert(0);
+		(void)fr_assert(0);
 		return;		/* shouldn't happen */
 
 	default:
@@ -1702,7 +1702,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_MAX:
-		fr_assert(0);
+		(void)fr_assert(0);
 		return NULL;
 	}
 
@@ -1939,7 +1939,7 @@ print_int:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_MAX:
-		fr_assert(0);
+		(void)fr_assert(0);
 		*out = '\0';
 		return 0;
 	}

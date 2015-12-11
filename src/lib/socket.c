@@ -403,7 +403,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 		return -3;
 
 	default:
-		fr_assert(0);
+		(void)fr_assert(0);
 		return -1;
 	}
 }

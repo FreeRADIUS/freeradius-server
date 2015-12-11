@@ -188,13 +188,13 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 #endif
 
 	if (ev->parent) {
-		fr_assert(*(ev->parent) == ev);
+		(void)fr_assert(*(ev->parent) == ev);
 		*ev->parent = NULL;
 	}
 	*parent = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
-	fr_assert(ret == 1);	/* events MUST be in the heap */
+	(void)fr_assert(ret == 1);	/* events MUST be in the heap */
 	talloc_free(ev);
 
 	return ret;
@@ -240,7 +240,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 #endif
 
 		ret = fr_heap_extract(el->times, ev);
-		fr_assert(ret == 1);	/* events MUST be in the heap */
+		if (!fr_assert(ret == 1)) return 0;	/* events MUST be in the heap */
 
 		memset(ev, 0, sizeof(*ev));
 	} else {

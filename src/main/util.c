@@ -885,8 +885,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 
 	if (!packet) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, type);
-		fr_assert(0);
-		fr_exit_now(0);
+		if (!fr_assert(0)) fr_exit_now(1);
 	}
 
 	parent = talloc_parent(packet);
@@ -916,8 +915,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 {
 	if (!request) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
-		fr_assert(0);
-		fr_exit_now(0);
+		if (!fr_assert(0)) fr_exit_now(1);
 	}
 
 	(void) talloc_get_type_abort(request, REQUEST);

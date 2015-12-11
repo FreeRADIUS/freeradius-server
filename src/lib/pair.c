@@ -677,7 +677,7 @@ void fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *add)
 		 *	The same VP should never by added multiple times
 		 *	to the same list.
 		 */
-		fr_assert(i != add);
+		(void)fr_assert(i != add);
 #endif
 	}
 
@@ -956,7 +956,7 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		ret = value_data_cmp(a_p->da->type, &a_p->data,
 				     b_p->da->type, &b_p->data);
 		if (ret != 0) {
-			fr_assert(ret >= -1); 	/* Comparison error */
+			(void)fr_assert(ret >= -1); 	/* Comparison error */
 			return ret;
 		}
 	}
@@ -2507,16 +2507,14 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 {
 	if (!vp) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
-		fr_assert(0);
-		fr_exit_now(1);
+		if (!fr_assert(0)) fr_exit_now(1);
 	}
 
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
 
 	if (!vp->da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
-		fr_assert(0);
-		fr_exit_now(1);
+		if (!fr_assert(0)) fr_exit_now(1);
 	}
 
 	fr_dict_verify(file, line, vp->da);
@@ -2537,8 +2535,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		if (vp->vp_length > len) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
 				     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 
 		parent = talloc_parent(vp->data.ptr);
@@ -2547,8 +2544,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
 				     file, line, vp->da->name,
 				     vp, parent, parent ? talloc_get_name(parent) : "NULL");
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 	}
 		break;
@@ -2568,15 +2564,13 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		if (vp->vp_length > len) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
 				     "char buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 
 		if (vp->vp_strvalue[vp->vp_length] != '\0') {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
 				     "terminated\n", file, line, vp->da->name);
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 
 		parent = talloc_parent(vp->data.ptr);
@@ -2585,8 +2579,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
 				     file, line, vp->da->name,
 				     vp, parent, parent ? talloc_get_name(parent) : "NULL");
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 	}
 		break;
@@ -2609,8 +2602,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				     "not found in global dictionary",
 				     file, line, vp->da, vp->da->name,
 				     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 
 		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
@@ -2620,8 +2612,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 					     "variant (%s) not found in global dictionary",
 					     file, line, vp->da, vp->da->name,
 					     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
-				fr_assert(0);
-				fr_exit_now(1);
+				if (!fr_assert(0)) fr_exit_now(1);
 			}
 		}
 
@@ -2633,8 +2624,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				     file, line, vp->da, vp->da->name,
 				     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"),
 				     da, da->name, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 	}
 }
@@ -2663,9 +2653,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
-
-			fr_assert(0);
-			fr_exit_now(1);
+			if (!fr_assert(0)) fr_exit_now(1);
 		}
 
 	}
