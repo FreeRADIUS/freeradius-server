@@ -2597,9 +2597,11 @@ post_ca:
 	ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
+
 	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
+
 #endif
 
 	if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
@@ -2894,6 +2896,16 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		ERROR(LOG_PREFIX ": You MUST set the verify directory in order to use verify_client_cmd");
 		goto error;
 	}
+
+#ifdef SSL_OP_NO_TLSv1_2
+	/*
+	 *	OpenSSL 1.0.1f and 1.0.1g get the MS-MPPE keys wrong.
+	 */
+#if (OPENSSL_VERSION_NUMBER >= 0x10010060L) && (OPENSSL_VERSION_NUMBER < 0x10010060L)
+	conf->disable_tlsv1_2 = true;
+	WARN(LOG_PREFIX ": Disabling TLSv1.2 due to OpenSSL bugs");
+#endif
+#endif
 
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
