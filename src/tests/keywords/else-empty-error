@@ -1,0 +1,12 @@
+#
+#  PRE: update if-empty-allow
+#
+
+if (&User-Name == 'bob') {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
+else {	# ERROR
+	# empty is not allowed
+}
