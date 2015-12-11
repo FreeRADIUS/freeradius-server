@@ -389,9 +389,15 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
 #if MYSQL_VERSION_ID >= 32224
+	/*
+	 *	Count takes a connection handle
+	 */
 	if (!(num = mysql_field_count(conn->sock))) {
 #else
-	if (!(num = mysql_num_fields(conn->sock))) {
+	/*
+	 *	Fields takes a result struct
+	 */
+	if (!(num = mysql_num_fields(conn->result))) {
 #endif
 		return -1;
 	}
