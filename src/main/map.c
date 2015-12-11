@@ -518,12 +518,11 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		return -1;
 	}
 
-	if (map_afrom_fields(ctx, &map, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
-			     dst_request_def, dst_list_def, src_request_def, src_list_def) < 0) {
+	if ((map_afrom_fields(ctx, &map, raw.l_opand, T_BARE_WORD, raw.op, raw.r_opand, raw.quote,
+			      dst_request_def, dst_list_def, src_request_def, src_list_def) < 0) || !map) {
 		return -1;
 	}
 
-	rad_assert(map != NULL);
 	*out = map;
 
 	VERIFY_MAP(map);
