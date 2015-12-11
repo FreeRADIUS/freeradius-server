@@ -1658,7 +1658,7 @@ static modcall_compile_t compile_table[] = {
  *	Compile one entry of a module call.
  */
 static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
-				 int grouptype, char const **modname)
+				 grouptype_t parent_grouptype, char const **modname)
 				   
 {
 	char const *modrefname, *p;
@@ -1695,7 +1695,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 				}
 
 				return compile_table[i].compile(parent, component, cs,
-								compile_table[i].grouptype, grouptype,
+								compile_table[i].grouptype, parent_grouptype,
 								compile_table[i].mod_type);
 			}
 		}
@@ -1840,7 +1840,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		 *	if it was found here.
 		 */
 		if (cf_section_name2(subcs)) {
-			c = compile_item(parent, method, cf_section_to_item(subcs), grouptype, modname);
+			c = compile_item(parent, method, cf_section_to_item(subcs), parent_grouptype, modname);
 
 		} else {
 			/*
@@ -1852,7 +1852,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, grouptype, MOD_GROUP);
+			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
 		}
 
 		/*
@@ -1891,7 +1891,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	this = module_instantiate_method(modules, realname, &method);
 	if (this) {
 		*modname = this->entry->module->name;
-		return compile_csingle(parent, method, ci, this, grouptype, realname);
+		return compile_csingle(parent, method, ci, this, parent_grouptype, realname);
 	}
 
 	/*
