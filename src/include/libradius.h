@@ -506,8 +506,22 @@ void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
 void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
 #  endif
 
-bool		fr_assert_fail(char const *file, int line, char const *expr);
-#define		fr_assert(_x) (bool)((_x) ? true : (fr_assert_fail(__FILE__,  __LINE__, #_x) && false))
+bool		fr_cond_assert_fail(char const *file, int line, char const *expr);
+
+/** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
+ *
+ * Should be wrapped in a condition, and if false, should cause function to return
+ * an error code.  This allows control to return to the caller if a precondition is
+ * not satisfied and we're not debugging.
+ *
+ * Example:
+ @verbatim
+   if (!fr_cond_assert(request)) return -1
+ @endverbatim
+ *
+ * @param _x expression to test (should evaluate to true)
+ */
+#define		fr_cond_assert(_x) (bool)((_x) ? true : (fr_cond_assert_fail(__FILE__,  __LINE__, #_x) && false))
 
 void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #  define	fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))

@@ -123,7 +123,7 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	fr_event_list_t *el;
 
 	el = talloc_zero(ctx, fr_event_list_t);
-	if (!fr_assert(el)) {
+	if (!fr_cond_assert(el)) {
 		return NULL;
 	}
 	talloc_set_destructor(el, _event_list_free);
@@ -188,13 +188,13 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 #endif
 
 	if (ev->parent) {
-		(void)fr_assert(*(ev->parent) == ev);
+		(void)fr_cond_assert(*(ev->parent) == ev);
 		*ev->parent = NULL;
 	}
 	*parent = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
-	(void)fr_assert(ret == 1);	/* events MUST be in the heap */
+	(void)fr_cond_assert(ret == 1);	/* events MUST be in the heap */
 	talloc_free(ev);
 
 	return ret;
@@ -240,7 +240,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 #endif
 
 		ret = fr_heap_extract(el->times, ev);
-		if (!fr_assert(ret == 1)) return 0;	/* events MUST be in the heap */
+		if (!fr_cond_assert(ret == 1)) return 0;	/* events MUST be in the heap */
 
 		memset(ev, 0, sizeof(*ev));
 	} else {

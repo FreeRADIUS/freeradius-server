@@ -554,7 +554,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *tim
 			}
 
 			/* select said a file descriptor was ready for writing */
-			if (!fr_assert(FD_ISSET(fd, &write_set))) return -1;
+			if (!fr_cond_assert(FD_ISSET(fd, &write_set))) return -1;
 
 			break;
 		}

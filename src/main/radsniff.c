@@ -41,7 +41,7 @@ RCSID("$Id$")
 #  include <collectd/client.h>
 #endif
 
-#define RS_ASSERT(_x) if (!(_x) && !fr_assert(_x)) exit(1)
+#define RS_ASSERT(_x) if (!(_x) && !fr_cond_assert(_x)) exit(1)
 
 static rs_t *conf;
 static struct timeval start_pcap = {0, 0};

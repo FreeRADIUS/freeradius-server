@@ -322,7 +322,7 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 {
 	VALUE_PAIR *i;
 
-	if (!fr_assert(cursor->first)) return;	/* cursor must have been initialised */
+	if (!fr_cond_assert(cursor->first)) return;	/* cursor must have been initialised */
 
 	if (!vp) return;
 
@@ -398,7 +398,7 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
 
 	if (!add) return;
 
-	if (!fr_assert(cursor->first)) return;	/* cursor must have been initialised */
+	if (!fr_cond_assert(cursor->first)) return;	/* cursor must have been initialised */
 
 	for (vp = fr_cursor_init(&from, &add);
 	     vp;
@@ -434,7 +434,7 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp, *before;
 
-	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
+	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = cursor->current;
 	if (!vp) return NULL;
@@ -492,7 +492,7 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 {
 	VALUE_PAIR *vp, **last;
 
-	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
+	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = cursor->current;
 	if (!vp) {

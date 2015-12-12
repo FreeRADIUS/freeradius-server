@@ -289,7 +289,7 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 		return NULL;
 	}
 
-	if (!fr_assert(data_len <= (ssize_t)talloc_array_length(data))) {
+	if (!fr_cond_assert(data_len <= (ssize_t)talloc_array_length(data))) {
 		talloc_free(data);	/* Bounds check for tainted scalar (Coverity) */
 		return NULL;
 	}
@@ -1877,8 +1877,8 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	if (!macaddr) return -1;
 #endif
 
-	if (!fr_assert(macaddr) ||
-	    !fr_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
+	if (!fr_cond_assert(macaddr) ||
+	    !fr_cond_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
 		fr_strerror_printf("Wrong VP type (%s) for chaddr",
 				   fr_int2str(dict_attr_types, macaddr->da->type, "<invalid>"));
 		return -1;

@@ -412,7 +412,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Parent must be a vendor
 	 */
-	if (!fr_assert(parent->type == PW_TYPE_VENDOR)) {
+	if (!fr_cond_assert(parent->type == PW_TYPE_VENDOR)) {
 		fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 	}
@@ -683,7 +683,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	/*
 	 *	Container must be a VSA
 	 */
-	if (!fr_assert(parent->type == PW_TYPE_VSA)) return -1;
+	if (!fr_cond_assert(parent->type == PW_TYPE_VSA)) return -1;
 
 	if (attr_len > packet_len) return -1;
 	if (attr_len < 5) return -1; /* vid, value */
@@ -732,7 +732,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 		 *	so it *MUST* exist in the vendor tree.
 		 */
 		dv = fr_dict_vendor_by_num(NULL, vendor);
-		if (!fr_assert(dv)) return -1;
+		if (!fr_cond_assert(dv)) return -1;
 	}
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
 

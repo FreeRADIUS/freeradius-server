@@ -589,7 +589,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	INTERNAL_IF_NULL(dict);
 
-	if (!fr_assert(parent)) return -1;
+	if (!fr_cond_assert(parent)) return -1;
 
 	namelen = strlen(name);
 	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
@@ -1426,7 +1426,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 			return -1;
 		}
 
-		if (!fr_assert(parent)) return -1;	/* Should have provided us with a parent */
+		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 
 		block_vendor = vendor; /* Weird case where we're processing 26.<vid>.<tlv> */
 	}
@@ -2475,11 +2475,11 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 	switch (parent->type) {
 	case PW_TYPE_VSA:
 	case PW_TYPE_EVS:
-		if (!fr_assert(!parent->flags.is_unknown)) return -1;
+		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 
 		vendor_da = fr_dict_attr_child_by_num(parent, vendor);
 		if (vendor_da) {
-			if (!fr_assert(vendor_da->type == PW_TYPE_VENDOR)) return -1;
+			if (!fr_cond_assert(vendor_da->type == PW_TYPE_VENDOR)) return -1;
 			*out = vendor_da;
 			return 0;
 		}
@@ -2489,7 +2489,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 	 *	NOOP (maybe)
 	 */
 	case PW_TYPE_VENDOR:
-		if (!fr_assert(!parent->flags.is_unknown)) return -1;
+		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 
 		if (parent->attr == vendor) {
 			*out = parent;
@@ -2653,7 +2653,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 	da = (fr_dict_attr_t *)p;
 	talloc_set_type(da, fr_dict_attr_t);
 
-	if (!fr_assert(parent)) { /* coverity */
+	if (!fr_cond_assert(parent)) { /* coverity */
 		talloc_free(p);
 		return NULL;
 	}
@@ -3266,7 +3266,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	unsigned int		num = 0;
 	ssize_t			slen;
 
-	if (!fr_assert(parent)) return 0;
+	if (!fr_cond_assert(parent)) return 0;
 	INTERNAL_IF_NULL(dict);
 
 	*attr = 0;
@@ -3752,7 +3752,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	if (!da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
 
-		if (!fr_assert(0)) fr_exit_now(1);
+		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
 	(void) talloc_get_type_abort(da, fr_dict_attr_t);
@@ -3762,7 +3762,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 			     "Is not root, but depth is 0",
 			     file, line, da->name, da->vendor, da->attr);
 
-		if (!fr_assert(0)) fr_exit_now(1);
+		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
 	if (da->depth > FR_DICT_MAX_TLV_STACK) {
@@ -3770,7 +3770,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 			     "Indicated depth (%u) greater than TLV stack depth (%u)",
 			     file, line, da->name, da->vendor, da->attr, da->depth, FR_DICT_MAX_TLV_STACK);
 
-		if (!fr_assert(0)) fr_exit_now(1);
+		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
 	for (da_p = da; da_p; da_p = da_p->next) (void) talloc_get_type_abort(da_p, fr_dict_attr_t);
@@ -3781,7 +3781,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 				     "Depth out of sequence, expected %i, got %u",
 				     file, line, da->name, da->vendor, da->attr, i, da_p->depth);
 
-			if (!fr_assert(0)) fr_exit_now(1);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
 	}
@@ -3790,6 +3790,6 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
 			     file, line);
 
-		if (!fr_assert(0)) fr_exit_now(1);
+		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 }

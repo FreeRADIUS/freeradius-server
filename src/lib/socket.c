@@ -393,7 +393,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 		return 0;
 
 	case 0: /* timeout */
-		if (!fr_assert(timeout)) return -1;
+		if (!fr_cond_assert(timeout)) return -1;
 		fr_strerror_printf("Connection timed out after %" PRIu64"ms",
 				   (timeout->tv_sec * (uint64_t)1000) + (timeout->tv_usec / 1000));
 		return -2;
@@ -403,7 +403,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 		return -3;
 
 	default:
-		(void)fr_assert(0);
+		(void)fr_cond_assert(0);
 		return -1;
 	}
 }

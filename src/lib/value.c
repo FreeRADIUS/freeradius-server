@@ -157,7 +157,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 	case PW_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_STRUCTURAL:
 	case PW_TYPE_BAD:
-		(void)fr_assert(0);	/* unknown type */
+		(void)fr_cond_assert(0);	/* unknown type */
 		return -2;
 
 	/*
@@ -1047,7 +1047,7 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
 
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:
-		(void)fr_assert(0);
+		(void)fr_cond_assert(0);
 		return;		/* shouldn't happen */
 
 	default:
@@ -1075,7 +1075,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		    PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
 		    value_data_t const *src)
 {
-	if (!fr_assert(dst_type != src_type)) return -1;
+	if (!fr_cond_assert(dst_type != src_type)) return -1;
 
 	/*
 	 *	Deserialise a value_data_t
@@ -1369,7 +1369,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				 *	above check passed, the v6 address wasn't masked
 				 *	correctly when it was packet into a value_data_t.
 				 */
-				if (!fr_assert(src->ipv6prefix[1] >= (sizeof(v4_v6_map) * 8))) return -1;
+				if (!fr_cond_assert(src->ipv6prefix[1] >= (sizeof(v4_v6_map) * 8))) return -1;
 
 				memcpy(&dst->ipv4prefix[2], &src->ipv6prefix[2 + sizeof(v4_v6_map)],
 				       sizeof(dst->ipv4prefix) - 2);
@@ -1564,7 +1564,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 		if (!p) return NULL;
 
 		ret = fr_snprint(p, len, data->strvalue, data->length, quote);
-		if (!fr_assert(ret == (len - 1))) {
+		if (!fr_cond_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
 		}
@@ -1702,7 +1702,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_MAX:
-		(void)fr_assert(0);
+		(void)fr_cond_assert(0);
 		return NULL;
 	}
 
@@ -1939,7 +1939,7 @@ print_int:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_MAX:
-		(void)fr_assert(0);
+		(void)fr_cond_assert(0);
 		*out = '\0';
 		return 0;
 	}

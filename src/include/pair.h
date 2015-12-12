@@ -41,9 +41,9 @@ extern "C" {
  *  the pointer must not be NULL when these various macros are used
  *  so we can add some sneaky soft asserts.
  */
-#  define VERIFY_VP(_x)		fr_assert(_x)
-#  define VERIFY_LIST(_x)	fr_assert(_x)
-#  define VERIFY_PACKET(_x)	fr_assert(_x)
+#  define VERIFY_VP(_x)		fr_cond_assert(_x)
+#  define VERIFY_LIST(_x)	fr_cond_assert(_x)
+#  define VERIFY_PACKET(_x)	fr_cond_assert(_x)
 #endif
 
 /** Union containing all data types supported by the server

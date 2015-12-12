@@ -397,10 +397,10 @@ char *fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
 	out = talloc_array(ctx, char, len);
 	ret = fr_snprint(out, len, in, inlen, quote);
 	/*
-	 *	This is a fatal error, but fr_assert is the strongest
+	 *	This is a fatal error, but fr_cond_assert is the strongest
 	 *	assert we're allowed to use in library functions.
 	 */
-	if (!fr_assert(ret == (len - 1))) {
+	if (!fr_cond_assert(ret == (len - 1))) {
 		talloc_free(out);
 		return NULL;
 	}

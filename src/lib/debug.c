@@ -350,7 +350,7 @@ int fr_backtrace_do(fr_bt_marker_t *marker)
 {
 	fr_bt_info_t *bt;
 
-	if (!fr_assert(marker->obj) || !fr_assert(marker->cbuff)) return -1;
+	if (!fr_cond_assert(marker->obj) || !fr_cond_assert(marker->cbuff)) return -1;
 
 	bt = talloc_zero(NULL, fr_bt_info_t);
 	if (!bt) return -1;
@@ -1081,11 +1081,13 @@ void fr_fault_set_log_fd(int fd)
  * @param expr that was evaluated.
  * @return the value of cond.
  */
-bool fr_assert_fail(char const *file, int line, char const *expr)
+bool fr_cond_assert_fail(char const *file, int line, char const *expr)
 {
-	FR_FAULT_LOG("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
 #ifndef NDEBUG
+	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	fr_fault(SIGABRT);
+#else
+	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
 #endif
 	return false;
 }
