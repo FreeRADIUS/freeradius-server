@@ -20,31 +20,30 @@
  * Copyright 2003 Alan DeKok <aland@freeradius.org>
  * Copyright 2006 The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {
-	char const *tls_conf_name;		//!< TLS configuration.
-	fr_tls_server_conf_t *tls_conf;
-	char const *default_method_name;	//!< Default tunneled EAP type.
-	int default_method;
-	int auth_type_eap;
-	bool use_tunneled_reply;		//!< Use the reply attributes from the tunneled session in
-						//!< the non-tunneled reply to the client.
+	char const		*tls_conf_name;		//!< TLS configuration.
+	fr_tls_server_conf_t	*tls_conf;
+	char const		*default_method_name;	//!< Default tunneled EAP type.
+	int			default_method;
+	int			auth_type_eap;
+	bool			use_tunneled_reply;	//!< Use the reply attributes from the tunneled session in
+							//!< the non-tunneled reply to the client.
 
-	bool copy_request_to_tunnel;		//!< Use SOME of the request attributes from outside of the
-						//!< tunneled session in the tunneled request.
+	bool			copy_request_to_tunnel;	//!< Use SOME of the request attributes from outside of the
+							//!< tunneled session in the tunneled request.
 #ifdef WITH_PROXY
-	bool proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
-						//!< protocol.
+	bool			proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
+							//!< protocol.
 #endif
-	char const *virtual_server;		//!< Virtual server for inner tunnel session.
+	char const		*virtual_server;	//!< Virtual server for inner tunnel session.
 
-	bool soh;				//!< Do we do SoH request?
-	char const *soh_virtual_server;
-	bool req_client_cert;			//!< Do we do require a client cert?
+	bool			soh;			//!< Do we do SoH request?
+	char const		*soh_virtual_server;
+	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
 
@@ -86,9 +85,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	/*
 	 *	Parse the configuration attributes.
 	 */
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
+	if (cf_section_parse(cs, inst, module_config) < 0) return -1;
 
 	/*
 	 *	Convert the name to an integer, to make it easier to
@@ -96,8 +93,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	inst->default_method = eap_name2type(inst->default_method_name);
 	if (inst->default_method < 0) {
-		ERROR("rlm_eap_peap: Unknown EAP type %s",
-		       inst->default_method_name);
+		ERROR("rlm_eap_peap: Unknown EAP type %s", inst->default_method_name);
 		return -1;
 	}
 
@@ -275,9 +271,9 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	case FR_TLS_RECORD_COMPLETE:
 		break;
 
-		/*
-		 *	Anything else: fail.
-		 */
+	/*
+	 *	Anything else: fail.
+	 */
 	default:
 		return 0;
 	}
@@ -292,9 +288,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	We may need PEAP data associated with the session, so
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
-	if (!tls_session->opaque) {
-		tls_session->opaque = peap_alloc(tls_session, inst);
-	}
+	if (!tls_session->opaque) tls_session->opaque = peap_alloc(tls_session, inst);
 
 	/*
 	 *	Process the PEAP portion of the request.
