@@ -2006,7 +2006,6 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 	modcallable *c;
 	modgroup *g;
 	ssize_t slen;
-	vp_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -2014,12 +2013,15 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
+	g = group_allocate(parent, cs, grouptype, mod_type);
+	if (!g) return NULL;
+
 	/*
 	 *	Create the template.  All attributes and xlats are
 	 *	defined by now.
 	 */
 	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 	if (slen < 0) {
 		char *spaces, *text;
 
@@ -2029,6 +2031,7 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		cf_log_err_cs(cs, "%s", name2);
 		cf_log_err_cs(cs, "%s^ %s", spaces, text);
 
+		talloc_free(g);
 		talloc_free(spaces);
 		talloc_free(text);
 
@@ -2049,7 +2052,7 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 			if (!cf_item_is_pair(ci)) continue;
 
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
-			talloc_free(vpt);
+			talloc_free(g);
 			return NULL;
 		}
 
@@ -2058,7 +2061,7 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 
 		if (strcmp(name1, "case") != 0) {
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
-			talloc_free(vpt);
+			talloc_free(g);
 			return NULL;
 		}
 
@@ -2070,28 +2073,26 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 			}
 
 			cf_log_err(ci, "Cannot have two 'default' case statements");
-			talloc_free(vpt);
+			talloc_free(g);
 			return NULL;
 		}
 	}
 
-	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!c) {
-		talloc_free(vpt);
-		return NULL;
-	}
-
+	c = mod_grouptocallable(g);
+	c->name = unlang_keyword[c->type];
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name2(cs));
 
-	g = mod_callabletogroup(c);
-	g->vpt = talloc_steal(g, vpt);
-
+	/*
+	 *	Fixup the template before compiling the children.
+	 *	This is so that compile_case() can do attribute type
+	 *	checks / casts against us.
+	 */
 	if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
 		talloc_free(g);
 		return NULL;
 	}
 
-	return c;
+	return compile_children(g, parent, component, grouptype, parentgrouptype);
 }
 
 static modcallable *compile_case(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
