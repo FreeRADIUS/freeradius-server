@@ -950,7 +950,6 @@ static bool pass2_fixup_map(modgroup *g)
  */
 bool modcall_pass2(modcallable *mc)
 {
-	ssize_t slen;
 	char const *name2;
 	modcallable *c;
 	modgroup *g;
@@ -1004,39 +1003,17 @@ bool modcall_pass2(modcallable *mc)
 			rad_assert(c->parent->type == MOD_SWITCH);
 
 			/*
-			 *	The statement may refer to an
-			 *	attribute which doesn't exist until
-			 *	all of the modules have been loaded.
-			 *	Check for that now.
-			 */
-			if (!g->vpt && c->name &&
-			    (c->name[0] == '&') &&
-			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name),
-						      cf_section_name2_type(g->cs),
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-				if (slen < 0) {
-					char *spaces, *text;
-
-					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
-
-					cf_log_err_cs(g->cs, "Syntax error");
-					cf_log_err_cs(g->cs, "%s", c->name);
-					cf_log_err_cs(g->cs, "%s^ %s", spaces, text);
-
-					talloc_free(spaces);
-					talloc_free(text);
-
-					return false;
-				}
-			}
-
-			/*
 			 *	We have "case {...}".  There's no
 			 *	argument, so we don't need to check
 			 *	it.
 			 */
 			if (!g->vpt) goto do_children;
+
+			if (g->vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+				if (!pass2_fixup_undefined(cf_section_to_item(g->cs), g->vpt)) {
+					return false;
+				}
+			}
 
 			/*
 			 *	Do type-specific checks on the case statement
