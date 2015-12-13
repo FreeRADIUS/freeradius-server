@@ -1,6 +1,6 @@
 # PRE: switch
 #
-switch User-Name {
+switch &User-Name {
 	case "harry" {
 		update reply {
 			Filter-Id := "harry"
