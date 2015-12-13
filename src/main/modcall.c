@@ -980,45 +980,15 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_IF:
 		case MOD_ELSIF:
 		case MOD_SWITCH:
-			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;
-
-		do_children:
-			if (!modcall_pass2(g->children)) return false;
-			g->done_pass2 = true;
-			break;
-
 		case MOD_CASE:
-			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;
-			goto do_children;
-
 		case MOD_FOREACH:
+		case MOD_ELSE:
 			g = mod_callabletogroup(c);
 			if (g->done_pass2) goto do_next;
 
-			name2 = cf_section_name2(g->cs);
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
-
-			rad_assert(g->vpt != NULL);
-
-			if (g->vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
-				if (!pass2_fixup_undefined(cf_section_to_item(g->cs), g->vpt)) return NULL;
-			}
-
-			rad_assert((g->vpt->type == TMPL_TYPE_ATTR) || (g->vpt->type == TMPL_TYPE_LIST));
-
-			if (g->vpt->tmpl_num != NUM_ALL) {
-				cf_log_err_cs(g->cs, "MUST NOT use instance selectors in 'foreach'");
-				return false;
-			}
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
 			break;
-
-		case MOD_ELSE:
-			c->debug_name = unlang_keyword[c->type];
-			goto do_recurse;
 
 		case MOD_POLICY:
 			g = mod_callabletogroup(c);
@@ -2146,7 +2116,7 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 {
 	FR_TOKEN type;
 	char const *name2;
-	modcallable *csingle;
+	modcallable *c;
 	modgroup *g;
 	ssize_t slen;
 	vp_tmpl_t *vpt;
@@ -2189,6 +2159,13 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 
 	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
 		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	if ((vpt->tmpl_num != NUM_ALL) && (vpt->tmpl_num != NUM_ANY)) {
+		cf_log_err_cs(cs, "MUST NOT use instance selectors in 'foreach'");
+		talloc_free(vpt);
 		return NULL;
 	}
 
@@ -2199,16 +2176,18 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 	 */
 	vpt->tmpl_num = NUM_ALL;
 
-	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!csingle) {
+	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) {
 		talloc_free(vpt);
 		return NULL;
 	}
 
-	g = mod_callabletogroup(csingle);
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+
+	g = mod_callabletogroup(c);
 	g->vpt = vpt;
 
-	return csingle;
+	return c;
 }
 
 
@@ -2358,6 +2337,7 @@ static modcallable *compile_else(modcallable *parent,
 			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	int rcode;
+	modcallable *c;
 
 	if (cf_section_name2(cs)) {
 		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_keyword[mod_type]);
@@ -2367,9 +2347,17 @@ static modcallable *compile_else(modcallable *parent,
 	rcode = previous_if(cs, parent, mod_type);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+	if (rcode == 0) {
+		c = compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+	} else {
+		c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	}
 
-	return compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) return c;
+
+	c->debug_name = unlang_keyword[c->type];
+
+	return c;
 }
 
 /*
