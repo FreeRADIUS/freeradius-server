@@ -423,7 +423,7 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 
 
 #ifdef WITH_UNLANG
-static bool pass2_xlat_compile(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
+static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
 			       fr_dict_attr_t const *da)
 {
 	ssize_t slen;
@@ -509,7 +509,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool conve
 
 
 #ifdef HAVE_REGEX
-static bool pass2_regex_compile(CONF_ITEM const *ci, vp_tmpl_t *vpt)
+static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 {
 	ssize_t slen;
 	regex_t *preg;
@@ -524,12 +524,12 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	 *	This is a little more complicated than it needs to be
 	 *	because radius_evaluate_map() keys off of the src
 	 *	template type, instead of the operators.  And, the
-	 *	pass2_xlat_compile() function expects to get passed an
+	 *	pass2_fixup_xlat() function expects to get passed an
 	 *	XLAT instead of a REGEX.
 	 */
 	if (strchr(vpt->name, '%')) {
 		vpt->type = TMPL_TYPE_XLAT;
-		return pass2_xlat_compile(ci, &vpt, false, NULL);
+		return pass2_fixup_xlat(ci, &vpt, false, NULL);
 	}
 
 	slen = regex_compile(vpt, &preg, vpt->name, vpt->len,
@@ -579,7 +579,7 @@ static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 	vp_tmpl_t *vpt = *pvpt;
 
 	if (vpt->type == TMPL_TYPE_XLAT) {
-		return pass2_xlat_compile(ci, pvpt, convert, NULL);
+		return pass2_fixup_xlat(ci, pvpt, convert, NULL);
 	}
 
 	/*
@@ -685,11 +685,11 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 		 *	@todo v3.1: allow anything anywhere.
 		 */
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
-			if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL)) {
 				return false;
 			}
 		} else {
-			if (!pass2_xlat_compile(map->ci, &map->lhs, true, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->lhs, true, NULL)) {
 				return false;
 			}
 
@@ -780,12 +780,12 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 
 			if (!c->cast) da = map->lhs->tmpl_da;
 
-			if (!pass2_xlat_compile(map->ci, &map->rhs, true, da)) {
+			if (!pass2_fixup_xlat(map->ci, &map->rhs, true, da)) {
 				return false;
 			}
 
 		} else {
-			if (!pass2_xlat_compile(map->ci, &map->rhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL)) {
 				return false;
 			}
 		}
@@ -823,7 +823,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 
 #ifdef HAVE_REGEX
 	if (map->rhs->type == TMPL_TYPE_REGEX) {
-		if (!pass2_regex_compile(map->ci, map->rhs)) {
+		if (!pass2_fixup_regex(map->ci, map->rhs)) {
 			return false;
 		}
 	}
@@ -897,7 +897,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 /*
  *	Compile the RHS of update sections to xlat_exp_t
  */
-static bool pass2_update_compile(modgroup *g)
+static bool pass2_fixup_update(modgroup *g)
 {
 	vp_map_t *map;
 
@@ -909,7 +909,7 @@ static bool pass2_update_compile(modgroup *g)
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_xlat_compile(map->ci, &map->rhs, false, NULL)) {
+			if (!pass2_fixup_xlat(map->ci, &map->rhs, false, NULL)) {
 				return false;
 			}
 		}
@@ -934,12 +934,12 @@ static bool pass2_update_compile(modgroup *g)
 /*
  *	Compile the RHS of map sections to xlat_exp_t
  */
-static bool pass2_map_compile(modgroup *g)
+static bool pass2_fixup_map(modgroup *g)
 {
 	/*
 	 *	Compile the map
 	 */
-	if (!pass2_update_compile(g)) return false;
+	if (!pass2_fixup_update(g)) return false;
 
 	return pass2_fixup_tmpl(g->map->ci, &g->vpt, false);
 }
@@ -973,7 +973,7 @@ bool modcall_pass2(modcallable *mc)
 				c->debug_name = talloc_asprintf(c, "update %s", name2);
 			}
 
-			if (!pass2_update_compile(g)) {
+			if (!pass2_fixup_update(g)) {
 				return false;
 			}
 			g->done_pass2 = true;
@@ -983,7 +983,7 @@ bool modcall_pass2(modcallable *mc)
 			g = mod_callabletogroup(c);
 			if (g->done_pass2) goto do_next;
 
-			if (!pass2_map_compile(g)) {
+			if (!pass2_fixup_map(g)) {
 				return false;
 			}
 			g->done_pass2 = true;
@@ -1056,7 +1056,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	Statically compile xlats
 			 */
 			if (g->vpt->type == TMPL_TYPE_XLAT) {
-				if (!pass2_xlat_compile(cf_section_to_item(g->cs),
+				if (!pass2_fixup_xlat(cf_section_to_item(g->cs),
 							&g->vpt, true, NULL)) {
 					return false;
 				}
@@ -1192,12 +1192,12 @@ bool modcall_pass2(modcallable *mc)
 				 *	attribute of a different type.
 				 */
 				if (f->vpt->type == TMPL_TYPE_ATTR) {
-					if (!pass2_xlat_compile(cf_section_to_item(g->cs),
+					if (!pass2_fixup_xlat(cf_section_to_item(g->cs),
 								&g->vpt, true, f->vpt->tmpl_da)) {
 						return false;
 					}
 				} else {
-					if (!pass2_xlat_compile(cf_section_to_item(g->cs),
+					if (!pass2_fixup_xlat(cf_section_to_item(g->cs),
 								&g->vpt, true, NULL)) {
 						return false;
 					}
