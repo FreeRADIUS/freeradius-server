@@ -28,24 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/parser.h>
 
 
-/* modgroups are grown by adding a modcallable to the end */
-static void add_child(modgroup *g, modcallable *c)
-{
-	if (!c) return;
-
-	(void) talloc_steal(g, c);
-
-	if (!g->children) {
-		g->children = g->tail = c;
-	} else {
-		rad_assert(g->tail->next == NULL);
-		g->tail->next = c;
-		g->tail = c;
-	}
-
-	c->parent = mod_grouptocallable(g);
-}
-
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 const FR_NAME_NUMBER mod_rcode_table[] = {
@@ -438,1653 +420,6 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 		MOD_ACTION_RETURN	/* updated  */
 	}
 };
-
-
-#ifdef WITH_UNLANG
-/** Validate and fixup a map that's part of an map section.
- *
- * @param map to validate.
- * @param ctx data to pass to fixup function (currently unused).
- * @return 0 if valid else -1.
- */
-static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
-{
-	CONF_PAIR *cp = cf_item_to_pair(map->ci);
-
-	/*
-	 *	Anal-retentive checks.
-	 */
-	if (DEBUG_ENABLED3) {
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
-		}
-
-		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
-		}
-	}
-
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
-		break;
-
-	default:
-		cf_log_err(map->ci, "Left side of map must be an attribute "
-		           "or an xlat (that expands to an attribute), not a %s",
-		           fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
-		return -1;
-	}
-
-	switch (map->rhs->type) {
-	case TMPL_TYPE_UNPARSED:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_XLAT_STRUCT:
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_EXEC:
-		break;
-
-	default:
-		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
-		return -1;
-	}
-
-	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
-		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
-			   "Only assignment or filter operators are allowed",
-			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
-		return -1;
-	}
-
-	return 0;
-}
-
-
-/** Validate and fixup a map that's part of an update section.
- *
- * @param map to validate.
- * @param ctx data to pass to fixup function (currently unused).
- * @return
- *	- 0 if valid.
- *	- -1 not valid.
- */
-int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
-{
-	CONF_PAIR *cp = cf_item_to_pair(map->ci);
-
-	/*
-	 *	Anal-retentive checks.
-	 */
-	if (DEBUG_ENABLED3) {
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
-		}
-
-		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
-		}
-	}
-
-	/*
-	 *	Values used by unary operators should be literal ANY
-	 *
-	 *	We then free the template and alloc a NULL one instead.
-	 */
-	if (map->op == T_OP_CMP_FALSE) {
-	 	if ((map->rhs->type != TMPL_TYPE_UNPARSED) || (strcmp(map->rhs->name, "ANY") != 0)) {
-			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp));
-		}
-
-		TALLOC_FREE(map->rhs);
-
-		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0, T_INVALID);
-	}
-
-	/*
-	 *	Lots of sanity checks for insane people...
-	 */
-
-	/*
-	 *	What exactly where you expecting to happen here?
-	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->type == TMPL_TYPE_LIST)) {
-		cf_log_err(map->ci, "Can't copy list into an attribute");
-		return -1;
-	}
-
-	/*
-	 *	Depending on the attribute type, some operators are disallowed.
-	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
-		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
-			   "Only assignment or filter operators are allowed",
-			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
-		return -1;
-	}
-
-	if (map->lhs->type == TMPL_TYPE_LIST) {
-		/*
-		 *	Can't copy an xlat expansion or literal into a list,
-		 *	we don't know what type of attribute we'd need
-		 *	to create.
-		 *
-		 *	The only exception is where were using a unary
-		 *	operator like !*.
-		 */
-	    	if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
-	    	case TMPL_TYPE_XLAT:
-	    	case TMPL_TYPE_UNPARSED:
-			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-			return -1;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Only += and :=, and !* operators are supported
-		 *	for lists.
-		 */
-		switch (map->op) {
-		case T_OP_CMP_FALSE:
-			break;
-
-		case T_OP_ADD:
-			if ((map->rhs->type != TMPL_TYPE_LIST) &&
-			    (map->rhs->type != TMPL_TYPE_EXEC)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_SET:
-			if (map->rhs->type == TMPL_TYPE_EXEC) {
-				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
-				     cf_pair_filename(cp), cf_pair_lineno(cp));
-			}
-
-			if (map->rhs->type != TMPL_TYPE_LIST) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_EQ:
-			if (map->rhs->type != TMPL_TYPE_EXEC) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		default:
-			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
-			return -1;
-		}
-	}
-
-	/*
-	 *	If the map has a unary operator there's no further
-	 *	processing we need to, as RHS is unused.
-	 */
-	if (map->op == T_OP_CMP_FALSE) return 0;
-
-	/*
-	 *	If LHS is an attribute, and RHS is a literal, we can
-	 *	preparse the information into a TMPL_TYPE_DATA.
-	 *
-	 *	Unless it's a unary operator in which case we
-	 *	ignore map->rhs.
-	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_UNPARSED)) {
-		/*
-		 *	Convert it to the correct type.
-		 */
-		if (map->lhs->auto_converted &&
-		    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
-		    (map->rhs->len > 2) && ((map->rhs->len & 0x01) == 0)) {
-			vp_tmpl_t *vpt = map->rhs;
-			map->rhs = NULL;
-
-			if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
-				map->rhs = vpt;
-				cf_log_err(map->ci, "%s", fr_strerror());
-				return -1;
-			}
-			talloc_free(vpt);
-
-		/*
-		 *	It's a literal string, just copy it.
-		 *	Don't escape anything.
-		 */
-		} else if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
-			cf_log_err(map->ci, "%s", fr_strerror());
-			return -1;
-		}
-
-		/*
-		 *	Fixup LHS da if it doesn't match the type
-		 *	of the RHS.
-		 */
-		if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
-			fr_dict_attr_t const *da;
-
-			da = fr_dict_attr_by_type(NULL, map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr,
-						  map->rhs->tmpl_data_type);
-			if (!da) {
-				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
-						   "<INVALID>"), map->lhs->tmpl_da->name);
-				return -1;
-			}
-			map->lhs->tmpl_da = da;
-		}
-	} /* else we can't precompile the data */
-
-	return 0;
-}
-
-
-static modcallable *compile_map(modcallable *parent, rlm_components_t component,
-				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
-{
-	int rcode;
-	modgroup *g;
-	modcallable *csingle;
-	CONF_SECTION *modules;
-	ssize_t slen;
-	char const *tmpl_str;
-	FR_TOKEN type;
-	char quote;
-	size_t tmpl_len, quoted_len;
-	char *quoted_str;
-
-	vp_map_t *head;
-	vp_tmpl_t *vpt;
-
-	map_proc_t *proc;
-	map_proc_inst_t *proc_inst;
-
-	char const *name2 = cf_section_name2(cs);
-
-	modules = cf_section_sub_find(main_config.config, "modules");
-	if (!modules) {
-		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
-		return NULL;
-	}
-
-	proc = map_proc_find(name2);
-	if (!proc) {
-		cf_log_err_cs(cs, "Failed to find map processor '%s'", name2);
-		return NULL;
-	}
-
-	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
-	if (!tmpl_str) {
-		cf_log_err_cs(cs, "No template found in map");
-		return NULL;
-	}
-
-	tmpl_len = strlen(tmpl_str);
-	type = cf_section_argv_type(cs, 0);
-
-	/*
-	 *	Try to parse the template.
-	 */
-	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, tmpl_len, type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-	if (slen < 0) {
-		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
-		return NULL;
-	}
-
-	/*
-	 *	Limit the allowed template types.
-	 */
-	switch (vpt->type) {
-	case TMPL_TYPE_UNPARSED:
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_EXEC:
-		break;
-
-	default:
-		talloc_free(vpt);
-		cf_log_err_cs(cs, "Invalid third argument for map");
-		return NULL;
-	}
-
-	/*
-	 *	This looks at cs->name2 to determine which list to update
-	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
-	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
-		cf_log_err_cs(cs, "'map' sections cannot be empty");
-		return NULL;
-	}
-
-	g = talloc_zero(parent, modgroup);
-	proc_inst = map_proc_instantiate(g, proc, vpt, head);
-	if (!proc_inst) {
-		talloc_free(g);
-		cf_log_err_cs(cs, "Failed instantiating map function '%s'", name2);
-		return NULL;
-	}
-
-	csingle = mod_grouptocallable(g);
-
-	csingle->parent = parent;
-	csingle->next = NULL;
-
-	switch (type) {
-	case T_DOUBLE_QUOTED_STRING:
-		quote = '"';
-		break;
-
-	case T_SINGLE_QUOTED_STRING:
-		quote = '\'';
-		break;
-
-	case T_BACK_QUOTED_STRING:
-		quote = '`';
-		break;
-
-	default:
-		quote = '\0';
-		break;
-	}
-
-	quoted_len = fr_snprint_len(tmpl_str, tmpl_len, quote);
-	quoted_str = talloc_array(csingle, char, quoted_len);
-	fr_snprint(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
-
-	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, quoted_str);
-	csingle->type = MOD_MAP;
-	csingle->method = component;
-
-	talloc_free(quoted_str);
-
-	memcpy(csingle->actions, defaultactions[component][parentgrouptype],
-	       sizeof(csingle->actions));
-
-	g->grouptype = GROUPTYPE_SIMPLE;
-	g->children = NULL;
-	g->cs = cs;
-	g->map = talloc_steal(g, head);
-	g->vpt = talloc_steal(g, vpt);
-	g->proc_inst = proc_inst;
-
-	/*
-	 *	Cache the module in the modgroup struct.
-	 *
-	 *	Ensure that the module has a "map" entry in its module
-	 *	header?  Or ensure that the map is registered in the
-	 *	"boostrap" phase, so that it's always available here.
-	 */
-
-	return csingle;
-
-}
-
-static modcallable *compile_update(modcallable *parent, rlm_components_t component,
-				   CONF_SECTION *cs, grouptype_t grouptype, UNUSED grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
-{
-	int rcode;
-	modgroup *g;
-	modcallable *csingle;
-	char const *name2 = cf_section_name2(cs);
-
-	vp_map_t *head;
-
-	/*
-	 *	This looks at cs->name2 to determine which list to update
-	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_update, NULL, 128);
-	if (rcode < 0) return NULL; /* message already printed */
-	if (!head) {
-		cf_log_err_cs(cs, "'update' sections cannot be empty");
-		return NULL;
-	}
-
-	g = talloc_zero(parent, modgroup);
-	csingle = mod_grouptocallable(g);
-
-	csingle->parent = parent;
-	csingle->next = NULL;
-
-	if (name2) {
-		csingle->name = name2;
-	} else {
-		csingle->name = "";
-	}
-	csingle->type = MOD_UPDATE;
-	csingle->method = component;
-
-	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
-	       sizeof(csingle->actions));
-
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-	g->map = talloc_steal(g, head);
-
-#ifdef WITH_CONF_WRITE
-//	cf_data_add(cs, "update", g->map, NULL); /* for output normalization */
-#endif
-
-	return csingle;
-}
-
-/*
- *	Compile action && rcode for later use.
- */
-static int compile_action(modcallable *c, CONF_PAIR *cp)
-{
-	int action;
-	char const *attr, *value;
-
-	attr = cf_pair_attr(cp);
-	value = cf_pair_value(cp);
-	if (!value) return 0;
-
-	if (!strcasecmp(value, "return"))
-		action = MOD_ACTION_RETURN;
-
-	else if (!strcasecmp(value, "break"))
-		action = MOD_ACTION_RETURN;
-
-	else if (!strcasecmp(value, "reject"))
-		action = MOD_ACTION_REJECT;
-
-	else if (strspn(value, "0123456789")==strlen(value)) {
-		action = atoi(value);
-
-		/*
-		 *	Don't allow priority zero, for future use.
-		 */
-		if (action == 0) return 0;
-	} else {
-		cf_log_err_cp(cp, "Unknown action '%s'.\n",
-			   value);
-		return 0;
-	}
-
-	if (strcasecmp(attr, "default") != 0) {
-		int rcode;
-
-		rcode = fr_str2int(mod_rcode_table, attr, -1);
-		if (rcode < 0) {
-			cf_log_err_cp(cp,
-				   "Unknown module rcode '%s'.\n",
-				   attr);
-			return 0;
-		}
-		c->actions[rcode] = action;
-
-	} else {		/* set all unset values to the default */
-		int i;
-
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			if (!c->actions[i]) c->actions[i] = action;
-		}
-	}
-
-	return 1;
-}
-
-static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
-{
-	int i;
-
-	/*
-	 *	Set the default actions, if they haven't already been
-	 *	set.
-	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (!c->actions[i]) {
-			if (!parent || (component != MOD_AUTHENTICATE)) {
-				c->actions[i] = defaultactions[component][parentgrouptype][i];
-			} else { /* inside Auth-Type has different rules */
-				c->actions[i] = authtype_actions[parentgrouptype][i];
-			}
-		}
-	}
-
-	/*
-	 *	FIXME: If there are no children, return NULL?
-	 */
-	return c;
-}
-
-static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
-				  fr_cond_type_t cond_type)
-{
-	modgroup *g;
-	modcallable *c;
-
-	g = talloc_zero(parent, modgroup);
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-
-	c = mod_grouptocallable(g);
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-
-	if (cs) {
-		c->name = cf_section_name2(cs);
-		if (!c->name) c->name = cf_section_name1(cs);
-	} else {
-		c->name = "";
-	}
-
-	if (cond_type != COND_TYPE_INVALID) {
-		g->cond = talloc_zero(g, fr_cond_t);
-		g->cond->type = cond_type;
-	}
-
-	return compile_defaultactions(c, parent, component, parentgrouptype);
-}
-
-
-static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
-				 grouptype_t parent_grouptype, char const **modname);
-
-/*
- *	Generic "compile a section with more unlang inside of it".
- */
-static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	modgroup *g;
-	modcallable *c;
-	CONF_ITEM *ci;
-
-	g = talloc_zero(parent, modgroup);
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-
-	c = mod_grouptocallable(g);
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-	memset(c->actions, 0, sizeof(c->actions));
-
-	/*
-	 *	Remember the name for printing, etc.
-	 *
-	 *	FIXME: We may also want to put the names into a
-	 *	rbtree, so that groups can reference each other...
-	 */
-	c->name = cf_section_name2(cs);
-	if (!c->name) {
-		c->name = cf_section_name1(cs);
-		if ((strcmp(c->name, "group") == 0) ||
-		    (strcmp(c->name, "redundant") == 0)) {
-			c->name = "";
-		} else if (c->type == MOD_GROUP) {
-			c->type = MOD_POLICY;
-		}
-	}
-
-	/*
-	 *	Loop over the children of this group.
-	 */
-	for (ci=cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
-
-		/*
-		 *	Sections are references to other groups, or
-		 *	to modules with updated return codes.
-		 */
-		if (cf_item_is_section(ci)) {
-			char const *junk = NULL;
-			modcallable *single;
-			CONF_SECTION *subcs = cf_item_to_section(ci);
-
-			single = compile_item(c, component, ci, grouptype, &junk);
-			if (!single) {
-				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
-				       cf_section_name1(subcs));
-				talloc_free(c);
-				return NULL;
-			}
-			add_child(g, single);
-
-		} else if (!cf_item_is_pair(ci)) { /* CONF_DATA */
-			continue;
-
-		} else {
-			char const *attr, *value;
-			CONF_PAIR *cp = cf_item_to_pair(ci);
-
-			attr = cf_pair_attr(cp);
-			value = cf_pair_value(cp);
-
-			/*
-			 *	A CONF_PAIR is either a module
-			 *	instance with no actions
-			 *	specified ...
-			 */
-			if (!value) {
-				modcallable *single;
-				char const *junk = NULL;
-
-				single = compile_item(c, component, ci, grouptype, &junk);
-				if (!single) {
-					if (cf_item_is_pair(ci) &&
-					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
-						continue;
-					}
-
-					cf_log_err(ci,
-						   "Failed to parse \"%s\" entry.",
-						   attr);
-					talloc_free(c);
-					return NULL;
-				}
-				add_child(g, single);
-
-				/*
-				 *	Or a module instance with action.
-				 */
-			} else if (!compile_action(c, cp)) {
-				talloc_free(c);
-				return NULL;
-			} /* else it worked */
-		}
-	}
-
-	return compile_defaultactions(c, parent, component, parentgrouptype);
-}
-
-static modcallable *compile_switch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				   grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	CONF_ITEM *ci;
-	FR_TOKEN type;
-	char const *name2;
-	bool had_seen_default = false;
-	modcallable *csingle;
-	modgroup *g;
-	ssize_t slen;
-	vp_tmpl_t *vpt;
-
-	name2 = cf_section_name2(cs);
-	if (!name2) {
-		cf_log_err_cs(cs, "You must specify a variable to switch over for 'switch'");
-		return NULL;
-	}
-
-	/*
-	 *	Create the template.  If we fail, AND it's a bare word
-	 *	with &Foo-Bar, it MAY be an attribute defined by a
-	 *	module.  Allow it for now.  The pass2 checks below
-	 *	will fix it up.
-	 */
-	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err_cs(cs, "Syntax error");
-		cf_log_err_cs(cs, "%s", name2);
-		cf_log_err_cs(cs, "%s^ %s", spaces, text);
-
-		talloc_free(spaces);
-		talloc_free(text);
-
-		return NULL;
-	}
-
-	/*
-	 *	Otherwise a NULL vpt may refer to an attribute defined
-	 *	by a module.  That is checked in pass 2.
-	 */
-
-	/*
-	 *	Walk through the children of the switch section,
-	 *	ensuring that they're all 'case' statements
-	 */
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
-		CONF_SECTION *subcs;
-		char const *name1;
-
-		if (!cf_item_is_section(ci)) {
-			if (!cf_item_is_pair(ci)) continue;
-
-			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
-			talloc_free(vpt);
-			return NULL;
-		}
-
-		subcs = cf_item_to_section(ci);	/* can't return NULL */
-		name1 = cf_section_name1(subcs);
-
-		if (strcmp(name1, "case") != 0) {
-			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
-			talloc_free(vpt);
-			return NULL;
-		}
-
-		name2 = cf_section_name2(subcs);
-		if (!name2) {
-			if (!had_seen_default) {
-				had_seen_default = true;
-				continue;
-			}
-
-			cf_log_err(ci, "Cannot have two 'default' case statements");
-			talloc_free(vpt);
-			return NULL;
-		}
-	}
-
-	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!csingle) {
-		talloc_free(vpt);
-		return NULL;
-	}
-
-	g = mod_callabletogroup(csingle);
-	g->vpt = talloc_steal(g, vpt);
-
-	return csingle;
-}
-
-static modcallable *compile_case(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	int i;
-	char const *name2;
-	modcallable *csingle;
-	modgroup *g;
-	vp_tmpl_t *vpt;
-
-	if (!parent || (parent->type != MOD_SWITCH)) {
-		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
-		return NULL;
-	}
-
-	/*
-	 *	case THING means "match THING"
-	 *	case       means "match anything"
-	 */
-	name2 = cf_section_name2(cs);
-	if (name2) {
-		ssize_t slen;
-		FR_TOKEN type;
-
-		type = cf_section_name2_type(cs);
-
-		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err_cs(cs, "Syntax error");
-			cf_log_err_cs(cs, "%s", name2);
-			cf_log_err_cs(cs, "%s^ %s", spaces, text);
-
-			talloc_free(spaces);
-			talloc_free(text);
-
-			return NULL;
-		}
-
-		/*
-		 *	Otherwise a NULL vpt may refer to an attribute defined
-		 *	by a module.  That is checked in pass 2.
-		 */
-
-	} else {
-		vpt = NULL;
-	}
-
-	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!csingle) {
-		talloc_free(vpt);
-		return NULL;
-	}
-
-	/*
-	 *	The interpretor expects this to be NULL for the
-	 *	default case.  compile_group sets it to name2,
-	 *	unless name2 is NULL, in which case it sets it to name1.
-	 */
-	csingle->name = name2;
-
-	g = mod_callabletogroup(csingle);
-	g->vpt = talloc_steal(g, vpt);
-
-	/*
-	 *	Set all of it's codes to return, so that
-	 *	when we pick a 'case' statement, we don't
-	 *	fall through to processing the next one.
-	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		csingle->actions[i] = MOD_ACTION_RETURN;
-	}
-
-	return csingle;
-}
-
-static modcallable *compile_foreach(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				    grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	FR_TOKEN type;
-	char const *name2;
-	modcallable *csingle;
-	modgroup *g;
-	ssize_t slen;
-	vp_tmpl_t *vpt;
-
-	name2 = cf_section_name2(cs);
-	if (!name2) {
-		cf_log_err_cs(cs,
-			   "You must specify an attribute to loop over in 'foreach'");
-		return NULL;
-	}
-
-	/*
-	 *	Create the template.  If we fail, AND it's a bare word
-	 *	with &Foo-Bar, it MAY be an attribute defined by a
-	 *	module.  Allow it for now.  The pass2 checks below
-	 *	will fix it up.
-	 */
-	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err_cs(cs, "Syntax error");
-		cf_log_err_cs(cs, "%s", name2);
-		cf_log_err_cs(cs, "%s^ %s", spaces, text);
-
-		talloc_free(spaces);
-		talloc_free(text);
-
-		return NULL;
-	}
-
-	/*
-	 *	If we don't have a negative return code, we must have a vpt
-	 *	(mostly to quiet coverity).
-	 */
-	rad_assert(vpt);
-
-	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
-		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
-		return NULL;
-	}
-
-	/*
-	 *	Fix up the template to iterate over all instances of
-	 *	the attribute. In a perfect consistent world, users would do
-	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
-	 */
-	vpt->tmpl_num = NUM_ALL;
-
-	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!csingle) {
-		talloc_free(vpt);
-		return NULL;
-	}
-
-	g = mod_callabletogroup(csingle);
-	g->vpt = vpt;
-
-	return csingle;
-}
-
-
-
-static modcallable *compile_break(modcallable *parent, rlm_components_t component, CONF_ITEM const *ci)
-{
-	modcallable *foreach;
-
-	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
-		if (foreach->type == MOD_FOREACH) break;
-	}
-
-	if (!foreach) {
-		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
-		return NULL;
-	}
-
-	return compile_empty(parent, component, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
-			     MOD_BREAK, COND_TYPE_INVALID);
-}
-#endif
-
-static modcallable *compile_xlat(modcallable *parent,
-				       rlm_components_t component, char const *fmt)
-{
-	modcallable *csingle;
-	modxlat *mx;
-
-	mx = talloc_zero(parent, modxlat);
-
-	csingle = mod_xlattocallable(mx);
-	csingle->parent = parent;
-	csingle->next = NULL;
-	csingle->name = "expand";
-	csingle->type = MOD_XLAT;
-	csingle->method = component;
-
-	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
-	       sizeof(csingle->actions));
-
-	mx->xlat_name = strdup(fmt);
-	if (fmt[0] != '%') {
-		char *p;
-		mx->exec = true;
-
-		strcpy(mx->xlat_name, fmt + 1);
-		p = strrchr(mx->xlat_name, '`');
-		if (p) *p = '\0';
-	}
-
-	return csingle;
-}
-
-static modcallable *compile_if(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	modcallable *c;
-	modgroup *g;
-	fr_cond_t *cond;
-
-	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_keyword[mod_type]);
-		return NULL;
-	}
-
-	cond = cf_data_find(cs, "if");
-	rad_assert(cond != NULL);
-
-	if (cond->type == COND_TYPE_FALSE) {
-		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
-		     unlang_keyword[mod_type],
-		     cf_section_filename(cs), cf_section_lineno(cs));
-		return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
-	}
-
-	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!c) return NULL;
-
-	g = mod_callabletogroup(c);
-	g->cond = cond;
-	return c;
-}
-
-static int previous_if(CONF_SECTION *cs, modcallable *parent, mod_type_t mod_type)
-{
-	modgroup *p, *f;
-
-	p = mod_callabletogroup(parent);
-	if (!p->tail) goto else_fail;
-
-	f = mod_callabletogroup(p->tail);
-	if ((f->mc.type != MOD_IF) && (f->mc.type != MOD_ELSIF)) {
-	else_fail:
-		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
-			      unlang_keyword[mod_type]);
-		return -1;
-	}
-
-	if (f->cond->type == COND_TYPE_TRUE) {
-		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
-		     unlang_keyword[mod_type],
-		     unlang_keyword[f->mc.type],
-		     cf_section_filename(cs), cf_section_lineno(cs));
-		return 0;
-	}
-
-	return 1;
-}
-
-static modcallable *compile_elsif(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	int rcode;
-
-	/*
-	 *	This is always a syntax error.
-	 */
-	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_keyword[mod_type]);
-		return NULL;
-	}
-
-	rcode = previous_if(cs, parent, mod_type);
-	if (rcode < 0) return NULL;
-
-	if (rcode == 0) return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
-
-	return compile_if(parent, component, cs, grouptype, parentgrouptype, mod_type);
-}
-
-static modcallable *compile_else(modcallable *parent,
-			       rlm_components_t component, CONF_SECTION *cs,
-			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	int rcode;
-
-	if (cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_keyword[mod_type]);
-		return NULL;
-	}
-
-	rcode = previous_if(cs, parent, mod_type);
-	if (rcode < 0) return NULL;
-
-	if (rcode == 0) return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
-
-	return compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-}
-
-/*
- *	redundant, etc. can refer to modules or groups, but not much else.
- */
-static int all_children_are_modules(CONF_SECTION *cs, char const *name)
-{
-	CONF_ITEM *ci;
-
-	for (ci=cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
-		/*
-		 *	If we're a redundant, etc. group, then the
-		 *	intention is to call modules, rather than
-		 *	processing logic.  These checks aren't
-		 *	*strictly* necessary, but they keep the users
-		 *	from doing crazy things.
-		 */
-		if (cf_item_is_section(ci)) {
-			CONF_SECTION *subcs = cf_item_to_section(ci);
-			char const *name1 = cf_section_name1(subcs);
-
-			if ((strcmp(name1, "if") == 0) ||
-			    (strcmp(name1, "else") == 0) ||
-			    (strcmp(name1, "elsif") == 0) ||
-			    (strcmp(name1, "update") == 0) ||
-			    (strcmp(name1, "switch") == 0) ||
-			    (strcmp(name1, "case") == 0)) {
-				cf_log_err(ci, "%s sections cannot contain a \"%s\" statement",
-				       name, name1);
-				return 0;
-			}
-			continue;
-		}
-
-		if (cf_item_is_pair(ci)) {
-			CONF_PAIR *cp = cf_item_to_pair(ci);
-			if (cf_pair_value(cp) != NULL) {
-				cf_log_err(ci,
-					   "Entry with no value is invalid");
-				return 0;
-			}
-		}
-	}
-
-	return 1;
-}
-
-			
-static modcallable *compile_redundant(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{	
-	/*
-	 *	No children?  Die!
-	 */
-	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keyword[mod_type]);
-		return NULL;
-	}
-
-	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
-		return NULL;
-	}
-
-	return compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-}
-
-
-/** Load a named module from "instantiate" or "policy".
- *
- * If it's "foo.method", look for "foo", and return "method" as the method
- * we wish to use, instead of the input component.
- *
- * @param[out] pcomponent Where to write the method we found, if any.  If no method is specified
- *	will be set to MOD_COUNT.
- * @param[in] real_name Complete name string e.g. foo.authorize.
- * @param[in] virtual_name Virtual module name e.g. foo.
- * @param[in] method_name Method override (may be NULL) or the method name e.g. authorize.
- * @return the CONF_SECTION specifying the virtual module.
- */
-static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
-					    char const *real_name, char const *virtual_name, char const *method_name)
-{
-	CONF_SECTION *cs, *subcs;
-	rlm_components_t method = *pcomponent;
-	char buffer[256];
-
-	/*
-	 *	Turn the method name into a method enum.
-	 */
-	if (method_name) {
-		rlm_components_t i;
-
-		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (strcmp(comp2str[i], method_name) == 0) break;
-		}
-
-		if (i != MOD_COUNT) {
-			method = i;
-		} else {
-			method_name = NULL;
-			virtual_name = real_name;
-		}
-	}
-
-	/*
-	 *	Look for "foo" in the "instantiate" section.  If we
-	 *	find it, AND there's no method name, we've found the
-	 *	right thing.
-	 *
-	 *	Return it to the caller, with the updated method.
-	 */
-	cs = cf_section_sub_find(main_config.config, "instantiate");
-	if (cs) {
-		/*
-		 *	Found "foo".  Load it as "foo", or "foo.method".
-		 */
-		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
-		if (subcs) {
-			*pcomponent = method;
-			return subcs;
-		}
-	}
-
-	/*
-	 *	Look for it in "policy".
-	 *
-	 *	If there's no policy section, we can't do anything else.
-	 */
-	cs = cf_section_sub_find(main_config.config, "policy");
-	if (!cs) return NULL;
-
-	/*
-	 *	"foo.authorize" means "load policy "foo" as method "authorize".
-	 *
-	 *	And bail out if there's no policy "foo".
-	 */
-	if (method_name) {
-		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
-		if (subcs) *pcomponent = method;
-
-		return subcs;
-	}
-
-	/*
-	 *	"foo" means "look for foo.component" first, to allow
-	 *	method overrides.  If that's not found, just look for
-	 *	a policy "foo".
-	 *
-	 */
-	snprintf(buffer, sizeof(buffer), "%s.%s",
-		 virtual_name, comp2str[method]);
-	subcs = cf_section_sub_find_name2(cs, NULL, buffer);
-	if (subcs) return subcs;
-
-	return cf_section_sub_find_name2(cs, NULL, virtual_name);
-}
-
-
-static modcallable *compile_action_override(CONF_ITEM *ci, modcallable *c)
-{
-	CONF_ITEM *csi;
-	CONF_SECTION *cs;
-
-	if (!cf_item_is_section(ci)) return c;
-
-	/*
-	 *	Over-ride the default return codes of the module.
-	 */
-	cs = cf_item_to_section(ci);
-	for (csi=cf_item_find_next(cs, NULL);
-	     csi != NULL;
-	     csi=cf_item_find_next(cs, csi)) {
-
-		if (cf_item_is_section(csi)) {
-			cf_log_err(csi, "Subsection of module instance call not allowed");
-			talloc_free(c);
-			return NULL;
-		}
-
-		if (!cf_item_is_pair(csi)) continue;
-
-		if (!compile_action(c, cf_item_to_pair(csi))) {
-			talloc_free(c);
-			return NULL;
-		}
-	}
-
-	return c;
-}
-
-
-static modcallable *compile_csingle(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t grouptype, char const *realname)
-{
-	modcallable *c;
-	modsingle *single;
-
-	/*
-	 *	Check if the module in question has the necessary
-	 *	component.
-	 */
-	if (!this->entry->module->methods[component]) {
-		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->entry->module->name,
-			   comp2str[component]);
-		return NULL;
-	}
-
-	single = talloc_zero(parent, modsingle);
-	single->modinst = this;
-
-	c = mod_singletocallable(single);
-	c->parent = parent;
-	c->next = NULL;
-	if (!parent || (component != MOD_AUTHENTICATE)) {
-		memcpy(c->actions, defaultactions[component][grouptype],
-		       sizeof c->actions);
-	} else { /* inside Auth-Type has different rules */
-		memcpy(c->actions, authtype_actions[grouptype],
-		       sizeof c->actions);
-	}
-
-	c->name = realname;
-	c->type = MOD_SINGLE;
-	c->method = component;
-
-	return compile_action_override(ci, c);
-}
-
-typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-					 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type);
-typedef struct modcall_compile_t {
-	char const			*name;
-	modcall_compile_function_t	compile;
-	grouptype_t			grouptype;
-	mod_type_t			mod_type;
-} modcall_compile_t;
-
-static modcall_compile_t compile_table[] = {
-	{ "group",		compile_group, GROUPTYPE_SIMPLE, MOD_GROUP },
-	{ "redundant",		compile_redundant, GROUPTYPE_REDUNDANT, MOD_GROUP },
-	{ "load-balance",	compile_redundant, GROUPTYPE_SIMPLE, MOD_LOAD_BALANCE },
-	{ "redundant-load-balance", compile_redundant, GROUPTYPE_REDUNDANT, MOD_REDUNDANT_LOAD_BALANCE },
-
-	{ "case",		compile_case, GROUPTYPE_SIMPLE, MOD_CASE },
-	{ "foreach",		compile_foreach, GROUPTYPE_SIMPLE, MOD_FOREACH },
-	{ "if",			compile_if, GROUPTYPE_SIMPLE, MOD_IF },
-	{ "elsif",		compile_elsif, GROUPTYPE_SIMPLE, MOD_ELSIF },
-	{ "else",		compile_else, GROUPTYPE_SIMPLE, MOD_ELSE },
-	{ "update",		compile_update, GROUPTYPE_SIMPLE, MOD_UPDATE },
-	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
-	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
-
-	{ NULL, NULL, 0, 0 }
-};
-
-
-/*
- *	Compile one entry of a module call.
- */
-static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
-				 grouptype_t parent_grouptype, char const **modname)
-{
-	char const *modrefname, *p;
-	modcallable *c;
-	module_instance_t *this;
-	CONF_SECTION *cs, *subcs, *modules;
-	CONF_SECTION *loop;
-	char const *realname;
-	rlm_components_t method = component;
-
-	if (cf_item_is_section(ci)) {
-		int i;
-		char const *name2;
-
-		cs = cf_item_to_section(ci);
-		modrefname = cf_section_name1(cs);
-		name2 = cf_section_name2(cs);
-		if (!name2) name2 = "";
-
-		for (i = 0; compile_table[i].name != NULL; i++) {
-			if (strcmp(modrefname, compile_table[i].name) == 0) {
-				*modname = name2;
-
-				/*
-				 *	Some blocks can be empty.  The rest need
-				 *	to have contents.
-				 */
-				if (!cf_item_find_next(cs, NULL) &&
-				    !((compile_table[i].mod_type == MOD_CASE) ||
-				      (compile_table[i].mod_type == MOD_IF) ||
-				      (compile_table[i].mod_type == MOD_ELSIF))) {
-					cf_log_err(ci, "'%s' sections cannot be empty", modrefname);
-					return NULL;
-				}
-
-				return compile_table[i].compile(parent, component, cs,
-								compile_table[i].grouptype, parent_grouptype,
-								compile_table[i].mod_type);
-			}
-		}
-
-#ifdef WITH_UNLANG
-		if (strcmp(modrefname, "break") == 0) {
-			cf_log_err(ci, "Invalid use of 'break'");
-			return NULL;
-
-		} else if (strcmp(modrefname, "return") == 0) {
-			cf_log_err(ci, "Invalid use of 'return'");
-			return NULL;
-
-		} /* else it's something like sql { fail = 1 ...} */
-#endif
-
-	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
-		return NULL;
-
-		/*
-		 *	Else it's a module reference, with updated return
-		 *	codes.
-		 */
-	} else {
-		CONF_PAIR *cp = cf_item_to_pair(ci);
-		modrefname = cf_pair_attr(cp);
-
-		/*
-		 *	Actions (ok = 1), etc. are orthogonal to just
-		 *	about everything else.
-		 */
-		if (cf_pair_value(cp) != NULL) {
-			cf_log_err(ci, "Entry is not a reference to a module");
-			return NULL;
-		}
-
-		/*
-		 *	In-place xlat's via %{...}.
-		 *
-		 *	This should really be removed from the server.
-		 */
-		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
-		    (modrefname[0] == '`')) {
-			return compile_xlat(parent, component, modrefname);
-		}
-	}
-
-#ifdef WITH_UNLANG
-	/*
-	 *	These can't be over-ridden.
-	 */
-	if (strcmp(modrefname, "break") == 0) {
-		return compile_break(parent, component, ci);
-	}
-
-	if (strcmp(modrefname, "return") == 0) {
-		return compile_empty(parent, component, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_RETURN, COND_TYPE_INVALID);
-	}
-#endif
-
-	/*
-	 *	We now have a name.  It can be one of two forms.  A
-	 *	bare module name, or a section named for the module,
-	 *	with over-rides for the return codes.
-	 *
-	 *	The name can refer to a real module, in the "modules"
-	 *	section.  In that case, the name will be either the
-	 *	first or second name of the sub-section of "modules".
-	 *
-	 *	Or, the name can refer to a policy, in the "policy"
-	 *	section.  In that case, the name will be first of the
-	 *	sub-section of "policy".
-	 *
-	 *	Or, the name can refer to a "module.method", in which
-	 *	case we're calling a different method than normal for
-	 *	this section.
-	 *
-	 *	Or, the name can refer to a virtual module, in the
-	 *	"instantiate" section.  In that case, the name will be
-	 *	the first of the sub-section of "instantiate".
-	 *
-	 *	We try these in sequence, from the bottom up.  This is
-	 *	so that things in "instantiate" and "policy" can
-	 *	over-ride calls to real modules.
-	 */
-
-
-	/*
-	 *	Try:
-	 *
-	 *	instantiate { ... name { ...} ... }
-	 *	policy { ... name { .. } .. }
-	 *	policy { ... name.method { .. } .. }
-	 *
-	 *	The only difference between things in "instantiate"
-	 *	and "policy" is that "instantiate" will cause modules
-	 *	to be instantiated in a particular order.
-	 */
-	subcs = NULL;
-	p = strrchr(modrefname, '.');
-	if (!p) {
-		subcs = virtual_module_find_cs(&method, modrefname, modrefname, NULL);
-	} else {
-		char buffer[256];
-
-		strlcpy(buffer, modrefname, sizeof(buffer));
-		buffer[p - modrefname] = '\0';
-
-		subcs = virtual_module_find_cs(&method, modrefname, buffer, buffer + (p - modrefname) + 1);
-	}
-
-	/*
-	 *	Check that we're not creating a loop.  We may
-	 *	be compiling an "sql" module reference inside
-	 *	of an "sql" policy.  If so, we allow the
-	 *	second "sql" to refer to the module.
-	 */
-	for (loop = cf_item_parent(ci);
-	     loop && subcs;
-	     loop = cf_item_parent(cf_section_to_item(loop))) {
-		if (loop == subcs) {
-			subcs = NULL;
-		}
-	}
-
-	/*
-	 *	We've found the relevant entry.  It MUST be a
-	 *	sub-section.
-	 *
-	 *	However, it can be a "redundant" block, or just
-	 */
-	if (subcs) {
-		/*
-		 *	modules.c takes care of ensuring that this is:
-		 *
-		 *	group foo { ...
-		 *	load-balance foo { ...
-		 *	redundant foo { ...
-		 *	redundant-load-balance foo { ...
-		 *
-		 *	We can just recurs to compile the section as
-		 *	if it was found here.
-		 */
-		if (cf_section_name2(subcs)) {
-			c = compile_item(parent, method, cf_section_to_item(subcs), parent_grouptype, modname);
-
-		} else {
-			/*
-			 *	We have:
-			 *
-			 *	foo { ...
-			 *
-			 *	So we compile it like it was:
-			 *
-			 *	group foo { ...
-			 */
-			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
-		}
-
-		/*
-		 *	Return the compiled thing if we can.
-		 */
-		if (!c) return NULL;
-		if (cf_item_is_pair(ci)) return c;
-
-		/*
-		 *	Else we have a reference to a policy, and that reference
-		 *	over-rides the return codes for the policy!
-		 */
-		return compile_action_override(ci, c);
-	}
-
-	/*
-	 *	Not a virtual module.  It must be a real module.
-	 */
-	modules = cf_section_sub_find(main_config.config, "modules");
-	if (!modules) goto fail;
-
-	this = NULL;
-	realname = modrefname;
-
-	/*
-	 *	Try to load the optional module.
-	 */
-	if (realname[0] == '-') realname++;
-
-	/*
-	 *	As of v3, the "modules" section contains
-	 *	modules we use.  Configuration for other
-	 *	modules belongs in raddb/mods-available/,
-	 *	which isn't loaded into the "modules" section.
-	 */
-	this = module_instantiate_method(modules, realname, &method);
-	if (this) {
-		*modname = this->entry->module->name;
-		return compile_csingle(parent, method, ci, this, parent_grouptype, realname);
-	}
-
-	/*
-	 *	We were asked to MAYBE load it and it
-	 *	doesn't exist.  Return a soft error.
-	 */
-	if (realname != modrefname) {
-		*modname = modrefname;
-		return NULL;
-	}
-
-	/*
-	 *	Can't de-reference it to anything.  Ugh.
-	 */
-fail:
-	*modname = NULL;
-	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", modrefname);
-	cf_log_err(ci, "Please verify that the configuration exists in %s/mods-enabled/%s.", get_radius_dir(), modrefname);
-	return NULL;
-}
-
-modcallable *modcall_compile(TALLOC_CTX *ctx,
-			     modcallable **parent,
-			     rlm_components_t component, CONF_ITEM *ci,
-			     char const **modname)
-{
-	modcallable *ret;
-
-	if (!*parent) {
-		modcallable *c;
-		modgroup *g;
-		CONF_SECTION *parentcs;
-
-		g = talloc_zero(ctx, modgroup);
-		memset(g, 0, sizeof(*g));
-		g->grouptype = GROUPTYPE_SIMPLE;
-		c = mod_grouptocallable(g);
-		c->next = NULL;
-		memcpy(c->actions,
-		       defaultactions[component][GROUPTYPE_SIMPLE],
-		       sizeof(c->actions));
-
-		parentcs = cf_item_parent(ci);
-		c->name = cf_section_name2(parentcs);
-		if (!c->name) {
-			c->name = cf_section_name1(parentcs);
-		}
-
-		c->type = MOD_GROUP;
-		c->method = component;
-		g->children = NULL;
-
-		*parent = mod_grouptocallable(g);
-	}
-
-	ret = compile_item(*parent, component, ci, GROUPTYPE_SIMPLE, modname);
-	dump_tree(component, ret);
-	return ret;
-}
-
-
-modcallable *modcall_compile_section(modcallable *parent,
-				   rlm_components_t component, CONF_SECTION *cs)
-{
-	modcallable *ret = compile_group(parent, component, cs,
-					 GROUPTYPE_SIMPLE,
-					 GROUPTYPE_SIMPLE, MOD_GROUP);
-
-	if (rad_debug_lvl > 3) {
-		modcall_debug(ret, 2);
-	}
-
-	return ret;
-}
-
-void modcall_append(modcallable *parent, modcallable *this)
-{
-	modgroup *g;
-
-	rad_assert(this != NULL);
-	rad_assert(parent != NULL);
-
-	g = mod_callabletogroup(parent);
-
-	add_child(g, this);
-}
 
 
 #ifdef WITH_UNLANG
@@ -3093,4 +1428,1669 @@ void modcall_debug(modcallable *mc, int depth)
 			break;
 		}
 	}
+}
+
+#ifdef WITH_UNLANG
+/** Validate and fixup a map that's part of an map section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return 0 if valid else -1.
+ */
+static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
+{
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (DEBUG_ENABLED3) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		}
+
+		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+		}
+	}
+
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Left side of map must be an attribute "
+		           "or an xlat (that expands to an attribute), not a %s",
+		           fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		return -1;
+	}
+
+	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/** Validate and fixup a map that's part of an update section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return
+ *	- 0 if valid.
+ *	- -1 not valid.
+ */
+int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
+{
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (DEBUG_ENABLED3) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		}
+
+		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+		}
+	}
+
+	/*
+	 *	Values used by unary operators should be literal ANY
+	 *
+	 *	We then free the template and alloc a NULL one instead.
+	 */
+	if (map->op == T_OP_CMP_FALSE) {
+		if ((map->rhs->type != TMPL_TYPE_UNPARSED) || (strcmp(map->rhs->name, "ANY") != 0)) {
+			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp));
+		}
+
+		TALLOC_FREE(map->rhs);
+
+		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0, T_INVALID);
+	}
+
+	/*
+	 *	Lots of sanity checks for insane people...
+	 */
+
+	/*
+	 *	What exactly where you expecting to happen here?
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->type == TMPL_TYPE_LIST)) {
+		cf_log_err(map->ci, "Can't copy list into an attribute");
+		return -1;
+	}
+
+	/*
+	 *	Depending on the attribute type, some operators are disallowed.
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+		return -1;
+	}
+
+	if (map->lhs->type == TMPL_TYPE_LIST) {
+		/*
+		 *	Can't copy an xlat expansion or literal into a list,
+		 *	we don't know what type of attribute we'd need
+		 *	to create.
+		 *
+		 *	The only exception is where were using a unary
+		 *	operator like !*.
+		 */
+		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_UNPARSED:
+			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
+			return -1;
+
+		default:
+			break;
+		}
+
+		/*
+		 *	Only += and :=, and !* operators are supported
+		 *	for lists.
+		 */
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			break;
+
+		case T_OP_ADD:
+			if ((map->rhs->type != TMPL_TYPE_LIST) &&
+			    (map->rhs->type != TMPL_TYPE_EXEC)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_SET:
+			if (map->rhs->type == TMPL_TYPE_EXEC) {
+				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
+				     cf_pair_filename(cp), cf_pair_lineno(cp));
+			}
+
+			if (map->rhs->type != TMPL_TYPE_LIST) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_EQ:
+			if (map->rhs->type != TMPL_TYPE_EXEC) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		default:
+			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
+				   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+			return -1;
+		}
+	}
+
+	/*
+	 *	If the map has a unary operator there's no further
+	 *	processing we need to, as RHS is unused.
+	 */
+	if (map->op == T_OP_CMP_FALSE) return 0;
+
+	/*
+	 *	If LHS is an attribute, and RHS is a literal, we can
+	 *	preparse the information into a TMPL_TYPE_DATA.
+	 *
+	 *	Unless it's a unary operator in which case we
+	 *	ignore map->rhs.
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_UNPARSED)) {
+		/*
+		 *	Convert it to the correct type.
+		 */
+		if (map->lhs->auto_converted &&
+		    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
+		    (map->rhs->len > 2) && ((map->rhs->len & 0x01) == 0)) {
+			vp_tmpl_t *vpt = map->rhs;
+			map->rhs = NULL;
+
+			if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
+				map->rhs = vpt;
+				cf_log_err(map->ci, "%s", fr_strerror());
+				return -1;
+			}
+			talloc_free(vpt);
+
+		/*
+		 *	It's a literal string, just copy it.
+		 *	Don't escape anything.
+		 */
+		} else if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+			cf_log_err(map->ci, "%s", fr_strerror());
+			return -1;
+		}
+
+		/*
+		 *	Fixup LHS da if it doesn't match the type
+		 *	of the RHS.
+		 */
+		if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
+			fr_dict_attr_t const *da;
+
+			da = fr_dict_attr_by_type(NULL, map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr,
+						  map->rhs->tmpl_data_type);
+			if (!da) {
+				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
+						   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
+						   "<INVALID>"), map->lhs->tmpl_da->name);
+				return -1;
+			}
+			map->lhs->tmpl_da = da;
+		}
+	} /* else we can't precompile the data */
+
+	return 0;
+}
+
+
+static modcallable *compile_map(modcallable *parent, rlm_components_t component,
+				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
+{
+	int rcode;
+	modgroup *g;
+	modcallable *csingle;
+	CONF_SECTION *modules;
+	ssize_t slen;
+	char const *tmpl_str;
+	FR_TOKEN type;
+	char quote;
+	size_t tmpl_len, quoted_len;
+	char *quoted_str;
+
+	vp_map_t *head;
+	vp_tmpl_t *vpt;
+
+	map_proc_t *proc;
+	map_proc_inst_t *proc_inst;
+
+	char const *name2 = cf_section_name2(cs);
+
+	modules = cf_section_sub_find(main_config.config, "modules");
+	if (!modules) {
+		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
+		return NULL;
+	}
+
+	proc = map_proc_find(name2);
+	if (!proc) {
+		cf_log_err_cs(cs, "Failed to find map processor '%s'", name2);
+		return NULL;
+	}
+
+	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (!tmpl_str) {
+		cf_log_err_cs(cs, "No template found in map");
+		return NULL;
+	}
+
+	tmpl_len = strlen(tmpl_str);
+	type = cf_section_argv_type(cs, 0);
+
+	/*
+	 *	Try to parse the template.
+	 */
+	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, tmpl_len, type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if (slen < 0) {
+		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
+		return NULL;
+	}
+
+	/*
+	 *	Limit the allowed template types.
+	 */
+	switch (vpt->type) {
+	case TMPL_TYPE_UNPARSED:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_EXEC:
+		break;
+
+	default:
+		talloc_free(vpt);
+		cf_log_err_cs(cs, "Invalid third argument for map");
+		return NULL;
+	}
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err_cs(cs, "'map' sections cannot be empty");
+		return NULL;
+	}
+
+	g = talloc_zero(parent, modgroup);
+	proc_inst = map_proc_instantiate(g, proc, vpt, head);
+	if (!proc_inst) {
+		talloc_free(g);
+		cf_log_err_cs(cs, "Failed instantiating map function '%s'", name2);
+		return NULL;
+	}
+
+	csingle = mod_grouptocallable(g);
+
+	csingle->parent = parent;
+	csingle->next = NULL;
+
+	switch (type) {
+	case T_DOUBLE_QUOTED_STRING:
+		quote = '"';
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		quote = '\'';
+		break;
+
+	case T_BACK_QUOTED_STRING:
+		quote = '`';
+		break;
+
+	default:
+		quote = '\0';
+		break;
+	}
+
+	quoted_len = fr_snprint_len(tmpl_str, tmpl_len, quote);
+	quoted_str = talloc_array(csingle, char, quoted_len);
+	fr_snprint(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
+
+	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, quoted_str);
+	csingle->type = MOD_MAP;
+	csingle->method = component;
+
+	talloc_free(quoted_str);
+
+	memcpy(csingle->actions, defaultactions[component][parentgrouptype],
+	       sizeof(csingle->actions));
+
+	g->grouptype = GROUPTYPE_SIMPLE;
+	g->children = NULL;
+	g->cs = cs;
+	g->map = talloc_steal(g, head);
+	g->vpt = talloc_steal(g, vpt);
+	g->proc_inst = proc_inst;
+
+	/*
+	 *	Cache the module in the modgroup struct.
+	 *
+	 *	Ensure that the module has a "map" entry in its module
+	 *	header?  Or ensure that the map is registered in the
+	 *	"boostrap" phase, so that it's always available here.
+	 */
+
+	return csingle;
+
+}
+
+static modcallable *compile_update(modcallable *parent, rlm_components_t component,
+				   CONF_SECTION *cs, grouptype_t grouptype, UNUSED grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
+{
+	int rcode;
+	modgroup *g;
+	modcallable *csingle;
+	char const *name2 = cf_section_name2(cs);
+
+	vp_map_t *head;
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_update, NULL, 128);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err_cs(cs, "'update' sections cannot be empty");
+		return NULL;
+	}
+
+	g = talloc_zero(parent, modgroup);
+	csingle = mod_grouptocallable(g);
+
+	csingle->parent = parent;
+	csingle->next = NULL;
+
+	if (name2) {
+		csingle->name = name2;
+	} else {
+		csingle->name = "";
+	}
+	csingle->type = MOD_UPDATE;
+	csingle->method = component;
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+	g->map = talloc_steal(g, head);
+
+#ifdef WITH_CONF_WRITE
+//	cf_data_add(cs, "update", g->map, NULL); /* for output normalization */
+#endif
+
+	return csingle;
+}
+
+/*
+ *	Compile action && rcode for later use.
+ */
+static int compile_action(modcallable *c, CONF_PAIR *cp)
+{
+	int action;
+	char const *attr, *value;
+
+	attr = cf_pair_attr(cp);
+	value = cf_pair_value(cp);
+	if (!value) return 0;
+
+	if (!strcasecmp(value, "return"))
+		action = MOD_ACTION_RETURN;
+
+	else if (!strcasecmp(value, "break"))
+		action = MOD_ACTION_RETURN;
+
+	else if (!strcasecmp(value, "reject"))
+		action = MOD_ACTION_REJECT;
+
+	else if (strspn(value, "0123456789")==strlen(value)) {
+		action = atoi(value);
+
+		/*
+		 *	Don't allow priority zero, for future use.
+		 */
+		if (action == 0) return 0;
+	} else {
+		cf_log_err_cp(cp, "Unknown action '%s'.\n",
+			   value);
+		return 0;
+	}
+
+	if (strcasecmp(attr, "default") != 0) {
+		int rcode;
+
+		rcode = fr_str2int(mod_rcode_table, attr, -1);
+		if (rcode < 0) {
+			cf_log_err_cp(cp,
+				   "Unknown module rcode '%s'.\n",
+				   attr);
+			return 0;
+		}
+		c->actions[rcode] = action;
+
+	} else {		/* set all unset values to the default */
+		int i;
+
+		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+			if (!c->actions[i]) c->actions[i] = action;
+		}
+	}
+
+	return 1;
+}
+
+static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
+{
+	int i;
+
+	/*
+	 *	Set the default actions, if they haven't already been
+	 *	set.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (!c->actions[i]) {
+			if (!parent || (component != MOD_AUTHENTICATE)) {
+				c->actions[i] = defaultactions[component][parentgrouptype][i];
+			} else { /* inside Auth-Type has different rules */
+				c->actions[i] = authtype_actions[parentgrouptype][i];
+			}
+		}
+	}
+
+	/*
+	 *	FIXME: If there are no children, return NULL?
+	 */
+	return c;
+}
+
+static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
+				  fr_cond_type_t cond_type)
+{
+	modgroup *g;
+	modcallable *c;
+
+	g = talloc_zero(parent, modgroup);
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+
+	c = mod_grouptocallable(g);
+	c->parent = parent;
+	c->type = mod_type;
+	c->next = NULL;
+
+	if (cs) {
+		c->name = cf_section_name2(cs);
+		if (!c->name) c->name = cf_section_name1(cs);
+	} else {
+		c->name = "";
+	}
+
+	if (cond_type != COND_TYPE_INVALID) {
+		g->cond = talloc_zero(g, fr_cond_t);
+		g->cond->type = cond_type;
+	}
+
+	return compile_defaultactions(c, parent, component, parentgrouptype);
+}
+
+
+static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
+				 grouptype_t parent_grouptype, char const **modname);
+
+
+/* modgroups are grown by adding a modcallable to the end */
+static void add_child(modgroup *g, modcallable *c)
+{
+	if (!c) return;
+
+	(void) talloc_steal(g, c);
+
+	if (!g->children) {
+		g->children = g->tail = c;
+	} else {
+		rad_assert(g->tail->next == NULL);
+		g->tail->next = c;
+		g->tail = c;
+	}
+
+	c->parent = mod_grouptocallable(g);
+}
+
+/*
+ *	Generic "compile a section with more unlang inside of it".
+ */
+static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	modgroup *g;
+	modcallable *c;
+	CONF_ITEM *ci;
+
+	g = talloc_zero(parent, modgroup);
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+
+	c = mod_grouptocallable(g);
+	c->parent = parent;
+	c->type = mod_type;
+	c->next = NULL;
+	memset(c->actions, 0, sizeof(c->actions));
+
+	/*
+	 *	Remember the name for printing, etc.
+	 *
+	 *	FIXME: We may also want to put the names into a
+	 *	rbtree, so that groups can reference each other...
+	 */
+	c->name = cf_section_name2(cs);
+	if (!c->name) {
+		c->name = cf_section_name1(cs);
+		if ((strcmp(c->name, "group") == 0) ||
+		    (strcmp(c->name, "redundant") == 0)) {
+			c->name = "";
+		} else if (c->type == MOD_GROUP) {
+			c->type = MOD_POLICY;
+		}
+	}
+
+	/*
+	 *	Loop over the children of this group.
+	 */
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+
+		/*
+		 *	Sections are references to other groups, or
+		 *	to modules with updated return codes.
+		 */
+		if (cf_item_is_section(ci)) {
+			char const *junk = NULL;
+			modcallable *single;
+			CONF_SECTION *subcs = cf_item_to_section(ci);
+
+			single = compile_item(c, component, ci, grouptype, &junk);
+			if (!single) {
+				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
+				       cf_section_name1(subcs));
+				talloc_free(c);
+				return NULL;
+			}
+			add_child(g, single);
+
+		} else if (!cf_item_is_pair(ci)) { /* CONF_DATA */
+			continue;
+
+		} else {
+			char const *attr, *value;
+			CONF_PAIR *cp = cf_item_to_pair(ci);
+
+			attr = cf_pair_attr(cp);
+			value = cf_pair_value(cp);
+
+			/*
+			 *	A CONF_PAIR is either a module
+			 *	instance with no actions
+			 *	specified ...
+			 */
+			if (!value) {
+				modcallable *single;
+				char const *junk = NULL;
+
+				single = compile_item(c, component, ci, grouptype, &junk);
+				if (!single) {
+					if (cf_item_is_pair(ci) &&
+					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
+						continue;
+					}
+
+					cf_log_err(ci,
+						   "Failed to parse \"%s\" entry.",
+						   attr);
+					talloc_free(c);
+					return NULL;
+				}
+				add_child(g, single);
+
+				/*
+				 *	Or a module instance with action.
+				 */
+			} else if (!compile_action(c, cp)) {
+				talloc_free(c);
+				return NULL;
+			} /* else it worked */
+		}
+	}
+
+	return compile_defaultactions(c, parent, component, parentgrouptype);
+}
+
+static modcallable *compile_switch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				   grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	CONF_ITEM *ci;
+	FR_TOKEN type;
+	char const *name2;
+	bool had_seen_default = false;
+	modcallable *csingle;
+	modgroup *g;
+	ssize_t slen;
+	vp_tmpl_t *vpt;
+
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err_cs(cs, "You must specify a variable to switch over for 'switch'");
+		return NULL;
+	}
+
+	/*
+	 *	Create the template.  If we fail, AND it's a bare word
+	 *	with &Foo-Bar, it MAY be an attribute defined by a
+	 *	module.  Allow it for now.  The pass2 checks below
+	 *	will fix it up.
+	 */
+	type = cf_section_name2_type(cs);
+	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err_cs(cs, "Syntax error");
+		cf_log_err_cs(cs, "%s", name2);
+		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+		talloc_free(spaces);
+		talloc_free(text);
+
+		return NULL;
+	}
+
+	/*
+	 *	Otherwise a NULL vpt may refer to an attribute defined
+	 *	by a module.  That is checked in pass 2.
+	 */
+
+	/*
+	 *	Walk through the children of the switch section,
+	 *	ensuring that they're all 'case' statements
+	 */
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+		CONF_SECTION *subcs;
+		char const *name1;
+
+		if (!cf_item_is_section(ci)) {
+			if (!cf_item_is_pair(ci)) continue;
+
+			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
+			talloc_free(vpt);
+			return NULL;
+		}
+
+		subcs = cf_item_to_section(ci);	/* can't return NULL */
+		name1 = cf_section_name1(subcs);
+
+		if (strcmp(name1, "case") != 0) {
+			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
+			talloc_free(vpt);
+			return NULL;
+		}
+
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			if (!had_seen_default) {
+				had_seen_default = true;
+				continue;
+			}
+
+			cf_log_err(ci, "Cannot have two 'default' case statements");
+			talloc_free(vpt);
+			return NULL;
+		}
+	}
+
+	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!csingle) {
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	g = mod_callabletogroup(csingle);
+	g->vpt = talloc_steal(g, vpt);
+
+	return csingle;
+}
+
+static modcallable *compile_case(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	int i;
+	char const *name2;
+	modcallable *csingle;
+	modgroup *g;
+	vp_tmpl_t *vpt;
+
+	if (!parent || (parent->type != MOD_SWITCH)) {
+		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
+		return NULL;
+	}
+
+	/*
+	 *	case THING means "match THING"
+	 *	case       means "match anything"
+	 */
+	name2 = cf_section_name2(cs);
+	if (name2) {
+		ssize_t slen;
+		FR_TOKEN type;
+
+		type = cf_section_name2_type(cs);
+
+		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err_cs(cs, "Syntax error");
+			cf_log_err_cs(cs, "%s", name2);
+			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
+
+			return NULL;
+		}
+
+		/*
+		 *	Otherwise a NULL vpt may refer to an attribute defined
+		 *	by a module.  That is checked in pass 2.
+		 */
+
+	} else {
+		vpt = NULL;
+	}
+
+	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!csingle) {
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	/*
+	 *	The interpretor expects this to be NULL for the
+	 *	default case.  compile_group sets it to name2,
+	 *	unless name2 is NULL, in which case it sets it to name1.
+	 */
+	csingle->name = name2;
+
+	g = mod_callabletogroup(csingle);
+	g->vpt = talloc_steal(g, vpt);
+
+	/*
+	 *	Set all of it's codes to return, so that
+	 *	when we pick a 'case' statement, we don't
+	 *	fall through to processing the next one.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		csingle->actions[i] = MOD_ACTION_RETURN;
+	}
+
+	return csingle;
+}
+
+static modcallable *compile_foreach(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				    grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	FR_TOKEN type;
+	char const *name2;
+	modcallable *csingle;
+	modgroup *g;
+	ssize_t slen;
+	vp_tmpl_t *vpt;
+
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err_cs(cs,
+			   "You must specify an attribute to loop over in 'foreach'");
+		return NULL;
+	}
+
+	/*
+	 *	Create the template.  If we fail, AND it's a bare word
+	 *	with &Foo-Bar, it MAY be an attribute defined by a
+	 *	module.  Allow it for now.  The pass2 checks below
+	 *	will fix it up.
+	 */
+	type = cf_section_name2_type(cs);
+	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err_cs(cs, "Syntax error");
+		cf_log_err_cs(cs, "%s", name2);
+		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+		talloc_free(spaces);
+		talloc_free(text);
+
+		return NULL;
+	}
+
+	/*
+	 *	If we don't have a negative return code, we must have a vpt
+	 *	(mostly to quiet coverity).
+	 */
+	rad_assert(vpt);
+
+	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
+		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
+		return NULL;
+	}
+
+	/*
+	 *	Fix up the template to iterate over all instances of
+	 *	the attribute. In a perfect consistent world, users would do
+	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
+	 */
+	vpt->tmpl_num = NUM_ALL;
+
+	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!csingle) {
+		talloc_free(vpt);
+		return NULL;
+	}
+
+	g = mod_callabletogroup(csingle);
+	g->vpt = vpt;
+
+	return csingle;
+}
+
+
+
+static modcallable *compile_break(modcallable *parent, rlm_components_t component, CONF_ITEM const *ci)
+{
+	modcallable *foreach;
+
+	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
+		if (foreach->type == MOD_FOREACH) break;
+	}
+
+	if (!foreach) {
+		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
+		return NULL;
+	}
+
+	return compile_empty(parent, component, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+			     MOD_BREAK, COND_TYPE_INVALID);
+}
+#endif
+
+static modcallable *compile_xlat(modcallable *parent,
+				       rlm_components_t component, char const *fmt)
+{
+	modcallable *csingle;
+	modxlat *mx;
+
+	mx = talloc_zero(parent, modxlat);
+
+	csingle = mod_xlattocallable(mx);
+	csingle->parent = parent;
+	csingle->next = NULL;
+	csingle->name = "expand";
+	csingle->type = MOD_XLAT;
+	csingle->method = component;
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+
+	mx->xlat_name = strdup(fmt);
+	if (fmt[0] != '%') {
+		char *p;
+		mx->exec = true;
+
+		strcpy(mx->xlat_name, fmt + 1);
+		p = strrchr(mx->xlat_name, '`');
+		if (p) *p = '\0';
+	}
+
+	return csingle;
+}
+
+static modcallable *compile_if(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	modcallable *c;
+	modgroup *g;
+	fr_cond_t *cond;
+
+	if (!cf_section_name2(cs)) {
+		cf_log_err_cs(cs, "'%s' without condition", unlang_keyword[mod_type]);
+		return NULL;
+	}
+
+	cond = cf_data_find(cs, "if");
+	rad_assert(cond != NULL);
+
+	if (cond->type == COND_TYPE_FALSE) {
+		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
+		     unlang_keyword[mod_type],
+		     cf_section_filename(cs), cf_section_lineno(cs));
+		return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
+	}
+
+	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) return NULL;
+
+	g = mod_callabletogroup(c);
+	g->cond = cond;
+	return c;
+}
+
+static int previous_if(CONF_SECTION *cs, modcallable *parent, mod_type_t mod_type)
+{
+	modgroup *p, *f;
+
+	p = mod_callabletogroup(parent);
+	if (!p->tail) goto else_fail;
+
+	f = mod_callabletogroup(p->tail);
+	if ((f->mc.type != MOD_IF) && (f->mc.type != MOD_ELSIF)) {
+	else_fail:
+		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
+			      unlang_keyword[mod_type]);
+		return -1;
+	}
+
+	if (f->cond->type == COND_TYPE_TRUE) {
+		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
+		     unlang_keyword[mod_type],
+		     unlang_keyword[f->mc.type],
+		     cf_section_filename(cs), cf_section_lineno(cs));
+		return 0;
+	}
+
+	return 1;
+}
+
+static modcallable *compile_elsif(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	int rcode;
+
+	/*
+	 *	This is always a syntax error.
+	 */
+	if (!cf_section_name2(cs)) {
+		cf_log_err_cs(cs, "'%s' without condition", unlang_keyword[mod_type]);
+		return NULL;
+	}
+
+	rcode = previous_if(cs, parent, mod_type);
+	if (rcode < 0) return NULL;
+
+	if (rcode == 0) return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+
+	return compile_if(parent, component, cs, grouptype, parentgrouptype, mod_type);
+}
+
+static modcallable *compile_else(modcallable *parent,
+			       rlm_components_t component, CONF_SECTION *cs,
+			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	int rcode;
+
+	if (cf_section_name2(cs)) {
+		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_keyword[mod_type]);
+		return NULL;
+	}
+
+	rcode = previous_if(cs, parent, mod_type);
+	if (rcode < 0) return NULL;
+
+	if (rcode == 0) return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+
+	return compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+}
+
+/*
+ *	redundant, etc. can refer to modules or groups, but not much else.
+ */
+static int all_children_are_modules(CONF_SECTION *cs, char const *name)
+{
+	CONF_ITEM *ci;
+
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+		/*
+		 *	If we're a redundant, etc. group, then the
+		 *	intention is to call modules, rather than
+		 *	processing logic.  These checks aren't
+		 *	*strictly* necessary, but they keep the users
+		 *	from doing crazy things.
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs = cf_item_to_section(ci);
+			char const *name1 = cf_section_name1(subcs);
+
+			if ((strcmp(name1, "if") == 0) ||
+			    (strcmp(name1, "else") == 0) ||
+			    (strcmp(name1, "elsif") == 0) ||
+			    (strcmp(name1, "update") == 0) ||
+			    (strcmp(name1, "switch") == 0) ||
+			    (strcmp(name1, "case") == 0)) {
+				cf_log_err(ci, "%s sections cannot contain a \"%s\" statement",
+				       name, name1);
+				return 0;
+			}
+			continue;
+		}
+
+		if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp = cf_item_to_pair(ci);
+			if (cf_pair_value(cp) != NULL) {
+				cf_log_err(ci,
+					   "Entry with no value is invalid");
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
+
+static modcallable *compile_redundant(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	/*
+	 *	No children?  Die!
+	 */
+	if (!cf_item_find_next(cs, NULL)) {
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keyword[mod_type]);
+		return NULL;
+	}
+
+	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
+		return NULL;
+	}
+
+	return compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+}
+
+
+/** Load a named module from "instantiate" or "policy".
+ *
+ * If it's "foo.method", look for "foo", and return "method" as the method
+ * we wish to use, instead of the input component.
+ *
+ * @param[out] pcomponent Where to write the method we found, if any.  If no method is specified
+ *	will be set to MOD_COUNT.
+ * @param[in] real_name Complete name string e.g. foo.authorize.
+ * @param[in] virtual_name Virtual module name e.g. foo.
+ * @param[in] method_name Method override (may be NULL) or the method name e.g. authorize.
+ * @return the CONF_SECTION specifying the virtual module.
+ */
+static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
+					    char const *real_name, char const *virtual_name, char const *method_name)
+{
+	CONF_SECTION *cs, *subcs;
+	rlm_components_t method = *pcomponent;
+	char buffer[256];
+
+	/*
+	 *	Turn the method name into a method enum.
+	 */
+	if (method_name) {
+		rlm_components_t i;
+
+		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
+			if (strcmp(comp2str[i], method_name) == 0) break;
+		}
+
+		if (i != MOD_COUNT) {
+			method = i;
+		} else {
+			method_name = NULL;
+			virtual_name = real_name;
+		}
+	}
+
+	/*
+	 *	Look for "foo" in the "instantiate" section.  If we
+	 *	find it, AND there's no method name, we've found the
+	 *	right thing.
+	 *
+	 *	Return it to the caller, with the updated method.
+	 */
+	cs = cf_section_sub_find(main_config.config, "instantiate");
+	if (cs) {
+		/*
+		 *	Found "foo".  Load it as "foo", or "foo.method".
+		 */
+		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
+		if (subcs) {
+			*pcomponent = method;
+			return subcs;
+		}
+	}
+
+	/*
+	 *	Look for it in "policy".
+	 *
+	 *	If there's no policy section, we can't do anything else.
+	 */
+	cs = cf_section_sub_find(main_config.config, "policy");
+	if (!cs) return NULL;
+
+	/*
+	 *	"foo.authorize" means "load policy "foo" as method "authorize".
+	 *
+	 *	And bail out if there's no policy "foo".
+	 */
+	if (method_name) {
+		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
+		if (subcs) *pcomponent = method;
+
+		return subcs;
+	}
+
+	/*
+	 *	"foo" means "look for foo.component" first, to allow
+	 *	method overrides.  If that's not found, just look for
+	 *	a policy "foo".
+	 *
+	 */
+	snprintf(buffer, sizeof(buffer), "%s.%s",
+		 virtual_name, comp2str[method]);
+	subcs = cf_section_sub_find_name2(cs, NULL, buffer);
+	if (subcs) return subcs;
+
+	return cf_section_sub_find_name2(cs, NULL, virtual_name);
+}
+
+
+static modcallable *compile_action_override(CONF_ITEM *ci, modcallable *c)
+{
+	CONF_ITEM *csi;
+	CONF_SECTION *cs;
+
+	if (!cf_item_is_section(ci)) return c;
+
+	/*
+	 *	Over-ride the default return codes of the module.
+	 */
+	cs = cf_item_to_section(ci);
+	for (csi=cf_item_find_next(cs, NULL);
+	     csi != NULL;
+	     csi=cf_item_find_next(cs, csi)) {
+
+		if (cf_item_is_section(csi)) {
+			cf_log_err(csi, "Subsection of module instance call not allowed");
+			talloc_free(c);
+			return NULL;
+		}
+
+		if (!cf_item_is_pair(csi)) continue;
+
+		if (!compile_action(c, cf_item_to_pair(csi))) {
+			talloc_free(c);
+			return NULL;
+		}
+	}
+
+	return c;
+}
+
+
+static modcallable *compile_csingle(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t grouptype, char const *realname)
+{
+	modcallable *c;
+	modsingle *single;
+
+	/*
+	 *	Check if the module in question has the necessary
+	 *	component.
+	 */
+	if (!this->entry->module->methods[component]) {
+		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->entry->module->name,
+			   comp2str[component]);
+		return NULL;
+	}
+
+	single = talloc_zero(parent, modsingle);
+	single->modinst = this;
+
+	c = mod_singletocallable(single);
+	c->parent = parent;
+	c->next = NULL;
+	if (!parent || (component != MOD_AUTHENTICATE)) {
+		memcpy(c->actions, defaultactions[component][grouptype],
+		       sizeof c->actions);
+	} else { /* inside Auth-Type has different rules */
+		memcpy(c->actions, authtype_actions[grouptype],
+		       sizeof c->actions);
+	}
+
+	c->name = realname;
+	c->type = MOD_SINGLE;
+	c->method = component;
+
+	return compile_action_override(ci, c);
+}
+
+typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+					 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type);
+typedef struct modcall_compile_t {
+	char const			*name;
+	modcall_compile_function_t	compile;
+	grouptype_t			grouptype;
+	mod_type_t			mod_type;
+} modcall_compile_t;
+
+static modcall_compile_t compile_table[] = {
+	{ "group",		compile_group, GROUPTYPE_SIMPLE, MOD_GROUP },
+	{ "redundant",		compile_redundant, GROUPTYPE_REDUNDANT, MOD_GROUP },
+	{ "load-balance",	compile_redundant, GROUPTYPE_SIMPLE, MOD_LOAD_BALANCE },
+	{ "redundant-load-balance", compile_redundant, GROUPTYPE_REDUNDANT, MOD_REDUNDANT_LOAD_BALANCE },
+
+	{ "case",		compile_case, GROUPTYPE_SIMPLE, MOD_CASE },
+	{ "foreach",		compile_foreach, GROUPTYPE_SIMPLE, MOD_FOREACH },
+	{ "if",			compile_if, GROUPTYPE_SIMPLE, MOD_IF },
+	{ "elsif",		compile_elsif, GROUPTYPE_SIMPLE, MOD_ELSIF },
+	{ "else",		compile_else, GROUPTYPE_SIMPLE, MOD_ELSE },
+	{ "update",		compile_update, GROUPTYPE_SIMPLE, MOD_UPDATE },
+	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
+	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
+
+	{ NULL, NULL, 0, 0 }
+};
+
+
+/*
+ *	Compile one entry of a module call.
+ */
+static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
+				 grouptype_t parent_grouptype, char const **modname)
+{
+	char const *modrefname, *p;
+	modcallable *c;
+	module_instance_t *this;
+	CONF_SECTION *cs, *subcs, *modules;
+	CONF_SECTION *loop;
+	char const *realname;
+	rlm_components_t method = component;
+
+	if (cf_item_is_section(ci)) {
+		int i;
+		char const *name2;
+
+		cs = cf_item_to_section(ci);
+		modrefname = cf_section_name1(cs);
+		name2 = cf_section_name2(cs);
+		if (!name2) name2 = "";
+
+		for (i = 0; compile_table[i].name != NULL; i++) {
+			if (strcmp(modrefname, compile_table[i].name) == 0) {
+				*modname = name2;
+
+				/*
+				 *	Some blocks can be empty.  The rest need
+				 *	to have contents.
+				 */
+				if (!cf_item_find_next(cs, NULL) &&
+				    !((compile_table[i].mod_type == MOD_CASE) ||
+				      (compile_table[i].mod_type == MOD_IF) ||
+				      (compile_table[i].mod_type == MOD_ELSIF))) {
+					cf_log_err(ci, "'%s' sections cannot be empty", modrefname);
+					return NULL;
+				}
+
+				return compile_table[i].compile(parent, component, cs,
+								compile_table[i].grouptype, parent_grouptype,
+								compile_table[i].mod_type);
+			}
+		}
+
+#ifdef WITH_UNLANG
+		if (strcmp(modrefname, "break") == 0) {
+			cf_log_err(ci, "Invalid use of 'break'");
+			return NULL;
+
+		} else if (strcmp(modrefname, "return") == 0) {
+			cf_log_err(ci, "Invalid use of 'return'");
+			return NULL;
+
+		} /* else it's something like sql { fail = 1 ...} */
+#endif
+
+	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
+		return NULL;
+
+		/*
+		 *	Else it's a module reference, with updated return
+		 *	codes.
+		 */
+	} else {
+		CONF_PAIR *cp = cf_item_to_pair(ci);
+		modrefname = cf_pair_attr(cp);
+
+		/*
+		 *	Actions (ok = 1), etc. are orthogonal to just
+		 *	about everything else.
+		 */
+		if (cf_pair_value(cp) != NULL) {
+			cf_log_err(ci, "Entry is not a reference to a module");
+			return NULL;
+		}
+
+		/*
+		 *	In-place xlat's via %{...}.
+		 *
+		 *	This should really be removed from the server.
+		 */
+		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
+		    (modrefname[0] == '`')) {
+			return compile_xlat(parent, component, modrefname);
+		}
+	}
+
+#ifdef WITH_UNLANG
+	/*
+	 *	These can't be over-ridden.
+	 */
+	if (strcmp(modrefname, "break") == 0) {
+		return compile_break(parent, component, ci);
+	}
+
+	if (strcmp(modrefname, "return") == 0) {
+		return compile_empty(parent, component, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_RETURN, COND_TYPE_INVALID);
+	}
+#endif
+
+	/*
+	 *	We now have a name.  It can be one of two forms.  A
+	 *	bare module name, or a section named for the module,
+	 *	with over-rides for the return codes.
+	 *
+	 *	The name can refer to a real module, in the "modules"
+	 *	section.  In that case, the name will be either the
+	 *	first or second name of the sub-section of "modules".
+	 *
+	 *	Or, the name can refer to a policy, in the "policy"
+	 *	section.  In that case, the name will be first of the
+	 *	sub-section of "policy".
+	 *
+	 *	Or, the name can refer to a "module.method", in which
+	 *	case we're calling a different method than normal for
+	 *	this section.
+	 *
+	 *	Or, the name can refer to a virtual module, in the
+	 *	"instantiate" section.  In that case, the name will be
+	 *	the first of the sub-section of "instantiate".
+	 *
+	 *	We try these in sequence, from the bottom up.  This is
+	 *	so that things in "instantiate" and "policy" can
+	 *	over-ride calls to real modules.
+	 */
+
+
+	/*
+	 *	Try:
+	 *
+	 *	instantiate { ... name { ...} ... }
+	 *	policy { ... name { .. } .. }
+	 *	policy { ... name.method { .. } .. }
+	 *
+	 *	The only difference between things in "instantiate"
+	 *	and "policy" is that "instantiate" will cause modules
+	 *	to be instantiated in a particular order.
+	 */
+	subcs = NULL;
+	p = strrchr(modrefname, '.');
+	if (!p) {
+		subcs = virtual_module_find_cs(&method, modrefname, modrefname, NULL);
+	} else {
+		char buffer[256];
+
+		strlcpy(buffer, modrefname, sizeof(buffer));
+		buffer[p - modrefname] = '\0';
+
+		subcs = virtual_module_find_cs(&method, modrefname, buffer, buffer + (p - modrefname) + 1);
+	}
+
+	/*
+	 *	Check that we're not creating a loop.  We may
+	 *	be compiling an "sql" module reference inside
+	 *	of an "sql" policy.  If so, we allow the
+	 *	second "sql" to refer to the module.
+	 */
+	for (loop = cf_item_parent(ci);
+	     loop && subcs;
+	     loop = cf_item_parent(cf_section_to_item(loop))) {
+		if (loop == subcs) {
+			subcs = NULL;
+		}
+	}
+
+	/*
+	 *	We've found the relevant entry.  It MUST be a
+	 *	sub-section.
+	 *
+	 *	However, it can be a "redundant" block, or just
+	 */
+	if (subcs) {
+		/*
+		 *	modules.c takes care of ensuring that this is:
+		 *
+		 *	group foo { ...
+		 *	load-balance foo { ...
+		 *	redundant foo { ...
+		 *	redundant-load-balance foo { ...
+		 *
+		 *	We can just recurs to compile the section as
+		 *	if it was found here.
+		 */
+		if (cf_section_name2(subcs)) {
+			c = compile_item(parent, method, cf_section_to_item(subcs), parent_grouptype, modname);
+
+		} else {
+			/*
+			 *	We have:
+			 *
+			 *	foo { ...
+			 *
+			 *	So we compile it like it was:
+			 *
+			 *	group foo { ...
+			 */
+			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
+		}
+
+		/*
+		 *	Return the compiled thing if we can.
+		 */
+		if (!c) return NULL;
+		if (cf_item_is_pair(ci)) return c;
+
+		/*
+		 *	Else we have a reference to a policy, and that reference
+		 *	over-rides the return codes for the policy!
+		 */
+		return compile_action_override(ci, c);
+	}
+
+	/*
+	 *	Not a virtual module.  It must be a real module.
+	 */
+	modules = cf_section_sub_find(main_config.config, "modules");
+	if (!modules) goto fail;
+
+	this = NULL;
+	realname = modrefname;
+
+	/*
+	 *	Try to load the optional module.
+	 */
+	if (realname[0] == '-') realname++;
+
+	/*
+	 *	As of v3, the "modules" section contains
+	 *	modules we use.  Configuration for other
+	 *	modules belongs in raddb/mods-available/,
+	 *	which isn't loaded into the "modules" section.
+	 */
+	this = module_instantiate_method(modules, realname, &method);
+	if (this) {
+		*modname = this->entry->module->name;
+		return compile_csingle(parent, method, ci, this, parent_grouptype, realname);
+	}
+
+	/*
+	 *	We were asked to MAYBE load it and it
+	 *	doesn't exist.  Return a soft error.
+	 */
+	if (realname != modrefname) {
+		*modname = modrefname;
+		return NULL;
+	}
+
+	/*
+	 *	Can't de-reference it to anything.  Ugh.
+	 */
+fail:
+	*modname = NULL;
+	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", modrefname);
+	cf_log_err(ci, "Please verify that the configuration exists in %s/mods-enabled/%s.", get_radius_dir(), modrefname);
+	return NULL;
+}
+
+modcallable *modcall_compile(TALLOC_CTX *ctx,
+			     modcallable **parent,
+			     rlm_components_t component, CONF_ITEM *ci,
+			     char const **modname)
+{
+	modcallable *ret;
+
+	if (!*parent) {
+		modcallable *c;
+		modgroup *g;
+		CONF_SECTION *parentcs;
+
+		g = talloc_zero(ctx, modgroup);
+		memset(g, 0, sizeof(*g));
+		g->grouptype = GROUPTYPE_SIMPLE;
+		c = mod_grouptocallable(g);
+		c->next = NULL;
+		memcpy(c->actions,
+		       defaultactions[component][GROUPTYPE_SIMPLE],
+		       sizeof(c->actions));
+
+		parentcs = cf_item_parent(ci);
+		c->name = cf_section_name2(parentcs);
+		if (!c->name) {
+			c->name = cf_section_name1(parentcs);
+		}
+
+		c->type = MOD_GROUP;
+		c->method = component;
+		g->children = NULL;
+
+		*parent = mod_grouptocallable(g);
+	}
+
+	ret = compile_item(*parent, component, ci, GROUPTYPE_SIMPLE, modname);
+	dump_tree(component, ret);
+	return ret;
+}
+
+
+modcallable *modcall_compile_section(modcallable *parent,
+				   rlm_components_t component, CONF_SECTION *cs)
+{
+	modcallable *ret = compile_group(parent, component, cs,
+					 GROUPTYPE_SIMPLE,
+					 GROUPTYPE_SIMPLE, MOD_GROUP);
+
+	if (rad_debug_lvl > 3) {
+		modcall_debug(ret, 2);
+	}
+
+	return ret;
+}
+
+void modcall_append(modcallable *parent, modcallable *this)
+{
+	modgroup *g;
+
+	rad_assert(this != NULL);
+	rad_assert(parent != NULL);
+
+	g = mod_callabletogroup(parent);
+
+	add_child(g, this);
 }
