@@ -991,87 +991,7 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_CASE:
 			g = mod_callabletogroup(c);
 			if (g->done_pass2) goto do_next;
-
-			name2 = cf_section_name2(g->cs);
-			if (!name2) {
-				c->debug_name = unlang_keyword[c->type];
-			} else {
-				c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
-			}
-
-			rad_assert(c->parent != NULL);
-			rad_assert(c->parent->type == MOD_SWITCH);
-
-			/*
-			 *	We have "case {...}".  There's no
-			 *	argument, so we don't need to check
-			 *	it.
-			 */
-			if (!g->vpt) goto do_children;
-
-			if (g->vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
-				if (!pass2_fixup_undefined(cf_section_to_item(g->cs), g->vpt)) {
-					return false;
-				}
-			}
-
-			/*
-			 *	Do type-specific checks on the case statement
-			 */
-			if (g->vpt->type == TMPL_TYPE_UNPARSED) {
-				modgroup *f;
-
-				f = mod_callabletogroup(mc->parent);
-				rad_assert(f->vpt != NULL);
-
-				/*
-				 *	We're switching over an
-				 *	attribute.  Check that the
-				 *	values match.
-				 */
-				if (f->vpt->type == TMPL_TYPE_ATTR) {
-					rad_assert(f->vpt->tmpl_da != NULL);
-
-					if (tmpl_cast_in_place(g->vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
-						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
-							      fr_strerror());
-						return false;
-					}
-				}
-
-				goto do_children;
-			}
-
-			/*
-			 *	Compile and sanity check xlat
-			 *	expansions.
-			 */
-			if (g->vpt->type == TMPL_TYPE_XLAT) {
-				modgroup *f;
-
-				f = mod_callabletogroup(mc->parent);
-				rad_assert(f->vpt != NULL);
-
-				/*
-				 *	Don't expand xlat's into an
-				 *	attribute of a different type.
-				 */
-				if (f->vpt->type == TMPL_TYPE_ATTR) {
-					if (!pass2_fixup_xlat(cf_section_to_item(g->cs),
-								&g->vpt, true, f->vpt->tmpl_da)) {
-						return false;
-					}
-				} else {
-					if (!pass2_fixup_xlat(cf_section_to_item(g->cs),
-								&g->vpt, true, NULL)) {
-						return false;
-					}
-				}
-			}
-
-			if (!modcall_pass2(g->children)) return false;
-			g->done_pass2 = true;
-			break;
+			goto do_children;
 
 		case MOD_FOREACH:
 			g = mod_callabletogroup(c);
@@ -2100,9 +2020,9 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 {
 	int i;
 	char const *name2;
-	modcallable *csingle;
+	modcallable *c;
 	modgroup *g;
-	vp_tmpl_t *vpt;
+	vp_tmpl_t *vpt = NULL;
 
 	if (!parent || (parent->type != MOD_SWITCH)) {
 		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
@@ -2117,11 +2037,12 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 	if (name2) {
 		ssize_t slen;
 		FR_TOKEN type;
+		modgroup *f;
 
 		type = cf_section_name2_type(cs);
 
 		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		if (slen < 0) {
 			char *spaces, *text;
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
@@ -2136,17 +2057,59 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 			return NULL;
 		}
 
+		if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+			if (!pass2_fixup_undefined(cf_section_to_item(cs), vpt)) {
+				talloc_free(vpt);
+				return NULL;
+			}
+		}
+
+		f = mod_callabletogroup(parent);
+		rad_assert(f->vpt != NULL);
+
 		/*
-		 *	Otherwise a NULL vpt may refer to an attribute defined
-		 *	by a module.  That is checked in pass 2.
+		 *	Do type-specific checks on the case statement
 		 */
 
-	} else {
-		vpt = NULL;
-	}
+		/*
+		 *	We're switching over an
+		 *	attribute.  Check that the
+		 *	values match.
+		 */
+		if ((vpt->type == TMPL_TYPE_UNPARSED) &&
+		    (f->vpt->type == TMPL_TYPE_ATTR)) {
+			rad_assert(f->vpt->tmpl_da != NULL);
 
-	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!csingle) {
+			if (tmpl_cast_in_place(vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
+				cf_log_err_cs(cs, "Invalid argument for case statement: %s",
+					      fr_strerror());
+				talloc_free(vpt);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Compile and sanity check xlat
+		 *	expansions.
+		 */
+		if (vpt->type == TMPL_TYPE_XLAT) {
+			fr_dict_attr_t const *da = NULL;
+
+			if (f->vpt->type == TMPL_TYPE_ATTR) da = f->vpt->tmpl_da;
+
+			/*
+			 *	Don't expand xlat's into an
+			 *	attribute of a different type.
+			 */
+			if (!pass2_fixup_xlat(cf_section_to_item(cs), &vpt, true, da)) {
+				talloc_free(vpt);
+				return NULL;
+			}
+		}
+	} /* else it's a default 'case' statement */
+
+	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) {
 		talloc_free(vpt);
 		return NULL;
 	}
@@ -2156,9 +2119,14 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 	 *	default case.  compile_group sets it to name2,
 	 *	unless name2 is NULL, in which case it sets it to name1.
 	 */
-	csingle->name = name2;
+	c->name = name2;
+	if (!name2) {
+		c->debug_name = unlang_keyword[c->type];
+	} else {
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+	}
 
-	g = mod_callabletogroup(csingle);
+	g = mod_callabletogroup(c);
 	g->vpt = talloc_steal(g, vpt);
 
 	/*
@@ -2167,10 +2135,10 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 	 *	fall through to processing the next one.
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		csingle->actions[i] = MOD_ACTION_RETURN;
+		c->actions[i] = MOD_ACTION_RETURN;
 	}
 
-	return csingle;
+	return c;
 }
 
 static modcallable *compile_foreach(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
