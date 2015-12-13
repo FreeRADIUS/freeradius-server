@@ -1857,50 +1857,21 @@ static void add_child(modgroup *g, modcallable *c)
 	c->parent = mod_grouptocallable(g);
 }
 
-/*
- *	Generic "compile a section with more unlang inside of it".
- */
-static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
-{
-	modgroup *g;
-	modcallable *c;
-	CONF_ITEM *ci;
 
-	g = talloc_zero(parent, modgroup);
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
+static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_components_t component,
+				     grouptype_t grouptype, grouptype_t parentgrouptype)
+{
+	CONF_ITEM *ci;
+	modcallable *c;
 
 	c = mod_grouptocallable(g);
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-	memset(c->actions, 0, sizeof(c->actions));
-
-	/*
-	 *	Remember the name for printing, etc.
-	 *
-	 *	FIXME: We may also want to put the names into a
-	 *	rbtree, so that groups can reference each other...
-	 */
-	c->name = cf_section_name2(cs);
-	if (!c->name) {
-		c->name = cf_section_name1(cs);
-		if ((strcmp(c->name, "group") == 0) ||
-		    (strcmp(c->name, "redundant") == 0)) {
-			c->name = "";
-		} else if (c->type == MOD_GROUP) {
-			c->type = MOD_POLICY;
-		}
-	}
 
 	/*
 	 *	Loop over the children of this group.
 	 */
-	for (ci=cf_item_find_next(cs, NULL);
+	for (ci=cf_item_find_next(g->cs, NULL);
 	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
+	     ci=cf_item_find_next(g->cs, ci)) {
 
 		/*
 		 *	Sections are references to other groups, or
@@ -1965,6 +1936,64 @@ static modcallable *compile_group(modcallable *parent, rlm_components_t componen
 	}
 
 	return compile_defaultactions(c, parent, component, parentgrouptype);
+}
+
+
+static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
+				grouptype_t grouptype, mod_type_t mod_type)
+{
+	modgroup *g;
+	modcallable *c;
+
+	g = talloc_zero(parent, modgroup);
+	if (!g) return NULL;
+
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+
+	c = mod_grouptocallable(g);
+	c->parent = parent;
+	c->type = mod_type;
+	c->next = NULL;
+	memset(c->actions, 0, sizeof(c->actions));
+
+	return g;
+}
+
+
+/*
+ *	Generic "compile a section with more unlang inside of it".
+ */
+static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	modgroup *g;
+	modcallable *c;
+
+	g = group_allocate(parent, cs, grouptype, mod_type);
+	if (!g) return NULL;
+
+	c = mod_grouptocallable(g);
+
+	/*
+	 *	Remember the name for printing, etc.
+	 *
+	 *	FIXME: We may also want to put the names into a
+	 *	rbtree, so that groups can reference each other...
+	 */
+	c->name = cf_section_name2(cs);
+	if (!c->name) {
+		c->name = cf_section_name1(cs);
+		if ((strcmp(c->name, "group") == 0) ||
+		    (strcmp(c->name, "redundant") == 0)) {
+			c->name = "";
+		} else if (c->type == MOD_GROUP) {
+			c->type = MOD_POLICY;
+		}
+	}
+
+	return compile_children(g, parent, component, grouptype, parentgrouptype);
 }
 
 static modcallable *compile_switch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
