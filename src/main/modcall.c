@@ -1021,93 +1021,7 @@ bool modcall_pass2(modcallable *mc)
 			name2 = cf_section_name2(g->cs);
 			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 
-			/*
-			 *	We had &Foo-Bar, where Foo-Bar is
-			 *	defined by a module.
-			 */
-			if (!g->vpt) {
-				rad_assert(c->name != NULL);
-				rad_assert(c->name[0] == '&');
-				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
-
-				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name),
-						      cf_section_name2_type(g->cs),
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-				if (slen < 0) {
-					char *spaces, *text;
-
-				parse_error:
-					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
-
-					cf_log_err_cs(g->cs, "Syntax error");
-					cf_log_err_cs(g->cs, "%s", c->name);
-					cf_log_err_cs(g->cs, "%s^ %s", spaces, text);
-
-					talloc_free(spaces);
-					talloc_free(text);
-
-					return false;
-				}
-
-				goto do_children;
-			}
-
-			/*
-			 *	Statically compile xlats
-			 */
-			if (g->vpt->type == TMPL_TYPE_XLAT) {
-				if (!pass2_fixup_xlat(cf_section_to_item(g->cs),
-							&g->vpt, true, NULL)) {
-					return false;
-				}
-
-				goto do_children;
-			}
-
-			/*
-			 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
-			 */
-			if ((g->vpt->type == TMPL_TYPE_ATTR) && g->vpt->tmpl_da->flags.virtual) {
-				g->vpt->tmpl_xlat = xlat_from_tmpl_attr(g->vpt, g->vpt);
-				g->vpt->type = TMPL_TYPE_XLAT_STRUCT;
-			}
-
-			/*
-			 *	We may have: switch Foo-Bar {
-			 *
-			 *	where Foo-Bar is an attribute defined
-			 *	by a module.  Since there's no leading
-			 *	&, it's parsed as a literal.  But if
-			 *	we can parse it as an attribute,
-			 *	switch to using that.
-			 */
-			if (g->vpt->type == TMPL_TYPE_UNPARSED) {
-				vp_tmpl_t *vpt;
-
-				slen = tmpl_afrom_str(g->cs, &vpt, c->name, strlen(c->name), cf_section_name2_type(g->cs),
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-				if (slen < 0) goto parse_error;
-				if (vpt->type == TMPL_TYPE_ATTR) {
-					talloc_free(g->vpt);
-					g->vpt = vpt;
-				}
-
-				goto do_children;
-			}
-
-			/*
-			 *	Warn about old-style configuration.
-			 *
-			 *	DEPRECATED: switch User-Name { ...
-			 *	ALLOWED   : switch &User-Name { ...
-			 */
-			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
-			    (c->name[0] != '&')) {
-				WARN("%s[%d]: Please change %s to &%s",
-				     cf_section_filename(g->cs),
-				     cf_section_lineno(g->cs),
-				     c->name, c->name);
-			}
+			if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) return false;
 
 		do_children:
 			if (!modcall_pass2(g->children)) return false;
@@ -1140,7 +1054,21 @@ bool modcall_pass2(modcallable *mc)
 				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name),
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-				if (slen < 0) goto parse_error;
+				if (slen < 0) {
+					char *spaces, *text;
+
+				parse_error:
+					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
+
+					cf_log_err_cs(g->cs, "Syntax error");
+					cf_log_err_cs(g->cs, "%s", c->name);
+					cf_log_err_cs(g->cs, "%s^ %s", spaces, text);
+
+					talloc_free(spaces);
+					talloc_free(text);
+
+					return false;
+				}
 			}
 
 			/*
