@@ -966,14 +966,6 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_MAP:
-			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;
-
-			if (!pass2_fixup_map(g)) {
-				return false;
-			}
-			g->done_pass2 = true;
-			c->debug_name = c->name;
 			break;
 
 		case MOD_XLAT:   /* @todo: pre-parse xlat's */
@@ -1559,7 +1551,7 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 {
 	int rcode;
 	modgroup *g;
-	modcallable *csingle;
+	modcallable *c;
 	CONF_SECTION *modules;
 	ssize_t slen;
 	char const *tmpl_str;
@@ -1641,10 +1633,10 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 		return NULL;
 	}
 
-	csingle = mod_grouptocallable(g);
+	c = mod_grouptocallable(g);
 
-	csingle->parent = parent;
-	csingle->next = NULL;
+	c->parent = parent;
+	c->next = NULL;
 
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
@@ -1665,17 +1657,18 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 	}
 
 	quoted_len = fr_snprint_len(tmpl_str, tmpl_len, quote);
-	quoted_str = talloc_array(csingle, char, quoted_len);
+	quoted_str = talloc_array(c, char, quoted_len);
 	fr_snprint(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
 
-	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, quoted_str);
-	csingle->type = MOD_MAP;
-	csingle->method = component;
+	c->name = talloc_asprintf(c, "map %s %s", name2, quoted_str);
+	c->debug_name = c->name;
+	c->type = MOD_MAP;
+	c->method = component;
 
 	talloc_free(quoted_str);
 
-	memcpy(csingle->actions, defaultactions[component][parentgrouptype],
-	       sizeof(csingle->actions));
+	memcpy(c->actions, defaultactions[component][parentgrouptype],
+	       sizeof(c->actions));
 
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
@@ -1691,8 +1684,13 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 	 *	header?  Or ensure that the map is registered in the
 	 *	"boostrap" phase, so that it's always available here.
 	 */
+	if (!pass2_fixup_map(g)) {
+		talloc_free(g);
+		return NULL;
+	}
+	g->done_pass2 = true;
 
-	return csingle;
+	return c;
 
 }
 
