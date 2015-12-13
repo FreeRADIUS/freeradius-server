@@ -980,26 +980,9 @@ bool modcall_pass2(modcallable *mc)
 #ifdef WITH_UNLANG
 		case MOD_IF:
 		case MOD_ELSIF:
-			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;
-
-			name2 = cf_section_name2(g->cs);
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
-
-			if (!modcall_pass2(g->children)) return false;
-			g->done_pass2 = true;
-			break;
-#endif
-
-#ifdef WITH_UNLANG
 		case MOD_SWITCH:
 			g = mod_callabletogroup(c);
 			if (g->done_pass2) goto do_next;
-
-			name2 = cf_section_name2(g->cs);
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
-
-			if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) return false;
 
 		do_children:
 			if (!modcall_pass2(g->children)) return false;
@@ -2014,7 +1997,7 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 	FR_TOKEN type;
 	char const *name2;
 	bool had_seen_default = false;
-	modcallable *csingle;
+	modcallable *c;
 	modgroup *g;
 	ssize_t slen;
 	vp_tmpl_t *vpt;
@@ -2026,14 +2009,12 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 	}
 
 	/*
-	 *	Create the template.  If we fail, AND it's a bare word
-	 *	with &Foo-Bar, it MAY be an attribute defined by a
-	 *	module.  Allow it for now.  The pass2 checks below
-	 *	will fix it up.
+	 *	Create the template.  All attributes and xlats are
+	 *	defined by now.
 	 */
 	type = cf_section_name2_type(cs);
 	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+	if (slen < 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
@@ -2047,11 +2028,6 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 
 		return NULL;
 	}
-
-	/*
-	 *	Otherwise a NULL vpt may refer to an attribute defined
-	 *	by a module.  That is checked in pass 2.
-	 */
 
 	/*
 	 *	Walk through the children of the switch section,
@@ -2093,16 +2069,23 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		}
 	}
 
-	csingle = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
-	if (!csingle) {
+	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) {
 		talloc_free(vpt);
 		return NULL;
 	}
 
-	g = mod_callabletogroup(csingle);
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name2(cs));
+
+	g = mod_callabletogroup(c);
 	g->vpt = talloc_steal(g, vpt);
 
-	return csingle;
+	if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
+		talloc_free(g);
+		return NULL;
+	}
+
+	return c;
 }
 
 static modcallable *compile_case(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
@@ -2339,6 +2322,8 @@ static modcallable *compile_if(modcallable *parent, rlm_components_t component, 
 
 	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
+
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name2(cs));
 
 	g = mod_callabletogroup(c);
 	g->cond = cond;
