@@ -2267,20 +2267,21 @@ static modcallable *compile_break(modcallable *parent, rlm_components_t componen
 static modcallable *compile_xlat(modcallable *parent,
 				       rlm_components_t component, char const *fmt)
 {
-	modcallable *csingle;
+	modcallable *c;
 	modxlat *mx;
 
 	mx = talloc_zero(parent, modxlat);
 
-	csingle = mod_xlattocallable(mx);
-	csingle->parent = parent;
-	csingle->next = NULL;
-	csingle->name = "expand";
-	csingle->type = MOD_XLAT;
-	csingle->method = component;
+	c = mod_xlattocallable(mx);
+	c->parent = parent;
+	c->next = NULL;
+	c->name = "expand";
+	c->debug_name = c->name;
+	c->type = MOD_XLAT;
+	c->method = component;
 
-	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
-	       sizeof(csingle->actions));
+	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(c->actions));
 
 	mx->xlat_name = strdup(fmt);
 	if (fmt[0] != '%') {
@@ -2292,7 +2293,7 @@ static modcallable *compile_xlat(modcallable *parent,
 		if (p) *p = '\0';
 	}
 
-	return csingle;
+	return c;
 }
 
 static modcallable *compile_if(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
