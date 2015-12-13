@@ -1850,11 +1850,20 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 	c->type = mod_type;
 	c->next = NULL;
 
-	if (cs) {
-		c->name = cf_section_name2(cs);
-		if (!c->name) c->name = cf_section_name1(cs);
+	if (!cs) {
+		c->name = unlang_keyword[c->type];
+		c->debug_name = c->name;
 	} else {
-		c->name = "";
+		char const *name2;
+
+		name2 = cf_section_name2(cs);
+		if (!name2) {
+			c->name = cf_section_name1(cs);
+			c->debug_name = c->name;
+		} else {
+			c->name = name2;
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+		}
 	}
 
 	if (cond_type != COND_TYPE_INVALID) {
