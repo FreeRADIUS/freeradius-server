@@ -963,20 +963,6 @@ bool modcall_pass2(modcallable *mc)
 
 #ifdef WITH_UNLANG
 		case MOD_UPDATE:
-			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;
-
-			name2 = cf_section_name2(g->cs);
-			if (!name2) {
-				c->debug_name = unlang_keyword[c->type];
-			} else {
-				c->debug_name = talloc_asprintf(c, "update %s", name2);
-			}
-
-			if (!pass2_fixup_update(g)) {
-				return false;
-			}
-			g->done_pass2 = true;
 			break;
 
 		case MOD_MAP:
@@ -1715,7 +1701,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 {
 	int rcode;
 	modgroup *g;
-	modcallable *csingle;
+	modcallable *c;
 	char const *name2 = cf_section_name2(cs);
 
 	vp_map_t *head;
@@ -1731,21 +1717,23 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 	}
 
 	g = talloc_zero(parent, modgroup);
-	csingle = mod_grouptocallable(g);
+	c = mod_grouptocallable(g);
 
-	csingle->parent = parent;
-	csingle->next = NULL;
+	c->parent = parent;
+	c->next = NULL;
 
 	if (name2) {
-		csingle->name = name2;
+		c->name = name2;
+		c->debug_name = talloc_asprintf(c, "update %s", name2);
 	} else {
-		csingle->name = "";
+		c->name = "";
+		c->debug_name = unlang_keyword[c->type];
 	}
-	csingle->type = MOD_UPDATE;
-	csingle->method = component;
+	c->type = MOD_UPDATE;
+	c->method = component;
 
-	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
-	       sizeof(csingle->actions));
+	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(c->actions));
 
 	g->grouptype = grouptype;
 	g->children = NULL;
@@ -1756,7 +1744,14 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 //	cf_data_add(cs, "update", g->map, NULL); /* for output normalization */
 #endif
 
-	return csingle;
+	if (!pass2_fixup_update(g)) {
+		talloc_free(g);
+		return NULL;
+	}
+
+	g->done_pass2 = true;
+
+	return c;
 }
 
 /*
