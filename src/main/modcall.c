@@ -1057,7 +1057,6 @@ bool modcall_pass2(modcallable *mc)
 				if (slen < 0) {
 					char *spaces, *text;
 
-				parse_error:
 					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
 
 					cf_log_err_cs(g->cs, "Syntax error");
@@ -1143,31 +1142,14 @@ bool modcall_pass2(modcallable *mc)
 			name2 = cf_section_name2(g->cs);
 			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 
-			/*
-			 *	Already parsed, handle the children.
-			 */
-			if (g->vpt) goto check_children;
+			rad_assert(g->vpt != NULL);
 
-			/*
-			 *	We had &Foo-Bar, where Foo-Bar is
-			 *	defined by a module.
-			 */
-			rad_assert(c->name != NULL);
-			rad_assert(c->name[0] == '&');
-			rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
+			if (g->vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+				if (!pass2_fixup_undefined(cf_section_to_item(g->cs), g->vpt)) return NULL;
+			}
 
-			/*
-			 *	The statement may refer to an
-			 *	attribute which doesn't exist until
-			 *	all of the modules have been loaded.
-			 *	Check for that now.
-			 */
-			slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name), cf_section_name2_type(g->cs),
-					      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-			if (slen < 0) goto parse_error;
-
-		check_children:
 			rad_assert((g->vpt->type == TMPL_TYPE_ATTR) || (g->vpt->type == TMPL_TYPE_LIST));
+
 			if (g->vpt->tmpl_num != NUM_ALL) {
 				cf_log_err_cs(g->cs, "MUST NOT use instance selectors in 'foreach'");
 				return false;
