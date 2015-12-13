@@ -573,7 +573,35 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	return true;
 }
 
-static bool pass2_callback(void *ctx, fr_cond_t *c)
+
+static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt)
+{
+	vp_tmpl_t *vpt = *pvpt;
+
+	if (vpt->type == TMPL_TYPE_XLAT) {
+		return pass2_xlat_compile(ci, pvpt, true, NULL);
+	}
+
+	/*
+	 *	The existence check might have been &Foo-Bar,
+	 *	where Foo-Bar is defined by a module.
+	 */
+	if (vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		return pass2_fixup_undefined(ci, vpt);
+	}
+
+	/*
+	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
+	 */
+	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	}
+
+	return true;
+}
+
+static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 {
 	vp_map_t *map;
 	vp_tmpl_t *vpt;
@@ -589,37 +617,16 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	/*
 	 *	Call children.
 	 */
-	if (c->type == COND_TYPE_CHILD) return pass2_callback(ctx, c->data.child);
+	if (c->type == COND_TYPE_CHILD) {
+		return pass2_cond_callback(ctx, c->data.child);
+	}
 
 	/*
-	 *	A few simple checks here.
+	 *	Fix up the template.
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
-		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
-			return pass2_xlat_compile(c->ci, &c->data.vpt, true, NULL);
-		}
-
 		rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
-
-		/*
-		 *	The existence check might have been &Foo-Bar,
-		 *	where Foo-Bar is defined by a module.
-		 */
-		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-			if (!pass2_fixup_undefined(c->ci, c->data.vpt)) return false;
-			c->pass2_fixup = PASS2_FIXUP_NONE;
-		}
-
-		/*
-		 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
-		 */
-		vpt = c->data.vpt;
-		if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
-			vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
-			vpt->type = TMPL_TYPE_XLAT_STRUCT;
-		}
-
-		return true;
+		return pass2_fixup_tmpl(c->ci, &c->data.vpt);
 	}
 
 	/*
@@ -1021,20 +1028,6 @@ bool modcall_pass2(modcallable *mc)
 
 			name2 = cf_section_name2(g->cs);
 			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
-
-			/*
-			 *	The compilation code takes care of
-			 *	simplifying 'true' and 'false'
-			 *	conditions.  For others, we have to do
-			 *	a second pass to parse && compile
-			 *	xlats.
-			 */
-			if (!((g->cond->type == COND_TYPE_TRUE) ||
-			      (g->cond->type == COND_TYPE_FALSE))) {
-				if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
-					return false;
-				}
-			}
 
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
@@ -2442,11 +2435,22 @@ static modcallable *compile_if(modcallable *parent, rlm_components_t component, 
 		return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
 	}
 
+	/*
+	 *	The condition may refer to attributes, xlats, or
+	 *	Auth-Types which didn't exist when it was first
+	 *	parsed.  Now that they are all defined, we need to fix
+	 *	them up.
+	 */
+	if (!fr_condition_walk(cond, pass2_cond_callback, NULL)) {
+		return NULL;
+	}
+
 	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
 	g = mod_callabletogroup(c);
 	g->cond = cond;
+
 	return c;
 }
 
