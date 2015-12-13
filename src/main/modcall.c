@@ -574,12 +574,12 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 }
 
 
-static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt)
+static bool pass2_fixup_tmpl(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert)
 {
 	vp_tmpl_t *vpt = *pvpt;
 
 	if (vpt->type == TMPL_TYPE_XLAT) {
-		return pass2_xlat_compile(ci, pvpt, true, NULL);
+		return pass2_xlat_compile(ci, pvpt, convert, NULL);
 	}
 
 	/*
@@ -626,7 +626,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
-		return pass2_fixup_tmpl(c->ci, &c->data.vpt);
+		return pass2_fixup_tmpl(c->ci, &c->data.vpt, true);
 	}
 
 	/*
@@ -941,28 +941,7 @@ static bool pass2_map_compile(modgroup *g)
 	 */
 	if (!pass2_update_compile(g)) return false;
 
-	switch (g->vpt->type) {
-	case TMPL_TYPE_XLAT:
-		if (!pass2_xlat_compile(g->map->ci, &g->vpt, false, NULL)) {
-			return false;
-		}
-		break;
-
-	case TMPL_TYPE_ATTR_UNDEFINED:
-		if (!pass2_fixup_undefined(g->map->ci, g->vpt)) return false;
-		break;
-
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_UNPARSED:
-		break;
-
-	default:
-		rad_assert(0 == 1);
-		break;
-	}
-
-	return true;
+	return pass2_fixup_tmpl(g->map->ci, &g->vpt, false);
 }
 #endif
 
