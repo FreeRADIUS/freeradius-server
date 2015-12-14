@@ -4102,6 +4102,31 @@ void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)
 	       buffer);
 }
 
+void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const *fmt, ...)
+{
+	va_list ap;
+	CONF_PAIR const *cp;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	cp = cf_pair_find(parent, name);
+	if (cp) {
+		ERROR("%s[%d]: %s",
+		      cp->item.filename ? cp->item.filename : "unknown",
+		      cp->item.lineno ? cp->item.lineno : 0,
+		      buffer);
+	} else {
+		ERROR("%s[%d]: %s",
+		      parent->item.filename ? parent->item.filename : "unknown",
+		      parent->item.lineno ? parent->item.lineno : 0,
+		      buffer);
+	}
+
+}
+
 void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)
 {
 	va_list ap;
