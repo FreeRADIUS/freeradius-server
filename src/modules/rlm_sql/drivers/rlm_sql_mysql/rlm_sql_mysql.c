@@ -393,15 +393,14 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	/*
 	 *	Count takes a connection handle
 	 */
-	if (!(num = mysql_field_count(conn->sock))) {
+	num = mysql_field_count(conn->sock);
 #else
+	if (!conn->result) return 0;
 	/*
-	 *	Fields takes a result struct
+	 *	Fields takes a result struct (which can't be NULL)
 	 */
-	if (!(num = mysql_num_fields(conn->result))) {
+	num = mysql_num_fields(conn->result)
 #endif
-		return -1;
-	}
 	return num;
 }
 
@@ -439,7 +438,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 	return 0;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
@@ -447,7 +446,12 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	MYSQL_FIELD	*field_info;
 	char const	**names;
 
-	fields = mysql_num_fields(conn->result);
+	/*
+	 *	Use our internal function to abstract out the API call.
+	 *	Different versions of SQL use different functions,
+	 *	and some don't like NULL pointers.
+	 */
+	fields = sql_num_fields(handle, config);
 	if (fields == 0) return RLM_SQL_ERROR;
 
 	/*
