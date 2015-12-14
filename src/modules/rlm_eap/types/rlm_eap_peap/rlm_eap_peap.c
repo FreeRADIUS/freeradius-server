@@ -93,8 +93,15 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
-		ERROR("rlm_eap_peap: Unknown virtual server '%s'", inst->virtual_server);
+		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
+	}
+
+	if (inst->soh_virtual_server) {
+		if (!cf_section_sub_find_name2(main_config.config, "server", inst->soh_virtual_server)) {
+			cf_log_err_by_name(cs, "soh_virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+			return -1;
+		}
 	}
 
 	/*
@@ -102,8 +109,9 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 *	handle.
 	 */
 	inst->default_method = eap_name2type(inst->default_method_name);
-	if (inst->default_method < 0) {
-		ERROR("rlm_eap_peap: Unknown EAP type %s", inst->default_method_name);
+	if (!inst->default_method) {
+		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
+				   inst->default_method_name);
 		return -1;
 	}
 

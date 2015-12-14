@@ -77,7 +77,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
-			cf_log_err_cs(cs, "No dictionary definition for EAP method %s", name);
+			cf_log_err_cs(cs, "Unknown EAP type %s", name);
 			return -1;
 		}
 
@@ -139,8 +139,8 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	 */
 	method = eap_name2type(inst->default_method_name);
 	if (method == PW_EAP_INVALID) {
-		cf_log_err_cs(cs, "No dictionary definition for default EAP method '%s'",
-			      inst->default_method_name);
+		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
+				   inst->default_method_name);
 		return -1;
 	}
 
