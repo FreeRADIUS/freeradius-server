@@ -945,96 +945,6 @@ static bool pass2_fixup_map(modgroup *g)
 }
 #endif
 
-/*
- *	Do a second-stage pass on compiling the modules.
- */
-bool modcall_pass2(modcallable *mc)
-{
-	char const *name2;
-	modcallable *c;
-	modgroup *g;
-
-	for (c = mc; c != NULL; c = c->next) {
-		switch (c->type) {
-		default:
-			rad_assert(0 == 1);
-			break;
-
-#ifdef WITH_UNLANG
-		case MOD_UPDATE:
-			break;
-
-		case MOD_MAP:
-			break;
-
-		case MOD_XLAT:   /* @todo: pre-parse xlat's */
-		case MOD_BREAK:
-		case MOD_RETURN:
-#endif
-
-		case MOD_SINGLE:
-			c->debug_name = c->name;
-			break;	/* do nothing */
-
-#ifdef WITH_UNLANG
-		case MOD_IF:
-		case MOD_ELSIF:
-		case MOD_SWITCH:
-		case MOD_CASE:
-		case MOD_FOREACH:
-		case MOD_ELSE:
-			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;
-
-			if (!modcall_pass2(g->children)) return false;
-			g->done_pass2 = true;
-			break;
-
-		case MOD_POLICY:
-			g = mod_callabletogroup(c);
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name1(g->cs));
-			goto do_recurse;
-#endif
-
-		case MOD_GROUP:
-		case MOD_LOAD_BALANCE:
-		case MOD_REDUNDANT_LOAD_BALANCE:
-			c->debug_name = unlang_keyword[c->type];
-
-#ifdef WITH_UNLANG
-		do_recurse:
-#endif
-			g = mod_callabletogroup(c);
-			if (!g->cs) {
-				c->debug_name = mc->name; /* for authorize, etc. */
-
-			} else if (c->type == MOD_GROUP) { /* for Auth-Type, etc. */
-				char const *name1 = cf_section_name1(g->cs);
-
-				if (strcmp(name1, unlang_keyword[c->type]) != 0) {
-					name2 = cf_section_name2(g->cs);
-
-					if (!name2) {
-						c->debug_name = name1;
-					} else {
-						c->debug_name = talloc_asprintf(c, "%s %s", name1, name2);
-					}
-				}
-			}
-
-			if (g->done_pass2) goto do_next;
-			if (!modcall_pass2(g->children)) return false;
-			g->done_pass2 = true;
-			break;
-		}
-
-	do_next:
-		rad_assert(c->debug_name != NULL);
-	}
-
-	return true;
-}
-
 void modcall_debug(modcallable *mc, int depth)
 {
 	modcallable *this;
@@ -2630,6 +2540,7 @@ static modcallable *compile_csingle(modcallable *parent, rlm_components_t compon
 	}
 
 	c->name = realname;
+	c->debug_name = realname;
 	c->type = MOD_SINGLE;
 	c->method = component;
 
@@ -2960,6 +2871,7 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 		if (!c->name) {
 			c->name = cf_section_name1(parentcs);
 		}
+		c->debug_name = c->name;
 
 		c->type = MOD_GROUP;
 		c->method = component;
@@ -2977,15 +2889,31 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 modcallable *modcall_compile_section(modcallable *parent,
 				   rlm_components_t component, CONF_SECTION *cs)
 {
-	modcallable *ret = compile_group(parent, component, cs,
-					 GROUPTYPE_SIMPLE,
-					 GROUPTYPE_SIMPLE, MOD_GROUP);
+	char const *name1, *name2;
+	modcallable *c;
 
-	if (rad_debug_lvl > 3) {
-		modcall_debug(ret, 2);
+	c = compile_group(parent, component, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_GROUP);
+	if (!c) return NULL;
+
+	/*
+	 *	The name / debug name are set to "group".  We want
+	 *	that to be a little more informative.
+	 */
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
+	c->name = name1;
+
+	if (!name2) {
+		c->debug_name = name1;
+	} else {
+		c->debug_name = talloc_asprintf(c, "%s %s", name1, name2);
 	}
 
-	return ret;
+	if (rad_debug_lvl > 3) {
+		modcall_debug(c, 2);
+	}
+
+	return c;
 }
 
 void modcall_append(modcallable *parent, modcallable *this)

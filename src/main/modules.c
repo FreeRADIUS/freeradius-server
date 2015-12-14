@@ -1348,16 +1348,6 @@ static int virtual_server_compile(CONF_SECTION *cs)
 }
 
 
-static int pass2_cb(UNUSED void *ctx, void *data)
-{
-	indexed_modcallable *this = data;
-
-	if (!modcall_pass2(this->modulelist)) return -1;
-
-	return 0;
-}
-
-
 static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
 {
 	uint32_t value;
@@ -1587,7 +1577,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 int virtual_servers_init(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
-	virtual_server_t *server;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
 
@@ -1598,32 +1587,6 @@ int virtual_servers_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		if (virtual_server_compile(cs) < 0) {
-			return -1;
-		}
-	}
-
-	/*
-	 *	Now that we've loaded everything, run pass 2 over the
-	 *	conditions and xlats.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
-		int i;
-		char const *name2;
-
-		name2 = cf_section_name2(cs);
-
-		server = virtual_server_find(name2);
-		if (!server) continue;
-
-		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (!modcall_pass2(server->mc[i])) return -1;
-		}
-
-		if (server->components &&
-		    (rbtree_walk(server->components, RBTREE_IN_ORDER,
-				 pass2_cb, NULL) != 0)) {
 			return -1;
 		}
 	}

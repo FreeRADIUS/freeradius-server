@@ -55,11 +55,6 @@ modcallable *modcall_compile_section(modcallable *parent,
 modcallable *modcall_compile(TALLOC_CTX *ctx, modcallable **parent, rlm_components_t component, CONF_ITEM *ci,
 				     char const **modname);
 
-/*
- *	Do the second pass on compiling the modules.
- */
-bool modcall_pass2(modcallable *mc);
-
 /* Add an entry to the end of a modgroup */
 void modcall_append(modcallable *parent, modcallable *this);
 
