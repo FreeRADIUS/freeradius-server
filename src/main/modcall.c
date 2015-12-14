@@ -1951,16 +1951,8 @@ static modcallable *compile_group(modcallable *parent, rlm_components_t componen
 	 *	FIXME: We may also want to put the names into a
 	 *	rbtree, so that groups can reference each other...
 	 */
-	c->name = cf_section_name2(cs);
-	if (!c->name) {
-		c->name = cf_section_name1(cs);
-		if ((strcmp(c->name, "group") == 0) ||
-		    (strcmp(c->name, "redundant") == 0)) {
-			c->name = "";
-		} else if (c->type == MOD_GROUP) {
-			c->type = MOD_POLICY;
-		}
-	}
+	c->name = unlang_keyword[c->type];
+	c->debug_name = c->name;
 
 	return compile_children(g, parent, component, grouptype, parentgrouptype);
 }
@@ -2261,6 +2253,7 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 		return NULL;
 	}
 
+	c->name = unlang_keyword[c->type];
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 
 	g = mod_callabletogroup(c);
@@ -2356,6 +2349,7 @@ static modcallable *compile_if(modcallable *parent, rlm_components_t component, 
 	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
+	c->name = unlang_keyword[c->type];
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name2(cs));
 
 	g = mod_callabletogroup(c);
@@ -2434,7 +2428,8 @@ static modcallable *compile_else(modcallable *parent,
 
 	if (!c) return c;
 
-	c->debug_name = unlang_keyword[c->type];
+	c->name = unlang_keyword[c->type];
+	c->debug_name = c->name;
 
 	return c;
 }
@@ -2490,6 +2485,8 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 static modcallable *compile_redundant(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
 				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
+	modcallable *c;
+
 	/*
 	 *	No children?  Die!
 	 */
@@ -2502,7 +2499,13 @@ static modcallable *compile_redundant(modcallable *parent, rlm_components_t comp
 		return NULL;
 	}
 
-	return compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) return NULL;
+
+	c->name = unlang_keyword[c->type];
+	c->debug_name = c->name;
+
+	return c;
 }
 
 
@@ -2864,6 +2867,9 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 			 *	group foo { ...
 			 */
 			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
+
+			c->name = cf_section_name1(subcs);
+			c->debug_name = c->name;
 		}
 
 		/*
