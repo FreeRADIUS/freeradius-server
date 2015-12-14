@@ -564,12 +564,16 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	 *	this attack vector is unlikely.
 	 */
 	rad_suid_up();	/* Need to be root to change euid and egid */
-	if ((uid != (uid_t)-1) && (rad_seuid(uid) < 0)) {
+	/*
+	 *	Group needs to be changed first, because if we change
+	 *	to a non root user, we can no longer set it.
+	 */
+	if ((gid != (gid_t)-1) && (rad_segid(gid) < 0)) {
 		rad_suid_down();
 		goto error;
 	}
-	if ((gid != (gid_t)-1) && (rad_segid(gid) < 0)) {
-		rad_seuid(euid);
+	if ((uid != (uid_t)-1) && (rad_seuid(uid) < 0)) {
+		rad_segid(egid);
 		rad_suid_down();
 		goto error;
 	}
