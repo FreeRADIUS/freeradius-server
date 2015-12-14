@@ -1496,7 +1496,7 @@ int rad_seuid(uid_t uid)
 		struct passwd *passwd;
 
 		if (rad_getpwuid(NULL, &passwd, uid) < 0) return -1;
-		fr_strerror_printf("Failed setting euid to %s", passwd->pw_name);
+		fr_strerror_printf("Failed setting euid to %s: %s", passwd->pw_name, fr_syserror(errno));
 		talloc_free(passwd);
 
 		return -1;
@@ -1517,7 +1517,7 @@ int rad_segid(gid_t gid)
 		struct group *group;
 
 		if (rad_getgrgid(NULL, &group, gid) < 0) return -1;
-		fr_strerror_printf("Failed setting egid to %s", group->gr_name);
+		fr_strerror_printf("Failed setting egid to %s: %s", group->gr_name, fr_syserror(errno));
 		talloc_free(group);
 
 		return -1;
