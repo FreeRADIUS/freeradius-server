@@ -1605,7 +1605,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action(modcallable *c, CONF_PAIR *cp)
+static int compile_action_pair(modcallable *c, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
@@ -1657,6 +1657,36 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 	}
 
 	return 1;
+}
+
+static bool compile_action_section(modcallable *c, CONF_ITEM *ci)
+{
+	CONF_ITEM *csi;
+	CONF_SECTION *cs;
+
+	if (!cf_item_is_section(ci)) return c;
+
+	/*
+	 *	Over-ride the default return codes of the module.
+	 */
+	cs = cf_item_to_section(ci);
+	for (csi=cf_item_find_next(cs, NULL);
+	     csi != NULL;
+	     csi=cf_item_find_next(cs, csi)) {
+
+		if (cf_item_is_section(csi)) {
+			cf_log_err(csi, "Invalid subsection.  Expected 'action = value'");
+			return false;
+		}
+
+		if (!cf_item_is_pair(csi)) continue;
+
+		if (!compile_action_pair(c, cf_item_to_pair(csi))) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
@@ -1747,6 +1777,38 @@ static void add_child(modgroup *g, modcallable *c)
 	c->parent = mod_grouptocallable(g);
 }
 
+/*
+ *	compile 'actions { ... }' inside of another group.
+ */
+static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SECTION *subcs)
+{
+	CONF_ITEM *ci;
+
+	ci = cf_section_to_item(subcs);
+
+	if (cf_item_find_next(cs, ci) != NULL) {
+		cf_log_err(ci, "'actions' MUST be the last block in a section");
+		return false;
+	}
+
+	if (cf_section_name2(subcs) != NULL) {
+		cf_log_err(ci, "Invalid name for 'actions' section");
+		return false;
+	}
+
+	/*
+	 *	Over-riding actions makes no sense in some situations.
+	 *	They just don't make sense for many group types.
+	 */
+	if (!((c->type == MOD_CASE) || (c->type == MOD_IF) || (c->type == MOD_ELSIF) ||
+	      (c->type == MOD_ELSE))) {
+		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_keyword[c->type]);
+		return false;
+	}
+
+	return compile_action_section(c, ci);
+}
+
 
 static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_components_t component,
 				     grouptype_t grouptype, grouptype_t parentgrouptype)
@@ -1768,11 +1830,28 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 		 *	to modules with updated return codes.
 		 */
 		if (cf_item_is_section(ci)) {
-			char const *junk = NULL;
+			char const *name1 = NULL;
 			modcallable *single;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
-			single = compile_item(c, component, ci, grouptype, &junk);
+			/*
+			 *	"actions" apply to the current group.
+			 *	It's not a subgroup.
+			 */
+			name1 = cf_section_name1(subcs);
+			if (strcmp(name1, "actions") == 0) {
+				if (!compile_action_subsection(c, g->cs, subcs)) {
+					talloc_free(c);
+					return NULL;
+				}
+
+				continue;
+			}
+
+			/*
+			 *	Otherwise it's a real keyword.
+			 */
+			single = compile_item(c, component, ci, grouptype, &name1);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
 				       cf_section_name1(subcs));
@@ -1818,7 +1897,7 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 				/*
 				 *	Or a module instance with action.
 				 */
-			} else if (!compile_action(c, cp)) {
+			} else if (!compile_action_pair(c, cp)) {
 				talloc_free(c);
 				return NULL;
 			} /* else it worked */
@@ -2518,39 +2597,6 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 }
 
 
-static modcallable *compile_action_override(CONF_ITEM *ci, modcallable *c)
-{
-	CONF_ITEM *csi;
-	CONF_SECTION *cs;
-
-	if (!cf_item_is_section(ci)) return c;
-
-	/*
-	 *	Over-ride the default return codes of the module.
-	 */
-	cs = cf_item_to_section(ci);
-	for (csi=cf_item_find_next(cs, NULL);
-	     csi != NULL;
-	     csi=cf_item_find_next(cs, csi)) {
-
-		if (cf_item_is_section(csi)) {
-			cf_log_err(csi, "Subsection of module instance call not allowed");
-			talloc_free(c);
-			return NULL;
-		}
-
-		if (!cf_item_is_pair(csi)) continue;
-
-		if (!compile_action(c, cf_item_to_pair(csi))) {
-			talloc_free(c);
-			return NULL;
-		}
-	}
-
-	return c;
-}
-
-
 static modcallable *compile_csingle(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t grouptype, char const *realname)
 {
 	modcallable *c;
@@ -2584,7 +2630,12 @@ static modcallable *compile_csingle(modcallable *parent, rlm_components_t compon
 	c->type = MOD_SINGLE;
 	c->method = component;
 
-	return compile_action_override(ci, c);
+	if (!compile_action_section(c, ci)) {
+		talloc_free(c);
+		return NULL;
+	}
+
+	return c;
 }
 
 typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
@@ -2825,7 +2876,11 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		 *	Else we have a reference to a policy, and that reference
 		 *	over-rides the return codes for the policy!
 		 */
-		return compile_action_override(ci, c);
+		if (!compile_action_section(c, ci)) {
+			talloc_free(c);
+			return NULL;
+		}
+		return c;
 	}
 
 	/*

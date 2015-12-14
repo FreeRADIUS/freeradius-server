@@ -1,0 +1,29 @@
+#
+#  PRE: update
+#
+#  Static if condition
+#
+if (1) {
+	update reply {
+		Filter-Id := "filter"
+	}
+
+	#
+	#  We're not running the 'pap' module, so
+	#  we have to set this ourselves.
+	#
+	update control {
+		Auth-Type := pap
+	}
+
+	# not at the end of a section
+	actions {		# ERROR
+		noop = return
+	}
+
+	ok
+}
+
+update reply {
+	Filter-Id := "fail"
+}

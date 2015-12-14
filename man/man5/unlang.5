@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "24 November 2014" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "14 December 2015" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -88,6 +88,29 @@ returned false, and if the specified condition evaluates to true.
 	elsif (condition) {
 .br
 		...
+.br
+	}
+.DE
+.IP actions
+.br
+Allows for the setting of actions inside of a block.  The 'actions'
+block MUST be the last block in the section.  The enclosing block MUST
+be one of 'if', 'else', 'elsif', or 'case'.
+
+See MODULE RETURN CODES, below, for a description of the actions and
+their meanings.
+.DS
+	if (&User-Name == 'bob') {
+.br
+		...
+.br
+		actions {
+.br
+			ok = 1
+.br
+			fail = return
+.br
+		}
 .br
 	}
 .DE
