@@ -67,18 +67,19 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	if (inst->auth_type_name && *inst->auth_type_name) {
-		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->auth_type_name);
-		if (!dval) {
-			ERROR("rlm_eap_gtc: Unknown Auth-Type %s",
-			      inst->auth_type_name);
-			return -1;
-		}
-
-		inst->auth_type = dval->value;
-	} else {
-		inst->auth_type = PW_AUTH_TYPE_LOCAL;
+	if (!inst->auth_type_name) {
+		ERROR("rlm_eap_gtc: You must specify 'auth_type'");
+		return -1;
 	}
+
+	dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->auth_type_name);
+	if (!dval) {
+		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s",
+				   inst->auth_type_name);
+		return -1;
+	}
+	inst->auth_type = dval->value;
+
 	return 0;
 }
 
