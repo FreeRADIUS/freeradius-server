@@ -108,6 +108,11 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
+		ERROR("rlm_eap_ttls: Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
+	}
+
 	/*
 	 *	Convert the name to an integer, to make it easier to
 	 *	handle.
