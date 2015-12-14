@@ -563,9 +563,14 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	 *	access to the directory we just created or verified, so
 	 *	this attack vector is unlikely.
 	 */
-	if ((uid != (uid_t)-1) && (rad_seuid(uid) < 0)) goto error;
+	rad_suid_up();	/* Need to be root to change euid and egid */
+	if ((uid != (uid_t)-1) && (rad_seuid(uid) < 0)) {
+		rad_suid_down();
+		goto error;
+	}
 	if ((gid != (gid_t)-1) && (rad_segid(gid) < 0)) {
 		rad_seuid(euid);
+		rad_suid_down();
 		goto error;
 	}
 
@@ -581,8 +586,16 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	if ((unlinkat(dir_fd, name, 0) < 0) && (errno != ENOENT)) {
 		fr_strerror_printf("Failed removing stale socket: %s", fr_syserror(errno));
 	sock_error:
+		/*
+		 *	Restore previous effective UID/GID
+		 */
 		if (uid != (uid_t)-1) rad_seuid(euid);
 		if (gid != (gid_t)-1) rad_segid(egid);
+		/*
+		 *	Then SUID down, to ensure rad_suid_up/down continues
+		 *	to work correctly.
+		 */
+		rad_suid_down();
 		goto error;
 	}
 
@@ -603,7 +616,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 #endif
 	if (len >= sizeof(salocal.sun_path)) {
 		fr_strerror_printf("Path too long in socket filename");
-		goto error;
+		goto sock_error;
 	}
 
 	memset(&salocal, 0, sizeof(salocal));
@@ -687,6 +700,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 
 	if (uid != (uid_t)-1) rad_seuid(euid);
 	if (gid != (gid_t)-1) rad_segid(egid);
+	rad_suid_down();
 
 	close(dir_fd);
 	close(path_fd);
