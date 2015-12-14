@@ -44,7 +44,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request) CC_HINT(nonn
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
 
-static int mod_instantiate(CONF_SECTION *cs, void *instance)
+static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 {
 	int		i, ret;
 	eap_type_t	method;
@@ -670,7 +670,7 @@ module_t rlm_eap = {
 	.name		= "eap",
 	.inst_size	= sizeof(rlm_eap_t),
 	.config		= module_config,
-	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
