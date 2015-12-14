@@ -1493,10 +1493,11 @@ void rad_suid_down_permanent(void)
 int rad_seuid(uid_t uid)
 {
 	if (seteuid(uid) < 0) {
+		int sete_errno = errno;	/* errno sets overwritten by rad_getpwuid */
 		struct passwd *passwd;
 
 		if (rad_getpwuid(NULL, &passwd, uid) < 0) return -1;
-		fr_strerror_printf("Failed setting euid to %s: %s", passwd->pw_name, fr_syserror(errno));
+		fr_strerror_printf("Failed setting euid to %s: %s", passwd->pw_name, fr_syserror(sete_errno));
 		talloc_free(passwd);
 
 		return -1;
@@ -1514,10 +1515,11 @@ int rad_seuid(uid_t uid)
 int rad_segid(gid_t gid)
 {
 	if (setegid(gid) < 0) {
+		int sete_errno = errno;	/* errno sets overwritten by rad_getgrgid */
 		struct group *group;
 
 		if (rad_getgrgid(NULL, &group, gid) < 0) return -1;
-		fr_strerror_printf("Failed setting egid to %s: %s", group->gr_name, fr_syserror(errno));
+		fr_strerror_printf("Failed setting egid to %s: %s", group->gr_name, fr_syserror(sete_errno));
 		talloc_free(group);
 
 		return -1;
