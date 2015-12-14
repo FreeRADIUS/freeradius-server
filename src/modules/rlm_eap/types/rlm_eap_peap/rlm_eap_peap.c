@@ -87,6 +87,11 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	if (cf_section_parse(cs, inst, module_config) < 0) return -1;
 
+	if (!inst->virtual_server) {
+		ERROR("rlm_eap_ttls: A 'virtual_server' MUST be defined for security");
+		return -1;
+	}
+
 	/*
 	 *	Convert the name to an integer, to make it easier to
 	 *	handle.
