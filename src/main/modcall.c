@@ -3778,6 +3778,12 @@ bool modcall_pass2(modcallable *mc)
 				goto do_children;
 			}
 
+			if (g->vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+				if (!pass2_fixup_undefined(cf_section_to_item(g->cs), g->vpt)) {
+					return false;
+				}
+			}
+
 			/*
 			 *	Compile and sanity check xlat
 			 *	expansions.

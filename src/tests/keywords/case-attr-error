@@ -1,0 +1,20 @@
+# PRE: case-empty
+#
+update reply {
+	Filter-Id := "fail"
+}
+
+switch &reply:Filter-Id {
+	# deliberately empty
+	case "filter" {
+	}
+
+	case &Not-Dynamically-Allocated {	# ERROR
+		update reply {
+			Filter-Id := "fail"
+		}
+	}
+
+	case {
+	}
+}
