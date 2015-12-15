@@ -620,6 +620,7 @@ static ssize_t xlat_xlat(char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
+	ssize_t slen;
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
@@ -631,7 +632,17 @@ static ssize_t xlat_xlat(char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	return radius_xlat(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
+	RDEBUG2("EXPAND %s", fmt);
+	RINDENT();
+
+	slen = radius_xlat(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
+	REXDENT();
+
+	if (slen <= 0) return slen;
+
+	RDEBUG2("--> %s", *out);
+
+	return slen;
 }
 
 /** Dynamically change the debugging level for the current request
@@ -2284,7 +2295,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			talloc_free(str);
 			return NULL;
 		}
-		RDEBUG2("EXPAND %s", node->xlat->name);
+		RDEBUG2("EXPAND X %s", node->xlat->name);
 		RDEBUG2("   --> %s", str);
 		break;
 
@@ -2561,6 +2572,9 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	ssize_t len;
 	xlat_exp_t *node;
 
+	RDEBUG2("EXPAND %s", fmt);
+	RINDENT();
+
 	/*
 	 *	Give better errors than the old code.
 	 */
@@ -2571,19 +2585,21 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 		} else {
 			*out = talloc_zero_array(request, char, 1);
 		}
+		REXDENT();
 		return 0;
 	}
 
 	if (len < 0) {
 		if (*out) **out = '\0';
+		REXDENT();
 		return -1;
 	}
 
 	len = xlat_expand_struct(out, outlen, request, node, escape, escape_ctx);
 	talloc_free(node);
 
-	RDEBUG2("EXPAND %s", fmt);
-	RDEBUG2("   --> %s", *out);
+	REXDENT();
+	RDEBUG2("--> %s", *out);
 
 	return len;
 }

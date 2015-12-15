@@ -809,20 +809,24 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		str = NULL;
-		slen = radius_axlat_struct(&str, request, map->rhs->tmpl_xlat, NULL, NULL);
-		if (slen < 0) {
-			rcode = slen;
-			goto error;
-		}
-
 		/*
 		 *	We do the debug printing because radius_axlat_struct
 		 *	doesn't have access to the original string.  It's been
 		 *	mangled during the parsing to xlat_exp_t
 		 */
 		RDEBUG2("EXPAND %s", map->rhs->name);
-		RDEBUG2("   --> %s", str);
+		RINDENT();
+
+		str = NULL;
+		slen = radius_axlat_struct(&str, request, map->rhs->tmpl_xlat, NULL, NULL);
+		REXDENT();
+
+		if (slen < 0) {
+			rcode = slen;
+			goto error;
+		}
+
+		RDEBUG2("--> %s", str);
 
 		rcode = fr_pair_value_from_str(new, str, -1);
 		talloc_free(str);
