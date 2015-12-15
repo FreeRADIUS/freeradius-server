@@ -260,11 +260,13 @@ static void fr_connection_link_head(fr_connection_pool_t *pool, fr_connection_t 
  */
 static void fr_connection_exec_trigger(fr_connection_pool_t *pool, char const *name_suffix)
 {
-	char name[64];
+	char	name[128];
+
 	rad_assert(pool != NULL);
 	rad_assert(name_suffix != NULL);
+
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, name_suffix);
-	exec_trigger(NULL, pool->cs, name, true);
+	exec_trigger(NULL, pool->cs, name, true, NULL);
 }
 
 /** Find a connection handle in the connection list

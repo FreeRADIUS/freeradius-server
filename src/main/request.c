@@ -260,7 +260,7 @@ static int _request_data_free(request_data_t *this)
  * @param[in] unique_ptr	Identifier for the data.
  * @param[in] unique_int	Qualifier for the identifier.
  * @param[in] opaque		Data to associate with the request.  May be NULL.
- * @param[in] free_on_replace	Free opaque data if the request_data is replaced.
+ * @param[in] free_on_replace	Free opaque data if this request_data is replaced.
  * @param[in] free_on_parent	Free opaque data if the request is freed.
  *				Must not be set if the opaque data is also parented by
  *				the request or state (double free).

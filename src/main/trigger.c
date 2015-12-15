@@ -1,0 +1,243 @@
+/*
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/*
+ * $Id$
+ *
+ * @file trigger.c
+ * @brief Execute scripts when a server event occurs.
+ *
+ * @copyright 2015 The FreeRADIUS server project
+ */
+
+RCSID("$Id$")
+
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+
+static CONF_SECTION *exec_trigger_main, *exec_trigger_subcs;
+
+#define REQUEST_INDEX_TRIGGER_NAME	1
+#define REQUEST_INDEX_TRIGGER_ARGS	2
+
+/** Retrieve attributes from a special trigger list
+ *
+ */
+static ssize_t xlat_trigger(char **out, UNUSED size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    REQUEST *request, char const *fmt)
+{
+	VALUE_PAIR		*head;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp;
+
+	if (!request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME)) {
+		ERROR("trigger xlat may only be used in a trigger command");
+		return -1;
+	}
+
+	head = request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS);
+	/*
+	 *	No arguments available.
+	 */
+	if (!head) return -1;
+
+	da = fr_dict_attr_by_name(NULL, fmt);
+	if (!da) {
+		ERROR("Unknown attribute \"%s\"", fmt);
+		return -1;
+	}
+
+	vp = fr_pair_find_by_da(head, da, TAG_ANY);
+	if (!vp) {
+		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
+		return -1;
+	}
+	*out = fr_pair_value_asprint(request, vp, '\0');
+
+	return talloc_array_length(*out) - 1;
+}
+
+/** Set the global trigger section exec_trigger will search in
+ *
+ * @note Triggers are used by the connection pool, which is used in the server library
+ *	which may not have the mainconfig available.  Additionally, utilities may want
+ *	to set their own root config sections.
+ *
+ * @param cs to use as global trigger section
+ */
+void exec_trigger_init(CONF_SECTION *cs)
+{
+	exec_trigger_main = cs;
+	exec_trigger_subcs = cf_section_sub_find(cs, "trigger");
+
+	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0);
+}
+
+static void time_free(void *data)
+{
+	free(data);
+}
+
+/** Execute a trigger - call an executable to process an event
+ *
+ * @param request	The current request.
+ * @param cs		to search for triggers in.
+ *			If cs is not NULL, the portion after the last '.' in name is used for the trigger.
+ *			If cs is NULL, the entire name is used to find the trigger in the global trigger
+ *			section.
+ * @param name		the path relative to the global trigger section ending in the trigger name
+ *			e.g. module.ldap.pool.start.
+ * @param quench	whether to rate limit triggers.
+ * @return 		- 0 on success.
+ *			- -1 on failure.
+ */
+int exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench, VALUE_PAIR *args)
+{
+	CONF_SECTION	*subcs;
+
+	CONF_ITEM	*ci;
+	CONF_PAIR	*cp;
+
+	char const	*attr;
+	char const	*value;
+
+	VALUE_PAIR	*vp;
+
+	REQUEST		*fake = NULL;
+	int		ret;
+
+	/*
+	 *	Use global "trigger" section if no local config is given.
+	 */
+	if (!cs) {
+		cs = exec_trigger_main;
+		attr = name;
+	} else {
+		/*
+		 *	Try to use pair name, rather than reference.
+		 */
+		attr = strrchr(name, '.');
+		if (attr) {
+			attr++;
+		} else {
+			attr = name;
+		}
+	}
+
+	/*
+	 *	Find local "trigger" subsection.  If it isn't found,
+	 *	try using the global "trigger" section, and reset the
+	 *	reference to the full path, rather than the sub-path.
+	 */
+	subcs = cf_section_sub_find(cs, "trigger");
+	if (!subcs && exec_trigger_main && (cs != exec_trigger_main)) {
+		subcs = exec_trigger_subcs;
+		attr = name;
+	}
+	if (!subcs) return -1;
+
+	ci = cf_reference_item(subcs, exec_trigger_main, attr);
+	if (!ci) {
+		ERROR("No such item in trigger section: %s", attr);
+		return -1;
+	}
+
+	if (!cf_item_is_pair(ci)) {
+		ERROR("Trigger is not a configuration variable: %s", attr);
+		return -1;
+	}
+
+	cp = cf_item_to_pair(ci);
+	if (!cp) return -1;
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		ERROR("Trigger has no value: %s", name);
+		return -1;
+	}
+
+	/*
+	 *	May be called for Status-Server packets.
+	 */
+	vp = NULL;
+	if (request && request->packet) vp = request->packet->vps;
+
+	/*
+	 *	Perform periodic quenching.
+	 */
+	if (quench) {
+		time_t *last_time;
+
+		last_time = cf_data_find(cs, value);
+		if (!last_time) {
+			last_time = rad_malloc(sizeof(*last_time));
+			*last_time = 0;
+
+			if (cf_data_add(cs, value, last_time, time_free) < 0) {
+				free(last_time);
+				last_time = NULL;
+			}
+		}
+
+		/*
+		 *	Send the quenched traps at most once per second.
+		 */
+		if (last_time) {
+			time_t now = time(NULL);
+			if (*last_time == now) return -1;
+
+			*last_time = now;
+		}
+	}
+
+	/*
+	 *	radius_exec_program always needs a request.
+	 */
+	if (!request) request = fake = request_alloc(NULL);
+
+	DEBUG("Trigger \"%s\": %s", name, value);
+
+	/*
+	 *	Add the args to the request data, so they can be picked up by the
+	 *	xlat_trigger function.
+	 */
+	if (args && (request_data_add(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS, args,
+				      false, false, false) < 0)) {
+		ERROR("Failed adding trigger request data");
+		return -1;
+	}
+
+	{
+		void *name_tmp;
+
+		memcpy(&name_tmp, &name, sizeof(name_tmp));
+
+		if (request_data_add(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME,
+				     name_tmp, false, false, false) < 0) {
+			ERROR("Failed marking request as inside trigger");
+			return -1;
+		}
+	}
+
+	ret = radius_exec_program(request, NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
+	if (fake) talloc_free(fake);
+
+	request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME);
+	request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS);
+
+	return ret;
+}

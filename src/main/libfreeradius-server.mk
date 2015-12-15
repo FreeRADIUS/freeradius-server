@@ -12,6 +12,7 @@ SOURCES	:=	conffile.c \
 		regex.c \
 		request.c \
 		threads.c \
+		trigger.c \
 		tmpl.c \
 		util.c \
 		version.c \

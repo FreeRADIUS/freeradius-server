@@ -868,7 +868,7 @@ static bool request_max_time(REQUEST *request)
 			      request->number,
 			      request->component ? request->component : "<core>",
 			      request->module ? request->module : "<core>");
-			exec_trigger(request, NULL, "server.thread.unresponsive", true);
+			exec_trigger(request, NULL, "server.thread.unresponsive", true, NULL);
 		}
 #endif
 		/*
@@ -1647,7 +1647,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			   WARN("Please check the configuration file.\n"
 				"\tThe value for 'max_requests' is probably set too low.\n"));
 
-		exec_trigger(NULL, NULL, "server.max_requests", true);
+		exec_trigger(NULL, NULL, "server.max_requests", true, NULL);
 		return 0;
 	}
 
@@ -2399,7 +2399,7 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 
 	home->state = HOME_STATE_ALIVE;
 	home->response_timeouts = 0;
-	exec_trigger(request, home->cs, "home_server.alive", false);
+	exec_trigger(request, home->cs, "home_server.alive", false, NULL);
 	home->currently_outstanding = 0;
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
@@ -3562,7 +3562,7 @@ static void home_trigger(home_server_t *home, char const *trigger)
 	my_packet->dst_ipaddr = home->ipaddr;
 	my_packet->src_ipaddr = home->src_ipaddr;
 
-	exec_trigger(my_request, home->cs, trigger, false);
+	exec_trigger(my_request, home->cs, trigger, false, NULL);
 	talloc_free(my_request);
 }
 
@@ -5068,7 +5068,7 @@ static void handle_signal_self(int flag)
 
 		last_hup = when;
 
-		exec_trigger(NULL, NULL, "server.signal.hup", true);
+		exec_trigger(NULL, NULL, "server.signal.hup", true, NULL);
 		fr_event_loop_exit(el, 0x80);
 	}
 
