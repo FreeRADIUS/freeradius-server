@@ -58,6 +58,7 @@ typedef struct rlm_python_t {
 	void		*libpython;
 	PyThreadState	*main_thread_state;
 	char const	*python_path;
+	char const	*module_configuration;
 
 	struct py_function_def
 	instantiate,
@@ -102,6 +103,7 @@ static CONF_PARSER module_config[] = {
 #undef A
 
 	{ FR_CONF_OFFSET("python_path", PW_TYPE_STRING, rlm_python_t, python_path) },
+	{ FR_CONF_OFFSET("module_configuration", PW_TYPE_STRING, rlm_python_t, module_configuration) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -237,6 +239,14 @@ static int mod_init(rlm_python_t *inst)
 					     radiusd_constants[i].value)) < 0) {
 			goto failed;
 		}
+	}
+
+	/*
+	 * add module configuration as a constant
+	 */
+	if ((PyModule_AddStringConstant(radiusd_module, "module_configuration",
+			inst->module_configuration)) < 0){
+		goto failed;
 	}
 
 #ifdef HAVE_PTHREAD_H
