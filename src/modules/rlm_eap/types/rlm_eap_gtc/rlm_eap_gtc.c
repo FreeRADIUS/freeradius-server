@@ -128,6 +128,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
  */
 static int mod_process(void *instance, eap_session_t *eap_session)
 {
+	int		rcode;
 	VALUE_PAIR	*vp;
 	eap_round_t	*eap_round = eap_session->this_round;
 	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *)instance;
@@ -148,70 +149,40 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 	}
 
 	/*
-	 *	Handle passwords here.
-	 */
-	if (inst->auth_type == PW_AUTH_TYPE_LOCAL) {
-		/*
-		 *	For now, do cleartext password authentication.
-		 */
-		vp = fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
-		if (!vp) {
-			REDEBUG2("Cleartext-Password is required for authentication");
-			eap_round->request->code = PW_EAP_FAILURE;
-			return 0;
-		}
-
-		if (eap_round->response->type.length != vp->vp_length) {
-			REDEBUG2("Passwords are of different length. %u %u",
-				 (unsigned)eap_round->response->type.length, (unsigned)vp->vp_length);
-			eap_round->request->code = PW_EAP_FAILURE;
-			return 0;
-		}
-
-		if (memcmp(eap_round->response->type.data, vp->vp_strvalue, vp->vp_length) != 0) {
-			REDEBUG2("Passwords are different");
-			eap_round->request->code = PW_EAP_FAILURE;
-			return 0;
-		}
-
-	/*
 	 *	EAP packets can be ~64k long maximum, and
 	 *	we don't like that.
 	 */
-	} else if (eap_round->response->type.length <= 128) {
-		int rcode;
-
-		/*
-		 *	If there was a User-Password in the request,
-		 *	why the heck are they using EAP-GTC?
-		 */
-		fr_pair_delete_by_num(&request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
-
-		vp = pair_make_request("User-Password", NULL, T_OP_EQ);
-		if (!vp) return 0;
-
-		fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
-
-		/*
-		 *	Add the password to the request, and allow
-		 *	another module to do the work of authenticating it.
-		 */
-		request->password = vp;
-
-		/*
-		 *	This is a wild & crazy hack.
-		 */
-		rcode = process_authenticate(inst->auth_type, request);
-		if (rcode != RLM_MODULE_OK) {
-			eap_round->request->code = PW_EAP_FAILURE;
-			return 0;
-		}
-
-	} else {
+	if (eap_round->response->type.length > 128) {
 		ERROR("rlm_eap_gtc: Response is too large to understand");
 		eap_round->request->code = PW_EAP_FAILURE;
 		return 0;
+	}
 
+
+	/*
+	 *	If there was a User-Password in the request,
+	 *	why the heck are they using EAP-GTC?
+	 */
+	fr_pair_delete_by_num(&request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+
+	vp = pair_make_request("User-Password", NULL, T_OP_EQ);
+	if (!vp) return 0;
+
+	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
+
+	/*
+	 *	Add the password to the request, and allow
+	 *	another module to do the work of authenticating it.
+	 */
+	request->password = vp;
+
+	/*
+	 *	Call the authenticate section of the *current* virtual server.
+	 */
+	rcode = process_authenticate(inst->auth_type, request);
+	if (rcode != RLM_MODULE_OK) {
+		eap_round->request->code = PW_EAP_FAILURE;
+		return 0;
 	}
 
 	eap_round->request->code = PW_EAP_SUCCESS;
