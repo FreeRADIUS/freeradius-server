@@ -53,17 +53,6 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 };
 
 
-static int _mod_conn_free(rlm_sql_handle_t *conn)
-{
-	rlm_sql_t *inst = conn->inst;
-
-	rad_assert(inst);
-
-	exec_trigger(NULL, inst->cs, "modules.sql.close", false);
-
-	return 0;
-}
-
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	int rcode;
@@ -89,19 +78,9 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	 */
 	handle->inst = inst;
 
-	/*
-	 *	When something frees this handle the destructor set by
-	 *	the driver will be called first, closing any open sockets.
-	 *	Then we call our destructor to trigger an modules.sql.close
-	 *	event, then all the memory is freed.
-	 */
-	talloc_set_destructor(handle, _mod_conn_free);
-
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode != 0) {
 	fail:
-		exec_trigger(NULL, inst->cs, "modules.sql.fail", true);
-
 		/*
 		 *	Destroy any half opened connections.
 		 */
@@ -114,7 +93,6 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 	}
 
-	exec_trigger(NULL, inst->cs, "modules.sql.open", false);
 	return handle;
 }
 
