@@ -24,6 +24,7 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Interoperate with AD and "LmCompatibiltyLevel = 5",
 	  by always setting WBC_MSV1_0_ALLOW_MSVCHAPV2 for
 	  native winbind in rlm_mschap.
+	* TTLS and PEAP now require "virtual_server" to be a real server.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
@@ -52,6 +53,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Fix includes in installed headers.
 	* OpenSSL 1.0.1f and 1.0.1g do NOT calculate TLS 1.2 keys correctly.
 	  See raddb/mods-available/eap, "disable_tlsv1_2"
+	* Allow password change to work for MS-CHAP.  This requires 'r=0',
+	  because password changes are not retries.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
