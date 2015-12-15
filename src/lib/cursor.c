@@ -446,6 +446,7 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 		*(cursor->first) = vp->next;
 		cursor->current = vp->next;
 		cursor->next = vp->next ? vp->next->next : NULL;
+		before = NULL;
 		goto fixup;
 	}
 
@@ -467,9 +468,10 @@ fixup:
 	vp->next = NULL;			/* limit scope of fr_pair_list_free() */
 
 	/*
-	 *	Fixup cursor->found if we removed the VP it was referring to
+	 *	Fixup cursor->found if we removed the VP it was referring to,
+	 *	and point to the previous one.
 	 */
-	if (vp == cursor->found) cursor->found = cursor->current;
+	if (vp == cursor->found) cursor->found = before;
 
 	/*
 	 *	Fixup cursor->last if we removed the VP it was referring to
