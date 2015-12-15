@@ -469,7 +469,7 @@ fixup:
 	/*
 	 *	Fixup cursor->found if we removed the VP it was referring to
 	 */
-	if (vp == cursor->found) cursor->found = NULL;
+	if (vp == cursor->found) cursor->found = cursor->current;
 
 	/*
 	 *	Fixup cursor->last if we removed the VP it was referring to
