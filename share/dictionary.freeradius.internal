@@ -669,7 +669,6 @@ ATTRIBUTE	Radclient-Test-Name			2200	string internal
 #	Non-Protocol Integer Translations internal
 #
 
-VALUE	Auth-Type			Local			1
 VALUE	Auth-Type			Reject			4
 
 #
