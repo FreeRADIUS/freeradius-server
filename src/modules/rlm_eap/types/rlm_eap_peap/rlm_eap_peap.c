@@ -93,7 +93,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (!inst->virtual_server) {
-		ERROR("rlm_eap_ttls: A 'virtual_server' MUST be defined for security");
+		ERROR("rlm_eap_peap: A 'virtual_server' MUST be defined for security");
 		return -1;
 	}
 
