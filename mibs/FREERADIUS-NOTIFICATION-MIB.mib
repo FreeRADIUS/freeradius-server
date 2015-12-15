@@ -1,11 +1,16 @@
 FREERADIUS-NOTIFICATION-MIB DEFINITIONS ::= BEGIN
-       IMPORTS freeRadius
+	IMPORTS
+		MODULE-IDENTITY, NOTIFICATION-TYPE
+			FROM SNMPv2-SMI
+		freeradiusObjects
+			FROM FREERADIUS-MGMT-MIB
+		freeRadius
 			FROM FREERADIUS-SMI
-               radiusAuthServerAddress,radiusAuthClientServerPortNumber
+		radiusAuthServerAddress,radiusAuthClientServerPortNumber
 			FROM RADIUS-AUTH-CLIENT-MIB
-	       radiusAuthServIdent
+		radiusAuthServIdent
 			FROM RADIUS-AUTH-SERVER-MIB
-	       radiusd
+		radiusd
 			FROM FREERADIUS-PRODUCT-RADIUSD-MIB;
 
 freeRadiusNotificationMib MODULE-IDENTITY
@@ -29,19 +34,19 @@ freeRadiusNotificationMib MODULE-IDENTITY
 serverGlobal  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 1 }
 
 serverStart NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that the server has started"
        ::= { serverGlobal 1 }
 
 serverStop NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that the server is stopping"
        ::= { serverGlobal 2 }
 
 serverMaxRequests NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that the server has hit the max_requests limit"
        ::= { serverGlobal 3 }
@@ -49,13 +54,13 @@ serverMaxRequests NOTIFICATION-TYPE
 serverSignal  OBJECT IDENTIFIER ::= { serverGlobal 4 }
 
 signalHup NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that the server has received a HUP signal"
        ::= { serverSignal 1 }
 
 signalTerm NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that the server has received a TERM signal"
        ::= { serverSignal 2 }
@@ -63,25 +68,25 @@ signalTerm NOTIFICATION-TYPE
 serverThread  OBJECT IDENTIFIER ::= { serverGlobal 5 }
 
 threadStart NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that a thread has started"
        ::= { serverThread 1 }
 
 threadStop NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that a thread has stopped"
        ::= { serverThread 2 }
 
 threadUnresponsive NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that a child thread is unresponsive"
        ::= { serverThread 3 }
 
 threadMaxThreads NOTIFICATION-TYPE
-       OBJECTS { identity }
+       OBJECTS { radiusObject }
        STATUS current
        DESCRIPTION "Notification that the max_threads limit has been reached"
        ::= { serverThread 4 }
