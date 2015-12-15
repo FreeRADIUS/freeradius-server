@@ -1410,7 +1410,11 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	    (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0))) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
-		retry = inst->allow_retry;
+
+		/*
+		 *	A password change is NOT a retry!  We MUST have retry=0 here.
+		 */
+		retry = 0;
 		message = "Password expired";
 		rcode = RLM_MODULE_REJECT;
 
