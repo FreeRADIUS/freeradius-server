@@ -102,6 +102,7 @@ static void time_free(void *data)
  * @param name		the path relative to the global trigger section ending in the trigger name
  *			e.g. module.ldap.pool.start.
  * @param quench	whether to rate limit triggers.
+ * @param args		to make available via the %{trigger:<arg>} xlat.
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
