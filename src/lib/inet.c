@@ -1013,7 +1013,7 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 	 *	be OK.
 	 */
 	if (fr_ipaddr_from_sockaddr((struct sockaddr_storage *)&if_req.ifr_addr,
-			       sizeof(if_req.ifr_addr), &ipaddr, NULL) == 0) return -1;
+				    sizeof(if_req.ifr_addr), &ipaddr, NULL) == 0) return -1;
 	*out = ipaddr;
 
 	return 0;

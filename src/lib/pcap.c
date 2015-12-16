@@ -109,7 +109,7 @@ int fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev)
  */
 fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 {
-	fr_pcap_t *this;
+	fr_pcap_t	*this;
 
 	if (!fr_cond_assert(type >= PCAP_INTERFACE_IN && type <= PCAP_INTERFACE_IN_OUT)) {
 		fr_strerror_printf("Invalid PCAP type: %d", type);
@@ -193,6 +193,18 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	case PCAP_INTERFACE_IN:
 	case PCAP_INTERFACE_IN_OUT:
 	{
+		/*
+		 *	Also has the pleasant side effect of not allowing
+		 *	handles to be opened on "any".
+		 *
+		 *	We do this first, as it's the most specific error.
+		 */
+		pcap->if_index = if_nametoindex(pcap->name);
+		if (!pcap->if_index) {
+			fr_strerror_printf("Unknown interface \"%s\"", pcap->name);
+			return -1;
+		}
+
 #if defined(HAVE_PCAP_CREATE) && defined(HAVE_PCAP_ACTIVATE)
 		pcap->handle = pcap_create(pcap->name, pcap->errbuf);
 		if (!pcap->handle) {
@@ -233,7 +245,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 #endif
 
 		/*
-		 *	Do this later so we get real errors.
+		 *	Do this later so we get real errors from libpcap,
+		 *	when bad interfaces are passed in.
 		 */
 		if (fr_pcap_mac_addr((uint8_t *)&pcap->ether_addr, pcap->name) != 0) {
 			fr_strerror_printf("Couldn't get MAC address for interface %s", pcap->name);

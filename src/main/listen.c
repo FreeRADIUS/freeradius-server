@@ -2605,7 +2605,6 @@ static int init_pcap(rad_listen_t *this)
 	char const * pcap_filter;
 
 	sock->pcap = fr_pcap_init(this, sock->interface, sock->pcap_type);
-
 	if (!sock->pcap) {
 		ERROR("Failed creating pcap for interface %s", sock->interface);
 		return -1;
@@ -2616,6 +2615,7 @@ static int init_pcap(rad_listen_t *this)
 	rad_suid_up();
 	if (fr_pcap_open(sock->pcap) < 0) {
 		ERROR("Failed opening interface %s: %s", sock->interface, fr_strerror());
+		TALLOC_FREE(sock->pcap);
 		return -1;
 	}
 	rad_suid_down();
@@ -2624,13 +2624,13 @@ static int init_pcap(rad_listen_t *this)
 
 	if (!pcap_filter) {
 		ERROR("Failed building filter for interface %s: %s",
-			sock->interface, fr_strerror());
+		      sock->interface, fr_strerror());
 		return -1;
 	}
 
 	if (fr_pcap_apply_filter(sock->pcap, pcap_filter) < 0) {
 		ERROR("Failed setting filter for interface %s: %s",
-			sock->interface, fr_strerror());
+		      sock->interface, fr_strerror());
 		return -1;
 	} else {
 		DEBUG("Using PCAP filter '%s'", pcap_filter);
