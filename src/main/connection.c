@@ -909,6 +909,9 @@ void fr_connection_pool_trigger_args(fr_connection_pool_t *pool, VALUE_PAIR *tri
 	rad_assert(pool->trigger_prefix);
 
 	fr_pair_list_free(&pool->trigger_args);
+
+	if (!trigger_args) return;
+
 	MEM(pool->trigger_args = fr_pair_list_copy(pool, trigger_args));
 }
 
