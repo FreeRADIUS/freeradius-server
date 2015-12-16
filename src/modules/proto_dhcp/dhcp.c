@@ -544,6 +544,7 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	packet = fr_dhcp_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
 	if (packet) {
 		packet->data = talloc_memdup(packet, p, packet->data_len);
+		packet->timestamp = header->ts;
 		return packet;
 	}
 
