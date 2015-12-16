@@ -393,7 +393,10 @@ export LDFLAGS="-Wl,--build-id"
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
-%endif 
+%endif
+%if %{?_with_developer:1}%{!?_with_developer:0}
+        --enable-developer=yes
+%endif
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
         %{?_with_rlm_sql_oracle} \
