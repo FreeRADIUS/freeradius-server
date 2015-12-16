@@ -260,7 +260,7 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 	vp_cursor_t		cursor;
 
 	server_da = fr_dict_attr_by_num(NULL, 0, PW_CONNECTION_POOL_SERVER);
-	if (server_da) {
+	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
 		return NULL;
 	}
