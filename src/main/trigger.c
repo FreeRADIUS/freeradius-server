@@ -102,7 +102,7 @@ static void time_free(void *data)
  * @param name		the path relative to the global trigger section ending in the trigger name
  *			e.g. module.ldap.pool.start.
  * @param quench	whether to rate limit triggers.
- * @param args		to make available via the %{trigger:<arg>} xlat.
+ * @param args		to make available via the @verbatim %{trigger:<arg>} @endverbatim xlat.
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
@@ -245,11 +245,12 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 
 /** Create trigger arguments to describe the server the pool connects to
  *
+ * @param ctx to allocate VALUE_PAIR s in.
  * @param server we're connecting to.
  * @param port on that server.
  * @return
  *	- NULL on failure.
- *	- list containing FreeRADIUS-Pool-Server and FreeRADIUS-Pool-Port
+ *	- list containing Pool-Server and Pool-Port
  */
 VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
 {
@@ -258,15 +259,15 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 	VALUE_PAIR		*out, *vp;
 	vp_cursor_t		cursor;
 
-	server_da = fr_dict_attr_by_num(NULL, 0, PW_POOL_SERVER);
+	server_da = fr_dict_attr_by_num(NULL, 0, PW_CONNECTION_POOL_SERVER);
 	if (server_da) {
-		ERROR("Missing definition for \"FreeRADIUS-Pool-Server\"");
+		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
 		return NULL;
 	}
 
-	port_da = fr_dict_attr_by_num(NULL, 0, PW_POOL_PORT);
+	port_da = fr_dict_attr_by_num(NULL, 0, PW_CONNECTION_POOL_PORT);
 	if (!port_da) {
-		ERROR("Missing definition for \"FreeRADIUs-Server-Port\"");
+		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
 		return NULL;
 	}
 

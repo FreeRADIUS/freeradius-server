@@ -886,8 +886,9 @@ do_return:
  *
  * @param[in] pool to enable triggers for.
  * @param[in] trigger_prefix prefix to prepend to all trigger names.  Usually a path
- *	to the module's trigger configuration .e.g. 'modules.<name>.pool'.
- *	'<trigger name>' is appended to form the complete path.
+ *	to the module's trigger configuration .e.g.
+ *      @verbatim modules.<name>.pool @endverbatim
+ *	@verbatim <trigger name> @endverbatim is appended to form the complete path.
  */
 void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool, char const *trigger_prefix)
 {

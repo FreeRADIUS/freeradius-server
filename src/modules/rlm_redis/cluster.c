@@ -330,6 +330,7 @@ static int _cluster_node_cmp(void const *a, void const *b)
 
 /** Reconnect callback to apply new pool config
  *
+ * @param[in] pool to apply new configuration to.
  * @param[in] opaque data passed to the connection pool.
  */
 static void _cluster_node_conf_apply(fr_connection_pool_t *pool, void *opaque)
