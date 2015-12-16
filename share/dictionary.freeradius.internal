@@ -651,7 +651,14 @@ ATTRIBUTE	SoH-MS-Health-Other			2129	string internal
 ATTRIBUTE	Radclient-Test-Name			2200	string internal
 
 #
-#	Range:	2220-2999
+#       Range:  2220-260
+#               Attributes used as trigger arguments
+#
+ATTRIBUTE	Pool-Server				2220	string internal
+ATTRIBUTE	Pool-Port				2221	short internal
+
+#
+#	Range:	2261-2999
 #		Free
 #
 #	Range:	3000-3999

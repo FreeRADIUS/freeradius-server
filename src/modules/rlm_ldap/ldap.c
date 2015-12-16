@@ -646,7 +646,7 @@ process_error:
 	case LDAP_TIMELIMIT_EXCEEDED:
 		*error = "Time limit exceeded";
 	timeout:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true, NULL);
+		trigger_exec(NULL, inst->cs, "modules.ldap.timeout", true, NULL);
 		/* FALL-THROUGH */
 
 	case LDAP_BUSY:

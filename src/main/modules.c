@@ -1713,7 +1713,6 @@ static bool is_reserved_word(const char *name)
 	return false;
 }
 
-
 /** Initialise a module specific connection pool
  *
  * @see fr_connection_pool_init
@@ -1723,6 +1722,7 @@ static bool is_reserved_word(const char *name)
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] log_prefix override, if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_args to make available in any triggers executed by the connection pool.
  * @return
  *	- New connection pool.
  *	- NULL on error.
@@ -1731,7 +1731,8 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 						  void *opaque,
 						  fr_connection_create_t c,
 						  fr_connection_alive_t a,
-						  char const *log_prefix)
+						  char const *log_prefix,
+						  VALUE_PAIR *trigger_args)
 {
 	CONF_SECTION *cs, *mycs;
 	char buff[128];
@@ -1805,8 +1806,11 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
 	if (!pool) {
 		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
-		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix, trigger_prefix);
+		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
 		if (!pool) return NULL;
+
+		fr_connection_pool_enable_triggers(pool, trigger_prefix);
+		fr_connection_pool_trigger_args(pool, trigger_args);
 
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);

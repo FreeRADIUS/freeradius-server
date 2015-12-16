@@ -242,3 +242,43 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 
 	return ret;
 }
+
+/** Create trigger arguments to describe the server the pool connects to
+ *
+ * @param server we're connecting to.
+ * @param port on that server.
+ * @return
+ *	- NULL on failure.
+ *	- list containing FreeRADIUS-Pool-Server and FreeRADIUS-Pool-Port
+ */
+VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
+{
+	fr_dict_attr_t const	*server_da;
+	fr_dict_attr_t const	*port_da;
+	VALUE_PAIR		*out, *vp;
+	vp_cursor_t		cursor;
+
+	server_da = fr_dict_attr_by_num(NULL, 0, PW_POOL_SERVER);
+	if (server_da) {
+		ERROR("Missing definition for \"FreeRADIUS-Pool-Server\"");
+		return NULL;
+	}
+
+	port_da = fr_dict_attr_by_num(NULL, 0, PW_POOL_PORT);
+	if (!port_da) {
+		ERROR("Missing definition for \"FreeRADIUs-Server-Port\"");
+		return NULL;
+	}
+
+	fr_cursor_init(&cursor, &out);
+
+	MEM(vp = fr_pair_afrom_da(ctx, server_da));
+	fr_pair_value_strcpy(vp, server);
+	fr_cursor_insert(&cursor, vp);
+
+	MEM(vp = fr_pair_afrom_da(ctx, port_da));
+	vp->vp_short = port;
+	fr_cursor_insert(&cursor, vp);
+
+	return out;
+}

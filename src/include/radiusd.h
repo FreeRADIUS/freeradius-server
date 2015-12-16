@@ -511,6 +511,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 void trigger_exec_init(CONF_SECTION *cs);
 int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench, VALUE_PAIR *args)
 		  CC_HINT(nonnull (3));
+VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
 
 /* valuepair.c */
 int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,

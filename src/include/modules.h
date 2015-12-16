@@ -143,7 +143,6 @@ typedef struct module_t {
 	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions.
 } module_t;
 
-
 /*
  *	Share connection pool instances between modules
  */
@@ -151,7 +150,8 @@ fr_connection_pool_t	*module_connection_pool_init(CONF_SECTION *module,
 						     void *opaque,
 						     fr_connection_create_t c,
 						     fr_connection_alive_t a,
-						     char const *prefix);
+						     char const *prefix,
+						     VALUE_PAIR *trigger_args);
 
 /*
  *	Create free and destroy module instances

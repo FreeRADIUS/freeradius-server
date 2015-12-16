@@ -857,7 +857,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	fr_json_version_print();
 	if (rest_init(inst) < 0) return -1;
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
+	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return 0;

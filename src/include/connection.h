@@ -67,25 +67,26 @@ typedef struct fr_connection_pool_state {
  * spawning is in progress, so it is safe to modify any pointers or
  * memory associated with the opaque data.
  *
- * @param[in,out] opaque pointer passed to fr_connection_pool_init.
+ * @param[in] pool being reconnected.
+ * @param[in] opaque pointer passed to fr_connection_pool_init.
  */
-typedef void (*fr_connection_pool_reconnect_t)(void *opaque);
+typedef void (*fr_connection_pool_reconnect_t)(fr_connection_pool_t *pool, void *opaque);
 
 /** Create a new connection handle
  *
  * This function will be called whenever the connection pool manager needs
  * to spawn a new connection, and on reconnect.
  *
- * Memory should be talloced in the parent context to hold the module's
- * connection structure. The parent context is allocated in the NULL
- * context, but will be freed when fr_connection_t is freed.
+ * Memory should be talloced in the provided context to hold the module's
+ * connection structure. The context is allocated in the NULL context,
+ * but will be freed when fr_connection_t is freed via some internal magic.
  *
  * There is no delete callback, so operations such as closing sockets and
  * freeing library connection handles should be done by a destructor attached
- * to memory allocated beneath ctx.
+ * to memory allocated beneath the provided ctx.
  *
  * @note A function pointer matching this prototype must be passed
- * to fr_connection_pool_init.
+ *	to fr_connection_pool_init.
  *
  * @param[in,out] ctx to allocate memory in.
  * @param[in] opaque pointer passed to fr_connection_pool_init.
@@ -120,8 +121,7 @@ fr_connection_pool_t	*fr_connection_pool_init(TALLOC_CTX *ctx,
 						 void *opaque,
 						 fr_connection_create_t c,
 						 fr_connection_alive_t a,
-						 char const *log_prefix,
-						 char const *trigger_prefix);
+						 char const *log_prefix);
 
 fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque);
 
@@ -129,11 +129,14 @@ fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 /*
  *	Pool get/set
  */
+void	fr_connection_pool_enable_triggers(fr_connection_pool_t *pool, char const *trigger_prefix);
+void	fr_connection_pool_trigger_args(fr_connection_pool_t *pool, VALUE_PAIR *vp);
+
 struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool);
 
 void const *fr_connection_pool_opaque(fr_connection_pool_t *pool);
 
-void fr_connection_pool_ref(fr_connection_pool_t *pool);
+void	fr_connection_pool_ref(fr_connection_pool_t *pool);
 
 fr_connection_pool_state_t const *fr_connection_pool_state(fr_connection_pool_t *pool);
 

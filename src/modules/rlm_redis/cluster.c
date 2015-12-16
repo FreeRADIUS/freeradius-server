@@ -221,7 +221,7 @@ typedef struct cluster_node_conf {
  * Passed as opaque data to pools which open connection to nodes.
  */
 typedef struct fr_redis_cluster_node {
-	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP + port
+	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP string.
 						//!< text for debug messages.
 	bool			active;		//!< Whether this node is in the active node set.
 	uint8_t			id;		//!< Node ID (index in node array).
@@ -332,10 +332,19 @@ static int _cluster_node_cmp(void const *a, void const *b)
  *
  * @param[in] opaque data passed to the connection pool.
  */
-static void _cluster_node_conf_apply(void *opaque)
+static void _cluster_node_conf_apply(fr_connection_pool_t *pool, void *opaque)
 {
-	cluster_node_t *node = opaque;
+	VALUE_PAIR	*args;
+	cluster_node_t	*node = opaque;
+
 	node->addr = node->pending_addr;
+
+	args = trigger_args_afrom_server(pool, node->name, node->addr.port);
+	if (!args) return;
+
+	fr_connection_pool_trigger_args(pool, args);
+
+	fr_pair_list_free(&args);	/* I know... I know... But it doesn't happen often */
 }
 
 /** Establish a connection to a cluster node
@@ -360,25 +369,29 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	 */
 	p = inet_ntop(node->pending_addr.ipaddr.af, &node->pending_addr.ipaddr.ipaddr,
 		      node->name, sizeof(node->name));
-#ifndef NDEBUG
-	rad_assert(p);
-#else
-	UNUSED_VAR(p);
-#endif
+	if (!rad_cond_assert(p)) return CLUSTER_OP_FAILED;
 
 	/*
 	 *	Node has never been used before, needs a pool allocated for it.
 	 */
 	if (!node->pool) {
 		char buffer[256];
+		VALUE_PAIR *args;
 
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->conf->prefix, node->id);
 
 		node->addr = node->pending_addr;
 		node->pool = fr_connection_pool_init(cluster, cf_section_sub_find(cluster->module, "pool"), node,
-						     fr_redis_cluster_conn_create, NULL, buffer, NULL);
+						     fr_redis_cluster_conn_create, NULL, buffer);
 		if (!node->pool) return CLUSTER_OP_FAILED;
 		fr_connection_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
+
+		args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
+		if (!args) {
+			TALLOC_FREE(node->pool);
+			return CLUSTER_OP_FAILED;
+		}
+
 		return CLUSTER_OP_SUCCESS;
 	}
 

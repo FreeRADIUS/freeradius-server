@@ -132,7 +132,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
-	driver->pool = module_connection_pool_init(conf, driver, mod_conn_create, NULL, buffer);
+	driver->pool = module_connection_pool_init(conf, driver, mod_conn_create, NULL, buffer, NULL);
 	if (!driver->pool) return -1;
 
 	fr_talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */

@@ -131,6 +131,7 @@ struct fr_connection_pool_t {
 
 	char const	*trigger_prefix;	//!< Prefix to prepend to names of all triggers
 						//!< fired by the connection pool code.
+	VALUE_PAIR	*trigger_args;		//!< Arguments to make available in connection pool triggers.
 
 	fr_connection_create_t	create;		//!< Function used to create new connections.
 	fr_connection_alive_t	alive;		//!< Function used to check status of connections.
@@ -258,12 +259,14 @@ static void fr_connection_link_head(fr_connection_pool_t *pool, fr_connection_t 
  * @param[in] pool to send trigger for.
  * @param[in] name_suffix trigger name suffix.
  */
-static void fr_connection_exec_trigger(fr_connection_pool_t *pool, char const *name_suffix)
+static inline void fr_connection_trigger_exec(fr_connection_pool_t *pool, char const *name_suffix)
 {
 	char	name[128];
 
 	rad_assert(pool != NULL);
 	rad_assert(name_suffix != NULL);
+
+	if (!pool->trigger_prefix) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, name_suffix);
 	trigger_exec(NULL, pool->cs, name, true, NULL);
@@ -507,10 +510,14 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	pool->state.next_delay = pool->cleanup_interval;
 	pool->state.last_failed = 0;
 
+	/*
+	 *	Must be done inside the mutex, reconnect callback
+	 *	may modify args.
+	 */
+	fr_connection_trigger_exec(pool, "open");
+
 	PTHREAD_COND_BROADCAST(&pool->done_spawn);
 	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
-
-	fr_connection_exec_trigger(pool, "open");
 
 	return this;
 }
@@ -875,13 +882,43 @@ do_return:
 	return this->connection;
 }
 
+/** Enable triggers for a connection pool
+ *
+ * @param[in] pool to enable triggers for.
+ * @param[in] trigger_prefix prefix to prepend to all trigger names.  Usually a path
+ *	to the module's trigger configuration .e.g. 'modules.<name>.pool'.
+ *	'<trigger name>' is appended to form the complete path.
+ */
+void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool, char const *trigger_prefix)
+{
+	rad_const_free(pool->trigger_prefix);
+	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
+}
+
+/** Set trigger arguments for a connection pool
+ *
+ * Enable triggers with #fr_connection_pool_enable_triggers before calling this function.
+ *
+ * @param[in] pool to enable triggers for.
+ * @param[in] trigger_args to make available in any triggers executed by the connection pool.
+ *	These will usually be VALUE_PAIR (s) describing the host associated with the pool.
+ *	Trigger args will be copied, input trigger_args should be freed if necessary.
+ */
+void fr_connection_pool_trigger_args(fr_connection_pool_t *pool, VALUE_PAIR *trigger_args)
+{
+	rad_assert(pool->trigger_prefix);
+
+	fr_pair_list_free(&pool->trigger_args);
+	MEM(pool->trigger_args = fr_pair_list_copy(pool, trigger_args));
+}
+
 /** Create a new connection pool
  *
  * Allocates structures used by the connection pool, initialises the various
  * configuration options and counters, and sets the callback functions.
  *
- * Will also spawn the number of connections specified by the 'start'
- * configuration options.
+ * Will also spawn the number of connections specified by the 'start' configuration
+ * option.
  *
  * @note Will call the 'start' trigger.
  *
@@ -891,7 +928,6 @@ do_return:
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] log_prefix prefix to prepend to all log messages.
- * @param[in] trigger_prefix prefix to prepend to all trigger names.
  * @return
  *	- New connection pool.
  *	- NULL on error.
@@ -901,8 +937,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      char const *log_prefix,
-					      char const *trigger_prefix)
+					      char const *log_prefix)
 {
 	uint32_t i;
 	fr_connection_pool_t *pool;
@@ -985,7 +1020,6 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	}
 
 	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
-	pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "";
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&pool->mutex, NULL);
@@ -1069,8 +1103,15 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
  */
 fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque)
 {
-	return fr_connection_pool_init(ctx, pool->cs, opaque, pool->create,
-				       pool->alive, pool->log_prefix, pool->trigger_prefix);
+	fr_connection_pool_t *copy;
+
+	copy = fr_connection_pool_init(ctx, pool->cs, opaque, pool->create, pool->alive, pool->log_prefix);
+	if (!copy) return NULL;
+
+	if (pool->trigger_prefix) fr_connection_pool_enable_triggers(copy, pool->trigger_prefix);
+	if (pool->trigger_args) fr_connection_pool_trigger_args(copy, pool->trigger_args);
+
+	return copy;
 }
 
 /** Get the number of connections currently in the pool
@@ -1186,7 +1227,13 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 	 *	This may modify the opaque data associated
 	 *	with the pool.
 	 */
-	if (pool->reconnect) pool->reconnect(pool->opaque);
+	if (pool->reconnect) pool->reconnect(pool, pool->opaque);
+
+	/*
+	 *	Must be done inside the mutex, reconnect callback
+	 *	may modify args.
+	 */
+	fr_connection_trigger_exec(pool, "reconnect");
 
 #ifdef HAVE_PTHREAD_H
 	/*
@@ -1198,7 +1245,6 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 #endif
 
-	fr_connection_exec_trigger(pool, "reconnect");
 
 	now = time(NULL);
 
