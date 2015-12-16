@@ -1228,18 +1228,13 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			VALUE_PAIR *options = NULL;
-			vp_cursor_t options_cursor;
-
-			fr_cursor_init(&options_cursor, &options);
-			len = fr_dhcp_decode_option(packet, &options_cursor, fr_dict_root(fr_dict_internal),
+			len = fr_dhcp_decode_option(packet, &cursor, fr_dict_root(fr_dict_internal),
 						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), NULL);
 			if (len <= 0) {
-				fr_pair_list_free(&options);
+				fr_pair_list_free(&head);
 				return len;
 			}
 			p += len;
-			if (options) fr_cursor_merge(&cursor, options);
 		}
 	}
 
