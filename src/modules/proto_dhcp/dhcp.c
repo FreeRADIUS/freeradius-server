@@ -1063,11 +1063,16 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	 */
 	if (p[0] == 0) return 1;		/* 0x00 - Padding option */
 	if (p[0] == 255) {			/* 0xff - End of options signifier */
-		if (data_len > 1) {
-			fr_strerror_printf("%s: Got end of options signifier, but more data to parse", __FUNCTION__);
-			return -1;
+		size_t i;
+
+		for (i = 1; i < data_len; i++) {
+			if (p[i] != 0) {
+				fr_strerror_printf("%s: Non padding option follows end of options signifier",
+						   __FUNCTION__);
+				return -1;
+			}
 		}
-		return 1;
+		return data_len;
 	}
 
 	/*
