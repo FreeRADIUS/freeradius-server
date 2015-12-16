@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	exec_trigger(NULL, NULL, "server.start", false, NULL);
+	trigger_exec(NULL, NULL, "server.start", false, NULL);
 
 	/*
 	 *  Inform the parent (who should still be waiting) that the rest of
@@ -607,8 +607,8 @@ int main(int argc, char *argv[])
 	 *   Fire signal and stop triggers after ignoring SIGTERM, so handlers are
 	 *   not killed with the rest of the process group, below.
 	 */
-	if (status == 2) exec_trigger(NULL, NULL, "server.signal.term", true, NULL);
-	exec_trigger(NULL, NULL, "server.stop", false, NULL);
+	if (status == 2) trigger_exec(NULL, NULL, "server.signal.term", true, NULL);
+	trigger_exec(NULL, NULL, "server.stop", false, NULL);
 
 	/*
 	 *  Send a TERM signal to all associated processes

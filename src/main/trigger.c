@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-static CONF_SECTION *exec_trigger_main, *exec_trigger_subcs;
+static CONF_SECTION *trigger_exec_main, *trigger_exec_subcs;
 
 #define REQUEST_INDEX_TRIGGER_NAME	1
 #define REQUEST_INDEX_TRIGGER_ARGS	2
@@ -71,7 +71,7 @@ static ssize_t xlat_trigger(char **out, UNUSED size_t outlen,
 	return talloc_array_length(*out) - 1;
 }
 
-/** Set the global trigger section exec_trigger will search in
+/** Set the global trigger section trigger_exec will search in, and register xlats
  *
  * @note Triggers are used by the connection pool, which is used in the server library
  *	which may not have the mainconfig available.  Additionally, utilities may want
@@ -79,10 +79,10 @@ static ssize_t xlat_trigger(char **out, UNUSED size_t outlen,
  *
  * @param cs to use as global trigger section
  */
-void exec_trigger_init(CONF_SECTION *cs)
+void trigger_exec_init(CONF_SECTION *cs)
 {
-	exec_trigger_main = cs;
-	exec_trigger_subcs = cf_section_sub_find(cs, "trigger");
+	trigger_exec_main = cs;
+	trigger_exec_subcs = cf_section_sub_find(cs, "trigger");
 
 	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0);
 }
@@ -106,7 +106,7 @@ static void time_free(void *data)
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench, VALUE_PAIR *args)
+int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench, VALUE_PAIR *args)
 {
 	CONF_SECTION	*subcs;
 
@@ -125,7 +125,7 @@ int exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 	 *	Use global "trigger" section if no local config is given.
 	 */
 	if (!cs) {
-		cs = exec_trigger_main;
+		cs = trigger_exec_main;
 		attr = name;
 	} else {
 		/*
@@ -145,13 +145,13 @@ int exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 	 *	reference to the full path, rather than the sub-path.
 	 */
 	subcs = cf_section_sub_find(cs, "trigger");
-	if (!subcs && exec_trigger_main && (cs != exec_trigger_main)) {
-		subcs = exec_trigger_subcs;
+	if (!subcs && trigger_exec_main && (cs != trigger_exec_main)) {
+		subcs = trigger_exec_subcs;
 		attr = name;
 	}
 	if (!subcs) return -1;
 
-	ci = cf_reference_item(subcs, exec_trigger_main, attr);
+	ci = cf_reference_item(subcs, trigger_exec_main, attr);
 	if (!ci) {
 		ERROR("No such item in trigger section: %s", attr);
 		return -1;

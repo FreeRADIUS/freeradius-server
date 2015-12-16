@@ -572,7 +572,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	}
 
 	request->server = client->server;
-	exec_trigger(request, NULL, "server.client.add", false, NULL);
+	trigger_exec(request, NULL, "server.client.add", false, NULL);
 
 	talloc_free(request);
 

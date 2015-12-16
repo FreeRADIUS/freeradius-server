@@ -964,7 +964,7 @@ int main(int argc, char *argv[])
 	conf->cs = cf_section_alloc(NULL, "main", NULL);
 	if (!conf->cs) exit(1);
 
-	exec_trigger_init(conf->cs);
+	trigger_exec_init(conf->cs);
 
 #define ADD_ACTION(_action) \
 do { \

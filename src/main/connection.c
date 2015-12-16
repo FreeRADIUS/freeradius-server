@@ -266,7 +266,7 @@ static void fr_connection_exec_trigger(fr_connection_pool_t *pool, char const *n
 	rad_assert(name_suffix != NULL);
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, name_suffix);
-	exec_trigger(NULL, pool->cs, name, true, NULL);
+	trigger_exec(NULL, pool->cs, name, true, NULL);
 }
 
 /** Find a connection handle in the connection list
@@ -549,7 +549,7 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connecti
 		fr_heap_extract(pool->heap, this);
 	}
 
-	fr_connection_exec_trigger(pool, "close");
+	fr_connection_trigger_exec(pool, "close");
 
 	fr_connection_unlink(pool, this);
 
@@ -1053,7 +1053,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 		}
 	}
 
-	fr_connection_exec_trigger(pool, "start");
+	fr_connection_trigger_exec(pool, "start");
 
 	return pool;
 }
@@ -1254,7 +1254,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 
 	fr_heap_delete(pool->heap);
 
-	fr_connection_exec_trigger(pool, "stop");
+	fr_connection_trigger_exec(pool, "stop");
 
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
