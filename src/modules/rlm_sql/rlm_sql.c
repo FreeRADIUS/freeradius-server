@@ -329,13 +329,26 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		goto finish;
 	}
 
-	ret = (inst->module->sql_fields)(&fields, handle, inst->config);
-	if (ret != RLM_SQL_OK) {
-		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+	ret = inst->module->sql_num_rows(handle, inst->config);
+	if (ret == 0) {
+		RDEBUG2("Server returned an empty result");
+		rcode = RLM_MODULE_NOOP;
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		goto finish;
+	}
+
+	if (ret < 0) {
+		RERROR("Failed retrieving row count: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
 	error:
 		rcode = RLM_MODULE_FAIL;
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		goto finish;
+	}
+
+	ret = (inst->module->sql_fields)(&fields, handle, inst->config);
+	if (ret != RLM_SQL_OK) {
+		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+		goto error;
 	}
 	rad_assert(fields);
 	field_cnt = talloc_array_length(fields);
