@@ -2215,6 +2215,12 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
+	/*
+	 *	Don't connect to cluster nodes if we're just
+	 *	checking the config.
+	 */
+	if (check_config) return cluster;
+
 	cluster->node = talloc_zero_array(cluster, cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
