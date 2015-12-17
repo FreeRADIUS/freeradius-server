@@ -448,6 +448,11 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 		pool->max_pending = 1;
 		pool->state.pending--;
 
+		/*
+		 *	Must be done inside the mutex, reconnect callback
+		 *	may modify args.
+		 */
+		fr_connection_trigger_exec(pool, "failed");
 		PTHREAD_COND_BROADCAST(&pool->done_spawn);
 		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
@@ -851,6 +856,11 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
+			/*
+			 *	Must be done inside the mutex, reconnect callback
+			 *	may modify args.
+			 */
+			fr_connection_trigger_exec(pool, "none");
 		}
 
 		return NULL;

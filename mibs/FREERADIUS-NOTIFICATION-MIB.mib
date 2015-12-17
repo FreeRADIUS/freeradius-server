@@ -123,6 +123,13 @@ serverModuleConnectionFail NOTIFICATION-TYPE
        DESCRIPTION "Notification that the module has failed to open a new connection"
        ::= { serverModuleGeneric 4 }
 
+serverModuleConnectionPoolReconnect NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance }
+       STATUS current
+       DESCRIPTION "Notification that all connections for this pool are being re-established"
+       ::= { serverModuleGeneric 5 }
+
 serverModuleHup NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance }
