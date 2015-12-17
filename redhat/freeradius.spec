@@ -418,7 +418,7 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_cache_memcached} \
 #        --with-modules="rlm_wimax" \
 
-make %_smp_mflags
+make %{?_smp_mflags}
 
 %install
 rm -rf $RPM_BUILD_ROOT
