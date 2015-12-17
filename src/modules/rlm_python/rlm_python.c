@@ -284,7 +284,7 @@ static int mod_destroy(void)
 /* TODO: Convert this function to accept any iterable objects? */
 
 static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
-			char const *funcname)
+			char const *funcname, char const *list_name)
 {
 	int	     i;
 	int	     tuplesize;
@@ -298,7 +298,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		return;
 
 	if (!PyTuple_CheckExact(pValue)) {
-		ERROR("rlm_python:%s: non-tuple passed", funcname);
+		ERROR("rlm_python:%s: non-tuple passed to %s", funcname, list_name);
 		return;
 	}
 	/* Get the tuple tuplesize. */
@@ -314,14 +314,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		long op;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
-			ERROR("rlm_python:%s: tuple element %d is not a tuple", funcname, i);
+			ERROR("rlm_python:%s: tuple element %d of %s is not a tuple", funcname, i, list_name);
 			continue;
 		}
 		/* Check if it's a pair */
 
 		pairsize = PyTuple_GET_SIZE(pTupleElement);
 		if ((pairsize < 2) || (pairsize > 3)) {
-			ERROR("rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2 or 3.", funcname, i, pairsize);
+			ERROR("rlm_python:%s: tuple element %d of %s is a tuple of size %d. Must be 2 or 3.", funcname, i, list_name, pairsize);
 			continue;
 		}
 
@@ -337,16 +337,16 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		}
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
-			ERROR("rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
+			ERROR("rlm_python:%s: tuple element %d of %s must be as (str, str)", funcname, i, list_name);
 			continue;
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
 		vp = fr_pair_make(ctx, vps, s1, s2, op);
 		if (vp != NULL) {
-			DEBUG("rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
+			DEBUG("rlm_python:%s: '%s:%s' = '%s'", funcname, list_name, s1, s2);
 		} else {
-			DEBUG("rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
+			DEBUG("rlm_python:%s: Failed: '%s:%s' = '%s'", funcname, list_name, s1, s2);
 		}
 	}
 }
@@ -543,10 +543,10 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		ret = PyInt_AsLong(pTupleInt);
 		/* Reply item tuple */
 		mod_vptuple(request->reply, &request->reply->vps,
-			    PyTuple_GET_ITEM(pRet, 1), funcname);
+			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
 		/* Config item tuple */
 		mod_vptuple(request, &request->config,
-			    PyTuple_GET_ITEM(pRet, 2), funcname);
+			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
 	} else if (PyInt_CheckExact(pRet)) {
 		/* Just an integer */
