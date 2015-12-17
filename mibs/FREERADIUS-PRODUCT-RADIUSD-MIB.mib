@@ -103,7 +103,7 @@ radiusdConnectionPoolIndex OBJECT-TYPE
        STATUS     current
        DESCRIPTION
               "A number uniquely identifying each connection pool with a module."
-       ::= { radiusAccServerEntry 1 }
+       ::= { radiusdConnectionPoolEntry 1 }
 
 radiusdConnectionPoolServer OBJECT-TYPE
        SYNTAX      SnmpAdminString
@@ -111,7 +111,7 @@ radiusdConnectionPoolServer OBJECT-TYPE
        STATUS      current
        DESCRIPTION
              "The server the connection pool manages connections for"
-       ::= { radiusdConnectionPool 1 }
+       ::= { radiusdConnectionPoolEntry 2 }
 
 radiusdConnectionPoolPort OBJECT-TYPE
        SYNTAX      SnmpAdminString
@@ -119,5 +119,5 @@ radiusdConnectionPoolPort OBJECT-TYPE
        STATUS      current
        DESCRIPTION
              "The service port on the server the connection pool manages connections for"
-       ::= { radiusdConnectionPool 3 }
+       ::= { radiusdConnectionPoolEntry 3 }
 END
