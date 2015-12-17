@@ -315,7 +315,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		int pairsize;
 		char const *s1;
 		char const *s2;
-		FR_TOKEN op;
+		FR_TOKEN op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
 			ERROR("rlm_python:%s: tuple element %d of %s is not a tuple", funcname, i, list_name);
@@ -329,16 +329,8 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			continue;
 		}
 
-		if (pairsize == 2) {
-			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
-			pStr2	= PyTuple_GET_ITEM(pTupleElement, 1);
-			op	= T_OP_EQ;
-		} else {
-			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
-			pStr2	= PyTuple_GET_ITEM(pTupleElement, 2);
-			pOp	= PyTuple_GET_ITEM(pTupleElement, 1);
-			op	= PyInt_AsLong(pOp);
-		}
+		pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
+		pStr2	= PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
 			ERROR("rlm_python:%s: tuple element %d of %s must be as (str, str)", funcname, i, list_name);
@@ -346,6 +338,24 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
+
+		if (pairsize == 3) {
+			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
+			if (PyString_CheckExact(pOp)) {
+				if (!(op = fr_str2int(fr_tokens_table, PyString_AsString(pOp), 0))) {
+					ERROR("rlm_python:%s: Invalid operator %s:%s %s %s, falling back to '='", funcname, list_name, s1, PyString_AsString(pOp), s2);
+					op = T_OP_EQ;
+				}
+			} else if (PyInt_Check(pOp)) {
+				op	= PyInt_AsLong(pOp);
+				if (!fr_int2str(fr_tokens_table, op, NULL)) {
+					ERROR("rlm_python:%s: Invalid operator %s:%s %i %s, falling back to '='", funcname, list_name, s1, op, s2);
+					op = T_OP_EQ;
+				}
+			} else {
+				ERROR("rlm_python:%s: Invalid operator type for %s:%s ? %s, using default '='", funcname, list_name, s1, s2);
+			}
+		}
 
 		if (tmpl_from_attr_str(&dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
 			ERROR("rlm_python:%s: Failed to find attribute %s:%s", funcname, list_name, s1);
