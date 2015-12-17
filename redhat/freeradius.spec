@@ -64,8 +64,6 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires: autoconf
 BuildRequires: gdbm-devel
-BuildRequires: libtool
-BuildRequires: libtool-ltdl-devel
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
 BuildRequires: freeradius-openssl-devel
 %else
@@ -371,7 +369,6 @@ export LDFLAGS="-Wl,--build-id"
 
 %configure \
         --libdir=%{_libdir}/freeradius \
-        --with-system-libtool \
         --disable-ltdl-install \
         --with-gnu-ld \
         --with-threads \
@@ -421,19 +418,12 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_cache_memcached} \
 #        --with-modules="rlm_wimax" \
 
-%if "%{_lib}" == "lib64"
-perl -pi -e 's:sys_lib_search_path_spec=.*:sys_lib_search_path_spec="/lib64 /usr/lib64 /usr/local/lib64":' libtool
-%endif
-
-make
-
+make %_smp_mflags
 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
 mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
-# fix for bad libtool bug - can not rebuild dependent libs and bins
-#FIXME export LD_LIBRARY_PATH=$RPM_BUILD_ROOT/%{_libdir}
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
