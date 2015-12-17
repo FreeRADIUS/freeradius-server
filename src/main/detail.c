@@ -271,7 +271,11 @@ static int detail_open(rad_listen_t *this)
 		 *	And try to open the filename.
 		 */
 		data->work_fd = open(data->filename_work, O_RDWR);
-		if (data->work_fd < 0) return 0;
+		if (data->work_fd < 0) {
+			ERROR("Failed opening detail file %s: %s",
+					data->filename_work, fr_syserror(errno));
+			return 0;
+		}
 #endif
 	} /* else detail.work existed, and we opened it */
 
