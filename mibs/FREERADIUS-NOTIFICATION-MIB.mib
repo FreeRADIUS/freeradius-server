@@ -147,7 +147,7 @@ serverModuleHup NOTIFICATION-TYPE
 		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that the module has been HUP'd via radmin"
-       ::= { serverModuleGeneric 5 }
+       ::= { serverModuleGeneric 6 }
 
 homeServer  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 3 }
 
