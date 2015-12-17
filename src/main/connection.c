@@ -452,7 +452,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 		 *	Must be done inside the mutex, reconnect callback
 		 *	may modify args.
 		 */
-		fr_connection_trigger_exec(pool, "failed");
+		fr_connection_trigger_exec(pool, "fail");
 		PTHREAD_COND_BROADCAST(&pool->done_spawn);
 		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
