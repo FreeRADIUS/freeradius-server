@@ -1,0 +1,50 @@
+#
+# PRE: update
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update request {
+	Tmp-String-1 := 'foo'
+	Tmp-String-1 += 'bar'
+	Tmp-Integer-0 := '4'
+	Tmp-Integer-0 += '8'
+	Tmp-Integer-0 += '1'
+
+	Tmp-String-0 := '%{Tmp-String-1}'
+}
+
+#
+#  Verify non string types are treated as literals
+#
+if ("%{xlat:Tmp-Integer-0}" != 4) {
+	update reply {
+		Filter-Id += "fail 1"
+	}
+}
+
+if ("%{xlat:Tmp-Integer-0[1]}" != 8) {
+	update reply {
+		Filter-Id += "fail 2"
+	}
+}
+
+#
+#  Check double expansion works
+#
+if ("%{xlat:&Tmp-String-0}" != 'foo') {
+	update reply {
+		Filter-Id += "fail 3"
+	}
+}
+
+#
+#  Using an attribute as a dynamic index for another attribute
+#
+if ("%{xlat:&Tmp-String-1[%{Tmp-Integer-0[2]}]}" != 'bar') {
+	update reply {
+		Filter-Id += "fail 4"
+	}
+}

@@ -632,16 +632,25 @@ static ssize_t xlat_xlat(char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	if (vp->da->type != PW_TYPE_STRING) goto nothing;
-
 	RDEBUG2("EXPAND %s", fmt);
 	RINDENT();
 
-	slen = radius_xlat(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
+	/*
+	 *	If it's a string, expand it again
+	 */
+	if (vp->da->type == PW_TYPE_STRING) {
+		slen = radius_xlat(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
+		if (slen <= 0) return slen;
+	/*
+	 *	If it's not a string, treat it as a literal
+	 */
+	} else {
+		*out = fr_pair_value_asprint(request, vp, '\0');
+		if (!*out) return -1;
+		slen = talloc_array_length(*out) - 1;
+	}
+
 	REXDENT();
-
-	if (slen <= 0) return slen;
-
 	RDEBUG2("--> %s", *out);
 
 	return slen;
