@@ -338,7 +338,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	}
 
 	if (ret < 0) {
-		RERROR("Failed retrieving row count: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+		RERROR("Failed retrieving row count");
 	error:
 		rcode = RLM_MODULE_FAIL;
 		(inst->module->sql_finish_select_query)(handle, inst->config);
