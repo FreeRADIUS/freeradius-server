@@ -2099,7 +2099,7 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
  * @param module		Configuration section to search for 'server' conf pairs in.
  * @param conf			Base redis server configuration. Cluster nodes share database
  *				number and password.
- * @param enable_triggers	Whether triggers should be enabled.
+ * @param triggers_enabled	Whether triggers should be enabled.
  * @param log_prefix		Custom log prefix.  Defaults to @verbatim rlm_<module> (<instance>) @endverbatim.
  * @param trigger_prefix	Custom trigger prefix.  Defaults to @verbatim modules.<module>.pool @endverbatim.
  * @param trigger_args		Argument pairs to pass to the trigger in addition to Connection-Pool-Server,
@@ -2111,7 +2111,7 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   CONF_SECTION *module,
 					   fr_redis_conf_t *conf,
-					   bool enable_triggers,
+					   bool triggers_enabled,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
 					   VALUE_PAIR *trigger_args)
@@ -2128,9 +2128,9 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	int			num_nodes;
 	fr_redis_cluster_t	*cluster;
 
-	rad_assert(!enable_triggers || !log_prefix);
-	rad_assert(!enable_triggers || !trigger_prefix);
-	rad_assert(!enable_triggers || !trigger_args);
+	rad_assert(!triggers_enabled || !log_prefix);
+	rad_assert(!triggers_enabled || !trigger_prefix);
+	rad_assert(!triggers_enabled || !trigger_args);
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
@@ -2141,28 +2141,31 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	cs_name1 = cf_section_name1(module);
 	cs_name2 = cf_section_name2(module);
 
-	/*
-	 *	Setup trigger prefix
-	 */
-	if (!trigger_prefix) {
-		cluster->trigger_prefix = talloc_asprintf(cluster, "modules.%s.pool", cs_name1);
-	} else {
-		cluster->trigger_prefix = talloc_strdup(cluster, trigger_prefix);
-	}
+	cluster->triggers_enabled = triggers_enabled;
+	if (cluster->triggers_enabled) {
+		/*
+		 *	Setup trigger prefix
+		 */
+		if (!trigger_prefix) {
+			cluster->trigger_prefix = talloc_asprintf(cluster, "modules.%s.pool", cs_name1);
+		} else {
+			cluster->trigger_prefix = talloc_strdup(cluster, trigger_prefix);
+		}
 
-	/*
-	 *	Duplicate the trigger arguments.
-	 */
-	 if (trigger_args) cluster->trigger_args = fr_pair_list_copy(cluster, trigger_args);
+		/*
+		 *	Duplicate the trigger arguments.
+		 */
+		 if (trigger_args) cluster->trigger_args = fr_pair_list_copy(cluster, trigger_args);
 
-	/*
-	 *	Setup log prefix
-	 */
-	if (!log_prefix) {
-		if (!cs_name2) cs_name2 = cs_name1;
-		cluster->log_prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
-	} else {
-		cluster->log_prefix = talloc_strdup(cluster, log_prefix);
+		/*
+		 *	Setup log prefix
+		 */
+		if (!log_prefix) {
+			if (!cs_name2) cs_name2 = cs_name1;
+			cluster->log_prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
+		} else {
+			cluster->log_prefix = talloc_strdup(cluster, log_prefix);
+		}
 	}
 
 	/*
