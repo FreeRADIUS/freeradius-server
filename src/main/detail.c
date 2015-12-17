@@ -1242,6 +1242,7 @@ int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 #else
 int detail_socket_open(UNUSED CONF_SECTION *cs, UNUSED rad_listen_t *this)
 {
+	talloc_set_destructor(data, _detail_free);
 	return 0;
 }
 #endif	/* WITH_DETAIL_THREAD */
