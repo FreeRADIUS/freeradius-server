@@ -657,6 +657,8 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
+	if (vp->da->type != PW_TYPE_STRING) goto nothing;
+
 	return radius_xlat(out, outlen, request, vp->vp_strvalue, NULL, NULL);
 }
 
