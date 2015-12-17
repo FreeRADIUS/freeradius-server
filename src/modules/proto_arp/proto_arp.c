@@ -233,15 +233,6 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 
-
-static void arp_socket_free(rad_listen_t *this)
-{
-	arp_socket_t *sock = this->data;
-
-	talloc_free(sock);
-	this->data = NULL;
-}
-
 /** Build PCAP filter string to pass to libpcap
  * Will be called by init_pcap.
  *
@@ -256,8 +247,8 @@ static const char * arp_pcap_filter_builder(UNUSED rad_listen_t *this)
 static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
-	arp_socket_t *sock = this->data;
-	RADCLIENT *client;
+	arp_socket_t	*sock = this->data;
+	RADCLIENT	*client;
 	CONF_PAIR	*cp = NULL;
 
 	sock->lsock.pcap_filter_builder = arp_pcap_filter_builder;
@@ -311,7 +302,6 @@ fr_protocol_t proto_arp = {
 	.tls		= false,
 	.parse		= arp_socket_parse,
 	.open		= common_socket_open,
-	.free		= arp_socket_free,
 	.recv		= arp_socket_recv,
 	.send		= arp_socket_send,
 	.print		= arp_socket_print,

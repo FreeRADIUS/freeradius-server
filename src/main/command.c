@@ -3027,19 +3027,17 @@ static fr_command_table_t command_table[] = {
 };
 
 
-static void command_socket_free(rad_listen_t *this)
+static int _command_socket_free(fr_command_socket_t *cmd)
 {
-	fr_command_socket_t *cmd = this->data;
-
 	/*
 	 *	If it's a TCP socket, don't do anything.
 	 */
-	if (cmd->magic != COMMAND_SOCKET_MAGIC) {
-		return;
-	}
+	if (cmd->magic != COMMAND_SOCKET_MAGIC) return 0;
 
-	if (!cmd->copy) return;
+	if (!cmd->copy) return 0;
 	unlink(cmd->copy);
+
+	return 0;
 }
 
 
@@ -3053,6 +3051,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	fr_command_socket_t *sock;
 
 	sock = this->data;
+	talloc_set_destructor(sock, _command_socket_free);
 
 	if (cf_section_parse(cs, sock, command_config) < 0) return -1;
 

@@ -49,7 +49,6 @@ typedef struct fr_protocol_t {
 
 	rad_listen_parse_t	parse;
 	rad_listen_parse_t	open;
-	rad_listen_free_t	free;
 	rad_listen_recv_t	recv;
 	rad_listen_send_t	send;
 	rad_listen_print_t	print;

@@ -911,10 +911,8 @@ open_file:
 /*
  *	Free detail-specific stuff.
  */
-void detail_free(rad_listen_t *this)
+static int _detail_free(listen_detail_t *data)
 {
-	listen_detail_t *data = this->data;
-
 #ifdef WITH_DETAIL_THREAD
 	if (!check_config) {
 		ssize_t ret;
@@ -956,6 +954,8 @@ void detail_free(rad_listen_t *this)
 		fclose(data->fp);
 		data->fp = NULL;
 	}
+
+	return 0;
 }
 
 
@@ -1218,6 +1218,7 @@ int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	listen_detail_t *data;
 
 	data = this->data;
+	talloc_set_destructor(data, _detail_free);
 
 	/*
 	 *	Create the communication pipes.

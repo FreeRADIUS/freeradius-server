@@ -812,6 +812,30 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	return 1;
 }
 
+/*
+ *	Ensure that we always keep the correct counters.
+ */
+#ifdef WITH_TCP
+static int _common_socket_free(listen_socket_t *sock)
+{
+	if (sock->proto != IPPROTO_TCP) return 0;
+
+	/*
+	 *      Decrement the number of connections.
+	 */
+	if (sock->parent && (sock->parent->limit.num_connections > 0)) {
+		sock->parent->limit.num_connections--;
+	}
+	if (sock->client && sock->client->limit.num_connections > 0) {
+		sock->client->limit.num_connections--;
+	}
+	if (sock->home && sock->home->limit.num_connections > 0) {
+		sock->home->limit.num_connections--;
+	}
+
+	return 0;
+}
+#endif
 
 static int dual_tcp_accept(rad_listen_t *listener)
 {
@@ -920,12 +944,12 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	memcpy(this, listener, sizeof(*this));
 	this->next = NULL;
 	this->data = sock;	/* fix it back */
-
 	sock->parent = listener->data;
 	sock->other_ipaddr = src_ipaddr;
 	sock->other_port = src_port;
 	sock->client = client;
 	sock->opened = sock->last_packet = time(NULL);
+	talloc_set_destructor(sock, _common_socket_free);
 
 	/*
 	 *	Set the limits.  The defaults are the parent limits.
@@ -986,33 +1010,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 	return 0;
 }
-#endif
-
-/*
- *	Ensure that we always keep the correct counters.
- */
-#ifdef WITH_TCP
-static void common_socket_free(rad_listen_t *this)
-{
-	listen_socket_t *sock = this->data;
-
-	if (sock->proto != IPPROTO_TCP) return;
-
-	/*
-	 *      Decrement the number of connections.
-	 */
-	if (sock->parent && (sock->parent->limit.num_connections > 0)) {
-		sock->parent->limit.num_connections--;
-	}
-	if (sock->client && sock->client->limit.num_connections > 0) {
-		sock->client->limit.num_connections--;
-	}
-	if (sock->home && sock->home->limit.num_connections > 0) {
-		sock->home->limit.num_connections--;
-	}
-}
-#else
-#  define common_socket_free NULL
 #endif
 
 /*
@@ -2512,51 +2509,103 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
  */
 static fr_protocol_t master_listen[] = {
 #ifdef WITH_STATS
-	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, NULL,
-	  common_socket_parse, common_socket_open, NULL,
-	  stats_socket_recv, auth_socket_send,
-	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "status",
+		.inst_size = sizeof(listen_socket_t),
+		.transports = TRANSPORT_DUAL,
+		.tls = true,
+		.parse = common_socket_parse,
+		.open = common_socket_open,
+		.recv = stats_socket_recv,
+		.send = auth_socket_send,
+		.print = common_socket_print,
+		.debug = common_packet_debug,
+		.encode = client_socket_encode,
+		.decode = client_socket_decode
+	},
 #else
 	NO_LISTENER,
 #endif
 
 #ifdef WITH_PROXY
 	/* proxying */
-	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, fr_radius_len,
-	  common_socket_parse, common_socket_open, common_socket_free,
-	  proxy_socket_recv, proxy_socket_send,
-	  common_socket_print, common_packet_debug, proxy_socket_encode, proxy_socket_decode },
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "proxy",
+		.inst_size = sizeof(listen_socket_t),
+		.transports = TRANSPORT_DUAL,
+		.tls = true,
+		.size = fr_radius_len,
+		.parse = common_socket_parse,
+		.open = common_socket_open,
+		.recv = proxy_socket_recv,
+		.send = proxy_socket_send,
+		.print = common_socket_print,
+		.debug = common_packet_debug,
+		.encode = proxy_socket_encode,
+		.decode = proxy_socket_decode
+	},
 #else
 	NO_LISTENER,
 #endif
 
 	/* authentication */
-	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, fr_radius_len,
-	  common_socket_parse, common_socket_open, common_socket_free,
-	  auth_socket_recv, auth_socket_send,
-	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "auth",
+		.inst_size = sizeof(listen_socket_t),
+		.transports = TRANSPORT_DUAL,
+		.tls = true,
+		.size = fr_radius_len,
+		.parse = common_socket_parse,
+		.open = common_socket_open,
+		.recv = auth_socket_recv,
+		.send = auth_socket_send,
+		.print = common_socket_print,
+		.debug = common_packet_debug,
+		.encode = client_socket_encode,
+		.decode = client_socket_decode
+	  },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
-	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, fr_radius_len,
-	  common_socket_parse, common_socket_open, common_socket_free,
-	  acct_socket_recv, acct_socket_send,
-	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode},
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "acct",
+		.inst_size = sizeof(listen_socket_t),
+		.transports = TRANSPORT_DUAL,
+		.tls = true,
+		.size = fr_radius_len,
+		.parse = common_socket_parse,
+		.open = common_socket_open,
+		.recv = acct_socket_recv,
+		.send = acct_socket_send,
+		.print = common_socket_print,
+		.debug = common_packet_debug,
+		.encode = client_socket_encode,
+		.decode = client_socket_decode
+	},
 #else
 	NO_LISTENER,
 #endif
 
 #ifdef WITH_DETAIL
 	/* detail */
-	{ RLM_MODULE_INIT, "detail", sizeof(listen_detail_t), NULL,
-	  0, false, NULL,
-	  detail_parse, detail_socket_open, detail_free,
-	  detail_recv, detail_send,
-	  detail_print, common_packet_debug, detail_encode, detail_decode },
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "detail",
+		.inst_size = sizeof(listen_detail_t),
+		.tls = false,
+		.parse = detail_parse,
+		.open = detail_socket_open,
+		.recv = detail_recv,
+		.send = detail_send,
+		.print = detail_print,
+		.debug = common_packet_debug,
+		.encode = detail_encode,
+		.decode = detail_decode
+	  },
 #else
 	NO_LISTENER,
 #endif
@@ -2567,22 +2616,42 @@ static fr_protocol_t master_listen[] = {
 
 #ifdef WITH_COMMAND_SOCKET
 	/* TCP command socket */
-	{ RLM_MODULE_INIT, "control", sizeof(fr_command_socket_t), NULL,
-	  0, false, NULL,
-	  command_socket_parse, command_socket_open, command_socket_free,
-	  command_domain_accept, command_domain_send,
-	  command_socket_print, common_packet_debug, command_socket_encode, command_socket_decode },
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "control",
+		.inst_size = sizeof(fr_command_socket_t),
+		.tls = false,
+		.parse = command_socket_parse,
+		.open = command_socket_open,
+		.recv = command_domain_accept,
+		.send = command_domain_send,
+		.print = command_socket_print,
+		.debug = common_packet_debug,
+		.encode = command_socket_encode,
+		.decode = command_socket_decode
+	  },
 #else
 	NO_LISTENER,
 #endif
 
 #ifdef WITH_COA
 	/* Change of Authorization */
-	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true, fr_radius_len,
-	  common_socket_parse, common_socket_open, NULL,
-	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
-	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
+	{
+		.magic = RLM_MODULE_INIT,
+		.name = "coa",
+		.inst_size = sizeof(listen_socket_t),
+		.transports = TRANSPORT_DUAL,
+		.tls = true,
+		.size = fr_radius_len,
+		.parse = common_socket_parse,
+		.open = common_socket_open,
+		.recv = coa_socket_recv,
+		.send = auth_socket_send, /* CoA packets are same as auth */
+		.print = common_socket_print,
+		.debug = common_packet_debug,
+		.encode = client_socket_encode,
+		.decode = client_socket_decode
+	},
 #else
 	NO_LISTENER,
 #endif
@@ -2835,10 +2904,6 @@ static int _listener_free(rad_listen_t *this)
 	 */
 	if (this->fd >= 0) close(this->fd);
 
-	if (this->proto->free) {
-		this->proto->free(this);
-	}
-
 #ifdef WITH_TCP
 	if ((this->type == RAD_LISTEN_AUTH)
 #ifdef WITH_ACCT
@@ -2958,6 +3023,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	sock->my_ipaddr = home->src_ipaddr;
 	sock->my_port = src_port;
 	sock->proto = home->proto;
+	talloc_set_destructor(sock, _common_socket_free);
 
 	/*
 	 *	For error messages.

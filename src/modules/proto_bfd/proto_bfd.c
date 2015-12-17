@@ -1641,15 +1641,6 @@ static int bfd_session_cmp(const void *one, const void *two)
 	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
 }
 
-static void bfd_socket_free(rad_listen_t *this)
-{
-	bfd_socket_t *sock = this->data;
-
-	rbtree_free(sock->session_tree);
-	talloc_free(sock);
-	this->data = NULL;
-}
-
 static const FR_NAME_NUMBER auth_types[] = {
 	{ "none", BFD_AUTH_RESERVED },
 	{ "simple", BFD_AUTH_SIMPLE },
@@ -1660,7 +1651,6 @@ static const FR_NAME_NUMBER auth_types[] = {
 
 	{ NULL, 0 }
 };
-
 
 static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
@@ -1814,7 +1804,6 @@ fr_protocol_t proto_bfd = {
 	.tls		= false,
 	.parse		= bfd_socket_parse,
 	.open		= bfd_socket_open,
-	.free		= bfd_socket_free,
 	.recv		= bfd_socket_recv,
 	.send		= bfd_socket_send,
 	.print		= bfd_socket_print,
