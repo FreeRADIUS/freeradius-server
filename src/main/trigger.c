@@ -256,7 +256,7 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 {
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
-	VALUE_PAIR		*out, *vp;
+	VALUE_PAIR		*out = NULL, *vp;
 	vp_cursor_t		cursor;
 
 	server_da = fr_dict_attr_by_num(NULL, 0, PW_CONNECTION_POOL_SERVER);
