@@ -632,6 +632,8 @@ static ssize_t xlat_xlat(char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
+	if (vp->da->type != PW_TYPE_STRING) goto nothing;
+
 	RDEBUG2("EXPAND %s", fmt);
 	RINDENT();
 
