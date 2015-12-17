@@ -210,7 +210,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL);
+	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 #else
 	inst->conn = mod_conn_create(inst, inst, NULL);

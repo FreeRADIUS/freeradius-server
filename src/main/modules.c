@@ -1722,6 +1722,7 @@ static bool is_reserved_word(const char *name)
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] log_prefix override, if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_prefix if NULL will be set automatically from the module CONF_SECTION.
  * @param[in] trigger_args to make available in any triggers executed by the connection pool.
  * @return
  *	- New connection pool.
@@ -1732,11 +1733,12 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 						  fr_connection_create_t c,
 						  fr_connection_alive_t a,
 						  char const *log_prefix,
+						  char const *trigger_prefix,
 						  VALUE_PAIR *trigger_args)
 {
 	CONF_SECTION *cs, *mycs;
-	char buff[128];
-	char trigger_prefix[64];
+	char log_prefix_buff[128];
+	char trigger_prefix_buff[128];
 
 	fr_connection_pool_t *pool;
 	char const *cs_name1, *cs_name2;
@@ -1750,11 +1752,14 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	cs_name2 = cf_section_name2(module);
 	if (!cs_name2) cs_name2 = cs_name1;
 
-	snprintf(trigger_prefix, sizeof(trigger_prefix), "modules.%s.pool", cs_name1);
+	if (!trigger_prefix) {
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", cs_name1);
+		trigger_prefix = trigger_prefix_buff;
+	}
 
 	if (!log_prefix) {
-		snprintf(buff, sizeof(buff), "rlm_%s (%s)", cs_name1, cs_name2);
-		log_prefix = buff;
+		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", cs_name1, cs_name2);
+		log_prefix = log_prefix_buff;
 	}
 
 	/*

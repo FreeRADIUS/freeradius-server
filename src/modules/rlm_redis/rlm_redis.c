@@ -331,7 +331,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
-	inst->conf.prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
 
 	xlat_register(inst, inst->name, redis_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
@@ -342,7 +341,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_redis_t *inst = instance;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf);
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	return 0;

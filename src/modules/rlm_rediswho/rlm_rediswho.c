@@ -150,7 +150,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_rediswho_t *inst = instance;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, inst->conf);
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	return 0;

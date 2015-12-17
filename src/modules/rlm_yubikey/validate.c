@@ -132,7 +132,7 @@ init:
 	}
 
 	snprintf(prefix, sizeof(prefix), "rlm_yubikey (%s)", inst->name);
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, prefix, NULL);
+	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, prefix, NULL, NULL);
 	if (!inst->pool) {
 		ykclient_done(&inst->ykc);
 

@@ -1273,15 +1273,9 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(UNUSED CONF_SECTION *conf, UNUSED void *instance)
 {
-	rlm_redis_ippool_t *inst = instance;
-
 	fr_redis_version_print();
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-	inst->conf.prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
 
 	return 0;
 }
@@ -1296,7 +1290,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->reply_attr->type == TMPL_TYPE_ATTR);
 	rad_assert(subcs);
 
-	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf);
+	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {

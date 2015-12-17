@@ -84,6 +84,12 @@ int fr_redis_cluster_pool_by_node_addr(fr_connection_pool_t **pool, fr_redis_clu
  */
 bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_version);
 
-fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *cs, fr_redis_conf_t *conf);
+fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
+					   CONF_SECTION *module,
+					   fr_redis_conf_t *conf,
+					   bool enable_triggers,
+					   char const *log_prefix,
+					   char const *trigger_prefix,
+					   VALUE_PAIR *trigger_args);
 
 #endif	/* LIBFREERADIUS_REDIS_CLUSTER_H */

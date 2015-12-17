@@ -160,41 +160,41 @@
 #  define pthread_mutex_unlock(_x)
 #endif
 
-#define KEY_SLOTS		16384		//!< Maximum number of keyslots (should not change).
+#define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
-#define MAX_SLAVES		5		//!< Maximum number of slaves associated
-						//!< with a keyslot.
+#define MAX_SLAVES		5			//!< Maximum number of slaves associated
+							//!< with a keyslot.
 
 /*
  *	Periods and weights for live node selection
  */
-#define CLOSED_PERIOD		10000		//!< How recently must the closed have
-						//!< occurred for us to care.
+#define CLOSED_PERIOD		10000			//!< How recently must the closed have
+							//!< occurred for us to care.
 
-#define CLOSED_WEIGHT		1		//!< What weight to give to nodes that
-						//!< had a connection closed recently.
+#define CLOSED_WEIGHT		1			//!< What weight to give to nodes that
+							//!< had a connection closed recently.
 
-#define FAILED_PERIOD		10000		//!< How recently must the spawn failure
-						//!< occurred for us to care.
+#define FAILED_PERIOD		10000			//!< How recently must the spawn failure
+							//!< occurred for us to care.
 
-#define FAILED_WEIGHT		1		//!< What weight to give to nodes that
-						//!< had a spawn failure recently.
+#define FAILED_WEIGHT		1			//!< What weight to give to nodes that
+							//!< had a spawn failure recently.
 
-#define RELEASED_PERIOD		10000		//!< Period after which we don't care
-						//!< about when the last connection was
-						//!< released.
+#define RELEASED_PERIOD		10000			//!< Period after which we don't care
+							//!< about when the last connection was
+							//!< released.
 
-#define RELEASED_MIN_WEIGHT	1000		//!< Minimum weight to assign to node.
+#define RELEASED_MIN_WEIGHT	1000			//!< Minimum weight to assign to node.
 
 /** Return values for internal functions
  */
 typedef enum {
-	CLUSTER_OP_IGNORED		= 1,	//!< Operation ignored.
-	CLUSTER_OP_SUCCESS		= 0,	//!< Operation completed successfully.
-	CLUSTER_OP_FAILED		= -1,	//!< Operation failed.
-	CLUSTER_OP_NO_CONNECTION	= -2,	//!< Operation failed because we couldn't find
-						//!< a live connection.
-	CLUSTER_OP_BAD_INPUT		= -3	//!< Validation error.
+	CLUSTER_OP_IGNORED		= 1,		//!< Operation ignored.
+	CLUSTER_OP_SUCCESS		= 0,		//!< Operation completed successfully.
+	CLUSTER_OP_FAILED		= -1,		//!< Operation failed.
+	CLUSTER_OP_NO_CONNECTION	= -2,		//!< Operation failed because we couldn't find
+							//!< a live connection.
+	CLUSTER_OP_BAD_INPUT		= -3		//!< Validation error.
 } cluster_rcode_t;
 
 /** Live nodes data, used to perform weighted random selection of alternative nodes
@@ -204,16 +204,16 @@ typedef struct cluster_nodes_live {
 		uint8_t					id;		//!< Node ID.
 		fr_connection_pool_state_t const	*pool_state;	//!< Connection pool stats.
 		unsigned int				cumulative;	//!< Cumulative weight.
-	} node[UINT8_MAX - 1];			//!< Array of live node IDs (and weights).
-	uint8_t next;				//!< Next index in live.
+	} node[UINT8_MAX - 1];				//!< Array of live node IDs (and weights).
+	uint8_t next;					//!< Next index in live.
 	uint8_t skip;
 } cluster_nodes_live_t;
 
 /** Configuration for a single node
  */
 typedef struct cluster_node_conf {
-	fr_ipaddr_t		ipaddr;		//!< IP Address of Redis cluster node.
-	uint16_t		port;		//!< Port of Redis cluster node.
+	fr_ipaddr_t		ipaddr;			//!< IP Address of Redis cluster node.
+	uint16_t		port;			//!< Port of Redis cluster node.
 } cluster_node_addr_t;
 
 /** A Redis cluster node
@@ -222,17 +222,17 @@ typedef struct cluster_node_conf {
  */
 typedef struct fr_redis_cluster_node {
 	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP string.
-						//!< text for debug messages.
-	bool			active;		//!< Whether this node is in the active node set.
-	uint8_t			id;		//!< Node ID (index in node array).
+							//!< text for debug messages.
+	bool			active;			//!< Whether this node is in the active node set.
+	uint8_t			id;			//!< Node ID (index in node array).
 
-	cluster_node_addr_t	addr;		//!< Current node address.
-	cluster_node_addr_t	pending_addr;	//!< New node address to be applied when the pool
-						//!< is reconnected.
+	cluster_node_addr_t	addr;			//!< Current node address.
+	cluster_node_addr_t	pending_addr;		//!< New node address to be applied when the pool
+							//!< is reconnected.
 
-	fr_redis_conf_t		*conf;		//!< Commmon configuration (database number,
-						//!< password, etc..).
-	fr_connection_pool_t	*pool;		//!< Pool associated with this node.
+	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
+							//!< password, etc..).
+	fr_connection_pool_t	*pool;			//!< Pool associated with this node.
 } cluster_node_t;
 
 /** Indexes in the cluster_node_t array for a single key slot
@@ -243,8 +243,8 @@ typedef struct fr_redis_cluster_node {
  */
 typedef struct cluster_key_slot {
 	uint8_t			slave[MAX_SLAVES];	//!< R/O node (slave) for this key slot.
-	uint8_t			slave_num;	//!< Number of slaves associated with this key slot.
-	uint8_t			master;		//!< R/W node (master) for this key slot.
+	uint8_t			slave_num;		//!< Number of slaves associated with this key slot.
+	uint8_t			master;			//!< R/W node (master) for this key slot.
 } cluster_key_slot_t;
 
 /** A redis cluster
@@ -252,20 +252,25 @@ typedef struct cluster_key_slot {
  * Holds all the structures and collections of nodes, to represent a Redis cluster.
  */
 struct fr_redis_cluster {
-	bool			remapping;	//!< True when cluster is being remapped.
-	bool			remap_needed;	//!< Set true if at least one cluster node is definitely
-						//!< unreachable. Set false on successful remap.
-	time_t			last_updated;	//!< Last time the cluster mappings were updated.
-	CONF_SECTION		*module;	//!< Module configuration.
+	char const		*log_prefix;		//!< What to prepend to log messages.
+	char const		*trigger_prefix;	//!< Trigger path.
+	VALUE_PAIR		*trigger_args;		//!< Arguments to pass to triggers.
+	bool			triggers_enabled;	//!< Whether triggers are enabled.
 
-	fr_redis_conf_t		*conf;		//!< Base configuration data such as the database number
-						//!< and passwords.
+	bool			remapping;		//!< True when cluster is being remapped.
+	bool			remap_needed;		//!< Set true if at least one cluster node is definitely
+							//!< unreachable. Set false on successful remap.
+	time_t			last_updated;		//!< Last time the cluster mappings were updated.
+	CONF_SECTION		*module;		//!< Module configuration.
 
-	cluster_node_t		*node;		//!< Structure containing a node id, its address and
-						//!< a pool of its connections.
+	fr_redis_conf_t		*conf;			//!< Base configuration data such as the database number
+							//!< and passwords.
 
-	fr_fifo_t		*free_nodes;	//!< Queue of free nodes (or nodes waiting to be reused).
-	rbtree_t		*used_nodes;	//!< Tree of used nodes.
+	cluster_node_t		*node;			//!< Structure containing a node id, its address and
+							//!< a pool of its connections.
+
+	fr_fifo_t		*free_nodes;		//!< Queue of free nodes (or nodes waiting to be reused).
+	rbtree_t		*used_nodes;		//!< Tree of used nodes.
 
 	cluster_key_slot_t	key_slot[KEY_SLOTS];		//!< Lookup table of slots to pools.
 	cluster_key_slot_t	key_slot_pending[KEY_SLOTS];	//!< Pending key slot table.
@@ -337,21 +342,31 @@ static void _cluster_node_conf_apply(fr_connection_pool_t *pool, void *opaque)
 {
 	VALUE_PAIR	*args;
 	cluster_node_t	*node = opaque;
+	vp_cursor_t	cursor;
 
 	node->addr = node->pending_addr;
 
-	args = trigger_args_afrom_server(pool, node->name, node->addr.port);
-	if (!args) return;
+	if (node->cluster->triggers_enabled) {
+		fr_connection_pool_enable_triggers(pool, node->cluster->trigger_prefix);
 
-	fr_connection_pool_trigger_args(pool, args);
+		args = trigger_args_afrom_server(pool, node->name, node->addr.port);
+		if (!args) return;
 
-	fr_pair_list_free(&args);	/* I know... I know... But it doesn't happen often */
+		if (node->cluster->trigger_args) {
+			fr_cursor_init(&cursor, &args);
+			fr_cursor_merge(&cursor, fr_pair_list_copy(node->cluster, node->cluster->trigger_args));
+		}
+
+		fr_connection_pool_trigger_args(node->pool, args);
+
+		fr_pair_list_free(&args);
+	}
 }
 
 /** Establish a connection to a cluster node
  *
  * @note Must be called with the cluster mutex locked.
- * @note Configuration to use for the connection must be set in node->pending_addr, not node->conf.
+ * @note Configuration to use for the connection must be set in node->pending_addr, not node->cluster->conf.
  *
  * @param[in] cluster to search in.
  * @param[in] node config.
@@ -376,10 +391,11 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	 *	Node has never been used before, needs a pool allocated for it.
 	 */
 	if (!node->pool) {
-		char buffer[256];
-		VALUE_PAIR *args;
+		char		buffer[256];
+		VALUE_PAIR	*args;
+		vp_cursor_t	cursor;
 
-		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->conf->prefix, node->id);
+		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
 		node->addr = node->pending_addr;
 		node->pool = fr_connection_pool_init(cluster, cf_section_sub_find(cluster->module, "pool"), node,
@@ -387,10 +403,23 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 		if (!node->pool) return CLUSTER_OP_FAILED;
 		fr_connection_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
 
-		args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
-		if (!args) {
-			TALLOC_FREE(node->pool);
-			return CLUSTER_OP_FAILED;
+		if (cluster->triggers_enabled) {
+			fr_connection_pool_enable_triggers(node->pool, cluster->trigger_prefix);
+
+			args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
+			if (!args) {
+				TALLOC_FREE(node->pool);
+				return CLUSTER_OP_FAILED;
+			}
+
+			if (cluster->trigger_args) {
+				fr_cursor_init(&cursor, &args);
+				fr_cursor_merge(&cursor, fr_pair_list_copy(cluster, cluster->trigger_args));
+			}
+
+			fr_connection_pool_trigger_args(node->pool, args);
+
+			fr_pair_list_free(&args);
 		}
 
 		return CLUSTER_OP_SUCCESS;
@@ -433,7 +462,7 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
 	} else if (strncmp(REDIS_ERROR_ASK_STR, redirect->str, sizeof(REDIS_ERROR_ASK_STR) - 1) == 0) {
 		q = p + sizeof(REDIS_ERROR_ASK_STR);	/* not a typo, skip space too */
 	} else {
-		fr_strerror_printf("No '-MOVED' or '-ASK' prefix");
+		fr_strerror_printf("No '-MOVED' or '-ASK' log_prefix");
 		return CLUSTER_OP_BAD_INPUT;
 	}
 	if ((q - p) >= redirect->len) {
@@ -1430,28 +1459,29 @@ static int _cluster_conn_free(fr_redis_conn_t *conn)
  */
 void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	cluster_node_t	*node = instance;
+	cluster_node_t		*node = instance;
 	fr_redis_conn_t		*conn = NULL;
 	redisContext		*handle;
 	redisReply		*reply = NULL;
+	char const		*log_prefix = node->cluster->log_prefix;
 
-	DEBUG2("%s [%i]: Connecting node to %s:%i",  node->conf->prefix, node->id, node->name, node->addr.port);
+	DEBUG2("%s [%i]: Connecting node to %s:%i",  log_prefix, node->id, node->name, node->addr.port);
 
 	handle = redisConnectWithTimeout(node->name, node->addr.port, *timeout);
 	if ((handle != NULL) && handle->err) {
-		ERROR("%s [%i]: Connection failed: %s", node->conf->prefix, node->id, handle->errstr);
+		ERROR("%s [%i]: Connection failed: %s", log_prefix, node->id, handle->errstr);
 		redisFree(handle);
 		return NULL;
 	} else if (!handle) {
-		ERROR("%s [%i]: Connection failed", node->conf->prefix, node->id);
+		ERROR("%s [%i]: Connection failed", log_prefix, node->id);
 		return NULL;
 	}
 
-	if (node->conf->password) {
-		DEBUG3("%s [%i]: Executing: AUTH %s", node->conf->prefix, node->id, node->conf->password);
-		reply = redisCommand(handle, "AUTH %s", node->conf->password);
+	if (node->cluster->conf->password) {
+		DEBUG3("%s [%i]: Executing: AUTH %s", log_prefix, node->id, node->cluster->conf->password);
+		reply = redisCommand(handle, "AUTH %s", node->cluster->conf->password);
 		if (!reply) {
-			ERROR("%s [%i]: Failed authenticating: %s", node->conf->prefix, node->id, handle->errstr);
+			ERROR("%s [%i]: Failed authenticating: %s", log_prefix, node->id, handle->errstr);
 		error:
 			if (reply) fr_redis_reply_free(reply);
 			redisFree(handle);
@@ -1461,7 +1491,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s [%i]: Failed authenticating: %s", node->conf->prefix,
+				ERROR("%s [%i]: Failed authenticating: %s", log_prefix,
 				      node->id, reply->str);
 				goto error;
 			}
@@ -1469,42 +1499,42 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
-			ERROR("%s [%i]: Failed authenticating: %s", node->conf->prefix, node->id, reply->str);
+			ERROR("%s [%i]: Failed authenticating: %s", log_prefix, node->id, reply->str);
 			goto error;
 
 		default:
-			ERROR("%s [%i]: Unexpected reply of type %s to AUTH", node->conf->prefix, node->id,
+			ERROR("%s [%i]: Unexpected reply of type %s to AUTH", log_prefix, node->id,
 			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
 	}
 
-	if (node->conf->database) {
-		DEBUG3("%s [%i]: Executing: SELECT %i", node->conf->prefix, node->id, node->conf->database);
-		reply = redisCommand(handle, "SELECT %i", node->conf->database);
+	if (node->cluster->conf->database) {
+		DEBUG3("%s [%i]: Executing: SELECT %i", log_prefix, node->id, node->cluster->conf->database);
+		reply = redisCommand(handle, "SELECT %i", node->cluster->conf->database);
 		if (!reply) {
-			ERROR("%s [%i]: Failed selecting database %i: %s", node->conf->prefix, node->id,
-			      node->conf->database, handle->errstr);
+			ERROR("%s [%i]: Failed selecting database %i: %s", log_prefix, node->id,
+			      node->cluster->conf->database, handle->errstr);
 			goto error;
 		}
 
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s [%i]: Failed selecting database %i: %s", node->conf->prefix, node->id,
-				      node->conf->database, reply->str);
+				ERROR("%s [%i]: Failed selecting database %i: %s", log_prefix, node->id,
+				      node->cluster->conf->database, reply->str);
 				goto error;
 			}
 			fr_redis_reply_free(reply);
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
-			ERROR("%s [%i]: Failed selecting database %i: %s", node->conf->prefix, node->id,
-			      node->conf->database, reply->str);
+			ERROR("%s [%i]: Failed selecting database %i: %s", log_prefix, node->id,
+			      node->cluster->conf->database, reply->str);
 			goto error;
 
 		default:
-			ERROR("%s [%i]: Unexpected reply of type %s, to SELECT", node->conf->prefix, node->id,
+			ERROR("%s [%i]: Unexpected reply of type %s, to SELECT", log_prefix, node->id,
 			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
@@ -2065,14 +2095,26 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
  * @note Will not error out unless cs.pool.start > 0.  This is consistent with other pool based
  *	modules/code.
  *
- * @param ctx to link the lifetime of the cluster structure to.
- * @param module Configuration section to search for 'server' conf pairs in.
- * @param conf Base redis server configuration. Cluster nodes share database number and password.
+ * @param ctx			to link the lifetime of the cluster structure to.
+ * @param module		Configuration section to search for 'server' conf pairs in.
+ * @param conf			Base redis server configuration. Cluster nodes share database
+ *				number and password.
+ * @param enable_triggers	Whether triggers should be enabled.
+ * @param log_prefix		Custom log prefix.  Defaults to @verbatim rlm_<module> (<instance>) @endverbatim.
+ * @param trigger_prefix	Custom trigger prefix.  Defaults to @verbatim modules.<module>.pool @endverbatim.
+ * @param trigger_args		Argument pairs to pass to the trigger in addition to Connection-Pool-Server,
+ *				and Connection-Pool-Port.
  * @return
  *	- New #fr_redis_cluster_t on success.
  *	- NULL on error.
  */
-fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module, fr_redis_conf_t *conf)
+fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
+					   CONF_SECTION *module,
+					   fr_redis_conf_t *conf,
+					   bool enable_triggers,
+					   char const *log_prefix,
+					   char const *trigger_prefix,
+					   VALUE_PAIR *trigger_args)
 {
 	uint8_t			i;
 	uint16_t		s;
@@ -2086,17 +2128,41 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 	int			num_nodes;
 	fr_redis_cluster_t	*cluster;
 
+	rad_assert(!enable_triggers || !log_prefix);
+	rad_assert(!enable_triggers || !trigger_prefix);
+	rad_assert(!enable_triggers || !trigger_args);
+
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
-		ERROR("%s: Out of memory", conf->prefix);
+		ERROR("%s: Out of memory", cluster->log_prefix);
 		return NULL;
 	}
 
-	if (!conf->prefix) {
-		cs_name1 = cf_section_name1(module);
-		cs_name2 = cf_section_name2(module);
+	cs_name1 = cf_section_name1(module);
+	cs_name2 = cf_section_name2(module);
+
+	/*
+	 *	Setup trigger prefix
+	 */
+	if (!trigger_prefix) {
+		cluster->trigger_prefix = talloc_asprintf(cluster, "modules.%s.pool", cs_name1);
+	} else {
+		cluster->trigger_prefix = talloc_strdup(cluster, trigger_prefix);
+	}
+
+	/*
+	 *	Duplicate the trigger arguments.
+	 */
+	 if (trigger_args) cluster->trigger_args = fr_pair_list_copy(cluster, trigger_args);
+
+	/*
+	 *	Setup log prefix
+	 */
+	if (!log_prefix) {
 		if (!cs_name2) cs_name2 = cs_name1;
-		conf->prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
+		cluster->log_prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
+	} else {
+		cluster->log_prefix = talloc_strdup(cluster, log_prefix);
 	}
 
 	/*
@@ -2109,20 +2175,20 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 	}
 
 	if (conf->max_nodes == UINT8_MAX) {
-		ERROR("%s: Maximum number of connected nodes allowed is %i", conf->prefix, UINT8_MAX - 1);
+		ERROR("%s: Maximum number of connected nodes allowed is %i", cluster->log_prefix, UINT8_MAX - 1);
 		talloc_free(cluster);
 		return NULL;
 	}
 
 	if (conf->max_nodes == 0) {
-		ERROR("%s: Minimum number of nodes allowed is 1", conf->prefix);
+		ERROR("%s: Minimum number of nodes allowed is 1", cluster->log_prefix);
 		talloc_free(cluster);
 		return NULL;
 	}
 
 	cp = cf_pair_find(module, "server");
 	if (!cp) {
-		ERROR("%s: No servers configured", conf->prefix);
+		ERROR("%s: No servers configured", cluster->log_prefix);
 		talloc_free(cluster);
 		return NULL;
 	}
@@ -2139,7 +2205,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 	 */
 	if (fr_talloc_link_ctx(ctx, cluster) < 0) {
 	oom:
-		ERROR("%s: Out of memory", conf->prefix);
+		ERROR("%s: Out of memory", cluster->log_prefix);
 
 	error:
 		talloc_free(cluster);
@@ -2164,7 +2230,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 	 */
 	for (i = 1; i < (cluster->conf->max_nodes + 1); i++) {
 		cluster->node[i].id = i;
-		cluster->node[i].conf = conf;
+		cluster->node[i].cluster = cluster;
 
 		/* Push them all into the queue */
 		fr_fifo_push(cluster->free_nodes, &cluster->node[i]);
@@ -2190,25 +2256,25 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 
 		node = fr_fifo_peek(cluster->free_nodes);
 		if (!node) {
-			ERROR("%s: Number of bootstrap servers exceeds 'max_nodes'", conf->prefix);
+			ERROR("%s: Number of bootstrap servers exceeds 'max_nodes'", cluster->log_prefix);
 			goto error;
 		}
 
 		server = cf_pair_value(cp);
 		if (fr_inet_pton_port(&node->pending_addr.ipaddr, &node->pending_addr.port, server,
 				 talloc_array_length(server) - 1, af, true, true) < 0) {
-			ERROR("%s: Failed parsing server \"%s\": %s", conf->prefix, server, fr_strerror());
+			ERROR("%s: Failed parsing server \"%s\": %s", cluster->log_prefix, server, fr_strerror());
 			goto error;
 		}
 		if (!node->pending_addr.port) node->pending_addr.port = conf->port;
 
 		if (cluster_node_connect(cluster, node) < 0) {
-			WARN("%s: Connecting to %s:%i failed", conf->prefix, node->name, node->pending_addr.port);
+			WARN("%s: Connecting to %s:%i failed", cluster->log_prefix, node->name, node->pending_addr.port);
 			continue;
 		}
 
 		if (!rbtree_insert(cluster->used_nodes, node)) {
-			WARN("%s: Skipping duplicate bootstrap server \"%s\"", conf->prefix, server);
+			WARN("%s: Skipping duplicate bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
 		}
 		node->active = true;
@@ -2225,7 +2291,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 		 */
 		conn = fr_connection_get(node->pool);
 		if (!conn) {
-			WARN("%s: Can't contact bootstrap server \"%s\"", conf->prefix, server);
+			WARN("%s: Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
 		}
 
@@ -2236,25 +2302,25 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 		case CLUSTER_OP_SUCCESS:
 			fr_connection_release(node->pool, conn);
 
-			INFO("%s: Cluster map consists of %zu key ranges", conf->prefix, map->elements);
+			INFO("%s: Cluster map consists of %zu key ranges", cluster->log_prefix, map->elements);
 			for (j = 0; j < map->elements; j++) {
 				redisReply *map_node = map->element[j];
 
-				INFO("%s: %zu - keys %lli-%lli", conf->prefix, j,
+				INFO("%s: %zu - keys %lli-%lli", cluster->log_prefix, j,
 				     map_node->element[0]->integer,
 				     map_node->element[1]->integer);
-				INFO("%s:  master: %s:%lli", conf->prefix,
+				INFO("%s:  master: %s:%lli", cluster->log_prefix,
 				     map_node->element[2]->element[0]->str,
 				     map_node->element[2]->element[1]->integer);
 				for (k = 3; k < map_node->elements; k++) {
-					INFO("%s:  slave%zu: %s:%lli", conf->prefix, k - 3,
+					INFO("%s:  slave%zu: %s:%lli", cluster->log_prefix, k - 3,
 					     map_node->element[k]->element[0]->str,
 					     map_node->element[k]->element[1]->integer);
 				}
 			}
 
 			if (cluster_map_apply(cluster, map) < 0) {
-				WARN("%s: Applying cluster map failed: %s", conf->prefix, fr_strerror());
+				WARN("%s: Applying cluster map failed: %s", cluster->log_prefix, fr_strerror());
 				fr_redis_reply_free(map);
 				continue;
 			}
@@ -2267,13 +2333,13 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 		 */
 		case CLUSTER_OP_BAD_INPUT:
 			WARN("%s: Bootstrap server \"%s\" returned invalid data: %s",
-			     conf->prefix, server, fr_strerror());
+			     cluster->log_prefix, server, fr_strerror());
 			fr_connection_release(node->pool, conn);
 			continue;
 
 		case CLUSTER_OP_NO_CONNECTION:
 			WARN("%s: Can't contact bootstrap server \"%s\": %s",
-			     conf->prefix, server, fr_strerror());
+			     cluster->log_prefix, server, fr_strerror());
 			fr_connection_close(node->pool, conn);
 			continue;
 
@@ -2284,7 +2350,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 		case CLUSTER_OP_FAILED:
 		case CLUSTER_OP_IGNORED:
 			DEBUG2("%s: Bootstrap server \"%s\" returned: %s",
-			       conf->prefix, server, fr_strerror());
+			       cluster->log_prefix, server, fr_strerror());
 			fr_connection_release(node->pool, conn);
 			break;
 		}
@@ -2295,7 +2361,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 	 */
 	num_nodes = rbtree_num_elements(cluster->used_nodes);
 	if (!num_nodes) {
-		ERROR("%s: Can't contact any bootstrap servers", conf->prefix);
+		ERROR("%s: Can't contact any bootstrap servers", cluster->log_prefix);
 		goto error;
 	}
 

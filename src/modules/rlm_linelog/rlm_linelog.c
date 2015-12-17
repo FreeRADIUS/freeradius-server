@@ -399,20 +399,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 #else
 		inst->pool = module_connection_pool_init(cf_section_sub_find(conf, "unix"),
-							    inst, mod_conn_create, NULL, prefix, NULL);
+							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 #endif
 		break;
 
 	case LINELOG_DST_UDP:
 		inst->pool = module_connection_pool_init(cf_section_sub_find(conf, "udp"),
-							    inst, mod_conn_create, NULL, prefix, NULL);
+							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 		break;
 
 	case LINELOG_DST_TCP:
 		inst->pool = module_connection_pool_init(cf_section_sub_find(conf, "tcp"),
-							    inst, mod_conn_create, NULL, prefix, NULL);
+							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 		break;
 

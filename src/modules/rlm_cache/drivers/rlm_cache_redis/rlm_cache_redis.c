@@ -60,7 +60,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
-	driver->cluster = fr_redis_cluster_alloc(driver, conf, &driver->conf);
+	driver->cluster = fr_redis_cluster_alloc(driver, conf, &driver->conf, true, NULL, NULL, NULL);
 	if (!driver->cluster) {
 		ERROR("rlm_cache_redis: Cluster failure");
 		return -1;
