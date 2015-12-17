@@ -114,7 +114,7 @@ radiusdConnectionPoolServer OBJECT-TYPE
        ::= { radiusdConnectionPoolEntry 2 }
 
 radiusdConnectionPoolPort OBJECT-TYPE
-       SYNTAX      SnmpAdminString
+       SYNTAX      Unsigned32
        MAX-ACCESS  read-only
        STATUS      current
        DESCRIPTION
