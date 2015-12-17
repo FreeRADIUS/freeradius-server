@@ -329,22 +329,30 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		goto finish;
 	}
 
-	ret = inst->module->sql_num_rows(handle, inst->config);
-	if (ret == 0) {
-		RDEBUG2("Server returned an empty result");
-		rcode = RLM_MODULE_NOOP;
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-		goto finish;
+	/*
+	 *	Not every driver provides an sql_num_rows function
+	 */
+	if (inst->module->sql_num_rows) {
+		ret = inst->module->sql_num_rows(handle, inst->config);
+		if (ret == 0) {
+			RDEBUG2("Server returned an empty result");
+			rcode = RLM_MODULE_NOOP;
+			(inst->module->sql_finish_select_query)(handle, inst->config);
+			goto finish;
+		}
+
+		if (ret < 0) {
+			RERROR("Failed retrieving row count");
+		error:
+			rcode = RLM_MODULE_FAIL;
+			(inst->module->sql_finish_select_query)(handle, inst->config);
+			goto finish;
+		}
 	}
 
-	if (ret < 0) {
-		RERROR("Failed retrieving row count");
-	error:
-		rcode = RLM_MODULE_FAIL;
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-		goto finish;
-	}
-
+	/*
+	 *	Map proc only registered if driver provides an sql_fields function
+	 */
 	ret = (inst->module->sql_fields)(&fields, handle, inst->config);
 	if (ret != RLM_SQL_OK) {
 		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
@@ -1074,7 +1082,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_escape_for_xlat_func, NULL, 0);
+	if (inst->module->sql_fields) {
+		map_proc_register(inst, inst->name, mod_map_proc, sql_escape_for_xlat_func, NULL, 0);
+	}
 
 	return 0;
 }

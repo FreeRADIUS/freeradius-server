@@ -787,9 +787,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 
-	if (conn->db) {
-		return sqlite3_changes(conn->db);
-	}
+	if (conn->db) return sqlite3_changes(conn->db);
 
 	return -1;
 }
