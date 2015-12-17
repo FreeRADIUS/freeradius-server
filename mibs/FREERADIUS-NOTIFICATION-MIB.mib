@@ -97,42 +97,54 @@ serverModuleGeneric  OBJECT IDENTIFIER ::= { serverModules 1 }
 
 serverModuleConnectionUp NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
-		 radiusdModuleInstance }
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that the module has opened a new connection"
        ::= { serverModuleGeneric 1 }
 
 serverModuleConnectionDown NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
-		 radiusdModuleInstance }
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that the module has dropped a connection"
        ::= { serverModuleGeneric 2 }
 
 serverModuleConnectionNone NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
-		 radiusdModuleInstance }
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that the module has no connections"
        ::= { serverModuleGeneric 3 }
 
 serverModuleConnectionFail NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
-		 radiusdModuleInstance }
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that the module has failed to open a new connection"
        ::= { serverModuleGeneric 4 }
 
 serverModuleConnectionPoolReconnect NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
-		 radiusdModuleInstance }
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that all connections for this pool are being re-established"
        ::= { serverModuleGeneric 5 }
 
 serverModuleHup NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
-		 radiusdModuleInstance }
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolport }
        STATUS current
        DESCRIPTION "Notification that the module has been HUP'd via radmin"
        ::= { serverModuleGeneric 5 }

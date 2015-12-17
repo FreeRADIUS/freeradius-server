@@ -14,7 +14,7 @@ freeradius MODULE-IDENTITY
 	ORGANIZATION "FreeRADIUS Project"
 	CONTACT-INFO
 		"FreeRADIUS Network Object Model Environment project
-		
+
 		see http://www.freeradius.org for contact persons of a particular
 		area or subproject of FREERADIUS.
 
@@ -72,4 +72,52 @@ radiusdModuleInstance OBJECT-TYPE
              "The instance name the module (e.g. 'sql2' for sql sql2 {...})"
        ::= { radiusdModule 2 }
 
+radiusdConnectionPoolTable OBJECT-TYPE
+       SYNTAX     SEQUENCE OF RadiusdConnectionPoolEntry
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+             "The (conceptual) table listing the RADIUS authentication
+             servers with which the client shares a secret."
+       ::= { radiusdModule 3 }
+
+RadiusdConnectionPoolEntry ::= SEQUENCE {
+       radiusdConnectionPoolIndex                     Integer32,
+       radiusdConnectionPoolServer                    SnmpAdminString,
+       radiusdConnectionPoolPort                      Unsigned32
+}
+
+radiusdConnectionPoolEntry OBJECT-TYPE
+       SYNTAX     RadiusdConnectionPoolEntry
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+               "An entry (conceptual row) representing a connection pool
+                associated with a module."
+       INDEX      { radiusdConnectionPoolIndex }
+       ::= { radiusdConnectionPoolTable 1 }
+
+radiusdConnectionPoolIndex OBJECT-TYPE
+       SYNTAX     Integer32 (1..2147483647)
+       MAX-ACCESS not-accessible
+       STATUS     current
+       DESCRIPTION
+              "A number uniquely identifying each connection pool with a module."
+       ::= { radiusAccServerEntry 1 }
+
+radiusdConnectionPoolServer OBJECT-TYPE
+       SYNTAX      SnmpAdminString
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+             "The server the connection pool manages connections for"
+       ::= { radiusdConnectionPool 1 }
+
+radiusdConnectionPoolPort OBJECT-TYPE
+       SYNTAX      SnmpAdminString
+       MAX-ACCESS  read-only
+       STATUS      current
+       DESCRIPTION
+             "The service port on the server the connection pool manages connections for"
+       ::= { radiusdConnectionPool 3 }
 END
