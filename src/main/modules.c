@@ -380,8 +380,8 @@ static void module_instance_free(void *data)
  */
 static int module_entry_cmp(void const *one, void const *two)
 {
-	module_entry_t const *a = one;
-	module_entry_t const *b = two;
+	module_dlhandle_t const *a = one;
+	module_dlhandle_t const *b = two;
 
 	return strcmp(a->name, b->name);
 }
@@ -389,9 +389,9 @@ static int module_entry_cmp(void const *one, void const *two)
 /*
  *	Free a module entry.
  */
-static int _module_entry_free(module_entry_t *this)
+static int _module_entry_free(module_dlhandle_t *this)
 {
-	this = talloc_get_type_abort(this, module_entry_t);
+	this = talloc_get_type_abort(this, module_dlhandle_t);
 
 #ifndef NDEBUG
 	/*
@@ -420,10 +420,10 @@ int modules_free(void)
 /*
  *	dlopen() a module.
  */
-static module_entry_t *module_dlopen(CONF_SECTION *cs)
+static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 {
-	module_entry_t myentry;
-	module_entry_t *instance;
+	module_dlhandle_t myentry;
+	module_dlhandle_t *instance;
 	void *handle = NULL;
 	char const *name1;
 	module_t const *module;
@@ -477,7 +477,7 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs)
 	}
 
 	/* make room for the module type */
-	instance = talloc_zero(NULL, module_entry_t);
+	instance = talloc_zero(NULL, module_dlhandle_t);
 	talloc_set_destructor(instance, _module_entry_free);
 
 	instance->module = module;

@@ -49,11 +49,11 @@ char const *lt_dlerror(void);
 /*
  *	Keep track of which modules we've loaded.
  */
-typedef struct module_entry_t {
+typedef struct module_dlhandle_t {
 	char const		*name;
 	module_t const		*module;
 	lt_dlhandle		handle;
-} module_entry_t;
+} module_dlhandle_t;
 
 typedef struct fr_module_hup_t fr_module_hup_t;
 
@@ -64,7 +64,7 @@ typedef struct fr_module_hup_t fr_module_hup_t;
  */
 typedef struct module_instance_t {
 	char const		*name;
-	module_entry_t		*entry;
+	module_dlhandle_t		*entry;
 	void			*insthandle;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
