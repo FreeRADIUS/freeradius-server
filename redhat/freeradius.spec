@@ -392,7 +392,7 @@ export LDFLAGS="-Wl,--build-id"
         --with-openssl-include-dir=/opt/openssl/include \
 %endif
 %if %{?_with_developer:1}%{!?_with_developer:0}
-        --enable-developer=yes
+        --enable-developer=yes \
 %endif
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
