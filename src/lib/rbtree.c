@@ -41,17 +41,18 @@ typedef enum {
 } node_colour_t;
 
 struct rbnode_t {
-    rbnode_t		*left;		//!< Left child
-    rbnode_t		*right;		//!< Right child
-    rbnode_t		*parent;	//!< Parent
-    node_colour_t	colour;		//!< Node colour (BLACK, RED)
-    void		*data;		//!< data stored in node
+	rbnode_t		*left;		//!< Left child
+	rbnode_t		*right;		//!< Right child
+	rbnode_t		*parent;	//!< Parent
+	node_colour_t		colour;		//!< Node colour (BLACK, RED)
+	void			*data;		//!< data stored in node
 };
 
 #define NIL &sentinel	   /* all leafs are sentinels */
 static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
 struct rbtree_t {
+	TALLOC_CTX		*parent;	//!< Original parent the tree was allocated under.
 #ifndef NDEBUG
 	uint32_t		magic;
 #endif
@@ -81,6 +82,13 @@ static void free_walker(rbtree_t *tree, rbnode_t *x)
 	talloc_free(x);
 }
 
+/** Executes the free walker on a tree, and then frees the tree itself
+ *
+ * @note If you don't require the free walker to execute, you can just
+ *	talloc_free the tree.  All mutexes will be cleaned up.
+ *
+ * @param tree to free.
+ */
 void rbtree_free(rbtree_t *tree)
 {
 	if (!tree) return;
@@ -99,11 +107,15 @@ void rbtree_free(rbtree_t *tree)
 
 	PTHREAD_MUTEX_UNLOCK(tree);
 
+	talloc_unlink(tree, tree->parent);
+}
+
+static int _rbtree_free(rbtree_t *tree)
+{
 #ifdef HAVE_PTHREAD_H
 	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
 #endif
-
-	talloc_free(tree);
+	return 0;
 }
 
 /** Create a new RED-BLACK tree
@@ -118,6 +130,8 @@ rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node
 	tree = talloc_zero(ctx, rbtree_t);
 	if (!tree) return NULL;
 
+	tree->parent = ctx;	/* So we can unlink later */
+
 #ifndef NDEBUG
 	tree->magic = RBTREE_MAGIC;
 #endif
@@ -130,6 +144,7 @@ rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node
 		pthread_mutex_init(&tree->mutex, NULL);
 	}
 #endif
+	talloc_set_destructor(tree, _rbtree_free);
 	tree->free = node_free;
 
 	return tree;

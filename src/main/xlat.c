@@ -721,7 +721,6 @@ static xlat_t *xlat_find(char const *name)
 	return rbtree_finddata(xlat_root, &my_xlat);
 }
 
-
 /** Register an xlat function.
  *
  * @param[in] mod_inst Instance of module that's registering the xlat function.
@@ -830,7 +829,6 @@ int xlat_register(void *mod_inst, char const *name,
 	 *	Doesn't exist.  Create it.
 	 */
 	c = talloc_zero(xlat_root, xlat_t);
-
 	c->func = func;
 	c->buf_len = buf_len;
 	c->escape = escape;
@@ -848,15 +846,6 @@ int xlat_register(void *mod_inst, char const *name,
 		return -1;
 	}
 
-	/*
-	 *	Ensure that the data is deleted when the node is
-	 *	deleted.
-	 *
-	 *	@todo: Maybe this should be the other way around...
-	 *	when a thing IN the tree is deleted, it's automatically
-	 *	removed from the tree.  But for now, this works.
-	 */
-	(void) talloc_steal(node, c);
 	return 0;
 }
 
@@ -898,6 +887,8 @@ static int xlat_unregister_callback(void *mod_inst, void *data)
 
 void xlat_unregister_module(void *instance)
 {
+	if (!xlat_root) return;	/* All xlats have already been freed */
+
 	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, xlat_unregister_callback, instance);
 }
 
@@ -1168,7 +1159,7 @@ ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
  */
 void xlat_free(void)
 {
-	rbtree_free(xlat_root);
+	TALLOC_FREE(xlat_root);
 }
 
 #ifdef DEBUG_XLAT
