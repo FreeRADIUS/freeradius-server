@@ -339,7 +339,7 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
 	}
 }
 
-static int _module_instance_free(module_instance_t *instance)
+static int _module_instance_free(PTHREAD_UNUSED module_instance_t *instance)
 {
 #ifdef HAVE_PTHREAD_H
 	if (instance->mutex) {
