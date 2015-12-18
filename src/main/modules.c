@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
+
 /** Path to search for modules in
  *
  */
@@ -339,7 +340,7 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
 	}
 }
 
-static int _module_instance_free(PTHREAD_UNUSED module_instance_t *instance)
+static int _module_instance_free(module_instance_t *instance)
 {
 #ifdef HAVE_PTHREAD_H
 	if (instance->mutex) {
@@ -351,6 +352,10 @@ static int _module_instance_free(PTHREAD_UNUSED module_instance_t *instance)
 		pthread_mutex_destroy(instance->mutex);
 	}
 #endif
+	DEBUG3("Freeing instance %s of module %s, %zu reference(s) remain",
+	       instance->name, instance->entry->name, talloc_reference_count(instance->entry) - 1);
+	talloc_unlink(instance, instance->entry);
+
 	return 0;
 }
 
@@ -400,15 +405,14 @@ static int _module_entry_free(module_dlhandle_t *this)
 {
 	this = talloc_get_type_abort(this, module_dlhandle_t);
 
-#ifndef NDEBUG
-	/*
-	 *	Don't dlclose() modules if we're doing memory
-	 *	debugging.  This removes the symbols needed by
-	 *	valgrind.
-	 */
-	if (!main_config.debug_memory)
-#endif
-	dlclose(this->dlhandle);	/* ignore any errors */
+	DEBUG3("Unloading %s (%p/%p)", this->module->name, this->dlhandle, this->module);
+
+	if (this->dlhandle) {
+		lt_dlclose(this->dlhandle);	/* ignore any errors */
+		this->dlhandle = NULL;
+	}
+	this->module = NULL;
+
 	return 0;
 }
 
@@ -447,7 +451,6 @@ static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
-
 #if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	module = dlsym(RTLD_SELF, module_name);
 	if (module) goto open_self;
@@ -471,8 +474,10 @@ static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 		return NULL;
 	}
 
+	DEBUG3("Loaded %s (%p/%p)", module_name, dlhandle, module);
+
 #if !defined(WITH_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
- open_self:
+open_self:
 #endif
 	/*
 	 *	Before doing anything else, check if it's sane.
@@ -553,7 +558,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	int i;
 	char const *name1, *instance_name;
 	module_instance_t *instance;
-	module_dlhandle_t *handle;
+	module_dlhandle_t *module;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -590,8 +595,8 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Load the module shared library.
 	 */
-	handle = module_dlopen(cs);
-	if (!handle) {
+	module = module_dlopen(cs);
+	if (!module) {
 		talloc_free(instance);
 		return NULL;
 	}
@@ -603,12 +608,13 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 *
 	 *	@fixme this should be the other way round.
 	 */
-	instance = talloc_zero(handle, module_instance_t);
+	instance = talloc_zero(module_tree, module_instance_t);
 	instance->cs = cs;
 	instance->name = instance_name;
+	talloc_reference(instance, module);	/* Ensure the module isn't freed until all instances have been */
 	talloc_set_destructor(instance, _module_instance_free);
 
-	instance->entry = handle;
+	instance->entry = module;
 	if (!instance->entry) {
 		talloc_free(instance);
 		return NULL;
