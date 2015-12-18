@@ -352,7 +352,7 @@ static int _module_instance_free(module_instance_t *instance)
 		pthread_mutex_destroy(instance->mutex);
 	}
 #endif
-	DEBUG3("Freeing instance %s of module %s, %zu reference(s) remain",
+	DEBUG3("Freeing instance \"%s\" of module \"%s\", %zu reference(s) remain",
 	       instance->name, instance->entry->name, talloc_reference_count(instance->entry) - 1);
 	talloc_unlink(instance, instance->entry);
 
@@ -405,7 +405,7 @@ static int _module_entry_free(module_dlhandle_t *this)
 {
 	this = talloc_get_type_abort(this, module_dlhandle_t);
 
-	DEBUG3("Unloading %s (%p/%p)", this->module->name, this->dlhandle, this->module);
+	DEBUG3("Unloading module \"%s\" (%p/%p)", this->module->name, this->dlhandle, this->module);
 
 	if (this->dlhandle) {
 		lt_dlclose(this->dlhandle);	/* ignore any errors */
@@ -461,20 +461,18 @@ static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 	 */
 	dlhandle = lt_dlopenext(module_name);
 	if (!dlhandle) {
-		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, fr_strerror());
+		cf_log_err_cs(cs, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
 		return NULL;
 	}
 
-	DEBUG3("Loaded %s, checking if it's valid", module_name);
+	DEBUG3("Loaded \"%s\", checking if it's valid", module_name);
 
 	module = dlsym(dlhandle, module_name);
 	if (!module) {
-		cf_log_err_cs(cs, "Failed linking to %s structure: %s", module_name, dlerror());
+		cf_log_err_cs(cs, "Failed linking to \"%s\" structure: %s", module_name, dlerror());
 		dlclose(dlhandle);
 		return NULL;
 	}
-
-	DEBUG3("Loaded %s (%p/%p)", module_name, dlhandle, module);
 
 #if !defined(WITH_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
 open_self:
@@ -487,6 +485,8 @@ open_self:
 		return NULL;
 	}
 
+	DEBUG3("Validated \"%s\" (%p/%p)", module_name, dlhandle, module);
+
 	/* make room for the module type */
 	handle = talloc_zero(module_tree, module_dlhandle_t);
 	talloc_set_destructor(handle, _module_entry_free);
@@ -495,14 +495,14 @@ open_self:
 	handle->dlhandle = dlhandle;
 	handle->name = cf_section_name1(cs);
 
-	cf_log_module(cs, "Loaded module %s", module_name);
+	cf_log_module(cs, "Loaded module \"%s\"", module_name);
 
 	/*
 	 *	Add the module as "rlm_foo-version" to the configuration
 	 *	section.
 	 */
 	if (!rbtree_insert(module_tree, handle)) {
-		ERROR("Failed to cache module %s", module_name);
+		ERROR("Failed to cache module \"%s\"", module_name);
 		dlclose(dlhandle);
 		talloc_free(handle);
 		return NULL;
@@ -572,7 +572,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 */
 	for (i = 1; unlang_keyword[i] != NULL; i++) {
 		if (strcmp(instance_name, unlang_keyword[i]) == 0) {
-			ERROR("Module names cannot use a reserved word '%s'",
+			ERROR("Module names cannot use a reserved word \"%s\"",
 			      unlang_keyword[i]);
 			return NULL;
 		}
@@ -1234,7 +1234,7 @@ static int virtual_server_compile(CONF_SECTION *cs)
 
 	error:
 		if (rad_debug_lvl == 0) {
-			ERROR("Failed to load virtual server %s", name);
+			ERROR("Failed to load virtual server \"%s\"", name);
 		}
 		return -1;
 	}
@@ -1574,7 +1574,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			 *	a later release.
 			 */
 			if (comp == MOD_COUNT) {
-				WARN("%s[%d]: Ignoring unknown sub-section '%s'",
+				WARN("%s[%d]: Ignoring unknown sub-section \"%s\"",
 				     cf_section_filename(subcs), cf_section_lineno(subcs),
 				     name1);
 				continue;
