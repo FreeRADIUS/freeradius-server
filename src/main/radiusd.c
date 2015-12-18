@@ -642,11 +642,12 @@ int main(int argc, char *argv[])
 
 cleanup:
 	modules_free();			/* Detach any modules (and their connection pools) */
+
+	main_config_free();		/* Free the main config (must be done after modules) */
+
 	xlat_free();			/* modules may have xlat's */
 
 	map_proc_free();		/* Free map processors (must be done after modules) */
-
-	main_config_free();		/* Free the main config (must be done after modules) */
 
 #ifdef WIN32
 	WSACleanup();
