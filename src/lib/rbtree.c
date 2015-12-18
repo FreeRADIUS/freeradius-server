@@ -110,7 +110,11 @@ void rbtree_free(rbtree_t *tree)
 	talloc_unlink(tree, tree->parent);
 }
 
-static int _rbtree_free(NDEBUG_UNUSED rbtree_t *tree)
+#ifdef HAVE_PTHREAD_H
+static int _rbtree_free(rbtree_t *tree)
+#else
+static int _rbtree_free(UNUSED rbtree_t *tree)
+#endif
 {
 #ifdef HAVE_PTHREAD_H
 	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
