@@ -611,7 +611,16 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	instance = talloc_zero(module_tree, module_instance_t);
 	instance->cs = cs;
 	instance->name = instance_name;
-	talloc_reference(instance, module);	/* Ensure the module isn't freed until all instances have been */
+
+	/*
+	 *	Ensure the module isn't freed until all instances have been
+	 */
+	if (!talloc_reference(instance, module)) {
+		ERROR("Failed increasing module reference count");
+		talloc_free(instance);
+		return NULL;
+	}
+
 	talloc_set_destructor(instance, _module_instance_free);
 
 	instance->entry = module;
