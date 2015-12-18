@@ -42,6 +42,10 @@ if [ ! -d /var/run/freeradius ]; then
     chown freerad:freerad /var/run/freeradius
 fi
 
+if [ -d "$FREERADIUS_CONF_LOCAL" -a -z "$FREERADIUS_OPTIONS" ]; then
+  FREERADIUS_OPTIONS="-d $FREERADIUS_CONF_LOCAL"
+fi
+
 export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
 
 ret=0
