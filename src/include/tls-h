@@ -351,7 +351,7 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1_2;
 
 	/*
-	 *	Always < 4096 (due to radius limit), 0 by default = 2048
+	 *	Always < 4096 (due to radius limit), 0 by default = 1024
 	 */
 	uint32_t	fragment_size;
 	bool		check_crl;
