@@ -311,14 +311,14 @@ static int indexed_modcallable_cmp(void const *one, void const *two)
 }
 
 
-static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node, time_t when)
+static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *instance, time_t when)
 {
 	fr_module_hup_t *mh, **last;
 
 	/*
 	 *	Walk the list, freeing up old instances.
 	 */
-	last = &(node->mh);
+	last = &(instance->mh);
 	while (*last) {
 		mh = *last;
 
@@ -343,35 +343,35 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
  */
 static void module_instance_free(void *data)
 {
-	module_instance_t *node = talloc_get_type_abort(data, module_instance_t);
+	module_instance_t *instance = talloc_get_type_abort(data, module_instance_t);
 
-	module_instance_free_old(node->cs, node, time(NULL) + 100);
+	module_instance_free_old(instance->cs, instance, time(NULL) + 100);
 
 #ifdef HAVE_PTHREAD_H
-	if (node->mutex) {
+	if (instance->mutex) {
 		/*
 		 *	FIXME
 		 *	The mutex MIGHT be locked...
 		 *	we'll check for that later, I guess.
 		 */
-		pthread_mutex_destroy(node->mutex);
+		pthread_mutex_destroy(instance->mutex);
 	}
 #endif
 
-	xlat_unregister(node->insthandle, node->name, NULL);
+	xlat_unregister(instance->insthandle, instance->name, NULL);
 
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (node->insthandle) {
+	if (instance->insthandle) {
 		/*
 		 *	Remove any registered paircompares.
 		 */
-		paircompare_unregister_instance(node->insthandle);
+		paircompare_unregister_instance(instance->insthandle);
 
-		xlat_unregister_module(node->insthandle);
+		xlat_unregister_module(instance->insthandle);
 	}
-	talloc_free(node);
+	talloc_free(instance);
 }
 
 
@@ -423,7 +423,7 @@ int modules_free(void)
 static module_entry_t *module_dlopen(CONF_SECTION *cs)
 {
 	module_entry_t myentry;
-	module_entry_t *node;
+	module_entry_t *instance;
 	void *handle = NULL;
 	char const *name1;
 	module_t const *module;
@@ -432,8 +432,8 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs)
 	name1 = cf_section_name1(cs);
 
 	myentry.name = name1;
-	node = rbtree_finddata(module_tree, &myentry);
-	if (node) return node;
+	instance = rbtree_finddata(module_tree, &myentry);
+	if (instance) return instance;
 
 	/*
 	 *	Link to the module's rlm_FOO{} structure, the same as
@@ -477,12 +477,12 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs)
 	}
 
 	/* make room for the module type */
-	node = talloc_zero(NULL, module_entry_t);
-	talloc_set_destructor(node, _module_entry_free);
+	instance = talloc_zero(NULL, module_entry_t);
+	talloc_set_destructor(instance, _module_entry_free);
 
-	node->module = module;
-	node->handle = handle;
-	node->name = cf_section_name1(cs);
+	instance->module = module;
+	instance->handle = handle;
+	instance->name = cf_section_name1(cs);
 
 	cf_log_module(cs, "Loaded module %s", module_name);
 
@@ -490,20 +490,20 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs)
 	 *	Add the module as "rlm_foo-version" to the configuration
 	 *	section.
 	 */
-	if (!rbtree_insert(module_tree, node)) {
+	if (!rbtree_insert(module_tree, instance)) {
 		ERROR("Failed to cache module %s", module_name);
 		dlclose(handle);
-		talloc_free(node);
+		talloc_free(instance);
 		return NULL;
 	}
 
-	return node;
+	return instance;
 }
 
 /** Parse module's configuration section and setup destructors
  *
  */
-static int module_conf_parse(module_instance_t *node, void **handle)
+static int module_conf_parse(module_instance_t *instance, void **handle)
 {
 	*handle = NULL;
 
@@ -511,16 +511,16 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	 *	If there is supposed to be instance data, allocate it now.
 	 *	Also parse the configuration data, if required.
 	 */
-	if (node->entry->module->inst_size) {
-		*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
+	if (instance->entry->module->inst_size) {
+		*handle = talloc_zero_array(instance, uint8_t, instance->entry->module->inst_size);
 		rad_assert(handle);
 
 		talloc_set_name(*handle, "rlm_%s_t",
-				node->entry->module->name ? node->entry->module->name : "config");
+				instance->entry->module->name ? instance->entry->module->name : "config");
 
-		if (node->entry->module->config &&
-		    (cf_section_parse(node->cs, *handle, node->entry->module->config) < 0)) {
-			cf_log_err_cs(node->cs,"Invalid configuration for module \"%s\"", node->name);
+		if (instance->entry->module->config &&
+		    (cf_section_parse(instance->cs, *handle, instance->entry->module->config) < 0)) {
+			cf_log_err_cs(instance->cs,"Invalid configuration for module \"%s\"", instance->name);
 			talloc_free(*handle);
 
 			return -1;
@@ -529,8 +529,8 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 		/*
 		 *	Set the destructor.
 		 */
-		if (node->entry->module->detach) {
-			talloc_set_destructor((void *) *handle, node->entry->module->detach);
+		if (instance->entry->module->detach) {
+			talloc_set_destructor((void *) *handle, instance->entry->module->detach);
 		}
 	}
 
@@ -546,7 +546,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 {
 	int i;
 	char const *name1, *instance_name;
-	module_instance_t *node;
+	module_instance_t *instance;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -569,62 +569,62 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	See if the module already exists.
 	 */
-	node = module_find(modules, instance_name);
-	if (node) {
+	instance = module_find(modules, instance_name);
+	if (instance) {
 		ERROR("Duplicate module \"%s\", in file %s:%d and file %s:%d",
 		      instance_name,
 		      cf_section_filename(cs),
 		      cf_section_lineno(cs),
-		      cf_section_filename(node->cs),
-		      cf_section_lineno(node->cs));
+		      cf_section_filename(instance->cs),
+		      cf_section_lineno(instance->cs));
 		return NULL;
 	}
 
 	/*
-	 *	Hang the node struct off of the configuration
+	 *	Hang the instance struct off of the configuration
 	 *	section. If the CS is free'd the instance will be
 	 *	free'd, too.
 	 */
-	node = talloc_zero(cs, module_instance_t);
-	node->cs = cs;
-	node->name = instance_name;
+	instance = talloc_zero(cs, module_instance_t);
+	instance->cs = cs;
+	instance->name = instance_name;
 
 	/*
 	 *	Load the module shared library.
 	 */
-	node->entry = module_dlopen(cs);
-	if (!node->entry) {
-		talloc_free(node);
+	instance->entry = module_dlopen(cs);
+	if (!instance->entry) {
+		talloc_free(instance);
 		return NULL;
 	}
 
-	cf_log_module(cs, "Loading module \"%s\" from file %s", node->name,
+	cf_log_module(cs, "Loading module \"%s\" from file %s", instance->name,
 		      cf_section_filename(cs));
 
 	/*
 	 *	Parse the modules configuration.
 	 */
-	if (module_conf_parse(node, &node->insthandle) < 0) {
-		talloc_free(node);
+	if (module_conf_parse(instance, &instance->insthandle) < 0) {
+		talloc_free(instance);
 		return NULL;
 	}
 
 	/*
 	 *	Bootstrap the module.
 	 */
-	if (node->entry->module->bootstrap &&
-	    ((node->entry->module->bootstrap)(cs, node->insthandle) < 0)) {
-		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", node->name);
-		talloc_free(node);
+	if (instance->entry->module->bootstrap &&
+	    ((instance->entry->module->bootstrap)(cs, instance->insthandle) < 0)) {
+		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", instance->name);
+		talloc_free(instance);
 		return NULL;
 	}
 
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, node->name, node, module_instance_free);
+	cf_data_add(modules, instance->name, instance, module_instance_free);
 
-	return node;
+	return instance;
 }
 
 
@@ -654,13 +654,13 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *askedname)
  */
 module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedname)
 {
-	module_instance_t *node;
+	module_instance_t *instance;
 
 	/*
 	 *	Find the module.  If it's not there, do nothing.
 	 */
-	node = module_find(modules, askedname);
-	if (!node) {
+	instance = module_find(modules, askedname);
+	if (!instance) {
 		ERROR("Cannot find module \"%s\"", askedname);
 		return NULL;
 	}
@@ -668,30 +668,30 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	/*
 	 *	The module is already instantiated.  Return it.
 	 */
-	if (node->instantiated) return node;
+	if (instance->instantiated) return instance;
 
 	/*
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (node->entry->module->config &&
-	    (cf_section_parse_pass2(node->cs, node->insthandle,
-				    node->entry->module->config) < 0)) {
+	if (instance->entry->module->config &&
+	    (cf_section_parse_pass2(instance->cs, instance->insthandle,
+				    instance->entry->module->config) < 0)) {
 		return NULL;
 	}
 
 	/*
 	 *	Call the instantiate method, if any.
 	 */
-	if (node->entry->module->instantiate) {
-		cf_log_module(node->cs, "Instantiating module \"%s\" from file %s", node->name,
-			      cf_section_filename(node->cs));
+	if (instance->entry->module->instantiate) {
+		cf_log_module(instance->cs, "Instantiating module \"%s\" from file %s", instance->name,
+			      cf_section_filename(instance->cs));
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((node->entry->module->instantiate)(node->cs, node->insthandle) < 0) {
-			cf_log_err_cs(node->cs, "Instantiation failed for module \"%s\"", node->name);
+		if ((instance->entry->module->instantiate)(instance->cs, instance->insthandle) < 0) {
+			cf_log_err_cs(instance->cs, "Instantiation failed for module \"%s\"", instance->name);
 
 			return NULL;
 		}
@@ -703,20 +703,20 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	 *
 	 *	If it isn't, we create a mutex.
 	 */
-	if ((node->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		node->mutex = talloc_zero(node, pthread_mutex_t);
+	if ((instance->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		instance->mutex = talloc_zero(instance, pthread_mutex_t);
 
 		/*
 		 *	Initialize the mutex.
 		 */
-		pthread_mutex_init(node->mutex, NULL);
+		pthread_mutex_init(instance->mutex, NULL);
 	}
 #endif
 
-	node->instantiated = true;
-	node->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
+	instance->instantiated = true;
+	instance->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
 
-	return node;
+	return instance;
 }
 
 
@@ -1594,63 +1594,63 @@ int virtual_servers_init(CONF_SECTION *config)
 	return 0;
 }
 
-int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
+int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when)
 {
 	void *insthandle;
 	fr_module_hup_t *mh;
 
-	if (!node ||
-	    node->entry->module->bootstrap ||
-	    !node->entry->module->instantiate ||
-	    ((node->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
+	if (!instance ||
+	    instance->entry->module->bootstrap ||
+	    !instance->entry->module->instantiate ||
+	    ((instance->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
 		return 1;
 	}
 
 	/*
 	 *	Silently ignore multiple HUPs within a short time period.
 	 */
-	if ((node->last_hup + 2) >= when) return 1;
-	node->last_hup = when;
+	if ((instance->last_hup + 2) >= when) return 1;
+	instance->last_hup = when;
 
-	cf_log_module(cs, "Trying to reload module \"%s\"", node->name);
+	cf_log_module(cs, "Trying to reload module \"%s\"", instance->name);
 
 	/*
 	 *	Parse the module configuration, and setup destructors so the
 	 *	module's detach method is called when it's instance data is
 	 *	about to be freed.
 	 */
-	if (module_conf_parse(node, &insthandle) < 0) {
+	if (module_conf_parse(instance, &insthandle) < 0) {
 		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
-			      "Using old configuration", node->name);
+			      "Using old configuration", instance->name);
 
 		return 0;
 	}
 
-	if ((node->entry->module->instantiate)(cs, insthandle) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", node->name);
+	if ((instance->entry->module->instantiate)(cs, insthandle) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
 		talloc_free(insthandle);
 
 		return 0;
 	}
 
-	INFO(" Module: Reloaded module \"%s\"", node->name);
+	INFO(" Module: Reloaded module \"%s\"", instance->name);
 
-	module_instance_free_old(cs, node, when);
+	module_instance_free_old(cs, instance, when);
 
 	/*
 	 *	Save the old instance handle for later deletion.
 	 */
 	mh = talloc_zero(cs, fr_module_hup_t);
-	mh->mi = node;
+	mh->mi = instance;
 	mh->when = when;
-	mh->insthandle = node->insthandle;
-	mh->next = node->mh;
-	node->mh = mh;
+	mh->insthandle = instance->insthandle;
+	mh->next = instance->mh;
+	instance->mh = mh;
 
 	/*
 	 *	Replace the instance handle while the module is running.
 	 */
-	node->insthandle = insthandle;
+	instance->insthandle = insthandle;
 
 	/*
 	 *	FIXME: Set a timeout to come back in 60s, so that
@@ -1666,7 +1666,7 @@ int modules_hup(CONF_SECTION *modules)
 	time_t when;
 	CONF_ITEM *ci;
 	CONF_SECTION *cs;
-	module_instance_t *node;
+	module_instance_t *instance;
 
 	if (!modules) return 0;
 
@@ -1690,10 +1690,10 @@ int modules_hup(CONF_SECTION *modules)
 		instance_name = cf_section_name2(cs);
 		if (!instance_name) instance_name = cf_section_name1(cs);
 
-		node = module_find(modules, instance_name);
-		if (!node) continue;
+		instance = module_find(modules, instance_name);
+		if (!instance) continue;
 
-		module_hup_module(cs, node, when);
+		module_hup_module(cs, instance, when);
 	}
 
 	return 1;
@@ -1880,7 +1880,7 @@ int modules_bootstrap(CONF_SECTION *config)
 	     ci = next) {
 		char const *name1;
 		CONF_SECTION *subcs;
-		module_instance_t *node;
+		module_instance_t *instance;
 
 		next = cf_item_find_next(modules, ci);
 
@@ -1888,8 +1888,8 @@ int modules_bootstrap(CONF_SECTION *config)
 
 		subcs = cf_item_to_section(ci);
 
-		node = module_bootstrap(modules, subcs);
-		if (!node) return -1;
+		instance = module_bootstrap(modules, subcs);
+		if (!instance) return -1;
 
 		if (!next || !cf_item_is_section(next)) continue;
 
