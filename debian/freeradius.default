@@ -1,6 +1,15 @@
-# Options for the FreeRADIUS deamon.
+# Options passed to the FreeRADIUS deamon.
+#
+FREERADIUS_OPTIONS=""
+
+
+# If FreeRADIUS is being used on a SysVinit system
+# and FREERADIUS_OPTIONS has not been set and the
+# following location exists, then it will be used
+# for the config directory rather than the default.
+#
+# This option has no effect when systemd is in
+# use, or if FREERADIUS_OPTIONS is set above.
+#
 FREERADIUS_CONF_LOCAL="/usr/local/etc/freeradius"
 
-if [ -d "$FREERADIUS_CONF_LOCAL" ]; then
-	FREERADIUS_OPTIONS="-d $FREERADIUS_CONF_LOCAL"
-fi
