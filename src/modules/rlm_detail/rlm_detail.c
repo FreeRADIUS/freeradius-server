@@ -166,18 +166,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 *	Be kind to minor mistakes.
 			 */
 			if (fr_hash_table_finddata(inst->ht, da)) {
-				WARN("      %s: Ignoring duplicate entry '%s'", inst->name, attr);
+				WARN("%s: Ignoring duplicate entry '%s'", inst->name, attr);
 				continue;
 			}
 
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
-				ERROR("      %s: Failed inserting '%s' into suppression table",
+				ERROR(" %s: Failed inserting '%s' into suppression table",
 				      inst->name, attr);
 				return -1;
 			}
 
-			DEBUG("      %s: '%s' suppressed, will not appear in detail output", inst->name, attr);
+			DEBUG("%s: '%s' suppressed, will not appear in detail output", inst->name, attr);
 		}
 
 		/*
