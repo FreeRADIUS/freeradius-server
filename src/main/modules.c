@@ -315,6 +315,8 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
 {
 	fr_module_hup_t *mh, **last;
 
+	if (!module_tree) return;	/* All instances have already been freed */
+
 	/*
 	 *	Walk the list, freeing up old instances.
 	 */
@@ -337,16 +339,8 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
 	}
 }
 
-
-/*
- *	Free a module instance.
- */
-static void module_instance_free(void *data)
+static int _module_instance_free(module_instance_t *instance)
 {
-	module_instance_t *instance = talloc_get_type_abort(data, module_instance_t);
-
-	module_instance_free_old(instance->cs, instance, time(NULL) + 100);
-
 #ifdef HAVE_PTHREAD_H
 	if (instance->mutex) {
 		/*
@@ -357,7 +351,21 @@ static void module_instance_free(void *data)
 		pthread_mutex_destroy(instance->mutex);
 	}
 #endif
+	return 0;
+}
 
+/*
+ *	Free a module instance.
+ */
+static void module_instance_free(void *data)
+{
+	module_instance_t *instance;
+
+	if (!module_tree) return;	/* All instances have already been freed */
+
+	instance = talloc_get_type_abort(data, module_instance_t);
+
+	module_instance_free_old(instance->cs, instance, time(NULL) + 100);
 	xlat_unregister(instance->insthandle, instance->name, NULL);
 
 	/*
@@ -368,7 +376,6 @@ static void module_instance_free(void *data)
 		 *	Remove any registered paircompares.
 		 */
 		paircompare_unregister_instance(instance->insthandle);
-
 		xlat_unregister_module(instance->insthandle);
 	}
 	talloc_free(instance);
@@ -401,7 +408,7 @@ static int _module_entry_free(module_dlhandle_t *this)
 	 */
 	if (!main_config.debug_memory)
 #endif
-	dlclose(this->handle);	/* ignore any errors */
+	dlclose(this->dlhandle);	/* ignore any errors */
 	return 0;
 }
 
@@ -411,8 +418,7 @@ static int _module_entry_free(module_dlhandle_t *this)
  */
 int modules_free(void)
 {
-	rbtree_free(module_tree);
-
+	TALLOC_FREE(module_tree);
 	return 0;
 }
 
@@ -422,18 +428,18 @@ int modules_free(void)
  */
 static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 {
-	module_dlhandle_t myentry;
-	module_dlhandle_t *instance;
-	void *handle = NULL;
-	char const *name1;
-	module_t const *module;
-	char module_name[256];
+	module_dlhandle_t	my_handle;
+	module_dlhandle_t	*handle;
+	void			*dlhandle = NULL;
+	char const		*name1;
+	module_t		const *module;
+	char			module_name[256];
 
 	name1 = cf_section_name1(cs);
 
-	myentry.name = name1;
-	instance = rbtree_finddata(module_tree, &myentry);
-	if (instance) return instance;
+	my_handle.name = name1;
+	handle = rbtree_finddata(module_tree, &my_handle);
+	if (handle) return handle;
 
 	/*
 	 *	Link to the module's rlm_FOO{} structure, the same as
@@ -448,20 +454,20 @@ static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 #endif
 
 	/*
-	 *	Keep the handle around so we can dlclose() it.
+	 *	Keep the dlhandle around so we can dlclose() it.
 	 */
-	handle = lt_dlopenext(module_name);
-	if (!handle) {
+	dlhandle = lt_dlopenext(module_name);
+	if (!dlhandle) {
 		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, fr_strerror());
 		return NULL;
 	}
 
 	DEBUG3("Loaded %s, checking if it's valid", module_name);
 
-	module = dlsym(handle, module_name);
+	module = dlsym(dlhandle, module_name);
 	if (!module) {
 		cf_log_err_cs(cs, "Failed linking to %s structure: %s", module_name, dlerror());
-		dlclose(handle);
+		dlclose(dlhandle);
 		return NULL;
 	}
 
@@ -472,17 +478,17 @@ static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 	 *	Before doing anything else, check if it's sane.
 	 */
 	if (check_module_magic(cs, module) < 0) {
-		dlclose(handle);
+		dlclose(dlhandle);
 		return NULL;
 	}
 
 	/* make room for the module type */
-	instance = talloc_zero(NULL, module_dlhandle_t);
-	talloc_set_destructor(instance, _module_entry_free);
+	handle = talloc_zero(module_tree, module_dlhandle_t);
+	talloc_set_destructor(handle, _module_entry_free);
 
-	instance->module = module;
-	instance->handle = handle;
-	instance->name = cf_section_name1(cs);
+	handle->module = module;
+	handle->dlhandle = dlhandle;
+	handle->name = cf_section_name1(cs);
 
 	cf_log_module(cs, "Loaded module %s", module_name);
 
@@ -490,14 +496,14 @@ static module_dlhandle_t *module_dlopen(CONF_SECTION *cs)
 	 *	Add the module as "rlm_foo-version" to the configuration
 	 *	section.
 	 */
-	if (!rbtree_insert(module_tree, instance)) {
+	if (!rbtree_insert(module_tree, handle)) {
 		ERROR("Failed to cache module %s", module_name);
-		dlclose(handle);
-		talloc_free(instance);
+		dlclose(dlhandle);
+		talloc_free(handle);
 		return NULL;
 	}
 
-	return instance;
+	return handle;
 }
 
 /** Parse module's configuration section and setup destructors
@@ -547,6 +553,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	int i;
 	char const *name1, *instance_name;
 	module_instance_t *instance;
+	module_dlhandle_t *handle;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -581,18 +588,27 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	}
 
 	/*
-	 *	Hang the instance struct off of the configuration
-	 *	section. If the CS is free'd the instance will be
-	 *	free'd, too.
-	 */
-	instance = talloc_zero(cs, module_instance_t);
-	instance->cs = cs;
-	instance->name = instance_name;
-
-	/*
 	 *	Load the module shared library.
 	 */
-	instance->entry = module_dlopen(cs);
+	handle = module_dlopen(cs);
+	if (!handle) {
+		talloc_free(instance);
+		return NULL;
+	}
+
+	/*
+	 *	Hang the instance struct off the dlhandle,
+	 *	if the module is unloaded, all its instances
+	 *	will be too.
+	 *
+	 *	@fixme this should be the other way round.
+	 */
+	instance = talloc_zero(handle, module_instance_t);
+	instance->cs = cs;
+	instance->name = instance_name;
+	talloc_set_destructor(instance, _module_instance_free);
+
+	instance->entry = handle;
 	if (!instance->entry) {
 		talloc_free(instance);
 		return NULL;

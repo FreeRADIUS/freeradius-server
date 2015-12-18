@@ -52,7 +52,7 @@ char const *lt_dlerror(void);
 typedef struct module_dlhandle_t {
 	char const		*name;
 	module_t const		*module;
-	lt_dlhandle		handle;
+	lt_dlhandle		dlhandle;
 } module_dlhandle_t;
 
 typedef struct fr_module_hup_t fr_module_hup_t;
