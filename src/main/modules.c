@@ -1722,7 +1722,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when
 	/*
 	 *	Save the old instance handle for later deletion.
 	 */
-	mh = talloc_zero(cs, fr_module_hup_t);
+	mh = talloc_zero(dlhandle_tree, fr_module_hup_t);
 	mh->mi = instance;
 	mh->when = when;
 	mh->insthandle = instance->data;
