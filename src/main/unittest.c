@@ -486,8 +486,8 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 		goto fail;
 	}
 
-	base = mi->insthandle;
-	variables = mi->entry->module->config;
+	base = mi->data;
+	variables = mi->module->interface->config;
 
 	/*
 	 *	Handle the known configuration parameters.

@@ -1882,8 +1882,8 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 
 /* globally exported name */
-extern module_t rlm_sql;
-module_t rlm_sql = {
+extern module_interface_t rlm_sql;
+module_interface_t rlm_sql = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sql",
 	.type		= RLM_TYPE_THREAD_SAFE,

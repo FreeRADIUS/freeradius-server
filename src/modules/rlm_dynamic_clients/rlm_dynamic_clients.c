@@ -108,8 +108,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_dynamic_clients;
-module_t rlm_dynamic_clients = {
+extern module_interface_t rlm_dynamic_clients;
+module_interface_t rlm_dynamic_clients = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dynamic_clients",
 	.type		= RLM_TYPE_THREAD_SAFE,		/* type */

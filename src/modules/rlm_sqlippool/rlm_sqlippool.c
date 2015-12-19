@@ -405,14 +405,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
 	}
 
-	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
+	if (strcmp(sql_inst->module->name, "rlm_sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       inst->sql_instance_name);
 		return -1;
 	}
 
-	inst->sql_inst = (rlm_sql_t *) sql_inst->insthandle;
+	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
 	return 0;
 }
 
@@ -708,8 +708,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_sqlippool;
-module_t rlm_sqlippool = {
+extern module_interface_t rlm_sqlippool;
+module_interface_t rlm_sqlippool = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sqlippool",
 	.type		= RLM_TYPE_THREAD_SAFE,

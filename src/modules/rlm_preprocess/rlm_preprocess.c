@@ -724,8 +724,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 }
 
 /* globally exported name */
-extern module_t rlm_preprocess;
-module_t rlm_preprocess = {
+extern module_interface_t rlm_preprocess;
+module_interface_t rlm_preprocess = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "preprocess",
 	.inst_size	= sizeof(rlm_preprocess_t),

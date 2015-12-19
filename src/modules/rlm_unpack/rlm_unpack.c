@@ -210,8 +210,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_unpack;
-module_t rlm_unpack = {
+extern module_interface_t rlm_unpack;
+module_interface_t rlm_unpack = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "unpack",
 	.type		= RLM_TYPE_THREAD_SAFE,

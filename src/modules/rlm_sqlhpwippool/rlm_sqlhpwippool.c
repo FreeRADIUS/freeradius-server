@@ -281,7 +281,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* check if the given instance is really a rlm_sql instance */
-	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
+	if (strcmp(sql_inst->module->name, "rlm_sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       inst->sql_instance_name);
@@ -289,7 +289,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* save pointers to useful "objects" */
-	inst->sql_inst = (rlm_sql_t *) sql_inst->insthandle;
+	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
 	inst->db = (rlm_sql_module_t *) inst->sql_inst->module;
 
 	return ((nvp_cleanup(inst)) ? 0 : -1);
@@ -742,8 +742,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-extern module_t rlm_sqlhpwippool;
-module_t rlm_sqlhpwippool = {
+extern module_interface_t rlm_sqlhpwippool;
+module_interface_t rlm_sqlhpwippool = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sqlhpwippool",
 	.type		= RLM_TYPE_THREAD_SAFE,

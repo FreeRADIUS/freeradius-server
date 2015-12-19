@@ -523,8 +523,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	return RLM_MODULE_UPDATED;
 }
 
-extern module_t rlm_csv;
-module_t rlm_csv = {
+extern module_interface_t rlm_csv;
+module_interface_t rlm_csv = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "csv",
 	.type		= 0,

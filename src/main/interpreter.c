@@ -91,7 +91,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
 		comp2str[component], sp->modinst->name,
-		sp->modinst->entry->name, request->number);
+		sp->modinst->module->name, request->number);
 
 	if (sp->modinst->force) {
 		request->rcode = sp->modinst->code;
@@ -104,7 +104,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	request->module = sp->modinst->name;
 
 	safe_lock(sp->modinst);
-	request->rcode = sp->modinst->entry->module->methods[component](sp->modinst->insthandle, request);
+	request->rcode = sp->modinst->module->interface->methods[component](sp->modinst->data, request);
 	safe_unlock(sp->modinst);
 
 	request->module = "";
@@ -114,13 +114,13 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	 */
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) {
-		RWARN("Module %s became unblocked for request %u", sp->modinst->entry->name, request->number);
+		RWARN("Module %s became unblocked for request %u", sp->modinst->module->name, request->number);
 	}
 
  fail:
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
-	       comp2str[component], sp->modinst->name,
-	       sp->modinst->entry->name, request->number);
+		comp2str[component], sp->modinst->name,
+		sp->modinst->module->name, request->number);
 
 	return request->rcode;
 }

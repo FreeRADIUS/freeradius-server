@@ -46,40 +46,54 @@ void *lt_dlsym(lt_dlhandle handle, char const *symbol);
 int lt_dlclose(lt_dlhandle handle);
 char const *lt_dlerror(void);
 
-/*
- *	Keep track of which modules we've loaded.
+/** Module handle
+ *
+ * Contains module's dlhandle, and the public interface it exports.
  */
-typedef struct module_dlhandle_t {
-	char const		*name;
-	module_t const		*module;
-	lt_dlhandle		dlhandle;
-} module_dlhandle_t;
+typedef struct module_handle {
+	char const			*name;		//!< Name of the module e.g. sql.
+	module_interface_t const	*interface;	//!< Symbol exported by the module, containing its public
+							//!< functions, name and behaviour control flags.
+	lt_dlhandle			dlhandle;	//!< Handle returned by dlopen.
+} module_t;
 
 typedef struct fr_module_hup_t fr_module_hup_t;
 
-/*
- *	Per-instance data structure, to correlate the modules
- *	with the instance names (may NOT be the module names!),
- *	and the per-instance data structures.
+/** Per instance data
+ *
+ * Per-instance data structure, to correlate the modules with the
+ * instance names (may NOT be the module names!), and the per-instance
+ * data structures.
  */
 typedef struct module_instance_t {
-	char const		*name;
-	module_dlhandle_t		*entry;
-	void			*insthandle;
+	char const			*name;		//!< Instance name e.g. user_database.
+
+	module_t			*module;	//!< Module this is an instance of.
+
+	void				*data;		//!< The module's private instance data, containing.
+							//!< its parsed configuration and static state.
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t		*mutex;
+	pthread_mutex_t			*mutex;
 #endif
-	CONF_SECTION		*cs;
-	time_t			last_hup;
-	bool			instantiated;
-	bool			force;
-	rlm_rcode_t		code;
-	fr_module_hup_t	       	*mh;
+	CONF_SECTION			*cs;		//!< Configuration section in modules {}.
+
+	time_t				last_hup;	//!< Last time the module was 'hupped'.
+
+	bool				instantiated;	//!< Whether the module has been instantiated yet.
+
+	bool				force;		//!< Force the module to return a specific code.
+							//!< Usually set via an administrative interface.
+
+	rlm_rcode_t			code;		//!< Code module will return when 'force' has
+							//!< has been set to true.
+	fr_module_hup_t	       		*hup;		//!< Previous versions of the module's
+							//!< instance data.
 } module_instance_t;
 
-module_instance_t	*module_instantiate(CONF_SECTION *modules, char const *askedname);
-module_instance_t	*module_instantiate_method(CONF_SECTION *modules, char const *askedname, rlm_components_t *method);
-module_instance_t	*module_find(CONF_SECTION *modules, char const *askedname);
+module_instance_t	*module_instantiate(CONF_SECTION *modules, char const *asked_name);
+module_instance_t	*module_instantiate_method(CONF_SECTION *modules, char const *asked_name,
+						   rlm_components_t *method);
+module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
 int			module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
 

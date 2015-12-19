@@ -187,8 +187,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQ
 
 }
 
-extern module_t rlm_cram;
-module_t rlm_cram = {
+extern module_interface_t rlm_cram;
+module_interface_t rlm_cram = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "cram",
 	.type		= RLM_TYPE_THREAD_SAFE,

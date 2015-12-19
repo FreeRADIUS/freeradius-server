@@ -1678,8 +1678,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_expr;
-module_t rlm_expr = {
+extern module_interface_t rlm_expr;
+module_interface_t rlm_expr = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "expr",
 	.inst_size	= sizeof(rlm_expr_t),

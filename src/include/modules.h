@@ -35,7 +35,7 @@ extern "C" {
 
 /** The different section components of the server
  *
- * Used as indexes in the methods array in the module_t struct.
+ * Used as indexes in the methods array in the module_interface_t struct.
  */
 typedef enum rlm_components {
 	MOD_AUTHENTICATE = 0,			//!< 0 methods index for authenticate section.
@@ -131,7 +131,7 @@ typedef int (*detach_t)(void *instance);
  * This determines the capabilities of the module, and maps internal functions
  * within the module to different sections.
  */
-typedef struct module_t {
+typedef struct module_interface_t {
 	uint64_t 		magic;			//!< Used to validate module struct.
 	char const		*name;			//!< The name of the module (without rlm_ prefix).
 	int			type;			//!< One or more of the RLM_TYPE_* constants.
@@ -141,7 +141,7 @@ typedef struct module_t {
 	instantiate_t		instantiate;		//!< Function to use for instantiation.
 	detach_t		detach;			//!< Function to use to free module instance.
 	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions.
-} module_t;
+} module_interface_t;
 
 /*
  *	Share connection pool instances between modules

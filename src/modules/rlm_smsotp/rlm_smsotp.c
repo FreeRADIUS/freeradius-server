@@ -317,8 +317,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_smsotp;
-module_t rlm_smsotp = {
+extern module_interface_t rlm_smsotp;
+module_interface_t rlm_smsotp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "smsotp",
 	.type		= RLM_TYPE_THREAD_SAFE,

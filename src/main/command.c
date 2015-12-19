@@ -847,7 +847,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_FAIL;
 	}
 
-	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) {
+	if ((mi->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) {
 		cprintf_error(listener, "Module %s cannot be hup'd\n",
 			argv[0]);
 		return CMD_FAIL;
@@ -1027,7 +1027,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 		return CMD_FAIL;
 	}
 
-	cprint_conf_parser(listener, 0, mi->cs, mi->insthandle);
+	cprint_conf_parser(listener, 0, mi->cs, mi->data);
 
 	return CMD_OK;
 }
@@ -1049,7 +1049,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 	int i;
 	CONF_SECTION *cs;
 	module_instance_t const *mi;
-	module_t const *mod;
+	module_interface_t const *mod;
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
@@ -1065,7 +1065,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 		return CMD_FAIL;
 	}
 
-	mod = mi->entry->module;
+	mod = mi->module->interface;
 
 	for (i = 0; i < MOD_COUNT; i++) {
 		if (mod->methods[i]) cprintf(listener, "%s\n", method_names[i]);
@@ -1079,7 +1079,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 {
 	CONF_SECTION *cs;
 	module_instance_t const *mi;
-	module_t const *mod;
+	module_interface_t const *mod;
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
@@ -1095,7 +1095,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 		return CMD_FAIL;
 	}
 
-	mod = mi->entry->module;
+	mod = mi->module->interface;
 
 	if ((mod->type & RLM_TYPE_THREAD_UNSAFE) != 0)
 		cprintf(listener, "thread-unsafe\n");
@@ -2370,7 +2370,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) {
+	if ((mi->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) {
 		cprintf_error(listener, "Cannot change configuration of module as it is cannot be HUP'd.\n");
 		return 0;
 	}
@@ -2410,7 +2410,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	data = ((char *) mi->insthandle) + variables[i].offset;
+	data = ((char *) mi->data) + variables[i].offset;
 
 	cp = cf_pair_find(mi->cs, argv[1]);
 	if (!cp) return 0;

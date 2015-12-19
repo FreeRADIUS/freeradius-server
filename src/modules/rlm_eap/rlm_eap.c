@@ -664,8 +664,8 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern module_t rlm_eap;
-module_t rlm_eap = {
+extern module_interface_t rlm_eap;
+module_interface_t rlm_eap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "eap",
 	.inst_size	= sizeof(rlm_eap_t),

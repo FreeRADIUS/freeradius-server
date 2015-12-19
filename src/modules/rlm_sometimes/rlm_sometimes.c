@@ -161,8 +161,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 }
 #endif
 
-extern module_t rlm_sometimes;
-module_t rlm_sometimes = {
+extern module_interface_t rlm_sometimes;
+module_interface_t rlm_sometimes = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sometimes",
 	.type		= RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
