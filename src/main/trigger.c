@@ -119,7 +119,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 	VALUE_PAIR	*vp;
 
 	REQUEST		*fake = NULL;
-	int		ret;
+	int		ret = 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -234,7 +234,11 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 		}
 	}
 
-	ret = radius_exec_program(request, NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
+	/*
+	 *	Don't fire triggers if we're just testing
+	 */
+	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
+						     request, value, vp, false, true, EXEC_TIMEOUT);
 	if (fake) talloc_free(fake);
 
 	request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME);
