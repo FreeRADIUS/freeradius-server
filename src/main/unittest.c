@@ -962,19 +962,28 @@ finish:
 	talloc_free(request);
 	talloc_free(state);
 
-	/*
-	 *	Free the configuration items.
-	 */
-	main_config_free();
+	xlat_unregister(NULL, "poke", xlat_poke);
 
 	/*
-	 *	Detach any modules.
+	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
 	 */
 	modules_free(main_config.config);
 
-	xlat_unregister(NULL, "poke", xlat_poke);
+	/*
+	 *	The only xlats remaining are the ones registered by the server core.
+	 */
+	xlat_free();
 
-	xlat_free();		/* modules may have xlat's */
+	/*
+	 *	The only maps remaining are the ones registered by the server core.
+	 */
+	map_proc_free();
+
+	/*
+	 *	And now nothing should be left anywhere except the
+	 *	parsed configuration items.
+	 */
+	main_config_free();
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");

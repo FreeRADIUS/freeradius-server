@@ -642,15 +642,25 @@ int main(int argc, char *argv[])
 
 cleanup:
 	/*
-	 *	Free the configuration items.
+	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
 	 */
-	modules_free(main_config.config);	/* Detach any modules (and their connection pools) */
+	modules_free(main_config.config);
 
-	main_config_free();		/* Free the main config (must be done after modules) */
+	/*
+	 *	The only xlats remaining are the ones registered by the server core.
+	 */
+	xlat_free();
 
-	xlat_free();			/* modules may have xlat's */
+	/*
+	 *	The only maps remaining are the ones registered by the server core.
+	 */
+	map_proc_free();
 
-	map_proc_free();		/* Free map processors (must be done after modules) */
+	/*
+	 *	And now nothing should be left anywhere except the
+	 *	parsed configuration items.
+	 */
+	main_config_free();
 
 #ifdef WIN32
 	WSACleanup();

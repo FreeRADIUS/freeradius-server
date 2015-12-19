@@ -310,10 +310,10 @@ static int indexed_modcallable_cmp(void const *one, void const *two)
 	return a->idx - b->idx;
 }
 
-/** Free a module instance and any xlat's or map processors associated with it
+/** Free old instances from HUPs
  *
  */
-static void module_instance_free_old(module_instance_t *instance, time_t when)
+static void module_hup_free(module_instance_t *instance, time_t when)
 {
 	fr_module_hup_t *mh, **last;
 
@@ -341,21 +341,41 @@ static void module_instance_free_old(module_instance_t *instance, time_t when)
 	}
 }
 
-/** Free a module instance and any xlat's or map processors associated with it
+/*
+ *	Compare two module handles
+ */
+static int module_dlhandle_cmp(void const *one, void const *two)
+{
+	module_t const *a = one;
+	module_t const *b = two;
+
+	return strcmp(a->name, b->name);
+}
+
+/** Free module's instance data, and any xlats or paircompares
  *
  */
-static void module_instance_free(void *data)
+static int _module_instance_free(module_instance_t *instance)
 {
-	module_instance_t *instance;
+	DEBUG3("Freeing instance \"%s\" of module \"%s\", %zu reference(s) remain",
+	       instance->name, instance->module->name, talloc_reference_count(instance->module) - 1);
 
-	rad_asssert(dlhandle_tree != NULL);
-
-	instance = talloc_get_type_abort(data, module_instance_t);
+#ifdef HAVE_PTHREAD_H
+	if (instance->mutex) {
+		/*
+		 *	FIXME
+		 *	The mutex MIGHT be locked...
+		 *	we'll check for that later, I guess.
+		 */
+		pthread_mutex_destroy(instance->mutex);
+	}
+#endif
 
 	/*
-	 *	Free old versions of the module's instance data
+	 *	Free HUP versions of the module's instance data
 	 */
-	module_instance_free_old(instance, time(NULL) + 100);
+	module_hup_free(instance, time(NULL) + 100);
+
 	xlat_unregister(instance->data, instance->name, NULL);
 
 	/*
@@ -368,37 +388,7 @@ static void module_instance_free(void *data)
 		paircompare_unregister_instance(instance->data);
 		xlat_unregister_module(instance->data);
 	}
-	talloc_free(instance);
-}
 
-/*
- *	Compare two module handles
- */
-static int module_dlhandle_cmp(void const *one, void const *two)
-{
-	module_t const *a = one;
-	module_t const *b = two;
-
-	return strcmp(a->name, b->name);
-}
-
-/** Free module's instance data
- *
- */
-static int _module_instance_free(module_instance_t *instance)
-{
-#ifdef HAVE_PTHREAD_H
-	if (instance->mutex) {
-		/*
-		 *	FIXME
-		 *	The mutex MIGHT be locked...
-		 *	we'll check for that later, I guess.
-		 */
-		pthread_mutex_destroy(instance->mutex);
-	}
-#endif
-	DEBUG3("Freeing instance \"%s\" of module \"%s\", %zu reference(s) remain",
-	       instance->name, instance->module->name, talloc_reference_count(instance->module) - 1);
 	talloc_unlink(instance, instance->module);
 
 	return 0;
@@ -428,28 +418,13 @@ static int _module_free(module_t *module)
  * @param root main_config.
  * @return 0.
  */
-int modules_free(CONF_SECTION *root)
+int modules_free(UNUSED CONF_SECTION *root)
 {
-	CONF_ITEM *ci;
-	CONF_SECTION *modules;
-
-	modules = cf_section_sub_find(root, "modules");
-	if (modules) for (ci = cf_item_find_next(modules, NULL);
-			  ci != NULL;
-			  ci = cf_item_find_next(modules, ci)) {
-		CONF_SECTION *cs;
-		char const *name;
-
-		if (!cf_item_is_section(ci)) continue;
-
-		cs = cf_item_to_section(ci);
-		name = cf_section_name2(cs);
-		if (!name) name = cf_section_name1(cs);
-
-		talloc_free(cf_data_remove(modules, name));
-	}
-
+	/*
+	 *	All instances and dlhandles are parented from here.
+	 */
 	TALLOC_FREE(dlhandle_tree);
+
 	return 0;
 }
 
@@ -698,7 +673,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, instance->name, instance, module_instance_free);
+	cf_data_add(modules, instance->name, instance, NULL);
 
 	return instance;
 }
@@ -1717,7 +1692,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when
 
 	INFO("Module: Reloaded module \"%s\"", instance->name);
 
-	module_instance_free_old(instance, when);
+	module_hup_free(instance, when);
 
 	/*
 	 *	Save the old instance handle for later deletion.
