@@ -372,9 +372,9 @@ static void module_instance_free(void *data)
 }
 
 /*
- *	Compare two module entries
+ *	Compare two module handles
  */
-static int module_entry_cmp(void const *one, void const *two)
+static int module_dlhandle_cmp(void const *one, void const *two)
 {
 	module_t const *a = one;
 	module_t const *b = two;
@@ -1931,7 +1931,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Set up the internal module struct.
 	 */
-	module_tree = rbtree_create(NULL, module_entry_cmp, NULL, 0);
+	module_tree = rbtree_create(NULL, module_dlhandle_cmp, NULL, 0);
 	if (!module_tree) {
 		ERROR("Failed to initialize modules\n");
 		return -1;
