@@ -48,7 +48,7 @@ typedef struct virtual_server_t {
 	CONF_SECTION		*subcs[MOD_COUNT];
 } virtual_server_t;
 
-static rbtree_t *module_tree = NULL;
+static rbtree_t *dlhandle_tree = NULL;
 
 struct fr_module_hup_t {
 	module_instance_t	*mi;
@@ -317,7 +317,7 @@ static void module_instance_free_old(module_instance_t *instance, time_t when)
 {
 	fr_module_hup_t *mh, **last;
 
-	rad_assert(module_tree != NULL);
+	rad_assert(dlhandle_tree != NULL);
 
 	/*
 	 *	Walk the list, freeing up old instances.
@@ -348,7 +348,7 @@ static void module_instance_free(void *data)
 {
 	module_instance_t *instance;
 
-	rad_asssert(module_tree != NULL);
+	rad_asssert(dlhandle_tree != NULL);
 
 	instance = talloc_get_type_abort(data, module_instance_t);
 
@@ -449,7 +449,7 @@ int modules_free(CONF_SECTION *root)
 		talloc_free(cf_data_remove(modules, name));
 	}
 
-	TALLOC_FREE(module_tree);
+	TALLOC_FREE(dlhandle_tree);
 	return 0;
 }
 
@@ -472,7 +472,7 @@ static module_t *module_dlopen(CONF_SECTION *conf)
 	name1 = cf_section_name1(conf);
 
 	to_find.name = name1;
-	module = rbtree_finddata(module_tree, &to_find);
+	module = rbtree_finddata(dlhandle_tree, &to_find);
 	if (module) return module;
 
 	/*
@@ -518,7 +518,7 @@ static module_t *module_dlopen(CONF_SECTION *conf)
 	DEBUG3("Validated \"%s\" (%p/%p)", module_name, dlhandle, interface);
 
 	/* make room for the interface type */
-	module = talloc_zero(module_tree, module_t);
+	module = talloc_zero(dlhandle_tree, module_t);
 	talloc_set_destructor(module, _module_free);
 
 	module->interface = interface;
@@ -531,7 +531,7 @@ static module_t *module_dlopen(CONF_SECTION *conf)
 	 *	Add the interface as "rlm_foo-version" to the configuration
 	 *	section.
 	 */
-	if (!rbtree_insert(module_tree, module)) {
+	if (!rbtree_insert(dlhandle_tree, module)) {
 		ERROR("Failed to cache module \"%s\"", module_name);
 		dlclose(dlhandle);
 		talloc_free(module);
@@ -653,7 +653,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 *
 	 *	@fixme this should be the other way round.
 	 */
-	instance = talloc_zero(module_tree, module_instance_t);
+	instance = talloc_zero(dlhandle_tree, module_instance_t);
 	instance->cs = cs;
 	instance->name = instance_name;
 
@@ -1931,8 +1931,8 @@ int modules_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Set up the internal module struct.
 	 */
-	module_tree = rbtree_create(NULL, module_dlhandle_cmp, NULL, 0);
-	if (!module_tree) {
+	dlhandle_tree = rbtree_create(NULL, module_dlhandle_cmp, NULL, 0);
+	if (!dlhandle_tree) {
 		ERROR("Failed to initialize modules\n");
 		return -1;
 	}
