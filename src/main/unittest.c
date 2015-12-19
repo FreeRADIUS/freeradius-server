@@ -970,7 +970,7 @@ finish:
 	/*
 	 *	Detach any modules.
 	 */
-	modules_free();
+	modules_free(main_config.config);
 
 	xlat_unregister(NULL, "poke", xlat_poke);
 

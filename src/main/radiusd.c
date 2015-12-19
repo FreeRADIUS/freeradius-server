@@ -641,7 +641,10 @@ int main(int argc, char *argv[])
 	talloc_free(global_state);	/* Free state entries */
 
 cleanup:
-	modules_free();			/* Detach any modules (and their connection pools) */
+	/*
+	 *	Free the configuration items.
+	 */
+	modules_free(main_config.config);	/* Detach any modules (and their connection pools) */
 
 	main_config_free();		/* Free the main config (must be done after modules) */
 

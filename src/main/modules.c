@@ -422,11 +422,32 @@ static int _module_free(module_t *module)
 	return 0;
 }
 
-/** Free all modules in the server
+/** Free all modules loaded by the server
  *
+ * @param root main_config.
+ * @return 0.
  */
-int modules_free(void)
+int modules_free(CONF_SECTION *root)
 {
+	CONF_ITEM *ci;
+	CONF_SECTION *modules;
+
+	modules = cf_section_sub_find(root, "modules");
+	if (modules) for (ci = cf_item_find_next(modules, NULL);
+			  ci != NULL;
+			  ci = cf_item_find_next(modules, ci)) {
+		CONF_SECTION *cs;
+		char const *name;
+
+		if (!cf_item_is_section(ci)) continue;
+
+		cs = cf_item_to_section(ci);
+		name = cf_section_name2(cs);
+		if (!name) name = cf_section_name1(cs);
+
+		talloc_free(cf_data_remove(modules, name));
+	}
+
 	TALLOC_FREE(module_tree);
 	return 0;
 }
@@ -1693,7 +1714,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when
 		return 0;
 	}
 
-	INFO(" Module: Reloaded module \"%s\"", instance->name);
+	INFO("Module: Reloaded module \"%s\"", instance->name);
 
 	module_instance_free_old(instance, when);
 
@@ -1901,7 +1922,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
  *	Parse the module config sections, and load
  *	and call each module's init() function.
  */
-int modules_bootstrap(CONF_SECTION *config)
+int modules_bootstrap(CONF_SECTION *root)
 {
 	CONF_ITEM *ci, *next;
 	CONF_SECTION *cs, *modules;
@@ -1918,9 +1939,9 @@ int modules_bootstrap(CONF_SECTION *config)
 	/*
 	 *	Remember where the modules were stored.
 	 */
-	modules = cf_section_sub_find(config, "modules");
+	modules = cf_section_sub_find(root, "modules");
 	if (!modules) {
-		WARN("Cannot find a \"modules\" section in the configuration file!");
+		WARN("Cannot find a \"modules\" section in the rooturation file!");
 	}
 
 	DEBUG2("%s: #### Loading modules ####", main_config.name);
@@ -1965,7 +1986,7 @@ int modules_bootstrap(CONF_SECTION *config)
 	 *  us to load modules with no authorize/authenticate/etc.
 	 *  sections.
 	 */
-	cs = cf_section_sub_find(config, "instantiate");
+	cs = cf_section_sub_find(root, "instantiate");
 	if (cs) {
 		CONF_PAIR *cp;
 		module_instance_t *module;
@@ -2103,12 +2124,12 @@ int modules_bootstrap(CONF_SECTION *config)
 /** Instantiate the modules.
  *
  */
-int modules_init(CONF_SECTION *config)
+int modules_init(CONF_SECTION *root)
 {
 	CONF_ITEM	*ci, *next;
 	CONF_SECTION	*modules;
 
-	modules = cf_section_sub_find(config, "modules");
+	modules = cf_section_sub_find(root, "modules");
 	if (!modules) return 0;
 
 	for (ci = cf_item_find_next(modules, NULL);
