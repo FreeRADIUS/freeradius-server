@@ -49,6 +49,7 @@ typedef struct virtual_server_t {
 } virtual_server_t;
 
 static rbtree_t *module_tree = NULL;
+
 struct fr_module_hup_t {
 	module_instance_t	*mi;
 	time_t			when;
@@ -316,7 +317,7 @@ static void module_instance_free_old(module_instance_t *instance, time_t when)
 {
 	fr_module_hup_t *mh, **last;
 
-	if (!module_tree) return;        /* All instances have already been freed */
+	rad_assert(module_tree != NULL);
 
 	/*
 	 *	Walk the list, freeing up old instances.
@@ -347,7 +348,7 @@ static void module_instance_free(void *data)
 {
 	module_instance_t *instance;
 
-	if (!module_tree) return;        /* All instances have already been freed */
+	rad_asssert(module_tree != NULL);
 
 	instance = talloc_get_type_abort(data, module_instance_t);
 
