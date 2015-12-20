@@ -1100,7 +1100,7 @@ static int hup_callback(void *ctx, void *data)
 	CONF_SECTION *cs = data;
 	CONF_SECTION *parent;
 	char const *name;
-	module_instance_t *mi;
+	module_instance_t *instance;
 
 	/*
 	 *	Files may be defined in sub-sections of a module
@@ -1121,12 +1121,12 @@ static int hup_callback(void *ctx, void *data)
 	name = cf_section_name2(cs);
 	if (!name) name = cf_section_name1(cs);
 
-	mi = module_find(modules, name);
-	if (!mi) return 0;
+	instance = module_find(modules, name);
+	if (!instance) return 0;
 
-	if ((mi->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) return 0;
+	if ((instance->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) return 0;
 
-	if (!module_hup_module(mi->cs, mi, time(NULL))) return 0;
+	if (!module_hup_module(instance->cs, instance, time(NULL))) return 0;
 
 	return 0;
 }

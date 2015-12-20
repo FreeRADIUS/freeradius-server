@@ -424,7 +424,7 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 	int i;
 	void *data, *base;
 	char *p, *q;
-	module_instance_t *mi;
+	module_instance_t *instance;
 	char *buffer;
 	CONF_SECTION *modules;
 	CONF_PAIR *cp;
@@ -448,8 +448,8 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 
 	*(p++) = '\0';
 
-	mi = module_find(modules, buffer);
-	if (!mi) {
+	instance = module_find(modules, buffer);
+	if (!instance) {
 		RDEBUG("Failed finding module '%s'", buffer);
 	fail:
 		talloc_free(buffer);
@@ -469,7 +469,7 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 		goto fail;
 	}
 
-	cp = cf_pair_find(mi->cs, p);
+	cp = cf_pair_find(instance->cs, p);
 	if (!cp) {
 		RDEBUG("No such item '%s'", p);
 		goto fail;
@@ -481,13 +481,13 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 	 */
 	len = strlcpy(*out, cf_pair_value(cp), outlen);
 
-	if (cf_pair_replace(mi->cs, cp, q) < 0) {
+	if (cf_pair_replace(instance->cs, cp, q) < 0) {
 		RDEBUG("Failed replacing pair");
 		goto fail;
 	}
 
-	base = mi->data;
-	variables = mi->module->interface->config;
+	base = instance->data;
+	variables = instance->module->interface->config;
 
 	/*
 	 *	Handle the known configuration parameters.
@@ -515,7 +515,7 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_pair_parse(mi->cs, variables[i].name, variables[i].type,
+		ret = cf_pair_parse(instance->cs, variables[i].name, variables[i].type,
 				    data, variables[i].dflt, variables[i].quote);
 		if (ret < 0) {
 			DEBUG2("Failed inserting new value into module instance data");
