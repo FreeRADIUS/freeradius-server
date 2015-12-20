@@ -90,3 +90,436 @@ index 1ae66ec..ee1a711 100644
 
 	/*
 	 *	Don't put output anywhere until we get told a little
+diff --git a/man/man1/radclient.1 b/man/man1/radclient.1
+index 6305411..8902db6 100644
+--- a/man/man1/radclient.1
++++ b/man/man1/radclient.1
+@@ -56,7 +56,7 @@ Use IPv6
+ Send each packet \fIcount\fP times.
+ .IP \-d\ \fIraddb_directory\fP
+ The directory that contains the user dictionary file. Defaults to
+-\fI/etc/raddb\fP.
++\fI/etc/freeradius\fP.
+ .IP \-D\ \fIdictionary_directory\fP
+ The directory that contains the main dictionary file. Defaults to
+ \fI/usr/share/freeradius\fP.
+diff --git a/man/man1/radtest.1 b/man/man1/radtest.1
+index b318477..146e961 100644
+--- a/man/man1/radtest.1
++++ b/man/man1/radtest.1
+@@ -28,7 +28,7 @@ way to test a radius server.
+ 
+ .IP "\-d \fIraddb_directory\fP"
+ The directory that contains the RADIUS dictionary files. Defaults to
+-\fI/etc/raddb\fP.
++\fI/etc/freeradius\fP.
+ 
+ .IP "\-P\ \fIproto\fP"
+ Use \fIproto\fP transport protocol ("tcp" or "udp").
+diff --git a/man/man1/radwho.1 b/man/man1/radwho.1
+index c131255..874ec68 100644
+--- a/man/man1/radwho.1
++++ b/man/man1/radwho.1
+@@ -33,7 +33,7 @@ content of that session database.
+ Shows caller ID (if available) instead of the full name.
+ .IP \-d\ \fIraddb_directory\fP
+ The directory that contains the RADIUS configuration files. Defaults to
+-\fI/etc/raddb\fP.
++\fI/etc/freeradius\fP.
+ .IP \-F\ \fIradutmp_file\fP
+ The file that contains the radutmp file.  If this is specified, \-d is
+ not necessary.
+diff --git a/man/man5/clients.conf.5 b/man/man5/clients.conf.5
+index 6c6b3ee..5a23d0f 100644
+--- a/man/man5/clients.conf.5
++++ b/man/man5/clients.conf.5
+@@ -34,9 +34,9 @@ read the \fBclients.conf\fP file itself for more information.
+ The old-style format from 1.x is still accepted by the server, but
+ that form is deprecated.
+ .SH FILES
+-.I /etc/raddb/clients.conf
++.I /etc/freeradius/clients.conf
+ 
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+ .BR radiusd.conf (5)
+diff --git a/man/man5/dictionary.5 b/man/man5/dictionary.5
+index 7b3b86d..571dd71 100644
+--- a/man/man5/dictionary.5
++++ b/man/man5/dictionary.5
+@@ -15,7 +15,7 @@
+ dictionary \- RADIUS dictionary file
+ .SH DESCRIPTION
+ The master RADIUS dictionary file resides in
+-\fI/etc/raddb/dictionary\fP.  It references other \fIdictionary\fP
++\fI/etc/freeradius/dictionary\fP.  It references other \fIdictionary\fP
+ files located in \fI/usr/local/share/freeradius/\fP.  Each dictionary
+ file contains a list of RADIUS attributes and values, which the server
+ uses to map between descriptive names and on-the-wire data.  The names
+@@ -34,7 +34,7 @@ you know exactly what you are doing.  Changing them will most likely
+ break your RADIUS deployment.
+ .PP
+ If you need to add new attributes, please edit the
+-\fI/etc/raddb/dictionary\fP file.  It's sole purpose is to contain
++\fI/etc/freeradius/dictionary\fP file.  It's sole purpose is to contain
+ site-local defintions that are added by the local administrator.
+ 
+ .SH FORMAT
+@@ -175,7 +175,7 @@ dictionaries.  It should not be used.  The new "oid" form for defining
+ the attribute number should be used instead.
+ .PP
+ .SH FILES
+-.I /etc/raddb/dictionary,
++.I /etc/freeradius/dictionary,
+ .I /usr/share/freeradius/dictionary.*
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/radiusd.conf.5 b/man/man5/radiusd.conf.5
+index 3f7caa6..544dbd4 100644
+--- a/man/man5/radiusd.conf.5
++++ b/man/man5/radiusd.conf.5
+@@ -15,7 +15,7 @@
+ radiusd.conf \- configuration file for the FreeRADIUS server
+ .SH DESCRIPTION
+ The \fBradiusd.conf\fP file resides in the radius database directory,
+-by default \fB/etc/raddb\fP.  It defines the global configuration for
++by default \fB/etc/freeradius\fP.  It defines the global configuration for
+ the FreeRADIUS RADIUS server.
+ .SH "CONTENTS"
+ There are a large number of configuration parameters for the server.
+@@ -194,7 +194,7 @@ section (foo).
+ Will set variable \fBfile\fP to the name of the parent of the containing
+ section (modules).
+ .SH FILES
+-/etc/raddb/radiusd.conf
++/etc/freeradius/radiusd.conf
+ .SH "SEE ALSO"
+ .BR radiusd (8)
+ .BR unlang (5)
+diff --git a/man/man5/radrelay.conf.5 b/man/man5/radrelay.conf.5
+index 5fb38bf..c0f3830 100644
+--- a/man/man5/radrelay.conf.5
++++ b/man/man5/radrelay.conf.5
+@@ -15,7 +15,7 @@
+ radrelay.conf - configuration file for the FreeRADIUS server "radrelay" personality
+ .SH DESCRIPTION
+ The \fBradrelay.conf\fP file resides in the radius database directory,
+-by default \fB/etc/raddb\fP.  It defines the global configuration for
++by default \fB/etc/freeradius\fP.  It defines the global configuration for
+ the FreeRADIUS server, when the server is operating as "radrelay".
+ .SH "FILE FORMAT"
+ For a detailed description of the file format, see "man radiusd.conf".
+@@ -138,7 +138,7 @@ never released as part of an offical FreeRADIUS release, but served as
+ a basis for the design of this implementation.
+ .PP
+ .SH FILES
+-/etc/raddb/radrelay.conf
++/etc/freeradius/radrelay.conf
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+ .BR radiusd.conf (5)
+diff --git a/man/man5/rlm_always.5 b/man/man5/rlm_always.5
+index 383b271..5bbdbb1 100644
+--- a/man/man5/rlm_always.5
++++ b/man/man5/rlm_always.5
+@@ -106,7 +106,7 @@ authorize {
+ .BR postproxy
+ .PP
+ .SH FILES
+-.I /etc/raddb/mods-available/always
++.I /etc/freeradius/mods-available/always
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_attr_filter.5 b/man/man5/rlm_attr_filter.5
+index adb6130..1fe3ff6 100644
+--- a/man/man5/rlm_attr_filter.5
++++ b/man/man5/rlm_attr_filter.5
+@@ -97,7 +97,7 @@ Regular Expression Equal
+ .B    !~  
+ Regular Expression Not Equal
+ .PP
+-See the default \fI/etc/raddb/mods-config/attr_filter/\fP for working examples of
++See the default \fI/etc/freeradius/mods-config/attr_filter/\fP for working examples of
+ sample rule ordering and how to use the different operators.
+ .DE
+ .PP
+@@ -134,8 +134,8 @@ Filters Access-Request packets.
+ Filters Access-Accept or Access-Reject packets.
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
+-.I /etc/raddb/mods-config/attr_filter/*
++.I /etc/freeradius/radiusd.conf
++.I /etc/freeradius/mods-config/attr_filter/*
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_chap.5 b/man/man5/rlm_chap.5
+index 9a95bc9..c488dc5 100644
+--- a/man/man5/rlm_chap.5
++++ b/man/man5/rlm_chap.5
+@@ -20,7 +20,7 @@ with CHAP.
+ .BR authentication
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_counter.5 b/man/man5/rlm_counter.5
+index a8eae18..4d49bd2 100644
+--- a/man/man5/rlm_counter.5
++++ b/man/man5/rlm_counter.5
+@@ -78,7 +78,7 @@ set the 'check_name' attribute.
+ .BR accounting
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_detail.5 b/man/man5/rlm_detail.5
+index c890a11..330879e 100644
+--- a/man/man5/rlm_detail.5
++++ b/man/man5/rlm_detail.5
+@@ -80,7 +80,7 @@ accounting {
+ .BR post_authentication
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_digest.5 b/man/man5/rlm_digest.5
+index fb99e0f..f75a122 100644
+--- a/man/man5/rlm_digest.5
++++ b/man/man5/rlm_digest.5
+@@ -72,7 +72,7 @@ You should see the authentication succeed.
+ .BR authenticate
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf,
++.I /etc/freeradius/radiusd.conf,
+ .I draft-sterman-aaa-sip-00.txt
+ .PP
+ .SH AUTHOR
+diff --git a/man/man5/rlm_expr.5 b/man/man5/rlm_expr.5
+index a6a2bc1..9378f4c 100644
+--- a/man/man5/rlm_expr.5
++++ b/man/man5/rlm_expr.5
+@@ -103,7 +103,7 @@ instantiate {
+ .BR instantiate
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_files.5 b/man/man5/rlm_files.5
+index bfee503..d85e2fd 100644
+--- a/man/man5/rlm_files.5
++++ b/man/man5/rlm_files.5
+@@ -82,10 +82,10 @@ modules {
+ .BR pre_proxy
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf,
+-.I /etc/raddb/users,
+-.I /etc/raddb/acct_users,
+-.I /etc/raddb/preproxy_users
++.I /etc/freeradius/radiusd.conf,
++.I /etc/freeradius/users,
++.I /etc/freeradius/acct_users,
++.I /etc/freeradius/preproxy_users
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_idn.5 b/man/man5/rlm_idn.5
+index 391b7d9..f2115a1 100644
+--- a/man/man5/rlm_idn.5
++++ b/man/man5/rlm_idn.5
+@@ -31,7 +31,7 @@ This boolean is set by default and prohibits e.g. underscores in domain names.
+ This boolean is unset by default, which prohibits use of unassigned Unicode points.
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .PP
+ .SH REFERENCES
+ RFC 3490
+diff --git a/man/man5/rlm_mschap.5 b/man/man5/rlm_mschap.5
+index cc3a72a..574eb43 100644
+--- a/man/man5/rlm_mschap.5
++++ b/man/man5/rlm_mschap.5
+@@ -100,7 +100,7 @@ authenticate {
+ .BR authentication
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf
++.I /etc/freeradius/radiusd.conf
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_pap.5 b/man/man5/rlm_pap.5
+index 425da73..a030146 100644
+--- a/man/man5/rlm_pap.5
++++ b/man/man5/rlm_pap.5
+@@ -115,7 +115,7 @@ configuration.
+ .BR authenticate
+ .PP
+ .SH FILES
+-.I /etc/raddb/mods-available/pap
++.I /etc/freeradius/mods-available/pap
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_passwd.5 b/man/man5/rlm_passwd.5
+index 5a9ac7b..a9d1a44 100644
+--- a/man/man5/rlm_passwd.5
++++ b/man/man5/rlm_passwd.5
+@@ -122,7 +122,7 @@ to the request, as though it was sent by the NAS.
+ .BR authorize
+ .PP
+ .SH FILES
+-.I /etc/raddb/mods-available/passwd
++.I /etc/freeradius/mods-available/passwd
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_realm.5 b/man/man5/rlm_realm.5
+index 0fd6607..b0c0434 100644
+--- a/man/man5/rlm_realm.5
++++ b/man/man5/rlm_realm.5
+@@ -39,7 +39,7 @@ The default is 'no'.
+ .PP
+ This module parses the realm from the User-Name attrbiute according
+ to the instance configuration, and then performs a lookup to find a
+-matching realm in the '/etc/raddb/proxy.conf' file.  Depending on the
++matching realm in the '/etc/freeradius/proxy.conf' file.  Depending on the
+ configuration of the Realm as matched in the file, the username may
+ be rewritten in a 'stripped' format, or with the Realm portion
+ removed.  In either case, a Realm attribute is created and added to
+@@ -83,8 +83,8 @@ modules {
+ .BR pre-accounting
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf,
+-.I /etc/raddb/proxy.conf
++.I /etc/freeradius/radiusd.conf,
++.I /etc/freeradius/proxy.conf
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/rlm_sql.5 b/man/man5/rlm_sql.5
+index b11b137..cbbf458 100644
+--- a/man/man5/rlm_sql.5
++++ b/man/man5/rlm_sql.5
+@@ -139,10 +139,10 @@ configuration files for example queries and configuration details.
+ .BR post-authentication
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf,
+-.I /etc/raddb/sql.conf,
+-.I /etc/raddb/sql/<DB>/dialup.conf,
+-.I /etc/raddb/sql/<DB>/schema.sql,
++.I /etc/freeradius/radiusd.conf,
++.I /etc/freeradius/sql.conf,
++.I /etc/freeradius/sql/<DB>/dialup.conf,
++.I /etc/freeradius/sql/<DB>/schema.sql,
+ .BR
+ .PP
+ .SH "SEE ALSO"
+diff --git a/man/man5/rlm_unix.5 b/man/man5/rlm_unix.5
+index d1b838e..e1002d1 100644
+--- a/man/man5/rlm_unix.5
++++ b/man/man5/rlm_unix.5
+@@ -56,7 +56,7 @@ modules {
+ .BR accounting
+ .PP
+ .SH FILES
+-.I /etc/raddb/radiusd.conf,
++.I /etc/freeradius/radiusd.conf,
+ .PP
+ .SH "SEE ALSO"
+ .BR radiusd (8),
+diff --git a/man/man5/unlang.5 b/man/man5/unlang.5
+index 68fbee3..6622da4 100644
+--- a/man/man5/unlang.5
++++ b/man/man5/unlang.5
+@@ -865,7 +865,7 @@ above in the CONDITIONS section.
+ See also the file doc/configurable_failover for additional methods of
+ trapping and modifying module return codes.
+ .SH FILES
+-/etc/raddb/radiusd.conf
++/etc/freeradius/radiusd.conf
+ .SH "SEE ALSO"
+ .BR radiusd.conf (5),
+ .BR dictionary (5)
+diff --git a/man/man5/users.5 b/man/man5/users.5
+index deae8a9..11023c0 100644
+--- a/man/man5/users.5
++++ b/man/man5/users.5
+@@ -15,7 +15,7 @@
+ users \- user authorization file for the FreeRADIUS server
+ .SH DESCRIPTION
+ The \fBusers\fP files reside in the files module configuration directory,
+-by default \fB/etc/raddb/mods-config/files/\fP.  It contains a series
++by default \fB/etc/freeradius/mods-config/files/\fP.  It contains a series
+ of configuration directives which are used by the \fIfiles\fP 
+ module to decide how to authorize and authenticate each user request.
+ 
+@@ -222,7 +222,7 @@ next.  Any DEFAULT entries should usually come last, except as fall-through
+ entries that set reply attributes.
+ 
+ .SH FILES
+-/etc/raddb/mods-config/files/
++/etc/freeradius/mods-config/files/
+ .SH "SEE ALSO"
+ .BR radclient (1),
+ .BR radiusd (8),
+diff --git a/man/man8/raddebug.8 b/man/man8/raddebug.8
+index 407a4f2..026294b 100644
+--- a/man/man8/raddebug.8
++++ b/man/man8/raddebug.8
+@@ -69,7 +69,7 @@ option is equivalent to using:
+ -c '(Packet-Src-IP-Address == ipv4-address)'
+ .in -0.3i
+ .IP "\-d \fIconfig directory\fP"
+-The radius configuration directory, usually /etc/raddb.  See the
++The radius configuration directory, usually /etc/freeradius.  See the
+ \fIradmin\fP manual page for more description of this option.
+ .IP \-I\ \fIipv6-address\fP
+ Show debug output for the client having the given IPv6 address.  This
+diff --git a/man/man8/radiusd.8 b/man/man8/radiusd.8
+index c825f22..41038f8 100644
+--- a/man/man8/radiusd.8
++++ b/man/man8/radiusd.8
+@@ -53,7 +53,7 @@ See the output of
+ for an informative list of which modules are checked for correct
+ configuration, and which modules are skipped, and therefore not checked.
+ .IP "\-d \fIconfig directory\fP"
+-Defaults to \fI/etc/raddb\fP. \fBRadiusd\fP looks here for its configuration
++Defaults to \fI/etc/freeradius\fP. \fBRadiusd\fP looks here for its configuration
+ files such as the \fIdictionary\fP and the \fIusers\fP files.
+ .IP \-f
+ Do not fork, stay running as a foreground process.
+diff --git a/man/man8/radmin.8 b/man/man8/radmin.8
+index 5ecc963..33634e4 100644
+--- a/man/man8/radmin.8
++++ b/man/man8/radmin.8
+@@ -31,7 +31,7 @@ have a substantial amount of control over the server.
+ .SH OPTIONS
+ The following command-line options are accepted by the program.
+ .IP "\-d \fIconfig directory\fP"
+-Defaults to \fI/etc/raddb\fP. \fBradmin\fP looks here for the server
++Defaults to \fI/etc/freeradius\fP. \fBradmin\fP looks here for the server
+ configuration files to find the "listen" section that defines the
+ control socket filename.
+ .IP "\-e \fIcommand\fP"
