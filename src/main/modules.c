@@ -352,13 +352,184 @@ static int module_dlhandle_cmp(void const *one, void const *two)
 	return strcmp(a->name, b->name);
 }
 
+/** Free all modules loaded by the server
+ *
+ * @param root main_config.
+ * @return 0.
+ */
+int modules_free(UNUSED CONF_SECTION *root)
+{
+	/*
+	 *	All instances and dlhandles are parented from here.
+	 */
+	TALLOC_FREE(dlhandle_tree);
+
+	return 0;
+}
+
+/** Free a module
+ *
+ * Close module's dlhandle, unloading it.
+ */
+static int _module_dl_free(module_dl_t *module_dl)
+{
+	module_dl = talloc_get_type_abort(module_dl, module_dl_t);
+
+	DEBUG3("Unloading module \"%s\" (%p/%p)", module_dl->name, module_dl->handle, module_dl->module);
+
+	if (module_dl->handle) {
+		lt_dlclose(module_dl->handle);        /* ignore any errors */
+		module_dl->handle = NULL;
+	}
+
+	return 0;
+}
+
+/** Load a module library using dlopen() or return a previously loaded module from the cache
+ *
+ * @param conf section describing the module's configuration.
+ * @return
+ *	- Module handle holding dlhandle, and module's public interface structure.
+ *	- NULL if module couldn't be loaded, or some other error occurred.
+ */
+static module_dl_t *module_dlopen(CONF_SECTION *conf)
+{
+	module_dl_t			to_find;
+	module_dl_t			*module_dl;
+	void				*handle = NULL;
+	char const			*name1;
+	module_t const			*module;
+	char				module_name[256];
+
+	name1 = cf_section_name1(conf);
+
+	to_find.name = name1;
+	module_dl = rbtree_finddata(dlhandle_tree, &to_find);
+	if (module_dl) return module_dl;
+
+	/*
+	 *	Link to the interface's rlm_FOO{} structure, the same as
+	 *	the module name.
+	 */
+	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
+	module = dlsym(RTLD_SELF, module_name);
+	if (module) goto open_self;
+#endif
+
+	/*
+	 *	Keep the dlhandle around so we can dlclose() it.
+	 */
+	handle = lt_dlopenext(module_name);
+	if (!handle) {
+		cf_log_err_cs(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
+		return NULL;
+	}
+
+	DEBUG3("Loaded \"%s\", checking if it's valid", module_name);
+
+	module = dlsym(handle, module_name);
+	if (!module) {
+		cf_log_err_cs(conf, "Failed linking to \"%s\" structure: %s", module_name, dlerror());
+		dlclose(handle);
+		return NULL;
+	}
+
+#if !defined(WITH_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
+	open_self:
+#endif
+	/*
+	 *	Before doing anything else, check if it's sane.
+	 */
+	if (module_verify_magic(conf, module) < 0) {
+		dlclose(handle);
+		return NULL;
+	}
+
+	DEBUG3("Validated \"%s\" (%p/%p)", module_name, handle, module);
+
+	/* make room for the module type */
+	module_dl = talloc_zero(dlhandle_tree, module_dl_t);
+	talloc_set_destructor(module_dl, _module_dl_free);
+
+	module_dl->module = module;
+	module_dl->handle = handle;
+	module_dl->name = cf_section_name1(conf);
+
+	cf_log_module(conf, "Loaded module \"%s\"", module_name);
+
+	/*
+	 *	Add the module as "rlm_foo-version" to the configuration
+	 *	section.
+	 */
+	if (!rbtree_insert(dlhandle_tree, module_dl)) {
+		ERROR("Failed to cache module \"%s\"", module_name);
+		dlclose(handle);
+		talloc_free(module_dl);
+		return NULL;
+	}
+
+	return module_dl;
+}
+
+/** Parse module's configuration section and setup destructors
+ *
+ * @param[out] data Module's private data, the result of parsing the config.
+ * @param[in] instance data of module.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int module_parse_conf(void **data, module_instance_t *instance)
+{
+	*data = NULL;
+
+	if (!instance->module->inst_size) return 0;
+
+	/*
+	 *	If there is supposed to be instance data, allocate it now.
+	 *	Also parse the configuration data, if required.
+	 */
+	*data = talloc_zero_array(instance, uint8_t, instance->module->inst_size);
+	rad_assert(data);
+
+	talloc_set_name(*data, "rlm_%s_t",
+			instance->module->name ? instance->module->name : "config");
+
+	if (instance->module->config &&
+	    (cf_section_parse(instance->cs, *data, instance->module->config) < 0)) {
+		cf_log_err_cs(instance->cs, "Invalid configuration for module \"%s\"", instance->name);
+		talloc_free(*data);
+
+		return -1;
+	}
+
+	/*
+	 *	Set the destructor.
+	 */
+	if (instance->module->detach) talloc_set_destructor((void *)*data, instance->module->detach);
+
+	return 0;
+}
+
 /** Free module's instance data, and any xlats or paircompares
  *
  */
 static int _module_instance_free(module_instance_t *instance)
 {
+#ifndef NDEBUG
+	module_dl_t	*module_dl = module_dlopen(instance->cs);
+	size_t		remaining;
+
+	rad_assert(module_dl);
+
+	remaining = talloc_reference_count(module_dl);
+	rad_assert(remaining > 0);
+
 	DEBUG3("Freeing instance \"%s\" of module \"%s\", %zu reference(s) remain",
-	       instance->name, instance->module->name, talloc_reference_count(instance->module) - 1);
+	       instance->name, instance->module->name, remaining - 1);
+#endif
 
 #ifdef HAVE_PTHREAD_H
 	if (instance->mutex) {
@@ -389,172 +560,6 @@ static int _module_instance_free(module_instance_t *instance)
 		xlat_unregister_module(instance->data);
 	}
 
-	talloc_unlink(instance, instance->module);
-
-	return 0;
-}
-
-/** Free a module
- *
- * Close module's dlhandle, unloading it.
- */
-static int _module_free(module_dl_t *module)
-{
-	module = talloc_get_type_abort(module, module_dl_t);
-
-	DEBUG3("Unloading module \"%s\" (%p/%p)", module->interface->name, module->dlhandle, module->interface);
-
-	if (module->dlhandle) {
-		lt_dlclose(module->dlhandle);        /* ignore any errors */
-		module->dlhandle = NULL;
-	}
-	module->interface = NULL;
-
-	return 0;
-}
-
-/** Free all modules loaded by the server
- *
- * @param root main_config.
- * @return 0.
- */
-int modules_free(UNUSED CONF_SECTION *root)
-{
-	/*
-	 *	All instances and dlhandles are parented from here.
-	 */
-	TALLOC_FREE(dlhandle_tree);
-
-	return 0;
-}
-
-/** Load a module library using dlopen() or return a previously loaded module from the cache
- *
- * @param conf section describing the module's configuration.
- * @return
- *	- Module handle holding dlhandle, and module's public interface structure.
- *	- NULL if module couldn't be loaded, or some other error occurred.
- */
-static module_dl_t *module_dlopen(CONF_SECTION *conf)
-{
-	module_dl_t			to_find;
-	module_dl_t			*module;
-	void				*dlhandle = NULL;
-	char const			*name1;
-	module_t const	*interface;
-	char				module_name[256];
-
-	name1 = cf_section_name1(conf);
-
-	to_find.name = name1;
-	module = rbtree_finddata(dlhandle_tree, &to_find);
-	if (module) return module;
-
-	/*
-	 *	Link to the interface's rlm_FOO{} structure, the same as
-	 *	the interface name.
-	 */
-	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
-
-#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	interface = dlsym(RTLD_SELF, module_name);
-	if (interface) goto open_self;
-#endif
-
-	/*
-	 *	Keep the dlhandle around so we can dlclose() it.
-	 */
-	dlhandle = lt_dlopenext(module_name);
-	if (!dlhandle) {
-		cf_log_err_cs(conf, "Failed to link to interface \"%s\": %s", module_name, fr_strerror());
-		return NULL;
-	}
-
-	DEBUG3("Loaded \"%s\", checking if it's valid", module_name);
-
-	interface = dlsym(dlhandle, module_name);
-	if (!interface) {
-		cf_log_err_cs(conf, "Failed linking to \"%s\" structure: %s", module_name, dlerror());
-		dlclose(dlhandle);
-		return NULL;
-	}
-
-#if !defined(WITH_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
-	open_self:
-#endif
-	/*
-	 *	Before doing anything else, check if it's sane.
-	 */
-	if (module_verify_magic(conf, interface) < 0) {
-		dlclose(dlhandle);
-		return NULL;
-	}
-
-	DEBUG3("Validated \"%s\" (%p/%p)", module_name, dlhandle, interface);
-
-	/* make room for the interface type */
-	module = talloc_zero(dlhandle_tree, module_dl_t);
-	talloc_set_destructor(module, _module_free);
-
-	module->interface = interface;
-	module->dlhandle = dlhandle;
-	module->name = cf_section_name1(conf);
-
-	cf_log_module(conf, "Loaded module \"%s\"", module_name);
-
-	/*
-	 *	Add the interface as "rlm_foo-version" to the configuration
-	 *	section.
-	 */
-	if (!rbtree_insert(dlhandle_tree, module)) {
-		ERROR("Failed to cache module \"%s\"", module_name);
-		dlclose(dlhandle);
-		talloc_free(module);
-		return NULL;
-	}
-
-	return module;
-}
-
-/** Parse module's configuration section and setup destructors
- *
- * @param[out] data Module's private data, the result of parsing the config.
- * @param[in] instance data of module.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int module_parse_conf(void **data, module_instance_t *instance)
-{
-	*data = NULL;
-
-	if (!instance->module->interface->inst_size) return 0;
-
-	/*
-	 *	If there is supposed to be instance data, allocate it now.
-	 *	Also parse the configuration data, if required.
-	 */
-	*data = talloc_zero_array(instance, uint8_t, instance->module->interface->inst_size);
-	rad_assert(data);
-
-	talloc_set_name(*data, "rlm_%s_t",
-			instance->module->interface->name ? instance->module->interface->name : "config");
-
-	if (instance->module->interface->config &&
-	    (cf_section_parse(instance->cs, *data, instance->module->interface->config) < 0)) {
-		cf_log_err_cs(instance->cs, "Invalid configuration for module \"%s\"", instance->name);
-		talloc_free(*data);
-
-		return -1;
-	}
-
-	/*
-	 *	Set the destructor.
-	 */
-	if (instance->module->interface->detach) {
-		talloc_set_destructor((void *)*data, instance->module->interface->detach);
-	}
-
 	return 0;
 }
 
@@ -578,7 +583,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	int			i;
 	char const		*name1, *instance_name;
 	module_instance_t	*instance;
-	module_dl_t		*module;
+	module_dl_t		*module_dl;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -615,8 +620,8 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Load the module shared library.
 	 */
-	module = module_dlopen(cs);
-	if (!module) {
+	module_dl = module_dlopen(cs);
+	if (!module_dl) {
 		talloc_free(instance);
 		return NULL;
 	}
@@ -635,7 +640,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Ensure the module isn't freed until all instances have been
 	 */
-	if (!talloc_reference(instance, module)) {
+	if (!talloc_reference(instance, module_dl)) {
 		ERROR("Failed increasing module reference count");
 		talloc_free(instance);
 		return NULL;
@@ -643,7 +648,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 
 	talloc_set_destructor(instance, _module_instance_free);
 
-	instance->module = module;
+	instance->module = module_dl->module;
 	if (!instance->module) {
 		talloc_free(instance);
 		return NULL;
@@ -663,8 +668,8 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Bootstrap the module.
 	 */
-	if (instance->module->interface->bootstrap &&
-	    ((instance->module->interface->bootstrap)(cs, instance->data) < 0)) {
+	if (instance->module->bootstrap &&
+	    ((instance->module->bootstrap)(cs, instance->data) < 0)) {
 		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", instance->name);
 		talloc_free(instance);
 		return NULL;
@@ -736,23 +741,23 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_n
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (instance->module->interface->config &&
+	if (instance->module->config &&
 	    (cf_section_parse_pass2(instance->cs, instance->data,
-				    instance->module->interface->config) < 0)) {
+				    instance->module->config) < 0)) {
 		return NULL;
 	}
 
 	/*
 	 *	Call the instantiate method, if any.
 	 */
-	if (instance->module->interface->instantiate) {
+	if (instance->module->instantiate) {
 		cf_log_module(instance->cs, "Instantiating module \"%s\" from file %s", instance->name,
 			      cf_section_filename(instance->cs));
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((instance->module->interface->instantiate)(instance->cs, instance->data) < 0) {
+		if ((instance->module->instantiate)(instance->cs, instance->data) < 0) {
 			cf_log_err_cs(instance->cs, "Instantiation failed for module \"%s\"", instance->name);
 
 			return NULL;
@@ -765,7 +770,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_n
 	 *
 	 *	If it isn't, we create a mutex.
 	 */
-	if ((instance->module->interface->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+	if ((instance->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
 		instance->mutex = talloc_zero(instance, pthread_mutex_t);
 
 		/*
@@ -1657,9 +1662,9 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when
 	fr_module_hup_t *mh;
 
 	if (!instance ||
-	    instance->module->interface->bootstrap ||
-	    !instance->module->interface->instantiate ||
-	    ((instance->module->interface->type & RLM_TYPE_HUP_SAFE) == 0)) {
+	    instance->module->bootstrap ||
+	    !instance->module->instantiate ||
+	    ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
 		return 1;
 	}
 
@@ -1683,7 +1688,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when
 		return 0;
 	}
 
-	if ((instance->module->interface->instantiate)(cs, insthandle) < 0) {
+	if ((instance->module->instantiate)(cs, insthandle) < 0) {
 		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
 		talloc_free(insthandle);
 
@@ -1965,7 +1970,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	cs = cf_section_sub_find(root, "instantiate");
 	if (cs) {
 		CONF_PAIR *cp;
-		module_instance_t *module;
+		module_instance_t *instance;
 		char const *name;
 
 		cf_log_info(cs, "  instantiate {");
@@ -1985,8 +1990,8 @@ int modules_bootstrap(CONF_SECTION *root)
 				cp = cf_item_to_pair(ci);
 				name = cf_pair_attr(cp);
 
-				module = module_instantiate(modules, name);
-				if (!module && (name[0] != '-')) {
+				instance = module_instantiate(modules, name);
+				if (!instance && (name[0] != '-')) {
 					return -1;
 				}
 			}
@@ -2050,8 +2055,8 @@ int modules_bootstrap(CONF_SECTION *root)
 						/*
 						 *	Allow "foo.authorize" in subsections.
 						 */
-						module = module_instantiate_method(modules, cf_pair_attr(cp), NULL);
-						if (!module) {
+						instance = module_instantiate_method(modules, cf_pair_attr(cp), NULL);
+						if (!instance) {
 							cf_log_err(subci, "Module instance \"%s\" referenced in "
 									   "%s block, does not exist",
 								   cf_pair_attr(cp),
@@ -2061,8 +2066,8 @@ int modules_bootstrap(CONF_SECTION *root)
 
 						if (all_same) {
 							if (!last) {
-								last = module->module->interface;
-							} else if (last != module->module->interface) {
+								last = instance->module;
+							} else if (last != instance->module) {
 								last = NULL;
 								all_same = false;
 							}
@@ -2112,7 +2117,7 @@ int modules_init(CONF_SECTION *root)
 	     ci != NULL;
 	     ci = next) {
 		char const *name;
-		module_instance_t *module;
+		module_instance_t *instance;
 		CONF_SECTION *subcs;
 
 		next = cf_item_find_next(modules, ci);
@@ -2123,8 +2128,8 @@ int modules_init(CONF_SECTION *root)
 		name = cf_section_name2(subcs);
 		if (!name) name = cf_section_name1(subcs);
 
-		module = module_instantiate(modules, name);
-		if (!module) return -1;
+		instance = module_instantiate(modules, name);
+		if (!instance) return -1;
 	}
 
 	return 0;

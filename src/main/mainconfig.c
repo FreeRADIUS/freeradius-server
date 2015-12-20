@@ -1124,7 +1124,7 @@ static int hup_callback(void *ctx, void *data)
 	instance = module_find(modules, name);
 	if (!instance) return 0;
 
-	if ((instance->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) return 0;
+	if ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0) return 0;
 
 	if (!module_hup_module(instance->cs, instance, time(NULL))) return 0;
 

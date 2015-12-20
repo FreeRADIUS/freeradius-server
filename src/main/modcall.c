@@ -2519,8 +2519,8 @@ static modcallable *compile_csingle(modcallable *parent, rlm_components_t compon
 	 *	Check if the module in question has the necessary
 	 *	component.
 	 */
-	if (!this->module->interface->methods[component]) {
-		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->module->interface->name,
+	if (!this->module->methods[component]) {
+		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->module->name,
 			   comp2str[component]);
 		return NULL;
 	}
@@ -2822,7 +2822,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	 */
 	this = module_instantiate_method(modules, realname, &method);
 	if (this) {
-		*modname = this->module->interface->name;
+		*modname = this->module->name;
 		return compile_csingle(parent, method, ci, this, parent_grouptype, realname);
 	}
 

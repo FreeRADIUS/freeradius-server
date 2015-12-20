@@ -487,7 +487,7 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 	}
 
 	base = instance->data;
-	variables = instance->module->interface->config;
+	variables = instance->module->config;
 
 	/*
 	 *	Handle the known configuration parameters.
