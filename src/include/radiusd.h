@@ -360,7 +360,7 @@ typedef struct main_config_t {
 	int		proxy_requests;
 	int		reject_delay;
 	int		status_server;
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
+#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
 	int		allow_vulnerable_openssl;
 #endif
 	int		max_request_time;
@@ -536,7 +536,8 @@ int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 
 /* version.c */
-int 		ssl_check_version(int allow_vulnerable);
+int 		ssl_check_version(void);
+int 		ssl_check_vulnerable(void);
 const char	*ssl_version(void);
 void		version(void);
 

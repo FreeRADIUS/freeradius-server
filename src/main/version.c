@@ -63,7 +63,7 @@ const char *ssl_version()
  * @return 0 if ok, else -1
  */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-int ssl_check_version(int allow_vulnerable)
+int ssl_check_version()
 {
 	long ssl_linked;
 
@@ -94,22 +94,42 @@ int ssl_check_version(int allow_vulnerable)
 	 */
 	} else if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000)) goto mismatch;
 
-#  ifdef ENABLE_OPENSSL_VERSION_CHECK
-	if (!allow_vulnerable) {
-		/* Check for bad versions */
-		/* 1.0.1 - 1.0.1f CVE-2014-0160 http://heartbleed.com */
-		if ((ssl_linked >= 0x010001000) && (ssl_linked < 0x010001070)) {
-			radlog(L_ERR, "Refusing to start with libssl version %s (in range 1.0.1 - 1.0.1f).  "
-			      "Security advisory CVE-2014-0160 (Heartbleed)", ssl_version());
-			radlog(L_ERR, "For more information see http://heartbleed.com");
+	return 0;
+}
 
-			return -1;
-		}
+/** Check OpenSSL version for known vulnerabilities.
+ *
+ * OpenSSL version number consists of:
+ * MNNFFPPS: major minor fix patch status
+ *
+ * Where status >= 0 && < 10 means beta, and status 10 means release.
+ *
+ * Startup check for whether the linked version of OpenSSL is a version known to
+ * have serious vulnerabilities impacting FreeRADIUS.
+ *
+ * @return 0 if ok, else -1
+ */
+#  ifdef ENABLE_OPENSSL_VERSION_CHECK
+int ssl_check_vulnerable()
+{
+	long ssl_linked;
+
+	ssl_linked = SSLeay();
+
+	/* Check for bad versions */
+	/* 1.0.1 - 1.0.1f CVE-2014-0160 http://heartbleed.com */
+	if ((ssl_linked >= 0x010001000) && (ssl_linked < 0x010001070)) {
+		radlog(L_ERR, "Refusing to start with libssl version %s (in range 1.0.1 - 1.0.1f).  "
+		      "Security advisory CVE-2014-0160 (Heartbleed)", ssl_version());
+		radlog(L_ERR, "For more information see http://heartbleed.com");
+
+		return -1;
 	}
-#  endif
 
 	return 0;
 }
+#  endif
+
 #endif
 
 /*
