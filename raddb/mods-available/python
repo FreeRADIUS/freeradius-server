@@ -13,6 +13,8 @@
 python {
 	module = example
 
+#	module_configuration = "my custom settings"
+
 #	python_path = ${modconfdir}/${.:name}
 
 	mod_instantiate = ${.module}
