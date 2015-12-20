@@ -822,7 +822,7 @@ static ssize_t CC_HINT(format (printf, 2, 3)) cprintf_error(rad_listen_t *listen
 static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
-	module_instance_t *mi;
+	module_instance_t *instance;
 	char buffer[256];
 
 	if (argc == 0) {
@@ -841,26 +841,26 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return CMD_FAIL;
 	}
 
-	if ((mi->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) {
+	if ((instance->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) {
 		cprintf_error(listener, "Module %s cannot be hup'd\n",
 			argv[0]);
 		return CMD_FAIL;
 	}
 
-	if (!module_hup_module(mi->cs, mi, time(NULL))) {
+	if (!module_hup_module(instance->cs, instance, time(NULL))) {
 		cprintf_error(listener, "Failed to reload module\n");
 		return CMD_FAIL;
 	}
 
 	snprintf(buffer, sizeof(buffer), "modules.%s.hup",
-		 cf_section_name1(mi->cs));
-	trigger_exec(NULL, mi->cs, buffer, true, NULL);
+		 cf_section_name1(instance->cs));
+	trigger_exec(NULL, instance->cs, buffer, true, NULL);
 
 	return CMD_OK;
 }
@@ -1011,7 +1011,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 static int command_show_module_config(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
-	module_instance_t *mi;
+	module_instance_t *instance;
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
@@ -1021,13 +1021,13 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return CMD_FAIL;
 	}
 
-	cprint_conf_parser(listener, 0, mi->cs, mi->data);
+	cprint_conf_parser(listener, 0, instance->cs, instance->data);
 
 	return CMD_OK;
 }
@@ -1048,7 +1048,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 {
 	int i;
 	CONF_SECTION *cs;
-	module_instance_t const *mi;
+	module_instance_t const *instance;
 	module_t const *mod;
 
 	if (argc != 1) {
@@ -1059,13 +1059,13 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return CMD_FAIL;
 	}
 
-	mod = mi->module->interface;
+	mod = instance->module->interface;
 
 	for (i = 0; i < MOD_COUNT; i++) {
 		if (mod->methods[i]) cprintf(listener, "%s\n", method_names[i]);
@@ -1078,7 +1078,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 static int command_show_module_flags(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
-	module_instance_t const *mi;
+	module_instance_t const *instance;
 	module_t const *mod;
 
 	if (argc != 1) {
@@ -1089,13 +1089,13 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return CMD_FAIL;
 	}
 
-	mod = mi->module->interface;
+	mod = instance->module->interface;
 
 	if ((mod->type & RLM_TYPE_THREAD_UNSAFE) != 0)
 		cprintf(listener, "thread-unsafe\n");
@@ -1109,7 +1109,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 static int command_show_module_status(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
-	const module_instance_t *mi;
+	const module_instance_t *instance;
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
@@ -1119,16 +1119,16 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return CMD_FAIL;
 	}
 
-	if (!mi->force) {
+	if (!instance->force) {
 		cprintf(listener, "alive\n");
 	} else {
-		cprintf(listener, "%s\n", fr_int2str(mod_rcode_table, mi->code, "<invalid>"));
+		cprintf(listener, "%s\n", fr_int2str(mod_rcode_table, instance->code, "<invalid>"));
 	}
 
 
@@ -1151,16 +1151,16 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		char const *name1 = cf_section_name1(subcs);
 		char const *name2 = cf_section_name2(subcs);
 
-		module_instance_t *mi;
+		module_instance_t *instance;
 
 		if (name2) {
-			mi = module_find(cs, name2);
-			if (!mi) continue;
+			instance = module_find(cs, name2);
+			if (!instance) continue;
 
 			cprintf(listener, "%s (%s)\n", name2, name1);
 		} else {
-			mi = module_find(cs, name1);
-			if (!mi) continue;
+			instance = module_find(cs, name1);
+			if (!instance) continue;
 
 			cprintf(listener, "%s\n", name1);
 		}
@@ -2352,7 +2352,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	int i, rcode;
 	CONF_PAIR *cp;
 	CONF_SECTION *cs;
-	module_instance_t *mi;
+	module_instance_t *instance;
 	CONF_PARSER const *variables;
 	void *data;
 
@@ -2364,18 +2364,18 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return 0;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return 0;
 	}
 
-	if ((mi->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) {
+	if ((instance->module->interface->type & RLM_TYPE_HUP_SAFE) == 0) {
 		cprintf_error(listener, "Cannot change configuration of module as it is cannot be HUP'd.\n");
 		return 0;
 	}
 
-	variables = cf_section_parse_table(mi->cs);
+	variables = cf_section_parse_table(instance->cs);
 	if (!variables) {
 		cprintf_error(listener, "Cannot find configuration for module\n");
 		return 0;
@@ -2410,9 +2410,9 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	data = ((char *) mi->data) + variables[i].offset;
+	data = ((char *) instance->data) + variables[i].offset;
 
-	cp = cf_pair_find(mi->cs, argv[1]);
+	cp = cf_pair_find(instance->cs, argv[1]);
 	if (!cp) return 0;
 
 	/*
@@ -2423,9 +2423,9 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 *	If it's a string, look for leading single/double quotes,
 	 *	end then call tokenize functions???
 	 */
-	cf_pair_replace(mi->cs, cp, argv[2]);
+	cf_pair_replace(instance->cs, cp, argv[2]);
 
-	rcode = cf_pair_parse(mi->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
+	rcode = cf_pair_parse(instance->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) {
 		cprintf_error(listener, "Failed to parse value\n");
 		return 0;
@@ -2437,7 +2437,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
-	module_instance_t *mi;
+	module_instance_t *instance;
 
 	if (argc < 2) {
 		cprintf_error(listener, "No module name or status was given\n");
@@ -2447,19 +2447,19 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_sub_find(main_config.config, "modules");
 	if (!cs) return 0;
 
-	mi = module_find(cs, argv[0]);
-	if (!mi) {
+	instance = module_find(cs, argv[0]);
+	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return 0;
 	}
 
 
 	if (strcmp(argv[1], "alive") == 0) {
-		mi->force = false;
+		instance->force = false;
 
 	} else if (strcmp(argv[1], "dead") == 0) {
-		mi->code = RLM_MODULE_FAIL;
-		mi->force = true;
+		instance->code = RLM_MODULE_FAIL;
+		instance->force = true;
 
 	} else {
 		int rcode;
@@ -2470,8 +2470,8 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 			return 0;
 		}
 
-		mi->code = rcode;
-		mi->force = true;
+		instance->code = rcode;
+		instance->force = true;
 	}
 
 	return CMD_OK;
