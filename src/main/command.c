@@ -853,7 +853,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_FAIL;
 	}
 
-	if (!module_hup_module(instance->cs, instance, time(NULL))) {
+	if (!module_hup(instance->cs, instance, time(NULL))) {
 		cprintf_error(listener, "Failed to reload module\n");
 		return CMD_FAIL;
 	}

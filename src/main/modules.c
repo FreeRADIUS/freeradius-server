@@ -1644,7 +1644,7 @@ int virtual_servers_init(CONF_SECTION *config)
 	return 0;
 }
 
-int module_hup_module(CONF_SECTION *cs, module_instance_t *instance, time_t when)
+int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
 {
 	void *insthandle;
 	fr_module_hup_t *mh;
@@ -1742,7 +1742,7 @@ int modules_hup(CONF_SECTION *modules)
 		instance = module_find(modules, instance_name);
 		if (!instance) continue;
 
-		module_hup_module(cs, instance, when);
+		module_hup(cs, instance, when);
 	}
 
 	return 1;
