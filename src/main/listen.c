@@ -75,7 +75,7 @@ typedef struct listen_config_t {
 	CONF_SECTION	*server;	//!< encapsulating server configuratiuon
 	CONF_SECTION	*cs;		//!< configuration for this listener
 	char const	*server_name;	//!< name of the virtual server (if any)
-	lt_dlhandle	*handle;	//!< to dynamically loaded library (if any)
+	void	*handle;	//!< to dynamically loaded library (if any)
 	RAD_LISTEN_TYPE	type;		//! same as Listen-Socket-Type
 	fr_protocol_t	*proto;		//!< pointer to the protocol handler.
 
@@ -115,7 +115,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	int		transports;
 	char const	*value;
 	fr_dict_enum_t const *dv;
-	lt_dlhandle	*handle = NULL;
+	void	*handle = NULL;
 	fr_protocol_t	*proto = NULL;
 
 	if (!listen_ctx) listen_ctx = talloc_init("listen_config_t");
@@ -173,7 +173,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 *	Load the library.
 		 */
 		snprintf(buffer, sizeof(buffer), "proto_%s", value);
-		handle = lt_dlopenext(buffer);
+		handle = module_dlopen_by_name(buffer);
 		if (!handle) {
 			cf_log_err_cs(cs, "Failed loading dynamic protocol %s", value);
 			return -1;
@@ -220,7 +220,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	if (!dv) {
 		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
 			      value);
-		if (handle) lt_dlclose(handle);
+		if (handle) dlclose(handle);
 		return -1;
 	}
 

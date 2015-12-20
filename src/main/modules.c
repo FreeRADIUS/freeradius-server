@@ -84,11 +84,11 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 
 #ifdef __APPLE__
-#  define LT_SHREXT ".dylib"
+#  define DL_EXTENSION ".dylib"
 #elif defined (WIN32)
-#  define LT_SHREXT ".dll"
+#  define DL_EXTENSION ".dll"
 #else
-#  define LT_SHREXT ".so"
+#  define DL_EXTENSION ".so"
 #endif
 
 /** Check if the magic number in the module matches the one in the library
@@ -147,13 +147,18 @@ static int module_verify_magic(CONF_SECTION *cs, module_t const *module)
 	return 0;
 }
 
-lt_dlhandle lt_dlopenext(char const *name)
+/** Search for a module's shared object in various locations
+ *
+ * @param name of module to load.
+ */
+void *module_dlopen_by_name(char const *name)
 {
 	int		flags = RTLD_NOW;
 	void		*handle;
 	char		buffer[2048];
 	char		*env;
 	char const	*search_path;
+
 #ifdef RTLD_GLOBAL
 	if (strcmp(name, "rlm_perl") == 0) {
 		flags |= RTLD_GLOBAL;
@@ -197,7 +202,7 @@ lt_dlhandle lt_dlopenext(char const *name)
 			p = strrchr(path, '/');
 			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
 
-			path = talloc_asprintf(ctx, "%s/%s%s", path, name, LT_SHREXT);
+			path = talloc_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
 
 			DEBUG4("Loading %s with path: %s", name, path);
 
@@ -249,7 +254,7 @@ lt_dlhandle lt_dlopenext(char const *name)
 	/*
 	 *	FIXME: Make this configurable...
 	 */
-	strlcat(buffer, LT_SHREXT, sizeof(buffer));
+	strlcat(buffer, DL_EXTENSION, sizeof(buffer));
 
 	handle = dlopen(buffer, flags);
 	if (!handle) {
@@ -263,23 +268,6 @@ lt_dlhandle lt_dlopenext(char const *name)
 		return NULL;
 	}
 	return handle;
-}
-
-void *lt_dlsym(lt_dlhandle handle, char const *symbol)
-{
-	return dlsym(handle, symbol);
-}
-
-int lt_dlclose(lt_dlhandle handle)
-{
-	if (!handle) return 0;
-
-	return dlclose(handle);
-}
-
-char const *lt_dlerror(void)
-{
-	return dlerror();
 }
 
 static virtual_server_t *virtual_server_find(char const *name)
@@ -378,7 +366,7 @@ static int _module_dl_free(module_dl_t *module_dl)
 	DEBUG3("Unloading module \"%s\" (%p/%p)", module_dl->name, module_dl->handle, module_dl->module);
 
 	if (module_dl->handle) {
-		lt_dlclose(module_dl->handle);        /* ignore any errors */
+		dlclose(module_dl->handle);        /* ignore any errors */
 		module_dl->handle = NULL;
 	}
 
@@ -421,7 +409,7 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 	/*
 	 *	Keep the dlhandle around so we can dlclose() it.
 	 */
-	handle = lt_dlopenext(module_name);
+	handle = module_dlopen_by_name(module_name);
 	if (!handle) {
 		cf_log_err_cs(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
 		return NULL;

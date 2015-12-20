@@ -39,22 +39,15 @@ RCSIDH(modpriv_h, "$Id$")
 extern "C" {
 #endif
 
-typedef void *lt_dlhandle;
-
-lt_dlhandle lt_dlopenext(char const *name);
-void *lt_dlsym(lt_dlhandle handle, char const *symbol);
-int lt_dlclose(lt_dlhandle handle);
-char const *lt_dlerror(void);
-
 /** Module handle
  *
- * Contains module's dlhandle, and the public interface it exports.
+ * Contains module's dlhandle, and the functions it exports.
  */
 typedef struct module_handle {
 	char const			*name;		//!< Name of the module e.g. sql.
 	module_t const			*module;	//!< Symbol exported by the module, containing its public
 							//!< functions, name and behaviour control flags.
-	lt_dlhandle			handle;		//!< Handle returned by dlopen.
+	void				*handle;	//!< Handle returned by dlopen.
 } module_dl_t;
 
 typedef struct fr_module_hup_t fr_module_hup_t;
@@ -90,6 +83,7 @@ typedef struct module_instance_t {
 							//!< instance data.
 } module_instance_t;
 
+void			*module_dlopen_by_name(char const *name);
 module_instance_t	*module_instantiate(CONF_SECTION *modules, char const *asked_name);
 module_instance_t	*module_instantiate_method(CONF_SECTION *modules, char const *asked_name,
 						   rlm_components_t *method);
