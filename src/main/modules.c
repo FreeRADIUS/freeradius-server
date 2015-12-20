@@ -104,7 +104,7 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
  *	- -2 if version mismatch.
  *	- -3 if commit mismatch.
  */
-static int module_verify_magic(CONF_SECTION *cs, module_interface_t const *module)
+static int module_verify_magic(CONF_SECTION *cs, module_t const *module)
 {
 #ifdef HAVE_DLADDR
 	Dl_info dl_info;
@@ -441,7 +441,7 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 	module_dl_t			*module;
 	void				*dlhandle = NULL;
 	char const			*name1;
-	module_interface_t const	*interface;
+	module_t const	*interface;
 	char				module_name[256];
 
 	name1 = cf_section_name1(conf);
@@ -1998,7 +1998,7 @@ int modules_bootstrap(CONF_SECTION *root)
 			 */
 			if (cf_item_is_section(ci)) {
 				bool all_same = true;
-				module_interface_t const *last = NULL;
+				module_t const *last = NULL;
 				CONF_SECTION *subcs;
 				CONF_ITEM *subci;
 

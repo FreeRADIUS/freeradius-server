@@ -465,8 +465,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_interface_t rlm_wimax;
-module_interface_t rlm_wimax = {
+extern module_t rlm_wimax;
+module_t rlm_wimax = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "wimax",
 	.type		= RLM_TYPE_THREAD_SAFE,

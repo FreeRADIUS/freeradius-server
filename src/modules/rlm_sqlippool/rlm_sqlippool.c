@@ -708,8 +708,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_interface_t rlm_sqlippool;
-module_interface_t rlm_sqlippool = {
+extern module_t rlm_sqlippool;
+module_t rlm_sqlippool = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sqlippool",
 	.type		= RLM_TYPE_THREAD_SAFE,

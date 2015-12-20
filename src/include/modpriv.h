@@ -52,7 +52,7 @@ char const *lt_dlerror(void);
  */
 typedef struct module_handle {
 	char const			*name;		//!< Name of the module e.g. sql.
-	module_interface_t const	*interface;	//!< Symbol exported by the module, containing its public
+	module_t const	*interface;	//!< Symbol exported by the module, containing its public
 							//!< functions, name and behaviour control flags.
 	lt_dlhandle			dlhandle;	//!< Handle returned by dlopen.
 } module_dl_t;

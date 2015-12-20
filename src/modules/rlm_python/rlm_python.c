@@ -776,8 +776,8 @@ A(send_coa)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_interface_t rlm_python;
-module_interface_t rlm_python = {
+extern module_t rlm_python;
+module_t rlm_python = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "python",
 	.type		= RLM_TYPE_THREAD_SAFE,

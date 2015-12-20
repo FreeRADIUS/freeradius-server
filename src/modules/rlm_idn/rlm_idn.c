@@ -149,8 +149,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-extern module_interface_t rlm_idn;
-module_interface_t rlm_idn = {
+extern module_t rlm_idn;
+module_t rlm_idn = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "idn",
 	.type		= RLM_TYPE_THREAD_SAFE,

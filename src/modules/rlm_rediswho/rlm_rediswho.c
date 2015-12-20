@@ -224,8 +224,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return rcode;
 }
 
-extern module_interface_t rlm_rediswho;
-module_interface_t rlm_rediswho = {
+extern module_t rlm_rediswho;
+module_t rlm_rediswho = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "rediswho",
 	.type		= RLM_TYPE_THREAD_SAFE,

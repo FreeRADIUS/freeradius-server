@@ -323,8 +323,8 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_interface_t rlm_json;
-module_interface_t rlm_json = {
+extern module_t rlm_json;
+module_t rlm_json = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "json",
 	.type		= RLM_TYPE_THREAD_SAFE,

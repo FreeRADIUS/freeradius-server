@@ -347,8 +347,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-extern module_interface_t rlm_redis;
-module_interface_t rlm_redis = {
+extern module_t rlm_redis;
+module_t rlm_redis = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "redis",
 	.type		= RLM_TYPE_THREAD_SAFE,

@@ -1049,7 +1049,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 	int i;
 	CONF_SECTION *cs;
 	module_instance_t const *mi;
-	module_interface_t const *mod;
+	module_t const *mod;
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
@@ -1079,7 +1079,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 {
 	CONF_SECTION *cs;
 	module_instance_t const *mi;
-	module_interface_t const *mod;
+	module_t const *mod;
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");

@@ -187,8 +187,8 @@ static int mod_detach(UNUSED void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_interface_t rlm_example;
-module_interface_t rlm_example = {
+extern module_t rlm_example;
+module_t rlm_example = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "example",
 	.type		= RLM_TYPE_THREAD_SAFE,

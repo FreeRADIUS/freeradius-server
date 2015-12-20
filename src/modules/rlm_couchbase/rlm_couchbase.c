@@ -860,8 +860,8 @@ static int mod_detach(void *instance)
 /*
  * Hook into the FreeRADIUS module system.
  */
-extern module_interface_t rlm_couchbase;
-module_interface_t rlm_couchbase = {
+extern module_t rlm_couchbase;
+module_t rlm_couchbase = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "couchbase",
 	.type		= RLM_TYPE_THREAD_SAFE,

@@ -499,8 +499,8 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 #endif
 
 /* globally exported name */
-extern module_interface_t rlm_realm;
-module_interface_t rlm_realm = {
+extern module_t rlm_realm;
+module_t rlm_realm = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "realm",
 	.type		= RLM_TYPE_HUP_SAFE,
