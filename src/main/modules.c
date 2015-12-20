@@ -346,8 +346,8 @@ static void module_hup_free(module_instance_t *instance, time_t when)
  */
 static int module_dlhandle_cmp(void const *one, void const *two)
 {
-	module_t const *a = one;
-	module_t const *b = two;
+	module_dl_t const *a = one;
+	module_dl_t const *b = two;
 
 	return strcmp(a->name, b->name);
 }
@@ -398,9 +398,9 @@ static int _module_instance_free(module_instance_t *instance)
  *
  * Close module's dlhandle, unloading it.
  */
-static int _module_free(module_t *module)
+static int _module_free(module_dl_t *module)
 {
-	module = talloc_get_type_abort(module, module_t);
+	module = talloc_get_type_abort(module, module_dl_t);
 
 	DEBUG3("Unloading module \"%s\" (%p/%p)", module->interface->name, module->dlhandle, module->interface);
 
@@ -435,10 +435,10 @@ int modules_free(UNUSED CONF_SECTION *root)
  *	- Module handle holding dlhandle, and module's public interface structure.
  *	- NULL if module couldn't be loaded, or some other error occurred.
  */
-static module_t *module_dlopen(CONF_SECTION *conf)
+static module_dl_t *module_dlopen(CONF_SECTION *conf)
 {
-	module_t			to_find;
-	module_t 			*module;
+	module_dl_t			to_find;
+	module_dl_t			*module;
 	void				*dlhandle = NULL;
 	char const			*name1;
 	module_interface_t const	*interface;
@@ -493,7 +493,7 @@ static module_t *module_dlopen(CONF_SECTION *conf)
 	DEBUG3("Validated \"%s\" (%p/%p)", module_name, dlhandle, interface);
 
 	/* make room for the interface type */
-	module = talloc_zero(dlhandle_tree, module_t);
+	module = talloc_zero(dlhandle_tree, module_dl_t);
 	talloc_set_destructor(module, _module_free);
 
 	module->interface = interface;
@@ -575,10 +575,10 @@ static int module_parse_conf(void **data, module_instance_t *instance)
  */
 static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
 {
-	int i;
-	char const *name1, *instance_name;
-	module_instance_t *instance;
-	module_t *module;
+	int			i;
+	char const		*name1, *instance_name;
+	module_instance_t	*instance;
+	module_dl_t		*module;
 
 	/*
 	 *	Figure out which module we want to load.

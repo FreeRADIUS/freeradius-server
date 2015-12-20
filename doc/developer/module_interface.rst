@@ -82,7 +82,7 @@ RADIUS requests at different stages. The components are:
 - postproxy: filter attributes from a reply to a proxied request
 
 A module declares which components it supports by putting function
-pointers in its "module_t rlm_*" structure.
+pointers in its "module_dl_t rlm_*" structure.
 
 
 Module configuration
