@@ -641,7 +641,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	 *	section. If the CS is free'd the instance will be
 	 *	free'd, too.
 	 */
-	node = talloc_zero(module_instance_tree, module_instance_t);
+	node = talloc_zero(instance_tree, module_instance_t);
 	node->cs = cs;
 	strlcpy(node->name, name2, sizeof(node->name));
 
