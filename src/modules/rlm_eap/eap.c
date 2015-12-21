@@ -145,7 +145,7 @@ int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t nu
 		return -1;
 	}
 
-#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
+#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 open_self:
 #endif
 	cf_log_module(cs, "Linked to sub-module %s", mod_name);

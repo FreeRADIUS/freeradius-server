@@ -401,7 +401,11 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
-#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
+	/*
+	 *	Check if the module was statically compiled into the server,
+	 *	or linked into the server.
+	 */
+#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	module = dlsym(RTLD_SELF, module_name);
 	if (module) goto open_self;
 #endif
@@ -424,7 +428,7 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 		return NULL;
 	}
 
-#if !defined(WITH_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
+#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	open_self:
 #endif
 	/*
