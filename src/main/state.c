@@ -303,8 +303,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	*((uint32_t *)(entry->state)) ^= fr_hash_string(server);
-
+	*((uint32_t *)(&entry->state[4])) ^= fr_hash_string(server);
 
 	if (!rbtree_insert(state->tree, entry)) {
 		talloc_free(entry);
@@ -349,7 +348,7 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	*((uint32_t *)(my_entry.state)) ^= fr_hash_string(server);
+	*((uint32_t *)(&my_entry.state[4])) ^= fr_hash_string(server);
 
 	entry = rbtree_finddata(state->tree, &my_entry);
 
