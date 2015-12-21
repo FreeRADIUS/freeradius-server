@@ -382,9 +382,18 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 	} else {
 		/*
+		 *	16 octets of randomness should be enough to
+		 *	have a globally unique state.
+		 */
+		if (!old) {
+			for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
+				x = fr_rand();
+				memcpy(entry->state + (i * 4), &x, sizeof(x));
+			}
+		/*
 		 *	Base the new state on the old state if we had one.
 		 */
-		if (old) {
+		} else {
 			memcpy(entry->state, old_state, sizeof(entry->state));
 			entry->tries = old_tries + 1;
 		}
@@ -394,15 +403,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		entry->state[8] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
 		entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
 		entry->state[12] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
-
-		/*
-		 *	16 octets of randomness should be enough to
-		 *	have a globally unique state.
-		 */
-		for (i = 0; i < sizeof(entry->state) / sizeof(x); i++) {
-			x = fr_rand();
-			memcpy(entry->state + (i * 4), &x, sizeof(x));
-		}
 
 		/*
 		 *	Allow a portion ofthe State attribute to be set.
