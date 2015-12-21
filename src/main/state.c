@@ -270,7 +270,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
  *
  * @note Called with the mutex held.
  */
-static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKET *packet, fr_state_entry_t *old)
+static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, char const *server, RADIUS_PACKET *packet, fr_state_entry_t *old)
 {
 	size_t			i;
 	uint32_t		x;
@@ -432,6 +432,11 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		return NULL;
 	}
 
+	/*
+	 *	Make it unique for different virtual servers handling the same request
+	 */
+	*((uint32_t *)(&entry->state[4])) ^= fr_hash_string(server);
+
 	if (!rbtree_insert(state->tree, entry)) {
 		talloc_free(entry);
 		return NULL;
@@ -460,7 +465,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 /** Find the entry, based on the State attribute
  *
  */
-static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, RADIUS_PACKET *packet)
+static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, char const *server, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
 	fr_state_entry_t *entry, my_entry;
@@ -471,6 +476,11 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, RADIUS_PACKET 
 	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
 
 	memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
+
+	/*
+	 *	Make it unique for different virtual servers handling the same request
+	 */
+	*((uint32_t *)(&my_entry.state[4])) ^= fr_hash_string(server);
 
 	entry = rbtree_finddata(state->tree, &my_entry);
 
@@ -489,7 +499,7 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
 	fr_state_entry_t *entry;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, original);
+	entry = state_entry_find(state, request->server, original);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
@@ -537,7 +547,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	entry = state_entry_find(state, packet);
+	entry = state_entry_find(state, request->server, packet);
 	if (entry) {
 		if (request->state_ctx) old_ctx = request->state_ctx;
 
@@ -592,10 +602,10 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	old = original ? state_entry_find(state, original) :
+	old = original ? state_entry_find(state, request->server, original) :
 			 NULL;
 
-	entry = state_entry_create(state, packet, old);
+	entry = state_entry_create(state, request->server, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return false;
