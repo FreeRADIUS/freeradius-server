@@ -185,11 +185,15 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 
 		last_time = cf_data_find(cs, value);
 		if (!last_time) {
-			last_time = rad_malloc(sizeof(*last_time));
+			/*
+			 *	Can't be parented off config due to threading
+			 *	issues.
+			 */
+			last_time = talloc_zero(NULL, time_t);
 			*last_time = 0;
 
 			if (cf_data_add(cs, value, last_time, time_free) < 0) {
-				free(last_time);
+				talloc_free(last_time);
 				last_time = NULL;
 			}
 		}
