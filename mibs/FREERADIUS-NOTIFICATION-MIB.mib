@@ -99,7 +99,7 @@ serverModuleConnectionUp NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
-		 radiusdConnectionPoolport }
+		 radiusdConnectionPoolPort }
        STATUS current
        DESCRIPTION "Notification that the module has opened a new connection"
        ::= { serverModuleGeneric 1 }
@@ -108,7 +108,7 @@ serverModuleConnectionDown NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
-		 radiusdConnectionPoolport }
+		 radiusdConnectionPoolPort }
        STATUS current
        DESCRIPTION "Notification that the module has dropped a connection"
        ::= { serverModuleGeneric 2 }
@@ -117,7 +117,7 @@ serverModuleConnectionNone NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
-		 radiusdConnectionPoolport }
+		 radiusdConnectionPoolPort }
        STATUS current
        DESCRIPTION "Notification that the module has no connections"
        ::= { serverModuleGeneric 3 }
@@ -126,28 +126,46 @@ serverModuleConnectionFail NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
-		 radiusdConnectionPoolport }
+		 radiusdConnectionPoolPort }
        STATUS current
        DESCRIPTION "Notification that the module has failed to open a new connection"
        ::= { serverModuleGeneric 4 }
+
+serverModuleConnectionReservedPeriodHigh NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification that the period a connection was reserved for exceeded the configured maximum"
+       ::= { serverModuleGeneric 5 }
+
+serverModuleConnectionReservedPeriodLow NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification that the period a connection was reserved for was lower than the configured minimum"
+       ::= { serverModuleGeneric 6 }
 
 serverModuleConnectionPoolReconnect NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
-		 radiusdConnectionPoolport }
+		 radiusdConnectionPoolPort }
        STATUS current
        DESCRIPTION "Notification that all connections for this pool are being re-established"
-       ::= { serverModuleGeneric 5 }
+       ::= { serverModuleGeneric 7 }
 
 serverModuleHup NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
-		 radiusdConnectionPoolport }
+		 radiusdConnectionPoolPort }
        STATUS current
        DESCRIPTION "Notification that the module has been HUP'd via radmin"
-       ::= { serverModuleGeneric 6 }
+       ::= { serverModuleGeneric 8 }
 
 homeServer  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 3 }
 
