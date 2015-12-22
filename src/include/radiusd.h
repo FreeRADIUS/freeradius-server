@@ -162,7 +162,9 @@ typedef struct main_config {
 	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
 							//!< receiving a fatal signal.
 
-	uint32_t       	state_seed;			//!< magic for proxying
+	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
+							//!< authenticating server to be identified in packet
+							//!< captures.
 
 	bool		write_pid;			//!< write the PID file
 
