@@ -342,10 +342,9 @@ static int module_dlhandle_cmp(void const *one, void const *two)
 
 /** Free all modules loaded by the server
  *
- * @param root main_config.
  * @return 0.
  */
-int modules_free(UNUSED CONF_SECTION *root)
+int modules_free(void)
 {
 	/*
 	 *	All instances and dlhandles are parented from here.

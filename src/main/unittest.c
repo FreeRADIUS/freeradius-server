@@ -906,7 +906,6 @@ int main(int argc, char *argv[])
 			}
 		}
 
-
 		if (fr_pair_list_afrom_file(request, &filter_vps, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
@@ -940,8 +939,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Update the list with the response type.
 	 */
-	vp = radius_pair_create(request->reply, &request->reply->vps,
-			       PW_RESPONSE_PACKET_TYPE, 0);
+	vp = radius_pair_create(request->reply, &request->reply->vps, PW_RESPONSE_PACKET_TYPE, 0);
 	vp->vp_integer = request->reply->code;
 
 	{
@@ -967,7 +965,7 @@ finish:
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
 	 */
-	modules_free(main_config.config);
+	modules_free();
 
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.

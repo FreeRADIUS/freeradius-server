@@ -644,7 +644,7 @@ cleanup:
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
 	 */
-	modules_free(main_config.config);
+	modules_free();
 
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.
