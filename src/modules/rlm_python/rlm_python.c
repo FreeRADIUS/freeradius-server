@@ -74,6 +74,8 @@ typedef struct rlm_python_t {
 	send_coa,
 #endif
 	detach;
+
+	PyObject *pythonconf_dict;
 } rlm_python_t;
 
 /*
@@ -237,6 +239,14 @@ static int mod_init(rlm_python_t *inst)
 					     radiusd_constants[i].value)) < 0) {
 			goto failed;
 		}
+	}
+
+	/*
+	 * add module configuration as a dict
+	 */
+	if ((PyModule_AddObject(radiusd_module, "config",
+					inst->pythonconf_dict)) < 0) {
+		goto failed;
 	}
 
 #ifdef HAVE_PTHREAD_H
@@ -682,6 +692,79 @@ static void mod_instance_clear(rlm_python_t *inst)
 }
 
 /*
+ *	Parse a configuration section, and populate a dict.
+ *	This function is recursively called (allows to have nested dicts.)
+ */
+static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
+{
+	if (!cs || !dict) return;
+
+	int indent_section = (lvl + 1) * 4;
+	int indent_item = (lvl + 2) * 4;
+
+	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
+
+	CONF_ITEM *ci = NULL;
+
+	while ((ci = cf_item_find_next(cs, ci))) {
+		/*
+		 *  This is a section.
+		 *  Create a new dict, store it in current dict,
+		 *  Then recursively call python_parse_config with this section and the new dict.
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *sub_cs = cf_item_to_section(ci);
+			char const *key = cf_section_name1(sub_cs); /* dict key */
+			PyObject *sub_dict, *pKey;
+
+			if (!key) continue;
+
+			pKey = PyString_FromString(key);
+			if (!pKey) continue;
+
+			if (PyDict_Contains(dict, pKey)) {
+				WARN("rlm_python: Ignoring duplicate config section '%s'", key);
+				continue;
+			}
+
+			if (!(sub_dict = PyDict_New())) {
+				WARN("rlm_python: Unable to create subdict for config section '%s'", key);
+			}
+
+			(void)PyDict_SetItem(dict, pKey, sub_dict);
+
+			python_parse_config(sub_cs, lvl + 1, sub_dict);
+		} else if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp = cf_item_to_pair(ci);
+			char const  *key = cf_pair_attr(cp); /* dict key */
+			char const  *value = cf_pair_value(cp); /* dict value */
+			PyObject *pKey, *pValue;
+
+			if (!key || !value) continue;
+
+			pKey = PyString_FromString(key);
+			pValue = PyString_FromString(value);
+			if (!pKey || !pValue) continue;
+
+			/*
+			 *  This is an item.
+			 *  Store item attr / value in current dict.
+			 */
+			if (PyDict_Contains(dict, pKey)) {
+				WARN("rlm_python: Ignoring duplicate config item '%s'", key);
+				continue;
+			}
+
+			(void)PyDict_SetItem(dict, pKey, pValue);
+
+			DEBUG("%*s%s = %s", indent_item, " ", key, value);
+		}
+	}
+
+	DEBUG("%*s}", indent_section, " ");
+}
+
+/*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
@@ -692,9 +775,20 @@ static void mod_instance_clear(rlm_python_t *inst)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_python_t *inst = instance;
+
+	CONF_SECTION *cs;
+
+	/* parse python configuration sub-section */
+	if ((inst->pythonconf_dict = PyDict_New()) == NULL) {
+		ERROR("rlm_python: Unable to create python dict for config");
+		goto failed;
+	}
+	if ((cs = cf_section_sub_find(conf, "config"))) {
+		python_parse_config(cs, 0, inst->pythonconf_dict);
+	}
 
 	if (mod_init(inst) != 0) {
 		return -1;
@@ -741,6 +835,8 @@ static int mod_detach(void *instance)
 	 *	Master should still have no thread state
 	 */
 	ret = do_python(inst, NULL, inst->detach.function, "detach", false);
+
+	Py_DecRef(inst->pythonconf_dict);
 
 	mod_instance_clear(inst);
 	dlclose(inst->libpython);
