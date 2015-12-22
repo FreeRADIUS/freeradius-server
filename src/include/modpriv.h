@@ -30,7 +30,7 @@ RCSIDH(modpriv_h, "$Id$")
 #include <freeradius-devel/modules.h>
 
 #ifndef HAVE_DLFCN_H
-#error FreeRADIUS needs either libltdl, or a working dlopen()
+#error FreeRADIUS needs a working dlopen()
 #else
 #include <dlfcn.h>
 #endif
