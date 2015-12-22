@@ -3943,9 +3943,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 	cd->data = data;
 	cd->free = data_free;
 
-	if (cd->free) {
-		talloc_set_destructor(cd, _cf_data_free);
-	}
+	if (cd->free) talloc_set_destructor(cd, _cf_data_free);
 
 	return cd;
 }
