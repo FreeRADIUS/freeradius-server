@@ -101,12 +101,12 @@ static void time_free(void *data)
  *			section.
  * @param name		the path relative to the global trigger section ending in the trigger name
  *			e.g. module.ldap.pool.start.
- * @param quench	whether to rate limit triggers.
+ * @param rate_limit	whether to rate limit triggers.
  * @param args		to make available via the @verbatim %{trigger:<arg>} @endverbatim xlat.
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench, VALUE_PAIR *args)
+int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate_limit, VALUE_PAIR *args)
 {
 	CONF_SECTION	*subcs;
 
@@ -178,9 +178,9 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 	if (request && request->packet) vp = request->packet->vps;
 
 	/*
-	 *	Perform periodic quenching.
+	 *	Perform periodic rate_limiting.
 	 */
-	if (quench) {
+	if (rate_limit) {
 		time_t *last_time;
 
 		last_time = cf_data_find(cs, value);
@@ -195,7 +195,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool quen
 		}
 
 		/*
-		 *	Send the quenched traps at most once per second.
+		 *	Send the rate_limited traps at most once per second.
 		 */
 		if (last_time) {
 			time_t now = time(NULL);
