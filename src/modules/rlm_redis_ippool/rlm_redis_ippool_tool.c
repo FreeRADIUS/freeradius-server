@@ -202,11 +202,14 @@ static char lua_remove_cmd[] =
 static void NEVER_RETURNS usage(int ret) {
 	INFO("Usage: %s [[-a|-d|-r] -p] [options] <server[:port]> <pool> [<range>]", name);
 	INFO("Pool management:");
-	INFO("  -a <addr>              Add addresses/prefixes to the pool");
-	INFO("  -d <addr>              Delete addresses/prefixes in this range");
-	INFO("  -r <addr>              Release addresses/prefixes in this range");
-	INFO("  -s <addr>              Show addresses/prefix in this range");
+	INFO("  -a <prefix>            Add addresses/prefixes to the pool");
+	INFO("  -d <prefix>            Delete addresses/prefixes in this range");
+	INFO("  -r <prefix>            Release addresses/prefixes in this range");
+	INFO("  -s <prefix>            Show addresses/prefix in this range");
 	INFO("  -p <prefix_len>        Length of prefix to allocate (defaults to 32/128)");
+	INFO("                         This is used primarily for IPv6 where a prefix is");
+	INFO("                         allocated to an intermediary router, which in turn");
+	IFNO("                         allocates sub-prefixes to the devices it serves");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
 //	INFO("Pool status:");
@@ -219,7 +222,7 @@ static void NEVER_RETURNS usage(int ret) {
 //	INFO("  -o <attr>=<value>      Set option, these are specific to the backends [NYI]");
 	INFO("  -f <file>              Load options from a FreeRADIUS (radisud) format config file");
 	INFO(" ");
-	INFO("<addr> is range \"127.0.0.1-127.0.0.254\" or CIDR network \"127.0.0.1/24\"");
+	INFO("<prefix> is range \"127.0.0.1-127.0.0.254\" or CIDR network \"127.0.0.1/24\" or host \"127.0.0.1\"");
 	INFO("CIDR host bits set start address, e.g. 127.0.0.200/24 -> 127.0.0.200-127.0.0.254");
 	INFO("CIDR /32 or /128 excludes upper broadcast address");
 	exit(ret);
@@ -1111,7 +1114,7 @@ do { \
 			p->pool = (uint8_t const *)pool_arg;
 			p->pool_len = strlen(pool_arg);
 		}
-		if (!p->range) {
+		if (!p->range && range_arg) {
 			p->range = (uint8_t const *)range_arg;
 			p->range_len = strlen(range_arg);
 		}
