@@ -2103,7 +2103,7 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
  * @param log_prefix		Custom log prefix.  Defaults to @verbatim rlm_<module> (<instance>) @endverbatim.
  * @param trigger_prefix	Custom trigger prefix.  Defaults to @verbatim modules.<module>.pool @endverbatim.
  * @param trigger_args		Argument pairs to pass to the trigger in addition to Connection-Pool-Server,
- *				and Connection-Pool-Port.
+ *				and Connection-Pool-Port (which are always set by the cluster code).
  * @return
  *	- New #fr_redis_cluster_t on success.
  *	- NULL on error.
@@ -2215,12 +2215,6 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
-	/*
-	 *	Don't connect to cluster nodes if we're just
-	 *	checking the config.
-	 */
-	if (check_config) return cluster;
-
 	cluster->node = talloc_zero_array(cluster, cluster_node_t, conf->max_nodes + 1);
 	if (!cluster->node) goto oom;
 
@@ -2244,6 +2238,12 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		/* Push them all into the queue */
 		fr_fifo_push(cluster->free_nodes, &cluster->node[i]);
 	}
+
+	/*
+	 *	Don't connect to cluster nodes if we're just
+	 *	checking the config.
+	 */
+	if (check_config) return cluster;
 
 	/*
 	 *	Populate the cluster with the bootstrap servers.
