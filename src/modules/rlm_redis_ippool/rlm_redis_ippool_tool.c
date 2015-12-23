@@ -209,7 +209,7 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("  -p <prefix_len>        Length of prefix to allocate (defaults to 32/128)");
 	INFO("                         This is used primarily for IPv6 where a prefix is");
 	INFO("                         allocated to an intermediary router, which in turn");
-	IFNO("                         allocates sub-prefixes to the devices it serves");
+	INFO("                         allocates sub-prefixes to the devices it serves");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
 //	INFO("Pool status:");
