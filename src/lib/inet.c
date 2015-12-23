@@ -336,7 +336,8 @@ static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
 /** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
  *
  * @param out Where to write the ip address value.
- * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
+ * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY)
+ *	or an FQDN if resolve is true.
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
@@ -347,12 +348,10 @@ static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
  */
 int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask_bits)
 {
-	char *p;
-	unsigned int mask;
-	char *eptr;
-
-	/* Dotted quad + / + [0-9]{1,2} */
-	char buffer[INET_ADDRSTRLEN + 3];
+	char		*p;
+	unsigned int	mask;
+	char		*eptr;
+	char		buffer[256];	/* As per RFC1035 */
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
@@ -453,7 +452,8 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 /** Parse an IPv6 address or IPv6 prefix in presentation format (and others)
  *
  * @param out Where to write the ip address value.
- * @param value to parse.
+ * @param value to parse, may IPv6 hexits [+ prefix], or '*' (INADDR_ANY)
+ *	or an FQDN if resolve is true.
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no AAAA records can be found.
@@ -464,12 +464,10 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
  */
 int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask)
 {
-	char const *p;
-	unsigned int prefix;
-	char *eptr;
-
-	/* IPv6  + / + [0-9]{1,3} */
-	char buffer[INET6_ADDRSTRLEN + 4];
+	char const	*p;
+	unsigned int	prefix;
+	char		*eptr;
+	char		buffer[256];	/* As per RFC1035 */
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
