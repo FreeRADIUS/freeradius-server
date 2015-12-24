@@ -1477,6 +1477,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 	g = talloc_zero(parent, modgroup);
 	c = mod_grouptocallable(g);
 
+	c->type = MOD_UPDATE;
 	c->parent = parent;
 	c->next = NULL;
 
@@ -1484,10 +1485,9 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		c->name = name2;
 		c->debug_name = talloc_asprintf(c, "update %s", name2);
 	} else {
-		c->name = "";
+		c->name = unlang_keyword[c->type];
 		c->debug_name = unlang_keyword[c->type];
 	}
-	c->type = MOD_UPDATE;
 	c->method = component;
 
 	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
