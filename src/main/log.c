@@ -768,11 +768,11 @@ print_msg:
 		if (p) p[0] = '\0';
 
 		if (request->module && (request->module[0] != '\0')) {
-			fprintf(fp, "(%u) %s%s%s: %.*s%s\n",
+			fprintf(fp, "(%u)  %s%s%.*s  %s - %s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
-				request->module, indent, spaces, buffer);
+				indent, spaces, request->module, buffer);
 		} else {
-			fprintf(fp, "(%u) %s%s%.*s%s\n",
+			fprintf(fp, "(%u)  %s%s%.*s%s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
 				indent, spaces, buffer);
 		}
