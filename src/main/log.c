@@ -632,16 +632,16 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
  */
 void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
-	size_t len = 0;
-	char const *filename = default_log.file;
-	FILE *fp = NULL;
+	size_t		len = 0;
+	char const	*filename = default_log.file;
+	FILE		*fp = NULL;
 
-	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
+	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 
-	char *p;
-	char const *extra = "";
-	uint8_t indent;
-	va_list aq;
+	char		*p;
+	char const	*extra = "";
+	uint8_t		indent;
+	va_list		aq;
 
 	rad_assert(request);
 
@@ -649,9 +649,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	 *	Debug messages get treated specially.
 	 */
 	if ((type & L_DBG) != 0) {
-		if (!radlog_debug_enabled(type, lvl, request)) {
-			return;
-		}
+		if (!radlog_debug_enabled(type, lvl, request)) return;
 
 #ifdef WITH_COMMAND_SOCKET
 		/*
