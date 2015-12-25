@@ -325,6 +325,8 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	talloc_set_destructor(session, _tls_session_free);
 
 	session->ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
+	rad_assert(session->ctx);
+
 	SSL_CTX_set_mode(session->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
 	session->ssl = SSL_new(session->ctx);
@@ -395,6 +397,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	RDEBUG2("Initiating new EAP-TLS session");
 
 	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
+	rad_assert(ssl_ctx);
 
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
@@ -3389,7 +3392,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
 	for (i = 0; i < conf->ctx_count; i++) {
 		conf->ctx[i] = tls_init_ctx(conf, false);
-		if (conf->ctx == NULL) goto error;
+		if (conf->ctx[i] == NULL) goto error;
 	}
 
 #ifdef HAVE_OPENSSL_OCSP_H
