@@ -306,8 +306,8 @@ ATTRIBUTE	EAP-Sim-KC3				1214	octets
 ATTRIBUTE	EAP-Sim-Ki				1215	octets
 ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
 
-ATTRIBUTE	Outer-Realm-Name			1218	string internal
-ATTRIBUTE	Inner-Realm-Name			1219	string internal
+ATTRIBUTE	Outer-Realm-Name			1218	string
+ATTRIBUTE	Inner-Realm-Name			1219	string
 
 #
 #	Range:	1280 - 1535
