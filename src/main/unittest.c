@@ -779,8 +779,6 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	INFO("Line %d", __LINE__);
-
 	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
@@ -804,16 +802,12 @@ int main(int argc, char *argv[])
 	 */
 	cf_section_add(main_config.config, cf_section_alloc(main_config.config, "server", "unit_test"));
 
-	INFO("Line %d", __LINE__);
-
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
 	 */
 	if (virtual_servers_bootstrap(main_config.config) < 0) goto exit_failure;
-
-	INFO("Line %d", __LINE__);
 
 	/*
 	 *	Bootstrap the modules.  This links to them, and runs
@@ -823,25 +817,17 @@ int main(int argc, char *argv[])
 	 */
 	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
 
-	INFO("Line %d", __LINE__);
-
 	/*
 	 *	Load the modules
 	 */
 	if (modules_init(main_config.config) < 0) goto exit_failure;
-
-	INFO("Line %d", __LINE__);
 
 	/*
 	 *	And then load the virtual servers.
 	 */
 	if (virtual_servers_init(main_config.config) < 0) goto exit_failure;
 
-	INFO("Line %d", __LINE__);
-
 	state = fr_state_tree_init(NULL, main_config.max_requests * 2, 10);
-
-	INFO("Line %d", __LINE__);
 
 	/*
 	 *  Set the panic action (if required)
@@ -935,8 +921,6 @@ int main(int argc, char *argv[])
 
 	rad_virtual_server(request);
 
-	INFO("Line %d", __LINE__);
-
 	if (!output_file || (strcmp(output_file, "-") == 0)) {
 		fp = stdout;
 	} else {
@@ -973,37 +957,25 @@ int main(int argc, char *argv[])
 	INFO("Exiting normally");
 
 finish:
-	INFO("Line %d", __LINE__);
-
 	talloc_free(request);
 	talloc_free(state);
 
-	INFO("Line %d", __LINE__);
-
 	xlat_unregister(NULL, "poke", xlat_poke);
-
-	INFO("Line %d", __LINE__);
 
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
 	 */
 	modules_free();
 
-	INFO("Line %d", __LINE__);
-
 	/*
 	 *	The only xlats remaining are the ones registered by the server core.
 	 */
 	xlat_free();
 
-	INFO("Line %d", __LINE__);
-
 	/*
 	 *	The only maps remaining are the ones registered by the server core.
 	 */
 	map_proc_free();
-
-	INFO("Line %d", __LINE__);
 
 	/*
 	 *	And now nothing should be left anywhere except the
@@ -1011,14 +983,10 @@ finish:
 	 */
 	main_config_free();
 
-	INFO("Line %d", __LINE__);
-
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");
 		fr_log_talloc_report(NULL);
 	}
-
-	INFO("Line %d", __LINE__);
 
 	return rcode;
 }
