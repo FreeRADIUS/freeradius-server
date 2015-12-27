@@ -48,6 +48,7 @@ typedef struct virtual_server_t {
 	CONF_SECTION		*subcs[MOD_COUNT];
 } virtual_server_t;
 
+static TALLOC_CTX *instance_ctx = NULL;
 static rbtree_t *dlhandle_tree = NULL;
 
 struct fr_module_hup_t {
@@ -347,8 +348,9 @@ static int module_dlhandle_cmp(void const *one, void const *two)
 int modules_free(void)
 {
 	/*
-	 *	All instances and dlhandles are parented from here.
+	 *	Free instances first, then dynamic libraries.
 	 */
+	TALLOC_FREE(instance_ctx);
 	TALLOC_FREE(dlhandle_tree);
 
 	return 0;
@@ -509,19 +511,6 @@ static int module_parse_conf(void **data, module_instance_t *instance)
  */
 static int _module_instance_free(module_instance_t *instance)
 {
-#ifndef NDEBUG
-	module_dl_t	*module_dl = module_dlopen(instance->cs);
-	size_t		remaining;
-
-	rad_assert(module_dl);
-
-	remaining = talloc_reference_count(module_dl);
-	rad_assert(remaining > 0);
-
-	DEBUG3("Freeing instance \"%s\" of module \"%s\", %zu reference(s) remain",
-	       instance->name, instance->module->name, remaining - 1);
-#endif
-
 #ifdef HAVE_PTHREAD_H
 	if (instance->mutex) {
 		/*
@@ -624,18 +613,9 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 *
 	 *	@fixme this should be the other way round.
 	 */
-	instance = talloc_zero(dlhandle_tree, module_instance_t);
+	instance = talloc_zero(instance_ctx, module_instance_t);
 	instance->cs = cs;
 	instance->name = instance_name;
-
-	/*
-	 *	Ensure the module isn't freed until all instances have been
-	 */
-	if (!talloc_reference(instance, module_dl)) {
-		ERROR("Failed increasing module reference count");
-		talloc_free(instance);
-		return NULL;
-	}
 
 	talloc_set_destructor(instance, _module_instance_free);
 
@@ -1693,7 +1673,7 @@ int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
 	/*
 	 *	Save the old instance handle for later deletion.
 	 */
-	mh = talloc_zero(dlhandle_tree, fr_module_hup_t);
+	mh = talloc_zero(instance_ctx, fr_module_hup_t);
 	mh->mi = instance;
 	mh->when = when;
 	mh->insthandle = instance->data;
@@ -1907,6 +1887,8 @@ int modules_bootstrap(CONF_SECTION *root)
 		ERROR("Failed to initialize modules\n");
 		return -1;
 	}
+
+	instance_ctx = talloc_init("module instance context");
 
 	/*
 	 *	Remember where the modules were stored.
