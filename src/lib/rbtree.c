@@ -52,7 +52,6 @@ struct rbnode_t {
 static rbnode_t sentinel = { NIL, NIL, NULL, BLACK, NULL};
 
 struct rbtree_t {
-	TALLOC_CTX		*parent;	//!< Original parent the tree was allocated under.
 #ifndef NDEBUG
 	uint32_t		magic;
 #endif
@@ -107,7 +106,7 @@ void rbtree_free(rbtree_t *tree)
 
 	PTHREAD_MUTEX_UNLOCK(tree);
 
-	talloc_unlink(tree, tree->parent);
+	talloc_free(tree);
 }
 
 static int _rbtree_free(PTHREAD_UNUSED rbtree_t *tree)
@@ -129,8 +128,6 @@ rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node
 
 	tree = talloc_zero(ctx, rbtree_t);
 	if (!tree) return NULL;
-
-	tree->parent = ctx;	/* So we can unlink later */
 
 #ifndef NDEBUG
 	tree->magic = RBTREE_MAGIC;
