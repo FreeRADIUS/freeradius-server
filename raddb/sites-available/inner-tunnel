@@ -47,6 +47,15 @@ listen {
 #  need to setup hints for the remote radius server
 authorize {
 	#
+	#  Take a User-Name, and perform some checks on it, for spaces and other
+	#  invalid characters.  If the User-Name appears invalid, reject the
+	#  request.
+	#
+	#  See policy.d/filter for the definition of the filter_username policy.
+	#
+	filter_username
+
+	#
 	#  Do checks on outer / inner User-Name, so that users
 	#  can't spoof us by using incompatible identities
 	#
