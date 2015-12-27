@@ -47,6 +47,12 @@ listen {
 #  need to setup hints for the remote radius server
 authorize {
 	#
+	#  Do checks on outer / inner User-Name, so that users
+	#  can't spoof us by using incompatible identities
+	#
+	filter_inner_identity
+
+	#
 	#  The chap module will set 'Auth-Type := CHAP' if we are
 	#  handling a CHAP request and Auth-Type has not already been set
 	chap

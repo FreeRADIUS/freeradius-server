@@ -110,3 +110,79 @@ filter_password {
 		}
 	 }
 }
+
+filter_inner_identity {
+	#
+	#  No names, reject.
+	#
+	if (!&outer.request:User-Name || !&User-Name) {
+		update request {
+			Module-Failure-Message = "User-Name is required for tunneled authentication"
+		}
+		reject
+	}
+
+	#
+	#  If the names are the same, it's OK.
+	#
+	#  Otherwise, do lots of sanity checks
+	#
+	if (&outer.request:User-Name != &User-Name) {
+		#
+		#  We require the outer User-Name
+		#  to be "@realm", or "anon...",
+		#  hopefully "anonymous", or "anonymous@realm"
+		#
+		#  The checks for "anonymous" are more relaxed
+		#  because vendors send a variety of names
+		#  instead of following the standards.
+		#
+		if ((&outer.request:User-Name !~ /^@/) && \
+		    (&outer.request:User-Name !~ /^anon/)) {
+			update request {
+				Module-Failure-Message = "User-Name is not correctly anonymized"
+			}
+			reject
+		}
+
+		#
+		#  Now we get complicated.  Look for the outer realm
+		#
+		if (&outer.request:User-Name =~ /@(.*)$/) {
+			update request {
+				Outer-Realm-Name = "%{1}"
+			}
+		}
+
+		#
+		#  And the inner realm
+		#
+		if (&User-Name =~ /@(.*)$/) {
+			update request {
+				Inner-Realm-Name = "%{1}"
+			}
+		}
+
+		#
+		#  It's OK to have outer "@example.com" and
+		#  inner "bob".  We do more detailed checks
+		#  only if the inner realm exists.
+		#
+		#  It's OK to have the same realm name, or
+		#  the outer one is "example.com" and the inner
+		#  is "secure.example.com"
+		#
+		if (&Inner-Realm-Name && \
+		    (&Inner-Realm-Name != &Outer-Realm-Name) && \
+		    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
+			update request {
+				Module-Failure-Message = "Inner and outer realms are not compatible"
+			}
+			reject
+		}
+
+		#
+		#  It's OK to have an outer realm and no inner realm.
+		#
+	}
+}

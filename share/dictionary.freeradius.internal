@@ -345,6 +345,9 @@ VALUE	Listen-Socket-Type		dhcp			6
 VALUE	Listen-Socket-Type		control			7
 VALUE	Listen-Socket-Type		coa			8
 
+ATTRIBUTE	Outer-Realm-Name			1218	string internal
+ATTRIBUTE	Inner-Realm-Name			1219	string internal
+
 #
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
