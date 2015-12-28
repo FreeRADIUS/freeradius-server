@@ -1274,7 +1274,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
-			REDEBUG("Error generating query");
+			REDEBUG("Failed generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
@@ -1282,7 +1282,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		rows = sql_getvpdata(request, inst, request, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
-			REDEBUG("Error getting check attributes");
+			REDEBUG("Failed getting check attributes");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
