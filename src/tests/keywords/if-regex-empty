@@ -1,0 +1,46 @@
+#
+# PRE: update if if-regex-match
+#
+update {
+       control:Cleartext-Password := 'hello'
+       reply:Filter-Id := 'filter'
+}
+
+if (control:Cleartext-Password !~ /hell(o)(.*)/) {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}
+
+#
+#  Verify non-empty capture groups evaluate to true
+#
+if (!"%{1}") {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
+
+#
+#  Verify empty capture groups evaluate to false
+#
+if ("%{2}") {
+	update reply {
+		Filter-Id += 'Fail 3'
+	}
+}
+
+if (control:Cleartext-Password !~ /hello(.*)/) {
+	update reply {
+		Filter-Id += 'Fail 4'
+	}
+}
+
+#
+#  Check for stale capture group values
+#
+if ("%{1}") {
+	update reply {
+		Filter-Id += 'Fail 5'
+	}
+}
