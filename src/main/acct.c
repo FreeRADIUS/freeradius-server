@@ -53,7 +53,7 @@ int rad_accounting(REQUEST *request)
 		VALUE_PAIR	*vp;
 		int		acct_type = 0;
 
-		result = module_preacct(request);
+		result = process_preacct(request);
 		switch (result) {
 		/*
 		 *	The module has a number of OK return codes.

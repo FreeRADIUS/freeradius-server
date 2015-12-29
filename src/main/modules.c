@@ -2130,7 +2130,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 /*
  *	Do pre-accounting for ALL configured sessions
  */
-rlm_rcode_t module_preacct(REQUEST *request)
+rlm_rcode_t process_preacct(REQUEST *request)
 {
 	return indexed_modcall(MOD_PREACCT, 0, request);
 }

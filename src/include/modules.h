@@ -167,7 +167,7 @@ int		modules_hup(CONF_SECTION *modules);
  */
 rlm_rcode_t	process_authorize(int type, REQUEST *request);
 rlm_rcode_t	process_authenticate(int type, REQUEST *request);
-rlm_rcode_t	module_preacct(REQUEST *request);
+rlm_rcode_t	process_preacct(REQUEST *request);
 rlm_rcode_t	process_accounting(int type, REQUEST *request);
 int		process_checksimul(int type, REQUEST *request, int maxsimul);
 rlm_rcode_t	process_pre_proxy(int type, REQUEST *request);
