@@ -701,12 +701,10 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 	switch (*p) {
 	case '\0':
 		type = TMPL_TYPE_LIST;
-		attr.num = NUM_ALL;	/* Hack - Should be removed once tests are updated */
 		goto finish;
 
 	case '[':
 		type = TMPL_TYPE_LIST;
-		attr.num = NUM_ALL;	/* Hack - Should be removed once tests are updated */
 		goto do_num;
 
 	default:
@@ -1845,12 +1843,12 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt, fr_dict_attr
 		 *	Don't add &current.
 		 */
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			len = snprintf(out_p, end - out_p, "%s", fr_int2str(pair_lists, vpt->tmpl_list, ""));
+			len = snprintf(out_p, end - out_p, "%s:", fr_int2str(pair_lists, vpt->tmpl_list, ""));
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 			goto inst_and_tag;
 		}
 
-		len = snprintf(out_p, end - out_p, "%s.%s", fr_int2str(request_refs, vpt->tmpl_request, ""),
+		len = snprintf(out_p, end - out_p, "%s.%s:", fr_int2str(request_refs, vpt->tmpl_request, ""),
 			       fr_int2str(pair_lists, vpt->tmpl_list, ""));
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		goto inst_and_tag;

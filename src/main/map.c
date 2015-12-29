@@ -1545,8 +1545,8 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
  */
 void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 {
-	char *value;
-	char buffer[1024];
+	char *rhs = NULL, *value = NULL;
+	char buffer[256];
 
 	VERIFY_MAP(map);
 	if (!rad_cond_assert(map->lhs != NULL)) return;
@@ -1560,19 +1560,16 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	default:
 	case TMPL_TYPE_UNPARSED:
-		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
-		value = buffer;
+		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
-		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
-		value = buffer;
+		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
 
 	case TMPL_TYPE_DATA:
-		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
-		value = buffer;
+		rhs = fr_pair_value_asprint(request, vp, fr_token_quote[map->rhs->quote]);
 		break;
 
 	/*
@@ -1582,9 +1579,11 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	case TMPL_TYPE_LIST:
 	{
-		char		attr[256];
-		char		quote = '\0';
 		vp_tmpl_t	vpt;
+		char const	*quote;
+
+		quote = (vp->da->type == PW_TYPE_STRING) ? "\"" : "";
+
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
 		 *	this is a combination of the original list tmpl, and values from
@@ -1592,58 +1591,56 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		memcpy(&vpt, map->rhs, sizeof(vpt));
 		vpt.tmpl_da = vp->da;
-		vpt.tmpl_tag = vp->tag;
+		vpt.tmpl_num = NUM_ANY;
 		vpt.type = TMPL_TYPE_ATTR;
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
 		 *	around the list ref. The attribute value has no quoting, so we choose
-		 *	the quoting based on the data type, and whether it's printable.
+		 *	the quoting based on the data type.
 		 */
-		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
-									 vp->vp_length) ? '\'' : '"';
-		fr_pair_value_snprint(buffer, sizeof(buffer), vp, quote);
-		tmpl_snprint(attr, sizeof(attr), &vpt, vp->da);
-		value = talloc_typed_asprintf(request, "%s -> %s", attr, buffer);
+		value = fr_pair_value_asprint(request, vp, quote[0]);
+		tmpl_snprint(buffer, sizeof(buffer), &vpt, vp->da);
+		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
 	}
 		break;
 
 	case TMPL_TYPE_ATTR:
 	{
-		char quote = '\0';
+		char const *quote;
+
+		quote = (vp->da->type == PW_TYPE_STRING) ? "\"" : "";
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
 		 *	around the attr ref. The attribute value has no quoting, so we choose
-		 *	the quoting based on the data type, and whether it's printable.
+		 *	the quoting based on the data type.
 		 */
-		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
-									 vp->vp_length) ? '\'' : '"';
-		fr_pair_value_snprint(buffer, sizeof(buffer), vp, quote);
-		value = talloc_typed_asprintf(request, "%.*s -> %s", (int)map->rhs->len, map->rhs->name, buffer);
+		value = fr_pair_value_asprint(request, vp, quote[0]);
+		tmpl_snprint(buffer, sizeof(buffer), map->rhs, vp->da);
+		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
 	}
 		break;
 
 	case TMPL_TYPE_NULL:
-		strcpy(buffer, "ANY");
-		value = buffer;
+		rhs = talloc_strdup(request, "ANY");
 		break;
 	}
 
 	switch (map->lhs->type) {
-	case TMPL_TYPE_LIST:
-		RDEBUG("%.*s:%s %s %s", (int)map->lhs->len, map->lhs->name, vp ? vp->da->name : "",
-		       fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), value);
-		break;
-
 	case TMPL_TYPE_ATTR:
-		RDEBUG("%.*s %s %s", (int)map->lhs->len, map->lhs->name,
-		       fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), value);
+	case TMPL_TYPE_LIST:
+		tmpl_snprint(buffer, sizeof(buffer), map->lhs, NULL);
+		RDEBUG("%s %s %s", buffer, fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 
 	default:
 		break;
 	}
 
-	if (value != buffer) talloc_free(value);
+	/*
+	 *	Must be LIFO free order so we don't leak pool memory
+	 */
+	talloc_free(rhs);
+	talloc_free(value);
 }
