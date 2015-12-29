@@ -339,36 +339,6 @@ static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisRe
 	return 0;
 }
 
-/** Find the pool name we'll be allocating from
- *
- * @param out Where to write the pool name.
- * @param outlen Size of the output buffer.
- * @param inst This instance of the rlm_redis_ippool module.
- * @param request The current request.
- * @return
- *	- <= 0 on error.
- *	- > 0 on success (length of data written to out).
- */
-static inline ssize_t ippool_pool_name(uint8_t out[], size_t outlen, rlm_redis_ippool_t *inst, REQUEST *request)
-{
-	ssize_t slen;
-	uint8_t *out_p = out;
-
-	slen = tmpl_expand(NULL, (char *)out_p, outlen - (out_p - out), request,
-			   inst->pool_name, NULL, NULL);
-	if (slen < 0) {
-		REDEBUG("Failed determining pool name");
-		return -1;
-	}
-	if (is_truncated((size_t)slen, outlen)) {
-		REDEBUG("Pool name too long.  Expected %zu bytes, got %zu bytes", outlen, (size_t)slen);
-		return -1;
-	}
-	out_p += slen;
-
-	return out_p - out;
-}
-
 static void ippool_action_print(REQUEST *request, ippool_action_t action,
 				log_lvl_t lvl,
 				uint8_t const *key_prefix, size_t key_prefix_len,
@@ -1006,6 +976,46 @@ finish:
 	return ret;
 }
 
+/** Find the pool name we'll be allocating from
+ *
+ * @param out Where to write the pool name.
+ * @param outlen Size of the output buffer.
+ * @param inst This instance of the rlm_redis_ippool module.
+ * @param request The current request.
+ * @return
+ *	- < 0 on error.
+ *	- 0 if no pool attribute exists, or the pool name is a zero length string.
+ *	- > 0 on success (length of data written to out).
+ */
+static inline ssize_t ippool_pool_name(uint8_t out[], size_t outlen, rlm_redis_ippool_t *inst, REQUEST *request)
+{
+	ssize_t slen;
+	uint8_t *out_p = out;
+
+	slen = tmpl_expand(NULL, (char *)out_p, outlen - (out_p - out), request,
+			   inst->pool_name, NULL, NULL);
+	if (slen < 0) {
+		if (inst->pool_name->type == TMPL_TYPE_ATTR) {
+			RDEBUG2("Pool attribute not present in request.  Doing nothing");
+			return 0;
+		}
+		REDEBUG("Failed expanding pool name");
+		return -1;
+	}
+	if (slen == 0) {
+		RDEBUG2("Empty pool name.  Doing nothing");
+		return 0;
+	}
+
+	if (is_truncated((size_t)slen, outlen)) {
+		REDEBUG("Pool name too long.  Expected %zu bytes, got %zu bytes", outlen, (size_t)slen);
+		return -1;
+	}
+	out_p += slen;
+
+	return out_p - out;
+}
+
 static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool_action_t action)
 {
 	uint8_t		key_prefix[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
@@ -1020,6 +1030,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 
 	slen = ippool_pool_name((uint8_t *)&key_prefix, sizeof(key_prefix), inst, request);
 	if (slen < 0) return RLM_MODULE_FAIL;
+	if (slen == 0) return RLM_MODULE_NOOP;
 
 	key_prefix_len = (size_t)slen;
 
