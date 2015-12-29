@@ -33,6 +33,8 @@ static CONF_SECTION *trigger_exec_main, *trigger_exec_subcs;
 #define REQUEST_INDEX_TRIGGER_NAME	1
 #define REQUEST_INDEX_TRIGGER_ARGS	2
 
+#define LOG_PREFIX "trigger"
+
 /** Retrieve attributes from a special trigger list
  *
  */
@@ -153,12 +155,12 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 
 	ci = cf_reference_item(subcs, trigger_exec_main, attr);
 	if (!ci) {
-		ERROR("No such item in trigger section: %s", attr);
+		ROPTIONAL(RWARN, WARN, "No trigger configured for: %s", attr);
 		return -1;
 	}
 
 	if (!cf_item_is_pair(ci)) {
-		ERROR("Trigger is not a configuration variable: %s", attr);
+		ROPTIONAL(RERROR, ERROR, "Trigger is not a configuration variable: %s", attr);
 		return -1;
 	}
 
@@ -167,7 +169,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		ERROR("Trigger has no value: %s", name);
+		ROPTIONAL(RERROR, ERROR, "Trigger has no value: %s", name);
 		return -1;
 	}
 
@@ -214,7 +216,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 	 */
 	if (!request) request = fake = request_alloc(NULL);
 
-	DEBUG("Trigger \"%s\": %s", name, value);
+	RERROR("Trigger \"%s\": %s", name, value);
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
@@ -222,7 +224,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 	 */
 	if (args && (request_data_add(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
-		ERROR("Failed adding trigger request data");
+		RERROR("Failed adding trigger request data");
 		return -1;
 	}
 
@@ -233,7 +235,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 
 		if (request_data_add(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
-			ERROR("Failed marking request as inside trigger");
+			RERROR("Failed marking request as inside trigger");
 			return -1;
 		}
 	}
