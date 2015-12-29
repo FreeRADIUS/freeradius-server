@@ -3425,9 +3425,6 @@ static void ping_home_server(void *ctx)
 	struct timeval when, now;
 
 	if ((home->state == HOME_STATE_ALIVE) ||
-#ifdef WITH_TCP
-	    (home->proto == IPPROTO_TCP) ||
-#endif
 	    (home->ev != NULL)) {
 		return;
 	}
@@ -3611,13 +3608,6 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	rad_assert((home->state == HOME_STATE_ALIVE) ||
 		   (home->state == HOME_STATE_UNKNOWN));
 
-#ifdef WITH_TCP
-	if (home->proto == IPPROTO_TCP) {
-		WARN("Not marking TCP server %s zombie", home->log_name);
-		return;
-	}
-#endif
-
 	/*
 	 *	We've received a real packet recently.  Don't mark the
 	 *	server as zombie until we've received NO packets for a
@@ -3663,10 +3653,6 @@ void revive_home_server(void *ctx)
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	char buffer[128];
 
-#ifdef WITH_TCP
-	rad_assert(home->proto != IPPROTO_TCP);
-#endif
-
 	home->state = HOME_STATE_ALIVE;
 	home->response_timeouts = 0;
 	home_trigger(home, "home_server.alive");
@@ -3689,13 +3675,6 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 {
 	int previous_state = home->state;
 	char buffer[128];
-
-#ifdef WITH_TCP
-	if (home->proto == IPPROTO_TCP) {
-		WARN("Not marking TCP server dead");
-		return;
-	}
-#endif
 
 	PROXY( "Marking home server %s port %d as dead.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
@@ -3909,18 +3888,11 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	"response_window", then mark the home server
 		 *	as zombie.
 		 *
-		 *	If the connection is TCP, then another
-		 *	"watchdog timer" function takes care of pings,
-		 *	etc.  So we don't need to do it here.
-		 *
 		 *	This check should really be part of a home
 		 *	server state machine.
 		 */
 		if (((home->state == HOME_STATE_ALIVE) ||
 		     (home->state == HOME_STATE_UNKNOWN))
-#ifdef WITH_TCP
-		    && (home->proto != IPPROTO_TCP)
-#endif
 			) {
 			home->response_timeouts++;
 			if (home->response_timeouts >= home->max_response_timeouts)
