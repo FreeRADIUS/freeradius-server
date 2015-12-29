@@ -194,7 +194,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char co
 		}
 	}
 
-	fr_connection_release(inst->pool, yandle);
+	fr_connection_release(inst->pool, request, yandle);
 
 	return rcode;
 }
