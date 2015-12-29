@@ -1163,7 +1163,7 @@ void xlat_free(void)
 }
 
 #ifdef DEBUG_XLAT
-#  define XLAT_DEBUG DEBUG3
+#  define XLAT_DEBUG RDEBUG3
 #else
 #  define XLAT_DEBUG(...)
 #endif
@@ -1591,84 +1591,82 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	return p - fmt;
 }
 
-
-static char const xlat_tabs[] = "																																																																																																																																";
-
-static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
+static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 {
 	rad_assert(node != NULL);
 
-	if (lvl >= (int) sizeof(xlat_tabs)) lvl = sizeof(xlat_tabs);
-
+	RINDENT();
 	while (node) {
 		switch (node->type) {
 		case XLAT_LITERAL:
-			DEBUG("%.*sliteral --> %s", lvl, xlat_tabs, node->fmt);
+			RDEBUG3("literal --> %s", node->fmt);
 			break;
 
 		case XLAT_PERCENT:
-			DEBUG("%.*spercent --> %c", lvl, xlat_tabs, node->fmt[0]);
+			RDEBUG3("percent --> %c", node->fmt[0]);
 			break;
 
 		case XLAT_ATTRIBUTE:
 			rad_assert(node->attr.tmpl_da != NULL);
-			DEBUG("%.*sattribute --> %s", lvl, xlat_tabs, node->attr.tmpl_da->name);
+			RDEBUG3("attribute --> %s", node->attr.tmpl_da->name);
 			rad_assert(node->child == NULL);
 			if ((node->attr.tmpl_tag != TAG_ANY) || (node->attr.tmpl_num != NUM_ANY)) {
-				DEBUG("%.*s{", lvl, xlat_tabs);
+				RDEBUG3("{");
 
-				DEBUG("%.*sref  %d", lvl + 1, xlat_tabs, node->attr.tmpl_request);
-				DEBUG("%.*slist %d", lvl + 1, xlat_tabs, node->attr.tmpl_list);
+				RINDENT();
+				RDEBUG3("ref  %d", node->attr.tmpl_request);
+				RDEBUG3("list %d", node->attr.tmpl_list);
 
 				if (node->attr.tmpl_tag != TAG_ANY) {
-					DEBUG("%.*stag %d", lvl + 1, xlat_tabs, node->attr.tmpl_tag);
+					RDEBUG3("tag %d", node->attr.tmpl_tag);
 				}
 				if (node->attr.tmpl_num != NUM_ANY) {
 					if (node->attr.tmpl_num == NUM_COUNT) {
-						DEBUG("%.*s[#]", lvl + 1, xlat_tabs);
+						RDEBUG3("[#]");
 					} else if (node->attr.tmpl_num == NUM_ALL) {
-						DEBUG("%.*s[*]", lvl + 1, xlat_tabs);
+						RDEBUG3("[*]");
 					} else {
-						DEBUG("%.*s[%d]", lvl + 1, xlat_tabs, node->attr.tmpl_num);
+						RDEBUG3("[%d]", node->attr.tmpl_num);
 					}
 				}
-
-				DEBUG("%.*s}", lvl, xlat_tabs);
+				REXDENT();
+				RDEBUG3("}");
 			}
 			break;
 
 		case XLAT_VIRTUAL:
 			rad_assert(node->fmt != NULL);
-			DEBUG("%.*svirtual --> %s", lvl, xlat_tabs, node->fmt);
+			RDEBUG3("virtual --> %s", node->fmt);
 			break;
 
 		case XLAT_MODULE:
 			rad_assert(node->xlat != NULL);
-			DEBUG("%.*sxlat --> %s", lvl, xlat_tabs, node->xlat->name);
+			RDEBUG3("xlat --> %s", node->xlat->name);
 			if (node->child) {
-				DEBUG("%.*s{", lvl, xlat_tabs);
-				xlat_tokenize_debug(node->child, lvl + 1);
-				DEBUG("%.*s}", lvl, xlat_tabs);
+				RDEBUG3("{");
+				xlat_tokenize_debug(request, node->child);
+				RDEBUG3("}");
 			}
 			break;
 
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
-			DEBUG("%.*sregex-var --> %d", lvl, xlat_tabs, node->attr.tmpl_num);
+			RDEBUG3("regex-var --> %d", node->attr.tmpl_num);
 			break;
 #endif
 
 		case XLAT_ALTERNATE:
-			DEBUG("%.*sif {", lvl, xlat_tabs);
-			xlat_tokenize_debug(node->child, lvl + 1);
-			DEBUG("%.*s}", lvl, xlat_tabs);
-			DEBUG("%.*selse {", lvl, xlat_tabs);
-			xlat_tokenize_debug(node->alternate, lvl + 1);
-			DEBUG("%.*s}", lvl, xlat_tabs);
+			RDEBUG3("if {");
+			xlat_tokenize_debug(request, node->child);
+			RDEBUG3("}");
+			RDEBUG3("else {");
+			xlat_tokenize_debug(request, node->alternate);
+			RDEBUG3("}");
 			break;
 		}
 		node = node->next;
 	}
+	REXDENT();
 }
 
 size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
@@ -1848,10 +1846,10 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 		return slen;
 	}
 
-	if (*head && (rad_debug_lvl > 2)) {
-		DEBUG("%s", fmt);
-		DEBUG("Parsed xlat tree:");
-		xlat_tokenize_debug(*head, 0);
+	if (*head && RDEBUG_ENABLED3) {
+		RDEBUG3("%s", fmt);
+		RDEBUG3("Parsed xlat tree:");
+		xlat_tokenize_debug(request, *head);
 	}
 
 	/*
