@@ -247,7 +247,7 @@ static char lua_update_cmd[] =
 	 */
 	"device_key = '{' .. KEYS[1] .. '}:"IPPOOL_DEVICE_KEY":' .. ARGV[4]" EOL	/* 16 */
 	"if redis.call('EXPIRE', device_key, ARGV[2]) == 0 then" EOL			/* 17 */
-	"  redis.call('SET', device_key, ip[1])" EOL					/* 18 */
+	"  redis.call('SET', device_key, ARGV[3])" EOL					/* 18 */
 	"  redis.call('EXPIRE', device_key, ARGV[2])" EOL				/* 19 */
 	"end" EOL									/* 20 */
 
