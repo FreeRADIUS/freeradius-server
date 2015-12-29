@@ -40,6 +40,15 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool);
 #endif
 #endif
 
+#define POOL_ROPTIONAL(_l_request, _l_global, fmt, ...) \
+do {\
+	if (request) {\
+		_l_request(fmt, ## __VA_ARGS__);\
+	} else {\
+		_l_global("%s: " fmt, pool->log_prefix, ## __VA_ARGS__);\
+ 	}\
+} while (0)
+
 /** An individual connection within the connection pool
  *
  * Defines connection counters, timestamps, and holds a pointer to the
@@ -802,12 +811,13 @@ done:
  * @note Must be called with the mutex free.
  *
  * @param[in,out] pool to reserve the connection from.
+ * @param[in] request The current request.
  * @param[in] spawn whether to spawn a new connection
  * @return
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
+static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *request, bool spawn)
 {
 	time_t now;
 	fr_connection_t *this;
@@ -855,7 +865,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		if (!RATE_LIMIT_ENABLED || complain) {
-			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
+			POOL_ROPTIONAL(RERROR, ERROR, "No connections available and at max connection limit");
 			/*
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
@@ -870,7 +880,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 	if (!spawn) return NULL;
 
-	DEBUG2("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
+	POOL_ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You  may need to increase \"spare\"",
 	       pool->state.active, pool->state.num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
@@ -887,7 +897,7 @@ do_return:
 #endif
 	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
-	DEBUG2("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	POOL_ROPTIONAL(RDEBUG2, DEBUG2, "Reserved connection (%" PRIu64 ")", this->number);
 
 	return this->connection;
 }
@@ -1344,13 +1354,14 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
  *
  * @see fr_connection_release
  * @param[in,out] pool to reserve the connection from.
+ * @param[in] request The current request.
  * @return
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-void *fr_connection_get(fr_connection_pool_t *pool)
+void *fr_connection_get(fr_connection_pool_t *pool, REQUEST *request)
 {
-	return fr_connection_get_internal(pool, true);
+	return fr_connection_get_internal(pool, request, true);
 }
 
 /** Release a connection
@@ -1360,9 +1371,10 @@ void *fr_connection_get(fr_connection_pool_t *pool)
  *
  * @see fr_connection_get
  * @param[in,out] pool to release the connection in.
+ * @param[in] request The current request.
  * @param[in,out] conn to release.
  */
-void fr_connection_release(fr_connection_pool_t *pool, void *conn)
+void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *conn)
 {
 	fr_connection_t *this;
 
@@ -1390,7 +1402,7 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	rad_assert(pool->state.active != 0);
 	pool->state.active--;
 
-	DEBUG2("%s: Released connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	POOL_ROPTIONAL(RDEBUG2, DEBUG2, "Released connection (%" PRIu64 ")", this->number);
 
 	/*
 	 *	We mirror the "spawn on get" functionality by having
@@ -1421,10 +1433,11 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
  *
  * @see fr_connection_get
  * @param[in,out] pool to reconnect the connection in.
+ * @param[in] request The current request.
  * @param[in,out] conn to reconnect.
  * @return new connection handle if successful else NULL.
  */
-void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
+void *fr_connection_reconnect(fr_connection_pool_t *pool, REQUEST *request, void *conn)
 {
 	fr_connection_t	*this;
 
@@ -1436,7 +1449,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
 
-	INFO("%s: Deleting inviable connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	POOL_ROPTIONAL(RINFO, INFO, "Deleting inviable connection (%" PRIu64 ")", this->number);
 
 	fr_connection_close_internal(pool, this);
 	fr_connection_pool_check(pool);			/* Whilst we still have the lock (will release the lock) */
@@ -1444,7 +1457,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	/*
 	 *	Return an existing connection or spawn a new one.
 	 */
-	return fr_connection_get_internal(pool, true);
+	return fr_connection_get_internal(pool, request, true);
 }
 
 /** Delete a connection from the connection pool.

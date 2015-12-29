@@ -335,7 +335,7 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
  * @param fmt printf style format string.
  * @param ... printf arguments.
  */
- #define MOD_ROPTIONAL(_l_request, _l_global, fmt, ...) \
+#define MOD_ROPTIONAL(_l_request, _l_global, fmt, ...) \
 do {\
 	if (request) {\
 		_l_request(fmt, ## __VA_ARGS__);\
@@ -354,7 +354,7 @@ do {\
  * @param fmt printf style format string.
  * @param ... printf arguments.
  */
- #define ROPTIONAL(_l_request, _l_global, fmt, ...) \
+#define ROPTIONAL(_l_request, _l_global, fmt, ...) \
 do {\
 	if (request) {\
 		_l_request(fmt, ## __VA_ARGS__);\

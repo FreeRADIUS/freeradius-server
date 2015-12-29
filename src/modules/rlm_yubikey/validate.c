@@ -157,7 +157,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char co
 	ykclient_rc status;
 	ykclient_handle_t *yandle;
 
-	yandle = fr_connection_get(inst->pool);
+	yandle = fr_connection_get(inst->pool, request);
 	if (!yandle) return RLM_MODULE_FAIL;
 
 	/*

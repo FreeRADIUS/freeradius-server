@@ -466,7 +466,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
-	handle = fr_connection_get(inst->sql_inst->pool);
+	handle = fr_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		REDEBUG("cannot get sql connection");
 		return RLM_MODULE_FAIL;
@@ -517,7 +517,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 							  inst->pool_check, handle, inst, request,
 							  (char *) NULL, 0);
 
-			fr_connection_release(inst->sql_inst->pool, handle);
+			fr_connection_release(inst->sql_inst->pool, request, handle);
 
 			if (allocation_len) {
 
@@ -545,7 +545,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 		}
 
-		fr_connection_release(inst->sql_inst->pool, handle);
+		fr_connection_release(inst->sql_inst->pool, request, handle);
 
 		RDEBUG("IP address could not be allocated");
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
@@ -560,7 +560,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		DO(allocate_commit);
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
-		fr_connection_release(inst->sql_inst->pool, handle);
+		fr_connection_release(inst->sql_inst->pool, request, handle);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
@@ -575,7 +575,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	DO(allocate_commit);
 
-	fr_connection_release(inst->sql_inst->pool, handle);
+	fr_connection_release(inst->sql_inst->pool, request, handle);
 
 	return do_logging(request, inst->log_success, RLM_MODULE_OK);
 }
@@ -662,7 +662,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	handle = fr_connection_get(inst->sql_inst->pool);
+	handle = fr_connection_get(inst->sql_inst->pool, request);
 	if (!handle) {
 		RDEBUG("Cannot allocate sql connection");
 		return RLM_MODULE_FAIL;
@@ -694,7 +694,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		break;
 	}
 
-	fr_connection_release(inst->sql_inst->pool, handle);
+	fr_connection_release(inst->sql_inst->pool, request, handle);
 
 	return rcode;
 }

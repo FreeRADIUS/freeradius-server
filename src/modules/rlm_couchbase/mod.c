@@ -588,7 +588,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	RADCLIENT *c;                                            /* freeradius client */
 
 	/* get handle */
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, NULL);
 
 	/* check handle */
 	if (!handle) return -1;
@@ -787,9 +787,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	}
 
 	/* release handle */
-	if (handle) {
-		fr_connection_release(inst->pool, handle);
-	}
+	if (handle) fr_connection_release(inst->pool, NULL, handle);
 
 	/* return */
 	return retval;

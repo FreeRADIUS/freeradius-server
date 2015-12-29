@@ -265,7 +265,7 @@ static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
 
 	RDEBUG("Expanding URI components");
 
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 	if (!handle) return -1;
 
 	/*
@@ -360,7 +360,7 @@ error:
 finish:
 	rlm_rest_cleanup(mod_inst, &section, handle);
 
-	fr_connection_release(inst->pool, handle);
+	fr_connection_release(inst->pool, request, handle);
 
 	return slen;
 }
@@ -383,7 +383,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
@@ -451,7 +451,7 @@ finish:
 
 	rlm_rest_cleanup(instance, section, handle);
 
-	fr_connection_release(inst->pool, handle);
+	fr_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }
@@ -488,7 +488,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(instance, section, handle, request, username->vp_strvalue, password->vp_strvalue);
@@ -556,7 +556,7 @@ finish:
 
 	rlm_rest_cleanup(instance, section, handle);
 
-	fr_connection_release(inst->pool, handle);
+	fr_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }
@@ -576,7 +576,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
@@ -612,7 +612,7 @@ finish:
 
 	rlm_rest_cleanup(inst, section, handle);
 
-	fr_connection_release(inst->pool, handle);
+	fr_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }
@@ -632,7 +632,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
@@ -668,7 +668,7 @@ finish:
 
 	rlm_rest_cleanup(inst, section, handle);
 
-	fr_connection_release(inst->pool, handle);
+	fr_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }

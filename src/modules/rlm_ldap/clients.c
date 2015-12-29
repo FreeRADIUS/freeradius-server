@@ -256,7 +256,7 @@ finish:
 	if (dn) ldap_memfree(dn);
 	if (result) ldap_msgfree(result);
 
-	mod_conn_release(inst, conn);
+	mod_conn_release(inst, NULL, conn);
 
 	return ret;
 }

@@ -186,7 +186,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	char buffer[1000];
 	char output[1000];
 
-	fdp = fr_connection_get(inst->pool);
+	fdp = fr_connection_get(inst->pool, request);
 	if (!fdp) return RLM_MODULE_FAIL;
 
 	/* Get greeting */
@@ -278,7 +278,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	rcode = RLM_MODULE_HANDLED;
 
 done:
-	fr_connection_release(inst->pool, fdp);
+fr_connection_release(inst->pool, request, fdp);
 	return rcode;
 }
 

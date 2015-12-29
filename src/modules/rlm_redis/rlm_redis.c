@@ -201,7 +201,7 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 			return -1;
 		}
 
-		conn = fr_connection_get(pool);
+		conn = fr_connection_get(pool, request);
 		if (!conn) {
 			REDEBUG("No connections available for cluster node");
 			return -1;
@@ -210,7 +210,7 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 		argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 		if (argc <= 0) {
 			REDEBUG("Invalid command: %s", p);
-			fr_connection_release(pool, conn);
+			fr_connection_release(pool, request, conn);
 			return -1;
 		}
 
@@ -243,7 +243,7 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 
 		default:
 		fail:
-			fr_connection_release(pool, conn);
+			fr_connection_release(pool, request, conn);
 			ret = -1;
 			goto finish;
 		}

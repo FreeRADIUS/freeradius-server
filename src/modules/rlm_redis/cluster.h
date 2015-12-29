@@ -31,6 +31,8 @@
 
 RCSIDH(cluster_h, "$Id$")
 
+#include <freeradius-devel/connection.h>
+
 typedef struct fr_redis_cluster fr_redis_cluster_t;
 
 /** Redis connection sequence state

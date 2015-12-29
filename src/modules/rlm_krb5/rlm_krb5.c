@@ -328,7 +328,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	krb5_principal client;
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	conn = fr_connection_get(inst->pool);
+	conn = fr_connection_get(inst->pool, request);
 	if (!conn) return RLM_MODULE_FAIL;
 #  else
 	conn = inst->conn;
@@ -380,7 +380,7 @@ cleanup:
 	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	fr_connection_release(inst->pool, conn);
+	fr_connection_release(inst->pool, request, conn);
 #  endif
 	return rcode;
 }
@@ -405,7 +405,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	rad_assert(inst->context);
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	conn = fr_connection_get(inst->pool);
+	conn = fr_connection_get(inst->pool, request);
 	if (!conn) return RLM_MODULE_FAIL;
 #  else
 	conn = inst->conn;
@@ -445,7 +445,7 @@ cleanup:
 	krb5_free_cred_contents(conn->context, &init_creds);
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	fr_connection_release(inst->pool, conn);
+	fr_connection_release(inst->pool, request, conn);
 #  endif
 	return rcode;
 }

@@ -754,7 +754,7 @@ build_vector:
 
 	do_write:
 		num = fr_connection_pool_state(inst->pool)->num;
-		conn = fr_connection_get(inst->pool);
+		conn = fr_connection_get(inst->pool, request);
 		if (!conn) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -776,7 +776,7 @@ build_vector:
 			case EADDRNOTAVAIL: /* Which is OSX for outbound interface is down? */
 				RWARN("Failed writing to socket: %s.  Will reconnect and try again...",
 				      fr_syserror(errno));
-				conn = fr_connection_reconnect(inst->pool, conn);
+				conn = fr_connection_reconnect(inst->pool, request, conn);
 				if (!conn) {
 					rcode = RLM_MODULE_FAIL;
 					goto done;
@@ -802,7 +802,7 @@ build_vector:
 			break;
 		}
 	done:
-		fr_connection_release(inst->pool, conn);
+	fr_connection_release(inst->pool, request, conn);
 	}
 		break;
 

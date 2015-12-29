@@ -1139,7 +1139,7 @@ static cluster_rcode_t cluster_redirect(cluster_node_t **out, fr_redis_cluster_t
 	 *	Determine if we can establish a connection to
 	 *	the new pool, to check if it's viable.
 	 */
-	rconn = fr_connection_get(found->pool);
+	rconn = fr_connection_get(found->pool, NULL);
 	if (!rconn) {
 		/*
 		 *	To prevent repeated misconfigurations
@@ -1155,7 +1155,7 @@ static cluster_rcode_t cluster_redirect(cluster_node_t **out, fr_redis_cluster_t
 		fr_strerror_printf("No connections available");
 		return CLUSTER_OP_NO_CONNECTION;
 	}
-	fr_connection_release(found->pool, rconn);
+	fr_connection_release(found->pool, NULL, rconn);
 	*out = found;
 
 	return CLUSTER_OP_SUCCESS;
@@ -1389,7 +1389,7 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 		rad_assert(live->node[pivot].id == node->id);
 
 		RDEBUG2("Selected node %i (using random value %i)", node->id, find);
-		conn = fr_connection_get(node->pool);
+		conn = fr_connection_get(node->pool, request);
 		if (!conn) {
 			RERROR("No connections available to node %i %s:%i", node->id,
 			       node->name, node->addr.port);
@@ -1419,7 +1419,7 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 			goto next;
 
 		default:
-			fr_connection_release(node->pool, conn);
+			fr_connection_release(node->pool, request, conn);
 			goto next;
 		}
 
@@ -1672,7 +1672,7 @@ again:
 
 			node_id = key_slot->slave[(first + i) % key_slot->slave_num];
 			node = &cluster->node[node_id];
-			*conn = fr_connection_get(node->pool);
+			*conn = fr_connection_get(node->pool, request);
 			if (!*conn) {
 				RDEBUG2("[%i] No connections available (key slot %zu slave %i)",
 					node->id, key_slot - cluster->key_slot, (first + i) % key_slot->slave_num);
@@ -1692,7 +1692,7 @@ again:
 	 *	   give up.
 	 */
 	node = &cluster->node[key_slot->master];
-	*conn = fr_connection_get(node->pool);
+	*conn = fr_connection_get(node->pool, request);
 	if (!*conn) {
 		RDEBUG2("[%i] No connections available (key slot %zu master)",
 			node->id, key_slot - cluster->key_slot);
@@ -1707,7 +1707,7 @@ finish:
 	 */
 	if (cluster->remap_needed) {
 		if (cluster_remap(request, cluster, *conn) == CLUSTER_OP_SUCCESS) {
-			fr_connection_release(node->pool, *conn);
+			fr_connection_release(node->pool, request, *conn);
 			goto again;	/* New map, try again */
 		}
 		RDEBUG2("%s", fr_strerror());
@@ -1802,7 +1802,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	switch (status) {
 	case REDIS_RCODE_SUCCESS:
-		fr_connection_release(state->node->pool, *conn);
+		fr_connection_release(state->node->pool, request, *conn);
 		*conn = NULL;
 		return REDIS_RCODE_SUCCESS;
 
@@ -1812,7 +1812,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	case REDIS_RCODE_NO_SCRIPT:
 	case REDIS_RCODE_ERROR:
 		REDEBUG("[%i] Command failed: %s", state->node->id, fr_strerror());
-		fr_connection_release(state->node->pool, *conn);
+		fr_connection_release(state->node->pool, request, *conn);
 		*conn = NULL;
 		return REDIS_RCODE_ERROR;
 
@@ -1822,12 +1822,12 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	case REDIS_RCODE_TRY_AGAIN:
 		if (state->retries++ >= cluster->conf->max_retries) {
 			REDEBUG("[%i] Hit maximum retry attempts", state->node->id);
-			fr_connection_release(state->node->pool, *conn);
+			fr_connection_release(state->node->pool, request, *conn);
 			*conn = NULL;
 			return REDIS_RCODE_ERROR;
 		}
 
-		if (!*conn) *conn = fr_connection_get(state->node->pool);
+		if (!*conn) *conn = fr_connection_get(state->node->pool, request);
 
 		if (FR_TIMEVAL_TO_MS(&cluster->conf->retry_delay)) {
 			struct timespec ts;
@@ -1863,7 +1863,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		key_slot = cluster_slot_by_key(cluster, request, state->key, state->key_len);
 		state->node = &cluster->node[key_slot->master];
 
-		*conn = fr_connection_get(state->node->pool);
+		*conn = fr_connection_get(state->node->pool, request);
 		if (!*conn) {
 			REDEBUG("[%i] No connections available for %s:%i", state->node->id, state->node->name,
 				state->node->addr.port);
@@ -1894,7 +1894,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		cluster_node_t *new;
 
-		fr_connection_release(state->node->pool, *conn);	/* Always release the old connection */
+		fr_connection_release(state->node->pool, request, *conn);	/* Always release the old connection */
 
 		if (!rad_cond_assert(*reply)) return REDIS_RCODE_ERROR;
 
@@ -1916,7 +1916,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 			       state->node->addr.port, new->id, new->name, new->addr.port);
 			state->node = new;
 
-			*conn = fr_connection_get(state->node->pool);
+			*conn = fr_connection_get(state->node->pool, request);
 			if (!*conn) return REDIS_RCODE_RECONNECT;
 
 			/*
@@ -2043,7 +2043,7 @@ static int _cluster_version_walk(void *context, void *data)
 	int			ret;
 	char			buffer[40];
 
-	conn = fr_connection_get(node->pool);
+	conn = fr_connection_get(node->pool, NULL);
 	if (!conn) return 0;
 
 	/*
@@ -2052,7 +2052,7 @@ static int _cluster_version_walk(void *context, void *data)
 	 *	starting if start == 0.
 	 */
 	ret = fr_redis_get_version(buffer, sizeof(buffer), conn);
-	fr_connection_release(node->pool, conn);
+	fr_connection_release(node->pool, NULL, conn);
 	if (ret < 0) return 0;
 
 	if (fr_redis_version_num(buffer) < fr_redis_version_num(min_version)) {
@@ -2298,7 +2298,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 *	Fine to leave this node configured, if we do find
 		 *	a live node, and it's not in the map, it'll be cleared out.
 		 */
-		conn = fr_connection_get(node->pool);
+		conn = fr_connection_get(node->pool, NULL);
 		if (!conn) {
 			WARN("%s: Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
@@ -2309,7 +2309,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 *	We got a valid map! See if we can apply it...
 		 */
 		case CLUSTER_OP_SUCCESS:
-			fr_connection_release(node->pool, conn);
+			fr_connection_release(node->pool, NULL, conn);
 
 			INFO("%s: Cluster map consists of %zu key ranges", cluster->log_prefix, map->elements);
 			for (j = 0; j < map->elements; j++) {
@@ -2343,7 +2343,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		case CLUSTER_OP_BAD_INPUT:
 			WARN("%s: Bootstrap server \"%s\" returned invalid data: %s",
 			     cluster->log_prefix, server, fr_strerror());
-			fr_connection_release(node->pool, conn);
+			fr_connection_release(node->pool, NULL, conn);
 			continue;
 
 		case CLUSTER_OP_NO_CONNECTION:
@@ -2360,7 +2360,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		case CLUSTER_OP_IGNORED:
 			DEBUG2("%s: Bootstrap server \"%s\" returned: %s",
 			       cluster->log_prefix, server, fr_strerror());
-			fr_connection_release(node->pool, conn);
+			fr_connection_release(node->pool, NULL, conn);
 			break;
 		}
 	} while ((cp = cf_pair_find_next(module, cp, "server")));

@@ -206,7 +206,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	/* get handle */
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 
 	/* check handle */
 	if (!handle) return RLM_MODULE_FAIL;
@@ -249,7 +249,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	/* release handle */
 	if (handle) {
-		fr_connection_release(inst->pool, handle);
+		fr_connection_release(inst->pool, request, handle);
 	}
 
 	/* return */
@@ -308,7 +308,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	}
 
 	/* get handle */
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 
 	/* check handle */
 	if (!handle) return RLM_MODULE_FAIL;
@@ -440,7 +440,7 @@ finish:
 
 	/* release our connection handle */
 	if (handle) {
-		fr_connection_release(inst->pool, handle);
+		fr_connection_release(inst->pool, request, handle);
 	}
 
 	/* return */
@@ -509,7 +509,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	}
 
 	/* get handle */
-	handle = fr_connection_get(inst->pool);
+	handle = fr_connection_get(inst->pool, request);
 
 	/* check handle */
 	if (!handle) return RLM_MODULE_FAIL;
@@ -829,7 +829,7 @@ finish:
 		cookie->jobj = NULL;
 	}
 
-	if (handle) fr_connection_release(inst->pool, handle);
+	if (handle) fr_connection_release(inst->pool, request, handle);
 
 	/*
 	 * The Auth module apparently looks at request->simul_count,

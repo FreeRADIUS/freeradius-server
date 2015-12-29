@@ -821,7 +821,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 
 		case LDAP_PROC_RETRY:
 			if (retry) {
-				*pconn = fr_connection_reconnect(inst->pool, *pconn);
+				*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 				if (*pconn) {
 					LDAP_DBGW_REQ("Bind with %s to %s failed: %s. Got new socket, retrying...",
 						      *dn ? dn : "(anonymous)", inst->server, error);
@@ -970,7 +970,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 			break;
 
 		case LDAP_PROC_RETRY:
-			*pconn = fr_connection_reconnect(inst->pool, *pconn);
+			*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 			if (*pconn) {
 				LDAP_DBGW_REQ("Search failed: %s. Got new socket, retrying...", error);
 
@@ -1098,7 +1098,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 			break;
 
 		case LDAP_PROC_RETRY:
-			*pconn = fr_connection_reconnect(inst->pool, *pconn);
+			*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 			if (*pconn) {
 				RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
 
@@ -1718,17 +1718,11 @@ error:
  * @param request Current request (may be NULL).
  */
 
-ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst,
-#ifdef LDAP_CONTROL_X_SESSION_TRACKING
-			    REQUEST *request
-#else
-			    UNUSED REQUEST *request
-#endif
-			    )
+ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 {
 	ldap_handle_t *conn;
 
-	conn = fr_connection_get(inst->pool);
+	conn = fr_connection_get(inst->pool, request);
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	/*
@@ -1738,7 +1732,7 @@ ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst,
 	 */
 	if ((conn != NULL) & (request != NULL) & inst->session_tracking) {
 		if (rlm_ldap_control_add_session_tracking(conn, request) < 0) {
-			fr_connection_release(inst->pool, conn);
+			fr_connection_release(inst->pool, request, conn);
 			return NULL;
 		}
 	}
@@ -1752,9 +1746,10 @@ ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst,
  * If the socket was rebound to another user on the same server, we let the next caller rebind it.
  *
  * @param inst rlm_ldap configuration.
+ * @param request The current request.
  * @param conn to release.
  */
-void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
+void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.
@@ -1781,6 +1776,6 @@ void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
 		return;
 	}
 
-	fr_connection_release(inst->pool, conn);
+	fr_connection_release(inst->pool, request, conn);
 	return;
 }

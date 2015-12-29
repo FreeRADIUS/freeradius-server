@@ -493,7 +493,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 
-void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn);
+void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *conn);
 
 /*
  *	groups.c - Group membership functions.

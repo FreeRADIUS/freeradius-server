@@ -270,7 +270,7 @@ static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, 
 
 	*handle = NULL;
 
-	mandle = fr_connection_get(driver->pool);
+	mandle = fr_connection_get(driver->pool, request);
 	if (!mandle) {
 		*handle = NULL;
 		return -1;
@@ -289,7 +289,7 @@ static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *driv
 {
 	rlm_cache_memcached_t *driver = driver_inst;
 
-	fr_connection_release(driver->pool, handle);
+	fr_connection_release(driver->pool, request, handle);
 }
 
 /** Reconnect a memcached handle
@@ -297,12 +297,12 @@ static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *driv
  * @copydetails cache_reconnect_t
  */
 static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
-			      UNUSED REQUEST *request)
+			      REQUEST *request)
 {
 	rlm_cache_memcached_t *driver = driver_inst;
 	rlm_cache_handle_t *mandle;
 
-	mandle = fr_connection_reconnect(driver->pool, *handle);
+	mandle = fr_connection_reconnect(driver->pool, request, *handle);
 	if (!mandle) {
 		*handle = NULL;
 		return -1;

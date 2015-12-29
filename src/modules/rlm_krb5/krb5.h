@@ -32,6 +32,10 @@ RCSIDH(krb5_h, "$Id$")
 USES_APPLE_DEPRECATED_API
 #include <krb5.h>
 
+#ifdef KRB5_IS_THREAD_SAFE
+#  include <freeradius-devel/connection.h>
+#endif
+
 typedef struct rlm_krb5_handle {
 	krb5_context	context;
 	krb5_keytab	keytab;
