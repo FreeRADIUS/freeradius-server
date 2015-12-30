@@ -56,7 +56,7 @@ filter_username {
 	#  e.g. "user@site.com@site.com"
 	#  e.g. "site.com\site.com\user"
 	#
-	if (&User-Name =~ /[@\][^@\]*[@\]/ ) {
+	if (&User-Name =~ /[@\\][^@\\]*[@\\]/ ) {
 		update reply {
 			&Reply-Message += 'Rejected: Multiple realm delimiters in User-Name'
 		}
@@ -156,7 +156,7 @@ filter_inner_outer_identity {
 	#
 	#  Get the outer stripped user name. Look for the outer realm.
 	#
-	if (&outer.request:User-Name =~ /^([^@\]+)?(@([^@\]+)?)?$/) {
+	if (&outer.request:User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
 		#  Case insensitive.
 		update request {
 			Outer-Stripped-User-Name = "%{tolower:%{1}}"
@@ -169,7 +169,7 @@ filter_inner_outer_identity {
 		#	Outer-Realm-Name = "%{3}"
 		#}
 	}
-	elsif (&outer.request:User-Name =~ /^(([^@\]+)?\\)?([^@\]+)?$/) {
+	elsif (&outer.request:User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
 		#  Case insensitive.
 		update request {
 			Outer-Stripped-User-Name = "%{tolower:%{3}}"	
@@ -186,7 +186,7 @@ filter_inner_outer_identity {
 	#
 	#  Get the inner stripped user name. Look for the inner realm.
 	#
-	if (&User-Name =~ /^([^@\]+)?(@([^@\]+)?)?$/) {
+	if (&User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
 		#  Case insensitive.
 		update request {
 			Inner-Stripped-User-Name = "%{tolower:%{1}}"
@@ -199,7 +199,7 @@ filter_inner_outer_identity {
 		#	Inner-Realm-Name = "%{3}"
 		#}
 	}
-	elsif (&User-Name =~ /^(([^@\]+)?\\)?([^@\]+)?$/) {
+	elsif (&User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
 		#  Case insensitive.
 		update request {
 			Inner-Stripped-User-Name = "%{tolower:%{3}}"	
