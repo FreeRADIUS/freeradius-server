@@ -199,10 +199,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (rcode) {
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-		goto query_error;
-	}
+	if (rcode) goto query_error;
 
 	if (!row) {
 		RDEBUG("SQL query returned no results");
@@ -226,7 +223,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 
 finish:
-fr_connection_release(inst->pool, request, handle);
+	fr_connection_release(inst->pool, request, handle);
 
 	return ret;
 }
@@ -1712,7 +1709,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 
 	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) {
 		rcode = RLM_MODULE_FAIL;
-		goto finish;
+		goto release;	/* handle may no longer be valid */
 	}
 
 	ret = rlm_sql_fetch_row(&row, inst, request, &handle);
@@ -1848,7 +1845,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 finish:
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 release:
-fr_connection_release(inst->pool, request, handle);
+	fr_connection_release(inst->pool, request, handle);
 	talloc_free(expanded);
 	sql_unset_user(inst, request);
 
