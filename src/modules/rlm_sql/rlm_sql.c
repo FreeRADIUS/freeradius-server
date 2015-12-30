@@ -1619,6 +1619,10 @@ finish:
 
 #ifdef WITH_ACCOUNTING
 
+/* 
+ * Fetch attributes from sql server and places it to control list
+ * Using fetchattrs query of accounting section of sql config
+ */
 static rlm_rcode_t acct_fetchattrs(void *instance, REQUEST *request, sql_acct_section_t *section)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
