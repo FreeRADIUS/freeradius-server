@@ -157,29 +157,29 @@ filter_inner_outer_identity {
 	#  Get the outer stripped user name. Look for the outer realm.
 	#
 	if (&outer.request:User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
-		#  Case insensitive.
-		update request {
-			Outer-Stripped-User-Name = "%{tolower:%{1}}"
-			Outer-Realm-Name = "%{tolower:%{3}}"
-		}
-		
 		#  Case sensitive.
+		update request {
+			Outer-Stripped-User-Name = "%{1}"
+			Outer-Realm-Name = "%{3}"
+		}
+
+		#  Case insensitive.
 		#update request {
-		#	Outer-Stripped-User-Name = "%{1}"
-		#	Outer-Realm-Name = "%{3}"
+		#	Outer-Stripped-User-Name = "%{tolower:%{1}}"
+		#	Outer-Realm-Name = "%{tolower:%{3}}"
 		#}
 	}
 	elsif (&outer.request:User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
-		#  Case insensitive.
-		update request {
-			Outer-Stripped-User-Name = "%{tolower:%{3}}"	
-			Outer-Realm-Name = "%{tolower:%{1}}"
-		}
-		
 		#  Case sensitive.
+		update request {
+			Outer-Stripped-User-Name = "%{3}"
+			Outer-Realm-Name = "%{1}"
+		}
+
+		#  Case insensitive.
 		#update request {
-		#	Outer-Stripped-User-Name = "%{3}"
-		#	Outer-Realm-Name = "%{1}"
+		#	Outer-Stripped-User-Name = "%{tolower:%{3}}"	
+		#	Outer-Realm-Name = "%{tolower:%{1}}"
 		#}
 	}
 
@@ -187,29 +187,29 @@ filter_inner_outer_identity {
 	#  Get the inner stripped user name. Look for the inner realm.
 	#
 	if (&User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
-		#  Case insensitive.
-		update request {
-			Inner-Stripped-User-Name = "%{tolower:%{1}}"
-			Inner-Realm-Name = "%{tolower:%{3}}"
-		}
-		
 		#  Case sensitive.
+		update request {
+			Inner-Stripped-User-Name = "%{1}"
+			Inner-Realm-Name = "%{3}"
+		}
+
+		#  Case insensitive.
 		#update request {
-		#	Inner-Stripped-User-Name = "%{1}"
-		#	Inner-Realm-Name = "%{3}"
+		#	Inner-Stripped-User-Name = "%{tolower:%{1}}"
+		#	Inner-Realm-Name = "%{tolower:%{3}}"
 		#}
 	}
 	elsif (&User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
-		#  Case insensitive.
-		update request {
-			Inner-Stripped-User-Name = "%{tolower:%{3}}"	
-			Inner-Realm-Name = "%{tolower:%{1}}"
-		}
-		
 		#  Case sensitive.
+		update request {
+			Inner-Stripped-User-Name = "%{3}"
+			Inner-Realm-Name = "%{1}"
+		}
+
+		#  Case insensitive.
 		#update request {
-		#	Inner-Stripped-User-Name = "%{3}"
-		#	Inner-Realm-Name = "%{1}"
+		#	Inner-Stripped-User-Name = "%{tolower:%{3}}"	
+		#	Inner-Realm-Name = "%{tolower:%{1}}"
 		#}
 	}
 
