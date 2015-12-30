@@ -225,10 +225,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(inst, request, &handle);
-	if (rcode) {
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-		goto query_error;
-	}
+	if (rcode) goto query_error;
 
 	row = handle->row;
 	if (!row) {
@@ -1531,7 +1528,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 
 	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) {
 		rcode = RLM_MODULE_FAIL;
-		goto finish;
+		goto release;	/* handle may no longer be valid */
 	}
 
 	ret = rlm_sql_fetch_row(inst, request, &handle);
