@@ -184,7 +184,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 }
 
 
-void rad_print_hex(RADIUS_PACKET *packet)
+void rad_print_hex(RADIUS_PACKET const *packet)
 {
 	int i;
 

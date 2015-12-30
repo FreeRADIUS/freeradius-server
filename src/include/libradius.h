@@ -696,7 +696,7 @@ extern uint32_t	fr_max_attributes; /* per incoming packet */
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 extern FILE	*fr_log_fp;
-void		rad_print_hex(RADIUS_PACKET *packet);
+void		rad_print_hex(RADIUS_PACKET const *packet);
 void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
 
 /*
