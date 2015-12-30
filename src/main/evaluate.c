@@ -30,8 +30,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#define WITH_EVAL_DEBUG (1)
-
 #ifdef WITH_UNLANG
 #ifdef WITH_EVAL_DEBUG
 #  define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
