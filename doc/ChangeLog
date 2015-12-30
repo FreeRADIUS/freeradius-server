@@ -60,6 +60,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Special characters in expanded regexes are now escaped
 	  e.g. User-Name containing '.', and comparing /%{User-Name}/,
 	  the '.' will now be escaped.  See src/tests/keywords/regex-escape.
+	* Use correct authentication vector when sending Access-Reject replies
+	  for RadSec.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
