@@ -228,7 +228,7 @@ filter_inner_outer_identity {
 		&Inner-Stripped-User-Name =~ /^anon(ymous)?$/) || \
 		&Inner-Stripped-User-Name =~ /^(anon(ymous)?)?$/) {
 		update request {
-			Module-Failure-Message = 'Rejected: Inner identity cannot be anonymized'
+			Module-Failure-Message = "Rejected: Inner identity, '%{User-Name}', cannot be anonymized"
 		}
 		reject
 	}
@@ -240,7 +240,7 @@ filter_inner_outer_identity {
 			&Inner-Realm-Name != "" && \
 			&Inner-Realm-Name != &Outer-Realm-Name) {
 			update request {
-				Module-Failure-Message = 'Rejected: Realm in the inner identity is not the same as the realm in the outer identity'
+				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as the realm in the outer identity, '%{outer.request:User-Name}'"
 			}
 			reject
 		}
@@ -263,7 +263,7 @@ filter_inner_outer_identity {
 			&Outer-Stripped-User-Name !~ /^anon(ymous)?$/) || \
 			&Outer-Stripped-User-Name !~ /^(anon(ymous)?)?$/) {
 			update request {
-				Module-Failure-Message = 'Rejected: Outer identity is not anonymized correctly'
+				Module-Failure-Message = "Rejected: Outer identity, '%{outer.request:User-Name}', is not anonymized correctly"
 			}
 			reject
 		}
@@ -281,7 +281,7 @@ filter_inner_outer_identity {
 			&Inner-Realm-Name != "" && \
 			&Inner-Realm-Name !~ /(\.)?%{Outer-Realm-Name}$/) {
 			update request {
-				Module-Failure-Message = 'Rejected: Realm in the inner identity is not the same as or a subrealm of the realm in the anonymized outer identity'
+				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as or a subrealm of the realm in the anonymized outer identity, '%{outer.request:User-Name}'"
 			}
 			reject
 		}
