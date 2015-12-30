@@ -169,7 +169,7 @@ void fr_printf_log(char const *fmt, ...)
 	return;
 }
 
-void fr_radius_print_hex(RADIUS_PACKET *packet)
+void fr_radius_print_hex(RADIUS_PACKET const *packet)
 {
 	int i;
 

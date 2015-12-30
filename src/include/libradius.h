@@ -247,7 +247,7 @@ extern FR_NAME_NUMBER const fr_request_types[];
 
 void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
 
-void		fr_radius_print_hex(RADIUS_PACKET *packet);
+void		fr_radius_print_hex(RADIUS_PACKET const *packet);
 
 int		fr_radius_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 
