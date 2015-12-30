@@ -374,10 +374,12 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 			if (outlen < 3) goto done;
 
 			*(p++) = '\\';
+			outlen--;
 			/* FALL-THROUGH */
 
 		default:
 			*(p++) = *(in++);
+			outlen--;
 			break;
 		}
 	}
@@ -459,7 +461,8 @@ do {\
 #ifdef HAVE_REGEX
 	if (map->op == T_OP_REG_EQ) {
 		cast_type = PW_TYPE_STRING;
-		escape = regex_escape;
+
+		if (map->rhs->type == TMPL_TYPE_XLAT_STRUCT) escape = regex_escape;
 	}
 	else
 #endif
