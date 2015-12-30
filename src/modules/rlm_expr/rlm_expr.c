@@ -880,7 +880,7 @@ static ssize_t unescape_xlat(char **out, size_t outlen,
  *
  * Probably only works for ASCII
  */
-static ssize_t lc_xlat(char **out, size_t outlen,
+static ssize_t tolower_xlat(char **out, size_t outlen,
 		       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 		       UNUSED REQUEST *request, char const *fmt)
 {
@@ -906,7 +906,7 @@ static ssize_t lc_xlat(char **out, size_t outlen,
  *
  * Probably only works for ASCII
  */
-static ssize_t uc_xlat(char **out, size_t outlen,
+static ssize_t toupper_xlat(char **out, size_t outlen,
 		       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 		       UNUSED REQUEST *request, char const *fmt)
 {
@@ -1641,8 +1641,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	xlat_register(inst, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "escape", escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "unescape", unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "tolower", lc_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "toupper", uc_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "md5", md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 #ifdef HAVE_OPENSSL_EVP_H
