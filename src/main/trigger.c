@@ -216,7 +216,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 	 */
 	if (!request) request = fake = request_alloc(NULL);
 
-	RERROR("Trigger \"%s\": %s", name, value);
+	RDEBUG2("Trigger \"%s\": %s", name, value);
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
