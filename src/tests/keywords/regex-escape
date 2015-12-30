@@ -1,0 +1,29 @@
+#
+#  PRE: update if
+#
+
+#
+#  Strings which are expanded in a regex have regex special
+#  characters escaped.  Because the input strings are unsafe.
+#
+update request {
+	Tmp-String-0 := "example.com"
+	Tmp-String-1 := "exampleXcom"
+}
+
+if ("exampleXcom" =~ /%{Tmp-String-0}/) {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+}
+
+elsif (&Tmp-String-1 =~ /%{Tmp-String-0}/) {
+	update reply {
+		Filter-Id := "fail 2"
+	}
+}
+else {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
