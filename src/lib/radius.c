@@ -1947,7 +1947,6 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	case PW_CODE_COA_REQUEST:
 	case PW_CODE_COA_ACK:
 		memset(hdr->vector, 0, AUTH_VECTOR_LEN);
-		memset(packet->vector, 0, AUTH_VECTOR_LEN);
 		break;
 
 	do_ack:
@@ -1959,16 +1958,16 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			return -1;
 		}
 		memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
-		memcpy(packet->vector, original->vector, AUTH_VECTOR_LEN);
 		break;
 
-	default:	/* others have vector already set to whatever */
+	default:
+		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 		break;
 	}
 
 	/*
 	 *	If there's a Message-Authenticator, update it
-	 *	now, using the zero / original authentication vector.
+	 *	now.
 	 */
 	if (packet->offset > 0) {
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
@@ -1983,12 +1982,6 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			    (uint8_t const *) secret, strlen(secret));
 		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
-
-		/*
-		 *	Copy the request vector back
-		 *	to the raw packet.
-		 */
-		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 	}
 
 	/*
