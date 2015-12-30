@@ -56,6 +56,10 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  See raddb/mods-available/eap, "disable_tlsv1_2"
 	* Allow password change to work for MS-CHAP.  This requires 'r=0',
 	  because password changes are not retries.
+	* Fix home server fail-over for home servers using TCP and/or RadSec.
+	* Special characters in expanded regexes are now escaped
+	  e.g. User-Name containing '.', and comparing /%{User-Name}/,
+	  the '.' will now be escaped.  See src/tests/keywords/regex-escape.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
