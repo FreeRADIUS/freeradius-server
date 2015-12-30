@@ -224,11 +224,9 @@ filter_inner_outer_identity {
 	#  send this in the outer instead of
 	#  following the standards.
 	#
-	if ((&Inner-Realm-Name == "" && \
-		&Inner-Stripped-User-Name =~ /^anon(ymous)?$/) || \
-		&Inner-Stripped-User-Name =~ /^(anon(ymous)?)?$/) {
+	if (&Inner-Stripped-User-Name =~ /^(anon(ymous)?)?$/) {
 		update request {
-			Module-Failure-Message = "Rejected: Inner identity, '%{User-Name}', cannot be anonymized"
+			Module-Failure-Message = "Rejected: Inner identity, '%{User-Name}', cannot be anonymized. Expected something other than 'anonymous', 'anon' or empty string"
 		}
 		reject
 	}
@@ -240,7 +238,7 @@ filter_inner_outer_identity {
 			&Inner-Realm-Name != "" && \
 			&Inner-Realm-Name != &Outer-Realm-Name) {
 			update request {
-				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as the realm in the outer identity, '%{outer.request:User-Name}'"
+				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as the realm in the outer identity, '%{outer.request:User-Name}'. Expected '%{Outer-Stripped-User-Name}' or '%{Inner-Stripped-User-Name}' in both cases because the outer identity is not anonymized"
 			}
 			reject
 		}
@@ -263,7 +261,7 @@ filter_inner_outer_identity {
 			&Outer-Stripped-User-Name !~ /^anon(ymous)?$/) || \
 			&Outer-Stripped-User-Name !~ /^(anon(ymous)?)?$/) {
 			update request {
-				Module-Failure-Message = "Rejected: Outer identity, '%{outer.request:User-Name}', is not anonymized correctly"
+				Module-Failure-Message = "Rejected: Outer identity, '%{outer.request:User-Name}', is not anonymized correctly. Expected an empty string or 'anonymous' instead of '%{Outer-Stripped-User-Name}'"
 			}
 			reject
 		}
@@ -281,7 +279,7 @@ filter_inner_outer_identity {
 			&Inner-Realm-Name != "" && \
 			&Inner-Realm-Name !~ /(\.)?%{Outer-Realm-Name}$/) {
 			update request {
-				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as or a subrealm of the realm in the anonymized outer identity, '%{outer.request:User-Name}'"
+				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as or a subrealm of the realm in the anonymized outer identity, '%{outer.request:User-Name}'. Expected '%{Inner-Realm-Name}' or 'subrealm.%{Inner-Realm-Name}'"
 			}
 			reject
 		}
