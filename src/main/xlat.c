@@ -2411,10 +2411,13 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	 *	Escape the non-literals we found above.
 	 */
 	if (str && escape) {
+		size_t len;
 		char *escaped;
 
-		escaped = talloc_array(ctx, char, 2048); /* FIXME: do something intelligent */
-		escape(request, escaped, 2038, str, escape_ctx);
+		len = talloc_array_length(str) * 3;
+
+		escaped = talloc_array(ctx, char, len);
+		escape(request, escaped, len, str, escape_ctx);
 		talloc_free(str);
 		str = escaped;
 	}
