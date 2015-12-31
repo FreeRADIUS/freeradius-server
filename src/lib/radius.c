@@ -1935,35 +1935,36 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	the original vector, prior to signing.
 	 */
 	switch (packet->code) {
-	case PW_CODE_ACCOUNTING_RESPONSE:
-		if (original && original->code == PW_CODE_STATUS_SERVER) {
-			goto do_ack;
-		}
-
 	case PW_CODE_ACCOUNTING_REQUEST:
 	case PW_CODE_DISCONNECT_REQUEST:
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_DISCONNECT_NAK:
 	case PW_CODE_COA_REQUEST:
-	case PW_CODE_COA_ACK:
-		memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+		memset(packet->vector, 0, AUTH_VECTOR_LEN);
 		break;
 
-	do_ack:
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_ACCOUNTING_RESPONSE:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
 		if (!original) {
 			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 			return -1;
 		}
-		memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
+		memcpy(packet->vector, original->vector, AUTH_VECTOR_LEN);
 		break;
 
+	case PW_CODE_ACCESS_REQUEST:
+	case PW_CODE_STATUS_SERVER:
 	default:
-		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
-		break;
+		break;		/* packet->vector is already random bytes */
 	}
+
+#ifndef NDEBUG
+	if ((fr_debug_lvl > 3) && fr_log_fp) rad_print_hex(packet);
+#endif
 
 	/*
 	 *	If there's a Message-Authenticator, update it
@@ -1971,6 +1972,33 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 */
 	if (packet->offset > 0) {
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+
+		switch (packet->code) {
+		case PW_CODE_ACCOUNTING_RESPONSE:
+			if (original && original->code == PW_CODE_STATUS_SERVER) {
+				goto do_ack;
+			}
+
+		case PW_CODE_ACCOUNTING_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
+		case PW_CODE_DISCONNECT_ACK:
+		case PW_CODE_DISCONNECT_NAK:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_COA_ACK:
+		case PW_CODE_COA_NAK:
+			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+			break;
+
+		do_ack:
+		case PW_CODE_ACCESS_ACCEPT:
+		case PW_CODE_ACCESS_REJECT:
+		case PW_CODE_ACCESS_CHALLENGE:
+			memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
+			break;
+
+		default:
+			break;
+		}
 
 		/*
 		 *	Set the authentication vector to zero,
@@ -1983,6 +2011,11 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
 	}
+
+	/*
+	 *	Copy the request authenticator over to the packet.
+	 */
+	memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
 
 	/*
 	 *	Switch over the packet code, deciding how to
