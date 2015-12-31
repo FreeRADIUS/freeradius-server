@@ -79,16 +79,19 @@ typedef struct rlm_redis_ippool {
 						//!< NAS-Identifier or the actual Option 82 gateway.
 						//!< Used for bulk lease cleanups.
 
-	vp_tmpl_t		*ip_address;	//!< Attribute to read the IP for renewal from.
-	vp_tmpl_t		*reply_attr;	//!< IP attribute and destination.
+	vp_tmpl_t		*requested_address;		//!< Attribute to read the IP for renewal from.
+
+	vp_tmpl_t		*allocated_address_attr;	//!< IP attribute and destination.
+
 	vp_tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
+
 	vp_tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
 
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
 
 	bool			copy_on_update; //!< Copy the address provided by ip_address to the
-						//!< reply_attr if updates are successful.
+						//!< allocated_address_attr if updates are successful.
 
 	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
 } rlm_redis_ippool_t;
@@ -110,8 +113,12 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", PW_TYPE_INTEGER, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", PW_TYPE_TIMEVAL, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("ip_address", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_redis_ippool_t, ip_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("reply_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, reply_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("requested_address", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_DEPRECATED("ip_address", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
+
+	{ FR_CONF_OFFSET("allocated_address_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, allocated_address_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_DEPRECATED("reply_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
+
 	{ FR_CONF_OFFSET("range_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply:Pool-Range", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("expiry_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
 
@@ -613,7 +620,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t *inst, REQUEST *r
 			.tmpl_data_type = PW_TYPE_STRING
 		};
 		vp_map_t ip_map = {
-			.lhs = inst->reply_attr,
+			.lhs = inst->allocated_address_attr,
 			.op = T_OP_SET,
 			.rhs = &ip_rhs
 		};
@@ -1104,8 +1111,8 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 			return RLM_MODULE_FAIL;
 		}
 
-		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->ip_address, NULL, NULL) < 0) {
-			REDEBUG("Failed expanding ip_address");
+		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding requested_address");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1132,7 +1139,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 					.quote = T_BARE_WORD,
 				};
 				vp_map_t ip_map = {
-					.lhs = inst->reply_attr,
+					.lhs = inst->allocated_address_attr,
 					.op = T_OP_SET,
 					.rhs = &ip_rhs
 				};
@@ -1172,8 +1179,8 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 		char		ip_buff[INET6_ADDRSTRLEN + 4];
 		char const	*ip_str;
 
-		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->ip_address, NULL, NULL) < 0) {
-			REDEBUG("Failed expanding ip_address (%s)", inst->ip_address->name);
+		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding requested_address (%s)", inst->requested_address->name);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1298,7 +1305,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	rlm_redis_ippool_t *inst = instance;
 
-	rad_assert(inst->reply_attr->type == TMPL_TYPE_ATTR);
+	rad_assert(inst->allocated_address_attr->type == TMPL_TYPE_ATTR);
 	rad_assert(subcs);
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);

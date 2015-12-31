@@ -35,12 +35,12 @@ redis_ippool {
 	#
 	#  The IP address being renewed or released
 	#
-	ip_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+	requested_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
 
 	#
 	#  List and attribute where the allocated address is written to.
 	#
-	reply_attr = &reply:DHCP-Your-IP-Address
+	allocated_address_attr = &reply:DHCP-Your-IP-Address
 
 	#
 	#  List and attribute where the Pool-Range ID (if set) is written to.
