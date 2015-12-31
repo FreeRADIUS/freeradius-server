@@ -732,7 +732,12 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	DEBUG("Adding %s to pool %.*s (%zu)", ip_buff, (int)(key_p - key), key, key_p - key);
 	redisAppendCommand(conn->handle, "MULTI");
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
-	redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
+	/*
+	 *	Only add range if it's not NULL.
+	 *
+	 *	Zero length ranges are allowed, and should be preserved.
+	 */
+	if (range) redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
 	redisAppendCommand(conn->handle, "EXEC");
 	return 4;
 }
