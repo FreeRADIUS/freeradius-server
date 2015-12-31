@@ -29,8 +29,8 @@ filter_username {
 		#  e.g. "user@ site.com", or "us er", or " user", or "user "
 		#
 		if (&User-Name =~ / /) {
-			update reply {
-				&Reply-Message += 'Rejected: Username contains whitespace'
+			update request {
+				&Module-Failure-Message += 'Rejected: Username contains whitespace'
 			}
 			reject
 		}
@@ -40,8 +40,8 @@ filter_username {
 		#  e.g. "user@site.com@site.com"
 		#
 		if (&User-Name =~ /@[^@]*@/ ) {
-			update reply {
-				&Reply-Message += 'Rejected: Multiple @ in username'
+			update request {
+				&Module-Failure-Message += 'Rejected: Multiple @ in username'
 			}
 			reject
 		}
@@ -51,8 +51,8 @@ filter_username {
 		#  e.g. "user@site..com"
 		#
 		if (&User-Name =~ /\.\./ ) {
-			update reply {
-				&Reply-Message += 'Rejected: Username contains ..s'
+			update request {
+				&Module-Failure-Message += 'Rejected: Username contains ..s'
 			}
 			reject
 		}
@@ -62,8 +62,8 @@ filter_username {
 		#  e.g. "user@site.com"
 		#
 		if ((&User-Name =~ /@/) && (&User-Name !~ /@(.+)\.(.+)$/))  {
-			update reply {
-				&Reply-Message += 'Rejected: Realm does not have at least one dot separator'
+			update request {
+				&Module-Failure-Message += 'Rejected: Realm does not have at least one dot separator'
 			}
 			reject
 		}
@@ -73,8 +73,8 @@ filter_username {
 		#  e.g. "user@site.com."
 		#
 		if (&User-Name =~ /\.$/)  {
-			update reply {
-				&Reply-Message += 'Rejected: Realm ends with a dot'
+			update request {
+				&Module-Failure-Message += 'Rejected: Realm ends with a dot'
 			}
 			reject
 		}
@@ -84,8 +84,8 @@ filter_username {
 		#  e.g. "user@.site.com"
 		#
 		if (&User-Name =~ /@\./)  {
-			update reply {
-				&Reply-Message += 'Rejected: Realm begins with a dot'
+			update request {
+				&Module-Failure-Message += 'Rejected: Realm begins with a dot'
 			}
 			reject
 		}
