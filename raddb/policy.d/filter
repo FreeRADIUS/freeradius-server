@@ -96,7 +96,7 @@ filter_username {
 #	Filter the User-Password
 #
 #  Some equipment sends passwords with embedded zeros.
-#  This poliocy filters them out.
+#  This policy filters them out.
 #
 filter_password {
 	if (&User-Password && \
@@ -114,79 +114,97 @@ filter_inner_identity {
 	#
 	if (!&outer.request:User-Name || !&User-Name) {
 		update request {
-			Module-Failure-Message += 'User-Name is required for tunneled authentication'
+			Module-Failure-Message = "User-Name is required for tunneled authentication"
 		}
 		reject
 	}
 
 	#
-	#  If the names are the same, it's OK.
+	#  Do detailed checks only if the inner and outer
+	#  NAIs are different.
 	#
-	#  Otherwise, do lots of sanity checks
+	#  If the NAIs are the same, it violates user privacy,
+	#  but is allowed.
 	#
 	if (&outer.request:User-Name != &User-Name) {
 		#
-		#  We require the outer User-Name
-		#  to be "@realm", or "anon...",
-		#  hopefully "anonymous", or "anonymous@realm"
+		#  Get the outer realm.
 		#
-		#  The checks for "anonymous" are more relaxed
-		#  because vendors send a variety of names
-		#  instead of following the standards.
-		#
-		if ((&outer.request:User-Name !~ /^@/) && \
-		    (&outer.request:User-Name !~ /^anon/)) {
-			update request {
-				Module-Failure-Message += "Bad outer identity, expected \"%{User-Name}\" or \"anon.*\""
-			}
-			reject
-		}
-
-		#
-		#  Now we get complicated.  Look for the outer realm
-		#
-		if (&outer.request:User-Name =~ /@(.*)$/) {
+		if (&outer.request:User-Name =~ /@([^@]+)$/) {
 			update request {
 				Outer-Realm-Name = "%{1}"
 			}
-		}
 
-		#
-		#  And the inner realm
-		#
-		if (&User-Name =~ /@(.*)$/) {
-			update request {
-				Inner-Realm-Name = "%{1}"
+			#
+			#  When we have an outer realm name, the user portion
+			#  MUST either be empty, or begin with "anon".
+			#
+			#  We don't check for the full "anonymous", because
+			#  some vendors don't follow the standards.
+			#
+			if (&outer.request:User-Name !~ /^(anon|@)/) {
+				update request {
+					Module-Failure-Message = "User-Name is not anonymized"
+				}
+				reject
 			}
 		}
 
 		#
-		#  It's OK to have outer "@example.com" and
-		#  inner "bob".  We do more detailed checks
-		#  only if the inner realm exists.
+		#  There's no outer realm.  The outer NAI is different from the
+		#  inner NAI.  The User-Name MUST be anonymized.
 		#
-		#  It's OK to have the same realm name, or
-		#  the outer one is "example.com" and the inner
-		#  is "secure.example.com"
+		#  Otherwise, you could log in as outer "bob", and inner "doug",
+		#  and we'd have no idea which one was correct.
 		#
-		#  Note that we do EQUALITY checks for realm names.
-		#  There is no simple way to do case insensitive checks
-		#  on internationalized domain names.  On top of that,
-		#  allowing outer "anonymous@EXAMPLE.COM" and inner
-		#  "user@example.com" is just stupid.  The user should
-		#  enter the same realm for both inner and outer identities.
-		#
-		if (&Inner-Realm-Name && &Outer-Realm-Name && \
-		    (&Inner-Realm-Name != &Outer-Realm-Name) && \
-		    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
+		elsif (&outer.request:User-Name !~ /^anon/) {
 			update request {
-				Module-Failure-Message += "Inner realm \"%{Inner-Realm-Name}\" and outer realm \"%{Outer-Realm-Name}\" are not from the same domain"
+				Module-Failure-Message = "User-Name is not anonymized"
 			}
 			reject
 		}
 
 		#
-		#  It's OK to have an inner realm and no outer realm.
+		#  Get the inner realm.
+		#
+		if (&User-Name =~ /@([^@]+)$/) {
+			update request {
+				Inner-Realm-Name = "%{1}"
+			}
+
+			#
+			#  Note that we do EQUALITY checks for realm names.
+			#  There is no simple way to do case insensitive checks
+			#  on internationalized domain names.  There is no reason
+			#  to allow outer "anonymous@EXAMPLE.COM" and inner
+			#  "user@example.com".  The user should enter the same
+			#  realm for both identities.
+			#
+			#  If the inner realm isn't the same as the outer realm,
+			#  the inner realm MUST be a subdomain of the outer realm.
+			#
+			if (&Outer-Realm-Name && \
+			    (&Inner-Realm-Name != &Outer-Realm-Name) && \
+			    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
+				update request {
+					Module-Failure-Message = "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
+				}
+				reject
+			}
+
+			#
+			#  It's OK to have an inner realm and no outer realm.
+			#
+			#  That won't work for roaming, but the local RADIUS server
+			#  can still authenticate the user.
+			#
+		}
+
+		#
+		#  It's OK to have an outer realm and no inner realm.
+		#
+		#  It will work for roaming, and the local RADIUS server
+		#  can authenticate the user without the realm.
 		#
 	}
 }
