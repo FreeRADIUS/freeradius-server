@@ -2451,7 +2451,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	if (!request->proxy_reply &&
 	    (fr_radius_verify(packet, request->proxy,
 			      request->home_server->secret) != 0)) {
-		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
+		RWDEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return 0;
 	}
 
@@ -2464,7 +2464,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	    (memcmp(request->proxy_reply->vector,
 		    packet->vector,
 		    sizeof(request->proxy_reply->vector)) != 0)) {
-		RDEBUG2("Ignoring conflicting proxy reply");
+		RWDEBUG("Ignoring conflicting proxy reply");
 		return 0;
 	}
 
@@ -2485,11 +2485,11 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	duplicate.
 	 */
 	if (request->proxy_reply) {
-		RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d",
+		RWDEBUG("Discarding duplicate reply from host %s port %d  - ID: %d",
 			inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  buffer, sizeof(buffer)),
-			packet->src_port, packet->id);
+				  packet->src_port, packet->id);
 		return 0;
 	}
 
