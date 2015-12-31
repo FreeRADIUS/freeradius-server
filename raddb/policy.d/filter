@@ -3,16 +3,10 @@
 #	realms.
 #
 deny_realms {
-	#
-	#  No User-Name, skip.
-	#
-	if (!&User-Name || &User-Name == "") {
-		noop
-	}
-
-	if (&User-Name =~ /@|\\/) {
+	if (&User-Name && &User-Name =~ /@/) {
+	#if (&User-Name && &User-Name =~ /@|\\/) {
 		update reply {
-			&Reply-Message += 'Rejected: User-Name contains a realm'
+			Module-Failure-Message = 'Rejected: User-Name contains a realm'
 		}
 		reject
 	}
@@ -26,89 +20,89 @@ deny_realms {
 #  what constitutes a user name.
 #
 filter_username {
-	#
-	#  No User-Name, skip.
-	#
-	if (!&User-Name || &User-Name == "") {
-		noop
-	}
+	if (&User-Name) {
+		#
+		#  reject mixed case and upper case e.g. "UseRNaMe", "USERNAME"
+		#
+		#if (&User-Name != "%{tolower:%{User-Name}}") {
+		#	reject
+		#}
 
-	#
-	#  reject mixed case and upper case e.g. "UseRNaMe", "USERNAME"
-	#
-	#if (&User-Name != "%{tolower:%{User-Name}}") {
-	#	reject
-	#}
-
-	#
-	#  reject all whitespace
-	#  e.g. "user@ site.com", or "us er", or " user", or "user "
-	#
-	if (&User-Name =~ / /) {
-		update reply {
-			&Reply-Message += 'Rejected: User-Name contains whitespace'
+		#
+		#  reject all whitespace
+		#  e.g. "user@ site.com", or "us er", or " user", or "user "
+		#
+		if (&User-Name =~ / /) {
+			update reply {
+				Module-Failure-Message = 'Rejected: User-Name contains whitespace'
+			}
+			reject
 		}
-		reject
-	}
 
-	#
-	#  reject multiple realm delimiters
-	#  e.g. "user@site.com@site.com"
-	#  e.g. "site.com\site.com\user"
-	#
-	if (&User-Name =~ /[@\\][^@\\]*[@\\]/ ) {
-		update reply {
-			&Reply-Message += 'Rejected: Multiple realm delimiters in User-Name'
+		#
+		#  reject multiple realm delimiters
+		#  e.g. "user@site.com@site.com"
+		#  e.g. "site.com\site.com\user"
+		#
+		if (&User-Name =~ /[@][^@]*[@]/ ) {
+		#if (&User-Name =~ /[@\\][^@\\]*[@\\]/ ) {
+			update reply {
+				Module-Failure-Message = 'Rejected: Multiple realm delimiters in User-Name'
+			}
+			reject
 		}
-		reject
-	}
 
-	#
-	#  reject multiple dots in the realm
-	#  e.g. "user@site..com"
-	#  e.g. "site..com\user"
-	#
-	if (&User-Name =~ /@[^.]*\.\.|\.\.[^.]*\\/ ) {
-		update reply {
-			&Reply-Message += 'Rejected: Realm contains ..s'
+		#
+		#  reject multiple dots in the realm
+		#  e.g. "user@site..com"
+		#  e.g. "site..com\user"
+		#
+		if (&User-Name =~ /@[^.]*\.\./ ) {
+		#if (&User-Name =~ /@[^.]*\.\.|\.\.[^.]*\\/ ) {
+			update reply {
+				Module-Failure-Message = 'Rejected: Realm contains ..s'
+			}
+			reject
 		}
-		reject
-	}
 
-	#
-	#  reject where there is not at least 1 string-dot-string in the realm
-	#  e.g. "user@site"
-	#  e.g. "site\user"
-	#
-	if (&User-Name =~ /@|\\/ && &User-Name !~ /@[^.]+\.[^.]+|[^.]+\.[^.]+\\/)  {
-		update reply {
-			&Reply-Message += 'Rejected: Realm does not have at least one dot separator'
+		#
+		#  reject where there is not at least 1 string-dot-string in the realm
+		#  e.g. "user@site"
+		#  e.g. "site\user"
+		#
+		if (&User-Name =~ /@/ && &User-Name !~ /@[^.]+\.[^.]+/)  {
+		#if (&User-Name =~ /@|\\/ && &User-Name !~ /@[^.]+\.[^.]+|[^.]+\.[^.]+\\/)  {
+			update reply {
+				Module-Failure-Message = 'Rejected: Realm does not have at least one dot separator'
+			}
+			reject
 		}
-		reject
-	}
 
-	#
-	#  reject realms that end with a dot
-	#  e.g. "user@site.com."
-	#  e.g. "site.com.\user"
-	#
-	if (&User-Name =~ /@.*\.$|.*\.\\/)  {
-		update reply {
-			&Reply-Message += 'Rejected: Realm ends with a dot'
+		#
+		#  reject realms that end with a dot
+		#  e.g. "user@site.com."
+		#  e.g. "site.com.\user"
+		#
+		if (&User-Name =~ /@.*\.$/) {
+		#if (&User-Name =~ /@.*\.$|.*\.\\/) {
+			update reply {
+				Module-Failure-Message = 'Rejected: Realm ends with a dot'
+			}
+			reject
 		}
-		reject
-	}
 
-	#
-	#  reject realms that begin with a dot
-	#  e.g. "user@.site.com"
-	#  e.g. ".site.com\user"
-	#
-	if (&User-Name =~ /@\..*$|\..*\\/)  {
-		update reply {
-			&Reply-Message += 'Rejected: Realm begins with a dot'
+		#
+		#  reject realms that begin with a dot
+		#  e.g. "user@.site.com"
+		#  e.g. ".site.com\user"
+		#
+		if (&User-Name =~ /@\..*$/)  {
+		#if (&User-Name =~ /@\..*$|\..*\\/)  {
+			update reply {
+				Module-Failure-Message = 'Rejected: Realm begins with a dot'
+			}
+			reject
 		}
-		reject
 	}
 }
 
@@ -119,14 +113,7 @@ filter_username {
 #  This policy filters them out.
 #
 filter_password {
-	#
-	#  No user password, skip.
-	#
-	if (!&User-Password) {
-		noop
-	}
-	
-	if (&User-Password != "%{string:User-Password}") {
+	if (&User-Password && &User-Password != "%{string:User-Password}") {
 		update request {
 			&Tmp-String-0 := "%{string:User-Password}"
 			&User-Password := "%{string:Tmp-String-0}"
@@ -144,7 +131,7 @@ filter_inner_outer_identity {
 	#
 	#  No inner or outer User-Name? Reject.
 	#
-	if (!&outer.request:User-Name || &outer.request:User-Name == "" || !&User-Name || &User-Name == "") {
+	if (!&outer.request:User-Name || !&User-Name) {
 		update request {
 			Module-Failure-Message = 'Rejected: Inner and outer identities are required for tunnelled authentication'
 		}
@@ -156,68 +143,47 @@ filter_inner_outer_identity {
 	#
 	#  Get the outer stripped user name. Look for the outer realm.
 	#
-	if (&outer.request:User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
-		#  Case sensitive.
+	if (&outer.request:User-Name =~ /^([^@]+)?(@([^@]+)?)?$/) {
+	#if (&outer.request:User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
 		update request {
 			Outer-Stripped-User-Name = "%{1}"
 			Outer-Realm-Name = "%{3}"
 		}
-
-		#  Case insensitive.
-		#update request {
-		#	Outer-Stripped-User-Name = "%{tolower:%{1}}"
-		#	Outer-Realm-Name = "%{tolower:%{3}}"
-		#}
 	}
-	elsif (&outer.request:User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
-		#  Case sensitive.
-		update request {
-			Outer-Stripped-User-Name = "%{3}"
-			Outer-Realm-Name = "%{1}"
-		}
-
-		#  Case insensitive.
-		#update request {
-		#	Outer-Stripped-User-Name = "%{tolower:%{3}}"	
-		#	Outer-Realm-Name = "%{tolower:%{1}}"
-		#}
+	#elsif (&outer.request:User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
+	#	update request {
+	#		Outer-Stripped-User-Name = "%{3}"
+	#		Outer-Realm-Name = "%{1}"
+	#	}
+	#}
+	else {
+		reject
 	}
 
 	#
 	#  Get the inner stripped user name. Look for the inner realm.
 	#
-	if (&User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
-		#  Case sensitive.
+	if (&User-Name =~ /^([^@]+)?(@([^@]+)?)?$/) {
+	#if (&User-Name =~ /^([^@\\]+)?(@([^@\\]+)?)?$/) {
 		update request {
 			Inner-Stripped-User-Name = "%{1}"
 			Inner-Realm-Name = "%{3}"
 		}
-
-		#  Case insensitive.
-		#update request {
-		#	Inner-Stripped-User-Name = "%{tolower:%{1}}"
-		#	Inner-Realm-Name = "%{tolower:%{3}}"
-		#}
 	}
-	elsif (&User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
-		#  Case sensitive.
-		update request {
-			Inner-Stripped-User-Name = "%{3}"
-			Inner-Realm-Name = "%{1}"
-		}
-
-		#  Case insensitive.
-		#update request {
-		#	Inner-Stripped-User-Name = "%{tolower:%{3}}"	
-		#	Inner-Realm-Name = "%{tolower:%{1}}"
-		#}
+	#elsif (&User-Name =~ /^(([^@\\]+)?\\)?([^@\\]+)?$/) {
+	#	update request {
+	#		Inner-Stripped-User-Name = "%{3}"
+	#		Inner-Realm-Name = "%{1}"
+	#	}
+	#}
+	else {
+		reject
 	}
 
 	#
-	#  We require that the inner User-Name not be
-	#  "@realm", "\realm", "anonymous", "anon"
-	#  "anonymous@realm", "realm\anonymous",
-	#  "anon@realm" or "realm\anon".
+	#  We require that the inner User-Name not
+	#  be "anonymous", "anon", "@realm",
+	#  "anonymous@realm" or "anon@realm".
 	#
 	#  The check for "anonymous" is more relaxed,
 	#  disallowing "anon" because some vendors
@@ -249,9 +215,8 @@ filter_inner_outer_identity {
 		#  Perform anonimization checks.
 		#
 		#  We require that the outer User-Name be
-		#  "@realm", "\realm", "anonymous", "anon"
-		#  "anonymous@realm", "realm\anonymous",
-		#  "anon@realm" or "realm\anon".
+		#  "anonymous", "anon", "@realm",
+		#  "anonymous@realm" or "anon@realm".
 		#
 		#  The check for "anonymous" is more relaxed,
 		#  allowing "anon" because some vendors send
@@ -273,15 +238,30 @@ filter_inner_outer_identity {
 		#
 		#  It is OK to have the same realm name, or
 		#  the outer one is "example.com" and the inner
-		#  is "secure.example.com"
+		#  is e.g. "secure.example.com"
+		#
+		#  Note that we do EQUALITY checks for realm names.
+		#  There is no simple way to do case insensitive checks
+		#  on internationalized domain names.  On top of that,
+		#  allowing outer "anonymous@EXAMPLE.COM" and inner
+		#  "user@example.com" is just stupid.  The user should
+		#  enter the same realm for both inner and outer identities.
 		#
 		if (&Outer-Realm-Name != "" && \
 			&Inner-Realm-Name != "" && \
 			&Inner-Realm-Name !~ /(\.)?%{Outer-Realm-Name}$/) {
 			update request {
-				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as or a subrealm of the realm in the anonymized outer identity, '%{outer.request:User-Name}'. Expected '%{Inner-Realm-Name}' or 'subrealm.%{Inner-Realm-Name}'"
+				Module-Failure-Message = "Rejected: Realm in the inner identity, '%{User-Name}', is not the same as or a subrealm of the realm in the anonymized outer identity, '%{outer.request:User-Name}'. Expected '%{Inner-Realm-Name}' or 'subdomain.%{Inner-Realm-Name}'"
 			}
 			reject
 		}
+
+		#
+		#  It's OK to have an outer realm and no inner realm.
+		#
+
+		#
+		#  It's OK to have an inner realm and no outer realm.
+		#
 	}
 }
