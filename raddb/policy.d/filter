@@ -30,7 +30,7 @@ filter_username {
 		#
 		if (&User-Name =~ / /) {
 			update request {
-				&Module-Failure-Message += 'Rejected: Username contains whitespace'
+				&Module-Failure-Message += 'Rejected: User-Name contains whitespace'
 			}
 			reject
 		}
@@ -41,7 +41,7 @@ filter_username {
 		#
 		if (&User-Name =~ /@[^@]*@/ ) {
 			update request {
-				&Module-Failure-Message += 'Rejected: Multiple @ in username'
+				&Module-Failure-Message += 'Rejected: Multiple @ in User-Name'
 			}
 			reject
 		}
@@ -52,7 +52,7 @@ filter_username {
 		#
 		if (&User-Name =~ /\.\./ ) {
 			update request {
-				&Module-Failure-Message += 'Rejected: Username contains ..s'
+				&Module-Failure-Message += 'Rejected: User-Name contains multiple ..s'
 			}
 			reject
 		}
