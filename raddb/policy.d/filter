@@ -169,17 +169,21 @@ filter_inner_identity {
 		#  the outer one is "example.com" and the inner
 		#  is "secure.example.com"
 		#
-		if (&Inner-Realm-Name && \
+		if (&Inner-Realm-Name && &Outer-Realm-Name && \
 		    (&Inner-Realm-Name != &Outer-Realm-Name) && \
 		    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
 			update request {
-				Module-Failure-Message = "Inner and outer realms are not compatible"
+				Module-Failure-Message = "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
 			}
 			reject
 		}
 
 		#
 		#  It's OK to have an outer realm and no inner realm.
+		#
+
+		#
+		#  It's OK to have an inner realm and no outer realm.
 		#
 	}
 }
