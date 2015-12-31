@@ -49,7 +49,7 @@ filter_username {
 		#  e.g. "user@example.com@example.com"
 		#  e.g. "example.com\example.com\user" (disabled by default)
 		#
-		if (&User-Name =~ /[@][^@]*[@]/ ) {
+		if (&User-Name =~ /@[^@]*@/ ) {
 		#if (&User-Name =~ /[@\\][^@\\]*[@\\]/ ) {
 			update request {
 				&Module-Failure-Message += 'Multiple realm delimiters in User-Name'
