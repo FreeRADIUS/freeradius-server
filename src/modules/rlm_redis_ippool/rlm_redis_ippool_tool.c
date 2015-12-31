@@ -725,21 +725,31 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 	uint8_t		*ip_key_p = ip_key;
 
+	int		enqueued = 0;
+
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
 	DEBUG("Adding %s to pool %.*s (%zu)", ip_buff, (int)(key_p - key), key, key_p - key);
 	redisAppendCommand(conn->handle, "MULTI");
+	enqueued++;
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
+	enqueued++;
+
 	/*
 	 *	Only add range if it's not NULL.
 	 *
 	 *	Zero length ranges are allowed, and should be preserved.
 	 */
-	if (range) redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
+	if (range) {
+		redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
+		enqueued++;
+	}
 	redisAppendCommand(conn->handle, "EXEC");
-	return 4;
+	enqueued++;
+
+	return enqueued;
 }
 
 /** Add a range of prefixes
