@@ -433,7 +433,6 @@ int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_STATUS_SERVER:
-	default:
 		break;		/* packet->vector is already random bytes */
 	}
 
@@ -467,7 +466,8 @@ int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
 			break;
 
-		default:
+		case PW_CODE_ACCESS_REQUEST:
+		case PW_CODE_STATUS_SERVER:
 			break;
 		}
 
