@@ -30,7 +30,7 @@ filter_username {
 		#
 		if (&User-Name =~ / /) {
 			update request {
-				&Module-Failure-Message += 'Rejected: User-Name contains whitespace'
+				&Module-Failure-Message += 'User-Name contains whitespace'
 			}
 			reject
 		}
@@ -41,7 +41,7 @@ filter_username {
 		#
 		if (&User-Name =~ /@[^@]*@/ ) {
 			update request {
-				&Module-Failure-Message += 'Rejected: Multiple @ in User-Name'
+				&Module-Failure-Message += 'Multiple @ in User-Name'
 			}
 			reject
 		}
@@ -52,7 +52,7 @@ filter_username {
 		#
 		if (&User-Name =~ /\.\./ ) {
 			update request {
-				&Module-Failure-Message += 'Rejected: User-Name contains multiple ..s'
+				&Module-Failure-Message += 'User-Name contains multiple ..s'
 			}
 			reject
 		}
@@ -63,7 +63,7 @@ filter_username {
 		#
 		if ((&User-Name =~ /@/) && (&User-Name !~ /@(.+)\.(.+)$/))  {
 			update request {
-				&Module-Failure-Message += 'Rejected: Realm does not have at least one dot separator'
+				&Module-Failure-Message += 'Realm does not have at least one dot separator'
 			}
 			reject
 		}
@@ -74,7 +74,7 @@ filter_username {
 		#
 		if (&User-Name =~ /\.$/)  {
 			update request {
-				&Module-Failure-Message += 'Rejected: Realm ends with a dot'
+				&Module-Failure-Message += 'Realm ends with a dot'
 			}
 			reject
 		}
@@ -85,7 +85,7 @@ filter_username {
 		#
 		if (&User-Name =~ /@\./)  {
 			update request {
-				&Module-Failure-Message += 'Rejected: Realm begins with a dot'
+				&Module-Failure-Message += 'Realm begins with a dot'
 			}
 			reject
 		}
@@ -114,7 +114,7 @@ filter_inner_identity {
 	#
 	if (!&outer.request:User-Name || !&User-Name) {
 		update request {
-			Module-Failure-Message = "User-Name is required for tunneled authentication"
+			Module-Failure-Message += 'User-Name is required for tunneled authentication'
 		}
 		reject
 	}
@@ -137,7 +137,7 @@ filter_inner_identity {
 		if ((&outer.request:User-Name !~ /^@/) && \
 		    (&outer.request:User-Name !~ /^anon/)) {
 			update request {
-				Module-Failure-Message = "User-Name is not correctly anonymized"
+				Module-Failure-Message += "Bad outer identity, expected \"%{User-Name}\" or \"anon.*\""
 			}
 			reject
 		}
@@ -180,14 +180,10 @@ filter_inner_identity {
 		    (&Inner-Realm-Name != &Outer-Realm-Name) && \
 		    (&Inner-Realm-Name !~ /\.%{Outer-Realm-Name}$/)) {
 			update request {
-				Module-Failure-Message = "Inner realm '%{Inner-Realm-Name}' and outer realm '%{Outer-Realm-Name}' are not from the same domain."
+				Module-Failure-Message += "Inner realm \"%{Inner-Realm-Name}\" and outer realm \"%{Outer-Realm-Name}\" are not from the same domain"
 			}
 			reject
 		}
-
-		#
-		#  It's OK to have an outer realm and no inner realm.
-		#
 
 		#
 		#  It's OK to have an inner realm and no outer realm.
