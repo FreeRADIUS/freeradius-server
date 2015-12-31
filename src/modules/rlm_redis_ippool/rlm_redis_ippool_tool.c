@@ -202,9 +202,9 @@ static char lua_remove_cmd[] =
 static void NEVER_RETURNS usage(int ret) {
 	INFO("Usage: %s [[-a|-d|-r] -p] [options] <server[:port]> <pool> [<range>]", name);
 	INFO("Pool management:");
-	INFO("  -a <prefix>            Add addresses/prefixes to the pool");
-	INFO("  -d <prefix>            Delete addresses/prefixes in this range");
-	INFO("  -r <prefix>            Release addresses/prefixes in this range");
+	INFO("  -a <prefix>            Add address(es)/prefix(es) to the pool");
+	INFO("  -d <prefix>            Delete address(es)/prefix(es) in this range");
+	INFO("  -r <prefix>            Release address(es)/prefix(es) in this range");
 	INFO("  -s <prefix>            Show addresses/prefix in this range");
 	INFO("  -p <prefix_len>        Length of prefix to allocate (defaults to 32/128)");
 	INFO("                         This is used primarily for IPv6 where a prefix is");
@@ -1143,7 +1143,7 @@ do { \
 		if (driver_add_lease(&count, conf->driver, p) < 0) {
 			exit(1);
 		}
-		INFO("Added %" PRIu64 " addresses/prefixes", count);
+		INFO("Added %" PRIu64 " address(es)/prefix(es)", count);
 	}
 		break;
 
@@ -1154,7 +1154,7 @@ do { \
 		if (driver_remove_lease(&count, conf->driver, p) < 0) {
 			exit(1);
 		}
-		INFO("Removed %" PRIu64 " addresses/prefixes", count);
+		INFO("Removed %" PRIu64 " address(es)/prefix(es)", count);
 	}
 		continue;
 
@@ -1165,7 +1165,7 @@ do { \
 		if (driver_release_lease(&count, conf->driver, p) < 0) {
 			exit(1);
 		}
-		INFO("Released %" PRIu64 " addresses/prefixes", count);
+		INFO("Released %" PRIu64 " address(es)/prefix(es)", count);
 	}
 		continue;
 
@@ -1179,7 +1179,7 @@ do { \
 		}
 
 		len = talloc_array_length(leases);
-		INFO("Retrieved information for %zu addresses/prefixes", len - 1);
+		INFO("Retrieved information for %zu address(es)/prefix(es)", len - 1);
 		for (i = 0; i < (len - 1); i++) {
 			char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
 			char	time_buff[30];
