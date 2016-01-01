@@ -210,11 +210,6 @@ filter_inner_outer_identity {
 	#  be "anonymous", "anon", "@realm",
 	#  "anonymous@realm" or "anon@realm".
 	#
-	#  The check for "anonymous" is more relaxed,
-	#  disallowing "anon" because some vendors
-	#  send this in the outer instead of
-	#  following the standards.
-	#
 	if (&Inner-Stripped-User-Name =~ /^(anon(ymous)?)?$/) {
 		update request {
 			&Module-Failure-Message += "Inner identity \"%{User-Name}\" cannot be anonymized. Expected something other than \"anonymous\", \"anon\" or empty string"
