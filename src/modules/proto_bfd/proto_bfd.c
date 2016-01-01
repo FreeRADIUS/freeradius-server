@@ -1377,8 +1377,8 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 			request->log.lvl = RAD_REQUEST_LVL_DEBUG2;
 			request->log.func = vradlog_request;
 		}
-		request->component = "";
-		request->module = "";
+		request->component = NULL;
+		request->module = NULL;
 
 		DEBUG2("server %s {", request->server);
 		process_authorize(0, request);

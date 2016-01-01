@@ -1013,7 +1013,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 
 	rcode = modcall(comp, list, request);
 
-	request->module = "";
+	request->module = NULL;
 	request->component = "<core>";
 	return rcode;
 }

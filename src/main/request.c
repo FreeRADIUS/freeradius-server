@@ -105,7 +105,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	gettimeofday(&request->timestamp, NULL);
 	request->log.lvl = rad_debug_lvl; /* Default to global debug level */
 
-	request->module = "";
+	request->module = NULL;
 	request->component = "<core>";
 	request->log.func = vradlog_request;
 
@@ -199,7 +199,8 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	 *	Copy debug information.
 	 */
 	memcpy(&(fake->log), &(request->log), sizeof(fake->log));
-	fake->log.indent = 0;	/* Apart from the indent which we reset */
+	fake->log.unlang_indent = 0;	/* Apart from the indent which we reset */
+	fake->log.module_indent = 0;	/* Apart from the indent which we reset */
 
 	return fake;
 }

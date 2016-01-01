@@ -297,8 +297,10 @@ struct rad_request {
 		log_lvl_t	lvl;		//!< Controls the verbosity of debug statements regarding
 						//!< the request.
 
-		uint8_t		indent;		//!< By how much to indent log messages. uin8_t so it's obvious
+		uint8_t		unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
 						//!< when a request has been exdented too much.
+		uint8_t		module_indent;	//!< Indentation after the module prefix name.
+
 		fr_log_t	*output;	//!< Output log destination.  Over-rides the global one.
 	} log;
 

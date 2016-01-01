@@ -107,7 +107,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	request->rcode = sp->modinst->module->methods[component](sp->modinst->data, request);
 	safe_unlock(sp->modinst);
 
-	request->module = "";
+	request->module = NULL;
 
 	/*
 	 *	Wasn't blocked, and now is.  Complain!

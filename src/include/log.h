@@ -262,14 +262,26 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
  * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
  *	 only RINFO, RWARN, RERROR etc...
  */
-#define RINDENT() (request->log.indent += 2)
+#define RINDENT() do {\
+	if (request->module) {\
+		request->log.module_indent += 2;\
+	} else {\
+		request->log.unlang_indent += 2;\
+	}\
+} while(0)
 
 /** Exdent (unindent) R* messages by one level
  *
  * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
  *	 only RINFO, RWARN, RERROR etc...
  */
-#define REXDENT() (request->log.indent -= 2)
+#define REXDENT() do {\
+	if (request->module) {\
+		request->log.module_indent -= 2;\
+	} else {\
+		request->log.unlang_indent -= 2;\
+	}\
+} while(0)
 
 /** Output string with error marker, showing where format error occurred
  *

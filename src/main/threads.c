@@ -460,7 +460,7 @@ retry:
 	rad_assert(request->magic == REQUEST_MAGIC);
 
 	request->component = "<core>";
-	request->module = "";
+	request->module = NULL;
 	request->child_state = REQUEST_RUNNING;
 
 	/*

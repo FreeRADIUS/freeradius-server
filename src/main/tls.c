@@ -1334,7 +1334,7 @@ static rlm_rcode_t cache_process(REQUEST *request, char const *virtual_server, i
 	 *	Run it through the appropriate virtual server.
 	 */
 	request->server = virtual_server;
-	request->module = "cache";
+	request->module = NULL;
 
 	rcode = process_authorize(autz_type + 1000, request);
 

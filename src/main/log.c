@@ -214,14 +214,14 @@ const FR_NAME_NUMBER log_str2dst[] = {
 bool log_dates_utc = false;
 
 fr_log_t default_log = {
-	.colourise = false,	//!< Will be set later. Should be off before we do terminal detection.
+	.colourise = false,		//!< Will be set later. Should be off before we do terminal detection.
 	.fd = STDOUT_FILENO,
 	.dst = L_DST_STDOUT,
 	.file = NULL,
 };
 
-static int stderr_fd = -1;	//!< The original unmolested stderr file descriptor
-static int stdout_fd = -1;	//!< The original unmolested stdout file descriptor
+static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
+static int stdout_fd = -1;		//!< The original unmolested stdout file descriptor
 
 static char const spaces[] = "                                                                                                                        ";
 
@@ -640,7 +640,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 
 	char		*p;
 	char const	*extra = "";
-	uint8_t		indent;
+	uint8_t		unlang_indent, module_indent;
 	va_list		aq;
 
 	rad_assert(request);
@@ -737,9 +737,13 @@ print_msg:
 	/*
 	 *	Make sure the indent isn't set to something crazy
 	 */
-	indent = request->log.indent > sizeof(spaces) - 1 ?
-		 sizeof(spaces) - 1 :
-		 request->log.indent;
+	unlang_indent = request->log.unlang_indent > sizeof(spaces) - 1 ?
+			sizeof(spaces) - 1 :
+			request->log.unlang_indent;
+
+	module_indent = request->log.module_indent > sizeof(spaces) - 1 ?
+			sizeof(spaces) - 1 :
+			request->log.module_indent;
 
 	/*
 	 *	Logging to a file descriptor
@@ -767,14 +771,14 @@ print_msg:
 		p = strrchr(time_buff, '\n');
 		if (p) p[0] = '\0';
 
-		if (request->module && (request->module[0] != '\0')) {
-			fprintf(fp, "(%u)  %s%s%.*s  %s - %s\n",
+		if (request->module) {
+			fprintf(fp, "(%u)  %s%s%.*s %s - %.*%s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
-				indent, spaces, request->module, buffer);
+				unlang_indent, spaces, request->module, module_indent, spaces, buffer);
 		} else {
 			fprintf(fp, "(%u)  %s%s%.*s%s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
-				indent, spaces, buffer);
+				unlang_indent, spaces, buffer);
 		}
 		fclose(fp);
 		return;
@@ -797,12 +801,15 @@ print_msg:
 		break;
 	}
 
-	if (request->module && (request->module[0] != '\0')) {
-		radlog_always(type, "(%u) %.*s  %s - %s%s", request->number,
-			      indent, spaces, request->module, extra, buffer);
+	if (request->module) {
+		radlog_always(type, "(%u)  %.*s%s - %.*s%s%s", request->number,
+			      unlang_indent, spaces,
+			      request->module,
+			      module_indent, spaces,
+			      extra, buffer);
 	} else {
-		radlog_always(type, "(%u) %.*s%s%s", request->number,
-			      indent, spaces, extra, buffer);
+		radlog_always(type, "(%u)  %.*s%s%s", request->number,
+			      unlang_indent, spaces, extra, buffer);
 	}
 }
 
@@ -872,7 +879,8 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			   char const *msg, size_t idx, char const *error)
 {
 	char const *prefix = "";
-	uint8_t indent;
+	uint8_t unlang_indent;
+	uint8_t module_indent;
 
 	rad_assert(request);
 
@@ -887,11 +895,14 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	/*
 	 *  Don't want format markers being indented
 	 */
-	indent = request->log.indent;
-	request->log.indent = 0;
+	unlang_indent = request->log.unlang_indent;
+	module_indent = request->log.module_indent;
+	request->log.unlang_indent = 0;
+	request->log.module_indent = 0;
 
 	radlog_request(type, lvl, request, "%s%s", prefix, msg);
 	radlog_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, error);
 
-	request->log.indent = indent;
+	request->log.unlang_indent = unlang_indent;
+	request->log.module_indent = module_indent;
 }
