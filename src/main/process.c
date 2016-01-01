@@ -1480,9 +1480,7 @@ static void request_running(REQUEST *request, int action)
 
 		rad_assert(request->handle != NULL);
 		ret = request->handle(request);
-		if (ret < 0) {
-			RWDEBUG("State function returned error (%i): %s", ret, fr_strerror());
-		}
+		if (ret < 0) REDEBUG2("State callback returned error (%i): %s", ret, fr_strerror());
 
 #ifdef WITH_PROXY
 		/*
@@ -3200,7 +3198,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	request->process = proxy_wait_for_reply;
 	request->child_state = REQUEST_PROXIED;
 	request->component = "<REQUEST_PROXIED>";
-	request->module = "";
+	request->module = NULL;
 	NO_CHILD_THREAD;
 
 	/*

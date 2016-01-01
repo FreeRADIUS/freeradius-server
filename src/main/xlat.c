@@ -1924,9 +1924,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_REQUEST_PROCESSING_STAGE:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
-		if (request->component) {
-			return talloc_typed_strdup(ctx, request->component);
-		}
+		if (request->component) return talloc_typed_strdup(ctx, request->component);
 		return talloc_typed_strdup(ctx, "server_core");
 
 	case PW_VIRTUAL_SERVER:

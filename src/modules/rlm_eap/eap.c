@@ -183,10 +183,9 @@ static int eap_module_call(eap_module_t *module, eap_session_t *eap_session)
 	RDEBUG2("Calling submodule %s to process data", module->type->name);
 
 	request->module = module->type->name;
-
 	rcode = eap_session->process(module->instance, eap_session);
-
 	request->module = caller;
+
 	return rcode;
 }
 

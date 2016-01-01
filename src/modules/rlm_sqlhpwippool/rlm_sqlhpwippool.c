@@ -274,17 +274,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	sql_inst = module_instantiate(cf_section_sub_find(main_config.config, "modules"), inst->sql_instance_name);
 	if (!sql_inst) {
-		cf_log_err_cs(conf, "Cannot find SQL module instance "
-			"named \"%s\"",
-			inst->sql_instance_name);
+		cf_log_err_cs(conf, "Cannot find SQL module instance named \"%s\"",
+			      inst->sql_instance_name);
 		return -1;
 	}
 
 	/* check if the given instance is really a rlm_sql instance */
 	if (strcmp(sql_inst->module->name, "rlm_sql") != 0) {
-		cf_log_err_cs(conf, "Module \"%s\""
-		       " is not an instance of the rlm_sql module",
-		       inst->sql_instance_name);
+		cf_log_err_cs(conf, "Module \"%s\" is not an instance of the rlm_sql module",
+			      inst->sql_instance_name);
 		return -1;
 	}
 
