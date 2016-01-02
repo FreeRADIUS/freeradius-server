@@ -151,6 +151,91 @@ static bool tls_psk_identity_is_safe(const char *identity)
 	return true;
 }
 
+/** Print errors raised by OpenSSL I/O functions
+ *
+ * Drains the thread local OpenSSL error queue, and prints out errors
+ * based on the SSL handle and the return code of the I/O  function.
+ *
+ * OpenSSL lists I/O functions to be:
+ *   - SSL_connect
+ *   - SSL_accept
+ *   - SSL_do_handshake
+ *   - SSL_read
+ *   - SSL_peek
+ *   - SSL_write
+ *
+ * @param request The current request (may be NULL).
+ * @param session The current tls_session.
+ * @param ret from the I/O operation.
+ * @param operation Name of the function and operation.
+ * @return
+ *	- 0 TLS session cannot continue.
+ *	- 1 TLS session may still be viable.
+ */
+static int tls_error_log(REQUEST *request, tls_session_t *session, int ret, char const *operation)
+{
+	int session_error;
+	unsigned long queued_error;
+
+	/*
+	 *	Drain the errors OpenSSL puts in Thread Local Storage
+	 *	There may be more than one...
+	 */
+	while ((queued_error = ERR_get_error()) != 0) {
+		char const *p;
+
+		p = ERR_error_string(queued_error, NULL);
+		if (p) ROPTIONAL(REDEBUG, ERROR, "%s", p);
+	}
+
+	session_error = SSL_get_error(session->ssl, ret);
+	switch (session_error) {
+	/*
+	 *	These seem to be harmless and already "dealt
+	 *	with" by our non-blocking environment. NB:
+	 *	"ZERO_RETURN" is the clean "error"
+	 *	indicating a successfully closed SSL
+	 *	tunnel. We let this happen because our IO
+	 *	loop should not appear to have broken on
+	 *	this condition - and outside the IO loop, the
+	 *	"shutdown" state is checked.
+	 *
+	 *	Don't print anything if we ignore the error.
+	 */
+	case SSL_ERROR_NONE:
+	case SSL_ERROR_WANT_READ:
+	case SSL_ERROR_WANT_WRITE:
+	case SSL_ERROR_WANT_X509_LOOKUP:
+	case SSL_ERROR_ZERO_RETURN:
+		break;
+
+	/*
+	 *	These seem to be indications of a genuine
+	 *	error that should result in the SSL tunnel
+	 *	being regarded as "dead".
+	 */
+	case SSL_ERROR_SYSCALL:
+		ROPTIONAL(REDEBUG, ERROR, "TLS session failed in %s: System call (I/O) error (%i)", operation, ret);
+		return 0;
+
+	case SSL_ERROR_SSL:
+		ROPTIONAL(REDEBUG, ERROR, "TLS session failed in %s: TLS protocol error (%i)", operation, ret);
+		return 0;
+
+	/*
+	 *	For any other errors that (a) exist, and (b)
+	 *	crop up - we need to interpret what to do with
+	 *	them - so "politely inform" the caller that
+	 *	the code needs updating here.
+	 */
+	default:
+		ROPTIONAL(REDEBUG, ERROR, "TLS session failed in %s: TLS session error %i (%i)",
+			  operation, session_error, ret);
+		return 0;
+	}
+
+	return 1;
+}
 
 /** Determine the PSK to use
  *
@@ -315,6 +400,7 @@ static int _tls_session_free(tls_session_t *session)
  */
 tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd)
 {
+	int		ret;
 	int		verify_mode;
 	tls_session_t	*session = NULL;
 	REQUEST		*request;
@@ -357,9 +443,10 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)session);
 	SSL_set_fd(session->ssl, fd);
-	if (SSL_connect(session->ssl) <= 0) {
-		int err;
-		while ((err = ERR_get_error())) ERROR("tls: %s", ERR_error_string(err, NULL));
+
+	ret = SSL_connect(session->ssl);
+	if (ret <= 0) {
+		tls_error_log(NULL, session, ret, STRINGIFY(__FUNCTION__) " (SSL_connect)");
 		talloc_free(session);
 
 		return NULL;
@@ -511,68 +598,6 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 }
 
 /*
- *	Print out some text describing the error.
- */
-static int tls_error_log(REQUEST *request, SSL *s, int ret, char const *text)
-{
-	int e;
-	unsigned long l;
-
-	if ((l = ERR_get_error()) != 0) {
-		char const *p = ERR_error_string(l, NULL);
-
-		if (p) ROPTIONAL(REDEBUG, ERROR, "TLS says: %s", p);
-	}
-
-	e = SSL_get_error(s, ret);
-	switch (e) {
-	/*
-	 *	These seem to be harmless and already "dealt
-	 *	with" by our non-blocking environment. NB:
-	 *	"ZERO_RETURN" is the clean "error"
-	 *	indicating a successfully closed SSL
-	 *	tunnel. We let this happen because our IO
-	 *	loop should not appear to have broken on
-	 *	this condition - and outside the IO loop, the
-	 *	"shutdown" state is checked.
-	 *
-	 *	Don't print anything if we ignore the error.
-	 */
-	case SSL_ERROR_NONE:
-	case SSL_ERROR_WANT_READ:
-	case SSL_ERROR_WANT_WRITE:
-	case SSL_ERROR_WANT_X509_LOOKUP:
-	case SSL_ERROR_ZERO_RETURN:
-		break;
-
-	/*
-	 *	These seem to be indications of a genuine
-	 *	error that should result in the SSL tunnel
-	 *	being regarded as "dead".
-	 */
-	case SSL_ERROR_SYSCALL:
-		ROPTIONAL(REDEBUG, ERROR, "%s failed in a system call (%d), TLS session failed", text, ret);
-		return 0;
-
-	case SSL_ERROR_SSL:
-		ROPTIONAL(REDEBUG, ERROR, "%s failed inside of TLS (%d), TLS session failed", text, ret);
-		return 0;
-
-	/*
-	 *	For any other errors that (a) exist, and (b)
-	 *	crop up - we need to interpret what to do with
-	 *	them - so "politely inform" the caller that
-	 *	the code needs updating here.
-	 */
-	default:
-		ROPTIONAL(REDEBUG, ERROR, "FATAL TLS error: %d", e);
-		return 0;
-	}
-
-	return 1;
-}
-
-/*
  * We are the server, we always get the dirty data
  * (Handshake data is also considered as dirty data)
  * During handshake, since SSL API handles itself,
@@ -584,29 +609,33 @@ static int tls_error_log(REQUEST *request, SSL *s, int ret, char const *text)
  *
  * Fill the Bio with the dirty data to clean it
  * Get the cleaned data from SSL, if it is not Handshake data
+ *
+ * @return
+ *	- 0 on error.
+ *	- 1 on success.
  */
 int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 {
-	int err;
+	int ret;
 
 	if (session->invalid_hb_used) return 0;
 
-	err = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
-	if (err != (int) session->dirty_in.used) {
-		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, err);
+	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+	if (ret != (int)session->dirty_in.used) {
+		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, ret);
 		record_init(&session->dirty_in);
 		return 0;
 	}
 	record_init(&session->dirty_in);
 
-	err = SSL_read(session->ssl, session->clean_out.data + session->clean_out.used,
+	ret = SSL_read(session->ssl, session->clean_out.data + session->clean_out.used,
 		       sizeof(session->clean_out.data) - session->clean_out.used);
-	if (err > 0) {
-		session->clean_out.used += err;
+	if (ret > 0) {
+		session->clean_out.used += ret;
 		return 1;
 	}
 
-	if (!tls_error_log(request, session->ssl, err, "TLS_read")) return 0;
+	if (!tls_error_log(request, session, ret, STRINGIFY(__FUNCTION__) " (SSL_read)")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
 	if (SSL_is_init_finished(session->ssl)) {
@@ -636,12 +665,12 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 	}
 #endif
 
-	err = BIO_ctrl_pending(session->from_ssl);
-	if (err > 0) {
-		err = BIO_read(session->from_ssl, session->dirty_out.data,
+	ret = BIO_ctrl_pending(session->from_ssl);
+	if (ret > 0) {
+		ret = BIO_read(session->from_ssl, session->dirty_out.data,
 			       sizeof(session->dirty_out.data));
-		if (err > 0) {
-			session->dirty_out.used = err;
+		if (ret > 0) {
+			session->dirty_out.used = ret;
 
 		} else if (BIO_should_retry(session->from_ssl)) {
 			record_init(&session->dirty_in);
@@ -649,8 +678,20 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 			return 1;
 
 		} else {
-			tls_error_log(request, session->ssl, err, "BIO_read");
+			unsigned long e;
+
+			/*
+			 *	Return codes from BIO_* are not compatible
+			 *	with tls_error_log.
+			 */
+			while ((e = ERR_get_error()) != 0) {
+				char const *p;
+
+				p = ERR_error_string(e, NULL);
+				if (p) REDEBUG("%s", p);
+			}
 			record_init(&session->dirty_in);
+
 			return 0;
 		}
 	} else {
@@ -670,8 +711,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
  */
 int tls_handshake_send(REQUEST *request, tls_session_t *session)
 {
-	int err;
-
 	/*
 	 *	If there's un-encrypted data in 'clean_in', then write
 	 *	that data to the SSL session, and then call the BIO function
@@ -682,18 +721,20 @@ int tls_handshake_send(REQUEST *request, tls_session_t *session)
 	 *	contain the data to send to the client.
 	 */
 	if (session->clean_in.used > 0) {
-		int written;
+		int ret;
 
-		written = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
-		record_to_buff(&session->clean_in, NULL, written);
+		ret = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
+		record_to_buff(&session->clean_in, NULL, ret);
 
 		/* Get the dirty data from Bio to send it */
-		err = BIO_read(session->from_ssl, session->dirty_out.data,
+		ret = BIO_read(session->from_ssl, session->dirty_out.data,
 			       sizeof(session->dirty_out.data));
-		if (err > 0) {
-			session->dirty_out.used = err;
+		if (ret > 0) {
+			session->dirty_out.used = ret;
 		} else {
-			tls_error_log(request, session->ssl, err, "handshake_send");
+			if (!tls_error_log(request, session, ret, STRINGIFY(__FUNCTION__) " (SSL_write)")) {
+				return 0;
+			}
 		}
 	}
 
@@ -3574,15 +3615,15 @@ void tls_fail(tls_session_t *session)
 
 fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
 {
-	int err;
+	int ret;
 
 	/*
 	 *	Decrypt the complete record.
 	 */
-	err = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
-	if (err != (int) session->dirty_in.used) {
+	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+	if (ret != (int) session->dirty_in.used) {
 		record_init(&session->dirty_in);
-		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, err);
+		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, ret);
 		return FR_TLS_FAIL;
 	}
 
@@ -3598,11 +3639,11 @@ fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
 	 */
-	err = SSL_read(session->ssl, session->clean_out.data, sizeof(session->clean_out.data));
-	if (err < 0) {
+	ret = SSL_read(session->ssl, session->clean_out.data, sizeof(session->clean_out.data));
+	if (ret < 0) {
 		int code;
 
-		code = SSL_get_error(session->ssl, err);
+		code = SSL_get_error(session->ssl, ret);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
 			RWDEBUG("Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
@@ -3610,26 +3651,23 @@ fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
 			return FR_TLS_RECORD_FRAGMENT_MORE;
 
 		case SSL_ERROR_WANT_WRITE:
-			DEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
 			break;
 
 		default:
-			DEBUG("Error in fragmentation logic: %s", ERR_error_string(code, NULL));
-
-			/*
-			 *	FIXME: Call tls_error_log?
-			 */
+			REDEBUG("Error in fragmentation logic");
+			tls_error_log(request, session, ret, STRINGIFY(__FUNCTION__) " (SSL_read)");
 			break;
 		}
 		return FR_TLS_FAIL;
 	}
 
-	if (err == 0) RWDEBUG("No data inside of the tunnel");
+	if (ret == 0) RWDEBUG("No data inside of the tunnel");
 
 	/*
 	 *	Passed all checks, successfully decrypted data
 	 */
-	session->clean_out.used = err;
+	session->clean_out.used = ret;
 
 	return FR_TLS_RECORD_COMPLETE;
 }
