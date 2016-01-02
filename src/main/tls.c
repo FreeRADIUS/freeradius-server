@@ -1724,7 +1724,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	/*
-	 *	These are fine for OCSP too, we dont' *expect* to always
+	 *	These are fine for OCSP too, we don't *expect* to always
 	 *	have a cached OCSP status.
 	 */
 	case RLM_MODULE_NOTFOUND:
@@ -1777,7 +1777,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	if (conf->ocsp_use_nonce) OCSP_request_add1_nonce(req, NULL, 8);
 
 	/*
-	 * Send OCSP Request and get OCSP Response
+	 *	Send OCSP Request and get OCSP Response
 	 */
 
 	/* Get OCSP responder URL */
