@@ -206,11 +206,16 @@ filter_inner_outer_identity {
 	}
 
 	#
-	#  We require that the inner User-Name not
-	#  be "anonymous", "anon", "@realm",
-	#  "anonymous@realm" or "anon@realm".
+	#  By default, we require that the inner User-Name not
+	#  be "anonymous", "anon", "@realm", "anonymous@realm",
+	#  "anon@realm" or empty string.
+	#
+	#  For a more relaxed definition of anonymous, requiring
+	#  that the inner User-Name not start with anon or be an
+	#  empty string, use the alternative if statement.
 	#
 	if (&Inner-Stripped-User-Name =~ /^(anon(ymous)?)?$/) {
+	#if (&Inner-Stripped-User-Name =~ /^$|^anon/) {
 		update request {
 			&Module-Failure-Message += "Inner identity \"%{User-Name}\" cannot be anonymized. Expected something other than \"anonymous\", \"anon\" or empty string"
 		}
@@ -231,18 +236,22 @@ filter_inner_outer_identity {
 	else {
 		#
 		#  The stripped inner and outer User-Name are different.
-		#  Perform anonimization checks.
+		#  Perform anonymization checks.
 		#
-		#  We require that the outer User-Name be
+		#  By default, we require that the outer User-Name be
 		#  "anonymous", "anon", "@realm",
 		#  "anonymous@realm" or "anon@realm".
 		#
-		#  The check for "anonymous" is more relaxed,
-		#  allowing "anon" because some vendors send
+		#  The check for "anonymous" is relaxed, also
+		#  allowing "anon", because some vendors send
 		#  this instead of following the standards.
 		#
-		if (&Outer-Realm-Name && \
-			&Outer-Stripped-User-Name !~ /^(anon(ymous)?)?$/) {
+		#  For a more relaxed check that just requires that
+		#  the outer User-Name start with anon, use the
+		#  alternative if statement instead.
+		#
+		if (&Outer-Realm-Name && &Outer-Stripped-User-Name !~ /^(anon(ymous)?)?$/) {
+		#if (&Outer-Realm-Name && &Outer-Stripped-User-Name !~ /^$|^anon/) {
 			update request {
 				&Module-Failure-Message += "Outer identity \"%{outer.request:User-Name}\" is not anonymized correctly. Expected an empty string or \"anonymous\" instead of \"%{Outer-Stripped-User-Name}\""
 			}
@@ -250,6 +259,7 @@ filter_inner_outer_identity {
 		}
 		elsif (!&Outer-Realm-Name && \
 			&Outer-Stripped-User-Name !~ /^anon(ymous)?$/) {
+			#&Outer-Stripped-User-Name !~ /^anon/) {
 			update request {
 				&Module-Failure-Message += "Outer identity \"%{outer.request:User-Name}\" is not anonymized correctly. Expected \"anonymous\" instead of \"%{Outer-Stripped-User-Name}\""
 			}
