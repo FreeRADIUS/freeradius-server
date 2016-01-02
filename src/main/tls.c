@@ -1948,20 +1948,25 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		RINDENT();
 		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 		REXDENT();
-		if(next_update) {
+
+		if (next_update) {
 			RDEBUG2("ocsp: New information available at:");
 			ASN1_GENERALIZEDTIME_print(ssl_log, next_update);
 			RINDENT();
 			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 			REXDENT();
-		} 
+		}
 	}
 
 	/*
-	 *	Sometimes we already know what 'now' is depending
-	 *	on the code path, other times we don't.
+	 *	When an OCSP validation command is used with OpenSSL
+	 *	next_update is NULL.
 	 */
-	if(next_update) {
+	if (next_update) {
+		/*
+		 *	Sometimes we already know what 'now' is depending
+		 *	on the code path, other times we don't.
+		 */
 		if (now.tv_sec == 0) gettimeofday(&now, NULL);
 		next = ocsp_asn1time_to_epoch(next_update);
 		if (now.tv_sec < next){
@@ -1975,7 +1980,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 			RDEBUG2("ocsp: Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
 		}
 	} else {
-		RDEBUG2("ocsp: Update time is not provided. Not adding &TLS-OCSP-Next-Update");
+		RDEBUG2("ocsp: Update time not provided.  Not adding &TLS-OCSP-Next-Update");
 	}
 
 	switch (status) {
