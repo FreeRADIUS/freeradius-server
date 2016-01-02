@@ -257,9 +257,8 @@ filter_inner_outer_identity {
 			}
 			reject
 		}
-		elsif (!&Outer-Realm-Name && \
-			&Outer-Stripped-User-Name !~ /^anon(ymous)?$/) {
-			#&Outer-Stripped-User-Name !~ /^anon/) {
+		elsif (!&Outer-Realm-Name && &Outer-Stripped-User-Name !~ /^anon(ymous)?$/) {
+		#elsif (!&Outer-Realm-Name && &Outer-Stripped-User-Name !~ /^anon/) {
 			update request {
 				&Module-Failure-Message += "Outer identity \"%{outer.request:User-Name}\" is not anonymized correctly. Expected \"anonymous\" instead of \"%{Outer-Stripped-User-Name}\""
 			}
