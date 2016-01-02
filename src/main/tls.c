@@ -1948,29 +1948,34 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		RINDENT();
 		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 		REXDENT();
-
-		RDEBUG2("ocsp: New information available at:");
-		ASN1_GENERALIZEDTIME_print(ssl_log, next_update);
-		RINDENT();
-		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
-		REXDENT();
+		if(next_update) {
+			RDEBUG2("ocsp: New information available at:");
+			ASN1_GENERALIZEDTIME_print(ssl_log, next_update);
+			RINDENT();
+			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+			REXDENT();
+		} 
 	}
 
 	/*
 	 *	Sometimes we already know what 'now' is depending
 	 *	on the code path, other times we don't.
 	 */
-	if (now.tv_sec == 0) gettimeofday(&now, NULL);
-	next = ocsp_asn1time_to_epoch(next_update);
-	if (now.tv_sec < next){
-		RDEBUG2("ocsp: Adding OCSP TTL attribute");
-		RINDENT();
-		vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
-		vp->vp_integer = next - now.tv_sec;
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
-		REXDENT();
+	if(next_update) {
+		if (now.tv_sec == 0) gettimeofday(&now, NULL);
+		next = ocsp_asn1time_to_epoch(next_update);
+		if (now.tv_sec < next){
+			RDEBUG2("ocsp: Adding OCSP TTL attribute");
+			RINDENT();
+			vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
+			vp->vp_integer = next - now.tv_sec;
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+			REXDENT();
+		} else {
+			RDEBUG2("ocsp: Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
+		}
 	} else {
-		RDEBUG2("ocsp: Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
+		RDEBUG2("ocsp: Update time is not provided. Not adding &TLS-OCSP-Next-Update");
 	}
 
 	switch (status) {
