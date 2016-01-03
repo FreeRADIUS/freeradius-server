@@ -701,7 +701,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 
 	*config = talloc_zero(inst, ldap_acct_section_t);
 	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
-		LDAP_ERR("Failed parsing configuration for section %s", name);
+		ERROR("Failed parsing configuration for section %s", name);
 
 		return -1;
 	}
@@ -741,7 +741,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
 					false, rlm_ldap_groupcmp, inst) < 0) {
-		LDAP_ERR("Error registering group comparison: %s", fr_strerror());
+		ERROR("Error registering group comparison: %s", fr_strerror());
 		goto error;
 	}
 
@@ -756,7 +756,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		memset(&flags, 0, sizeof(flags));
 		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, PW_TYPE_STRING,
 				     flags) < 0) {
-			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
+			ERROR("Error creating cache attribute: %s", fr_strerror());
 		error:
 			return -1;
 
@@ -1296,7 +1296,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		ret = ldap_create_sort_control(inst->handle, keys, 1, &inst->userobj_sort_ctrl);
 		ldap_free_sort_keylist(keys);
 		if (ret != LDAP_SUCCESS) {
-			LDAP_ERR("Failed creating server sort control: %s", ldap_err2string(ret));
+			ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
 			goto error;
 		}
 	}

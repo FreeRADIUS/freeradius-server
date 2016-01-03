@@ -807,17 +807,17 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 
 		switch (status) {
 		case LDAP_PROC_SUCCESS:
-			LDAP_DBG_REQ("Bind successful");
+			ROPTIONAL(RDEBUG, DEBUG, "Bind successful");
 			break;
 
 		case LDAP_PROC_NOT_PERMITTED:
-			LDAP_ERR_REQ("Bind was not permitted: %s", error);
+			ROPTIONAL(REDEBUG, ERROR, "Bind was not permitted: %s", error);
 			LDAP_EXT_REQ();
 
 			break;
 
 		case LDAP_PROC_REJECT:
-			LDAP_ERR_REQ("Bind credentials incorrect: %s", error);
+			ROPTIONAL(REDEBUG, ERROR, "Bind credentials incorrect: %s", error);
 			LDAP_EXT_REQ();
 
 			break;
@@ -826,7 +826,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 			if (retry) {
 				*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 				if (*pconn) {
-					LDAP_DBGW_REQ("Bind with %s to %s failed: %s. Got new socket, retrying...",
+					ROPTIONAL(RWDEBUG, WARN, "Bind with %s to %s failed: %s. Got new socket, retrying...",
 						      *dn ? dn : "(anonymous)", inst->server, error);
 
 					talloc_free(extra); /* don't leak debug info */
@@ -842,7 +842,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 			 */
 			/* FALL-THROUGH */
 		default:
-			LDAP_ERR_REQ("Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
+			ROPTIONAL(REDEBUG, ERROR, "Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
 				     inst->server, error);
 			LDAP_EXT_REQ();
 
@@ -853,7 +853,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	}
 
 	if (retry && (i < 0)) {
-		LDAP_ERR_REQ("Hit reconnection limit");
+		ROPTIONAL(REDEBUG, ERROR, "Hit reconnection limit");
 		status = LDAP_PROC_ERROR;
 	}
 
@@ -933,10 +933,10 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	}
 
 	if (filter) {
-		LDAP_DBG_REQ("Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
+		ROPTIONAL(RDEBUG, DEBUG, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
 			     fr_int2str(ldap_scope, scope, "<INVALID>"));
 	} else {
-		LDAP_DBG_REQ("Performing unfiltered search in \"%s\", scope \"%s\"", dn,
+		ROPTIONAL(RDEBUG, DEBUG, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
 			     fr_int2str(ldap_scope, scope, "<INVALID>"));
 	}
 	/*
@@ -955,7 +955,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 		(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
 				       0, our_serverctrls, our_clientctrls, &tv, 0, &msgid);
 
-		LDAP_DBG_REQ("Waiting for search result...");
+		ROPTIONAL(RDEBUG, DEBUG, "Waiting for search result...");
 		status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:
@@ -968,14 +968,14 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 		 *	the same as notfound.
 		 */
 		case LDAP_PROC_BAD_DN:
-			LDAP_DBG_REQ("%s", error);
-			if (extra) LDAP_DBG_REQ("%s", extra);
+			ROPTIONAL(RDEBUG, DEBUG, "%s", error);
+			if (extra) ROPTIONAL(RDEBUG, DEBUG, "%s", extra);
 			break;
 
 		case LDAP_PROC_RETRY:
 			*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 			if (*pconn) {
-				LDAP_DBGW_REQ("Search failed: %s. Got new socket, retrying...", error);
+				ROPTIONAL(RWDEBUG, WARN, "Search failed: %s. Got new socket, retrying...", error);
 
 				talloc_free(extra); /* don't leak debug info */
 
@@ -986,8 +986,8 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 
 			/* FALL-THROUGH */
 		default:
-			LDAP_ERR_REQ("Failed performing search: %s", error);
-			if (extra) LDAP_ERR_REQ("%s", extra);
+			ROPTIONAL(REDEBUG, ERROR, "Failed performing search: %s", error);
+			if (extra) ROPTIONAL(REDEBUG, ERROR, "%s", extra);
 
 			goto finish;
 		}
@@ -996,7 +996,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	}
 
 	if (i < 0) {
-		LDAP_ERR_REQ("Hit reconnection limit");
+		ROPTIONAL(REDEBUG, ERROR, "Hit reconnection limit");
 		status = LDAP_PROC_ERROR;
 
 		goto finish;
@@ -1004,13 +1004,13 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 
 	count = ldap_count_entries((*pconn)->handle, our_result);
 	if (count < 0) {
-		LDAP_ERR_REQ("Error counting results: %s", rlm_ldap_error_str(*pconn));
+		ROPTIONAL(REDEBUG, ERROR, "Error counting results: %s", rlm_ldap_error_str(*pconn));
 		status = LDAP_PROC_ERROR;
 
 		ldap_msgfree(our_result);
 		our_result = NULL;
 	} else if (count == 0) {
-		LDAP_DBG_REQ("Search returned no results");
+		ROPTIONAL(RDEBUG, DEBUG, "Search returned no results");
 		status = LDAP_PROC_NO_RESULT;
 
 		ldap_msgfree(our_result);
@@ -1123,7 +1123,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	}
 
 	if (i < 0) {
-		LDAP_ERR_REQ("Hit reconnection limit");
+		ROPTIONAL(REDEBUG, ERROR, "Hit reconnection limit");
 		status = LDAP_PROC_ERROR;
 	}
 
@@ -1559,13 +1559,13 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&conn->handle, inst->server);
 	if (ldap_errno != LDAP_SUCCESS) {
-		LDAP_ERR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
+		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
 		goto error;
 	}
 #else
 	conn->handle = ldap_init(inst->server, inst->port);
 	if (!conn->handle) {
-		LDAP_ERR("ldap_init failed");
+		ERROR("ldap_init failed");
 		goto error;
 	}
 #endif
@@ -1579,7 +1579,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 #define do_ldap_option(_option, _name, _value) \
 	if (ldap_set_option(conn->handle, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
-		LDAP_ERR("Failed setting connection option %s: %s", _name, \
+		ERROR("Failed setting connection option %s: %s", _name, \
 			 (ldap_errno != LDAP_SUCCESS) ? ldap_err2string(ldap_errno) : "Unknown error"); \
 		goto error;\
 	}
@@ -1587,7 +1587,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 #define do_ldap_global_option(_option, _name, _value) \
 	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
-		LDAP_ERR("Failed setting global option %s: %s", _name, \
+		ERROR("Failed setting global option %s: %s", _name, \
 			 (ldap_errno != LDAP_SUCCESS) ? ldap_err2string(ldap_errno) : "Unknown error"); \
 		goto error;\
 	}
@@ -1694,7 +1694,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		if (ldap_start_tls_s(conn->handle, NULL, NULL) != LDAP_SUCCESS) {
 			ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
-			LDAP_ERR("Could not start TLS: %s", ldap_err2string(ldap_errno));
+			ERROR("Could not start TLS: %s", ldap_err2string(ldap_errno));
 			goto error;
 		}
 	}

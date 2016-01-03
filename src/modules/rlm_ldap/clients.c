@@ -116,7 +116,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 
 	RADCLIENT	*c;
 
-	LDAP_DBG("Loading dynamic clients");
+	DEBUG("Loading dynamic clients");
 
 	rad_assert(inst->clientobj_base_dn);
 
@@ -161,7 +161,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		break;
 
 	case LDAP_PROC_NO_RESULT:
-		LDAP_INFO("No clients were found in the directory");
+		INFO("No clients were found in the directory");
 		ret = 0;
 		goto finish;
 
@@ -176,7 +176,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		int ldap_errno;
 
 		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		LDAP_ERR("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		ERROR("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		ret = -1;
 		goto finish;
@@ -195,7 +195,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 			int ldap_errno;
 
 			ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-			LDAP_ERR("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
+			ERROR("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 			goto finish;
 		}
@@ -239,13 +239,13 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		talloc_steal(c, client);
 
 		if (!client_add(NULL, c)) {
-			LDAP_ERR("Failed to add client \"%s\", possible duplicate?", dn);
+			ERROR("Failed to add client \"%s\", possible duplicate?", dn);
 			ret = -1;
 			client_free(c);
 			goto finish;
 		}
 
-		LDAP_DBG("Client \"%s\" added", dn);
+		DEBUG("Client \"%s\" added", dn);
 
 		ldap_memfree(dn);
 		dn = NULL;
