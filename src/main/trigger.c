@@ -33,8 +33,6 @@ static CONF_SECTION *trigger_exec_main, *trigger_exec_subcs;
 #define REQUEST_INDEX_TRIGGER_NAME	1
 #define REQUEST_INDEX_TRIGGER_ARGS	2
 
-#define LOG_PREFIX "trigger"
-
 /** Retrieve attributes from a special trigger list
  *
  */

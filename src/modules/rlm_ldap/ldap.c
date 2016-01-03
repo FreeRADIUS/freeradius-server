@@ -24,6 +24,9 @@
  * @copyright 2013-2015 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -1407,7 +1410,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	conn->rebound = true;	/* not really, but oh well... */
 	rad_assert(handle == conn->handle);
 
-	DEBUG("rlm_ldap (%s): Rebinding to URL %s", inst->name, url);
+	DEBUG("Rebinding to URL %s", url);
 
 #  ifdef HAVE_LDAP_URL_PARSE
 	/*
@@ -1422,8 +1425,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 
 		ret = ldap_url_parse(url, &ldap_url);
 		if (ret != LDAP_SUCCESS) {
-			ERROR("rlm_ldap (%s): Failed parsing LDAP URL \"%s\": %s",
-			      inst->name, url, ldap_err2string(ret));
+			ERROR("Failed parsing LDAP URL \"%s\": %s", url, ldap_err2string(ret));
 			return -1;
 		}
 
@@ -1450,8 +1452,8 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 				p = strchr(p, '=');
 				if (!p) {
 				bad_ext:
-					ERROR("rlm_ldap (%s): Failed parsing extension \"%s\": "
-					      "No attribute/value delimiter '='", inst->name, *ext);
+					ERROR("Failed parsing extension \"%s\": "
+					      "No attribute/value delimiter '='", *ext);
 					ldap_free_urldesc(ldap_url);
 					return LDAP_OTHER;
 				}
@@ -1466,12 +1468,12 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 
 			default:
 				if (critical) {
-					ERROR("rlm_ldap (%s): Failed parsing critical extension \"%s\": "
-					      "Not supported by rlm_ldap", inst->name, *ext);
+					ERROR("Failed parsing critical extension \"%s\": "
+					      "Not supported by rlm_ldap", *ext);
 					ldap_free_urldesc(ldap_url);
 					return LDAP_OTHER;
 				}
-				DEBUG2("rlm_ldap (%s): Skipping unsupported extension \"%s\"", inst->name, *ext);
+				DEBUG2("Skipping unsupported extension \"%s\"", *ext);
 				continue;
 			}
 		}
@@ -1505,6 +1507,8 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  */
 static int _mod_conn_free(ldap_handle_t *conn)
 {
+	rlm_ldap_t *inst = conn->inst;
+
 	if (conn->handle) {
 #ifdef HAVE_LDAP_UNBIND_EXT_S
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
@@ -1515,10 +1519,10 @@ static int _mod_conn_free(ldap_handle_t *conn)
 				       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
 				       conn, NULL, NULL);
 
-		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
+		DEBUG3("Closing libldap handle %p", conn->handle);
 		ldap_unbind_ext_s(conn->handle, our_serverctrls, our_clientctrls);
 #else
-		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
+		DEBUG3("Closing libldap handle %p", conn->handle);
 		ldap_unbind_s(conn->handle);
 #endif
 	}
@@ -1551,7 +1555,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	conn->rebound = false;
 	conn->referred = false;
 
-	DEBUG("rlm_ldap (%s): Connecting to %s", inst->name, inst->server);
+	DEBUG("Connecting to %s", inst->server);
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&conn->handle, inst->server);
 	if (ldap_errno != LDAP_SUCCESS) {
@@ -1565,7 +1569,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		goto error;
 	}
 #endif
-	DEBUG3("rlm_ldap (%s): New libldap handle %p", inst->name, conn->handle);
+	DEBUG3("New libldap handle %p", conn->handle);
 
 	/*
 	 *	We now have a connection structure, but no actual connection.

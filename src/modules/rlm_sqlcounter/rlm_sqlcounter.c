@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sqlcounter - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -122,7 +124,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		if (!isalpha((int) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
+		DEBUG("num=%d, last=%c",num,last);
 	}
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
@@ -157,7 +159,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 
 	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
-	DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
+	DEBUG2("Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
 	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
 
 	return ret;
@@ -191,7 +193,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		if (!isalpha((int) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
+		DEBUG("num=%d, last=%c",num,last);
 	}
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
@@ -225,7 +227,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	}
 	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
 	if (len == 0) *sPrevTime = '\0';
-	DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
+	DEBUG2("Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
 	       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime);
 
 	return ret;

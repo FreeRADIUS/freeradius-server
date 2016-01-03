@@ -34,7 +34,6 @@ RCSIDH(eap_h, "$Id$")
 
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"
-#define LOG_PREFIX "eap"
 
 /** Contains a pair of request and response packets
  *

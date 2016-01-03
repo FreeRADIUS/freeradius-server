@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_test - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -84,16 +86,16 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	/*
 	 *	Log some messages
 	 */
-	INFO("rlm_test: Informational message");
-	WARN("rlm_test: Warning message");
-	ERROR("rlm_test: Error message");
-	DEBUG("rlm_test: Debug message");
-	DEBUG2("rlm_test: Debug2 message");
-	DEBUG3("rlm_test: Debug3 message");
-	DEBUG4("rlm_test: Debug4 message");
-	AUTH("rlm_test: Auth message");
-	ACCT("rlm_test: Acct message");
-	PROXY("rlm_test: Proxy message");
+	INFO("Informational message");
+	WARN("Warning message");
+	ERROR("Error message");
+	DEBUG("Debug message");
+	DEBUG2("Debug2 message");
+	DEBUG3("Debug3 message");
+	DEBUG4("Debug4 message");
+	AUTH("Auth message");
+	ACCT("Acct message");
+	PROXY("Proxy message");
 
 	return 0;
 }

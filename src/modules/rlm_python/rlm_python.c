@@ -27,6 +27,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_python - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -189,7 +191,7 @@ static void mod_error(void)
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
 		goto failed;
 
-	ERROR("rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	ERROR("%s (%s)", PyString_AsString(pStr1), PyString_AsString(pStr2));
 
 failed:
 	Py_XDECREF(pStr1);
@@ -302,7 +304,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		return;
 
 	if (!PyTuple_CheckExact(pValue)) {
-		ERROR("rlm_python:%s: non-tuple passed to %s", funcname, list_name);
+		ERROR("%s - non-tuple passed to %s", funcname, list_name);
 		return;
 	}
 	/* Get the tuple tuplesize. */
@@ -318,14 +320,15 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		FR_TOKEN op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
-			ERROR("rlm_python:%s: tuple element %d of %s is not a tuple", funcname, i, list_name);
+			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
 			continue;
 		}
 		/* Check if it's a pair */
 
 		pairsize = PyTuple_GET_SIZE(pTupleElement);
 		if ((pairsize < 2) || (pairsize > 3)) {
-			ERROR("rlm_python:%s: tuple element %d of %s is a tuple of size %d. Must be 2 or 3.", funcname, i, list_name, pairsize);
+			ERROR("%s - Tuple element %d of %s is a tuple of size %d. Must be 2 or 3",
+			      funcname, i, list_name, pairsize);
 			continue;
 		}
 
@@ -333,7 +336,8 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		pStr2	= PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
-			ERROR("rlm_python:%s: tuple element %d of %s must be as (str, str)", funcname, i, list_name);
+			ERROR("%s - Tuple element %d of %s must be as (str, str)",
+			      funcname, i, list_name);
 			continue;
 		}
 		s1 = PyString_AsString(pStr1);
@@ -343,40 +347,46 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
 			if (PyString_CheckExact(pOp)) {
 				if (!(op = fr_str2int(fr_tokens_table, PyString_AsString(pOp), 0))) {
-					ERROR("rlm_python:%s: Invalid operator %s:%s %s %s, falling back to '='", funcname, list_name, s1, PyString_AsString(pOp), s2);
+					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
+					      funcname, list_name, s1, PyString_AsString(pOp), s2);
 					op = T_OP_EQ;
 				}
 			} else if (PyInt_Check(pOp)) {
 				op	= PyInt_AsLong(pOp);
 				if (!fr_int2str(fr_tokens_table, op, NULL)) {
-					ERROR("rlm_python:%s: Invalid operator %s:%s %i %s, falling back to '='", funcname, list_name, s1, op, s2);
+					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
+					      funcname, list_name, s1, op, s2);
 					op = T_OP_EQ;
 				}
 			} else {
-				ERROR("rlm_python:%s: Invalid operator type for %s:%s ? %s, using default '='", funcname, list_name, s1, s2);
+				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
+				      funcname, list_name, s1, s2);
 			}
 		}
 
 		if (tmpl_from_attr_str(&dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
-			ERROR("rlm_python:%s: Failed to find attribute %s:%s", funcname, list_name, s1);
+			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
 
 		if (radius_request(&current, dst.tmpl_request) < 0) {
-			ERROR("rlm_python:%s: Attribute name %s:%s refers to outer request but not in a tunnel, skipping...", funcname, list_name, s1);
+			ERROR("%s - Attribute name %s:%s refers to outer request but not in a tunnel, skipping...",
+			      funcname, list_name, s1);
 			continue;
 		}
 
 		if (!(vp = fr_pair_afrom_da(ctx, dst.tmpl_da))) {
-			ERROR("rlm_python:%s: Failed to create attribute %s:%s", funcname, list_name, s1);
+			ERROR("%s - Failed to create attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
-			DEBUG("rlm_python:%s: Failed: '%s:%s' %s '%s'", funcname, list_name, s1, fr_int2str(fr_tokens_table, op, "="), s2);
+			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
+			      fr_int2str(fr_tokens_table, op, "="), s2);
 		} else {
-			DEBUG("rlm_python:%s: '%s:%s' %s '%s'", funcname, list_name, s1, fr_int2str(fr_tokens_table, op, "="), s2);
+			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
+			      fr_int2str(fr_tokens_table, op, "="), s2);
 		}
 
 		radius_pairmove(current, vps, vp, false);
@@ -560,14 +570,14 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		PyObject *pTupleInt;
 
 		if (PyTuple_GET_SIZE(pRet) != 3) {
-			ERROR("rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
+			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
 
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
 		if (!PyInt_CheckExact(pTupleInt)) {
-			ERROR("rlm_python:%s: first tuple element not an integer", funcname);
+			ERROR("%s - First tuple element not an integer", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -589,7 +599,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		ret = RLM_MODULE_OK;
 	} else {
 		/* Not tuple or None */
-		ERROR("rlm_python:%s: function did not return a tuple or None", funcname);
+		ERROR("%s - Function did not return a tuple or None", funcname);
 		ret = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -621,17 +631,17 @@ static int mod_load_function(struct py_function_def *def)
 
 	if (def->module_name != NULL && def->function_name != NULL) {
 		if ((def->module = PyImport_ImportModule(def->module_name)) == NULL) {
-			ERROR("rlm_python:%s: module '%s' is not found", funcname, def->module_name);
+			ERROR("%s - Module '%s' is not found", funcname, def->module_name);
 			goto failed;
 		}
 
 		if ((def->function = PyObject_GetAttrString(def->module, def->function_name)) == NULL) {
-			ERROR("rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
+			ERROR("%s - Function '%s.%s' is not found", funcname, def->module_name, def->function_name);
 			goto failed;
 		}
 
 		if (!PyCallable_Check(def->function)) {
-			ERROR("rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
+			ERROR("%s - Function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
 			goto failed;
 		}
 	}
@@ -640,7 +650,7 @@ static int mod_load_function(struct py_function_def *def)
 
 failed:
 	mod_error();
-	ERROR("rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
+	ERROR("%s - Failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
 	Py_XDECREF(def->function);
 	def->function = NULL;
 	Py_XDECREF(def->module);

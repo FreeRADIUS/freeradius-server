@@ -21,6 +21,9 @@
  *
  * @copyright 2014 The FreeRADIUS server project
  */
+
+#define LOG_PREFIX "rlm_cache_memcached - "
+
 #include <libmemcached/memcached.h>
 
 #include <freeradius-devel/radiusd.h>
@@ -68,14 +71,14 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	sandle = memcached(driver->options, talloc_array_length(driver->options) -1);
 	if (!sandle) {
-		ERROR("rlm_cache_memcached: Failed creating memcached connection");
+		ERROR("Failed creating memcached connection");
 
 		return NULL;
 	}
 
 	ret = memcached_behavior_set(sandle, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT, (uint64_t)FR_TIMEVAL_TO_MS(timeout));
 	if (ret != MEMCACHED_SUCCESS) {
-		ERROR("rlm_cache_memcached: Failed setting connection timeout: %s: %s", memcached_strerror(sandle, ret),
+		ERROR("%s", memcached_strerror(sandle, ret),
 		      memcached_last_error_message(sandle));
 	error:
 		memcached_free(sandle);
@@ -84,7 +87,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	ret = memcached_version(sandle);
 	if (ret != MEMCACHED_SUCCESS) {
-		ERROR("rlm_cache_memcached: Failed getting server info: %s: %s", memcached_strerror(sandle, ret),
+		ERROR("%s", memcached_strerror(sandle, ret),
 		      memcached_last_error_message(sandle));
 		goto error;
 	}
@@ -117,7 +120,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	if (!version_done) {
 		version_done = true;
 
-		INFO("rlm_cache_memcached: libmemcached version: %s", memcached_lib_version());
+		INFO("%s", memcached_lib_version());
 	}
 
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
@@ -125,7 +128,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	ret = libmemcached_check_configuration(driver->options, talloc_array_length(driver->options) -1,
 					       buffer, sizeof(buffer));
 	if (ret != MEMCACHED_SUCCESS) {
-		ERROR("rlm_cache_memcached: Failed validating options string: %s", buffer);
+		ERROR("%s", buffer);
 		return -1;
 	}
 
@@ -136,7 +139,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	fr_talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */
 
 	if (config->max_entries > 0) {
-		ERROR("rlm_cache_memcached: max_entries is not supported by this driver");
+		ERROR("max_entries is not supported by this driver");
 		return -1;
 	}
 	return 0;

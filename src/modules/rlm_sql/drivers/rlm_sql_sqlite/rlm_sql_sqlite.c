@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sql_sqlite - "
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -217,13 +218,13 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 	 */
 	if ((status != SQLITE_OK) && (status != hstatus)) {
 #ifdef HAVE_SQLITE3_ERRSTR
-		ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
+		ERROR("%s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
 #else
-		ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i)", p, status, status);
+		ERROR("%s: Code 0x%04x (%i)", p, status, status);
 #endif
 	}
 
-	if (hstatus != SQLITE_OK) ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i): %s",
+	if (hstatus != SQLITE_OK) ERROR("%s: Code 0x%04x (%i): %s",
 					p, hstatus, hstatus, sqlite3_errmsg(db));
 }
 
@@ -242,18 +243,18 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	sqlite3_stmt *statement;
 	char const *z_tail;
 
-	INFO("rlm_sql_sqlite: Executing SQL statements from file \"%s\"", filename);
+	INFO("Executing SQL statements from file \"%s\"", filename);
 
 	f = fopen(filename, "r");
 	if (!f) {
-		ERROR("rlm_sql_sqlite: Failed opening SQL file \"%s\": %s", filename,
+		ERROR("Failed opening SQL file \"%s\": %s", filename,
 		       fr_syserror(errno));
 
 		return -1;
 	}
 
 	if (fstat(fileno(f), &finfo) < 0) {
-		ERROR("rlm_sql_sqlite: Failed stating SQL file \"%s\": %s", filename,
+		ERROR("Failed stating SQL file \"%s\": %s", filename,
 		       fr_syserror(errno));
 
 		fclose(f);
@@ -263,7 +264,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	if (finfo.st_size > BOOTSTRAP_MAX) {
 		too_big:
-		ERROR("rlm_sql_sqlite: Size of SQL (%zu) file exceeds limit (%uk)",
+		ERROR("Size of SQL (%zu) file exceeds limit (%uk)",
 		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
 
 		fclose(f);
@@ -280,7 +281,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	if (!len) {
 		if (ferror(f)) {
-			ERROR("rlm_sql_sqlite: Error reading SQL file: %s", fr_syserror(errno));
+			ERROR("Error reading SQL file: %s", fr_syserror(errno));
 
 			fclose(f);
 			talloc_free(buffer);
@@ -288,7 +289,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 			return -1;
 		}
 
-		DEBUG("rlm_sql_sqlite: Ignoring empty SQL file");
+		DEBUG("Ignoring empty SQL file");
 
 		fclose(f);
 		talloc_free(buffer);
@@ -313,7 +314,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	}
 
 	if ((p - buffer) != len) {
-		ERROR("rlm_sql_sqlite: Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
+		ERROR("Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
 		talloc_free(buffer);
 		return -1;
 	}
@@ -379,10 +380,10 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		version_done = true;
 
 		if (sqlite3_libversion_number() != SQLITE_VERSION_NUMBER) {
-			WARN("rlm_sql_sqlite: libsqlite version changed since the server was built");
-			WARN("rlm_sql_sqlite: linked: %s built: %s", sqlite3_libversion(), SQLITE_VERSION);
+			WARN("libsqlite version changed since the server was built");
+			WARN("linked: %s built: %s", sqlite3_libversion(), SQLITE_VERSION);
 		}
-		INFO("rlm_sql_sqlite: libsqlite version: %s", sqlite3_libversion());
+		INFO("libsqlite version: %s", sqlite3_libversion());
 	}
 
 	MEM(driver = config->driver = talloc_zero(config, rlm_sql_sqlite_config_t));
@@ -398,7 +399,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	} else if (errno == ENOENT) {
 		exists = false;
 	} else {
-		ERROR("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", fr_syserror(errno));
+		ERROR("Database exists, but couldn't be opened: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -411,7 +412,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		sqlite3		*db = NULL;
 		CONF_PAIR	*cp;
 
-		INFO("rlm_sql_sqlite: Database doesn't exist, creating it and loading schema");
+		INFO("Database doesn't exist, creating it and loading schema");
 
 		p = strrchr(driver->filename, '/');
 		if (p) {
@@ -426,7 +427,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		ret = rad_mkdir(buff, 0700, -1, -1);
 		talloc_free(buff);
 		if (ret < 0) {
-			ERROR("rlm_sql_sqlite: Failed creating directory for SQLite database: %s", fr_syserror(errno));
+			ERROR("Failed creating directory for SQLite database: %s", fr_syserror(errno));
 
 			return -1;
 		};
@@ -434,10 +435,10 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
 #    ifdef HAVE_SQLITE3_ERRSTR
-			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database: %s",
+			ERROR("Failed creating opening/creating SQLite database: %s",
 			      sqlite3_errstr(status));
 #    else
-			ERROR("rlm_sql_sqlite: Failed creating opening/creating SQLite database, got code (%i)",
+			ERROR("Failed creating opening/creating SQLite database, got code (%i)",
 			      status);
 #    endif
 
@@ -469,9 +470,9 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		 *	Safer to use sqlite3_errstr here, just in case the handle is in a weird state
 		 */
 #  ifdef HAVE_SQLITE3_ERRSTR
-			ERROR("rlm_sql_sqlite: Error closing SQLite handle: %s", sqlite3_errstr(status));
+			ERROR("Error closing SQLite handle: %s", sqlite3_errstr(status));
 #  else
-			ERROR("rlm_sql_sqlite: Error closing SQLite handle, got code (%i)", status);
+			ERROR("Error closing SQLite handle, got code (%i)", status);
 #  endif
 			goto unlink;
 		}
@@ -479,13 +480,13 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		if (ret < 0) {
 		unlink:
 			if ((unlink(driver->filename) < 0) && (errno != ENOENT)) {
-				ERROR("rlm_sql_sqlite: Error removing partially initialised database: %s",
+				ERROR("Error removing partially initialised database: %s",
 				      fr_syserror(errno));
 			}
 			return -1;
 		}
 #else
-		WARN("rlm_sql_sqlite: sqlite3_open_v2() not available, cannot bootstrap database. "
+		WARN("sqlite3_open_v2() not available, cannot bootstrap database. "
 		       "Upgrade to SQLite >= 3.5.1 if you need this functionality");
 #endif
 	}
@@ -497,11 +498,11 @@ static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 {
 	int status = 0;
 
-	DEBUG2("rlm_sql_sqlite: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->db) {
 		status = sqlite3_close(conn->db);
-		if (status != SQLITE_OK) WARN("rlm_sql_sqlite: Got SQLite error when closing socket: %s",
+		if (status != SQLITE_OK) WARN("Got SQLite error when closing socket: %s",
 					      sqlite3_errmsg(conn->db));
 	}
 
@@ -534,7 +535,7 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_sqlite_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
-	INFO("rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
+	INFO("Opening SQLite database \"%s\"", driver->filename);
 #ifdef HAVE_SQLITE3_OPEN_V2
 	status = sqlite3_open_v2(driver->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
 #else

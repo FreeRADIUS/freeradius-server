@@ -24,6 +24,8 @@
  * @copyright 2012  The FreeRADIUS server project
  * @copyright 2012  Alan DeKok <aland@networkradius.com>
  */
+#define "rlm_securid - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <ctype.h>
@@ -401,8 +403,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			return rc;
 
 		default:
-			ERROR("rlm_securid: Invalid session state %d for user [%s]",
-			       securid_session->securidSessionState,
+			ERROR("Invalid session state %d for user \"%s\"", securid_session->securidSessionState,
 			       username);
 			break;
 		}
@@ -439,7 +440,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	inst->session_tree = rbtree_create(NULL, securid_session_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		ERROR("rlm_securid: Cannot initialize session tree");
+		ERROR("Cannot initialize session tree");
 		return -1;
 	}
 
@@ -464,12 +465,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		AUTH("rlm_securid: Attribute \"User-Name\" is required for authentication");
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!request->password) {
-		RAUTH("Attribute \"Password\" is required for authentication");
+		REDEBUG("Attribute \"Password\" is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -477,7 +478,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Clear-text passwords are the only ones we support.
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
-		RAUTH("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->da->name);
+		REDEBUG("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\"",
+			request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 

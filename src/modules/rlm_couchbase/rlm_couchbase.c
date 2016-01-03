@@ -26,6 +26,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_couchbase - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/modules.h>
@@ -88,7 +90,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!version_done) {
 		version_done = true;
 		fr_json_version_print();
-		INFO("rlm_couchbase: libcouchbase version: %s", lcb_get_version(NULL));
+		INFO("libcouchbase version: %s", lcb_get_version(NULL));
 	}
 
 	{
@@ -132,7 +134,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/* check connection pool */
 	if (!inst->pool) {
-		ERROR("rlm_couchbase: failed to initiate connection pool");
+		ERROR("failed to initiate connection pool");
 		/* fail */
 		return -1;
 	}
@@ -144,7 +146,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		/* attempt to find client section */
 		cs = cf_section_sub_find(conf, "client");
 		if (!cs) {
-			ERROR("rlm_couchbase: failed to find client section while loading clients");
+			ERROR("failed to find client section while loading clients");
 			/* fail */
 			return -1;
 		}
@@ -152,7 +154,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		/* attempt to find attribute subsection */
 		map = cf_section_sub_find(cs, "attribute");
 		if (!map) {
-			ERROR("rlm_couchbase: failed to find attribute subsection while loading clients");
+			ERROR("failed to find attribute subsection while loading clients");
 			/* fail */
 			return -1;
 		}
@@ -160,7 +162,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		tmpl = cf_section_sub_find(cs, "template");
 
 		/* debugging */
-		DEBUG("rlm_couchbase: preparing to load client documents");
+		DEBUG("preparing to load client documents");
 
 		/* attempt to load clients */
 		if (mod_load_client_documents(inst, tmpl, map) != 0) {

@@ -663,7 +663,7 @@ static ssize_t randstr_xlat(char **out, size_t outlen,
 			break;
 
 		default:
-			ERROR("rlm_expr: invalid character class '%c'", *p);
+			REDEBUG("Invalid character class '%c'", *p);
 
 			return -1;
 		}

@@ -30,6 +30,9 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
+#define LOG_PREFIX "rlm_unix (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include	<freeradius-devel/radiusd.h>
 
 #include	<grp.h>
@@ -136,13 +139,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	group_da = fr_dict_attr_by_num(NULL, 0, PW_GROUP);
 	if (!group_da) {
-		ERROR("rlm_unix (%s): 'Group' attribute not found in dictionary", inst->name);
+		ERROR("'Group' attribute not found in dictionary");
 		return -1;
 	}
 
 	user_name_da = fr_dict_attr_by_num(NULL, 0, PW_USER_NAME);
 	if (!user_name_da) {
-		ERROR("rlm_unix (%s): 'User-Name' attribute not found in dictionary", inst->name);
+		ERROR("'User-Name' attribute not found in dictionary");
 		return -1;
 	}
 
@@ -156,7 +159,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 		group_name_da = fr_dict_attr_by_num(NULL, 0, PW_GROUP_NAME);
 		if (!group_name_da) {
-			ERROR("rlm_unix (%s): 'Group-Name' attribute not found in dictionary", inst->name);
+			ERROR("'Group-Name' attribute not found in dictionary");
 			return -1;
 		}
 		paircompare_register(group_name_da, user_name_da, true, groupcmp, inst);
@@ -164,8 +167,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 #endif
 
 	if (paircompare_register_byname("Unix-Group", user_name_da, false, groupcmp, inst) < 0) {
-		ERROR("rlm_unix (%s): Failed registering Unix-Group: %s", inst->name,
-		      fr_strerror());
+		ERROR("Failed registering Unix-Group: %s", fr_strerror());
 		return -1;
 	}
 
@@ -214,7 +216,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	 *	Check if account is locked.
 	 */
 	if (pr_pw->uflg.fg_lock!=1) {
-		AUTH("rlm_unix: [%s]: account locked", name);
+		REDEBUG("Account locked");
 		return RLM_MODULE_USERLOCK;
 	}
 #else /* OSFC2 */
@@ -251,7 +253,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	 *	Users with a particular shell are denied access
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
-		RAUTH("rlm_unix: [%s]: invalid shell", name);
+		REDEBUG("Invalid shell", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif

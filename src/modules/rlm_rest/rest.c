@@ -25,6 +25,9 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_rest (%s) - "
+#define LOG_PREFIX_ARGS inst->xlat_name
+
 #include <ctype.h>
 #include <string.h>
 #include <time.h>
@@ -247,12 +250,12 @@ typedef struct json_flags {
  *
  * @see rest_cleanup
  *
- * @param[in] instance configuration data.
+ * @param[in] inst configuration data.
  * @return
  *	- 0 if init succeeded.
  *	- -1 if it failed.
  */
-int rest_init(rlm_rest_t *instance)
+int rest_init(rlm_rest_t *inst)
 {
 	static bool version_done;
 	CURLcode ret;
@@ -262,9 +265,7 @@ int rest_init(rlm_rest_t *instance)
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
-		ERROR("rlm_rest (%s): CURL init returned error: %i - %s",
-		      instance->xlat_name,
-		      ret, curl_easy_strerror(ret));
+		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
 
 		curl_global_cleanup();
 		return -1;
@@ -277,11 +278,11 @@ int rest_init(rlm_rest_t *instance)
 
 		curlversion = curl_version_info(CURLVERSION_NOW);
 		if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
-			WARN("rlm_rest: libcurl version changed since the server was built");
-			WARN("rlm_rest: linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
+			WARN("libcurl version changed since the server was built");
+			WARN("linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
 		}
 
-		INFO("rlm_rest: libcurl version: %s", curl_version());
+		INFO("libcurl version: %s", curl_version());
 	}
 
 	return 0;
@@ -344,7 +345,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	char const *option = "unknown";
 
 	if (!candle) {
-		ERROR("rlm_rest (%s): Failed to create CURL handle", inst->xlat_name);
+		ERROR("Failed to create CURL handle");
 		return NULL;
 	}
 
@@ -363,16 +364,16 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		SET_OPTION(CURLOPT_NOSIGNAL, 1);
 		if (inst->connect_proxy) SET_OPTION(CURLOPT_PROXY, inst->connect_proxy);
 
-		DEBUG("rlm_rest (%s): Connecting to \"%s\"", inst->xlat_name, inst->connect_uri);
+		DEBUG("Connecting to \"%s\"", inst->connect_uri);
 
 		ret = curl_easy_perform(candle);
 		if (ret != CURLE_OK) {
-			ERROR("rlm_rest (%s): Connection failed: %i - %s", inst->xlat_name, ret, curl_easy_strerror(ret));
+			ERROR("Connection failed: %i - %s", ret, curl_easy_strerror(ret));
 
 			goto connection_error;
 		}
 	} else {
-		DEBUG2("rlm_rest (%s): Skipping pre-connect, connect_uri not specified", inst->xlat_name);
+		DEBUG2("Skipping pre-connect, connect_uri not specified");
 	}
 
 	/*
@@ -399,8 +400,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	 *  Cleanup for error conditions.
 	 */
 error:
-	ERROR("rlm_rest (%s): Failed setting curl option %s: %s (%i)", inst->xlat_name, option,
-	      curl_easy_strerror(ret), ret);
+	ERROR("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret);
 
 	/*
 	 *  So we don't leak CURL handles.
@@ -434,8 +434,7 @@ int mod_conn_alive(void *instance, void *handle)
 
 	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
 	if (ret != CURLE_OK) {
-		ERROR("rlm_rest (%s): Couldn't determine socket state: %i - %s", inst->xlat_name, ret,
-		      curl_easy_strerror(ret));
+		ERROR("Couldn't determine socket state: %i - %s", ret, curl_easy_strerror(ret));
 
 		return false;
 	}
@@ -2484,14 +2483,14 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  * are also url encoded.
  *
  * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
- * @param[in] instance configuration data.
+ * @param[in] inst of rlm_rest.
  * @param[in] uri configuration data.
  * @param[in] request Current request
  * @return
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request, char const *uri)
+ssize_t rest_uri_build(char **out, rlm_rest_t *inst, REQUEST *request, char const *uri)
 {
 	char const	*p;
 	char		*path_exp = NULL;
@@ -2554,7 +2553,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request
  * cannot distinguish between host and path components.
  *
  * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
- * @param[in] mod_inst configuration data.
+ * @param[in] inst of rlm_rest.
  * @param[in] request Current request
  * @param[in] handle to use.
  * @param[in] uri configuration data.
@@ -2562,7 +2561,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, REQUEST *request,
+ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *request,
 			       void *handle, char const *uri)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -2581,7 +2580,7 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, RE
 	 */
 	p = strchr(p, ':');
 	if (!p || (*++p != '/') || (*++p != '/')) {
-		malformed:
+	malformed:
 		REDEBUG("Error URI is malformed, can't find start of path");
 		return -1;
 	}

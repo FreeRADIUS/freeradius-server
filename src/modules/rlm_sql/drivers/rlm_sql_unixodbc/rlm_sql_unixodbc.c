@@ -18,9 +18,10 @@
  * Copyright 2000,2006  The FreeRADIUS server project
  * Copyright 2000  Dmitri Ageev <d_ageev@ortcc.ru>
  */
-
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
+
+#define LOG_PREFIX "rlm_sql_unixodbc - "
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
@@ -48,7 +49,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
 {
-	DEBUG2("rlm_sql_unixodbc: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->stmt) SQLFreeStmt(conn->stmt, SQL_DROP);
 
@@ -75,20 +76,20 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	/* 1. Allocate environment handle and register version */
 	err_handle = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->env);
 	if (sql_check_error(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't allocate environment handle");
+		ERROR("Can't allocate environment handle");
 		return RLM_SQL_ERROR;
 	}
 
 	err_handle = SQLSetEnvAttr(conn->env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
 	if (sql_check_error(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't register ODBC version");
+		ERROR("Can't register ODBC version");
 		return RLM_SQL_ERROR;
 	}
 
 	/* 2. Allocate connection handle */
 	err_handle = SQLAllocHandle(SQL_HANDLE_DBC, conn->env, &conn->dbc);
 	if (sql_check_error(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't allocate connection handle");
+		ERROR("Can't allocate connection handle");
 		return RLM_SQL_ERROR;
 	}
 
@@ -109,14 +110,14 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	}
 
 	if (sql_check_error(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Connection failed");
+		ERROR("Connection failed");
 		return RLM_SQL_ERROR;
 	}
 
 	/* 4. Allocate the stmt */
 	err_handle = SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc, &conn->stmt);
 	if (sql_check_error(err_handle, handle, config)) {
-		ERROR("rlm_sql_unixodbc: Can't allocate the stmt");
+		ERROR("Can't allocate the stmt");
 		return RLM_SQL_ERROR;
 	}
 
@@ -138,7 +139,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	}
 	if ((state = sql_check_error(err_handle, handle, config))) {
 		if(state == RLM_SQL_RECONNECT) {
-			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
+			DEBUG("rlm_sql will attempt to reconnect");
 		}
 		return state;
 	}
@@ -350,7 +351,7 @@ static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, 
 		switch (state[1]) {
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
-			INFO("rlm_sql_unixodbc: %s %s", state, error);
+			INFO("%s %s", state, error);
 			/* FALL-THROUGH */
 		case '0':		/* SQLSTATE 00 class means success */
 			res = RLM_SQL_OK;
@@ -358,18 +359,18 @@ static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, 
 
 		/* SQLSTATE 08 class describes various connection errors */
 		case '8':
-			ERROR("rlm_sql_unixodbc: SQL down %s %s", state, error);
+			ERROR("SQL down %s %s", state, error);
 			res = RLM_SQL_RECONNECT;
 			break;
 
 		/* any other SQLSTATE means error */
 		default:
-			ERROR("rlm_sql_unixodbc: %s %s", state, error);
+			ERROR("%s %s", state, error);
 			res = RLM_SQL_ERROR;
 			break;
 		}
 	} else {
-		ERROR("rlm_sql_unixodbc: %s %s", state, error);
+		ERROR("%s %s", state, error);
 	}
 
 	return res;

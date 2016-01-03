@@ -24,6 +24,10 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_krb5 (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
+#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/radiusd.h>
 #include "krb5.h"
 
@@ -40,10 +44,12 @@ static void _krb5_logging_free(void *arg)
 	free(arg);
 }
 
-char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
+char const *rlm_krb5_error(rlm_krb5_t *inst, krb5_context context, krb5_error_code code)
 {
 	char const *msg;
 	char *buffer;
+
+	if (!rad_cond_assert(inst)) return NULL;
 
 	buffer = fr_thread_local_init(krb5_error_buffer, _krb5_logging_free);
 	if (!buffer) {
@@ -123,8 +129,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval con
 	MEM(conn = talloc_zero(ctx, rlm_krb5_handle_t));
 	ret = krb5_init_context(&conn->context);
 	if (ret) {
-		ERROR("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name,
-		       rlm_krb5_error(NULL, ret));
+		ERROR("Context initialisation failed: %s", rlm_krb5_error(inst, NULL, ret));
 
 		return NULL;
 	}
@@ -134,7 +139,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval con
 		krb5_kt_resolve(conn->context, inst->keytabname, &conn->keytab) :
 		krb5_kt_default(conn->context, &conn->keytab);
 	if (ret) {
-		ERROR("Resolving keytab failed: %s", rlm_krb5_error(conn->context, ret));
+		ERROR("Resolving keytab failed: %s", rlm_krb5_error(inst, conn->context, ret));
 
 		goto cleanup;
 	}
@@ -142,8 +147,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval con
 #ifdef HEIMDAL_KRB5
 	ret = krb5_cc_new_unique(conn->context, "MEMORY", NULL, &conn->ccache);
 	if (ret) {
-		ERROR("rlm_krb5 (%s): Credential cache creation failed: %s", inst->xlat_name,
-		      rlm_krb5_error(conn->context, ret));
+		ERROR("Credential cache creation failed: %s", rlm_krb5_error(inst, conn->context, ret));
 
 		return NULL;
 	}

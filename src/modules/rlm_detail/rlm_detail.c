@@ -23,6 +23,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_detail (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -166,18 +169,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 *	Be kind to minor mistakes.
 			 */
 			if (fr_hash_table_finddata(inst->ht, da)) {
-				WARN("%s: Ignoring duplicate entry '%s'", inst->name, attr);
+				WARN("Ignoring duplicate entry '%s'", attr);
 				continue;
 			}
 
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
-				ERROR(" %s: Failed inserting '%s' into suppression table",
-				      inst->name, attr);
+				ERROR("Failed inserting '%s' into suppression table", attr);
 				return -1;
 			}
 
-			DEBUG("%s: '%s' suppressed, will not appear in detail output", inst->name, attr);
+			DEBUG("'%s' suppressed, will not appear in detail output", attr);
 		}
 
 		/*

@@ -24,6 +24,8 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#define LOG_PREFIX "rlm_wimax - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -88,8 +90,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		p[(5*3)+2] = '\0';
 		fr_pair_value_strsteal(vp, p);
 
-		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
-		       vp->vp_strvalue);
+		DEBUG2("Fixing WiMAX binary Calling-Station-Id to %s", vp->vp_strvalue);
 		return RLM_MODULE_OK;
 	}
 

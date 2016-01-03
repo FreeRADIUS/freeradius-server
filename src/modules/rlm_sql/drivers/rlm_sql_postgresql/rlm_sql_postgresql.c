@@ -39,6 +39,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sql_postgresql - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -210,7 +212,7 @@ static sql_rcode_t sql_classify_error(PGresult const *result)
 	errorcode = PQresultErrorField(result, PG_DIAG_SQLSTATE);
 	errormsg = PQresultErrorField(result, PG_DIAG_MESSAGE_PRIMARY);
 	if (!errorcode) {
-		ERROR("rlm_sql_postgresql: Error occurred, but unable to retrieve error code");
+		ERROR("Error occurred, but unable to retrieve error code");
 		return RLM_SQL_ERROR;
 	}
 
@@ -233,7 +235,7 @@ static sql_rcode_t sql_classify_error(PGresult const *result)
 	/* others */
 	for (i = 0; errorcodes[i].errorcode != NULL; i++) {
 		if (strcmp(errorcodes[i].errorcode, errorcode) == 0) {
-			ERROR("rlm_sql_postgresql: %s: %s", errorcode, errorcodes[i].meaning);
+			ERROR("%s: %s", errorcode, errorcodes[i].meaning);
 
 			return (errorcodes[i].reconnect == true) ?
 				RLM_SQL_RECONNECT :
@@ -241,20 +243,20 @@ static sql_rcode_t sql_classify_error(PGresult const *result)
 		}
 	}
 
-	ERROR("rlm_sql_postgresql: Can't classify: %s", errorcode);
+	ERROR("Can't classify: %s", errorcode);
 	return RLM_SQL_ERROR;
 }
 #  else
 static sql_rcode_t sql_classify_error(UNUSED PGresult const *result)
 {
-	ERROR("rlm_sql_postgresql: Error occurred, no more information available, rebuild with newer libpq");
+	ERROR("Error occurred, no more information available, rebuild with newer libpq");
 	return RLM_SQL_ERROR;
 }
 #endif
 
 static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 {
-	DEBUG2("rlm_sql_postgresql: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (!conn->db) return 0;
 
@@ -273,14 +275,14 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
-	DEBUG2("rlm_sql_postgresql: Connecting using parameters: %s", driver->db_string);
+	DEBUG2("Connecting using parameters: %s", driver->db_string);
 	conn->db = PQconnectdb(driver->db_string);
 	if (!conn->db) {
-		ERROR("rlm_sql_postgresql: Connection failed: Out of memory");
+		ERROR("Connection failed: Out of memory");
 		return -1;
 	}
 	if (PQstatus(conn->db) != CONNECTION_OK) {
-		ERROR("rlm_sql_postgresql: Connection failed: %s", PQerrorMessage(conn->db));
+		ERROR("Connection failed: %s", PQerrorMessage(conn->db));
 		PQfinish(conn->db);
 		conn->db = NULL;
 		return -1;
@@ -301,7 +303,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	int numfields = 0;
 
 	if (!conn->db) {
-		ERROR("rlm_sql_postgresql: Socket not connected");
+		ERROR("Socket not connected");
 		return RLM_SQL_RECONNECT;
 	}
 
@@ -321,12 +323,12 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	 *  regardless! Pick your poison...
 	 */
 	if (!conn->result) {
-		ERROR("rlm_sql_postgresql: Failed getting query result: %s", PQerrorMessage(conn->db));
+		ERROR("Failed getting query result: %s", PQerrorMessage(conn->db));
 		return RLM_SQL_RECONNECT;
 	}
 
 	status = PQresultStatus(conn->result);
-	DEBUG("rlm_sql_postgresql: Status: %s", PQresStatus(status));
+	DEBUG("Status: %s", PQresStatus(status));
 
 	switch (status){
 	/*
@@ -338,7 +340,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 		 *  returning no data...
 		 */
 		conn->affected_rows = affected_rows(conn->result);
-		DEBUG("rlm_sql_postgresql: query affected rows = %i", conn->affected_rows);
+		DEBUG("query affected rows = %i", conn->affected_rows);
 		return RLM_SQL_OK;
 	/*
 	 *  Successful completion of a command returning data (such as a SELECT or SHOW).
@@ -350,7 +352,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 		conn->cur_row = 0;
 		conn->affected_rows = PQntuples(conn->result);
 		numfields = PQnfields(conn->result); /*Check row storing functions..*/
-		DEBUG("rlm_sql_postgresql: query affected rows = %i , fields = %i", conn->affected_rows, numfields);
+		DEBUG("query affected rows = %i , fields = %i", conn->affected_rows, numfields);
 		return RLM_SQL_OK;
 
 #ifdef HAVE_PGRES_COPY_BOTH
@@ -358,21 +360,21 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 #endif
 	case PGRES_COPY_OUT:
 	case PGRES_COPY_IN:
-		DEBUG("rlm_sql_postgresql: Data transfer started");
+		DEBUG("Data transfer started");
 		return RLM_SQL_OK;
 
 	/*
 	 *  Weird.. this shouldn't happen.
 	 */
 	case PGRES_EMPTY_QUERY:
-		ERROR("rlm_sql_postgresql: Empty query");
+		ERROR("Empty query");
 		return RLM_SQL_QUERY_INVALID;
 
 	/*
 	 *  The server's response was not understood.
 	 */
 	case PGRES_BAD_RESPONSE:
-		ERROR("rlm_sql_postgresql: Bad Response From Server");
+		ERROR("Bad Response From Server");
 		return RLM_SQL_RECONNECT;
 
 

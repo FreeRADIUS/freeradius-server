@@ -24,6 +24,8 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
+#define LOG_PREFIX "rlm_sql_iodbc - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -56,7 +58,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
 {
-	DEBUG2("rlm_sql_iodbc: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->stmt) SQLFreeStmt(conn->stmt, SQL_DROP);
 
@@ -83,16 +85,16 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	rcode = SQLAllocEnv(&conn->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLAllocEnv failed");
-		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
+		ERROR("SQLAllocEnv failed");
+		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("%s", entry.msg);
 
 		return RLM_SQL_ERROR;
 	}
 
 	rcode = SQLAllocConnect(conn->env_handle, &conn->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLAllocConnect failed");
-		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
+		ERROR("SQLAllocConnect failed");
+		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("%s", entry.msg);
 
 		return RLM_SQL_ERROR;
 	}
@@ -113,8 +115,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		rcode = SQLConnect(conn->dbc_handle, server, SQL_NTS, login, SQL_NTS, password, SQL_NTS);
 	}
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLConnectfailed");
-		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
+		ERROR("SQLConnectfailed");
+		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("%s", entry.msg);
 
 		return RLM_SQL_ERROR;
 	}
@@ -131,7 +133,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	if (!SQL_SUCCEEDED(rcode)) return RLM_SQL_ERROR;
 
 	if (!conn->dbc_handle) {
-		ERROR("rlm_sql_iodbc: Socket not connected");
+		ERROR("Socket not connected");
 		return RLM_SQL_ERROR;
 	}
 

@@ -19,10 +19,12 @@
  * Copyright 2012  Alan DeKok <aland@networkradius.com>
  */
 
+#define LOG_PREFIX "rlm_securid - "
+
 #include <stdio.h>
 #include "rlm_securid.h"
 
-static void		securid_sessionlist_clean_expired(rlm_securid_t *inst, REQUEST *request, time_t timestamp);
+static void securid_sessionlist_clean_expired(rlm_securid_t *inst, REQUEST *request, time_t timestamp);
 
 static SECURID_SESSION* securid_sessionlist_delete(rlm_securid_t *inst,
 						   SECURID_SESSION *session);
@@ -165,7 +167,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 
 	if (!status) {
 		fr_pair_list_free(&state);
-		ERROR("rlm_securid: Failed to store session");
+		ERROR("Failed to store session");
 		return -1;
 	}
 
@@ -198,7 +200,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	}
 
 	if (state->vp_length != SECURID_STATE_LEN) {
-	  ERROR("rlm_securid: Invalid State variable. length=%d", (int) state->vp_length);
+	  ERROR("Invalid State variable. length=%d", (int) state->vp_length);
 		return NULL;
 	}
 
@@ -218,7 +220,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	 *	Might not have been there.
 	 */
 	if (!session) {
-		ERROR("rlm_securid: No SECURID session matching the State variable");
+		ERROR("No SECURID session matching the State variable");
 		return NULL;
 	}
 

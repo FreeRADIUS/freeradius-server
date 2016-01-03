@@ -26,6 +26,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sql (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <ctype.h>
 
 #include <freeradius-devel/radiusd.h>
@@ -437,11 +440,8 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	int ret = 0;
 	RADCLIENT *c;
 
-	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
-	      inst->name);
-
-	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
-	      inst->name, inst->config->client_query);
+	DEBUG("Processing generate_sql_clients");
+	DEBUG("Query is: %s", inst->config->client_query);
 
 	handle = fr_connection_get(inst->pool, NULL);
 	if (!handle) return -1;
@@ -463,19 +463,19 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		 *  5. Virtual Server (optional)
 		 */
 		if (!row[0]){
-			ERROR("rlm_sql (%s): No row id found on pass %d",inst->name,i);
+			ERROR("No row id found on pass %d", i);
 			continue;
 		}
 		if (!row[1]){
-			ERROR("rlm_sql (%s): No nasname found for row %s",inst->name,row[0]);
+			ERROR("No nasname found for row %s", row[0]);
 			continue;
 		}
 		if (!row[2]){
-			ERROR("rlm_sql (%s): No short name found for row %s",inst->name,row[0]);
+			ERROR("No short name found for row %s", row[0]);
 			continue;
 		}
 		if (!row[4]){
-			ERROR("rlm_sql (%s): No secret found for row %s",inst->name,row[0]);
+			ERROR("No secret found for row %s", row[0]);
 			continue;
 		}
 
@@ -483,8 +483,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			server = row[5];
 		}
 
-		DEBUG("rlm_sql (%s): Adding client %s (%s) to %s clients list",
-		      inst->name,
+		DEBUG("Adding client %s (%s) to %s clients list",
 		      row[1], row[2], server ? server : "global");
 
 		/* FIXME: We should really pass a proper ctx */
@@ -507,8 +506,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			break;
 		}
 
-		DEBUG("rlm_sql (%s): Client \"%s\" (%s) added", c->longname, c->shortname,
-		      inst->name);
+		DEBUG("Client \"%s\" (%s) added", c->longname, c->shortname);
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -1038,8 +1036,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->name,
-	     inst->config->sql_driver_name, inst->module->name);
+	INFO("Driver %s (module %s) loaded and linked", inst->config->sql_driver_name, inst->module->name);
 
 	if (inst->config->groupmemb_query) {
 		char buffer[256];
@@ -1095,7 +1092,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
-		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!", inst->name, inst->config->sql_driver_name);
+		ERROR("\"%s\" is NOT an SQL driver!", inst->config->sql_driver_name);
 		return -1;
 	}
 
@@ -1108,18 +1105,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (!inst->config->groupmemb_query) {
 		if (inst->config->authorize_group_check_query) {
-			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query "
-			     "is not configured", inst->name);
+			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
 		}
 
 		if (inst->config->authorize_group_reply_query) {
-			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
-			     "is not configured", inst->name);
+			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
 		}
 
 		if (!inst->config->read_groups) {
-			WARN("rlm_sql (%s): Ignoring read_groups as group_membership_query "
-			     "is not configured", inst->name);
+			WARN("Ignoring read_groups as group_membership_query is not configured");
 			inst->config->read_groups = false;
 		}
 	} /* allow the group check / reply queries to be NULL */
@@ -1198,7 +1192,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
-	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"", inst->name, inst->config->sql_db);
+	INFO("Attempting to connect to database \"%s\"", inst->config->sql_db);
 
 	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;

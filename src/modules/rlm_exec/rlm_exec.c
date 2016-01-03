@@ -24,6 +24,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_exec (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -32,7 +35,7 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_exec_t {
-	char const	*xlat_name;
+	char const	*name;
 	int		bare;
 	bool		wait;
 	char const	*program;
@@ -205,13 +208,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	char const *p;
 	rlm_exec_t	*inst = instance;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
 		inst->bare = 1;
 	}
 
-	xlat_register(inst, inst->xlat_name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	if (inst->input) {
 		p = inst->input;
@@ -297,7 +300,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	 *	We need a program to execute.
 	 */
 	if (!inst->program) {
-		ERROR("rlm_exec (%s): We require a program to execute", inst->xlat_name);
+		ERROR("We require a program to execute");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -311,7 +314,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	      (request->proxy_reply && (request->proxy_reply->code == inst->packet_code))
 #endif
 		    )) {
-		RDEBUG2("Packet type is not %s. Not executing.", inst->packet_type);
+		RDEBUG2("Packet type is not %s. Not executing", inst->packet_type);
 
 		return RLM_MODULE_NOOP;
 	}

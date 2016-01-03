@@ -57,7 +57,7 @@ typedef struct rlm_krb5_t {
 	rlm_krb5_handle_t	*conn;
 #endif
 
-	char const		*xlat_name;	//!< This module's instance name.
+	char const		*name;		//!< This module's instance name.
 	char const		*keytabname;	//!< The keytab to resolve the service in.
 	char const		*service_princ;	//!< The service name provided by the
 						//!< config parser.
@@ -66,7 +66,7 @@ typedef struct rlm_krb5_t {
 						//!< service_princ, or NULL.
 	char			*service;	//!< The service component of service_princ, or NULL.
 
-	krb5_context context;			//!< The kerberos context (cloned once per request).
+	krb5_context		context;	//!< The kerberos context (cloned once per request).
 
 #ifndef HEIMDAL_KRB5
 	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the get_initial_credentials
@@ -89,9 +89,9 @@ typedef struct rlm_krb5_t {
 #  else
 #    include <com_err.h>
 #  endif
-#  define rlm_krb5_error(_x, _y) error_message(_y)
+#  define rlm_krb5_error(_x, _y, _z) error_message(_z)
 #else
-char const *rlm_krb5_error(krb5_context context, krb5_error_code code);
+char const *rlm_krb5_error(rlm_krb5_t *inst, krb5_context context, krb5_error_code code);
 #endif
 
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);

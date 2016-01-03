@@ -27,6 +27,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_otp - "
+
 /* avoid inclusion of these FR headers which conflict w/ OpenSSL */
 #define _FR_MD4_H
 #define _FR_SHA1_H
@@ -129,13 +131,13 @@ otp_pwe_t otp_pwe_present(REQUEST const *request)
 		if (fr_pair_find_by_num(request->packet->vps, pwattr[i]->vendor, pwattr[i]->attr, TAG_ANY) &&
 		    fr_pair_find_by_num(request->packet->vps, pwattr[i + 1]->vendor, pwattr[i + 1]->attr,
 					TAG_ANY)) {
-			DEBUG("rlm_otp: %s: password attributes %s, %s",
+			DEBUG("%s: password attributes %s, %s",
 			      __func__, pwattr[i]->name, pwattr[i + 1]->name);
 
 			return i + 1; /* Can't return 0 (indicates failure) */
 		}
 	}
 
-	DEBUG("rlm_otp: %s: no password attributes present", __func__);
+	DEBUG("%s: no password attributes present", __func__);
 	return PWE_NONE;
 }

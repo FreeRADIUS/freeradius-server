@@ -33,6 +33,8 @@
  * @author Linnaea Von Lavia <le.concorde.4590@gmail.com>
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#define LOG_PREFIX "rlm_sql_cassandra - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -263,19 +265,19 @@ static void _rlm_sql_cassandra_log(CassLogMessage const *message, UNUSED void *d
 	case CASS_LOG_CRITICAL:
 	case CASS_LOG_ERROR:
 		if (DEBUG_ENABLED3) {
-			ERROR("rlm_sql_cassandra: %s[%d] %s: %s",
+			ERROR("%s[%d] %s: %s",
 			       message->file, message->line, message->function, message->message);
 		} else {
-			ERROR("rlm_sql_cassandra: %s", message->message);
+			ERROR("%s", message->message);
 		}
 		return;
 
 	case CASS_LOG_WARN:
 		if (DEBUG_ENABLED3) {
-			WARN("rlm_sql_cassandra: %s[%d] %s: %s",
+			WARN("%s[%d] %s: %s",
 			     message->file, message->line, message->function, message->message);
 		} else {
-			WARN("rlm_sql_cassandra: %s", message->message);
+			WARN("%s", message->message);
 		}
 		return;
 
@@ -283,10 +285,10 @@ static void _rlm_sql_cassandra_log(CassLogMessage const *message, UNUSED void *d
 	case CASS_LOG_DISABLED:
 	case CASS_LOG_LAST_ENTRY:
 		if (DEBUG_ENABLED3) {
-			INFO("rlm_sql_cassandra: %s[%d] %s: %s",
+			INFO("%s[%d] %s: %s",
 			     message->file, message->line, message->function, message->message);
 		} else {
-			INFO("rlm_sql_cassandra: %s", message->message);
+			INFO("%s", message->message);
 		}
 		return;
 
@@ -294,10 +296,10 @@ static void _rlm_sql_cassandra_log(CassLogMessage const *message, UNUSED void *d
 	case CASS_LOG_TRACE:
 	default:
 		if (DEBUG_ENABLED3) {
-			DEBUG3("rlm_sql_cassandra: %s[%d] %s: %s",
+			DEBUG3("%s[%d] %s: %s",
 			       message->file, message->line, message->function, message->message);
 		} else {
-			DEBUG2("rlm_sql_cassandra: %s", message->message);
+			DEBUG2("%s", message->message);
 		}
 		return;
 	}
@@ -372,7 +374,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 do {\
 	CassError _ret;\
 	if ((_ret = (_x)) != CASS_OK) {\
-		ERROR("rlm_sql_cassandra: Error setting " _opt ": %s", cass_error_desc(_ret));\
+		ERROR("Error setting " _opt ": %s", cass_error_desc(_ret));\
 		return RLM_SQL_ERROR;\
 	}\
 } while (0)
@@ -380,7 +382,7 @@ do {\
 	if (!version_done) {
 		version_done = true;
 
-		INFO("rlm_sql_cassandra: Built against libcassandra version %d.%d.%d%s",
+		INFO("Built against libcassandra version %d.%d.%d%s",
 		     CASS_VERSION_MAJOR, CASS_VERSION_MINOR, CASS_VERSION_PATCH, CASS_VERSION_SUFFIX);
 
 		/*
@@ -409,7 +411,7 @@ do {\
 
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
 
-	DEBUG4("rlm_sql_cassandra: Configuring driver's CassCluster structure");
+	DEBUG4("Configuring driver's CassCluster structure");
 	cluster = driver->cluster = cass_cluster_new();
 	if (!cluster) return RLM_SQL_ERROR;
 
@@ -432,7 +434,7 @@ do {\
 
 		consistency = fr_str2int(consistency_levels, driver->consistency_str, -1);
 		if (consistency < 0) {
-			ERROR("rlm_sql_cassandra: Invalid consistency level \"%s\"", driver->consistency_str);
+			ERROR("Invalid consistency level \"%s\"", driver->consistency_str);
 			return -1;
 		}
 		driver->consistency = (CassConsistency)consistency;
@@ -569,14 +571,14 @@ do {\
 
 			verify_cert = fr_str2int(verify_cert_table, driver->tls_verify_cert_str, -1);
 			if (verify_cert < 0) {
-				ERROR("rlm_sql_cassandra: Invalid certificate validation type \"%s\", "
+				ERROR("Invalid certificate validation type \"%s\", "
 				      "must be one of 'yes', 'no', 'identity'", driver->tls_verify_cert_str);
 				return -1;
 			}
 			cass_ssl_set_verify_flags(ssl, verify_cert);
 		}
 
-		DEBUG2("rlm_sql_cassandra: Enabling TLS");
+		DEBUG2("Enabling TLS");
 
 		if (driver->tls_ca_file) {
 			DO_CASS_OPTION("ca_file", cass_ssl_add_trusted_cert(ssl, driver->tls_ca_file));
@@ -604,7 +606,7 @@ do {\
 
 static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 {
-	DEBUG2("rlm_sql_cassandra: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->iterator) cass_iterator_free(conn->iterator);
 	if (conn->result) cass_result_free(conn->result);
@@ -639,7 +641,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 			 */
 			cass_cluster_set_connect_timeout(driver->cluster, FR_TIMEVAL_TO_MS(timeout));
 
-			DEBUG2("rlm_sql_cassandra: Connecting to Cassandra cluster");
+			DEBUG2("Connecting to Cassandra cluster");
 			future = cass_session_connect_keyspace(driver->session, driver->cluster, config->sql_db);
 			ret = cass_future_error_code(future);
 			if (ret != CASS_OK) {
@@ -647,7 +649,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 				size_t		msg_len;
 
 				cass_future_error_message(future, &msg, &msg_len);
-				ERROR("rlm_sql_cassandra: Unable to connect: [%x] %s", (int)ret, msg);
+				ERROR("Unable to connect: [%x] %s", (int)ret, msg);
 				cass_future_free(future);
 
 				return RLM_SQL_ERROR;

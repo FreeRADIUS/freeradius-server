@@ -35,6 +35,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_cram - "
+
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 
@@ -43,9 +45,9 @@ RCSID("$Id$")
 #include 	<ctype.h>
 
 #define VENDORPEC_SM  11406
-#define		SM_AUTHTYPE	101
-#define		SM_CHALLENGE	102
-#define		SM_RESPONSE     103
+#define	SM_AUTHTYPE	101
+#define	SM_CHALLENGE	102
+#define	SM_RESPONSE     103
 
 static void calc_apop_digest(uint8_t *buffer, uint8_t const *challenge,
 			     size_t challen, char const *password)
@@ -121,66 +123,66 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	uint8_t buffer[64];
 
 	password = fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
-	if(!password) {
-		AUTH("rlm_cram: Cleartext-Password is required for authentication");
+	if (!password) {
+		REDEBUG("&Cleartext-Password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 	authtype = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_AUTHTYPE, TAG_ANY);
-	if(!authtype) {
-		AUTH("rlm_cram: Required attribute Sandy-Mail-Authtype missed");
+	if (!authtype) {
+		REDEBUG("Required attribute &Sandy-Mail-Authtype missing");
 		return RLM_MODULE_INVALID;
 	}
 	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_CHALLENGE, TAG_ANY);
-	if(!challenge) {
-		AUTH("rlm_cram: Required attribute Sandy-Mail-Challenge missed");
+	if (!challenge) {
+		REDEBUG("Required attribute &Sandy-Mail-Challenge missing");
 		return RLM_MODULE_INVALID;
 	}
 	response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_RESPONSE, TAG_ANY);
-	if(!response) {
-		AUTH("rlm_cram: Required attribute Sandy-Mail-Response missed");
+	if (!response) {
+		REDEBUG("Required attribute &Sandy-Mail-Response missing");
 		return RLM_MODULE_INVALID;
 	}
 	switch (authtype->vp_integer){
 		case 2:				/*	CRAM-MD5	*/
-			if(challenge->vp_length < 5 || response->vp_length != 16) {
-				AUTH("rlm_cram: invalid MD5 challenge/response length");
+			if (challenge->vp_length < 5 || response->vp_length != 16) {
+				REDEBUG("Invalid MD5 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_md5_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 3:				/*	APOP	*/
-			if(challenge->vp_length < 5 || response->vp_length != 16) {
-				AUTH("rlm_cram: invalid APOP challenge/response length");
+			if (challenge->vp_length < 5 || response->vp_length != 16) {
+				REDEBUG("Invalid APOP challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_apop_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 8:				/*	CRAM-MD4	*/
-			if(challenge->vp_length < 5 || response->vp_length != 16) {
-				AUTH("rlm_cram: invalid MD4 challenge/response length");
+			if (challenge->vp_length < 5 || response->vp_length != 16) {
+				REDEBUG("Invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_md4_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 9:				/*	CRAM-SHA1	*/
-			if(challenge->vp_length < 5 || response->vp_length != 20) {
-				AUTH("rlm_cram: invalid MD4 challenge/response length");
+			if (challenge->vp_length < 5 || response->vp_length != 20) {
+				REDEBUG("Invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_sha1_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_octets, 20)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, 20)) return RLM_MODULE_OK;
 			break;
 		default:
-			AUTH("rlm_cram: unsupported Sandy-Mail-Authtype");
+			REDEBUG("Unsupported &Sandy-Mail-Authtype");
 			return RLM_MODULE_INVALID;
 	}
 	return RLM_MODULE_NOTFOUND;

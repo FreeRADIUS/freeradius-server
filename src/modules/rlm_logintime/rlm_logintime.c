@@ -78,26 +78,21 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 /*
  *	Time-Of-Day support
  */
-static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+static int time_of_day(UNUSED void *instance, REQUEST *request,
+		       UNUSED VALUE_PAIR *request_pairs, VALUE_PAIR *check,
 		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	int scan;
-	int hhmmss, when;
-	char const *p;
-	struct tm *tm, s_tm;
-
-	/*
-	 *	Must be called with a request pointer.
-	 */
-	if (!req) return -1;
+	int		scan;
+	int		hhmmss, when;
+	char const	*p;
+	struct tm	*tm, s_tm;
 
 	if (strspn(check->vp_strvalue, "0123456789: ") != strlen(check->vp_strvalue)) {
-		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-		      check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
 		return -1;
 	}
 
-	tm = localtime_r(&req->timestamp.tv_sec, &s_tm);
+	tm = localtime_r(&request->timestamp.tv_sec, &s_tm);
 	hhmmss = (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
 
 	/*
@@ -107,8 +102,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *r
 	scan = atoi(p);
 	p = strchr(p, ':');
 	if ((scan > 23) || !p) {
-		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-		      check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
 		return -1;
 	}
 	when = scan * 3600;
@@ -116,8 +110,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *r
 
 	scan = atoi(p);
 	if (scan > 59) {
-		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-		      check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
 		return -1;
 	}
 	when += scan * 60;
@@ -126,8 +119,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *r
 	if (p) {
 		scan = atoi(p + 1);
 		if (scan > 59) {
-			DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-			      check->vp_strvalue);
+			RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
 			return -1;
 		}
 		when += scan;

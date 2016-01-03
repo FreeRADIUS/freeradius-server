@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_perl - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -258,7 +260,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 	ret = pthread_setspecific(*key, interp);
 	if (ret != 0) {
-		DEBUG("rlm_perl: Failed associating interpretor with thread %s", fr_syserror(ret));
+		DEBUG("Failed associating interpretor with thread %s", fr_syserror(ret));
 
 		rlm_perl_destruct(interp);
 		return NULL;
@@ -421,7 +423,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 			if (!key) continue;
 
 			if (hv_exists(rad_hv, key, strlen(key))) {
-				WARN("rlm_perl: Ignoring duplicate config section '%s'", key);
+				WARN("Ignoring duplicate config section '%s'", key);
 				continue;
 			}
 
@@ -443,7 +445,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 			 *  Store item attr / value in current HV.
 			 */
 			if (hv_exists(rad_hv, key, strlen(key))) {
-				WARN("rlm_perl: Ignoring duplicate config item '%s'", key);
+				WARN("Ignoring duplicate config item '%s'", key);
 				continue;
 			}
 
@@ -536,7 +538,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Allocate a new perl interpreter to do the parsing
 	 */
 	if ((inst->perl = perl_alloc()) == NULL) {
-		ERROR("rlm_perl: No memory for allocating new perl !");
+		ERROR("No memory for allocating new perl interpretor!");
 		return -1;
 	}
 	perl_construct(inst->perl);	/* ...and initialise it */
@@ -560,7 +562,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PL_endav = (AV *)NULL;
 
 	if (exitstatus) {
-		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors", inst->module);
+		ERROR("Perl_parse failed: %s not found or has syntax errors", inst->module);
 		return -1;
 	}
 

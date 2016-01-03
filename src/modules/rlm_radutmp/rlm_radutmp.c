@@ -165,7 +165,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	char		*expanded = NULL;
 
 	if (request->packet->src_ipaddr.af != AF_INET) {
-		DEBUG("rlm_radutmp: IPv6 not supported!");
+		RDEBUG2("IPv6 not supported!");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -173,7 +173,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	Which type is this.
 	 */
 	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
-		RDEBUG("No Accounting-Status-Type record");
+		RDEBUG2("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->vp_integer;
@@ -205,11 +205,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		if (check1 == 0 || check2 == 0) {
 			break;
 		}
-		INFO("rlm_radutmp: converting reboot records");
-		if (status == PW_STATUS_STOP)
-			status = PW_STATUS_ACCOUNTING_OFF;
-		if (status == PW_STATUS_START)
-			status = PW_STATUS_ACCOUNTING_ON;
+		RIDEBUG("Converting reboot records");
+		if (status == PW_STATUS_STOP) status = PW_STATUS_ACCOUNTING_OFF;
+		else if (status == PW_STATUS_START) status = PW_STATUS_ACCOUNTING_ON;
 	} while(0);
 
 	time(&t);
@@ -442,8 +440,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		if ((status == PW_STATUS_START) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
 		    u.time >= ut.time) {
 			if (u.type == P_LOGIN) {
-				INFO("rlm_radutmp: Login entry for NAS %s port %u duplicate",
-				       nas, u.nas_port);
+				RIDEBUG("Login entry for NAS %s port %u duplicate", nas, u.nas_port);
 				r = -1;
 				break;
 			}
@@ -583,8 +580,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 		/*
 		 *	Error accessing the file.
 		 */
-		ERROR("rlm_radumtp: Error accessing file %s: %s", expanded, fr_syserror(errno));
-
+		REDEBUG("Error accessing file %s: %s", expanded, fr_syserror(errno));
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;

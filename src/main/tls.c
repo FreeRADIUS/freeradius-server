@@ -25,6 +25,8 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#define LOG_PREFIX "tls - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/modules.h>
@@ -56,8 +58,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #    include <openssl/evp.h>
 #  endif
 #  include <openssl/ssl.h>
-
-#define LOG_PREFIX "tls"
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
@@ -1268,20 +1268,20 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	if (!file) return 0;
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
-		ERROR(LOG_PREFIX ": Unable to open DH file - %s", file);
+		ERROR("Unable to open DH file - %s", file);
 		return -1;
 	}
 
 	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (!dh) {
-		WARN(LOG_PREFIX ": Unable to set DH parameters.  DH cipher suites may not work!");
-		WARN(LOG_PREFIX ": Fix this by generating the DH parameter file");
+		WARN("Unable to set DH parameters.  DH cipher suites may not work!");
+		WARN("Fix this by generating the DH parameter file");
 		return 0;
 	}
 
 	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
-		ERROR(LOG_PREFIX ": Unable to set DH parameters");
+		ERROR("Unable to set DH parameters");
 		DH_free(dh);
 		return -1;
 	}
@@ -2466,7 +2466,7 @@ do { \
 		 */
 		if (conf->check_cert_issuer &&
 		    (strcmp(issuer, conf->check_cert_issuer) != 0)) {
-			AUTH(LOG_PREFIX ": Certificate issuer (%s) does not match specified value (%s)!",
+			AUTH("Certificate issuer (%s) does not match specified value (%s)!",
 			     issuer, conf->check_cert_issuer);
 			my_ok = 0;
 		}
@@ -2483,7 +2483,7 @@ do { \
 			} else {
 				RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
 				if (strcmp(cn_str, common_name) != 0) {
-					AUTH(LOG_PREFIX ": Certificate CN (%s) does not match specified value (%s)!",
+					AUTH("Certificate CN (%s) does not match specified value (%s)!",
 					     common_name, cn_str);
 					my_ok = 0;
 				}
@@ -2530,7 +2530,7 @@ do { \
 			if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
 						request->packet->vps,
 						true, true, EXEC_TIMEOUT) != 0) {
-				AUTH(LOG_PREFIX ": Certificate CN (%s) fails external verification!", common_name);
+				AUTH("Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
 			} else {
 				RDEBUG("Client certificate CN %s passed external validation", common_name);
@@ -2590,8 +2590,8 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
 		if(!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
-			ERROR(LOG_PREFIX ": X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error reading Trusted root CA list %s",conf->ca_file );
+			ERROR("X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
 
@@ -2618,13 +2618,13 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 
 	nid = OBJ_sn2nid(ecdh_curve);
 	if (!nid) {
-		ERROR(LOG_PREFIX ": Unknown ecdh_curve \"%s\"", ecdh_curve);
+		ERROR("Unknown ecdh_curve \"%s\"", ecdh_curve);
 		return -1;
 	}
 
 	ecdh = EC_KEY_new_by_curve_name(nid);
 	if (!ecdh) {
-		ERROR(LOG_PREFIX ": Unable to create new curve \"%s\"", ecdh_curve);
+		ERROR("Unable to create new curve \"%s\"", ecdh_curve);
 		return -1;
 	}
 
@@ -2903,20 +2903,20 @@ static int tls_certadmin_password(fr_tls_server_conf_t *conf)
 		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
 			 conf->private_key_file);
 
-		DEBUG2(LOG_PREFIX ":  Getting private key passphrase using command \"%s\"", cmd);
+		DEBUG2(" Getting private key passphrase using command \"%s\"", cmd);
 
 		FILE* cmd_pipe = popen(cmd, "r");
 		if (!cmd_pipe) {
-			ERROR(LOG_PREFIX ": %s command failed: Unable to get private_key_password", cmd);
-			ERROR(LOG_PREFIX ": Error reading private_key_file %s", conf->private_key_file);
+			ERROR("%s command failed: Unable to get private_key_password", cmd);
+			ERROR("Error reading private_key_file %s", conf->private_key_file);
 			return -1;
 		}
 
 		rad_const_free(conf->private_key_password);
 		password = talloc_array(conf, char, max_password_len);
 		if (!password) {
-			ERROR(LOG_PREFIX ": Can't allocate space for private_key_password");
-			ERROR(LOG_PREFIX ": Error reading private_key_file %s", conf->private_key_file);
+			ERROR("Can't allocate space for private_key_password");
+			ERROR("Error reading private_key_file %s", conf->private_key_file);
 			pclose(cmd_pipe);
 			return -1;
 		}
@@ -2927,7 +2927,7 @@ static int tls_certadmin_password(fr_tls_server_conf_t *conf)
 		/* Get rid of newline at end of password. */
 		password[strlen(password) - 1] = '\0';
 
-		DEBUG3(LOG_PREFIX ": Password from command = \"%s\"", password);
+		DEBUG3("Password from command = \"%s\"", password);
 		conf->private_key_password = password;
 	}
 
@@ -2955,7 +2955,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 	if (!ctx) {
 		int err;
 		while ((err = ERR_get_error())) {
-			ERROR(LOG_PREFIX ": Failed creating TLS context: %s", ERR_error_string(err, NULL));
+			ERROR("Failed creating TLS context: %s", ERR_error_string(err, NULL));
 			return NULL;
 		}
 	}
@@ -2994,7 +2994,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 		 *	statically configured identity and password.
 		 */
 		if (conf->psk_query && !*conf->psk_query) {
-			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_query cannot be empty");
+			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
 			return NULL;
 		}
 
@@ -3006,7 +3006,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 		}
 
 	} else if (conf->psk_query) {
-		ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
+		ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
 		return NULL;
 	}
 
@@ -3017,7 +3017,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 	    (!conf->psk_identity && conf->psk_password) ||
 	    (conf->psk_identity && !*conf->psk_identity) ||
 	    (conf->psk_password && !*conf->psk_password)) {
-		ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_identity or psk_password are empty");
+		ERROR("Invalid PSK Configuration: psk_identity or psk_password are empty");
 		return NULL;
 	}
 
@@ -3028,7 +3028,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 		if (conf->certificate_file ||
 		    conf->private_key_password || conf->private_key_file ||
 		    conf->ca_file || conf->ca_path) {
-			ERROR(LOG_PREFIX ": When PSKs are used, No certificate configuration is permitted");
+			ERROR("When PSKs are used, No certificate configuration is permitted");
 			return NULL;
 		}
 
@@ -3038,7 +3038,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 
 		psk_len = strlen(conf->psk_password);
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
-			ERROR(LOG_PREFIX ": psk_hexphrase is too long (max %d)", PSK_MAX_PSK_LEN);
+			ERROR("psk_hexphrase is too long (max %d)", PSK_MAX_PSK_LEN);
 			return NULL;
 		}
 
@@ -3048,7 +3048,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 		 */
 		hex_len = fr_hex2bin(buffer, sizeof(buffer), conf->psk_password, psk_len);
 		if (psk_len != (2 * hex_len)) {
-			ERROR(LOG_PREFIX ": psk_hexphrase is not all hex");
+			ERROR("psk_hexphrase is not all hex");
 			return NULL;
 		}
 
@@ -3071,13 +3071,13 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 
 	if (type == SSL_FILETYPE_PEM) {
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
-			ERROR(LOG_PREFIX ": Error reading certificate file %s:%s", conf->certificate_file,
+			ERROR("Error reading certificate file %s:%s", conf->certificate_file,
 			      ERR_error_string(ERR_get_error(), NULL));
 			return NULL;
 		}
 
 	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		ERROR(LOG_PREFIX ": Error reading certificate file %s:%s",
+		ERROR("Error reading certificate file %s:%s",
 		      conf->certificate_file,
 		      ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
@@ -3087,8 +3087,8 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			ERROR(LOG_PREFIX ": TLS error: %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error reading Trusted root CA list %s",conf->ca_file );
+			ERROR("TLS error: %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
 	}
@@ -3096,7 +3096,7 @@ load_ca:
 
 	if (conf->private_key_file) {
 		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-			ERROR(LOG_PREFIX ": Failed reading private key file %s:%s",
+			ERROR("Failed reading private key file %s:%s",
 			      conf->private_key_file,
 			      ERR_error_string(ERR_get_error(), NULL));
 			return NULL;
@@ -3106,7 +3106,7 @@ load_ca:
 		 * Check if the loaded private key is the right one
 		 */
 		if (!SSL_CTX_check_private_key(ctx)) {
-			ERROR(LOG_PREFIX ": Private key does not match the certificate public key");
+			ERROR("Private key does not match the certificate public key");
 			return NULL;
 		}
 	}
@@ -3142,7 +3142,7 @@ post_ca:
 #endif
 
 	if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
-		ERROR(LOG_PREFIX ": You have disabled all available TLS versions.  EAP will not work");
+		ERROR("You have disabled all available TLS versions.  EAP will not work");
 		return NULL;
 	}
 
@@ -3229,8 +3229,8 @@ post_ca:
 	if (conf->check_crl) {
 		cert_vpstore = SSL_CTX_get_cert_store(ctx);
 		if (cert_vpstore == NULL) {
-			ERROR(LOG_PREFIX ": SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error reading Certificate Store");
+			ERROR("SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("Error reading Certificate Store");
 	    		return NULL;
 		}
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK);
@@ -3258,8 +3258,8 @@ post_ca:
 	/* Load randomness */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024*10))) {
-			ERROR(LOG_PREFIX ": SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error loading randomness");
+			ERROR("SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR("Error loading randomness");
 			return NULL;
 		}
 	}
@@ -3269,7 +3269,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			ERROR(LOG_PREFIX ": Error setting cipher list");
+			ERROR("Error setting cipher list");
 			return NULL;
 		}
 	}
@@ -3363,7 +3363,7 @@ static fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
 
 	conf = talloc_zero(ctx, fr_tls_server_conf_t);
 	if (!conf) {
-		ERROR(LOG_PREFIX ": Out of memory");
+		ERROR("Out of memory");
 		return NULL;
 	}
 
@@ -3383,7 +3383,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 */
 	conf = cf_data_find(cs, "tls-conf");
 	if (conf) {
-		DEBUG(LOG_PREFIX ": Using cached TLS configuration from previous invocation");
+		DEBUG("Using cached TLS configuration from previous invocation");
 		return conf;
 	}
 
@@ -3401,12 +3401,12 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
 	if (!conf->private_key_file) {
-		ERROR(LOG_PREFIX ": TLS Server requires a private key file");
+		ERROR("TLS Server requires a private key file");
 		goto error;
 	}
 
 	if (!conf->certificate_file) {
-		ERROR(LOG_PREFIX ": TLS Server requires a certificate file");
+		ERROR("TLS Server requires a certificate file");
 		goto error;
 	}
 
@@ -3458,26 +3458,26 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
-			ERROR(LOG_PREFIX ": Failed changing permissions on %s: %s",
+			ERROR("Failed changing permissions on %s: %s",
 			      conf->verify_tmp_dir, fr_syserror(errno));
 			goto error;
 		}
 	}
 
 	if (conf->verify_client_cert_cmd && !conf->verify_tmp_dir) {
-		ERROR(LOG_PREFIX ": You MUST set the verify directory in order to use verify_client_cmd");
+		ERROR("You MUST set the verify directory in order to use verify_client_cmd");
 		goto error;
 	}
 
 	if (conf->session_cache_server &&
 	    !cf_section_sub_find_name2(main_config.config, "server", conf->session_cache_server)) {
-		ERROR(LOG_PREFIX ": No such virtual server '%s'", conf->session_cache_server);
+		ERROR("No such virtual server '%s'", conf->session_cache_server);
 		goto error;
 	}
 
 	if (conf->ocsp_cache_server &&
 	    !cf_section_sub_find_name2(main_config.config, "server", conf->ocsp_cache_server)) {
-		ERROR(LOG_PREFIX ": No such virtual server '%s'", conf->ocsp_cache_server);
+		ERROR("No such virtual server '%s'", conf->ocsp_cache_server);
 		goto error;
 	}
 
@@ -3487,7 +3487,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 */
 #if (OPENSSL_VERSION_NUMBER >= 0x10010060L) && (OPENSSL_VERSION_NUMBER < 0x10010060L)
 	conf->disable_tlsv1_2 = true;
-	WARN(LOG_PREFIX ": OpenSSL version in range 1.0.1f-1.0.1g. "
+	WARN("OpenSSL version in range 1.0.1f-1.0.1g. "
 	     "TLSv1.2 disabled to workaround broken keying material export");
 #endif
 #endif
@@ -3507,7 +3507,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 
 	conf = cf_data_find(cs, "tls-conf");
 	if (conf) {
-		DEBUG2(LOG_PREFIX ": Using cached TLS configuration from previous invocation");
+		DEBUG2("Using cached TLS configuration from previous invocation");
 		return conf;
 	}
 

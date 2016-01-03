@@ -59,6 +59,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_eap - "
+
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/rad_assert.h>
 #include "eap_types.h"
@@ -194,9 +196,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	eap_packet_raw_t *eap_packet;
 	int rcode;
 
-	if (eap_wireformat(reply) == EAP_INVALID) {
-		return RLM_MODULE_INVALID;
-	}
+	if (eap_wireformat(reply) == EAP_INVALID) return RLM_MODULE_INVALID;
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
 	fr_pair_delete_by_num(&(packet->vps), 0, PW_EAP_MESSAGE, TAG_ANY);
@@ -239,7 +239,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 		break;
 	default:
 		/* Should never enter here */
-		ERROR("rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
+		ERROR("Reply code %d is unknown, Rejecting the request", reply->code);
 		packet->code = PW_CODE_ACCESS_REJECT;
 		break;
 	}
@@ -363,9 +363,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
 	eap_packet = (eap_packet_raw_t *) talloc_zero_array(ctx, uint8_t, len);
-	if (!eap_packet) {
-		return NULL;
-	}
+	if (!eap_packet) return NULL;
 
 	/*
 	 *	Copy the data from EAP-Message's over to our EAP packet.

@@ -21,6 +21,8 @@
  *
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#define LOG_PREFIX "rlm_cache_redis - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -63,7 +65,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	driver->cluster = fr_redis_cluster_alloc(driver, conf, &driver->conf, true,
 						 buffer, "modules.cache.pool", NULL);
 	if (!driver->cluster) {
-		ERROR("rlm_cache_redis: Cluster failure");
+		ERROR("Cluster failure");
 		return -1;
 	}
 
@@ -72,13 +74,13 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	 */
 	if (tmpl_from_attr_str(&driver->created_attr, "&Cache-Created",
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
-		ERROR("rlm_cache_redis: Cache-Created attribute not defined");
+		ERROR("Cache-Created attribute not defined");
 		return -1;
 	}
 
 	if (tmpl_from_attr_str(&driver->expires_attr, "&Cache-Expires",
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
-		ERROR("rlm_cache_redis: Cache-Expires attribute not defined");
+		ERROR("Cache-Expires attribute not defined");
 		return -1;
 	}
 

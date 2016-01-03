@@ -361,11 +361,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	uuid_clear(guid_sacl);
 
 	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
-		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
+		RDEBUG("The SACL group \"%s\" does not exist on this system", kRadiusSACLName);
 	} else {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
-			ERROR("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
+			REDEBUG("The group \"%s\" does not have a GUID", kRadiusSACLName);
 			return RLM_MODULE_FAIL;
 		}
 	}
@@ -385,12 +385,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 			/* attempt to resolve the name */
 			groupdata = getgrnam(rad_client->community);
 			if (!groupdata) {
-				AUTH("rlm_opendirectory: The group \"%s\" does not exist on this system.", rad_client->community);
+				REDEBUG("The group \"%s\" does not exist on this system", rad_client->community);
 				return RLM_MODULE_FAIL;
 			}
 			err = mbr_gid_to_uuid(groupdata->gr_gid, guid_nasgroup);
 			if (err != 0) {
-				AUTH("rlm_opendirectory: The group \"%s\" does not have a GUID.", rad_client->community);
+				REDEBUG("The group \"%s\" does not have a GUID", rad_client->community);
 				return RLM_MODULE_FAIL;
 			}
 		}
@@ -399,19 +399,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 #endif
 	{
 		if (!rad_client) {
-			RDEBUG("The client record could not be found for host %s.",
-					fr_inet_ntoh(&request->packet->src_ipaddr,
-						host_ipaddr, sizeof(host_ipaddr)));
-		}
-		else {
-			RDEBUG("The host %s does not have an access group.",
-					fr_inet_ntoh(&request->packet->src_ipaddr,
-						host_ipaddr, sizeof(host_ipaddr)));
+			RDEBUG("The client record could not be found for host %s",
+			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
+		} else {
+			RDEBUG("The host %s does not have an access group",
+			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		}
 	}
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
-		RDEBUG("no access control groups, all users allowed");
+		RDEBUG("No access control groups, all users allowed");
 		if (fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY) == NULL) {
 			pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
 			RDEBUG("Setting Auth-Type = %s", kAuthType);

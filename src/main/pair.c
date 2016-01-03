@@ -286,7 +286,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 		}
 	}
 
-	if (!req) return -1; /* doesn't exist, don't compare it */
+	if (!request) return -1; /* doesn't exist, don't compare it */
 
 	return radius_compare_vps(request, check, req);
 }

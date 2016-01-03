@@ -18,8 +18,9 @@
  * Copyright 2006  The FreeRADIUS server project
  * Copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
  */
-
 RCSID("$Id$")
+
+#define LOG_PREFIX "rlm_sql_firebird - "
 
 #include "sql_fbapi.h"
 #include <freeradius-devel/rad_assert.h>
@@ -35,7 +36,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 {
 	int i;
 
-	DEBUG2("rlm_sql_firebird: socket destructor called, closing socket");
+	DEBUG2("socket destructor called, closing socket");
 
 	fb_commit(conn);
 	if (conn->dbh) {
@@ -43,7 +44,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 		isc_detach_database(conn->status, &(conn->dbh));
 
 		if (fb_error(conn)) {
-			WARN("rlm_sql_firebird: Got error "
+			WARN("Got error "
 			       "when closing socket: %s", conn->error);
 		}
 	}
@@ -82,7 +83,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	if (res) return RLM_SQL_ERROR;
 
 	if (fb_connect(conn, config)) {
-		ERROR("rlm_sql_firebird: Connection failed: %s", conn->error);
+		ERROR("Connection failed: %s", conn->error);
 
 		return RLM_SQL_RECONNECT;
 	}
@@ -219,7 +220,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 		res = fb_fetch(conn);
 		if (res == 100) return RLM_SQL_OK;
 		if (res) {
-			ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
+			ERROR("Fetch problem: %s", conn->error);
 
 			return RLM_SQL_ERROR;
 		}

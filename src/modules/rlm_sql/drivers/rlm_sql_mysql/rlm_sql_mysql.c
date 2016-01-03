@@ -26,6 +26,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sql_mysql - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -107,7 +109,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
 
 static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 {
-	DEBUG2("rlm_sql_mysql: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->sock){
 		mysql_close(conn->sock);
@@ -133,12 +135,12 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	if (!version_done) {
 		version_done = true;
 
-		INFO("rlm_sql_mysql: libmysql version: %s", mysql_get_client_info());
+		INFO("libmysql version: %s", mysql_get_client_info());
 	}
 
 	if (mysql_instance_count == 0) {
 		if (mysql_library_init(0, NULL, NULL)) {
-			ERROR("rlm_sql_mysql: libmysql initialisation failed");
+			ERROR("libmysql initialisation failed");
 
 			return -1;
 		}
@@ -154,7 +156,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 	warnings = fr_str2int(server_warnings_table, driver->warnings_str, -1);
 	if (warnings < 0) {
-		ERROR("rlm_sql_mysql: Invalid warnings value \"%s\", must be yes, no, or auto", driver->warnings_str);
+		ERROR("Invalid warnings value \"%s\", must be yes, no, or auto", driver->warnings_str);
 		return -1;
 	}
 	driver->warnings = (rlm_sql_mysql_warnings)warnings;
@@ -172,7 +174,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_mysql_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
-	DEBUG("rlm_sql_mysql: Starting connect to MySQL server");
+	DEBUG("Starting connect to MySQL server");
 
 	mysql_init(&(conn->db));
 
@@ -249,15 +251,15 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 					NULL,
 					sql_flags);
 	if (!conn->sock) {
-		ERROR("rlm_sql_mysql: Couldn't connect to MySQL server %s@%s:%s", config->sql_login,
+		ERROR("Couldn't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
-		ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(&conn->db));
+		ERROR("MySQL error: %s", mysql_error(&conn->db));
 
 		conn->sock = NULL;
 		return RLM_SQL_ERROR;
 	}
 
-	DEBUG2("rlm_sql_mysql: Connected to database '%s' on %s, server version %s, protocol version %i",
+	DEBUG2("Connected to database '%s' on %s, server version %s, protocol version %i",
 	       config->sql_db, mysql_get_host_info(conn->sock),
 	       mysql_get_server_info(conn->sock), mysql_get_proto_info(conn->sock));
 
@@ -341,7 +343,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	char const *info;
 
 	if (!conn->sock) {
-		ERROR("rlm_sql_mysql: Socket not connected");
+		ERROR("Socket not connected");
 		return RLM_SQL_RECONNECT;
 	}
 
@@ -353,7 +355,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 	/* Only returns non-null string for INSERTS */
 	info = mysql_info(conn->sock);
-	if (info) DEBUG2("rlm_sql_mysql: %s", info);
+	if (info) DEBUG2("%s", info);
 
 	return RLM_SQL_OK;
 }
@@ -365,7 +367,7 @@ static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	int ret;
 
 	if (!conn->sock) {
-		ERROR("rlm_sql_mysql: Socket not connected");
+		ERROR("Socket not connected");
 		return RLM_SQL_RECONNECT;
 	}
 
@@ -557,7 +559,7 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 	 */
 	num_fields = mysql_field_count(conn->sock);
 	if (num_fields < 3) {
-		WARN("rlm_sql_mysql: Failed retrieving warnings, expected 3 fields got %u", num_fields);
+		WARN("Failed retrieving warnings, expected 3 fields got %u", num_fields);
 		mysql_free_result(result);
 
 		return -1;
@@ -633,7 +635,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			 */
 			msgs = mysql_warning_count(conn->sock);
 			if (msgs == 0) {
-				DEBUG3("rlm_sql_mysql: No additional diagnostic info on server");
+				DEBUG3("No additional diagnostic info on server");
 				break;
 			}
 

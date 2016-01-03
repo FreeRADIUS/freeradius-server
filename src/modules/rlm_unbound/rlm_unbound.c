@@ -24,6 +24,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_unbound - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/log.h>
@@ -65,7 +67,7 @@ static const CONF_PARSER module_config[] = {
  *	new ub_result via a pointer that has been allocated from the heap.
  *	This pointer has been pre-initialized to a magic value.
  */
-static void link_ubres(void* my_arg, int err, struct ub_result* result)
+static void link_ubres(void *my_arg, int err, struct ub_result *result)
 {
 	struct ub_result **ubres = (struct ub_result **)my_arg;
 
@@ -75,7 +77,7 @@ static void link_ubres(void* my_arg, int err, struct ub_result* result)
 	 *	and only documented in the examples.  It could change.
 	 */
 	if (err) {
-		ERROR("rlm_unbound: %s", ub_strerror(err));
+		ERROR("%s", ub_strerror(err));
 		*ubres = NULL;
 	} else {
 		*ubres = result;
@@ -148,7 +150,8 @@ static int rrlabels_tostr(char *out, char *rr, size_t left)
 	return offset;
 }
 
-static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request, char const *tag, struct ub_result **ub, int async_id)
+static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
+			  char const *name, struct ub_result **ub, int async_id)
 {
 	useconds_t iv, waited;
 
@@ -177,12 +180,11 @@ static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request, char cons
 	if ((void const *)*ub == (void const *)inst) {
 		int res;
 
-		RDEBUG("rlm_unbound (%s): DNS took too long", tag);
+		RDEBUG("%s - DNS took too long", name);
 
 		res = ub_cancel(inst->ub, async_id);
 		if (res) {
-			REDEBUG("rlm_unbound (%s): ub_cancel: %s",
-				tag, ub_strerror(res));
+			REDEBUG("%s - ub_cancel: %s", name, ub_strerror(res));
 		}
 		return -1;
 	}
@@ -190,20 +192,20 @@ static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request, char cons
 	return 0;
 }
 
-static int ub_common_fail(REQUEST *request, char const *tag, struct ub_result *ub)
+static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *ub)
 {
 	if (ub->bogus) {
-		RWDEBUG("rlm_unbound (%s): Bogus DNS response", tag);
+		RWDEBUG("%s - Bogus DNS response", name);
 		return -1;
 	}
 
 	if (ub->nxdomain) {
-		RDEBUG("rlm_unbound (%s): NXDOMAIN", tag);
+		RDEBUG("%s - NXDOMAIN", name);
 		return -1;
 	}
 
 	if (!ub->havedata) {
-		RDEBUG("rlm_unbound (%s): empty result", tag);
+		RDEBUG("%s - Empty result", name);
 		return -1;
 	}
 
@@ -247,7 +249,7 @@ static ssize_t xlat_a(char **out, size_t outlen,
 		return strlen(*out);
 	}
 
-	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_a_name);
+	RWDEBUG("%s - No result", inst->xlat_a_name);
 
  error1:
 	ub_resolve_free(*ubres); /* Handles NULL gracefully */
@@ -292,7 +294,7 @@ static ssize_t xlat_aaaa(char **out, size_t outlen,
 		return strlen(*out);
 	}
 
-	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_aaaa_name);
+	RWDEBUG("%s - No result", inst->xlat_aaaa_name);
 
 error1:
 	ub_resolve_free(*ubres); /* Handles NULL gracefully */
@@ -338,7 +340,7 @@ static ssize_t xlat_ptr(char **out, size_t outlen,
 		return strlen(*out);
 	}
 
-	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_ptr_name);
+	RWDEBUG("%s - No result", inst->xlat_ptr_name);
 
 error1:
 	ub_resolve_free(*ubres);  /* Handles NULL gracefully */
@@ -362,8 +364,7 @@ static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx
 
 	err = ub_process(inst->ub);
 	if (err) {
-		ERROR("rlm_unbound (%s) async ub_process: %s",
-		      inst->name, ub_strerror(err));
+		ERROR("Async ub_process: %s", ub_strerror(err));
 	}
 }
 
@@ -388,7 +389,7 @@ static void log_spew(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
 	 *  used in threaded mode.
 	 */
 	while (fgets(line, 1024, inst->log_pipe_stream[0])) {
-		DEBUG("rlm_unbound (%s): %s", inst->name, line);
+		DEBUG("%s", line);
 	}
 }
 
@@ -569,7 +570,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		free(optval);
 
-		WARN("rlm_unbound (%s): Overriding syslog settings.", inst->name);
+		WARN("Overriding syslog settings");
 		strcpy(k, "use-syslog:");
 		strcpy(v, "no");
 		res = ub_ctx_set_option(inst->ub, k, v);

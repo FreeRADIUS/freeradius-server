@@ -71,13 +71,13 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	rlm_rcode_t		result		= RLM_MODULE_FAIL;
 
 	if (!inUserName) {
-		ERROR("rlm_mschap: getUserNodeRef(): no username");
+		REDEBUG("getUserNodeRef(): No username");
 		return RLM_MODULE_FAIL;
 	}
 
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	if (!tDataBuff) {
-		RERROR("Failed allocating buffer");
+		REDEBUG("Failed allocating buffer");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -407,7 +407,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 
 	if (status != eDSNoErr) {
 		char *status_name = dsCopyDirStatusName(status);
-		RERROR("rlm_mschap: authentication failed - status = %s", status_name);
+		RERROR("Authentication failed - status = %s", status_name);
 		free(status_name);
 		return RLM_MODULE_REJECT;
 	}

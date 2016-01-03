@@ -34,6 +34,8 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#define LOG_PREFIX "rlm_eap_pwd - "
+
 #include "rlm_eap_pwd.h"
 
 #include "eap_pwd.h"
@@ -126,7 +128,7 @@ static int send_pwd_request (pwd_session_t *session, eap_round_t *eap_round)
 		break;
 
 	default:
-		ERROR("rlm_eap_pwd: PWD state is invalid.  Can't send request");
+		ERROR("PWD state is invalid.  Can't send request");
 		return 0;
 	}
 
@@ -178,7 +180,7 @@ static int mod_session_init (void *instance, eap_session_t *eap_session)
 	pwd_id_packet_t *packet;
 
 	if (!inst || !eap_session) {
-		ERROR("rlm_eap_pwd: Initiate, NULL data provided");
+		ERROR("Initiate, NULL data provided");
 		return 0;
 	}
 
@@ -186,7 +188,7 @@ static int mod_session_init (void *instance, eap_session_t *eap_session)
 	 * make sure the server's been configured properly
 	 */
 	if (!inst->server_id) {
-		ERROR("rlm_eap_pwd: Server ID is not configured");
+		ERROR("Server ID is not configured");
 		return 0;
 	}
 	switch (inst->group) {
@@ -198,7 +200,7 @@ static int mod_session_init (void *instance, eap_session_t *eap_session)
 		break;
 
 	default:
-	ERROR("rlm_eap_pwd: Group is not supported");
+		ERROR("Group is not supported");
 		return 0;
 	}
 
@@ -548,20 +550,20 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		 * process the peer's commit and generate the shared key, k
 		 */
 		if (process_peer_commit(session, in, in_len, inst->bnctx)) {
-			RDEBUG2("failed to process peer's commit");
+			RDEBUG2("Failed to process peer's commit");
 			return 0;
 		}
 
 		/*
-		 * compute our confirm blob
+		 *	Compute our confirm blob
 		 */
 		if (compute_server_confirm(session, session->my_confirm, inst->bnctx)) {
-			ERROR("rlm_eap_pwd: failed to compute confirm!");
+			ERROR("Failed to compute confirm!");
 			return 0;
 		}
 
 		/*
-		 * construct a response...which is just our confirm blob
+		 *	Construct a response...which is just our confirm blob
 		 */
 		session->out_len = SHA256_DIGEST_LENGTH;
 		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) return 0;

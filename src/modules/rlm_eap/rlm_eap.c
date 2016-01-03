@@ -25,6 +25,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_eap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -59,8 +62,8 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	fr_randinit(&inst->rand_pool, 1);
 	inst->rand_pool.randcnt = 0;
 
-	inst->xlat_name = cf_section_name2(cs);
-	if (!inst->xlat_name) inst->xlat_name = "EAP";
+	inst->name = cf_section_name2(cs);
+	if (!inst->name) inst->name = "EAP";
 
 	/* Load all the configured EAP-Types */
 	num_methods = 0;
@@ -104,8 +107,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 		case PW_EAP_TTLS:
 		case PW_EAP_PEAP:
 		case PW_EAP_PWD:
-			WARN("rlm_eap (%s): Ignoring EAP method %s because we don't have OpenSSL support",
-			     inst->xlat_name, name);
+			WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 			continue;
 
 		default:
@@ -403,10 +405,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY);
 	if ((!vp) || (vp->vp_integer != PW_AUTH_TYPE_REJECT)) {
-		vp = pair_make_config("Auth-Type", inst->xlat_name, T_OP_EQ);
+		vp = pair_make_config("Auth-Type", inst->name, T_OP_EQ);
 		if (!vp) {
 			RDEBUG2("Failed to create Auth-Type %s: %s\n",
-				inst->xlat_name, fr_strerror());
+				inst->name, fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
 	} else {

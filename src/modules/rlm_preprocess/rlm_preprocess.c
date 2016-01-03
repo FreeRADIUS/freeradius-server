@@ -24,11 +24,13 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
+#define LOG_PREFIX "rlm_preprocess - "
 
-#include	<ctype.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
+
+#include <ctype.h>
 
 typedef struct rlm_preprocess_t {
 	char const	*huntgroup_file;
@@ -526,7 +528,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	if (inst->huntgroup_file) {
 		ret = pairlist_read(inst, inst->huntgroup_file, &(inst->huntgroups), 0);
 		if (ret < 0) {
-			ERROR("rlm_preprocess: Error reading %s", inst->huntgroup_file);
+			ERROR("Error reading %s", inst->huntgroup_file);
 
 			return -1;
 		}
@@ -538,7 +540,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	if (inst->hints_file) {
 		ret = pairlist_read(inst, inst->hints_file, &(inst->hints), 0);
 		if (ret < 0) {
-			ERROR("rlm_preprocess: Error reading %s", inst->hints_file);
+			ERROR("Error reading %s", inst->hints_file);
 
 			return -1;
 		}

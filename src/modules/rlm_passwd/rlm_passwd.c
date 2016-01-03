@@ -23,6 +23,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_passwd - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -421,7 +423,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	lf = talloc_typed_strdup(inst, inst->format);
 	if ( !lf) {
-		ERROR("rlm_passwd: memory allocation failed for lf");
+		ERROR("Memory allocation failed for lf");
 		return -1;
 	}
 	memset(lf, 0, strlen(inst->format));
@@ -454,17 +456,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hash_size, inst->ignore_nislike, *inst->delimiter)) ){
-		ERROR("rlm_passwd: can't build hashtable from passwd file");
+		ERROR("Can't build hashtable from passwd file");
 		return -1;
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
-		ERROR("rlm_passwd: memory allocation failed");
+		ERROR("Memory allocation failed");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
-		ERROR("rlm_passwd: unable to convert format entry");
+		ERROR("Unable to convert format entry");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
@@ -485,17 +487,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->ht = NULL;
 		return -1;
 	}
-	if (! (da = fr_dict_attr_by_name(NULL, inst->pwdfmt->field[keyfield])) ) {
-		ERROR("rlm_passwd: unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
+	if (!(da = fr_dict_attr_by_name(NULL, inst->pwdfmt->field[keyfield]))) {
+		ERROR("Unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;
 	}
+
 	inst->keyattr = da;
 	inst->nfields = nfields;
 	inst->keyfield = keyfield;
 	inst->listable = listable;
-	DEBUG3("      passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
+
+	DEBUG3("nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield,
+	       inst->pwdfmt->field[keyfield], listable ? "yes" : "no");
+
 	return 0;
 
 #undef inst

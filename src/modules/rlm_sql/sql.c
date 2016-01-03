@@ -26,6 +26,9 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sql (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/rad_assert.h>
 
@@ -531,8 +534,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 
 	fd = exfile_open(inst->ef, filename, 0640, true);
 	if (fd < 0) {
-		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->name,
-		      expanded, fr_syserror(errno));
+		ERROR("Couldn't open logfile '%s': %s", expanded, fr_syserror(errno));
 
 		talloc_free(expanded);
 		return;
@@ -543,10 +545,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 		failed = true;
 	}
 
-	if (failed) {
-		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->name, expanded,
-		      fr_syserror(errno));
-	}
+	if (failed) ERROR("Failed writing to logfile '%s': %s", expanded, fr_syserror(errno));
 
 	talloc_free(expanded);
 	exfile_close(inst->ef, fd);

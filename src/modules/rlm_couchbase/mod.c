@@ -23,8 +23,9 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-
 RCSID("$Id$")
+
+#define LOG_PREFIX "rlm_couchbase - "
 
 #include <freeradius-devel/radiusd.h>
 
@@ -79,7 +80,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {
-		ERROR("rlm_couchbase: failed to initiate couchbase connection: %s (0x%x)",
+		ERROR("failed to initiate couchbase connection: %s (0x%x)",
 		      lcb_strerror(NULL, cb_error), cb_error);
 		/* destroy/free couchbase instance */
 		lcb_destroy(cb_inst);
@@ -127,7 +128,7 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
 	/* attempt to get server stats */
 	if ((cb_error = couchbase_server_stats(cb_inst, NULL)) != LCB_SUCCESS) {
 		/* log error */
-		ERROR("rlm_couchbase: failed to get couchbase server stats: %s (0x%x)",
+		ERROR("failed to get couchbase server stats: %s (0x%x)",
 		      lcb_strerror(NULL, cb_error), cb_error);
 		/* error out */
 		return -1;
@@ -161,12 +162,12 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	/* backwards compatibility */
 	if (!cs) {
 		cs = cf_section_sub_find(conf, "map");
-		WARN("rlm_couchbase: found deprecated 'map' section - please change to 'update'");
+		WARN("found deprecated 'map' section - please change to 'update'");
 	}
 
 	/* check section */
 	if (!cs) {
-		ERROR("rlm_couchbase: failed to find 'update' section in config");
+		ERROR("failed to find 'update' section in config");
 		/* fail */
 		return -1;
 	}
@@ -178,7 +179,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
 		/* validate item */
 		if (!cf_item_is_pair(ci)) {
-			ERROR("rlm_couchbase: failed to parse invalid item in 'update' section");
+			ERROR("failed to parse invalid item in 'update' section");
 			/* free map */
 			if (inst->map) {
 				json_object_put(inst->map);
@@ -200,11 +201,11 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 		json_object_object_add(inst->map, attribute, json_object_new_string(element));
 
 		/* debugging */
-		DEBUG3("rlm_couchbase: added attribute '%s' to element '%s' mapping", attribute, element);
+		DEBUG3("added attribute '%s' to element '%s' mapping", attribute, element);
 	}
 
 	/* debugging */
-	DEBUG3("rlm_couchbase: built attribute to element mapping %s", json_object_to_json_string(inst->map));
+	DEBUG3("built attribute to element mapping %s", json_object_to_json_string(inst->map));
 
 	/* return */
 	return 0;
@@ -234,7 +235,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 		/* copy and check size */
 		if (strlcpy(buf, json_object_get_string(jval), MAX_KEY_SIZE) >= MAX_KEY_SIZE) {
 			/* oops ... this value is bigger than our buffer ... error out */
-			ERROR("rlm_couchbase: json map value larger than MAX_KEY_SIZE - %d", MAX_KEY_SIZE);
+			ERROR("json map value larger than MAX_KEY_SIZE - %d", MAX_KEY_SIZE);
 			/* return fail */
 			return -1;
 		}
@@ -243,7 +244,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 	}
 
 	/* debugging */
-	DEBUG("rlm_couchbase: skipping attribute with no map entry - %s", name);
+	DEBUG("skipping attribute with no map entry - %s", name);
 
 	/* default return */
 	return -1;
@@ -484,7 +485,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	/* get our current start timestamp from our json body */
 	if (json_object_object_get_ex(json, "startTimestamp", &jval) == 0) {
 		/* debugging ... this shouldn't ever happen */
-		DEBUG("rlm_couchbase: failed to find 'startTimestamp' in current json body");
+		DEBUG("failed to find 'startTimestamp' in current json body");
 		/* return */
 		return -1;
 	}
@@ -501,7 +502,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 		ts = vp->vp_date;
 	} else {
 		/* debugging */
-		DEBUG("rlm_couchbase: failed to find event timestamp in current request");
+		DEBUG("failed to find event timestamp in current request");
 		/* return */
 		return -1;
 	}
@@ -518,12 +519,12 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 		/* check length */
 		if (length > 0) {
 			/* debugging */
-			DEBUG("rlm_couchbase: calculated start timestamp: %s", value);
+			DEBUG("calculated start timestamp: %s", value);
 			/* store new value in json body */
 			json_object_object_add(json, "startTimestamp", json_object_new_string(value));
 		} else {
 			/* debugging */
-			DEBUG("rlm_couchbase: failed to format calculated timestamp");
+			DEBUG("failed to format calculated timestamp");
 			/* return */
 			return -1;
 		}
@@ -608,7 +609,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	/* check error and object */
 	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
 		/* log error */
-		ERROR("rlm_couchbase: failed to execute view request or parse return");
+		ERROR("failed to execute view request or parse return");
 		/* set return */
 		retval = -1;
 		/* return */
@@ -616,7 +617,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	}
 
 	/* debugging */
-	DEBUG3("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
+	DEBUG3("cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 	/* check for error in json object */
 	if (json_object_object_get_ex(cookie->jobj, "error", &json)) {
@@ -630,7 +631,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 			strlcat(error, json_object_get_string(json), sizeof(error));
 		}
 		/* log error */
-		ERROR("rlm_couchbase: view request failed with error: %s", error);
+		ERROR("view request failed with error: %s", error);
 		/* set return */
 		retval = -1;
 		/* return */
@@ -640,7 +641,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	/* check for document id in return */
 	if (!json_object_object_get_ex(cookie->jobj, "rows", &json)) {
 		/* log error */
-		ERROR("rlm_couchbase: failed to fetch rows from view payload");
+		ERROR("failed to fetch rows from view payload");
 		/* set return */
 		retval = -1;
 		/* return */
@@ -657,12 +658,12 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	}
 
 	/* debugging */
-	DEBUG3("rlm_couchbase: jrows == %s", json_object_to_json_string(jrows));
+	DEBUG3("jrows == %s", json_object_to_json_string(jrows));
 
 	/* check for valid row value */
 	if (!fr_json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
 		/* log error */
-		ERROR("rlm_couchbase: no valid rows returned from view: %s", vpath);
+		ERROR("no valid rows returned from view: %s", vpath);
 		/* set return */
 		retval = -1;
 		/* return */
@@ -680,12 +681,12 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 			memset(vid, 0, sizeof(vid));
 			/* copy and check length */
 			if (strlcpy(vid, json_object_get_string(jval), sizeof(vid)) >= sizeof(vid)) {
-				ERROR("rlm_couchbase: id from row longer than MAX_KEY_SIZE (%d)",
+				ERROR("id from row longer than MAX_KEY_SIZE (%d)",
 				      MAX_KEY_SIZE);
 				continue;
 			}
 		} else {
-			WARN("rlm_couchbase: failed to fetch id from row - skipping");
+			WARN("failed to fetch id from row - skipping");
 			continue;
 		}
 
@@ -695,12 +696,12 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 			memset(vkey, 0, sizeof(vkey));
 			/* copy and check length */
 			if (strlcpy(vkey, json_object_get_string(jval), sizeof(vkey)) >= sizeof(vkey)) {
-				ERROR("rlm_couchbase: key from row longer than MAX_KEY_SIZE (%d)",
+				ERROR("key from row longer than MAX_KEY_SIZE (%d)",
 				      MAX_KEY_SIZE);
 				continue;
 			}
 		} else {
-			WARN("rlm_couchbase: failed to fetch key from row - skipping");
+			WARN("failed to fetch key from row - skipping");
 			continue;
 		}
 
@@ -710,7 +711,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		/* check error and object */
 		if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
 			/* log error */
-			ERROR("rlm_couchbase: failed to execute get request or parse return");
+			ERROR("failed to execute get request or parse return");
 			/* set return */
 			retval = -1;
 			/* return */
@@ -718,7 +719,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		}
 
 		/* debugging */
-		DEBUG3("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
+		DEBUG3("cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 		/* allocate conf section */
 		client = tmpl ? cf_section_dup(NULL, tmpl, "client", vkey, true) :
@@ -738,7 +739,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		 */
 		c = client_afrom_cs(NULL, client, false, false);
 		if (!c) {
-			ERROR("rlm_couchbase: failed to allocate client");
+			ERROR("failed to allocate client");
 			/* free config setion */
 			talloc_free(client);
 			/* set return */
@@ -754,7 +755,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 
 		/* attempt to add client */
 		if (!client_add(NULL, c)) {
-			ERROR("rlm_couchbase: failed to add client '%s' from '%s', possible duplicate?", vkey, vid);
+			ERROR("failed to add client '%s' from '%s', possible duplicate?", vkey, vid);
 			/* free client */
 			client_free(c);
 			/* set return */
@@ -764,7 +765,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		}
 
 		/* debugging */
-		DEBUG("rlm_couchbase: client '%s' added", c->longname);
+		DEBUG("client '%s' added", c->longname);
 
 		/* free json object */
 		if (cookie->jobj) {

@@ -53,7 +53,7 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
-
+#define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/modpriv.h>
 
 RCSID("$Id$")
@@ -132,15 +132,14 @@ int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t nu
 	 */
 	method->handle = module_dlopen_by_name(mod_name);
 	if (!method->handle) {
-		ERROR("rlm_eap (%s): Failed to link %s: %s", inst->xlat_name, mod_name, fr_strerror());
+		ERROR("Failed to link %s: %s", mod_name, fr_strerror());
 
 		return -1;
 	}
 
 	method->type = dlsym(method->handle, mod_name);
 	if (!method->type) {
-		ERROR("rlm_eap (%s): Failed linking to structure in %s: %s", inst->xlat_name,
-		       method->name, dlerror());
+		ERROR("Failed linking to structure in %s: %s", method->name, dlerror());
 
 		return -1;
 	}
@@ -154,7 +153,7 @@ open_self:
 	 *	Call the attach num in the EAP num module
 	 */
 	if ((method->type->instantiate) && ((method->type->instantiate)(method->cs, &(method->instance)) < 0)) {
-		ERROR("rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
+		ERROR("Failed to initialise %s", mod_name);
 
 		if (method->instance) {
 			(void) talloc_steal(method, method->instance);

@@ -211,10 +211,10 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	switch (inst->log_dst) {
 	case LINELOG_DST_UNIX:
-		DEBUG2("rlm_linelog (%s): Opening UNIX socket at \"%s\"", inst->name, inst->unix_sock.path);
+		DEBUG2("Opening UNIX socket at \"%s\"", inst->unix_sock.path);
 		sockfd = fr_socket_client_unix(inst->unix_sock.path, true);
 		if (sockfd < 0) {
-			ERROR("rlm_linelog (%s): Failed opening UNIX socket: %s", inst->name, fr_strerror());
+			ERROR("Failed opening UNIX socket: %s", fr_strerror());
 			return NULL;
 		}
 		break;
@@ -225,12 +225,12 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->tcp.dst_ipaddr);
 
-			DEBUG2("rlm_linelog (%s): Opening TCP connection to %s:%u", inst->name, buff, inst->tcp.port);
+			DEBUG2("Opening TCP connection to %s:%u", buff, inst->tcp.port);
 		}
 
 		sockfd = fr_socket_client_tcp(NULL, &inst->tcp.dst_ipaddr, inst->tcp.port, true);
 		if (sockfd < 0) {
-			ERROR("rlm_linelog (%s): Failed opening TCP socket: %s", inst->name, fr_strerror());
+			ERROR("Failed opening TCP socket: %s", fr_strerror());
 			return NULL;
 		}
 		break;
@@ -241,12 +241,12 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->udp.dst_ipaddr);
 
-			DEBUG2("rlm_linelog (%s): Opening UDP connection to %s:%u", inst->name, buff, inst->udp.port);
+			DEBUG2("Opening UDP connection to %s:%u", buff, inst->udp.port);
 		}
 
 		sockfd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (sockfd < 0) {
-			ERROR("rlm_linelog (%s): Failed opening UDP socket: %s", inst->name, fr_strerror());
+			ERROR("Failed opening UDP socket: %s", fr_strerror());
 			return NULL;
 		}
 		break;
@@ -263,23 +263,23 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	if (errno == EINPROGRESS) {
 		if (FR_TIMEVAL_TO_MS(timeout)) {
-			DEBUG2("rlm_linelog (%s): Waiting for connection to complete...", inst->name);
+			DEBUG2("Waiting for connection to complete...");
 		} else {
-			DEBUG2("rlm_linelog (%s): Blocking until connection complete...", inst->name);
+			DEBUG2("Blocking until connection complete...");
 		}
 		if (fr_socket_wait_for_connect(sockfd, timeout) < 0) {
-			ERROR("rlm_linelog (%s): %s", inst->name, fr_strerror());
+			ERROR("%s", fr_strerror());
 			close(sockfd);
 			return NULL;
 		}
 	}
-	DEBUG2("rlm_linelog (%s): Connection successful", inst->name);
+	DEBUG2("Connection successful");
 
 	/*
 	 *	Set blocking operation as we have no timeout set
 	 */
 	if (!FR_TIMEVAL_TO_MS(timeout) && (fr_blocking(sockfd) < 0)) {
-		ERROR("rlm_linelog (%s): Failed setting nonblock flag on fd", inst->name);
+		ERROR("Failed setting nonblock flag on fd");
 		close(sockfd);
 		return NULL;
 	}

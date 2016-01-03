@@ -22,6 +22,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_eap_gtc - "
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -68,7 +70,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (!inst->auth_type_name) {
-		ERROR("rlm_eap_gtc: You must specify 'auth_type'");
+		ERROR("You must specify 'auth_type'");
 		return -1;
 	}
 
@@ -143,7 +145,7 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 	 *	of data.
 	 */
 	if (eap_round->response->length <= 4) {
-		ERROR("rlm_eap_gtc: corrupted data");
+		ERROR("Corrupted data");
 		eap_round->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
@@ -153,11 +155,10 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 	 *	we don't like that.
 	 */
 	if (eap_round->response->type.length > 128) {
-		ERROR("rlm_eap_gtc: Response is too large to understand");
+		ERROR("Response is too large to understand");
 		eap_round->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
-
 
 	/*
 	 *	If there was a User-Password in the request,

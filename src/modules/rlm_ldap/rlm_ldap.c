@@ -29,6 +29,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/rad_assert.h>
 
 #include <stdarg.h>
@@ -690,8 +693,8 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		DEBUG2("rlm_ldap (%s): Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", inst->name, name);
+		DEBUG2("Couldn't find configuration for %s, will return NOOP for calls "
+		       "from this section", name);
 
 		return 0;
 	}
@@ -832,25 +835,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 *	run with Symas OpenLDAP.
 			 */
 			if (strcasestr(info.ldapai_vendor_name, LDAP_VENDOR_NAME) == NULL) {
-				WARN("rlm_ldap: libldap vendor changed since the server was built");
-				WARN("rlm_ldap: linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
+				WARN("libldap vendor changed since the server was built");
+				WARN("linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
 			}
 
 			if (info.ldapai_vendor_version < LDAP_VENDOR_VERSION) {
-				WARN("rlm_ldap: libldap older than the version the server was built against");
-				WARN("rlm_ldap: linked: %i, built: %i",
+				WARN("libldap older than the version the server was built against");
+				WARN("linked: %i, built: %i",
 				     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
 			}
 
-			INFO("rlm_ldap: libldap vendor: %s, version: %i", info.ldapai_vendor_name,
+			INFO("libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
 
 			ldap_memfree(info.ldapai_vendor_name);
 			ldap_memfree(info.ldapai_extensions);
 		} else {
-			DEBUG("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
+			DEBUG("Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
 			      "returned: %i", ldap_errno);
-			INFO("rlm_ldap: libldap vendor: %s, version: %i.%i.%i", LDAP_VENDOR_NAME,
+			INFO("libldap vendor: %s, version: %i.%i.%i", LDAP_VENDOR_NAME,
 			     LDAP_VENDOR_VERSION_MAJOR, LDAP_VENDOR_VERSION_MINOR, LDAP_VENDOR_VERSION_PATCH);
 		}
 	}

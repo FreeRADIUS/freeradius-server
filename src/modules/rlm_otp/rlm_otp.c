@@ -26,6 +26,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_otp - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -145,7 +147,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	/* The State attribute will be present if this is a response. */
 	if (fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY) != NULL) {
-		DEBUG("rlm_otp: autz: Found response to Access-Challenge");
+		DEBUG("autz: Found response to Access-Challenge");
 
 		return RLM_MODULE_OK;
 	}
@@ -271,7 +273,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 * 	The server will take care of sending it to the user.
 	 */
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-	DEBUG("rlm_otp: Sending Access-Challenge");
+	DEBUG("Sending Access-Challenge");
 
 	if (!auth_type_found) {
 		pair_make_config("Auth-Type", inst->name, T_OP_EQ);

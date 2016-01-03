@@ -22,9 +22,10 @@
  * Copyright 2006  The FreeRADIUS server project
  *
  */
-
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
+
+#define LOG_PREFIX "rlm_eap_tls - "
 
 #ifdef HAVE_OPENSSL_RAND_H
 #include <openssl/rand.h>
@@ -70,7 +71,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-		ERROR("rlm_eap_tls: Failed initializing SSL context");
+		ERROR("Failed initializing SSL context");
 		return -1;
 	}
 

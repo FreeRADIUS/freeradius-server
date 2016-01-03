@@ -24,6 +24,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_always (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modcall.h>
@@ -83,8 +86,7 @@ static void reparse_rcode(rlm_always_t *inst)
 
 	rcode = fr_str2int(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
 	if (rcode == RLM_MODULE_UNKNOWN) {
-		WARN("rlm_always (%s): Ignoring rcode change.  rcode value \"%s\" is invalid ", inst->name,
-		     inst->rcode_str);
+		WARN("Ignoring rcode change.  rcode value \"%s\" is invalid ", inst->rcode_str);
 		return;
 	}
 

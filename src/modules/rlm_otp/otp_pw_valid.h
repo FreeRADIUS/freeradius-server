@@ -35,13 +35,4 @@ typedef struct otp_fd_t {
   struct otp_fd_t	*next;
 } otp_fd_t;
 
-static int otprc2rlmrc(int);
-static int otp_verify(rlm_otp_t const *,
-		      otp_request_t const *, otp_reply_t *);
-static int otp_read(otp_fd_t *, char *, size_t);
-static int otp_write(otp_fd_t *, char const *, size_t);
-static int otp_connect(char const *);
-static otp_fd_t *otp_getfd(rlm_otp_t const *);
-static void otp_putfd(otp_fd_t *, int);
-
 #endif /* OTP_PW_VALID_H */

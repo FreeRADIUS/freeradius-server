@@ -27,8 +27,9 @@
  * Modification of rlm_sql_db2 to handle IBM DB2 UDB V7
  * by Joerg Wendland <wendland@scan-plus.de>
  */
-
 RCSID("$Id$")
+
+#define LOG_PREFIX "rlm_sql_db2 - "
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
@@ -47,7 +48,7 @@ typedef struct rlm_sql_conn {
 
 static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 {
-	DEBUG2("rlm_sql_db2: Socket destructor called, closing socket");
+	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->dbc_handle) {
 		SQLDisconnect(conn->dbc_handle);

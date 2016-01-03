@@ -114,6 +114,21 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
 
+/** Prefix for global log messages
+ *
+ * Should be defined in source file (before including radius.h) to add prefix to
+ * global log messages.
+ */
+#ifndef LOG_PREFIX
+#  define LOG_PREFIX ""
+#endif
+
+#ifdef LOG_PREFIX_ARGS
+#  define _RADLOG(_l, _f, ...) radlog(_l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#else
+#  define _RADLOG(_l, _f, ...) radlog(_l, LOG_PREFIX _f, ## __VA_ARGS__)
+#endif
+
 /** @name Log global messages
  *
  * Write to the global log.
@@ -136,13 +151,13 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
  *
  * @{
  */
-#define AUTH(fmt, ...)		radlog(L_AUTH, fmt, ## __VA_ARGS__)
-#define ACCT(fmt, ...)		radlog(L_ACCT, fmt, ## __VA_ARGS__)
-#define PROXY(fmt, ...)		radlog(L_PROXY, fmt, ## __VA_ARGS__)
+#define AUTH(fmt, ...)		_RADLOG(L_AUTH, fmt, ## __VA_ARGS__)
+#define ACCT(fmt, ...)		_RADLOG(L_ACCT, fmt, ## __VA_ARGS__)
+#define PROXY(fmt, ...)		_RADLOG(L_PROXY, fmt, ## __VA_ARGS__)
 
-#define INFO(fmt, ...)		radlog(L_INFO,  fmt, ## __VA_ARGS__)
-#define WARN(fmt, ...)		radlog(L_WARN, fmt, ## __VA_ARGS__)
-#define ERROR(fmt, ...)		radlog(L_ERR, fmt, ## __VA_ARGS__)
+#define INFO(fmt, ...)		_RADLOG(L_INFO,  fmt, ## __VA_ARGS__)
+#define WARN(fmt, ...)		_RADLOG(L_WARN, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...)		_RADLOG(L_ERR, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -171,11 +186,11 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 #define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)			//!< True if global debug level 1-3 messages are enabled
 #define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-4 messages are enabled
 
-#define _SL(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) radlog(_l, _f, ## __VA_ARGS__)
-#define DEBUG(fmt, ...)		_SL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
-#define DEBUG2(fmt, ...)	_SL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
-#define DEBUG3(fmt, ...)	_SL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define DEBUG4(fmt, ...)	_SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define _DEBUG_LOG(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) _RADLOG(_l, _f, ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define DEBUG3(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
+#define DEBUG4(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
@@ -371,7 +386,7 @@ do {\
 	if (request) {\
 		_l_request(fmt, ## __VA_ARGS__);\
 	} else {\
-		_l_global(LOG_PREFIX ": " fmt, ## __VA_ARGS__);\
+		_l_global(fmt, ## __VA_ARGS__);\
  	}\
 } while (0)
 

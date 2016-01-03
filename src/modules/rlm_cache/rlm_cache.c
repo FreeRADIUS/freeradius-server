@@ -23,6 +23,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->config.name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>
@@ -928,7 +931,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	DEBUG2("%s: Driver %s loaded and linked", inst->config.name, inst->driver->name);
+	DEBUG2("Driver %s loaded and linked", inst->driver->name);
 
 	/*
 	 *	Non optional fields and callbacks
@@ -978,7 +981,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	update = cf_section_sub_find(inst->cs, "update");
 	if (!update) {
-		cf_log_err_cs(conf, "Must have an 'update' section in order to cache anything.");
+		cf_log_err_cs(conf, "Must have an 'update' section in order to cache anything");
 		return -1;
 	}
 

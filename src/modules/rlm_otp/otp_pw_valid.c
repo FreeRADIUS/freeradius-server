@@ -23,6 +23,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_otp - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -35,6 +37,14 @@ RCSID("$Id$")
 #endif
 #include <sys/un.h>
 
+static int otprc2rlmrc(int);
+static int otp_verify(REQUEST *request, rlm_otp_t const *,
+		      otp_request_t const *, otp_reply_t *);
+static int otp_read(otp_fd_t *, char *, size_t);
+static int otp_write(otp_fd_t *, char const *, size_t);
+static int otp_connect(char const *);
+static otp_fd_t *otp_getfd(rlm_otp_t const *);
+static void otp_putfd(otp_fd_t *, int);
 
 /* transform otpd return codes into rlm return codes */
 static int otprc2rlmrc(int rc)
@@ -80,16 +90,12 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 
 	otp_request.version = 2;
 
-	if (strlcpy(otp_request.username, username,
-			sizeof(otp_request.username)) >=
-		sizeof(otp_request.username)) {
-		AUTH("rlm_otp: username [%s] too long", username);
+	if (strlcpy(otp_request.username, username, sizeof(otp_request.username)) >= sizeof(otp_request.username)) {
+		REDEBUG("Username \"%s\" too long", username);
 		return RLM_MODULE_REJECT;
 	}
-	if (strlcpy(otp_request.challenge, challenge,
-			sizeof(otp_request.challenge)) >=
-		sizeof(otp_request.challenge)) {
-		AUTH("rlm_otp: challenge for [%s] too long", username);
+	if (strlcpy(otp_request.challenge, challenge, sizeof(otp_request.challenge)) >= sizeof(otp_request.challenge)) {
+		REDEBUG("Challenge too long");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -117,11 +123,9 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 		return RLM_MODULE_NOOP;
 
 	case PWE_PAP:
-		if (strlcpy(otp_request.pwe.u.pap.passcode, rvp->vp_strvalue,
-				sizeof(otp_request.pwe.u.pap.passcode)) >=
-			sizeof(otp_request.pwe.u.pap.passcode)) {
-			AUTH("rlm_otp: passcode for [%s] too long",
-			       username);
+		if (strlcpy(otp_request.pwe.u.pap.passcode, rvp->vp_strvalue, sizeof(otp_request.pwe.u.pap.passcode)) >=
+		    sizeof(otp_request.pwe.u.pap.passcode)) {
+			REDEBUG("Passcode too long");
 
 			return RLM_MODULE_REJECT;
 		}
@@ -129,40 +133,34 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 
 	case PWE_CHAP:
 		if (cvp->vp_length > 16) {
-			AUTH("rlm_otp: CHAP challenge for [%s] "
-			       "too long", username);
+			REDEBUG("CHAP challenge too long");
 
 			return RLM_MODULE_INVALID;
 		}
 
 		if (rvp->vp_length != 17) {
-			AUTH("rlm_otp: CHAP response for [%s] "
-			      "wrong size", username);
+			REDEBUG("CHAP response wrong size");
 
 			return RLM_MODULE_INVALID;
 		}
 
-		(void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets,
-			      cvp->vp_length);
+		(void)memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets, cvp->vp_length);
 
 		otp_request.pwe.u.chap.clen = cvp->vp_length;
-		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets,
-			      rvp->vp_length);
+		(void)memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets, rvp->vp_length);
 
 		otp_request.pwe.u.chap.rlen = rvp->vp_length;
 		break;
 
 	case PWE_MSCHAP:
 		if (cvp->vp_length != 8) {
-			AUTH("rlm_otp: MS-CHAP challenge for "
-			       "[%s] wrong size", username);
+			REDEBUG("MS-CHAP challenge wrong size");
 
 			return RLM_MODULE_INVALID;
 		}
 
 		if (rvp->vp_length != 50) {
-			AUTH("rlm_otp: MS-CHAP response for [%s] "
-			       "wrong size", username);
+			REDEBUG("MS-CHAP response wrong size");
 
 			return RLM_MODULE_INVALID;
 		}
@@ -179,26 +177,22 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 
 	case PWE_MSCHAP2:
 		if (cvp->vp_length != 16) {
-			AUTH("rlm_otp: MS-CHAP2 challenge for "
-				      "[%s] wrong size", username);
+			REDEBUG("MS-CHAP2 challenge wrong size");
 
 			return RLM_MODULE_INVALID;
 		}
 
 		if (rvp->vp_length != 50) {
-			AUTH("rlm_otp: MS-CHAP2 response for [%s] "
-			       "wrong size", username);
+			REDEBUG("MS-CHAP2 response for wrong size");
 
 			return RLM_MODULE_INVALID;
 		}
 
-		(void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets,
-			      cvp->vp_length);
+		(void)memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets, cvp->vp_length);
 
 		otp_request.pwe.u.chap.clen = cvp->vp_length;
 
-		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets,
-			      rvp->vp_length);
+		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets, rvp->vp_length);
 		otp_request.pwe.u.chap.rlen = rvp->vp_length;
 		break;
 	} /* switch (otp_request.pwe.pwe) */
@@ -220,7 +214,7 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 	otp_request.resync = 1;
 
 
-	rc = otp_verify(opt, &otp_request, &otp_reply);
+	rc = otp_verify(request, opt, &otp_request, &otp_reply);
 	if (rc == OTP_RC_OK) {
 		(void) strcpy(passcode, otp_reply.passcode);
 	}
@@ -233,8 +227,8 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
  * Returns an OTP_* code, or -1 on system failure.
  * Fills in reply.
  */
-static int otp_verify(rlm_otp_t const *opt,
-		      otp_request_t const *request, otp_reply_t *reply)
+static int otp_verify(REQUEST *request, rlm_otp_t const *opt,
+		      otp_request_t const *otp_request, otp_reply_t *reply)
 {
 	otp_fd_t *fdp;
 	int rc;
@@ -250,8 +244,8 @@ static int otp_verify(rlm_otp_t const *opt,
 		return -1;
 	}
 
-	rc = otp_write(fdp, (char const *) request, sizeof(*request));
-	if (rc != sizeof(*request)) {
+	rc = otp_write(fdp, (char const *) otp_request, sizeof(*otp_request));
+	if (rc != sizeof(*otp_request)) {
 		if (rc == 0) {
 			goto retry;	/* otpd disconnect */	/*TODO: pause */
 		} else {
@@ -270,18 +264,16 @@ static int otp_verify(rlm_otp_t const *opt,
 
 	/* validate the reply */
 	if (reply->version != 1) {
-		AUTH("rlm_otp: otpd reply for [%s] invalid "
-		       "(version %d != 1)", request->username, reply->version);
-
+		REDEBUG("Invalid (version %d != 1)", reply->version);
 		otp_putfd(fdp, 1);
+
 		return -1;
 	}
 
 	if (reply->passcode[OTP_MAX_PASSCODE_LEN] != '\0') {
-		AUTH("rlm_otp: otpd reply for [%s] invalid "
-		       "(passcode)", request->username);
-
+		REDEBUG("Invalid (passcode)");
 		otp_putfd(fdp, 1);
+
 		return -1;
 	}
 
@@ -293,8 +285,7 @@ static int otp_verify(rlm_otp_t const *opt,
  * Full read with logging, and close on failure.
  * Returns nread on success, 0 on EOF, -1 on other failures.
  */
-static int
-otp_read(otp_fd_t *fdp, char *buf, size_t len)
+static int otp_read(otp_fd_t *fdp, char *buf, size_t len)
 {
 	ssize_t n;
 	size_t nread = 0;	/* bytes read into buf */
@@ -305,8 +296,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 			if (errno == EINTR) {
 				continue;
 			} else {
-				ERROR("rlm_otp: %s: read from otpd: %s",
-				       __func__, fr_syserror(errno));
+				ERROR("%s: read from otpd: %s", __func__, fr_syserror(errno));
 				otp_putfd(fdp, 1);
 
 				return -1;
@@ -314,7 +304,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 		}
 
 		if (!n) {
-			ERROR("rlm_otp: %s: otpd disconnect", __func__);
+			ERROR("%s: otpd disconnect", __func__);
 			otp_putfd(fdp, 1);
 
 			return 0;
@@ -341,10 +331,9 @@ static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 			if (errno == EINTR) {
 				continue;
 			} else {
-				ERROR("rlm_otp: %s: write to otpd: %s",
-				       __func__, fr_syserror(errno));
-
+				ERROR("%s: write to otpd: %s", __func__, fr_syserror(errno));
 				otp_putfd(fdp, 1);
+
 				return errno;
 
 			}
@@ -366,8 +355,7 @@ static int otp_connect(char const *path)
 	/* setup for unix domain socket */
 	sp_len = strlen(path);
 	if (sp_len > sizeof(sa.sun_path) - 1) {
-		ERROR("rlm_otp: %s: rendezvous point name too long",
-		       __func__);
+		ERROR("%s: rendezvous point name too long", __func__);
 
 		return -1;
 	}
@@ -377,18 +365,14 @@ static int otp_connect(char const *path)
 	/* connect to otpd */
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1) {
-		ERROR("rlm_otp: %s: socket: %s", __func__,
-		       fr_syserror(errno));
+		ERROR("%s: socket: %s", __func__, fr_syserror(errno));
 
 		return -1;
 	}
-	if (connect(fd, (struct sockaddr *) &sa,
-	      sizeof(sa.sun_family) + sp_len) == -1) {
 
-		ERROR("rlm_otp: %s: connect(%s): %s",
-		       __func__, path, fr_syserror(errno));
-
-		(void) close(fd);
+	if (connect(fd, (struct sockaddr *) &sa, sizeof(sa.sun_family) + sp_len) == -1) {
+		ERROR("%s: connect(%s): %s", __func__, path, fr_syserror(errno));
+		(void)close(fd);
 
 		return -1;
 	}

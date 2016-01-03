@@ -26,6 +26,9 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_krb5 (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -102,13 +105,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 	}
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
-		ERROR("rlm_krb5 (%s): context initialisation failed: %s", inst->xlat_name,
-		      rlm_krb5_error(NULL, ret));
+		ERROR("Context initialisation failed: %s", rlm_krb5_error(inst, NULL, ret));
 
 		return -1;
 	}
@@ -136,8 +138,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 #ifdef HEIMDAL_KRB5
-	if (inst->hostname) DEBUG("rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
-				  "needed/supported by Heimdal", inst->xlat_name, inst->hostname);
+	if (inst->hostname) DEBUG("Ignoring hostname component of service principal \"%s\", not "
+				  "needed/supported by Heimdal", inst->hostname);
 #else
 
 	/*
@@ -145,8 +147,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	ret = krb5_sname_to_principal(inst->context, inst->hostname, inst->service, KRB5_NT_SRV_HST, &(inst->server));
 	if (ret) {
-		ERROR("rlm_krb5 (%s): Failed parsing service principal: %s", inst->xlat_name,
-		      rlm_krb5_error(inst->context, ret));
+		ERROR("Failed parsing service principal: %s", rlm_krb5_error(inst, inst->context, ret));
 
 		return -1;
 	}
@@ -154,8 +155,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_unparse_name(inst->context, inst->server, &princ_name);
 	if (ret) {
 		/* Uh? */
-		ERROR("rlm_krb5 (%s): Failed constructing service principal string: %s", inst->xlat_name,
-		      rlm_krb5_error(inst->context, ret));
+		ERROR("Failed constructing service principal string: %s", rlm_krb5_error(inst, inst->context, ret));
 
 		return -1;
 	}
@@ -163,7 +163,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Not necessarily the same as the config item
 	 */
-	DEBUG("rlm_krb5 (%s): Using service principal \"%s\"", inst->xlat_name, princ_name);
+	DEBUG("Using service principal \"%s\"", princ_name);
 	krb5_free_unparsed_name(inst->context, princ_name);
 
 	/*
@@ -172,8 +172,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options)); /* For some reason the 'init' version
 										    of this function is deprecated */
 	if (ret) {
-		ERROR("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
-		      rlm_krb5_error(inst->context, ret));
+		ERROR("Couldn't allocated inital credential options: %s", rlm_krb5_error(inst, inst->context, ret));
 
 		return -1;
 	}
@@ -185,8 +184,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		krb5_kt_resolve(inst->context, inst->keytabname, &keytab) :
 		krb5_kt_default(inst->context, &keytab);
 	if (ret) {
-		ERROR("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name,
-		      rlm_krb5_error(inst->context, ret));
+		ERROR("Resolving keytab failed: %s", rlm_krb5_error(inst, inst->context, ret));
 
 		return -1;
 	}
@@ -194,13 +192,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_kt_get_name(inst->context, keytab, keytab_name, sizeof(keytab_name));
 	krb5_kt_close(inst->context, keytab);
 	if (ret) {
-		ERROR("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name,
-		      rlm_krb5_error(inst->context, ret));
+		ERROR("Can't retrieve keytab name: %s", rlm_krb5_error(inst, inst->context, ret));
 
 		return -1;
 	}
 
-	DEBUG("rlm_krb5 (%s): Using keytab \"%s\"", inst->xlat_name, keytab_name);
+	DEBUG("Using keytab \"%s\"", keytab_name);
 
 	MEM(inst->vic_options = talloc_zero(inst, krb5_verify_init_creds_opt));
 	krb5_verify_init_creds_opt_init(inst->vic_options);
@@ -222,13 +219,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /** Common function for transforming a User-Name string into a principal.
  *
  * @param[out] client Where to write the client principal.
+ * @param[in] inst of rlm_krb5.
  * @param[in] request Current request.
  * @param[in] context Kerberos context.
  */
-static rlm_rcode_t krb5_parse_user(krb5_principal *client, REQUEST *request, krb5_context context)
+static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t *inst, REQUEST *request, krb5_context context)
 {
 	krb5_error_code ret;
 	char *princ_name;
+
+	rad_cond_assert(inst);
 
 	/*
 	 * 	We can only authenticate user requests which HAVE
@@ -263,7 +263,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, REQUEST *request, krb
 
 	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
 	if (ret) {
-		REDEBUG("Failed parsing username as principal: %s", rlm_krb5_error(context, ret));
+		REDEBUG("Failed parsing username as principal: %s", rlm_krb5_error(inst, context, ret));
 
 		return RLM_MODULE_FAIL;
 	}
@@ -281,33 +281,36 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, REQUEST *request, krb
 /** Log error message and return appropriate rcode
  *
  * Translate kerberos error codes into return codes.
+ * @param inst of rlm_krb5.
  * @param request Current request.
  * @param ret code from kerberos.
  * @param conn used in the last operation.
  */
-static rlm_rcode_t krb5_process_error(REQUEST *request, rlm_krb5_handle_t *conn, int ret)
+static rlm_rcode_t krb5_process_error(rlm_krb5_t *inst, REQUEST *request, rlm_krb5_handle_t *conn, int ret)
 {
 	rad_assert(ret != 0);
+
+	if (!rad_cond_assert(inst)) return RLM_MODULE_FAIL;
 	if (!rad_cond_assert(conn)) return RLM_MODULE_FAIL;	/* Silences warnings */
 
 	switch (ret) {
 	case KRB5_LIBOS_BADPWDMATCH:
 	case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-		REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		REDEBUG("Provided password was incorrect (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
 		return RLM_MODULE_REJECT;
 
 	case KRB5KDC_ERR_KEY_EXP:
 	case KRB5KDC_ERR_CLIENT_REVOKED:
 	case KRB5KDC_ERR_SERVICE_REVOKED:
-		REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		REDEBUG("Account has been locked out (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
 		return RLM_MODULE_USERLOCK;
 
 	case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-		RDEBUG("User not found (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		RDEBUG("User not found (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
 		return RLM_MODULE_NOTFOUND;
 
 	default:
-		REDEBUG("Error verifying credentials (%i): %s", ret, rlm_krb5_error(conn->context, ret));
+		REDEBUG("Error verifying credentials (%i): %s", ret, rlm_krb5_error(inst, conn->context, ret));
 		return RLM_MODULE_FAIL;
 	}
 }
@@ -339,7 +342,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	memset(&client, 0, sizeof(client));
 
-	rcode = krb5_parse_user(&client, request, conn->context);
+	rcode = krb5_parse_user(&client, inst, request, conn->context);
 	if (rcode != RLM_MODULE_OK) goto cleanup;
 
 	/*
@@ -347,7 +350,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	ret = krb5_verify_user_opt(conn->context, client, request->password->vp_strvalue, &conn->options);
 	if (ret) {
-		rcode = krb5_process_error(request, conn, ret);
+		rcode = krb5_process_error(inst, request, conn, ret);
 		goto cleanup;
 	}
 
@@ -421,7 +424,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Check we have all the required VPs, and convert the username
 	 *	into a principal.
 	 */
-	rcode = krb5_parse_user(&client, request, conn->context);
+	rcode = krb5_parse_user(&client, inst, request, conn->context);
 	if (rcode != RLM_MODULE_OK) goto cleanup;
 
 	/*
@@ -432,13 +435,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	ret = krb5_get_init_creds_password(conn->context, &init_creds, client, password,
 					   NULL, NULL, 0, NULL, inst->gic_options);
 	if (ret) {
-		rcode = krb5_process_error(request, conn, ret);
+		rcode = krb5_process_error(inst, request, conn, ret);
 		goto cleanup;
 	}
 
 	RDEBUG("Attempting to authenticate against service principal");
 	ret = krb5_verify_init_creds(conn->context, &init_creds, inst->server, conn->keytab, NULL, inst->vic_options);
-	if (ret) rcode = krb5_process_error(request, conn, ret);
+	if (ret) rcode = krb5_process_error(inst, request, conn, ret);
 
 cleanup:
 	if (client) krb5_free_principal(conn->context, client);

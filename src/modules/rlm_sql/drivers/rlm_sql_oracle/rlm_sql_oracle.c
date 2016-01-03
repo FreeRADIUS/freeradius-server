@@ -21,6 +21,8 @@
 
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_sql_oracle - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -120,7 +122,7 @@ static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t *confi
 	if (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) < 0) return -1;
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
-		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
+		ERROR("OCI_SERVER_NOT_CONNECTED");
 		return RLM_SQL_RECONNECT;
 	}
 
@@ -151,7 +153,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	Initialises the oracle environment
 	 */
 	if (OCIEnvCreate(&conn->env, OCI_DEFAULT | OCI_THREADED, NULL, NULL, NULL, NULL, 0, NULL)) {
-		ERROR("rlm_sql_oracle: Couldn't init Oracle OCI environment (OCIEnvCreate())");
+		ERROR("Couldn't init Oracle OCI environment (OCIEnvCreate())");
 
 		return RLM_SQL_ERROR;
 	}
@@ -160,7 +162,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	Allocates an error handle
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->error, OCI_HTYPE_ERROR, 0, NULL)) {
-		ERROR("rlm_sql_oracle: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
+		ERROR("Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
 
 		return RLM_SQL_ERROR;
 	}
@@ -169,7 +171,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	Allocate handles for select and update queries
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
-		ERROR("rlm_sql_oracle: Couldn't init Oracle query handles: %s",
+		ERROR("Couldn't init Oracle query handles: %s",
 		      (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
@@ -182,7 +184,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		     (OraText const *)config->sql_login, strlen(config->sql_login),
 		     (OraText const *)config->sql_password, strlen(config->sql_password),
 		     (OraText const *)config->sql_db, strlen(config->sql_db))) {
-		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'",
+		ERROR("Oracle logon failed: '%s'",
 		      (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
@@ -221,7 +223,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 
 		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
 		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIParamGet(OCI_HTYPE_STMT) failed in sql_fields()");
+			ERROR("OCIParamGet(OCI_HTYPE_STMT) failed in sql_fields()");
 		error:
 			talloc_free(names);
 
@@ -231,7 +233,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 		status = OCIAttrGet((dvoid **)param, OCI_DTYPE_PARAM, &pcol_name, &pcol_size,
 				    OCI_ATTR_NAME, conn->error);
 		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIParamGet(OCI_ATTR_NAME) failed in sql_fields()");
+			ERROR("OCIParamGet(OCI_ATTR_NAME) failed in sql_fields()");
 
 			goto error;
 		}
@@ -254,14 +256,14 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	memcpy(&oracle_query, &query, sizeof(oracle_query));
 
 	if (!conn->ctx) {
-		ERROR("rlm_sql_oracle: Socket not connected");
+		ERROR("Socket not connected");
 
 		return RLM_SQL_RECONNECT;
 	}
 
 	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query),
 			   OCI_NTV_SYNTAX, OCI_DEFAULT)) {
-		ERROR("rlm_sql_oracle: prepare failed in sql_query");
+		ERROR("prepare failed in sql_query");
 
 		return RLM_SQL_ERROR;
 	}
@@ -271,7 +273,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 
 	if (status == OCI_SUCCESS) return RLM_SQL_OK;
 	if (status == OCI_ERROR) {
-		ERROR("rlm_sql_oracle: execute query failed in sql_query");
+		ERROR("execute query failed in sql_query");
 
 		return sql_check_reconnect(handle, config);
 	}
@@ -301,7 +303,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query), OCI_NTV_SYNTAX,
 			   OCI_DEFAULT)) {
-		ERROR("rlm_sql_oracle: prepare failed in sql_select_query");
+		ERROR("prepare failed in sql_select_query");
 
 		return RLM_SQL_ERROR;
 	}
@@ -312,7 +314,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	status = OCIStmtExecute(conn->ctx, conn->query, conn->error, 0, 0, NULL, NULL, OCI_DEFAULT);
 	if (status == OCI_NO_DATA) return RLM_SQL_OK;
 	if (status != OCI_SUCCESS) {
-		ERROR("rlm_sql_oracle: query failed in sql_select_query");
+		ERROR("query failed in sql_select_query");
 
 		return sql_check_reconnect(handle, config);
 	}
@@ -333,7 +335,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	for (i = 0; i < conn->col_count; i++) {
 		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
 		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIParamGet() failed in sql_select_query");
+			ERROR("OCIParamGet() failed in sql_select_query");
 
 			goto error;
 		}
@@ -341,7 +343,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		status = OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM, (dvoid*)&dtype, NULL, OCI_ATTR_DATA_TYPE,
 				    conn->error);
 		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIAttrGet() failed in sql_select_query");
+			ERROR("OCIAttrGet() failed in sql_select_query");
 
 			goto error;
 		}
@@ -365,7 +367,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 			status = OCIAttrGet((dvoid *)param, OCI_DTYPE_PARAM, (dvoid *)&dsize, NULL,
 					    OCI_ATTR_DATA_SIZE, conn->error);
 			if (status != OCI_SUCCESS) {
-				ERROR("rlm_sql_oracle: OCIAttrGet() failed in sql_select_query");
+				ERROR("OCIAttrGet() failed in sql_select_query");
 
 				goto error;
 			}
@@ -398,7 +400,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 					(dvoid *)&ind[i], NULL, NULL, OCI_DEFAULT);
 
 		if (status != OCI_SUCCESS) {
-			ERROR("rlm_sql_oracle: OCIDefineByPos() failed in sql_select_query");
+			ERROR("OCIDefineByPos() failed in sql_select_query");
 			goto error;
 		}
 	}
@@ -433,7 +435,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	*out = NULL;
 
 	if (!conn->ctx) {
-		ERROR("rlm_sql_oracle: Socket not connected");
+		ERROR("Socket not connected");
 
 		return RLM_SQL_RECONNECT;
 	}
@@ -448,7 +450,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	}
 
 	if (status == OCI_ERROR) {
-		ERROR("rlm_sql_oracle: fetch failed in sql_fetch_row");
+		ERROR("fetch failed in sql_fetch_row");
 		return sql_check_reconnect(handle, config);
 	}
 

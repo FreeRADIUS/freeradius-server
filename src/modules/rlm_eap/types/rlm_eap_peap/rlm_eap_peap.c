@@ -22,6 +22,8 @@
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_eap_peap - "
+
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {
@@ -88,7 +90,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	if (cf_section_parse(cs, inst, module_config) < 0) return -1;
 
 	if (!inst->virtual_server) {
-		ERROR("rlm_eap_peap: A 'virtual_server' MUST be defined for security");
+		ERROR("A 'virtual_server' MUST be defined for security");
 		return -1;
 	}
 
@@ -122,7 +124,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-		ERROR("rlm_eap_peap: Failed initializing SSL context");
+		ERROR("Failed initializing SSL context");
 		return -1;
 	}
 

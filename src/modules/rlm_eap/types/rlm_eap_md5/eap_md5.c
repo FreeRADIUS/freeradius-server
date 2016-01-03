@@ -34,8 +34,9 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
-
 RCSID("$Id$")
+
+#define LOG_PREFIX "rlm_eap_md5 - "
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,7 +66,7 @@ MD5_PACKET *eapmd5_extract(eap_round_t *eap_round)
 	    !eap_round->response->type.data 		 ||
 	    (eap_round->response->length <= MD5_HEADER_LEN) ||
 	    (eap_round->response->type.data[0] <= 0)) {
-		ERROR("rlm_eap_md5: corrupted data");
+		ERROR("corrupted data");
 		return NULL;
 	}
 
@@ -139,7 +140,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	 *	Sanity check it.
 	 */
 	if (packet->value_size != 16) {
-		ERROR("rlm_eap_md5: Expected 16 bytes of response to challenge, got %d", packet->value_size);
+		ERROR("Expected 16 bytes of response to challenge, got %d", packet->value_size);
 		return 0;
 	}
 
