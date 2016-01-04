@@ -3475,16 +3475,18 @@ static int command_tcp_recv(rad_listen_t *this)
 	fr_cs_buffer_t *co = (void *) sock->packet;
 	fr_channel_type_t channel;
 
-	rad_assert(co != NULL);
+	if (!co) {
+	do_close:
+		command_close_socket(this);
+		return 0;
+	}
 
 	if (!co->auth) {
 		uint8_t expected[16];
 
 		r = fr_channel_read(this->fd, &channel, co->buffer, 16);
 		if ((r != 16) || (channel != FR_CHANNEL_AUTH_RESPONSE)) {
-		do_close:
-			command_close_socket(this);
-			return 0;
+			goto do_close;
 		}
 
 		fr_hmac_md5(expected, (void const *) sock->client->secret,
