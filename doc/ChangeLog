@@ -26,7 +26,7 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  by always setting WBC_MSV1_0_ALLOW_MSVCHAPV2 for
 	  native winbind in rlm_mschap.
 	* TTLS and PEAP now require "virtual_server" to be a real server.
-	* Print WARNIGN when TTLS or PEAP identities are spoofed
+	* Print WARNING when TTLS or PEAP identities are spoofed
 	  or not properly anonymized.  See RFC 7542 for requirements.
 
 	Bug fixes
