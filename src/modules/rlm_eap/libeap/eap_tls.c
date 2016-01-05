@@ -583,7 +583,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 		 *
 		 *	We support both options for maximum compatibility.
 		 */
-		RDEBUG2("Got complete TLS record, with length (%zu bytes)", frag_len);
+		RDEBUG2("Got complete TLS record, with length field (%zu bytes)", frag_len);
 		return FR_TLS_RECORD_COMPLETE;
 	}
 
