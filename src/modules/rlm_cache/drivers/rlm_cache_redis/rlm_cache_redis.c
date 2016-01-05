@@ -133,8 +133,13 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		status = fr_redis_command_status(conn, reply);
 	}
 	if (s_ret != REDIS_RCODE_SUCCESS) {
+		char *p;
+
+		p = fr_asprint(NULL, (char const *)key, key_len, '"');
+		RERROR("Failed retrieving entry for key \"%s\"", p);
+		talloc_free(p);
+
 	error:
-		RERROR("Failed retrieving entry");
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
