@@ -1798,7 +1798,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 		ERROR("No memory");
 		return NULL;
 	}
-	request->reply = rad_alloc(request, false);
+	request->reply = rad_alloc_reply(request, packet);
 	if (!request->reply) {
 		ERROR("No memory");
 		talloc_free(request);
