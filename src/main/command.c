@@ -3430,9 +3430,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 
 	r = fr_channel_read(newfd, &channel, buffer, 8);
 	if (r <= 0) {
-	do_close:
-		ERROR("Cannot talk to socket: %s",
-		      fr_syserror(errno));
+		ERROR("Failed reading magic: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -3444,8 +3442,10 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 	}
 
 	r = fr_channel_write(newfd, FR_CHANNEL_INIT_ACK, buffer, 8);
-	if (r <= 0) goto do_close;
-
+	if (r <= 0) {
+		ERROR("Failed writing magic: %s", fr_syserror(errno));
+		return -1;
+	}
 	/*
 	 *	Write an initial challenge
 	 */
@@ -3461,7 +3461,10 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		}
 
 		r = fr_channel_write(newfd, FR_CHANNEL_AUTH_CHALLENGE, co->buffer, 16);
-		if (r <= 0) goto do_close;
+		if (r <= 0) {
+			ERROR("Failed writing auth challenge: %s", fr_syserror(errno));
+			return -1;
+		}
 	}
 
 	return 0;
