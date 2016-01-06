@@ -283,12 +283,16 @@ static int mod_destroy(void)
 
 /* TODO: Convert this function to accept any iterable objects? */
 
-static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
-			char const *funcname)
+static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
+			char const *funcname, char const *list_name)
 {
 	int	     i;
 	int	     tuplesize;
+	vp_tmpl_t       dst;
 	VALUE_PAIR      *vp;
+	REQUEST         *current = request;
+
+	memset(&dst, 0, sizeof(dst));
 
 	/*
 	 *	If the Python function gave us None for the tuple,
@@ -298,7 +302,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		return;
 
 	if (!PyTuple_CheckExact(pValue)) {
-		ERROR("rlm_python:%s: non-tuple passed", funcname);
+		ERROR("rlm_python:%s: non-tuple passed to %s", funcname, list_name);
 		return;
 	}
 	/* Get the tuple tuplesize. */
@@ -311,43 +315,72 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		int pairsize;
 		char const *s1;
 		char const *s2;
-		long op;
+		FR_TOKEN op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
-			ERROR("rlm_python:%s: tuple element %d is not a tuple", funcname, i);
+			ERROR("rlm_python:%s: tuple element %d of %s is not a tuple", funcname, i, list_name);
 			continue;
 		}
 		/* Check if it's a pair */
 
 		pairsize = PyTuple_GET_SIZE(pTupleElement);
 		if ((pairsize < 2) || (pairsize > 3)) {
-			ERROR("rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2 or 3.", funcname, i, pairsize);
+			ERROR("rlm_python:%s: tuple element %d of %s is a tuple of size %d. Must be 2 or 3.", funcname, i, list_name, pairsize);
 			continue;
 		}
 
 		if (pairsize == 2) {
 			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
 			pStr2	= PyTuple_GET_ITEM(pTupleElement, 1);
-			op	= T_OP_EQ;
 		} else {
 			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
 			pStr2	= PyTuple_GET_ITEM(pTupleElement, 2);
-			pOp	= PyTuple_GET_ITEM(pTupleElement, 1);
-			op	= PyInt_AsLong(pOp);
+			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
+			if (PyInt_Check(pOp)) {
+				op	= PyInt_AsLong(pOp);
+				if (!fr_int2str(fr_tokens, op, NULL)) {
+					ERROR("rlm_python:%s: Invalid operator '%i', falling back to '='", funcname, op);
+					op = T_OP_EQ;
+				}
+			} else if (PyString_CheckExact(pOp)) {
+				if (!(op = fr_str2int(fr_tokens, PyString_AsString(pOp), 0))) {
+					ERROR("rlm_python:%s: Invalid operator '%s', falling back to '='", funcname, PyString_AsString(pOp));
+					op = T_OP_EQ;
+				}
+			} else {
+				ERROR("rlm_python:%s: Invalid operator type, using default '='", funcname);
+			}
 		}
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
-			ERROR("rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
+			ERROR("rlm_python:%s: tuple element %d of %s must be as (str, str)", funcname, i, list_name);
 			continue;
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
-		vp = fr_pair_make(ctx, vps, s1, s2, op);
-		if (vp != NULL) {
-			DEBUG("rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
-		} else {
-			DEBUG("rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
+
+		if (tmpl_from_attr_str(&dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+			DEBUG("rlm_python:%s: Failed to find attribute %s:%s", funcname, list_name, s1);
+			continue;
 		}
+
+		if (radius_request(&current, dst.tmpl_request) < 0) {
+			DEBUG("rlm_python:%s: Attribute name %s:%s refers to outer request but not in a tunnel, skipping...", funcname, list_name, s1);
+		}
+
+		if (!(vp = fr_pair_afrom_da(ctx, dst.tmpl_da))) {
+			DEBUG("rlm_python:%s: Failed to create attribute %s:%s", funcname, list_name, s1);
+			continue;
+		}
+
+		vp->op = op;
+		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
+			DEBUG("rlm_python:%s: Failed: '%s:%s' %s '%s'", funcname, list_name, s1, fr_int2str(fr_tokens, op, "="), s2);
+		} else {
+			DEBUG("rlm_python:%s: '%s:%s' %s '%s'", funcname, list_name, s1, fr_int2str(fr_tokens, op, "="), s2);
+		}
+
+		radius_pairmove(current, vps, vp, false);
 	}
 }
 
@@ -542,11 +575,11 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		/* Now have the return value */
 		ret = PyInt_AsLong(pTupleInt);
 		/* Reply item tuple */
-		mod_vptuple(request->reply, &request->reply->vps,
-			    PyTuple_GET_ITEM(pRet, 1), funcname);
+		mod_vptuple(request->reply, request, &request->reply->vps,
+			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, &request->config,
-			    PyTuple_GET_ITEM(pRet, 2), funcname);
+		mod_vptuple(request, request, &request->config,
+			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
 	} else if (PyInt_CheckExact(pRet)) {
 		/* Just an integer */
