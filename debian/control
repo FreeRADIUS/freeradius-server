@@ -26,7 +26,8 @@ Build-Depends: debhelper (>= 9),
  libykclient-dev,
  libmemcached-dev,
  libhiredis-dev,
- python-dev
+ python-dev,
+ samba-dev
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
