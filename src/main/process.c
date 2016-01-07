@@ -537,6 +537,9 @@ static void request_done(REQUEST *request, int action)
 	 *	Force this no matter what.
 	 */
 	request->process = request_done;
+	request->component = NULL;
+	request->module = NULL;
+
 
 #ifdef WITH_DETAIL
 	/*
