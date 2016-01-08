@@ -79,9 +79,34 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifndef WITH_GCD
 #  define SEMAPHORE_LOCKED	(0)
 
-#  define THREAD_RUNNING	(1)
-#  define THREAD_CANCELLED	(2)
-#  define THREAD_EXITED		(3)
+/*
+ *	Threads start off in the idle list.
+ *
+ *	When a packet comes in, the first thread in the idle list is
+ *	assigned the request, and is moved to the head of the active
+ *	list.  When the thread is done processing the request, it
+ *	removes itself from the active list, and adds itself to the
+ *	HEAD of the idle list.  This ensures that "hot" threads
+ *	continue to get scheduled, and "cold" threads age out of the
+ *	CPU cache.
+ *
+ *	When the server is reaching overload, there are no threads in
+ *	the idle queue.  In that case, the request is added to the
+ *	idle_heap.  Any active threads will check the heap FIRST,
+ *	before moving themselves to the idle list as described above.
+ *	If there are requests in the heap, the thread stays in the
+ *	active list, and processes the packet.
+ *
+ *	Once a second, a random one of the worker threads will manage
+ *	the thread pool.  This work involves spawning more threads if
+ *	needed, marking old "idle" threads as cancelled, etc.  That
+ *	work is done with the mutex released (if at all possible).
+ *	This practice minimizes contention on the mutex.
+ */
+#  define THREAD_IDLE		(1)
+#  define THREAD_ACTIVE		(2)
+#  define THREAD_CANCELLED	(3)
+#  define THREAD_EXITED		(4)
 
 /*
  *  A data structure which contains the information about
@@ -90,12 +115,15 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE	*prev;		//!< Previous thread handle (in the linked list).
 	struct THREAD_HANDLE	*next;		//!< Next thread handle (int the linked list).
+
 	pthread_t		pthread_id;	//!< pthread_id.
 	int			thread_num;	//!< Server thread number, 1...number of threads.
 	int			status;		//!< Is the thread running or exited?
 	unsigned int		request_count;	//!< The number of requests that this thread has handled.
 	time_t			timestamp;	//!< When the thread started executing.
 	REQUEST			*request;
+
+	sem_t			semaphore;	//!< used to signal the thread when there are new requests
 } THREAD_HANDLE;
 
 #endif	/* WITH_GCD */
@@ -123,25 +151,6 @@ typedef struct fr_pps_t {
  *	easier.
  */
 typedef struct THREAD_POOL {
-#ifndef WITH_GCD
-	THREAD_HANDLE	*head;
-	THREAD_HANDLE	*tail;
-
-	uint32_t	active_threads;	/* protected by queue_mutex */
-	uint32_t	total_threads;
-
-	uint32_t	exited_threads;
-	uint32_t	max_thread_num;
-	uint32_t	start_threads;
-	uint32_t	max_threads;
-	uint32_t	min_spare_threads;
-	uint32_t	max_spare_threads;
-	uint32_t	max_requests_per_thread;
-	uint32_t	request_count;
-	time_t		time_last_spawned;
-	uint32_t	cleanup_delay;
-	bool		stop_flag;
-#endif	/* WITH_GCD */
 	bool		spawn_workers;
 
 #ifdef WNOHANG
@@ -152,30 +161,60 @@ typedef struct THREAD_POOL {
 #ifdef WITH_GCD
 	dispatch_queue_t	queue;
 #else
+	uint32_t	max_thread_num;
+	uint32_t	start_threads;
+	uint32_t	max_threads;
+	uint32_t	min_spare_threads;
+	uint32_t	max_spare_threads;
+	uint32_t	max_requests_per_thread;
+	uint32_t	request_count;
+	time_t		time_last_spawned;
+	uint32_t	cleanup_delay;
+	bool		stop_flag;
 
-#  ifdef WITH_STATS
+#ifdef WITH_STATS
 	fr_pps_t	pps_in, pps_out;
-#    ifdef WITH_ACCOUNTING
+#ifdef WITH_ACCOUNTING
 	bool		auto_limit_acct;
-#    endif
-#  endif
-
-	/*
-	 *	All threads wait on this semaphore, for requests
-	 *	to enter the queue.
-	 */
-	sem_t		semaphore;
-
-	/*
-	 *	To ensure only one thread at a time touches the queue.
-	 */
-	pthread_mutex_t	queue_mutex;
+#endif
+#endif
 
 	char const	*queue_priority;
-	fr_heap_cmp_t	heap_cmp;
+
+	/*
+	 *	To ensure only one thread at a time touches the scheduler.
+	 *
+	 *	Threads start off on the idle list.  As packets come
+	 *	in, the threads go to the active list.  If the idle
+	 *	list is empty, packets go to the idle_heap.
+	 */
+	pthread_mutex_t	mutex;
+
+	bool		spawning;
+	time_t		managed;
 
 	uint32_t	max_queue_size;
-	fr_heap_t	*heap;
+	uint32_t	num_queued;
+
+	uint32_t        requests;
+
+	fr_heap_cmp_t	heap_cmp;
+
+	uint32_t	total_threads;
+	uint32_t	active_threads;
+	uint32_t	idle_threads;
+	uint32_t	exited_threads;
+
+	fr_heap_t	*idle_heap;
+
+	THREAD_HANDLE	*idle_head;
+	THREAD_HANDLE	*idle_tail;
+
+	THREAD_HANDLE	*active_head;
+	THREAD_HANDLE	*active_tail;
+
+	THREAD_HANDLE	*exited_head;
+	THREAD_HANDLE	*exited_tail;
 #endif	/* WITH_GCD */
 } THREAD_POOL;
 
@@ -183,8 +222,6 @@ static THREAD_POOL thread_pool;
 static bool pool_initialized = false;
 
 #ifndef WITH_GCD
-static time_t last_cleaned = 0;
-
 static void thread_pool_manage(time_t now);
 #endif
 
@@ -201,11 +238,11 @@ static const CONF_PARSER thread_config[] = {
 	{ FR_CONF_POINTER("cleanup_delay", PW_TYPE_INTEGER, &thread_pool.cleanup_delay), .dflt = "5" },
 	{ FR_CONF_POINTER("max_queue_size", PW_TYPE_INTEGER, &thread_pool.max_queue_size), .dflt = "65536" },
 	{ FR_CONF_POINTER("queue_priority", PW_TYPE_STRING, &thread_pool.queue_priority), .dflt = NULL },
-#  ifdef WITH_STATS
-#    ifdef WITH_ACCOUNTING
+#ifdef WITH_STATS
+#ifdef WITH_ACCOUNTING
 	{ FR_CONF_POINTER("auto_limit_acct", PW_TYPE_BOOLEAN, &thread_pool.auto_limit_acct) },
-#    endif
-#  endif
+#endif
+#endif
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -256,6 +293,8 @@ static void reap_children(void)
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
+static REQUEST *request_dequeue(void);
+
 /*
  *	Add a request to the list of waiting requests.
  *	This function gets called ONLY from the main handler thread...
@@ -264,21 +303,38 @@ static void reap_children(void)
  */
 int request_enqueue(REQUEST *request)
 {
+	THREAD_HANDLE *thread;
+
+	request->component = "<core>";
+	request->module = "<queue>";
+	request->child_state = REQUEST_QUEUED;
+
 	/*
-	 *	If we haven't checked the number of child threads
-	 *	in a while, OR if the thread pool appears to be full,
-	 *	go manage it.
+	 *	Give the request to a thread, doing as little work as
+	 *	possible in the contended region.
 	 */
-	if ((last_cleaned < request->timestamp.tv_sec) ||
-	    (thread_pool.active_threads == thread_pool.total_threads) ||
-	    (thread_pool.exited_threads > 0)) {
-		thread_pool_manage(request->timestamp.tv_sec);
+	pthread_mutex_lock(&thread_pool.mutex);
+
+	/*
+	 *	If we're too busy, don't do anything.
+	 */
+	if ((thread_pool.num_queued + 1) >= thread_pool.max_queue_size) {
+		pthread_mutex_unlock(&thread_pool.mutex);
+
+		/*
+		 *	Mark the request as done.
+		 */
+		RATE_LIMIT(ERROR("Something is blocking the server.  There are %zd packets in the queue, "
+				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
+
+	done:
+		request->module = "<done>";
+		request->child_state = REQUEST_DONE;
+		return 0;
 	}
 
-
-	pthread_mutex_lock(&thread_pool.queue_mutex);
-
-#  if defined(WITH_STATS) && defined(WITH_ACCOUNTING)
+#ifdef WITH_STATS
+#ifdef WITH_ACCOUNTING
 	if (thread_pool.auto_limit_acct) {
 		struct timeval now;
 
@@ -313,7 +369,7 @@ int request_enqueue(REQUEST *request)
 		 *	SOME of the new accounting packets.
 		 */
 		if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
-		    (fr_heap_num_elements(thread_pool.heap) > (thread_pool.max_queue_size / 2)) &&
+		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
 		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
 			uint32_t prob;
 			uint32_t keep;
@@ -334,9 +390,9 @@ int request_enqueue(REQUEST *request)
 			 *	If the queue is larger than our dice
 			 *	roll, we throw the packet away.
 			 */
-			if (fr_heap_num_elements(thread_pool.heap) > keep) {
-				pthread_mutex_unlock(&thread_pool.queue_mutex);
-				return 0;
+			if (thread_pool.num_queued > keep) {
+				pthread_mutex_unlock(&thread_pool.mutex);
+				goto done;
 			}
 		}
 
@@ -353,34 +409,83 @@ int request_enqueue(REQUEST *request)
 
 		thread_pool.pps_in.pps_now++;
 	}
-#  endif
-
-	thread_pool.request_count++;
-
-	if (fr_heap_num_elements(thread_pool.heap) >= thread_pool.max_queue_size) {
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-
-		/*
-		 *	Mark the request as done.
-		 */
-		RATE_LIMIT(ERROR("Something is blocking the server.  There are %zd packets in the queue, "
-				 "waiting to be processed.  Ignoring the new request.", fr_heap_num_elements(thread_pool.heap)));
-		return 0;
-	}
-	request->component = "<core>";
-	request->module = "<queue>";
-	request->child_state = REQUEST_QUEUED;
+#endif	/* WITH_ACCOUNTING */
+#endif
 
 	/*
-	 *	Push the request onto the incoming heap
+	 *	If there's a queue, OR no idle threads, put the
+	 *	request into the queue, in priority order.
+	 *
+	 *	@fixme: warn of blocked threads here, instead of in
+	 *	request_dequeue()
 	 */
-	if (!fr_heap_insert(thread_pool.heap, request)) {
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		ERROR("!!! ERROR !!! Failed inserting request %d into the queue", request->number);
-		return 0;
+	if (thread_pool.num_queued || !thread_pool.idle_head) {
+		if (!fr_heap_insert(thread_pool.idle_heap, request)) {
+			pthread_mutex_unlock(&thread_pool.mutex);
+			goto done;
+		}
+
+		thread_pool.num_queued++;
+
+		if (!thread_pool.idle_head) {
+			pthread_mutex_unlock(&thread_pool.mutex);
+			return 1;
+		}
+
+		/*
+		 *	Else there is an idle thread.  Pop a request
+		 *	off of the top of the heap, and pass it to the
+		 *	idle thread.
+		 */
+		thread = thread_pool.idle_head;
+		request = request_dequeue();
+		if (!request) {
+			pthread_mutex_unlock(&thread_pool.mutex);
+			return 1;
+		}
+
+	} else {
+		/*
+		 *	Grab the first idle thread.
+		 */
+		thread = thread_pool.idle_head;
+		rad_assert(thread->status == THREAD_IDLE);
 	}
 
-	pthread_mutex_unlock(&thread_pool.queue_mutex);
+	/*
+	 *	Remove the thread from the head of the idle list.
+	 */
+	rad_assert(thread->prev == NULL);
+
+	thread_pool.idle_head = thread->next;
+	if (thread->next) {
+		thread->next->prev = NULL;
+	} else {
+		rad_assert(thread_pool.idle_tail == thread);
+		thread_pool.idle_tail = thread->prev;
+		rad_assert(thread_pool.idle_threads == 1);
+	}
+	thread_pool.idle_threads--;
+
+	/*
+	 *	Move the thread to the head of the active list.
+	 */
+	thread->next = thread_pool.active_head;
+	if (thread->next) {
+		rad_assert(thread_pool.active_tail != NULL);
+		thread->next->prev = thread;
+	} else {
+		rad_assert(thread_pool.active_tail == NULL);
+		thread_pool.active_tail = thread;
+	}
+	thread_pool.active_head = thread;
+	thread_pool.active_threads++;
+
+	thread_pool.requests++;
+	pthread_mutex_unlock(&thread_pool.mutex);
+
+	thread->status = THREAD_ACTIVE;
+	thread->request = request;
 
 	/*
 	 *	There's one more request in the queue.
@@ -391,55 +496,36 @@ int request_enqueue(REQUEST *request)
 	 *	the mutex, it will be unlocked, and there won't be
 	 *	contention.
 	 */
-	sem_post(&thread_pool.semaphore);
+	sem_post(&thread->semaphore);
 
 	return 1;
 }
 
 /*
  *	Remove a request from the queue.
+ *
+ *	Called with the thread mutex held.
  */
-static int request_dequeue(REQUEST **prequest)
+static REQUEST *request_dequeue(void)
 {
 	time_t blocked;
 	static time_t last_complained = 0;
 	static time_t total_blocked = 0;
 	int num_blocked = 0;
 	REQUEST *request = NULL;
-	reap_children();
-
-	pthread_mutex_lock(&thread_pool.queue_mutex);
-
-#  if defined(WITH_STATS) && defined(WITH_ACCOUNTING)
-	if (thread_pool.auto_limit_acct) {
-		struct timeval now;
-
-		gettimeofday(&now, NULL);
-
-		/*
-		 *	Calculate the instantaneous departure rate
-		 *	from the queue.
-		 */
-		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
-						   &thread_pool.pps_out.pps_now,
-						   &thread_pool.pps_out.time_old,
-						   &now);
-		thread_pool.pps_out.pps_now++;
-	}
-#  endif
 
 retry:
 	/*
 	 *	Grab the first entry.
 	 */
-	request = fr_heap_peek(thread_pool.heap);
+	request = fr_heap_peek(thread_pool.idle_heap);
 	if (!request) {
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		*prequest = NULL;
-		return 0;
+		rad_assert(thread_pool.num_queued == 0);
+		return NULL;
 	}
 
-	(void) fr_heap_extract(thread_pool.heap, request);
+	(void) fr_heap_extract(thread_pool.idle_heap, request);
+	thread_pool.num_queued--;
 
 	VERIFY_REQUEST(request);
 
@@ -447,6 +533,7 @@ retry:
 	 *	Too late.  Mark it as done, and continue.
 	 *
 	 *	@fixme: with a heap, we can dynamically remove it from the heap!
+	 *	@fixme: Is this memory leaked?  Probably...
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		request->module = "<done>";
@@ -454,19 +541,11 @@ retry:
 		goto retry;
 	}
 
-	*prequest = request;
-
-	rad_assert(*prequest != NULL);
 	rad_assert(request->magic == REQUEST_MAGIC);
 
 	request->component = "<core>";
 	request->module = NULL;
 	request->child_state = REQUEST_RUNNING;
-
-	/*
-	 *	The thread is currently processing a request.
-	 */
-	thread_pool.active_threads++;
 
 	blocked = time(NULL);
 	if (!request->proxy && (blocked - request->timestamp.tv_sec) > 5) {
@@ -483,14 +562,12 @@ retry:
 		blocked = 0;
 	}
 
-	pthread_mutex_unlock(&thread_pool.queue_mutex);
-
 	if (blocked) {
 		ERROR("%d requests have been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
 		      num_blocked, (int) blocked);
 	}
 
-	return 1;
+	return request;
 }
 
 
@@ -501,12 +578,15 @@ retry:
  */
 static void *request_handler_thread(void *arg)
 {
-	THREAD_HANDLE *self = (THREAD_HANDLE *) arg;
+	THREAD_HANDLE *thread = (THREAD_HANDLE *) arg;
 
 	/*
 	 *	Loop forever, until told to exit.
 	 */
-	do {
+	while (true) {
+		time_t now;
+		REQUEST *request;
+
 #  ifdef HAVE_GPERFTOOLS_PROFILER_H
 		ProfilerRegisterThread();
 #  endif
@@ -515,31 +595,69 @@ static void *request_handler_thread(void *arg)
 		 *	Wait to be signalled.
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
-		       self->thread_num);
-	re_wait:
-		if (sem_wait(&thread_pool.semaphore) != 0) {
+		       thread->thread_num);
+
+		while (sem_wait(&thread->semaphore) != 0) {
 			/*
 			 *	Interrupted system call.  Go back to
 			 *	waiting, but DON'T print out any more
 			 *	text.
 			 */
 			if (errno == EINTR) {
-				DEBUG2("Re-wait %d", self->thread_num);
-				goto re_wait;
+				DEBUG2("Re-wait %d", thread->thread_num);
+				continue;
 			}
 			ERROR("Thread %d failed waiting for semaphore: %s: Exiting\n",
-			       self->thread_num, fr_syserror(errno));
+			      thread->thread_num, fr_syserror(errno));
+
+			rad_assert(thread->status == THREAD_IDLE);
+
+			thread->status = THREAD_CANCELLED;
+
+			/*
+			 *	Remove ourselves from the idle list
+			 */
+			if (thread->prev) {
+				rad_assert(thread_pool.idle_head != thread);
+				thread->prev->next = thread->next;
+
+			} else {
+				rad_assert(thread_pool.idle_head == thread);
+				thread_pool.idle_head = thread->next;
+			}
+
+			if (thread->next) {
+				rad_assert(thread_pool.idle_tail != thread);
+				thread->next->prev = NULL;
+			} else {
+				rad_assert(thread_pool.idle_tail == thread);
+				thread_pool.idle_tail = thread->prev;
+				rad_assert(thread_pool.idle_threads == 1);
+			}
+			thread_pool.idle_threads--;
+
+			/*
+			 *	Add the thread to the tail of the exited list.
+			 */
+			if (thread_pool.exited_tail) {
+				thread->prev = thread_pool.exited_tail;
+				thread->prev->next = thread;
+				thread_pool.exited_tail = thread;
+			} else {
+				rad_assert(thread_pool.exited_head == NULL);
+				thread_pool.exited_head = thread;
+				thread_pool.exited_tail = thread;
+				thread->prev = NULL;
+			}
+			thread_pool.total_threads--;
 			break;
 		}
 
-		DEBUG2("Thread %d got semaphore", self->thread_num);
-
-#  ifdef HAVE_OPENSSL_ERR_H
+	process:
 		/*
-		 *	Clear the error queue for the current thread.
+		 *	Maybe we've been idle for too long.
 		 */
-		ERR_clear_error();
-#  endif
+		if (thread->status == THREAD_CANCELLED) break;
 
 		/*
 		 *	The server is exiting.  Don't dequeue any
@@ -547,26 +665,13 @@ static void *request_handler_thread(void *arg)
 		 */
 		if (thread_pool.stop_flag) break;
 
-		/*
-		 *	Try to grab a request from the queue.
-		 *
-		 *	It may be empty, in which case we fail
-		 *	gracefully.
-		 */
-		if (!request_dequeue(&self->request)) continue;
+		rad_assert(thread->request != NULL);
+		request = thread->request;
 
-		self->request->child_pid = self->pthread_id;
-		self->request_count++;
-
-		DEBUG2("Thread %d handling request %d, (%d handled so far)",
-		       self->thread_num, self->request->number,
-		       self->request_count);
-
-#  ifdef WITH_ACCOUNTING
-		if ((self->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
+#ifdef WITH_ACCOUNTING
+		if ((thread->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    thread_pool.auto_limit_acct) {
 			VALUE_PAIR *vp;
-			REQUEST *request = self->request;
 
 			vp = radius_pair_create(request, &request->config,
 					       181, VENDORPEC_FREERADIUS);
@@ -579,37 +684,117 @@ static void *request_handler_thread(void *arg)
 			vp = radius_pair_create(request, &request->config,
 					       183, VENDORPEC_FREERADIUS);
 			if (vp) {
-				vp->vp_integer = thread_pool.max_queue_size - fr_heap_num_elements(thread_pool.heap);
+				vp->vp_integer = thread_pool.max_queue_size - thread_pool.num_queued;
 				vp->vp_integer *= 100;
 				vp->vp_integer /= thread_pool.max_queue_size;
 			}
 		}
+#endif
+
+		thread->request_count++;
+
+		DEBUG2("Thread %d handling request %d, (%d handled so far)",
+		       thread->thread_num, request->number,
+		       thread->request_count);
+
+		request->child_pid = thread->pthread_id;
+		request->component = "<core>";
+		request->module = NULL;
+		request->child_state = REQUEST_RUNNING;
+		request->log.unlang_indent = 0;
+
+		request->process(thread->request, FR_ACTION_RUN);
+
+		thread->request = NULL;
+
+		/*
+		 *	Clean up any children we exec'd.
+		 */
+		reap_children();
+
+#  ifdef HAVE_OPENSSL_ERR_H
+		/*
+		 *	Clear the error queue for the current thread.
+		 */
+		ERR_clear_error();
 #  endif
 
-		self->request->process(self->request, FR_ACTION_RUN);
-		self->request = NULL;
+		pthread_mutex_lock(&thread_pool.mutex);
 
 		/*
-		 *	Update the active threads.
+		 *	Manage the thread pool once a second.
+		 *
+		 *	This is done in a child thread to ensure that
+		 *	the main socket thread(s) do as little work as
+		 *	possible.
 		 */
-		pthread_mutex_lock(&thread_pool.queue_mutex);
-		rad_assert(thread_pool.active_threads > 0);
-		thread_pool.active_threads--;
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-
-		/*
-		 *	If the thread has handled too many requests, then make it
-		 *	exit.
-		 */
-		if ((thread_pool.max_requests_per_thread > 0) &&
-		    (self->request_count >= thread_pool.max_requests_per_thread)) {
-			DEBUG2("Thread %d handled too many requests",
-			       self->thread_num);
-			break;
+		now = time(NULL);
+		if (thread_pool.managed < now) {
+			thread_pool_manage(now);
 		}
-	} while (self->status != THREAD_CANCELLED);
 
-	DEBUG2("Thread %d exiting...", self->thread_num);
+		/*
+		 *	If there are requests waiting on the queue,
+		 *	grab one and process it.
+		 */
+		if (thread_pool.num_queued) {
+			request = request_dequeue();
+			if (request) {
+				pthread_mutex_unlock(&thread_pool.mutex);
+				thread->request = request;
+				goto process;
+			}
+
+			/*
+			 *	Else there was an old request which was discard,
+			 *	we're now idle.
+			 */
+			rad_assert(thread_pool.num_queued == 0);
+		}
+
+		/*
+		 *	Remove the thread from the active list.
+		 */
+		rad_assert(thread->status == THREAD_ACTIVE);
+
+		if (thread->prev) {
+			rad_assert(thread_pool.active_head != thread);
+			thread->prev->next = thread->next;
+
+		} else {
+			rad_assert(thread_pool.active_head == thread);
+			thread_pool.active_head = thread->next;
+		}
+
+		if (thread->next) {
+			rad_assert(thread_pool.active_tail != thread);
+			thread->next->prev = thread->prev;
+		} else {
+			rad_assert(thread_pool.active_tail == thread);
+			thread_pool.active_tail = thread->prev;
+		}
+		thread_pool.active_threads--;
+
+		/*
+		 *	Insert it into the head of the idle list.
+		 */
+		thread->prev = NULL;
+		thread->next = thread_pool.idle_head;
+		if (thread->next) {
+			rad_assert(thread_pool.idle_tail != NULL);
+			thread->next->prev = thread;
+		} else {
+			rad_assert(thread_pool.idle_tail == NULL);
+			thread_pool.idle_tail = thread;
+		}
+		thread_pool.idle_head = thread;
+		thread_pool.idle_threads++;
+
+		thread->status = THREAD_IDLE;
+		pthread_mutex_unlock(&thread_pool.mutex);
+	}
+
+	DEBUG2("Thread %d exiting...", thread->thread_num);
 
 #  ifdef HAVE_OPENSSL_ERR_H
 	/*
@@ -620,67 +805,15 @@ static void *request_handler_thread(void *arg)
 	ERR_remove_state(0);
 #  endif
 
-	pthread_mutex_lock(&thread_pool.queue_mutex);
-	thread_pool.exited_threads++;
-	pthread_mutex_unlock(&thread_pool.queue_mutex);
-
-	/*
-	 *  Do this as the LAST thing before exiting.
-	 */
-	self->request = NULL;
-	self->status = THREAD_EXITED;
 	trigger_exec(NULL, NULL, "server.thread.stop", true, NULL);
+	thread->status = THREAD_EXITED;
 
 	return NULL;
 }
 
 /*
- *	Take a THREAD_HANDLE, delete it from the thread pool and
- *	free its resources.
- *
- *	This function is called ONLY from the main server thread,
- *	ONLY after the thread has exited.
- */
-static void delete_thread(THREAD_HANDLE *handle)
-{
-	THREAD_HANDLE *prev;
-	THREAD_HANDLE *next;
-
-	rad_assert(handle->request == NULL);
-
-	DEBUG2("Deleting thread %d", handle->thread_num);
-
-	prev = handle->prev;
-	next = handle->next;
-	rad_assert(thread_pool.total_threads > 0);
-	thread_pool.total_threads--;
-
-	/*
-	 *	Remove the handle from the list.
-	 */
-	if (prev == NULL) {
-		rad_assert(thread_pool.head == handle);
-		thread_pool.head = next;
-	} else {
-		prev->next = next;
-	}
-
-	if (next == NULL) {
-		rad_assert(thread_pool.tail == handle);
-		thread_pool.tail = prev;
-	} else {
-		next->prev = prev;
-	}
-
-	/*
-	 *	Free the handle, now that it's no longer referencable.
-	 */
-	free(handle);
-}
-
-
-/*
  *	Spawn a new thread, and place it in the thread pool.
+ *	Called with the thread mutex locked...
  *
  *	The thread is started initially in the blocked state, waiting
  *	for the semaphore.
@@ -688,27 +821,26 @@ static void delete_thread(THREAD_HANDLE *handle)
 static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 {
 	int rcode;
-	THREAD_HANDLE *handle;
-
-	/*
-	 *	Ensure that we don't spawn too many threads.
-	 */
-	if (thread_pool.total_threads >= thread_pool.max_threads) {
-		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool.max_threads);
-		return NULL;
-	}
+	THREAD_HANDLE *thread;
 
 	/*
 	 *	Allocate a new thread handle.
 	 */
-	handle = (THREAD_HANDLE *) rad_malloc(sizeof(THREAD_HANDLE));
-	memset(handle, 0, sizeof(THREAD_HANDLE));
-	handle->prev = NULL;
-	handle->next = NULL;
-	handle->thread_num = thread_pool.max_thread_num++;
-	handle->request_count = 0;
-	handle->status = THREAD_RUNNING;
-	handle->timestamp = time(NULL);
+	thread = (THREAD_HANDLE *) rad_malloc(sizeof(THREAD_HANDLE));
+	memset(thread, 0, sizeof(THREAD_HANDLE));
+
+	thread->thread_num = thread_pool.max_thread_num++;
+	thread->request_count = 0;
+	thread->status = THREAD_IDLE;
+	thread->timestamp = now;
+
+	memset(&thread->semaphore, 0, sizeof(thread->semaphore));
+	rcode = sem_init(&thread->semaphore, 0, SEMAPHORE_LOCKED);
+	if (rcode != 0) {
+		ERROR("Failed to initialize semaphore: %s", fr_syserror(errno));
+		free(thread);
+		return NULL;
+	}
 
 	/*
 	 *	Create the thread joinable, so that it can be cleaned up
@@ -717,49 +849,19 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 *	Note that the function returns non-zero on error, NOT
 	 *	-1.  The return code is the error, and errno isn't set.
 	 */
-	rcode = pthread_create(&handle->pthread_id, 0, request_handler_thread, handle);
+	rcode = pthread_create(&thread->pthread_id, 0, request_handler_thread, thread);
 	if (rcode != 0) {
-		free(handle);
+		free(thread);
 		ERROR("Thread create failed: %s",
 		       fr_syserror(rcode));
 		return NULL;
 	}
 
-	/*
-	 *	One more thread to go into the list.
-	 */
-	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
-			handle->thread_num, thread_pool.total_threads);
+	       thread->thread_num, thread_pool.total_threads + 1);
 	if (do_trigger) trigger_exec(NULL, NULL, "server.thread.start", true, NULL);
 
-	/*
-	 *	Add the thread handle to the tail of the thread pool list.
-	 */
-	if (thread_pool.tail) {
-		thread_pool.tail->next = handle;
-		handle->prev = thread_pool.tail;
-		thread_pool.tail = handle;
-	} else {
-		rad_assert(thread_pool.head == NULL);
-		thread_pool.head = thread_pool.tail = handle;
-	}
-
-	/*
-	 *	Update the time we last spawned a thread.
-	 */
-	thread_pool.time_last_spawned = now;
-
-	/*
-	 * Fire trigger if maximum number of threads reached
-	 */
-	if (thread_pool.total_threads >= thread_pool.max_threads)
-		trigger_exec(NULL, NULL, "server.thread.max_threads", true, NULL);
-
-	/*
-	 *	And return the new handle to the caller.
-	 */
-	return handle;
+	return thread;
 }
 #endif	/* WITH_GCD */
 
@@ -841,8 +943,6 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	 */
 	memset(&thread_pool, 0, sizeof(THREAD_POOL));
 #ifndef WITH_GCD
-	thread_pool.head = NULL;
-	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
 	thread_pool.max_thread_num = 1;
 	thread_pool.cleanup_delay = 5;
@@ -908,8 +1008,6 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 /*
  *	Allocate the thread pool, and seed it with an initial number
  *	of threads.
- *
- *	FIXME: What to do on a SIGHUP???
  */
 int thread_pool_init(void)
 {
@@ -952,41 +1050,45 @@ int thread_pool_init(void)
 
 
 #ifndef WITH_GCD
-	/*
-	 *	Initialize the queue of requests.
-	 */
-	memset(&thread_pool.semaphore, 0, sizeof(thread_pool.semaphore));
-	rcode = sem_init(&thread_pool.semaphore, 0, SEMAPHORE_LOCKED);
+	rcode = pthread_mutex_init(&thread_pool.mutex, NULL);
 	if (rcode != 0) {
-		ERROR("FATAL: Failed to initialize semaphore: %s",
+		ERROR("FATAL: Failed to initialize thread pool mutex: %s",
 		       fr_syserror(errno));
 		return -1;
 	}
 
-	rcode = pthread_mutex_init(&thread_pool.queue_mutex,NULL);
-	if (rcode != 0) {
-		ERROR("FATAL: Failed to initialize queue mutex: %s",
-		       fr_syserror(errno));
-		return -1;
-	}
-
-	thread_pool.heap = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
-	if (!thread_pool.heap) {
+	thread_pool.idle_heap = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
+	if (!thread_pool.idle_heap) {
 		ERROR("FATAL: Failed to initialize the incoming queue.");
 		return -1;
 	}
-#endif
 
-#ifndef WITH_GCD
 	/*
-	 *	Create a number of waiting threads.
+	 *	Create a number of waiting threads.  Note we don't
+	 *	need to lock the mutex, as nothing is sending
+	 *	requests.
 	 *
-	 *	If we fail while creating them, do something intelligent.
+	 *	FIXE: If we fail while creating them, do something intelligent.
 	 */
 	for (i = 0; i < thread_pool.start_threads; i++) {
-		if (spawn_thread(now, 0) == NULL) {
-			return -1;
+		THREAD_HANDLE *thread;
+
+		thread = spawn_thread(now, 0);
+		if (!thread) return -1;
+
+		thread->prev = NULL;
+		thread->next = thread_pool.idle_head;
+		if (thread->next) {
+			rad_assert(thread_pool.idle_tail != NULL);
+			thread->next->prev = thread;
+		} else {
+			rad_assert(thread_pool.idle_tail == NULL);
+			thread_pool.idle_tail = thread;
 		}
+		thread_pool.idle_head = thread;
+		thread_pool.idle_threads++;
+
+		thread_pool.total_threads++;
 	}
 #else
 	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
@@ -1009,9 +1111,7 @@ int thread_pool_init(void)
 void thread_pool_stop(void)
 {
 #ifndef WITH_GCD
-	int i;
-	int total_threads;
-	THREAD_HANDLE *handle;
+	THREAD_HANDLE *thread;
 	THREAD_HANDLE *next;
 
 	if (!pool_initialized) return;
@@ -1021,24 +1121,38 @@ void thread_pool_stop(void)
 	 */
 	thread_pool.stop_flag = true;
 
-	/*
-	 *	Wakeup all threads to make them see stop flag.
-	 */
-	total_threads = thread_pool.total_threads;
-	for (i = 0; i != total_threads; i++) {
-		sem_post(&thread_pool.semaphore);
-	}
 
 	/*
 	 *	Join and free all threads.
 	 */
-	for (handle = thread_pool.head; handle; handle = next) {
-		next = handle->next;
-		pthread_join(handle->pthread_id, NULL);
-		delete_thread(handle);
+	for (thread = thread_pool.exited_head; thread; thread = next) {
+		next = thread->next;
+
+		pthread_join(thread->pthread_id, NULL);
+		free(thread);
 	}
 
-	fr_heap_delete(thread_pool.heap);
+	for (thread = thread_pool.idle_head; thread; thread = next) {
+		next = thread->next;
+
+		thread->status = THREAD_CANCELLED;
+		sem_post(&thread->semaphore);
+
+		pthread_join(thread->pthread_id, NULL);
+		free(thread);
+	}
+
+	for (thread = thread_pool.active_head; thread; thread = next) {
+		next = thread->next;
+
+		thread->status = THREAD_CANCELLED;
+		sem_post(&thread->semaphore);
+
+		pthread_join(thread->pthread_id, NULL);
+		free(thread);
+	}
+
+	fr_heap_delete(thread_pool.idle_heap);
 
 #  ifdef WNOHANG
 	fr_hash_table_free(thread_pool.waiters);
@@ -1068,87 +1182,97 @@ int request_enqueue(REQUEST *request)
  *
  *	If there are too many or too few threads waiting, then we
  *	either create some more, or delete some.
+ *
+ *	This is called only from request_enqueue(), with the
+ *	mutex held.
  */
 static void thread_pool_manage(time_t now)
 {
-	uint32_t spare;
-	int i, total;
-	THREAD_HANDLE *handle, *next;
-	uint32_t active_threads;
+	THREAD_HANDLE *thread;
+
+	thread_pool.managed = now;
 
 	/*
-	 *	Loop over the thread pool, deleting exited threads.
+	 *	Delete one exited thread.
 	 */
-	for (handle = thread_pool.head; handle; handle = next) {
-		next = handle->next;
+	if (thread_pool.exited_head &&
+	    (thread_pool.exited_head->status == THREAD_EXITED)) {
+		thread = thread_pool.exited_head;
 
 		/*
-		 *	Maybe we've asked the thread to exit, and it
-		 *	has agreed.
+		 *	Unlink it from the exited list.
+		 *
+		 *	It's already been removed from
+		 *	"total_threads", as we don't count threads
+		 *	which are doing nothing.
 		 */
-		if (handle->status == THREAD_EXITED) {
-			pthread_join(handle->pthread_id, NULL);
-			delete_thread(handle);
-			pthread_mutex_lock(&thread_pool.queue_mutex);
-			thread_pool.exited_threads--;
-			pthread_mutex_unlock(&thread_pool.queue_mutex);
+		thread_pool.exited_head = thread->next;
+		if (thread->next) {
+			thread->next->prev = NULL;
+		} else {
+			thread_pool.exited_tail = NULL;
 		}
-	}
 
-	/*
-	 *	We don't need a mutex lock here, as we're reading
-	 *	active_threads, and not modifying it.  We want a close
-	 *	approximation of the number of active threads, and this
-	 *	is good enough.
-	 */
-	active_threads = thread_pool.active_threads;
-	spare = thread_pool.total_threads - active_threads;
-	if (rad_debug_lvl) {
-		static uint32_t old_total = 0;
-		static uint32_t old_active = 0;
-
-		if ((old_total != thread_pool.total_threads) || (old_active != active_threads)) {
-			DEBUG2("Threads: total/active/spare threads = %d/%d/%d",
-			       thread_pool.total_threads, active_threads, spare);
-			old_total = thread_pool.total_threads;
-			old_active = active_threads;
-		}
+		/*
+		 *	Deleting old threads can take time, so we join
+		 *	it with the mutex unlocked.
+		 */
+		pthread_mutex_unlock(&thread_pool.mutex);
+		pthread_join(thread->pthread_id, NULL);
+		free(thread);
+		pthread_mutex_lock(&thread_pool.mutex);
 	}
 
 	/*
 	 *	If there are too few spare threads.  Go create some more.
 	 */
-	if ((thread_pool.total_threads < thread_pool.max_threads) &&
-	    (spare < thread_pool.min_spare_threads)) {
-		total = thread_pool.min_spare_threads - spare;
+	if (!thread_pool.spawning &&
+	    (thread_pool.total_threads < thread_pool.max_threads) &&
+	    (thread_pool.idle_threads < thread_pool.min_spare_threads)) {
+		uint32_t i, total;
+
+		total = thread_pool.min_spare_threads - thread_pool.idle_threads;
 
 		if ((total + thread_pool.total_threads) > thread_pool.max_threads) {
 			total = thread_pool.max_threads - thread_pool.total_threads;
 		}
 
-		DEBUG2("Threads: Spawning %d spares", total);
+		/*
+		 *	Return if we don't need to create any new spares.
+		 */
+		if (total == 0) return;
 
 		/*
-		 *	Create a number of spare threads.
+		 *	Create a number of spare threads, and insert
+		 *	them into the idle queue.
 		 */
 		for (i = 0; i < total; i++) {
-			handle = spawn_thread(now, 1);
-			if (handle == NULL) {
-				return;
+			thread_pool.spawning = true;
+
+			pthread_mutex_unlock(&thread_pool.mutex);
+			thread = spawn_thread(now, 1);
+			pthread_mutex_lock(&thread_pool.mutex);
+
+			thread_pool.spawning = false;
+
+			/*
+			 *	Insert it into the head of the idle list.
+			 */
+			thread->prev = NULL;
+			thread->next = thread_pool.idle_head;
+			if (thread->next) {
+				thread->next->prev = thread;
+			} else {
+				rad_assert(thread_pool.idle_tail == NULL);
+				thread_pool.idle_tail = thread;
 			}
+			thread_pool.idle_head = thread;
+			thread_pool.idle_threads++;
+			thread_pool.total_threads++;
 		}
 
-		return;		/* there aren't too many spare threads */
-	}
-
-	/*
-	 *	Only delete spare threads if we haven't already done
-	 *	so this second.
-	 */
-	if (now == last_cleaned) {
 		return;
 	}
-	last_cleaned = now;
 
 	/*
 	 *	Only delete the spare threads if sufficient time has
@@ -1163,47 +1287,59 @@ static void thread_pool_manage(time_t now)
 	 *	If there are too many spare threads, delete one.
 	 *
 	 *	Note that we only delete ONE at a time, instead of
-	 *	wiping out many.  This allows the excess servers to
-	 *	be slowly reaped, just in case the load spike comes again.
+	 *	wiping out many.  This allows the excess threads to be
+	 *	slowly reaped, which is better than suddenly nuking a
+	 *	bunch of them.
 	 */
-	if (spare > thread_pool.max_spare_threads) {
+	if (thread_pool.idle_threads > thread_pool.max_spare_threads) {
+		DEBUG2("Threads: deleting 1 spare out of %d spares",
+		       thread_pool.idle_threads - thread_pool.max_spare_threads);
 
-		spare -= thread_pool.max_spare_threads;
-
-		DEBUG2("Threads: deleting 1 spare out of %d spares", spare);
+		rad_assert(thread_pool.idle_tail != NULL);
 
 		/*
-		 *	Walk through the thread pool, deleting the
-		 *	first idle thread we come across.
+		 *	Remove the thread from the tail of the idle list.
 		 */
-		for (handle = thread_pool.head; (handle != NULL) && (spare > 0) ; handle = next) {
-			next = handle->next;
+		thread = thread_pool.idle_tail;
+		rad_assert(thread->next == NULL);
 
-			/*
-			 *	If the thread is not handling a
-			 *	request, but still live, then tell it
-			 *	to exit.
-			 *
-			 *	It will eventually wake up, and realize
-			 *	it's been told to commit suicide.
-			 */
-			if ((handle->request == NULL) &&
-			    (handle->status == THREAD_RUNNING)) {
-				handle->status = THREAD_CANCELLED;
-				/*
-				 *	Post an extra semaphore, as a
-				 *	signal to wake up, and exit.
-				 */
-				sem_post(&thread_pool.semaphore);
-				spare--;
-				break;
-			}
+		thread_pool.idle_tail = thread->prev;
+		if (thread->prev) {
+			thread->prev->next = NULL;
+		} else {
+			thread_pool.idle_head = NULL;
+			rad_assert(thread_pool.idle_threads == 1);
 		}
+		thread_pool.idle_threads--;
+
+		/*
+		 *	Add the thread to the tail of the exited list.
+		 */
+		if (thread_pool.exited_tail) {
+			thread->prev = thread_pool.exited_tail;
+			thread->prev->next = thread;
+			thread_pool.exited_tail = thread;
+		} else {
+			thread->prev = NULL;
+			rad_assert(thread_pool.exited_head == NULL);
+			thread_pool.exited_head = thread;
+			thread_pool.exited_tail = thread;
+		}
+		thread_pool.total_threads--;
+
+		rad_assert(thread->status == THREAD_IDLE);
+		thread->status = THREAD_CANCELLED;
+
+		/*
+		 *	Post an extra semaphore, as a
+		 *	signal to wake up, and exit.
+		 */
+		sem_post(&thread->semaphore);
 	}
 
 	/*
 	 *	Otherwise everything's kosher.  There are not too few,
-	 *	or too many spare threads.  Exit happily.
+	 *	or too many spare threads.
 	 */
 	return;
 }
@@ -1318,7 +1454,7 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 		 *	fixed in size.
 		 */
 		memset(array, 0, sizeof(array[0]) * RAD_LISTEN_MAX);
-		array[0] = fr_heap_num_elements(thread_pool.heap);
+		array[0] = fr_heap_num_elements(thread_pool.idle_heap);
 
 		gettimeofday(&now, NULL);
 
