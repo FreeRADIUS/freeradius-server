@@ -1202,21 +1202,40 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 static char * load_install_path(char const *arg)
 {
 	FILE *f;
-	char *path;
+	char *path = NULL;
+	char line[PATH_MAX + 10]; /* libdir='<path>'\n */
+	char token[] = "libdir='";
+	char *p;
 
 	f = fopen(arg,"r");
 	if (f == NULL) {
 		return NULL;
 	}
 
-	path = lt_malloc(PATH_MAX);
+	while (fgets(line, sizeof(line), f)) {
+		/* Skip comments */
+		if (line[0] == '#') continue;
 
-	fgets(path, PATH_MAX, f);
-	fclose(f);
+		if ( p = strstr(line, token)) {
+			p += strlen(token);
+			path = lt_malloc(PATH_MAX);
+			strncpy(path, p, PATH_MAX);
 
-	if (path[strlen(path)-1] == '\n') {
-		path[strlen(path)-1] = '\0';
+			/* fgets reads newline */
+			if (path[strlen(path)-1] == '\n') {
+				path[strlen(path)-1] = '\0';
+			}
+
+			/* Remove endquote for libdir */
+			if (path[strlen(path)-1] == '\'') {
+				path[strlen(path)-1] = '\0';
+			}
+
+			break;
+		}
 	}
+
+	fclose(f);
 
 	/* Check that we have an absolute path.
 	 * Otherwise the file could be a GNU libtool file.
@@ -1226,6 +1245,7 @@ static char * load_install_path(char const *arg)
 
 		return NULL;
 	}
+
 	return path;
 }
 
