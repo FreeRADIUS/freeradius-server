@@ -1213,8 +1213,8 @@ static char * load_install_path(char const *arg)
 	}
 
 	while (fgets(line, sizeof(line), f)) {
-		/* Skip comments */
-		if (line[0] == '#') continue;
+		/* Skip comments and blank lines */
+		if ((line[0] == '#') || (line[0] < ' ')) continue;
 
 		if ((p = strstr(line, token))) {
 			p += strlen(token);
