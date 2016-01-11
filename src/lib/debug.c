@@ -1103,10 +1103,9 @@ bool fr_cond_assert_fail(char const *file, int line, char const *expr)
 #ifndef NDEBUG
 void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 {
-
 	char const *error = fr_strerror();
 
-	if (error && (status != 0)) {
+	if (error && *error && (status != 0)) {
 		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
 	} else {
 		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u]", status, file, line);
@@ -1138,7 +1137,7 @@ void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 {
 	char const *error = fr_strerror();
 
-	if (error && (status != 0)) {
+	if (error && *error && (status != 0)) {
 		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u].  Last error was: %s", status, file, line, error);
 	} else {
 		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u]", status, file, line);
