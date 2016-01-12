@@ -877,7 +877,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	pair_make_request("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	fr_pair_make(fake->packet, &fake->packet->vps, "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	RDEBUG("Got tunneled request");
 	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
