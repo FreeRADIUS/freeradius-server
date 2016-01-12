@@ -75,13 +75,20 @@ use constant {
 	RLM_MODULE_NUMCODES => 9  # How many return codes there are
 };
 
-# Same as src/include/radiusd.h
-use constant	L_DBG=>   1;
-use constant	L_AUTH=>  2;
-use constant	L_INFO=>  3;
-use constant	L_ERR=>   4;
-use constant	L_PROXY=> 5;
-use constant	L_ACCT=>  6;
+# Same as src/include/log.h
+use constant {
+	L_AUTH         => 2,  # Authentication message
+	L_INFO         => 3,  # Informational message
+	L_ERR          => 4,  # Error message
+	L_WARN         => 5,  # Warning
+	L_PROXY        => 6,  # Proxy messages
+	L_ACCT         => 7,  # Accounting messages
+	L_DBG          => 16, # Only displayed when debugging is enabled
+	L_DBG_WARN     => 17, # Warning only displayed when debugging is enabled
+	L_DBG_ERR      => 18, # Error only displayed when debugging is enabled
+	L_DBG_WARN_REQ => 19, # Less severe warning only displayed when debugging is enabled
+	L_DBG_ERR_REQ  => 20, # Less severe error only displayed when debugging is enabled
+};
 
 #  Global variables can persist across different calls to the module.
 #
