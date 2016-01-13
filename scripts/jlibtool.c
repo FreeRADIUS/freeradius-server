@@ -1216,7 +1216,7 @@ static char * load_install_path(char const *arg)
 		/* Skip comments */
 		if (line[0] == '#') continue;
 
-		if ( p = strstr(line, token)) {
+		if ((p = strstr(line, token))) {
 			p += strlen(token);
 			path = lt_malloc(PATH_MAX);
 			strncpy(path, p, PATH_MAX);
