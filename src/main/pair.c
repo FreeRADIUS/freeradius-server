@@ -470,7 +470,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *check_item;
-	VALUE_PAIR *auth_item;
+	VALUE_PAIR *auth_item = NULL;
 	DICT_ATTR const *from;
 
 	int result = 0;
@@ -533,6 +533,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	try_again:
 		if (!first_only) {
 			while (auth_item != NULL) {
+				VERIFY_VP(auth_item);
 				if ((auth_item->da == from) || (!from)) {
 					break;
 				}
@@ -620,6 +621,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *	another of the same attribute, which DOES match.
 		 */
 		if ((result != 0) && (!first_only)) {
+			fr_assert(auth_item != NULL);
 			auth_item = auth_item->next;
 			result = 0;
 			goto try_again;
