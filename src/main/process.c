@@ -2358,7 +2358,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 #ifdef WITH_COA
-	if (request->packet->code == request->proxy->code)
+	if (request->packet->code == request->proxy->code) {
 	  /*
 	   *	Don't run the next bit if we originated a CoA
 	   *	packet, after receiving an Access-Request or
@@ -2366,21 +2366,31 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	   */
 #endif
 
-	/*
-	 *	There may NOT be a proxy reply, as we may be
-	 *	running Post-Proxy-Type = Fail.
-	 */
-	if (reply) {
-		fr_pair_add(&request->reply->vps, fr_pair_list_copy(request->reply, reply->vps));
-
 		/*
-		 *	Delete the Proxy-State Attributes from
-		 *	the reply.  These include Proxy-State
-		 *	attributes from us and remote server.
+		 *	There may NOT be a proxy reply, as we may be
+		 *	running Post-Proxy-Type = Fail.
 		 */
-		fr_pair_delete_by_num(&request->reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
-	}
+		if (reply) {
+			fr_pair_add(&request->reply->vps, fr_pair_list_copy(request->reply, reply->vps));
 
+			/*
+			 *	Delete the Proxy-State Attributes from
+			 *	the reply.  These include Proxy-State
+			 *	attributes from us and remote server.
+			 */
+			fr_pair_delete_by_num(&request->reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
+
+		} else {
+			vp = fr_pair_find_by_num(request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+			if (vp) {
+				request->proxy_reply = rad_alloc_reply(request, request->proxy);
+				request->proxy_reply->code = vp->vp_integer;
+				fr_pair_delete_by_num(&request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+			}
+		}
+#ifdef WITH_COA
+	}
+#endif
 	switch (rcode) {
 	default:  /* Don't do anything */
 		break;
