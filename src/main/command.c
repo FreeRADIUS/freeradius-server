@@ -351,11 +351,12 @@ static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t ui
  * @note must be called without effective root permissions (#fr_suid_down).
  *
  * @param path where domain socket should be created.
+ * @param gid Alternative group to grant read/write access to the socket.
  * @return
  *	- A file descriptor for the bound socket on success.
  *	- -1 on failure.
  */
-static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
+static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 {
 	int			dir_fd = -1, path_fd = -1, sock_fd = -1, parent_fd = -1;
 	char const		*name;
@@ -365,6 +366,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	gid_t			egid;
 
 	mode_t			perm = 0;
+	mode_t			dir_perm;
 	struct stat		st;
 
 	size_t			len;
@@ -383,6 +385,11 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	 */
 	perm |= S_IREAD | S_IWRITE | S_IEXEC;
 	if (gid != (gid_t) -1) perm |= S_IRGRP | S_IWGRP | S_IXGRP;
+
+	/*
+	 *	Containing directory shouldn't be group writeable.
+	 */
+	dir_perm = perm & (~S_IWGRP);
 
 	buff = talloc_strdup(NULL, path);
 	if (!buff) return -1;
@@ -442,7 +449,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		int ret = 0;
 
 		if (errno != ENOENT) {
-			fr_strerror_printf("Failed opening control socket directory: %s", fr_syserror(errno));
+			rad_file_error(errno);
+			fr_strerror_printf("Failed opening control socket directory \"%s\": %s", dir, fr_strerror());
 			goto error;
 		}
 
@@ -450,8 +458,9 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		 *	This fails if the radius user can't write
 		 *	to the parent directory.
 		 */
-	 	if (mkdirat(parent_fd, p + 1, 0700) < 0) {
-			fr_strerror_printf("Failed creating control socket directory: %s", fr_syserror(errno));
+	 	if (mkdirat(parent_fd, p + 1, dir_perm) < 0) {
+			rad_file_error(errno);
+			fr_strerror_printf("Failed creating control socket directory \"%s\": %s", dir, fr_strerror());
 			goto error;
 	 	}
 
@@ -461,14 +470,13 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 					   fr_syserror(errno));
 			goto error;
 		}
-		if (fchmod(dir_fd, perm) < 0) {
-			fr_strerror_printf("Failed setting permissions on control socket directory: %s",
-					   fr_syserror(errno));
-			goto error;
-		}
 
+		/*
+		 *	Can't set groups other than ones we belong
+		 *	to unless we suid_up.
+		 */
 		rad_suid_up();
-		if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) ret = fchown(dir_fd, uid, gid);
+		if (gid != (gid_t)-1) ret = fchown(dir_fd, euid, gid);
 		rad_suid_down();
 		if (ret < 0) {
 			fr_strerror_printf("Failed changing ownership of control socket directory: %s",
@@ -490,16 +498,17 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 			goto error;
 		}
 
-		if ((uid != (uid_t)-1) && (st.st_uid != uid)) {
+		if (st.st_uid != euid) {
 			struct passwd *need_user, *have_user;
 
-			if (rad_getpwuid(NULL, &need_user, uid) < 0) goto error;
+			if (rad_getpwuid(NULL, &need_user, euid) < 0) goto error;
 			if (rad_getpwuid(NULL, &have_user, st.st_uid) < 0) {
 				talloc_free(need_user);
 				goto error;
 			}
-			fr_strerror_printf("Control socket directory must be owned by user %s, "
-					   "currently owned by %s", need_user->pw_name, have_user->pw_name);
+			fr_strerror_printf("Control socket directory \"%s\" must be owned by user %s, "
+					   "currently owned by user %s", dir,
+					   need_user->pw_name, have_user->pw_name);
 			talloc_free(need_user);
 			talloc_free(have_user);
 			goto error;
@@ -514,22 +523,23 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 				goto error;
 			}
 			fr_strerror_printf("Control socket directory \"%s\" must be owned by group %s, "
-					   "currently owned by %s", dir, need_group->gr_name, have_group->gr_name);
+					   "currently owned by group %s", dir,
+					   need_group->gr_name, have_group->gr_name);
 			talloc_free(need_group);
 			talloc_free(have_group);
 			goto error;
 		}
 
-		if ((perm & 0x0c) != (st.st_mode & 0x0c)) {
+		if ((dir_perm & 0777) != (st.st_mode & 0777)) {
 			char str_need[10], oct_need[5];
 			char str_have[10], oct_have[5];
 
-			rad_mode_to_str(str_need, perm);
-			rad_mode_to_oct(oct_need, perm);
+			rad_mode_to_str(str_need, dir_perm);
+			rad_mode_to_oct(oct_need, dir_perm);
 			rad_mode_to_str(str_have, st.st_mode);
 			rad_mode_to_oct(oct_have, st.st_mode);
-			fr_strerror_printf("Control socket directory must have permissions %s (%s), current "
-					   "permissions are %s (%s)", str_need, oct_need, str_have, oct_have);
+			fr_strerror_printf("Control socket directory  \"%s\" must have permissions %s (%s), current "
+					   "permissions are %s (%s)", dir, str_need, oct_need, str_have, oct_have);
 			goto error;
 		}
 
@@ -572,7 +582,11 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		rad_suid_down();
 		goto error;
 	}
-	if ((uid != (uid_t)-1) && (rad_seuid(uid) < 0)) {
+
+	/*
+	 *	Reset euid back to FreeRADIUS user
+	 */
+	if (rad_seuid(euid) < 0) {
 		rad_segid(egid);
 		rad_suid_down();
 		goto error;
@@ -593,7 +607,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		/*
 		 *	Restore previous effective UID/GID
 		 */
-		if (uid != (uid_t)-1) rad_seuid(euid);
+		rad_seuid(euid);
 		if (gid != (gid_t)-1) rad_segid(egid);
 		/*
 		 *	Then SUID down, to ensure rad_suid_up/down continues
@@ -649,11 +663,11 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		goto sock_error;
 	}
 
-	if (fchown(sock_fd, uid, gid) < 0) {
+	if (fchown(sock_fd, euid, gid) < 0) {
 		struct passwd *user;
 		struct group *group;
 
-		if (rad_getpwuid(NULL, &user, uid) < 0) goto sock_error;
+		if (rad_getpwuid(NULL, &user, euid) < 0) goto sock_error;
 		if (rad_getgrgid(NULL, &group, gid) < 0) {
 			talloc_free(user);
 			goto sock_error;
@@ -702,7 +716,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	}
 #endif
 
-	if (uid != (uid_t)-1) rad_seuid(euid);
+	rad_seuid(euid);
 	if (gid != (gid_t)-1) rad_segid(egid);
 	rad_suid_down();
 
@@ -3066,7 +3080,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		struct passwd *pwd;
 
 		if (rad_getpwnam(cs, &pwd, sock->uid_name) < 0) {
-			ERROR("Failed getting uid for %s: %s", sock->uid_name, fr_strerror());
+			ERROR("Failed resolving gid of user %s: %s", sock->uid_name, fr_strerror());
 			return -1;
 		}
 		sock->uid = pwd->pw_uid;
@@ -3077,7 +3091,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (sock->gid_name) {
 		if (rad_getgid(cs, &sock->gid, sock->gid_name) < 0) {
-			ERROR("Failed getting gid for %s: %s", sock->gid_name, fr_strerror());
+			ERROR("Failed resolving gid of group %s: %s", sock->gid_name, fr_strerror());
 			return -1;
 		}
 	} else {
@@ -3089,10 +3103,20 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	} else {
 		sock->co.mode = fr_str2int(mode_names, sock->mode_name, 0);
 		if (!sock->co.mode) {
-			ERROR("Invalid mode name \"%s\"",
-			       sock->mode_name);
+			ERROR("Invalid mode name \"%s\"", sock->mode_name);
 			return -1;
 		}
+	}
+
+	/*
+	 *	We only allow a group to be set for non-peercred based access.
+	 *
+	 *	This is to ensure the FreeRADIUS always has permission
+	 *	to manage the socket that it created
+	 */
+	if (!sock->peercred && sock->uid_name) {
+		ERROR("Socket user may be specified when peercred = no");
+		return -1;
 	}
 
 	return 0;
@@ -3107,13 +3131,7 @@ static int command_socket_open_unix(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	if (sock->peercred) {
 		this->fd = fr_server_domain_socket_peercred(sock->path, sock->uid, sock->gid);
 	} else {
-		uid_t uid = sock->uid;
-		gid_t gid = sock->gid;
-
-		if (uid == ((uid_t)-1)) uid = 0;
-		if (gid == ((gid_t)-1)) gid = 0;
-
-		this->fd = fr_server_domain_socket_perm(sock->path, uid, gid);
+		this->fd = fr_server_domain_socket_perm(sock->path, sock->gid);
 	}
 
 	if (this->fd < 0) {

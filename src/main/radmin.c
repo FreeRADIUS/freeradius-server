@@ -565,7 +565,8 @@ int main(int argc, char **argv)
 
 			grp = getgrnam(gid_name);
 			if (!grp) {
-				fprintf(stderr, "%s: Failed getting GID for group %s: %s\n", progname, gid_name, strerror(errno));
+				fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
+					progname, gid_name, strerror(errno));
 				exit(1);
 			}
 

@@ -1303,7 +1303,7 @@ char *rad_asprint_gid(TALLOC_CTX *ctx, uid_t gid){
  *
  * @note retrieve error with fr_strerror()
  *
- * @param num Usually num, unless the error is returned by the function.
+ * @param num Usually errno, unless the error is returned by the function.
  */
 void rad_file_error(int num)
 {

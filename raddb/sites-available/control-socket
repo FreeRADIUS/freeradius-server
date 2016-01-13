@@ -49,8 +49,8 @@ listen {
 	#  the socket are.
 	#
 	#  To use filesystem permissions you should create a new
-	#  directory just to house the socket file, and set
-	#  appropriate permissions on that.
+	#  directory to house the socket file, and set appropriate
+	#  permissions on that.
 	#
 #	peercred = no
 #	socket = ${run_dir}/control/${name}.sock
@@ -71,6 +71,10 @@ listen {
 
 	#
 	#  Name of user that is allowed to connect to the control socket.
+	#
+	#  Not allowed when peercred = no, as FreeRADIUS must retain
+	#  ownership of the socket directory to unlink the socket on
+	#  exit.
 	#
 #	uid = radius
 
