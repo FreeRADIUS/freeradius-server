@@ -392,7 +392,10 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	dir_perm = perm & (~S_IWGRP);
 
 	buff = talloc_strdup(NULL, path);
-	if (!buff) return -1;
+	if (!buff) {
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
 
 	/*
 	 *	Some implementations modify it in place others use internal
@@ -429,8 +432,12 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		struct passwd *user;
 		struct group *group;
 
-		if (rad_getpwuid(NULL, &user, euid) < 0) goto error;
+		if (rad_getpwuid(NULL, &user, euid) < 0) {
+			fr_strerror_printf("Failed resolving euid to user: %s", fr_strerror());
+			goto error;
+		}
 		if (rad_getgrgid(NULL, &group, egid) < 0) {
+			fr_strerror_printf("Failed resolving egid to group: %s", fr_strerror());
 			talloc_free(user);
 			goto error;
 		}
@@ -481,7 +488,7 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		if (ret < 0) {
 			fr_strerror_printf("Failed changing ownership of control socket directory: %s",
 					   fr_syserror(errno));
-			return -1;
+			goto error;
 		}
 	/*
 	 *	Control socket dir already exists, but we still need to
@@ -501,8 +508,12 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		if (st.st_uid != euid) {
 			struct passwd *need_user, *have_user;
 
-			if (rad_getpwuid(NULL, &need_user, euid) < 0) goto error;
+			if (rad_getpwuid(NULL, &need_user, euid) < 0) {
+				fr_strerror_printf("Failed resolving socket dir uid to user: %s", fr_strerror());
+				goto error;
+			}
 			if (rad_getpwuid(NULL, &have_user, st.st_uid) < 0) {
+				fr_strerror_printf("Failed resolving socket dir gid to group: %s", fr_strerror());
 				talloc_free(need_user);
 				goto error;
 			}
@@ -517,8 +528,12 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		if ((gid != (gid_t)-1) && (st.st_gid != gid)) {
 			struct group *need_group, *have_group;
 
-			if (rad_getgrgid(NULL, &need_group, gid) < 0) goto error;
+			if (rad_getgrgid(NULL, &need_group, gid) < 0) {
+				fr_strerror_printf("Failed resolving socket dir uid to user: %s", fr_strerror());
+				goto error;
+			}
 			if (rad_getgrgid(NULL, &have_group, st.st_gid) < 0) {
+				fr_strerror_printf("Failed resolving socket dir gid to group: %s", fr_strerror());
 				talloc_free(need_group);
 				goto error;
 			}
@@ -538,8 +553,8 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 			rad_mode_to_oct(oct_need, dir_perm);
 			rad_mode_to_str(str_have, st.st_mode);
 			rad_mode_to_oct(oct_have, st.st_mode);
-			fr_strerror_printf("Control socket directory  \"%s\" must have permissions %s (%s), current "
-					   "permissions are %s (%s)", dir, str_need, oct_need, str_have, oct_have);
+			fr_strerror_printf("Control socket directory \"%s\" permissions must be %s (%s), currently "
+					   "%s (%s)", dir, str_need, oct_need, str_have, oct_have);
 			goto error;
 		}
 
@@ -551,7 +566,7 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		if (client_fd >= 0) {
 			fr_strerror_printf("Control socket '%s' is already in use", path);
 			close(client_fd);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -579,6 +594,7 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	 *	to a non root user, we can no longer set it.
 	 */
 	if ((gid != (gid_t)-1) && (rad_segid(gid) < 0)) {
+		fr_strerror_printf("Failed setting egid: %s", fr_strerror());
 		rad_suid_down();
 		goto error;
 	}
@@ -587,6 +603,7 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	 *	Reset euid back to FreeRADIUS user
 	 */
 	if (rad_seuid(euid) < 0) {
+		fr_strerror_printf("Failed restoring euid: %s", fr_strerror());
 		rad_segid(egid);
 		rad_suid_down();
 		goto error;
@@ -623,7 +640,7 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	 */
 	sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock_fd < 0) {
-		fr_strerror_printf("Failed creating socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
 		goto sock_error;
 	}
 
@@ -647,7 +664,6 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 #endif
 	socklen = SUN_LEN(&salocal);
 
-
 #ifdef __linux__
 	/*
 	 *	The socket file isn't created until sock_fd is bound,
@@ -657,14 +673,21 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	if (fchown(sock_fd, euid, gid) < 0) {
 		struct passwd *user;
 		struct group *group;
+		int fchown_err = errno;
 
-		if (rad_getpwuid(NULL, &user, euid) < 0) goto sock_error;
+
+		if (rad_getpwuid(NULL, &user, euid) < 0) {
+			fr_strerror_printf("Failed resolving socket uid to user: %s", fr_strerror()
+			goto sock_error;
+		}
 		if (rad_getgrgid(NULL, &group, gid) < 0) {
+			fr_strerror_printf("Failed resolving socket gid to group: %s", fr_strerror()
 			talloc_free(user);
 			goto sock_error;
 		}
 
-		fr_strerror_printf("Failed changing ownership of socket to %s:%s", user->pw_name, group->gr_name);
+		fr_strerror_printf("Failed changing socket ownership to %s:%s: %s", user->pw_name, group->gr_name,
+				   fr_syserror(fchown_err));
 		talloc_free(user);
 		talloc_free(group);
 		goto sock_error;
@@ -3148,11 +3171,9 @@ static int command_socket_open_unix(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	} else {
 		this->fd = fr_server_domain_socket_perm(sock->path, sock->gid);
 	}
-
 	if (this->fd < 0) {
-		ERROR("Failed creating control socket \"%s\": %s", sock->path, fr_strerror());
-		if (sock->copy) talloc_free(sock->copy);
-		sock->copy = NULL;
+		ERROR("%s", sock->path, fr_strerror());
+		if (sock->copy) TALLOC_FREE(sock->copy);
 		return -1;
 	}
 
