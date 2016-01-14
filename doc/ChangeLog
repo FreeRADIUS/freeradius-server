@@ -29,6 +29,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Print WARNING when TTLS or PEAP identities are spoofed
 	  or not properly anonymized.  See RFC 7542 for requirements.
 	* Various rlm_python fixes from Herwin Weststrate.
+	* Allow setting Response-Packet-Type in "Post-Proxy-Type Fail",
+	  which is useful when the home server does not respond.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
@@ -67,6 +69,9 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  for RadSec.
 	* Set FreeRADIUS-Proxied-To in TTLS again.  You should use the
 	  "inner-tunnel" virtual server, instead of relying on this attribute.
+	* Fix debugging constants in rlm_perl.  Patch from Herwin Weststrate.
+	* Add samba-dev / samba4-dev to debian builds so that rlm_mschap can
+	  automatically use the new winbind API.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
