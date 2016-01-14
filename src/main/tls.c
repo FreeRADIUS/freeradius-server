@@ -1533,7 +1533,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_status = OCSP_SATUS_SKIPPED;
+		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto ocsp_end;
 	}
 #else
