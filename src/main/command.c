@@ -3115,7 +3115,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	 *	to manage the socket that it created
 	 */
 	if (!sock->peercred && sock->uid_name) {
-		ERROR("Socket user may be specified when peercred = no");
+		ERROR("Only authorized gid (not uid) may be set when \"peercred = no\"");
 		return -1;
 	}
 
