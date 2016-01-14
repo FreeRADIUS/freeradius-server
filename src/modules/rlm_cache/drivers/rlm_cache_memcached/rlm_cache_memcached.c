@@ -78,8 +78,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	ret = memcached_behavior_set(sandle, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT, (uint64_t)FR_TIMEVAL_TO_MS(timeout));
 	if (ret != MEMCACHED_SUCCESS) {
-		ERROR("%s", memcached_strerror(sandle, ret),
-		      memcached_last_error_message(sandle));
+		ERROR("%s: %s", memcached_strerror(sandle, ret), memcached_last_error_message(sandle));
 	error:
 		memcached_free(sandle);
 		return NULL;
@@ -87,8 +86,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	ret = memcached_version(sandle);
 	if (ret != MEMCACHED_SUCCESS) {
-		ERROR("%s", memcached_strerror(sandle, ret),
-		      memcached_last_error_message(sandle));
+		ERROR("%s: %s", memcached_strerror(sandle, ret), memcached_last_error_message(sandle));
 		goto error;
 	}
 
