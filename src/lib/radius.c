@@ -881,10 +881,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 		data = vp->data.ptr;
-		if (!data) {
-			fr_strerror_printf("ERROR: Cannot encode NULL data for attribute %s", vp->da->name);
-			return -1;
-		}
+		if (!data) return 0;
 		break;
 
 	case PW_TYPE_IFID:
@@ -1839,6 +1836,18 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 				goto next;
 			}
 #endif
+			reply = reply->next;
+			continue;
+		}
+
+		/*
+		 *	We allow zero-length strings in "unlang", but
+		 *	skip them (except for CUI, thanks WiMAX!) on
+		 *	all other attributes.
+		 */
+		if ((reply->vp_length == 0) &&
+		    (reply->da->vendor == 0) &&
+		    (reply->da->attr != PW_CHARGEABLE_USER_IDENTITY)) {
 			reply = reply->next;
 			continue;
 		}
