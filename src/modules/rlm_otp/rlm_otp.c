@@ -110,8 +110,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->mschap_mppe_types != 2) {
 		inst->mschap_mppe_types = 2;
-		WARN("Invalid value for "
-		       "mschap_mppe_bits, using default of 2");
+		WARN("Invalid value for mschap_mppe_bits, using default of 2");
 	}
 
 	/* set the instance name (for use with authorize()) */

@@ -400,9 +400,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	rlm_unbound_t *inst = instance;
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	if (inst->timeout > 10000) {
 		cf_log_err_cs(conf, "timeout must be 0 to 10000");

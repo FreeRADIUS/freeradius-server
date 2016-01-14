@@ -279,9 +279,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	char buffer[8192];
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	if (inst->delimiter[1]) {
 		cf_log_err_cs(conf, "'delimiter' must be one character long");

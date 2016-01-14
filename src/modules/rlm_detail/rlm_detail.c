@@ -120,9 +120,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	CONF_SECTION	*cs;
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Escape filenames only if asked.

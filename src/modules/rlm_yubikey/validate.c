@@ -45,7 +45,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct time
 
 	status = ykclient_handle_init(inst->ykc, &yandle);
 	if (status != YKCLIENT_OK) {
-		ERROR("%s", inst->name, ykclient_strerror(status));
+		ERROR("%s", ykclient_strerror(status));
 
 		return NULL;
 	}
@@ -66,25 +66,23 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 	int count = 0;
 
 	if (!inst->client_id) {
-		ERROR("validation.client_id must be set (to a valid id) when validation is enabled",
-		      inst->name);
+		ERROR("validation.client_id must be set (to a valid id) when validation is enabled");
 
 		return -1;
 	}
 
 	if (!inst->api_key || !*inst->api_key || is_zero(inst->api_key)) {
-		ERROR("validation.api_key must be set (to a valid key) when validation is enabled",
-		      inst->name);
+		ERROR("validation.api_key must be set (to a valid key) when validation is enabled");
 
 		return -1;
 	}
 
-	DEBUG("Initialising ykclient", inst->name);
+	DEBUG("Initialising ykclient");
 
 	status = ykclient_global_init();
 	if (status != YKCLIENT_OK) {
 yk_error:
-		ERROR("%s", ykclient_strerror(status), inst->name);
+		ERROR("%s", ykclient_strerror(status));
 
 		return -1;
 	}
@@ -127,7 +125,7 @@ yk_error:
 init:
 	status = ykclient_set_client_b64(inst->ykc, inst->client_id, inst->api_key);
 	if (status != YKCLIENT_OK) {
-		ERROR("%s", ykclient_strerror(status), inst->name);
+		ERROR("%s", ykclient_strerror(status));
 
 		return -1;
 	}

@@ -133,9 +133,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	fr_dict_attr_t const *group_da, *user_name_da;
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	group_da = fr_dict_attr_by_num(NULL, 0, PW_GROUP);
 	if (!group_da) {
