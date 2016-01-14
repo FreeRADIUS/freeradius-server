@@ -650,21 +650,6 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 
 #ifdef __linux__
 	/*
-	 *	Direct socket permissions are only useful on Linux which
-	 *	actually enforces them. BSDs don't. They also need to be
-	 *	set before binding the socket to a file.
-	 */
-	if (fchmod(sock_fd, perm) < 0) {
-		char str_need[10], oct_need[5];
-
-		rad_mode_to_str(str_need, perm);
-		rad_mode_to_oct(oct_need, perm);
-		fr_strerror_printf("Failed changing socket permissions to %s (%s)", str_need, oct_need);
-
-		goto sock_error;
-	}
-
-	/*
 	 *	The socket file isn't created until sock_fd is bound,
 	 *	but Linux allows us to set the user/group it will be
 	 *	owned by, here.
@@ -698,6 +683,30 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		fr_strerror_printf("Failed binding socket: %s", fr_syserror(errno));
 		goto sock_error;
 	}
+
+#ifdef __linux__
+	/*
+	 *	Direct socket permissions are only useful on Linux which
+	 *	actually enforces them. BSDs don't.
+	 *
+	 *	The original code used fchmod on sock_fd before the bind,
+	 *	but this didn't always set the correct permissions. Specific
+	 *	case was setting 0770 as perms, and getting 0750 (may have
+	 *	been using parent directory permissions as mask).
+	 *
+	 *	fchmodat seems to work more reliably, and has the same
+	 *	resistance against TOCTOU attacks.
+	 */
+	if (fchmodat(dir_fd, name, perm, AT_SYMLINK_NOFOLLOW) < 0) {
+		char str_need[10], oct_need[5];
+
+		rad_mode_to_str(str_need, perm);
+		rad_mode_to_oct(oct_need, perm);
+		fr_strerror_printf("Failed changing socket permissions to %s (%s)", str_need, oct_need);
+
+		goto sock_error;
+	}
+#endif
 
 	if (listen(sock_fd, 8) < 0) {
 		fr_strerror_printf("Failed listening on socket: %s", fr_syserror(errno));
