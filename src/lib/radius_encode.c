@@ -1512,6 +1512,18 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	if (!vp->da->vendor && (vp->da->attr > 255)) return 0;
 
 	/*
+	 *	We allow zero-length strings in "unlang", but skip
+	 *	them (except for CUI, thanks WiMAX!) on all other
+	 *	attributes.
+	 */
+	if (vp->vp_length == 0) {
+		if ((vp->da->vendor != 0) ||
+		    (vp->da->attr != PW_CHARGEABLE_USER_IDENTITY)) {
+			return 0;
+		}
+	}
+
+	/*
 	 *	Nested structures of attributes can't be longer than
 	 *	255 bytes, so each call to an encode function can
 	 *	only use 255 bytes of buffer space at a time.
