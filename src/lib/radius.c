@@ -1845,11 +1845,12 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	skip them (except for CUI, thanks WiMAX!) on
 		 *	all other attributes.
 		 */
-		if ((reply->vp_length == 0) &&
-		    (reply->da->vendor == 0) &&
-		    (reply->da->attr != PW_CHARGEABLE_USER_IDENTITY)) {
-			reply = reply->next;
-			continue;
+		if (reply->vp_length == 0) {
+			if ((reply->da->vendor != 0) ||
+			    (reply->da->attr != PW_CHARGEABLE_USER_IDENTITY)) {
+				reply = reply->next;
+				continue;
+			}
 		}
 
 		/*
