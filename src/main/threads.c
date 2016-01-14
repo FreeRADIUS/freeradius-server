@@ -324,7 +324,7 @@ int request_enqueue(REQUEST *request)
 		/*
 		 *	Mark the request as done.
 		 */
-		RATE_LIMIT(ERROR("Something is blocking the server.  There are %zd packets in the queue, "
+		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
 
 	done:
