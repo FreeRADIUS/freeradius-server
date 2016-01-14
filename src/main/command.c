@@ -647,12 +647,13 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 #endif
 	socklen = SUN_LEN(&salocal);
 
+
+#ifdef __linux__
 	/*
 	 *	Direct socket permissions are only useful on Linux which
 	 *	actually enforces them. BSDs don't. They also need to be
 	 *	set before binding the socket to a file.
 	 */
-#ifdef __linux__
 	if (fchmod(sock_fd, perm) < 0) {
 		char str_need[10], oct_need[5];
 
@@ -663,6 +664,11 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		goto sock_error;
 	}
 
+	/*
+	 *	The socket file isn't created until sock_fd is bound,
+	 *	but Linux allows us to set the user/group it will be
+	 *	owned by, here.
+	 */
 	if (fchown(sock_fd, euid, gid) < 0) {
 		struct passwd *user;
 		struct group *group;
