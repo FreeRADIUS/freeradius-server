@@ -697,13 +697,13 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	 *	fchmodat seems to work more reliably, and has the same
 	 *	resistance against TOCTOU attacks.
 	 */
-	if (fchmodat(dir_fd, name, perm, AT_SYMLINK_NOFOLLOW) < 0) {
+	if (fchmodat(dir_fd, name, perm, 0) < 0) {
 		char str_need[10], oct_need[5];
 
 		rad_mode_to_str(str_need, perm);
 		rad_mode_to_oct(oct_need, perm);
-		fr_strerror_printf("Failed changing socket permissions to %s (%s)", str_need, oct_need);
-
+		fr_strerror_printf("Failed changing socket permissions to %s (%s): %s", str_need, oct_need,
+				   fr_syserror(errno));
 		goto sock_error;
 	}
 #endif
