@@ -677,11 +677,11 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 
 
 		if (rad_getpwuid(NULL, &user, euid) < 0) {
-			fr_strerror_printf("Failed resolving socket uid to user: %s", fr_strerror()
+			fr_strerror_printf("Failed resolving socket uid to user: %s", fr_strerror());
 			goto sock_error;
 		}
 		if (rad_getgrgid(NULL, &group, gid) < 0) {
-			fr_strerror_printf("Failed resolving socket gid to group: %s", fr_strerror()
+			fr_strerror_printf("Failed resolving socket gid to group: %s", fr_strerror());
 			talloc_free(user);
 			goto sock_error;
 		}
@@ -3172,7 +3172,7 @@ static int command_socket_open_unix(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 		this->fd = fr_server_domain_socket_perm(sock->path, sock->gid);
 	}
 	if (this->fd < 0) {
-		ERROR("%s", sock->path, fr_strerror());
+		ERROR("%s", fr_strerror());
 		if (sock->copy) TALLOC_FREE(sock->copy);
 		return -1;
 	}
