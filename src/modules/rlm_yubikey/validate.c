@@ -61,8 +61,6 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 	ykclient_rc status;
 	CONF_SECTION *servers;
 
-	char prefix[100];
-
 	int count = 0;
 
 	if (!inst->client_id) {
