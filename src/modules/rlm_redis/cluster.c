@@ -2219,7 +2219,11 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	if (!cluster->node) goto oom;
 
 	cluster->used_nodes = rbtree_create(cluster, _cluster_node_cmp, NULL, 0);
+	if (!cluster->used_nodes) goto oom;
+
 	cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL);
+	if (!cluster->free_nodes) goto oom;
+
 	cluster->conf = conf;
 
 #ifdef HAVE_PTHREAD_H
