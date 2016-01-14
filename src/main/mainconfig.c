@@ -620,8 +620,17 @@ static int switch_users(CONF_SECTION *cs)
 	if (main_config.write_pid) {
 		char *my_dir;
 
+		/*
+		 *	Control sockets may be accessible by users
+		 *	other than the freeradius user, so we need
+		 *	to allow 'other' to traverse the run
+		 *	directory.
+		 *
+		 *	The freeradius user should be the only one
+		 *	allowed to write to this directory however.
+		 */
 		my_dir = talloc_strdup(NULL, run_dir);
-		if (rad_mkdir(my_dir, 0750, server_uid, server_gid) < 0) {
+		if (rad_mkdir(my_dir, 0755, server_uid, server_gid) < 0) {
 			DEBUG("Failed to create run_dir %s: %s",
 			      my_dir, strerror(errno));
 		}
@@ -631,8 +640,14 @@ static int switch_users(CONF_SECTION *cs)
 	if (default_log.dst == L_DST_FILES) {
 		char *my_dir;
 
+		/*
+		 *	Every other Linux daemon allows 'other'
+		 *	to traverse the log directory.  That doesn't
+		 *	mean the actual files should be world
+		 *	readable.
+		 */
 		my_dir = talloc_strdup(NULL, radlog_dir);
-		if (rad_mkdir(my_dir, 0750, server_uid, server_gid) < 0) {
+		if (rad_mkdir(my_dir, 0755, server_uid, server_gid) < 0) {
 			DEBUG("Failed to create logdir %s: %s",
 			      my_dir, strerror(errno));
 		}
