@@ -450,6 +450,8 @@ int fr_blocking(int fd)
 		return -1;
 	}
 
+	if (!(flags & O_NONBLOCK)) return flags;
+
 	flags ^= O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
 		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
