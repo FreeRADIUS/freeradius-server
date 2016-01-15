@@ -380,16 +380,19 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	egid = getegid();
 
 	/*
-	 *	Determine the correct permissions for the socket, or its
-	 *	containing directory.
+	 *	In the Linux implementation, sockets which are visible in the
+	 *	filesystem honor the permissions of the directory they are in.  Their
+	 *	owner, group, and permissions can be changed.  Creation of a new
+	 *	socket will fail if the process does not have write and search
+	 *	(execute) permission on the directory the socket is created in.
+	 *	Connecting to the socket object requires read/write permission.
 	 */
-	perm |= S_IREAD | S_IWRITE | S_IEXEC;
-	if (gid != (gid_t) -1) perm |= S_IRGRP | S_IWGRP | S_IXGRP;
-
-	/*
-	 *	Containing directory shouldn't be group writeable.
-	 */
-	dir_perm = perm & (~S_IWGRP);
+	perm = (S_IREAD | S_IWRITE);
+	dir_perm = (S_IREAD | S_IWRITE | S_IEXEC);
+	if (gid != (gid_t) -1) {
+		perm |= (S_IRGRP | S_IWGRP);
+		dir_perm |= (S_IRGRP | S_IWGRP | S_IXGRP);
+	}
 
 	buff = talloc_strdup(NULL, path);
 	if (!buff) {
