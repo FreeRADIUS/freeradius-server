@@ -1518,7 +1518,8 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	 */
 	if (vp->vp_length == 0) {
 		if ((vp->da->vendor != 0) ||
-		    (vp->da->attr != PW_CHARGEABLE_USER_IDENTITY)) {
+		    ((vp->da->attr != PW_CHARGEABLE_USER_IDENTITY) &&
+		     (vp->da->attr != PW_MESSAGE_AUTHENTICATOR))) {
 			return 0;
 		}
 	}
