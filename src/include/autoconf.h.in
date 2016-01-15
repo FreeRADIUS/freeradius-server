@@ -92,6 +92,12 @@
 /* define this if we have <execinfo.h> and symbols */
 #undef HAVE_EXECINFO
 
+/* Define to 1 if you have the `fchmodat' function. */
+#undef HAVE_FCHMODAT
+
+/* Define to 1 if you have the `fchownat' function. */
+#undef HAVE_FCHOWNAT
+
 /* Define to 1 if you have the `fcntl' function. */
 #undef HAVE_FCNTL
 

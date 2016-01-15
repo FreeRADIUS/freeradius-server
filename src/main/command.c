@@ -84,10 +84,8 @@ typedef struct fr_command_socket_t {
 	uint32_t	magic;
 	char const	*path;
 	char		*copy;		/* <sigh> */
-	uid_t		uid;
-	gid_t		gid;
-	char const	*uid_name;
-	char const	*gid_name;
+	gid_t		gid;		//!< Additional group authorized to connect to socket.
+	char const	*gid_name;	//!< Name of additional group (resolved to gid later).
 	char const	*mode_name;
 	bool		peercred;
 	char		user[256];
@@ -107,7 +105,7 @@ typedef struct fr_command_socket_t {
 
 static const CONF_PARSER command_config[] = {
 	{ FR_CONF_OFFSET("socket", PW_TYPE_STRING, fr_command_socket_t, path), .dflt = "${run_dir}/radiusd.sock" },
-	{ FR_CONF_OFFSET("uid", PW_TYPE_STRING, fr_command_socket_t, uid_name) },
+	{ FR_CONF_DEPRECATED("uid", PW_TYPE_STRING, fr_command_socket_t, NULL) },
 	{ FR_CONF_OFFSET("gid", PW_TYPE_STRING, fr_command_socket_t, gid_name) },
 	{ FR_CONF_OFFSET("mode", PW_TYPE_STRING, fr_command_socket_t, mode_name) },
 	{ FR_CONF_OFFSET("peercred", PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), .dflt = "yes" },
@@ -146,195 +144,14 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 #endif /* HAVE_GETPEEREID */
 
-/** Initialise a socket for use with peercred authentication
- *
- * This function initialises a socket and path in a way suitable for use with
- * peercred.
- *
- * @param path to socket.
- * @param uid that should own the socket (linux only).
- * @param gid that should own the socket (linux only).
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-#ifdef __linux__
-static int fr_server_domain_socket_peercred(char const *path, uid_t uid, gid_t gid)
-#else
-static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, UNUSED gid_t gid)
-#endif
+#if !defined(HAVE_OPENAT) || !defined(HAVE_MKDIRAT) || !defined(HAVE_UNLINKAT) || !defined(HAVE_FCHMODAT) || !defined(HAVE_FCHOWNAT)
+static int fr_server_domain_socket(UNUSED char const *path, UNUSED gid_t gid)
 {
-	int sockfd;
-	size_t len;
-	socklen_t socklen;
-	struct sockaddr_un salocal;
-	struct stat buf;
-
-	if (!path) {
-		fr_strerror_printf("No path provided, was NULL");
-		return -1;
-	}
-
-	len = strlen(path);
-	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename");
-		return -1;
-	}
-
-	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		fr_strerror_printf("Failed creating socket: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	memset(&salocal, 0, sizeof(salocal));
-	salocal.sun_family = AF_UNIX;
-	memcpy(salocal.sun_path, path, len + 1); /* SUN_LEN does strlen */
-
-	socklen = SUN_LEN(&salocal);
-
-	/*
-	 *	Check the path.
-	 */
-	if (stat(path, &buf) < 0) {
-		if (errno != ENOENT) {
-			fr_strerror_printf("Failed to stat %s: %s", path, fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-
-		/*
-		 *	FIXME: Check the enclosing directory?
-		 */
-	} else {		/* it exists */
-		int client_fd;
-
-		if (!S_ISREG(buf.st_mode)
-#ifdef S_ISSOCK
-		    && !S_ISSOCK(buf.st_mode)
-#endif
-			) {
-			fr_strerror_printf("Cannot turn %s into socket", path);
-			close(sockfd);
-			return -1;
-		}
-
-		/*
-		 *	Refuse to open sockets not owned by us.
-		 */
-		if (buf.st_uid != geteuid()) {
-			fr_strerror_printf("We do not own %s", path);
-			close(sockfd);
-			return -1;
-		}
-
-		/*
-		 *	Check if a server is already listening on the
-		 *	socket?
-		 */
-		client_fd = fr_socket_client_unix(path, false);
-		if (client_fd >= 0) {
-			fr_strerror_printf("Control socket '%s' is already in use", path);
-			close(client_fd);
-			close(sockfd);
-			return -1;
-		}
-
-		if (unlink(path) < 0) {
-		       fr_strerror_printf("Failed to delete %s: %s", path, fr_syserror(errno));
-		       close(sockfd);
-		       return -1;
-		}
-	}
-
-	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
-		fr_strerror_printf("Failed binding to %s: %s", path, fr_syserror(errno));
-		close(sockfd);
-		return -1;
-	}
-
-	/*
-	 *	FIXME: There's a race condition here.  But Linux
-	 *	doesn't seem to permit fchmod on domain sockets.
-	 */
-	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
-		fr_strerror_printf("Failed setting permissions on %s: %s", path, fr_syserror(errno));
-		close(sockfd);
-		return -1;
-	}
-
-	if (listen(sockfd, 8) < 0) {
-		fr_strerror_printf("Failed listening to %s: %s", path, fr_syserror(errno));
-		close(sockfd);
-		return -1;
-	}
-
-#ifdef O_NONBLOCK
-	{
-		int flags;
-
-		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-
-		flags |= O_NONBLOCK;
-		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-	}
-#endif
-
-	/*
-	 *	Changing socket permissions only works on linux.
-	 *	BSDs ignore socket permissions.
-	 */
-#ifdef __linux__
-	/*
-	 *	Don't chown it from (possibly) non-root to root.
-	 *	Do chown it from (possibly) root to non-root.
-	 */
-	if ((uid != (uid_t) -1) || (gid != (gid_t) -1)) {
-		/*
-		 *	Don't do chown if it's already owned by us.
-		 */
-		if (fstat(sockfd, &buf) < 0) {
-			fr_strerror_printf("Failed reading %s: %s", path, fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-
-		if ((buf.st_uid != uid) || (buf.st_gid != gid)) {
-			rad_suid_up();
-			if (fchown(sockfd, uid, gid) < 0) {
-				fr_strerror_printf("Failed setting ownership of %s to (%d, %d): %s",
-				      path, uid, gid, fr_syserror(errno));
-				rad_suid_down();
-				close(sockfd);
-				return -1;
-			}
-			rad_suid_down();
-		}
-	}
-#endif
-
-	return sockfd;
-}
-
-#if !defined(HAVE_OPENAT) || !defined(HAVE_MKDIRAT) || !defined(HAVE_UNLINKAT)
-static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t uid, UNUSED gid_t gid)
-{
-	fr_strerror_printf("Unable to initialise control socket.  Set peercred = yes or update to "
-			   "POSIX-2008 compliant libc");
+	fr_strerror_printf("Unable to initialise control socket.  Upgrade to POSIX-2008 compliant libc");
 	return -1;
 }
 #else
-/** Alternative function for creating Unix domain sockets and enforcing permissions
- *
- * Unlike fr_server_unix_socket which is intended to be used with peercred auth
- * this function relies on the file system to enforce access.
+/** Create a unix socket, and enforce permissions using the file system
  *
  * The way it does this depends on the operating system. On Linux systems permissions
  * can be set on the socket directly and the system will enforce them.
@@ -356,13 +173,13 @@ static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t ui
  *	- A file descriptor for the bound socket on success.
  *	- -1 on failure.
  */
-static int fr_server_domain_socket_perm(char const *path, gid_t gid)
+static int fr_server_domain_socket(char const *path, gid_t gid)
 {
 	int			dir_fd = -1, path_fd = -1, sock_fd = -1, parent_fd = -1;
 	char const		*name;
 	char			*buff = NULL, *dir = NULL, *p;
 
-	uid_t			euid;
+	uid_t			euid, suid;
 	gid_t			egid;
 
 	mode_t			perm = 0;
@@ -391,7 +208,7 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	dir_perm = (S_IREAD | S_IWRITE | S_IEXEC);
 	if (gid != (gid_t) -1) {
 		perm |= (S_IRGRP | S_IWGRP);
-		dir_perm |= (S_IRGRP | S_IWGRP | S_IXGRP);
+		dir_perm |= (S_IRGRP | S_IXGRP);
 	}
 
 	buff = talloc_strdup(NULL, path);
@@ -429,6 +246,9 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	/*
 	 *	Ensure the parent of the control socket directory exists,
 	 *	and the euid we're running under has access to it.
+	 *
+	 *	This must be done suid_down, so we can't be tricked into
+	 *	accessing a directory owned by root.
 	 */
 	parent_fd = open(dir, O_DIRECTORY);
 	if (parent_fd < 0) {
@@ -592,6 +412,8 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 	 *	this attack vector is unlikely.
 	 */
 	rad_suid_up();	/* Need to be root to change euid and egid */
+	suid = geteuid();
+
 	/*
 	 *	Group needs to be changed first, because if we change
 	 *	to a non root user, we can no longer set it.
@@ -625,9 +447,10 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		fr_strerror_printf("Failed removing stale socket: %s", fr_syserror(errno));
 	sock_error:
 		/*
-		 *	Restore previous effective UID/GID
+		 *	Restore suid to ensure rad_suid_up continues
+		 *	to work correctly.
 		 */
-		rad_seuid(euid);
+		rad_seuid(suid);
 		if (gid != (gid_t)-1) rad_segid(egid);
 		/*
 		 *	Then SUID down, to ensure rad_suid_up/down continues
@@ -667,35 +490,6 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 #endif
 	socklen = SUN_LEN(&salocal);
 
-#ifdef __linux__
-	/*
-	 *	The socket file isn't created until sock_fd is bound,
-	 *	but Linux allows us to set the user/group it will be
-	 *	owned by, here.
-	 */
-	if (fchown(sock_fd, euid, gid) < 0) {
-		struct passwd *user;
-		struct group *group;
-		int fchown_err = errno;
-
-
-		if (rad_getpwuid(NULL, &user, euid) < 0) {
-			fr_strerror_printf("Failed resolving socket uid to user: %s", fr_strerror());
-			goto sock_error;
-		}
-		if (rad_getgrgid(NULL, &group, gid) < 0) {
-			fr_strerror_printf("Failed resolving socket gid to group: %s", fr_strerror());
-			talloc_free(user);
-			goto sock_error;
-		}
-
-		fr_strerror_printf("Failed changing socket ownership to %s:%s: %s", user->pw_name, group->gr_name,
-				   fr_syserror(fchown_err));
-		talloc_free(user);
-		talloc_free(group);
-		goto sock_error;
-	}
-#endif
 	/*
 	 *	The correct function to use here is bindat(), but only
 	 *	quite recent versions of FreeBSD actually have it, and
@@ -710,20 +504,47 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		goto sock_error;
 	}
 
-#ifdef __linux__
+        /*
+         *	Previous code used fchown to set ownership before the
+	 *	socket was bound.  Unfortunately this only seemed to
+	 *	work on Linux, on OSX and FreeBSD this operation would
+	 *	throw an EINVAL error.  
+	 */
+        if (fchownat(dir_fd, name, euid, gid, AT_SYMLINK_NOFOLLOW) < 0) {
+                struct passwd *user;
+                struct group *group;
+                int fchown_err = errno;
+
+
+                if (rad_getpwuid(NULL, &user, euid) < 0) {
+                        fr_strerror_printf("Failed resolving socket uid to user: %s", fr_strerror());
+                        goto sock_error;
+                }
+                if (rad_getgrgid(NULL, &group, gid) < 0) {
+                        fr_strerror_printf("Failed resolving socket gid to group: %s", fr_strerror());
+                        talloc_free(user);
+                        goto sock_error;
+                }
+
+                fr_strerror_printf("Failed changing socket ownership to %s:%s: %s", user->pw_name, group->gr_name,
+                                   fr_syserror(fchown_err));
+                talloc_free(user);
+                talloc_free(group);
+                goto sock_error;
+        }
+
 	/*
 	 *	Direct socket permissions are only useful on Linux which
-	 *	actually enforces them. BSDs don't.
+	 *	actually enforces them. BSDs may not... or they may...
+	 *	OSX 10.11.x (EL-Capitan) seems to.
 	 *
-	 *	The original code used fchmod on sock_fd before the bind,
-	 *	but this didn't always set the correct permissions. Specific
-	 *	case was setting 0770 as perms, and getting 0750 (may have
-	 *	been using parent directory permissions as mask).
+	 *	Previous code used fchmod on sock_fd before the bind,
+	 *	but this didn't always set the correct permissions. 
 	 *
 	 *	fchmodat seems to work more reliably, and has the same
 	 *	resistance against TOCTOU attacks.
 	 */
-	if (fchmodat(dir_fd, name, perm, 0) < 0) {
+	if (fchmodat(dir_fd, name, perm, AT_SYMLINK_NOFOLLOW) < 0) {
 		char str_need[10], oct_need[5];
 
 		rad_mode_to_str(str_need, perm);
@@ -732,21 +553,22 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 				   fr_syserror(errno));
 		goto sock_error;
 	}
-#endif
 
 	if (listen(sock_fd, 8) < 0) {
 		fr_strerror_printf("Failed listening on socket: %s", fr_syserror(errno));
 		goto sock_error;
 	}
 
-
 	if (fr_nonblock(sock_fd) < 0) {
 		fr_strerror_printf("Failed setting nonblock on socket: %s", fr_strerror());
 		goto sock_error;
 	}
-#endif
 
-	rad_seuid(euid);
+	/*
+	 *	Restore suid to ensure rad_suid_up continues
+	 *	to work correctly.
+	 */
+	rad_seuid(suid);
 	if (gid != (gid_t)-1) rad_segid(egid);
 	rad_suid_down();
 
@@ -3106,19 +2928,6 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	sock->copy = NULL;
 	if (sock->path) sock->copy = talloc_typed_strdup(sock, sock->path);
 
-	if (sock->uid_name) {
-		struct passwd *pwd;
-
-		if (rad_getpwnam(cs, &pwd, sock->uid_name) < 0) {
-			ERROR("Failed resolving gid of user %s: %s", sock->uid_name, fr_strerror());
-			return -1;
-		}
-		sock->uid = pwd->pw_uid;
-		talloc_free(pwd);
-	} else {
-		sock->uid = -1;
-	}
-
 	if (sock->gid_name) {
 		if (rad_getgid(cs, &sock->gid, sock->gid_name) < 0) {
 			ERROR("Failed resolving gid of group %s: %s", sock->gid_name, fr_strerror());
@@ -3138,17 +2947,6 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	/*
-	 *	We only allow a group to be set for non-peercred based access.
-	 *
-	 *	This is to ensure the FreeRADIUS always has permission
-	 *	to manage the socket that it created
-	 */
-	if (!sock->peercred && sock->uid_name) {
-		ERROR("Only authorized gid (not uid) may be set when \"peercred = no\"");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -3158,11 +2956,7 @@ static int command_socket_open_unix(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 
-	if (sock->peercred) {
-		this->fd = fr_server_domain_socket_peercred(sock->path, sock->uid, sock->gid);
-	} else {
-		this->fd = fr_server_domain_socket_perm(sock->path, sock->gid);
-	}
+	this->fd = fr_server_domain_socket(sock->path, sock->gid);
 	if (this->fd < 0) {
 		ERROR("%s", fr_strerror());
 		if (sock->copy) TALLOC_FREE(sock->copy);
@@ -3599,7 +3393,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	/*
 	 *	Perform user authentication.
 	 */
-	if (sock->peercred && (sock->uid_name || sock->gid_name)) {
+	if (sock->peercred) {
 		uid_t uid;
 		gid_t gid;
 
@@ -3615,29 +3409,12 @@ static int command_domain_accept(rad_listen_t *listener)
 		 *	non-root.  The superuser can do anything, so
 		 *	we might as well let them.
 		 */
-		if (uid != 0) do {
-			/*
-			 *	Allow entry if UID or GID matches.
-			 */
-			if (sock->uid_name && (sock->uid == uid)) break;
-			if (sock->gid_name && (sock->gid == gid)) break;
-
-			if (sock->uid_name && (sock->uid != uid)) {
-				ERROR("Unauthorized connection to %s from uid %ld",
-
-				       sock->path, (long int) uid);
-				close(newfd);
-				return 0;
-			}
-
-			if (sock->gid_name && (sock->gid != gid)) {
-				ERROR("Unauthorized connection to %s from gid %ld",
-				       sock->path, (long int) gid);
-				close(newfd);
-				return 0;
-			}
-
-		} while (0);
+		if ((uid != 0) && (uid != geteuid()) && (sock->gid_name && (sock->gid != gid))) {
+			ERROR("Unauthorized connection to %s from uid %ld, gid %ld",
+			      sock->path, (long int) uid, (long int) gid);
+			close(newfd);
+			return 0;
+		}
 	}
 #endif
 

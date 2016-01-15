@@ -10555,6 +10555,8 @@ for ac_func in \
   closefrom \
   ctime_r \
   dladdr \
+  fchmodat \
+  fchownat \
   fcntl \
   fopencookie \
   funopen \

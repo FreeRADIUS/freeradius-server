@@ -1526,6 +1526,8 @@ AC_CHECK_FUNCS( \
   closefrom \
   ctime_r \
   dladdr \
+  fchmodat \
+  fchownat \
   fcntl \
   fopencookie \
   funopen \
