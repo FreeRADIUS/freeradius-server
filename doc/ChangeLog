@@ -31,6 +31,7 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Various rlm_python fixes from Herwin Weststrate.
 	* Allow setting Response-Packet-Type in "Post-Proxy-Type Fail",
 	  which is useful when the home server does not respond.
+	* elasticsearch updates from Matthew Newton
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
@@ -72,6 +73,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Fix debugging constants in rlm_perl.  Patch from Herwin Weststrate.
 	* Add samba-dev / samba4-dev to debian builds so that rlm_mschap can
 	  automatically use the new winbind API.
+	* Automatically skip zero-length attributes when sending packets,
+	  instead of erroring out.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
