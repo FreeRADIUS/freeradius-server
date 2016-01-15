@@ -100,7 +100,7 @@ static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 fr_debug_state_t fr_debug_state = DEBUG_STATE_UNKNOWN;	//!< Whether we're attached to by a debugger.
 
 #ifdef HAVE_SYS_RESOURCE_H
-static struct rlimit core_limits;
+static struct rlimit init_core_limit;
 #endif
 
 static TALLOC_CTX *talloc_null_ctx;
@@ -513,7 +513,7 @@ static int fr_get_dumpable_flag(void)
 int fr_set_dumpable_init(void)
 {
 #ifdef HAVE_SYS_RESOURCE_H
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+	if (getrlimit(RLIMIT_CORE, &init_core_limit) < 0) {
 		fr_strerror_printf("Failed to get current core limit:  %s", fr_syserror(errno));
 		return -1;
 	}
@@ -528,37 +528,48 @@ int fr_set_dumpable_init(void)
 int fr_set_dumpable(bool allow_core_dumps)
 {
 	dump_core = allow_core_dumps;
-	/*
-	 *	If configured, turn core dumps off.
-	 */
-	if (!allow_core_dumps) {
+
 #ifdef HAVE_SYS_RESOURCE_H
-		struct rlimit no_core;
-
-		no_core.rlim_cur = 0;
-		no_core.rlim_max = 0;
-
-		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-			fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
-
-			return -1;
-		}
-#endif
-		return 0;
-	}
-
-	if (fr_set_dumpable_flag(true) < 0) return -1;
+	struct rlimit current;
 
 	/*
-	 *	Reset the core dump limits to their original value.
+	 *	Reset the core limits (or disable them)
 	 */
-#ifdef HAVE_SYS_RESOURCE_H
-	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		fr_strerror_printf("Cannot update core dump limit: %s", fr_syserror(errno));
-
+	if (getrlimit(RLIMIT_CORE, &current) < 0) {
+		fr_strerror_printf("Failed to get current core limit:  %s", fr_syserror(errno));
 		return -1;
 	}
+
+	if (allow_core_dumps) {
+		if ((current.rlim_cur != init_core_limit.rlim_cur) || (current.rlim_max != init_core_limit.rlim_max)) {
+			if (setrlimit(RLIMIT_CORE, &init_core_limit) < 0) {
+				fr_strerror_printf("Cannot update core dump limit: %s", fr_syserror(errno));
+
+				return -1;
+			}
+		}
+	} else {
+		if ((current.rlim_cur != 0) || (current.rlim_max != 0)) {
+			struct rlimit no_core;
+
+			no_core.rlim_cur = 0;
+			no_core.rlim_max = 0;
+
+			if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
+				fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
+
+				return -1;
+			}
+		}
+	}
 #endif
+#if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE)
+	/*
+	 *	Macro needed so we don't emit spurious errors
+	 */
+	if (fr_set_dumpable_flag(allow_core_dumps) < 0) return -1;
+#endif
+
 	return 0;
 }
 

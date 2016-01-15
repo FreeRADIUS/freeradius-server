@@ -5419,6 +5419,12 @@ int radius_event_start(bool have_children)
 	 */
 	rad_suid_down_permanent();
 
+	/*
+	 *	Dropping down may change the RLIMIT_CORE value, so
+	 *	reset it back to what to should be here.
+	 */
+	fr_reset_dumpable();
+
 	return 1;
 }
 
