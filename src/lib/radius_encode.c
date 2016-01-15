@@ -592,8 +592,9 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 /** Encodes the data portion of an attribute
  *
  * @return
- *	- Length of the data portion.
- *	- -1 on failure.
+ *	> 0, Length of the data portion.
+ *      = 0, we could not encode anything, skip this attribute (and don't encode the header)
+ *	< 0, failure.
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
@@ -1205,7 +1206,6 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	} else {
 		len = encode_value(out + hdr_len, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
-
 	if (len <= 0) return len;
 
 	if (dv->flags.length) out[hdr_len - 1] += len;
