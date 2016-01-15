@@ -736,21 +736,10 @@ static int fr_server_domain_socket_perm(char const *path, gid_t gid)
 		goto sock_error;
 	}
 
-#ifdef O_NONBLOCK
-	{
-		int flags;
 
-		flags = fcntl(sock_fd, F_GETFL, NULL);
-		if (flags < 0)  {
-			fr_strerror_printf("Failed getting socket flags: %s", fr_syserror(errno));
-			goto sock_error;
-		}
-
-		flags |= O_NONBLOCK;
-		if (fcntl(sock_fd, F_SETFL, flags) < 0) {
-			fr_strerror_printf("Failed setting nonblocking socket flag: %s", fr_syserror(errno));
-			goto sock_error;
-		}
+	if (fr_nonblock(sock_fd) < 0) {
+		fr_strerror_printf("Failed setting nonblock on socket: %s", fr_strerror());
+		goto sock_error;
 	}
 #endif
 
