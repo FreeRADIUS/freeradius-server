@@ -17,6 +17,9 @@ def authorize(p):
   radiusd.radlog(radiusd.L_INFO, '*** radlog call in authorize ***')
   print
   print p
+  print
+  print radiusd.config
+  print
   return radiusd.RLM_MODULE_OK
 
 def preacct(p):
