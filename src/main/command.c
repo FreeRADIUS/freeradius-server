@@ -504,11 +504,11 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 		goto sock_error;
 	}
 
-        /*
-         *	Previous code used fchown to set ownership before the
+	/*
+	 *	Previous code used fchown to set ownership before the
 	 *	socket was bound.  Unfortunately this only seemed to
 	 *	work on Linux, on OSX and FreeBSD this operation would
-	 *	throw an EINVAL error.  
+	 *	throw an EINVAL error.
 	 */
         if (fchownat(dir_fd, name, euid, gid, AT_SYMLINK_NOFOLLOW) < 0) {
                 struct passwd *user;
@@ -539,7 +539,7 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 	 *	OSX 10.11.x (EL-Capitan) seems to.
 	 *
 	 *	Previous code used fchmod on sock_fd before the bind,
-	 *	but this didn't always set the correct permissions. 
+	 *	but this didn't always set the correct permissions.
 	 *
 	 *	fchmodat seems to work more reliably, and has the same
 	 *	resistance against TOCTOU attacks.
