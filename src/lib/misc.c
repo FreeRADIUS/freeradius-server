@@ -418,13 +418,13 @@ int fr_nonblock(int fd)
 
 	flags = fcntl(fd, F_GETFL, NULL);
 	if (flags < 0)  {
-		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed getting socket flags: %s", fr_syserror(errno));
 		return -1;
 	}
 
 	flags |= O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
-		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed setting socket flags: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -446,7 +446,7 @@ int fr_blocking(int fd)
 
 	flags = fcntl(fd, F_GETFL, NULL);
 	if (flags < 0)  {
-		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed getting socket flags: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -454,7 +454,7 @@ int fr_blocking(int fd)
 
 	flags ^= O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) < 0) {
-		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed setting socket flags: %s", fr_syserror(errno));
 		return -1;
 	}
 
