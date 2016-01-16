@@ -38,9 +38,9 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct eap_sim_server_state {
-	enum eapsim_serverstates state;
-	struct eapsim_keys keys;
-	int  sim_id;
+	eap_sim_server_states_t state;
+	eap_sim_keys_t		keys;
+	int  			sim_id;
 } eap_sim_state_t;
 
 /*
@@ -51,7 +51,7 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return map_eapsim_basictypes(eap_session->request->reply,
+	return eap_sim_encode(eap_session->request->reply,
 				     eap_session->this_round->request);
 }
 
@@ -338,10 +338,10 @@ static int eap_sim_sendchallenge(eap_session_t *eap_session)
 	/*
 	 *	All set, calculate keys!
 	 */
-	eapsim_calculate_keys(&ess->keys);
+	eap_sim_calculate_keys(&ess->keys);
 
 #ifdef EAP_SIM_DEBUG_PRF
-	eapsim_dump_mk(&ess->keys);
+	eap_sim_dump_mk(&ess->keys);
 #endif
 
 	/*
@@ -407,7 +407,7 @@ static int eap_sim_sendsuccess(eap_session_t *eap_session)
  */
 static void eap_sim_stateenter(eap_session_t *eap_session,
 			       eap_sim_state_t *ess,
-			       enum eapsim_serverstates newstate)
+			       enum eap_sim_server_states newstate)
 {
 	switch (newstate) {
 	/*
@@ -573,7 +573,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	/*
 	 *	Verify the MAC, now that we have all the keys
 	 */
-	if (eapsim_checkmac(eap_session, vps, ess->keys.K_aut, srescat, sizeof(srescat), calcmac)) {
+	if (eap_sim_check_mac(eap_session, vps, ess->keys.K_aut, srescat, sizeof(srescat), calcmac)) {
 		RDEBUG2("MAC check succeed");
 	} else {
 		int i, j;
@@ -611,7 +611,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	VALUE_PAIR *vp, *vps;
 
-	enum eapsim_subtype subtype;
+	enum eap_sim_subtype subtype;
 
 	int success;
 
@@ -620,7 +620,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	vps = eap_session->request->packet->vps;
 
-	success = unmap_eapsim_basictypes(eap_session->request->packet,
+	success = eap_sim_decode(eap_session->request->packet,
 					  eap_session->this_round->response->type.data,
 					  eap_session->this_round->response->type.length);
 

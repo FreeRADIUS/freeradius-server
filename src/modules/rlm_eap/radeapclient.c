@@ -84,7 +84,7 @@ typedef struct rc_transaction rc_transaction_t;
 /** Structure which contains EAP context, necessary to perform the full EAP transaction.
  */
 typedef struct rc_eap_sim_context {
-	struct eapsim_keys keys;
+	struct eap_sim_keys keys;
 } rc_eap_sim_context_t;
 
 typedef struct rc_eap_md5_context {
@@ -229,8 +229,8 @@ static int packet_code = PW_CODE_UNDEFINED;
 
 static int rc_map_eap_methods(RADIUS_PACKET *req);
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
-static int rc_map_eapsim_types(RADIUS_PACKET *r);
-static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
+static int rc_map_eap_sim_types(RADIUS_PACKET *r);
+static int rc_unmap_eap_sim_types(RADIUS_PACKET *r);
 
 static void rc_get_radius_port(PW_CODE type, uint16_t *port);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
@@ -1070,14 +1070,14 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	memcpy(eap_context->eap.sim.keys.Kc[2], Kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[2]));
 
 	/* all set, calculate keys */
-	eapsim_calculate_keys(&eap_context->eap.sim.keys);
+	eap_sim_calculate_keys(&eap_context->eap.sim.keys);
 
 	if (rad_debug_lvl) {
-		eapsim_dump_mk(&eap_context->eap.sim.keys);
+		eap_sim_dump_mk(&eap_context->eap.sim.keys);
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	int rcode_mac = eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
+	int rcode_mac = eap_sim_check_mac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
 	                                eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
 	                                calcmac);
 
@@ -1132,8 +1132,8 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
                               RADIUS_PACKET *req, RADIUS_PACKET *resp)
 {
-	enum eapsim_clientstates state, newstate;
-	enum eapsim_subtype subtype;
+	eap_sim_client_states_t state, newstate;
+	eap_sim_subtype_t subtype;
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
 	int rcode_eap;
@@ -1164,7 +1164,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	/*
 	 * map the attributes, and authenticate them.
 	 */
-	rc_unmap_eapsim_types(req);
+	rc_unmap_eap_sim_types(req);
 
 	if ((vp = fr_pair_find_by_num(req->vps, 0, PW_EAP_SIM_SUBTYPE, TAG_ANY)) == NULL)
 	{
@@ -1187,8 +1187,8 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		case EAPSIM_REAUTH:
 		default:
 			ERROR("sim in state '%s' (%d), message '%s' (%d) is illegal. Reply dropped.",
-				sim_state2name(state, statenamebuf, sizeof(statenamebuf)), state,
-				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)), subtype);
+				eap_sim_state_to_name(statenamebuf, sizeof(statenamebuf), state), state,
+				eap_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype), subtype);
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1207,8 +1207,8 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 		default:
 			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
-				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
+				eap_sim_state_to_name(statenamebuf, sizeof(statenamebuf), state),
+				eap_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype));
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1216,7 +1216,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 	default:
 		ERROR("sim in illegal state '%s' (%d)",
-			sim_state2name(state, statenamebuf, sizeof(statenamebuf)), state);
+			eap_sim_state_to_name(statenamebuf, sizeof(statenamebuf), state), state);
 		return 0;
 	}
 
@@ -1231,7 +1231,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	fr_pair_replace(&(resp->vps), eapid);
 
 	/* update state info, and send new packet */
-	rc_map_eapsim_types(resp);
+	rc_map_eap_sim_types(resp);
 
 	/* copy the radius state object in */
 	fr_pair_replace(&(resp->vps), radstate);
@@ -2562,13 +2562,13 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 	return;
 }
 
-static int rc_map_eapsim_types(RADIUS_PACKET *r)
+static int rc_map_eap_sim_types(RADIUS_PACKET *r)
 {
 	int ret;
 
 	eap_packet_t *pt_ep = talloc_zero(r, eap_packet_t);
 
-	ret = map_eapsim_basictypes(r, pt_ep);
+	ret = eap_sim_encode(r, pt_ep);
 
 	if (ret != 1) {
 		return ret;
@@ -2579,7 +2579,7 @@ static int rc_map_eapsim_types(RADIUS_PACKET *r)
 	return 1;
 }
 
-static int rc_unmap_eapsim_types(RADIUS_PACKET *r)
+static int rc_unmap_eap_sim_types(RADIUS_PACKET *r)
 {
 	VALUE_PAIR	     *esvp;
 	uint8_t *eap_data;
@@ -2594,7 +2594,7 @@ static int rc_unmap_eapsim_types(RADIUS_PACKET *r)
 	eap_data = talloc_memdup(esvp, esvp->vp_octets, esvp->vp_length);
 	talloc_set_type(eap_data, uint8_t);
 
-	rcode_unmap = unmap_eapsim_basictypes(r, eap_data, esvp->vp_length);
+	rcode_unmap = eap_sim_decode(r, eap_data, esvp->vp_length);
 
 	talloc_free(eap_data);
 	return rcode_unmap;

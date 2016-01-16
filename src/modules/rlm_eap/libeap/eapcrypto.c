@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include "eap_sim.h"
 #include <freeradius-devel/sha1.h>
 
-void eapsim_calculate_keys(struct eapsim_keys *ek)
+void eap_sim_calculate_keys(struct eap_sim_keys *ek)
 {
 	fr_sha1_ctx context;
 	uint8_t fk[160];
@@ -100,7 +100,7 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 }
 
 
-void eapsim_dump_mk(struct eapsim_keys *ek)
+void eap_sim_dump_mk(struct eap_sim_keys *ek)
 {
 	unsigned int i, j, k;
 
@@ -224,7 +224,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 
 #include <assert.h>
 
-struct eapsim_keys inputkey1 = {
+struct eap_sim_keys inputkey1 = {
 	{'e', 'a', 'p', 's','i','m' },
 	6,
 	  0x4d, 0x6c, 0x40, 0xde, 0x48, 0x3a, 0xdd, 0x99,   /* nonce_mt */
@@ -246,7 +246,7 @@ struct eapsim_keys inputkey1 = {
 	  0x00, 0x01 ,
 };
 
-struct eapsim_keys inputkey2 = {
+struct eap_sim_keys inputkey2 = {
   {'1','2','4','4','0','7','0','1','0','0','0','0','0','0','0','1','@','e','a','p','s','i','m','.','f','o','o'},
   27,
   0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,   /* nonce_mt */
@@ -275,17 +275,17 @@ struct eapsim_keys inputkey2 = {
 
 main(int argc, char *argv[])
 {
-	struct eapsim_keys *ek;
+	struct eap_sim_keys *ek;
 
 	ek = &inputkey1;
 
-	eapsim_calculate_keys(ek);
-	eapsim_dump_mk(ek);
+	eap_sim_calculate_keys(ek);
+	eap_sim_dump_mk(ek);
 
 	ek = &inputkey2;
 
-	eapsim_calculate_keys(ek);
-	eapsim_dump_mk(ek);
+	eap_sim_calculate_keys(ek);
+	eap_sim_dump_mk(ek);
 }
 #endif
 

@@ -30,42 +30,40 @@ RCSIDH(eap_sim_h, "$Id$")
 
 #define EAP_SIM_VERSION 0x0001
 
-enum eapsim_subtype {
+typedef enum eap_sim_subtype {
 	EAPSIM_START		= 10,
 	EAPSIM_CHALLENGE	= 11,
 	EAPSIM_NOTIFICATION	= 12,
 	EAPSIM_REAUTH		= 13,
 	EAPSIM_CLIENT_ERROR	= 14,
 	EAPSIM_MAX_SUBTYPE	= 15
-};
+} eap_sim_subtype_t;
 
-enum eapsim_clientstates {
+typedef enum eap_sim_client_states {
 	EAPSIM_CLIENT_INIT	= 0,
 	EAPSIM_CLIENT_START	= 1,
-	EAPSIM_CLIENT_MAXSTATES
-};
+	EAPSIM_CLIENT_MAX_STATES
+} eap_sim_client_states_t;
 
-/* server states
+/* Server states
  *
- * in server_start, we send a EAP-SIM Start message.
- *
+ * In server_start, we send a EAP-SIM Start message.
  */
-enum eapsim_serverstates {
+typedef enum eap_sim_server_states {
 	EAPSIM_SERVER_START	= 0,
 	EAPSIM_SERVER_CHALLENGE	= 1,
 	EAPSIM_SERVER_SUCCESS	= 10,
-	EAPSIM_SERVER_MAXSTATES
-};
+	EAPSIM_SERVER_MAX_STATES
+} eap_sim_server_states_t;
 
 
 /*
- * interfaces in eapsimlib.c
+ *	eap_simlib.c
  */
-int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep);
-char const *sim_state2name(enum eapsim_clientstates state, char *buf, int buflen);
-char const *sim_subtype2name(enum eapsim_subtype subtype, char *buf, int buflen);
-int unmap_eapsim_basictypes(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrlen);
-
+int eap_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep);
+int eap_sim_decode(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrlen);
+char const *eap_sim_state_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
+char const *eap_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t subtype);
 
 /************************/
 /*   CRYPTO FUNCTIONS   */
@@ -83,7 +81,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrle
 #define EAPSIM_NONCEMT_SIZE	16
 #define EAPSIM_AUTH_SIZE	16
 
-struct eapsim_keys {
+typedef struct eap_sim_keys {
 	/* inputs */
 	uint8_t identity[FR_MAX_STRING_LEN];
 	unsigned int  identitylen;
@@ -101,22 +99,20 @@ struct eapsim_keys {
 	uint8_t K_encr[16];
 	uint8_t msk[64];
 	uint8_t emsk[64];
-};
+} eap_sim_keys_t;
 
 
 /*
- * interfaces in eapsimlib.c
+ * interfaces in eap_simlib.c
  */
-int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
-		    uint8_t key[8],
-		    uint8_t *extra, int extralen,
-		    uint8_t calcmac[20]);
+int eap_sim_check_mac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
+		      uint8_t key[8],
+		      uint8_t *extra, int extralen,
+		      uint8_t calcmac[20]);
 
 /*
  * in eapcrypto.c
  */
-void eapsim_calculate_keys(struct eapsim_keys *ek);
-void eapsim_dump_mk(struct eapsim_keys *ek);
-
-
+void eap_sim_calculate_keys(struct eap_sim_keys *ek);
+void eap_sim_dump_mk(struct eap_sim_keys *ek);
 #endif /* _EAP_SIM_H */
