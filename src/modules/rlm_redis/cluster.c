@@ -2128,7 +2128,6 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	int			num_nodes;
 	fr_redis_cluster_t	*cluster;
 
-	rad_assert(triggers_enabled || !log_prefix);
 	rad_assert(triggers_enabled || !trigger_prefix);
 	rad_assert(triggers_enabled || !trigger_args);
 

@@ -55,7 +55,8 @@ typedef enum ippool_tool_action {
 	IPPOOL_TOOL_ADD,
 	IPPOOL_TOOL_REMOVE,
 	IPPOOL_TOOL_RELEASE,
-	IPPOOL_TOOL_SHOW
+	IPPOOL_TOOL_SHOW,
+	IPPOOL_TOOL_MODIFY
 } ippool_tool_action_t;
 
 /** A single pool operation
@@ -210,6 +211,8 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("                         This is used primarily for IPv6 where a prefix is");
 	INFO("                         allocated to an intermediary router, which in turn");
 	INFO("                         allocates sub-prefixes to the devices it serves");
+	INFO("  -m <prefix>            Change the range ID to the one specified for matching");
+	INFO("                         addresses");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
 //	INFO("Pool status:");
@@ -760,6 +763,63 @@ static int driver_add_lease(void *out, void *instance, ippool_tool_operation_t c
 	return driver_do_lease(out, instance, op, _driver_add_lease_enqueue, _driver_add_lease_process);
 }
 
+/** Count the number of leases we modified
+ */
+static int _driver_modify_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr, redisReply const *reply)
+{
+	uint64_t *modified = out;
+	/*
+	 *	Record the actual number of addresses released.
+	 *	Leases with a score of zero shouldn't be included,
+	 *	in this count.
+	 */
+	if (reply->type != REDIS_REPLY_INTEGER) return -1;
+
+	/*
+	 *	return code is 0 or 1 depending on if its a new
+	 *	field, neither are useful
+	 */
+	*modified += 1;
+
+	return 0;
+}
+
+/** Enqueue lease removal commands
+ *
+ * This modifys the lease from the expiry heap, and the data associated with
+ * the lease.
+ */
+static int _driver_modify_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
+					uint8_t const *key_prefix, size_t key_prefix_len,
+					UNUSED uint8_t const *range, UNUSED size_t range_len,
+					fr_ipaddr_t *ipaddr, uint8_t prefix)
+{
+	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t		*key_p = key;
+	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
+
+	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+	uint8_t		*ip_key_p = ip_key;
+
+	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
+	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
+
+	DEBUG("Modifying %s in pool \"%s\"", ip_buff, key_prefix);
+	redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
+
+	return 1;
+}
+
+/** Remove a range of leases
+ *
+ */
+static int driver_modify_lease(void *out, void *instance, ippool_tool_operation_t const *op)
+{
+	return driver_do_lease(out, instance, op,
+			       _driver_modify_lease_enqueue, _driver_modify_lease_process);
+}
+
 /** Driver initialization function
  *
  */
@@ -996,7 +1056,7 @@ do { \
 	p++; \
 } while (0);
 
-	while ((opt = getopt(argc, argv, "a:d:r:s:p:ihxo:f:")) != EOF)
+	while ((opt = getopt(argc, argv, "a:d:r:s:m:p:ihxo:f:")) != EOF)
 	switch (opt) {
 	case 'a':
 		ADD_ACTION(IPPOOL_TOOL_ADD);
@@ -1012,6 +1072,10 @@ do { \
 
 	case 's':
 		ADD_ACTION(IPPOOL_TOOL_SHOW);
+		break;
+
+	case 'm':
+		ADD_ACTION(IPPOOL_TOOL_MODIFY);
 		break;
 
 	case 'p':
@@ -1233,6 +1297,17 @@ do { \
 			}
 		}
 		talloc_free(leases);
+	}
+		continue;
+
+	case IPPOOL_TOOL_MODIFY:
+	{
+		uint64_t count = 0;
+
+		if (driver_modify_lease(&count, conf->driver, p) < 0) {
+			exit(1);
+		}
+		INFO("Modified %" PRIu64 " address(es)/prefix(es)", count);
 	}
 		continue;
 
