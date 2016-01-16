@@ -543,8 +543,10 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 	 *
 	 *	fchmodat seems to work more reliably, and has the same
 	 *	resistance against TOCTOU attacks.
+	 *
+	 *	AT_SYMLINK_NOFOLLOW causes this to fail on Linux.
 	 */
-	if (fchmodat(dir_fd, name, perm, AT_SYMLINK_NOFOLLOW) < 0) {
+	if (fchmodat(dir_fd, name, perm, 0) < 0) {
 		char str_need[10], oct_need[5];
 
 		rad_mode_to_str(str_need, perm);
