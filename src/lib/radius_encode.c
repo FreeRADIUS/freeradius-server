@@ -1550,9 +1550,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	da = tlv_stack[0];
 	switch (da->type) {
 	default:
-		if (!da->flags.concat) {
-			ret = encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
-		} else {
+		if (da->flags.concat) {
 			/*
 			 *	Attributes like EAP-Message are marked as
 			 *	"concat", which means that they are fragmented
@@ -1560,14 +1558,13 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 			 *	extended" one.
 			 */
 			ret = encode_concat(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
+			break;
 		}
+		ret = encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case PW_TYPE_VSA:
-		if (vp->da->vendor != VENDORPEC_WIMAX) {
-			ret = encode_vsa_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
-
-		} else {
+		if (vp->da->vendor == VENDORPEC_WIMAX) {
 			/*
 			 *	WiMAX has a non-standard format for
 			 *	its VSAs.  And, it can do "long"
@@ -1575,7 +1572,9 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 			 *	of the WiMAX VSA space.
 			 */
 			ret = encode_wimax_hdr(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
+			break;
 		}
+		ret = encode_vsa_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case PW_TYPE_TLV:
