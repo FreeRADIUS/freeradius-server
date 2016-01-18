@@ -1,6 +1,6 @@
 --- a/Make.inc.in
 +++ b/Make.inc.in
-@@ -95,7 +95,7 @@
+@@ -98,7 +98,7 @@
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -48,13 +48,7 @@
     if cpu > 95% for 2 cycles then alert
 --- a/raddb/sites-available/control-socket
 +++ b/raddb/sites-available/control-socket
-@@ -72,12 +72,12 @@
- 	#
- 	#  Name of user that is allowed to connect to the control socket.
- 	#
--#	uid = radius
-+#	uid = freerad
- 
+@@ -66,7 +66,7 @@ listen {
  	#
  	#  Name of group that is allowed to connect to the control socket.
  	#
