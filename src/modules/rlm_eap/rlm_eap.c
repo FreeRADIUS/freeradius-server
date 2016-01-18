@@ -113,6 +113,12 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	inst->xlat_name = cf_section_name2(cs);
 	if (!inst->xlat_name) inst->xlat_name = "EAP";
 
+	if (!dict_valbyname(PW_AUTH_TYPE, 0, inst->xlat_name)) {
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type %s' section.  Cannot authenticate users.",
+			      inst->xlat_name);
+		return -1;
+	}
+
 	/* Load all the configured EAP-Types */
 	num_methods = 0;
 	for(scs = cf_subsection_find_next(cs, NULL, NULL);
@@ -248,8 +254,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	inst = (rlm_eap_t *) instance;
 
 	if (!fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
-		REDEBUG("You set 'Auth-Type = EAP' for a request that does "
-			"not contain an EAP-Message attribute!");
+		REDEBUG("You set 'Auth-Type = %s' for a request that does "
+			"not contain an EAP-Message attribute!", inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
 
