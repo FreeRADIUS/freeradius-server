@@ -31,6 +31,7 @@ typedef struct rlm_eap_peap_t {
 	char const *default_method_name;	//!< Default tunneled EAP type.
 	int default_method;
 
+	char const *inner_eap_module;		//!< module name for inner EAP
 	int auth_type_eap;
 	bool use_tunneled_reply;		//!< Use the reply attributes from the tunneled session in
 						//!< the non-tunneled reply to the client.
@@ -53,6 +54,8 @@ static CONF_PARSER module_config[] = {
 	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, tls_conf_name), NULL },
 
 	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, default_method_name), "mschapv2" },
+
+	{ "inner_eap_module", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, inner_eap_module), "eap" },
 
 	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, copy_request_to_tunnel), "no" },
 
@@ -119,12 +122,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	dv = dict_valbyname(PW_AUTH_TYPE, 0, "mschap");
-	if (!dv) dv = dict_valbyname(PW_AUTH_TYPE, 0, "MS-CHAP");
+
+	dv = dict_valbyname(PW_AUTH_TYPE, 0, inst->inner_eap_module);
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed to find 'Auth-Type mschap' section.  Cannot authenticate users.");
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type %s' section.  Cannot authenticate users.",
+			      inst->inner_eap_module);
 		return -1;
 	}
+
 	inst->auth_type_eap = dv->value;
 	return 0;
 }
