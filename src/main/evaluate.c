@@ -691,13 +691,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
-			xlat_escape_t escape = NULL;
 
-			if (map->op == T_OP_REG_EQ) {
-				escape = regex_escape;
-			}
-
-			ret = tmpl_aexpand(request, &p, request, map->lhs, escape, NULL);
+			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				return ret;
