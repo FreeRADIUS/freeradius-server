@@ -290,7 +290,7 @@
           },
           "tmode": "terms_stats",
           "tstat": "max",
-          "valuefield": "Acct-Output-Octets.long",
+          "valuefield": "Acct-Output-Octets_long",
           "title": "TopN data Output"
         },
         {
@@ -326,7 +326,7 @@
           },
           "tmode": "terms_stats",
           "tstat": "max",
-          "valuefield": "Acct-Input-Octets.long",
+          "valuefield": "Acct-Input-Octets_long",
           "title": "TopN Data Input"
         }
       ],
