@@ -9,7 +9,7 @@ Build-Depends: debhelper (>= 9),
  libiodbc2-dev,
  libjson0 | libjson-c2,
  libjson0-dev | libjson-c-dev,
- libkrb5-dev,
+ libkrb5-dev | heimdal-dev,
  libldap2-dev,
  libpam0g-dev,
  libpcap-dev,
@@ -26,7 +26,8 @@ Build-Depends: debhelper (>= 9),
  libykclient-dev,
  libmemcached-dev,
  libhiredis-dev,
- python-dev
+ python-dev,
+ samba-dev
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
