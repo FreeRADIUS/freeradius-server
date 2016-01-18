@@ -119,7 +119,8 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	dv = dict_valbyname(PW_AUTH_TYPE, 0, "eap");
+	dv = dict_valbyname(PW_AUTH_TYPE, 0, "mschap");
+	if (!dv) dv = dict_valbyname(PW_AUTH_TYPE, 0, "MS-CHAP");
 	if (!dv) {
 		cf_log_err_cs(cs, "Failed to find 'Auth-Type mschap' section.  Cannot authenticate users.");
 		return -1;
