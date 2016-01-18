@@ -85,6 +85,14 @@ See also
 
 elasticsearch web site: http://www.elastic.co/
 
+The configuration examples presented here have been tested with the
+following software versions (note that elasticsearch 2.x may not yet
+work with this config).
+
+  elasticsearch 1.7.4
+  logstash 1.4.5
+  kibana 4.1.2
+  kibana 3.1.0
 
 Matthew Newton
 January 2016
