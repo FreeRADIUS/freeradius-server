@@ -634,7 +634,6 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-
 	/*
 	 *	Retrieve pre-existing eap_session from request
 	 *	data.  This will have been added to the request
@@ -656,7 +655,9 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
-		pair_make_reply("Message-Authenticator", "0x00", T_OP_EQ);
+		vp = fr_pair_afrom_num(request->reply, 0, PW_MESSAGE_AUTHENTICATOR);
+		fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
+		fr_pair_add(&(request->reply->vps), vp);
 	}
 
 	return RLM_MODULE_UPDATED;

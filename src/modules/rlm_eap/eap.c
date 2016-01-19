@@ -539,8 +539,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
 		vp = fr_pair_afrom_num(request->reply, 0, PW_MESSAGE_AUTHENTICATOR);
-		vp->vp_length = AUTH_VECTOR_LEN;
-		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
+		fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
 		fr_pair_add(&(request->reply->vps), vp);
 	}
 
