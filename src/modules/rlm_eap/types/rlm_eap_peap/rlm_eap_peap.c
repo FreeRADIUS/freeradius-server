@@ -55,7 +55,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, default_method_name), "mschapv2" },
 
-	{ "inner_eap_module", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, inner_eap_module), "eap" },
+	{ "inner_eap_module", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_peap_t, inner_eap_module), NULL },
 
 	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_peap_t, copy_request_to_tunnel), "no" },
 
@@ -122,15 +122,18 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	/*
+	 *	Don't expose this if we don't need it.
+	 */
+	if (!inst->inner_eap_module) inst->inner_eap_module = "eap";
 
 	dv = dict_valbyname(PW_AUTH_TYPE, 0, inst->inner_eap_module);
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed to find 'Auth-Type %s' section in virtual server %s.  Cannot authenticate users.",
-			      inst->inner_eap_module, inst->virtual_server);
-		return -1;
+		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  The server cannot proxy inner-tunnel EAP packets.",
+		     inst->inner_eap_module, inst->virtual_server);
+		inst->auth_type_eap = dv->value;
 	}
 
-	inst->auth_type_eap = dv->value;
 	return 0;
 }
 
