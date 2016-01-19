@@ -1023,13 +1023,6 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 
-			if (!auth_type_eap) {
-				RERROR("You must set 'inner_eap_module' in the 'peap' configuration");
-				RERROR("This is required in order to proxy the inner EAP session.");
-				rcode = RLM_MODULE_REJECT;
-				goto done;
-			}
-
 			/*
 			 *	The tunneled request was NOT handled,
 			 *	it has to be proxied.  This means that
@@ -1053,6 +1046,12 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 				 *	Auth-Type & EAP-Message here?
 				 */
 
+				if (!auth_type_eap) {
+					RERROR("You must set 'inner_eap_module' in the 'peap' configuration");
+					RERROR("This is required in order to proxy the inner EAP session.");
+					rcode = RLM_MODULE_REJECT;
+					goto done;
+				}
 
 				/*
 				 *	Run the EAP authentication.
