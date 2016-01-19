@@ -1024,6 +1024,12 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	Auth-Type & EAP-Message here?
 				 */
 
+				if (!auth_type_eap) {
+					RERROR("You must set 'inner_eap_module' in the 'peap' configuration");
+					RERROR("This is required in order to proxy the inner EAP session.");
+					rcode = RLM_MODULE_REJECT;
+					goto done;
+				}
 
 				/*
 				 *	Run the EAP authentication.
