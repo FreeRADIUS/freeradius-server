@@ -49,37 +49,22 @@ CREATE INDEX radacct_active_session_idx ON radacct (AcctUniqueId) WHERE AcctStop
 -- Add if you you regularly have to replay packets
 -- CREATE INDEX radacct_session_idx ON radacct (AcctUniqueId);
 
--- For backwards compatibility
--- CREATE INDEX radacct_active_user_idx ON radacct (AcctSessionId, UserName, NASIPAddress) WHERE AcctStopTime IS NULL;
-
 -- For use by onoff-
 CREATE INDEX radacct_bulk_close ON radacct (NASIPAddress, AcctStartTime) WHERE AcctStopTime IS NULL;
+
+-- For use by cleanup scripts
+-- Works well for timeout queries, where ((acctstoptime IS NULL) AND (acctupdatetime < (now() - '1 day'::interval)))
+-- as well as removing old sessions from the database.
+--
+-- Although at first glance it appears where an index on AcctUpdateTime with condition WHERE AcctStopTime IS NULL;
+-- would be more effective, the query planner refused to use the index (for some unknown reason), and doing it this
+-- way allows the index to be used for both timeouts and cleanup.
+CREATE INDEX radacct_bulk_timeout ON radacct (AcctStopTime NULLS FIRST, AcctUpdateTime);
 
 -- and for common statistic queries:
 CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
 -- and, optionally
 -- CREATE INDEX radacct_stop_user_idx ON radacct (acctStopTime, UserName);
-
-/*
- * There was WAAAY too many indexes previously. This combo index
- * should take care of the most common searches.
- * I have commented out all the old indexes, but left them in case
- * someone wants them. I don't recomend anywone use them all at once
- * as they will slow down your DB too much.
- *  - pnixon 2003-07-13
- */
-
-/*
- * create index radacct_UserName on radacct (UserName);
- * create index radacct_AcctSessionId on radacct (AcctSessionId);
- * create index radacct_AcctUniqueId on radacct (AcctUniqueId);
- * create index radacct_FramedIPAddress on radacct (FramedIPAddress);
- * create index radacct_NASIPAddress on radacct (NASIPAddress);
- * create index radacct_AcctStartTime on radacct (AcctStartTime);
- * create index radacct_AcctStopTime on radacct (AcctStopTime);
-*/
-
-
 
 /*
  * Table structure for table 'radcheck'
