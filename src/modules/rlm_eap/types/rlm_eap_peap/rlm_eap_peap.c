@@ -125,8 +125,8 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 	dv = dict_valbyname(PW_AUTH_TYPE, 0, inst->inner_eap_module);
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed to find 'Auth-Type %s' section.  Cannot authenticate users.",
-			      inst->inner_eap_module);
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type %s' section in virtual server %s.  Cannot authenticate users.",
+			      inst->inner_eap_module, inst->virtual_server);
 		return -1;
 	}
 
