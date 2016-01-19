@@ -131,6 +131,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	if (!dv) {
 		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  The server cannot proxy inner-tunnel EAP packets.",
 		     inst->inner_eap_module, inst->virtual_server);
+	} else {
 		inst->auth_type_eap = dv->value;
 	}
 
