@@ -686,7 +686,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				goto error;
 			}
 
-			if ((home->type == HOME_TYPE_AUTH) && !home->ping_user_password) {
+			if (((home->type == HOME_TYPE_AUTH) ||
+			     (home->type == HOME_TYPE_AUTH_ACCT)) && !home->ping_user_password) {
 				cf_log_err_cs(cs, "You must supply a 'password' to enable status_check=request");
 				goto error;
 			}
