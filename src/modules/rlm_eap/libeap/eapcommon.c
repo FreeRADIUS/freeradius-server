@@ -442,6 +442,10 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 
 	eap_session_inner = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
 	if (eap_session_inner) {
+		/*
+		 *	We assume if the inner eap session has changed
+		 *	then the old one has been freed.
+		 */
 		if (!eap_session->child || (eap_session->child != eap_session_inner)) {
 			RDEBUG4("Binding lifetime of child eap_session %p to parent eap_session %p",
 				eap_session_inner, eap_session);
