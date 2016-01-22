@@ -539,7 +539,8 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
 	if (reply->type != REDIS_REPLY_ARRAY) return -1;
 	if (reply->elements < 4) return -1;
 
-	if (reply->element[0]->type != REDIS_REPLY_STRING) return -1;
+	if (reply->element[0]->type == REDIS_REPLY_NIL) return 0;	/* A nil result (IP didn't exist) */
+	if (reply->element[0]->type != REDIS_REPLY_STRING) return -1;	/* Something bad */
 	lease = talloc_zero(*modified, ippool_tool_lease_t);
 	lease->ipaddr = *ipaddr;
 	lease->next_event = (time_t)strtoull(reply->element[0]->str, NULL, 10);
@@ -556,6 +557,10 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
 		lease->range = talloc_memdup(lease, reply->element[3]->str, reply->element[3]->len);
 		lease->range_len = reply->element[3]->len;
 	}
+
+	/*
+	 *	Grow the result array...
+	 */
 	existing = talloc_array_length(*modified);
 	*modified = talloc_realloc(NULL, *modified, ippool_tool_lease_t *, existing + 1);
 	(*modified)[existing - 1] = lease;
