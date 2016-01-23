@@ -2019,7 +2019,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 	timeout = fr_connection_pool_timeout(instance->pool);
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
-	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
+	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
 
 #ifdef CURLOPT_PROTOCOLS
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
