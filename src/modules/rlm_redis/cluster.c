@@ -223,7 +223,6 @@ typedef struct cluster_node_conf {
 typedef struct fr_redis_cluster_node {
 	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP string.
 							//!< text for debug messages.
-	bool			active;			//!< Whether this node is in the active node set.
 	uint8_t			id;			//!< Node ID (index in node array).
 
 	cluster_node_addr_t	addr;			//!< Current node address.
@@ -233,6 +232,11 @@ typedef struct fr_redis_cluster_node {
 	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
 							//!< password, etc..).
 	fr_connection_pool_t	*pool;			//!< Pool associated with this node.
+
+	bool			is_active;		//!< Whether this node is in the active node set.
+	bool			is_master;		//!< Whether this node is a master.
+							//!< This is needed for commands like 'KEYS', which
+							//!< we need to issue to every master in the cluster.
 } cluster_node_t;
 
 /** Indexes in the cluster_node_t array for a single key slot
@@ -544,7 +548,7 @@ static cluster_rcode_t cluster_map_apply(fr_redis_cluster_t *cluster, redisReply
 
 	uint8_t		rollback[UINT8_MAX];		// Set of nodes to re-add to the queue on failure.
 	bool		active[UINT8_MAX];		// Set of nodes active in the new cluster map.
-
+	bool		master[UINT8_MAX];		// Master nodes.
 #ifndef NDEBUG
 #  define SET_ADDR(_addr, _map) \
 do { \
@@ -563,14 +567,15 @@ do { \
 
 #define SET_INACTIVE(_node) \
 do { \
-	(_node)->active = false; \
+	(_node)->is_active = false; \
+	(_node)->is_master = false; \
 	rbtree_deletebydata(cluster->used_nodes, _node); \
 	fr_fifo_push(cluster->free_nodes, _node); \
 } while (0)
 
 #define SET_ACTIVE(_node) \
 do { \
-	(_node)->active = true; \
+	(_node)->is_active = true; \
 	rbtree_insert(cluster->used_nodes, _node); \
 	fr_fifo_pop(cluster->free_nodes); \
 	active[(_node)->id] = true; \
@@ -581,6 +586,7 @@ do { \
 
 	memset(&rollback, 0, sizeof(rollback));
 	memset(active, 0, sizeof(active));
+	memset(master, 0, sizeof(master));
 
 	cluster->remapping = true;
 
@@ -614,7 +620,7 @@ do { \
 		found = rbtree_finddata(cluster->used_nodes, &find);
 		if (found) {
 			active[found->id] = true;
-			goto skip_master;
+			goto reuse_master_node;
 		}
 
 		/*
@@ -650,8 +656,9 @@ do { \
 		SET_ACTIVE(spare);
 		found = spare;
 
-	skip_master:
+	reuse_master_node:
 		tmpl_slot.master = found->id;
+		master[found->id] = true;	/* Mark this node as a master */
 
 		/*
 		 *	Process the slaves
@@ -735,16 +742,25 @@ do { \
 #ifndef NDEBUG
 		cluster_node_t *found;
 
-		if (cluster->node[i].active) {
+		if (cluster->node[i].is_active) {
 			/* Sanity check for duplicates that are active */
 			found = rbtree_finddata(cluster->used_nodes, &cluster->node[i]);
 			rad_assert(found);
-			rad_assert(found->active);
+			rad_assert(found->is_active);
 			rad_assert(found->id == i);
 		}
 #endif
 
-		if (!active[i] && cluster->node[i].active) SET_INACTIVE(&cluster->node[i]);
+		if (!active[i] && cluster->node[i].is_active) {
+			SET_INACTIVE(&cluster->node[i]);	/* Sets is_master = false */
+
+		/*
+		 *	Only change the masters once we've successfully
+		 *	remapped the cluster.
+		 */
+		} else if (master[i]) {
+			cluster->node[i].is_master = true;
+		}
 	}
 
 	cluster->remapping = false;
@@ -2013,6 +2029,83 @@ int fr_redis_cluster_pool_by_node_addr(fr_connection_pool_t **pool, fr_redis_clu
 	return 0;
 }
 
+/** Private ctx structure to pass to _cluster_role_walk
+ *
+ */
+typedef struct addr_by_role_ctx {
+	uint8_t		count;
+	bool		is_master;
+	bool		is_slave;
+	fr_ipaddr_t	*found;
+} addr_by_role_ctx_t;
+
+/** Walk all used pools, recording the IP addresses of ones matching the filter
+ *
+ * @param context Where to write the node we found.
+ * @param data node to check.
+ * @return
+ *	- 0 continue walking.
+ *	- -1 found suitable node.
+ */
+static int _cluster_role_walk(void *context, void *data)
+{
+	addr_by_role_ctx_t	*ctx = context;
+	cluster_node_t		*node = data;
+
+	if ((ctx->is_master && node->is_master) || (ctx->is_slave && !node->is_master)) {
+		ctx->found[ctx->count++] = node->addr.ipaddr;
+	}
+	return 0;
+}
+
+/** Return an array of IP addresses belonging to masters or slaves
+ *
+ * @note We return IP addresses as they're safe to use across cluster remaps.
+ * @note Result array must be freed (talloc_free()) after use.
+ *
+ * @param[in] ctx to allocate array of IP addresses in.
+ * @param[out] out		Where to write the addresses of the nodes.
+ * @param[in] cluster		to search for nodes in.
+ * @param[in] is_master		If true, include the addresses of all the master nodes.
+ * @param[in] is_slave		If true, include the addresses of all the slaves nodes.
+ * @return the number of ip addresses written to out.
+ */
+ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_ipaddr_t *out[],
+					   fr_redis_cluster_t *cluster, bool is_master, bool is_slave)
+{
+	addr_by_role_ctx_t context;
+	size_t in_use = rbtree_num_elements(cluster->used_nodes);
+
+	if (in_use == 0) {
+		*out = NULL;
+		return 0;
+	}
+
+	context.is_master = is_master;
+	context.is_slave = is_slave;
+	context.count = 0;
+	context.found = talloc_zero_array(ctx, fr_ipaddr_t, in_use);
+	if (!context.found) {
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
+
+	pthread_mutex_lock(&cluster->mutex);
+	rbtree_walk(cluster->used_nodes, RBTREE_IN_ORDER, _cluster_role_walk, &context);
+	*out = context.found;
+	pthread_mutex_unlock(&cluster->mutex);
+
+	if (context.count == 0) {
+		*out = NULL;
+		talloc_free(context.found);
+		return 0;
+	}
+
+	*out = context.found;
+
+	return context.count;
+}
+
 #ifdef HAVE_PTHREAD_H
 /** Destroy mutex associated with cluster slots structure
  *
@@ -2289,7 +2382,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 			WARN("%s: Skipping duplicate bootstrap server \"%s\"", cluster->log_prefix, server);
 			continue;
 		}
-		node->active = true;
+		node->is_active = true;
 		fr_fifo_pop(cluster->free_nodes);
 
 		/*
