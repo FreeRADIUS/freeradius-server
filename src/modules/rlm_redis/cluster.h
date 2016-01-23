@@ -53,7 +53,7 @@ typedef struct fr_redis_cluster_state {
 	struct fr_redis_cluster_node *node;	//!< Node we're communicating with.
 	uint32_t		redirects;	//!< How many redirects have we followed.
 
-	uint32_t		retries;	//!< How many time's we've received TRYAGAIN
+	uint32_t		retries;	//!< How many times we've received TRYAGAIN
 	uint32_t		in_pool;	//!< How many available connections are there in the pool.
 	uint32_t		reconnects;	//!< How many connections we've tried in this pool.
 } fr_redis_cluster_state_t;
