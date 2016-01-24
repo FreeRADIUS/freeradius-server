@@ -176,8 +176,7 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 	 *	Hack to allow querying against a specific node for testing
 	 */
 	if (p[0] == '@') {
-		fr_ipaddr_t		ipaddr;
-		uint16_t		port;
+		fr_socket_addr_t	node_addr;
 		fr_connection_pool_t	*pool;
 
 		RDEBUG3("Overriding node selection");
@@ -189,14 +188,14 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 			return -1;
 		}
 
-		if (fr_inet_pton_port(&ipaddr, &port, p, q - p, AF_UNSPEC, true, true) < 0) {
+		if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, p, q - p, AF_UNSPEC, true, true) < 0) {
 			REDEBUG("Failed parsing node address: %s", fr_strerror());
 			return -1;
 		}
 
 		p = q + 1;
 
-		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &ipaddr, port, true) < 0) {
+		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &node_addr, true) < 0) {
 			REDEBUG("Failed locating cluster node: %s", fr_strerror());
 			return -1;
 		}
