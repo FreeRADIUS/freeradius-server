@@ -52,6 +52,20 @@ typedef struct fr_ipaddr_t {
 						//!< be used.
 } fr_ipaddr_t;
 
+/** Holds information necessary for binding or connecting to a socket.
+ *
+ */
+typedef struct fr_socket_addr {
+	union {
+		struct {
+			fr_ipaddr_t	ipaddr;	//!< IP address to bind or connect to.
+			uint16_t	port;	//!< Port to bind or connect to.
+		};
+		char const *path;		//!< Unix socket path.
+	};
+	int proto;				//!< Protocol.
+} fr_socket_addr_t;
+
 #  if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))
 #    define WITH_IFINDEX_RESOLUTION 1
 #  endif
