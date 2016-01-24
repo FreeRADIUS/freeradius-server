@@ -191,6 +191,7 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 #define DEBUG2(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
 #define DEBUG4(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define DEBUGX(_lvl, fmt, ...)	_DEBUG_LOG(L_DBG, _lvl, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
