@@ -425,8 +425,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 */
 	max_pending = (pool->max - pool->state.num);
 	if (pool->max_pending < max_pending) max_pending = pool->max_pending;
-	INFO("Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
-	     number, pool->state.pending, max_pending);
+	DEBUG("Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
+	      number, pool->state.pending, max_pending);
 
 	/*
 	 *	Allocate a new top level ctx for the create callback
@@ -767,7 +767,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 
 		if (!rad_cond_assert(found)) goto done;
 
-		INFO("Closing connection (%" PRIu64 "), from %d unused connections", found->number, extra);
+		DEBUG("Closing connection (%" PRIu64 "), from %d unused connections", found->number, extra);
 		fr_connection_close_internal(pool, found);
 
 		/*

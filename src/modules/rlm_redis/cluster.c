@@ -2400,20 +2400,20 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		case CLUSTER_OP_SUCCESS:
 			fr_connection_release(node->pool, NULL, conn);
 
-			INFO("%s: Cluster map consists of %zu key ranges", cluster->log_prefix, map->elements);
+			DEBUG("%s: Cluster map consists of %zu key ranges", cluster->log_prefix, map->elements);
 			for (j = 0; j < map->elements; j++) {
 				redisReply *map_node = map->element[j];
 
-				INFO("%s: %zu - keys %lli-%lli", cluster->log_prefix, j,
-				     map_node->element[0]->integer,
-				     map_node->element[1]->integer);
-				INFO("%s:  master: %s:%lli", cluster->log_prefix,
-				     map_node->element[2]->element[0]->str,
-				     map_node->element[2]->element[1]->integer);
+				DEBUG("%s: %zu - keys %lli-%lli", cluster->log_prefix, j,
+				      map_node->element[0]->integer,
+				      map_node->element[1]->integer);
+				DEBUG("%s:  master: %s:%lli", cluster->log_prefix,
+				      map_node->element[2]->element[0]->str,
+				      map_node->element[2]->element[1]->integer);
 				for (k = 3; k < map_node->elements; k++) {
-					INFO("%s:  slave%zu: %s:%lli", cluster->log_prefix, k - 3,
-					     map_node->element[k]->element[0]->str,
-					     map_node->element[k]->element[1]->integer);
+					DEBUG("%s:  slave%zu: %s:%lli", cluster->log_prefix, k - 3,
+					      map_node->element[k]->element[0]->str,
+					      map_node->element[k]->element[1]->integer);
 				}
 			}
 
