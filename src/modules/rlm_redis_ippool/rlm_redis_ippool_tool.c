@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include "cluster.h"
 #include "redis_ippool.h"
 
-#define MAX_PIPELINED 1000
+#define MAX_PIPELINED 100000
 
 #include <sys/wait.h>
 
@@ -51,12 +51,12 @@ pid_t rad_waitpid(pid_t pid, int *status)
  *
  */
 typedef enum ippool_tool_action {
-	IPPOOL_TOOL_NOOP = 0,
-	IPPOOL_TOOL_ADD,
-	IPPOOL_TOOL_REMOVE,
-	IPPOOL_TOOL_RELEASE,
-	IPPOOL_TOOL_SHOW,
-	IPPOOL_TOOL_MODIFY
+	IPPOOL_TOOL_NOOP = 0,			//!< Do nothing.
+	IPPOOL_TOOL_ADD,			//!< Add one or more IP addresses.
+	IPPOOL_TOOL_REMOVE,			//!< Remove one or more IP addresses.
+	IPPOOL_TOOL_RELEASE,			//!< Release one or more IP addresses.
+	IPPOOL_TOOL_SHOW,			//!< Show one or more IP addresses.
+	IPPOOL_TOOL_MODIFY			//!< Modify attributes of one or more IP addresses.
 } ippool_tool_action_t;
 
 /** A single pool operation
@@ -88,6 +88,15 @@ typedef struct ippool_tool_lease {
 	uint8_t const		*gateway;	//!< Last gateway id.
 	size_t			gateway_len;
 } ippool_tool_lease_t;
+
+typedef struct ippool_tool_stats {
+	uint64_t		total;		//!< Addresses available.
+	uint64_t		free;		//!< Addresses in use.
+	uint64_t		expiring_1m;	//!< Addresses that expire in the next minute.
+	uint64_t		expiring_30m;	//!< Addresses that expire in the next 30 minutes.
+	uint64_t		expiring_1h;	//!< Addresses that expire in the next hour.
+	uint64_t		expiring_1d;	//!< Addresses that expire in the next day.
+} ippool_tool_stats_t;
 
 static CONF_PARSER redis_config[] = {
 	REDIS_COMMON_CONFIG,
@@ -213,11 +222,13 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("                         allocates sub-prefixes to the devices it serves");
 	INFO("  -m <prefix>            Change the range ID to the one specified for matching");
 	INFO("                         addresses");
+	INFO("  -l                     List available pools");
+	INFO("  -L                     List available ranges in pool");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
 //	INFO("Pool status:");
 //	INFO("  -I                     Output active entries in ISC lease file format [NYI]");
-//	INFO("  -S                     Print pool statistics [NYI]");
+	INFO("  -S                     Print pool statistics");
 	INFO(" ");	/* -Werror=format-zero-length */
 	INFO("Configuration:");
 	INFO("  -h                     Print this help message and exit");
@@ -501,6 +512,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 		if (s_ret != REDIS_RCODE_SUCCESS) {
 			fr_redis_pipeline_free(replies, reply_cnt);
 			talloc_free(replies);
+			talloc_free(request);
 			return -1;
 		}
 
@@ -518,6 +530,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 		fr_redis_pipeline_free(replies, reply_cnt);
 		TALLOC_FREE(replies);
 	}
+	talloc_free(request);
 
 	return 0;
 }
@@ -739,7 +752,7 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Adding %s to pool %.*s (%zu)", ip_buff, (int)(key_p - key), key, key_p - key);
+	DEBUG("Adding %s to pool \"%.*s\" (%zu)", ip_buff, (int)(key_p - key), key, key_p - key);
 	redisAppendCommand(conn->handle, "MULTI");
 	enqueued++;
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
@@ -823,6 +836,270 @@ static int driver_modify_lease(void *out, void *instance, ippool_tool_operation_
 {
 	return driver_do_lease(out, instance, op,
 			       _driver_modify_lease_enqueue, _driver_modify_lease_process);
+}
+
+/** Return the pools available across the cluster
+ *
+ * @param[in] ctx to allocate range names in.
+ * @param[out] out Array of pool names.
+ * @param[in] instance Driver specific instance data.
+ * @return
+ *	- < 0 on failure.
+ *	- >= 0 the number of ranges in the array we allocated.
+ */
+static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance)
+{
+	fr_socket_addr_t	*master;
+	size_t			ret, i, k, used = 0;
+	fr_redis_conn_t		*conn = NULL;
+	redis_driver_conf_t	*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
+	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t			*key_p = key;
+	REQUEST			*request = request_alloc(inst);
+
+	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
+
+	/*
+	 *	Get the addresses of all masters in the pool
+	 */
+	ret = fr_redis_cluster_node_addr_by_role(ctx, &master, inst->cluster, true, false);
+	if (ret <= 0) {
+		*out = NULL;
+		return ret;
+	}
+
+	*out = talloc_zero_array(ctx, uint8_t *, 1);
+	if (!*out) {
+		ERROR("Failed allocating array of pool names");
+		talloc_free(master);
+		return -1;
+	}
+
+	/*
+	 *	Iterate over the masters, getting the pools on each
+	 */
+	for (i = 0; i < ret; i++) {
+		fr_connection_pool_t	*pool;
+		redisReply		*reply;
+		char const		*p;
+		size_t			len;
+		char			cursor[19] = "0";
+
+		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &master[i], false) < 0) {
+			ERROR("Failed retrieving pool for node");
+		error:
+			TALLOC_FREE(*out);
+			talloc_free(master);
+			talloc_free(request);
+			return -1;
+		}
+
+		conn = fr_connection_get(pool, request);
+		if (!conn) goto error;
+		do {
+			/*
+			 *	Break up the scan so we don't block any single
+			 *	Redis node too long.
+			 */
+			reply = redisCommand(conn->handle, "SCAN %s MATCH %b COUNT 20", cursor, key, key_p - key);
+			if (!reply) {
+				ERROR("Failed reading reply");
+				fr_connection_release(pool, request, conn);
+				goto error;
+			}
+			fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0);
+			if (fr_redis_command_status(conn, reply) != REDIS_RCODE_SUCCESS) {
+				ERROR("Error retrieving keys %s: %s", cursor, fr_strerror());
+
+			reply_error:
+				fr_connection_release(pool, request, conn);
+				fr_redis_reply_free(reply);
+				goto error;
+			}
+
+			if (reply->type != REDIS_REPLY_ARRAY) {
+				ERROR("Failed retrieving result, expected array got %s",
+				      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+
+				goto reply_error;
+			}
+
+			if (reply->elements != 2) {
+				ERROR("Failed retrieving result, expected array with two elements, got %zu elements",
+				      reply->elements);
+				fr_redis_reply_free(reply);
+				goto reply_error;
+			}
+
+			if (reply->element[0]->type != REDIS_REPLY_STRING) {
+				ERROR("Failed retrieving result, expected string got %s",
+				      fr_int2str(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
+				goto reply_error;
+			}
+
+			if (reply->element[1]->type != REDIS_REPLY_ARRAY) {
+				ERROR("Failed retrieving result, expected array got %s",
+				      fr_int2str(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+				goto reply_error;
+			}
+
+			if ((talloc_array_length(*out) - used) < reply->element[1]->elements) {
+				*out = talloc_realloc(ctx, *out, uint8_t *, used + reply->element[1]->elements);
+				if (!*out) {
+					ERROR("Failed expanding array of pool names");
+					goto reply_error;
+				}
+			}
+			strlcpy(cursor, reply->element[0]->str, sizeof(cursor));
+
+			for (k = 0; k < reply->element[1]->elements; k++) {
+				redisReply *pool_key = reply->element[1]->element[k];
+
+				/*
+				 *	Skip over things which are not pool names
+				 */
+				if (pool_key->len < 7) { /* { + [<name>] + }:pool */
+				skip:
+					fr_redis_reply_free(reply);
+					continue;
+				}
+
+				if ((pool_key->str[0]) != '{') goto skip;
+				p = memchr(pool_key->str + 1, '}', pool_key->len - 1);
+				if (!p) goto skip;
+
+				len = (pool_key->len - ((p + 1) - pool_key->str));
+				if (len != (sizeof(IPPOOL_POOL_KEY) - 1) + 1) goto skip;
+				if (memcmp(p + 1, ":" IPPOOL_POOL_KEY, (sizeof(IPPOOL_POOL_KEY) - 1) + 1) != 0) {
+					goto skip;
+				}
+
+				/*
+				 *	String between the curly braces is the pool name
+				 */
+				(*out)[used++] = talloc_memdup(*out, pool_key->str + 1, (p - pool_key->str) - 1);
+			}
+
+			fr_redis_reply_free(reply);
+		} while (!((cursor[0] == '0') && (cursor[1] == '\0')));	/* Cursor value of 0 means no more results */
+
+		fr_connection_release(pool, request, conn);
+	}
+
+	talloc_free(request);
+
+	if (used == 0) {
+		*out = NULL;
+		return 0;
+	}
+
+	/*
+	 *	Fixup the length of the array of pointers
+	 */
+	if (used != talloc_array_length(*out)) {
+		*out = talloc_realloc(ctx, *out, uint8_t *, used);
+		if (!*out) {
+			ERROR("Failed truncating array of pool names to %zu elements", used);
+			goto error;
+		}
+	}
+
+	return used;
+}
+
+static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t const *key_prefix, size_t key_prefix_len)
+{
+	redis_driver_conf_t		*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
+	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t				*key_p = key;
+
+	fr_redis_conn_t			*conn;
+
+	fr_redis_cluster_state_t	state;
+	fr_redis_rcode_t		status;
+	struct timeval			now;
+
+	int				s_ret = REDIS_RCODE_SUCCESS;
+	REQUEST				*request = request_alloc(inst);
+	redisReply			**replies = NULL, *reply;
+	unsigned int			pipelined = 8;		/* Update if additional commands added */
+
+	size_t				reply_cnt = 0, i = 0;
+
+	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
+
+	replies = talloc_zero_array(inst, redisReply *, pipelined);
+
+	gettimeofday(&now, NULL);
+
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_p - key, false);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &replies[0])) {
+		status = REDIS_RCODE_SUCCESS;
+
+		redisAppendCommand(conn->handle, "MULTI");
+		redisAppendCommand(conn->handle, "ZCARD %b", key, key_p - key);		/* Total */
+		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
+				   key, key_p - key, now.tv_sec);			/* Free */
+		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
+				   key, key_p - key, now.tv_sec + 60);			/* Free in next 60s */
+		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
+				   key, key_p - key, now.tv_sec + (60 * 30));		/* Free in next 30 mins */
+		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
+				   key, key_p - key, now.tv_sec + (60 * 60));		/* Free in next 60 mins */
+		redisAppendCommand(conn->handle, "ZCOUNT %b -inf %i",
+				   key, key_p - key, now.tv_sec + (60 * 60 * 24));	/* Free in next day */
+		redisAppendCommand(conn->handle, "EXEC");
+		if (!replies) return -1;
+
+		reply_cnt = fr_redis_pipeline_result(&status, replies,
+						     talloc_array_length(replies), conn, pipelined);
+		for (i = 0; (size_t)i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3,
+									     replies[i], request, i);
+	}
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+	error:
+		fr_redis_pipeline_free(replies, reply_cnt);
+		talloc_free(replies);
+		talloc_free(request);
+		return -1;
+	}
+
+	if (reply_cnt != pipelined) {
+		ERROR("Failed retrieving pool stats: Expected %i replies, got %zu", pipelined, reply_cnt);
+		goto error;
+	}
+
+	reply = replies[pipelined - 1];
+
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		ERROR("Failed retrieving pool stats: Expected array got %s",
+		      fr_int2str(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+		goto error;
+	}
+
+	if (reply->elements != (pipelined - 2)) {
+		ERROR("Failed retrieving pool stats: Expected %i results, got %zu", pipelined - 2, reply->elements);
+		goto error;
+	}
+
+	if (reply->element[0]->integer == 0) {
+		ERROR("Pool not found");
+		goto error;
+	}
+
+	out->total = reply->element[0]->integer;
+	out->free = reply->element[1]->integer;
+	out->expiring_1m = reply->element[2]->integer - out->free;
+	out->expiring_30m = reply->element[3]->integer - out->free;
+	out->expiring_1h = reply->element[4]->integer - out->free;
+	out->expiring_1d = reply->element[5]->integer - out->free;
+
+	fr_redis_pipeline_free(replies, reply_cnt);
+	talloc_free(replies);
+	talloc_free(request);
+
+	return 0;
 }
 
 /** Driver initialization function
@@ -1033,15 +1310,18 @@ int main(int argc, char *argv[])
 
 	int				opt;
 
-	char const			*pool_arg, *range_arg = NULL;
-	bool				do_export = false, print_stats = false;
+	uint8_t				*range_arg = NULL;
+	uint8_t				*pool_arg = NULL;
+	bool				do_export = false, print_stats = false, list_pools = false;
+	bool				need_pool = false;
 	char				*do_import = NULL;
 
 	CONF_SECTION			*pool_cs;
 	CONF_PAIR			*cp;
 	ippool_tool_t			*conf;
 
-	fr_debug_lvl = 1;
+	fr_debug_lvl = 0;
+	rad_debug_lvl = 0;
 	name = argv[0];
 
 	conf = talloc_zero(NULL, ippool_tool_t);
@@ -1059,9 +1339,10 @@ do { \
 	p->action = _action; \
 	p->name = optarg; \
 	p++; \
+	need_pool = true; \
 } while (0);
 
-	while ((opt = getopt(argc, argv, "a:d:r:s:m:p:ihxo:f:")) != EOF)
+	while ((opt = getopt(argc, argv, "a:d:r:s:Sm:p:ilLhxo:f:")) != EOF)
 	switch (opt) {
 	case 'a':
 		ADD_ACTION(IPPOOL_TOOL_ADD);
@@ -1111,6 +1392,11 @@ do { \
 		do_export = true;
 		break;
 
+	case 'l':
+		if (list_pools) usage(1);	/* Only allowed once */
+		list_pools = true;
+		break;
+
 	case 'S':
 		print_stats = true;
 		break;
@@ -1136,8 +1422,12 @@ do { \
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 2) {
-		ERROR("Need server and pool name");
+	if (argc == 0) {
+		ERROR("Need server address/port");
+		usage(64);
+	}
+	if ((argc == 1) && need_pool) {
+		ERROR("Need pool to operate on");
 		usage(64);
 	}
 	if (argc > 3) usage(64);
@@ -1148,10 +1438,29 @@ do { \
 		exit(1);
 	}
 	cf_pair_add(conf->cs, cp);
-	pool_arg = argv[1];
-	if (argc >= 3) range_arg = argv[2];
 
-	if (p == ops) {
+	/*
+	 *	Unescape sequences in the pool name
+	 */
+	if (argv[1]) {
+		uint8_t *arg;
+		size_t len;
+
+		arg = talloc_array(conf, uint8_t, strlen(argv[1]));
+		len = fr_value_str_unescape(arg, argv[1], talloc_array_length(arg), '"');
+		pool_arg = talloc_realloc(conf, arg, uint8_t, len);
+	}
+
+	if (argc >= 3) {
+		uint8_t *arg;
+		size_t len;
+
+		arg = talloc_array(conf, uint8_t, strlen(argv[2]));
+		len = fr_value_str_unescape(arg, argv[2], talloc_array_length(arg), '"');
+		range_arg = talloc_realloc(conf, arg, uint8_t, len);
+	}
+
+	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
 		ERROR("Nothing to do!");
 		exit(1);
 	}
@@ -1185,6 +1494,76 @@ do { \
 		exit(1);
 	}
 
+	if (do_import) {
+		ERROR("NOT YET IMPLEMENTED");
+	}
+
+	if (do_export) {
+		ERROR("NOT YET IMPLEMENTED");
+	}
+
+	if (print_stats) {
+		ippool_tool_stats_t	stats;
+		uint8_t			**pools;
+		ssize_t			slen;
+		size_t			i;
+
+		if (pool_arg) {
+			pools = talloc_zero_array(conf, uint8_t *, 1);
+			slen = 1;
+			pools[0] = pool_arg;
+		} else {
+			slen = driver_get_pools(conf, &pools, conf->driver);
+			if (slen < 0) exit(1);
+		}
+
+		for (i = 0; i < (size_t)slen; i++) {
+			char *pool_str;
+
+			if (driver_get_stats(&stats, conf->driver,
+					     pools[i], talloc_array_length(pools[i])) < 0) exit(1);
+
+			pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
+			INFO("pool         : %s", pool_str);
+			talloc_free(pool_str);
+
+			INFO("total        : %" PRIu64, stats.total);
+			INFO("free         : %" PRIu64, stats.free);
+			INFO("used         : %" PRIu64, stats.total - stats.free);
+			if (stats.total - stats.free) {
+				INFO("used (%%)     : %" PRIu64, (stats.total / (stats.total - stats.free)) * 100);
+			} else {
+				INFO("used (%%)     : 0");
+			}
+			INFO("expiring 1m  : %" PRIu64, stats.expiring_1m);
+			INFO("expiring 30m : %" PRIu64, stats.expiring_30m);
+			INFO("expiring 1h  : %" PRIu64, stats.expiring_1h);
+			INFO("expiring 1d  : %" PRIu64, stats.expiring_1d);
+			INFO("--");
+		}
+	}
+
+	if (list_pools) {
+		ssize_t		slen;
+		size_t		i;
+		uint8_t 	**pools;
+
+		slen = driver_get_pools(conf, &pools, conf->driver);
+		if (slen < 0) exit(1);
+		if (slen > 0) {
+			for (i = 0; i < (size_t)slen; i++) {
+				char *pool_str;
+
+				pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
+				INFO("%s", pool_str);
+				talloc_free(pool_str);
+			}
+			INFO("--");
+		}
+
+		talloc_free(pools);
+	}
+
 	/*
 	 *	Fixup the operations without specific pools or ranges
 	 *	and parse the IP ranges.
@@ -1195,12 +1574,12 @@ do { \
 		if (!p->prefix) p->prefix = IPADDR_LEN(p->start.af);
 
 		if (!p->pool) {
-			p->pool = (uint8_t const *)pool_arg;
-			p->pool_len = strlen(pool_arg);
+			p->pool = pool_arg;
+			p->pool_len = talloc_array_length(pool_arg);
 		}
 		if (!p->range && range_arg) {
-			p->range = (uint8_t const *)range_arg;
-			p->range_len = strlen(range_arg);
+			p->range = range_arg;
+			p->range_len = talloc_array_length(range_arg);
 		}
 	}
 
@@ -1318,18 +1697,6 @@ do { \
 
 	case IPPOOL_TOOL_NOOP:
 		break;
-	}
-
-	if (do_import) {
-		ERROR("NOT YET IMPLEMENTED");
-	}
-
-	if (do_export) {
-		ERROR("NOT YET IMPLEMENTED");
-	}
-
-	if (print_stats) {
-		ERROR("NOT YET IMPLEMENTED");
 	}
 
 	talloc_free(conf);
