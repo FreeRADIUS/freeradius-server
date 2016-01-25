@@ -438,14 +438,185 @@ int value_data_cmp_op(FR_TOKEN op,
 
 static char const hextab[] = "0123456789abcdef";
 
+/** Convert a string value with escape sequences into its binary form
+ *
+ * The quote character determines the escape sequences recognised.
+ *
+ * Literal mode ("'" quote char) will unescape:
+ * - \\        - Literal backslash.
+ * - \<quote>  - The quotation char.
+ *
+ * Expanded mode (any other quote char) will also unescape:
+ * - \r        - Carriage return.
+ * - \n        - Newline.
+ * - \t        - Tab.
+ * - \<oct>    - An octal escape sequence.
+ * - \x<hex>   - A hex escape sequence.
+ *
+ * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
+ * @note Invalid escape sequences will be copied verbatim.
+ *
+ * @param[out] out Where to write the unescaped string.  Length must be >= original
+ *	string.  Unescaping never introduces additional chars.
+ * @param[in] in The string to unescape.
+ * @param[in] quote Character around the string, determines unescaping mode.
+ *
+ * @return >= 0 the number of bytes written to out.
+ */
+size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
+{
+	char const	*p = in;
+	uint8_t		*out_p = out;
+	int		x;
+
+	/*
+	 *	No de-quoting.  Just copy the string.
+	 */
+	if (!quote) {
+		memcpy(out, in, inlen);
+		return inlen;
+	}
+
+	/*
+	 *	Do escaping for single quoted strings.  Only
+	 *	single quotes get escaped.  Everything else is
+	 *	left as-is.
+	 */
+	if (quote == '\'') {
+		while (p < (in + inlen)) {
+			/*
+			 *	The quotation character is escaped.
+			 */
+			if ((p[0] == '\\') &&
+			    (p[1] == quote)) {
+				*(out_p++) = quote;
+				p += 2;
+				continue;
+			}
+
+			/*
+			 *	Two backslashes get mangled to one.
+			 */
+			if ((p[0] == '\\') &&
+			    (p[1] == '\\')) {
+				*(out_p++) = '\\';
+				p += 2;
+				continue;
+			}
+
+			/*
+			 *	Not escaped, just copy it over.
+			 */
+			*(out_p++) = *(p++);
+		}
+		return out_p - out;
+	}
+
+	/*
+	 *	It's "string" or `string`, do all standard
+	 *	escaping.
+	 */
+	while (p < (in + inlen)) {
+		uint8_t c = *p++;
+		uint8_t *h0, *h1;
+
+		/*
+		 *	We copy all invalid escape sequences verbatim,
+		 *	even if they occur at the end of sthe string.
+		 */
+		if ((c == '\\') && (p >= (in + inlen))) {
+		invalid_escape:
+			*out_p++ = c;
+			while (p < (in + inlen)) *out_p++ = *p++;
+			return out_p - out;
+		}
+
+		/*
+		 *	Fix up \[rnt\\] -> ... the binary form of it.
+		 */
+		if (c == '\\') {
+			switch (*p) {
+			case 'r':
+				c = '\r';
+				p++;
+				break;
+
+			case 'n':
+				c = '\n';
+				p++;
+				break;
+
+			case 't':
+				c = '\t';
+				p++;
+				break;
+
+			case '\\':
+				c = '\\';
+				p++;
+				break;
+
+			default:
+				/*
+				 *	\" --> ", but only inside of double quoted strings, etc.
+				 */
+				if (*p == quote) {
+					c = quote;
+					p++;
+					break;
+				}
+
+				/*
+				 *	We need at least three chars, for either octal or hex
+				 */
+				if ((p + 2) >= (in + inlen)) goto invalid_escape;
+
+				/*
+				 *	\x00 --> binary zero character
+				 */
+				if ((p[0] == 'x') &&
+				    (h0 = memchr((uint8_t const *)hextab, tolower((int) p[1]), sizeof(hextab))) &&
+				    (h1 = memchr((uint8_t const *)hextab, tolower((int) p[2]), sizeof(hextab)))) {
+				 	c = ((h0 - (uint8_t const *)hextab) << 4) + (h1 - (uint8_t const *)hextab);
+				 	p += 3;
+				}
+
+				/*
+				 *	\000 --> binary zero character
+				 */
+				if ((p[0] >= '0') &&
+				    (p[0] <= '9') &&
+				    (p[1] >= '0') &&
+				    (p[1] <= '9') &&
+				    (p[2] >= '0') &&
+				    (p[2] <= '9') &&
+				    (sscanf(p, "%3o", &x) == 1)) {
+					c = x;
+					p += 3;
+				}
+
+				/*
+				 *	Else It's not a recognised escape sequence DON'T
+				 *	consume the backslash. This is identical
+				 *	behaviour to bash and most other things that
+				 *	use backslash escaping.
+				 */
+			}
+		}
+		*out_p++ = c;
+	}
+
+	return out_p - out;
+}
+
 /** Convert string value to a value_data_t type
  *
  * @param[in] ctx to alloc strings in.
  * @param[out] dst where to write parsed value.
  * @param[in,out] src_type of value data to create/type of value created.
  * @param[in] src_enumv fr_dict_attr_t with string aliases for integer values.
- * @param[in] src String to convert. Binary safe for variable length values if len is provided.
- * @param[in] src_len may be < 0 in which case strlen(len) is used to determine length, else src_len
+ * @param[in] in String to convert. Binary safe for variable length values if len is provided.
+ * @param[in] inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
  *	  should be the length of the string or sub string to parse.
  * @param[in] quote quotation character used to drive de-escaping
  * @return
@@ -454,16 +625,16 @@ static char const hextab[] = "0123456789abcdef";
  */
 int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
-			char const *src, ssize_t src_len, char quote)
+			char const *in, ssize_t inlen, char quote)
 {
 	fr_dict_enum_t	*dval;
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
 
-	if (!src) return -1;
+	if (!in) return -1;
 
-	len = (src_len < 0) ? strlen(src) : (size_t)src_len;
+	len = (inlen < 0) ? strlen(in) : (size_t)inlen;
 
 	/*
 	 *	Set size for all fixed length attributes.
@@ -477,11 +648,9 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	switch (*src_type) {
 	case PW_TYPE_STRING:
 	{
-		char		*p, *buff;
-		char const	*q;
-		int		x;
+		char *buff, *p;
 
-		buff = p = talloc_bstrndup(ctx, src, len);
+		buff = talloc_bstrndup(ctx, in, len);
 
 		/*
 		 *	No de-quoting.  Just copy the string.
@@ -492,127 +661,20 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			goto finish;
 		}
 
-		/*
-		 *	Do escaping for single quoted strings.  Only
-		 *	single quotes get escaped.  Everything else is
-		 *	left as-is.
-		 */
-		if (quote == '\'') {
-			q = p;
-
-			while (q < (buff + len)) {
-				/*
-				 *	The quotation character is escaped.
-				 */
-				if ((q[0] == '\\') &&
-				    (q[1] == quote)) {
-					*(p++) = quote;
-					q += 2;
-					continue;
-				}
-
-				/*
-				 *	Two backslashes get mangled to one.
-				 */
-				if ((q[0] == '\\') &&
-				    (q[1] == '\\')) {
-					*(p++) = '\\';
-					q += 2;
-					continue;
-				}
-
-				/*
-				 *	Not escaped, just copy it over.
-				 */
-				*(p++) = *(q++);
-			}
-
-			*p = '\0';
-			ret = p - buff;
-
-			/* Shrink the buffer to the correct size */
-			dst->strvalue = talloc_realloc(ctx, buff, char, ret + 1);
-			goto finish;
-		}
+		len = fr_value_str_unescape((uint8_t *)buff, in, len, quote);
 
 		/*
-		 *	It's "string" or `string`, do all standard
-		 *	escaping.
+		 *	Shrink the buffer to the correct size
+		 *	and \0 terminate it.  There is a significant
+		 *	amount of legacy code that assumes the string
+		 *	buffer in value pairs is a C string.
+		 *
+		 *	It's better for the server to print partial
+		 *	strings, instead of SEGV.
 		 */
-		q = p;
-		while (q < (buff + len)) {
-			char c = *q++;
-
-			if ((c == '\\') && (q >= (buff + len))) {
-				fr_strerror_printf("Invalid escape at end of string");
-				talloc_free(buff);
-				return -1;
-			}
-
-			/*
-			 *	Fix up \X -> ... the binary form of it.
-			 */
-			if (c == '\\') {
-				switch (*q) {
-				case 'r':
-					c = '\r';
-					q++;
-					break;
-
-				case 'n':
-					c = '\n';
-					q++;
-					break;
-
-				case 't':
-					c = '\t';
-					q++;
-					break;
-
-				case '\\':
-					c = '\\';
-					q++;
-					break;
-
-				default:
-					/*
-					 *	\" --> ", but only inside of double quoted strings, etc.
-					 */
-					if (*q == quote) {
-						c = quote;
-						q++;
-						break;
-					}
-
-					/*
-					 *	\000 --> binary zero character
-					 */
-					if ((q[0] >= '0') &&
-					    (q[0] <= '9') &&
-					    (q[1] >= '0') &&
-					    (q[1] <= '9') &&
-					    (q[2] >= '0') &&
-					    (q[2] <= '9') &&
-					    (sscanf(q, "%3o", &x) == 1)) {
-						c = x;
-						q += 3;
-					}
-
-					/*
-					 *	Else It's not a recognised escape sequence DON'T
-					 *	consume the backslash. This is identical
-					 *	behaviour to bash and most other things that
-					 *	use backslash escaping.
-					 */
-				}
-			}
-
-			*p++ = c;
-		}
-
-		*p = '\0';
-		ret = p - buff;
-		dst->strvalue = talloc_realloc(ctx, buff, char, ret + 1);
+		dst->strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
+		p[len] = '\0';
+		ret = len;
 	}
 		goto finish;
 
@@ -628,8 +690,8 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		/*
 		 *	No 0x prefix, just copy verbatim.
 		 */
-		if ((len < 2) || (strncasecmp(src, "0x", 2) != 0)) {
-			dst->octets = talloc_memdup(ctx, (uint8_t const *)src, len);
+		if ((len < 2) || (strncasecmp(in, "0x", 2) != 0)) {
+			dst->octets = talloc_memdup(ctx, (uint8_t const *)in, len);
 			talloc_set_type(dst->octets, uint8_t);
 			ret = len;
 			goto finish;
@@ -647,7 +709,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 		ret = len >> 1;
 		p = talloc_array(ctx, uint8_t, ret);
-		if (fr_hex2bin(p, ret, src + 2, len) != (size_t)ret) {
+		if (fr_hex2bin(p, ret, in + 2, len) != (size_t)ret) {
 			talloc_free(p);
 			fr_strerror_printf("Invalid hex data");
 			return -1;
@@ -659,7 +721,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		if ((len > 1) && (strncasecmp(src, "0x", 2) == 0)) {
+		if ((len > 1) && (strncasecmp(in, "0x", 2) == 0)) {
 			ssize_t bin;
 
 			if (len > ((sizeof(dst->filter) + 1) * 2)) {
@@ -667,12 +729,12 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				return -1;
 			}
 
-			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len);
+			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, in + 2, len);
 			if (bin < ret) {
 				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
 			}
 		} else {
-			if (ascend_parse_filter(dst, src, len) < 0 ) {
+			if (ascend_parse_filter(dst, in, len) < 0 ) {
 				/* Allow ascend_parse_filter's strerror to bubble up */
 				return -1;
 			}
@@ -693,7 +755,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_inet_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton4(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
 		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
@@ -713,7 +775,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_inet_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton4(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->ipv4prefix[1] = addr.prefix;
 		memcpy(&dst->ipv4prefix[2], &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
@@ -724,7 +786,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_inet_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton6(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
 		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
@@ -744,7 +806,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_inet_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton6(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->ipv6prefix[1] = addr.prefix;
 		memcpy(&dst->ipv6prefix[2], addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);
@@ -768,15 +830,15 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	It's a fixed size src_type, copy to a temporary buffer and
 	 *	\0 terminate if insize >= 0.
 	 */
-	if (src_len > 0) {
+	if (inlen > 0) {
 		if (len >= sizeof(buffer)) {
 			fr_strerror_printf("Temporary buffer too small");
 			return -1;
 		}
 
-		memcpy(buffer, src, src_len);
-		buffer[src_len] = '\0';
-		src = buffer;
+		memcpy(buffer, in, inlen);
+		buffer[inlen] = '\0';
+		in = buffer;
 	}
 
 	switch (*src_type) {
@@ -788,23 +850,23 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		i = fr_strtoul(src, &p);
+		i = fr_strtoul(in, &p);
 
 		/*
-		 *	Look for the named src for the given
+		 *	Look for the named in for the given
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, src)) == NULL) {
+			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   src, src_enumv->name);
+						   in, src_enumv->name);
 				return -1;
 			}
 
 			dst->byte = dval->value;
 		} else {
 			if (i > 255) {
-				fr_strerror_printf("Byte value \"%s\" is larger than 255", src);
+				fr_strerror_printf("Byte value \"%s\" is larger than 255", in);
 				return -1;
 			}
 
@@ -821,23 +883,23 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		i = fr_strtoul(src, &p);
+		i = fr_strtoul(in, &p);
 
 		/*
-		 *	Look for the named src for the given
+		 *	Look for the named in for the given
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, src)) == NULL) {
+			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   src, src_enumv->name);
+						   in, src_enumv->name);
 				return -1;
 			}
 
 			dst->ushort = dval->value;
 		} else {
 			if (i > 65535) {
-				fr_strerror_printf("Short value \"%s\" is larger than 65535", src);
+				fr_strerror_printf("Short value \"%s\" is larger than 65535", in);
 				return -1;
 			}
 
@@ -854,16 +916,16 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		i = fr_strtoul(src, &p);
+		i = fr_strtoul(in, &p);
 
 		/*
-		 *	Look for the named src for the given
+		 *	Look for the named in for the given
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, src)) == NULL) {
+			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   src, src_enumv->name);
+						   in, src_enumv->name);
 				return -1;
 			}
 
@@ -884,8 +946,8 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		if (sscanf(src, "%" PRIu64, &i) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", src);
+		if (sscanf(in, "%" PRIu64, &i) != 1) {
+			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", in);
 			return -1;
 		}
 		dst->integer64 = i;
@@ -900,8 +962,8 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		time_t date;
 
-		if (fr_get_time(src, &date) < 0) {
-			fr_strerror_printf("failed to parse time string \"%s\"", src);
+		if (fr_get_time(in, &date) < 0) {
+			fr_strerror_printf("failed to parse time string \"%s\"", in);
 			return -1;
 		}
 
@@ -911,8 +973,8 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		break;
 
 	case PW_TYPE_IFID:
-		if (fr_inet_ifid_pton((void *) dst->ifid, src) == NULL) {
-			fr_strerror_printf("Failed to parse interface-id string \"%s\"", src);
+		if (fr_inet_ifid_pton((void *) dst->ifid, in) == NULL) {
+			fr_strerror_printf("Failed to parse interface-id string \"%s\"", in);
 			return -1;
 		}
 		break;
@@ -928,14 +990,14 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	We assume the number is the bigendian representation of the
 		 *	ethernet address.
 		 */
-		if (is_integer(src)) {
-			uint64_t integer = htonll(atoll(src));
+		if (is_integer(in)) {
+			uint64_t integer = htonll(atoll(in));
 
 			memcpy(dst->ether, &integer, sizeof(dst->ether));
 			break;
 		}
 
-		cp = src;
+		cp = in;
 		while (*cp) {
 			if (cp[1] == ':') {
 				c1 = hextab;
@@ -950,7 +1012,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				c1 = c2 = NULL;
 			}
 			if (!c1 || !c2 || (p_len >= sizeof(dst->ether))) {
-				fr_strerror_printf("failed to parse Ethernet address \"%s\"", src);
+				fr_strerror_printf("failed to parse Ethernet address \"%s\"", in);
 				return -1;
 			}
 			dst->ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
@@ -970,14 +1032,14 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	 */
 	case PW_TYPE_COMBO_IP_ADDR:
 	{
-		if (inet_pton(AF_INET6, src, &dst->ipv6addr) > 0) {
+		if (inet_pton(AF_INET6, in, &dst->ipv6addr) > 0) {
 			*src_type = PW_TYPE_IPV6_ADDR;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
 		} else {
 			fr_ipaddr_t ipaddr;
 
-			if (fr_inet_hton(&ipaddr, AF_INET, src, false) < 0) {
-				fr_strerror_printf("Failed to find IPv4 address for %s", src);
+			if (fr_inet_hton(&ipaddr, AF_INET, in, false) < 0) {
+				fr_strerror_printf("Failed to find IPv4 address for %s", in);
 				return -1;
 			}
 
@@ -990,7 +1052,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 	case PW_TYPE_SIGNED:
 		/* Damned code for 1 WiMAX attribute */
-		dst->sinteger = (int32_t)strtol(src, NULL, 10);
+		dst->sinteger = (int32_t)strtol(in, NULL, 10);
 		break;
 
 	case PW_TYPE_BOOLEAN:
@@ -1002,8 +1064,8 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		double i;
 
-		if (sscanf(src, "%lf", &i) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as double", src);
+		if (sscanf(in, "%lf", &i) != 1) {
+			fr_strerror_printf("Failed parsing \"%s\" as double", in);
 			return -1;
 		}
 		dst->decimal = i;

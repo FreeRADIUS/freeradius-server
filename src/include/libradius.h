@@ -346,6 +346,8 @@ int		value_data_cmp_op(FR_TOKEN op,
 				  PW_TYPE a_type, value_data_t const *a,
 				  PW_TYPE b_type, value_data_t const *b);
 
+size_t		fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
+
 int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				    PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 				    char const *src, ssize_t src_len, char quote);
