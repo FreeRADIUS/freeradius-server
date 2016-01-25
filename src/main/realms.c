@@ -525,8 +525,10 @@ bool realm_home_server_add(home_server_t *home)
 	 *	Dual home servers cause us to auto-create an
 	 *	accounting server for UDP sockets, and leave
 	 *	everything alone for TLS sockets.
+	 *
+	 *	Home servers which are virtual servers can be "auth+acct".
 	 */
-	if (home->dual
+	if (home->dual && !home->server
 #ifdef WITH_TLS
 	    && !home->tls
 #endif
@@ -638,6 +640,58 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		return false;
 	}
 
+	/*
+	 *	Check the TLS configuration.
+	 */
+	tls = cf_section_sub_find(cs, "tls");
+	if (home->ipaddr.af == AF_UNSPEC) {
+		cf_log_err_cs(cs, "TLS transport cannot be used for home servers with 'virtual_server' set");
+		goto error;
+	}
+
+#ifndef WITH_TLS
+	if (tls) {
+		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		goto error;
+	}
+#endif
+
+	if (home->ipaddr.af == AF_UNSPEC) {
+		if (home->proto_str) {
+			cf_log_err_cs(cs, "The 'proto' configuration cannot be used for home servers with 'virtual_server' set");
+			goto error;
+		}
+
+	} else {
+		int proto = IPPROTO_UDP;
+
+		if (home->proto_str) proto = fr_str2int(fr_net_ip_proto_table, home->proto_str, -1);
+
+		switch (proto) {
+		case IPPROTO_UDP:
+			home_servers_udp = true;
+			break;
+
+		case IPPROTO_TCP:
+#ifndef WITH_TCP
+			cf_log_err_cs(cs, "Server not built with support for RADIUS over TCP");
+			goto error;
+#endif
+			if (home->ping_check != HOME_PING_CHECK_NONE) {
+				cf_log_err_cs(cs, "Only 'status_check = none' is allowed for home "
+					      "servers with 'proto = tcp'");
+				goto error;
+			}
+			break;
+
+		default:
+			cf_log_err_cs(cs, "Unknown proto \"%s\"", home->proto_str);
+			goto error;
+		}
+
+		home->proto = proto;
+	}
+
  	{
  		home_type_t type = HOME_TYPE_AUTH_ACCT;
 
@@ -647,6 +701,9 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
  		switch (type) {
  		case HOME_TYPE_AUTH_ACCT:
+#ifdef WITH_TLS
+			if (!tls && !home->server) type = HOME_TYPE_AUTH;
+#endif
 			home->dual = true;
 			break;
 
@@ -703,51 +760,10 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		home->ping_check = type;
  	}
 
-	{
-		int proto = IPPROTO_UDP;
-
-		if (home->proto_str) proto = fr_str2int(fr_net_ip_proto_table, home->proto_str, -1);
-
-		switch (proto) {
-		case IPPROTO_UDP:
-			home_servers_udp = true;
-			break;
-
-		case IPPROTO_TCP:
-#ifndef WITH_TCP
-			cf_log_err_cs(cs, "Server not built with support for RADIUS over TCP");
-			goto error;
-#endif
-			if (home->ping_check != HOME_PING_CHECK_NONE) {
-				cf_log_err_cs(cs, "Only 'status_check = none' is allowed for home "
-					      "servers with 'proto = tcp'");
-				goto error;
-			}
-			break;
-
-		default:
-			cf_log_err_cs(cs, "Unknown proto \"%s\"", home->proto_str);
-			goto error;
-		}
-
-		home->proto = proto;
-	}
-
 	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
 		cf_log_err_cs(cs, "Duplicate home server");
 		goto error;
 	}
-
-	/*
-	 *	Check the TLS configuration.
-	 */
-	tls = cf_section_sub_find(cs, "tls");
-#ifndef WITH_TLS
-	if (tls) {
-		cf_log_err_cs(cs, "TLS transport is not available in this executable");
-		goto error;
-	}
-#endif
 
 	/*
 	 *	If were doing RADSEC (tls+tcp) the secret should default
