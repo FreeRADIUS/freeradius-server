@@ -1563,26 +1563,31 @@ do { \
 
 		for (i = 0; i < (size_t)slen; i++) {
 			char *pool_str;
+			uint64_t acum = 0;
 
 			if (driver_get_stats(&stats, conf->driver,
 					     pools[i], talloc_array_length(pools[i])) < 0) exit(1);
 
 			pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
-			INFO("pool         : %s", pool_str);
+			INFO("pool             : %s", pool_str);
 			talloc_free(pool_str);
 
-			INFO("total        : %" PRIu64, stats.total);
-			INFO("free         : %" PRIu64, stats.free);
-			INFO("used         : %" PRIu64, stats.total - stats.free);
-			if (stats.total - stats.free) {
-				INFO("used (%%)     : %" PRIu64, (stats.total / (stats.total - stats.free)) * 100);
+			INFO("total            : %" PRIu64, stats.total);
+			INFO("free             : %" PRIu64, stats.free);
+			INFO("used             : %" PRIu64, stats.total - stats.free);
+			if (stats.total) {
+				INFO("used (%%)         : %.2Lf",
+				     ((long double)(stats.total - stats.free) / (long double)stats.total) * 100);
 			} else {
-				INFO("used (%%)     : 0");
+				INFO("used (%%)         : 0");
 			}
-			INFO("expiring 1m  : %" PRIu64, stats.expiring_1m);
-			INFO("expiring 30m : %" PRIu64, stats.expiring_30m);
-			INFO("expiring 1h  : %" PRIu64, stats.expiring_1h);
-			INFO("expiring 1d  : %" PRIu64, stats.expiring_1d);
+			INFO("expiring 0-1m    : %" PRIu64, stats.expiring_1m);
+			acum += stats.expiring_1m;
+			INFO("expiring 1-30m   : %" PRIu64, stats.expiring_30m - acum);
+			acum += stats.expiring_30m;
+			INFO("expiring 30m-1h  : %" PRIu64, stats.expiring_1h - acum);
+			acum += stats.expiring_1h;
+			INFO("expiring 1h-1d   : %" PRIu64, stats.expiring_1d - acum);
 			INFO("--");
 		}
 	}
