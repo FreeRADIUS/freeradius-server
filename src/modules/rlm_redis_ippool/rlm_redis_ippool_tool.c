@@ -838,6 +838,29 @@ static int driver_modify_lease(void *out, void *instance, ippool_tool_operation_
 			       _driver_modify_lease_enqueue, _driver_modify_lease_process);
 }
 
+/** Compare two pool names
+ *
+ */
+static int8_t pool_cmp(void const *a, void const *b)
+{
+	size_t len_a;
+	size_t len_b;
+
+	int ret;
+
+	len_a = talloc_array_length((uint8_t const *)a);
+	len_b = talloc_array_length((uint8_t const *)b);
+
+	if (len_a > len_b) return 1;
+	if (len_a < len_b) return -1;
+
+	ret = memcmp(a, b, len_a);
+	if (ret > 0) return 1;
+	if (ret < 0) return -1;
+
+	return 0;
+}
+
 /** Return the pools available across the cluster
  *
  * @param[in] ctx to allocate range names in.
@@ -856,6 +879,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t			*key_p = key;
 	REQUEST			*request = request_alloc(inst);
+	uint8_t 		**result;
 
 	IPPOOL_BUILD_KEY(key, key_p, "*}:pool", 1);
 
@@ -864,12 +888,12 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	 */
 	ret = fr_redis_cluster_node_addr_by_role(ctx, &master, inst->cluster, true, false);
 	if (ret <= 0) {
-		*out = NULL;
+		result = NULL;
 		return ret;
 	}
 
-	*out = talloc_zero_array(ctx, uint8_t *, 1);
-	if (!*out) {
+	result = talloc_zero_array(ctx, uint8_t *, 1);
+	if (!result) {
 		ERROR("Failed allocating array of pool names");
 		talloc_free(master);
 		return -1;
@@ -888,7 +912,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &master[i], false) < 0) {
 			ERROR("Failed retrieving pool for node");
 		error:
-			TALLOC_FREE(*out);
+			TALLOC_FREE(result);
 			talloc_free(master);
 			talloc_free(request);
 			return -1;
@@ -943,9 +967,9 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				goto reply_error;
 			}
 
-			if ((talloc_array_length(*out) - used) < reply->element[1]->elements) {
-				*out = talloc_realloc(ctx, *out, uint8_t *, used + reply->element[1]->elements);
-				if (!*out) {
+			if ((talloc_array_length(result) - used) < reply->element[1]->elements) {
+				result = talloc_realloc(ctx, result, uint8_t *, used + reply->element[1]->elements);
+				if (!result) {
 					ERROR("Failed expanding array of pool names");
 					goto reply_error;
 				}
@@ -977,7 +1001,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				/*
 				 *	String between the curly braces is the pool name
 				 */
-				(*out)[used++] = talloc_memdup(*out, pool_key->str + 1, (p - pool_key->str) - 1);
+				result[used++] = talloc_memdup(result, pool_key->str + 1, (p - pool_key->str) - 1);
 			}
 
 			fr_redis_reply_free(reply);
@@ -990,19 +1014,39 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 
 	if (used == 0) {
 		*out = NULL;
+		talloc_free(result);
 		return 0;
 	}
 
 	/*
-	 *	Fixup the length of the array of pointers
+	 *	Sort the results
 	 */
-	if (used != talloc_array_length(*out)) {
-		*out = talloc_realloc(ctx, *out, uint8_t *, used);
-		if (!*out) {
-			ERROR("Failed truncating array of pool names to %zu elements", used);
-			goto error;
-		}
+	{
+		uint8_t const **to_sort;
+
+		memcpy(&to_sort, &result, sizeof(to_sort));
+
+		fr_quick_sort((void const **)to_sort, 0, used - 1, pool_cmp);
 	}
+
+	*out = talloc_array(ctx, uint8_t *, used);
+	if (!*out) {
+		ERROR("Failed allocating file pool name array");
+		talloc_free(result);
+		return -1;
+	}
+
+	/*
+	 *	SCAN can produce duplicates, remove them here
+	 */
+	i = 0;
+	k = 0;
+	do {	/* stop before last entry */
+		(*out)[k++] = talloc_steal(*out, result[i++]);
+		while ((i < used) && (pool_cmp(result[i - 1], result[i]) == 0)) i++;
+	} while (i < used);
+
+	talloc_free(result);
 
 	return used;
 }
