@@ -702,7 +702,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
  		switch (type) {
  		case HOME_TYPE_AUTH_ACCT:
 #ifdef WITH_TLS
-			if (!tls && !home->server) type = HOME_TYPE_AUTH;
+			if (!tls && !home->server) home->type = HOME_TYPE_AUTH;
 #endif
 			home->dual = true;
 			break;
