@@ -456,14 +456,17 @@ static char const hextab[] = "0123456789abcdef";
    - \<oct>    - An octal escape sequence.
    - \x<hex>   - A hex escape sequence.
  @endverbatim
+ *
+ * Verbatim mode ("\0") passing \0 as the quote char copies in to out verbatim.
+ *
  * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
  * @note Invalid escape sequences will be copied verbatim.
  *
- * @param[out] out Where to write the unescaped string.  Length must be >= original
- *	string.  Unescaping never introduces additional chars.
- * @param[in] in The string to unescape.
- * @param[in] inlen Length of input string.
- * @param[in] quote Character around the string, determines unescaping mode.
+ * @param[out] out	Where to write the unescaped string.  Length must be >= original
+ *			string.  Unescaping never introduces additional chars.
+ * @param[in] in	The string to unescape.
+ * @param[in] inlen	Length of input string.
+ * @param[in] quote	Character around the string, determines unescaping mode.
  *
  * @return >= 0 the number of bytes written to out.
  */
@@ -615,14 +618,16 @@ size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char qu
 
 /** Convert string value to a value_data_t type
  *
- * @param[in] ctx to alloc strings in.
- * @param[out] dst where to write parsed value.
- * @param[in,out] src_type of value data to create/type of value created.
- * @param[in] src_enumv fr_dict_attr_t with string aliases for integer values.
- * @param[in] in String to convert. Binary safe for variable length values if len is provided.
- * @param[in] inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
- *	  should be the length of the string or sub string to parse.
- * @param[in] quote quotation character used to drive de-escaping
+ * @param[in] ctx		to alloc strings in.
+ * @param[out] dst		where to write parsed value.
+ * @param[in,out] src_type	of value data to create/type of value created.
+ * @param[in] src_enumv		fr_dict_attr_t with string aliases for integer values.
+ * @param[in] in		String to convert. Binary safe for variable length values
+ *				if len is provided.
+ * @param[in] inlen		may be < 0 in which case strlen(len) is used to determine
+ *				length, else inlen should be the length of the string or
+ *				sub string to parse.
+ * @param[in] quote		character used set unescape mode.  @see fr_value_str_unescape.
  * @return
  *	- 0 on success.
  *	- -1 on parse error.
