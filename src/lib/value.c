@@ -456,7 +456,6 @@ static char const hextab[] = "0123456789abcdef";
    - \<oct>    - An octal escape sequence.
    - \x<hex>   - A hex escape sequence.
  @endverbatim
-
  * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
  * @note Invalid escape sequences will be copied verbatim.
  *
