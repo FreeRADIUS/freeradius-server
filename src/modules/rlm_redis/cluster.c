@@ -2219,7 +2219,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 	cluster = talloc_zero(NULL, fr_redis_cluster_t);
 	if (!cluster) {
-		ERROR("%s: Out of memory", cluster->log_prefix);
+		ERROR("%s: Out of memory", log_prefix);
 		return NULL;
 	}
 
@@ -2241,16 +2241,16 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 *	Duplicate the trigger arguments.
 		 */
 		 if (trigger_args) cluster->trigger_args = fr_pair_list_copy(cluster, trigger_args);
+	}
 
-		/*
-		 *	Setup log prefix
-		 */
-		if (!log_prefix) {
-			if (!cs_name2) cs_name2 = cs_name1;
-			cluster->log_prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
-		} else {
-			cluster->log_prefix = talloc_strdup(cluster, log_prefix);
-		}
+	/*
+	 *	Setup log prefix
+	 */
+	if (!log_prefix) {
+		if (!cs_name2) cs_name2 = cs_name1;
+		cluster->log_prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
+	} else {
+		cluster->log_prefix = talloc_strdup(cluster, log_prefix);
 	}
 
 	/*
