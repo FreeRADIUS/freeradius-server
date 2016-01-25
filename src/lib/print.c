@@ -224,16 +224,6 @@ size_t fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char 
 		int sp = 0;
 
 		/*
-		 *	Hack: never print trailing zero.
-		 *	Some clients send pings with an off-by-one
-		 *	length (confused with strings in C).
-		 */
-		if ((inlen == 1) && (*p == '\0')) {
-			inlen--;
-			break;
-		}
-
-		/*
 		 *	Always escape the quotation character.
 		 */
 		if (*p == quote) {
