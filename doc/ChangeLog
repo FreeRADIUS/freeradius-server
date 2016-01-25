@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
+FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
 	* "unlang" comparisons of IP addresses to IP prefixes
 	  are now detected, and types automatically cast.
