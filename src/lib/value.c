@@ -443,22 +443,27 @@ static char const hextab[] = "0123456789abcdef";
  * The quote character determines the escape sequences recognised.
  *
  * Literal mode ("'" quote char) will unescape:
- * - \\        - Literal backslash.
- * - \<quote>  - The quotation char.
+ @verbatim
+   - \\        - Literal backslash.
+   - \<quote>  - The quotation char.
+ @endverbatim
  *
  * Expanded mode (any other quote char) will also unescape:
- * - \r        - Carriage return.
- * - \n        - Newline.
- * - \t        - Tab.
- * - \<oct>    - An octal escape sequence.
- * - \x<hex>   - A hex escape sequence.
- *
+ @verbatim
+   - \r        - Carriage return.
+   - \n        - Newline.
+   - \t        - Tab.
+   - \<oct>    - An octal escape sequence.
+   - \x<hex>   - A hex escape sequence.
+ @endverbatim
+
  * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
  * @note Invalid escape sequences will be copied verbatim.
  *
  * @param[out] out Where to write the unescaped string.  Length must be >= original
  *	string.  Unescaping never introduces additional chars.
  * @param[in] in The string to unescape.
+ * @param[in] inlen Length of input string.
  * @param[in] quote Character around the string, determines unescaping mode.
  *
  * @return >= 0 the number of bytes written to out.
