@@ -309,7 +309,7 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 		if (gid != (gid_t)-1) ret = fchown(dir_fd, euid, gid);
 		rad_suid_down();
 		if (ret < 0) {
-			fr_strerror_printf("Failed changing ownership of control socket directory: %s",
+			fr_strerror_printf("Failed changing group of control socket directory: %s",
 					   fr_syserror(errno));
 			goto error;
 		}
@@ -340,35 +340,47 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 				talloc_free(need_user);
 				goto error;
 			}
-			fr_strerror_printf("Control socket directory \"%s\" must be owned by user %s, "
-					   "currently owned by user %s", dir,
-					   need_user->pw_name, have_user->pw_name);
+			fr_strerror_printf("Socket directory \"%s\" must be owned by user %s, currently owned "
+					   "by user %s", dir, need_user->pw_name, have_user->pw_name);
 			talloc_free(need_user);
 			talloc_free(have_user);
 			goto error;
 		}
 
 		if ((gid != (gid_t)-1) && (st.st_gid != gid)) {
-			struct group *need_group, *have_group;
+			/*
+			 *	Can't set groups other than ones we belong
+			 *	to unless we suid_up.
+			 */
+			rad_suid_up();
+			if (gid != (gid_t)-1) ret = fchown(dir_fd, euid, gid);
+			rad_suid_down();
+			if (ret < 0) {
+				struct group *need_group, *have_group;
 
-			if (rad_getgrgid(NULL, &need_group, gid) < 0) {
-				fr_strerror_printf("Failed resolving socket dir uid to user: %s", fr_strerror());
-				goto error;
-			}
-			if (rad_getgrgid(NULL, &have_group, st.st_gid) < 0) {
-				fr_strerror_printf("Failed resolving socket dir gid to group: %s", fr_strerror());
+				if (rad_getgrgid(NULL, &need_group, gid) < 0) {
+					fr_strerror_printf("Failed resolving socket directory uid to user: %s",
+							   fr_strerror());
+					goto error;
+				}
+				if (rad_getgrgid(NULL, &have_group, st.st_gid) < 0) {
+					fr_strerror_printf("Failed resolving socket directory gid to group: %s",
+							   fr_strerror());
+					talloc_free(need_group);
+					goto error;
+				}
+				fr_strerror_printf("Failed changing ownership of socket directory \"%s\" from "
+						   "group %s, to group %s", dir,
+						   need_group->gr_name, have_group->gr_name);
 				talloc_free(need_group);
-				goto error;
+				talloc_free(have_group);
 			}
-			fr_strerror_printf("Control socket directory \"%s\" must be owned by group %s, "
-					   "currently owned by group %s", dir,
-					   need_group->gr_name, have_group->gr_name);
-			talloc_free(need_group);
-			talloc_free(have_group);
+
 			goto error;
 		}
 
-		if ((dir_perm & 0777) != (st.st_mode & 0777)) {
+		if ((dir_perm & 0777) != (st.st_mode & 0777) &&
+		    (fchmod(dir_fd, (st.st_mode & 7000) | dir_perm)) < 0) {
 			char str_need[10], oct_need[5];
 			char str_have[10], oct_have[5];
 
@@ -376,8 +388,10 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 			rad_mode_to_oct(oct_need, dir_perm);
 			rad_mode_to_str(str_have, st.st_mode);
 			rad_mode_to_oct(oct_have, st.st_mode);
-			fr_strerror_printf("Control socket directory \"%s\" permissions must be %s (%s), currently "
-					   "%s (%s)", dir, str_need, oct_need, str_have, oct_have);
+			fr_strerror_printf("Failed changing permissions on socket directory \"%s\" from %s "
+					   "(%s) to %s (%s): %s", dir, str_have, oct_have,
+					   str_need, oct_need, fr_syserror(errno));
+
 			goto error;
 		}
 
