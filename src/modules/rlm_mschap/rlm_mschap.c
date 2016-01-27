@@ -38,11 +38,6 @@ RCSID("$Id$")
 #include "smbdes.h"
 #include "auth_wbclient.h"
 
-/* Samba does not export this constant yet */
-#ifndef WBC_MSV1_0_ALLOW_MSVCHAPV2
-#define WBC_MSV1_0_ALLOW_MSVCHAPV2 0x00010000
-#endif
-
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include	<openssl/rc4.h>
