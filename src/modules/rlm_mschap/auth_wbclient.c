@@ -34,6 +34,11 @@ RCSID("$Id$")
 #include "mschap.h"
 #include "auth_wbclient.h"
 
+/* Samba does not export this constant yet */
+#ifndef WBC_MSV1_0_ALLOW_MSVCHAPV2
+#define WBC_MSV1_0_ALLOW_MSVCHAPV2 0x00010000
+#endif
+
 #define NT_LENGTH 24
 
 /*
