@@ -253,9 +253,9 @@ int		fr_radius_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 
 ssize_t		fr_radius_len(uint8_t const *data, size_t data_len);
 
-bool		fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
+bool		fr_radius_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason);
 
-RADIUS_PACKET	*fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags);
+RADIUS_PACKET	*fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma);
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 

@@ -753,14 +753,13 @@ ssize_t fr_radius_len(uint8_t const *data, size_t data_len)
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
+bool fr_radius_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
 {
 	uint8_t			*attr;
 	size_t			totallen;
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[INET6_ADDRSTRLEN];
-	bool			require_ma = false;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
@@ -811,11 +810,6 @@ bool fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	packets, otherwise they can be trivially forged.
 	 */
 	if (hdr->code == PW_CODE_STATUS_SERVER) require_ma = true;
-
-	/*
-	 *	It's also required if the caller asks for it.
-	 */
-	if (flags) require_ma = true;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -1072,7 +1066,7 @@ bool fr_radius_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 /** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
  *
  */
-RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags)
+RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma)
 {
 	ssize_t data_len;
 	RADIUS_PACKET		*packet;
@@ -1086,7 +1080,7 @@ RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags)
 		return NULL;
 	}
 
-	data_len = rad_recvfrom(fd, packet, UDP_FLAGS_NONE);
+	data_len = rad_recvfrom(fd, packet, flags);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
 		fr_radius_free(&packet);
@@ -1135,7 +1129,7 @@ RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_radius_ok(packet, flags, NULL)) {
+	if (!fr_radius_ok(packet, require_ma, NULL)) {
 		fr_radius_free(&packet);
 		return NULL;
 	}

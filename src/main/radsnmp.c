@@ -29,6 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/udp.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/uio.h>
@@ -739,7 +740,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_recv(request, request->sockfd, 0);
+					reply = fr_radius_recv(request, request->sockfd, UDP_FLAGS_NONE, false);
 					if (!reply) {
 						ERROR("Failed receiving reply: %s", fr_strerror());
 					recv_error:

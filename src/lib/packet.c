@@ -23,10 +23,7 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
-
-#ifdef WITH_UDPFROMTO
-#include	<freeradius-devel/udpfromto.h>
-#endif
+#include	<freeradius-devel/udp.h>
 
 #include <fcntl.h>
 
@@ -916,10 +913,10 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 
 #ifdef WITH_TCP
 		if (pl->sockets[start].proto == IPPROTO_TCP) {
-			packet = fr_tcp_recv(pl->sockets[start].sockfd, 0);
+			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
 		} else
 #endif
-		packet = fr_radius_recv(NULL, pl->sockets[start].sockfd, 0);
+			packet = fr_radius_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE, false);
 		if (!packet) continue;
 
 		/*
