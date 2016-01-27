@@ -157,7 +157,6 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 {
 	PW_CODE rcode;
 	REQUEST *fake = NULL;
-	VALUE_PAIR *vp = NULL;
 	uint8_t const *attr_data;
 	size_t data_len = 0;
 
@@ -173,6 +172,8 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
+		VALUE_PAIR *vp = NULL;
+
 		vp = fr_pair_copy(fake->packet, chbind->username);
 		fr_pair_add(&fake->packet->vps, vp);
 		fake->username = vp;
@@ -186,22 +187,24 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
 		vp_cursor_t cursor;
+
 		rad_assert(data_len <= talloc_array_length(chbind->request));
 
-		fr_cursor_init(&cursor, &vp);
+		fr_cursor_init(&cursor, &fake->packet->vps);
 		while (data_len > 0) {
 			ssize_t attr_len;
 
-			attr_len = fr_radius_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
+			attr_len = fr_radius_decode_pair(fake->packet, &cursor,
+							 fr_dict_root(fr_dict_internal),
 							 attr_data, data_len, NULL);
 			if (attr_len <= 0) {
-				/* If radaddr2vp fails, return NULL string for
-				   channel binding response */
+				/*
+				 *	If fr_radius_decode_pair fails, return NULL string for
+				 *	channel binding response.
+				 */
 				talloc_free(fake);
+
 				return PW_CODE_ACCESS_ACCEPT;
-			}
-			if (vp) {
-				fr_pair_add(&fake->packet->vps, vp);
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
