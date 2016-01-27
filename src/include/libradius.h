@@ -455,7 +455,7 @@ void		fr_rand_seed(void const *, size_t ); /* seed the random pool */
 
 
 /* crypt wrapper from crypt.c */
-int		fr_crypt_check(char const *password, char const *reference_crypt)
+int		fr_crypt_check(char const *password, char const *reference_crypt);
 
 /* cbuff.c */
 

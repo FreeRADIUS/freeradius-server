@@ -65,7 +65,7 @@ int fr_crypt_check(char const *password, char const *reference_crypt)
 
 	crypt_data.initialized = 0;
 
-	crypt_out = crypt_r(password, reference_crypt, &crypt_data)
+	crypt_out = crypt_r(password, reference_crypt, &crypt_data);
 	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
 #else
 #  ifdef HAVE_PTHREAD_H
