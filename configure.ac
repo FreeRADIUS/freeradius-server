@@ -1766,6 +1766,20 @@ else
   AC_CHECK_FUNC(crypt, AC_DEFINE(HAVE_CRYPT, [], [Do we have the crypt function]))
 fi
 
+dnl #
+dnl # Check for libcrypt
+dnl # We use crypt_r(3) which may be in libc, or in libcrypt (eg FreeBSD)
+dnl #
+AC_CHECK_LIB(crypt, crypt_r,
+  CRYPTLIB="-lcrypt"
+)
+
+if test "$CRYPTLIB" != ""; then
+  AC_DEFINE(HAVE_CRYPT_R, [], [Do we have the crypt_r function])
+else
+  AC_CHECK_FUNC(crypt_r, AC_DEFINE(HAVE_CRYPT_R, [], [Do we have the crypt_r function]))
+fi
+
 dnl Check for libcipher
 AC_CHECK_LIB(cipher, setkey,
    CRYPTLIB="${CRYPTLIB} -lcipher"

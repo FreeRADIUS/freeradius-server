@@ -45,19 +45,30 @@ static pthread_mutex_t fr_crypt_mutex;
 #	define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-/*
- * performs a crypt password check in an thread-safe way.
+/** Performs a crypt password check in an thread-safe way.
  *
- * returns:  0 -- check succeeded
- *	  -1 -- failed to crypt
- *	   1 -- check failed
+ * @param password The user's plaintext password.
+ * @param reference_crypt The 'known good' crypt the password
+ *	is being compared to.
+ * @return
+ *	- 0 crypt output matched reference crypt.
+ *	- 1 crypt output did not match reference crypt.
+ *	- -1 crypt failed.
  */
-int fr_crypt_check(char const *key, char const *crypted)
+int fr_crypt_check(char const *password, char const *reference_crypt)
 {
-	char *passwd;
+	char *crypt_out;
 	int cmp = 0;
 
-#ifdef HAVE_PTHREAD_H
+#ifdef HAVE_CRYPT_R
+	struct crypt_data crypt_data;
+
+	crypt_data.initialized = 0;
+
+	crypt_out = crypt_r(password, reference_crypt, &crypt_data)
+	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
+#else
+#  ifdef HAVE_PTHREAD_H
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
@@ -65,36 +76,28 @@ int fr_crypt_check(char const *key, char const *crypted)
 		pthread_mutex_init(&fr_crypt_mutex, NULL);
 		fr_crypt_init = true;
 	}
-
 	PTHREAD_MUTEX_LOCK(&fr_crypt_mutex);
-#endif
-
-	passwd = crypt(key, crypted);
+#  endif
+	crypt_out = crypt(password, reference_crypt);
 
 	/*
 	 *	Got something, check it within the lock.  This is
 	 *	faster than copying it to a local buffer, and the
 	 *	time spent within the lock is critical.
 	 */
-	if (passwd) {
-		cmp = strcmp(crypted, passwd);
-	}
-
+	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
 	PTHREAD_MUTEX_UNLOCK(&fr_crypt_mutex);
+#endif
 
 	/*
 	 *	Error.
 	 */
-	if (!passwd) {
-		return -1;
-	}
+	if (!crypt_out) return -1;
 
 	/*
 	 *	OK, return OK.
 	 */
-	if (cmp == 0) {
-		return 0;
-	}
+	if (cmp == 0) return 0;
 
 	/*
 	 *	Comparison failed.
