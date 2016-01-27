@@ -4,3 +4,4 @@ rlm_sql_postgresql
 rlm_sql_oracle
 rlm_sql_unixodbc
 rlm_sql_sqlite
+rlm_sql_freetds
