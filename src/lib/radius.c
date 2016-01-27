@@ -747,7 +747,7 @@ ssize_t fr_radius_len(uint8_t const *data, size_t data_len)
  * in the UDP packet than in the RADIUS packet.
  *
  * @param packet to check
- * @param flags to control decoding
+ * @param require_ma to require Message-Authenticator
  * @param reason if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
