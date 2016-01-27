@@ -89,7 +89,8 @@ GO
 CREATE TABLE [radusergroup] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
 	[UserName] [varchar] (64) NOT NULL ,
-	[GroupName] [varchar] (64) NULL
+	[GroupName] [varchar] (64) NULL ,
+	[Priority] [int] NULL
 ) ON [PRIMARY]
 GO
 
