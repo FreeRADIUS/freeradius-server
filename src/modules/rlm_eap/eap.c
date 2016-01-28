@@ -394,20 +394,17 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		 *	We probably want to return 'fail' here...
 		 */
 		if (!next) return EAP_INVALID;
-
 		goto do_initiate;
 
-		/*
-		 *	Key off of the configured sub-modules.
-		 */
+	/*
+	 *	Key off of the configured sub-modules.
+	 */
 	default:
 		/*
 		 *	We haven't configured it, it doesn't exit.
 		 */
 		if (!inst->methods[type->num]) {
-			REDEBUG2("Client asked for unsupported method %s (%d)",
-				 eap_type2name(type->num),
-				 type->num);
+			REDEBUG2("Client asked for unsupported method %s (%d)", eap_type2name(type->num), type->num);
 
 			return EAP_INVALID;
 		}
@@ -415,8 +412,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		eap_session->type = type->num;
 		if (eap_module_call(inst->methods[type->num], eap_session) == 0) {
 			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
-				 eap_type2name(type->num),
-				 type->num);
+				 eap_type2name(type->num), type->num);
 
 			return EAP_INVALID;
 		}
@@ -476,25 +472,25 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		reply->id = eap_session->this_round->response->id;
 
 		switch (reply->code) {
-			/*
-			 *	The Id is a simple "ack" for success
-			 *	and failure.
-			 *
-			 *	RFC 3748 section 4.2 says
-			 *
-			 *	... The Identifier field MUST match
-			 *	the Identifier field of the Response
-			 *	packet that it is sent in response
-			 *	to.
-			 */
+		/*
+		 *	The Id is a simple "ack" for success
+		 *	and failure.
+		 *
+		 *	RFC 3748 section 4.2 says
+		 *
+		 *	... The Identifier field MUST match
+		 *	the Identifier field of the Response
+		 *	packet that it is sent in response
+		 *	to.
+		 */
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
 			break;
 
-			/*
-			 *	We've sent a response to their
-			 *	request, the Id is incremented.
-			 */
+		/*
+		 *	We've sent a response to their
+		 *	request, the Id is incremented.
+		 */
 		default:
 			++reply->id;
 		}
@@ -517,9 +513,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		eap_round->request->type.num = eap_session->type;
 	}
 
-	if (eap_wireformat(reply) == EAP_INVALID) {
-		return RLM_MODULE_INVALID;
-	}
+	if (eap_wireformat(reply) == EAP_INVALID) return RLM_MODULE_INVALID;
+
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
 	vp = radius_pair_create(request->reply, &request->reply->vps, PW_EAP_MESSAGE, 0);
@@ -533,8 +528,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	EAP-Message is always associated with
 	 *	Message-Authenticator but not vice-versa.
 	 *
-	 *	Don't add a Message-Authenticator if it's already
-	 *	there.
+	 *	Don't add a Message-Authenticator if
+	 *	it's already there.
 	 */
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
@@ -572,9 +567,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		 *	we do so WITHOUT setting a reply code, as the
 		 *	request is being proxied.
 		 */
-		if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
-			return RLM_MODULE_HANDLED;
-		}
+		if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) return RLM_MODULE_HANDLED;
 
 		/* Should never enter here */
 		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);

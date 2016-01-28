@@ -229,14 +229,17 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 		packet->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED;
 		break;
+
 	case PW_EAP_FAILURE:
 		packet->code = PW_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
+
 	case PW_EAP_REQUEST:
 		packet->code = PW_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
+
 	default:
 		/* Should never enter here */
 		ERROR("Reply code %d is unknown, Rejecting the request", reply->code);
