@@ -3404,6 +3404,11 @@ static int command_domain_accept(rad_listen_t *listener)
 		DEBUG2(" ... failed to accept connection");
 		return 0;
 	}
+	/*
+	 *	Is likely redundant as newfd should inherit blocking
+	 *	from listener->fd.  But better to be safe.
+	 */
+	fr_nonblock(newfd);
 
 #ifdef HAVE_GETPEEREID
 	/*
@@ -3433,6 +3438,29 @@ static int command_domain_accept(rad_listen_t *listener)
 		}
 	}
 #endif
+
+	/*
+	 *	@fixme: This should be better integrated into the event
+	 *	loop so that command_write_magic is called once we know
+	 *	the child socket is readable.
+	 */
+	{
+		fd_set read_fds;
+
+		struct timeval timeout;
+
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 500000;	/* 0.5 s */
+
+		FD_ZERO(&read_fds);
+		FD_SET(newfd, &read_fds);
+
+		if (select(FD_SETSIZE, &read_fds, NULL, NULL, &timeout) <= 0) {
+			ERROR("Error or timeout whilst waiting for control socket magic");
+			close(newfd);
+			return 0;
+		}
+	}
 
 	if (command_write_magic(newfd, NULL) < 0) {
 		close(newfd);
