@@ -27,22 +27,15 @@ RCSID("$Id$")
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include <pthread.h>
-
-/*
- *  No pthreads, no mutex.
- */
-static bool fr_crypt_init = false;
-static pthread_mutex_t fr_crypt_mutex;
-
-/*
- *  This is easier than ifdef's throughout the code.
- */
-#	define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#	define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#  include <pthread.h>
+#  ifndef HAVE_CRYPT_R
+static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
+#  endif
+#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
 #else
-#	define PTHREAD_MUTEX_LOCK(_x)
-#	define PTHREAD_MUTEX_UNLOCK(_x)
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
 /** Performs a crypt password check in an thread-safe way.
@@ -68,16 +61,10 @@ int fr_crypt_check(char const *password, char const *reference_crypt)
 	crypt_out = crypt_r(password, reference_crypt, &crypt_data);
 	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
 #else
-#  ifdef HAVE_PTHREAD_H
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
-	if (fr_crypt_init == false) {
-		pthread_mutex_init(&fr_crypt_mutex, NULL);
-		fr_crypt_init = true;
-	}
 	PTHREAD_MUTEX_LOCK(&fr_crypt_mutex);
-#  endif
 	crypt_out = crypt(password, reference_crypt);
 
 	/*
