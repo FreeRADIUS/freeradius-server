@@ -81,7 +81,7 @@ options:
 	-f file		Read password from file, instead of command line.
 	-h host		Connect to host.
 	-P port		Port number to use for connection.
-	-p passord	Password to use when connecting to server.
+	-p password	Password to use when connecting to server.
 	-u user		User for login.
 	-x		Turn on debugging.
 HERE
