@@ -46,7 +46,7 @@ RCSID("$Id$")
 #endif
 
 #ifndef HAVE_SQLITE3_INT64
-typedef sqlite3_int64 sqlite_int64;
+typedef sqlite_int64 sqlite3_int64;
 #endif
 
 typedef struct rlm_sql_sqlite_conn {
