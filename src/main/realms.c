@@ -656,9 +656,48 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	}
 #endif
 
+	/*
+	 *	Need to figure out what we're using for status check
+	 *	first, as it's used by the code below.
+	 */
+ 	{
+ 		home_ping_check_t type = HOME_PING_CHECK_NONE;
+
+ 		if (home->ping_check_str) type = fr_str2int(home_ping_check, home->ping_check_str,
+ 							    HOME_PING_CHECK_INVALID);
+
+ 		switch (type) {
+ 		case HOME_PING_CHECK_STATUS_SERVER:
+ 		case HOME_PING_CHECK_NONE:
+ 			break;
+
+ 		case HOME_PING_CHECK_REQUEST:
+			if (!home->ping_user_name) {
+				cf_log_err_cs(cs, "You must supply a 'username' to enable status_check=request");
+				goto error;
+			}
+
+			if (((home->type == HOME_TYPE_AUTH) ||
+			     (home->type == HOME_TYPE_AUTH_ACCT)) && !home->ping_user_password) {
+				cf_log_err_cs(cs, "You must supply a 'password' to enable status_check=request");
+				goto error;
+			}
+
+ 			break;
+
+ 		case HOME_PING_CHECK_INVALID:
+ 			cf_log_err_cs(cs, "Invalid status_check \"%s\" for home server %s",
+ 				      home->ping_check_str, home->log_name);
+ 			goto error;
+ 		}
+
+		home->ping_check = type;
+ 	}
+
 	if (home->ipaddr.af == AF_UNSPEC) {
 		if (home->proto_str) {
-			cf_log_err_cs(cs, "The 'proto' configuration cannot be used for home servers with 'virtual_server' set");
+			cf_log_err_cs(cs, "The 'proto' configuration cannot be used for home servers with "
+				      "'virtual_server' set");
 			goto error;
 		}
 
@@ -724,40 +763,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
  			cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s", home->type_str, home->log_name);
  			goto error;
  		}
- 	}
-
- 	{
- 		home_ping_check_t type = HOME_PING_CHECK_NONE;
-
- 		if (home->ping_check_str) type = fr_str2int(home_ping_check, home->ping_check_str,
- 							    HOME_PING_CHECK_INVALID);
-
- 		switch (type) {
- 		case HOME_PING_CHECK_STATUS_SERVER:
- 		case HOME_PING_CHECK_NONE:
- 			break;
-
- 		case HOME_PING_CHECK_REQUEST:
-			if (!home->ping_user_name) {
-				cf_log_err_cs(cs, "You must supply a 'username' to enable status_check=request");
-				goto error;
-			}
-
-			if (((home->type == HOME_TYPE_AUTH) ||
-			     (home->type == HOME_TYPE_AUTH_ACCT)) && !home->ping_user_password) {
-				cf_log_err_cs(cs, "You must supply a 'password' to enable status_check=request");
-				goto error;
-			}
-
- 			break;
-
- 		case HOME_PING_CHECK_INVALID:
- 			cf_log_err_cs(cs, "Invalid status_check \"%s\" for home server %s",
- 				      home->ping_check_str, home->log_name);
- 			goto error;
- 		}
-
-		home->ping_check = type;
  	}
 
 	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
