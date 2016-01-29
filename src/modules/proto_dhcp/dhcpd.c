@@ -584,8 +584,8 @@ static int dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-Address */
 	if (!vp) {
-		RDEBUG2("Failed to find &DHCP-Client-IP-Address or &DHCP-Your-IP-Address for request; "
-		        "not responding");
+		REDEBUG("Can't assign address to client: Neither &reply:DHCP-Client-IP-Address nor "
+			"&reply:DHCP-Your-IP-Address set");
 		/*
 		 *	There is nowhere to send the response to, so don't bother.
 		 */
