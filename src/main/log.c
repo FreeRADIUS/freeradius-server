@@ -669,6 +669,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
 			case L_DST_EXTRA:
+			{
 #  ifdef HAVE_FOPENCOOKIE
 				cookie_io_functions_t io;
 
@@ -687,6 +688,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 
 #  endif
 				if (!fp) return;
+			}
 				break;
 #endif
 			default:
