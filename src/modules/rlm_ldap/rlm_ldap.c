@@ -104,7 +104,7 @@ static CONF_PARSER tls_config[] = {
 
 	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, rlm_ldap_t, tls_private_key_file) }, // OK if it changes on HUP
 
-	{ FR_CONF_OFFSET("random_file", PW_TYPE_FILE_INPUT, rlm_ldap_t, tls_random_file) },
+	{ FR_CONF_OFFSET("random_file", PW_TYPE_FILE_EXISTS, rlm_ldap_t, tls_random_file) },
 
 	/*
 	 *	LDAP Specific TLS attributes

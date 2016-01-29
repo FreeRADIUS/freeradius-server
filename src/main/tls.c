@@ -1174,8 +1174,8 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("psk_hexphrase", PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, psk_password) },
 	{ FR_CONF_OFFSET("psk_query", PW_TYPE_STRING, fr_tls_server_conf_t, psk_query) },
 #endif
-	{ FR_CONF_OFFSET("dh_file", PW_TYPE_STRING, fr_tls_server_conf_t, dh_file) },
-	{ FR_CONF_OFFSET("random_file", PW_TYPE_STRING, fr_tls_server_conf_t, random_file) },
+	{ FR_CONF_OFFSET("dh_file", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, dh_file) },
+	{ FR_CONF_OFFSET("random_file", PW_TYPE_FILE_EXISTS, fr_tls_server_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), .dflt = "1024" },
 	{ FR_CONF_OFFSET("include_length", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("auto_chain", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, auto_chain), .dflt = "yes" },
