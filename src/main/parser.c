@@ -1025,7 +1025,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				    (c->data.map->op != T_OP_CMP_TRUE) &&
 				    (c->data.map->op != T_OP_CMP_FALSE) &&
 				    (rhs_type == T_BARE_WORD)) {
-					return_rhs("Must have string as value for attribute");
+					return_rhs("Comparison value must be a quoted string");
 				}
 
 				/*
@@ -1039,7 +1039,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_OCTETS) &&
 				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_DATE) &&
 				    (rhs_type == T_SINGLE_QUOTED_STRING)) {
-					*error = "Value must be an unquoted string";
+					*error = "Comparison value must be an unquoted string";
 				return_rhs:
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
