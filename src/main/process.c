@@ -1183,7 +1183,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 		 *	destination with the default verbosity level.
 		 */
 		if ((debug_log.dst != L_DST_NULL) &&
-		    (debug_condition || radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition))) {
+		    (!debug_condition || (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition) == 1))) {
 			request->log.lvl = req_debug_lvl;
 			request->log.func = vradlog_request;
 			request->log.output = &debug_log;
