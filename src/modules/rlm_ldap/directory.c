@@ -98,7 +98,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 	if (!entry) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 
-		WARN("Capability check failed: Failed retrieving entry");
+		WARN("Capability check failed: Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 		rcode = 1;
 		goto finish;
 	}
