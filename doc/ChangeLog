@@ -1,3 +1,12 @@
+FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* Use correct typedef for older versions of sqlite.
+	* Update mssql schema to add priority
+	* don't complain on /dev/urandom in ldap
+
+
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
 	* "unlang" comparisons of IP addresses to IP prefixes
