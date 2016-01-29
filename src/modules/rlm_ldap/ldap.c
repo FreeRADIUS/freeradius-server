@@ -1363,12 +1363,28 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 		    !fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) &&
 		    !fr_pair_find_by_num(request->config, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
 		    !fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
-			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
-				"read the password attribute");
-			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "
-				"were trying to configure)");
+		if (!inst->directory->cleartext_password) switch (inst->directory->type) {
+			case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
+				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute.");
+				RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP.");
+				RWDEBUG("!!! Remove password map and alter configuration to bind with the user's");
+				RWDEBUG("!!! credentials, or to authenticate users via Samba (ntlm_auth/winbindd).");
+		    		break;
+
+			case LDAP_DIRECTORY_EDIRECTORY:
+				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute.");
+				RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search.");
+				RWDEBUG("!!! Remove password map and set 'edir = true'.");
+		    		break;
+
+			default:
+			no_password:
+				RWDEBUG("No \"known good\" password added.  Ensure the admin user has permission to "
+					"read the password attribute");
+				break;
+		    	} else goto no_password;
 		}
-       }
+	}
 }
 
 #if LDAP_SET_REBIND_PROC_ARGS == 3
@@ -1643,7 +1659,6 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", inst->tls_ca_file);
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", inst->tls_ca_path);
 
-
 	/*
 	 *	Set certificate options
 	 */
@@ -1666,7 +1681,6 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		/* Always use the new TLS configuration context */
 		int is_server = 0;
 		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-
 	}
 #  endif
 
@@ -1690,8 +1704,26 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
 			       &(conn->inst->admin_sasl), false, NULL, NULL);
-	if (status != LDAP_PROC_SUCCESS) {
-		goto error;
+	if (status != LDAP_PROC_SUCCESS) goto error;
+
+	/*
+	 *	This allows multiple connections to spawn simultaneously,
+	 *	but prevents them being used until we've directory
+	 *	directory capabilities.
+	 */
+	if (!inst->directory) {
+#ifdef HAVE_PTHREAD_H
+		pthread_mutex_lock(&inst->directory_mutex);
+		if (!inst->directory) {
+#endif
+			/*
+			 *	Only error out on memory allocation errors
+			 */
+			if (rlm_ldap_directory_alloc(NULL, &inst->directory, inst, &conn) < 0) goto error;
+#ifdef HAVE_PTHREAD_H
+			pthread_mutex_unlock(&inst->directory_mutex);
+		}
+#endif
 	}
 
 	return conn;

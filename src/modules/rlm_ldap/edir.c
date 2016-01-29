@@ -20,7 +20,7 @@
  * @brief LDAP extension for reading eDirectory universal password.
  *
  * To contact Novell about this file by physical or electronic mail, you may
- * find current contact  information at www.novell.com.
+ * find current contact information at www.novell.com.
  *
  * @copyright 2012 Olivier Beytrison <olivier@heliosnet.org>
  * @copyright 2012 Alan DeKok <aland@freeradius.org>

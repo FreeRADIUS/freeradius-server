@@ -181,7 +181,30 @@ typedef struct ldap_handle {
 	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
+typedef enum {
+	LDAP_DIRECTORY_UNKNOWN = 0,			//!< We can't determine the directory server.
+
+	LDAP_DIRECTORY_ACTIVE_DIRECTORY,		//!< Directory server is Active Directory.
+	LDAP_DIRECTORY_EDIRECTORY,			//!< Directory server is eDir.
+	LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY,	//!< Directory server is Oracle Unified Directory.
+	LDAP_DIRECTORY_OPENLDAP,			//!< Directory server is OpenLDAP.
+	LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
+} ldap_directory_type_t;
+
+typedef struct ldap_directory {
+	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
+							//!< rootDSE.
+	char const		*version_str;		//!< As returned from the vendorVersion attribute in the
+							//!< rootDSE.
+	ldap_directory_type_t	type;			//!< Cannonical server implementation.
+
+	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
+							//!< password.
+} ldap_directory_t;
+
 struct ldap_instance {
+	char const	*name;				//!< Instance name.
+
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
@@ -213,7 +236,8 @@ struct ldap_instance {
 
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 
-	char const	*name;				//!< Instance name.
+	ldap_directory_t *directory;			//!< Server capabilities.
+	pthread_mutex_t directory_mutex;		//!< Sync modifications to directory structure.
 
 	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
@@ -528,6 +552,11 @@ int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool fre
 void rlm_ldap_control_clear(ldap_handle_t *conn);
 
 int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request);
+
+/*
+ *	directory.c - Get directory capabilities from the remote server
+ */
+int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t *inst, ldap_handle_t **pconn);
 
 /*
  *	edir.c - Magic extensions for Novell

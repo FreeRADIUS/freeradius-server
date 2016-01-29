@@ -65,9 +65,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 
 	*dn = NULL;
 
-	if (!*names) {
-		return RLM_MODULE_OK;
-	}
+	if (!*names) return RLM_MODULE_OK;
 
 	if (!inst->groupobj_name_attr) {
 		REDEBUG("Told to convert group names to DNs but missing 'group.name_attribute' directive");
@@ -165,9 +163,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 
 finish:
 	talloc_free(filter);
-	if (result) {
-		ldap_msgfree(result);
-	}
+	if (result) ldap_msgfree(result);
 
 	/*
 	 *	Be nice and cleanup the output array if we error out.

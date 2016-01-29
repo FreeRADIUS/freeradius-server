@@ -646,12 +646,6 @@ static int mod_detach(void *instance)
 {
 	rlm_ldap_t *inst = instance;
 
-	fr_connection_pool_free(inst->pool);
-
-	if (inst->user_map) {
-		talloc_free(inst->user_map);
-	}
-
 	/*
 	 *	Keeping the dummy ld around for the lifetime
 	 *	of the module should always work,
@@ -668,6 +662,14 @@ static int mod_detach(void *instance)
 #ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
 #endif
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&inst->directory_mutex);
+#endif
+
+	fr_connection_pool_free(inst->pool);
+	talloc_free(inst->user_map);
+	talloc_free(inst->directory);
 
 	return 0;
 }
@@ -1331,6 +1333,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				    LDAP_MAX_ATTRMAP) < 0)) {
 		return -1;
 	}
+
+	/*
+	 *	Initialise the directory mutex
+	 */
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_init(&inst->directory_mutex, NULL);
+#endif
 
 	/*
 	 *	Initialize the socket pool.
