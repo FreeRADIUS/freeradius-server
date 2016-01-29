@@ -103,11 +103,16 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->username = NULL;
 	request->password = NULL;
 	gettimeofday(&request->timestamp, NULL);
-	request->log.lvl = rad_debug_lvl; /* Default to global debug level */
+
+	/*
+	 *	These may be changed later by request_pre_handler
+	 */
+	request->log.lvl = rad_debug_lvl;	/* Default to global debug level */
+	request->log.func = vradlog_request;
+	request->log.output = &default_log;
 
 	request->module = NULL;
 	request->component = "<core>";
-	request->log.func = vradlog_request;
 
 	request->state_ctx = talloc_init("session-state");
 
