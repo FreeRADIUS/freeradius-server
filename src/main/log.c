@@ -633,7 +633,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
 void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
 	size_t		len = 0;
-	char const	*filename = default_log.file;
+	char const	*filename = request->log.output->file;
 	FILE		*fp = NULL;
 
 	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
