@@ -139,6 +139,7 @@ typedef struct timeval _timeval_t;
 
 #define PW_TYPE_MULTI		(1 << 18) //!< CONF_PAIR can have multiple copies.
 #define PW_TYPE_NOT_EMPTY	(1 << 19) //!< CONF_PAIR is required to have a non zero length value.
+#define PW_TYPE_FILE_EXISTS	((1 << 20) | PW_TYPE_STRING) //!< File matching value must exist
 /* @} **/
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
