@@ -44,44 +44,36 @@ typedef enum detail_entry_state_t {
 	STATE_REPLIED
 } detail_entry_state_t;
 
-/*
- *	Allow people to revert to the old behavior if desired.
- *	Also, use the old code if we don't have threads.
- *	FIXME: delete the old (crappy) code, and enable the new
- *	code to work without threads.  One thing at a time...
- */
-#ifndef WITHOUT_DETAIL_THREAD
-#  ifdef HAVE_PTHREAD_H
-#    define WITH_DETAIL_THREAD (1)
-#  endif
-#endif
+typedef struct detail_entry__t {
+	detail_entry_state_t state;
+
+	int		delay_time;
+	off_t		offset;	/* of the start of the entry */
+
+	VALUE_PAIR	*vps;
+	time_t		queued;		//!< when the packet was queued to the server
+	time_t		timestamp;	//!< from the packet on-disk
+	off_t		timestamp_offset; //!< where the "Timestamp" is on disk
+	bool		done;		//!< Are we done reading this entry?
+} detail_entry_t;
 
 typedef struct listen_detail_t {
 	fr_event_t	*ev;	/* has to be first entry (ugh) */
 	char const 	*name;			//!< Identifier used in log messages
-	int		delay_time;
 	char const	*filename;
 	char const	*filename_work;
-	VALUE_PAIR	*vps;
 	int		work_fd;
 
-#ifdef WITH_DETAIL_THREAD
 	int		master_pipe[2];
 	int		child_pipe[2];
 	pthread_t	pthread_id;
-#endif
 
 	FILE		*fp;
-	off_t		offset;
 	detail_file_state_t 	file_state;
-	detail_entry_state_t 	entry_state;
-	time_t		timestamp;
 	time_t		running;
 	fr_ipaddr_t	client_ip;
 
 	off_t		last_offset;
-	off_t		timestamp_offset;
-	bool		done_entry;		//!< Are we done reading this entry?
 	bool		track;			//!< Do we track progress through the file?
 
 	uint32_t	load_factor; /* 1..100 */
@@ -99,6 +91,8 @@ typedef struct listen_detail_t {
 	uint32_t	counter;
 	struct timeval  last_packet;
 	RADCLIENT	detail_client;
+
+	detail_entry_t	entry;
 } listen_detail_t;
 
 int detail_recv(rad_listen_t *listener);
