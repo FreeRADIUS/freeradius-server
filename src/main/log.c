@@ -787,7 +787,7 @@ print_msg:
 		if (p) p[0] = '\0';
 
 		if (request->module) {
-			fprintf(fp, "(%u)  %s%s%.*s %s - %.*s%s\n",
+			fprintf(fp, "(%u)  %s%s%.*s%s - %.*s%s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
 				unlang_indent, spaces, request->module, module_indent, spaces, buffer);
 		} else {
