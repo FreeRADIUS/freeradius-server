@@ -390,7 +390,10 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 		return false;
 	}
 
-	if (!check_perms) return true;
+	if (!check_perms) {
+		talloc_free(file);
+		return true;
+	}
 
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
