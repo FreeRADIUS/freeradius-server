@@ -392,7 +392,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
  *	Do some checks on the file as an "input" file.  i.e. one read
  *	by a module.
  */
-static bool cf_file_input(CONF_SECTION *cs, char const *filename)
+static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 {
 	cf_file_t *file;
 	CONF_DATA *cd;
@@ -417,6 +417,11 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 		ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
 		talloc_free(file);
 		return false;
+	}
+
+	if (!check_perms) {
+		talloc_free(file);
+		return true;
 	}
 
 #ifdef S_IWOTH
@@ -1560,7 +1565,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_PAIR *cp, unsigned int type)
 {
 	int		rcode = 0;
-	bool		attribute, required, secret, file_input, cant_be_empty, tmpl;
+	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
 
 	fr_ipaddr_t	*ipaddr;
 	ssize_t		slen;
@@ -1571,6 +1576,7 @@ static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CON
 	required = (type & PW_TYPE_REQUIRED);
 	secret = (type & PW_TYPE_SECRET);
 	file_input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
+	file_exists = (type == PW_TYPE_FILE_EXISTS);	/* check, not and */
 	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
 	tmpl = (type & PW_TYPE_TMPL);
 
@@ -1739,7 +1745,12 @@ static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CON
 		 *	to be caught as early as possible, during
 		 *	server startup.
 		 */
-		if (file_input && !cf_file_input(cs, cp->value)) {
+		if (file_input && !cf_file_check(cs, cp->value, true)) {
+			rcode = -1;
+			goto error;
+		}
+
+		if (file_exists && !cf_file_check(cs, cp->value, false)) {
 			rcode = -1;
 			goto error;
 		}
