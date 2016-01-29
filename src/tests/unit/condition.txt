@@ -216,14 +216,14 @@ condition User-Name == 'bob'
 data &User-Name == 'bob'
 
 condition User-Name == bob
-data ERROR offset 13 Must have string as value for attribute
+data ERROR offset 13 Comparison value must be a quoted string
 
 # Integer (etc.) types must be "bare"
 condition Session-Timeout == 10
 data &Session-Timeout == 10
 
 condition Session-Timeout == '10'
-data ERROR offset 19 Value must be an unquoted string
+data ERROR offset 19 Comparison value must be an unquoted string
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
