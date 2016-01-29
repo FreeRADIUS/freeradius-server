@@ -19,7 +19,7 @@
  * @file cursor.c
  * @brief Functions to iterate over collections of VALUE_PAIRs
  *
- * @note Do not modify collections of VALUE_PAIRs pointed to be a cursor
+ * @note Do not modify collections of VALUE_PAIRs pointed to by a cursor
  *	 with none fr_cursor_* functions, during the lifetime of that cursor.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
