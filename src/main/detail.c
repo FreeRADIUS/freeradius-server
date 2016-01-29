@@ -37,6 +37,8 @@ RCSID("$Id$")
 #include <glob.h>
 #endif
 
+#include <pthread.h>
+
 #include <fcntl.h>
 
 #ifdef WITH_DETAIL
@@ -352,7 +354,7 @@ int detail_recv(rad_listen_t *listener)
 		data->entry.state = STATE_NO_REPLY;	/* try again later */
 
 	signal_thread:
-	fr_radius_free(&packet);
+		fr_radius_free(&packet);
 		if (write(data->child_pipe[1], &c, 1) < 0) {
 			ERROR("detail (%s): Failed writing ack to reader thread: %s", data->name,
 			      fr_syserror(errno));
