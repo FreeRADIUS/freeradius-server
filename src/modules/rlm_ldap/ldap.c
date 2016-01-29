@@ -379,30 +379,18 @@ static size_t rlm_ldap_common_dn(char const *full, char const *part)
 {
 	size_t f_len, p_len, i;
 
-	if (!full) {
-		return -1;
-	}
+	if (!full) return -1;
 
 	f_len = strlen(full);
 
-	if (!part) {
-		return -1;
-	}
+	if (!part) return -1;
 
 	p_len = strlen(part);
-	if (!p_len) {
-		return f_len;
-	}
+	if (!p_len) return f_len;
 
-	if ((f_len < p_len) || !f_len) {
-		return -1;
-	}
+	if ((f_len < p_len) || !f_len) return -1;
 
-	for (i = 0; i < p_len; i++) {
-		if (part[p_len - i] != full[f_len - i]) {
-			return -1;
-		}
-	}
+	for (i = 0; i < p_len; i++) if (part[p_len - i] != full[f_len - i]) return -1;
 
 	return f_len - p_len;
 }
