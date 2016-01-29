@@ -652,7 +652,6 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	if ((type & L_DBG) != 0) {
 		if (!radlog_debug_enabled(type, lvl, request)) return;
 
-#ifdef WITH_COMMAND_SOCKET
 		/*
 		 *	If we're debugging to a file, then use that.
 		 *
@@ -662,11 +661,14 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	message.
 		 */
 		if (request->log.output) {
-			if (request->log.output->dst == L_DST_FILES) {
+			switch (request->log.output->dst) {
+			case L_DST_FILES:
 				fp = fopen(request->log.output->file, "a");
+				if (!fp) return;
+				break;
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
-			} else if (request->log.output->dst == L_DST_EXTRA) {
+			case L_DST_EXTRA:
 #  ifdef HAVE_FOPENCOOKIE
 				cookie_io_functions_t io;
 
@@ -682,14 +684,16 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 #  else
 				fp = funopen(request->log.output->cookie,
 					     NULL, request->log.output->cookie_write, NULL, NULL);
-#  endif
-#endif
-			}
-			if (!fp) return;
 
+#  endif
+				if (!fp) return;
+				break;
+#endif
+			default:
+				break;
+			}
 			goto print_msg;
 		}
-#endif
 	}
 
 	if (filename) {
