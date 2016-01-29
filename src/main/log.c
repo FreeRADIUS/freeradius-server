@@ -692,8 +692,12 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	}
 
 	if (filename) {
-		radlog_func_t rl = request->log.func;
+		radlog_func_t log_func = request->log.func;
 
+		/*
+		 *	Prevent infinitely recursive calls if
+		 *	radius_xlat attempts to write to the request log.
+		 */
 		request->log.func = NULL;
 
 		/*
@@ -701,7 +705,11 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	in every request is NOT recommended!
 		 */
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, rad_filename_escape, NULL) < 0) return;
-		request->log.func = rl;
+
+		/*
+		 *	Restore the original logging function
+		 */
+		request->log.func = log_func;
 
 		/*
 		 *	Ensure the directory structure exists, for
