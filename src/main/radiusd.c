@@ -117,6 +117,7 @@ int main(int argc, char *argv[])
 #endif
 
 	rad_debug_lvl = 0;
+	req_debug_lvl = L_DBG_LVL_2;
 	set_radius_dir(autofree, RADIUS_DIR);
 
 	/*

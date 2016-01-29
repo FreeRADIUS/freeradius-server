@@ -967,10 +967,14 @@ do {\
 	 *	command-line: use whatever is in the config
 	 *	file.
 	 */
-	if (rad_debug_lvl == 0) {
-		rad_debug_lvl = main_config.debug_level;
-	}
+	if (rad_debug_lvl == 0) rad_debug_lvl = main_config.debug_level;
+
+	/*
+	 *	Set the same debug level for the global log
+	 *	for requests, and for libfreeradius.
+	 */
 	fr_debug_lvl = rad_debug_lvl;
+	if (rad_debug_lvl > req_debug_lvl) req_debug_lvl = rad_debug_lvl;
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);

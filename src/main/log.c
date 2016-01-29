@@ -47,6 +47,7 @@ RCSID("$Id$")
 #endif
 
 log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
+log_lvl_t	req_debug_lvl = 0;		//!< Request debugging level
 static bool	rate_limit = true;		//!< Whether repeated log entries should be rate limited
 
 /** Maps log categories to message prefixes

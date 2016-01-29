@@ -1171,15 +1171,22 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 		rcode = request->listener->decode(request->listener, request);
 
 #ifdef WITH_UNLANG
-		if (debug_condition) {
-			/*
-			 *	Ignore parse errors.
-			 */
-			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
-				request->log.lvl = L_DBG_LVL_2;
-				request->log.func = vradlog_request;
-				request->log.output = &debug_log;
-			}
+		/*
+		 *	If a specific destination has been set for
+		 *	requests, overwrite the pointer to the default
+		 *	log so output goes there instead.
+		 *
+		 *	...but only if there is no debug condition
+		 *	or there is a condition and it matches.
+		 *
+		 *	All other requests will go to the default log
+		 *	destination with the default verbosity level.
+		 */
+		if ((debug_log.dst != L_DST_NULL) &&
+		    (debug_condition || radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition))) {
+			request->log.lvl = req_debug_lvl;
+			request->log.func = vradlog_request;
+			request->log.output = &debug_log;
 		}
 #endif
 

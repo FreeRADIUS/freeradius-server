@@ -1166,7 +1166,7 @@ static int command_show_version(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	return CMD_OK;
 }
 
-static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
+static int command_debug_level_global(rad_listen_t *listener, int argc, char *argv[])
 {
 	int number;
 
@@ -1181,7 +1181,29 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 		return -1;
 	}
 
+	INFO("Global debug level set to %i, was %i", number, fr_debug_lvl);
 	fr_debug_lvl = rad_debug_lvl = number;
+
+	return CMD_OK;
+}
+
+static int command_debug_level_request(rad_listen_t *listener, int argc, char *argv[])
+{
+	int number;
+
+	if (argc == 0) {
+		cprintf_error(listener, "Must specify <number>\n");
+		return -1;
+	}
+
+	number = atoi(argv[0]);
+	if ((number < 0) || (number > 4)) {
+		cprintf_error(listener, "<number> must be between 0 and 4\n");
+		return -1;
+	}
+
+	INFO("Request debug level set to %i, was %i", number, req_debug_lvl);
+	req_debug_lvl = number;
 
 	return CMD_OK;
 }
@@ -1278,6 +1300,8 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	debug_log.file = &debug_log_file_buffer[0];
 	debug_log.dst = L_DST_FILES;
+
+	INFO("Global debug log set to \"%s\"", debug_log.file);
 
 	return CMD_OK;
 }
@@ -1549,14 +1573,19 @@ static int command_show_debug_file(rad_listen_t *listener,
 }
 
 
-static int command_show_debug_level(rad_listen_t *listener,
-					UNUSED int argc, UNUSED char *argv[])
+static int command_show_debug_level_global(rad_listen_t *listener,
+					   UNUSED int argc, UNUSED char *argv[])
 {
 	cprintf(listener, "%d\n", rad_debug_lvl);
 	return CMD_OK;
 }
 
-
+static int command_show_debug_level_request(rad_listen_t *listener,
+					    UNUSED int argc, UNUSED char *argv[])
+{
+	cprintf(listener, "%d\n", req_debug_lvl);
+	return CMD_OK;
+}
 
 static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -2053,24 +2082,36 @@ static fr_command_table_t command_table_inject[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_debug_level[] = {
+	{ "global", FR_WRITE,
+	  "debug level global <number> - Set debug level for global server events and requests written to the main server log.",
+	  command_debug_level_global, NULL },
+
+	{ "request", FR_WRITE,
+	  "debug level request <number> - Set debug level for requests written to debug file or debug socket.",
+	  command_debug_level_request, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 static fr_command_table_t command_table_debug[] = {
 	{ "condition", FR_WRITE,
 	  "debug condition [condition] - Enable debugging for requests matching [condition]",
 	  command_debug_condition, NULL },
 
-	{ "level", FR_WRITE,
-	  "debug level <number> - Set debug level to <number>.  Higher is more debugging.",
-	  command_debug_level, NULL },
-
 	{ "file", FR_WRITE,
-	  "debug file [filename] - Send all debugging output to [filename]",
+	  "debug file [filename] - Send all request debug output to [filename]",
 	  command_debug_file, NULL },
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
 	{ "socket", FR_WRITE,
-	  "debug socket [on|off] - Send all debugging output to radmin socket.",
+	  "debug socket [on|off] - Send all request debug output to radmin socket.",
 	  command_debug_socket, NULL },
 #endif
+
+	{ "level", FR_READ,
+	  "debug level <command> - Set debug levels",
+	  NULL, command_table_debug_level },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -2100,18 +2141,31 @@ static fr_command_table_t command_table_profiler[] = {
 };
 #endif
 
+static fr_command_table_t command_table_show_debug_level[] = {
+	{ "global", FR_WRITE,
+	  "show debug level global - Show debug level for global server events and requests written to the main server log.  Higher is more debugging.",
+	  command_show_debug_level_global, NULL },
+
+	{ "request", FR_WRITE,
+	  "show debug level request - Show debug level for requests written to debug file or debug socket.  Higher is more debugging",
+	  command_show_debug_level_request, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+
 static fr_command_table_t command_table_show_debug[] = {
 	{ "condition", FR_READ,
 	  "show debug condition - Shows current debugging condition.",
 	  command_show_debug_condition, NULL },
 
-	{ "level", FR_READ,
-	  "show debug level - Shows current debugging level.",
-	  command_show_debug_level, NULL },
-
 	{ "file", FR_READ,
 	  "show debug file - Shows current debugging file.",
 	  command_show_debug_file, NULL },
+
+	{ "level", FR_READ,
+	  "show debug level <command> - Shows current global or request debug level.",
+	  NULL, command_table_show_debug_level },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -2149,6 +2203,7 @@ static fr_command_table_t command_table_show_home[] = {
 	{ "list", FR_READ,
 	  "show home_server list - shows list of home servers",
 	  command_show_home_servers, NULL },
+
 	{ "state", FR_READ,
 	  "show home_server state <ipaddr> <port> [udp|tcp] - shows state of given home server",
 	  command_show_home_server_state, NULL },
