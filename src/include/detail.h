@@ -29,16 +29,20 @@ RCSIDH(detail_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum detail_state_t {
+typedef enum detail_file_state_t {
 	STATE_UNOPENED = 0,
 	STATE_UNLOCKED,
-	STATE_HEADER,
-	STATE_READING,
+	STATE_PROCESSING,
+} detail_file_state_t;
+
+typedef enum detail_entry_state_t {
+	STATE_HEADER = 0,
+	STATE_VPS,
 	STATE_QUEUED,
 	STATE_RUNNING,
 	STATE_NO_REPLY,
 	STATE_REPLIED
-} detail_state_t;
+} detail_entry_state_t;
 
 /*
  *	Allow people to revert to the old behavior if desired.
@@ -69,7 +73,8 @@ typedef struct listen_detail_t {
 
 	FILE		*fp;
 	off_t		offset;
-	detail_state_t 	state;
+	detail_file_state_t 	file_state;
+	detail_entry_state_t 	entry_state;
 	time_t		timestamp;
 	time_t		running;
 	fr_ipaddr_t	client_ip;

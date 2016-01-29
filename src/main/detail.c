@@ -46,8 +46,10 @@ RCSID("$Id$")
 static FR_NAME_NUMBER state_names[] = {
 	{ "unopened", STATE_UNOPENED },
 	{ "unlocked", STATE_UNLOCKED },
+	{ "processing", STATE_PROCESSING },
+
 	{ "header", STATE_HEADER },
-	{ "reading", STATE_READING },
+	{ "vps", STATE_VPS },
 	{ "queued", STATE_QUEUED },
 	{ "running", STATE_RUNNING },
 	{ "no-reply", STATE_NO_REPLY },
@@ -76,7 +78,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	if (request->reply->code == 0) {
 		data->delay_time = data->retry_interval * USEC;
 		data->signal = 1;
-		data->state = STATE_NO_REPLY;
+		data->entry_state = STATE_NO_REPLY;
 
 		RDEBUG("detail (%s): No response to request.  Will retry in %d seconds",
 		       data->name, data->retry_interval);
@@ -155,7 +157,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 
 		data->last_packet = now;
 		data->signal = 1;
-		data->state = STATE_REPLIED;
+		data->entry_state = STATE_REPLIED;
 		data->counter++;
 	}
 
@@ -178,7 +180,7 @@ static int detail_open(rad_listen_t *this)
 	struct stat st;
 	listen_detail_t *data = this->data;
 
-	rad_assert(data->state == STATE_UNOPENED);
+	rad_assert(data->file_state == STATE_UNOPENED);
 	data->delay_time = USEC;
 
 	/*
@@ -276,7 +278,7 @@ static int detail_open(rad_listen_t *this)
 	rad_assert(data->vps == NULL);
 	rad_assert(data->fp == NULL);
 
-	data->state = STATE_UNLOCKED;
+	data->file_state = STATE_UNLOCKED;
 
 	data->client_ip.af = AF_UNSPEC;
 	data->timestamp = 0;
@@ -342,12 +344,12 @@ int detail_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		data->state = STATE_REPLIED;
+		data->entry_state = STATE_REPLIED;
 		goto signal_thread;
 	}
 
 	if (!request_receive(NULL, listener, packet, &data->detail_client, fun)) {
-		data->state = STATE_NO_REPLY;	/* try again later */
+		data->entry_state = STATE_NO_REPLY;	/* try again later */
 
 	signal_thread:
 	fr_radius_free(&packet);
@@ -372,14 +374,14 @@ static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
 
-	switch (data->state) {
+	switch (data->file_state) {
 	case STATE_UNOPENED:
 open_file:
 		rad_assert(data->work_fd < 0);
 
 		if (!detail_open(listener)) return NULL;
 
-		rad_assert(data->state == STATE_UNLOCKED);
+		rad_assert(data->file_state == STATE_UNLOCKED);
 		rad_assert(data->work_fd >= 0);
 
 		/* FALL-THROUGH */
@@ -411,7 +413,7 @@ open_file:
 			close(data->work_fd);
 			data->fp = NULL;
 			data->work_fd = -1;
-			data->state = STATE_UNOPENED;
+			data->file_state = STATE_UNOPENED;
 			return NULL;
 		}
 
@@ -429,12 +431,21 @@ open_file:
 		/*
 		 *	Look for the header
 		 */
-		data->state = STATE_HEADER;
+		data->file_state = STATE_PROCESSING;
+		data->entry_state = STATE_HEADER;
 		data->delay_time = USEC;
 		data->vps = NULL;
+		break;
 
-		/* FALL-THROUGH */
+		/*
+		 *	Go to the next switch statement.
+		 */
+	case STATE_PROCESSING:
+		break;
+	}
 
+	
+	switch (data->entry_state) {
 	case STATE_HEADER:
 	do_header:
 		data->done_entry = false;
@@ -442,7 +453,7 @@ open_file:
 
 		data->tries = 0;
 		if (!data->fp) {
-			data->state = STATE_UNOPENED;
+			data->file_state = STATE_UNOPENED;
 			goto open_file;
 		}
 
@@ -471,7 +482,7 @@ open_file:
 			if (data->fp) fclose(data->fp);
 			data->fp = NULL;
 			data->work_fd = -1;
-			data->state = STATE_UNOPENED;
+			data->file_state = STATE_UNOPENED;
 			rad_assert(data->vps == NULL);
 
 			if (data->one_shot) {
@@ -492,9 +503,9 @@ open_file:
 	 *	at EOF.  In that case, queue whatever
 	 *	we have.
 	 */
-	case STATE_READING:
+	case STATE_VPS:
 		if (data->fp && !feof(data->fp)) break;
-		data->state = STATE_QUEUED;
+		data->entry_state = STATE_QUEUED;
 
 		/* FALL-THROUGH */
 
@@ -520,7 +531,7 @@ open_file:
 	 *	forever.
 	 */
 	case STATE_NO_REPLY:
-		data->state = STATE_QUEUED;
+		data->entry_state = STATE_QUEUED;
 		goto alloc_packet;
 
 	/*
@@ -549,7 +560,7 @@ open_file:
 		}
 
 		fr_pair_list_free(&data->vps);
-		data->state = STATE_HEADER;
+		data->entry_state = STATE_HEADER;
 		goto do_header;
 	}
 
@@ -576,9 +587,9 @@ open_file:
 		 *	We're reading VP's, and got a blank line.
 		 *	Queue the packet.
 		 */
-		if ((data->state == STATE_READING) &&
+		if ((data->entry_state == STATE_VPS) &&
 		    (buffer[0] == '\n')) {
-			data->state = STATE_QUEUED;
+			data->entry_state = STATE_QUEUED;
 			break;
 		}
 
@@ -587,11 +598,11 @@ open_file:
 		 *	found.  If not, keep reading lines until we
 		 *	find one.
 		 */
-		if (data->state == STATE_HEADER) {
+		if (data->entry_state == STATE_HEADER) {
 			int y;
 
 			if (sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
-				data->state = STATE_READING;
+				data->entry_state = STATE_VPS;
 			}
 			continue;
 		}
@@ -690,7 +701,7 @@ open_file:
 	if (data->done_entry) {
 		DEBUG2("detail (%s): Skipping record for timestamp %lu", data->name, data->timestamp);
 		fr_pair_list_free(&data->vps);
-		data->state = STATE_HEADER;
+		data->entry_state = STATE_HEADER;
 		goto do_header;
 	}
 
@@ -702,7 +713,7 @@ open_file:
 	 *	result in a truncated record.  When that happens,
 	 *	treat it as EOF.
 	 */
-	if (data->state != STATE_QUEUED) {
+	if (data->entry_state != STATE_QUEUED) {
 		ERROR("detail (%s): Truncated record: treating it as EOF for detail file %s",
 		      data->name, data->filename_work);
 		fr_pair_list_free(&data->vps);
@@ -714,7 +725,7 @@ open_file:
 	 *	anything.  Clean up, and don't return anything.
 	 */
 	if (!data->vps) {
-		data->state = STATE_HEADER;
+		data->entry_state = STATE_HEADER;
 		if (!data->fp || feof(data->fp)) goto cleanup;
 		return NULL;
 	}
@@ -836,7 +847,7 @@ open_file:
 	}
 	vp->vp_integer = data->tries;
 
-	data->state = STATE_RUNNING;
+	data->entry_state = STATE_RUNNING;
 	data->running = packet->timestamp.tv_sec;
 
 	return packet;
@@ -919,7 +930,7 @@ static int detail_delay(listen_detail_t *data)
 
 	DEBUG2("detail (%s): Detail listener state %s waiting %d.%06d sec",
 	       data->name,
-	       fr_int2str(state_names, data->state, "?"),
+	       fr_int2str(state_names, data->entry_state, "?"),
 	       (delay / USEC), delay % USEC);
 
 	return delay;
@@ -989,7 +1000,7 @@ static void *detail_handler_thread(void *arg)
 
 			packet = detail_poll(this);
 			if (!packet) break;
-		} while (data->state != STATE_REPLIED);
+		} while (data->entry_state != STATE_REPLIED);
 	}
 
 	return NULL;
@@ -1094,7 +1105,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	data->work_fd = -1;
 	data->vps = NULL;
 	data->fp = NULL;
-	data->state = STATE_UNOPENED;
+	data->file_state = STATE_UNOPENED;
+	data->entry_state = STATE_HEADER;
 	data->delay_time = data->poll_interval * USEC;
 	data->signal = 1;
 

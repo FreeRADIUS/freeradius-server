@@ -2529,8 +2529,10 @@ fail:
 static FR_NAME_NUMBER state_names[] = {
 	{ "unopened", STATE_UNOPENED },
 	{ "unlocked", STATE_UNLOCKED },
+	{ "processing", STATE_PROCESSING },
+
 	{ "header", STATE_HEADER },
-	{ "reading", STATE_READING },
+	{ "vps", STATE_VPS },
 	{ "queued", STATE_QUEUED },
 	{ "running", STATE_RUNNING },
 	{ "no-reply", STATE_NO_REPLY },
@@ -2567,10 +2569,10 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 	cprintf(listener, "state\t%s\n",
-		fr_int2str(state_names, data->state, "?"));
+		fr_int2str(state_names, data->file_state, "?"));
 
-	if ((data->state == STATE_UNOPENED) ||
-	    (data->state == STATE_UNLOCKED)) {
+	if ((data->file_state == STATE_UNOPENED) ||
+	    (data->file_state == STATE_UNLOCKED)) {
 		return CMD_OK;
 	}
 
