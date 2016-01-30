@@ -496,6 +496,8 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 
 char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
+int rlm_ldap_global_init(rlm_ldap_t *inst);
+
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
