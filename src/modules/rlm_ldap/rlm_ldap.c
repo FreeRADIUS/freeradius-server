@@ -1168,6 +1168,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
+	 *	Set global options
+	 */
+	if (rlm_ldap_global_init(inst) < 0) goto error;
+
+	/*
 	 *	Initialize the socket pool.
 	 */
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
