@@ -25,12 +25,14 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
+#define LOG_PREFIX "rlm_sql_ippool (%s) - "
+#define LOG_PREFIX_ARGS inst->sql_instance_name
+
+#include <rlm_sql.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 
-#include <rlm_sql.h>
 
 #define MAX_QUERY_LEN 4096
 

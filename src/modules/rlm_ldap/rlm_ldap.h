@@ -15,6 +15,9 @@
 #ifndef _RLM_LDAP_H
 #define _RLM_LDAP_H
 
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -103,8 +106,6 @@ ldap_create_session_tracking_control LDAP_P((
 #if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
 #  define LDAP_CAN_PARSE_URLS
 #endif
-
-#define MOD_PREFIX			"rlm_ldap"	//!< The name of the module.
 
 #define LDAP_MAX_CONTROLS		10		//!< Maximum number of client/server controls.
 							//!< Used to allocate static arrays of control pointers.

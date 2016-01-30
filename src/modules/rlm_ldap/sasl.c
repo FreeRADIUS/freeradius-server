@@ -60,8 +60,8 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 	sasl_interact_t		*cb_p;
 
 	for (cb_p = cb; cb_p->id != SASL_CB_LIST_END; cb_p++) {
-		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL challenge : %s", cb_p->challenge);
-		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL prompt    : %s", cb_p->prompt);
+		ROPTIONAL(RDEBUG3, DEBUG3, "SASL challenge : %s", cb_p->challenge);
+		ROPTIONAL(RDEBUG3, DEBUG3, "SASL prompt    : %s", cb_p->prompt);
 
 		switch (cb_p->id) {
 		case SASL_CB_AUTHNAME:
@@ -83,7 +83,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 		default:
 			break;
 		}
-		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL result    : %s", cb_p->result ? (char const *)cb_p->result : "");
+		ROPTIONAL(RDEBUG3, DEBUG3, "SASL result    : %s", cb_p->result ? (char const *)cb_p->result : "");
 	}
 	return SASL_OK;
 }
@@ -133,7 +133,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	sasl_ctx.password = password;
 	sasl_ctx.extra = sasl;
 
-	MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
+	ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
 	for (;;) {
 		ret = ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
 						 our_serverctrls, our_clientctrls,
@@ -173,7 +173,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		/*
 		 *	...otherwise, the bind is still in progress.
 		 */
-		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "Continuing SASL mech %s...", mech);
+		ROPTIONAL(RDEBUG3, DEBUG3, "Continuing SASL mech %s...", mech);
 
 		/*
 		 *	Write the servers response to the debug log
@@ -185,7 +185,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				char *escaped;
 
 				escaped = fr_asprint(request, srv_cred->bv_val, srv_cred->bv_len, '\0');
-				MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
+				ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
 
 				talloc_free(escaped);
 				ldap_memfree(srv_cred);

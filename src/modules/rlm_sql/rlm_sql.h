@@ -29,12 +29,15 @@
 
 RCSIDH(rlm_sql_h, "$Id$")
 
+#ifndef LOG_PREFIX
+#  define LOG_PREFIX "rlm_sql (%s) - "
+#  define LOG_PREFIX_ARGS inst->name
+#endif
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/connection.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/exfile.h>
-
-#define MOD_PREFIX "rlm_sql"
 
 #define PW_ITEM_CHECK 0
 #define PW_ITEM_REPLY 1

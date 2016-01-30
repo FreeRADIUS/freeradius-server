@@ -352,28 +352,6 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 
 /** Use different logging functions depending on whether request is NULL or not.
  *
- * @note The module must define MOD_PREFIX as its name (do this in the module
- *	 header file) e.g. @code{.c}#define MOD_PREFIX "rlm_example"@endcode
- *
- * This is useful for areas of code which are run on server startup, and when
- * processing requests.
- *
- * @param _l_request The name of a R* logging macro e.g. RDEBUG3.
- * @param _l_global The name of a global logging macro e.g. DEBUG3.
- * @param fmt printf style format string.
- * @param ... printf arguments.
- */
-#define MOD_ROPTIONAL(_l_request, _l_global, fmt, ...) \
-do {\
-	if (request) {\
-		_l_request(fmt, ## __VA_ARGS__);\
-	} else {\
-		_l_global(MOD_PREFIX " (%s): " fmt, inst->name, ## __VA_ARGS__);\
- 	}\
-} while (0)
-
-/** Use different logging functions depending on whether request is NULL or not.
- *
  * This is useful for areas of code which are run on server startup, and when
  * processing requests.
  *
