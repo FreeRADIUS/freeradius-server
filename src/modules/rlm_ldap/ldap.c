@@ -1377,33 +1377,33 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 	*	Expect_password is set when we process the mapping, and is only true if there was a mapping between
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
-	if (inst->expect_password && (rad_debug_lvl > 1)) {
-		if (!fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, 0, PW_NT_PASSWORD, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
+	if (!inst->expect_password || (rad_debug_lvl < L_DBG_LVL_2)) return;
+
+	if (!fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->config, 0, PW_NT_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->config, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
 		if (!inst->directory->cleartext_password) switch (inst->directory->type) {
 			case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute.");
 				RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP.");
 				RWDEBUG("!!! Remove password map and alter configuration to bind with the user's");
 				RWDEBUG("!!! credentials, or to authenticate users via Samba (ntlm_auth/winbindd).");
-		    		break;
+				break;
 
 			case LDAP_DIRECTORY_EDIRECTORY:
 				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute.");
 				RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search.");
 				RWDEBUG("!!! Remove password map and set 'edir = true'.");
-		    		break;
+				break;
 
 			default:
 			no_password:
 				RWDEBUG("No \"known good\" password added.  Ensure the admin user has permission to "
 					"read the password attribute");
 				break;
-		    	} else goto no_password;
-		}
+		} else goto no_password;
 	}
 }
 
