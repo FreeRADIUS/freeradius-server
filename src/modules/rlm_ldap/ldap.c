@@ -1390,7 +1390,8 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 			RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP");
 			RWDEBUG("!!! Remove the password map and either:");
 			RWDEBUG("!!!  - List %s in the authenticate section, and set attribute "
-				"&control:Auth-Type := '%s' (pap only)", inst->name, inst->name);
+				"&control:Auth-Type := '%s' in the authorize section (pap only)",
+				inst->name, inst->name);
 			RWDEBUG("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
 			RWDEBUG("!!!  - Configure authentication via wbclient (mschapv2 only)");
 			break;
@@ -1402,7 +1403,8 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 			RWDEBUG("!!!  - Set 'edir = yes' and enable the universal password feature on your "
 				"eDir server (recommended)");
 			RWDEBUG("!!!  - List %s in the authenticate section, and set attribute "
-				"&control:Auth-Type := '%s' (pap only)", inst->name, inst->name);
+				"&control:Auth-Type := '%s' in the authorize section (pap only)",
+				inst->name, inst->name);
 			break;
 
 		default:
