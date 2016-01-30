@@ -88,7 +88,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 	}
 
 	entry_cnt = ldap_count_entries((*pconn)->handle, result);
-	if (entry_cnt != 0) {
+	if (entry_cnt != 1) {
 		WARN("Capability check failed: Ambiguous result for rootDSE, expected 1 entry, got %i", entry_cnt);
 		rcode = 1;
 		goto finish;
