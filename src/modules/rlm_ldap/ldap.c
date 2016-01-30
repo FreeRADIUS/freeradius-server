@@ -1384,26 +1384,37 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 	    !fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) &&
 	    !fr_pair_find_by_num(request->config, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
 	    !fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
-		if (!inst->directory->cleartext_password) switch (inst->directory->type) {
-			case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
-				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute.");
-				RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP.");
-				RWDEBUG("!!! Remove password map and alter configuration to bind with the user's");
-				RWDEBUG("!!! credentials, or to authenticate users via Samba (ntlm_auth/winbindd).");
-				break;
+		switch (inst->directory->type) {
+		case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
+			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+			RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP");
+			RWDEBUG("!!! Remove the password map and either:");
+			RWDEBUG("!!!  - List %s in the authenticate section, and set attribute "
+				"&control:Auth-Type := '%s' (pap only)", inst->name, inst->name);
+			RWDEBUG("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
+			RWDEBUG("!!!  - Configure authentication via wbclient (mschapv2 only)");
+			break;
 
-			case LDAP_DIRECTORY_EDIRECTORY:
-				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute.");
-				RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search.");
-				RWDEBUG("!!! Remove password map and set 'edir = true'.");
-				break;
+		case LDAP_DIRECTORY_EDIRECTORY:
+			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+			RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
+			RWDEBUG("!!! Remove the password map and either:");
+			RWDEBUG("!!!  - Set 'edir = yes' and enable the universal password feature on your "
+				"eDir server (recommended)");
+			RWDEBUG("!!!  - List %s in the authenticate section, and set attribute "
+				"&control:Auth-Type := '%s' (pap only)", inst->name, inst->name);
+			break;
 
-			default:
-			no_password:
-				RWDEBUG("No \"known good\" password added.  Ensure the admin user has permission to "
-					"read the password attribute");
-				break;
-		} else goto no_password;
+		default:
+			if (!inst->admin_identity) {
+				RWDEBUG("No \"known good\" password added.  Ensure \"%s\" has permission to "
+					"read the user's password attribute", inst->admin_identity);
+			} else {
+				RWDEBUG("No \"known good\" password added.  Set 'identity' to the dn of an "
+					"account that has permission to read the user's password attribute");
+			}
+			break;
+		}
 	}
 }
 
