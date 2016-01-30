@@ -294,13 +294,13 @@ struct ldap_instance {
 	char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
 							//!< cached group memberships.
 
-	fr_dict_attr_t const	*cache_da;			//!< The DA associated with this specific instance of the
+	fr_dict_attr_t const	*cache_da;		//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
 	char const	*group_attribute;		//!< Sets the attribute we use when comparing group
 							//!< group memberships.
 
-	fr_dict_attr_t const	*group_da;			//!< The DA associated with this specific instance of the
+	fr_dict_attr_t const	*group_da;		//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
 	/*
