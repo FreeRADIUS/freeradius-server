@@ -1342,7 +1342,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 
 	/*
-	 *	Set global optiona
+	 *	Set global options
 	 */
 	if (rlm_ldap_global_init(inst) < 0) goto error;
 
