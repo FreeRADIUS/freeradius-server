@@ -224,7 +224,7 @@ static ssize_t flush_channels(int sockfd, char *buffer, size_t bufsize)
 			break;
 
 		default:
-			fprintf(stderr, "Unexpected response\n");
+			fprintf(stderr, "Unexpected response %02x\n", channel);
 			return -1;
 		}
 	}
