@@ -89,9 +89,8 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, fr_prot
 static rad_listen_t *listen_parse(listen_config_t *lc);
 
 #ifdef WITH_COMMAND_SOCKET
-static int command_tcp_recv(rad_listen_t *listener);
+static int command_init_recv(rad_listen_t *listener);
 static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
-static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 
 static fr_protocol_t master_listen[];
@@ -980,9 +979,8 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #  ifdef WITH_COMMAND_SOCKET
 	if (this->type == RAD_LISTEN_COMMAND) {
-		this->recv = command_tcp_recv;
+		this->recv = command_init_recv;
 		this->send = command_tcp_send;
-		command_write_magic(this->fd, sock);
 	} else
 #  endif
 	{

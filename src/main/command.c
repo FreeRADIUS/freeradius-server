@@ -3202,6 +3202,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	uint8_t *command;
 
 	r = fr_channel_drain(listener->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &command, co->offset);
+	if ((r < 0) && (errno == EINTR)) return 0;
 
 	if (r <= 0) {
 	do_close:
@@ -3321,59 +3322,6 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 }
 
 
-/*
- *	Write 32-bit magic number && version information.
- */
-static int command_write_magic(int newfd, listen_socket_t *sock)
-{
-	ssize_t r;
-	uint32_t magic;
-	fr_channel_type_t channel;
-	char buffer[16];
-
-	r = fr_channel_read(newfd, &channel, buffer, 8);
-	if (r <= 0) {
-		ERROR("Failed reading magic: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	magic = htonl(0xf7eead16);
-	if ((r != 8) || (channel != FR_CHANNEL_INIT_ACK) ||
-	    (memcmp(&magic, &buffer, sizeof(magic)) != 0)) {
-		ERROR("Incompatible versions");
-		return -1;
-	}
-
-	r = fr_channel_write(newfd, FR_CHANNEL_INIT_ACK, buffer, 8);
-	if (r <= 0) {
-		ERROR("Failed writing magic: %s", fr_syserror(errno));
-		return -1;
-	}
-	/*
-	 *	Write an initial challenge
-	 */
-	if (sock) {
-		int i;
-		fr_cs_buffer_t *co;
-
-		co = talloc_zero(sock, fr_cs_buffer_t);
-		sock->packet = (void *) co;
-
-		for (i = 0; i < 16; i++) {
-			co->buffer[i] = fr_rand();
-		}
-
-		r = fr_channel_write(newfd, FR_CHANNEL_AUTH_CHALLENGE, co->buffer, 16);
-		if (r <= 0) {
-			ERROR("Failed writing auth challenge: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-
 static int command_tcp_recv(rad_listen_t *this)
 {
 	ssize_t r;
@@ -3388,19 +3336,29 @@ static int command_tcp_recv(rad_listen_t *this)
 	}
 
 	if (!co->auth) {
+		uint8_t *data;
 		uint8_t expected[16];
 
-		r = fr_channel_read(this->fd, &channel, co->buffer, 16);
-		if ((r != 16) || (channel != FR_CHANNEL_AUTH_RESPONSE)) {
-			goto do_close;
+		r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, co->offset);
+		if ((r < 0) && (errno == EINTR)) return 0;
+
+		if (r <= 0) goto do_close;
+
+		/*
+		 *	We need more data.  Go read it.
+		 */
+		if (channel == FR_CHANNEL_WANT_MORE) {
+			co->offset = r;
+			return 0;
 		}
+
+		if ((r != sizeof(expected)) || (channel != FR_CHANNEL_AUTH_RESPONSE)) goto do_close;
 
 		fr_hmac_md5(expected, (void const *) sock->client->secret,
 			    strlen(sock->client->secret),
-			    (uint8_t *) co->buffer, 16);
+			    data, sizeof(expected));
 
-		if (fr_radius_digest_cmp(expected,
-				   (uint8_t *) co->buffer + 16, 16 != 0)) {
+		if (fr_radius_digest_cmp(expected, data + sizeof(expected), sizeof(expected)) != 0) {
 			ERROR("radmin failed challenge: Closing socket");
 			goto do_close;
 		}
@@ -3427,6 +3385,95 @@ static int command_domain_recv(rad_listen_t *listener)
 	return command_domain_recv_co(listener, &sock->co);
 }
 
+/*
+ *	Write 32-bit magic number && version information.
+ */
+static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool challenge)
+{
+	int i;
+	ssize_t r;
+	uint32_t magic;
+	fr_channel_type_t channel;
+	uint8_t *data;
+
+	/*
+	 *	Start off by reading 4 bytes of magic, followed by 4 bytes of zero.
+	 */
+	r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, co->offset);
+	if ((r < 0) && (errno == EINTR)) return 0;
+
+	if (r <= 0) {
+		ERROR("Failed reading magic: %s", fr_syserror(errno));
+
+	do_close:
+		command_close_socket(this);
+		return 0;
+	}
+
+	/*
+	 *	We need more data.  Go read it.
+	 */
+	if (channel == FR_CHANNEL_WANT_MORE) {
+		co->offset = r;
+		return 0;
+	}
+
+	if ((r != 8) || (channel != FR_CHANNEL_INIT_ACK)) goto do_close;
+
+	magic = htonl(0xf7eead16);
+	if (memcmp(&magic, data, sizeof(magic)) != 0) {
+		ERROR("Incompatible versions");
+		goto do_close;
+	}
+
+	/*
+	 *	Ack the magic + 4 bytes of zero back.
+	 */
+	r = fr_channel_write(this->fd, FR_CHANNEL_INIT_ACK, data, 8);
+	if (r <= 0) {
+		ERROR("Failed writing magic: %s", fr_syserror(errno));
+		goto do_close;
+	}
+
+	if (challenge) {
+		for (i = 0; i < 16; i++) {
+			co->buffer[i] = fr_rand();
+		}
+
+		r = fr_channel_write(this->fd, FR_CHANNEL_AUTH_CHALLENGE, co->buffer, 16);
+		if (r <= 0) {
+			ERROR("Failed writing auth challenge: %s", fr_syserror(errno));
+			goto do_close;
+		}
+
+	}
+
+	return 1;
+}
+
+static int command_init_recv(rad_listen_t *this)
+{
+	int rcode;
+	fr_command_socket_t *sock = this->data;
+
+	if (sock->magic == COMMAND_SOCKET_MAGIC) {
+		rcode = command_magic_recv(this, &sock->co, false);
+		if (rcode <= 0) return rcode;
+
+		this->recv = command_domain_recv;
+	} else {
+		listen_socket_t *sock2 = this->data;
+
+		rcode = command_magic_recv(this, (fr_cs_buffer_t *) sock2->packet, true);
+		if (rcode <= 0) return rcode;
+
+		this->recv = command_tcp_recv;
+	}
+
+	return 0;
+}
+
+
 static int command_domain_accept(rad_listen_t *listener)
 {
 	int newfd;
@@ -3451,6 +3498,7 @@ static int command_domain_accept(rad_listen_t *listener)
 		DEBUG2(" ... failed to accept connection");
 		return 0;
 	}
+
 	/*
 	 *	Is likely redundant as newfd should inherit blocking
 	 *	from listener->fd.  But better to be safe.
@@ -3487,34 +3535,6 @@ static int command_domain_accept(rad_listen_t *listener)
 #endif
 
 	/*
-	 *	@fixme: This should be better integrated into the event
-	 *	loop so that command_write_magic is called once we know
-	 *	the child socket is readable.
-	 */
-	{
-		fd_set read_fds;
-
-		struct timeval timeout;
-
-		timeout.tv_sec = 0;
-		timeout.tv_usec = 500000;	/* 0.5 s */
-
-		FD_ZERO(&read_fds);
-		FD_SET(newfd, &read_fds);
-
-		if (select(FD_SETSIZE, &read_fds, NULL, NULL, &timeout) <= 0) {
-			ERROR("Error or timeout whilst waiting for control socket magic");
-			close(newfd);
-			return 0;
-		}
-	}
-
-	if (command_write_magic(newfd, NULL) < 0) {
-		close(newfd);
-		return 0;
-	}
-
-	/*
 	 *	Add the new listener.
 	 */
 	this = listen_alloc(listener, listener->type, listener->proto);
@@ -3537,7 +3557,11 @@ static int command_domain_accept(rad_listen_t *listener)
 	sock->co.mode = ((fr_command_socket_t *) listener->data)->co.mode;
 
 	this->fd = newfd;
-	this->recv = command_domain_recv;
+
+	/*
+	 *	Start off by sending the magic handshake.
+	 */
+	this->recv = command_init_recv;
 
 	/*
 	 *	Tell the event loop that we have a new FD
