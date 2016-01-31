@@ -53,7 +53,6 @@ char const *unlang_keyword[] = {
 
 char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
 
-#ifdef HAVE_PTHREAD_H
 /*
  *	Lock the mutex for the module
  */
@@ -71,13 +70,6 @@ static void safe_unlock(module_instance_t *instance)
 	if (instance->mutex)
 		pthread_mutex_unlock(instance->mutex);
 }
-#else
-/*
- *	No threads: these functions become NULL's.
- */
-#define safe_lock(foo)
-#define safe_unlock(foo)
-#endif
 
 static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {

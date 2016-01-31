@@ -330,10 +330,9 @@ int fb_init_socket(rlm_sql_firebird_conn_t *conn)
 	conn->sqlda_out->sqln = 5;
 	conn->sqlda_out->version =  SQLDA_VERSION1;
 	conn->sql_dialect = 3;
-#ifdef _PTHREAD_H
+
 	pthread_mutex_init (&conn->mut, NULL);
 	DEBUG("Init mutex %p\n", &conn->mut);
-#endif
 
 	/*
 	 *	Set tpb to read_committed/wait/no_rec_version
@@ -549,9 +548,7 @@ int fb_rollback(rlm_sql_firebird_conn_t *conn) {
 	if (conn->trh)  {
 		isc_rollback_transaction(conn->status, &conn->trh);
 //		conn->in_use = 0;
-#ifdef _PTHREAD_H
 		pthread_mutex_unlock(&conn->mut);
-#endif
 
 		if (IS_ISC_ERROR(conn->status)) {
 			return fb_error(conn);
@@ -571,8 +568,7 @@ int fb_commit(rlm_sql_firebird_conn_t *conn) {
 		}
 	}
 //	conn->in_use = 0;
-#ifdef _PTHREAD_H
 	pthread_mutex_unlock(&conn->mut);
-#endif
+
 	return conn->sql_code;
 }

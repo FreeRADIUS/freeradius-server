@@ -24,14 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-
-#ifdef HAVE_PTHREAD_H
-#  define PTHREAD_MUTEX_LOCK(_x) if (_x->lock) pthread_mutex_lock(&((_x)->mutex))
-#  define PTHREAD_MUTEX_UNLOCK(_x) if (_x->lock) pthread_mutex_unlock(&((_x)->mutex))
-#else
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
+#include <pthread.h>
 
 /** Standard thread safe circular buffer
  *
@@ -46,9 +39,8 @@ struct fr_cbuff {
 	void			**elem;			//!< Ring buffer data
 
 	bool			lock;			//!< Perform thread synchronisation
-#ifdef HAVE_PTHREAD_H
+
 	pthread_mutex_t		mutex;			//!< Thread synchronisation mutex
-#endif
 };
 
 /** Initialise a new circular buffer
@@ -60,11 +52,7 @@ struct fr_cbuff {
  *	- New cbuff.
  *	- NULL on error.
  */
-#ifdef HAVE_PTHREAD_H
 fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock)
-#else
-fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, UNUSED bool lock)
-#endif
 {
 	fr_cbuff_t *cbuff;
 
@@ -89,12 +77,11 @@ fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, UNUSED bool lock)
 	}
 	cbuff->size = size;
 
-#ifdef HAVE_PTHREAD_H
 	if (lock) {
 		cbuff->lock = true;
 		pthread_mutex_init(&cbuff->mutex, NULL);
 	}
-#endif
+
 	return cbuff;
 }
 
@@ -107,7 +94,7 @@ fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, UNUSED bool lock)
  */
 void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
 {
-	PTHREAD_MUTEX_LOCK(cbuff);
+	if (cbuff->lock) pthread_mutex_lock(&cbuff->mutex);
 
 	if (cbuff->elem[cbuff->in]) {
 		TALLOC_FREE(cbuff->elem[cbuff->in]);
@@ -122,7 +109,7 @@ void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
 		cbuff->out = (cbuff->out + 1) & cbuff->size;
 	}
 
-	PTHREAD_MUTEX_UNLOCK(cbuff);
+	if (cbuff->lock) pthread_mutex_unlock(&cbuff->mutex);
 }
 
 /** Remove an item from the buffer, and reparent to ctx
@@ -137,7 +124,7 @@ void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
 {
 	void *obj = NULL;
 
-	PTHREAD_MUTEX_LOCK(cbuff);
+	if (cbuff->lock) pthread_mutex_lock(&cbuff->mutex);
 
 	/* Buffer is empty */
 	if (cbuff->out == cbuff->in) goto done;
@@ -146,7 +133,7 @@ void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
 	cbuff->out = (cbuff->out + 1) & cbuff->size;
 
 done:
-	PTHREAD_MUTEX_UNLOCK(cbuff);
+	if (cbuff->lock) pthread_mutex_unlock(&cbuff->mutex);
 
 	return obj;
 }

@@ -374,20 +374,6 @@ if test "x$WITH_ASCEND_BINARY" = "xyes"; then
 fi
 
 dnl #
-dnl #  extra argument: --with-threads
-dnl #
-WITH_THREADS=yes
-AC_ARG_WITH(threads,
-[  --with-threads          use threads, if available.  (default=yes) ],
-[ case "$withval" in
-  yes)
-    ;;
-  *)
-    WITH_THREADS=no
-  esac ]
-)
-
-dnl #
 dnl #  extra argument: --with-tcp
 dnl #
 WITH_TCP=yes
@@ -696,17 +682,18 @@ dnl #
 dnl #  If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 dnl #
 old_CFLAGS=$CFLAGS
-if test "x$WITH_THREADS" = "xyes"; then
-  if test $ac_cv_prog_suncc = "yes"; then
-    CFLAGS="$CFLAGS -mt"
-  fi
+if test $ac_cv_prog_suncc = "yes"; then
+  CFLAGS="$CFLAGS -mt"
+fi
 
-  AC_CHECK_HEADERS(pthread.h, [],
-    [
-      WITH_THREADS="no"
-      fail=[pthread.h]
-    ])
+HAVE_THREADS=
+AC_CHECK_HEADERS(pthread.h, [],
+[
+  HAVE_THREADS="no"
+  fail=[pthread.h]
+])
 
+if test "x$HAVE_THREADS" != "xno"; then
   dnl #
   dnl #  pthread stuff is usually in -lpthread
   dnl #  or in -lc_r, on *BSD
@@ -714,83 +701,69 @@ if test "x$WITH_THREADS" = "xyes"; then
   dnl #  On Some systems, we need extra pre-processor flags, to get them to
   dnl #  to do the threading properly.
   dnl #
-  if test "x$WITH_THREADS" != "xno"; then
-    AC_CHECK_LIB(pthread, pthread_create,
-      [
-        HAVE_LPTHREAD='yes'
-        CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-        LIBS="-lpthread $LIBS"
+  AC_CHECK_LIB(pthread, pthread_create,
+    [
+      HAVE_THREADS="yes"
+      CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+      LIBS="-lpthread $LIBS"
 
-        dnl #
-        dnl #  -pthread should add all required CPP definitions and linker
-        dnl #  arguments. But not all compilers support it, or some compilers
-        dnl #  only support it on certain platforms.
-        dnl #
-        AX_CC_PTHREAD_FLAG
-        if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
-          CFLAGS="$CFLAGS -pthread"
-        fi
-      ]
-    )
-
-    dnl #
-    dnl #  Check for libc_r which used to be the threading library used
-    dnl #  for FreeBSD. Internet says it may be deprecated, but if we
-    dnl #  can't find lpthread it's probably worth checking.
-    dnl #
-    if test "x$HAVE_LPTHREAD" != "xyes"; then
-      AC_CHECK_LIB(c_r, pthread_create,
-        [
-          CFLAGS="$CFLAGS -D_THREAD_SAFE"
-
-          dnl #
-          dnl #  -pthread should add all required CPP definitions and linker
-          dnl #  arguments. But not all compilers support it, or some compilers
-          dnl #  only support it on certain platforms.
-          dnl #
-          AX_CC_PTHREAD_FLAG
-          if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
-            LIBS="-lc_r $LIBS"
-          else
-            CFLAGS="$CFLAGS -pthread"
-          fi
-        ],
-        [ fail=[-lc_r or -lpthread] ]
-      )
-    fi
-  fi
-
-  if test "x$WITH_THREADS" != "xyes"; then
-    AC_MSG_WARN([silently not building with thread support.])
-    AC_MSG_WARN([FAILURE: thread support requires: $fail.])
-  else
-    AC_DEFINE(WITH_THREADS, [1], [define if you want thread support])
-  fi
-fi
-
-dnl #
-dnl #  If we have NO pthread libraries, remove any knowledge of threads.
-dnl #
-if test "x$WITH_THREADS" != "xyes"; then
-  CFLAGS=$old_CFLAGS
-  ac_cv_header_pthread_h="no"
-  WITH_THREADS=no
-else
-  dnl #
-  dnl #  We need sem_init() and friends, as they're the friendliest
-  dnl #  semaphore functions for threading.
-  dnl #
-  dnl #  HP/UX requires linking with librt, too, to get the sem_* symbols.
-  dnl #  Some systems have them in -lsem
-  dnl #  Solaris has them in -lposix4
-  dnl #  NetBSD has them in -lsemaphore
-  dnl #
-
-  AC_SEARCH_LIBS(sem_init, pthread sem posix4 rt semaphore,
-    [],
-    [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz]])]
+      dnl #
+      dnl #  -pthread should add all required CPP definitions and linker
+      dnl #  arguments. But not all compilers support it, or some compilers
+      dnl #  only support it on certain platforms.
+      dnl #
+      AX_CC_PTHREAD_FLAG
+      if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+        CFLAGS="$CFLAGS -pthread"
+      fi
+    ]
   )
 fi
+
+dnl #
+dnl #  Check for libc_r which used to be the threading library used
+dnl #  for FreeBSD. Internet says it may be deprecated, but if we
+dnl #  can't find lpthread it's probably worth checking.
+dnl #
+if test "x$HAVE_THREADS" != "xyes"; then
+  AC_CHECK_LIB(c_r, pthread_create,
+    [
+      HAVE_THREADS="yes"
+      CFLAGS="$CFLAGS -D_THREAD_SAFE"
+
+      dnl #
+      dnl #  -pthread should add all required CPP definitions and linker
+      dnl #  arguments. But not all compilers support it, or some compilers
+      dnl #  only support it on certain platforms.
+      dnl #
+      AX_CC_PTHREAD_FLAG
+      if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+        LIBS="-lc_r $LIBS"
+      else
+        CFLAGS="$CFLAGS -pthread"
+      fi
+    ],
+    [ fail=[-lc_r or -lpthread] ]
+  )
+fi
+
+if test "x$HAVE_THREADS" != "xyes"; then
+  AC_MSG_ERROR([FreeRADIUS requires thread support, missing: $fail])
+fi
+
+dnl #
+dnl #  We need sem_init() and friends, as they're the friendliest
+dnl #  semaphore functions for threading.
+dnl #
+dnl #  HP/UX requires linking with librt, too, to get the sem_* symbols.
+dnl #  Some systems have them in -lsem
+dnl #  Solaris has them in -lposix4
+dnl #  NetBSD has them in -lsemaphore
+dnl #
+AC_SEARCH_LIBS(sem_init, pthread sem posix4 rt semaphore,
+  [],
+  [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz]])]
+)
 
 dnl #
 dnl #  Check if we have -ldl

@@ -139,12 +139,6 @@ typedef void (*sig_t)(int);
 #  define NDEBUG_UNUSED		UNUSED
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#  define PTHREAD_UNUSED
-#else
-#  define PTHREAD_UNUSED	UNUSED
-#endif
-
 #define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
 /*

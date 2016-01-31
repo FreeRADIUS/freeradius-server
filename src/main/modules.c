@@ -511,7 +511,6 @@ static int module_parse_conf(void **data, module_instance_t *instance)
  */
 static int _module_instance_free(module_instance_t *instance)
 {
-#ifdef HAVE_PTHREAD_H
 	if (instance->mutex) {
 		/*
 		 *	FIXME
@@ -520,7 +519,6 @@ static int _module_instance_free(module_instance_t *instance)
 		 */
 		pthread_mutex_destroy(instance->mutex);
 	}
-#endif
 
 	/*
 	 *	Free HUP versions of the module's instance data
@@ -735,7 +733,6 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_n
 		}
 	}
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
 	 *
@@ -749,7 +746,6 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_n
 		 */
 		pthread_mutex_init(instance->mutex, NULL);
 	}
-#endif
 
 	instance->instantiated = true;
 	instance->last_hup = time(NULL); /* don't let us load it, then immediately hup it */

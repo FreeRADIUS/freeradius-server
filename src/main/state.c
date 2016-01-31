@@ -115,23 +115,13 @@ struct fr_state_tree_t {
 
 	fr_state_entry_t	*head, *tail;			//!< Entries to expire.
 	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
-#endif
 };
 
 fr_state_tree_t *global_state = NULL;
 
-#ifdef HAVE_PTHREAD_H
-#  define PTHREAD_MUTEX_LOCK if (main_config.spawn_workers) pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK if (main_config.spawn_workers) pthread_mutex_unlock
-#else
-/*
- *	This is easier than ifdef's throughout the code.
- */
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
+#define PTHREAD_MUTEX_LOCK if (main_config.spawn_workers) pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK if (main_config.spawn_workers) pthread_mutex_unlock
 
 static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
 
@@ -153,9 +143,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 {
 	fr_state_entry_t *this;
 
-#ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
-#endif
 
 	DEBUG4("Freeing state tree %p", state);
 
@@ -208,12 +196,10 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, uint32_t max_sessions, uint
 	 */
 	fr_talloc_link_ctx(ctx, state);
 
-#ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
 		talloc_free(state);
 		return NULL;
 	}
-#endif
 
 	/*
 	 *	We need to do controlled freeing of the

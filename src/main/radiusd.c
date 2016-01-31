@@ -424,12 +424,10 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Parse the thread pool configuration.
 	 */
 	if (thread_pool_bootstrap(main_config.config, &main_config.spawn_workers) < 0) exit(EXIT_FAILURE);
-#endif
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
@@ -473,13 +471,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Initialize the threads ONLY if we're spawning, AND
 	 *	we're running normally.
 	 */
 	if (main_config.spawn_workers && (thread_pool_init() < 0)) exit(EXIT_FAILURE);
-#endif
 
 	event_loop_started = true;
 
@@ -635,9 +631,7 @@ int main(int argc, char *argv[])
 	 */
 	radius_event_free();		/* Free the requests */
 
-#ifdef HAVE_PTHREAD_H
 	thread_pool_stop();		/* stop all the threads */
-#endif
 
 	talloc_free(global_state);	/* Free state entries */
 

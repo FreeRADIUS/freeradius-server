@@ -41,26 +41,10 @@ typedef struct exfile_entry_t {
 struct exfile_t {
 	uint32_t	max_entries;	//!< How many file descriptors we keep track of.
 	uint32_t	max_idle;	//!< Maximum idle time for a descriptor.
-
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t mutex;
-#endif
 	exfile_entry_t *entries;
 	bool		locking;
 };
-
-
-#ifdef HAVE_PTHREAD_H
-#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-
-#else
-/*
- *	This is easier than ifdef's throughout the code.
- */
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
 					//!< before giving up.
@@ -69,7 +53,7 @@ static int _exfile_free(exfile_t *ef)
 {
 	uint32_t i;
 
-	PTHREAD_MUTEX_LOCK(&ef->mutex);
+	pthread_mutex_lock(&ef->mutex);
 
 	for (i = 0; i < ef->max_entries; i++) {
 		if (!ef->entries[i].filename) continue;
@@ -77,11 +61,8 @@ static int _exfile_free(exfile_t *ef)
 		close(ef->entries[i].fd);
 	}
 
-	PTHREAD_MUTEX_UNLOCK(&ef->mutex);
-
-#ifdef HAVE_PTHREAD_H
+	pthread_mutex_unlock(&ef->mutex);
 	pthread_mutex_destroy(&ef->mutex);
-#endif
 
 	return 0;
 }
@@ -110,12 +91,10 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 		return NULL;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&ef->mutex, NULL) != 0) {
 		talloc_free(ef);
 		return NULL;
 	}
-#endif
 
 	ef->max_entries = max_entries;
 	ef->max_idle = max_idle;
@@ -150,7 +129,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 
 	hash = fr_hash_string(filename);
 
-	PTHREAD_MUTEX_LOCK(&ef->mutex);
+	pthread_mutex_lock(&ef->mutex);
 
 	/*
 	 *	Clean up old entries.
@@ -178,14 +157,14 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 			 *	Same hash but different filename.  Give up.
 			 */
 			if (strcmp(ef->entries[i].filename, filename) != 0) {
-				PTHREAD_MUTEX_UNLOCK(&ef->mutex);
+				pthread_mutex_unlock(&ef->mutex);
 				return -1;
 			}
 			/*
 			 *	Someone else failed to create the entry.
 			 */
 			if (!ef->entries[i].filename) {
-				PTHREAD_MUTEX_UNLOCK(&ef->mutex);
+				pthread_mutex_unlock(&ef->mutex);
 				return -1;
 			}
 			goto do_return;
@@ -201,7 +180,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 
 	if (i >= ef->max_entries) {
 		fr_strerror_printf("Too many different filenames");
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
 
@@ -269,7 +248,7 @@ do_return:
 		close(ef->entries[i].fd);
 		ef->entries[i].fd = -1;
 
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
 
@@ -368,12 +347,12 @@ int exfile_close(exfile_t *ef, int fd)
 			close(ef->entries[i].dup); /* releases the fcntl lock */
 			ef->entries[i].dup = -1;
 
-			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+			pthread_mutex_unlock(&(ef->mutex));
 			return 0;
 		}
 	}
 
-	PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+	pthread_mutex_unlock(&(ef->mutex));
 
 	fr_strerror_printf("Attempt to unlock file which does not exist");
 	return -1;
@@ -388,12 +367,12 @@ int exfile_unlock(exfile_t *ef, int fd)
 
 		if (ef->entries[i].dup == fd) {
 			ef->entries[i].dup = -1;
-			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+			pthread_mutex_unlock(&(ef->mutex));
 			return 0;
 		}
 	}
 
-	PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+	pthread_mutex_unlock(&(ef->mutex));
 
 	fr_strerror_printf("Attempt to unlock file which does not exist");
 	return -1;

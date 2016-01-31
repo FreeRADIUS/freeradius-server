@@ -368,33 +368,6 @@ static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx
 	}
 }
 
-#ifndef HAVE_PTHREAD_H
-
-/* If we have to use a pipe to redirect logging, this does the work. */
-static void log_spew(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
-{
-	rlm_unbound_t *inst = ctx;
-	char line[1024];
-
-	/*
-	 *  This works for pipes from processes, but not from threads
-	 *  right now.  The latter is hinky and will require some fancy
-	 *  blocking/nonblocking trickery which is not figured out yet,
-	 *  since selecting on a pipe from a thread in the same process
-	 *  seems to behave differently.  It will likely preclude the use
-	 *  of fgets and streams.  Left for now since some unbound logging
-	 *  infrastructure is still global across multiple contexts.  Maybe
-	 *  we can get unbound folks to provide a ub_ctx_debugout_async that
-	 *  takes a function hook instead to just bypass the piping when
-	 *  used in threaded mode.
-	 */
-	while (fgets(line, 1024, inst->log_pipe_stream[0])) {
-		DEBUG("%s", line);
-	}
-}
-
-#endif
-
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_unbound_t *inst = instance;
@@ -445,18 +418,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Note unbound threads WILL happen with -s option, if it matters.
 	 *	We cannot tell from here whether that option is in effect.
 	 */
 	res = ub_ctx_async(inst->ub, 1);
-#else
-	/*
-	 *	Uses forked subprocesses instead.
-	 */
-	res = ub_ctx_async(inst->ub, 0);
-#endif
 
 	if (res) goto error;
 
@@ -634,7 +600,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		break;
 
 	case L_DST_SYSLOG:
-#ifdef HAVE_PTHREAD_H
 		/*
 		 *  Currently this wreaks havoc when running threaded, so just
 		 *  turn logging off until that gets figured out.
@@ -642,52 +607,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		res = ub_ctx_debugout(inst->ub, NULL);
 		if (res) goto error;
 		break;
-#else
-		/*
-		 *  We need to create a pipe, because libunbound does not
-		 *  share syslog nicely.  Or the core added some new logsink.
-		 */
-		if (pipe(inst->log_pipe)) {
-		error_pipe:
-			cf_log_err_cs(conf, "Error setting up log pipes");
-			goto error_nores;
-		}
 
-		if ((fcntl(inst->log_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
-		    (fcntl(inst->log_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-			goto error_pipe;
-		}
-
-		/* Opaque to us when this can be closed, so we do not. */
-		if (fcntl(inst->log_pipe[1], F_SETFL, O_NONBLOCK) < 0) {
-			goto error_pipe;
-		}
-
-		inst->log_pipe_stream[0] = fdopen(inst->log_pipe[0], "r");
-		inst->log_pipe_stream[1] = fdopen(inst->log_pipe[1], "w");
-
-		if (!inst->log_pipe_stream[0] || !inst->log_pipe_stream[1]) {
-			if (!inst->log_pipe_stream[1]) {
-				close(inst->log_pipe[1]);
-			}
-
-			if (!inst->log_pipe_stream[0]) {
-				close(inst->log_pipe[0]);
-			}
-			cf_log_err_cs(conf, "Error setting up log stream");
-			goto error_nores;
-		}
-
-		res = ub_ctx_debugout(inst->ub, inst->log_pipe_stream[1]);
-		if (res) goto error;
-
-		if (!fr_event_fd_insert(inst->el, 0, inst->log_pipe[0], log_spew, inst)) {
-			cf_log_err_cs(conf, "could not insert log fd");
-			goto error_nores;
-		}
-
-		inst->log_pipe_in_use = true;
-#endif
 	default:
 		break;
 	}

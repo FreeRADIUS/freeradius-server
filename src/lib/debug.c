@@ -23,6 +23,7 @@
  */
 #include <assert.h>
 #include <freeradius-devel/libradius.h>
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -56,14 +57,6 @@
 #  include <sys/resource.h>
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-#else
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
-
 #ifdef HAVE_EXECINFO
 #  ifndef MAX_BT_FRAMES
 #    define MAX_BT_FRAMES 128
@@ -72,9 +65,7 @@
 #    define MAX_BT_CBUFF  1048576			//!< Should be a power of 2
 #  endif
 
-#  ifdef HAVE_PTHREAD_H
 static pthread_mutex_t fr_debug_init = PTHREAD_MUTEX_INITIALIZER;
-#  endif
 
 typedef struct fr_bt_info {
 	void 		*obj;				//!< Memory address of the block of allocated memory.
@@ -400,10 +391,10 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 	fr_bt_marker_t *marker;
 
 	if (*cbuff == NULL) {
-		PTHREAD_MUTEX_LOCK(&fr_debug_init);
+		pthread_mutex_lock(&fr_debug_init);
 		/* Check again now we hold the mutex - eww*/
 		if (*cbuff == NULL) *cbuff = fr_cbuff_alloc(NULL, MAX_BT_CBUFF, true);
-		PTHREAD_MUTEX_UNLOCK(&fr_debug_init);
+		pthread_mutex_unlock(&fr_debug_init);
 	}
 
 	marker = talloc(obj, fr_bt_marker_t);

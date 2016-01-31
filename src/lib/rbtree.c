@@ -23,16 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
-
-#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-
-#define PTHREAD_MUTEX_LOCK(_x) if (_x->lock) pthread_mutex_lock(&((_x)->mutex))
-#define PTHREAD_MUTEX_UNLOCK(_x) if (_x->lock) pthread_mutex_unlock(&((_x)->mutex))
-#else
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
 
 /* Red-Black tree description */
 typedef enum {
@@ -60,10 +51,8 @@ struct rbtree_t {
 	rb_comparator_t		compare;
 	rb_free_t		free;
 	bool			replace;
-#ifdef HAVE_PTHREAD_H
 	bool			lock;
 	pthread_mutex_t		mutex;
-#endif
 };
 #define RBTREE_MAGIC (0x5ad09c42)
 
@@ -92,7 +81,7 @@ void rbtree_free(rbtree_t *tree)
 {
 	if (!tree) return;
 
-	PTHREAD_MUTEX_LOCK(tree);
+	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	/*
 	 *	walk the tree, deleting the nodes...
@@ -104,16 +93,15 @@ void rbtree_free(rbtree_t *tree)
 #endif
 	tree->root = NULL;
 
-	PTHREAD_MUTEX_UNLOCK(tree);
+	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 
 	talloc_free(tree);
 }
 
-static int _rbtree_free(PTHREAD_UNUSED rbtree_t *tree)
+static int _rbtree_free(rbtree_t *tree)
 {
-#ifdef HAVE_PTHREAD_H
 	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
-#endif
+
 	return 0;
 }
 
@@ -135,12 +123,11 @@ rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node
 	tree->root = NIL;
 	tree->compare = compare;
 	tree->replace = (flags & RBTREE_FLAG_REPLACE) != 0 ? true : false;
-#ifdef HAVE_PTHREAD_H
 	tree->lock = (flags & RBTREE_FLAG_LOCK) != 0 ? true : false;
 	if (tree->lock) {
 		pthread_mutex_init(&tree->mutex, NULL);
 	}
-#endif
+
 	talloc_set_destructor(tree, _rbtree_free);
 	tree->free = node_free;
 
@@ -271,7 +258,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 {
 	rbnode_t *current, *parent, *x;
 
-	PTHREAD_MUTEX_LOCK(tree);
+	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	/* find where node belongs */
 	current = tree->root;
@@ -288,7 +275,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 			 *	Don't replace the entry.
 			 */
 			if (!tree->replace) {
-				PTHREAD_MUTEX_UNLOCK(tree);
+				if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 				return NULL;
 			}
 
@@ -297,7 +284,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 			 */
 			if (tree->free) tree->free(current->data);
 			current->data = data;
-			PTHREAD_MUTEX_UNLOCK(tree);
+			if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 			return current;
 		}
 
@@ -309,7 +296,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	x = talloc_zero(tree, rbnode_t);
 	if (!x) {
 		fr_strerror_printf("No memory for new rbtree node");
-		PTHREAD_MUTEX_UNLOCK(tree);
+		if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 		return NULL;
 	}
 
@@ -334,7 +321,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 
 	tree->num_elements++;
 
-	PTHREAD_MUTEX_UNLOCK(tree);
+	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 	return x;
 }
 
@@ -421,7 +408,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	if (!z || z == NIL) return;
 
 	if (!skiplock) {
-		PTHREAD_MUTEX_LOCK(tree);
+		if (tree->lock) pthread_mutex_lock(&tree->mutex);
 	}
 
 	if (z->left == NIL || z->right == NIL) {
@@ -494,7 +481,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 
 	tree->num_elements--;
 	if (!skiplock) {
-		PTHREAD_MUTEX_UNLOCK(tree);
+		if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 	}
 }
 void rbtree_delete(rbtree_t *tree, rbnode_t *z) {
@@ -524,14 +511,14 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 {
 	rbnode_t *current;
 
-	PTHREAD_MUTEX_LOCK(tree);
+	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 	current = tree->root;
 
 	while (current != NIL) {
 		int result = tree->compare(data, current->data);
 
 		if (result == 0) {
-			PTHREAD_MUTEX_UNLOCK(tree);
+			if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 			return current;
 		} else {
 			current = (result < 0) ?
@@ -539,7 +526,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 		}
 	}
 
-	PTHREAD_MUTEX_UNLOCK(tree);
+	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 	return NULL;
 }
 
@@ -708,7 +695,7 @@ int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *con
 
 	if (tree->root == NIL) return 0;
 
-	PTHREAD_MUTEX_LOCK(tree);
+	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	switch (order) {
 	case RBTREE_PRE_ORDER:
@@ -732,7 +719,7 @@ int rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *con
 		break;
 	}
 
-	PTHREAD_MUTEX_UNLOCK(tree);
+	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 	return rcode;
 }
 

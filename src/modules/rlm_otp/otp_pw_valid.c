@@ -32,9 +32,7 @@ RCSID("$Id$")
 #include "otp.h"
 #include "otp_pw_valid.h"
 
-#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#endif
 #include <sys/un.h>
 
 static int otprc2rlmrc(int);

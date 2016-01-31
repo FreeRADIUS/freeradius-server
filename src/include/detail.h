@@ -51,9 +51,7 @@ typedef enum detail_entry_state_t {
  *	code to work without threads.  One thing at a time...
  */
 #ifndef WITHOUT_DETAIL_THREAD
-#  ifdef HAVE_PTHREAD_H
-#    define WITH_DETAIL_THREAD (1)
-#  endif
+#  define WITH_DETAIL_THREAD (1)
 #endif
 
 typedef struct listen_detail_t {

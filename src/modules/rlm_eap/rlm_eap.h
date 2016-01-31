@@ -57,26 +57,11 @@ typedef struct rlm_eap {
 	bool		ignore_unknown_types;
 	bool		mod_accounting_username_bug;
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
-#endif
 
 	char const	*name;
 	fr_randctx	rand_pool;
 } rlm_eap_t;
-
-/*
- *	For simplicity in the rest of the code.
- */
-#ifndef HAVE_PTHREAD_H
-/*
- *	This is easier than ifdef's throughout the code.
- */
-#define pthread_mutex_init(_x, _y)
-#define pthread_mutex_destroy(_x)
-#define pthread_mutex_lock(_x)
-#define pthread_mutex_unlock(_x)
-#endif
 
 /*
  *	EAP Method selection

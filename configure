@@ -744,7 +744,6 @@ with_radacctdir
 with_raddbdir
 with_dictdir
 with_ascend_binary
-with_threads
 with_tcp
 with_vmps
 with_dhcp
@@ -1420,7 +1419,6 @@ Optional Packages:
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
   --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
-  --with-threads          use threads, if available.  (default=yes)
   --with-tcp              compile in TCP support. (default=yes)
   --with-vmps             compile in VMPS support. (default=yes)
   --with-dhcp             compile in DHCP support. (default=yes)
@@ -5332,20 +5330,6 @@ $as_echo "#define WITH_ASCEND_BINARY 1" >>confdefs.h
 
 fi
 
-WITH_THREADS=yes
-
-# Check whether --with-threads was given.
-if test "${with_threads+set}" = set; then :
-  withval=$with_threads;  case "$withval" in
-  yes)
-    ;;
-  *)
-    WITH_THREADS=no
-  esac
-
-fi
-
-
 WITH_TCP=yes
 
 # Check whether --with-tcp was given.
@@ -6121,12 +6105,12 @@ TALLOC_LDFLAGS="${smart_ldflags}"
 LIBS="$old_LIBS"
 
 old_CFLAGS=$CFLAGS
-if test "x$WITH_THREADS" = "xyes"; then
-  if test $ac_cv_prog_suncc = "yes"; then
-    CFLAGS="$CFLAGS -mt"
-  fi
+if test $ac_cv_prog_suncc = "yes"; then
+  CFLAGS="$CFLAGS -mt"
+fi
 
-  for ac_header in pthread.h
+HAVE_THREADS=
+for ac_header in pthread.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "pthread.h" "ac_cv_header_pthread_h" "$ac_includes_default"
 if test "x$ac_cv_header_pthread_h" = xyes; then :
@@ -6136,16 +6120,16 @@ _ACEOF
 
 else
 
-      WITH_THREADS="no"
-      fail=pthread.h
+  HAVE_THREADS="no"
+  fail=pthread.h
 
 fi
 
 done
 
 
-                if test "x$WITH_THREADS" != "xno"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
+if test "x$HAVE_THREADS" != "xno"; then
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
 $as_echo_n "checking for pthread_create in -lpthread... " >&6; }
 if ${ac_cv_lib_pthread_pthread_create+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -6183,9 +6167,9 @@ fi
 $as_echo "$ac_cv_lib_pthread_pthread_create" >&6; }
 if test "x$ac_cv_lib_pthread_pthread_create" = xyes; then :
 
-        HAVE_LPTHREAD='yes'
-        CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-        LIBS="-lpthread $LIBS"
+      HAVE_THREADS="yes"
+      CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+      LIBS="-lpthread $LIBS"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-pthread\"" >&5
@@ -6234,16 +6218,17 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
-        if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
-          CFLAGS="$CFLAGS -pthread"
-        fi
+      if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+        CFLAGS="$CFLAGS -pthread"
+      fi
 
 
 fi
 
+fi
 
-                        if test "x$HAVE_LPTHREAD" != "xyes"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
+if test "x$HAVE_THREADS" != "xyes"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
 $as_echo_n "checking for pthread_create in -lc_r... " >&6; }
 if ${ac_cv_lib_c_r_pthread_create+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -6281,7 +6266,8 @@ fi
 $as_echo "$ac_cv_lib_c_r_pthread_create" >&6; }
 if test "x$ac_cv_lib_c_r_pthread_create" = xyes; then :
 
-          CFLAGS="$CFLAGS -D_THREAD_SAFE"
+      HAVE_THREADS="yes"
+      CFLAGS="$CFLAGS -D_THREAD_SAFE"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-pthread\"" >&5
@@ -6330,39 +6316,24 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
-          if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
-            LIBS="-lc_r $LIBS"
-          else
-            CFLAGS="$CFLAGS -pthread"
-          fi
+      if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+        LIBS="-lc_r $LIBS"
+      else
+        CFLAGS="$CFLAGS -pthread"
+      fi
 
 else
    fail=-lc_r or -lpthread
 
 fi
 
-    fi
-  fi
-
-  if test "x$WITH_THREADS" != "xyes"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building with thread support." >&5
-$as_echo "$as_me: WARNING: silently not building with thread support." >&2;}
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: thread support requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: thread support requires: $fail." >&2;}
-  else
-
-$as_echo "#define WITH_THREADS 1" >>confdefs.h
-
-  fi
 fi
 
-if test "x$WITH_THREADS" != "xyes"; then
-  CFLAGS=$old_CFLAGS
-  ac_cv_header_pthread_h="no"
-  WITH_THREADS=no
-else
+if test "x$HAVE_THREADS" != "xyes"; then
+  as_fn_error $? "FreeRADIUS requires thread support, missing: $fail" "$LINENO" 5
+fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing sem_init" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing sem_init" >&5
 $as_echo_n "checking for library containing sem_init... " >&6; }
 if ${ac_cv_search_sem_init+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -6421,7 +6392,6 @@ else
 
 fi
 
-fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for dlopen in -ldl" >&5
 $as_echo_n "checking for dlopen in -ldl... " >&6; }

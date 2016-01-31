@@ -1028,15 +1028,6 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 	return 0;
 }
 
-
-#ifndef HAVE_PTHREAD_H
-void realm_pool_free(home_pool_t *pool)
-{
-	if (!event_loop_started || !realm_config->dynamic) return;
-
-	talloc_free(pool);
-}
-#else  /* HAVE_PTHREAD_H */
 typedef struct pool_list_t pool_list_t;
 
 struct pool_list_t {
@@ -1128,7 +1119,6 @@ void realm_pool_free(home_pool_t *pool)
 	this->pool = pool;
 	pthread_mutex_unlock(&pool_free_mutex);
 }
-#endif	/* HAVE_PTHREAD_H */
 
 int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
 {

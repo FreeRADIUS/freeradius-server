@@ -134,9 +134,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	if (!fake) return NULL;
 
 	fake->number = request->number;
-#ifdef HAVE_PTHREAD_H
 	fake->child_pid = request->child_pid;
-#endif
 	fake->parent = request;
 	fake->root = request->root;
 	fake->client = request->client;

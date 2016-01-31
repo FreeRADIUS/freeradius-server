@@ -164,9 +164,7 @@ typedef struct listen_socket_t {
 	tls_session_t		*tls_session;
 	REQUEST			*request; /* horrible hacks */
 	VALUE_PAIR		*cert_vps;
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;
-#endif
 	uint8_t			*data;
 	size_t			partial;
 #endif

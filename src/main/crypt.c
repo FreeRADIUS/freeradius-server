@@ -29,17 +29,12 @@ RCSID("$Id$")
 #  include <crypt.h>
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#  include <pthread.h>
-#  ifndef HAVE_CRYPT_R
+#include <pthread.h>
+#ifndef HAVE_CRYPT_R
 static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
-#  endif
-#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-#else
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
+#define pthread_mutex_lock pthread_mutex_lock
+#define pthread_mutex_unlock pthread_mutex_unlock
 
 /** Performs a crypt password check in an thread-safe way.
  *
@@ -67,7 +62,7 @@ int fr_crypt_check(char const *password, char const *reference_crypt)
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
-	PTHREAD_MUTEX_LOCK(&fr_crypt_mutex);
+	pthread_mutex_lock(&fr_crypt_mutex);
 	crypt_out = crypt(password, reference_crypt);
 
 	/*
@@ -76,7 +71,7 @@ int fr_crypt_check(char const *password, char const *reference_crypt)
 	 *	time spent within the lock is critical.
 	 */
 	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
-	PTHREAD_MUTEX_UNLOCK(&fr_crypt_mutex);
+	pthread_mutex_unlock(&fr_crypt_mutex);
 #endif
 
 	/*

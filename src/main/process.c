@@ -149,7 +149,7 @@ static inline void state_machine_timer(char const *file, int line, REQUEST *requ
  *	checking the REQUEST whilst it's being worked on by
  *	the child.
  */
-#if defined(WITH_VERIFY_PTR) && defined(HAVE_PTHREAD_H)
+#if defined(WITH_VERIFY_PTR)
 #  undef VERIFY_REQUEST
 #  define VERIFY_REQUEST(_x) if (pthread_equal(pthread_self(), _x->child_pid) != 0) verify_request(__FILE__, __LINE__, _x)
 #endif
@@ -235,28 +235,17 @@ static fr_packet_list_t *proxy_list = NULL;
 static TALLOC_CTX *proxy_ctx = NULL;
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#  ifdef WITH_PROXY
+#ifdef WITH_PROXY
 static pthread_mutex_t proxy_mutex;
 static bool proxy_no_new_sockets = false;
-#  endif
-
-#  define PTHREAD_MUTEX_LOCK if (spawn_workers) pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK if (spawn_workers) pthread_mutex_unlock
-
-static pthread_t NO_SUCH_CHILD_PID;
-#  define NO_CHILD_THREAD request->child_pid = NO_SUCH_CHILD_PID
-
-#else
-/*
- *	This is easier than ifdef's throughout the code.
- */
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
-#  define NO_CHILD_THREAD
 #endif
 
-#ifdef HAVE_PTHREAD_H
+#define pthread_mutex_lock if (spawn_workers) pthread_mutex_lock
+#define pthread_mutex_unlock if (spawn_workers) pthread_mutex_unlock
+
+static pthread_t NO_SUCH_CHILD_PID;
+#define NO_CHILD_THREAD request->child_pid = NO_SUCH_CHILD_PID
+
 static bool we_are_master(void)
 {
 	if (spawn_workers &&
@@ -273,13 +262,6 @@ static bool we_are_master(void)
 #  ifndef NDEBUG
 #    define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
 #    endif
-#else
-
-/*
- *	No threads: we're always master.
- */
-#  define we_are_master(_x) (1)
-#endif	/* HAVE_PTHREAD_H */
 
 #ifndef ASSERT_MASTER
 #  define ASSERT_MASTER
@@ -297,7 +279,7 @@ static int event_new_fd(rad_listen_t *this);
  *	We need mutexes around the event FD list *only* in certain
  *	cases.
  */
-#if defined (HAVE_PTHREAD_H) && (defined(WITH_PROXY) || defined(WITH_TCP))
+#if (defined(WITH_PROXY) || defined(WITH_TCP))
 static rad_listen_t *new_listeners = NULL;
 
 static pthread_mutex_t	fd_mutex;
@@ -554,7 +536,6 @@ static void request_done(REQUEST *request, int action)
 	}
 #endif
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	If called from a child thread, mark ourselves as done,
 	 *	and wait for the master thread timer to clean us up.
@@ -563,7 +544,6 @@ static void request_done(REQUEST *request, int action)
 		FINAL_STATE(REQUEST_DONE);
 		return;
 	}
-#endif
 
 	/*
 	 *	Mark the request as STOP.
@@ -603,14 +583,12 @@ static void request_done(REQUEST *request, int action)
 		 *	Mark the request as done.
 		 */
 	case FR_ACTION_DONE:
-#ifdef HAVE_PTHREAD_H
 		/*
 		 *	If the child is still running, leave it alone.
 		 */
 		if (spawn_workers && (request->child_state <= REQUEST_RUNNING)) {
 			break;
 		}
-#endif
 
 #ifdef DEBUG_STATE_MACHINE
 		if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
@@ -689,12 +667,10 @@ static void request_done(REQUEST *request, int action)
 	}
 #endif
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	If there's no children, we can mark the request as done.
 	 */
 	if (!spawn_workers) request->child_state = REQUEST_DONE;
-#endif
 
 	/*
 	 *	If the child is still running, wait for it to be finished.
@@ -714,9 +690,7 @@ static void request_done(REQUEST *request, int action)
 		return;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-#endif
 
 	/*
 	 *	@todo: do final states for TCP sockets, too?
@@ -805,9 +779,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		 *	Update this if we can, otherwise let the timers pick it up.
 		 */
 		request->child_state = REQUEST_CLEANUP_DELAY;
-#ifdef HAVE_PTHREAD_H
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-#endif
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
@@ -860,7 +832,6 @@ static bool request_max_time(REQUEST *request)
 	 *	Taking too long: tell it to die.
 	 */
 	if (timercmp(&now, &when, >=)) {
-#ifdef HAVE_PTHREAD_H
 		/*
 		 *	If there's a child thread processing it,
 		 *	complain.
@@ -873,7 +844,7 @@ static bool request_max_time(REQUEST *request)
 			      request->module ? request->module : "<core>");
 			trigger_exec(request, NULL, "server.thread.unresponsive", true, NULL);
 		}
-#endif
+
 		/*
 		 *	Tell the request that it's done.
 		 */
@@ -935,7 +906,6 @@ static void request_queue_or_run(REQUEST *request,
 
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
-#ifdef HAVE_PTHREAD_H
 		if (spawn_workers) {
 			/*
 			 *	A child thread will eventually pick it up.
@@ -949,7 +919,6 @@ static void request_queue_or_run(REQUEST *request,
 			request_done(request, FR_ACTION_DONE);
 			return;
 		}
-#endif
 	}
 
 	request->child_state = REQUEST_RUNNING;
@@ -1915,13 +1884,13 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 			 *	previously sent.
 			 */
 			if (listener->type == RAD_LISTEN_PROXY) {
-				PTHREAD_MUTEX_LOCK(&proxy_mutex);
+				pthread_mutex_lock(&proxy_mutex);
 				if (!fr_packet_list_socket_freeze(proxy_list,
 								  listener->fd)) {
 					ERROR("Fatal error freezing socket: %s", fr_strerror());
 					fr_exit(1);
 				}
-				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+				pthread_mutex_unlock(&proxy_mutex);
 			}
 #endif
 
@@ -2130,16 +2099,16 @@ static void remove_from_proxy_hash(REQUEST *request)
 	 *	flag says that it IS in the hash, there might still be
 	 *	a race condition where it isn't.
 	 */
-	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+	pthread_mutex_lock(&proxy_mutex);
 
 	if (!request->in_proxy_hash) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		pthread_mutex_unlock(&proxy_mutex);
 		return;
 	}
 
 	remove_from_proxy_hash_nl(request, true);
 
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	pthread_mutex_unlock(&proxy_mutex);
 }
 
 static int insert_into_proxy_hash(REQUEST *request)
@@ -2156,7 +2125,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	rad_assert(proxy_list != NULL);
 
 
-	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+	pthread_mutex_lock(&proxy_mutex);
 	proxy_listener = NULL;
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
@@ -2173,14 +2142,12 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		if (tries > 0) continue; /* try opening new socket only once */
 
-#ifdef HAVE_PTHREAD_H
 		if (proxy_no_new_sockets) break;
-#endif
 
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			pthread_mutex_unlock(&proxy_mutex);
 			goto fail;
 		}
 
@@ -2193,10 +2160,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 					       &sock->other_ipaddr, sock->other_port,
 					       this)) {
 
-#ifdef HAVE_PTHREAD_H
 			proxy_no_new_sockets = true;
-#endif
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+			pthread_mutex_unlock(&proxy_mutex);
 
 			/*
 			 *	This is bad.  However, the
@@ -2213,13 +2179,13 @@ static int insert_into_proxy_hash(REQUEST *request)
 		 *	Add it to the event loop.  Ensure that we have
 		 *	only one mutex locked at a time.
 		 */
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		pthread_mutex_unlock(&proxy_mutex);
 		radius_update_listener(this);
-		PTHREAD_MUTEX_LOCK(&proxy_mutex);
+		pthread_mutex_lock(&proxy_mutex);
 	}
 
 	if (!proxy_listener || !success) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		pthread_mutex_unlock(&proxy_mutex);
 		REDEBUG2("proxy: Failed allocating Id for proxied request");
 	fail:
 		request->proxy_listener = NULL;
@@ -2244,7 +2210,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	request->proxy_listener->count++;
 #endif
 
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	pthread_mutex_unlock(&proxy_mutex);
 
 	RDEBUG3("proxy: allocating destination %s port %d - Id %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af, &request->proxy->dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
@@ -2442,11 +2408,11 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	VERIFY_PACKET(packet);
 
-	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+	pthread_mutex_lock(&proxy_mutex);
 	proxy_p = fr_packet_list_find_byreply(proxy_list, packet);
 
 	if (!proxy_p) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		pthread_mutex_unlock(&proxy_mutex);
 		PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
 		       fr_packet_codes[packet->code],
 		       inet_ntop(packet->src_ipaddr.af,
@@ -2459,7 +2425,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
 	request->num_proxied_responses++; /* needs to be protected by lock */
 
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	pthread_mutex_unlock(&proxy_mutex);
 
 	/*
 	 *	No reply, BUT the current packet fails verification:
@@ -3517,9 +3483,8 @@ static void ping_home_server(void *ctx, struct timeval *now)
 			       child_state_names[REQUEST_DONE]);
 	if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
 #endif
-#ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-#endif
+
 	request->child_state = REQUEST_PROXIED;
 	request->process = request_ping;
 
@@ -4191,9 +4156,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->process = coa_wait_for_reply;
 	coa->child_state = REQUEST_PROXIED;
 
-#ifdef HAVE_PTHREAD_H
 	coa->child_pid = NO_SUCH_CHILD_PID;
-#endif
 
 	if (we_are_master()) coa_separate(request->coa);
 
@@ -4575,10 +4538,6 @@ static void event_poll_detail(void *ctx, struct timeval *now)
 
 static void event_status(struct timeval *wake)
 {
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	int argval;
-#endif
-
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
 			INFO("Ready to process requests");
@@ -4595,25 +4554,6 @@ static void event_status(struct timeval *wake)
 		DEBUG("Waking up in %d.%01u seconds.",
 		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
 	}
-
-
-	/*
-	 *	FIXME: Put this somewhere else, where it isn't called
-	 *	all of the time...
-	 */
-
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	/*
-	 *	If there are no child threads, then there may
-	 *	be child processes.  In that case, wait for
-	 *	their exit status, and throw that exit status
-	 *	away.  This helps get rid of zxombie children.
-	 */
-	while (waitpid(-1, &argval, WNOHANG) > 0) {
-		/* do nothing */
-	}
-#endif
-
 }
 
 #ifdef WITH_TCP
@@ -4867,7 +4807,7 @@ static int event_new_fd(rad_listen_t *this)
 		 *	Tell all requests using this socket that the socket is dead.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
-			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			pthread_mutex_lock(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
 				ERROR("Fatal error freezing socket: %s", fr_strerror());
@@ -4877,7 +4817,7 @@ static int event_new_fd(rad_listen_t *this)
 			if (this->count > 0) {
 				fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
 			}
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			pthread_mutex_unlock(&proxy_mutex);
 		}
 #endif
 
@@ -4972,7 +4912,7 @@ static int event_new_fd(rad_listen_t *this)
 				     home->limit.num_connections, home->limit.max_connections);
 			}
 
-			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			pthread_mutex_lock(&proxy_mutex);
 			fr_packet_list_walk(proxy_list, this, eol_proxy_listener);
 
 			if (!fr_packet_list_socket_del(proxy_list, this->fd)) {
@@ -4980,7 +4920,7 @@ static int event_new_fd(rad_listen_t *this)
 				      buffer, fr_strerror());
 				fr_exit(1);
 			}
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			pthread_mutex_unlock(&proxy_mutex);
 		} else
 #endif
 		{
@@ -5091,7 +5031,7 @@ static void handle_signal_self(int flag)
 	}
 #endif
 
-#if defined(WITH_TCP) && defined(WITH_PROXY) && defined(HAVE_PTHREAD_H)
+#if defined(WITH_TCP) && defined(WITH_PROXY)
 	/*
 	 *	There are new listeners in the list.  Run
 	 *	event_new_fd() on them.
@@ -5118,13 +5058,6 @@ static void handle_signal_self(int flag)
 #endif
 }
 
-#ifndef HAVE_PTHREAD_H
-void radius_signal_self(int flag)
-{
-	return handle_signal_self(flag);
-}
-
-#else
 static int self_pipe[2] = { -1, -1 };
 
 /*
@@ -5154,7 +5087,6 @@ void radius_signal_self(int flag)
 	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
 }
 
-
 static void event_signal_handler(UNUSED fr_event_list_t *xel,
 				 UNUSED int fd, UNUSED void *ctx)
 {
@@ -5173,7 +5105,6 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 
 	handle_signal_self(buffer[0]);
 }
-#endif	/* HAVE_PTHREAD_H */
 
 /***********************************************************************
  *
@@ -5333,13 +5264,11 @@ int radius_event_start(bool have_children)
 		proxy_list = fr_packet_list_create(1);
 		if (!proxy_list) return 0;
 
-#ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			ERROR("FATAL: Failed to initialize proxy mutex: %s",
 			       fr_syserror(errno));
 			fr_exit(1);
 		}
-#endif
 
 		/*
 		 *	The "init_delay" is set to "response_window".
@@ -5362,9 +5291,7 @@ int radius_event_start(bool have_children)
 	 */
 	spawn_workers = have_children;
 
-#ifdef HAVE_PTHREAD_H
 	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
-#endif
 
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
@@ -5372,7 +5299,6 @@ int radius_event_start(bool have_children)
 		return 1;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Child threads need a pipe to signal us, as do the
 	 *	signal handlers.
@@ -5397,7 +5323,6 @@ int radius_event_start(bool have_children)
 		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
 		fr_exit(1);
 	}
-#endif
 
 	DEBUG("%s: #### Opening IP addresses and Ports ####", main_config.name);
 
@@ -5445,9 +5370,7 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 
 	request->master_state = REQUEST_STOP_PROCESSING;
 
-#ifdef HAVE_PTHREAD_H
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
-#endif
 
 	/*
 	 *	If it's queued we can't delete it from the queue.
@@ -5484,9 +5407,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	 */
 	if (request->child_state < REQUEST_RESPONSE_DELAY) return 0; /* continue */
 
-#ifdef HAVE_PTHREAD_H
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
-#endif
 
 #ifdef WITH_PROXY
 	rad_assert(request->in_proxy_hash == false);

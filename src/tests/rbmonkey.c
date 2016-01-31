@@ -32,10 +32,8 @@ struct rbtree_t {
 	rb_comparator_t		compare;
 	rb_free_t		free;
 	bool			replace;
-#ifdef HAVE_PTHREAD_H
 	bool			lock;
 	pthread_mutex_t		mutex;
-#endif
 };
 
 /* Storage for the NIL pointer. */

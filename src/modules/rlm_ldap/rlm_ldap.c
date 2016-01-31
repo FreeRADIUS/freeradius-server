@@ -663,9 +663,7 @@ static int mod_detach(void *instance)
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
 #endif
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&inst->directory_mutex);
-#endif
 
 	fr_connection_pool_free(inst->pool);
 	talloc_free(inst->user_map);
@@ -1337,9 +1335,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialise the directory mutex
 	 */
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&inst->directory_mutex, NULL);
-#endif
 
 	/*
 	 *	Set global options

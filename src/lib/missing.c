@@ -23,9 +23,9 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
-
-#include	<ctype.h>
+#include <freeradius-devel/libradius.h>
+#include <pthread.h>
+#include <ctype.h>
 
 #if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
 #  include <mach/mach_time.h>
@@ -266,21 +266,15 @@ int clock_gettime(int clk_id, struct timespec *t)
 	static mach_timebase_info_data_t timebase;
 	static bool done_init = false;
 
-#ifdef HAVE_PTHREAD_H
 	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 	if (!done_init) {
-#ifdef HAVE_PTHREAD_H
 		pthread_mutex_lock(&mutex);
 		if (!done_init) {
-#endif
 			mach_timebase_info(&timebase);
-#ifdef HAVE_PTHREAD_H
 			done_init = true;
 		}
 		pthread_mutex_unlock(&mutex);
-#endif
 	}
 
 	switch (clk_id) {

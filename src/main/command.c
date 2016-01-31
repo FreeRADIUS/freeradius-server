@@ -619,10 +619,7 @@ static void command_debug_off(void)
 }
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
-#ifdef HAVE_PTHREAD_H
 static pthread_mutex_t debug_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
-
 
 /*
  *	Callback from log.c, so that we can write debug output to the
@@ -641,14 +638,11 @@ static int command_socket_write(void *cookie, char const *buffer, int len)
 
 	if (listener->status == RAD_LISTEN_STATUS_EOL) return 0;
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_lock(&debug_mutex);
-#endif
+
 	r = fr_channel_write(listener->fd, FR_CHANNEL_STDOUT, buffer, len);
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&debug_mutex);
-#endif
 
 	if (r <= 0) {
 		command_debug_off();
@@ -2472,7 +2466,6 @@ static int command_stats_state(rad_listen_t *listener, UNUSED int argc, UNUSED c
 	return CMD_OK;
 }
 
-#ifdef HAVE_PTHREAD_H
 static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	int array[RAD_LISTEN_MAX], pps[2];
@@ -2490,7 +2483,6 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 
 	return CMD_OK;
 }
-#endif
 
 #ifndef NDEBUG
 static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
@@ -2895,11 +2887,9 @@ static fr_command_table_t command_table_stats[] = {
 	  command_stats_home_server, NULL },
 #endif
 
-#ifdef HAVE_PTHREAD_H
 	{ "queue", FR_READ,
 	  "stats queue - show statistics for packet queues",
 	  command_stats_queue, NULL },
-#endif
 
 	{ "state", FR_READ,
 	  "stats state - show statistics for states",

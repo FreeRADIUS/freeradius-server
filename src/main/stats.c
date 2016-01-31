@@ -540,7 +540,6 @@ void request_stats_reply(REQUEST *request)
 				       PW_FREERADIUS_STATS_HUP_TIME, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = hup_time.tv_sec;
 
-#ifdef HAVE_PTHREAD_H
 		int i, array[RAD_LISTEN_MAX], pps[2];
 
 		thread_pool_queue_stats(array, pps);
@@ -560,7 +559,6 @@ void request_stats_reply(REQUEST *request)
 			if (!vp) continue;
 			vp->vp_integer = pps[i];
 		}
-#endif
 	}
 
 	/*

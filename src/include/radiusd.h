@@ -34,11 +34,7 @@ typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/log.h>
 
-#ifdef HAVE_PTHREAD_H
-#  include <pthread.h>
-#else
-#  include <sys/wait.h>
-#endif
+#include <pthread.h>
 
 #ifndef NDEBUG
 #  define REQUEST_MAGIC (0xdeadbeef)
@@ -261,9 +257,7 @@ struct rad_request {
 						//!< working with the request, to do something.
 	rad_child_state_t	child_state;
 
-#ifdef HAVE_PTHREAD_H
 	pthread_t    		child_pid;	//!< Current thread handling the request.
-#endif
 
 	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
 
@@ -566,11 +560,6 @@ void	thread_pool_lock(void);
 void	thread_pool_unlock(void);
 void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 uint32_t thread_pool_max_threads(void);
-
-#ifndef HAVE_PTHREAD_H
-#  define rad_fork(n) fork()
-#  define rad_waitpid(a,b) waitpid(a,b, 0)
-#endif
 
 /* main_config.c */
 /* Define a global config structure */

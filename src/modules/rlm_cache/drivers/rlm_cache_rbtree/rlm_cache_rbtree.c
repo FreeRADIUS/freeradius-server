@@ -26,21 +26,11 @@
 #include <freeradius-devel/rad_assert.h>
 #include "../../rlm_cache.h"
 
-#ifdef HAVE_PTHREAD_H
-#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-#else
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
-
 typedef struct rlm_cache_rbtree {
 	rbtree_t		*cache;		//!< Tree for looking up cache keys.
 	fr_heap_t		*heap;		//!< For managing entry expiry.
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;		//!< Protect the tree from multiple readers/writers.
-#endif
 } rlm_cache_rbtree_t;
 
 typedef struct rlm_cache_rbtree_entry {
@@ -104,9 +94,8 @@ static int _mod_detach(rlm_cache_rbtree_t *driver)
 		rbtree_free(driver->cache);
 	}
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&driver->mutex);
-#endif
+
 	return 0;
 }
 
@@ -139,12 +128,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_cache_config_t 
 		return -1;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&driver->mutex, NULL) < 0) {
 		ERROR("Failed initializing mutex: %s", fr_syserror(errno));
 		return -1;
 	}
-#endif
 
 	return 0;
 }
@@ -334,19 +321,12 @@ static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
  *
  * @copydetails cache_acquire_t
  */
-#ifdef HAVE_PTHREAD_H
 static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
 			 REQUEST *request)
-#else
-static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
-			 REQUEST *request)
-#endif
 {
-#ifdef HAVE_PTHREAD_H
 	rlm_cache_rbtree_t *driver = driver_inst;
-#endif
 
-	PTHREAD_MUTEX_LOCK(&driver->mutex);
+	pthread_mutex_lock(&driver->mutex);
 
 	*handle = request;		/* handle is unused, this is just for sanity checking */
 
@@ -361,19 +341,12 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
  *
  * @copydetails cache_release_t
  */
-#ifdef HAVE_PTHREAD_H
 static void cache_release(UNUSED rlm_cache_config_t const *config, void *driver_inst, REQUEST *request,
 			  UNUSED rlm_cache_handle_t *handle)
-#else
-static void cache_release(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst, REQUEST *request,
-			  UNUSED rlm_cache_handle_t *handle)
-#endif
 {
-#ifdef HAVE_PTHREAD_H
 	rlm_cache_rbtree_t *driver = driver_inst;
-#endif
 
-	PTHREAD_MUTEX_UNLOCK(&driver->mutex);
+	pthread_mutex_unlock(&driver->mutex);
 
 	RDEBUG3("Mutex released");
 }

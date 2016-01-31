@@ -49,9 +49,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 		}
 	}
 
-#ifdef _PTHREAD_H
 	pthread_mutex_destroy (&conn->mut);
-#endif
 
 	for (i = 0; i < conn->row_fcount; i++) free(conn->row[i]);
 
@@ -100,9 +98,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 	int deadlock = 0;
 
-#ifdef _PTHREAD_H
 	pthread_mutex_lock(&conn->mut);
-#endif
 
 	try_again:
 	/*
@@ -129,9 +125,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
 		reconnect:
-#ifdef _PTHREAD_H
 			pthread_mutex_unlock(&conn->mut);
-#endif
+
 			return RLM_SQL_RECONNECT;
 		}
 
@@ -144,9 +139,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		}
 		//   conn->in_use=0;
 	fail:
-#ifdef _PTHREAD_H
 		pthread_mutex_unlock(&conn->mut);
-#endif
+
 		return RLM_SQL_ERROR;
 	}
 
@@ -154,9 +148,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		if (fb_commit(conn)) goto fail;
 	}
 
-#ifdef _PTHREAD_H
 	pthread_mutex_unlock(&conn->mut);
-#endif
+
 	return 0;
 }
 

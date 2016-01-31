@@ -150,16 +150,6 @@
 #include "crc16.h"
 #include <freeradius-devel/rad_assert.h>
 
-#ifndef HAVE_PTHREAD_H
-/*
- *	This is easier than ifdef's throughout the code.
- */
-#  define pthread_mutex_init(_x, _y)
-#  define pthread_mutex_destroy(_x)
-#  define pthread_mutex_lock(_x)
-#  define pthread_mutex_unlock(_x)
-#endif
-
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
 #define MAX_SLAVES		5			//!< Maximum number of slaves associated
@@ -272,9 +262,7 @@ struct fr_redis_cluster {
 	cluster_key_slot_t	key_slot[KEY_SLOTS];		//!< Lookup table of slots to pools.
 	cluster_key_slot_t	key_slot_pending[KEY_SLOTS];	//!< Pending key slot table.
 
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t		mutex;		//!< Mutex to synchronise cluster operations.
-#endif
+	pthread_mutex_t		mutex;			//!< Mutex to synchronise cluster operations.
 };
 
 
@@ -2099,7 +2087,6 @@ ssize_t fr_redis_cluster_node_addr_by_role(TALLOC_CTX *ctx, fr_socket_addr_t *ou
 	return context.count;
 }
 
-#ifdef HAVE_PTHREAD_H
 /** Destroy mutex associated with cluster slots structure
  *
  * @param cluster being freed.
@@ -2111,7 +2098,6 @@ static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
 
 	return 0;
 }
-#endif
 
 /** Walk all used pools checking their versions
  *
@@ -2311,10 +2297,8 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 	cluster->conf = conf;
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&cluster->mutex, NULL);
 	talloc_set_destructor(cluster, _fr_redis_cluster_free);
-#endif
 
 	/*
 	 *	Node id 0 is reserved, so we can detect misconfigured

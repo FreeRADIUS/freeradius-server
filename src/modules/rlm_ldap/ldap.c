@@ -1765,18 +1765,14 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	 *	directory capabilities.
 	 */
 	if (!inst->directory) {
-#ifdef HAVE_PTHREAD_H
 		pthread_mutex_lock(&inst->directory_mutex);
 		if (!inst->directory) {
-#endif
 			/*
 			 *	Only error out on memory allocation errors
 			 */
 			if (rlm_ldap_directory_alloc(NULL, &inst->directory, inst, &conn) < 0) goto error;
-#ifdef HAVE_PTHREAD_H
 			pthread_mutex_unlock(&inst->directory_mutex);
 		}
-#endif
 	}
 
 	return conn;

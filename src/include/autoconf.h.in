@@ -617,9 +617,6 @@
 /* define if you want TCP support (For RADSec et al) */
 #undef WITH_TCP
 
-/* define if you want thread support */
-#undef WITH_THREADS
-
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO
 

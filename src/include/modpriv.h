@@ -65,9 +65,8 @@ typedef struct module_instance_t {
 
 	void				*data;		//!< The module's private instance data, containing.
 							//!< its parsed configuration and static state.
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t			*mutex;
-#endif
+
 	CONF_SECTION			*cs;		//!< Configuration section in modules {}.
 
 	time_t				last_hup;	//!< Last time the module was 'hupped'.

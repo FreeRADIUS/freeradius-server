@@ -39,9 +39,6 @@ RCSID("$Id$")
 
 #include	"rlm_sql.h"
 
-#ifdef HAVE_PTHREAD_H
-#endif
-
 /*
  *	Translate rlm_sql rcodes to humanly
  *	readable reason strings.

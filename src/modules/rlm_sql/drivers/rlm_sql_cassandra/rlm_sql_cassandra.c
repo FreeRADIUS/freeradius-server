@@ -65,10 +65,8 @@ typedef struct rlm_sql_cassandra_config {
 	CassSsl			*ssl;				//!< Connection's SSL context.
 	bool			done_connect_keyspace;		//!< Whether we've connected to a keyspace.
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		connect_mutex;			//!< Mutex to prevent multiple connections attempting
 								//!< to connect a keyspace concurrently.
-#endif
 
 	/*
 	 *	Configuration options
@@ -352,9 +350,8 @@ static int _mod_destructor(rlm_sql_cassandra_config_t *config)
 	if (config->session) cass_session_free(config->session);	/* also synchronously closes the session */
 	if (config->cluster) cass_cluster_free(config->cluster);
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&config->connect_mutex);
-#endif
+
 	if (--rlm_sql_cass_instances == 0) cass_log_cleanup();	/* must be last call to libcassandra */
 
 	return 0;
@@ -393,13 +390,11 @@ do {\
 	}
 
 	MEM(driver = config->driver = talloc_zero(config, rlm_sql_cassandra_config_t));
-#ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&driver->connect_mutex, NULL) < 0) {
 		ERROR("Failed initializing mutex: %s", fr_syserror(errno));
 		TALLOC_FREE(driver);
 		return -1;
 	}
-#endif
 	talloc_set_destructor(driver, _mod_destructor);
 
 	/*
@@ -631,9 +626,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		CassFuture	*future;
 		CassError	ret;
 
-#ifdef HAVE_PTHREAD_H
 		pthread_mutex_lock(&driver->connect_mutex);
-#endif
 		if (!driver->done_connect_keyspace) {
 			/*
 			 *	Easier to do this here instead of mod_instantiate
@@ -657,9 +650,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 			cass_future_free(future);
 			driver->done_connect_keyspace = true;
 		}
-#ifdef HAVE_PTHREAD_H
 		pthread_mutex_unlock(&driver->connect_mutex);
-#endif
 	}
 	conn->log_ctx = talloc_pool(conn, 1024);	/* Pre-allocate some memory for log messages */
 

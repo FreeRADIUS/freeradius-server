@@ -35,13 +35,8 @@ RCSID("$Id$")
 #include <Python.h>
 #include <dlfcn.h>
 
-#ifdef HAVE_PTHREAD_H
 #define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
 #define Pyx_UNBLOCK_THREADS   PyGILState_Release(__gstate);}
-#else
-#define Pyx_BLOCK_THREADS
-#define Pyx_UNBLOCK_THREADS
-#endif
 
 /*
  *	TODO: The only needed thing here is function. Anything else is
@@ -221,11 +216,10 @@ static int mod_init(rlm_python_t *inst)
 
 	memcpy(&name, &main_config.name, sizeof(name));
 	Py_SetProgramName(name);
-#ifdef HAVE_PTHREAD_H
 	Py_InitializeEx(0);				/* Don't override signal handlers */
 	PyEval_InitThreads(); 				/* This also grabs a lock */
 	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
-#endif
+
 	if (inst->python_path) {
 		char *path;
 
@@ -251,19 +245,16 @@ static int mod_init(rlm_python_t *inst)
 		goto failed;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	PyThreadState_Swap(NULL);	/* We have to swap out the current thread else we get deadlocks */
 	PyEval_ReleaseLock();		/* Drop lock grabbed by InitThreads */
-#endif
+
 	DEBUG("mod_init done");
 	return 0;
 
 failed:
 	Py_XDECREF(radiusd_module);
 
-#ifdef HAVE_PTHREAD_H
 	PyEval_ReleaseLock();
-#endif
 
 	Pyx_BLOCK_THREADS
 	mod_error();
@@ -440,7 +431,6 @@ failed:
 	return -1;
 }
 
-#ifdef HAVE_PTHREAD_H
 /** Cleanup any thread local storage on pthread_exit()
  */
 static void do_python_cleanup(void *arg)
@@ -453,7 +443,6 @@ static void do_python_cleanup(void *arg)
 	PyThreadState_Delete(my_thread_state);
 	PyEval_ReleaseLock();
 }
-#endif
 
 static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname, bool worker)
 {
@@ -469,10 +458,8 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	memset(&gstate, 0, sizeof(gstate));		/* -Wuninitialized */
 
 	/* Return with "OK, continue" if the function is not defined. */
-	if (!pFunc)
-		return RLM_MODULE_NOOP;
+	if (!pFunc) return RLM_MODULE_NOOP;
 
-#ifdef HAVE_PTHREAD_H
 	gstate = PyGILState_Ensure();
 	if (worker) {
 		PyThreadState *my_thread_state;
@@ -498,7 +485,6 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		RDEBUG3("Using thread state %p", my_thread_state);
 		prev_thread_state = PyThreadState_Swap(my_thread_state);	/* Swap in our local thread state */
 	}
-#endif
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
@@ -618,12 +604,8 @@ finish:
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
 
-#ifdef HAVE_PTHREAD_H
-	if (worker) {
-		PyThreadState_Swap(prev_thread_state);
-	}
+	if (worker) PyThreadState_Swap(prev_thread_state);
 	PyGILState_Release(gstate);
-#endif
 
 	return ret;
 }

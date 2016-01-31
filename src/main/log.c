@@ -41,10 +41,7 @@ RCSID("$Id$")
 #endif
 
 #include <sys/file.h>
-
-#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#endif
 
 log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
 log_lvl_t	req_debug_lvl = 0;		//!< Request debugging level

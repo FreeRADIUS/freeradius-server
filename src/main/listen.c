@@ -2945,9 +2945,7 @@ static int _listener_free(rad_listen_t *this)
 		if (this->tls) {
 			rad_assert(!sock->tls_session || (talloc_parent(sock->tls_session) == sock));
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
-#ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
-#endif
 		}
 #endif	/* WITH_TLS */
 	}
@@ -3158,8 +3156,6 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	return this;
 }
 
-
-#ifdef HAVE_PTHREAD_H
 /*
  *	A child thread which does NOTHING other than read and process
  *	packets.
@@ -3175,8 +3171,6 @@ static void *recv_thread(void *arg)
 
 	return NULL;
 }
-#endif
-
 
 /** Search for listeners in the server
  *
@@ -3259,7 +3253,6 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 		}
 
 		if (this->workers) {
-#ifdef HAVE_PTHREAD_H
 			int rcode;
 			uint32_t i;
 			char buffer[256];
@@ -3280,10 +3273,6 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 
 				DEBUG("Thread %d for %s\n", i, buffer);
 			}
-#else
-			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-			this->workers = 0;
-#endif
 		} else {
 			radius_update_listener(this);
 		}

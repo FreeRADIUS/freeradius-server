@@ -32,8 +32,7 @@ RCSID("$Id$")
 #  endif /* GETHOSTBYADDRRSTYLE */
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#  include <pthread.h>
+#include <pthread.h>
 
 /* Thread safe DNS lookups */
 /*
@@ -42,16 +41,14 @@ RCSID("$Id$")
  *	that is the case then use only one mutex instead of separate
  *	mutexes
  */
-#  ifdef LOCAL_GETHOSTBYNAMERSTYLE
+#ifdef LOCAL_GETHOSTBYNAMERSTYLE
 static int fr_hostbyname = 0;
 static pthread_mutex_t fr_hostbyname_mutex;
-#  endif
+#endif
 
-#  ifdef LOCAL_GETHOSTBYNAMERSTYLE
+#ifdef LOCAL_GETHOSTBYNAMERSTYLE
 static int fr_hostbyaddr = 0;
 static pthread_mutex_t fr_hostbyaddr_mutex;
-#  endif
-
 #endif
 
 /*
@@ -137,13 +134,11 @@ gethostbyname_r(char const *hostname, struct hostent *result,
 {
 	struct hostent *hp;
 
-#  ifdef HAVE_PTHREAD_H
 	if (fr_hostbyname == 0) {
 		pthread_mutex_init(&fr_hostbyname_mutex, NULL);
 		fr_hostbyname = 1;
 	}
 	pthread_mutex_lock(&fr_hostbyname_mutex);
-#  endif
 
 	hp = gethostbyname(hostname);
 	if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
@@ -154,9 +149,7 @@ gethostbyname_r(char const *hostname, struct hostent *result,
 		hp = result;
 	}
 
-#  ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&fr_hostbyname_mutex);
-#  endif
 
 	return hp;
 }
@@ -169,13 +162,11 @@ static struct hostent *gethostbyaddr_r(char const *addr, int len, int type, stru
 {
 	struct hostent *hp;
 
-#ifdef HAVE_PTHREAD_H
 	if (fr_hostbyaddr == 0) {
 		pthread_mutex_init(&fr_hostbyaddr_mutex, NULL);
 		fr_hostbyaddr = 1;
 	}
 	pthread_mutex_lock(&fr_hostbyaddr_mutex);
-#endif
 
 	hp = gethostbyaddr(addr, len, type);
 	if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
@@ -186,9 +177,7 @@ static struct hostent *gethostbyaddr_r(char const *addr, int len, int type, stru
 		hp = result;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_unlock(&fr_hostbyaddr_mutex);
-#endif
 
 	return hp;
 }

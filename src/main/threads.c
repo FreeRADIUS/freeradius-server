@@ -60,8 +60,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <sys/wait.h>
 #endif
 
-#ifdef HAVE_PTHREAD_H
-
 #ifdef HAVE_OPENSSL_CRYPTO_H
 #  include <openssl/crypto.h>
 #endif
@@ -1485,4 +1483,3 @@ uint32_t thread_pool_max_threads(void)
 {
 	return thread_pool.max_threads;
 }
-#endif /* HAVE_PTHREAD_H */

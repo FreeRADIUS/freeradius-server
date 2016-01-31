@@ -24,10 +24,6 @@
  */
 RCSIDH(krb5_h, "$Id$")
 
-#if defined(KRB5_IS_THREAD_SAFE) && !defined(HAVE_PTHREAD_H)
-#  undef KRB5_IS_THREAD_SAFE
-#endif
-
 /* krb5 includes */
 USES_APPLE_DEPRECATED_API
 #include <krb5.h>

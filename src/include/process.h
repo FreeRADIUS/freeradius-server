@@ -53,12 +53,10 @@ typedef	void (*fr_request_process_t)(REQUEST *, int);
 
 extern time_t fr_start_time;
 
-#ifdef HAVE_PTHREAD_H
 /*
  *	In threads.c
  */
 int request_enqueue(REQUEST *request);
-#endif
 
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);

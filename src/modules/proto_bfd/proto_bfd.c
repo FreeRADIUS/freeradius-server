@@ -68,11 +68,9 @@ typedef struct bfd_state_t {
 	fr_event_list_t *el;
 	const char	*server;
 
-#ifdef HAVE_PTHREAD_H
 	bool		blocked;
 	int		pipefd[2];
 	pthread_t	pthread_id;
-#endif
 
 	bfd_auth_type_t auth_type;
 	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
@@ -242,8 +240,6 @@ void bfd_init(fr_event_list_t *xel)
 	el = xel;
 }
 
-
-#ifdef HAVE_PTHREAD_H
 static void bfd_pthread_free(bfd_state_t *session)
 {
 	session->blocked = true;
@@ -362,8 +358,6 @@ static int bfd_pthread_create(bfd_state_t *session)
 
 	return 1;
 }
-#endif	/* HAVE_PTHREAD_H */
-
 
 static const char *bfd_state[] = {
 	"admin-down",
@@ -408,14 +402,12 @@ static void bfd_session_free(void *ctx)
 {
 	bfd_state_t *session = ctx;
 
-#ifdef WITH_PTHREAD_H
 	if (el != session->el) {
 		/*
 		 *	FIXME: this isn't particularly safe.
 		 */
 		bfd_pthread_free(session);
 	}
-#endif
 
 	talloc_free(session);
 }
@@ -579,7 +571,6 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 
 		bfd_start_control(session);
 
-#ifdef HAVE_PTHREAD_H
 		session->pipefd[0] = session->pipefd[1] = -1;
 		session->pthread_id = pthread_self();
 	} else {
@@ -588,7 +579,6 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 			talloc_free(session);
 			return NULL;
 		}
-#endif
 	}
 
 	return session;
@@ -1499,7 +1489,6 @@ static int bfd_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-#ifdef HAVE_PTHREAD_H
 	if (!el) {
 		uint8_t *p = (uint8_t *) &bfd;
 		size_t total = bfd.length;
@@ -1532,7 +1521,6 @@ static int bfd_socket_recv(rad_listen_t *listener)
 		} while (total > 0);
 		return 0;
 	}
-#endif
 
 	return bfd_process(session, &bfd);
 }
