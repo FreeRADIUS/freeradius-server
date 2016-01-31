@@ -47,7 +47,7 @@ FR_NAME_NUMBER const ldap_directory_type_table[] = {
  * @param[in] ctx	to allocate ldap_directory_t in.
  * @param[out] out	where to write pointer to new ldap_directory_t struct.
  * @param[in] inst	rlm_ldap configuration.
- * @pconn[in,out] pconn	to use to query the directory.
+ * @pconn[in,out]	connection for querying the directory.
  * @return
  *	- 0 on success.
  *	- 1 if we failed identifying the directory server.
