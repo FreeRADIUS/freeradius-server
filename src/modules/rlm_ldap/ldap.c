@@ -1551,7 +1551,12 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 #define maybe_ldap_global_option(_option, _name, _value) \
 	if (_value) do_ldap_global_option(_option, _name, _value)
 
-	maybe_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &(inst->ldap_debug));
+#ifdef LDAP_OPT_DEBUG_LEVEL
+	/*
+	 *	Can't use do_ldap_global_option
+	 */
+	if (inst->ldap_debug) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &(inst->ldap_debug));
+#endif
 
 #ifdef LDAP_OPT_X_TLS_RANDOM_FILE
 	/*
@@ -1703,9 +1708,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	/*
 	 *	Set all of the TLS options
 	 */
-	if (inst->tls_mode) {
-		do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
-	}
+	if (inst->tls_mode) do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
 
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", inst->tls_ca_file);
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", inst->tls_ca_path);
