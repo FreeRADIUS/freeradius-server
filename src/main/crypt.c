@@ -33,8 +33,6 @@ RCSID("$Id$")
 #ifndef HAVE_CRYPT_R
 static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
-#define pthread_mutex_lock pthread_mutex_lock
-#define pthread_mutex_unlock pthread_mutex_unlock
 
 /** Performs a crypt password check in an thread-safe way.
  *
