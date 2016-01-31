@@ -78,9 +78,9 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	caller it's OK to read more "detail" file stuff.
 	 */
 	if (request->reply->code == 0) {
-		data->entry.delay_time = data->retry_interval * USEC;
+		data->delay_time = data->retry_interval * USEC;
 		data->signal = 1;
-		data->entry.state = STATE_NO_REPLY;
+		data->entry_state = STATE_NO_REPLY;
 
 		RDEBUG("detail (%s): No response to request.  Will retry in %d seconds",
 		       data->name, data->retry_interval);
@@ -145,21 +145,21 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		 *
 		 *	rtt / (rtt + delay) = load_factor / 100
 		 */
-		data->entry.delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
+		data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
 
 		/*
 		 *	Cap delay at no less than 4 packets/s.  If the
 		 *	end system can't handle this, then it's very
 		 *	broken.
 		 */
-		if (data->entry.delay_time > (USEC / 4)) data->entry.delay_time= USEC / 4;
+		if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
 
 		RDEBUG3("detail (%s): Received response for request %d.  Will read the next packet in %d seconds",
-			data->name, request->number, data->entry.delay_time / USEC);
+			data->name, request->number, data->delay_time / USEC);
 
 		data->last_packet = now;
 		data->signal = 1;
-		data->entry.state = STATE_REPLIED;
+		data->entry_state = STATE_REPLIED;
 		data->counter++;
 	}
 
@@ -183,7 +183,7 @@ static int detail_open(rad_listen_t *this)
 	listen_detail_t *data = this->data;
 
 	rad_assert(data->file_state == STATE_UNOPENED);
-	data->entry.delay_time = USEC;
+	data->delay_time = USEC;
 
 	/*
 	 *	Open detail.work first, so we don't lose
@@ -277,17 +277,17 @@ static int detail_open(rad_listen_t *this)
 #endif
 	} /* else detail.work existed, and we opened it */
 
-	rad_assert(data->entry.vps == NULL);
+	rad_assert(data->vps == NULL);
 	rad_assert(data->fp == NULL);
 
 	data->file_state = STATE_UNLOCKED;
 
 	data->client_ip.af = AF_UNSPEC;
-	data->entry.timestamp = 0;
-	data->entry.offset = data->last_offset = data->entry.timestamp_offset = 0;
+	data->timestamp = 0;
+	data->offset = data->last_offset = data->timestamp_offset = 0;
 	data->packets = 0;
 	data->tries = 0;
-	data->entry.done = false;
+	data->done_entry = false;
 
 	return 1;
 }
@@ -346,12 +346,12 @@ int detail_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		data->entry.state = STATE_REPLIED;
+		data->entry_state = STATE_REPLIED;
 		goto signal_thread;
 	}
 
 	if (!request_receive(NULL, listener, packet, &data->detail_client, fun)) {
-		data->entry.state = STATE_NO_REPLY;	/* try again later */
+		data->entry_state = STATE_NO_REPLY;	/* try again later */
 
 	signal_thread:
 		fr_radius_free(&packet);
@@ -434,9 +434,9 @@ open_file:
 		 *	Look for the header
 		 */
 		data->file_state = STATE_PROCESSING;
-		data->entry.state = STATE_HEADER;
-		data->entry.delay_time = USEC;
-		data->entry.vps = NULL;
+		data->entry_state = STATE_HEADER;
+		data->delay_time = USEC;
+		data->vps = NULL;
 		break;
 
 		/*
@@ -447,11 +447,11 @@ open_file:
 	}
 
 	
-	switch (data->entry.state) {
+	switch (data->entry_state) {
 	case STATE_HEADER:
 	do_header:
-		data->entry.done = false;
-		data->entry.timestamp_offset = 0;
+		data->done_entry = false;
+		data->timestamp_offset = 0;
 
 		data->tries = 0;
 		if (!data->fp) {
@@ -485,7 +485,7 @@ open_file:
 			data->fp = NULL;
 			data->work_fd = -1;
 			data->file_state = STATE_UNOPENED;
-			rad_assert(data->entry.vps == NULL);
+			rad_assert(data->vps == NULL);
 
 			if (data->one_shot) {
 				INFO("detail (%s): Finished reading \"one shot\" detail file - Exiting", data->name);
@@ -507,7 +507,7 @@ open_file:
 	 */
 	case STATE_VPS:
 		if (data->fp && !feof(data->fp)) break;
-		data->entry.state = STATE_QUEUED;
+		data->entry_state = STATE_QUEUED;
 
 		/* FALL-THROUGH */
 
@@ -520,7 +520,7 @@ open_file:
 	 *	retry it.
 	 */
 	case STATE_RUNNING:
-		if (time(NULL) < (data->entry.queued + (int)data->retry_interval)) {
+		if (time(NULL) < (data->running + (int)data->retry_interval)) {
 			return NULL;
 		}
 
@@ -533,7 +533,7 @@ open_file:
 	 *	forever.
 	 */
 	case STATE_NO_REPLY:
-		data->entry.state = STATE_QUEUED;
+		data->entry_state = STATE_QUEUED;
 		goto alloc_packet;
 
 	/*
@@ -544,7 +544,7 @@ open_file:
 		if (data->track) {
 			rad_assert(data->fp != NULL);
 
-			if (fseek(data->fp, data->entry.timestamp_offset, SEEK_SET) < 0) {
+			if (fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) {
 				WARN("detail (%s): Failed seeking to timestamp offset: %s",
 				     data->name, fr_syserror(errno));
 			} else if (fwrite("\tDone", 1, 5, data->fp) < 5) {
@@ -555,25 +555,25 @@ open_file:
 				     data->name, fr_syserror(errno));
 			}
 
-			if (fseek(data->fp, data->entry.offset, SEEK_SET) < 0) {
+			if (fseek(data->fp, data->offset, SEEK_SET) < 0) {
 				WARN("detail (%s): Failed seeking to next detail request: %s",
 				     data->name, fr_syserror(errno));
 			}
 		}
 
-		fr_pair_list_free(&data->entry.vps);
-		data->entry.state = STATE_HEADER;
+		fr_pair_list_free(&data->vps);
+		data->entry_state = STATE_HEADER;
 		goto do_header;
 	}
 
-	fr_cursor_init(&cursor, &data->entry.vps);
+	fr_cursor_init(&cursor, &data->vps);
 
 	/*
 	 *	Read a header, OR a value-pair.
 	 */
 	while (fgets(buffer, sizeof(buffer), data->fp)) {
-		data->last_offset = data->entry.offset;
-		data->entry.offset = ftell(data->fp); /* for statistics */
+		data->last_offset = data->offset;
+		data->offset = ftell(data->fp); /* for statistics */
 
 		/*
 		 *	Badly formatted file: delete it.
@@ -581,7 +581,7 @@ open_file:
 		 *	FIXME: Maybe flag an error?
 		 */
 		if (!strchr(buffer, '\n')) {
-			fr_pair_list_free(&data->entry.vps);
+			fr_pair_list_free(&data->vps);
 			goto cleanup;
 		}
 
@@ -589,9 +589,9 @@ open_file:
 		 *	We're reading VP's, and got a blank line.
 		 *	Queue the packet.
 		 */
-		if ((data->entry.state == STATE_VPS) &&
+		if ((data->entry_state == STATE_VPS) &&
 		    (buffer[0] == '\n')) {
-			data->entry.state = STATE_QUEUED;
+			data->entry_state = STATE_QUEUED;
 			break;
 		}
 
@@ -600,11 +600,11 @@ open_file:
 		 *	found.  If not, keep reading lines until we
 		 *	find one.
 		 */
-		if (data->entry.state == STATE_HEADER) {
+		if (data->entry_state == STATE_HEADER) {
 			int y;
 
 			if (sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
-				data->entry.state = STATE_VPS;
+				data->entry_state = STATE_VPS;
 			}
 			continue;
 		}
@@ -642,7 +642,7 @@ open_file:
 			if (fr_inet_hton(&data->client_ip, AF_INET, value, false) < 0) {
 				ERROR("detail (%s): Failed parsing Client-IP-Address", data->name);
 
-				fr_pair_list_free(&data->entry.vps);
+				fr_pair_list_free(&data->vps);
 				goto cleanup;
 			}
 			continue;
@@ -654,12 +654,12 @@ open_file:
 		 *	Acct-Delay-Time.
 		 */
 		if (!strcasecmp(key, "Timestamp")) {
-			data->entry.timestamp = atoi(value);
-			data->entry.timestamp_offset = data->last_offset;
+			data->timestamp = atoi(value);
+			data->timestamp_offset = data->last_offset;
 
 			vp = fr_pair_afrom_num(data, 0, PW_PACKET_ORIGINAL_TIMESTAMP);
 			if (vp) {
-				vp->vp_date = (uint32_t) data->entry.timestamp;
+				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
 				fr_cursor_insert(&cursor, vp);
 			}
@@ -667,8 +667,8 @@ open_file:
 		}
 
 		if (!strcasecmp(key, "Donestamp")) {
-			data->entry.timestamp = atoi(value);
-			data->entry.done = true;
+			data->timestamp = atoi(value);
+			data->done_entry = true;
 			continue;
 		}
 
@@ -700,10 +700,10 @@ open_file:
 	 *	Process the packet.
 	 */
  alloc_packet:
-	if (data->entry.done) {
-		DEBUG2("detail (%s): Skipping record for timestamp %lu", data->name, data->entry.timestamp);
-		fr_pair_list_free(&data->entry.vps);
-		data->entry.state = STATE_HEADER;
+	if (data->done_entry) {
+		DEBUG2("detail (%s): Skipping record for timestamp %lu", data->name, data->timestamp);
+		fr_pair_list_free(&data->vps);
+		data->entry_state = STATE_HEADER;
 		goto do_header;
 	}
 
@@ -715,10 +715,10 @@ open_file:
 	 *	result in a truncated record.  When that happens,
 	 *	treat it as EOF.
 	 */
-	if (data->entry.state != STATE_QUEUED) {
+	if (data->entry_state != STATE_QUEUED) {
 		ERROR("detail (%s): Truncated record: treating it as EOF for detail file %s",
 		      data->name, data->filename_work);
-		fr_pair_list_free(&data->entry.vps);
+		fr_pair_list_free(&data->vps);
 		goto cleanup;
 	}
 
@@ -726,8 +726,8 @@ open_file:
 	 *	We're done reading the file, but we didn't read
 	 *	anything.  Clean up, and don't return anything.
 	 */
-	if (!data->entry.vps) {
-		data->entry.state = STATE_HEADER;
+	if (!data->vps) {
+		data->entry_state = STATE_HEADER;
 		if (!data->fp || feof(data->fp)) goto cleanup;
 		return NULL;
 	}
@@ -752,7 +752,7 @@ open_file:
 	 *	Otherwise, it lets us re-send the original packet
 	 *	contents, unmolested.
 	 */
-	packet->vps = fr_pair_list_copy(packet, data->entry.vps);
+	packet->vps = fr_pair_list_copy(packet, data->vps);
 
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
 	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_TYPE, TAG_ANY);
@@ -820,7 +820,7 @@ open_file:
 		 */
 		vp = fr_pair_find_by_num(packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY);
 		if (vp) {
-			data->entry.timestamp = vp->vp_integer;
+			data->timestamp = vp->vp_integer;
 		}
 
 		/*
@@ -833,8 +833,8 @@ open_file:
 			rad_assert(vp != NULL);
 			fr_pair_add(&packet->vps, vp);
 		}
-		if (data->entry.timestamp != 0) {
-			vp->vp_integer += time(NULL) - data->entry.timestamp;
+		if (data->timestamp != 0) {
+			vp->vp_integer += time(NULL) - data->timestamp;
 		}
 	}
 
@@ -849,8 +849,8 @@ open_file:
 	}
 	vp->vp_integer = data->tries;
 
-	data->entry.state = STATE_RUNNING;
-	data->entry.queued = packet->timestamp.tv_sec;
+	data->entry_state = STATE_RUNNING;
+	data->running = packet->timestamp.tv_sec;
 
 	return packet;
 }
@@ -932,7 +932,7 @@ static int detail_delay(listen_detail_t *data)
 
 	DEBUG2("detail (%s): Detail listener state %s waiting %d.%06d sec",
 	       data->name,
-	       fr_int2str(state_names, data->entry.state, "?"),
+	       fr_int2str(state_names, data->entry_state, "?"),
 	       (delay / USEC), delay % USEC);
 
 	return delay;
@@ -998,11 +998,11 @@ static void *detail_handler_thread(void *arg)
 				break;
 			}
 
-			if (data->entry.delay_time > 0) usleep(data->entry.delay_time);
+			if (data->delay_time > 0) usleep(data->delay_time);
 
 			packet = detail_poll(this);
 			if (!packet) break;
-		} while (data->entry.state != STATE_REPLIED);
+		} while (data->entry_state != STATE_REPLIED);
 	}
 
 	return NULL;
@@ -1105,11 +1105,11 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	data->filename_work = talloc_strdup(data, buffer);
 
 	data->work_fd = -1;
-	data->entry.vps = NULL;
+	data->vps = NULL;
 	data->fp = NULL;
 	data->file_state = STATE_UNOPENED;
-	data->entry.state = STATE_HEADER;
-	data->entry.delay_time = data->poll_interval * USEC;
+	data->entry_state = STATE_HEADER;
+	data->delay_time = data->poll_interval * USEC;
 	data->signal = 1;
 
 	/*

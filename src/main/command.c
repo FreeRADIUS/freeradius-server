@@ -2589,7 +2589,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 
 	cprintf(listener, "packets\t%d\n", data->packets);
 	cprintf(listener, "tries\t%d\n", data->tries);
-	cprintf(listener, "offset\t%u\n", (unsigned int) data->entry.offset);
+	cprintf(listener, "offset\t%u\n", (unsigned int) data->offset);
 	cprintf(listener, "size\t%u\n", (unsigned int) buf.st_size);
 
 	return CMD_OK;
