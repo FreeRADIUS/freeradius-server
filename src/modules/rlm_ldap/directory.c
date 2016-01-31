@@ -30,8 +30,14 @@ FR_NAME_NUMBER const ldap_directory_type_table[] = {
 	{ "Unknown",			LDAP_DIRECTORY_UNKNOWN	},
 	{ "Active Directory",		LDAP_DIRECTORY_ACTIVE_DIRECTORY	},
 	{ "eDirectory",			LDAP_DIRECTORY_EDIRECTORY },
+	{ "IBM",			LDAP_DIRECTORY_IBM },
+	{ "NetScape",			LDAP_DIRECTORY_NETSCAPE },
 	{ "OpenLDAP",			LDAP_DIRECTORY_OPENLDAP	},
+	{ "Oracle Internet Directory",	LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY },
 	{ "Oracle Unified Directory",	LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY },
+	{ "Oracle Virtual Directory",	LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY },
+	{ "Sun One Directory",		LDAP_DIRECTORY_SUN_ONE_DIRECTORY },
+	{ "Siemens AG",			LDAP_DIRECTORY_SIEMENS_AG },
 	{ "Unbound ID",			LDAP_DIRECTORY_UNBOUND_ID },
 	{  NULL , -1 }
 };
@@ -53,6 +59,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 					     "vendorversion",
 					     "isGlobalCatalogReady",
 					     "objectClass",
+					     "orcldirectoryversion",
 					     NULL };
 	ldap_rcode_t		status;
 	int			entry_cnt;
@@ -107,6 +114,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 	if (values) {
 		directory->vendor_str = rlm_ldap_berval_to_string(inst, values[0]);
 		INFO("Directory vendor: %s", directory->vendor_str);
+
 		ldap_value_free_len(values);
 	}
 
@@ -115,23 +123,50 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 		directory->version_str = rlm_ldap_berval_to_string(inst, values[0]);
 		INFO("Directory version: %s", directory->version_str);
 
+		ldap_value_free_len(values);
+	}
+
+	if (directory->vendor_str) {
+		if (strcasestr(directory->vendor_str, "International Business Machines")) {
+			directory->type = LDAP_DIRECTORY_EDIRECTORY;
+		}
+
+		goto found;
+	}
+
+	if (directory->version_str) {
 		/*
 		 *	Novell eDirectory vendorversion contains eDirectory
 		 */
-		if (strcasestr(directory->version_str, "eDirectory") == 0) {
+		if (strcasestr(directory->version_str, "eDirectory")) {
 			directory->type = LDAP_DIRECTORY_EDIRECTORY;
 		/*
 		 *	Oracle unified directory vendorversion contains Oracle Unified Directory
 		 */
-		} else if (strcasestr(directory->version_str, "Oracle Unified Directory") == 0) {
+		} else if (strcasestr(directory->version_str, "Oracle Unified Directory")) {
 			directory->type = LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY;
 		/*
 		 *	Unbound directory vendorversion contains UnboundID
 		 */
-		} else if (strcasestr(directory->version_str, "UnboundID") == 0) {
+		} else if (strcasestr(directory->version_str, "UnboundID")) {
 			directory->type = LDAP_DIRECTORY_UNBOUND_ID;
+		/*
+		 *	NetScape directory venderversion contains Netscape-Directory
+		 */
+		} else if (strcasestr(directory->version_str, "Netscape-Directory")) {
+			directory->type = LDAP_DIRECTORY_NETSCAPE;
+		/*
+		 *	Siemens AG directory vendorversion contains DirX Directory
+		 */
+		} else if (strcasestr(directory->version_str, "DirX Directory")) {
+			directory->type = LDAP_DIRECTORY_SIEMENS_AG;
+		/*
+		 *	Sun One Directory vendorversion contains Sun Java
+		 */
+		} else if (strcasestr(directory->version_str, "Sun Java")) {
+			directory->type = LDAP_DIRECTORY_SUN_ONE_DIRECTORY;
 		}
-		ldap_value_free_len(values);
+		goto found;
 	}
 
 	/*
@@ -142,6 +177,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 	if (values) {
 		directory->type = LDAP_DIRECTORY_ACTIVE_DIRECTORY;
 		ldap_value_free_len(values);
+		goto found;
 	}
 
 	/*
@@ -156,8 +192,23 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 			}
 		}
 		ldap_value_free_len(values);
+		goto found;
 	}
 
+	/*
+	 *	Oracle Virtual Directory and Oracle Internet Directory
+	 */
+	values = ldap_get_values_len((*pconn)->handle, entry, "orcldirectoryversion");
+	if (values) {
+		if (memmem(values[0]->bv_val, values[0]->bv_len, "OID", 3)) {
+			directory->type = LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY;
+		} else if (memmem(values[0]->bv_val, values[0]->bv_len, "OVD", 3)) {
+			directory->type = LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY;
+		}
+		ldap_value_free_len(values);
+	}
+
+found:
 	INFO("Directory type: %s", fr_int2str(ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {

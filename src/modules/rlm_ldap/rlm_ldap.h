@@ -187,8 +187,14 @@ typedef enum {
 
 	LDAP_DIRECTORY_ACTIVE_DIRECTORY,		//!< Directory server is Active Directory.
 	LDAP_DIRECTORY_EDIRECTORY,			//!< Directory server is eDir.
-	LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY,	//!< Directory server is Oracle Unified Directory.
+	LDAP_DIRECTORY_IBM,				//!< Directory server is IBM.
+	LDAP_DIRECTORY_NETSCAPE,			//!< Directory server is Netscape.
 	LDAP_DIRECTORY_OPENLDAP,			//!< Directory server is OpenLDAP.
+	LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY,	//!< Directory server is Oracle Internet Directory.
+	LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY,	//!< Directory server is Oracle Unified Directory.
+	LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY,	//!< Directory server is Oracle Virtual Directory.
+	LDAP_DIRECTORY_SUN_ONE_DIRECTORY,		//!< Directory server is Sun One Directory.
+	LDAP_DIRECTORY_SIEMENS_AG,			//!< Directory server is Siemens AG.
 	LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
 } ldap_directory_type_t;
 
