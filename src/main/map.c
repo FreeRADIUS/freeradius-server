@@ -1021,16 +1021,17 @@ do {\
  */
 int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
-	int rcode = 0;
-	int num;
-	VALUE_PAIR **list, *vp, *dst, *head = NULL;
-	bool found = false;
-	REQUEST *context;
-	TALLOC_CTX *parent;
-	vp_cursor_t dst_list, src_list;
+	int			rcode = 0;
+	int			num;
+	VALUE_PAIR		**list, *vp, *dst, *head = NULL;
+	REQUEST			*context;
+	TALLOC_CTX		*parent;
+	vp_cursor_t		dst_list, src_list;
 
-	vp_map_t	exp_map;
-	vp_tmpl_t	exp_lhs;
+	bool			found = false;
+
+	vp_map_t		exp_map;
+	vp_tmpl_t		exp_lhs;
 
 	VERIFY_MAP(map);
 	rad_assert(map->lhs != NULL);
