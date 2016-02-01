@@ -132,6 +132,7 @@ typedef struct modcall_stack_entry_t {
 	bool if_taken;
 	bool iterative;
 	modcallable *c;
+	vp_cursor_t cursor;
 } modcall_stack_entry_t;
 
 typedef struct modcall_stack_t {
@@ -313,7 +314,6 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
-	vp_cursor_t copy;
 
 	g = mod_callabletogroup(c);
 
@@ -352,16 +352,16 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 	}
 
 	rad_assert(vps != NULL);
-	fr_cursor_init(&copy, &vps);
+	fr_cursor_init(&entry->cursor, &vps);
 
 	RDEBUG2("foreach %s ", c->name);
 
 	/*
 	 *	This is the actual body of the foreach loop
 	 */
-	for (vp = fr_cursor_first(&copy);
+	for (vp = fr_cursor_first(&entry->cursor);
 	     vp != NULL;
-	     vp = fr_cursor_next(&copy)) {
+	     vp = fr_cursor_next(&entry->cursor)) {
 #ifndef NDEBUG
 		if (fr_debug_lvl >= 2) {
 			char buffer[1024];
