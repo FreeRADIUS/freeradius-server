@@ -1367,62 +1367,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		fr_pair_add(list, head);
 		head = NULL;
 		break;
-
-	/*
-	 *	Filtering operators
-	 */
-	default:
-		/*
-		 *	If the dst doesn't exist, the filters will add
-		 *	it with the given value.
-		 */
-		if (!dst) {
-			RDEBUG3("No existing attribute to filter, adding instead");
-			fr_cursor_merge(&dst_list, head);
-			head = NULL;
-			goto finish;
-		}
-
-		/*
-		 *	The LHS exists.  We need to limit it's value based on
-		 *	the operator, and the value of the RHS.
-		 */
-		found = false;
-		for (vp = fr_cursor_first(&src_list);
-		     vp;
-		     vp = fr_cursor_next(&src_list)) {
-			vp->op = map->op;
-			rcode = radius_compare_vps(request, vp, dst);
-			vp->op = T_OP_SET;
-
-			switch (map->op) {
-			case T_OP_CMP_EQ:
-				if (rcode == 0) continue;
-			replace:
-				dst = fr_cursor_remove(&dst_list);
-				DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-				fr_pair_list_free(&dst);
-				fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
-				found = true;
-				continue;
-
-			case T_OP_LE:
-				if (rcode <= 0) continue;
-				goto replace;
-
-			case T_OP_GE:
-				if (rcode >= 0) continue;
-				goto replace;
-
-			default:
-				fr_pair_list_free(&head);
-				return -1;
-			}
-		}
-		fr_pair_list_free(&head);
-		if (!found) return 0;
-
-		break;
 	}
 
 finish:
