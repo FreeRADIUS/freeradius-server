@@ -1367,6 +1367,53 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		fr_pair_add(list, head);
 		head = NULL;
 		break;
+
+	/*
+	 *	Filter operators
+	 */
+	case T_OP_REG_NE:
+	case T_OP_NE:
+	case T_OP_REG_EQ:
+	case T_OP_CMP_EQ:
+	case T_OP_GE:
+	case T_OP_GT:
+	case T_OP_LE:
+	case T_OP_LT:
+	{
+		VALUE_PAIR *a, *b;
+
+		fr_pair_list_sort(&head, fr_pair_cmp_by_da_tag);
+		fr_pair_list_sort(list, fr_pair_cmp_by_da_tag);
+
+		fr_cursor_first(&dst_list);
+
+		for (b = fr_cursor_first(&src_list);
+		     b;
+		     b = fr_cursor_next(&src_list)) {
+			for (a = fr_cursor_current(&dst_list);
+			     a;
+			     a = fr_cursor_next(&dst_list)) {
+				int8_t cmp;
+
+				cmp = fr_pair_cmp_by_da_tag(a, b);	/* attribute and tag match */
+				if (cmp > 0) break;
+				else if (cmp < 0) continue;
+
+				cmp = (value_data_cmp_op(map->op, a->da->type, &a->data, b->da->type, &b->data) == 0);
+				if (cmp != 0) {
+					a = fr_cursor_remove(&dst_list);
+					talloc_free(a);
+				}
+			}
+			if (!a) break;	/* end of the list */
+		}
+		fr_pair_list_free(&head);
+	}
+		break;
+
+	default:
+		rad_assert(0);	/* Should have been caught be the caller */
+		return -1;
 	}
 
 finish:
