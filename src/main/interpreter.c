@@ -880,7 +880,6 @@ redo:
 
 		case MODCALL_CALCULATE_RESULT:
 			entry->resume = false;
-			entry->iterative = false;
 			if (modcall_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
 							    fr_int2str(mod_rcode_table, result, "<invalid>"));
 			action = MODCALL_CALCULATE_RESULT;
