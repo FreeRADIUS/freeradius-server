@@ -132,7 +132,9 @@ typedef struct modcall_stack_entry_t {
 	bool if_taken;
 	bool iterative;
 	modcallable *c;
-	vp_cursor_t cursor;
+	vp_cursor_t cursor;	/* foreach */
+	modcallable *child;	/* redundant */
+	modcallable *found;	/* redundant */
 } modcall_stack_entry_t;
 
 typedef struct modcall_stack_t {
@@ -218,7 +220,6 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	modgroup *g;
 
 	uint32_t count = 0;
-	modcallable *this, *found;
 
 	g = mod_callabletogroup(c);
 	if (!g->children) {
@@ -230,32 +231,32 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	/*
 	 *	Choose a child at random.
 	 */
-	for (this = found = g->children; this; this = this->next) {
+	for (entry->child = entry->found = g->children; entry->child != NULL; entry->child = entry->child->next) {
 		count++;
 
 		if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-			found = this;
+			entry->found = entry->child;
 		}
 	}
 
 	if (c->type == MOD_LOAD_BALANCE) {
-		modcall_push(stack, found, entry->result, false);
+		modcall_push(stack, entry->found, entry->result, false);
 		return MODCALL_ITERATIVE;
 
 	}
 
-	this = found;
-
+	entry->child = entry->found;
+	
 	do {
-		modcall_child(request, stack, this,
+		modcall_child(request, stack, entry->child,
 			      presult, priority, false);
-		if (this->actions[*presult] == MOD_ACTION_RETURN) {
+		if (entry->child->actions[*presult] == MOD_ACTION_RETURN) {
 			return MODCALL_CALCULATE_RESULT;
 		}
 
-		this = this->next;
-		if (!this) this = g->children;
-	} while (this != found);
+		entry->child = entry->child->next;
+		if (!entry->child) entry->child = g->children;
+	} while (entry->child != entry->found);
 
 	return MODCALL_CALCULATE_RESULT;
 }
