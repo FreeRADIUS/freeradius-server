@@ -81,6 +81,13 @@ The ``rlm_eap_ikev2`` module was removed.  It does not follow RFC
 
 The ``rlm_eap_tnc`` module was removed.  No one was using or maintaining it.
 
+The internal SSL cache was removed.  Changes in OpenSSL and FreeRADIUS
+made it difficult to continue using the OpenSSL implementation of a
+cache.  See ``raddb/sites-available/tls-cache`` for a better
+replacement.  The OpenSSL cache can now be placed on disk, in memory,
+in memcache, or in a redis cache.
+
+
 rlm_rest
 ~~~~~~~~
 
