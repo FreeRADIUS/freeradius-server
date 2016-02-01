@@ -1,0 +1,70 @@
+#
+#  PRE: update
+#
+update control {
+	Tmp-Integer-0 := 5
+	Tmp-Integer-0 += 10
+	Tmp-Integer-0 += 15
+	Tmp-Integer-0 += 20
+	Tmp-String-0 := 'foo'
+	Tmp-String-0 += 'baz'
+	Tmp-String-0 += 'boink'
+}
+
+#
+#  Reset the request list
+#
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+debug_request
+
+#
+#  Only matching attributes of the specified type should remain
+#
+update request {
+	&Tmp-Integer-0 == 10
+}
+
+if (&Tmp-Integer-0[0] != 10) {
+	update reply {
+		Filter-Id += "fail 1"
+	}
+}
+
+if ("%{Tmp-Integer-0[#]}" != 1) {
+	update reply {
+		Filter-Id += "fail 2"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 3"
+	}
+}
+
+debug_request
+
+#
+#  Only matching attributes of the specified type should remain
+#
+update request {
+	&Tmp-String-0 == 'baz'
+}
+
+if (&Tmp-String-0[0] != 'baz') {
+	update reply {
+		Filter-Id += "fail 4"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 1) {
+	update reply {
+		Filter-Id += "fail 5"
+	}
+}
+
+debug_request
