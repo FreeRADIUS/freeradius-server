@@ -131,6 +131,7 @@ typedef struct modcall_stack_entry_t {
 	bool was_if;
 	bool if_taken;
 	bool iterative;
+	bool resume;
 	modcallable *c;
 	vp_cursor_t cursor;	/* foreach */
 	modcallable *child;	/* redundant */
@@ -148,6 +149,7 @@ typedef enum modcall_action_t {
 	MODCALL_NEXT_SIBLING,
 	MODCALL_DO_CHILDREN,
 	MODCALL_ITERATIVE,
+	MODCALL_YEILD,
 	MODCALL_BREAK
 } modcall_action_t;
 
@@ -180,6 +182,7 @@ static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t res
 	next->was_if = false;
 	next->if_taken = false;
 	next->iterative = false;
+	next->resume = false;
 	memset(&next->cursor, 0, sizeof(next->cursor));
 	next->child = next->found = NULL;
 }
@@ -854,6 +857,11 @@ redo:
 			(entry + 1)->iterative = true;
 			goto redo;
 
+		case MODCALL_YEILD:
+			entry->resume = true;
+			(entry + 1)->iterative = true;
+			goto redo;
+
 		do_pop:
 			modcall_pop(stack);
 
@@ -862,9 +870,17 @@ redo:
 			c = entry->c;
 			rad_assert(c != NULL);
 
+			/*
+			 *	We need to call the function again, to
+			 *	see if it's done.
+			 */
+			if (entry->resume) continue;
+
 			/* FALL-THROUGH */
 
 		case MODCALL_CALCULATE_RESULT:
+			entry->resume = false;
+			entry->iterative = false;
 			if (modcall_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
 							    fr_int2str(mod_rcode_table, result, "<invalid>"));
 			action = MODCALL_CALCULATE_RESULT;
