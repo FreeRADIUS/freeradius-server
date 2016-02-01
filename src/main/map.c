@@ -1314,7 +1314,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	}
 
 	/*
-	 *	Another fixup pass to set tags on attributes were about to insert
+	 *	Another fixup pass to set tags on attributes we're about to insert
 	 */
 	if (map->lhs->tmpl_tag != TAG_ANY) {
 		for (vp = fr_cursor_init(&src_list, &head);
