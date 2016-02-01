@@ -161,7 +161,6 @@ typedef struct modcall_stack_t {
 typedef enum modcall_action_t {
 	MODCALL_CALCULATE_RESULT = 1,
 	MODCALL_NEXT_SIBLING,
-	MODCALL_DO_CHILDREN,
 	MODCALL_ITERATIVE,
 	MODCALL_YEILD,
 	MODCALL_BREAK
@@ -281,8 +280,34 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	return MODCALL_YEILD;
 }
 
-static modcall_action_t modcall_case(UNUSED REQUEST *request, modcall_stack_t *stack,
-				     rlm_rcode_t *presult, UNUSED int *priority)
+
+static modcall_action_t modcall_group(UNUSED REQUEST *request, modcall_stack_t *stack,
+				     UNUSED rlm_rcode_t *result, UNUSED int *priority)
+{
+	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	modcallable *c = entry->c;
+	modgroup *g;
+
+	g = mod_callabletogroup(c);
+
+	/*
+	 *	This should really have been caught in the
+	 *	compiler, and the node never generated.  But
+	 *	doing that requires changing it's API so that
+	 *	it returns a flag instead of the compiled
+	 *	MOD_GROUP.
+	 */
+	if (!g->children) {
+		RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
+		return MODCALL_NEXT_SIBLING;
+	}
+
+	modcall_push(stack, g->children, entry->result, true);
+	return MODCALL_ITERATIVE;
+}
+
+static modcall_action_t modcall_case(REQUEST *request, modcall_stack_t *stack,
+				     rlm_rcode_t *presult, int *priority)
 {
 	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -296,7 +321,7 @@ static modcall_action_t modcall_case(UNUSED REQUEST *request, modcall_stack_t *s
 		return MODCALL_CALCULATE_RESULT;
 	}
 
-	return MODCALL_DO_CHILDREN;
+	return modcall_group(request, stack, presult, priority);
 }
 
 static modcall_action_t modcall_return(REQUEST *request, modcall_stack_t *stack,
@@ -665,7 +690,7 @@ static modcall_action_t modcall_single(REQUEST *request, modcall_stack_t *stack,
 
 
 static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
-				   rlm_rcode_t *result, UNUSED int *priority)
+				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	int condition;
 	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
@@ -675,7 +700,7 @@ static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 	g = mod_callabletogroup(c);
 	rad_assert(g->cond != NULL);
 
-	condition = radius_evaluate_cond(request, *result, 0, g->cond);
+	condition = radius_evaluate_cond(request, *presult, 0, g->cond);
 	if (condition < 0) {
 		switch (condition) {
 		case -2:
@@ -699,7 +724,7 @@ static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 		entry->was_if = true;
 		entry->if_taken = false;
 
-		*priority = c->actions[*result];
+		*priority = c->actions[*presult];
 		return MODCALL_NEXT_SIBLING;
 	}
 
@@ -708,11 +733,12 @@ static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 	 */
 	entry->was_if = true;
 	entry->if_taken = true;
-	return MODCALL_DO_CHILDREN;
+
+	return modcall_group(request, stack, presult, priority);
 }
 
 static modcall_action_t modcall_elsif(REQUEST *request, modcall_stack_t *stack,
-				   rlm_rcode_t *result, int *priority)
+				   rlm_rcode_t *presult, int *priority)
 {
 	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -731,11 +757,11 @@ static modcall_action_t modcall_elsif(REQUEST *request, modcall_stack_t *stack,
 	/*
 	 *	Check the "if" condition.
 	 */
-	return modcall_if(request, stack, result, priority);
+	return modcall_if(request, stack, presult, priority);
 }
 
 static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
-				     UNUSED rlm_rcode_t *result, UNUSED int *priority)
+				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -747,8 +773,8 @@ static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
 		entry->was_if = false;
 		entry->if_taken = false;
 
-		*result = RLM_MODULE_NOOP;
-		*priority = c->actions[*result];
+		*presult = RLM_MODULE_NOOP;
+		*priority = c->actions[*presult];
 		return MODCALL_NEXT_SIBLING;
 	}
 
@@ -757,13 +783,8 @@ static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
 	 */
 	entry->was_if = false;
 	entry->if_taken = false;
-	return MODCALL_DO_CHILDREN;
-}
 
-static modcall_action_t modcall_group(UNUSED REQUEST *request, UNUSED modcall_stack_t *stack,
-				     UNUSED rlm_rcode_t *result, UNUSED int *priority)
-{
-	return MODCALL_DO_CHILDREN;
+	return modcall_group(request, stack, presult, priority);
 }
 
 /*
@@ -827,7 +848,6 @@ static void modcall_interpret(REQUEST *request, modcall_stack_t *stack, rlm_rcod
 	modcallable *c;
 	int priority;
 	rlm_rcode_t result;
-	modgroup *g;
 	modcall_stack_entry_t *entry;
 	modcall_action_t action = MODCALL_BREAK;
 
@@ -866,23 +886,6 @@ redo:
 
 		action = modcall_functions[c->type](request, stack, &result, &priority);
 		switch (action) {
-		case MODCALL_DO_CHILDREN:
-			g = mod_callabletogroup(c);
-
-			/*
-			 *	This should really have been caught in the
-			 *	compiler, and the node never generated.  But
-			 *	doing that requires changing it's API so that
-			 *	it returns a flag instead of the compiled
-			 *	MOD_GROUP.
-			 */
-			if (!g->children) {
-				RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
-				goto next_sibling;
-			}
-
-			modcall_push(stack, g->children, entry->result, true);
-
 		case MODCALL_ITERATIVE:
 			(entry + 1)->iterative = true;
 			goto redo;
@@ -975,7 +978,6 @@ redo:
 		case MODCALL_NEXT_SIBLING:
 			if ((action == MODCALL_NEXT_SIBLING) && modcall_brace[c->type]) RDEBUG2("}");
 
-		next_sibling:
 			if (!entry->do_next_sibling) goto done;
 
 		} /* switch over return code from the interpretor function */
