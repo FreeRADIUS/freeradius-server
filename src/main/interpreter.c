@@ -180,6 +180,8 @@ static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t res
 	next->was_if = false;
 	next->if_taken = false;
 	next->iterative = false;
+	memset(&next->cursor, 0, sizeof(next->cursor));
+	next->child = next->found = NULL;
 }
 
 static void modcall_pop(modcall_stack_t *stack)
