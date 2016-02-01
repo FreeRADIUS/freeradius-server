@@ -8,8 +8,9 @@ Upgrading to Version 3.1
    The configuration for 3.1 is *largely* compatible with the 3.0.x
    configuration.  It should be possible to reuse most of a 3.0.x
    reconfiguration with minor tweaks.
-   If you're upgrading from v2.2.x you should read the version of
-   this file which is included with v3.0.x releases.
+   If you're upgrading from v2.2.x you should read the v3.0.x version
+   of this file.  It describes changed from v2 to v3.0.  This file
+   describes only the changes from v3.0 to v3.1
 
 Attribute references
 --------------------
@@ -33,7 +34,7 @@ There is no plan to require prefixes here.
 Connection timeouts
 -------------------
 
-In versions <= v3.0.x the config items for configuring connection
+In v2.2 and earlier, the config items for configuring connection
 timeouts were either confusingly named, or completely absent in
 the case of many contributed modules.
 
@@ -138,14 +139,8 @@ allowed_service_type
 ++++++++++++++++++++
 
 The ``allowed_service_type`` config item of the rlm_counter module has
-also been removed, as it was duplicative of functionality afforded by unlang.
+also been removed, as it duplicated existing functionality.
 
-
-Database format compatibility (rlm_counter)
-+++++++++++++++++++++++++++++++++++++++++++
-
-GDBM counter databases from <= v3.0.x are not compatible with those from
-v3.1.x as the width of the counter was changed from 32bits to 64bits.
 
 rlm_sql_mysql
 ~~~~~~~~~~~~~
