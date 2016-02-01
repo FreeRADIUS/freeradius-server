@@ -138,7 +138,7 @@ typedef struct modcall_redundant_t {
 typedef struct modcall_stack_entry_t {
 	rlm_rcode_t result;
 	int priority;
-	int unwind;		/* unwind to this one if it exists */
+	mod_type_t unwind;		/* unwind to this one if it exists */
 	bool do_next_sibling;
 	bool was_if;
 	bool if_taken;
