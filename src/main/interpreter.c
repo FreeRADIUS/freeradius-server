@@ -133,6 +133,9 @@ typedef struct modcall_stack_entry_t {
 	bool iterative;
 	bool resume;
 	modcallable *c;
+	VALUE_PAIR *foreach_vps; /* foreach */
+	VALUE_PAIR *foreach_variable; /* foreach */
+	int foreach_depth;	/* foreach */
 	vp_cursor_t cursor;	/* foreach */
 	modcallable *child;	/* redundant */
 	modcallable *found;	/* redundant */
@@ -204,18 +207,6 @@ static void modcall_pop(modcall_stack_t *stack)
 	if (next->unwind != 0) entry->unwind = next->unwind;
 }
 
-/*
- *	Call a child of a block.
- */
-static void modcall_child(REQUEST *request, modcall_stack_t *stack, modcallable *c,
-			  rlm_rcode_t *result, int *priority, bool do_next_sibling)
-{
-	modcall_push(stack, c, stack->entry[stack->depth].result, do_next_sibling);
-
-	modcall_recurse(request, stack, result, priority);
-
-	modcall_pop(stack);
-}
 
 static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_stack_t *stack,
 					     rlm_rcode_t *presult, int *priority)
@@ -252,7 +243,6 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_push(stack, entry->found, entry->result, false);
 			return MODCALL_ITERATIVE;
-
 		}
 
 		entry->child = entry->found; /* we start at this one */
@@ -331,75 +321,65 @@ static modcall_action_t modcall_return(REQUEST *request, modcall_stack_t *stack,
 static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack,
 					rlm_rcode_t *presult, int *priority)
 {
-	int i, foreach_depth = -1;
-	VALUE_PAIR *vps, *vp;
+	VALUE_PAIR *vp;
 	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
 
 	g = mod_callabletogroup(c);
 
-	if (stack->depth >= MODCALL_STACK_MAX) {
-		ERROR("Internal sanity check failed: module stack is too deep");
-		fr_exit(1);
-	}
+	if (!entry->resume) {
+		int i, foreach_depth = -1;
+		VALUE_PAIR *vps;
 
-	/*
-	 *	Figure out how deep we are in nesting by looking at request_data
-	 *	stored previously.
-	 */
-	for (i = 0; i < 8; i++) {
-		if (!request_data_reference(request, (void *)radius_get_vp, i)) {
-			foreach_depth = i;
-			break;
+		if (stack->depth >= MODCALL_STACK_MAX) {
+			ERROR("Internal sanity check failed: module stack is too deep");
+			fr_exit(1);
 		}
-	}
-
-	if (foreach_depth < 0) {
-		REDEBUG("foreach Nesting too deep!");
-		*presult = RLM_MODULE_FAIL;
-		*priority = 0;
-		return MODCALL_CALCULATE_RESULT;
-	}
-
-	/*
-	 *	Copy the VPs from the original request, this ensures deterministic
-	 *	behaviour if someone decides to add or remove VPs in the set were
-	 *	iterating over.
-	 */
-	if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
-		*presult = RLM_MODULE_NOOP;
-		*priority = c->actions[RLM_MODULE_NOOP];
-		return MODCALL_CALCULATE_RESULT;
-	}
-
-	rad_assert(vps != NULL);
-	fr_cursor_init(&entry->cursor, &vps);
-
-	RDEBUG2("foreach %s ", c->name);
-
-	/*
-	 *	This is the actual body of the foreach loop
-	 */
-	for (vp = fr_cursor_first(&entry->cursor);
-	     vp != NULL;
-	     vp = fr_cursor_next(&entry->cursor)) {
-#ifndef NDEBUG
-		if (fr_debug_lvl >= 2) {
-			char buffer[1024];
-
-			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
-			RDEBUG2("# Foreach-Variable-%d = %s", foreach_depth, buffer);
-		}
-#endif
 
 		/*
-		 *	Add the vp to the request, so that
-		 *	xlat.c, xlat_foreach() can find it.
+		 *	Figure out how deep we are in nesting by looking at request_data
+		 *	stored previously.
+		 *
+		 *	FIXME: figure this out by walking up the modcall stack instead.
 		 */
-		request_data_add(request, (void *)radius_get_vp, foreach_depth, &vp, false, false, false);
+		for (i = 0; i < 8; i++) {
+			if (!request_data_reference(request, (void *)radius_get_vp, i)) {
+				foreach_depth = i;
+				break;
+			}
+		}
 
-		modcall_child(request, stack, g->children, presult, priority, true);
+		if (foreach_depth < 0) {
+			REDEBUG("foreach Nesting too deep!");
+			*presult = RLM_MODULE_FAIL;
+			*priority = 0;
+			return MODCALL_CALCULATE_RESULT;
+		}
+
+		/*
+		 *	Copy the VPs from the original request, this ensures deterministic
+		 *	behaviour if someone decides to add or remove VPs in the set were
+		 *	iterating over.
+		 */
+		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
+			*presult = RLM_MODULE_NOOP;
+			*priority = c->actions[RLM_MODULE_NOOP];
+			return MODCALL_CALCULATE_RESULT;
+		}
+
+		RDEBUG2("foreach %s ", c->name);
+
+		rad_assert(vps != NULL);
+		fr_cursor_init(&entry->cursor, &vps);
+
+		entry->foreach_depth = foreach_depth;
+		entry->foreach_vps = vps;
+
+		vp = fr_cursor_first(&entry->cursor);
+
+	} else {
+		vp = fr_cursor_next(&entry->cursor);
 
 		/*
 		 *	We've been asked to unwind to the
@@ -408,27 +388,52 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 		 */
 		if (entry->unwind == MOD_BREAK) {
 			entry->unwind = 0;
-			break;
+			vp = NULL;
 		}
 
 		/*
 		 *	Unwind all the way.
 		 */
 		if (entry->unwind == MOD_RETURN) {
-			break;
+			vp = NULL;
 		}
-	} /* loop over VPs */
+
+		if (!vp) {
+			/*
+			 *	Free the copied vps and the request data
+			 *	If we don't remove the request data, something could call
+			 *	the xlat outside of a foreach loop and trigger a segv.
+			 */
+			fr_pair_list_free(&entry->foreach_vps);
+			request_data_get(request, (void *)radius_get_vp, entry->foreach_depth);
+
+			*presult = entry->result;
+			*priority = c->actions[*presult];
+			return MODCALL_CALCULATE_RESULT;
+		}
+	}
+
+#ifndef NDEBUG
+	if (fr_debug_lvl >= 2) {
+		char buffer[1024];
+
+			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
+			RDEBUG2("# Foreach-Variable-%d = %s", entry->foreach_depth, buffer);
+		}
+#endif
 
 	/*
-	 *	Free the copied vps and the request data
-	 *	If we don't remove the request data, something could call
-	 *	the xlat outside of a foreach loop and trigger a segv.
+	 *	Add the vp to the request, so that
+	 *	xlat.c, xlat_foreach() can find it.
 	 */
-	fr_pair_list_free(&vps);
-	request_data_get(request, (void *)radius_get_vp, foreach_depth);
+	entry->foreach_variable = vp;
+	request_data_add(request, (void *)radius_get_vp, entry->foreach_depth, &entry->foreach_variable, false, false, false);
 
-	*priority = c->actions[*presult];
-	return MODCALL_CALCULATE_RESULT;
+	/*
+	 *	Push the child, and yeild for a later return.
+	 */
+	modcall_push(stack, g->children, entry->result, true);
+	return MODCALL_YEILD;
 }
 
 static modcall_action_t modcall_xlat(REQUEST *request, modcall_stack_t *stack,
