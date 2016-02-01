@@ -874,6 +874,11 @@ redo:
 			goto redo;
 
 		case MODCALL_YEILD:
+			/*
+			 *	YEILD (for now) is really "push child,
+			 *	run child, and resume with us after.
+			 */
+			rad_assert(entry != &stack->entry[stack->depth]);
 			entry->resume = true;
 			(entry + 1)->iterative = true;
 			goto redo;
