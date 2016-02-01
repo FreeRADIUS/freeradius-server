@@ -234,36 +234,52 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	}
 
 	/*
-	 *	Choose a child at random.
+	 *	No entry?  This is the first time we've been called.
+	 *	Go find one.
 	 */
-	for (entry->child = entry->found = g->children; entry->child != NULL; entry->child = entry->child->next) {
-		count++;
+	if (!entry->found) {
+		/*
+		 *	Choose a child at random.
+		 */
+		for (entry->child = entry->found = g->children; entry->child != NULL; entry->child = entry->child->next) {
+			count++;
 
-		if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-			entry->found = entry->child;
+			if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
+				entry->found = entry->child;
+			}
 		}
-	}
 
-	if (c->type == MOD_LOAD_BALANCE) {
-		modcall_push(stack, entry->found, entry->result, false);
-		return MODCALL_ITERATIVE;
+		if (c->type == MOD_LOAD_BALANCE) {
+			modcall_push(stack, entry->found, entry->result, false);
+			return MODCALL_ITERATIVE;
 
-	}
+		}
 
-	entry->child = entry->found;
-	
-	do {
-		modcall_child(request, stack, entry->child,
-			      presult, priority, false);
+		entry->child = entry->found; /* we start at this one */
+
+	} else {		
+		rad_assert(c->type != MOD_LOAD_BALANCE); /* this is never called again */
+
+		/*
+		 *	We were called again.  See if we're done.
+		 */
 		if (entry->child->actions[*presult] == MOD_ACTION_RETURN) {
 			return MODCALL_CALCULATE_RESULT;
 		}
 
 		entry->child = entry->child->next;
 		if (!entry->child) entry->child = g->children;
-	} while (entry->child != entry->found);
 
-	return MODCALL_CALCULATE_RESULT;
+		if (entry->child == entry->found) {
+			return MODCALL_CALCULATE_RESULT;
+		}
+	}
+
+	/*
+	 *	Push the child, and yeild for a later return.
+	 */
+	modcall_push(stack, entry->child, entry->result, false);
+	return MODCALL_YEILD;
 }
 
 static modcall_action_t modcall_case(UNUSED REQUEST *request, modcall_stack_t *stack,
