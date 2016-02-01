@@ -142,7 +142,6 @@ typedef struct modcall_stack_entry_t {
 	bool do_next_sibling;
 	bool was_if;
 	bool if_taken;
-	bool iterative;
 	bool resume;
 	modcallable *c;
 
@@ -161,8 +160,8 @@ typedef struct modcall_stack_t {
 typedef enum modcall_action_t {
 	MODCALL_CALCULATE_RESULT = 1,
 	MODCALL_NEXT_SIBLING,
-	MODCALL_ITERATIVE,
-	MODCALL_YEILD,
+	MODCALL_PUSHED_CHILD,
+	MODCALL_CALL_CHILD_AND_RESUME,
 	MODCALL_BREAK
 } modcall_action_t;
 
@@ -192,7 +191,6 @@ static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t res
 	next->do_next_sibling = do_next_sibling;
 	next->was_if = false;
 	next->if_taken = false;
-	next->iterative = false;
 	next->resume = false;
 }
 
@@ -250,7 +248,7 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_push(stack, entry->redundant.found, entry->result, false);
-			return MODCALL_ITERATIVE;
+			return MODCALL_PUSHED_CHILD;
 		}
 
 		entry->redundant.child = entry->redundant.found; /* we start at this one */
@@ -277,7 +275,7 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	 *	Push the child, and yeild for a later return.
 	 */
 	modcall_push(stack, entry->redundant.child, entry->result, false);
-	return MODCALL_YEILD;
+	return MODCALL_CALL_CHILD_AND_RESUME;
 }
 
 
@@ -303,7 +301,7 @@ static modcall_action_t modcall_group(UNUSED REQUEST *request, modcall_stack_t *
 	}
 
 	modcall_push(stack, g->children, entry->result, true);
-	return MODCALL_ITERATIVE;
+	return MODCALL_PUSHED_CHILD;
 }
 
 static modcall_action_t modcall_case(REQUEST *request, modcall_stack_t *stack,
@@ -467,7 +465,7 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 	 *	Push the child, and yeild for a later return.
 	 */
 	modcall_push(stack, g->children, entry->result, true);
-	return MODCALL_YEILD;
+	return MODCALL_CALL_CHILD_AND_RESUME;
 }
 
 static modcall_action_t modcall_xlat(REQUEST *request, modcall_stack_t *stack,
@@ -622,7 +620,7 @@ do_null_case:
 	talloc_free(data.ptr);
 
 	modcall_push(stack, found, entry->result, false);
-	return MODCALL_ITERATIVE;
+	return MODCALL_PUSHED_CHILD;
 }
 
 
@@ -886,19 +884,21 @@ redo:
 
 		action = modcall_functions[c->type](request, stack, &result, &priority);
 		switch (action) {
-		case MODCALL_ITERATIVE:
-			(entry + 1)->iterative = true;
+		case MODCALL_PUSHED_CHILD:
 			goto redo;
 
-		case MODCALL_YEILD:
+		case MODCALL_CALL_CHILD_AND_RESUME:
 			/*
-			 *	YEILD (for now) is really "push child,
-			 *	run child, and resume with us after.
+			 *	push child, run child, and resume with
+			 *	this entry after the child has returned.
 			 */
 			rad_assert(entry != &stack->entry[stack->depth]);
 			entry->resume = true;
-			(entry + 1)->iterative = true;
 			goto redo;
+
+		 case MODCALL_BREAK:
+			 entry->result = result;
+			 goto done;
 
 		do_pop:
 			modcall_pop(stack);
@@ -936,7 +936,6 @@ redo:
 			 *	The child's action says return.  Do so.
 			 */
 			if (c->actions[result] == MOD_ACTION_RETURN) {
-		 case MODCALL_BREAK:
 				entry->result = result;
 				goto done;
 			}
@@ -999,10 +998,8 @@ done:
 	 */
 	if (stack->depth == 1) return;
 
-	if (entry->iterative) {
-		result = entry->result;
-		goto do_pop;
-	}
+	result = entry->result;
+	goto do_pop;
 }
 
 
