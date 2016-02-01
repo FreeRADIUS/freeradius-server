@@ -171,8 +171,6 @@ typedef enum modcall_action_t {
 typedef modcall_action_t (*modcall_function_t)(REQUEST *request, modcall_stack_t *stack,
 						      rlm_rcode_t *presult, int *priority);
 
-static void modcall_recurse(REQUEST *request, modcall_stack_t *stack, rlm_rcode_t *presult, int *ppriority);
-
 static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t result, bool do_next_sibling)
 {
 	modcall_stack_entry_t *next;
@@ -824,7 +822,7 @@ static bool modcall_brace[MOD_NUM_TYPES] = {
 /*
  *	Interpret the various types of blocks.
  */
-static void modcall_recurse(REQUEST *request, modcall_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
+static void modcall_interpret(REQUEST *request, modcall_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
 {
 	modcallable *c;
 	int priority;
@@ -1046,7 +1044,7 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	/*
 	 *	Call the main handler.
 	 */
-	modcall_recurse(request, &stack, &result, &priority);
+	modcall_interpret(request, &stack, &result, &priority);
 
 	/*
 	 *	Return the result.
