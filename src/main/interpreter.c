@@ -237,7 +237,7 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	 *	No entry?  This is the first time we've been called.
 	 *	Go find one.
 	 */
-	if (!entry->found) {
+	if (!entry->resume) {
 		/*
 		 *	Choose a child at random.
 		 */
