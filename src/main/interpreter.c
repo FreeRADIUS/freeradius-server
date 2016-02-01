@@ -119,6 +119,18 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 
 #define MODCALL_STACK_MAX (32)
 
+typedef struct modcall_foreach_t {
+	vp_cursor_t cursor;
+	VALUE_PAIR *vps;
+	VALUE_PAIR *variable;
+	int depth;
+} modcall_foreach_t;
+
+typedef struct modcall_redundant_t {
+	modcallable *child;
+	modcallable *found;
+} modcall_redundant_t;
+
 /*
  *	Don't call the modules recursively.  Instead, do them
  *	iteratively, and manage the call stack ourselves.
@@ -133,12 +145,11 @@ typedef struct modcall_stack_entry_t {
 	bool iterative;
 	bool resume;
 	modcallable *c;
-	VALUE_PAIR *foreach_vps; /* foreach */
-	VALUE_PAIR *foreach_variable; /* foreach */
-	int foreach_depth;	/* foreach */
-	vp_cursor_t cursor;	/* foreach */
-	modcallable *child;	/* redundant */
-	modcallable *found;	/* redundant */
+
+	union {
+		modcall_foreach_t foreach;
+		modcall_redundant_t redundant;
+	};
 } modcall_stack_entry_t;
 
 typedef struct modcall_stack_t {
@@ -186,8 +197,6 @@ static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t res
 	next->if_taken = false;
 	next->iterative = false;
 	next->resume = false;
-	memset(&next->cursor, 0, sizeof(next->cursor));
-	next->child = next->found = NULL;
 }
 
 static void modcall_pop(modcall_stack_t *stack)
@@ -232,20 +241,22 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 		/*
 		 *	Choose a child at random.
 		 */
-		for (entry->child = entry->found = g->children; entry->child != NULL; entry->child = entry->child->next) {
+		for (entry->redundant.child = entry->redundant.found = g->children;
+		     entry->redundant.child != NULL;
+		     entry->redundant.child = entry->redundant.child->next) {
 			count++;
 
 			if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-				entry->found = entry->child;
+				entry->redundant.found = entry->redundant.child;
 			}
 		}
 
 		if (c->type == MOD_LOAD_BALANCE) {
-			modcall_push(stack, entry->found, entry->result, false);
+			modcall_push(stack, entry->redundant.found, entry->result, false);
 			return MODCALL_ITERATIVE;
 		}
 
-		entry->child = entry->found; /* we start at this one */
+		entry->redundant.child = entry->redundant.found; /* we start at this one */
 
 	} else {		
 		rad_assert(c->type != MOD_LOAD_BALANCE); /* this is never called again */
@@ -253,14 +264,14 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 		/*
 		 *	We were called again.  See if we're done.
 		 */
-		if (entry->child->actions[*presult] == MOD_ACTION_RETURN) {
+		if (entry->redundant.child->actions[*presult] == MOD_ACTION_RETURN) {
 			return MODCALL_CALCULATE_RESULT;
 		}
 
-		entry->child = entry->child->next;
-		if (!entry->child) entry->child = g->children;
+		entry->redundant.child = entry->redundant.child->next;
+		if (!entry->redundant.child) entry->redundant.child = g->children;
 
-		if (entry->child == entry->found) {
+		if (entry->redundant.child == entry->redundant.found) {
 			return MODCALL_CALCULATE_RESULT;
 		}
 	}
@@ -268,7 +279,7 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	/*
 	 *	Push the child, and yeild for a later return.
 	 */
-	modcall_push(stack, entry->child, entry->result, false);
+	modcall_push(stack, entry->redundant.child, entry->result, false);
 	return MODCALL_YEILD;
 }
 
@@ -371,15 +382,15 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 		RDEBUG2("foreach %s ", c->name);
 
 		rad_assert(vps != NULL);
-		fr_cursor_init(&entry->cursor, &vps);
+		fr_cursor_init(&entry->foreach.cursor, &vps);
 
-		entry->foreach_depth = foreach_depth;
-		entry->foreach_vps = vps;
+		entry->foreach.depth = foreach_depth;
+		entry->foreach.vps = vps;
 
-		vp = fr_cursor_first(&entry->cursor);
+		vp = fr_cursor_first(&entry->foreach.cursor);
 
 	} else {
-		vp = fr_cursor_next(&entry->cursor);
+		vp = fr_cursor_next(&entry->foreach.cursor);
 
 		/*
 		 *	We've been asked to unwind to the
@@ -404,8 +415,8 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 			 *	If we don't remove the request data, something could call
 			 *	the xlat outside of a foreach loop and trigger a segv.
 			 */
-			fr_pair_list_free(&entry->foreach_vps);
-			request_data_get(request, (void *)radius_get_vp, entry->foreach_depth);
+			fr_pair_list_free(&entry->foreach.vps);
+			request_data_get(request, (void *)radius_get_vp, entry->foreach.depth);
 
 			*presult = entry->result;
 			*priority = c->actions[*presult];
@@ -418,7 +429,7 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 		char buffer[1024];
 
 			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
-			RDEBUG2("# Foreach-Variable-%d = %s", entry->foreach_depth, buffer);
+			RDEBUG2("# Foreach-Variable-%d = %s", entry->foreach.depth, buffer);
 		}
 #endif
 
@@ -426,8 +437,8 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 	 *	Add the vp to the request, so that
 	 *	xlat.c, xlat_foreach() can find it.
 	 */
-	entry->foreach_variable = vp;
-	request_data_add(request, (void *)radius_get_vp, entry->foreach_depth, &entry->foreach_variable, false, false, false);
+	entry->foreach.variable = vp;
+	request_data_add(request, (void *)radius_get_vp, entry->foreach.depth, &entry->foreach.variable, false, false, false);
 
 	/*
 	 *	Push the child, and yeild for a later return.
