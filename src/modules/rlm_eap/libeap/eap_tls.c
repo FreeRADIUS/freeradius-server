@@ -269,8 +269,8 @@ int eap_tls_fail(eap_session_t *eap_session)
 /** Frames the OpenSSL data that needs to be sent to the client in an EAP-Request
  *
  * A single TLS record may be up to 16384 octets in length, but a TLS message
- * may span multiple TLS records, and a TLS certificate message may
- * theoretically, be as long as 16MB.
+ * may span multiple TLS records, and a TLS certificate message may theoretically,
+ * be as big as 16MB.
  *
  * In EAP-TLS with no inner method, this is used primarily to send our certificate
  * chain to the peer.

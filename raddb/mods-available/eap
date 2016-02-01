@@ -311,7 +311,7 @@ eap {
 		# Work-arounds for OpenSSL nonsense
 		# OpenSSL 1.0.1f and 1.0.1g do not calculate
 		# the EAP keys correctly.  The fix is to upgrade
-		# OpenSSL, or disable TLS 1.2 here. 
+		# OpenSSL, or disable TLS 1.2 here.
 #		disable_tlsv1_2 = no
 
 		#
@@ -324,45 +324,45 @@ eap {
 		ecdh_curve = "prime256v1"
 
 		#
-		#  Session resumption / fast reauthentication
-		#  cache.
+		#  TLS Session resumption
 		#
-		#  The cache contains the following information:
+		#  We currently support RFC 5246 style TLS session resumption only.
 		#
-		#  session Id - unique identifier, managed by SSL
-		#  User-Name  - from the Access-Accept
-		#  Stripped-User-Name - from the Access-Request
-		#  Cached-Session-Policy - from the Access-Accept
+		#  Once authentication has completed the TLS client is provided
+		#  with a unique session identifier (or cookie) that it may present
+		#  during its next authentication attempt.
 		#
-		#  The "Cached-Session-Policy" is the name of a
-		#  policy which should be applied to the cached
-		#  session.  This policy can be used to assign
-		#  VLANs, IP addresses, etc.  It serves as a useful
-		#  way to re-apply the policy from the original
-		#  Access-Accept to the subsequent Access-Accept
-		#  for the cached session.
+		#  Presenting this identifier allows the client to skip the majority
+		#  of TLS tunnel setup during its next authentication session.
 		#
-		#  On session resumption, these attributes are
-		#  copied from the cache, and placed into the
-		#  reply list.
+		#  Resuming a TLS session avoids the certificate exchange and in the
+		#  case PEAP and TTLS, allows the client to skip the inner EAP method.
 		#
-		#  You probably also want "use_tunneled_reply = yes"
-		#  when using fast session resumption.
+		#  Enabling Session-Resumption is highly recommended for sites using
+		#  slow authentication backends such as winbindd/Active Directory,
+		#  and for access federations operating over the internet, such as
+		#  Eduroam.
+		#
+		#  Note: You must ensure any attributes required for policy decisions
+		#  are cached at the same time as the TLS session data.  If using the
+		#  default tls-cache virtual server and cache module config,
+		#  policy attributes may be stored in the &session-state: list.
 		#
 		cache {
 			#
-			#  Enable it.  The default is "no". Deleting the entire "cache"
-			#  subsection also disables caching.
+			#  To enable session resumption, uncomment the virtual
+			#  server entry below, and link sites-available/tls-cache
+			#  to sites-enabled/tls-cache.
 			#
 			#  You can disallow resumption for a particular user by adding the
 			#  following attribute to the control item list:
 			#
 			#    Allow-Session-Resumption = No
 			#
-			#  If "enable = no" below, you CANNOT enable resumption for just one
-			#  user by setting the above attribute to "yes".
+			#  If no virtual_server is specified you CANNOT enable resumption
+			#  for just one user by setting the above attribute to "yes".
 			#
-			enable = yes
+#			virtual_server = 'tls-cache'
 
 			#
 			#  Name of the context TLS sessions are created under.  If no value
@@ -373,16 +373,16 @@ eap {
 			#
 #			name = 'shared_session_context'
 
-			#  As of 3.1, the following configuration options are deprecated:
+			#  As of 3.1 OpenSSL's internal cache has been disabled due to
+			#  scoping/threading issues.
 			#
+			#  The following configuration options are deprecated:
+			#
+			#	enable
 			#	persist_dir
 			#	lifetime
 			#	max_entries
 			#
-			#  You should use the "virtual_server" directive instead.
-			#  See raddb/sites-available/tls-cache for details.
-			#
-	#		virtual_server = 'tls-cache'
 		}
 
 		#

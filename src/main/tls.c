@@ -486,21 +486,6 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
 	rad_assert(ssl_ctx);
 
-	/*
-	 *	Manually flush the sessions every so often.  If HALF
-	 *	of the session lifetime has passed since we last
-	 *	flushed, then flush it again.
-	 *
-	 *	FIXME: Also do it every N sessions?
-	 */
-	if (conf->session_cache_enable && !conf->session_cache_server &&
-	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp.tv_sec)){
-		RDEBUG2("Flushing TLS sessions (of #%ld)", SSL_CTX_sess_number(ssl_ctx));
-
-		SSL_CTX_flush_sessions(ssl_ctx, request->timestamp.tv_sec);
-		conf->session_last_flushed = request->timestamp.tv_sec;
-	}
-
 	new_tls = SSL_new(ssl_ctx);
 	if (new_tls == NULL) {
 		RERROR("Error creating new TLS session: %s", ERR_error_string(ERR_get_error(), NULL));
@@ -592,7 +577,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 		session->mtu = vp->vp_integer;
 	}
 
-	if (conf->session_cache_enable) session->allow_session_resumption = true; /* otherwise it's false */
+	if (conf->session_cache_server) session->allow_session_resumption = true; /* otherwise it's false */
 
 	return session;
 }
@@ -1127,12 +1112,10 @@ void tls_session_information(tls_session_t *tls_session)
 }
 
 static CONF_PARSER cache_config[] = {
-	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, session_cache_enable), .dflt = "no" },
-
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server) },
 	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_server_conf_t, session_id_name) },
 
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server) },
-
+	{ FR_CONF_DEPRECATED("enable", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("lifetime", PW_TYPE_INTEGER, fr_tls_server_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("max_entries", PW_TYPE_INTEGER, fr_tls_server_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("persist_dir", PW_TYPE_STRING, fr_tls_server_conf_t, NULL) },
@@ -3212,13 +3195,10 @@ post_ca:
 	/*
 	 *	Callbacks, etc. for session resumption.
 	 */
-	if (conf->session_cache_enable) {
-		if (conf->session_cache_server) {
-			SSL_CTX_sess_set_new_cb(ctx, cache_write_session);
-			SSL_CTX_sess_set_get_cb(ctx, cache_read_session);
-			SSL_CTX_sess_set_remove_cb(ctx, cache_delete_session);
-		}
-
+	if (conf->session_cache_server) {
+		SSL_CTX_sess_set_new_cb(ctx, cache_write_session);
+		SSL_CTX_sess_set_get_cb(ctx, cache_read_session);
+		SSL_CTX_sess_set_remove_cb(ctx, cache_delete_session);
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 	}
 
@@ -3277,31 +3257,8 @@ post_ca:
 	/*
 	 *	Setup session caching
 	 */
-	if (conf->session_cache_enable) {
-		/*
-		 *	If a virtual server is caching the TLS
-		 *	sessions, then don't use the internal cache.
-		 */
-		if (conf->session_cache_server) {
-			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
-
-		} else {	/* in-memory cache. */
-			/*
-			 *	Cache it, and DON'T auto-clear it.
-			 */
-			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
-
-			/*
-			 *	Our timeout is in hours, this is in seconds.
-			 */
-			SSL_CTX_set_timeout(ctx, conf->session_timeout * 3600);
-
-			/*
-			 *	Set the maximum number of entries in the
-			 *	session cache.
-			 */
-			SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
-		}
+	if (conf->session_cache_server) {
+		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 
 		/*
 		 *	This sets the context sessions can be resumed in.
@@ -3413,7 +3370,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Setup session caching
 	 */
-	if (conf->session_cache_enable && conf->session_cache_server) {
+	if (conf->session_cache_server) {
 		/*
 		 *	Create a unique context Id per EAP-TLS configuration.
 		 */
