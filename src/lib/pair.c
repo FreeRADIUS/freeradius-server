@@ -1031,6 +1031,11 @@ static VALUE_PAIR *fr_pair_list_sort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_
 
 /** Sort a linked list of VALUE_PAIRs using merge sort
  *
+ * @note We use a merge sort (which is a stable sort), making this
+ *	suitable for use on lists with things like EAP-Message
+ *	fragments where the order of EAP-Message attributes needs to
+ *	be maintained.
+ *
  * @param[in,out] vps List of VALUE_PAIRs to sort.
  * @param[in] cmp to sort with
  */
