@@ -11,9 +11,7 @@ update control {
 	Tmp-String-0 += 'boink'
 }
 
-#
-#  Reset the request list
-#
+# Reset the request list
 update {
 	&request: !* ANY
 	&request: += &control:[*]
@@ -22,7 +20,7 @@ update {
 debug_request
 
 #
-#  Only matching attributes of the specified type should remain
+#  Integer ==
 #
 update request {
 	&Tmp-Integer-0 == 10
@@ -48,8 +46,14 @@ if ("%{Tmp-String-0[#]}" != 3) {
 
 debug_request
 
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
 #
-#  Only matching attributes of the specified type should remain
+#  String ==
 #
 update request {
 	&Tmp-String-0 == 'baz'
@@ -68,3 +72,206 @@ if ("%{Tmp-String-0[#]}" != 1) {
 }
 
 debug_request
+
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+#
+#  Integer <
+#
+update request {
+	&Tmp-Integer-0 < 10
+}
+
+if (&Tmp-Integer-0[0] != 5) {
+	update reply {
+		Filter-Id += "fail 6"
+	}
+}
+
+if ("%{Tmp-Integer-0[#]}" != 1) {
+	update reply {
+		Filter-Id += "fail 7"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 8"
+	}
+}
+
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+#
+#  Integer >
+#
+update request {
+	&Tmp-Integer-0 > 10
+}
+
+if (&Tmp-Integer-0[0] != 15) {
+	update reply {
+		Filter-Id += "fail 9"
+	}
+}
+
+if (&Tmp-Integer-0[1] != 20) {
+	update reply {
+		Filter-Id += "fail 10"
+	}
+}
+
+
+if ("%{Tmp-Integer-0[#]}" != 2) {
+	update reply {
+		Filter-Id += "fail 11"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 12"
+	}
+}
+
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+#
+#  Integer <=
+#
+update request {
+	&Tmp-Integer-0 <= 10
+}
+
+if (&Tmp-Integer-0[0] != 5) {
+	update reply {
+		Filter-Id += "fail 13"
+	}
+}
+
+if (&Tmp-Integer-0[1] != 10) {
+	update reply {
+		Filter-Id += "fail 14"
+	}
+}
+
+if ("%{Tmp-Integer-0[#]}" != 2) {
+	update reply {
+		Filter-Id += "fail 15"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 16"
+	}
+}
+
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+#
+#  Integer >=
+#
+update request {
+	&Tmp-Integer-0 >= 10
+}
+
+if (&Tmp-Integer-0[0] != 10) {
+	update reply {
+		Filter-Id += "fail 17"
+	}
+}
+
+if (&Tmp-Integer-0[1] != 15) {
+	update reply {
+		Filter-Id += "fail 18"
+	}
+}
+
+if (&Tmp-Integer-0[2] != 20) {
+	update reply {
+		Filter-Id += "fail 19"
+	}
+}
+
+if ("%{Tmp-Integer-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 20"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 21"
+	}
+}
+
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+#
+#  Integer !=
+#
+update request {
+	&Tmp-Integer-0 != 10
+}
+
+if (&Tmp-Integer-0[0] != 5) {
+	update reply {
+		Filter-Id += "fail 22"
+	}
+}
+
+if (&Tmp-Integer-0[1] != 15) {
+	update reply {
+		Filter-Id += "fail 23"
+	}
+}
+
+if (&Tmp-Integer-0[2] != 20) {
+	update reply {
+		Filter-Id += "fail 24"
+	}
+}
+
+if ("%{Tmp-Integer-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 25"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 3) {
+	update reply {
+		Filter-Id += "fail 26"
+	}
+}
+
+# Reset the request list
+update {
+	&request: !* ANY
+	&request: += &control:[*]
+}
+
+update control {
+	Auth-Type := Accept
+	reply:Filter-Id := 'filter'
+}
