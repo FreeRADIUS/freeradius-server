@@ -1347,60 +1347,51 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		break;
 
 	/*
-	 *	Filtering operators
+	 *	Filter operators
 	 */
-	default:
-		/*
-		 *	If the dst doesn't exist, the filters will add
-		 *	it with the given value.
-		 */
-		if (!dst) {
-			RDEBUG3("No existing attribute to filter, adding instead");
-			fr_cursor_merge(&dst_list, head);
-			head = NULL;
-			goto finish;
-		}
+	case T_OP_REG_NE:
+	case T_OP_NE:
+	case T_OP_REG_EQ:
+	case T_OP_CMP_EQ:
+	case T_OP_GE:
+	case T_OP_GT:
+	case T_OP_LE:
+	case T_OP_LT:
+	{
+		VALUE_PAIR *a, *b;
 
-		/*
-		 *	The LHS exists.  We need to limit it's value based on
-		 *	the operator, and the value of the RHS.
-		 */
-		found = false;
-		for (vp = fr_cursor_first(&src_list);
-		     vp;
-		     vp = fr_cursor_next(&src_list)) {
-			vp->op = map->op;
-			rcode = radius_compare_vps(request, vp, dst);
-			vp->op = T_OP_SET;
+		fr_pair_list_sort(&head, fr_pair_cmp_by_da_tag);
+		fr_pair_list_sort(list, fr_pair_cmp_by_da_tag);
 
-			switch (map->op) {
-			case T_OP_CMP_EQ:
-				if (rcode == 0) continue;
-			replace:
-				dst = fr_cursor_remove(&dst_list);
-				DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-				fr_pair_list_free(&dst);
-				fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
-				found = true;
-				continue;
+		fr_cursor_first(&dst_list);
 
-			case T_OP_LE:
-				if (rcode <= 0) continue;
-				goto replace;
+		for (b = fr_cursor_first(&src_list);
+		     b;
+		     b = fr_cursor_next(&src_list)) {
+			for (a = fr_cursor_current(&dst_list);
+			     a;
+			     a = fr_cursor_next(&dst_list)) {
+				int8_t cmp;
 
-			case T_OP_GE:
-				if (rcode >= 0) continue;
-				goto replace;
+				cmp = fr_pair_cmp_by_da_tag(a, b);	/* attribute and tag match */
+				if (cmp > 0) break;
+				else if (cmp < 0) continue;
 
-			default:
-				fr_pair_list_free(&head);
-				return -1;
+				cmp = (value_data_cmp_op(map->op, a->da->type, &a->data, a->vp_length, b->da->type, &b->data, b->vp_length) == 0);
+				if (cmp != 0) {
+					a = fr_cursor_remove(&dst_list);
+					talloc_free(a);
+				}
 			}
+			if (!a) break;	/* end of the list */
 		}
 		fr_pair_list_free(&head);
-		if (!found) return 0;
-
+	}
 		break;
+
+	default:
+		rad_assert(0);	/* Should have been caught be the caller */
+		return -1;
 	}
 
 finish:
