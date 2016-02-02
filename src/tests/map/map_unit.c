@@ -51,11 +51,6 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	return waitpid(pid, status, 0);
 }
 
-rlm_rcode_t indexed_modcall(UNUSED rlm_components_t comp, UNUSED int idx, UNUSED REQUEST *request)
-{
-	return RLM_MODULE_OK;
-}
-
 char const *get_radius_dir(void)
 {
 	return NULL;

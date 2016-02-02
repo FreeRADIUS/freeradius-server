@@ -2032,7 +2032,7 @@ int modules_init(CONF_SECTION *root)
 }
 
 
-rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
+static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	modcallable *list = NULL;

@@ -182,8 +182,6 @@ rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 #  define MODULE_NULL_COA_FUNCS
 #endif
 
-rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request);
-
 int virtual_servers_bootstrap(CONF_SECTION *config);
 int virtual_servers_init(CONF_SECTION *config);
 
