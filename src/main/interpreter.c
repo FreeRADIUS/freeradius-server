@@ -51,8 +51,6 @@ char const *unlang_keyword[] = {
 	NULL
 };
 
-char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
-
 /*
  *	Lock the mutex for the module
  */

@@ -97,8 +97,6 @@ typedef struct {
 
 extern char const *unlang_keyword[];
 
-extern char const modcall_spaces[];
-
 extern char const *const comp2str[];
 
 /* Simple conversions: modsingle and modgroup are subclasses of modcallable,

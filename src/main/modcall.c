@@ -62,6 +62,9 @@ char const * const comp2str[] = {
 };
 
 
+static char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
+
+
 #if 0
 static char const *action2str(int action)
 {
