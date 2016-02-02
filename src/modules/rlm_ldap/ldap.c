@@ -1409,11 +1409,15 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 
 		default:
 			if (!inst->admin_identity) {
-				RWDEBUG("No \"known good\" password added.  Ensure \"%s\" has permission to "
-					"read the user's password attribute", inst->admin_identity);
+				RWDEBUG("!!! No \"known good\" password added");
+				RWDEBUG("!!! Ensure the user object contains a password attribute, and that ");
+				RWDEBUG("!!! \"%s\" has permission to read that password attribute ",
+					inst->admin_identity);
 			} else {
-				RWDEBUG("No \"known good\" password added.  Set 'identity' to the dn of an "
-					"account that has permission to read the user's password attribute");
+				RWDEBUG("!!! No \"known good\" password added");
+				RWDEBUG("!!! Ensure the user object contains a password attribute, and that ");
+				RWDEBUG("!!! 'identity' is set to the DN of an account that has permission to read ");
+				RWDEBUG("!!! that password attribute");
 			}
 			break;
 		}
