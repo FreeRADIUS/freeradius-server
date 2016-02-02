@@ -161,7 +161,6 @@ typedef enum modcall_action_t {
 	MODCALL_CALCULATE_RESULT = 1,
 	MODCALL_NEXT_SIBLING,
 	MODCALL_PUSHED_CHILD,
-	MODCALL_CALL_CHILD_AND_RESUME,
 	MODCALL_BREAK
 } modcall_action_t;
 
@@ -275,7 +274,8 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	 *	Push the child, and yeild for a later return.
 	 */
 	modcall_push(stack, entry->redundant.child, entry->result, false);
-	return MODCALL_CALL_CHILD_AND_RESUME;
+	entry->resume = true;
+	return MODCALL_PUSHED_CHILD;
 }
 
 
@@ -465,7 +465,8 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 	 *	Push the child, and yeild for a later return.
 	 */
 	modcall_push(stack, g->children, entry->result, true);
-	return MODCALL_CALL_CHILD_AND_RESUME;
+	entry->resume = true;
+	return MODCALL_PUSHED_CHILD;
 }
 
 static modcall_action_t modcall_xlat(REQUEST *request, modcall_stack_t *stack,
@@ -885,15 +886,6 @@ redo:
 		action = modcall_functions[c->type](request, stack, &result, &priority);
 		switch (action) {
 		case MODCALL_PUSHED_CHILD:
-			goto redo;
-
-		case MODCALL_CALL_CHILD_AND_RESUME:
-			/*
-			 *	push child, run child, and resume with
-			 *	this entry after the child has returned.
-			 */
-			rad_assert(entry != &stack->entry[stack->depth]);
-			entry->resume = true;
 			goto redo;
 
 		 case MODCALL_BREAK:
