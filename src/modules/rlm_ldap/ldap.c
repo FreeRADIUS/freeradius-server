@@ -1331,6 +1331,8 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 {
 	int ldap_errno;
 
+	rad_assert(inst); /* clang scan */
+
 #define do_ldap_global_option(_option, _name, _value) \
 	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(NULL, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
@@ -1342,7 +1344,12 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 #define maybe_ldap_global_option(_option, _name, _value) \
 	if (_value) do_ldap_global_option(_option, _name, _value)
 
-	maybe_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &(inst->ldap_debug));
+#ifdef LDAP_OPT_DEBUG_LEVEL
+	/*
+	 *	Can't use do_ldap_global_option
+	 */
+	if (inst->ldap_debug) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &(inst->ldap_debug));
+#endif
 
 #ifdef LDAP_OPT_X_TLS_RANDOM_FILE
 	/*
