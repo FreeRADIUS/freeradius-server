@@ -271,6 +271,32 @@ update {
 	&request: += &control:[*]
 }
 
+update request {
+	&Tmp-String-1 := 'baz'
+	&Tmp-String-1 += 'boink'
+}
+
+#
+#  String (Intersection)
+#
+update request {
+	&Tmp-String-0 == &Tmp-String-1
+}
+
+if (&Tmp-String-0[0] != 'foo') {
+	update reply {
+		Filter-Id += "fail 4"
+	}
+}
+
+if ("%{Tmp-String-0[#]}" != 1) {
+	update reply {
+		Filter-Id += "fail 5"
+	}
+}
+
+debug_request
+
 update control {
 	Auth-Type := Accept
 	reply:Filter-Id := 'filter'
