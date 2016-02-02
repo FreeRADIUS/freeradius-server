@@ -271,23 +271,6 @@ void *module_dlopen_by_name(char const *name)
 	return handle;
 }
 
-static virtual_server_t *virtual_server_find(char const *name)
-{
-	CONF_SECTION *cs;
-
-	cs = cf_section_sub_find_name2(main_config.config, "server", name);
-	if (!cs) return NULL;
-
-	return (virtual_server_t *)cf_data_find(cs, name);
-}
-
-static int _virtual_server_free(virtual_server_t *server)
-{
-	server = talloc_get_type_abort(server, virtual_server_t);
-	if (server->components) rbtree_free(server->components);
-	return 0;
-}
-
 static int indexed_modcallable_cmp(void const *one, void const *two)
 {
 	indexed_modcallable const *a = one;
@@ -948,72 +931,6 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 	return c;
 }
 
-rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
-{
-	rlm_rcode_t rcode;
-	modcallable *list = NULL;
-	virtual_server_t *server;
-
-	/*
-	 *	Hack to find the correct virtual server.
-	 */
-	server = virtual_server_find(request->server);
-	if (!server) {
-		RDEBUG("No such virtual server \"%s\"", request->server);
-		return RLM_MODULE_FAIL;
-	}
-
-	if (idx == 0) {
-		list = server->mc[comp];
-		if (!list) {
-			if (server->name) {
-				RDEBUG3("Empty %s section in virtual server \"%s\".  Using default return values.",
-					section_type_value[comp].section, server->name);
-			} else {
-				RDEBUG3("Empty %s section.  Using default return values.",
-					section_type_value[comp].section);
-			}
-		}
-	} else {
-		indexed_modcallable *this;
-
-		this = lookup_by_index(server->components, comp, idx);
-		if (this) {
-			list = this->modulelist;
-		} else {
-			RDEBUG2("%s sub-section not found.  Ignoring.", section_type_value[comp].typename);
-		}
-	}
-
-	if (server->subcs[comp]) {
-		if (idx == 0) {
-			RDEBUG("Running section %s from file %s",
-			       section_type_value[comp].section,
-			       cf_section_filename(server->subcs[comp]));
-		} else {
-			fr_dict_attr_t const *da;
-			fr_dict_enum_t const *dv;
-
-			da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-			if (!da) return RLM_MODULE_FAIL;
-
-			dv = fr_dict_enum_by_da(NULL, da, idx);
-			if (!dv) return RLM_MODULE_FAIL;
-
-			RDEBUG("Running %s %s from file %s",
-			       da->name, dv->name,
-			       cf_section_filename(server->subcs[comp]));
-		}
-	}
-	request->component = section_type_value[comp].section;
-
-	rcode = modcall(comp, list, request);
-
-	request->module = NULL;
-	request->component = "<core>";
-	return rcode;
-}
-
 /*
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
@@ -1223,6 +1140,15 @@ static int load_component_section(CONF_SECTION *cs,
 
 	return 0;
 }
+
+
+static int _virtual_server_free(virtual_server_t *server)
+{
+	server = talloc_get_type_abort(server, virtual_server_t);
+	if (server->components) rbtree_free(server->components);
+	return 0;
+}
+
 
 static int virtual_server_compile(CONF_SECTION *cs)
 {
@@ -1481,6 +1407,7 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	return true;
 }
 
+
 /*
  *	Bootstrap Auth-Type, etc.
  */
@@ -1623,110 +1550,6 @@ int virtual_servers_init(CONF_SECTION *config)
 	return 0;
 }
 
-int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
-{
-	void *insthandle;
-	fr_module_hup_t *mh;
-
-	if (!instance ||
-	    instance->module->bootstrap ||
-	    !instance->module->instantiate ||
-	    ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
-		return 1;
-	}
-
-	/*
-	 *	Silently ignore multiple HUPs within a short time period.
-	 */
-	if ((instance->last_hup + 2) >= when) return 1;
-	instance->last_hup = when;
-
-	cf_log_module(cs, "Trying to reload module \"%s\"", instance->name);
-
-	/*
-	 *	Parse the module configuration, and setup destructors so the
-	 *	module's detach method is called when it's instance data is
-	 *	about to be freed.
-	 */
-	if (module_parse_conf(&insthandle, instance) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
-			"Using old configuration", instance->name);
-
-		return 0;
-	}
-
-	if ((instance->module->instantiate)(cs, insthandle) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
-		talloc_free(insthandle);
-
-		return 0;
-	}
-
-	INFO("Module: Reloaded module \"%s\"", instance->name);
-
-	module_hup_free(instance, when);
-
-	/*
-	 *	Save the old instance handle for later deletion.
-	 */
-	mh = talloc_zero(instance_ctx, fr_module_hup_t);
-	mh->mi = instance;
-	mh->when = when;
-	mh->insthandle = instance->data;
-	mh->next = instance->hup;
-	instance->hup = mh;
-
-	/*
-	 *	Replace the instance handle while the module is running.
-	 */
-	instance->data = insthandle;
-
-	/*
-	 *	FIXME: Set a timeout to come back in 60s, so that
-	 *	we can pro-actively clean up the old instances.
-	 */
-
-	return 1;
-}
-
-int modules_hup(CONF_SECTION *modules)
-{
-	time_t when;
-	CONF_ITEM *ci;
-	CONF_SECTION *cs;
-	module_instance_t *instance;
-
-	if (!modules) return 0;
-
-	when = time(NULL);
-
-	/*
-	 *	Loop over the modules
-	 */
-	for (ci = cf_item_find_next(modules, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(modules, ci)) {
-		char const *instance_name;
-
-		/*
-		 *	If it's not a section, ignore it.
-		 */
-		if (!cf_item_is_section(ci)) continue;
-
-		cs = cf_item_to_section(ci);
-
-		instance_name = cf_section_name2(cs);
-		if (!instance_name) instance_name = cf_section_name1(cs);
-
-		instance = module_find(modules, instance_name);
-		if (!instance) continue;
-
-		module_hup(cs, instance, when);
-	}
-
-	return 1;
-}
-
 static bool is_reserved_word(const char *name)
 {
 	int i;
@@ -1864,6 +1687,110 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	}
 
 	return pool;
+}
+
+int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
+{
+	void *insthandle;
+	fr_module_hup_t *mh;
+
+	if (!instance ||
+	    instance->module->bootstrap ||
+	    !instance->module->instantiate ||
+	    ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
+		return 1;
+	}
+
+	/*
+	 *	Silently ignore multiple HUPs within a short time period.
+	 */
+	if ((instance->last_hup + 2) >= when) return 1;
+	instance->last_hup = when;
+
+	cf_log_module(cs, "Trying to reload module \"%s\"", instance->name);
+
+	/*
+	 *	Parse the module configuration, and setup destructors so the
+	 *	module's detach method is called when it's instance data is
+	 *	about to be freed.
+	 */
+	if (module_parse_conf(&insthandle, instance) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
+			"Using old configuration", instance->name);
+
+		return 0;
+	}
+
+	if ((instance->module->instantiate)(cs, insthandle) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
+		talloc_free(insthandle);
+
+		return 0;
+	}
+
+	INFO("Module: Reloaded module \"%s\"", instance->name);
+
+	module_hup_free(instance, when);
+
+	/*
+	 *	Save the old instance handle for later deletion.
+	 */
+	mh = talloc_zero(instance_ctx, fr_module_hup_t);
+	mh->mi = instance;
+	mh->when = when;
+	mh->insthandle = instance->data;
+	mh->next = instance->hup;
+	instance->hup = mh;
+
+	/*
+	 *	Replace the instance handle while the module is running.
+	 */
+	instance->data = insthandle;
+
+	/*
+	 *	FIXME: Set a timeout to come back in 60s, so that
+	 *	we can pro-actively clean up the old instances.
+	 */
+
+	return 1;
+}
+
+int modules_hup(CONF_SECTION *modules)
+{
+	time_t when;
+	CONF_ITEM *ci;
+	CONF_SECTION *cs;
+	module_instance_t *instance;
+
+	if (!modules) return 0;
+
+	when = time(NULL);
+
+	/*
+	 *	Loop over the modules
+	 */
+	for (ci = cf_item_find_next(modules, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(modules, ci)) {
+		char const *instance_name;
+
+		/*
+		 *	If it's not a section, ignore it.
+		 */
+		if (!cf_item_is_section(ci)) continue;
+
+		cs = cf_item_to_section(ci);
+
+		instance_name = cf_section_name2(cs);
+		if (!instance_name) instance_name = cf_section_name1(cs);
+
+		instance = module_find(modules, instance_name);
+		if (!instance) continue;
+
+		module_hup(cs, instance, when);
+	}
+
+	return 1;
 }
 
 /*
@@ -2102,6 +2029,77 @@ int modules_init(CONF_SECTION *root)
 	}
 
 	return 0;
+}
+
+
+rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
+{
+	rlm_rcode_t rcode;
+	modcallable *list = NULL;
+	virtual_server_t *server;
+	CONF_SECTION *cs;
+
+	/*
+	 *	Find the correct virtual server.
+	 */
+	cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
+	if (!cs) {
+		RDEBUG("No such virtual server \"%s\"", request->server);
+		return RLM_MODULE_FAIL;
+	}
+
+	server = (virtual_server_t *)cf_data_find(cs, request->server);
+	rad_assert(server != NULL);
+
+	if (idx == 0) {
+		list = server->mc[comp];
+		if (!list) {
+			if (server->name) {
+				RDEBUG3("Empty %s section in virtual server \"%s\".  Using default return values.",
+					section_type_value[comp].section, server->name);
+			} else {
+				RDEBUG3("Empty %s section.  Using default return values.",
+					section_type_value[comp].section);
+			}
+		}
+	} else {
+		indexed_modcallable *this;
+
+		this = lookup_by_index(server->components, comp, idx);
+		if (this) {
+			list = this->modulelist;
+		} else {
+			RDEBUG2("%s sub-section not found.  Ignoring.", section_type_value[comp].typename);
+		}
+	}
+
+	if (server->subcs[comp]) {
+		if (idx == 0) {
+			RDEBUG("Running section %s from file %s",
+			       section_type_value[comp].section,
+			       cf_section_filename(server->subcs[comp]));
+		} else {
+			fr_dict_attr_t const *da;
+			fr_dict_enum_t const *dv;
+
+			da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
+			if (!da) return RLM_MODULE_FAIL;
+
+			dv = fr_dict_enum_by_da(NULL, da, idx);
+			if (!dv) return RLM_MODULE_FAIL;
+
+			RDEBUG("Running %s %s from file %s",
+			       da->name, dv->name,
+			       cf_section_filename(server->subcs[comp]));
+		}
+	}
+	request->component = section_type_value[comp].section;
+
+	rcode = modcall(comp, list, request);
+
+	request->module = NULL;
+	request->component = "<core>";
+	return rcode;
 }
 
 /*
