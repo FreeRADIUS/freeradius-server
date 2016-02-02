@@ -67,4 +67,9 @@ if ("%{Tmp-String-0[#]}" != 1) {
 	}
 }
 
+update {
+	control:Auth-Type := Accept
+	reply:Filter-Id := "filter"
+}
+
 debug_request
