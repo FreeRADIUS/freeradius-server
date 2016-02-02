@@ -159,7 +159,7 @@ typedef struct modcall_stack_t {
 
 typedef enum modcall_action_t {
 	MODCALL_CALCULATE_RESULT = 1,
-	MODCALL_NEXT_SIBLING,
+	MODCALL_CONTINUE,
 	MODCALL_PUSHED_CHILD,
 	MODCALL_BREAK
 } modcall_action_t;
@@ -297,7 +297,7 @@ static modcall_action_t modcall_group(UNUSED REQUEST *request, modcall_stack_t *
 	 */
 	if (!g->children) {
 		RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
-		return MODCALL_NEXT_SIBLING;
+		return MODCALL_CONTINUE;
 	}
 
 	modcall_push(stack, g->children, entry->result, true);
@@ -485,7 +485,7 @@ static modcall_action_t modcall_xlat(REQUEST *request, modcall_stack_t *stack,
 				    false, true, EXEC_TIMEOUT);
 	}
 
-	return MODCALL_NEXT_SIBLING;
+	return MODCALL_CONTINUE;
 }
 
 static modcall_action_t modcall_switch(REQUEST *request, modcall_stack_t *stack,
@@ -724,7 +724,7 @@ static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 		entry->if_taken = false;
 
 		*priority = c->actions[*presult];
-		return MODCALL_NEXT_SIBLING;
+		return MODCALL_CONTINUE;
 	}
 
 	/*
@@ -750,7 +750,7 @@ static modcall_action_t modcall_elsif(REQUEST *request, modcall_stack_t *stack,
 		RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
 			unlang_keyword[c->type], request->number);
 		entry->if_taken = true;
-		return MODCALL_NEXT_SIBLING;
+		return MODCALL_CONTINUE;
 	}
 
 	/*
@@ -774,7 +774,7 @@ static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
 
 		*presult = RLM_MODULE_NOOP;
 		*priority = c->actions[*presult];
-		return MODCALL_NEXT_SIBLING;
+		return MODCALL_CONTINUE;
 	}
 
 	/*
@@ -966,8 +966,8 @@ redo:
 
 			/* FALL-THROUGH */
 
-		case MODCALL_NEXT_SIBLING:
-			if ((action == MODCALL_NEXT_SIBLING) && modcall_brace[c->type]) RDEBUG2("}");
+		case MODCALL_CONTINUE:
+			if ((action == MODCALL_CONTINUE) && modcall_brace[c->type]) RDEBUG2("}");
 
 			if (!entry->do_next_sibling) goto done;
 
