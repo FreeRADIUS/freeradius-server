@@ -1,11 +1,13 @@
 FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
+	* Add support for =~ and !~ in update sections.
+	  See "man unlang"
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
 	* Update mssql schema to add priority
 	* don't complain on /dev/urandom in ldap
-
+	* fix == operator in update sections
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
