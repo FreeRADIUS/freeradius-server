@@ -275,11 +275,13 @@ redo:
 
 			old_value = fr_pair_value_asprint(request, vp, '\'');
 			new_value = fr_pair_value_asprint(request, new, '\'');
-			RDEBUG3("Converted: %s = '%s' -> %s = '%s'", vp->da->name, old_value, new->da->name, new_value);
+			RDEBUG3("Converted: &control:%s = '%s' -> &control:%s = '%s'",
+				vp->da->name, old_value, new->da->name, new_value);
+
 			talloc_free(old_value);
 			talloc_free(new_value);
 		} else {
-			RDEBUG2("Converted: %s -> %s", vp->da->name, new->da->name);
+			RDEBUG2("Converted: &control:%s -> &control:%s", vp->da->name, new->da->name);
 		}
 
 		return new;
