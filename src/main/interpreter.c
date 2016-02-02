@@ -69,7 +69,7 @@ static void safe_unlock(module_instance_t *instance)
 		pthread_mutex_unlock(instance->mutex);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int blocked;
 
@@ -115,25 +115,25 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	return request->rcode;
 }
 
-#define MODCALL_STACK_MAX (32)
+#define UNLANG_STACK_MAX (32)
 
-typedef struct modcall_foreach_t {
+typedef struct unlang_foreach_t {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vps;
 	VALUE_PAIR *variable;
 	int depth;
-} modcall_foreach_t;
+} unlang_foreach_t;
 
-typedef struct modcall_redundant_t {
+typedef struct unlang_redundant_t {
 	modcallable *child;
 	modcallable *found;
-} modcall_redundant_t;
+} unlang_redundant_t;
 
 /*
  *	Don't call the modules recursively.  Instead, do them
  *	iteratively, and manage the call stack ourselves.
  */
-typedef struct modcall_stack_entry_t {
+typedef struct unlang_stack_entry_t {
 	rlm_rcode_t result;
 	int priority;
 	mod_type_t unwind;		/* unwind to this one if it exists */
@@ -144,33 +144,33 @@ typedef struct modcall_stack_entry_t {
 	modcallable *c;
 
 	union {
-		modcall_foreach_t foreach;
-		modcall_redundant_t redundant;
+		unlang_foreach_t foreach;
+		unlang_redundant_t redundant;
 	};
-} modcall_stack_entry_t;
+} unlang_stack_entry_t;
 
-typedef struct modcall_stack_t {
+typedef struct unlang_stack_t {
 	rlm_components_t component;
 	int depth;
-	modcall_stack_entry_t entry[MODCALL_STACK_MAX];
-} modcall_stack_t;
+	unlang_stack_entry_t entry[UNLANG_STACK_MAX];
+} unlang_stack_t;
 
-typedef enum modcall_action_t {
-	MODCALL_CALCULATE_RESULT = 1,
-	MODCALL_CONTINUE,
-	MODCALL_PUSHED_CHILD,
-	MODCALL_BREAK
-} modcall_action_t;
+typedef enum unlang_action_t {
+	UNLANG_CALCULATE_RESULT = 1,
+	UNLANG_CONTINUE,
+	UNLANG_PUSHED_CHILD,
+	UNLANG_BREAK
+} unlang_action_t;
 
 
-typedef modcall_action_t (*modcall_function_t)(REQUEST *request, modcall_stack_t *stack,
+typedef unlang_action_t (*unlang_function_t)(REQUEST *request, unlang_stack_t *stack,
 						      rlm_rcode_t *presult, int *priority);
 
-static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t result, bool do_next_sibling)
+static void unlang_push(unlang_stack_t *stack, modcallable *c, rlm_rcode_t result, bool do_next_sibling)
 {
-	modcall_stack_entry_t *next;
+	unlang_stack_entry_t *next;
 
-	if (stack->depth >= MODCALL_STACK_MAX) {
+	if (stack->depth >= UNLANG_STACK_MAX) {
 		ERROR("Internal sanity check failed: module stack is too deep");
 		fr_exit(1);
 	}
@@ -191,9 +191,9 @@ static void modcall_push(modcall_stack_t *stack, modcallable *c, rlm_rcode_t res
 	next->resume = false;
 }
 
-static void modcall_pop(modcall_stack_t *stack)
+static void unlang_pop(unlang_stack_t *stack)
 {
-	modcall_stack_entry_t *entry, *next;
+	unlang_stack_entry_t *entry, *next;
 
 	rad_assert(stack->depth > 1);
 
@@ -209,10 +209,10 @@ static void modcall_pop(modcall_stack_t *stack)
 }
 
 
-static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack_t *stack,
 					     rlm_rcode_t *presult, int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
 
@@ -222,7 +222,7 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
 		*priority = c->actions[*presult];
-		return MODCALL_CALCULATE_RESULT;
+		return UNLANG_CALCULATE_RESULT;
 	}
 
 	/*
@@ -244,8 +244,8 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 		}
 
 		if (c->type == MOD_LOAD_BALANCE) {
-			modcall_push(stack, entry->redundant.found, entry->result, false);
-			return MODCALL_PUSHED_CHILD;
+			unlang_push(stack, entry->redundant.found, entry->result, false);
+			return UNLANG_PUSHED_CHILD;
 		}
 
 		entry->redundant.child = entry->redundant.found; /* we start at this one */
@@ -257,30 +257,30 @@ static modcall_action_t modcall_load_balance(UNUSED REQUEST *request, modcall_st
 		 *	We were called again.  See if we're done.
 		 */
 		if (entry->redundant.child->actions[*presult] == MOD_ACTION_RETURN) {
-			return MODCALL_CALCULATE_RESULT;
+			return UNLANG_CALCULATE_RESULT;
 		}
 
 		entry->redundant.child = entry->redundant.child->next;
 		if (!entry->redundant.child) entry->redundant.child = g->children;
 
 		if (entry->redundant.child == entry->redundant.found) {
-			return MODCALL_CALCULATE_RESULT;
+			return UNLANG_CALCULATE_RESULT;
 		}
 	}
 
 	/*
 	 *	Push the child, and yeild for a later return.
 	 */
-	modcall_push(stack, entry->redundant.child, entry->result, false);
+	unlang_push(stack, entry->redundant.child, entry->result, false);
 	entry->resume = true;
-	return MODCALL_PUSHED_CHILD;
+	return UNLANG_PUSHED_CHILD;
 }
 
 
-static modcall_action_t modcall_group(UNUSED REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_group(UNUSED REQUEST *request, unlang_stack_t *stack,
 				     UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
 
@@ -295,17 +295,17 @@ static modcall_action_t modcall_group(UNUSED REQUEST *request, modcall_stack_t *
 	 */
 	if (!g->children) {
 		RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
-		return MODCALL_CONTINUE;
+		return UNLANG_CONTINUE;
 	}
 
-	modcall_push(stack, g->children, entry->result, true);
-	return MODCALL_PUSHED_CHILD;
+	unlang_push(stack, g->children, entry->result, true);
+	return UNLANG_PUSHED_CHILD;
 }
 
-static modcall_action_t modcall_case(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
 
@@ -314,18 +314,18 @@ static modcall_action_t modcall_case(REQUEST *request, modcall_stack_t *stack,
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
 		// ?? priority
-		return MODCALL_CALCULATE_RESULT;
+		return UNLANG_CALCULATE_RESULT;
 	}
 
-	return modcall_group(request, stack, presult, priority);
+	return unlang_group(request, stack, presult, priority);
 }
 
-static modcall_action_t modcall_return(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 				       rlm_rcode_t *presult, int *priority)
 {
 	int i;
 	VALUE_PAIR **copy_p;
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 
 	RDEBUG2("%s", unlang_keyword[c->type]);
@@ -345,14 +345,14 @@ static modcall_action_t modcall_return(REQUEST *request, modcall_stack_t *stack,
 	*presult = entry->result;
 	*priority = entry->priority;
 
-	return MODCALL_BREAK;
+	return UNLANG_BREAK;
 }
 
-static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 					rlm_rcode_t *presult, int *priority)
 {
 	VALUE_PAIR *vp;
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
 
@@ -362,7 +362,7 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 		int i, foreach_depth = -1;
 		VALUE_PAIR *vps;
 
-		if (stack->depth >= MODCALL_STACK_MAX) {
+		if (stack->depth >= UNLANG_STACK_MAX) {
 			ERROR("Internal sanity check failed: module stack is too deep");
 			fr_exit(1);
 		}
@@ -384,7 +384,7 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 			REDEBUG("foreach Nesting too deep!");
 			*presult = RLM_MODULE_FAIL;
 			*priority = 0;
-			return MODCALL_CALCULATE_RESULT;
+			return UNLANG_CALCULATE_RESULT;
 		}
 
 		/*
@@ -395,7 +395,7 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 			*presult = RLM_MODULE_NOOP;
 			*priority = c->actions[RLM_MODULE_NOOP];
-			return MODCALL_CALCULATE_RESULT;
+			return UNLANG_CALCULATE_RESULT;
 		}
 
 		RDEBUG2("foreach %s ", c->name);
@@ -439,7 +439,7 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 
 			*presult = entry->result;
 			*priority = c->actions[*presult];
-			return MODCALL_CALCULATE_RESULT;
+			return UNLANG_CALCULATE_RESULT;
 		}
 	}
 
@@ -462,15 +462,15 @@ static modcall_action_t modcall_foreach(REQUEST *request, modcall_stack_t *stack
 	/*
 	 *	Push the child, and yeild for a later return.
 	 */
-	modcall_push(stack, g->children, entry->result, true);
+	unlang_push(stack, g->children, entry->result, true);
 	entry->resume = true;
-	return MODCALL_PUSHED_CHILD;
+	return UNLANG_PUSHED_CHILD;
 }
 
-static modcall_action_t modcall_xlat(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_xlat(REQUEST *request, unlang_stack_t *stack,
 				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modxlat *mx = mod_callabletoxlat(c);
 	char buffer[128];
@@ -483,13 +483,13 @@ static modcall_action_t modcall_xlat(REQUEST *request, modcall_stack_t *stack,
 				    false, true, EXEC_TIMEOUT);
 	}
 
-	return MODCALL_CONTINUE;
+	return UNLANG_CONTINUE;
 }
 
-static modcall_action_t modcall_switch(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 				       UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modcallable *this, *found, *null_case;
 	modgroup *g, *h;
@@ -618,16 +618,16 @@ static modcall_action_t modcall_switch(REQUEST *request, modcall_stack_t *stack,
 do_null_case:
 	talloc_free(data.ptr);
 
-	modcall_push(stack, found, entry->result, false);
-	return MODCALL_PUSHED_CHILD;
+	unlang_push(stack, found, entry->result, false);
+	return UNLANG_PUSHED_CHILD;
 }
 
 
-static modcall_action_t modcall_update(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 				       rlm_rcode_t *presult, UNUSED int *priority)
 {
 	int rcode;
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g = mod_callabletogroup(c);
 	vp_map_t *map;
@@ -638,21 +638,21 @@ static modcall_action_t modcall_update(REQUEST *request, modcall_stack_t *stack,
 		if (rcode < 0) {
 			*presult = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
 			REXDENT();
-			return MODCALL_CALCULATE_RESULT;
+			return UNLANG_CALCULATE_RESULT;
 		}
 	}
 	REXDENT();
 
 	*presult = RLM_MODULE_NOOP;
 	*priority = c->actions[RLM_MODULE_NOOP];
-	return MODCALL_CALCULATE_RESULT;
+	return UNLANG_CALCULATE_RESULT;
 }
 
 
-static modcall_action_t modcall_map(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 				       rlm_rcode_t *presult, UNUSED int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g = mod_callabletogroup(c);
 
@@ -661,14 +661,14 @@ static modcall_action_t modcall_map(REQUEST *request, modcall_stack_t *stack,
 	REXDENT();
 
 	*priority = c->actions[*presult];
-	return MODCALL_CALCULATE_RESULT;
+	return UNLANG_CALCULATE_RESULT;
 }
 
-static modcall_action_t modcall_single(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 				       rlm_rcode_t *presult, UNUSED int *priority)
 {
 	modsingle *sp;
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 
 	/*
@@ -677,20 +677,20 @@ static modcall_action_t modcall_single(REQUEST *request, modcall_stack_t *stack,
 	 */
 	sp = mod_callabletosingle(c);
 
-	*presult = call_modsingle(c->method, sp, request);
+	*presult = unlang_module(c->method, sp, request);
 	*priority = c->actions[*presult];
 
 	RDEBUG2("%s (%s)", c->name ? c->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
-	return MODCALL_CALCULATE_RESULT;
+	return UNLANG_CALCULATE_RESULT;
 }
 
 
-static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	int condition;
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	modgroup *g;
 
@@ -722,7 +722,7 @@ static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 		entry->if_taken = false;
 
 		*priority = c->actions[*presult];
-		return MODCALL_CONTINUE;
+		return UNLANG_CONTINUE;
 	}
 
 	/*
@@ -731,13 +731,13 @@ static modcall_action_t modcall_if(REQUEST *request, modcall_stack_t *stack,
 	entry->was_if = true;
 	entry->if_taken = true;
 
-	return modcall_group(request, stack, presult, priority);
+	return unlang_group(request, stack, presult, priority);
 }
 
-static modcall_action_t modcall_elsif(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *presult, int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	rad_assert(entry->was_if);
 
@@ -748,19 +748,19 @@ static modcall_action_t modcall_elsif(REQUEST *request, modcall_stack_t *stack,
 		RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
 			unlang_keyword[c->type], request->number);
 		entry->if_taken = true;
-		return MODCALL_CONTINUE;
+		return UNLANG_CONTINUE;
 	}
 
 	/*
 	 *	Check the "if" condition.
 	 */
-	return modcall_if(request, stack, presult, priority);
+	return unlang_if(request, stack, presult, priority);
 }
 
-static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
+static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
-	modcall_stack_entry_t *entry = &stack->entry[stack->depth];
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 	rad_assert(entry->was_if);
 
@@ -772,7 +772,7 @@ static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
 
 		*presult = RLM_MODULE_NOOP;
 		*priority = c->actions[*presult];
-		return MODCALL_CONTINUE;
+		return UNLANG_CONTINUE;
 	}
 
 	/*
@@ -781,41 +781,41 @@ static modcall_action_t modcall_else(REQUEST *request, modcall_stack_t *stack,
 	entry->was_if = false;
 	entry->if_taken = false;
 
-	return modcall_group(request, stack, presult, priority);
+	return unlang_group(request, stack, presult, priority);
 }
 
 /*
  *	Some functions differ mainly in their parsing
  */
-#define modcall_redundant_load_balance modcall_load_balance
-#define modcall_policy modcall_group
-#define modcall_break modcall_return
+#define unlang_redundant_load_balance unlang_load_balance
+#define unlang_policy unlang_group
+#define unlang_break unlang_return
 
 /*
  *	The jump table for the interpretor
  */
-static modcall_function_t modcall_functions[MOD_NUM_TYPES] = {
-	[MOD_SINGLE]			= modcall_single,
-	[MOD_GROUP]			= modcall_group,
-	[MOD_LOAD_BALANCE]		= modcall_load_balance,
-	[MOD_REDUNDANT_LOAD_BALANCE]	= modcall_redundant_load_balance,
+static unlang_function_t unlang_functions[MOD_NUM_TYPES] = {
+	[MOD_SINGLE]			= unlang_single,
+	[MOD_GROUP]			= unlang_group,
+	[MOD_LOAD_BALANCE]		= unlang_load_balance,
+	[MOD_REDUNDANT_LOAD_BALANCE]	= unlang_redundant_load_balance,
 #ifdef WITH_UNLANG
-	[MOD_IF]			= modcall_if,
-	[MOD_ELSE]			= modcall_else,
-	[MOD_ELSIF]			= modcall_elsif,
-	[MOD_UPDATE]			= modcall_update,
-	[MOD_SWITCH]			= modcall_switch,
-	[MOD_CASE]			= modcall_case,
-	[MOD_FOREACH]			= modcall_foreach,
-	[MOD_BREAK]			= modcall_break,
-	[MOD_RETURN]			= modcall_return,
-	[MOD_MAP]			= modcall_map,
+	[MOD_IF]			= unlang_if,
+	[MOD_ELSE]			= unlang_else,
+	[MOD_ELSIF]			= unlang_elsif,
+	[MOD_UPDATE]			= unlang_update,
+	[MOD_SWITCH]			= unlang_switch,
+	[MOD_CASE]			= unlang_case,
+	[MOD_FOREACH]			= unlang_foreach,
+	[MOD_BREAK]			= unlang_break,
+	[MOD_RETURN]			= unlang_return,
+	[MOD_MAP]			= unlang_map,
 #endif
-	[MOD_POLICY]			= modcall_policy,
-	[MOD_XLAT]			= modcall_xlat,
+	[MOD_POLICY]			= unlang_policy,
+	[MOD_XLAT]			= unlang_xlat,
 };
 
-static bool modcall_brace[MOD_NUM_TYPES] = {
+static bool unlang_brace[MOD_NUM_TYPES] = {
 	[MOD_SINGLE]			= false,
 	[MOD_GROUP]			= true,
 	[MOD_LOAD_BALANCE]		= true,
@@ -840,20 +840,20 @@ static bool modcall_brace[MOD_NUM_TYPES] = {
 /*
  *	Interpret the various types of blocks.
  */
-static void modcall_interpret(REQUEST *request, modcall_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
+static void unlang_interpret(REQUEST *request, unlang_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
 {
 	modcallable *c;
 	int priority;
 	rlm_rcode_t result;
-	modcall_stack_entry_t *entry;
-	modcall_action_t action = MODCALL_BREAK;
+	unlang_stack_entry_t *entry;
+	unlang_action_t action = UNLANG_BREAK;
 
 redo:
 	result = RLM_MODULE_UNKNOWN;
 	priority = -1;
 
 	rad_assert(stack->depth > 0);
-	rad_assert(stack->depth < MODCALL_STACK_MAX);
+	rad_assert(stack->depth < UNLANG_STACK_MAX);
 
 	entry = &stack->entry[stack->depth];
 
@@ -879,19 +879,19 @@ redo:
 			break;
 		}
 
-		if (modcall_brace[c->type]) RDEBUG2("%s {", c->debug_name);
+		if (unlang_brace[c->type]) RDEBUG2("%s {", c->debug_name);
 
-		action = modcall_functions[c->type](request, stack, &result, &priority);
+		action = unlang_functions[c->type](request, stack, &result, &priority);
 		switch (action) {
-		case MODCALL_PUSHED_CHILD:
+		case UNLANG_PUSHED_CHILD:
 			goto redo;
 
-		 case MODCALL_BREAK:
+		 case UNLANG_BREAK:
 			 entry->result = result;
 			 goto done;
 
 		do_pop:
-			modcall_pop(stack);
+			unlang_pop(stack);
 
 			entry = &stack->entry[stack->depth];
 
@@ -906,11 +906,11 @@ redo:
 
 			/* FALL-THROUGH */
 
-		case MODCALL_CALCULATE_RESULT:
+		case UNLANG_CALCULATE_RESULT:
 			entry->resume = false;
-			if (modcall_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
+			if (unlang_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
 							    fr_int2str(mod_rcode_table, result, "<invalid>"));
-			action = MODCALL_CALCULATE_RESULT;
+			action = UNLANG_CALCULATE_RESULT;
 
 #if 0
 			RDEBUG("(%s, %d) ? (%s, %d)",
@@ -964,8 +964,8 @@ redo:
 
 			/* FALL-THROUGH */
 
-		case MODCALL_CONTINUE:
-			if ((action == MODCALL_CONTINUE) && modcall_brace[c->type]) RDEBUG2("}");
+		case UNLANG_CONTINUE:
+			if ((action == UNLANG_CONTINUE) && unlang_brace[c->type]) RDEBUG2("}");
 
 			if (!entry->do_next_sibling) goto done;
 
@@ -1018,7 +1018,7 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 {
 	int priority;
 	rlm_rcode_t result;
-	modcall_stack_t stack;
+	unlang_stack_t stack;
 
 	memset(&stack, 0, sizeof(stack));
 
@@ -1028,12 +1028,12 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	stack.component = component;
 	stack.depth = 0;
 
-	modcall_push(&stack, c, result, true);
+	unlang_push(&stack, c, result, true);
 
 	/*
 	 *	Call the main handler.
 	 */
-	modcall_interpret(request, &stack, &result, &priority);
+	unlang_interpret(request, &stack, &result, &priority);
 
 	/*
 	 *	Return the result.
