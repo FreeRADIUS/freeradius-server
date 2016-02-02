@@ -1373,8 +1373,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 */
 	case T_OP_REG_NE:
 	case T_OP_NE:
-	case T_OP_REG_EQ:
-	case T_OP_CMP_EQ:
 	case T_OP_GE:
 	case T_OP_GT:
 	case T_OP_LE:
