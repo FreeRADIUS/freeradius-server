@@ -323,13 +323,13 @@ int value_data_cmp_op(FR_TOKEN op,
 		switch (b_type) {
 		case PW_TYPE_IPV4_ADDR:
 			return value_data_cidr_cmp_op(op, 4, a->ipv4prefix[1],
-						    (uint8_t const *) &a->ipv4prefix[2],
-						    32, (uint8_t const *) &b->ipaddr);
+						      (uint8_t const *) &a->ipv4prefix[2],
+						      32, (uint8_t const *) &b->ipaddr);
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
 			return value_data_cidr_cmp_op(op, 4, a->ipv4prefix[1],
-						    (uint8_t const *) &a->ipv4prefix[2],
-						    b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
+						      (uint8_t const *) &a->ipv4prefix[2],
+						      b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
