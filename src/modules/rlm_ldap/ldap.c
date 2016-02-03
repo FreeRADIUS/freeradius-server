@@ -1389,35 +1389,56 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP");
 			RWDEBUG("!!! Remove the password map and either:");
-			RWDEBUG("!!!  - List %s in the authenticate section, and set attribute "
-				"&control:Auth-Type := '%s' in the authorize section (pap only)",
-				inst->name, inst->name);
 			RWDEBUG("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
 			RWDEBUG("!!!  - Configure authentication via wbclient (mschapv2 only)");
+			RWDEBUG("!!!    that password attribute");
+			RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
+				inst->name);
+			RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				inst->name);
+			RWDEBUG("!!!    (pap only)");
+
 			break;
 
 		case LDAP_DIRECTORY_EDIRECTORY:
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
 			RWDEBUG("!!! Remove the password map and either:");
-			RWDEBUG("!!!  - Set 'edir = yes' and enable the universal password feature on your "
-				"eDir server (recommended)");
-			RWDEBUG("!!!  - List %s in the authenticate section, and set attribute "
-				"&control:Auth-Type := '%s' in the authorize section (pap only)",
-				inst->name, inst->name);
+			RWDEBUG("!!!  - Set 'edir = yes' and enable the universal password feature on your ");
+			RWDEBUG("!!!    eDir server (recommended)");
+			RWDEBUG("!!!    that password attribute");
+			RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
+				inst->name);
+			RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+				inst->name);
+			RWDEBUG("!!!    (pap only)");
 			break;
 
 		default:
 			if (!inst->admin_identity) {
-				RWDEBUG("!!! No \"known good\" password added");
-				RWDEBUG("!!! Ensure the user object contains a password attribute, and that ");
-				RWDEBUG("!!! \"%s\" has permission to read that password attribute ",
+				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+				RWDEBUG("!!! but no password attribute found in search result");
+				RWDEBUG("!!! Either:");
+				RWDEBUG("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG("!!!    \"%s\" has permission to read that password attribute (recommended)",
 					inst->admin_identity);
+				RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
+					inst->name);
+				RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+					inst->name);
+				RWDEBUG("!!!    (pap only)");
 			} else {
 				RWDEBUG("!!! No \"known good\" password added");
-				RWDEBUG("!!! Ensure the user object contains a password attribute, and that ");
-				RWDEBUG("!!! 'identity' is set to the DN of an account that has permission to read ");
-				RWDEBUG("!!! that password attribute");
+				RWDEBUG("!!! but no password attribute found in search result");
+				RWDEBUG("!!! Either:");
+				RWDEBUG("!!!  - Ensure the user object contains a password attribute, and that ");
+				RWDEBUG("!!!    'identity' is set to the DN of an account that has permission to read");
+				RWDEBUG("!!!    that password attribute");
+				RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
+					inst->name);
+				RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
+					inst->name);
+				RWDEBUG("!!!    (pap only)");
 			}
 			break;
 		}
