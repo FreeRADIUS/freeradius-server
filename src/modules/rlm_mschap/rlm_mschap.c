@@ -1711,6 +1711,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				if (nt_enc->da->attr != PW_MSCHAP_NT_ENC_PW)
 					continue;
 
+				if (nt_enc->vp_length < 4) {
+					REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
+					return RLM_MODULE_INVALID;
+				}
+
 				if (nt_enc->vp_octets[0] != 6) {
 					REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
 					return RLM_MODULE_INVALID;
