@@ -496,7 +496,7 @@ void version_print(void)
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
-	if (DEBUG_ENABLED2) {
+	if (DEBUG_ENABLED3) {
 		int max = 0, len;
 
 		MEM(features = cf_section_alloc(NULL, "feature", NULL));
