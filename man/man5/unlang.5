@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "30 December 2015" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "05 February 2016" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -777,6 +777,12 @@ This operator is valid only for attributes of integer type.
 .IP !*
 Delete all occurances of the named attribute, no matter what the
 value.
+.IP =~
+Keep all attributes having values which match the given regular
+expression.  If no attribute matches, nothing else is done.
+.IP !~
+Keep all attributes having values which fail to match the given
+regular expression.  If no attribute matches, nothing else is done.
 .RE
 .IP Values
 .br
