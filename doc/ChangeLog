@@ -8,6 +8,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Update mssql schema to add priority
 	* don't complain on /dev/urandom in ldap
 	* fix == operator in update sections
+	* Don't create DHCP strings with many trailing zeros.
+	  Patch from Nicolas C.  Fixes #1526.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
