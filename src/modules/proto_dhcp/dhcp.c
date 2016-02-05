@@ -962,7 +962,6 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
-		char *q;
 
 		vp = fr_pair_make(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
@@ -1015,14 +1014,18 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_STRING:
-			vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i] + 1);
-			vp->type = VT_DATA;
-			memcpy(q, p, dhcp_header_sizes[i]);
-			q[dhcp_header_sizes[i]] = '\0';
-			vp->vp_length = strlen(vp->vp_strvalue);
-			if (vp->vp_length == 0) {
-				fr_pair_list_free(&vp);
+			/*
+			 *	According to RFC 2131, these are null terminated strings.
+			 *	We don't trust everyone to abide by the RFC, though.
+			 */
+			if (*p != '\0') {
+				uint8_t *end;
+				int len;
+				end = memchr(p, '\0', dhcp_header_sizes[i]);
+				len = end ? end - p : dhcp_header_sizes[i];
+				fr_pair_value_bstrncpy(vp, p, len);
 			}
+			if (vp->vp_length == 0) fr_pair_list_free(&vp);
 			break;
 
 		case PW_TYPE_OCTETS:
