@@ -515,7 +515,7 @@ void version_print(void)
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
-	if (DEBUG_ENABLED2) {
+	if (DEBUG_ENABLED3) {
 #ifdef WITH_TLS
 		ENGINE *engine;
 		char const *engine_id;
