@@ -59,7 +59,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	uint8_t pass_str[MAX_STRING_LEN];
 
 	if (!request->username) {
-		RWDEBUG("&request:User-Name attribute is required for authentication");
+		REDEBUG("&request:User-Name attribute is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 

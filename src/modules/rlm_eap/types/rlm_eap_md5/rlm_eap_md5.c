@@ -116,7 +116,7 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 
 	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
-		RDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
+		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;
 	}
 
