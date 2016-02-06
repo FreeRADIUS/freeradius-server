@@ -62,6 +62,8 @@ int	eap_tls_success(eap_session_t *eap_session) CC_HINT(nonnull);
 int	eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
 int	eap_tls_request(eap_session_t *eap_session) CC_HINT(nonnull);
 
+int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
+		    tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
 void	eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);

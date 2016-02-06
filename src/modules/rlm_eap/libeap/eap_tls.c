@@ -88,15 +88,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
-			   tls_record_t *record, size_t record_len, size_t frag_len)
+int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
+		    tls_record_t *record, size_t record_len, size_t frag_len)
 {
 	eap_round_t	*eap_round = eap_session->this_round;
 	tls_session_t	*tls_session = eap_session->opaque;
 	uint8_t		*p;
 	size_t		len = 1;	/* Flags */
-
-	rad_assert(!record || (status == FR_TLS_REQUEST));
 
 	/*
 	 *	Determine the length (sans header) of our EAP-TLS
@@ -106,6 +104,10 @@ static int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, u
 	if (status == FR_TLS_REQUEST) {
 		if (TLS_LENGTH_INCLUDED(flags)) len += 4;	/* TLS record length field */
 		if (record) len += frag_len;
+	}
+
+	if ((status == FR_TLS_START) && (record_len != 0)) {
+		len += frag_len;
 	}
 
 	/*
