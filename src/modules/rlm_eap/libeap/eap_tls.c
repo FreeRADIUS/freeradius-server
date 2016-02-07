@@ -827,6 +827,15 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	 *	We have fragments or records to send to the peer
 	 */
 	case FR_TLS_REQUEST:
+		/*
+		 *	FAST requires a "yes we're done" earlier than other protocols.
+		 */
+		if (tls_session->dirty_out.used == 0) {
+			if (SSL_is_init_finished(tls_session->ssl)) {
+				return FR_TLS_RECORD_COMPLETE;
+			}
+		}
+
 		eap_tls_request(eap_session);
 		status = FR_TLS_HANDLED;
 		goto done;
