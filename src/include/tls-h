@@ -136,6 +136,8 @@ typedef struct _tls_session_t {
 
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 
+	bool		phase2;				//!< Whether we're in phase 2
+
 	/*
 	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
 	 */

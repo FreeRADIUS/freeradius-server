@@ -697,6 +697,7 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 		 *	application data.
 		 */
 		tls_session->info.content_type = application_data;
+		tls_session->phase2 = true;
 		return FR_TLS_SUCCESS;
 	}
 
@@ -820,20 +821,27 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	process it as application data, otherwise continue
 		 *	the handshake.
 		 */
-		status = SSL_is_init_finished(tls_session->ssl) ? tls_application_data(tls_session, request) :
-								  eap_tls_handshake(eap_session);
+		if (SSL_is_init_finished(tls_session->ssl)) {
+			tls_session->phase2 = true;
+
+			status = tls_application_data(tls_session, request);
+		} else {
+			status = eap_tls_handshake(eap_session);
+		}
 		break;
 	/*
 	 *	We have fragments or records to send to the peer
 	 */
 	case FR_TLS_REQUEST:
 		/*
-		 *	FAST requires a "yes we're done" earlier than other protocols.
+		 *	Return a "yes we're done" if there's no more data to send,
+		 *	and we've just managed to finish the SSL session initialization.
 		 */
-		if (tls_session->dirty_out.used == 0) {
-			if (SSL_is_init_finished(tls_session->ssl)) {
-				return FR_TLS_RECORD_COMPLETE;
-			}
+		if (!tls_session->phase2 &&
+		    (tls_session->dirty_out.used == 0) &&
+		    SSL_is_init_finished(tls_session->ssl)) {
+			tls_session->phase2 = true;
+			return FR_TLS_RECORD_COMPLETE;
 		}
 
 		eap_tls_request(eap_session);
