@@ -770,7 +770,7 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_python_t *inst = instance;
-
+	int code = 0;
 	CONF_SECTION *cs;
 
 	/* parse python configuration sub-section */
@@ -807,9 +807,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/*
 	 *	Call the instantiate function.  No request.  Use the
-	 *	return value.
+	 *	return value if successful. Otherwise, continue to the failed label
 	 */
-	return do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
+	code = do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
+	if (code >= 0) {
+		return code;
+	}
 failed:
 	Pyx_BLOCK_THREADS
 	mod_error();
