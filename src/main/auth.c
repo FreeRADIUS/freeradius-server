@@ -665,7 +665,7 @@ int rad_virtual_server(REQUEST *request)
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 
 	if (!request->username) {
-		request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
 	}
 
 	/*
@@ -676,8 +676,8 @@ int rad_virtual_server(REQUEST *request)
 		 *	Look at the full User-Name with realm.
 		 */
 		if (request->parent->username->da->attr == PW_STRIPPED_USER_NAME) {
-			vp = fr_pair_find_by_num(request->parent->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-			rad_assert(vp != NULL);
+			vp = fr_pair_find_by_num(request->parent->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+			if (!vp) goto skip;
 		} else {
 			vp = request->parent->username;
 		}
@@ -756,6 +756,7 @@ int rad_virtual_server(REQUEST *request)
 		}
 	}
 
+skip:
 	RDEBUG("server %s {", request->server);
 	RINDENT();
 
