@@ -51,7 +51,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 
 	/* Hold your breath */
 #define PAIR(n,v,e) do { \
-		if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
+		if(!(vp = fr_pair_afrom_num(stopreq->packet,0, n))) {	\
 			talloc_free(stopreq); \
 			ERROR("no memory"); \
 			return 0; \
@@ -65,7 +65,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 #define IPPAIR(n,v) PAIR(n,v,vp_ipaddr)
 
 #define STRINGPAIR(n,v) do { \
-	  if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
+	if(!(vp = fr_pair_afrom_num(stopreq->packet,0, n))) {	\
 		talloc_free(stopreq); \
 		ERROR("no memory"); \
 		return 0; \
