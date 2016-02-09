@@ -162,24 +162,6 @@ static void rs_daemonize(char const *pidfile)
 }
 
 #define USEC 1000000
-static void rs_tv_sub(struct timeval const *end, struct timeval const *start, struct timeval *elapsed)
-{
-	elapsed->tv_sec = end->tv_sec - start->tv_sec;
-	if (elapsed->tv_sec > 0) {
-		elapsed->tv_sec--;
-		elapsed->tv_usec = USEC;
-	} else {
-		elapsed->tv_usec = 0;
-	}
-	elapsed->tv_usec += end->tv_usec;
-	elapsed->tv_usec -= start->tv_usec;
-
-	if (elapsed->tv_usec >= USEC) {
-		elapsed->tv_usec -= USEC;
-		elapsed->tv_sec++;
-	}
-}
-
 static void rs_tv_add_ms(struct timeval const *start, unsigned long interval, struct timeval *result) {
     result->tv_sec = start->tv_sec + (interval / 1000);
     result->tv_usec = start->tv_usec + ((interval % 1000) * 1000);
@@ -1697,7 +1679,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		return;
 	}
 
-	rs_tv_sub(&header->ts, &start_pcap, &elapsed);
+	fr_timeval_subtract(&elapsed, &header->ts, &start_pcap);
 
 	/*
 	 *	Increase received count
@@ -1708,7 +1690,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		rs_tv_sub(&current->timestamp, &original->packet->timestamp, &latency);
+		fr_timeval_subtract(&latency, &current->timestamp, &original->packet->timestamp);
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -1727,10 +1709,10 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
-			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
+			fr_timeval_subtract(&elapsed, &original->packet->timestamp, &start_pcap);
 			rs_packet_print(original, original->id, RS_NORMAL, original->in,
 					original->packet, &elapsed, NULL, false, true);
-			rs_tv_sub(&header->ts, &start_pcap, &elapsed);
+			fr_timeval_subtract(&elapsed, &header->ts, &start_pcap);
 			rs_time_print(timestr, sizeof(timestr), &header->ts);
 		}
 

@@ -58,35 +58,23 @@ fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
-static void tv_sub(struct timeval *end, struct timeval *start,
-		   struct timeval *elapsed)
-{
-	elapsed->tv_sec = end->tv_sec - start->tv_sec;
-	if (elapsed->tv_sec > 0) {
-		elapsed->tv_sec--;
-		elapsed->tv_usec = USEC;
-	} else {
-		elapsed->tv_usec = 0;
-	}
-	elapsed->tv_usec += end->tv_usec;
-	elapsed->tv_usec -= start->tv_usec;
-
-	if (elapsed->tv_usec >= USEC) {
-		elapsed->tv_usec -= USEC;
-		elapsed->tv_sec++;
-	}
-}
-
-static void stats_time(fr_stats_t *stats, struct timeval *start,
-		       struct timeval *end)
+/** Sort latency times into bins
+ *
+ * This solves the problem of attempting to keep min/max/avg latencies, whilst
+ * not knowing what the polling frequency will be.
+ *
+ * @param[out] stats Holding monotonically increasing stats bins.
+ * @param[in] start of the request.
+ * @param[in] end of the request.
+ */
+void fr_stats_bins(fr_stats_t *stats, struct timeval *start, struct timeval *end)
 {
 	struct timeval diff;
 	uint32_t delay;
 
-	if ((start->tv_sec == 0) || (end->tv_sec == 0) ||
-	    (end->tv_sec < start->tv_sec)) return;
+	if ((start->tv_sec == 0) || (end->tv_sec == 0) || (end->tv_sec < start->tv_sec)) return;
 
-	tv_sub(end, start, &diff);
+	fr_timeval_subtract(&diff, end, start);
 
 	if (diff.tv_sec >= 10) {
 		stats->elapsed[7]++;
@@ -169,15 +157,15 @@ void request_stats_final(REQUEST *request)
 		/*
 		 *	FIXME: Do the time calculations once...
 		 */
-		stats_time(&radius_auth_stats,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
-		stats_time(&request->client->auth,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
-		stats_time(&request->listener->stats,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
+		fr_stats_bins(&radius_auth_stats,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
+		fr_stats_bins(&request->client->auth,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
+		fr_stats_bins(&request->listener->stats,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
 		break;
 
 	case PW_CODE_ACCESS_REJECT:
@@ -191,12 +179,12 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
-		stats_time(&radius_acct_stats,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
-		stats_time(&request->client->acct,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
+		fr_stats_bins(&radius_acct_stats,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
+		fr_stats_bins(&request->client->acct,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
 		break;
 #endif
 
@@ -205,9 +193,9 @@ void request_stats_final(REQUEST *request)
 		INC_COA(total_access_accepts);
 	  coa_stats:
 		INC_COA(total_responses);
-		stats_time(&request->client->coa,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
+		fr_stats_bins(&request->client->coa,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
 		break;
 
 	case PW_CODE_COA_NAK:
@@ -218,9 +206,9 @@ void request_stats_final(REQUEST *request)
 		INC_DSC(total_access_accepts);
 	  dsc_stats:
 		INC_DSC(total_responses);
-		stats_time(&request->client->dsc,
-			   &request->packet->timestamp,
-			   &request->reply->timestamp);
+		fr_stats_bins(&request->client->dsc,
+			      &request->packet->timestamp,
+			      &request->reply->timestamp);
 		break;
 
 	case PW_CODE_DISCONNECT_NAK:
@@ -294,12 +282,12 @@ void request_stats_final(REQUEST *request)
 		INC(total_access_accepts);
 	proxy_stats:
 		INC(total_responses);
-		stats_time(&proxy_auth_stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
+		fr_stats_bins(&proxy_auth_stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
+		fr_stats_bins(&request->home_server->stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
 		break;
 
 	case PW_CODE_ACCESS_REJECT:
@@ -314,12 +302,12 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		proxy_acct_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_acct_stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
+		fr_stats_bins(&proxy_acct_stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
+		fr_stats_bins(&request->home_server->stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
 		break;
 #endif
 
@@ -328,24 +316,24 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_COA_NAK:
 		proxy_coa_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_coa_stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
+		fr_stats_bins(&proxy_coa_stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
+		fr_stats_bins(&request->home_server->stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
 		break;
 
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_DISCONNECT_NAK:
 		proxy_dsc_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_dsc_stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
-			   &request->proxy->timestamp,
-			   &request->proxy_reply->timestamp);
+		fr_stats_bins(&proxy_dsc_stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
+		fr_stats_bins(&request->home_server->stats,
+			      &request->proxy->timestamp,
+			      &request->proxy_reply->timestamp);
 		break;
 #endif
 

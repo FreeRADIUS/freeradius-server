@@ -85,6 +85,7 @@ void request_stats_final(REQUEST *request);
 void request_stats_reply(REQUEST *request);
 void radius_stats_ema(fr_stats_ema_t *ema,
 		      struct timeval *start, struct timeval *end);
+void fr_stats_bins(fr_stats_t *stats, struct timeval *start, struct timeval *end);
 
 #define FR_STATS_INC(_x, _y) radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x._y++;
 #define FR_STATS_TYPE_INC(_x) _x++
@@ -92,6 +93,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 #else  /* WITH_STATS */
 #define request_stats_init(_x)
 #define request_stats_final(_x)
+#define fr_stats_bins(_x, _y, _z)
 
 #define FR_STATS_INC(_x, _y)
 #define FR_STATS_TYPE_INC(_x)
