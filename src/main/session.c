@@ -103,6 +103,8 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	stopreq->username = userpair;
 	stopreq->password = NULL;
 
+	RDEBUG("Running Accounting section for automatically created accounting 'stop'");
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 	ret = rad_accounting(stopreq);
 
 	/*
