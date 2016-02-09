@@ -54,7 +54,6 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 		if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
 			talloc_free(stopreq); \
 			ERROR("no memory"); \
-			fr_pair_list_free(&(stopreq->packet->vps)); \
 			return 0; \
 		} \
 		vp->e = v; \
@@ -69,7 +68,6 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	  if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
 		talloc_free(stopreq); \
 		ERROR("no memory"); \
-		fr_pair_list_free(&(stopreq->packet->vps)); \
 		return 0; \
 	} \
 	fr_pair_value_strcpy(vp, v);	\
