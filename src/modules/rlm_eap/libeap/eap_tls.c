@@ -691,13 +691,14 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 *	if the SSL handshake is finished, then return a
 	 *	FR_TLS_SUCCESS
 	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
+		tls_session->phase2 = true;
+
 		/*
 		 *	Init is finished.  The rest is
 		 *	application data.
 		 */
 		tls_session->info.content_type = application_data;
-		tls_session->phase2 = true;
 		return FR_TLS_SUCCESS;
 	}
 
@@ -821,7 +822,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	process it as application data, otherwise continue
 		 *	the handshake.
 		 */
-		if (SSL_is_init_finished(tls_session->ssl)) {
+		if (tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
 			tls_session->phase2 = true;
 
 			status = tls_application_data(tls_session, request);
