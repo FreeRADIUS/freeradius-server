@@ -40,7 +40,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 		int session_time)
 {
 	REQUEST *stopreq;
-	VALUE_PAIR *vp, *userpair;
+	VALUE_PAIR *vp;
 	int ret;
 
 	stopreq = request_alloc_fake(request);
@@ -76,9 +76,14 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 
 	INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);
 	IPPAIR(PW_NAS_IP_ADDRESS, nasaddr);
+
+	INTPAIR(PW_EVENT_TIMESTAMP, 0);
+	vp->vp_date = time(NULL);
 	INTPAIR(PW_ACCT_DELAY_TIME, 0);
+
 	STRINGPAIR(PW_USER_NAME, user);
-	userpair = vp;
+	stopreq->username = vp;
+
 	INTPAIR(PW_NAS_PORT, nas_port);
 	STRINGPAIR(PW_ACCT_SESSION_ID, sessionid);
 	if(proto == 'P') {
@@ -98,7 +103,6 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	INTPAIR(PW_ACCT_INPUT_PACKETS, 0);
 	INTPAIR(PW_ACCT_OUTPUT_PACKETS, 0);
 
-	stopreq->username = userpair;
 	stopreq->password = NULL;
 
 	RDEBUG("Running Accounting section for automatically created accounting 'stop'");
