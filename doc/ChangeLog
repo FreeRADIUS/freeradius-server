@@ -2,6 +2,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
 	* Add support for =~ and !~ in update sections.
 	  See "man unlang"
+	* Add dictionary.checkpoint.
+	* Simultaneous-Use prints out more information.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
@@ -10,6 +12,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* fix == operator in update sections
 	* Don't create DHCP strings with many trailing zeros.
 	  Patch from Nicolas C.  Fixes #1526.
+	* Allow MS-CHAP change passwords instead of complaining
+	  on large buffer.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
