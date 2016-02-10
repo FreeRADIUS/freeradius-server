@@ -1863,6 +1863,11 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	/*
 	 *	If we parsed to a different type than the DA associated with
 	 *	the VALUE_PAIR we now need to fixup the DA.
+	 *
+	 *	This is for types COMBO_IP.  VALUE_PAIRs have a fixed
+	 *	data type, and not a polymorphic one.  So instead of
+	 *	hacking polymorphic crap through the entire server
+	 *	code, we have this hack to make them static.
 	 */
 	if (type != vp->da->type) {
 		fr_dict_attr_t const *da;
