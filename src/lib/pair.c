@@ -266,9 +266,6 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	VALUE_PAIR	*vp;
 	fr_dict_attr_t const *da;
 
-	uint8_t 	*data;
-	size_t		size;
-
 	da = fr_dict_unknown_afrom_oid(ctx, NULL, fr_dict_root(fr_dict_internal), attribute);
 	if (!da) return NULL;
 
@@ -298,18 +295,10 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 
 	if (!value) return vp;
 
-	size = strlen(value + 2);
-	vp->vp_length = size >> 1;
-	data = talloc_array(vp, uint8_t, vp->vp_length);
-
-	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
-		fr_strerror_printf("Invalid hex string");
+	if (fr_pair_value_from_str(vp, value, -1) < 0) {
 		talloc_free(vp);
 		return NULL;
 	}
-
-	vp->vp_octets = data;
-	vp->type = VT_DATA;
 
 	/*
 	 *	Convert unknowns to knowns
