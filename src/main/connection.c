@@ -128,6 +128,11 @@ struct fr_connection_pool_t {
 						//!< fired by the connection pool code.
 	VALUE_PAIR	*trigger_args;		//!< Arguments to make available in connection pool triggers.
 
+	struct timeval	held_trigger_min;	//!< If a connection is held for less than the specified
+						//!< period, fire a trigger.
+	struct timeval	held_trigger_max;	//!< If a connection is held for longer than the specified
+						//!< period, fire a trigger.
+
 	fr_connection_create_t	create;		//!< Function used to create new connections.
 	fr_connection_alive_t	alive;		//!< Function used to check status of connections.
 	fr_connection_pool_reconnect_t reconnect;	//!< Called during connection pool reconnect.
@@ -146,6 +151,8 @@ static const CONF_PARSER connection_config[] = {
 	{ FR_CONF_OFFSET("cleanup_interval", PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), .dflt = "30" },
 	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), .dflt = "60" },
 	{ FR_CONF_OFFSET("connect_timeout", PW_TYPE_TIMEVAL, fr_connection_pool_t, connect_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET("held_trigger_min", PW_TYPE_TIMEVAL, fr_connection_pool_t, held_trigger_min), .dflt = "0.0" },
+	{ FR_CONF_OFFSET("held_trigger_max", PW_TYPE_TIMEVAL, fr_connection_pool_t, held_trigger_max), .dflt = "0.5" },
 	{ FR_CONF_OFFSET("retry_delay", PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), .dflt = "1" },
 	{ FR_CONF_OFFSET("spread", PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
@@ -1335,6 +1342,8 @@ void *fr_connection_get(fr_connection_pool_t *pool, REQUEST *request)
 void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *conn)
 {
 	fr_connection_t *this;
+	struct timeval	held;
+	bool trigger_min = false, trigger_max = false;
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return;
@@ -1346,6 +1355,31 @@ void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *c
 	 */
 	gettimeofday(&this->last_released, NULL);
 	pool->state.last_released = this->last_released;
+
+	/*
+	 *	This is done inside the mutex to ensure
+	 *	updates are atomic.
+	 */
+	fr_timeval_subtract(&held, &this->last_released, &this->last_reserved);
+
+	/*
+	 *	Check we've not exceeded out trigger limits
+	 */
+	if ((pool->held_trigger_min.tv_sec || pool->held_trigger_min.tv_usec) &&
+	    (fr_timeval_cmp(&held, &pool->held_trigger_min) < 0) &&
+	    (pool->state.last_held_min != this->last_released.tv_sec)) {
+	    	trigger_min = true;
+	    	pool->state.last_held_min = this->last_released.tv_sec;
+	}
+
+	if ((pool->held_trigger_max.tv_sec || pool->held_trigger_min.tv_usec) &&
+	    (fr_timeval_cmp(&held, &pool->held_trigger_max) > 0) &&
+	    (pool->state.last_held_max != this->last_released.tv_sec)) {
+	    	trigger_max = true;
+	    	pool->state.last_held_max = this->last_released.tv_sec;
+	}
+
+	fr_stats_bins(&pool->state.held_stats, &this->last_reserved, &this->last_released);
 
 	/*
 	 *	Insert the connection in the heap.
@@ -1368,6 +1402,9 @@ void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *c
 	 *	connections, go manage the pool && clean some up.
 	 */
 	fr_connection_pool_check(pool);
+
+	if (trigger_min) fr_connection_trigger_exec(pool, "min");
+	if (trigger_max) fr_connection_trigger_exec(pool, "max");
 }
 
 /** Reconnect a suspected inviable connection

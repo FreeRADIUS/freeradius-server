@@ -27,6 +27,7 @@
 RCSIDH(connection_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/stats.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +48,14 @@ typedef struct fr_connection_pool_state {
 	struct timeval	last_released;		//!< Last time a connection was released.
 	struct timeval	last_closed;		//!< Last time a connection was closed.
 
-	int		next_delay;    	 	//!< The next delay time.  cleanup.  Initialized to
+#ifdef WITH_STATS
+	fr_stats_t	held_stats;		//!< How long connections were held for.
+#endif
+
+	time_t		last_held_min;		//!< Last time we warned about a low latency event.
+	time_t		last_held_max;		//!< Last time we warned about a high latency event.
+
+	uint32_t	next_delay;    	 	//!< The next delay time.  cleanup.  Initialized to
 						//!< cleanup_interval, and decays from there.
 
 	uint64_t	count;			//!< Number of connections spawned over the lifetime

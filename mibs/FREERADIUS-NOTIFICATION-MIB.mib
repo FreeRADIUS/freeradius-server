@@ -131,7 +131,7 @@ serverModuleConnectionFail NOTIFICATION-TYPE
        DESCRIPTION "Notification that the module has failed to open a new connection"
        ::= { serverModuleGeneric 4 }
 
-serverModuleConnectionReservedPeriodHigh NOTIFICATION-TYPE
+serverModuleConnectionReservedPeriodMax NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
@@ -140,7 +140,7 @@ serverModuleConnectionReservedPeriodHigh NOTIFICATION-TYPE
        DESCRIPTION "Notification that the period a connection was reserved for exceeded the configured maximum"
        ::= { serverModuleGeneric 5 }
 
-serverModuleConnectionReservedPeriodLow NOTIFICATION-TYPE
+serverModuleConnectionReservedPeriodMin NOTIFICATION-TYPE
        OBJECTS { radiusdModuleName,
 		 radiusdModuleInstance,
 		 radiusdConnectionPoolServer,
