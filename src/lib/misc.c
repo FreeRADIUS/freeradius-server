@@ -873,6 +873,62 @@ void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct 
 	}
 }
 
+/** Add one timeval to another
+ *
+ * @param[out] out Where to write the sum of the two times.
+ * @param[in] a first time to sum.
+ * @param[in] b second time to sum.
+ */
+void fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b)
+{
+	uint64_t usec;
+
+	out->tv_sec = a->tv_sec + b->tv_sec;
+
+	usec = a->tv_usec + b->tv_usec;
+	if (usec >= USEC) {
+		out->tv_sec++;
+		usec -= USEC;
+	}
+	out->tv_usec = usec;
+}
+
+/** Divide a timeval by a divisor
+ *
+ * @param[out] out where to write the result of dividing in by the divisor.
+ * @param[in] in Timeval to divide.
+ * @param[in] divisor Integer to divide timeval by.
+ */
+void fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor)
+{
+	uint64_t x;
+
+	x = (((uint64_t)in->tv_sec * USEC) + in->tv_usec) / divisor;
+
+	out->tv_sec = x / USEC;
+	out->tv_usec = x % USEC;
+}
+
+/** Compare two timevals
+ *
+ * @param[in] a First timeval.
+ * @param[in] b Second timeval.
+ * @return
+ *	- +1 if a > b.
+ *	- -1 if a < b.
+ *	- 0 if a == b.
+ */
+int fr_timeval_cmp(struct timeval *a, struct timeval *b)
+{
+	if (a->tv_sec > b->tv_sec) return +1;
+	if (a->tv_sec < b->tv_sec) return -1;
+
+	if (a->tv_usec > b->tv_usec) return +1;
+	if (a->tv_usec < b->tv_usec) return -1;
+
+	return 0;
+}
+
 #define NSEC 1000000000
 /** Subtract one timespec from another
  *
