@@ -26,7 +26,6 @@
  */
 RCSIDH(connection_h, "$Id$")
 
-#include <freeradius-devel/conffile.h>
 #include <freeradius-devel/radiusd.h>
 
 #ifdef __cplusplus
