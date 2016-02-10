@@ -1704,7 +1704,10 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	 *	RFC format attributes take the fast path.
 	 */
 	if (!vp->da->vendor) {
-		if (vp->da->attr > 255) return 0;
+		if (vp->da->attr > 255) {
+			*pvp = vp->next;
+			return 0;
+		}
 
 		return rad_vp2rfc(packet, original, secret, pvp,
 				  start, room);
