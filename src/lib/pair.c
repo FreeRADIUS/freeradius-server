@@ -221,7 +221,7 @@ static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, fr_dict
 	fr_cursor_init(&cursor, &vp2);
 
 	len = fr_radius_decode_pair_value(ctx, &cursor, da, vp->vp_octets, vp->vp_length, vp->vp_length, NULL);
-	if (len < 0) return vp; /* it's really unknown */
+	if (len <= 0) return vp; /* it's really unknown */
 
 	if (vp2->da->flags.is_unknown) {
 		fr_pair_list_free(&vp2);
