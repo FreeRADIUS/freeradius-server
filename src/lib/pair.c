@@ -1267,7 +1267,7 @@ static VALUE_PAIR *fr_pair_from_unkown(VALUE_PAIR *vp, DICT_ATTR const *da)
 	len = data2vp(NULL, NULL, NULL, NULL, da,
 		      vp->vp_octets, vp->vp_length, vp->vp_length,
 		      &vp2);
-	if (len < 0) return vp; /* it's really unknown */
+	if (len <= 0) return vp; /* it's really unknown */
 
 	if (vp2->da->flags.is_unknown) {
 		fr_pair_list_free(&vp2);
