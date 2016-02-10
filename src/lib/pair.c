@@ -390,7 +390,9 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	da = fr_dict_attr_by_name(NULL, attrname);
 	if (!da) {
 		vp = fr_pair_make_unknown(ctx, attrname, value, op);
-		if (vp && vps) fr_pair_add(vps, vp);
+		if (!vp) return NULL;
+
+		if (vps) fr_pair_add(vps, vp);
 		return vp;
 	}
 
