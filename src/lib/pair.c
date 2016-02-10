@@ -303,6 +303,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	if (!value) return vp;
 
 	if (fr_pair_value_from_str(vp, value, -1) < 0) {
+		fr_dict_unknown_free(&da);
 		talloc_free(vp);
 		return NULL;
 	}
