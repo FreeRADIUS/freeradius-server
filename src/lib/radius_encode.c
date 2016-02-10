@@ -1509,7 +1509,10 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	/*
 	 *	Ignore attributes which can't go into a RADIUS packet.
 	 */
-	if (!vp->da->vendor && (vp->da->attr > 255)) return 0;
+	if (!vp->da->vendor && (vp->da->attr > 255)) {
+		fr_cursor_next(cursor);
+		return 0;
+	}
 
 	/*
 	 *	We allow zero-length strings in "unlang", but skip
@@ -1520,6 +1523,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 		if ((vp->da->vendor != 0) ||
 		    ((vp->da->attr != PW_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != PW_MESSAGE_AUTHENTICATOR))) {
+			fr_cursor_next(cursor);
 			return 0;
 		}
 	}
