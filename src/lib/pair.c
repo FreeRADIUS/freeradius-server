@@ -218,6 +218,13 @@ static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, fr_dict
 
 	vp_cursor_t cursor;
 
+	/*
+	 *	Skip decoding if we know it's the wrong size for the
+	 *	data type.
+	 */
+	if ((vp->vp_length < dict_attr_sizes[da->type][0]) ||
+	    (vp->vp_length > dict_attr_sizes[da->type][1])) return vp;
+
 	fr_cursor_init(&cursor, &vp2);
 
 	len = fr_radius_decode_pair_value(ctx, &cursor, da, vp->vp_octets, vp->vp_length, vp->vp_length, NULL);
