@@ -227,8 +227,9 @@ static int mod_init(rlm_python_t *inst)
 		PySys_SetPath(path);
 	}
 
-	if ((radiusd_module = Py_InitModule3(main_config.name, module_methods, "rlm_python module")) == NULL)
+	if ((radiusd_module = Py_InitModule3(main_config.name, module_methods, "rlm_python module")) == NULL) {
 		goto failed;
+	}
 
 	for (i = 0; radiusd_constants[i].name; i++) {
 		if ((PyModule_AddIntConstant(radiusd_module, radiusd_constants[i].name,
@@ -333,8 +334,8 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			continue;
 		}
 
-		pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
-		pStr2	= PyTuple_GET_ITEM(pTupleElement, pairsize-1);
+		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
+		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
 			ERROR("%s - Tuple element %d of %s must be as (str, str)",
@@ -409,20 +410,20 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 
 	/* Look at the fr_pair_fprint_name? */
 
-	if (vp->da->flags.has_tag)
+	if (vp->da->flags.has_tag) {
 		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
-	else
+	} else {
 		pStr = PyString_FromString(vp->da->name);
+	}
 
-	if (!pStr)
-		goto failed;
+	if (!pStr) goto failed;
 
 	PyTuple_SET_ITEM(pPair, 0, pStr);
 
 	fr_pair_value_snprint(buf, sizeof(buf), vp, '"');
 
-	if ((pStr = PyString_FromString(buf)) == NULL)
-		goto failed;
+	if ((pStr = PyString_FromString(buf)) == NULL) goto failed;
+
 	PyTuple_SET_ITEM(pPair, 1, pStr);
 
 	return 0;
@@ -650,7 +651,6 @@ failed:
 	PyGILState_Release(gstate);
 	return -1;
 }
-
 
 static void mod_objclear(PyObject **ob)
 {
