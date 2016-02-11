@@ -109,7 +109,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	char const *ptr, *value;
 	char buf[MAX_STRING_LEN];
 	char do_xlat = 0;
-	FR_TOKEN token, operator = T_EOL;
+	FR_TOKEN token, op = T_EOL;
 
 	/*
 	 *	Verify the 'Attribute' field
@@ -124,10 +124,9 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	 */
 	if (row[4] != NULL && row[4][0] != '\0') {
 		ptr = row[4];
-		operator = gettoken(&ptr, buf, sizeof(buf), false);
-		if ((operator < T_OP_ADD) ||
-		    (operator > T_OP_CMP_EQ)) {
-			REDEBUG("Invalid operator \"%s\" for attribute %s", row[4], row[2]);
+		op = gettoken(&ptr, buf, sizeof(buf), false);
+		if (!fr_assignment_op[op] && !fr_equality_op[op]) {
+			REDEBUG("Invalid op \"%s\" for attribute %s", row[4], row[2]);
 			return -1;
 		}
 
@@ -135,7 +134,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		/*
 		 *  Complain about empty or invalid 'op' field
 		 */
-		operator = T_OP_CMP_EQ;
+		op = T_OP_CMP_EQ;
 		REDEBUG("The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
 		REDEBUG("You MUST FIX THIS if you want the configuration to behave as you expect");
 	}
@@ -182,7 +181,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	/*
 	 *	Create the pair
 	 */
-	vp = fr_pair_make(ctx, NULL, row[2], NULL, operator);
+	vp = fr_pair_make(ctx, NULL, row[2], NULL, op);
 	if (!vp) {
 		REDEBUG("Failed to create the pair: %s", fr_strerror());
 		return -1;
