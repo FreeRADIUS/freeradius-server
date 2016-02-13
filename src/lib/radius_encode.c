@@ -891,7 +891,6 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
-	int			hdr_len;
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
@@ -951,13 +950,13 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		FR_PROTO_HEX_DUMP("EVS", out, out[1]);
 
 	}
-	hdr_len = out[1];
+
+	if (outlen <= out[1]) return 0;
 
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
-
+		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_value(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	}
 	if (len <= 0) return len;
 
@@ -1102,9 +1101,11 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	out[0] = tlv_stack[depth]->attr & 0xff;
 	out[1] = 2;
 
-	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
+	if (outlen > 255) outlen = 255;
 
-	len = encode_value(out + out[1], outlen, tlv_stack, depth, cursor, encoder_ctx);
+	if (outlen <= out[1]) return 0;
+
+	len = encode_value(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 
 	out[1] += len;
@@ -1194,7 +1195,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	}
 
-	if (outlen > ((unsigned) 255 - hdr_len)) outlen = 255 - hdr_len;
+	if (outlen > 255) outlen = 255;
 
 	/*
 	 *	Because we've now encoded the attribute header,
@@ -1202,9 +1203,9 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + hdr_len, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_tlv_hdr_internal(out + hdr_len, outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value(out + hdr_len, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_value(out + hdr_len, outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 	}
 	if (len <= 0) return len;
 
@@ -1263,7 +1264,6 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 {
 	int			len;
 	uint32_t		lvalue;
-	int			hdr_len;
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 
@@ -1305,13 +1305,14 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out[6] = tlv_stack[depth]->attr;
 	out[7] = 3;
 	out[8] = 0;		/* continuation byte */
-	hdr_len = 9;
+
+	if (outlen <= out[1]) return 0;
 
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 		if (len <= 0) return len;
 	} else {
-		len = encode_value(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_value(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 		if (len <= 0) return len;
 	}
 
@@ -1322,7 +1323,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 *	ONLY after copying the rest of the data.
 	 */
 	if (len > (255 - out[1])) {
-		return attr_shift(start, start + outlen, out, hdr_len, len, 8, 7);
+		return attr_shift(start, start + outlen, out, out[1], len, 8, 7);
 	}
 
 	out[1] += len;
