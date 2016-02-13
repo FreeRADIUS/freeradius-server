@@ -1360,9 +1360,9 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
 	ptr[0] = attribute & 0xff;
 	ptr[1] = 2;
 
-	if (room > ((unsigned) 255 - ptr[1])) room = 255 - ptr[1];
+	if (room > 255) room = 255;
 
-	len = vp2data_any(packet, original, secret, 0, pvp, ptr + ptr[1], room);
+	len = vp2data_any(packet, original, secret, 0, pvp, ptr + ptr[1], room - ptr[1]);
 	if (len <= 0) return len;
 
 	ptr[1] += len;
@@ -1447,12 +1447,10 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 
 	}
 
-	if (room > ((unsigned) 255 - (dv->type + dv->length))) {
-		room = 255 - (dv->type + dv->length);
-	}
+	if (room > 255) room = 255;
 
 	len = vp2data_any(packet, original, secret, 0, pvp,
-			  ptr + dv->type + dv->length, room);
+			  ptr + dv->type + dv->length, room - (dv->type + dv->length));
 	if (len <= 0) return len;
 
 	if (dv->length) ptr[dv->type + dv->length - 1] += len;
