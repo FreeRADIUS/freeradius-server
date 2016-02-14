@@ -951,8 +951,6 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 	}
 
-	if (outlen <= out[1]) return 0;
-
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	} else {
@@ -1102,8 +1100,6 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	out[1] = 2;
 
 	if (outlen > 255) outlen = 255;
-
-	if (outlen <= out[1]) return 0;
 
 	len = encode_value(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
@@ -1305,8 +1301,6 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out[6] = tlv_stack[depth]->attr;
 	out[7] = 3;
 	out[8] = 0;		/* continuation byte */
-
-	if (outlen <= out[1]) return 0;
 
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
