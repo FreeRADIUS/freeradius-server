@@ -1652,6 +1652,11 @@ static int auth_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
 		return -1;
 	}
 
+	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		      request->reply->data_len, MAX_PACKET_LEN);
+	}
+
 	return 0;
 }
 
@@ -1692,6 +1697,11 @@ static int acct_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
 		return -1;
 	}
 
+	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		      request->reply->data_len, MAX_PACKET_LEN);
+	}
+
 	return 0;
 }
 #endif
@@ -1712,6 +1722,11 @@ static int proxy_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *requ
 		RERROR("Failed sending proxied request: %s",
 			       fr_strerror());
 		return -1;
+	}
+
+	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		      request->proxy->data_len, MAX_PACKET_LEN);
 	}
 
 	return 0;
@@ -2423,6 +2438,11 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 		return -1;
 	}
 
+	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		      request->reply->data_len, MAX_PACKET_LEN);
+	}
+
 	if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
 		RERROR("Failed signing packet: %s", fr_strerror());
 
@@ -2475,6 +2495,11 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 		RERROR("Failed encoding proxied packet: %s", fr_strerror());
 
 		return -1;
+	}
+
+	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		      request->proxy->data_len, MAX_PACKET_LEN);
 	}
 
 	if (fr_radius_sign(request->proxy, NULL, request->home_server->secret) < 0) {
