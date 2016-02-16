@@ -1550,11 +1550,11 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	lvalue = htonl(vp->da->vendor);
 	memcpy(ptr + 2, &lvalue, 4);
 
-	if (room > ((unsigned) 255 - ptr[1])) room = 255 - ptr[1];
+	if (room > 255) room = 255;
 
 	len = vp2attr_vsa(packet, original, secret, pvp,
 			  vp->da->attr, vp->da->vendor,
-			  ptr + ptr[1], room);
+			  ptr + ptr[1], room - ptr[1]);
 	if (len < 0) return len;
 
 #ifndef NDEBUG
