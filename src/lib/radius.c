@@ -1813,7 +1813,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 */
 	reply = packet->vps;
 	while (reply) {
-		size_t last_len;
+		size_t last_len, room;
 		char const *last_name = NULL;
 
 		VERIFY_VP(reply);
@@ -1871,8 +1871,11 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		}
 		last_name = reply->da->name;
 
-		len = rad_vp2attr(packet, original, secret, &reply, ptr,
-				  ((uint8_t *) data) + sizeof(data) - ptr);
+		room = ((uint8_t *) data) + sizeof(data) - ptr;
+
+		if (room <= 2) break;
+
+		len = rad_vp2attr(packet, original, secret, &reply, ptr, room);
 		if (len < 0) return -1;
 
 		/*
