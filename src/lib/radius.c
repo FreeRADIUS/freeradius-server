@@ -62,11 +62,6 @@ FR_NAME_NUMBER const fr_request_types[] = {
 };
 
 /*
- *  The RFC says 4096 octets max, and most packets are less than 256.
- */
-#define MAX_PACKET_LEN 4096
-
-/*
  *	The maximum number of attributes which we allow in an incoming
  *	request.  If there are more attributes than this, the request
  *	is rejected.
