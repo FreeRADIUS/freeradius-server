@@ -1387,9 +1387,9 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	lvalue = htonl(da->attr);
 	memcpy(out + 2, &lvalue, 4);	/* Copy in the 32bit vendor ID */
 
-	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
+	if (outlen > 255) outlen = 255;
 
-	len = encode_vendor_attr_hdr(out + out[1], outlen, tlv_stack, depth, cursor, encoder_ctx);
+	len = encode_vendor_attr_hdr(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	if (len < 0) return len;
 
 #ifndef NDEBUG
