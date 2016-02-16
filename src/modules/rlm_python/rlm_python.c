@@ -553,9 +553,6 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		goto finish;
 	}
 
-	if (!request)
-		goto finish;
-
 	/*
 	 *	The function returns either:
 	 *  1. (returnvalue, replyTuple, configTuple), where
@@ -569,7 +566,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	 *
 	 * xxx This code is messy!
 	 */
-	if (PyTuple_CheckExact(pRet)) {
+	if (PyTuple_CheckExact(pRet) && request != NULL) {
 		PyObject *pTupleInt;
 
 		if (PyTuple_GET_SIZE(pRet) != 3) {
