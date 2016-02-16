@@ -428,7 +428,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	}
 
 	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->reply->data_len, MAX_PACKET_LEN);
 	}
 
