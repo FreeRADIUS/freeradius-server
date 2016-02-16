@@ -1403,7 +1403,7 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 */
 	fr_cursor_init(&cursor, &packet->vps);
 	while ((vp = fr_cursor_current(&cursor))) {
-		size_t		last_len;
+		size_t		last_len, room;
 		char const	*last_name = NULL;
 
 		VERIFY_VP(vp);
@@ -1448,7 +1448,10 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		}
 		last_name = vp->da->name;
 
-		len = fr_radius_encode_pair(ptr, ((uint8_t *)data) + sizeof(data) - ptr, &cursor, &encoder_ctx);
+		room = ((uint8_t *)data) + sizeof(data) - ptr;
+		if (room <= 2) break;
+
+		len = fr_radius_encode_pair(ptr, room, &cursor, &encoder_ctx);
 		if (len < 0) return -1;
 
 		/*
