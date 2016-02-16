@@ -1653,7 +1653,7 @@ static int auth_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
 	}
 
 	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->reply->data_len, MAX_PACKET_LEN);
 	}
 
@@ -1698,7 +1698,7 @@ static int acct_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
 	}
 
 	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->reply->data_len, MAX_PACKET_LEN);
 	}
 
@@ -1725,7 +1725,7 @@ static int proxy_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *requ
 	}
 
 	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->proxy->data_len, MAX_PACKET_LEN);
 	}
 
@@ -2439,7 +2439,7 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->reply->data_len, MAX_PACKET_LEN);
 	}
 
@@ -2498,7 +2498,7 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->proxy->data_len, MAX_PACKET_LEN);
 	}
 
