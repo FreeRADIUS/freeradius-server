@@ -1408,6 +1408,8 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 		VERIFY_VP(vp);
 
+		room = ((uint8_t *)data) + sizeof(data) - ptr;
+
 		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
@@ -1422,8 +1424,13 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			 *	attributes with a debug build.
 			 */
 			if (vp->da->attr == PW_RAW_ATTRIBUTE) {
-				memcpy(ptr, vp->vp_octets, vp->vp_length);
-				len = vp->vp_length;
+				if (vp->vp_length > room) {
+					len = room;
+				} else {
+					len = vp->vp_length;
+				}
+
+				memcpy(ptr, vp->vp_octets, len);
 				fr_cursor_next(&cursor);
 				goto next;
 			}
@@ -1448,7 +1455,6 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		}
 		last_name = vp->da->name;
 
-		room = ((uint8_t *)data) + sizeof(data) - ptr;
 		if (room <= 2) break;
 
 		len = fr_radius_encode_pair(ptr, room, &cursor, &encoder_ctx);
