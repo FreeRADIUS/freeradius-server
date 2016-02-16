@@ -72,6 +72,11 @@ typedef enum {
 #define PW_RADIUS_TLS_PORT	       	2083
 #define PW_COA_UDP_PORT			3799
 
+/*
+ *  The RFC says 4096 octets max, and most packets are less than 256.
+ */
+#define MAX_PACKET_LEN 4096
+
 #include <freeradius-devel/rfc2865.h>
 #include <freeradius-devel/rfc2866.h>
 #include <freeradius-devel/rfc2867.h>

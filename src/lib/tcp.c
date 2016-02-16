@@ -26,9 +26,6 @@ RCSID("$Id$")
 
 #ifdef WITH_TCP
 
-/* FIXME: into common RADIUS header? */
-#define MAX_PACKET_LEN 4096
-
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 {
 	RADIUS_PACKET *packet = rad_alloc(NULL, false);

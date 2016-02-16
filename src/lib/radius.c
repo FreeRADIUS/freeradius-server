@@ -65,11 +65,6 @@ static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
 
 
 /*
- *  The RFC says 4096 octets max, and most packets are less than 256.
- */
-#define MAX_PACKET_LEN 4096
-
-/*
  *	The maximum number of attributes which we allow in an incoming
  *	request.  If there are more attributes than this, the request
  *	is rejected.
