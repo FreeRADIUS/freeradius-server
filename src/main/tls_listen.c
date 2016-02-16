@@ -437,6 +437,11 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
+	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
+		RWARN("Packet is large, and possibly truncated - %zd vs max %zd",
+		      request->reply->data_len, MAX_PACKET_LEN);
+	}
+
 	/*
 	 *	Sign the packet.
 	 */
