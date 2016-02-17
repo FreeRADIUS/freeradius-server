@@ -121,7 +121,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  */
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
-	uint32_t i, tries;
+	int i, tries, unused;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -129,6 +129,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	if (!ef || !filename) return -1;
 
 	hash = fr_hash_string(filename);
+	unused = -1;
 
 	pthread_mutex_lock(&ef->mutex);
 
@@ -138,27 +139,30 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	if (now > (ef->last_cleaned + 1)) {
 		ef->last_cleaned = now;
 
-		for (i = 0; i < ef->max_entries; i++) {
+		for (i = 0; i < (int) ef->max_entries; i++) {
 			if (!ef->entries[i].filename) continue;
 
-			if ((ef->entries[i].last_used + ef->max_idle) < now) {
-				/*
-				 *	This will block forever if a thread is
-				 *	doing something stupid.
-				 */
-				TALLOC_FREE(ef->entries[i].filename);
-				ef->entries[i].hash = 0;
-				close(ef->entries[i].fd);
-				ef->entries[i].fd = -1;
-			}
+			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
+
+			/*
+			 *	This will block forever if a thread is
+			 *	doing something stupid.
+			 */
+			TALLOC_FREE(ef->entries[i].filename);
+			ef->entries[i].hash = 0;
+			close(ef->entries[i].fd);
+			ef->entries[i].fd = -1;
 		}
 	}
 
 	/*
-	 *	Find the matching entry.
+	 *	Find the matching entry, or an unused one.
 	 */
-	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
+	for (i = 0; i < (int) ef->max_entries; i++) {
+		if (!ef->entries[i].filename) {
+			if (unused < 0) unused = i;
+			continue;
+		}
 
 		if (ef->entries[i].hash != hash) continue;
 
@@ -176,11 +180,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	/*
 	 *	Find an unused entry
 	 */
-	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) break;
-	}
-
-	if (i >= ef->max_entries) {
+	if (unused < 0) {
 		fr_strerror_printf("Too many different filenames");
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
@@ -189,6 +189,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	/*
 	 *	Create a new entry.
 	 */
+	i = unused;
 
 	ef->entries[i].hash = hash;
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
