@@ -20,8 +20,8 @@
  * @brief map / template functions
  * @file main/radsnmp.c
  *
- * @copyright 2015 The FreeRADIUS server project
- * @copyright 2015 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2015-2016 The FreeRADIUS server project
+ * @copyright 2015-2016 Network RADIUS SARL <info@networkradius.com>
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
