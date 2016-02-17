@@ -162,60 +162,73 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 		char *out, size_t outlen, char const *in,
 		UNUSED void *arg)
 {
-	int len = 0;
+	const char *p = in;
+	char *q = out;
+	size_t freespace = outlen;
 
 	if (outlen == 0) return 0;
+
 	if (outlen == 1) {
 		*out = '\0';
 		return 0;
 	}
 
-	while (in[0]) {
-		if (in[0] >= ' ') {
-			if (in[0] == '\\') {
-				if (outlen <= 2) break;
-				outlen--;
-				*out++ = '\\';
-				len++;
-			}
+	while (*p) {
+		int sp;
+		size_t len;
 
-			outlen--;
-			if (outlen == 1) break;
-			*out++ = *in++;
-			len++;
-			continue;
-		}
+		if (freespace < 2) break;
 
-		switch (in[0]) {
-		case '\n':
-			if (outlen <= 2) break;
-			*out++ = '\\';
-			*out++ = 'n';
-			in++;
-			len += 2;
+		switch (*p) {
+		case '\r':
+			sp = 'r';
 			break;
 
-		case '\r':
-			if (outlen <= 2) break;
-			*out++ = '\\';
-			*out++ = 'r';
-			in++;
-			len += 2;
+		case '\n':
+			sp = 'n';
+			break;
+
+		case '\t':
+			sp = 't';
+			break;
+
+		case '\\':
+			sp = '\\';
 			break;
 
 		default:
-			if (outlen <= 4) break;
-			snprintf(out, outlen,  "\\%03o", (uint8_t) *in);
-			in++;
-			out += 4;
-			outlen -= 4;
-			len += 4;
+			sp = 0;
 			break;
 		}
+
+		if (sp) {
+			if (freespace < 3) break;
+
+			*q++ = '\\';
+			*q++ = sp;
+			freespace -= 2;
+			p++;
+			continue;
+		}
+
+		if (*p >= ' ') {
+			*(q++) = *(p++);
+			freespace--;
+			continue;
+		}
+
+		if (freespace < 5) break;
+
+		snprintf(q, freespace, "\\%03o", (uint8_t) *p);
+
+		len = strlen(q);
+		freespace -= len;
+		p += len;
 	}
 
-	*out = '\0';
-	return len;
+	*q = '\0';
+
+	return q - out;
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *request)
