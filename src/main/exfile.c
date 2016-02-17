@@ -153,13 +153,16 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	 */
 	for (i = 0; i < ef->max_entries; i++) {
 		if (!ef->entries[i].filename) continue;
+
 		if ((ef->entries[i].last_used + ef->max_idle) < now) {
 			/*
 			 *	This will block forever if a thread is
 			 *	doing something stupid.
 			 */
 			TALLOC_FREE(ef->entries[i].filename);
+			ef->entries[i].hash = 0;
 			close(ef->entries[i].fd);
+			ef->entries[i].fd = -1;
 		}
 	}
 
@@ -169,23 +172,17 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	for (i = 0; i < ef->max_entries; i++) {
 		if (!ef->entries[i].filename) continue;
 
-		if (ef->entries[i].hash == hash) {
-			/*
-			 *	Same hash but different filename.  Give up.
-			 */
-			if (strcmp(ef->entries[i].filename, filename) != 0) {
-				PTHREAD_MUTEX_UNLOCK(&ef->mutex);
-				return -1;
-			}
-			/*
-			 *	Someone else failed to create the entry.
-			 */
-			if (!ef->entries[i].filename) {
-				PTHREAD_MUTEX_UNLOCK(&ef->mutex);
-				return -1;
-			}
-			goto do_return;
+		if (ef->entries[i].hash != hash) continue;
+
+		/*
+		 *	Same hash but different filename.  Give up.
+		 */
+		if (strcmp(ef->entries[i].filename, filename) != 0) {
+			PTHREAD_MUTEX_UNLOCK(&ef->mutex);
+			return -1;
 		}
+
+		goto do_return;
 	}
 
 	/*
