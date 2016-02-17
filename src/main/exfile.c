@@ -152,6 +152,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 			ef->entries[i].hash = 0;
 			close(ef->entries[i].fd);
 			ef->entries[i].fd = -1;
+			ef->entries[i].dup = -1;
 		}
 	}
 
@@ -194,6 +195,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	ef->entries[i].hash = hash;
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
+	ef->entries[i].dup = -1;
 
 	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
 	if (ef->entries[i].fd < 0) {
@@ -250,6 +252,7 @@ do_return:
 		TALLOC_FREE(ef->entries[i].filename);
 		close(ef->entries[i].fd);
 		ef->entries[i].fd = -1;
+		ef->entries[i].dup = -1;
 
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
@@ -357,7 +360,7 @@ int exfile_close(exfile_t *ef, int fd)
 
 	pthread_mutex_unlock(&(ef->mutex));
 
-	fr_strerror_printf("Attempt to unlock file which does not exist");
+	fr_strerror_printf("Attempt to unlock file which is not tracked");
 	return -1;
 }
 
