@@ -41,6 +41,7 @@ typedef struct exfile_entry_t {
 struct exfile_t {
 	uint32_t	max_entries;	//!< How many file descriptors we keep track of.
 	uint32_t	max_idle;	//!< Maximum idle time for a descriptor.
+	time_t		last_cleaned;
 	pthread_mutex_t mutex;
 	exfile_entry_t *entries;
 	bool		locking;
@@ -134,18 +135,22 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	/*
 	 *	Clean up old entries.
 	 */
-	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
+	if (now > (ef->last_cleaned + 1)) {
+		ef->last_cleaned = now;
 
-		if ((ef->entries[i].last_used + ef->max_idle) < now) {
-			/*
-			 *	This will block forever if a thread is
-			 *	doing something stupid.
-			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			close(ef->entries[i].fd);
-			ef->entries[i].fd = -1;
+		for (i = 0; i < ef->max_entries; i++) {
+			if (!ef->entries[i].filename) continue;
+
+			if ((ef->entries[i].last_used + ef->max_idle) < now) {
+				/*
+				 *	This will block forever if a thread is
+				 *	doing something stupid.
+				 */
+				TALLOC_FREE(ef->entries[i].filename);
+				ef->entries[i].hash = 0;
+				close(ef->entries[i].fd);
+				ef->entries[i].fd = -1;
+			}
 		}
 	}
 
