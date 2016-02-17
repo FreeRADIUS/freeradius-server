@@ -221,7 +221,6 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *request)
 {
 	int fd = -1;
-	char *p;
 	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
 	char const *value = inst->line;
 
@@ -238,9 +237,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 		CONF_ITEM *ci;
 		CONF_PAIR *cp;
 
-		p = line + 1;
-
-		if (radius_xlat(p, sizeof(line) - 2, request, inst->reference, linelog_escape_func, NULL) < 0) {
+		if (radius_xlat(line + 1, sizeof(line) - 1, request, inst->reference, linelog_escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 
@@ -295,17 +292,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	 */
 	if (radius_xlat(path, sizeof(path), request, inst->filename, inst->escape_func, NULL) < 0) {
 		return RLM_MODULE_FAIL;
-	}
-
-	/* check path and eventually create subdirs */
-	p = strrchr(path, '/');
-	if (p) {
-		*p = '\0';
-		if (rad_mkdir(path, 0700, -1, -1) < 0) {
-			RERROR("rlm_linelog: Failed to create directory %s: %s", path, fr_syserror(errno));
-			return RLM_MODULE_FAIL;
-		}
-		*p = '/';
 	}
 
 	fd = exfile_open(inst->ef, path, inst->permissions, true);
