@@ -223,7 +223,8 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 
 		len = strlen(q);
 		freespace -= len;
-		p += len;
+		p++;
+		q += len;
 	}
 
 	*q = '\0';
