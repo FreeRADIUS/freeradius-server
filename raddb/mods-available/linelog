@@ -151,7 +151,7 @@ linelog {
 		#  - ftp         The file transfer protocol daemons: ftpd(8),
 		#                tftpd(8).
 		#  - local[0-7]  Reserved for local use.
-#		syslog_facility = daemon
+#		facility = daemon
 
 		#  Syslog severity (if logging via syslog). Defaults to info.
 		#  Possible values are:
@@ -167,7 +167,7 @@ linelog {
 		#  - info        Informational messages.
 		#  - debug       Messages that contain information normally of use
 		#                only when debugging a program.
-#		syslog_severity = info
+#		severity = info
 	}
 
 	#
