@@ -4,6 +4,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  See "man unlang"
 	* Add dictionary.checkpoint.
 	* Simultaneous-Use prints out more information.
+	* Print WARNING in debug mode when packets may be
+	  truncated.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
@@ -14,6 +16,10 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Patch from Nicolas C.  Fixes #1526.
 	* Allow MS-CHAP change passwords instead of complaining
 	  on large buffer.
+	* Allow assignment or equality operator on SQL.
+	* Update aclocal tests for FreeBSD 10.  Patches from
+	  Mathieu Simon.
+	* Remove occasional hang in rlm_linelog.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
