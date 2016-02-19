@@ -1219,9 +1219,6 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 static CONF_PARSER performance_config[] = {
 	{ FR_CONF_OFFSET("skip_duplicate_checks", PW_TYPE_BOOLEAN, rad_listen_t, nodup) },
 
-	{ FR_CONF_OFFSET("synchronous", PW_TYPE_BOOLEAN, rad_listen_t, synchronous) },
-
-	{ FR_CONF_OFFSET("workers", PW_TYPE_INTEGER, rad_listen_t, workers) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1374,16 +1371,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		rcode = cf_section_parse(subcs, this,
 					 performance_config);
 		if (rcode < 0) return -1;
-
-		if (this->synchronous && sock->max_rate) {
-			WARN("Setting 'max_pps' is incompatible with 'synchronous'.  Disabling 'max_pps'");
-			sock->max_rate = 0;
-		}
-
-		if (!this->synchronous && this->workers) {
-			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-			this->workers = 0;
-		}
 	}
 
 	subcs = cf_section_sub_find(cs, "limit");
@@ -2743,7 +2730,6 @@ static int listen_bind(rad_listen_t *this)
 	int			rcode, port;
 	listen_socket_t		*sock = this->data;
 	char const		*port_name = NULL;
-	bool			async = true;
 
 	/*
 	 *	If the configuration didn't specify a port, get one
@@ -2822,27 +2808,6 @@ static int listen_bind(rad_listen_t *this)
 
 	rad_assert(sock->my_ipaddr.af);
 
-#ifdef WITH_TCP
-	/*
-	 *	Check if we're async or not.
-	 */
-	if (sock->proto == IPPROTO_TCP) {
-		/*
-		 *	If there are hard-coded worker threads, OR
-		 *	it's a TLS connection, it's blocking.
-		 *
-		 *	Otherwise, they're non-blocking.
-		 */
-		if (this->workers
-#  if defined(WITH_PROXY) && defined(WITH_TLS)
-		    || ((this->type == RAD_LISTEN_PROXY) && this->tls)
-#  endif
-			) {
-			async = false;
-		}
-	}
-#endif
-
 	DEBUG4("[FD XX] Opening socket -- socket(%s, %s, 0)",
 	       fr_int2str(fr_net_af_table, sock->my_ipaddr.af, "<UNKNOWN>"),
 	       fr_int2str(fr_net_ip_proto_table, sock->proto, "<UNKNOWN>"));
@@ -2851,7 +2816,7 @@ static int listen_bind(rad_listen_t *this)
 	 *	Open the socket and set a whack of flags.
 	 */
 	port = sock->my_port;
-	this->fd = fr_socket_server_base(sock->proto, &sock->my_ipaddr, &port, port_name, async);
+	this->fd = fr_socket_server_base(sock->proto, &sock->my_ipaddr, &port, port_name, true);
 	if (this->fd < 0) {
 		char buffer[256];
 
@@ -3179,21 +3144,6 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	return this;
 }
 
-/*
- *	A child thread which does NOTHING other than read and process
- *	packets.
- */
-static void *recv_thread(void *arg)
-{
-	rad_listen_t *this = arg;
-
-	while (1) {
-		this->recv(this);
-		DEBUG("%p", &this);
-	}
-
-	return NULL;
-}
 
 /** Search for listeners in the server
  *
@@ -3270,35 +3220,7 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 			return -1;
 		}
 #endif
-		if (this->workers && !spawn_workers) {
-			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-			this->workers = 0;
-		}
-
-		if (this->workers) {
-			int rcode;
-			uint32_t i;
-			char buffer[256];
-
-			this->print(this, buffer, sizeof(buffer));
-
-			for (i = 0; i < this->workers; i++) {
-				pthread_t id;
-
-				/*
-				 *	FIXME: create detached?
-				 */
-				rcode = pthread_create(&id, 0, recv_thread, this);
-				if (rcode != 0) {
-					ERROR("Thread create failed: %s", fr_syserror(rcode));
-					fr_exit(1);
-				}
-
-				DEBUG("Thread %d for %s\n", i, buffer);
-			}
-		} else {
-			radius_update_listener(this);
-		}
+		radius_update_listener(this);
 	}
 
 	return 0;

@@ -85,8 +85,6 @@ struct rad_listen {
 	rad_listen_t		*parent;
 #endif
 	bool			nodup;
-	bool			synchronous;
-	uint32_t		workers;
 
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
