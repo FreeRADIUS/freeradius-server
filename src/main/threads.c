@@ -305,6 +305,25 @@ void request_enqueue(REQUEST *request)
 
 	request->component = "<core>";
 	request->module = "<queue>";
+
+	/*
+	 *	No child threads, just process it here.
+	 */
+	if (!thread_pool.spawn_workers) {
+		request->child_state = REQUEST_RUNNING;
+		request->process(request, FR_ACTION_RUN);
+		
+#ifdef WNOHANG
+		/*
+		 *	Requests that care about child process exit
+		 *	codes have already either called
+		 *	rad_waitpid(), or they've given up.
+		 */
+		while (waitpid(-1, NULL, WNOHANG) > 0);
+#endif
+		return;
+	}
+
 	request->child_state = REQUEST_QUEUED;
 
 	/*
