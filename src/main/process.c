@@ -338,7 +338,6 @@ STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
-STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
@@ -507,7 +506,7 @@ static void proxy_reply_too_late(REQUEST *request)
  *	}
  *  \enddot
  */
-static void request_done(REQUEST *request, fr_state_action_t action)
+void request_done(REQUEST *request, fr_state_action_t action)
 {
 	struct timeval now, when;
 
@@ -890,16 +889,7 @@ static void request_queue_or_run(REQUEST *request,
 	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 	if (spawn_workers) {
-		/*
-		 *	A child thread will eventually pick it up.
-		 */
-		if (request_enqueue(request)) return;
-
-		/*
-		 *	Otherwise we're not going to do anything with
-		 *	it...
-		 */
-		request_done(request, FR_ACTION_DONE);
+		request_enqueue(request);
 		return;
 	}
 

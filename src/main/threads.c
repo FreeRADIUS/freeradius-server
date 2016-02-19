@@ -299,7 +299,7 @@ static REQUEST *request_dequeue(void);
  *
  *	This function should never fail.
  */
-int request_enqueue(REQUEST *request)
+void request_enqueue(REQUEST *request)
 {
 	THREAD_HANDLE *thread;
 
@@ -326,9 +326,8 @@ int request_enqueue(REQUEST *request)
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
 
 	done:
-		request->module = "<done>";
-		request->child_state = REQUEST_DONE;
-		return 0;
+		request_done(request, FR_ACTION_DONE);
+		return;
 	}
 
 #ifdef WITH_STATS
@@ -427,7 +426,7 @@ int request_enqueue(REQUEST *request)
 
 		if (!thread_pool.idle_head) {
 			pthread_mutex_unlock(&thread_pool.mutex);
-			return 1;
+			return;
 		}
 
 		/*
@@ -439,7 +438,7 @@ int request_enqueue(REQUEST *request)
 		request = request_dequeue();
 		if (!request) {
 			pthread_mutex_unlock(&thread_pool.mutex);
-			return 1;
+			return;
 		}
 
 	} else {
@@ -495,8 +494,6 @@ int request_enqueue(REQUEST *request)
 	 *	contention.
 	 */
 	sem_post(&thread->semaphore);
-
-	return 1;
 }
 
 /*
@@ -534,8 +531,7 @@ retry:
 	 *	@fixme: Is this memory leaked?  Probably...
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request->module = "<done>";
-		request->child_state = REQUEST_DONE;
+		request_done(request, FR_ACTION_DONE);
 		goto retry;
 	}
 
@@ -1160,7 +1156,7 @@ void thread_pool_stop(void)
 
 
 #ifdef WITH_GCD
-int request_enqueue(REQUEST *request)
+void request_enqueue(REQUEST *request)
 {
 	dispatch_block_t block;
 
@@ -1169,8 +1165,6 @@ int request_enqueue(REQUEST *request)
 	};
 
 	dispatch_async(thread_pool.queue, block);
-
-	return 1;
 }
 #endif
 
