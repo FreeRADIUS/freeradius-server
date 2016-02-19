@@ -3219,6 +3219,8 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 				      main_config.name);
 			return -1;
 		}
+#else
+		spawn_workers = true; /* quiet clang */
 #endif
 		radius_update_listener(this);
 	}
