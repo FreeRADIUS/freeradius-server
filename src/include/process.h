@@ -49,7 +49,7 @@ typedef enum fr_state_action_t {	/* server action */
  *  Function handler for requests.
  */
 typedef	int (*RAD_REQUEST_FUNP)(REQUEST *);
-typedef	void (*fr_request_process_t)(REQUEST *, int);
+typedef	void (*fr_request_process_t)(REQUEST *, fr_state_action_t);
 
 extern time_t fr_start_time;
 
