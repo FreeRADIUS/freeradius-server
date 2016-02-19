@@ -869,56 +869,38 @@ static void request_queue_or_run(REQUEST *request,
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
+	struct timeval when;
 
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
-
-	/*
-	 *	Do this here so that fewer other functions need to do
-	 *	it.
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-#ifdef DEBUG_STATE_MACHINE
-		if (rad_debug_lvl) printf("(%u) ********\tSTATE %s M-%s causes C-%s-> C-%s\t********\n",
-				       request->number, __FUNCTION__,
-				       master_state_names[request->master_state],
-				       child_state_names[request->child_state],
-				       child_state_names[REQUEST_DONE]);
-#endif
-		request_done(request, FR_ACTION_DONE);
-		return;
-	}
+	ASSERT_MASTER;
 
 	request->process = process;
 
-	if (we_are_master()) {
-		struct timeval when;
+	/*
+	 *	(re) set the initial delay.
+	 */
+	request->delay = request_init_delay(request);
+	if (request->delay > USEC) request->delay = USEC;
+	gettimeofday(&when, NULL);
+	tv_add(&when, request->delay);
+	request->delay += request->delay >> 1;
+
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+
+	if (spawn_workers) {
+		/*
+		 *	A child thread will eventually pick it up.
+		 */
+		if (request_enqueue(request)) return;
 
 		/*
-		 *	(re) set the initial delay.
+		 *	Otherwise we're not going to do anything with
+		 *	it...
 		 */
-		request->delay = request_init_delay(request);
-		if (request->delay > USEC) request->delay = USEC;
-		gettimeofday(&when, NULL);
-		tv_add(&when, request->delay);
-		request->delay += request->delay >> 1;
-
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-
-		if (spawn_workers) {
-			/*
-			 *	A child thread will eventually pick it up.
-			 */
-			if (request_enqueue(request)) return;
-
-			/*
-			 *	Otherwise we're not going to do anything with
-			 *	it...
-			 */
-			request_done(request, FR_ACTION_DONE);
-			return;
-		}
+		request_done(request, FR_ACTION_DONE);
+		return;
 	}
 
 	request->child_state = REQUEST_RUNNING;
