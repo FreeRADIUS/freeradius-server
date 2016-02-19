@@ -1112,7 +1112,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 			return;
 		} /* else it's time to clean up */
 
-		request_done(request, REQUEST_DONE);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
