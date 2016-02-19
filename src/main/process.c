@@ -4495,46 +4495,6 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 	listener->recv(listener);
 }
 
-#ifdef WITH_DETAIL
-#ifdef WITH_DETAIL_THREAD
-#else
-/*
- *	This function is called periodically to see if this detail
- *	file is available for reading.
- */
-static void event_poll_detail(void *ctx, struct timeval *now)
-{
-	int delay;
-	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
-	struct timeval when;
-	listen_detail_t *detail = this->data;
-
-	rad_assert(this->type == RAD_LISTEN_DETAIL);
-
- redo:
-	event_socket_handler(el, this->fd, this);
-
-	fr_event_now(el, now);
-	when = *now;
-
-	/*
-	 *	Backdoor API to get the delay until the next poll
-	 *	time.
-	 */
-	delay = this->encode(this, NULL);
-	if (delay == 0) goto redo;
-
-	tv_add(&when, delay);
-
-	ASSERT_MASTER;
-	if (!fr_event_insert(el, event_poll_detail, this,
-			     &when, &detail->ev)) {
-		ERROR("Failed creating handler");
-		fr_exit(1);
-	}
-}
-#endif	/* WITH_DETAIL_THREAD */
-#endif	/* WITH_DETAIL */
 
 static void event_status(struct timeval *wake)
 {
@@ -4672,21 +4632,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		case RAD_LISTEN_DETAIL:
 			this->status = RAD_LISTEN_STATUS_KNOWN;
-
-#ifndef WITH_DETAIL_THREAD
-			{
-				struct timeval now;
-
-				gettimeofday(&now, NULL);
-				/*
-				 *	Set up the first poll interval.
-				 */
-				event_poll_detail(this, &now);
-				return 1;
-			}
-#else
 			break;	/* add the FD to the list */
-#endif
 #endif	/* WITH_DETAIL */
 
 #ifdef WITH_PROXY
@@ -5001,35 +4947,6 @@ static void handle_signal_self(int flag)
 		trigger_exec(NULL, NULL, "server.signal.hup", true, NULL);
 		fr_event_loop_exit(el, 0x80);
 	}
-
-#if defined(WITH_DETAIL) && !defined(WITH_DETAIL_THREAD)
-	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
-		rad_listen_t *this;
-
-		/*
-		 *	FIXME: O(N) loops suck.
-		 */
-		for (this = main_config.listen;
-		     this != NULL;
-		     this = this->next) {
-		     	struct timeval now;
-
-			if (this->type != RAD_LISTEN_DETAIL) continue;
-
-			/*
-			 *	This one didn't send the signal, skip
-			 *	it.
-			 */
-			if (!this->decode(this, NULL)) continue;
-
-			gettimeofday(&now, NULL);
-			/*
-			 *	Go service the interrupt.
-			 */
-			event_poll_detail(this, &now);
-		}
-	}
-#endif
 
 #if defined(WITH_TCP) && defined(WITH_PROXY)
 	/*
