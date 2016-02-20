@@ -345,7 +345,7 @@ void request_enqueue(REQUEST *request)
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
 
 	done:
-		request_done(request, FR_ACTION_DONE);
+		request->process(request, FR_ACTION_DONE);
 		return;
 	}
 
@@ -550,7 +550,7 @@ retry:
 	 *	@fixme: Is this memory leaked?  Probably...
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request_done(request, FR_ACTION_DONE);
+		request->process(request, FR_ACTION_DONE);
 		goto retry;
 	}
 

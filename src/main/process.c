@@ -338,6 +338,7 @@ STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
@@ -506,7 +507,7 @@ static void proxy_reply_too_late(REQUEST *request)
  *	}
  *  \enddot
  */
-void request_done(REQUEST *request, fr_state_action_t action)
+static void request_done(REQUEST *request, fr_state_action_t action)
 {
 	struct timeval now, when;
 
@@ -981,6 +982,10 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		request_done(request, FR_ACTION_DONE);
 		break;
 
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -1060,6 +1065,10 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 		 *	Clean up the request.
 		 */
 		request_cleanup_delay_init(request);
+		break;
+
+	case FR_ACTION_DONE:
+		request_done(request, action);
 		break;
 
 	default:
@@ -1445,6 +1454,10 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 #endif
 			request_finish(request, action);
 		}
+		break;
+
+	case FR_ACTION_DONE:
+		request_done(request, action);
 		break;
 
 	default:
@@ -2571,6 +2584,10 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 		request_finish(request, action);
 		break;
 
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -2614,6 +2631,10 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 			request->handle(request);
 		}
 		request_finish(request, action);
+		break;
+
+	case FR_ACTION_DONE:
+		request_done(request, action);
 		break;
 
 	default:		/* duplicate proxy replies are suppressed */
@@ -3270,6 +3291,10 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		mark_home_server_alive(request, home);
 		break;
 
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -3838,6 +3863,10 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		worker_thread(request, proxy_running);
 		break;
 
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -4254,6 +4283,10 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		worker_thread(request, coa_running);
 		break;
 
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -4334,6 +4367,10 @@ static void coa_no_reply(REQUEST *request, fr_state_action_t action)
 		request_done(request, FR_ACTION_DONE);
 		break;
 
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
@@ -4373,6 +4410,10 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			request->handle(request);
 		}
 		request_done(request, FR_ACTION_DONE);
+		break;
+
+	case FR_ACTION_DONE:
+		request_done(request, action);
 		break;
 
 	default:

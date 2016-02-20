@@ -57,7 +57,6 @@ extern time_t fr_start_time;
  *	In threads.c
  */
 void request_enqueue(REQUEST *request);
-void request_done(REQUEST *request, fr_state_action_t action) CC_HINT(nonnull);
 
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
