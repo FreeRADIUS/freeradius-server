@@ -2,7 +2,6 @@ TARGET   := radeapclient
 SOURCES := radeapclient.c
 
 SOURCES += ${top_srcdir}/src/main/files.c \
-	   ${top_srcdir}/src/main/threads.c \
 	   ${top_srcdir}/src/main/version.c
 
 TGT_PREREQS := libfreeradius-radius.a libfreeradius-server.a

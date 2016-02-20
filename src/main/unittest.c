@@ -33,6 +33,8 @@ RCSID("$Id$")
 #	include <getopt.h>
 #endif
 
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <ctype.h>
 
 /*
@@ -66,6 +68,22 @@ void listen_free(UNUSED rad_listen_t **head)
 	/* do nothing */
 }
 
+
+uint32_t thread_pool_max_threads(void)
+{
+	return 1;
+}
+
+
+pid_t rad_fork(void)
+{
+	return fork();
+}
+
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status);
+}
 
 static rad_listen_t *listen_alloc(void *ctx)
 {

@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 
 #include <ctype.h>
+#include <sys/wait.h>
 #include <assert.h>
 
 #if HAVE_GETOPT_H
@@ -300,6 +301,20 @@ void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 	if (path) radius_dir = talloc_strdup(ctx, path);
 }
 
+uint32_t thread_pool_max_threads(void)
+{
+	return 1;
+}
+
+pid_t rad_fork(void)
+{
+	return fork();
+}
+
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status);
+}
 
 /** Print a elapsed time buffer (SS.uuuuuu).
  */
