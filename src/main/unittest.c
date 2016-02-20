@@ -82,7 +82,7 @@ pid_t rad_fork(void)
 
 pid_t rad_waitpid(pid_t pid, int *status)
 {
-	return waitpid(pid, status);
+	return waitpid(pid, status, 0);
 }
 
 static rad_listen_t *listen_alloc(void *ctx)

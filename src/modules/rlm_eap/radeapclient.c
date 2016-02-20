@@ -313,7 +313,7 @@ pid_t rad_fork(void)
 
 pid_t rad_waitpid(pid_t pid, int *status)
 {
-	return waitpid(pid, status);
+	return waitpid(pid, status, 0);
 }
 
 /** Print a elapsed time buffer (SS.uuuuuu).
