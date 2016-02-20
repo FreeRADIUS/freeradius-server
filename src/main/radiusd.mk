@@ -4,7 +4,9 @@ SOURCES := acct.c auth.c client.c crypt.c files.c \
 		  interpreter.c \
 		  radiusd.c state.c stats.c soh.c \
 		  session.c channel.c \
-		  process.c realms.c detail.c
+		  process.c realms.c detail.c \
+		  threads.c
+
 ifneq ($(OPENSSL_LIBS),)
 SOURCES	+= cb.c tls.c tls_listen.c
 endif
