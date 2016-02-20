@@ -3607,6 +3607,180 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 	}
 }
 
+
+static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
+{
+	struct timeval when;
+	struct timeval *response_window = NULL;
+	home_server_t *home = request->home_server;
+	char buffer[INET6_ADDRSTRLEN];
+
+	response_window = request_response_window(request);
+
+#ifdef WITH_TCP
+	if (!request->proxy_listener ||
+	    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
+		remove_from_proxy_hash(request);
+
+		when = request->packet->timestamp;
+		when.tv_sec += request->root->max_request_time;
+
+		if (timercmp(&when, now, >)) {
+			RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			return false;
+		}
+	} else
+#endif
+	{
+		/*
+		 *	Wake up "response_window" time in the future.
+		 *	i.e. when MY packet hasn't received a response.
+		 *
+		 *	Note that we DO NOT mark the home server as
+		 *	zombie if it doesn't respond to us.  It may be
+		 *	responding to other (better looking) packets.
+		 */
+		when = request->proxy->timestamp;
+		timeradd(&when, response_window, &when);
+
+		/*
+		 *	Not at the response window.  Set the timer for
+		 *	that.
+		 */
+		if (timercmp(&when, now, >)) {
+			struct timeval diff;
+			timersub(&when, now, &diff);
+
+			RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
+			       (int) diff.tv_sec, (int) diff.tv_usec);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			return false;
+		}
+	}
+
+	RDEBUG("No proxy response, giving up on request and marking it done");
+
+	/*
+	 *	If we haven't received any packets for
+	 *	"response_window", then mark the home server
+	 *	as zombie.
+	 *
+	 *	This check should really be part of a home
+	 *	server state machine.
+	 */
+	if (((home->state == HOME_STATE_ALIVE) ||
+	     (home->state == HOME_STATE_UNKNOWN))
+		) {
+		home->response_timeouts++;
+		if (home->response_timeouts >= home->max_response_timeouts)
+			mark_home_server_zombie(home, now, response_window);
+	}
+
+	FR_STATS_TYPE_INC(home->stats.total_timeouts);
+	if (home->type == HOME_TYPE_AUTH) {
+		if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+		FR_STATS_TYPE_INC(proxy_auth_stats.total_timeouts);
+	}
+#ifdef WITH_ACCT
+	else if (home->type == HOME_TYPE_ACCT) {
+		if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+		FR_STATS_TYPE_INC(proxy_acct_stats.total_timeouts);
+	}
+#endif
+#ifdef WITH_COA
+	else if (home->type == HOME_TYPE_COA) {
+		if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+
+		if (request->packet->code == PW_CODE_COA_REQUEST) {
+			FR_STATS_TYPE_INC(proxy_coa_stats.total_timeouts);
+		} else {
+			FR_STATS_TYPE_INC(proxy_dsc_stats.total_timeouts);
+		}
+	}
+#endif
+
+	/*
+	 *	There was no response within the window.  Stop
+	 *	the request.  If the client retransmitted, it
+	 *	may have failed over to another home server.
+	 *	But that one may be dead, too.
+	 *
+	 * 	The extra verbose message if we have a username,
+	 *	is extremely useful if the proxy is part of a chain
+	 *	and the final home server, is not the one we're
+	 *	proxying to.
+	 */
+	if (request->username) {
+		RERROR("Failing proxied request for user \"%s\", due to lack of any response from home "
+		       "server %s port %d",
+		       request->username->vp_strvalue,
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port);
+	} else {
+		RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port);
+	}
+
+	return true;
+}
+
+static void proxy_retransmit(REQUEST *request, struct timeval *now)
+{
+	struct timeval when;
+	home_server_t *home = request->home_server;
+	char buffer[INET6_ADDRSTRLEN];
+
+	/*
+	 *	More than one retransmit a second is stupid,
+	 *	and should be suppressed by the proxy.
+	 */
+	when = request->proxy_retransmit;
+	when.tv_sec++;
+
+	if (timercmp(now, &when, <)) {
+		DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d proto TCP - ID: %d",
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port,
+		       request->proxy->id);
+		return;
+	}
+
+#ifdef WITH_ACCOUNTING
+	/*
+	 *	If we update the Acct-Delay-Time, we need to
+	 *	get a new ID.
+	 */
+	if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
+	    fr_pair_find_by_num(request->proxy->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY)) {
+		request_proxy_anew(request);
+		return;
+	}
+#endif
+
+	RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
+		inet_ntop(request->proxy->dst_ipaddr.af,
+			  &request->proxy->dst_ipaddr.ipaddr,
+			  buffer, sizeof(buffer)),
+		request->proxy->dst_port,
+		request->proxy->id);
+	request->num_proxied_requests++;
+
+	rad_assert(request->proxy_listener != NULL);
+	FR_STATS_TYPE_INC(home->stats.total_requests);
+	home->last_packet_sent = now->tv_sec;
+	request->proxy_retransmit = *now;
+	request->proxy_listener->debug(request, request->proxy, false);
+	request->proxy_listener->send(request->proxy_listener, request);
+}
+
 /** Wait for a reply after proxying a request.
  *
  *  Retransmit the proxied packet, or time out and go to
@@ -3628,8 +3802,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
  */
 static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 {
-	struct timeval now, when;
-	struct timeval *response_window = NULL;
+	struct timeval now;
 	home_server_t *home = request->home_server;
 	char buffer[INET6_ADDRSTRLEN];
 
@@ -3641,7 +3814,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 	rad_assert(request->packet->code != PW_CODE_STATUS_SERVER);
 	rad_assert(request->home_server != NULL);
 
-	gettimeofday(&now, NULL);
+	fr_event_now(el, &now);
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -3688,163 +3861,13 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		}
 #endif
 
-		/*
-		 *	More than one retransmit a second is stupid,
-		 *	and should be suppressed by the proxy.
-		 */
-		when = request->proxy_retransmit;
-		when.tv_sec++;
-
-		if (timercmp(&now, &when, <)) {
-			DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d proto TCP - ID: %d",
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port,
-			       request->proxy->id);
-			return;
-		}
-
-#ifdef WITH_ACCOUNTING
-		/*
-		 *	If we update the Acct-Delay-Time, we need to
-		 *	get a new ID.
-		 */
-		if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
-				fr_pair_find_by_num(request->proxy->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY)) {
-			request_proxy_anew(request);
-			return;
-		}
-#endif
-
-		RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
-			inet_ntop(request->proxy->dst_ipaddr.af,
-				  &request->proxy->dst_ipaddr.ipaddr,
-				  buffer, sizeof(buffer)),
-			request->proxy->dst_port,
-			request->proxy->id);
-		request->num_proxied_requests++;
-
-		rad_assert(request->proxy_listener != NULL);
-		FR_STATS_TYPE_INC(home->stats.total_requests);
-		home->last_packet_sent = now.tv_sec;
-		request->proxy_retransmit = now;
-		request->proxy_listener->debug(request, request->proxy, false);
-		request->proxy_listener->send(request->proxy_listener, request);
+		proxy_retransmit(request, &now);
 		break;
 
 	case FR_ACTION_TIMER:
-		response_window = request_response_window(request);
+		if (request_max_time(request)) break;
 
-#ifdef WITH_TCP
-		if (!request->proxy_listener ||
-		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
-			remove_from_proxy_hash(request);
-
-			when = request->packet->timestamp;
-			when.tv_sec += request->root->max_request_time;
-
-			if (timercmp(&when, &now, >)) {
-				RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
-				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-				return;
-			}
-		} else
-#endif
-		{
-			/*
-			 *	Wake up "response_window" time in the future.
-			 *	i.e. when MY packet hasn't received a response.
-			 *
-			 *	Note that we DO NOT mark the home server as
-			 *	zombie if it doesn't respond to us.  It may be
-			 *	responding to other (better looking) packets.
-			 */
-			when = request->proxy->timestamp;
-			timeradd(&when, response_window, &when);
-
-			/*
-			 *	Not at the response window.  Set the timer for
-			 *	that.
-			 */
-			if (timercmp(&when, &now, >)) {
-				struct timeval diff;
-				timersub(&when, &now, &diff);
-
-				RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
-				       (int) diff.tv_sec, (int) diff.tv_usec);
-				STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-				return;
-			}
-		}
-
-		RDEBUG("No proxy response, giving up on request and marking it done");
-
-		/*
-		 *	If we haven't received any packets for
-		 *	"response_window", then mark the home server
-		 *	as zombie.
-		 *
-		 *	This check should really be part of a home
-		 *	server state machine.
-		 */
-		if (((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN))
-			) {
-			home->response_timeouts++;
-			if (home->response_timeouts >= home->max_response_timeouts)
-				mark_home_server_zombie(home, &now, response_window);
-		}
-
-		FR_STATS_TYPE_INC(home->stats.total_timeouts);
-		if (home->type == HOME_TYPE_AUTH) {
-			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
-			FR_STATS_TYPE_INC(proxy_auth_stats.total_timeouts);
-		}
-#ifdef WITH_ACCT
-		else if (home->type == HOME_TYPE_ACCT) {
-			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
-			FR_STATS_TYPE_INC(proxy_acct_stats.total_timeouts);
-		}
-#endif
-#ifdef WITH_COA
-		else if (home->type == HOME_TYPE_COA) {
-			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
-
-			if (request->packet->code == PW_CODE_COA_REQUEST) {
-				FR_STATS_TYPE_INC(proxy_coa_stats.total_timeouts);
-			} else {
-				FR_STATS_TYPE_INC(proxy_dsc_stats.total_timeouts);
-			}
-		}
-#endif
-
-		/*
-		 *	There was no response within the window.  Stop
-		 *	the request.  If the client retransmitted, it
-		 *	may have failed over to another home server.
-		 *	But that one may be dead, too.
-		 *
-		 * 	The extra verbose message if we have a username,
-		 *	is extremely useful if the proxy is part of a chain
-		 *	and the final home server, is not the one we're
-		 *	proxying to.
-		 */
-		if (request->username) {
-			RERROR("Failing proxied request for user \"%s\", due to lack of any response from home "
-			       "server %s port %d",
-			       request->username->vp_strvalue,
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port);
-		} else {
-			RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port);
-		}
+		if (proxy_keep_waiting(request, &now)) break;
 
 		if (setup_post_proxy_fail(request)) {
 			worker_thread(request, proxy_no_reply);
