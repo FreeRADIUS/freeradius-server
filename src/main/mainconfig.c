@@ -995,9 +995,9 @@ do {\
 	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024 * 1024);
 
 	/*
-	 * Set default initial request processing delay to 1/3 of a second.
-	 * Will be updated by the lowest response window across all home servers,
-	 * if it is less than this.
+	 *	Set default initial request processing delay to 1/3 of a second.
+	 *	Will be updated by the lowest response window across all home servers,
+	 *	if it is less than this.
 	 */
 	main_config.init_delay.tv_sec = 0;
 	main_config.init_delay.tv_usec = 2* (1000000 / 3);
