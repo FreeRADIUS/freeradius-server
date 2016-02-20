@@ -419,19 +419,19 @@ static struct timeval *request_response_window(REQUEST *request)
  */
 static int request_init_delay(REQUEST *request)
 {
-	struct timeval half_response_window;
+	int delay;
 
 	VERIFY_REQUEST(request);
 
 	/* Allow client response window to lower initial delay */
-	if (timerisset(&request->client->response_window)) {
-		half_response_window.tv_sec = request->client->response_window.tv_sec >> 1;
-		half_response_window.tv_usec =
-			((request->client->response_window.tv_sec & 1) * USEC +
-				request->client->response_window.tv_usec) >> 1;
-		if (timercmp(&half_response_window, &request->root->init_delay, <))
-			return (int)half_response_window.tv_sec * USEC +
-				(int)half_response_window.tv_usec;
+	if (timerisset(&request->client->response_window) &&
+	    timercmp(&main_config.init_delay, &request->client->response_window, >)) {
+		delay = request->client->response_window.tv_sec * USEC;
+		delay += request->client->response_window.tv_usec;
+
+		delay >>= 1;
+
+		return delay;
 	}
 
 	return (int)request->root->init_delay.tv_sec * USEC +
@@ -881,7 +881,6 @@ static void request_queue_or_run(REQUEST *request,
 	 *	(re) set the initial delay.
 	 */
 	request->delay = request_init_delay(request);
-	if (request->delay > USEC) request->delay = USEC;
 	gettimeofday(&when, NULL);
 	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
