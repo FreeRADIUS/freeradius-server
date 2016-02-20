@@ -862,8 +862,8 @@ static bool request_max_time(REQUEST *request)
 	return false;
 }
 
-static void request_queue_or_run(REQUEST *request,
-				 fr_request_process_t process)
+static void worker_thread(REQUEST *request,
+			   fr_request_process_t process)
 {
 #ifdef DEBUG_STATE_MACHINE
 	fr_state_action_t action = FR_ACTION_TIMER;
@@ -1642,7 +1642,7 @@ skip_dup:
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
 	 */
-	request_queue_or_run(request, request_running);
+	worker_thread(request, request_running);
 
 	return 1;
 }
@@ -3146,7 +3146,7 @@ static int request_proxy_anew(REQUEST *request)
 		REDEBUG2("Failed to find live home server for request");
 	post_proxy_fail:
 		if (setup_post_proxy_fail(request)) {
-			request_queue_or_run(request, proxy_running);
+			worker_thread(request, proxy_running);
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request);
@@ -3824,7 +3824,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		}
 
 		if (setup_post_proxy_fail(request)) {
-			request_queue_or_run(request, proxy_no_reply);
+			worker_thread(request, proxy_no_reply);
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request);
@@ -3835,7 +3835,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		 *	We received a new reply.  Go process it.
 		 */
 	case FR_ACTION_PROXY_REPLY:
-		request_queue_or_run(request, proxy_running);
+		worker_thread(request, proxy_running);
 		break;
 
 	default:
@@ -4145,7 +4145,7 @@ static void coa_retransmit(REQUEST *request)
 		       request->proxy->dst_port);
 
 		if (setup_post_proxy_fail(request)) {
-			request_queue_or_run(request, coa_no_reply);
+			worker_thread(request, coa_no_reply);
 		} else {
 			request_done(request, FR_ACTION_DONE);
 		}
@@ -4251,7 +4251,7 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
-		request_queue_or_run(request, coa_running);
+		worker_thread(request, coa_running);
 		break;
 
 	default:
