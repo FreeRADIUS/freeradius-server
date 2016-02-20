@@ -3153,7 +3153,11 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int listen_init(rad_listen_t **head, bool spawn_workers)
+int listen_init(rad_listen_t **head,
+#ifndef WITH_TLS
+		UNUSED
+#endif
+		bool spawn_workers)
 {
 	rad_listen_t	**last;
 	rad_listen_t	*this;
@@ -3219,8 +3223,6 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 				      main_config.name);
 			return -1;
 		}
-#else
-		spawn_workers = true; /* quiet clang */
 #endif
 		radius_update_listener(this);
 	}
