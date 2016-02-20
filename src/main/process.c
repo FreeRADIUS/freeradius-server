@@ -978,12 +978,10 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		} /* else it's time to clean up */
-
-		request_done(request, FR_ACTION_DONE);
-		break;
+		/* FALL-THROUGH */
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
@@ -4364,11 +4362,10 @@ static void coa_no_reply(REQUEST *request, fr_state_action_t action)
 		if (process_proxy_reply(request, NULL)) {
 			request->handle(request);
 		}
-		request_done(request, FR_ACTION_DONE);
-		break;
+		/* FALL-THROUGH */
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
@@ -4409,11 +4406,10 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		if (process_proxy_reply(request, request->proxy_reply)) {
 			request->handle(request);
 		}
-		request_done(request, FR_ACTION_DONE);
-		break;
+		/* FALL-THROUGH */
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
