@@ -45,6 +45,14 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
+static pid_t waitpid_wrapper(pid_t pid, int *status)
+{
+	return waitpid(pid, status, 0);
+}
+
+pid_t (*rad_fork)(void) = fork;
+pid_t (*rad_waitpid)(pid_t pid, int *status) = waitpid_wrapper;
+
 /** Start a process
  *
  * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv

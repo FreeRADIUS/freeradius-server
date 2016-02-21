@@ -498,6 +498,9 @@ int		rad_postauth(REQUEST *);
 int		rad_virtual_server(REQUEST *);
 
 /* exec.c */
+extern pid_t	(*rad_fork)(void);
+extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
+
 pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
 			   VALUE_PAIR *input_pairs, bool shell_escape);
@@ -553,8 +556,6 @@ int	thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);
 int	thread_pool_init(void);
 void	thread_pool_stop(void);
 int	thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
-pid_t	rad_fork(void);
-pid_t	rad_waitpid(pid_t pid, int *status);
 int	total_active_threads(void);
 void	thread_pool_lock(void);
 void	thread_pool_unlock(void);

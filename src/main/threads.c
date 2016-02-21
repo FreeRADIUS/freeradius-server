@@ -221,6 +221,8 @@ static bool pool_initialized = false;
 
 #ifndef WITH_GCD
 static void thread_pool_manage(time_t now);
+static pid_t thread_fork(void);
+static pid_t thread_waitpid(pid_t pid, int *status);
 #endif
 
 #ifndef WITH_GCD
@@ -1017,6 +1019,12 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 		return -1;
 	}
 
+	/*
+	 *	Patch these in because we're threaded.
+	 */
+	rad_fork = thread_fork;
+	rad_waitpid = thread_waitpid;
+
 #endif	/* WITH_GCD */
 	return 0;
 }
@@ -1364,7 +1372,7 @@ static void thread_pool_manage(time_t now)
 /*
  *	Thread wrapper for fork().
  */
-pid_t rad_fork(void)
+static pid_t thread_fork(void)
 {
 	pid_t child_pid;
 
@@ -1410,7 +1418,7 @@ pid_t rad_fork(void)
 /*
  *	Wait 10 seconds at most for a child to exit, then give up.
  */
-pid_t rad_waitpid(pid_t pid, int *status)
+static pid_t thread_waitpid(pid_t pid, int *status)
 {
 	int i;
 	thread_fork_t mytf, *tf;

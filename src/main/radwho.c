@@ -61,17 +61,6 @@ bool log_stripped_names;
  */
 main_config_t main_config;
 
-#include <sys/wait.h>
-pid_t rad_fork(void)
-{
-	return fork();
-}
-
-pid_t rad_waitpid(pid_t pid, int *status)
-{
-	return waitpid(pid, status, 0);
-}
-
 static struct radutmp_config_t {
 	char const *radutmp_fn;
 } radutmpconfig;
