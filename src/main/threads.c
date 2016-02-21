@@ -955,25 +955,33 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	 *	Initialize the thread pool to some reasonable values.
 	 */
 	memset(&thread_pool, 0, sizeof(THREAD_POOL));
-#ifndef WITH_GCD
-	thread_pool.total_threads = 0;
-	thread_pool.max_thread_num = 1;
-	thread_pool.cleanup_delay = 5;
-	thread_pool.stop_flag = false;
-#endif
 	thread_pool.spawn_workers = *spawn_workers;
 
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
 #ifdef WITH_GCD
-	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
-#else
-	if (!pool_cf) {
-		thread_pool.spawn_workers = *spawn_workers = false;
+	if (pool_cf) {
+		WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
 		return 0;
 	}
-#endif
+#else
 
-#ifndef WITH_GCD
+	/*
+	 *	Initialize our counters.
+	 */
+	thread_pool.total_threads = 0;
+	thread_pool.max_thread_num = 1;
+	thread_pool.cleanup_delay = 5;
+	thread_pool.stop_flag = false;
+
+	/*
+	 *	No configuration, don't spawn anything.
+	 */
+	if (!pool_cf) {
+		thread_pool.spawn_workers = *spawn_workers = false;
+		WARN("No 'thread pool {..}' found.  Server will be single threaded");
+		return 0;
+	}
+
 	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) return -1;
 
 	/*
