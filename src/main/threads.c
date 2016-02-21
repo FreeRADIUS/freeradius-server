@@ -942,6 +942,8 @@ static int state_cmp(void const *one, void const *two)
 	return default_cmp(one, two);
 }
 
+extern int fr_tls_max_threads;
+
 
 /** Parse the configuration for the thread pool
  *
