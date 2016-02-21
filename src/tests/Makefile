@@ -67,6 +67,7 @@ radiusd.pid: test.conf
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
+		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
 	fi
 	@echo "ok"
 	@echo "Server logging to \"$(TEST_PATH)/radius.log\""
@@ -84,6 +85,7 @@ radiusd.kill:
 		cat "$(TEST_PATH)/gdb.log"; \
 		echo "Last log entries were:"; \
 		tail -n 20 $(TEST_PATH)/radius.log; \
+		echo "Last entries in server log $(TEST_PATH)/radius.log"; \
 		ret=1; \
 	    fi; \
 		if ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \

@@ -69,8 +69,9 @@ radiusd.kill: | $(OUTPUT_DIR)
 		    echo "FreeRADIUS terminated during test"; \
 		    echo "GDB output was:"; \
 		    cat "$(GDB_LOG)"; \
-		    echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		    echo "--------------------------------------------------"; \
 		    tail -n 40 "$(RADIUS_LOG)"; \
+		    echo "Last entries in server log ($(RADIUS_LOG)):"; \
 		    ret=1; \
 		fi; \
 		if ! kill -TERM `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
@@ -119,10 +120,10 @@ $(RADDB_PATH)/certs/%:
 $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT_DIR)
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
 	@printf "Starting EAP test server... "
-	@if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
+	@if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
 		echo "FAILED STARTING RADIUSD"; \
-		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
+		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 	else \
 		echo "ok"; \
 	fi
@@ -154,8 +155,10 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	else \
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$<)):"; \
 		tail -n 40 "$(patsubst %.conf,%.log,$<)"; \
-		echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		echo "--------------------------------------------------"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
+		echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		echo "--------------------------------------------------"; \
 		echo "TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -PX -d \"$(CONFIG_PATH)\" -n test -D \"$(CONFIG_PATH)\""; \
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)"; \
 		$(MAKE) radiusd.kill; \
