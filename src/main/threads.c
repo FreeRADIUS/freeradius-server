@@ -968,7 +968,7 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
 #else
 	if (!pool_cf) {
-		*spawn_workers = false;
+		thread_pool.spawn_workers = *spawn_workers = false;
 		return 0;
 	}
 #endif
