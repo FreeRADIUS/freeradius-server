@@ -987,24 +987,15 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	/*
 	 *	Catch corner cases.
 	 */
-	if (thread_pool.min_spare_threads < 1)
-		thread_pool.min_spare_threads = 1;
-	if (thread_pool.max_spare_threads < 1)
-		thread_pool.max_spare_threads = 1;
-	if (thread_pool.max_spare_threads < thread_pool.min_spare_threads)
-		thread_pool.max_spare_threads = thread_pool.min_spare_threads;
-	if (thread_pool.max_threads == 0)
-		thread_pool.max_threads = 256;
-	if ((thread_pool.max_queue_size < 2) || (thread_pool.max_queue_size > 1024*1024)) {
-		ERROR("FATAL: max_queue_size value must be in range 2-1048576");
-		return -1;
-	}
+	FR_INTEGER_BOUND_CHECK("min_spare_servers", thread_pool.min_spare_threads, >=, 1);
+	FR_INTEGER_BOUND_CHECK("max_spare_servers", thread_pool.max_spare_threads, >=, 1);
+	FR_INTEGER_BOUND_CHECK("max_spare_servers", thread_pool.max_spare_threads, <, thread_pool.min_spare_threads);
 
-	if (thread_pool.start_threads > thread_pool.max_threads) {
-		ERROR("FATAL: start_servers (%i) must be <= max_servers (%i)",
-		      thread_pool.start_threads, thread_pool.max_threads);
-		return -1;
-	}
+	FR_INTEGER_BOUND_CHECK("max_queue_size", thread_pool.max_queue_size, >=, 2);
+	FR_INTEGER_BOUND_CHECK("max_queue_size", thread_pool.max_queue_size, <, 1024*1024);
+
+	FR_INTEGER_BOUND_CHECK("max_servers", thread_pool.max_threads, >=, 1);
+	FR_INTEGER_BOUND_CHECK("start_servers", thread_pool.start_threads, <=, thread_pool.max_threads);
 
 	if (!thread_pool.queue_priority ||
 	    (strcmp(thread_pool.queue_priority, "default") == 0)) {
