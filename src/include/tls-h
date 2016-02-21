@@ -337,6 +337,7 @@ fr_tls_status_t tls_application_data(tls_session_t *tls_session, REQUEST *reques
 #define FR_TLS_EX_INDEX_TALLOC	 (16)
 
 extern int fr_tls_ex_index_vps;
+extern int fr_tls_max_threads;
 
 /* configured values goes right here */
 struct fr_tls_server_conf_t {

@@ -997,6 +997,11 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	FR_INTEGER_BOUND_CHECK("max_servers", thread_pool.max_threads, >=, 1);
 	FR_INTEGER_BOUND_CHECK("start_servers", thread_pool.start_threads, <=, thread_pool.max_threads);
 
+	/*
+	 *	So TLS knows what to do.
+	 */
+	fr_tls_max_threads = thread_pool.max_threads;
+
 	if (!thread_pool.queue_priority ||
 	    (strcmp(thread_pool.queue_priority, "default") == 0)) {
 		thread_pool.heap_cmp = default_cmp;
@@ -1486,12 +1491,4 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 
 		pps[0] = pps[1] = 0;
 	}
-}
-
-/** Return the maximum number of threads that can run concurrently
- *
- */
-uint32_t thread_pool_max_threads(void)
-{
-	return thread_pool.max_threads;
 }

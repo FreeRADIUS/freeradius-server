@@ -59,6 +59,11 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  endif
 #  include <openssl/ssl.h>
 
+/*
+ *	Updated by threads.c in the server, and left alone for everyone else.
+ */
+int fr_tls_max_threads = 1;
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
 	uint64_t	high;		//!< The last version number this defect affected.
@@ -3390,7 +3395,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	if (!main_config.spawn_workers) {
 		conf->ctx_count = 1;
 	} else {
-		conf->ctx_count = thread_pool_max_threads() * 2; /* Reduce contention */
+		conf->ctx_count = fr_tls_max_threads * 2; /* Reduce contention */
 		rad_assert(conf->ctx_count > 0);
 	}
 
@@ -3487,7 +3492,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	if (!main_config.spawn_workers) {
 		conf->ctx_count = 1;
 	} else {
-		conf->ctx_count = thread_pool_max_threads() * 2; /* Even one context per thread will lead to contention */
+		conf->ctx_count = fr_tls_max_threads * 2; /* Even one context per thread will lead to contention */
 		rad_assert(conf->ctx_count > 0);
 	}
 

@@ -69,12 +69,6 @@ void listen_free(UNUSED rad_listen_t **head)
 }
 
 
-uint32_t thread_pool_max_threads(void)
-{
-	return 1;
-}
-
-
 pid_t rad_fork(void)
 {
 	return fork();

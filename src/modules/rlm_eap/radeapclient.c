@@ -301,11 +301,6 @@ void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 	if (path) radius_dir = talloc_strdup(ctx, path);
 }
 
-uint32_t thread_pool_max_threads(void)
-{
-	return 1;
-}
-
 pid_t rad_fork(void)
 {
 	return fork();

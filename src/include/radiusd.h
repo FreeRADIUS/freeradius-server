@@ -559,7 +559,6 @@ int	total_active_threads(void);
 void	thread_pool_lock(void);
 void	thread_pool_unlock(void);
 void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
-uint32_t thread_pool_max_threads(void);
 
 /* main_config.c */
 /* Define a global config structure */
