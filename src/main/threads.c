@@ -942,8 +942,6 @@ static int state_cmp(void const *one, void const *two)
 	return default_cmp(one, two);
 }
 
-extern int fr_tls_max_threads;
-
 
 /** Parse the configuration for the thread pool
  *
@@ -1001,10 +999,12 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	FR_INTEGER_BOUND_CHECK("max_servers", thread_pool.max_threads, >=, 1);
 	FR_INTEGER_BOUND_CHECK("start_servers", thread_pool.start_threads, <=, thread_pool.max_threads);
 
+#ifdef WITH_TLS
 	/*
 	 *	So TLS knows what to do.
 	 */
 	fr_tls_max_threads = thread_pool.max_threads;
+#endif
 
 	if (!thread_pool.queue_priority ||
 	    (strcmp(thread_pool.queue_priority, "default") == 0)) {
