@@ -2515,20 +2515,31 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 
 /** Build the tlv_stack for the specified DA and encode the path in OID form
  *
- * @param[out] buffer Where to write the OID.
+ * @param[out] out Where to write the OID.
  * @param[in] outlen Length of the output buffer.
  * @param[in] ancestor If not NULL, only print OID portion between ancestor and da.
  * @param[in] da to print OID string for.
  * @return the number of bytes written to the buffer.
  */
-size_t dict_print_attr_oid(char *buffer, size_t outlen,
+size_t dict_print_attr_oid(char *out, size_t outlen,
 			   fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
 {
-	size_t len;
-	char *p = buffer, *end = p + outlen;
-	int i;
-	int depth = 0;
-	fr_dict_attr_t const *tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
+	size_t			len;
+	char			*p = out, *end = p + outlen;
+	int			i;
+	int			depth = 0;
+	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
+
+	if (outlen <= 0) return 0;
+
+	/*
+	 *	If the ancestor and the DA match, there's
+	 *	no OID string to print.
+	 */
+	if (ancestor == da) {
+		out[0] = '\0';
+		return 0;
+	}
 
 	fr_proto_tlv_stack_build(tlv_stack, da);
 
@@ -2541,16 +2552,16 @@ size_t dict_print_attr_oid(char *buffer, size_t outlen,
 	}
 
 	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
-	if ((p + len) >= end) return p - buffer;
+	if ((p + len) >= end) return p - out;
 	p += len;
 
 	for (i = depth + 1; i < (int)da->depth; i++) {
 		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
-		if ((p + len) >= end) return p - buffer;
+		if ((p + len) >= end) return p - out;
 		p += len;
 	}
 
-	return p - buffer;
+	return p - out;
 }
 
 /** Initialises an unknown attribute
