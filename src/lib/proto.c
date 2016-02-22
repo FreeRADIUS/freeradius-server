@@ -78,7 +78,7 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 	for (i = 0; (i < FR_DICT_MAX_TLV_STACK) && tlv_stack[i]; i++);
 	if (!i) return;
 
-	fprintf(fr_log_fp, "stk: %s%.*s: Encoder in %s\n",
+	fprintf(fr_log_fp, "stk: %s%.*s: Currently in %s\n",
 		prefix, (int)(proto_log_indent - len), spaces, func);
 	for (i--; i >= 0; i--) {
 		fprintf(fr_log_fp, "stk: %s%.*s: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)\n",
