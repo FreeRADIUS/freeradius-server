@@ -322,6 +322,8 @@ void		fr_cursor_end(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag);
 
 VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag) CC_HINT(nonnull);
+VALUE_PAIR	*fr_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor, int8_t tag)
+		CC_HINT(nonnull);
 
 VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_peek(vp_cursor_t *cursor);

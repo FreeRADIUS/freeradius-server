@@ -203,7 +203,7 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsi
 
 	if (!cursor->first) return NULL;
 
-	for (i = !cursor->found ? cursor->current : cursor->found->next;
+	for (i = cursor->found ? cursor->found->next : cursor->current;
 	     i != NULL;
 	     i = i->next) {
 		VERIFY_VP(i);
@@ -240,7 +240,7 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, 
 
 	if (!cursor->first) return NULL;
 
-	for (i = !cursor->found ? cursor->current : cursor->found->next;
+	for (i = cursor->found ? cursor->found->next : cursor->current;
 	     i != NULL;
 	     i = i->next) {
 		VERIFY_VP(i);
@@ -248,6 +248,39 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, 
 		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
 			break;
 		}
+	}
+
+	return fr_cursor_update(cursor, i);
+}
+
+/** Iterate over attributes with a given ancestor
+ *
+ * Find the next attribute of a given type. If no fr_cursor_next_by_* function
+ * has been called on a cursor before, or the previous call returned
+ * NULL, the search will start with the current attribute. Subsequent calls to
+ * fr_cursor_next_by_* functions will start the search from the previously
+ * matched attribute.
+ *
+ * @param cursor to operate on.
+ * @param ancestor attribute to match on.
+ * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
+ *	  untagged attribute, TAG_NONE to match attributes without tags.
+ * @return
+ *	- Next matching #VALUE_PAIR.
+ *	- NULL if no #VALUE_PAIR (s) match.
+ */
+VALUE_PAIR *fr_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor, int8_t tag)
+{
+	VALUE_PAIR *i;
+
+	if (!cursor->first) return NULL;
+
+	for (i = cursor->found ? cursor->found->next : cursor->current;
+	     i != NULL;
+	     i = i->next) {
+		VERIFY_VP(i);
+		if (fr_dict_parent_common(ancestor, i->da, true) &&
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) break;
 	}
 
 	return fr_cursor_update(cursor, i);
