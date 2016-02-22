@@ -76,14 +76,14 @@ int fr_set_signal(int sig, sig_t func)
 	return 0;
 }
 
-static int _fr_trigger_talloc_ctx_free(fr_talloc_link_t *trigger)
+static int _fr_talloc_link_ctx_trigger(fr_talloc_link_t *trigger)
 {
 	if (trigger->armed) talloc_free(trigger->child);
 
 	return 0;
 }
 
-static int _fr_disarm_talloc_ctx_free(bool **armed)
+static int _fr_talloc_link_ctx_disarm(bool **armed)
 {
 	**armed = false;
 	return 0;
@@ -120,8 +120,8 @@ int fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 	trigger->armed = true;
 	*disarm = &trigger->armed;
 
-	talloc_set_destructor(trigger, _fr_trigger_talloc_ctx_free);
-	talloc_set_destructor(disarm, _fr_disarm_talloc_ctx_free);
+	talloc_set_destructor(trigger, _fr_talloc_link_ctx_trigger);
+	talloc_set_destructor(disarm, _fr_talloc_link_ctx_disarm);
 
 	return 0;
 }
