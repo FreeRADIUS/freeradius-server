@@ -97,6 +97,12 @@ struct rad_listen {
 	rad_listen_debug_t	debug;
 	rad_listen_print_t	print;
 
+	/*
+	 *	Events associated with this listener
+	 */
+	struct timeval		when;
+	fr_event_t		*ev;
+
 	CONF_SECTION const	*cs;
 	void			*data;
 
@@ -149,7 +155,6 @@ typedef struct listen_socket_t {
 	/* for a proxy connecting to home servers */
 	time_t			last_packet;
 	time_t			opened;
-	fr_event_t		*ev;
 
 	fr_socket_limit_t	limit;
 	struct listen_socket_t	*parent;

@@ -1877,9 +1877,9 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 	end.tv_usec = USEC / 2;
 
 	ASSERT_MASTER;
-	if (!fr_event_insert(el, tcp_socket_timer, listener, &end, &sock->ev)) {
-		rad_panic("Failed to insert event");
-	}
+	listener->when = end;
+
+	INSERT_EVENT(tcp_socket_timer, listener);
 }
 
 
@@ -4507,18 +4507,11 @@ static void listener_free_cb(void *ctx, UNUSED struct timeval *now)
 	char buffer[1024];
 
 	if (this->count > 0) {
-		struct timeval when;
-		listen_socket_t *sock = this->data;
-
-		fr_event_now(el, &when);
-		when.tv_sec += 3;
+		fr_event_now(el, &this->when);
+		this->when.tv_sec += 3;
 
 		ASSERT_MASTER;
-		if (!fr_event_insert(el, listener_free_cb, this, &when,
-				     &(sock->ev))) {
-			rad_panic("Failed to insert event");
-		}
-
+		INSERT_EVENT(listener_free_cb, this);
 		return;
 	}
 
@@ -4634,16 +4627,11 @@ static int event_new_fd(rad_listen_t *this)
 			 */
 			if (sock->proto == IPPROTO_TCP && sock->opened &&
 			    (sock->home->limit.lifetime || sock->home->limit.idle_timeout)) {
-				struct timeval when;
-
-				when.tv_sec = sock->opened + 1;
-				when.tv_usec = 0;
+				this->when.tv_sec = sock->opened + 1;
+				this->when.tv_usec = 0;
 
 				ASSERT_MASTER;
-				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
-						     &(sock->ev))) {
-					rad_panic("Failed to insert event");
-				}
+				INSERT_EVENT(tcp_socket_timer, this);
 			}
 #endif
 			break;
@@ -4660,17 +4648,11 @@ static int event_new_fd(rad_listen_t *this)
 			 */
 			if (sock->proto == IPPROTO_TCP && sock->opened &&
 			    (sock->limit.lifetime || sock->limit.idle_timeout)) {
-				struct timeval when;
-
-				when.tv_sec = sock->opened + 1;
-				when.tv_usec = 0;
+				this->when.tv_sec = sock->opened + 1;
+				this->when.tv_usec = 0;
 
 				ASSERT_MASTER;
-				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
-						     &(sock->ev))) {
-					ERROR("Failed adding timer for socket: %s", fr_strerror());
-					fr_exit(1);
-				}
+				INSERT_EVENT(tcp_socket_timer, this);
 			}
 #endif
 			break;
@@ -4699,23 +4681,16 @@ static int event_new_fd(rad_listen_t *this)
 		 *	them to finish.
 		 */
 		if (this->count > 0) {
-			struct timeval when;
-			listen_socket_t *sock = this->data;
 
 			/*
 			 *	Try again to clean up the socket in 30
 			 *	seconds.
 			 */
-			gettimeofday(&when, NULL);
-			when.tv_sec += 30;
+			gettimeofday(&this->when, NULL);
+			this->when.tv_sec += 30;
 
 			ASSERT_MASTER;
-			if (!fr_event_insert(el,
-					     (fr_event_callback_t) event_new_fd,
-					     this, &when, &sock->ev)) {
-				rad_panic("Failed to insert event");
-			}
-
+			INSERT_EVENT((fr_event_callback_t) event_new_fd, this);
 			return 1;
 		}
 
@@ -4756,23 +4731,15 @@ static int event_new_fd(rad_listen_t *this)
 		 *	them to finish.
 		 */
 		if (this->count > 0) {
-			struct timeval when;
-			listen_socket_t *sock = this->data;
-
 			/*
 			 *	Try again to clean up the socket in 30
 			 *	seconds.
 			 */
-			gettimeofday(&when, NULL);
-			when.tv_sec += 30;
+			gettimeofday(&this->when, NULL);
+			this->when.tv_sec += 30;
 
 			ASSERT_MASTER;
-			if (!fr_event_insert(el,
-					     (fr_event_callback_t) event_new_fd,
-					     this, &when, &sock->ev)) {
-				rad_panic("Failed to insert event");
-			}
-
+			INSERT_EVENT((fr_event_callback_t) event_new_fd, this);
 			return 1;
 		}
 
@@ -4788,10 +4755,6 @@ static int event_new_fd(rad_listen_t *this)
 	 */
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		int devnull;
-#ifdef WITH_TCP
-		listen_socket_t *sock = this->data;
-#endif
-		struct timeval when;
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -4833,6 +4796,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			home_server_t *home;
+			listen_socket_t *sock = this->data;
 
 			home = sock->home;
 			if (!home || !home->limit.max_connections) {
@@ -4867,7 +4831,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		if (!spawn_workers) {
 			ASSERT_MASTER;
-			if (sock->ev) fr_event_delete(el, &sock->ev);
+			if (this->ev) fr_event_delete(el, &this->ev);
 			listen_free(&this);
 			return 1;
 		}
@@ -4875,14 +4839,11 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	Wait until all requests using this socket are done.
 		 */
-		gettimeofday(&when, NULL);
-		when.tv_sec += 3;
+		gettimeofday(&this->when, NULL);
+		this->when.tv_sec += 3;
 
 		ASSERT_MASTER;
-		if (!fr_event_insert(el, listener_free_cb, this, &when,
-				     &(sock->ev))) {
-			rad_panic("Failed to insert event");
-		}
+		INSERT_EVENT(listener_free_cb, this);
 	}
 #endif	/* WITH_TCP */
 
