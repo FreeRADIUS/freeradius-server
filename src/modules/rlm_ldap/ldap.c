@@ -1606,6 +1606,8 @@ static int _mod_conn_free(ldap_handle_t *conn)
 {
 	rlm_ldap_t *inst = conn->inst;
 
+	rad_assert(conn->handle);
+
 	rlm_ldap_control_clear(conn);
 
 #ifdef HAVE_LDAP_UNBIND_EXT_S
@@ -1623,6 +1625,7 @@ static int _mod_conn_free(ldap_handle_t *conn)
 	DEBUG3("Closing libldap handle %p", conn->handle);
 	ldap_unbind_s(conn->handle);
 #endif
+	conn->handle = NULL;
 
 	return 0;
 }
