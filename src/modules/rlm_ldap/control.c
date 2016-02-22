@@ -124,7 +124,7 @@ int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool fre
  *
  * @param conn to clear controls from.
  */
- void rlm_ldap_control_clear(ldap_handle_t *conn)
+void rlm_ldap_control_clear(ldap_handle_t *conn)
 {
 	int i;
 

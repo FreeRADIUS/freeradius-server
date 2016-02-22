@@ -1606,24 +1606,23 @@ static int _mod_conn_free(ldap_handle_t *conn)
 {
 	rlm_ldap_t *inst = conn->inst;
 
-	if (conn->handle) {
-#ifdef HAVE_LDAP_UNBIND_EXT_S
-		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
-		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
-
-		rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
-				       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-				       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
-				       conn, NULL, NULL);
-
-		DEBUG3("Closing libldap handle %p", conn->handle);
-		ldap_unbind_ext_s(conn->handle, our_serverctrls, our_clientctrls);
-#else
-		DEBUG3("Closing libldap handle %p", conn->handle);
-		ldap_unbind_s(conn->handle);
-#endif
-	}
 	rlm_ldap_control_clear(conn);
+
+#ifdef HAVE_LDAP_UNBIND_EXT_S
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
+			       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
+			       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			       conn, NULL, NULL);
+
+	DEBUG3("Closing libldap handle %p", conn->handle);
+	ldap_unbind_ext_s(conn->handle, our_serverctrls, our_clientctrls);
+#else
+	DEBUG3("Closing libldap handle %p", conn->handle);
+	ldap_unbind_s(conn->handle);
+#endif
 
 	return 0;
 }
@@ -1640,32 +1639,35 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	rlm_ldap_t *inst = instance;
 	ldap_handle_t *conn;
+	LDAP *handle = NULL;
+
+	DEBUG("Connecting to %s", inst->server);
+#ifdef HAVE_LDAP_INITIALIZE
+	ldap_errno = ldap_initialize(&handle, inst->server);
+	if (ldap_errno != LDAP_SUCCESS) {
+		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
+		return NULL;
+	}
+#else
+	handle = ldap_init(inst->server, inst->port);
+	if (!handle) {
+		ERROR("ldap_init failed");
+		return NULL;
+	}
+#endif
 
 	/*
 	 *	Allocate memory for the handle.
 	 */
 	conn = talloc_zero(ctx, ldap_handle_t);
 	if (!conn) return NULL;
-	talloc_set_destructor(conn, _mod_conn_free);
 
 	conn->inst = inst;
+	conn->handle = handle;
 	conn->rebound = false;
 	conn->referred = false;
+	talloc_set_destructor(conn, _mod_conn_free);
 
-	DEBUG("Connecting to %s", inst->server);
-#ifdef HAVE_LDAP_INITIALIZE
-	ldap_errno = ldap_initialize(&conn->handle, inst->server);
-	if (ldap_errno != LDAP_SUCCESS) {
-		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
-		goto error;
-	}
-#else
-	conn->handle = ldap_init(inst->server, inst->port);
-	if (!conn->handle) {
-		ERROR("ldap_init failed");
-		goto error;
-	}
-#endif
 	DEBUG3("New libldap handle %p", conn->handle);
 
 	/*
