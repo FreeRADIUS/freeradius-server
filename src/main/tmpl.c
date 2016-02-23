@@ -251,7 +251,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 		if (request->coa && /* match reply with request */
 		    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST) &&
 		    request->coa->proxy_reply) {
-			return &request->coa->proxy->vps;
+			return &request->coa->proxy_reply->vps;
 		}
 		break;
 #endif
