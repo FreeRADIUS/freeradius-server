@@ -241,7 +241,6 @@ struct rad_request {
 	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
 
 	struct timeval		response_delay;	//!< How long to wait before sending Access-Rejects.
-	fr_state_action_t	timer_action;	//!< What action to perform when the timer event fires.
 	fr_event_t		*ev;		//!< Event in event loop tied to this request.
 
 	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the

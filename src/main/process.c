@@ -126,12 +126,10 @@ static void request_timer(void *ctx, struct timeval *now);
  * @param line the state machine timer call occurred on.
  * @param request to set add the timer event for.
  * @param when the event should fine.
- * @param action to perform when we resume processing the request.
  */
 static inline void state_machine_timer(char const *file, int line, REQUEST *request,
-				       struct timeval *when, fr_state_action_t action)
+				       struct timeval *when)
 {
-	request->timer_action = action;
 	if (!fr_event_insert(el, request_timer, request, when, &request->ev)) {
 		_rad_panic(file, line, "Failed to insert event");
 	}
@@ -141,7 +139,7 @@ static inline void state_machine_timer(char const *file, int line, REQUEST *requ
  *
  * @param _x the action to perform when we resume processing the request.
  */
-#define STATE_MACHINE_TIMER(_x) state_machine_timer(__FILE__, __LINE__, request, &when, _x)
+#define STATE_MACHINE_TIMER state_machine_timer(__FILE__, __LINE__, request, &when)
 
 /*
  *	We need a different VERIFY_REQUEST macro in process.c
@@ -445,13 +443,13 @@ static int request_init_delay(REQUEST *request)
 static void request_timer(void *ctx, UNUSED struct timeval *now)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
-	fr_state_action_t action;
-
-	action = request->timer_action;
+#ifdef DEBUG_STATE_MACHINE
+	fr_state_action_t action = FR_ACTION_TIMER;
+#endif
 
 	TRACE_STATE_MACHINE;
 
-	request->process(request, action);
+	request->process(request, FR_ACTION_TIMER);
 }
 
 /*
@@ -686,7 +684,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		request->delay += request->delay >> 1;
 		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 		return;
 	}
 
@@ -780,7 +778,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		 */
 		request->child_state = REQUEST_CLEANUP_DELAY;
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 		return;
 	}
 
@@ -859,7 +857,7 @@ static bool request_max_time(REQUEST *request)
 	when = now;
 	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 	return false;
 }
 
@@ -886,7 +884,7 @@ static void worker_thread(REQUEST *request,
 	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
 
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 
 	request_enqueue(request);
 }
@@ -954,7 +952,7 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		request->delay += request->delay;
 		when.tv_sec += request->delay;
 
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		STATE_MACHINE_TIMER;
 		break;
 
 #ifdef WITH_PROXY
@@ -975,7 +973,7 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return;
 		} /* else it's time to clean up */
 		/* FALL-THROUGH */
@@ -1051,7 +1049,7 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
 #endif
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return;
 		} /* else it's time to send the reject */
 
@@ -3457,7 +3455,7 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	DEBUG("PING: Waiting %u seconds for response to ping",
 	      home->ping_timeout);
 
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
@@ -3627,7 +3625,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 
 		if (timercmp(&when, now, >)) {
 			RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return false;
 		}
 	} else
@@ -3654,7 +3652,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 
 			RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
 			       (int) diff.tv_sec, (int) diff.tv_usec);
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return false;
 		}
 	}
@@ -4173,7 +4171,7 @@ static void coa_retransmit(REQUEST *request)
 		tv_add(&when, delay);
 
 		if (timercmp(&when, &now, >)) {
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			STATE_MACHINE_TIMER;
 			return;
 		}
 	}
@@ -4247,7 +4245,7 @@ static void coa_retransmit(REQUEST *request)
 	if (timercmp(&mrd, &when, <)) {
 		when = mrd;
 	}
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
@@ -4557,7 +4555,7 @@ static int proxy_eol_cb(void *ctx, void *data)
 	 */
 	fr_event_now(el, &when);
 	tv_add(&when, fr_rand() % USEC);
-	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	STATE_MACHINE_TIMER;
 
 	/*
 	 *	Don't delete it from the list.
