@@ -300,11 +300,11 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list)
 #ifdef WITH_COA
 	case PAIR_LIST_COA:
 	case PAIR_LIST_DM:
-		return request->coa->packet;
+		return request->coa->proxy;
 
 	case PAIR_LIST_COA_REPLY:
 	case PAIR_LIST_DM_REPLY:
-		return request->coa->reply;
+		return request->coa->proxy_reply;
 #endif
 	}
 
