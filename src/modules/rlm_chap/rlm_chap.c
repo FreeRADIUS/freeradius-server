@@ -165,6 +165,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
 
 	if (!fr_pair_find_by_num(request->proxy->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) return RLM_MODULE_NOOP;
 
+	if (fr_pair_find_by_num(request->proxy->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY)) return RLM_MODULE_NOOP;
+
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
 	if (!vp) return RLM_MODULE_FAIL;
 
