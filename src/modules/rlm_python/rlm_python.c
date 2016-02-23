@@ -553,8 +553,15 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		goto finish;
 	}
 
-	if (!request)
+	if (!request) {
+
+		// check return code at module instantiation time
+		if (PyInt_CheckExact(pRet)) {
+			ret = PyInt_AsLong(pRet);
+		}
+
 		goto finish;
+	}
 
 	/*
 	 *	The function returns either:
@@ -817,7 +824,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	code = do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
 	if (code >= 0) {
-		return code;
+		return 0;
 	}
 failed:
 	Pyx_BLOCK_THREADS

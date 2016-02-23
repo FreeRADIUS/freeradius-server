@@ -10,6 +10,7 @@ import radiusd
 def instantiate(p):
   print "*** instantiate ***"
   print p
+  # return 0 for success or -1 for failure
 
 def authorize(p):
   print "*** authorize ***"
