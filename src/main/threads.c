@@ -306,12 +306,13 @@ void request_enqueue(REQUEST *request)
 	THREAD_HANDLE *thread;
 
 	request->component = "<core>";
-	request->module = "<queue>";
 
 	/*
 	 *	No child threads, just process it here.
 	 */
 	if (!thread_pool.spawn_workers) {
+		request->module = "";
+
 		request->child_state = REQUEST_RUNNING;
 		request->process(request, FR_ACTION_RUN);
 		
@@ -327,6 +328,7 @@ void request_enqueue(REQUEST *request)
 	}
 
 	request->child_state = REQUEST_QUEUED;
+	request->module = "<queue>";
 
 	/*
 	 *	Give the request to a thread, doing as little work as
