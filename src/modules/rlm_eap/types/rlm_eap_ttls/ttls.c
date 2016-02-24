@@ -1002,7 +1002,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			case PW_MESSAGE_AUTHENTICATOR:
 			case PW_EAP_MESSAGE:
 			case PW_STATE:
-				continue;
+				if (!vp->da->vendor) continue;
 
 			/*
 			 *	By default, copy it over.
