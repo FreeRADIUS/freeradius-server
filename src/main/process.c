@@ -330,7 +330,7 @@ void radius_update_listener(rad_listen_t *this)
 static int request_num_counter = 1;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
-static int request_proxy(REQUEST *request, int retransmit) CC_HINT(nonnull);
+static int request_proxy(REQUEST *request) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
@@ -1440,7 +1440,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request, 0) < 0) goto req_finished;
+			if (request_proxy(request) < 0) goto req_finished;
 		} else
 #endif
 		{
@@ -3068,7 +3068,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 }
 
 
-static int request_proxy(REQUEST *request, int retransmit)
+static int request_proxy(REQUEST *request)
 {
 	char buffer[INET6_ADDRSTRLEN];
 
@@ -3135,11 +3135,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 
 	}
 
-	gettimeofday(&request->proxy_retransmit, NULL);
-	if (!retransmit) {
-		request->proxy->packet->timestamp = request->proxy_retransmit;
-	}
-	request->proxy->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
+	gettimeofday(&request->proxy->packet->timestamp, NULL);
+	request->proxy->home_server->last_packet_sent = request->proxy->packet->timestamp.tv_sec;
 
 	/*
 	 *	Encode the packet before we do anything else.
@@ -3206,7 +3203,8 @@ static int request_proxy_anew(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	/*
-	 *	Update the Acct-Delay-Time attribute.
+	 *	Update the Acct-Delay-Time attribute, since the LAST
+	 *	time we tried to retransmit this packet.
 	 */
 	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 		VALUE_PAIR *vp;
@@ -3219,7 +3217,7 @@ static int request_proxy_anew(REQUEST *request)
 			struct timeval now;
 
 			gettimeofday(&now, NULL);
-			vp->vp_integer += now.tv_sec - request->proxy_retransmit.tv_sec;
+			vp->vp_integer += now.tv_sec - request->proxy->packet->timestamp.tv_sec;
 		}
 	}
 #endif
@@ -3251,7 +3249,7 @@ static int request_proxy_anew(REQUEST *request)
 	request->proxy->packet->data = NULL;
 	request->proxy->packet->data_len = 0;
 
-	if (request_proxy(request, 1) != 1) goto post_proxy_fail;
+	if (request_proxy(request) != 1) goto post_proxy_fail;
 
 	return 1;
 }
@@ -3775,7 +3773,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	 *	More than one retransmit a second is stupid,
 	 *	and should be suppressed by the proxy.
 	 */
-	when = request->proxy_retransmit;
+	when = request->proxy->packet->timestamp;
 	when.tv_sec++;
 
 	if (timercmp(now, &when, <)) {
@@ -3811,7 +3809,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	rad_assert(request->proxy->listener != NULL);
 	FR_STATS_TYPE_INC(home->stats.total_requests);
 	home->last_packet_sent = now->tv_sec;
-	request->proxy_retransmit = *now;
+	request->proxy->packet->timestamp = *now;
 	request->proxy->listener->debug(request, request->proxy->packet, false);
 	request->proxy->listener->send(request->proxy->listener, request);
 }
