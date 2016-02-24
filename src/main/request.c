@@ -63,7 +63,7 @@ static int _request_free(REQUEST *request)
 #endif
 	request->client = NULL;
 #ifdef WITH_PROXY
-	request->home_server = NULL;
+	request->proxy = NULL;
 #endif
 
 	/*
@@ -96,9 +96,6 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->proxy = NULL;
 #endif
 	request->reply = NULL;
-#ifdef WITH_PROXY
-	request->proxy_reply = NULL;
-#endif
 	request->config = NULL;
 	request->username = NULL;
 	request->password = NULL;
@@ -225,8 +222,14 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	request->coa->options = RAD_REQUEST_OPTION_COA;	/* is a CoA packet */
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;
-	request->coa->proxy = fr_radius_alloc(request->coa, false);
-	if (!request->coa->proxy) {
+	request->coa->proxy = request_alloc(request->coa);
+	if (!request->coa->proxy->packet) {
+		TALLOC_FREE(request->coa);
+		return NULL;
+	}
+
+	request->coa->proxy->packet = fr_radius_alloc(request->coa->proxy, false);
+	if (!request->coa->proxy->packet) {
 		TALLOC_FREE(request->coa);
 		return NULL;
 	}

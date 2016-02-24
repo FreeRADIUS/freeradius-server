@@ -230,9 +230,7 @@ struct rad_request {
 						//!< many request/challenge packets, like OTP, and EAP.
 
 #ifdef WITH_PROXY
-	rad_listen_t		*proxy_listener;//!< Listener for outgoing requests.
-	RADIUS_PACKET		*proxy;		//!< Outgoing request to proxy server.
-	RADIUS_PACKET		*proxy_reply;	//!< Incoming response from proxy server.
+	REQUEST			*proxy;		//!< proxied packet
 
 	home_server_t	       	*home_server;
 	home_pool_t		*home_pool;	//!< For dynamic failover

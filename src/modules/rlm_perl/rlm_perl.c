@@ -846,15 +846,15 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 		rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
 
-		if (request->proxy != NULL) {
-			perl_store_vps(request->proxy, request, &request->proxy->vps, rad_request_proxy_hv,
+		if (request->proxy) {
+			perl_store_vps(request->proxy->packet, request, &request->proxy->packet->vps, rad_request_proxy_hv,
 				       "RAD_REQUEST_PROXY", "proxy-request");
 		} else {
 			hv_undef(rad_request_proxy_hv);
 		}
 
-		if (request->proxy_reply != NULL) {
-			perl_store_vps(request->proxy_reply, request, &request->proxy_reply->vps,
+		if (request->proxy && request->proxy->reply != NULL) {
+			perl_store_vps(request->proxy->reply, request, &request->proxy->reply->vps,
 				       rad_request_proxy_reply_hv, "RAD_REQUEST_PROXY_REPLY", "proxy-reply");
 		} else {
 			hv_undef(rad_request_proxy_reply_hv);
@@ -928,18 +928,18 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 #ifdef WITH_PROXY
 		if (request->proxy &&
-		    (get_hv_content(request->proxy, request, rad_request_proxy_hv, &vp,
+		    (get_hv_content(request->proxy->packet, request, rad_request_proxy_hv, &vp,
 		    		    "RAD_REQUEST_PROXY", "proxy-request") == 0)) {
-			fr_pair_list_free(&request->proxy->vps);
-			request->proxy->vps = vp;
+			fr_pair_list_free(&request->proxy->packet->vps);
+			request->proxy->packet->vps = vp;
 			vp = NULL;
 		}
 
-		if (request->proxy_reply &&
-		    (get_hv_content(request->proxy_reply, request, rad_request_proxy_reply_hv, &vp,
+		if (request->proxy && request->proxy->reply &&
+		    (get_hv_content(request->proxy->reply, request, rad_request_proxy_reply_hv, &vp,
 		    		    "RAD_REQUEST_PROXY_REPLY", "proxy-reply") == 0)) {
-			fr_pair_list_free(&request->proxy_reply->vps);
-			request->proxy_reply->vps = vp;
+			fr_pair_list_free(&request->proxy->reply->vps);
+			request->proxy->reply->vps = vp;
 			vp = NULL;
 		}
 #endif

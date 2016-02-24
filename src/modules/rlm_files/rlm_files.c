@@ -491,7 +491,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 
 	return file_common(inst, request, inst->preproxy_usersfile,
 			   inst->preproxy_users ? inst->preproxy_users : inst->common,
-			   request->packet, request->proxy);
+			   request->packet, request->proxy->packet);
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
@@ -500,7 +500,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 
 	return file_common(inst, request, inst->postproxy_usersfile,
 			   inst->postproxy_users ? inst->postproxy_users : inst->common,
-			   request->proxy_reply, request->reply);
+			   request->proxy->reply, request->reply);
 }
 #endif
 

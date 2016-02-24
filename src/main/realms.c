@@ -225,12 +225,12 @@ static ssize_t xlat_home_server(char **out, size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, char const *fmt)
 {
-	if (!request->home_server) {
+	if (!request->proxy || !request->proxy->home_server) {
 		RWDEBUG("No home_server associated with this request");
 		return 0;
 	}
 
-	return xlat_cs(request->home_server->cs, fmt, *out, outlen);
+	return xlat_cs(request->proxy->home_server->cs, fmt, *out, outlen);
 }
 
 
@@ -2296,7 +2296,6 @@ REALM *realm_find(char const *name)
  */
 void home_server_update_request(home_server_t *home, REQUEST *request)
 {
-
 	/*
 	 *	Allocate the proxy packet, only if it wasn't
 	 *	already allocated by a module.  This check is
@@ -2317,8 +2316,21 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	module, and encapsulated into an EAP packet.
 	 */
 	if (!request->proxy) {
-		request->proxy = fr_radius_alloc(request, true);
+		request->proxy = request_alloc(request);
 		if (!request->proxy) {
+			ERROR("no memory");
+			fr_exit(1);
+		}
+
+		request->proxy->parent = request;
+
+		request->proxy->number = request->number;
+		request->proxy->root = request->root;
+	}
+
+	if (!request->proxy->packet) {
+		request->proxy->packet = fr_radius_alloc(request->proxy, true);
+		if (!request->proxy->packet) {
 			ERROR("no memory");
 			fr_exit(1);
 		}
@@ -2333,29 +2345,29 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	attribute is the one hacked through
 		 *	the 'hints' file.
 		 */
-		request->proxy->vps = fr_pair_list_copy(request->proxy,
-					       request->packet->vps);
+		request->proxy->packet->vps = fr_pair_list_copy(request->proxy->packet,
+								request->packet->vps);
 	}
 
 	/*
 	 *	Update the various fields as appropriate.
 	 */
-	request->proxy->src_ipaddr = home->src_ipaddr;
-	request->proxy->src_port = 0;
-	request->proxy->dst_ipaddr = home->ipaddr;
-	request->proxy->dst_port = home->port;
+	request->proxy->packet->src_ipaddr = home->src_ipaddr;
+	request->proxy->packet->src_port = 0;
+	request->proxy->packet->dst_ipaddr = home->ipaddr;
+	request->proxy->packet->dst_port = home->port;
 #ifdef WITH_TCP
-	request->proxy->proto = home->proto;
+	request->proxy->packet->proto = home->proto;
 #endif
-	request->home_server = home;
+	request->proxy->home_server = home;
 
 	/*
 	 *	Access-Requests have a Message-Authenticator added,
 	 *	unless one already exists.
 	 */
 	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-	    !fr_pair_find_by_num(request->proxy->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
-		fr_pair_make(request->proxy, &request->proxy->vps,
+	    !fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
+		fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
 			 "Message-Authenticator", "0x00",
 			 T_OP_SET);
 	}

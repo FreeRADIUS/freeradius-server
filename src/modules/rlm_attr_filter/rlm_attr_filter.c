@@ -322,8 +322,8 @@ RLM_AF_FUNC(preacct, packet)
 RLM_AF_FUNC(accounting, reply)
 
 #ifdef WITH_PROXY
-RLM_AF_FUNC(pre_proxy, proxy)
-RLM_AF_FUNC(post_proxy, proxy_reply)
+RLM_AF_FUNC(pre_proxy, proxy->packet)
+RLM_AF_FUNC(post_proxy, proxy->reply)
 #endif
 
 #ifdef WITH_COA

@@ -2176,6 +2176,8 @@ int process_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
 {
+	rad_assert(request->proxy != NULL);
+
 	return indexed_modcall(MOD_PRE_PROXY, type, request);
 }
 
@@ -2184,6 +2186,8 @@ rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
  */
 rlm_rcode_t process_post_proxy(int type, REQUEST *request)
 {
+	rad_assert(request->proxy != NULL);
+
 	return indexed_modcall(MOD_POST_PROXY, type, request);
 }
 

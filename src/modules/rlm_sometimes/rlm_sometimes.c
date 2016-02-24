@@ -150,14 +150,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
 
-	return sometimes_return(instance, request, request->proxy, request->proxy_reply);
+	return sometimes_return(instance, request, request->proxy->packet, request->proxy->reply);
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
-	if (!request->proxy_reply) return RLM_MODULE_NOOP;
+	if (!request->proxy || !request->proxy->reply) return RLM_MODULE_NOOP;
 
-	return sometimes_return(instance, request, request->proxy_reply, NULL);
+	return sometimes_return(instance, request, request->proxy->reply, NULL);
 }
 #endif
 

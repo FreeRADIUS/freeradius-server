@@ -1116,7 +1116,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			REDEBUG("Failed to create a CoA/Disconnect Request message");
 			return -2;
 		}
-		context->coa->proxy->code = (map->lhs->tmpl_list == PAIR_LIST_COA) ?
+		context->coa->proxy->packet->code = (map->lhs->tmpl_list == PAIR_LIST_COA) ?
 					    PW_CODE_COA_REQUEST :
 					    PW_CODE_DISCONNECT_REQUEST;
 	}

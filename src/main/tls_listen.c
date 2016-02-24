@@ -681,16 +681,16 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	encoded.  The "ping home server" code does not.  So,
 	 *	if there's no packet, encode it here.
 	 */
-	if (!request->proxy->data) {
-		request->proxy_listener->encode(request->proxy_listener,
-						request);
+	if (!request->proxy->packet->data) {
+		request->proxy->listener->encode(request->proxy->listener,
+						 request);
 	}
 
 	DEBUG3("Proxy is writing %u bytes to SSL",
-	       (unsigned int) request->proxy->data_len);
+	       (unsigned int) request->proxy->packet->data_len);
 	pthread_mutex_lock(&sock->mutex);
-	rcode = SSL_write(sock->tls_session->ssl, request->proxy->data,
-			  request->proxy->data_len);
+	rcode = SSL_write(sock->tls_session->ssl, request->proxy->packet->data,
+			  request->proxy->packet->data_len);
 	if (rcode < 0) {
 		int err;
 

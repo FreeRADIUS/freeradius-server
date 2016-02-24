@@ -204,30 +204,30 @@ void request_stats_final(REQUEST *request)
 	}
 
 #ifdef WITH_PROXY
-	if (!request->proxy || !request->home_server) goto done;	/* simplifies formatting */
+	if (!request->proxy || !request->proxy->home_server) goto done;	/* simplifies formatting */
 
-	switch (request->proxy->code) {
+	switch (request->proxy->packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		proxy_auth_stats.total_requests += request->num_proxied_requests;
-		request->home_server->stats.total_requests += request->num_proxied_requests;
+		request->proxy->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
 		proxy_acct_stats.total_requests += request->num_proxied_requests;
-		request->home_server->stats.total_requests += request->num_proxied_requests;
+		request->proxy->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 #endif
 
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
 		proxy_coa_stats.total_requests += request->num_proxied_requests;
-		request->home_server->stats.total_requests += request->num_proxied_requests;
+		request->proxy->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
 		proxy_dsc_stats.total_requests += request->num_proxied_requests;
-		request->home_server->stats.total_requests += request->num_proxied_requests;
+		request->proxy->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 #endif
 
@@ -235,22 +235,22 @@ void request_stats_final(REQUEST *request)
 		break;
 	}
 
-	if (!request->proxy_reply) goto done;	/* simplifies formatting */
+	if (!request->proxy->reply) goto done;	/* simplifies formatting */
 
 #undef INC
-#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses; request->home_server->stats._x += request->num_proxied_responses;
+#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses; request->proxy->home_server->stats._x += request->num_proxied_responses;
 
-	switch (request->proxy_reply->code) {
+	switch (request->proxy->reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		INC(total_access_accepts);
 	proxy_stats:
 		INC(total_responses);
 		fr_stats_bins(&proxy_auth_stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
-		fr_stats_bins(&request->home_server->stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
+		fr_stats_bins(&request->proxy->home_server->stats,
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
 		break;
 
 	case PW_CODE_ACCESS_REJECT:
@@ -264,13 +264,13 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		proxy_acct_stats.total_responses++;
-		request->home_server->stats.total_responses++;
+		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_acct_stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
-		fr_stats_bins(&request->home_server->stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
+		fr_stats_bins(&request->proxy->home_server->stats,
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
 		break;
 #endif
 
@@ -278,31 +278,31 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_COA_ACK:
 	case PW_CODE_COA_NAK:
 		proxy_coa_stats.total_responses++;
-		request->home_server->stats.total_responses++;
+		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_coa_stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
-		fr_stats_bins(&request->home_server->stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
+		fr_stats_bins(&request->proxy->home_server->stats,
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
 		break;
 
 	case PW_CODE_DISCONNECT_ACK:
 	case PW_CODE_DISCONNECT_NAK:
 		proxy_dsc_stats.total_responses++;
-		request->home_server->stats.total_responses++;
+		request->proxy->home_server->stats.total_responses++;
 		fr_stats_bins(&proxy_dsc_stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
-		fr_stats_bins(&request->home_server->stats,
-			      &request->proxy->timestamp,
-			      &request->proxy_reply->timestamp);
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
+		fr_stats_bins(&request->proxy->home_server->stats,
+			      &request->proxy->packet->timestamp,
+			      &request->proxy->reply->timestamp);
 		break;
 #endif
 
 	default:
 		proxy_auth_stats.total_unknown_types++;
-		request->home_server->stats.total_unknown_types++;
+		request->proxy->home_server->stats.total_unknown_types++;
 		break;
 	}
 

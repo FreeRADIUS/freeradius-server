@@ -323,7 +323,7 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 		if (request->proxy) {
 			char proxy_buffer[INET6_ADDRSTRLEN];
 
-			inet_ntop(request->proxy->dst_ipaddr.af, &request->proxy->dst_ipaddr.ipaddr,
+			inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.ipaddr,
 				  proxy_buffer, sizeof(proxy_buffer));
 			WRITE("\tFreeradius-Proxied-To = %s\n", proxy_buffer);
 		}
@@ -484,9 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, REQUEST *reques
 #ifdef WITH_PROXY
 static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
-	if (request->proxy && request->proxy->vps) {
-		return detail_do(instance, request, request->proxy, false);
-	}
+	return detail_do(instance, request, request->proxy->packet, false);
 
 	return RLM_MODULE_NOOP;
 }
@@ -497,10 +495,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
-	if (request->proxy_reply && request->proxy_reply->vps) {
-		return detail_do(instance, request, request->proxy_reply, false);
-	}
-
 	/*
 	 *	No reply: we must be doing Post-Proxy-Type = Fail.
 	 *
@@ -508,7 +502,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	 *	to minimize the amount of code, and to highlight that
 	 *	it's doing normal accounting.
 	 */
-	if (!request->proxy_reply) {
+	if (!request->proxy->reply) {
 		rlm_rcode_t rcode;
 
 		rcode = mod_accounting(instance, request);
@@ -518,7 +512,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		return rcode;
 	}
 
-	return RLM_MODULE_NOOP;
+	return detail_do(instance, request, request->proxy->reply, false);
 }
 #endif
 

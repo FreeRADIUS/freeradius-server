@@ -1701,19 +1701,19 @@ static int acct_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
  */
 static int proxy_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	rad_assert(request->proxy_listener == listener);
+	rad_assert(request->proxy->listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 
-	if (fr_radius_send(request->proxy, NULL,
-			   request->home_server->secret) < 0) {
+	if (fr_radius_send(request->proxy->packet, NULL,
+			   request->proxy->home_server->secret) < 0) {
 		RERROR("Failed sending proxied request: %s",
 			       fr_strerror());
 		return -1;
 	}
 
-	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
+	if (request->proxy->packet->data_len > (MAX_PACKET_LEN - 100)) {
 		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->proxy->data_len, MAX_PACKET_LEN);
+		      request->proxy->packet->data_len, MAX_PACKET_LEN);
 	}
 
 	return 0;
@@ -2009,7 +2009,7 @@ static int do_proxy(REQUEST *request)
 	VALUE_PAIR *vp;
 
 	if (request->in_proxy_hash ||
-	    (request->proxy_reply && (request->proxy_reply->code != 0))) {
+	    (request->proxy->reply && (request->proxy->reply->code != 0))) {
 		return 0;
 	}
 
@@ -2127,12 +2127,12 @@ int rad_coa_recv(REQUEST *request)
 	}
 
 #  ifdef WITH_PROXY
-	else if (request->proxy_reply) {
+	else if (request->proxy && request->proxy->reply) {
 		/*
 		 *	Start the reply code with the proxy reply
 		 *	code.
 		 */
-		request->reply->code = request->proxy_reply->code;
+		request->reply->code = request->proxy->reply->code;
 	}
 #  endif
 
@@ -2478,18 +2478,18 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 #ifdef WITH_PROXY
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	if (fr_radius_encode(request->proxy, NULL, request->home_server->secret) < 0) {
+	if (fr_radius_encode(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
 		RERROR("Failed encoding proxied packet: %s", fr_strerror());
 
 		return -1;
 	}
 
-	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
+	if (request->proxy->packet->data_len > (MAX_PACKET_LEN - 100)) {
 		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->proxy->data_len, MAX_PACKET_LEN);
+		      request->proxy->packet->data_len, MAX_PACKET_LEN);
 	}
 
-	if (fr_radius_sign(request->proxy, NULL, request->home_server->secret) < 0) {
+	if (fr_radius_sign(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
 		RERROR("Failed signing proxied packet: %s", fr_strerror());
 
 		return -1;
@@ -2505,8 +2505,8 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	 *	fr_radius_verify is run in event.c, received_proxy_response()
 	 */
 
-	return fr_radius_decode(request->proxy_reply, request->proxy,
-				request->home_server->secret);
+	return fr_radius_decode(request->proxy->reply, request->proxy->packet,
+				request->proxy->home_server->secret);
 }
 #endif
 

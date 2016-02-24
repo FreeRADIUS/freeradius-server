@@ -310,8 +310,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	if (!((inst->packet_code == 0) || (request->packet->code == inst->packet_code) ||
 	      (request->reply->code == inst->packet_code)
 #ifdef WITH_PROXY
-	      || (request->proxy && (request->proxy->code == inst->packet_code)) ||
-	      (request->proxy_reply && (request->proxy_reply->code == inst->packet_code))
+	      || (request->proxy &&
+		  ((request->proxy->packet->code == inst->packet_code) ||
+		   (request->proxy->reply && (request->proxy->reply->code == inst->packet_code))))
 #endif
 		    )) {
 		RDEBUG2("Packet type is not %s. Not executing", inst->packet_type);

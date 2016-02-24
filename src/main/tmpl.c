@@ -217,41 +217,41 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 
 #ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:
-		if (!request->proxy) break;
-		return &request->proxy->vps;
+		if (!request->proxy && !request->proxy->packet) break;
+		return &request->proxy->packet->vps;
 
 	case PAIR_LIST_PROXY_REPLY:
-		if (!request->proxy_reply) break;
-		return &request->proxy_reply->vps;
+		if (!request->proxy && !request->proxy->reply) break;
+		return &request->proxy->reply->vps;
 #endif
 #ifdef WITH_COA
 	case PAIR_LIST_COA:
 		if (request->coa &&
-		    (request->coa->proxy->code == PW_CODE_COA_REQUEST)) {
-			return &request->coa->proxy->vps;
+		    (request->coa->proxy->packet->code == PW_CODE_COA_REQUEST)) {
+			return &request->coa->proxy->packet->vps;
 		}
 		break;
 
 	case PAIR_LIST_COA_REPLY:
 		if (request->coa && /* match reply with request */
-		    (request->coa->proxy->code == PW_CODE_COA_REQUEST) &&
-		    request->coa->proxy_reply) {
-			return &request->coa->proxy_reply->vps;
+		    (request->coa->proxy->packet->code == PW_CODE_COA_REQUEST) &&
+		    request->coa->proxy->reply) {
+			return &request->coa->proxy->reply->vps;
 		}
 		break;
 
 	case PAIR_LIST_DM:
 		if (request->coa &&
-		    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST)) {
-			return &request->coa->proxy->vps;
+		    (request->coa->proxy->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+			return &request->coa->proxy->packet->vps;
 		}
 		break;
 
 	case PAIR_LIST_DM_REPLY:
 		if (request->coa && /* match reply with request */
-		    (request->coa->proxy->code == PW_CODE_DISCONNECT_REQUEST) &&
-		    request->coa->proxy_reply) {
-			return &request->coa->proxy->vps;
+		    (request->coa->proxy->packet->code == PW_CODE_DISCONNECT_REQUEST) &&
+		    request->coa->proxy->reply) {
+			return &request->coa->proxy->reply->vps;
 		}
 		break;
 #endif
@@ -293,20 +293,24 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list)
 
 #ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:
-		return request->proxy;
+		if (!request->proxy) return NULL;
+		return request->proxy->packet;
 
 	case PAIR_LIST_PROXY_REPLY:
-		return request->proxy_reply;
+		if (!request->proxy) return NULL;
+		return request->proxy->reply;
 #endif
 
 #ifdef WITH_COA
 	case PAIR_LIST_COA:
 	case PAIR_LIST_DM:
-		return request->coa->packet;
+		if (!request->coa) return NULL;
+		return request->coa->proxy->packet;
 
 	case PAIR_LIST_COA_REPLY:
 	case PAIR_LIST_DM_REPLY:
-		return request->coa->reply;
+		if (!request->coa) return NULL;
+		return request->coa->proxy->reply;
 #endif
 	}
 
@@ -347,36 +351,38 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
 
 #ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:
-		return request->proxy;
+		if (!request->proxy) return NULL;
+		return request->proxy->packet;
 
 	case PAIR_LIST_PROXY_REPLY:
-		return request->proxy_reply;
+		if (!request->proxy) return NULL;
+		return request->proxy->reply;
 #endif
 
 #ifdef WITH_COA
 	case PAIR_LIST_COA:
 		if (!request->coa) return NULL;
 		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->code != PW_CODE_COA_REQUEST) return NULL;
-		return request->coa->proxy;
+		if (request->coa->proxy->packet->code != PW_CODE_COA_REQUEST) return NULL;
+		return request->coa->proxy->packet;
 
 	case PAIR_LIST_COA_REPLY:
 		if (!request->coa) return NULL;
 		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->code != PW_CODE_COA_REQUEST) return NULL;
-		return request->coa->proxy_reply;
+		if (request->coa->proxy->packet->code != PW_CODE_COA_REQUEST) return NULL;
+		return request->coa->proxy->reply;
 
 	case PAIR_LIST_DM:
 		if (!request->coa) return NULL;
 		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
-		return request->coa->proxy;
+		if (request->coa->proxy->packet->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
+		return request->coa->proxy->packet;
 
 	case PAIR_LIST_DM_REPLY:
 		if (!request->coa) return NULL;
 		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
-		return request->coa->proxy_reply;
+		if (request->coa->proxy->packet->code != PW_CODE_DISCONNECT_REQUEST) return NULL;
+		return request->coa->proxy->reply;
 #endif
 	/* Don't add default */
 	case PAIR_LIST_UNKNOWN:

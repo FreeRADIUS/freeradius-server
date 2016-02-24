@@ -239,7 +239,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		VALUE_PAIR 	*vp = NULL;
 		int		ret;
 
-		rad_assert(!request->proxy_reply);
+		rad_assert(!request->proxy->reply);
 
 		/*
 		 *	Mark the request up as having been see by the EAP
@@ -253,11 +253,11 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	Some simple sanity checks.  These should really
 		 *	be handled by the radius library...
 		 */
-		vp = fr_pair_find_by_num(request->proxy->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 		if (vp) {
-			vp = fr_pair_find_by_num(request->proxy->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
+			vp = fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 			if (!vp) {
-				fr_pair_make(request->proxy, &request->proxy->vps,
+				fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
 					     "Message-Authenticator", NULL, T_OP_EQ);
 			}
 		}
@@ -267,7 +267,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	set to 127.0.0.1 for tunneled requests, and
 		 *	we don't want to tell the world that...
 		 */
-		fr_pair_delete_by_num(&request->proxy->vps, VENDORPEC_FREERADIUS, PW_FREERADIUS_PROXIED_TO, TAG_ANY);
+		fr_pair_delete_by_num(&request->proxy->packet->vps, VENDORPEC_FREERADIUS, PW_FREERADIUS_PROXIED_TO, TAG_ANY);
 
 		RDEBUG2("Tunneled session will be proxied.  Not doing EAP");
 		rcode = RLM_MODULE_HANDLED;
@@ -518,7 +518,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 	/*
 	 *	This is allowed.
 	 */
-	if (!request->proxy_reply) return RLM_MODULE_NOOP;
+	if (!request->proxy->reply) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Hmm... there's got to be a better way to
@@ -527,7 +527,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 	 *	This is vendor Cisco (9), Cisco-AVPair
 	 *	attribute (1)
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->proxy_reply->vps);
+	for (vp = fr_cursor_init(&cursor, &request->proxy->reply->vps);
 	     vp;
 	     vp = fr_cursor_next_by_num(&cursor, 9, 1, TAG_ANY)) {
 		/*
@@ -570,8 +570,8 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 	i = 34;
 	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
 	talloc_set_type(p, uint8_t);
-	ret = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->home_server->secret,
-					       request->proxy->vector);
+	ret = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->proxy->home_server->secret,
+					       request->proxy->packet->vector);
 	if (ret < 0) {
 		REDEBUG("Decoding leap:session-key failed");
 		talloc_free(p);

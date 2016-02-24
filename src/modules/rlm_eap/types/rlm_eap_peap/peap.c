@@ -554,7 +554,7 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake && (eap_session->request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT)) {
+	if (fake && (eap_session->request->proxy->reply->code == PW_CODE_ACCESS_ACCEPT)) {
 		peap_tunnel_t *t = tls_session->opaque;
 
 		t->home_access_accept = true;
@@ -563,13 +563,13 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 		 *	Terrible hacks.
 		 */
 		rad_assert(!fake->packet);
-		fake->packet = talloc_steal(fake, request->proxy);
+		fake->packet = talloc_steal(fake, request->proxy->packet);
 		fake->packet->src_ipaddr = request->packet->src_ipaddr;
-		request->proxy = NULL;
+		request->proxy->packet = NULL;
 
 		rad_assert(!fake->reply);
-		fake->reply = talloc_steal(fake, request->proxy_reply);
-		request->proxy_reply = NULL;
+		fake->reply = talloc_steal(fake, request->proxy->reply);
+		request->proxy->reply = NULL;
 
 		if ((rad_debug_lvl > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "server %s {\n", fake->server);
@@ -599,9 +599,9 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 		/*
 		 *	Terrible hacks.
 		 */
-		request->proxy = talloc_steal(request, fake->packet);
+		request->proxy->packet = talloc_steal(request->proxy, fake->packet);
 		fake->packet = NULL;
-		request->proxy_reply = talloc_steal(request, fake->reply);
+		request->proxy->reply = talloc_steal(request->proxy, fake->reply);
 		fake->reply = NULL;
 
 		/*
@@ -615,7 +615,7 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 			return 0;
 
 		default:  /* Don't Do Anything */
-			RDEBUG2("Got reply %d", request->proxy_reply->code);
+			RDEBUG2("Got reply %d", request->proxy->reply->code);
 			break;
 		}
 	}
@@ -632,14 +632,14 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 	 */
 
 	rcode = process_reply(eap_session, tls_session, eap_session->request,
-			      eap_session->request->proxy_reply);
+			      eap_session->request->proxy->reply);
 
 	/*
 	 *	The proxy code uses the reply from the home server as
 	 *	the basis for the reply to the NAS.  We don't want that,
 	 *	so we toss it, after we've had our way with it.
 	 */
-	fr_pair_list_free(&eap_session->request->proxy_reply->vps);
+	fr_pair_list_free(&eap_session->request->proxy->reply->vps);
 
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
@@ -650,7 +650,7 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 	case RLM_MODULE_HANDLED:
 		RDEBUG2("Reply was handled");
 		eap_tls_request(eap_session);
-		request->proxy_reply->code = PW_CODE_ACCESS_CHALLENGE;
+		request->proxy->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return 1;
 
 	case RLM_MODULE_OK:
@@ -1082,13 +1082,16 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			 *	tunneled request.
 			 */
 			rad_assert(!request->proxy);
-			request->proxy = talloc_steal(request, fake->packet);
-			memset(&request->proxy->src_ipaddr, 0,
-			       sizeof(request->proxy->src_ipaddr));
-			memset(&request->proxy->dst_ipaddr, 0,
-			       sizeof(request->proxy->dst_ipaddr));
-			request->proxy->src_port = 0;
-			request->proxy->dst_port = 0;
+
+			request->proxy = request_alloc(request);
+
+			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
+			memset(&request->proxy->packet->src_ipaddr, 0,
+			       sizeof(request->proxy->packet->src_ipaddr));
+			memset(&request->proxy->packet->dst_ipaddr, 0,
+			       sizeof(request->proxy->packet->dst_ipaddr));
+			request->proxy->packet->src_port = 0;
+			request->proxy->packet->dst_port = 0;
 			fake->packet = NULL;
 			fr_radius_free(&fake->reply);
 			fake->reply = NULL;

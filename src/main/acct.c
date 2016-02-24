@@ -148,7 +148,7 @@ int rad_accounting(REQUEST *request)
 	/*
 	 *	We didn't see a reply to the proxied request.  Fail.
 	 */
-	if (request->proxy && !request->proxy_reply) return RLM_MODULE_FAIL;
+	if (request->proxy && !request->proxy->reply) return RLM_MODULE_FAIL;
 #endif
 
 	/*

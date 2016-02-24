@@ -1971,8 +1971,11 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		int code = 0;
 
 #ifdef WITH_PROXY
-		if (request->proxy_reply && (!request->reply || !request->reply->code)) {
-			code = request->proxy_reply->code;
+		/*
+		 *	This code is probably wrong.  Why automatically get the proxy reply code?
+		 */
+		if (request->proxy && request->proxy->reply && (!request->reply || !request->reply->code)) {
+			code = request->proxy->reply->code;
 		} else
 #endif
 		if (request->reply) {

@@ -263,7 +263,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 #ifdef WITH_PROXY
 static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->code);
+	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->packet->code);
 }
 #endif
 

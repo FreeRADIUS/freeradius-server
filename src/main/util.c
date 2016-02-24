@@ -926,8 +926,14 @@ void verify_request(char const *file, int line, REQUEST *request)
 	if (request->packet) verify_packet(file, line, request, request->packet, "request");
 	if (request->reply) verify_packet(file, line, request, request->reply, "reply");
 #ifdef WITH_PROXY
-	if (request->proxy) verify_packet(file, line, request, request->proxy, "proxy-request");
-	if (request->proxy_reply) verify_packet(file, line, request, request->proxy_reply, "proxy-reply");
+	if (request->proxy) {
+		(void) talloc_get_type_abort(request->proxy, REQUEST);
+
+		rad_assert(request == talloc_parent(request->proxy));
+
+		if (request->proxy->packet) verify_packet(file, line, request->proxy, request->proxy->packet, "proxy-request");
+		if (request->proxy->reply) verify_packet(file, line, request->proxy, request->proxy->reply, "proxy-reply");
+	}
 #endif
 
 #ifdef WITH_COA

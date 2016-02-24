@@ -368,7 +368,7 @@ int rad_authenticate(REQUEST *request)
 	if (request->proxy) {
 		int code = 0;
 
-		if (request->proxy_reply) code = request->proxy_reply->code;
+		if (request->proxy->reply) code = request->proxy->reply->code;
 
 		switch (code) {
 		/*
