@@ -650,7 +650,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		 *	We haven't received all responses, AND there's still
 		 *	time to wait.  Do so.
 		 */
-		if ((request->proxy->num_proxied_requests > request->proxy->num_proxied_responses) &&
+		if ((request->proxy->proxy_requests > request->proxy->proxy_replies) &&
 #ifdef WITH_TCP
 		    (request->proxy->home_server->proto != IPPROTO_TCP) &&
 #endif
@@ -2075,8 +2075,8 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	pthread_mutex_lock(&proxy_mutex);
 	proxy_listener = NULL;
-	request->proxy->num_proxied_requests = 1;
-	request->proxy->num_proxied_responses = 0;
+	request->proxy->proxy_requests = 1;
+	request->proxy->proxy_replies = 0;
 
 	for (tries = 0; tries < 2; tries++) {
 		rad_listen_t *this;
@@ -2254,7 +2254,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 			 *	removed from the hash.
 			 */
 			if ((rcode == 0) &&
-			    (request->proxy->num_proxied_requests <= request->proxy->num_proxied_responses)) {
+			    (request->proxy->proxy_requests <= request->proxy->proxy_replies)) {
 				remove_from_proxy_hash(request);
 			}
 		} else {
@@ -2387,7 +2387,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	request = request->parent;
 
-	request->proxy->num_proxied_responses++; /* needs to be protected by lock */
+	request->proxy->proxy_replies++; /* needs to be protected by lock */
 
 	pthread_mutex_unlock(&proxy_mutex);
 
@@ -3804,7 +3804,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 			  buffer, sizeof(buffer)),
 		request->proxy->packet->dst_port,
 		request->proxy->packet->id);
-	request->proxy->num_proxied_requests++;
+	request->proxy->proxy_requests++;
 
 	rad_assert(request->proxy->listener != NULL);
 	FR_STATS_TYPE_INC(home->stats.total_requests);
