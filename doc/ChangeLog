@@ -20,6 +20,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Update aclocal tests for FreeBSD 10.  Patches from
 	  Mathieu Simon.
 	* Remove occasional hang in rlm_linelog.
+	* Correctly copy all vendor specific attributes when
+	  PEAP/TTLS copy_request_to_tunnel is used.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements

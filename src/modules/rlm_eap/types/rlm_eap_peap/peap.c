@@ -1268,7 +1268,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 			case PW_MESSAGE_AUTHENTICATOR:
 			case PW_EAP_MESSAGE:
 			case PW_STATE:
-				continue;
+				if (!vp->da->vendor) continue;
 
 				/*
 				 *	By default, copy it over.
