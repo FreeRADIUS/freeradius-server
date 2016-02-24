@@ -3957,7 +3957,6 @@ static void request_coa_originate(REQUEST *request)
 	rad_assert(request->coa != NULL);
 	rad_assert(request->proxy == NULL);
 	rad_assert(!request->in_proxy_hash);
-	rad_assert(request->proxy->reply == NULL);
 
 	/*
 	 *	Check whether we want to originate one, or cancel one.
