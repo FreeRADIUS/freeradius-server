@@ -988,7 +988,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			/*
 			 *	Some attributes are handled specially.
 			 */
-			switch (vp->da->attr) {
+			if (!vp->da->vendor) switch (vp->da->attr) {
 			/*
 			 *	NEVER copy Message-Authenticator,
 			 *	EAP-Message, or State.  They're
