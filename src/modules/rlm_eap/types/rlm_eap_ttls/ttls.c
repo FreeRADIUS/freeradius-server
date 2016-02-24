@@ -1117,7 +1117,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			/*
 			 *	Some attributes are handled specially.
 			 */
-			switch (vp->da->attr) {
+			if (!vp->da->vendor) switch (vp->da->attr) {
 			/*
 			 *	NEVER copy Message-Authenticator,
 			 *	EAP-Message, or State.  They're

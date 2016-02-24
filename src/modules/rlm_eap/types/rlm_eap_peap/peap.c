@@ -1254,7 +1254,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 			/*
 			 *	Some attributes are handled specially.
 			 */
-			switch (vp->da->attr) {
+			if (!vp->da->vendor) switch (vp->da->attr) {
 				/*
 				 *	NEVER copy Message-Authenticator,
 				 *	EAP-Message, or State.  They're
