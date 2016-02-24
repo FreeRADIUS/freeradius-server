@@ -217,11 +217,11 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 
 #ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:
-		if (!request->proxy && !request->proxy->packet) break;
+		if (!request->proxy || !request->proxy->packet) break;
 		return &request->proxy->packet->vps;
 
 	case PAIR_LIST_PROXY_REPLY:
-		if (!request->proxy && !request->proxy->reply) break;
+		if (!request->proxy || !request->proxy->reply) break;
 		return &request->proxy->reply->vps;
 #endif
 #ifdef WITH_COA
