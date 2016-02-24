@@ -274,8 +274,6 @@ struct rad_request {
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
 
-	struct timeval		proxy_retransmit;
-
 	uint32_t		num_proxied_requests;	//!< How many times this request was proxied.
 							//!< Retransmissions are driven by requests from the NAS.
 	uint32_t		num_proxied_responses;
