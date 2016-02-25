@@ -352,8 +352,8 @@ rlm_preprocess
 ~~~~~~~~~~~~~~
 
 In 2.x.x ``huntroups`` and ``users`` files were loaded from default locations
-without being configured explicitly. Since 3.0 you need to set
-``huntgroups`` and ``users`` configuration item in module section in order
+without being configured explicitly. Since 3.x.x you need to set
+``huntgroups`` and ``users`` configuration item(s) in module section in order
 to get them being processed.
 
 New Modules
