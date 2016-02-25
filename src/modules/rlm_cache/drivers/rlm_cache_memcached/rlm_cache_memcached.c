@@ -110,7 +110,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 
 	char			buffer[256];
 
-	buffer[0] = '\0';
+	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
 	/*
 	 *	Get version info from the libmemcached API.
