@@ -348,6 +348,14 @@ some systems using NIS or NSS will not supply passwords to the
 ``unix`` module.  For those systems, we recommend putting users and
 passwords into a database, instead of relying on ``/etc/passwd``.
 
+rlm_preprocess
+~~~~~~~~~~~~~~
+
+In 2.x.x ``huntroups`` and ``users`` files were loaded from default locations
+without being configured explicitly. Since 3.x.x you need to set
+``huntgroups`` and ``users`` configuration item(s) in module section in order
+to get them being processed.
+
 New Modules
 -----------
 
