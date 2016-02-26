@@ -20,6 +20,10 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Update aclocal tests for FreeBSD 10.  Patches from
 	  Mathieu Simon.
 	* Remove occasional hang in rlm_linelog.
+	* Copy VSAs to inner tunnel for TTLS and PEAP.
+	  Fixes #1544
+	* A few minor bugfixes caught in v3.1.x cleanup, and
+	  back-ported to v3.0.x.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
