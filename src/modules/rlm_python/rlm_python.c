@@ -816,7 +816,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	return value if successful. Otherwise, continue to the failed label
 	 */
 	code = do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
-	if (code >= 0) {
+	if (code == RLM_MODULE_OK) {
 		return code;
 	}
 failed:
