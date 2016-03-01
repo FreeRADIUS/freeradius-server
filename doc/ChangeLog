@@ -24,6 +24,7 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Fixes #1544
 	* A few minor bugfixes caught in v3.1.x cleanup, and
 	  back-ported to v3.0.x.
+	* do_not_respond again works in post-proxy
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
