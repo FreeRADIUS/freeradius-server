@@ -2009,7 +2009,7 @@ static int do_proxy(REQUEST *request)
 	VALUE_PAIR *vp;
 
 	if (request->in_proxy_hash ||
-	    (request->proxy->reply && (request->proxy->reply->code != 0))) {
+	    (request->proxy && request->proxy->reply && (request->proxy->reply->code != 0))) {
 		return 0;
 	}
 
