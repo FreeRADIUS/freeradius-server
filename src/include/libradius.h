@@ -163,6 +163,7 @@ typedef struct radius_packet {
 
 	uint8_t			vector[AUTH_VECTOR_LEN];//!< RADIUS authentication vector.
 
+	uint32_t       		count;			//!< Number of times we've seen this packet
 	struct timeval		timestamp;		//!< When we received the packet.
 	uint8_t			*data;			//!< Packet data (body).
 	size_t			data_len;		//!< Length of packet data.
