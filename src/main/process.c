@@ -2278,40 +2278,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		rcode = process_post_proxy(post_proxy_type, request);
 	}
 
-#ifdef WITH_COA
-	if (request->packet->code == request->proxy->packet->code) {
-	  /*
-	   *	Don't run the next bit if we originated a CoA
-	   *	packet, after receiving an Access-Request or
-	   *	Accounting-Request.
-	   */
-#endif
-
-		/*
-		 *	There may NOT be a proxy reply, as we may be
-		 *	running Post-Proxy-Type = Fail.
-		 */
-		if (reply) {
-			fr_pair_add(&request->reply->vps, fr_pair_list_copy(request->reply, reply->vps));
-
-			/*
-			 *	Delete the Proxy-State Attributes from
-			 *	the reply.  These include Proxy-State
-			 *	attributes from us and remote server.
-			 */
-			fr_pair_delete_by_num(&request->reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
-
-		} else {
-			vp = fr_pair_find_by_num(request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
-			if (vp && (vp->vp_integer != 256)) {
-				request->proxy->reply = fr_radius_alloc_reply(request, request->proxy->packet);
-				request->proxy->reply->code = vp->vp_integer;
-				fr_pair_delete_by_num(&request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
-			}
-		}
-#ifdef WITH_COA
-	}
-#endif
 	switch (rcode) {
 	default:  /* Don't do anything */
 		break;
@@ -2606,6 +2572,20 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, NULL)) {
+			VALUE_PAIR *vp;
+
+			/*
+			 *	We didn't receive a reply, but maybe
+			 *	post-proxy-type FAIL told us to create
+			 *	one.
+			 */
+			vp = fr_pair_find_by_num(request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+			if (vp && (vp->vp_integer != 256)) {
+				request->proxy->reply = fr_radius_alloc_reply(request, request->proxy->packet);
+				request->proxy->reply->code = vp->vp_integer;
+				fr_pair_delete_by_num(&request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+			}
+
 			request->handle(request);
 		}
 		request_finish(request, action);
@@ -2655,8 +2635,19 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, request->proxy->reply)) {
+			VALUE_PAIR *vp;
+
+			/*
+			 *	Base the reply to the NAS on the reply from the home server.
+			 *	Except that we don't copy over Proxy-State.
+			 */
+			vp = fr_pair_list_copy(request->reply, request->proxy->reply->vps);
+			fr_pair_delete_by_num(&vp, 0, PW_PROXY_STATE, TAG_ANY);
+			fr_pair_add(&request->reply->vps, vp);
+
 			request->handle(request);
 		}
+
 		request_finish(request, action);
 		break;
 
