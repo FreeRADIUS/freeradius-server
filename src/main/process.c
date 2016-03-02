@@ -2243,23 +2243,20 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		/*
 		 *	Decode the packet if required.
 		 */
-		if (request->proxy->listener) {
-			rcode = request->proxy->listener->decode(request->proxy->listener, request);
-			request->proxy->listener->debug(request, reply, true);
+		rcode = request->proxy->listener->decode(request->proxy->listener, request);
+		request->proxy->listener->debug(request, reply, true);
 
-			/*
-			 *	Pro-actively remove it from the proxy hash.
-			 *	This is later than in 2.1.x, but it means that
-			 *	the replies are authenticated before being
-			 *	removed from the hash.
-			 */
-			if ((rcode == 0) &&
-			    (request->proxy->proxy_requests <= request->proxy->proxy_replies)) {
-				remove_from_proxy_hash(request);
-			}
-		} else {
-			rad_assert(!request->in_proxy_hash);
+		/*
+		 *	Pro-actively remove it from the proxy hash.
+		 *	This is later than in 2.1.x, but it means that
+		 *	the replies are authenticated before being
+		 *	removed from the hash.
+		 */
+		if ((rcode == 0) &&
+		    (request->proxy->proxy_requests <= request->proxy->proxy_replies)) {
+			remove_from_proxy_hash(request);
 		}
+
 	} else if (request->in_proxy_hash) {
 		remove_from_proxy_hash(request);
 	}
