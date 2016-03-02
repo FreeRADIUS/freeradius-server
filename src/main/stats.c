@@ -208,26 +208,26 @@ void request_stats_final(REQUEST *request)
 
 	switch (request->proxy->packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
-		proxy_auth_stats.total_requests += request->proxy_requests;
-		request->proxy->home_server->stats.total_requests += request->proxy_requests;
+		proxy_auth_stats.total_requests += request->proxy->packet->count;
+		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.total_requests += request->proxy_requests;
-		request->proxy->home_server->stats.total_requests += request->proxy_requests;
+		proxy_acct_stats.total_requests += request->proxy->packet->count;
+		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
 		break;
 #endif
 
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
-		proxy_coa_stats.total_requests += request->proxy_requests;
-		request->proxy->home_server->stats.total_requests += request->proxy_requests;
+		proxy_coa_stats.total_requests += request->proxy->packet->count;
+		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
-		proxy_dsc_stats.total_requests += request->proxy_requests;
-		request->proxy->home_server->stats.total_requests += request->proxy_requests;
+		proxy_dsc_stats.total_requests += request->proxy->packet->count;
+		request->proxy->home_server->stats.total_requests += request->proxy->packet->count;
 		break;
 #endif
 
@@ -238,7 +238,7 @@ void request_stats_final(REQUEST *request)
 	if (!request->proxy->reply) goto done;	/* simplifies formatting */
 
 #undef INC
-#define INC(_x) proxy_auth_stats._x += request->proxy_replies; request->proxy->home_server->stats._x += request->proxy_replies;
+#define INC(_x) proxy_auth_stats._x += request->proxy->reply->count; request->proxy->home_server->stats._x += request->proxy->reply->count;
 
 	switch (request->proxy->reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:

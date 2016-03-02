@@ -270,10 +270,6 @@ struct rad_request {
 	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
-
-	uint32_t		proxy_requests;	//!< How many proxy packets we sent
-							//!< Retransmissions are driven by requests from the NAS.
-	uint32_t		proxy_replies;	//!< How many replies we received
 #endif
 
 	char const		*server;
