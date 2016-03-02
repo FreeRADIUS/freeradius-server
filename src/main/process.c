@@ -4168,6 +4168,12 @@ static bool coa_keep_waiting(REQUEST *request)
 	 */
 	if (request->proxy->home_server->coa_mrc &&
 	    (request->proxy->packet->count >= request->proxy->home_server->coa_mrc)) {
+		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
+		       request->proxy->packet->id,
+		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
+				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->packet->dst_port);
 		return false;
 	}
 
@@ -4256,7 +4262,6 @@ static bool coa_keep_waiting(REQUEST *request)
 static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 {
 	VERIFY_REQUEST(request);
-	char buffer[INET6_ADDRSTRLEN];
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
@@ -4275,13 +4280,6 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		 *	And maybe do fail-over, which would be nice!
 		 */
 		if (coa_keep_waiting(request)) break;
-
-		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
-		       request->proxy->packet->id,
-		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       request->proxy->packet->dst_port);
 
 		if (setup_post_proxy_fail(request)) {
 			worker_thread(request, coa_no_reply);
