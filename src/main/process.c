@@ -3719,6 +3719,21 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	char buffer[INET6_ADDRSTRLEN];
 
 	/*
+	 *	Use a new connection when the home server is
+	 *	dead, or when there's no proxy listener, or
+	 *	when the listener is failed or dead.
+	 *
+	 *	If the listener is known or frozen, use it for
+	 *	retransmits.
+	 */
+	if ((home->state == HOME_STATE_IS_DEAD) ||
+	    !request->proxy->listener ||
+	    (request->proxy->listener->status >= RAD_LISTEN_STATUS_EOL)) {
+		request_proxy_anew(request);
+		return;
+	}
+
+	/*
 	 *	More than one retransmit a second is stupid,
 	 *	and should be suppressed by the proxy.
 	 */
@@ -3827,21 +3842,6 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 			return;
 		}
 #endif
-
-		/*
-		 *	Use a new connection when the home server is
-		 *	dead, or when there's no proxy listener, or
-		 *	when the listener is failed or dead.
-		 *
-		 *	If the listener is known or frozen, use it for
-		 *	retransmits.
-		 */
-		if ((home->state == HOME_STATE_IS_DEAD) ||
-		    !request->proxy->listener ||
-		    (request->proxy->listener->status >= RAD_LISTEN_STATUS_EOL)) {
-			request_proxy_anew(request);
-			return;
-		}
 
 		proxy_retransmit(request, &now);
 		break;
