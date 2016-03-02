@@ -2667,13 +2667,6 @@ static int request_will_proxy(REQUEST *request)
 	if (request->in_proxy_hash) return 0;
 	if (request->reply->code != 0) return 0;
 
-#ifdef WITH_COA
-	if (request->coa) {
-		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
-		request_done(request->coa, FR_ACTION_DONE);
-	}
-#endif
-
 	vp = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
 	if (vp) {
 		realm = realm_find2(vp->vp_strvalue);
@@ -2876,32 +2869,6 @@ do_home:
 		 *	Do NOT delete Stripped-User-Name.
 		 */
 	}
-
-	/*
-	 *	If there is no PW_CHAP_CHALLENGE attribute but
-	 *	there is a PW_CHAP_PASSWORD we need to add it
-	 *	since we can't use the request authenticator
-	 *	anymore - we changed it.
-	 */
-	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-	    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) &&
-	    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL) {
-		vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_CHAP_CHALLENGE, 0);
-		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
-	}
-
-	/*
-	 *	The RFC's say we have to do this, but FreeRADIUS
-	 *	doesn't need it.
-	 */
-	vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_PROXY_STATE, 0);
-	fr_pair_value_snprintf(vp, "%u", request->packet->id);
-
-	/*
-	 *	Should be done BEFORE inserting into proxy hash, as
-	 *	pre-proxy may use this information, or change it.
-	 */
-	request->proxy->packet->code = request->packet->code;
 
 	/*
 	 *	Call the pre-proxy routines.

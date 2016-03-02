@@ -2329,6 +2329,8 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	}
 
 	if (!request->proxy->packet) {
+		VALUE_PAIR *vp;
+
 		request->proxy->packet = fr_radius_alloc(request->proxy, true);
 		if (!request->proxy->packet) {
 			ERROR("no memory");
@@ -2336,17 +2338,43 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		}
 
 		/*
-		 *	Copy the request, then look up name
-		 *	and plain-text password in the copy.
-		 *
-		 *	Note that the User-Name attribute is
-		 *	the *original* as sent over by the
-		 *	client.  The Stripped-User-Name
-		 *	attribute is the one hacked through
-		 *	the 'hints' file.
+		 *	Initialize the proxied packet based on the original one.
 		 */
+		request->proxy->packet->code = request->packet->code;
 		request->proxy->packet->vps = fr_pair_list_copy(request->proxy->packet,
 								request->packet->vps);
+
+		/*
+		 *	The RFC's say we have to do this, but FreeRADIUS
+		 *	doesn't need it.
+		 */
+		vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_PROXY_STATE, 0);
+		fr_pair_value_snprintf(vp, "%u", request->packet->id);
+
+		/*
+		 *	If there is no PW_CHAP_CHALLENGE attribute but
+		 *	there is a PW_CHAP_PASSWORD we need to add it
+		 *	since we can't use the request->packet request
+		 *	authenticator anymore, as the
+		 *	request->proxy->packet authenticator is
+		 *	different.
+		 */
+		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+		    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) &&
+		    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL) {
+			vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_CHAP_CHALLENGE, 0);
+			fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+		}
+
+		/*
+		 *	Access-Requests have a Message-Authenticator added,
+		 *	unless one already exists.
+		 */
+		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+		    !fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
+			fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
+				     "Message-Authenticator", "0x00", T_OP_SET);
+		}
 	}
 
 	/*
@@ -2360,17 +2388,6 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	request->proxy->packet->proto = home->proto;
 #endif
 	request->proxy->home_server = home;
-
-	/*
-	 *	Access-Requests have a Message-Authenticator added,
-	 *	unless one already exists.
-	 */
-	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-	    !fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
-		fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
-			 "Message-Authenticator", "0x00",
-			 T_OP_SET);
-	}
 }
 
 home_server_t *home_server_ldb(char const *realmname,
