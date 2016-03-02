@@ -364,6 +364,8 @@ static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #endif
 
 #define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_DONE);return;}} while (0)
+#define CHECK_FOR_PROXY_CANCELLED do { if (!request->proxy->listener) {request_done(request, FR_ACTION_DONE);return;}} while (0)
+
 
 #undef USEC
 #define USEC (1000000)
@@ -2177,11 +2179,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	VERIFY_REQUEST(request);
 
 	/*
-	 *	There may be a proxy reply, but it may be too late.
-	 */
-	if (!request->proxy->home_server->server && !request->proxy->listener) return 0;
-
-	/*
 	 *	Delete any reply we had accumulated until now.
 	 */
 	RDEBUG2("Clearing existing &reply: attributes");
@@ -2553,6 +2550,7 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 	CHECK_FOR_STOP;
+	CHECK_FOR_PROXY_CANCELLED;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -2620,6 +2618,7 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 	CHECK_FOR_STOP;
+	CHECK_FOR_PROXY_CANCELLED;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -4387,6 +4386,7 @@ static void coa_no_reply(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 	CHECK_FOR_STOP;
+	CHECK_FOR_PROXY_CANCELLED;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -4439,6 +4439,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 	CHECK_FOR_STOP;
+	CHECK_FOR_PROXY_CANCELLED;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
