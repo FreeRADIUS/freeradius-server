@@ -3811,21 +3811,6 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		 */
 		if (request->proxy->home_server->server) return;
 
-		/*
-		 *	Use a new connection when the home server is
-		 *	dead, or when there's no proxy listener, or
-		 *	when the listener is failed or dead.
-		 *
-		 *	If the listener is known or frozen, use it for
-		 *	retransmits.
-		 */
-		if ((home->state == HOME_STATE_IS_DEAD) ||
-		    !request->proxy->listener ||
-		    (request->proxy->listener->status >= RAD_LISTEN_STATUS_EOL)) {
-			request_proxy_anew(request);
-			return;
-		}
-
 #ifdef WITH_TCP
 		/*
 		 *	The home server is still alive, but TCP.  We
@@ -3842,6 +3827,21 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 			return;
 		}
 #endif
+
+		/*
+		 *	Use a new connection when the home server is
+		 *	dead, or when there's no proxy listener, or
+		 *	when the listener is failed or dead.
+		 *
+		 *	If the listener is known or frozen, use it for
+		 *	retransmits.
+		 */
+		if ((home->state == HOME_STATE_IS_DEAD) ||
+		    !request->proxy->listener ||
+		    (request->proxy->listener->status >= RAD_LISTEN_STATUS_EOL)) {
+			request_proxy_anew(request);
+			return;
+		}
 
 		proxy_retransmit(request, &now);
 		break;
