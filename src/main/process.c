@@ -2234,27 +2234,12 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
 					 fr_dict_enum_name_by_da(NULL, vp->da, post_proxy_type));
 
-	if (reply) {
-		VERIFY_PACKET(reply);
-
-		/*
-		 *	Decode the packet if required.
-		 */
-		rcode = request->proxy->listener->decode(request->proxy->listener, request);
-		request->proxy->listener->debug(request, reply, true);
-
-		/*
-		 *	Pro-actively remove it from the proxy hash.
-		 *	This is later than in 2.1.x, but it means that
-		 *	the replies are authenticated before being
-		 *	removed from the hash.
-		 */
-		if ((rcode == 0) &&
-		    (request->proxy->proxy_requests <= request->proxy->proxy_replies)) {
-			remove_from_proxy_hash(request);
-		}
-
-	} else if (request->in_proxy_hash) {
+	/*
+	 *	Remove it from the proxy hash, if there's no reply, or
+	 *	if we recieved all of the replies.
+	 */
+	if (request->in_proxy_hash &&
+	    (!reply || (request->proxy->proxy_requests <= request->proxy->proxy_replies))) {
 		remove_from_proxy_hash(request);
 	}
 
@@ -2630,6 +2615,9 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_RUN:
+		if (request->proxy->listener->decode(request->proxy->listener, request) < 0) goto done;
+		request->proxy->listener->debug(request, request->proxy->reply, true);
+
 		if (process_proxy_reply(request, request->proxy->reply)) {
 			VALUE_PAIR *vp;
 
@@ -2647,6 +2635,7 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 		request_finish(request, action);
 		break;
 
+	done:
 	case FR_ACTION_DONE:
 		request_done(request, action);
 		break;
@@ -4447,11 +4436,15 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_RUN:
+		if (request->proxy->listener->decode(request->proxy->listener, request) < 0) goto done;
+		request->proxy->listener->debug(request, request->proxy->reply, true);
+
 		if (process_proxy_reply(request, request->proxy->reply)) {
 			request->handle(request);
 		}
 		/* FALL-THROUGH */
 
+	done:
 	case FR_ACTION_DONE:
 		request_done(request, FR_ACTION_DONE);
 		break;
