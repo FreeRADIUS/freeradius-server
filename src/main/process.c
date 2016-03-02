@@ -2665,10 +2665,6 @@ static int request_will_proxy(REQUEST *request)
 	if (request->packet->dst_port == 0) return 0;
 	if (request->packet->code == PW_CODE_STATUS_SERVER) return 0;
 	if (request->in_proxy_hash) return 0;
-
-	/*
-	 *	FIXME: for 3.0, allow this only for rejects?
-	 */
 	if (request->reply->code != 0) return 0;
 
 #ifdef WITH_COA
