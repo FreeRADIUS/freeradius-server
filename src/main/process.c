@@ -4126,9 +4126,24 @@ static bool coa_keep_waiting(REQUEST *request)
 {
 	uint32_t delay, frac;
 	struct timeval now, when, mrd;
+	home_server_t *home = request->proxy->home_server;
 	char buffer[INET6_ADDRSTRLEN];
 
 	VERIFY_REQUEST(request);
+
+	/*
+	 *	Use a new connection when the home server is
+	 *	dead, or when there's no proxy listener, or
+	 *	when the listener is failed or dead.
+	 *
+	 *	If the listener is known or frozen, use it for
+	 *	retransmits.
+	 */
+	if ((home->state == HOME_STATE_IS_DEAD) ||
+	    !request->proxy->listener ||
+	    (request->proxy->listener->status >= RAD_LISTEN_STATUS_EOL)) {
+		return false;
+	}
 
 	fr_event_now(el, &now);
 
@@ -4144,8 +4159,8 @@ static bool coa_keep_waiting(REQUEST *request)
 		 *	rand(0,0.2) USEC ~ (rand(0,2^21) / 10)
 		 */
 		delay = (fr_rand() & ((1 << 22) - 1)) / 10;
-		request->delay = delay * request->proxy->home_server->coa_irt;
-		delay = request->proxy->home_server->coa_irt * USEC;
+		request->delay = delay * home->coa_irt;
+		delay = home->coa_irt * USEC;
 		delay -= delay / 10;
 		delay += request->delay;
 		request->delay = delay;
@@ -4166,8 +4181,8 @@ static bool coa_keep_waiting(REQUEST *request)
 	/*
 	 *	Cap count at MRC, if it is non-zero.
 	 */
-	if (request->proxy->home_server->coa_mrc &&
-	    (request->proxy->packet->count >= request->proxy->home_server->coa_mrc)) {
+	if (home->coa_mrc &&
+	    (request->proxy->packet->count >= home->coa_mrc)) {
 		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
 		       request->proxy->packet->id,
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
@@ -4195,9 +4210,9 @@ static bool coa_keep_waiting(REQUEST *request)
 	/*
 	 *	Cap delay at MRT, if MRT is non-zero.
 	 */
-	if (request->proxy->home_server->coa_mrt &&
-	    (delay > (request->proxy->home_server->coa_mrt * USEC))) {
-		int mrt_usec = request->proxy->home_server->coa_mrt * USEC;
+	if (home->coa_mrt &&
+	    (delay > (home->coa_mrt * USEC))) {
+		int mrt_usec = home->coa_mrt * USEC;
 
 		/*
 		 *	delay = MRT + RAND * MRT
@@ -4214,7 +4229,7 @@ static bool coa_keep_waiting(REQUEST *request)
 	when = now;
 	tv_add(&when, request->delay);
 	mrd = request->proxy->packet->timestamp;
-	mrd.tv_sec += request->proxy->home_server->coa_mrd;
+	mrd.tv_sec += home->coa_mrd;
 
 	/*
 	 *	Cap duration at MRD.
@@ -4226,7 +4241,7 @@ static bool coa_keep_waiting(REQUEST *request)
 
 	request->proxy->packet->count++;
 
-	FR_STATS_TYPE_INC(request->proxy->home_server->stats.total_requests);
+	FR_STATS_TYPE_INC(home->stats.total_requests);
 
 	RDEBUG2("Sending duplicate CoA request to home server %s port %d - ID: %d",
 		inet_ntop(request->proxy->packet->dst_ipaddr.af,
