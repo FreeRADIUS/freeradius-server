@@ -449,6 +449,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 		return RLM_SQL_OK;
 	}
 
+	if (status == OCI_NO_DATA) {
+		handle->row = 0;
+
+		return RLM_SQL_OK;
+	}
+
 	if (status == OCI_ERROR) {
 		ERROR("fetch failed in sql_fetch_row");
 		return sql_check_reconnect(handle, config);
