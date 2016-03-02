@@ -212,6 +212,8 @@ struct rad_request {
 
 	request_data_t		*data;		//!< Request metadata.
 
+	RAD_LISTEN_TYPE		priority;
+
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
@@ -229,6 +231,24 @@ struct rad_request {
 						//!< attempt. Useful where the attempt involves a sequence of
 						//!< many request/challenge packets, like OTP, and EAP.
 
+	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
+						//!< working with the request, to do something.
+	rad_child_state_t	child_state;
+
+	pthread_t    		child_pid;	//!< Current thread handling the request.
+
+	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
+
+	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
+						//!< various server configuration sections.
+
+	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
+	char const		*server;	//!< virtual server which is processing the request.
+	char const		*component; 	//!< Section the request is in.
+	char const		*module;	//!< Module the request is currently being processed by.
+
+	REQUEST			*parent;
+
 #ifdef WITH_PROXY
 	REQUEST			*proxy;		//!< proxied packet
 
@@ -236,28 +256,13 @@ struct rad_request {
 	home_pool_t		*home_pool;	//!< For dynamic failover
 #endif
 
-	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
-
 	struct timeval		response_delay;	//!< How long to wait before sending Access-Rejects.
 	fr_event_t		*ev;		//!< Event in event loop tied to this request.
-
-	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
-						//!< various server configuration sections.
-	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
-	char const		*module;	//!< Module the request is currently being processed by.
-	char const		*component; 	//!< Section the request is in.
 
 	int			delay;		//!< incrementing delay for various timers
 	int			heap_id;	//!< entry in the queue / heap of incoming packets
 
-	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
-						//!< working with the request, to do something.
-	rad_child_state_t	child_state;
-
-	pthread_t    		child_pid;	//!< Current thread handling the request.
-
 	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
-
 
 	int			simul_max;	//!< Maximum number of concurrent sessions for this user.
 #ifdef WITH_SESSION_MGMT
@@ -265,15 +270,10 @@ struct rad_request {
 	int			simul_mpp; 	//!< WEIRD: 1 is false, 2 is true.
 #endif
 
-	RAD_LISTEN_TYPE		priority;
-
 	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
 #endif
-
-	char const		*server;
-	REQUEST			*parent;
 
 	struct {
 		radlog_func_t	func;		//!< Function to call to output log messages about this
