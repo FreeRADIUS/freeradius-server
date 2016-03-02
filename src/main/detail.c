@@ -661,7 +661,7 @@ open_file:
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
-				fr_cursor_insert(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 			}
 			continue;
 		}

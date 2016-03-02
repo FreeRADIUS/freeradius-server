@@ -959,7 +959,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_d
 				fr_pair_list_free(out);
 				return -1;
 			}
-			fr_cursor_insert(&out_cursor, copy);
+			fr_cursor_append(&out_cursor, copy);
 			last_match = match;
 
 			count++;

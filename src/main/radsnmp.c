@@ -255,7 +255,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		vp = fr_pair_afrom_da(ctx, index_attr);
 		vp->vp_integer = attr;
 
-		fr_cursor_insert(cursor, vp);
+		fr_cursor_append(cursor, vp);
 	}
 
 	/*
@@ -316,7 +316,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	} else {
 		if (fr_pair_value_from_str(vp, value, strlen(value)) < 0) goto error;
 	}
-	fr_cursor_insert(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return slen;
 }
@@ -670,7 +670,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			return EXIT_FAILURE;
 		}
 		vp->vp_integer = (unsigned int)command;	/* Commands must match dictionary */
-		fr_cursor_insert(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		/*
 		 *	Add message authenticator or the stats
@@ -682,7 +682,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			return EXIT_FAILURE;
 		}
 		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1);
-		fr_cursor_insert(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 
 		/*
 		 *	Send the packet

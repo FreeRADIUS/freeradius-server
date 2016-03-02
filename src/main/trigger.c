@@ -283,11 +283,11 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 
 	MEM(vp = fr_pair_afrom_da(ctx, server_da));
 	fr_pair_value_strcpy(vp, server);
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_short = port;
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	return out;
 }

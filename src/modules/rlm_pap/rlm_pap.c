@@ -363,7 +363,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			}
 
 			new = normify_with_header(request, vp);
-			if (new) fr_cursor_insert(&cursor, new); /* inserts at the end of the list */
+			if (new) fr_cursor_append(&cursor, new); /* inserts at the end of the list */
 
 			RDEBUG2("Removing &control:Password-With-Header");
 			vp = fr_cursor_remove(&cursor);	/* advances the cursor for us */

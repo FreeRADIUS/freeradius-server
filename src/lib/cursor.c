@@ -148,7 +148,7 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
    {
    	fr_cursor_end(cursor);
 
-   	fr_cursor_insert(cursor, fr_pair_alloc_by_num(NULL, 0, PW_MESSAGE_AUTHENTICATOR));
+   	fr_cursor_append(cursor, fr_pair_alloc_by_num(NULL, 0, PW_MESSAGE_AUTHENTICATOR));
 
    	if (bad_thing) {
    		fr_cursor_free(cursor);
@@ -405,7 +405,7 @@ void fr_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
  * @param cursor to operate on.
  * @param vp to insert.
  */
-void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
+void fr_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 {
 	VALUE_PAIR *i;
 
@@ -490,7 +490,7 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
 	for (vp = fr_cursor_init(&from, &add);
 	     vp;
 	     vp = fr_cursor_next(&from)) {
-	 	fr_cursor_insert(cursor, vp);
+	 	fr_cursor_append(cursor, vp);
 	}
 }
 
@@ -610,7 +610,7 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
  * Will move the cursor back one, then free the current pair and all
  * VALUE_PAIRs after it.
  *
- * Usually used in conjunction with #fr_cursor_end and #fr_cursor_insert.
+ * Usually used in conjunction with #fr_cursor_end and #fr_cursor_append.
  *
  * @param cursor to free pairs in.
  */

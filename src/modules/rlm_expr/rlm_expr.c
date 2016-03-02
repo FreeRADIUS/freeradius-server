@@ -1359,7 +1359,7 @@ static ssize_t explode_xlat(char **out, size_t outlen,
 				rad_assert(0);
 			}
 
-			fr_cursor_insert(&to_merge, new);
+			fr_cursor_append(&to_merge, new);
 
 			p = q + 1;	/* next */
 

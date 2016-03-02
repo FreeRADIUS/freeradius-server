@@ -2178,7 +2178,7 @@ do { \
 	VALUE_PAIR *_vp; \
 	_vp = fr_pair_make(request, NULL, _name, _value, T_OP_SET); \
 	if (_vp) { \
-		fr_cursor_insert(&cursor, _vp); \
+		fr_cursor_append(&cursor, _vp); \
 	} else { \
 		RWDEBUG("Failed creating attribute %s: %s", _name, fr_strerror()); \
 	} \
@@ -2396,7 +2396,7 @@ do { \
 					"attribute and value are defined in the dictionaries",
 					attribute, value);
 			} else {
-				fr_cursor_insert(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 			}
 		}
 

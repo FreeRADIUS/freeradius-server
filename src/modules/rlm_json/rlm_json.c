@@ -196,7 +196,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 
 	for (fr_cursor_init(&cursor, out), value = head;
 	     value;
-	     fr_cursor_insert(&cursor, vp), value = value->next) {
+	     fr_cursor_append(&cursor, vp), value = value->next) {
 		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!vp) {
 		error:

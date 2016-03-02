@@ -2207,7 +2207,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 			fr_pair_list_free(out);
 			return -4;
 		}
-		fr_cursor_insert(&to, vp);
+		fr_cursor_append(&to, vp);
 	}
 
 	return err;

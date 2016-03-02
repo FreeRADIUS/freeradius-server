@@ -219,7 +219,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 					goto error;
 				}
 				radius_xlat_do(request, vp);
-				fr_cursor_insert(&out, vp);
+				fr_cursor_append(&out, vp);
 			}
 		}
 
@@ -271,7 +271,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 				if (!vp) {
 					goto error;
 				}
-				fr_cursor_insert(&out, vp);
+				fr_cursor_append(&out, vp);
 			}
 		}
 

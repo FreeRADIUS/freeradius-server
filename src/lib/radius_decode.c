@@ -338,7 +338,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		total += ptr[1] - 2;
 		ptr += ptr[1];
 	}
-	fr_cursor_insert(cursor, vp);
+	fr_cursor_append(cursor, vp);
 	return ptr - data;
 }
 
@@ -1325,7 +1325,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		return -1;
 	}
 	vp->type = VT_DATA;
-	fr_cursor_insert(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return attr_len;
 }

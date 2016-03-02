@@ -287,7 +287,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	fr_pair_value_memsteal(vp, p);
 
 	fr_cursor_init(&cursor, &head);
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 	while (total < data_len) {
 		vp = fr_pair_afrom_num(packet, 0, PW_EAP_MESSAGE);
 		if (!vp) {
@@ -299,7 +299,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 
 		total += vp->vp_length;
 
-		fr_cursor_insert(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 	}
 
 	return head;

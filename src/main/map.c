@@ -923,7 +923,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 				new->op = map->op;
 				new->tag = map->lhs->tmpl_tag;
-				fr_cursor_insert(&to, new);
+				fr_cursor_append(&to, new);
 			}
 			return 0;
 		}
@@ -1337,7 +1337,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 		/* Insert first instance (if multiple) */
 		fr_cursor_first(&src_list);
-		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
+		fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
 		break;
@@ -1353,7 +1353,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			dst = fr_cursor_replace(&dst_list, fr_cursor_remove(&src_list));
 			fr_pair_list_free(&dst);
 		} else {
-			fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
+			fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
 		}
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);

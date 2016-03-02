@@ -815,7 +815,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 			/* Need another VP for the next round */
 			if (p < end) {
-				fr_cursor_insert(cursor, vp);
+				fr_cursor_append(cursor, vp);
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) return -1;
@@ -853,7 +853,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	} /* switch over type */
 
 	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
-	fr_cursor_insert(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return p - data;
 }
@@ -1218,7 +1218,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		if (!vp) continue;
 
-		fr_cursor_insert(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 	}
 
 	/*

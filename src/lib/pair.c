@@ -778,7 +778,7 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 	vp->tag = tag;
 	if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
 
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	return 0;
 }
@@ -1412,7 +1412,7 @@ VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 			fr_pair_list_free(&out);
 			return NULL;
 		}
-		fr_cursor_insert(&dst, vp); /* fr_pair_list_copy sets next pointer to NULL */
+		fr_cursor_append(&dst, vp); /* fr_pair_list_copy sets next pointer to NULL */
 	}
 
 	return out;
@@ -1486,7 +1486,7 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned
 			fr_pair_list_free(&out);
 			return NULL;
 		}
-		fr_cursor_insert(&dst, vp);
+		fr_cursor_append(&dst, vp);
 	}
 
 	return out;

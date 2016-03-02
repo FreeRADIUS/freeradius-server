@@ -125,7 +125,7 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 			}
 
 			vp->op = map->op;
-			fr_cursor_insert(&cursor, vp);
+			fr_cursor_append(&cursor, vp);
 
 			/*
 			 *	Only process the first value, unless the operator is +=

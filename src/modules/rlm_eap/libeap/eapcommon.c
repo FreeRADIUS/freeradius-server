@@ -280,7 +280,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		}
 		fr_pair_value_memcpy(vp, ptr, size);
 
-		fr_cursor_insert(&out, vp);
+		fr_cursor_append(&out, vp);
 
 		ptr += size;
 		total -= size;

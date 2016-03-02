@@ -225,7 +225,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			}
 
 			fr_pair_value_memcpy(vp, data, size);
-			fr_cursor_insert(&out, vp);
+			fr_cursor_append(&out, vp);
 			goto next_attr;
 		}
 

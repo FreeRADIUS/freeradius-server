@@ -263,7 +263,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->data[1];
 	debug_pair(vp);
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_num(packet, 0, PW_VQP_ERROR_CODE);
 	if (!vp) {
@@ -272,7 +272,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->data[2];
 	debug_pair(vp);
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_num(packet, 0, PW_VQP_SEQUENCE_NUMBER);
 	if (!vp) {
@@ -281,7 +281,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->id; /* already set by vqp_recv */
 	debug_pair(vp);
-	fr_cursor_insert(&cursor, vp);
+	fr_cursor_append(&cursor, vp);
 
 	ptr = packet->data + VQP_HDR_LEN;
 	end = packet->data + packet->data_len;
@@ -344,7 +344,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 		ptr += attr_len;
 		debug_pair(vp);
-		fr_cursor_insert(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 	}
 
 	/*
