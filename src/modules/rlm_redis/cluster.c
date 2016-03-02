@@ -332,8 +332,6 @@ static void _cluster_node_conf_apply(fr_connection_pool_t *pool, void *opaque)
 	node->addr = node->pending_addr;
 
 	if (node->cluster->triggers_enabled) {
-		fr_connection_pool_enable_triggers(pool, node->cluster->trigger_prefix);
-
 		args = trigger_args_afrom_server(pool, node->name, node->addr.port);
 		if (!args) return;
 
@@ -342,7 +340,7 @@ static void _cluster_node_conf_apply(fr_connection_pool_t *pool, void *opaque)
 			fr_cursor_merge(&cursor, fr_pair_list_copy(node->cluster, node->cluster->trigger_args));
 		}
 
-		fr_connection_pool_trigger_args(node->pool, args);
+		fr_connection_pool_enable_triggers(pool, node->cluster->trigger_prefix, args);
 
 		fr_pair_list_free(&args);
 	}
@@ -389,8 +387,6 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 		fr_connection_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
 
 		if (cluster->triggers_enabled) {
-			fr_connection_pool_enable_triggers(node->pool, cluster->trigger_prefix);
-
 			args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
 			if (!args) {
 				TALLOC_FREE(node->pool);
@@ -402,7 +398,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 				fr_cursor_merge(&cursor, fr_pair_list_copy(cluster, cluster->trigger_args));
 			}
 
-			fr_connection_pool_trigger_args(node->pool, args);
+			fr_connection_pool_enable_triggers(node->pool, node->cluster->trigger_prefix, args);
 
 			fr_pair_list_free(&args);
 		}

@@ -137,8 +137,8 @@ fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 /*
  *	Pool get/set
  */
-void	fr_connection_pool_enable_triggers(fr_connection_pool_t *pool, char const *trigger_prefix);
-void	fr_connection_pool_trigger_args(fr_connection_pool_t *pool, VALUE_PAIR *vp);
+void	fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
+					   char const *trigger_prefix, VALUE_PAIR *vp);
 
 struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool);
 

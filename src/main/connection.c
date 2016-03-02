@@ -884,25 +884,15 @@ do_return:
  *	to the module's trigger configuration .e.g.
  *      @verbatim modules.<name>.pool @endverbatim
  *	@verbatim <trigger name> @endverbatim is appended to form the complete path.
- */
-void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool, char const *trigger_prefix)
-{
-	rad_const_free(pool->trigger_prefix);
-	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
-}
-
-/** Set trigger arguments for a connection pool
- *
- * Enable triggers with #fr_connection_pool_enable_triggers before calling this function.
- *
- * @param[in] pool to enable triggers for.
  * @param[in] trigger_args to make available in any triggers executed by the connection pool.
  *	These will usually be VALUE_PAIR (s) describing the host associated with the pool.
  *	Trigger args will be copied, input trigger_args should be freed if necessary.
  */
-void fr_connection_pool_trigger_args(fr_connection_pool_t *pool, VALUE_PAIR *trigger_args)
+void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
+					char const *trigger_prefix, VALUE_PAIR *trigger_args)
 {
-	rad_assert(pool->trigger_prefix);
+	rad_const_free(pool->trigger_prefix);
+	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
 
 	fr_pair_list_free(&pool->trigger_args);
 
@@ -1104,8 +1094,7 @@ fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 	copy = fr_connection_pool_init(ctx, pool->cs, opaque, pool->create, pool->alive, pool->log_prefix);
 	if (!copy) return NULL;
 
-	if (pool->trigger_prefix) fr_connection_pool_enable_triggers(copy, pool->trigger_prefix);
-	if (pool->trigger_args) fr_connection_pool_trigger_args(copy, pool->trigger_args);
+	if (pool->trigger_prefix) fr_connection_pool_enable_triggers(copy, pool->trigger_prefix, pool->trigger_args);
 
 	return copy;
 }

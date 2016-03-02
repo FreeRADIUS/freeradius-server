@@ -1664,8 +1664,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
 		if (!pool) return NULL;
 
-		fr_connection_pool_enable_triggers(pool, trigger_prefix);
-		fr_connection_pool_trigger_args(pool, trigger_args);
+		fr_connection_pool_enable_triggers(pool, trigger_prefix, trigger_args);
 
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
