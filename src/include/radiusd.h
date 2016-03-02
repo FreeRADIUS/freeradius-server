@@ -297,8 +297,6 @@ struct rad_request {
 
 #ifdef WITH_COA
 	REQUEST			*coa;		//!< CoA request originated by this request.
-	uint32_t		num_coa_requests;//!< Counter for number of requests sent including
-						//!< retransmits.
 #endif
 };				/* REQUEST typedef */
 

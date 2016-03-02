@@ -4045,7 +4045,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->reply = fr_radius_copy(coa, request->reply);
 
 	coa->config = fr_pair_list_copy(coa, request->config);
-	coa->num_coa_requests = 0;
+	coa->proxy->packet->count = 0;
 	coa->handle = null_handler;
 	coa->number = request->number; /* it's associated with the same request */
 
@@ -4194,7 +4194,7 @@ static void coa_retransmit(REQUEST *request)
 	 *	Cap count at MRC, if it is non-zero.
 	 */
 	if (request->proxy->home_server->coa_mrc &&
-	    (request->num_coa_requests >= request->proxy->home_server->coa_mrc)) {
+	    (request->proxy->packet->count >= request->proxy->home_server->coa_mrc)) {
 		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
 		       request->proxy->packet->id,
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
@@ -4257,7 +4257,7 @@ static void coa_retransmit(REQUEST *request)
 	}
 	STATE_MACHINE_TIMER;
 
-	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
+	request->proxy->packet->count++;
 
 	FR_STATS_TYPE_INC(request->proxy->home_server->stats.total_requests);
 
