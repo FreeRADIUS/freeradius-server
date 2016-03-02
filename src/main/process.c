@@ -2303,7 +2303,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 
 		} else {
 			vp = fr_pair_find_by_num(request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
-			if (vp) {
+			if (vp && (vp->vp_integer != 256)) {
 				request->proxy->reply = fr_radius_alloc_reply(request, request->proxy->packet);
 				request->proxy->reply->code = vp->vp_integer;
 				fr_pair_delete_by_num(&request->config, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
