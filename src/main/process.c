@@ -4305,6 +4305,13 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 	case FR_ACTION_TIMER:
 		if (request_max_time(request)) break;
 
+		/*
+		 *	@fixme: for TCP, the socket may go away.
+		 *	we probably want to do the checks for proxy_keep_waiting() ??
+		 *
+		 *	And maybe do fail-over, which would be nice!
+		 */
+
 		coa_retransmit(request);
 		break;
 
