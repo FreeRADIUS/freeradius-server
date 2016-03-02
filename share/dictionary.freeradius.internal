@@ -714,11 +714,26 @@ VALUE	Post-Auth-Type			Challenge		3
 
 #
 #	And Post-Proxy
-VALUE	Post-Proxy-Type			Fail			1
-VALUE	Post-Proxy-Type			Fail-Authentication	2
-VALUE	Post-Proxy-Type			Fail-Accounting		3
-VALUE	Post-Proxy-Type			Fail-CoA		4
-VALUE	Post-Proxy-Type			Fail-Disconnect		5
+VALUE	Post-Proxy-Type			Fail-Access-Request	1
+VALUE	Post-Proxy-Type			Fail-Authentication	1
+
+VALUE	Post-Proxy-Type			Access-Reject		3
+VALUE	Post-Proxy-Type			Reject			3
+
+VALUE	Post-Proxy-Type			Fail-Accounting-Request	4
+VALUE	Post-Proxy-Type			Fail-Accounting		4
+
+VALUE	Post-Proxy-Type			Fail-Disconnect-Request	40
+VALUE	Post-Proxy-Type			Fail-Disconnect		40
+
+VALUE	Post-Proxy-Type			Disconnect-NAK		42
+
+VALUE	Post-Proxy-Type			Fail-CoA-Request	43
+VALUE	Post-Proxy-Type			Fail-CoA		43
+
+VALUE	Post-Proxy-Type			CoA-NAK			45
+
+VALUE	Post-Proxy-Type			Fail			256
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS internal

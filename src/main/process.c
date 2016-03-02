@@ -2173,7 +2173,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode;
-	int post_proxy_type = 0;
 	VALUE_PAIR *vp;
 
 	VERIFY_REQUEST(request);
@@ -2189,8 +2188,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	BEFORE playing games with the attributes.
 	 */
 	vp = fr_pair_find_by_num(request->config, 0, PW_POST_PROXY_TYPE, TAG_ANY);
-	if (vp) {
-		post_proxy_type = vp->vp_integer;
+
 	/*
 	 *	If we have a proxy_reply, and it was a reject, or a NAK
 	 *	setup Post-Proxy <type>.
@@ -2198,41 +2196,28 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	If the <type> doesn't have a section, then the Post-Proxy
 	 *	section is ignored.
 	 */
-	} else if (reply) {
+	if (!vp && reply) {
 		fr_dict_enum_t *dval = NULL;
 		fr_dict_attr_t const *da = fr_dict_attr_by_num(NULL, 0, PW_POST_PROXY_TYPE);
 
 		switch (reply->code) {
 		case PW_CODE_ACCESS_REJECT:
-			dval = fr_dict_enum_by_name(NULL, da, "Reject");
-			if (dval) post_proxy_type = dval->value;
-			break;
-
 		case PW_CODE_DISCONNECT_NAK:
-			dval = fr_dict_enum_by_name(NULL, da, fr_packet_codes[reply->code]);
-			if (dval) post_proxy_type = dval->value;
-			break;
-
 		case PW_CODE_COA_NAK:
 			dval = fr_dict_enum_by_name(NULL, da, fr_packet_codes[reply->code]);
-			if (dval) post_proxy_type = dval->value;
+
+			if (dval) {
+				vp = radius_pair_create(request, &request->config, PW_POST_PROXY_TYPE, 0);
+				vp->vp_integer = dval->value;
+			}
 			break;
 
 		default:
 			break;
 		}
-
-		/*
-		 *	Create config:Post-Proxy-Type
-		 */
-		if (dval) {
-			vp = radius_pair_create(request, &request->config, PW_POST_PROXY_TYPE, 0);
-			vp->vp_integer = dval->value;
-		}
 	}
 
-	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
-					 fr_dict_enum_name_by_da(NULL, vp->da, post_proxy_type));
+	if (vp) RDEBUG2("Found Post-Proxy-Type %s", fr_dict_enum_name_by_da(NULL, vp->da, vp->vp_integer));
 
 	/*
 	 *	Remove it from the proxy hash, if there's no reply, or
@@ -2249,12 +2234,12 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2("server %s {", request->server);
 		RINDENT();
-		rcode = process_post_proxy(post_proxy_type, request);
+		rcode = process_post_proxy(vp ? vp->vp_integer : 0, request);
 		REXDENT();
 		RDEBUG2("}");
 		request->server = old_server;
 	} else {
-		rcode = process_post_proxy(post_proxy_type, request);
+		rcode = process_post_proxy(vp ? vp->vp_integer : 0, request);
 	}
 
 	switch (rcode) {
@@ -2478,24 +2463,12 @@ static int setup_post_proxy_fail(REQUEST *request)
 	fr_dict_enum_t const *dval = NULL;
 	fr_dict_attr_t const *da = fr_dict_attr_by_num(NULL, 0, PW_POST_PROXY_TYPE);
 	VALUE_PAIR *vp;
+	char buffer[256];
 
 	VERIFY_REQUEST(request);
 
-	if (request->proxy->packet->code == PW_CODE_ACCESS_REQUEST) {
-		dval = fr_dict_enum_by_name(NULL, da, "Fail-Authentication");
-	} else if (request->proxy->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-		dval = fr_dict_enum_by_name(NULL, da, "Fail-Accounting");
-#ifdef WITH_COA
-	} else if (request->proxy->packet->code == PW_CODE_COA_REQUEST) {
-		dval = fr_dict_enum_by_name(NULL, da, "Fail-CoA");
-
-	} else if (request->proxy->packet->code == PW_CODE_DISCONNECT_REQUEST) {
-		dval = fr_dict_enum_by_name(NULL, da, "Fail-Disconnect");
-#endif
-	} else {
-		WARN("Unknown packet type in Post-Proxy-Type Fail: ignoring");
-		return 0;
-	}
+	snprintf(buffer, sizeof(buffer), "Fail-%s", fr_packet_codes[request->proxy->packet->code]);
+	dval = fr_dict_enum_by_name(NULL, da, buffer);
 
 	if (!dval) dval = fr_dict_enum_by_name(NULL, da, "Fail");
 
