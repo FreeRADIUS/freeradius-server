@@ -444,6 +444,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 		return RLM_SQL_OK;
 	}
 
+	if (status == OCI_NO_DATA) {
+		handle->row = 0;
+
+		return RLM_SQL_OK;
+	}
+
 	if (status == OCI_ERROR) {
 		ERROR("rlm_sql_oracle: fetch failed in sql_fetch_row");
 		return sql_check_error(handle, config);
