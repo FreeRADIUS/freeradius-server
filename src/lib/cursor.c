@@ -341,6 +341,60 @@ VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
+/** Insert a single VALUE_PAIR at the start of the list
+ *
+ * @note Will not advance cursor position to new attribute, but will set cursor
+ *	 to this attribute, if it's the first one in the list.
+ *
+ * Insert a VALUE_PAIR at the start of the list.
+ *
+ * @param cursor to operate on.
+ * @param vp to insert.
+ */
+void fr_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
+{
+	if (!fr_cond_assert(cursor->first)) return;	/* cursor must have been initialised */
+
+	if (!vp) return;
+
+	VERIFY_VP(vp);
+
+	/*
+	 *	Only allow one VP to by inserted at a time
+	 */
+	vp->next = NULL;
+
+	/*
+	 *	Cursor was initialised with a pointer to a NULL value_pair
+	 */
+	if (!*(cursor->first)) {
+		*cursor->first = vp;
+		cursor->current = vp;
+
+		return;
+	}
+
+	/*
+	 *	Append to the head of the list
+	 */
+	vp->next = *cursor->first;
+	*cursor->first = vp;
+
+	/*
+	 *	Either current was never set, or something iterated to the
+	 *	end of the attribute list. In both cases the newly inserted
+	 *	VALUE_PAIR should be set as the current VALUE_PAIR.
+	 */
+	if (!cursor->current) cursor->current = vp;
+
+	/*
+	 *	If the next pointer was NULL, and the VALUE_PAIR
+	 *	just added has a next pointer value, set the cursor's next
+	 *	pointer to the VALUE_PAIR's next pointer.
+	 */
+	if (!cursor->next) cursor->next = cursor->current->next;
+}
+
 /** Insert a single VALUE_PAIR at the end of the list
  *
  * @note Will not advance cursor position to new attribute, but will set cursor
