@@ -3610,7 +3610,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		if (timercmp(&when, now, >)) {
 			RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
 			STATE_MACHINE_TIMER;
-			return false;
+			return true;
 		}
 	} else
 #endif
@@ -3637,7 +3637,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 			RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
 			       (int) diff.tv_sec, (int) diff.tv_usec);
 			STATE_MACHINE_TIMER;
-			return false;
+			return true;
 		}
 	}
 
@@ -3709,7 +3709,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		       request->proxy->packet->dst_port);
 	}
 
-	return true;
+	return false;
 }
 
 static void proxy_retransmit(REQUEST *request, struct timeval *now)
