@@ -528,7 +528,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 		return;
 	}
 
-	fd = exfile_open(inst->ef, filename, 0640, true);
+	fd = exfile_open(inst->ef, request, filename, 0640, true);
 	if (fd < 0) {
 		ERROR("Couldn't open logfile '%s': %s", expanded, fr_syserror(errno));
 
@@ -544,5 +544,5 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 	if (failed) ERROR("Failed writing to logfile '%s': %s", expanded, fr_syserror(errno));
 
 	talloc_free(expanded);
-	exfile_close(inst->ef, fd);
+	exfile_close(inst->ef, request, fd);
 }

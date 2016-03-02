@@ -381,7 +381,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 #endif
 #endif
 
-	outfd = exfile_open(inst->ef, buffer, inst->perm, true);
+	outfd = exfile_open(inst->ef, request, buffer, inst->perm, true);
 	if (outfd < 0) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
 		return RLM_MODULE_FAIL;
@@ -409,7 +409,7 @@ skip_group:
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 	fail:
 		if (outfp) fclose(outfp);
-		exfile_unlock(inst->ef, outfd);
+		exfile_unlock(inst->ef, request, outfd);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -419,7 +419,7 @@ skip_group:
 	 *	Flush everything
 	 */
 	fclose(outfp);
-	exfile_unlock(inst->ef, outfd); /* do NOT close outfp */
+	exfile_unlock(inst->ef, request, outfd); /* do NOT close outfp */
 
 	/*
 	 *	And everything is fine.

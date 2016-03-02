@@ -730,7 +730,7 @@ build_vector:
 			*p = '/';
 		}
 
-		fd = exfile_open(inst->file.ef, path, inst->file.permissions, true);
+		fd = exfile_open(inst->file.ef, request, path, inst->file.permissions, true);
 		if (fd < 0) {
 			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
 			rcode = RLM_MODULE_FAIL;
@@ -743,7 +743,7 @@ build_vector:
 
 		if (writev(fd, vector_p, vector_len) < 0) {
 			RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
-			exfile_close(inst->file.ef, fd);
+			exfile_close(inst->file.ef, request, fd);
 
 			/* Assert on the extra fatal errors */
 			rad_assert((errno != EINVAL) && (errno != EFAULT));
@@ -751,7 +751,7 @@ build_vector:
 			return RLM_MODULE_FAIL;
 		}
 
-		exfile_close(inst->file.ef, fd);
+		exfile_close(inst->file.ef, request, fd);
 	}
 		break;
 

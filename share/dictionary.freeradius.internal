@@ -659,7 +659,7 @@ ATTRIBUTE	Radclient-Test-Name			2200	string internal
 #
 ATTRIBUTE	Connection-Pool-Server			2220	string internal
 ATTRIBUTE	Connection-Pool-Port			2221	short internal
-
+ATTRIBUTE	Exfile-Name				2223	string internal
 #
 #	Range:	2261-2999
 #		Free

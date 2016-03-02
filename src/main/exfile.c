@@ -24,27 +24,30 @@
  * @copyright 2014  The FreeRADIUS server project
  */
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/exfile.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
 
 typedef struct exfile_entry_t {
-	int		fd;		//!< File descriptor associated with an entry.
-	int		dup;
-	uint32_t	hash;		//!< Hash for cheap comparison.
-	time_t		last_used;	//!< Last time the entry was used.
-	char		*filename;	//!< Filename.
+	int			fd;		//!< File descriptor associated with an entry.
+	int			dup;
+	uint32_t		hash;		//!< Hash for cheap comparison.
+	time_t			last_used;	//!< Last time the entry was used.
+	char			*filename;	//!< Filename.
 } exfile_entry_t;
 
 
 struct exfile_t {
-	uint32_t	max_entries;	//!< How many file descriptors we keep track of.
-	uint32_t	max_idle;	//!< Maximum idle time for a descriptor.
-	time_t		last_cleaned;
-	pthread_mutex_t mutex;
-	exfile_entry_t *entries;
-	bool		locking;
+	uint32_t		max_entries;	//!< How many file descriptors we keep track of.
+	uint32_t		max_idle;	//!< Maximum idle time for a descriptor.
+	time_t			last_cleaned;
+	pthread_mutex_t		mutex;
+	exfile_entry_t		*entries;
+	bool			locking;
+	char const		*trigger_prefix;
+	VALUE_PAIR		*trigger_args;
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -67,7 +70,6 @@ static int _exfile_free(exfile_t *ef)
 
 	return 0;
 }
-
 
 /** Initialize a way for multiple threads to log to one or more files.
  *
@@ -106,12 +108,73 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 	return ef;
 }
 
+/** Enable triggers for an exfiles handle
+ *
+ * @param[in] ef to enable triggers for.
+ * @param[in] trigger_prefix prefix to prepend to all trigger names.  Usually a path
+ *	to the module's trigger configuration .e.g.
+ *      @verbatim modules.<name>.file @endverbatim
+ *	@verbatim <trigger name> @endverbatim is appended to form the complete path.
+ * @param[in] trigger_args to make available in any triggers executed by the exfile api.
+ *	These will usually be VALUE_PAIR (s) describing the host associated with the pool.
+ *	Trigger args will be copied, input trigger_args should be freed if necessary.
+ */
+void exfile_enable_triggers(exfile_t *ef, char const *trigger_prefix, VALUE_PAIR *trigger_args)
+{
+	rad_const_free(ef->trigger_prefix);
+	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
+
+	fr_pair_list_free(&ef->trigger_args);
+
+	if (!trigger_args) return;
+
+	MEM(ef->trigger_args = fr_pair_list_copy(ef, trigger_args));
+}
+
+/** Send an exfile trigger.
+ *
+ * @param[in] ef to send trigger for.
+ * @param[in] name_suffix trigger name suffix.
+ */
+static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
+{
+	char			name[128];
+	VALUE_PAIR		*vp, *args;
+	fr_dict_attr_t const	*da;
+	vp_cursor_t		cursor;
+
+	rad_assert(ef != NULL);
+	rad_assert(name_suffix != NULL);
+
+	if (!ef->trigger_prefix) return;
+
+	da = fr_dict_attr_by_num(NULL, 0, PW_EXFILE_NAME);
+	if (!da) {
+		RERROR("Incomplete dictionary: Missing definition for \"Exfile-Name\"");
+		return;
+	}
+
+	args = ef->trigger_args;
+	fr_cursor_init(&cursor, &args);
+
+	MEM(vp = fr_pair_afrom_da(NULL, da));
+	fr_pair_value_strcpy(vp, entry->filename);
+
+	fr_cursor_prepend(&cursor, vp);
+
+	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
+	trigger_exec(request, NULL, name, true, args);
+
+	talloc_free(vp);
+}
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
  * sure that no other thread is writing to the file.
  *
  * @param ef The logfile context returned from exfile_init().
+ * @param request The current request.
  * @param filename the file to open.
  * @param permissions to use.
  * @param append If true seek to the end of the file.
@@ -119,7 +182,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
+int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions, bool append)
 {
 	int i, tries, unused;
 	uint32_t hash;
@@ -143,6 +206,8 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 			if (!ef->entries[i].filename) continue;
 
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
+
+			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
 
 			/*
 			 *	This will block forever if a thread is
@@ -238,6 +303,8 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 					   filename, strerror(errno));
 			goto error;
 		} /* else fall through to creating the rest of the entry */
+
+		exfile_trigger_exec(ef, request, &ef->entries[i], "open");
 	} /* else the file was already opened */
 
 do_return:
@@ -323,6 +390,8 @@ do_return:
 		goto error;
 	}
 
+	exfile_trigger_exec(ef, request, &ef->entries[i], "reserve");
+
 	return ef->entries[i].dup;
 }
 
@@ -333,12 +402,13 @@ do_return:
  * the file.
  *
  * @param ef The logfile context returned from #exfile_init.
+ * @param request The current request.
  * @param fd the FD to close (i.e. return to the pool).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int exfile_close(exfile_t *ef, int fd)
+int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 {
 	uint32_t i;
 
@@ -353,6 +423,8 @@ int exfile_close(exfile_t *ef, int fd)
 			close(ef->entries[i].dup); /* releases the fcntl lock */
 			ef->entries[i].dup = -1;
 
+			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
+
 			pthread_mutex_unlock(&(ef->mutex));
 			return 0;
 		}
@@ -364,7 +436,10 @@ int exfile_close(exfile_t *ef, int fd)
 	return -1;
 }
 
-int exfile_unlock(exfile_t *ef, int fd)
+/** Unlock the file, but leave the dup'd file descriptor open
+ *
+ */
+int exfile_unlock(exfile_t *ef, REQUEST *request, int fd)
 {
 	uint32_t i;
 
@@ -373,6 +448,9 @@ int exfile_unlock(exfile_t *ef, int fd)
 
 		if (ef->entries[i].dup == fd) {
 			ef->entries[i].dup = -1;
+
+			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
+
 			pthread_mutex_unlock(&(ef->mutex));
 			return 0;
 		}
