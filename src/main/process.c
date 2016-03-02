@@ -330,7 +330,7 @@ void radius_update_listener(rad_listen_t *this)
 static int request_num_counter = 1;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
-static int request_proxy(REQUEST *request) CC_HINT(nonnull);
+static int request_proxy_send(REQUEST *request) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
@@ -1443,7 +1443,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request) < 0) goto req_finished;
+			if (request_proxy_send(request) < 0) goto req_finished;
 		} else
 #endif
 		{
@@ -2671,6 +2671,13 @@ static int request_will_proxy(REQUEST *request)
 	 */
 	if (request->reply->code != 0) return 0;
 
+#ifdef WITH_COA
+	if (request->coa) {
+		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
+		request_done(request->coa, FR_ACTION_DONE);
+	}
+#endif
+
 	vp = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
 	if (vp) {
 		realm = realm_find2(vp->vp_strvalue);
@@ -3017,7 +3024,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 }
 
 
-static int request_proxy(REQUEST *request)
+static int request_proxy_send(REQUEST *request)
 {
 	char buffer[INET6_ADDRSTRLEN];
 
@@ -3026,15 +3033,6 @@ static int request_proxy(REQUEST *request)
 	rad_assert(request->parent == NULL);
 	rad_assert(request->proxy != NULL);
 	rad_assert(request->proxy->home_server != NULL);
-
-	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
-
-#ifdef WITH_COA
-	if (request->coa) {
-		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
-		request_done(request->coa, FR_ACTION_DONE);
-	}
-#endif
 
 	/*
 	 *	The request may need sending to a virtual server.
@@ -3198,7 +3196,7 @@ static int request_proxy_anew(REQUEST *request)
 	request->proxy->packet->data = NULL;
 	request->proxy->packet->data_len = 0;
 
-	if (request_proxy(request) != 1) goto post_proxy_fail;
+	if (request_proxy_send(request) != 1) goto post_proxy_fail;
 
 	return 1;
 }
