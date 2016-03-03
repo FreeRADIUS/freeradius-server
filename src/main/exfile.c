@@ -54,6 +54,45 @@ struct exfile_t {
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
 					//!< before giving up.
 
+/** Send an exfile trigger.
+ *
+ * @param[in] ef to send trigger for.
+ * @param[in] request The current request.
+ * @param[in] entry for the file that the event occurred on.
+ * @param[in] name_suffix trigger name suffix.
+ */
+static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
+{
+	char			name[128];
+	VALUE_PAIR		*vp, *args;
+	fr_dict_attr_t const	*da;
+	vp_cursor_t		cursor;
+
+	rad_assert(ef != NULL);
+	rad_assert(name_suffix != NULL);
+
+	if (!ef->trigger_prefix) return;
+
+	da = fr_dict_attr_by_num(NULL, 0, PW_EXFILE_NAME);
+	if (!da) {
+		RERROR("Incomplete dictionary: Missing definition for \"Exfile-Name\"");
+		return;
+	}
+
+	args = ef->trigger_args;
+	fr_cursor_init(&cursor, &args);
+
+	MEM(vp = fr_pair_afrom_da(NULL, da));
+	fr_pair_value_strcpy(vp, entry->filename);
+
+	fr_cursor_prepend(&cursor, vp);
+
+	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
+	trigger_exec(request, ef->conf, name, true, args);
+
+	talloc_free(vp);
+}
+
 static int _exfile_free(exfile_t *ef)
 {
 	uint32_t i;
@@ -68,7 +107,7 @@ static int _exfile_free(exfile_t *ef)
 		/*
 		 *	Issue close trigger *after* we've closed the fd
 		 */
-		exfile_trigger_exec(ef, request, &ef->entries[i], "close");
+		exfile_trigger_exec(ef, NULL, &ef->entries[i], "close");
 	}
 
 	pthread_mutex_unlock(&ef->mutex);
@@ -137,45 +176,6 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 	if (!trigger_args) return;
 
 	MEM(ef->trigger_args = fr_pair_list_copy(ef, trigger_args));
-}
-
-/** Send an exfile trigger.
- *
- * @param[in] ef to send trigger for.
- * @param[in] request The current request.
- * @param[in] entry for the file that the event occurred on.
- * @param[in] name_suffix trigger name suffix.
- */
-static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
-{
-	char			name[128];
-	VALUE_PAIR		*vp, *args;
-	fr_dict_attr_t const	*da;
-	vp_cursor_t		cursor;
-
-	rad_assert(ef != NULL);
-	rad_assert(name_suffix != NULL);
-
-	if (!ef->trigger_prefix) return;
-
-	da = fr_dict_attr_by_num(NULL, 0, PW_EXFILE_NAME);
-	if (!da) {
-		RERROR("Incomplete dictionary: Missing definition for \"Exfile-Name\"");
-		return;
-	}
-
-	args = ef->trigger_args;
-	fr_cursor_init(&cursor, &args);
-
-	MEM(vp = fr_pair_afrom_da(NULL, da));
-	fr_pair_value_strcpy(vp, entry->filename);
-
-	fr_cursor_prepend(&cursor, vp);
-
-	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(request, ef->conf, name, true, args);
-
-	talloc_free(vp);
 }
 
 /** Open a new log file, or maybe an existing one.
