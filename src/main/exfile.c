@@ -317,8 +317,10 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			goto error;
 		} /* else fall through to creating the rest of the entry */
 
-		exfile_trigger_exec(ef, request, &ef->entries[i], "open");
+		exfile_trigger_exec(ef, request, &ef->entries[i], "create");
 	} /* else the file was already opened */
+
+	exfile_trigger_exec(ef, request, &ef->entries[i], "open");
 
 do_return:
 	/*
