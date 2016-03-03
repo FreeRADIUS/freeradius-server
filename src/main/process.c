@@ -2435,7 +2435,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #endif
 
 	VERIFY_REQUEST(request);
-	INFO("HERE %d", __LINE__);
 
 	/*
 	 *	If we hadn't been sending the home server packets for
