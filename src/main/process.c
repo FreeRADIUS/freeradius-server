@@ -4383,6 +4383,17 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 	case FR_ACTION_TIMER:
 		if (request_max_time(request)) break;
 
+		/*
+		 *	Don't do fail-over.  This is a 3.1 feature.
+		 */
+		if (!request->home_server ||
+		    (request->home_server->state == HOME_STATE_IS_DEAD) ||
+		    !request->proxy_listener ||
+		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
+			request_done(request, FR_ACTION_DONE);
+			break;
+		}
+
 		coa_retransmit(request);
 		break;
 
