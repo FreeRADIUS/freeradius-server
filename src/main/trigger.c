@@ -89,7 +89,7 @@ void trigger_exec_init(CONF_SECTION *cs)
 
 static void time_free(void *data)
 {
-	free(data);
+	talloc_free(data);
 }
 
 /** Execute a trigger - call an executable to process an event
