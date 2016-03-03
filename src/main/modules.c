@@ -1713,14 +1713,8 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 	char		trigger_prefix_buff[128];
 	exfile_t	*handle;
 
-	char const *cs_name1, *cs_name2;
-
-	cs_name1 = cf_section_name1(module);
-	cs_name2 = cf_section_name2(module);
-	if (!cs_name2) cs_name2 = cs_name1;
-
 	if (!trigger_prefix) {
-		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.file", cs_name1);
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.file", cf_section_name1(module));
 		trigger_prefix = trigger_prefix_buff;
 	}
 
