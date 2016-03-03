@@ -110,6 +110,13 @@ static int _exfile_free(exfile_t *ef)
 		exfile_trigger_exec(ef, NULL, &ef->entries[i], "close");
 	}
 
+	/*
+	 *	Do this *AFTER* calling the triggers
+	 *	as they still need access to the filename
+	 *	strings.
+	 */
+	talloc_free(ef->entries);
+
 	pthread_mutex_unlock(&ef->mutex);
 	pthread_mutex_destroy(&ef->mutex);
 
@@ -133,7 +140,17 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 	ef = talloc_zero(ctx, exfile_t);
 	if (!ef) return NULL;
 
-	ef->entries = talloc_zero_array(ef, exfile_entry_t, max_entries);
+	/*
+	 *	This needs to be parented by NULL and
+	 *	cleaned up explicitly by the exfile_t
+	 *	destructor, because we need access to
+	 *	the filename strings that are parented
+	 *	by ef->entries, in order to call the
+	 *	'close' triggers correctly.
+	 *
+	 *	Also needed for thread safety.
+	 */
+	ef->entries = talloc_zero_array(NULL, exfile_entry_t, max_entries);
 	if (!ef->entries) {
 		talloc_free(ef);
 		return NULL;
