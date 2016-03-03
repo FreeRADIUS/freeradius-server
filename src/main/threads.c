@@ -311,11 +311,11 @@ void request_enqueue(REQUEST *request)
 	 *	No child threads, just process it here.
 	 */
 	if (!thread_pool.spawn_workers) {
-		request->module = "";
+		request->module = NULL;
 
 		request->child_state = REQUEST_RUNNING;
 		request->process(request, FR_ACTION_RUN);
-		
+
 #ifdef WNOHANG
 		/*
 		 *	Requests that care about child process exit
