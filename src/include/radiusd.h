@@ -148,8 +148,7 @@ typedef struct main_config {
 	struct timeval	init_delay;			//!< Initial request processing delay.
 
 	uint32_t       	talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
-	bool		debug_memory;			//!< Cleanup the server properly on exit, freeing
-							//!< up any memory we allocated.
+
 	bool		memory_report;			//!< Print a memory report on what's left unfreed.
 							//!< Can only be used when the server is running in single
 							//!< threaded mode.

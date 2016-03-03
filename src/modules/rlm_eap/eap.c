@@ -79,13 +79,12 @@ static int _eap_module_free(eap_module_t *inst)
 
 #ifndef NDEBUG
 	/*
-	 *	Don't dlclose() modules if we're doing memory
-	 *	debugging.  This removes the symbols needed by
-	 *	valgrind.
+	 *	Don't dlclose() modules if this is a debug built
+	 *	ad it removes the symbols needed by valgrind.
 	 */
-	if (!main_config.debug_memory)
-#endif
+#else
 	if (inst->handle) dlclose(inst->handle);
+#endif
 
 	return 0;
 }

@@ -2488,7 +2488,7 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
 {
 
-	if (!main_config.debug_memory || !main_config.memory_report) {
+	if (!main_config.memory_report) {
 		cprintf(listener, "No memory debugging was enabled.\n");
 		return CMD_OK;
 	}

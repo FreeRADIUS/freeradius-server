@@ -715,13 +715,8 @@ int main(int argc, char *argv[])
 				input_file = optarg;
 				break;
 
-			case 'm':
-				main_config.debug_memory = true;
-				break;
-
 			case 'M':
 				memory_report = true;
-				main_config.debug_memory = true;
 				break;
 
 			case 'n':

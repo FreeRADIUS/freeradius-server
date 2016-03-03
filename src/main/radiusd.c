@@ -187,13 +187,8 @@ int main(int argc, char *argv[])
 				main_config.name = optarg;
 				break;
 
-			case 'm':
-				main_config.debug_memory = true;
-				break;
-
 			case 'M':
 				main_config.memory_report = true;
-				main_config.debug_memory = true;
 				break;
 
 			case 'P':
@@ -489,15 +484,13 @@ int main(int argc, char *argv[])
 	 *  immediately.  Use SIGTERM to shut down the server cleanly in
 	 *  that case.
 	 */
-	if (main_config.debug_memory || (rad_debug_lvl == 0)) {
-		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
+	if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
-		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)
+	     || (fr_set_signal(SIGQUIT, sig_fatal) < 0)
 #endif
-		) {
-			ERROR("%s", fr_strerror());
-			exit(EXIT_FAILURE);
-		}
+	) {
+		ERROR("%s", fr_strerror());
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -506,10 +499,7 @@ int main(int argc, char *argv[])
 	if (check_config) {
 		DEBUG("Configuration appears to be OK");
 
-		/* for -C -m|-M */
-		if (main_config.debug_memory) goto cleanup;
-
-		exit(EXIT_SUCCESS);
+		goto cleanup;
 	}
 
 	/*
@@ -719,10 +709,8 @@ static void sig_fatal(int sig)
 #ifdef SIGQUIT
 	case SIGQUIT:
 #endif
-		if (main_config.debug_memory || main_config.memory_report) {
-			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
-			break;
-		}
+		radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
+		break;
 		/* FALL-THROUGH */
 
 	default:
