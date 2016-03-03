@@ -75,7 +75,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 
 	da = fr_dict_attr_by_num(NULL, 0, PW_EXFILE_NAME);
 	if (!da) {
-		RERROR("Incomplete dictionary: Missing definition for \"Exfile-Name\"");
+		ROPTIONAL(RERROR, ERROR, "Incomplete dictionary: Missing definition for \"Exfile-Name\"");
 		return;
 	}
 
