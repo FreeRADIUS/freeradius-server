@@ -194,7 +194,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  */
 int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions, bool append)
 {
-	int i, tries, unused;
+	int i, tries, unused = -1, found = -1;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -205,34 +205,6 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	unused = -1;
 
 	pthread_mutex_lock(&ef->mutex);
-
-	/*
-	 *	Clean up old entries.
-	 */
-	if (now > (ef->last_cleaned + 1)) {
-		ef->last_cleaned = now;
-
-		for (i = 0; i < (int) ef->max_entries; i++) {
-			if (!ef->entries[i].filename) continue;
-
-			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
-
-			/*
-			 *	This will block forever if a thread is
-			 *	doing something stupid.
-			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			close(ef->entries[i].fd);
-			ef->entries[i].fd = -1;
-			ef->entries[i].dup = -1;
-
-			/*
-			 *	Issue close trigger *after* we've closed the fd
-			 */
-			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
-		}
-	}
 
 	/*
 	 *	Find the matching entry, or an unused one.
@@ -253,6 +225,46 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			return -1;
 		}
 
+		found = i;
+		break;
+	}
+
+	/*
+	 *	Clean up old entries.
+	 */
+	if (now > (ef->last_cleaned + 1)) {
+		ef->last_cleaned = now;
+
+		for (i = 0; i < (int) ef->max_entries; i++) {
+			if (i == found) continue;	/* Don't cleanup the one we're opening */
+
+			if (!ef->entries[i].filename) continue;
+
+			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
+
+			close(ef->entries[i].fd);
+
+			/*
+			 *	Issue close trigger *after* we've closed the fd
+			 */
+			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
+
+			/*
+			 *	This will block forever if a thread is
+			 *	doing something stupid.
+			 */
+			TALLOC_FREE(ef->entries[i].filename);
+			ef->entries[i].hash = 0;
+			ef->entries[i].fd = -1;
+			ef->entries[i].dup = -1;
+		}
+	}
+
+	/*
+	 *	We found an existing entry, return that
+	 */
+	if (found >= 0) {
+		i = found;
 		goto do_return;
 	}
 
