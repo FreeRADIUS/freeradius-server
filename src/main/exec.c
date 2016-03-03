@@ -530,7 +530,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 	char answer[4096];
 #endif
 
-	RDEBUG2("Executing: %s:", cmd);
+	RDEBUG2("Executing: %s", cmd);
 
 	if (out) *out = '\0';
 

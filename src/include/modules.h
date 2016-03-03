@@ -28,6 +28,7 @@ RCSIDH(modules_h, "$Id$")
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/features.h>
 #include <freeradius-devel/connection.h>
+#include <freeradius-devel/exfile.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -153,7 +154,13 @@ fr_connection_pool_t	*module_connection_pool_init(CONF_SECTION *module,
 						     char const *log_prefix,
 						     char const *trigger_prefix,
 						     VALUE_PAIR *trigger_args);
-
+exfile_t *module_exfile_init(TALLOC_CTX *ctx,
+			     CONF_SECTION *module,
+			     uint32_t max_entries,
+			     uint32_t max_idle,
+			     bool locking,
+			     char const *trigger_prefix,
+			     VALUE_PAIR *trigger_args);
 /*
  *	Create free and destroy module instances
  */

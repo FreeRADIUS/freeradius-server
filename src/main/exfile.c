@@ -31,23 +31,24 @@
 #include <fcntl.h>
 
 typedef struct exfile_entry_t {
-	int			fd;		//!< File descriptor associated with an entry.
+	int			fd;			//!< File descriptor associated with an entry.
 	int			dup;
-	uint32_t		hash;		//!< Hash for cheap comparison.
-	time_t			last_used;	//!< Last time the entry was used.
-	char			*filename;	//!< Filename.
+	uint32_t		hash;			//!< Hash for cheap comparison.
+	time_t			last_used;		//!< Last time the entry was used.
+	char			*filename;		//!< Filename.
 } exfile_entry_t;
 
 
 struct exfile_t {
-	uint32_t		max_entries;	//!< How many file descriptors we keep track of.
-	uint32_t		max_idle;	//!< Maximum idle time for a descriptor.
+	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
+	uint32_t		max_idle;		//!< Maximum idle time for a descriptor.
 	time_t			last_cleaned;
 	pthread_mutex_t		mutex;
 	exfile_entry_t		*entries;
 	bool			locking;
-	char const		*trigger_prefix;
-	VALUE_PAIR		*trigger_args;
+	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
+	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
+	VALUE_PAIR		*trigger_args;		//!< Arguments to pass to trigger.
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -111,20 +112,22 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 /** Enable triggers for an exfiles handle
  *
  * @param[in] ef to enable triggers for.
+ * @param[in] conf section to search for triggers in.
  * @param[in] trigger_prefix prefix to prepend to all trigger names.  Usually a path
  *	to the module's trigger configuration .e.g.
  *      @verbatim modules.<name>.file @endverbatim
  *	@verbatim <trigger name> @endverbatim is appended to form the complete path.
  * @param[in] trigger_args to make available in any triggers executed by the exfile api.
- *	These will usually be VALUE_PAIR (s) describing the host associated with the pool.
- *	Trigger args will be copied, input trigger_args should be freed if necessary.
+ *	Exfile-File is automatically added to this list.
  */
-void exfile_enable_triggers(exfile_t *ef, char const *trigger_prefix, VALUE_PAIR *trigger_args)
+void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, VALUE_PAIR *trigger_args)
 {
 	rad_const_free(ef->trigger_prefix);
 	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
 
 	fr_pair_list_free(&ef->trigger_args);
+
+	ef->conf = conf;
 
 	if (!trigger_args) return;
 
@@ -134,6 +137,8 @@ void exfile_enable_triggers(exfile_t *ef, char const *trigger_prefix, VALUE_PAIR
 /** Send an exfile trigger.
  *
  * @param[in] ef to send trigger for.
+ * @param[in] request The current request.
+ * @param[in] entry for the file that the event occurred on.
  * @param[in] name_suffix trigger name suffix.
  */
 static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_entry_t *entry, char const *name_suffix)
@@ -163,7 +168,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 	fr_cursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(request, NULL, name, true, args);
+	trigger_exec(request, ef->conf, name, true, args);
 
 	talloc_free(vp);
 }
@@ -423,9 +428,10 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 			close(ef->entries[i].dup); /* releases the fcntl lock */
 			ef->entries[i].dup = -1;
 
+			pthread_mutex_unlock(&(ef->mutex));
+
 			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
 
-			pthread_mutex_unlock(&(ef->mutex));
 			return 0;
 		}
 	}
@@ -449,9 +455,10 @@ int exfile_unlock(exfile_t *ef, REQUEST *request, int fd)
 		if (ef->entries[i].dup == fd) {
 			ef->entries[i].dup = -1;
 
+			pthread_mutex_unlock(&(ef->mutex));
+
 			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
 
-			pthread_mutex_unlock(&(ef->mutex));
 			return 0;
 		}
 	}

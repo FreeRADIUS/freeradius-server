@@ -1183,7 +1183,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				inst->module->sql_escape_func :
 				sql_escape_func;
 
-	inst->ef = exfile_init(inst, 64, 30, true);
+	inst->ef = module_exfile_init(inst, conf, 64, 30, true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;

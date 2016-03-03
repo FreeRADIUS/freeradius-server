@@ -1567,13 +1567,13 @@ static bool is_reserved_word(const char *name)
  *
  * @see fr_connection_pool_init
  *
- * @param[in] module section.
- * @param[in] opaque data pointer to pass to callbacks.
- * @param[in] c Callback to create new connections.
- * @param[in] a Callback to check the status of connections.
- * @param[in] log_prefix override, if NULL will be set automatically from the module CONF_SECTION.
- * @param[in] trigger_prefix if NULL will be set automatically from the module CONF_SECTION.
- * @param[in] trigger_args to make available in any triggers executed by the connection pool.
+ * @param[in] module		section.
+ * @param[in] opaque		data pointer to pass to callbacks.
+ * @param[in] c			Callback to create new connections.
+ * @param[in] a			Callback to check the status of connections.
+ * @param[in] log_prefix	override, if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
  * @return
  *	- New connection pool.
  *	- NULL on error.
@@ -1686,6 +1686,50 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	}
 
 	return pool;
+}
+
+/** Initialise a module specific exfile handle
+ *
+ * @see exfile_init
+ *
+ * @param[in] module		section.
+ * @param[in] max_entries	Max file descriptors to cache, and manage locks for.
+ * @param[in] max_idle		Maximum time a file descriptor can be idle before it's closed.
+ * @param[in] locking		Whether	or not to lock the files.
+ * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
+ * @return
+ *	- New connection pool.
+ *	- NULL on error.
+ */
+exfile_t *module_exfile_init(TALLOC_CTX *ctx,
+			     CONF_SECTION *module,
+			     uint32_t max_entries,
+			     uint32_t max_idle,
+			     bool locking,
+			     char const *trigger_prefix,
+			     VALUE_PAIR *trigger_args)
+{
+	char		trigger_prefix_buff[128];
+	exfile_t	*handle;
+
+	char const *cs_name1, *cs_name2;
+
+	cs_name1 = cf_section_name1(module);
+	cs_name2 = cf_section_name2(module);
+	if (!cs_name2) cs_name2 = cs_name1;
+
+	if (!trigger_prefix) {
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.file", cs_name1);
+		trigger_prefix = trigger_prefix_buff;
+	}
+
+	handle = exfile_init(ctx, max_entries, max_idle, locking);
+	if (!handle) return NULL;
+
+	exfile_enable_triggers(handle, cf_section_sub_find(module, "file"), trigger_prefix, trigger_args);
+
+	return handle;
 }
 
 int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
