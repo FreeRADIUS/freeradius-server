@@ -35,11 +35,17 @@ extern "C" {
  */
 typedef struct exfile_t exfile_t;
 
-exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
-void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix, VALUE_PAIR *trigger_args);
-int exfile_open(exfile_t *lf, REQUEST *request, char const *filename, mode_t permissions, bool append);
-int exfile_close(exfile_t *lf, REQUEST *request, int fd);
-int exfile_unlock(exfile_t *lf, REQUEST *request, int fd);
+exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
+
+void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix,
+				       VALUE_PAIR *trigger_args);
+
+int		exfile_open(exfile_t *lf, REQUEST *request, char const *filename,
+			    mode_t permissions, bool append);
+
+int		exfile_close(exfile_t *lf, REQUEST *request, int fd);
+
+int		exfile_unlock(exfile_t *lf, REQUEST *request, int fd);
 
 #ifdef __cplusplus
 }

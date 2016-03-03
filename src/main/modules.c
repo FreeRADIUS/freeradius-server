@@ -1692,6 +1692,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
  *
  * @see exfile_init
  *
+ * @param[in] ctx		to bind the lifetime of the exfile handle to.
  * @param[in] module		section.
  * @param[in] max_entries	Max file descriptors to cache, and manage locks for.
  * @param[in] max_idle		Maximum time a file descriptor can be idle before it's closed.
