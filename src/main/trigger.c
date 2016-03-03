@@ -153,7 +153,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 
 	ci = cf_reference_item(subcs, trigger_exec_main, attr);
 	if (!ci) {
-		ROPTIONAL(RWARN, WARN, "No trigger configured for: %s", attr);
+		ROPTIONAL(RDEBUG2, DEBUG2, "No trigger configured for: %s", attr);
 		return -1;
 	}
 
