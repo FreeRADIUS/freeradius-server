@@ -1875,7 +1875,7 @@ void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *c
 	 *	Instead, we let the next caller do the rebind.
 	 */
 	if (conn->referred) {
-		fr_connection_close(inst->pool, conn);
+		fr_connection_close(inst->pool, request, conn);
 		return;
 	}
 

@@ -153,7 +153,7 @@ void	fr_connection_pool_reconnect_func(fr_connection_pool_t *pool, fr_connection
 /*
  *	Pool management
  */
-int	fr_connection_pool_reconnect(fr_connection_pool_t *pool);
+int	fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request);
 
 void	fr_connection_pool_free(fr_connection_pool_t *pool);
 
@@ -166,7 +166,7 @@ void	fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *c
 
 void	*fr_connection_reconnect(fr_connection_pool_t *pool, REQUEST *request, void *conn);
 
-int	fr_connection_close(fr_connection_pool_t *pool, void *conn);
+int	fr_connection_close(fr_connection_pool_t *pool, REQUEST *request, void *conn);
 
 #ifdef __cplusplus
 }

@@ -236,7 +236,7 @@ static ssize_t redis_xlat(char **out, size_t outlen,
 
 		case REDIS_RCODE_RECONNECT:
 		close_conn:
-			fr_connection_close(pool, conn);
+			fr_connection_close(pool, request, conn);
 			ret = -1;
 			goto finish;
 

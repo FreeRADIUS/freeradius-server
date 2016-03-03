@@ -409,7 +409,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	/*
 	 *	Apply the new config to the possibly live pool
 	 */
-	if (fr_connection_pool_reconnect(node->pool) < 0) return CLUSTER_OP_FAILED;
+	if (fr_connection_pool_reconnect(node->pool, NULL) < 0) return CLUSTER_OP_FAILED;
 
 	return CLUSTER_OP_SUCCESS;
 }
@@ -1408,7 +1408,7 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 			break;
 
 		case CLUSTER_OP_NO_CONNECTION:
-			fr_connection_close(node->pool, conn);
+			fr_connection_close(node->pool, request, conn);
 			goto next;
 
 		default:
@@ -1766,7 +1766,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	if (state->close_conn) {
 		RDEBUG2("[%i] Connection no longer viable, closing it", state->node->id);
-		fr_connection_close(state->node->pool, *conn);
+		fr_connection_close(state->node->pool, request, *conn);
 		*conn = NULL;
 		state->close_conn = false;
 	}
@@ -1842,7 +1842,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		RERROR("[%i] Failed communicating with %s:%i: %s", state->node->id, state->node->name,
 		       state->node->addr.port, fr_strerror());
 
-		fr_connection_close(state->node->pool, *conn);	/* He's dead jim */
+		fr_connection_close(state->node->pool, request, *conn);	/* He's dead jim */
 
 		if (state->reconnects++ > state->in_pool) {
 			REDEBUG("[%i] Hit maximum reconnect attempts", state->node->id);
@@ -2418,7 +2418,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		case CLUSTER_OP_NO_CONNECTION:
 			WARN("%s: Can't contact bootstrap server \"%s\": %s",
 			     cluster->log_prefix, server, fr_strerror());
-			fr_connection_close(node->pool, conn);
+			fr_connection_close(node->pool, NULL, conn);
 			continue;
 
 		/*
