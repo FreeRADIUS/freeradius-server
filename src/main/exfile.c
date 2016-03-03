@@ -64,6 +64,11 @@ static int _exfile_free(exfile_t *ef)
 		if (!ef->entries[i].filename) continue;
 
 		close(ef->entries[i].fd);
+
+		/*
+		 *	Issue close trigger *after* we've closed the fd
+		 */
+		exfile_trigger_exec(ef, request, &ef->entries[i], "close");
 	}
 
 	pthread_mutex_unlock(&ef->mutex);
@@ -212,8 +217,6 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
 
-			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
-
 			/*
 			 *	This will block forever if a thread is
 			 *	doing something stupid.
@@ -223,6 +226,11 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			close(ef->entries[i].fd);
 			ef->entries[i].fd = -1;
 			ef->entries[i].dup = -1;
+
+			/*
+			 *	Issue close trigger *after* we've closed the fd
+			 */
+			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
 		}
 	}
 
