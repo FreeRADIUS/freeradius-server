@@ -2280,7 +2280,7 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 int request_proxy_reply(RADIUS_PACKET *reply)
 {
 	RADIUS_PACKET **packet_p;
-	REQUEST *request;
+	REQUEST *request, *proxy;
 	struct timeval now;
 	char buffer[INET6_ADDRSTRLEN];
 
@@ -2305,17 +2305,17 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	First, dereference "reply" to find "request->proxy".
 	 *	Then, check request->proxy->parent, which is the one we want.
 	 */
-	request = fr_packet2myptr(REQUEST, packet, packet_p);
-	VERIFY_REQUEST(request);
+	proxy = fr_packet2myptr(REQUEST, packet, packet_p);
+	VERIFY_REQUEST(proxy);
 
 	/*
 	 *	The sent packet is in a proxy REQUEST.
 	 *	We want to get the parent request.
 	 */
-	rad_assert(request->parent != NULL);
-	rad_assert(request->parent->proxy == request);
+	rad_assert(proxy->parent != NULL);
+	rad_assert(proxy->parent->proxy == proxy);
 
-	request = request->parent;
+	request = proxy->parent;
 
 	pthread_mutex_unlock(&proxy_mutex);
 
@@ -2326,9 +2326,9 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	ignore it.  This does the MD5 calculations in the
 	 *	server core, but I guess we can fix that later.
 	 */
-	if (!request->proxy->reply &&
-	    (fr_radius_verify(reply, request->proxy->packet,
-			      request->proxy->home_server->secret) != 0)) {
+	if (!proxy->reply &&
+	    (fr_radius_verify(reply, proxy->packet,
+			      proxy->home_server->secret) != 0)) {
 		RWDEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return 0;
 	}
@@ -2338,10 +2338,10 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	something we have: ignore it.  This is done only to
 	 *	catch the case of broken systems.
 	 */
-	if (request->proxy->reply &&
-	    (memcmp(request->proxy->reply->vector,
+	if (proxy->reply &&
+	    (memcmp(proxy->reply->vector,
 		    reply->vector,
-		    sizeof(request->proxy->reply->vector)) != 0)) {
+		    sizeof(proxy->reply->vector)) != 0)) {
 		RWDEBUG("Ignoring conflicting proxy reply");
 		return 0;
 	}
@@ -2351,10 +2351,10 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	/*
 	 *	Status-Server packets don't count as real packets.
 	 */
-	if (request->proxy->packet->code != PW_CODE_STATUS_SERVER) {
-		listen_socket_t *sock = request->proxy->listener->data;
+	if (proxy->packet->code != PW_CODE_STATUS_SERVER) {
+		listen_socket_t *sock = proxy->listener->data;
 
-		request->proxy->home_server->last_packet_recv = now.tv_sec;
+		proxy->home_server->last_packet_recv = now.tv_sec;
 		sock->last_packet = now.tv_sec;
 	}
 
@@ -2362,8 +2362,8 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	If we have previously seen a reply, ignore the
 	 *	duplicate.
 	 */
-	if (request->proxy->reply) {
-		request->proxy->reply->count++;
+	if (proxy->reply) {
+		proxy->reply->count++;
 
 		RWDEBUG("Discarding duplicate reply from host %s port %d  - ID: %d",
 			inet_ntop(reply->src_ipaddr.af,
@@ -2377,8 +2377,8 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	Call the state machine to do something useful with the
 	 *	request.
 	 */
-	request->proxy->reply = talloc_steal(request->proxy, reply);
-	request->proxy->reply->count++;
+	proxy->reply = talloc_steal(proxy, reply);
+	proxy->reply->count++;
 	request->priority = RAD_LISTEN_PROXY;
 
 #ifdef WITH_STATS
@@ -2388,23 +2388,23 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	main proxy_*_stats structures are updated once the
 	 *	request is cleaned up.
 	 */
-	request->proxy->listener->stats.total_responses++;
+	proxy->listener->stats.total_responses++;
 
-	request->proxy->home_server->stats.last_packet = reply->timestamp.tv_sec;
-	request->proxy->listener->stats.last_packet = reply->timestamp.tv_sec;
+	proxy->home_server->stats.last_packet = reply->timestamp.tv_sec;
+	proxy->listener->stats.last_packet = reply->timestamp.tv_sec;
 
-	switch (request->proxy->packet->code) {
+	switch (proxy->packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		proxy_auth_stats.last_packet = reply->timestamp.tv_sec;
 
-		if (request->proxy->reply->code == PW_CODE_ACCESS_ACCEPT) {
-			request->proxy->listener->stats.total_access_accepts++;
+		if (proxy->reply->code == PW_CODE_ACCESS_ACCEPT) {
+			proxy->listener->stats.total_access_accepts++;
 
-		} else if (request->proxy->reply->code == PW_CODE_ACCESS_REJECT) {
-			request->proxy->listener->stats.total_access_rejects++;
+		} else if (proxy->reply->code == PW_CODE_ACCESS_REJECT) {
+			proxy->listener->stats.total_access_rejects++;
 
-		} else if (request->proxy->reply->code == PW_CODE_ACCESS_CHALLENGE) {
-			request->proxy->listener->stats.total_access_challenges++;
+		} else if (proxy->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+			proxy->listener->stats.total_access_challenges++;
 		}
 		break;
 
@@ -2412,7 +2412,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	case PW_CODE_ACCOUNTING_REQUEST:
 		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
 
-		request->proxy->listener->stats.total_responses++;
+		proxy->listener->stats.total_responses++;
 		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
@@ -2420,12 +2420,12 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
-		request->proxy->listener->stats.total_responses++;
+		proxy->listener->stats.total_responses++;
 		proxy_coa_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
-		request->proxy->listener->stats.total_responses++;
+		proxy->listener->stats.total_responses++;
 		proxy_dsc_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
@@ -2435,16 +2435,14 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	}
 #endif
 
-	VERIFY_REQUEST(request);
-
 	/*
 	 *	If we hadn't been sending the home server packets for
 	 *	a while, just mark it alive.  Or, if it was zombie,
 	 *	it's now responded, and is therefore alive.
 	 */
-	if ((request->proxy->home_server->state == HOME_STATE_UNKNOWN) ||
-	    (request->proxy->home_server->state == HOME_STATE_ZOMBIE)) {
-		mark_home_server_alive(request, request->proxy->home_server);
+	if ((proxy->home_server->state == HOME_STATE_UNKNOWN) ||
+	    (proxy->home_server->state == HOME_STATE_ZOMBIE)) {
+		mark_home_server_alive(request, proxy->home_server);
 	}
 
 	/*
