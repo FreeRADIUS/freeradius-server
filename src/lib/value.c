@@ -58,7 +58,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 	{
 		size_t length;
 
-		if (a->length > b->length) {
+		if (a->length < b->length) {
 			length = a->length;
 		} else {
 			length = b->length;
