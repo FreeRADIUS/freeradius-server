@@ -2487,7 +2487,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	}
 
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
-	request->num_proxied_responses++; /* needs to be protected by lock */
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -2527,6 +2526,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		request->home_server->last_packet_recv = now.tv_sec;
 		sock->last_packet = now.tv_sec;
 	}
+
+	request->num_proxied_responses++;
 
 	/*
 	 *	If we have previously seen a reply, ignore the
