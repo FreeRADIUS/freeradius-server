@@ -2316,16 +2316,11 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	module, and encapsulated into an EAP packet.
 	 */
 	if (!request->proxy) {
-		request->proxy = request_alloc(request);
+		request->proxy = request_alloc_proxy(request);
 		if (!request->proxy) {
 			ERROR("no memory");
 			fr_exit(1);
 		}
-
-		request->proxy->parent = request;
-
-		request->proxy->number = request->number;
-		request->proxy->root = request->root;
 	}
 
 	if (!request->proxy->packet) {

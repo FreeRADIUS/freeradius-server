@@ -238,6 +238,20 @@ REQUEST *request_alloc_coa(REQUEST *request)
 }
 #endif
 
+REQUEST *request_alloc_proxy(REQUEST *request)
+{
+	request->proxy = request_alloc(request);
+	if (!request->proxy) return NULL;
+
+	request->proxy->log = request->log;
+	request->proxy->parent = request;
+	request->proxy->number = request->number;
+	request->proxy->root = request->root;
+
+	return request->proxy;
+}
+
+
 /** Ensure opaque data is freed by binding its lifetime to the request_data_t
  *
  * @param this Request data being freed.

@@ -2957,7 +2957,8 @@ static int proxy_to_virtual_server(REQUEST *request)
 	 */
 	request_running(fake, FR_ACTION_RUN);
 
-	request->proxy = request_alloc(request);
+	request->proxy = request_alloc_proxy(request);
+
 	request->proxy->packet = talloc_steal(request->proxy, fake->packet);
 	fake->packet = NULL;
 	request->proxy->reply = talloc_steal(request->proxy, fake->reply);
@@ -3305,7 +3306,8 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	request->number = request_num_counter++;
 	NO_CHILD_THREAD;
 
-	request->proxy = request_alloc(request);
+	request->proxy = request_alloc_proxy(request);
+
 	request->proxy->packet = fr_radius_alloc(request->proxy, true);
 	rad_assert(request->proxy != NULL);
 
@@ -3424,7 +3426,7 @@ static void home_trigger(home_server_t *home, char const *trigger)
 	REQUEST *request;
 
 	request = talloc_zero(NULL, REQUEST);
-	request->proxy = request_alloc(request);
+	request->proxy = request_alloc_proxy(request);
 
 	request->proxy->packet = talloc_zero(request->proxy, RADIUS_PACKET);
 	request->proxy->packet->dst_ipaddr = home->ipaddr;

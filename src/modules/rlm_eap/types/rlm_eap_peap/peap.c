@@ -1083,7 +1083,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			 */
 			rad_assert(!request->proxy);
 
-			request->proxy = request_alloc(request);
+			request->proxy = request_alloc_proxy(request);
 
 			request->proxy->packet = talloc_steal(request->proxy, fake->packet);
 			memset(&request->proxy->packet->src_ipaddr, 0,
