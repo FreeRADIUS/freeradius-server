@@ -2277,35 +2277,35 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 }
 
 
-int request_proxy_reply(RADIUS_PACKET *packet)
+int request_proxy_reply(RADIUS_PACKET *reply)
 {
-	RADIUS_PACKET **proxy_p;
+	RADIUS_PACKET **packet_p;
 	REQUEST *request;
 	struct timeval now;
 	char buffer[INET6_ADDRSTRLEN];
 
-	VERIFY_PACKET(packet);
+	VERIFY_PACKET(reply);
 
 	pthread_mutex_lock(&proxy_mutex);
-	proxy_p = fr_packet_list_find_byreply(proxy_list, packet);
+	packet_p = fr_packet_list_find_byreply(proxy_list, reply);
 
-	if (!proxy_p) {
+	if (!packet_p) {
 		pthread_mutex_unlock(&proxy_mutex);
 		PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
-		       fr_packet_codes[packet->code],
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
+		       fr_packet_codes[reply->code],
+		       inet_ntop(reply->src_ipaddr.af,
+				 &reply->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
-		       packet->src_port, packet->id);
+		       reply->src_port, reply->id);
 		return 0;
 	}
 
 	/*
 	 *	The proxied packet is in request->proxy->packet.
-	 *	First, dereference "packet" to find "request->proxy".
+	 *	First, dereference "reply" to find "request->proxy".
 	 *	Then, check request->proxy->parent, which is the one we want.
 	 */
-	request = fr_packet2myptr(REQUEST, packet, proxy_p);
+	request = fr_packet2myptr(REQUEST, packet, packet_p);
 	VERIFY_REQUEST(request);
 
 	/*
@@ -2327,7 +2327,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	server core, but I guess we can fix that later.
 	 */
 	if (!request->proxy->reply &&
-	    (fr_radius_verify(packet, request->proxy->packet,
+	    (fr_radius_verify(reply, request->proxy->packet,
 			      request->proxy->home_server->secret) != 0)) {
 		RWDEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return 0;
@@ -2340,7 +2340,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	if (request->proxy->reply &&
 	    (memcmp(request->proxy->reply->vector,
-		    packet->vector,
+		    reply->vector,
 		    sizeof(request->proxy->reply->vector)) != 0)) {
 		RWDEBUG("Ignoring conflicting proxy reply");
 		return 0;
@@ -2366,10 +2366,10 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		request->proxy->reply->count++;
 
 		RWDEBUG("Discarding duplicate reply from host %s port %d  - ID: %d",
-			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.ipaddr,
+			inet_ntop(reply->src_ipaddr.af,
+				  &reply->src_ipaddr.ipaddr,
 				  buffer, sizeof(buffer)),
-				  packet->src_port, packet->id);
+				  reply->src_port, reply->id);
 		return 0;
 	}
 
@@ -2377,7 +2377,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	Call the state machine to do something useful with the
 	 *	request.
 	 */
-	request->proxy->reply = talloc_steal(request->proxy, packet);
+	request->proxy->reply = talloc_steal(request->proxy, reply);
 	request->proxy->reply->count++;
 	request->priority = RAD_LISTEN_PROXY;
 
@@ -2390,12 +2390,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	request->proxy->listener->stats.total_responses++;
 
-	request->proxy->home_server->stats.last_packet = packet->timestamp.tv_sec;
-	request->proxy->listener->stats.last_packet = packet->timestamp.tv_sec;
+	request->proxy->home_server->stats.last_packet = reply->timestamp.tv_sec;
+	request->proxy->listener->stats.last_packet = reply->timestamp.tv_sec;
 
 	switch (request->proxy->packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
-		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
+		proxy_auth_stats.last_packet = reply->timestamp.tv_sec;
 
 		if (request->proxy->reply->code == PW_CODE_ACCESS_ACCEPT) {
 			request->proxy->listener->stats.total_access_accepts++;
@@ -2410,10 +2410,10 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
+		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
 
 		request->proxy->listener->stats.total_responses++;
-		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
+		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 #endif
@@ -2421,12 +2421,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
 		request->proxy->listener->stats.total_responses++;
-		proxy_coa_stats.last_packet = packet->timestamp.tv_sec;
+		proxy_coa_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
 		request->proxy->listener->stats.total_responses++;
-		proxy_dsc_stats.last_packet = packet->timestamp.tv_sec;
+		proxy_dsc_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 #endif
