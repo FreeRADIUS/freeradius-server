@@ -303,6 +303,7 @@ size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
 			 */
 			if (*q < ' ') {
 				*(p++) = '_';
+				q++;
 				continue;
 			}
 
