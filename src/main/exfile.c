@@ -88,7 +88,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 	fr_cursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(request, ef->conf, name, true, args);
+	trigger_exec(request, ef->conf, name, false, args);
 
 	talloc_free(vp);
 }
