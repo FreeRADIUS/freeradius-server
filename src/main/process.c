@@ -2317,8 +2317,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	request = request->parent;
 
-	request->proxy->packet->count++; /* needs to be protected by lock */
-
 	pthread_mutex_unlock(&proxy_mutex);
 
 	VERIFY_REQUEST(request);
@@ -2365,6 +2363,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	duplicate.
 	 */
 	if (request->proxy->reply) {
+		request->proxy->reply->count++;
+
 		RWDEBUG("Discarding duplicate reply from host %s port %d  - ID: %d",
 			inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
@@ -2378,6 +2378,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	request.
 	 */
 	request->proxy->reply = talloc_steal(request->proxy, packet);
+	request->proxy->reply->count++;
 	request->priority = RAD_LISTEN_PROXY;
 
 #ifdef WITH_STATS
