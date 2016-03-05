@@ -114,7 +114,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	 *	Verify the 'Attribute' field
 	 */
 	if (!row[2] || row[2][0] == '\0') {
-		REDEBUG("The 'Attribute' field is empty or NULL, skipping the entire row");
+		REDEBUG("Attribute field is empty or NULL, skipping the entire row");
 		return -1;
 	}
 
@@ -134,14 +134,18 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		 *  Complain about empty or invalid 'op' field
 		 */
 		op = T_OP_CMP_EQ;
-		REDEBUG("The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
+		REDEBUG("The op field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
 		REDEBUG("You MUST FIX THIS if you want the configuration to behave as you expect");
 	}
 
 	/*
 	 *	The 'Value' field may be empty or NULL
 	 */
-	value = row[3];
+	if (!row[3]) {
+		REDEBUG("Value field is empty or NULL, skipping the entire row");
+		return -1;
+	}
+
 	/*
 	 *	If we have a new-style quoted string, where the
 	 *	*entire* string is quoted, do xlat's.
@@ -164,9 +168,9 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		 *	Mark the pair to be allocated later.
 		 */
 		case T_BACK_QUOTED_STRING:
-			value = NULL;
 			do_xlat = 1;
-			break;
+
+			/* FALL-THROUGH */
 
 		/*
 		 *	Keep the original string.
