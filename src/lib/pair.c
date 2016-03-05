@@ -1614,11 +1614,13 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 	 *	valuepair should not already have a value.
 	 */
 	if (vp->type != VT_NONE) {
+		fr_strerror_printf("Pair already has a value");
 		return -1;
 	}
 
 	raw = talloc_typed_strdup(vp, value);
 	if (!raw) {
+		fr_strerror_printf("Out of memory");
 		return -1;
 	}
 

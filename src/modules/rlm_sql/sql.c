@@ -189,7 +189,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 
 	if (do_xlat) {
 		if (fr_pair_mark_xlat(vp, value) < 0) {
-			REDEBUG("Error marking pair for xlat");
+			REDEBUG("Error marking pair for xlat: %s", fr_strerror());
 
 			talloc_free(vp);
 			return -1;
