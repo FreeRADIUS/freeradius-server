@@ -147,6 +147,8 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		return -1;
 	}
 
+	value = row[3];
+
 	/*
 	 *	If we have a new-style quoted string, where the
 	 *	*entire* string is quoted, do xlat's.
