@@ -33,15 +33,15 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
+#  include <sys/stat.h>
 #endif
 
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif
 
 #ifdef HAVE_UTIME_H
-#include <utime.h>
+#  include <utime.h>
 #endif
 #include <ctype.h>
 
@@ -509,10 +509,10 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 		return NULL;
 	}
 	session_init(session);
-	talloc_set_destructor(session, _tls_session_free);
-
 	session->ctx = ssl_ctx;
 	session->ssl = new_tls;
+
+	talloc_set_destructor(session, _tls_session_free);
 
 	/*
 	 *	Initialize callbacks
@@ -543,7 +543,6 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	SSL_set_msg_callback(new_tls, cbtls_msg);
 	SSL_set_msg_callback_arg(new_tls, session);
 	SSL_set_info_callback(new_tls, cbtls_info);
-
 
 #ifdef WITH_TLS_SESSION_CERTS
 	/*
