@@ -544,6 +544,29 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	SSL_set_msg_callback_arg(new_tls, session);
 	SSL_set_info_callback(new_tls, cbtls_info);
 
+
+#ifdef WITH_TLS_SESSION_CERTS
+	/*
+	 *	Add the session certificate to the session.
+	 */
+	vp = fr_pair_find_by_num(request->state, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
+	if (vp) {
+		if (SSL_use_certificate_file(new_tls, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
+			REDEBUG("Failed loading TLS session certificate from file %s", vp->vp_strvalue);
+
+			while ((e = ERR_get_error()) != 0) {
+				char const *p;
+
+				p = ERR_error_string(e, NULL);
+				if (p) REDEBUG("%s", p);
+			}
+
+		} else {
+			RDEBUG("Loaded TLS session ertificate from file %s", vp->vp_strvalue);
+		}
+	}
+#endif
+
 	/*
 	 *	In Server mode we only accept.
 	 */
