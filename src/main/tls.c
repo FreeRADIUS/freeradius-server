@@ -550,19 +550,14 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	 */
 	vp = fr_pair_find_by_num(request->state, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
 	if (vp) {
-		if (SSL_use_certificate_file(new_tls, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			REDEBUG("Failed loading TLS session certificate from file %s", vp->vp_strvalue);
-
-			while ((e = ERR_get_error()) != 0) {
-				char const *p;
-
-				p = ERR_error_string(e, NULL);
-				if (p) REDEBUG("%s", p);
-			}
-
-		} else {
-			RDEBUG("Loaded TLS session ertificate from file %s", vp->vp_strvalue);
+		if (SSL_use_certificate_file(session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
+			REDEBUG("Failed loading TLS session certificate from file \"%s\": %s",
+				vp->vp_strvalue, ERR_error_string(ERR_get_error(), NULL));
+			talloc_free(session);
+			return NULL;
 		}
+
+		RDEBUG("Loaded TLS session certificate from file \"%s\"", vp->vp_strvalue);
 	}
 #endif
 
