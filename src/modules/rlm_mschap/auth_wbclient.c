@@ -105,7 +105,9 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 	memcpy(authparams.password.response.challenge, challenge,
 	       sizeof(authparams.password.response.challenge));
 
-	authparams.parameter_control |= WBC_MSV1_0_ALLOW_MSVCHAPV2;
+	authparams.parameter_control |= WBC_MSV1_0_ALLOW_MSVCHAPV2 |
+					WBC_MSV1_0_ALLOW_WORKSTATION_TRUST_ACCOUNT |
+					WBC_MSV1_0_ALLOW_SERVER_TRUST_ACCOUNT;
 
 
 	/*
