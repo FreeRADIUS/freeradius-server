@@ -2422,7 +2422,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 			if (vp && (vp->vp_integer != 256)) {
 				request->proxy_reply = rad_alloc_reply(request, request->proxy);
 				request->proxy_reply->code = vp->vp_integer;
-				fr_pair_delete_by_num(&request->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
 			}
 		}
 #ifdef WITH_COA
