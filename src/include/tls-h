@@ -298,6 +298,11 @@ void		tls_global_init(void);
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 int		tls_global_version_check(char const *acknowledged);
 #endif
+
+int		tls_error_log(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
+int		tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
+				 CC_HINT(format (printf, 4, 5));
+
 void		tls_global_cleanup(void);
 tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
 tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
