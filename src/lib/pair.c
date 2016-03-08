@@ -1259,12 +1259,12 @@ finish:
 }
 
 
-static VALUE_PAIR *fr_pair_from_unkown(VALUE_PAIR *vp, DICT_ATTR const *da)
+static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, DICT_ATTR const *da)
 {
 	ssize_t len;
 	VALUE_PAIR *vp2;
 
-	len = data2vp(NULL, NULL, NULL, NULL, da,
+	len = data2vp(ctx, NULL, NULL, NULL, da,
 		      vp->vp_octets, vp->vp_length, vp->vp_length,
 		      &vp2);
 	if (len <= 0) return vp; /* it's really unknown */
@@ -1362,7 +1362,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	 */
 	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
 	if (da) {
-		return fr_pair_from_unkown(vp, da);
+		return fr_pair_from_unknown(ctx, vp, da);
 	}
 
 	return vp;
