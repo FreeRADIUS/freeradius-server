@@ -517,10 +517,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 				return -1;
 
 			default:
-				while ((err = ERR_get_error())) {
-					DEBUG("proxy recv says %s",
-					      ERR_error_string(err, NULL));
-				}
+				tls_error_log(NULL, "Failed in proxy receive");
 
 				goto do_close;
 			}
@@ -702,8 +699,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			break;	/* let someone else retry */
 
 		default:
-			DEBUG("proxy SSL_write says %s",
-			      ERR_error_string(err, NULL));
+			tls_error_log(NULL, "Failed in proxy send");
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
 			pthread_mutex_unlock(&sock->mutex);
