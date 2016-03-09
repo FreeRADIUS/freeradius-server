@@ -2530,7 +2530,7 @@ size_t dict_print_attr_oid(char *out, size_t outlen,
 	int			depth = 0;
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 
-	if (outlen <= 0) return 0;
+	if (!outlen) return 0;
 
 	/*
 	 *	If the ancestor and the DA match, there's
