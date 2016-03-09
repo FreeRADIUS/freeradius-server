@@ -78,7 +78,7 @@ static ssize_t jpath_validate_xlat(char **out, size_t outlen,
 	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
 	jpath_str = fr_jpath_asprint(request, head);
-	ret = snprintf(*out, outlen, "%zu:%s", slen, jpath_str);
+	ret = snprintf(*out, outlen, "%zu:%s", (size_t) slen, jpath_str);
 	talloc_free(head);
 	talloc_free(jpath_str);
 
