@@ -493,13 +493,13 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 
 	/* do nothing if this is not enabled */
 	if (inst->check_simul != true) {
-		RDEBUG3("mod_checksimul returning noop - not enabled");
+		RWDEBUG("Simultaneous-Use checking requires 'simul_count_query' to be configured");
 		return RLM_MODULE_NOOP;
 	}
 
 	/* ensure valid username in request */
 	if ((!request->username) || (request->username->vp_length == 0)) {
-		RDEBUG3("mod_checksimul - invalid username");
+		REDEBUG("Zero Length username not permitted");
 		return RLM_MODULE_INVALID;
 	}
 
