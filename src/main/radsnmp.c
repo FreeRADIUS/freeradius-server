@@ -736,7 +736,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					return EXIT_FAILURE;
 
 				case 0:
-					DEBUG("Response timeout.  Retrying %i/%i...", i + 1, conf->retries);
+					DEBUG("Response timeout.  Retrying %d/%u...", i + 1, conf->retries);
 					continue;	/* Timeout */
 
 				case 1:
@@ -755,7 +755,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					break;
 
 				default:
-					DEBUG("Invalid select() return value %zi", rcode);
+					DEBUG("Invalid select() return value %zd", rcode);
 					return EXIT_FAILURE;
 				}
 				break;
@@ -790,7 +790,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					break;
 
 				default:
-					DEBUG("Returned %i varbind responses", ret);
+					DEBUG("Returned %u varbind responses", ret);
 					break;
 				}
 				break;
