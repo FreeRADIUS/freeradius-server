@@ -84,7 +84,7 @@ static ssize_t dhcp_options_xlat(char **out, size_t outlen,
 	     vp;
 	     vp = tmpl_cursor_next(&src_cursor, &src)) {
 		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
-		size_t		len;
+		ssize_t		len;
 		VALUE_PAIR	*vps = NULL;
 		vp_cursor_t	options_cursor;
 
