@@ -210,7 +210,7 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("  -m <prefix>            Change the range ID to the one specified for matching");
 	INFO("                         addresses");
 	INFO("  -l                     List available pools");
-	INFO("  -L                     List available ranges in pool");
+//	INFO("  -L                     List available ranges in pool");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
 //	INFO("Pool status:");
