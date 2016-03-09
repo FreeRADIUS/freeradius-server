@@ -1681,7 +1681,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	if ((!request->username) || (request->username->vp_length == '\0')) {
+	if ((!request->username) || (request->username->vp_length == 0)) {
 		REDEBUG("Zero Length username not permitted");
 
 		return RLM_MODULE_INVALID;
