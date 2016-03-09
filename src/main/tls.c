@@ -137,6 +137,182 @@ static bool identity_is_safe(const char *identity)
 	return true;
 }
 
+DIAG_OFF(format-nonliteral)
+/** Print errors in the TLS thread local error stack
+ *
+ * Drains the thread local OpenSSL error queue, and prints out errors.
+ *
+ * @param[in] request	The current request (may be NULL).
+ * @param[in] msg	Error message describing the operation being attempted.
+ * @param[in] ap	Arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+static int tls_verror_log(REQUEST *request, char const *msg, va_list ap)
+{
+	unsigned long	error;
+	char		*p;
+	int		in_stack = 0;
+	char		buffer[256];
+
+	int		line;
+	char const	*file;
+
+	/*
+	 *	Pop the first error, so ERR_peek_error()
+	 *	can be used to determine if there are
+	 *	multiple errors.
+	 */
+	error = ERR_get_error_line(&file, &line);
+
+	if (msg) {
+		p = talloc_vasprintf(request, msg, ap);
+
+		/*
+		 *	Single line mode (there's only one error)
+		 */
+		if (error && !ERR_peek_error()) {
+			ERR_error_string_n(error, buffer, sizeof(buffer));
+
+			/* Extra verbose */
+			if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
+				ROPTIONAL(REDEBUG, ERROR, "%s: %s[%i]:%s", p, file, line, buffer);
+			} else {
+				ROPTIONAL(REDEBUG, ERROR, "%s: %s", p, buffer);
+			}
+
+			talloc_free(p);
+
+			return 1;
+		}
+
+		/*
+		 *	Print the error we were given, irrespective
+		 *	of whether there were any OpenSSL errors.
+		 */
+		ROPTIONAL(RERROR, ERROR, "%s", p);
+		talloc_free(p);
+	}
+
+	/*
+	 *	Stack mode (there are multiple errors)
+	 */
+	if (!error) return 0;
+	do {
+		ERR_error_string_n(error, buffer, sizeof(buffer));
+		/* Extra verbose */
+		if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
+			ROPTIONAL(REDEBUG, ERROR, "%s[%i]:%s", file, line, buffer);
+		} else {
+			ROPTIONAL(REDEBUG, ERROR, "%s", buffer);
+		}
+		in_stack++;
+	} while ((error = ERR_get_error_line(&file, &line)));
+
+	return in_stack;
+}
+DIAG_ON(format-nonliteral)
+
+/** Print errors in the TLS thread local error stack
+ *
+ * Drains the thread local OpenSSL error queue, and prints out errors.
+ *
+ * @param[in] request	The current request (may be NULL).
+ * @param[in] msg	Error message describing the operation being attempted.
+ * @param[in] ...	Arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+int tls_error_log(REQUEST *request, char const *msg, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, msg);
+	ret = tls_verror_log(request, msg, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+/** Print errors raised by OpenSSL I/O functions
+ *
+ * Drains the thread local OpenSSL error queue, and prints out errors
+ * based on the SSL handle and the return code of the I/O  function.
+ *
+ * OpenSSL lists I/O functions to be:
+ *   - SSL_connect
+ *   - SSL_accept
+ *   - SSL_do_handshake
+ *   - SSL_read
+ *   - SSL_peek
+ *   - SSL_write
+ *
+ * @param request	The current request (may be NULL).
+ * @param session	The current tls_session.
+ * @param ret		from the I/O operation.
+ * @param msg		Error message describing the operation being attempted.
+ * @param ...		Arguments for msg.
+ * @return
+ *	- 0 TLS session cannot continue.
+ *	- 1 TLS session may still be viable.
+ */
+int tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
+{
+	int	error;
+	va_list	ap;
+
+	if (ERR_peek_error()) {
+		va_start(ap, msg);
+		tls_verror_log(request, msg, ap);
+		va_end(ap);
+	}
+
+	error = SSL_get_error(session->ssl, ret);
+	switch (error) {
+	/*
+	 *	These seem to be harmless and already "dealt
+	 *	with" by our non-blocking environment. NB:
+	 *	"ZERO_RETURN" is the clean "error"
+	 *	indicating a successfully closed SSL
+	 *	tunnel. We let this happen because our IO
+	 *	loop should not appear to have broken on
+	 *	this condition - and outside the IO loop, the
+	 *	"shutdown" state is checked.
+	 *
+	 *	Don't print anything if we ignore the error.
+	 */
+	case SSL_ERROR_NONE:
+	case SSL_ERROR_WANT_READ:
+	case SSL_ERROR_WANT_WRITE:
+	case SSL_ERROR_WANT_X509_LOOKUP:
+	case SSL_ERROR_ZERO_RETURN:
+		break;
+
+	/*
+	 *	These seem to be indications of a genuine
+	 *	error that should result in the SSL tunnel
+	 *	being regarded as "dead".
+	 */
+	case SSL_ERROR_SYSCALL:
+		ROPTIONAL(REDEBUG, ERROR, "System call (I/O) error (%i)", ret);
+		return 0;
+
+	case SSL_ERROR_SSL:
+		ROPTIONAL(REDEBUG, ERROR, "TLS protocol error (%i)", ret);
+		return 0;
+
+	/*
+	 *	For any other errors that (a) exist, and (b)
+	 *	crop up - we need to interpret what to do with
+	 *	them - so "politely inform" the caller that
+	 *	the code needs updating here.
+	 */
+	default:
+		ROPTIONAL(REDEBUG, ERROR, "TLS session error %i (%i)", error, ret);
+		return 0;
+	}
+
+	return 1;
+}
 
 /*
  *	When a client uses TLS-PSK to talk to a server, this callback
@@ -283,6 +459,7 @@ static int _tls_session_free(tls_session_t *ssn)
 
 tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd)
 {
+	int ret;
 	int verify_mode;
 	tls_session_t *ssn = NULL;
 	REQUEST *request;
@@ -324,11 +501,9 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_fd(ssn->ssl, fd);
-	if (SSL_connect(ssn->ssl) <= 0) {
-		int err;
-		while ((err = ERR_get_error())) {
-			ERROR("tls: %s", ERR_error_string(err, NULL));
-		}
+	ret = SSL_connect(ssn->ssl);
+	if (ret <= 0) {
+		tls_error_io_log(NULL, ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
 		talloc_free(ssn);
 
 		return NULL;
@@ -377,8 +552,9 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		conf->session_last_flushed = request->timestamp;
 	}
 
-	if ((new_tls = SSL_new(conf->ctx)) == NULL) {
-		RERROR("Error creating new SSL session: %s", ERR_error_string(ERR_get_error(), NULL));
+	new_tls = SSL_new(conf->ctx);
+	if (new_tls == NULL) {
+		tls_error_log(request, "Error creating new TLS session");
 		return NULL;
 	}
 
@@ -469,68 +645,6 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 }
 
 /*
- *	Print out some text describing the error.
- */
-static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
-{
-	int e;
-	unsigned long l;
-
-	if ((l = ERR_get_error()) != 0) {
-		char const *p = ERR_error_string(l, NULL);
-
-		if (p) ROPTIONAL(REDEBUG, ERROR, "SSL says: %s", p);
-	}
-
-	e = SSL_get_error(s, ret);
-	switch (e) {
-	/*
-	 *	These seem to be harmless and already "dealt
-	 *	with" by our non-blocking environment. NB:
-	 *	"ZERO_RETURN" is the clean "error"
-	 *	indicating a successfully closed SSL
-	 *	tunnel. We let this happen because our IO
-	 *	loop should not appear to have broken on
-	 *	this condition - and outside the IO loop, the
-	 *	"shutdown" state is checked.
-	 *
-	 *	Don't print anything if we ignore the error.
-	 */
-	case SSL_ERROR_NONE:
-	case SSL_ERROR_WANT_READ:
-	case SSL_ERROR_WANT_WRITE:
-	case SSL_ERROR_WANT_X509_LOOKUP:
-	case SSL_ERROR_ZERO_RETURN:
-		break;
-
-	/*
-	 *	These seem to be indications of a genuine
-	 *	error that should result in the SSL tunnel
-	 *	being regarded as "dead".
-	 */
-	case SSL_ERROR_SYSCALL:
-		ROPTIONAL(REDEBUG, ERROR, "%s failed in a system call (%d), TLS session failed", text, ret);
-		return 0;
-
-	case SSL_ERROR_SSL:
-		ROPTIONAL(REDEBUG, ERROR, "%s failed inside of TLS (%d), TLS session failed", text, ret);
-		return 0;
-
-	/*
-	 *	For any other errors that (a) exist, and (b)
-	 *	crop up - we need to interpret what to do with
-	 *	them - so "politely inform" the caller that
-	 *	the code needs updating here.
-	 */
-	default:
-		ROPTIONAL(REDEBUG, ERROR, "FATAL SSL error: %d", e);
-		return 0;
-	}
-
-	return 1;
-}
-
-/*
  * We are the server, we always get the dirty data
  * (Handshake data is also considered as dirty data)
  * During handshake, since SSL API handles itself,
@@ -564,7 +678,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		return 1;
 	}
 
-	if (!int_ssl_check(request, ssn->ssl, err, "SSL_read")) return 0;
+	if (!tls_error_io_log(request, ssn, err, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
 	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL Connection Established");
@@ -599,7 +713,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 1;
 
 		} else {
-			int_ssl_check(request, ssn->ssl, err, "BIO_read");
+			tls_error_log(NULL, NULL);
 			record_init(&ssn->dirty_in);
 			return 0;
 		}
@@ -643,7 +757,10 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
-			int_ssl_check(request, ssn->ssl, err, "handshake_send");
+			if (!tls_error_io_log(request, ssn, err,
+					      "Failed in " STRINGIFY(__FUNCTION__) " (SSL_write)")) {
+				return 0;
+			}
 		}
 	}
 
@@ -2187,9 +2304,8 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
-		if(!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
-			ERROR(LOG_PREFIX ": X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error reading Trusted root CA list %s",conf->ca_file );
+		if (!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
+			tls_error_log(NULL, "Error reading Trusted root CA list \"%s\"", conf->ca_file);
 			return NULL;
 		}
 
@@ -2369,11 +2485,8 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 
 	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
-		int err;
-		while ((err = ERR_get_error())) {
-			ERROR(LOG_PREFIX ": Failed creating SSL context: %s", ERR_error_string(err, NULL));
-			return NULL;
-		}
+		tls_error_log(NULL, "Failed creating TLS context");
+		return NULL;
 	}
 
 	/*
@@ -2532,15 +2645,14 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 
 	if (type == SSL_FILETYPE_PEM) {
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
-			ERROR(LOG_PREFIX ": Error reading certificate file %s:%s", conf->certificate_file,
-			      ERR_error_string(ERR_get_error(), NULL));
+			tls_error_log(NULL, "Failed reading certificate file \"%s\"",
+				      conf->certificate_file);
 			return NULL;
 		}
 
 	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		ERROR(LOG_PREFIX ": Error reading certificate file %s:%s",
-		      conf->certificate_file,
-		      ERR_error_string(ERR_get_error(), NULL));
+		tls_error_log(NULL, "Failed reading certificate file \"%s\"",
+			      conf->certificate_file);
 		return NULL;
 	}
 
@@ -2548,8 +2660,8 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			ERROR(LOG_PREFIX ": SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error reading Trusted root CA list %s",conf->ca_file );
+			tls_error_log(NULL, "Failed reading Trusted root CA list \"%s\"",
+				      conf->ca_file);
 			return NULL;
 		}
 	}
@@ -2557,9 +2669,8 @@ load_ca:
 
 	if (conf->private_key_file) {
 		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-			ERROR(LOG_PREFIX ": Failed reading private key file %s:%s",
-			      conf->private_key_file,
-			      ERR_error_string(ERR_get_error(), NULL));
+			tls_error_log(NULL, "Failed reading private key file \"%s\"",
+				      conf->private_key_file);
 			return NULL;
 		}
 
@@ -2697,8 +2808,7 @@ post_ca:
 	if (conf->check_crl) {
 		certstore = SSL_CTX_get_cert_store(ctx);
 		if (certstore == NULL) {
-			ERROR(LOG_PREFIX ": SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error reading Certificate Store");
+			tls_error_log(NULL, "Error reading Certificate Store");
 	    		return NULL;
 		}
 		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
@@ -2726,8 +2836,7 @@ post_ca:
 	/* Load randomness */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024*10))) {
-			ERROR(LOG_PREFIX ": SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			ERROR(LOG_PREFIX ": Error loading randomness");
+			tls_error_log(NULL, "Failed loading randomness");
 			return NULL;
 		}
 	}
@@ -2737,7 +2846,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			ERROR(LOG_PREFIX ": Error setting cipher list");
+			tls_error_log(NULL, "Failed setting cipher list");
 			return NULL;
 		}
 	}
@@ -3182,11 +3291,9 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			break;
 
 		default:
-			DEBUG("Error in fragmentation logic: %s", ERR_error_string(code, NULL));
-
-			/*
-			 *	FIXME: Call int_ssl_check?
-			 */
+			REDEBUG("Error in fragmentation logic");
+			tls_error_io_log(request, ssn, err,
+					 "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)");
 			break;
 		}
 		return FR_TLS_FAIL;
