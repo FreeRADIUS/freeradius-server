@@ -1500,6 +1500,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 
 	/* If simul_count_query is not defined, we don't do any checking */
 	if (!inst->config->simul_count_query) {
+		RWDEBUG("Simultaneous-Use checking requires 'simul_count_query' to be configured");
 		return RLM_MODULE_NOOP;
 	}
 
