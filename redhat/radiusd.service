@@ -7,8 +7,8 @@ Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ htt
 Type=forking
 PIDFile=/var/run/radiusd/radiusd.pid
 EnvironmentFile=-/etc/sysconfig/radiusd
-ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
-ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS -m
+ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
+ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS
 Restart=on-failure
 RestartSec=5
 
