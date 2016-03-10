@@ -1,51 +1,135 @@
-.TH RLM_REDIS_IPPOOL_TOOL 8
-.SH NAME
-rlm_redis_ippool_tool - Manage the contents of the FreeRadius ippool in redis
-.SH SYNOPSIS
-.P
-This tool allows administrators to add, delete, or release IP
-addresses in an IP address pool that is located in a Redis database.
-
-.B rlm_redis_ippool_tool
-.RB [ \-a\ \fIprefix\fP ]
-.RB [ \-d\ \fIprefix\fP ]
-.RB [ \-r\ \fIprefix\fP ]
-.RB [ \-s\ \fIprefix\fP ]
-[options] <server[:port]> <pool> [<range>]
-
-.SH DESCRIPTION
-\fBrlm_redis_ippool_tool\fP manages the contents of the FreeRADIUS
-ippool that is located in a Redis database.
-.P
-
-.SH OPTIONS
-
-.IP \-a\ \fIprefix\fP 
-Add addresses or prefixes to the pool.
-.IP \-d\ \fIprefix\fP 
-Delete addresses or prefixes from the pool.
-.IP \-r\ \fIprefix\fP 
-Release addresses or prefixes from the pool.  They will remain in the pool, but will be marked as "unused".
-.IP \-s\ \fIprefix\fP 
-Show addresses or prefixes which are in the pool.
-
-.IP \-f\ \fIfile\fP
-Load the redis server connection parameters from a FreeRADIUS format configuration file.
-.IP \-l
+.Dd March 10, 2016
+.Dt RLM_IPPOOL_TOOL 8
+.Sh NAME
+.Nm rlm_redis_ippool_tool
+.Nd FreeRADIUS Redis IP pool management tool.
+.Sh SYNOPSIS
+.Nm
+.Op Fl adrsm Ar prefix [ Fl p Ar prefix_len ]
+.Op Fl lLs
+.Op Fl hx
+.Op Fl f Ar file
+.Ar server[:port]
+.Op pool
+.Op Ar range
+.Sh DESCRIPTION
+.Nm
+is used to manage pools operated on by \fBrlm_redis\fR.
+.Pp
+Any address or prefix allocated by \fBrlm_redis_ippool\fR must first be added
+to a pool using
+.Nm .
+.Pp
+Addresses or prefixes within a pool may be tagged with a
+.Ar range .
+.Pp
+This
+.Ar range
+will be presented as an attribute by \fBrlm_redis_ippool\fR
+if allocation is successful, and may be used as a key to retrieve additional
+options associated with that address or prefix, such as a default gateway
+and/or subnet.
+.Pp
+\fBrlm_redis_ippool\fR does not support retrieving options from Redis. One
+of the other datastore modules such as \fBrlm_sql\fR or \fBrlm_redis\fR should
+be used instead.
+.Sh OPTIONS
+One or more action must be specified per invocation.
+.Pp
+Perform an action on the specified
+.Ar pool :
+.Bl -tag -width -indent
+.It Fl a Ar range
+Add address(es) or prefix(es) to the specified
+.Ar pool
+with the specified
+.Ar range .
+.It Fl d Ar range
+Delete address(es) or prefix(es) from the specified
+.Ar pool .
+.Ar range
+is ignored.
+.It Fl r Ar range
+Release leases from the specified
+.Ar pool .
+.Ar range
+is ignored.
+.It Fl s Ar range
+Show leases in the specified pool.
+.Ar range
+is ignored.
+.It Fl m Ar range
+Modify the
+.Ar range
+associated with address(es) or prefix(es) in the specified pool.
+.It Fl p Ar prefix_len
+Set the length of the network portion of IPv4 or IPv6 addresses in
+the previous
+.Ar range .
+For IPv6 this value should be between 1-128,
+for IPv4 this value should be between 1-32.
+.El
+.Pp
+Retrieve information about pools:
+.Bl -tag -width -indent
+.It Fl l
 List available pools.
-.IP \-p\ \fIprefix_len\fP 
-The length of the prefix allocate.  It defaults to 32 for Ipv4, and
-128 for IPv6.  This is used primarily for IPv6 where a prefix is
-allocated to an intermediary router, which in turn allocates
-sub-prefixes to the devices it serves
-.IP \-x
-Increase verbosity level
-.IP \S
-Print pool statistics.
-
-.SH SEE ALSO
+.It Fl S
+Print
+.Ar pool
+statistics
+.El
+.Pp
+Alter the behaviour of
+.Nm :
+.Bl -tag -width -indent
+.It Fl h
+Print usage information.
+.It Fl x
+Increase verbosity of log outbout.
+.It Fl f Ar file
+Load connection options from a FreeRADIUS (radiusd) \fBrlm_redis_ippool\fR file.
+.El
+.Sh RANGE
+A
+.Ar range
+specifies one or more IPv4 or IPv6 prefix(es). If no \fB-p\fR argument
+is specified the length of the prefixes will be 32 for IPv4 and 128 for IPv6.
+.Pp
+Ranges may be specified in multiple formats:
+.Bl -tag -width -indent
+.It Ar 192.0.2.1
+Single IPv4 address.
+.It Ar 2001:DB8::1
+Single IPv6 address.
+.It Ar 192.0.2.1-192.0.2.10
+Range of IPv4 addresses.
+.It Ar 2001:DB8::1-2001:DB8::10
+Range of IPv6 addresses.
+.It Ar 192.168.2.0/24
+All IPv4 addresses in the Class C 192.168.2/24 network, excluding the broadcast
+address (192.168.2.255).
+.It Ar 2001:DB8::/120
+All IPv6 addresses in the 2001:DB8::/120 network.
+.It Ar 192.168.2.250/24
+Last five (.250,.251,.252,.253,.254) IPv4 addresses in the Class
+C 192.168.2/24 network.
+.It Ar 2001:DB8::FA/120
+Last five (:FA,:FB,:FC,:FD,.:FE) IPv6 addresses in the 2001:DB8::/120 network.
+.El
+.Pp
+When the \fB-p\fR argument is used, the
+.Ar range
+argument is taken to mean all sub-networks of that size in the specified network
+or range of addresses.
+.Pp
+For example:
+.Bl -tag -width -indent
+.It Fl a Ar 192.168.250/24 Fl p Ar 24
+Adds prefixes 192.168.250/24, 192.168.251/24, 192.168.253/24,
+192.168.254/24 and 192.168.255/24.
+.El
+.Sh SEE ALSO
 radiusd(8)
-.SH AUTHORS
-Currently part of the FreeRADIUS Project (http://www.freeradius.org)
-
-Mailing list details are at http://www.freeradius.org/
+.Sh AUTHORS
+.An Arran Cudbard-Bell <a.cudbardb@freeradius.org>
