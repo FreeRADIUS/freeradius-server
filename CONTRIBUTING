@@ -69,25 +69,21 @@
   problem that doesn't require additional code, or may have ideas as to how your problem can be solved
   in a way that will better fit with the longterm vision for the server.
 
-  Once you've got the go ahead, read through the coding standards document:
+  Once you've got the go ahead read through the coding standards document
+  (http://wiki.freeradius.org/contributing/coding-standards).
 
-    http://wiki.freeradius.org/contributing/coding-standards
+  If you're creating a new module you may wish to read the module creation guide 
+  (http://wiki.freeradius.org/contributing/Modules3).
 
-  If you're creating a new module you may wish to read the module creation guide:
-
-    http://wiki.freeradius.org/contributing/Modules3
-
-  You may also wish to utilise the doxygen site to review code documentation:
-
-    http://doc.freeradius.org
+  You may also wish to utilise the doxygen site to review code documentation (http://doc.freeradius.org).
 
   The doxygen site contains the complete reference of all API functions with doxygen headers, as well
-  as structs, and callback declarations.  doc.freeradius.org is updated within one minute of each commit
-  to the master branch of the main freeradius-server repo.
+  as structs, and callback declarations.  http://doc.freeradius.org is updated within one minute of each 
+  commit to the master branch of the freeradius-server repository.
 
   Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
-  Git/GitHub knowledge is assumed.  If you're wondering what the heck a pull-request is, this
-  document may be of some use:
+  Git/GitHub knowledge is assumed.  If you're wondering what a pull-request is, this document may be of
+  some use:
 
     http://wiki.freeradius.org/contributing/GitHub
 
