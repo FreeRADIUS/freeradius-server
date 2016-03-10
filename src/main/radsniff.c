@@ -1777,18 +1777,17 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 			}
 			if (ret == -2) {
 				DEBUG("Done reading packets (%s)", event->in->name);
+			done_file:
 				fr_event_fd_delete(events, 0, fd);
 
 				/* Signal pipe takes one slot which is why this is == 1 */
-				if (fr_event_list_num_fds(events) == 1) {
-					fr_event_loop_exit(events, 1);
-				}
+				if (fr_event_list_num_fds(events) == 1) fr_event_loop_exit(events, 1);
 
 				return;
 			}
 			if (ret < 0) {
 				ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
-				return;
+				goto done_file;
 			}
 
 			/*
