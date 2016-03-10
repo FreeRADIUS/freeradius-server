@@ -230,6 +230,31 @@ static ssize_t xlat_home_server(char **out, size_t outlen,
 		return 0;
 	}
 
+	if (strcmp(fmt, "state") == 0) {
+		char const *state;
+
+		switch (request->proxy->home_server->state) {
+		case HOME_STATE_ALIVE:
+			state = "alive";
+			break;
+
+		case HOME_STATE_ZOMBIE:
+			state = "zombie";
+			break;
+
+		case HOME_STATE_IS_DEAD:
+			state = "dead";
+			break;
+
+		default:
+			state = "unknown";
+			break;
+		}
+
+		strlcpy(*out, state, outlen);
+		return strlen(*out);
+	}
+
 	return xlat_cs(request->proxy->home_server->cs, fmt, *out, outlen);
 }
 
