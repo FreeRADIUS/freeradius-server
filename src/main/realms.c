@@ -276,6 +276,20 @@ static ssize_t CC_HINT(nonnull) xlat_server_pool(UNUSED void *instance, REQUEST 
 		return 0;
 	}
 
+	if (strcmp(fmt, "state") == 0) {
+		char const *state;
+
+		if (request->home_pool->in_fallback) {
+			state = "fallback";
+
+		} else {
+			state = "alive";
+		}
+
+		strlcpy(out, state, outlen);
+		return strlen(out);
+	}
+
 	return xlat_cs(request->home_pool->cs, fmt, out, outlen);
 }
 #endif
