@@ -234,6 +234,31 @@ static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST 
 		return 0;
 	}
 
+	if (strcmp(fmt, "state") == 0) {
+		char const *state;
+
+		switch (request->home_server->state) {
+		case HOME_STATE_ALIVE:
+			state = "alive";
+			break;
+
+		case HOME_STATE_ZOMBIE:
+			state = "zombie";
+			break;
+
+		case HOME_STATE_IS_DEAD:
+			state = "dead";
+			break;
+
+		default:
+			state = "unknown";
+			break;
+		}
+
+		strlcpy(out, state, outlen);
+		return strlen(out);
+	}
+
 	return xlat_cs(request->home_server->cs, fmt, out, outlen);
 }
 
