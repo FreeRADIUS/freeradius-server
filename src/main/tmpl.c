@@ -75,6 +75,7 @@ const FR_NAME_NUMBER request_refs[] = {
 	{ "outer",		REQUEST_OUTER },
 	{ "current",		REQUEST_CURRENT },
 	{ "parent",		REQUEST_PARENT },
+	{ "proxy",		REQUEST_PROXY },
 	{  NULL , -1 }
 };
 
@@ -468,6 +469,13 @@ int radius_request(REQUEST **context, request_refs_t name)
 			return -1;
 		}
 		*context = request->parent;
+		break;
+
+	case REQUEST_PROXY:
+		if (!request->proxy) {
+			return -1;
+		}
+		*context = request->proxy;
 		break;
 
 	case REQUEST_UNKNOWN:

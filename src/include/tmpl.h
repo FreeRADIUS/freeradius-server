@@ -111,7 +111,8 @@ typedef enum requests {
 					//!< conversation. Usually the RADIUS request sent
 					//!< by the NAS.
 	REQUEST_CURRENT,		//!< The current request.
-	REQUEST_PARENT			//!< Not currently used.
+	REQUEST_PARENT,			//!< Parent (whatever it is).
+	REQUEST_PROXY			//!< Proxied request
 } request_refs_t;
 
 extern const FR_NAME_NUMBER request_refs[];
