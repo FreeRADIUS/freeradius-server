@@ -110,7 +110,8 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char co
 			 */
 			embedded_len = passwd[2] ^ digest[0];
 			if (embedded_len > encrypted_len) {
-				fr_strerror_printf("Tunnel password is too long for the attribute");
+				fr_strerror_printf("Tunnel Password is too long for the attribute "
+						   "(shared secret is probably incorrect!)");
 				return -1;
 			}
 
