@@ -2835,13 +2835,13 @@ int main(int argc, char *argv[])
 #ifdef SIGQUIT
 	fr_set_signal(SIGQUIT, rs_signal_self);
 #endif
+	DEBUG2("Entering event loop");
 
 	fr_event_loop(events);	/* Enter the main event loop */
 
-	DEBUG("Done sniffing");
+	DEBUG2("Done sniffing");
 
-	finish:
-
+finish:
 	cleanup = true;
 
 	/*
@@ -2849,9 +2849,7 @@ int main(int argc, char *argv[])
 	 */
 	talloc_free(conf);
 
-	if (conf->daemonize) {
-		unlink(conf->pidfile);
-	}
+	if (conf->daemonize) unlink(conf->pidfile);
 
 	return ret;
 }
