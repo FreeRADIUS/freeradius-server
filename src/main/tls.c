@@ -1266,7 +1266,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("disable_single_dh_use", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_single_dh_use) },
 	{ FR_CONF_OFFSET("check_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), .dflt = "no" },
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-	{ FR_CONF_OFFSET("check_all_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_all_crl), .dflt = "no" },
+	{ FR_CONF_DEPRECATED("check_all_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, NULL) },
 #endif
 	{ FR_CONF_OFFSET("allow_expired_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl) },
 	{ FR_CONF_OFFSET("check_cert_cn", PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn) },
@@ -2703,14 +2703,10 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 			return NULL;
 		}
 
-#ifdef X509_V_FLAG_CRL_CHECK
-	if (conf->check_crl)
-		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
-#endif
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->check_all_crl)
-		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK_ALL);
+	if (conf->check_crl) X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 #endif
+
 	return store;
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
@@ -3325,19 +3321,14 @@ post_ca:
 	/*
 	 *	Check the certificates for revocation.
 	 */
-#ifdef X509_V_FLAG_CRL_CHECK
+#ifdef X509_V_FLAG_CRL_CHECK_ALL
 	if (conf->check_crl) {
 		cert_vpstore = SSL_CTX_get_cert_store(ctx);
 		if (cert_vpstore == NULL) {
 			tls_error_log(NULL, "Error reading Certificate Store");
 	    		return NULL;
 		}
-		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK);
-
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-		if (conf->check_all_crl)
-			X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK_ALL);
-#endif
+		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 	}
 #endif
 
