@@ -1695,41 +1695,62 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 #ifdef HAVE_OPENSSL_OCSP_H
 /** Convert OpenSSL's ASN1_TIME to an epoch time
  *
- * @param asn1 The ASN1_TIME to convert.
- * @return The ASN1_TIME converted to epoch time.
+ * @param[out] out	Where to write the time_t.
+ * @param[in] asn1	The ASN1_TIME to convert.
+ * @return
+ *	- 0 success.
+ *	- -1 on failure.
  */
-static time_t ocsp_asn1time_to_epoch(ASN1_TIME const *asn1){
-	struct tm t;
-	const char *str = (const char *)asn1->data;
-	size_t i = 0;
+static time_t ocsp_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1){
+	struct		tm t;
+	char const	*p = (char const *)asn1->data, *end = p + strlen(p);
 
 	memset(&t, 0, sizeof(t));
 
 	if (asn1->type == V_ASN1_UTCTIME) {/* two digit year */
-		t.tm_year = (str[i++] - '0') * 10;
-		t.tm_year += (str[i++] - '0');
+		if ((end - p) < 2) {
+			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
+					   end - p);
+			return -1;
+		}
+
+		t.tm_year = (*(p++) - '0') * 10;
+		t.tm_year += (*(p++) - '0');
 		if (t.tm_year < 70) t.tm_year += 100;
 	} else if (asn1->type == V_ASN1_GENERALIZEDTIME) {/* four digit year */
-		t.tm_year = (str[i++] - '0') * 1000;
-		t.tm_year += (str[i++] - '0') * 100;
-		t.tm_year += (str[i++] - '0') * 10;
-		t.tm_year += (str[i++] - '0');
+		if ((end - p) < 4) {
+			fr_strerror_printf("ASN1 string too short, expected 4 additional bytes, got %zu bytes",
+					   end - p);
+			return -1;
+		}
+
+		t.tm_year = (*(p++) - '0') * 1000;
+		t.tm_year += (*(p++) - '0') * 100;
+		t.tm_year += (*(p++) - '0') * 10;
+		t.tm_year += (*(p++) - '0');
 		t.tm_year -= 1900;
 	}
 
-	t.tm_mon = (str[i++] - '0') * 10;
-	t.tm_mon += (str[i++] - '0') - 1; // -1 since January is 0 not 1.
-	t.tm_mday = (str[i++] - '0') * 10;
-	t.tm_mday += (str[i++] - '0');
-	t.tm_hour = (str[i++] - '0') * 10;
-	t.tm_hour += (str[i++] - '0');
-	t.tm_min = (str[i++] - '0') * 10;
-	t.tm_min += (str[i++] - '0');
-	t.tm_sec = (str[i++] - '0') * 10;
-	t.tm_sec += (str[i++] - '0');
+	if ((end - p) < 10) {
+		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
+				   end - p);
+		return -1;
+	}
+
+	t.tm_mon = (*(p++) - '0') * 10;
+	t.tm_mon += (*(p++) - '0') - 1; // -1 since January is 0 not 1.
+	t.tm_mday = (*(p++) - '0') * 10;
+	t.tm_mday += (*(p++) - '0');
+	t.tm_hour = (*(p++) - '0') * 10;
+	t.tm_hour += (*(p++) - '0');
+	t.tm_min = (*(p++) - '0') * 10;
+	t.tm_min += (*(p++) - '0');
+	t.tm_sec = (*(p++) - '0') * 10;
+	t.tm_sec += (*(p++) - '0');
 
 	/* Apparently OpenSSL converts all timestamps to UTC? Maybe? */
-	return mktime(&t);
+	*out = mktime(&t);
+	return 0;
 }
 
 /** Extract components of OCSP responser URL from a certificate
@@ -2093,7 +2114,11 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		 *	on the code path, other times we don't.
 		 */
 		if (now.tv_sec == 0) gettimeofday(&now, NULL);
-		next = ocsp_asn1time_to_epoch(next_update);
+		if (ocsp_asn1time_to_epoch(&next, next_update) < 0) {
+			REDEBUG("ocsp: Failed parsing next_update time: %s", fr_strerror());
+			ocsp_status = OCSP_STATUS_SKIPPED;
+			goto finish;
+		}
 		if (now.tv_sec < next){
 			RDEBUG2("ocsp: Adding OCSP TTL attribute");
 			RINDENT();
