@@ -854,9 +854,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	}
 #endif
 
-	if (!diameter_verify(request, data, data_len)) {
-		return PW_CODE_ACCESS_REJECT;
-	}
+	if (!diameter_verify(request, data, data_len)) return PW_CODE_ACCESS_REJECT;
 
 	/*
 	 *	Allocate a fake REQUEST structure.
