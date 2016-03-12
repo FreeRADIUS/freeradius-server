@@ -61,7 +61,7 @@ filter_username {
 		#  must have at least 1 string-dot-string after @
 		#  e.g. "user@site.com"
 		#
-		if ((&User-Name =~ /@/) && (&User-Name !~ /@([^.]+)\.([^.]+)$/))  {
+		if ((&User-Name =~ /@/) && (&User-Name !~ /@[^.]+(\.[^.]+)+$/))  {
 			update request {
 				&Module-Failure-Message += 'Realm does not have at least one dot separator'
 			}
