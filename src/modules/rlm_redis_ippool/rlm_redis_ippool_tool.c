@@ -201,7 +201,7 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("Pool management:");
 	INFO("  -a range               Add address(es)/prefix(es) to the pool.");
 	INFO("  -d range               Delete address(es)/prefix(es) in this range.");
-	INFO("  -r range               Release address(es)/prefix(es) in this range.".);
+	INFO("  -r range               Release address(es)/prefix(es) in this range.");
 	INFO("  -s range               Show addresses/prefix in this range.");
 	INFO("  -p prefix_len          Length of prefix to allocate (defaults to 32/128)");
 	INFO("                         This is used primarily for IPv6 where a prefix is");
