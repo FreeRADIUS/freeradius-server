@@ -197,21 +197,23 @@ static char lua_remove_cmd[] =
 	"return 1" EOL;									/* 12 */
 
 static void NEVER_RETURNS usage(int ret) {
-	INFO("Usage: %s [-adrsm <range> [-p <prefix_len>]] [options] <server[:port]> [<pool>] [<range>]", name);
+	INFO("Usage: %s -adrsm range... [-p prefix_len]... [-x]... [-oShf] server[:port] [pool] [range id]", name);
 	INFO("Pool management:");
-	INFO("  -a <range>            Add address(es)/prefix(es) to the pool");
-	INFO("  -d <range>            Delete address(es)/prefix(es) in this range");
-	INFO("  -r <range>            Release address(es)/prefix(es) in this range");
-	INFO("  -s <range>            Show addresses/prefix in this range");
-	INFO("  -p <prefix_len>        Length of prefix to allocate (defaults to 32/128)");
+	INFO("  -a range               Add address(es)/prefix(es) to the pool.");
+	INFO("  -d range               Delete address(es)/prefix(es) in this range.");
+	INFO("  -r range               Release address(es)/prefix(es) in this range.".);
+	INFO("  -s range               Show addresses/prefix in this range.");
+	INFO("  -p prefix_len          Length of prefix to allocate (defaults to 32/128)");
 	INFO("                         This is used primarily for IPv6 where a prefix is");
 	INFO("                         allocated to an intermediary router, which in turn");
-	INFO("                         allocates sub-prefixes to the devices it serves");
-	INFO("  -m <range>            Change the range ID to the one specified for matching");
-	INFO("                         addresses");
-	INFO("  -l                     List available pools");
-//	INFO("  -L                     List available ranges in pool");
-//	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
+	INFO("                         allocates sub-prefixes to the devices it serves.");
+	INFO("                         This argument changes the prefix_len for the previous");
+	INFO("                         instance of an -adrsm argument, only.");
+	INFO("  -m range               Change the range id to the one specified for addresses");
+	INFO("                         in this range.");
+	INFO("  -l                     List available pools.");
+//	INFO("  -L                     List available ranges in pool [NYI]");
+//	INFO("  -i file                Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
 //	INFO("Pool status:");
 //	INFO("  -I                     Output active entries in ISC lease file format [NYI]");
@@ -220,8 +222,8 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("Configuration:");
 	INFO("  -h                     Print this help message and exit");
 	INFO("  -x                     Increase the verbosity level");
-//	INFO("  -o <attr>=<value>      Set option, these are specific to the backends [NYI]");
-	INFO("  -f <file>              Load connection options from a FreeRADIUS (radisud) format config file");
+//	INFO("  -o attr=value          Set option, these are specific to the backends [NYI]");
+	INFO("  -f file                Load connection options from a FreeRADIUS (radisud) format config file");
 	INFO(" ");
 	INFO("<range> is range \"127.0.0.1-127.0.0.254\" or CIDR network \"127.0.0.1/24\" or host \"127.0.0.1\"");
 	INFO("CIDR host bits set start address, e.g. 127.0.0.200/24 -> 127.0.0.200-127.0.0.254");
