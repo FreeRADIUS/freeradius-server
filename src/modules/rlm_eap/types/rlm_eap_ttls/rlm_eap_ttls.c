@@ -291,7 +291,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	Session is established, proceed with decoding
 	 *	tunneled data.
 	 */
-	RDEBUG2("Session established.  Proceeding to decode tunneled attributes");
+	RDEBUG2("Session established.  Decoding Diameter attributes");
 
 	/*
 	 *	We may need TTLS data associated with the session, so

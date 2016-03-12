@@ -839,20 +839,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		return PW_CODE_ACCESS_REJECT;
 	}
 
-#ifndef NDEBUG
-	if ((rad_debug_lvl > 2) && fr_log_fp) {
-		size_t i;
-
-		for (i = 0; i < data_len; i++) {
-			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data in %04x: ", (int) i);
-
-			fprintf(fr_log_fp, "%02x ", data[i]);
-
-			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
-		}
-		if ((data_len & 0x0f) != 0) fprintf(fr_log_fp, "\n");
-	}
-#endif
+	RDEBUG3("TTLS Tunnel Data (%zu bytes)", data_len);
+	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, data, data_len);
 
 	if (!diameter_verify(request, data, data_len)) return PW_CODE_ACCESS_REJECT;
 

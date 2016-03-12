@@ -114,6 +114,10 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
 
+void	radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
+			   uint8_t const *data, size_t data_len)
+	CC_HINT(nonnull);
+
 /** Prefix for global log messages
  *
  * Should be defined in source file (before including radius.h) to add prefix to
