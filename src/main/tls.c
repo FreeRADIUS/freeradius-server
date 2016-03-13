@@ -640,14 +640,28 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	 */
 	vp = fr_pair_find_by_num(request->state, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
 	if (vp) {
+		RDEBUG2("Loading TLS session certificate \"%s\"", vp->vp_strvalue);
+
 		if (SSL_use_certificate_file(session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			tls_error_log(request, "Failed loading TLS session certificate from file \"%s\"",
+			tls_error_log(request, "Failed loading TLS session certificate",
 				      vp->vp_strvalue);
 			talloc_free(session);
 			return NULL;
 		}
 
-		RDEBUG("Loaded TLS session certificate from file \"%s\"", vp->vp_strvalue);
+		if (SSL_use_PrivateKey_file(session->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
+			tls_error_log(request, "Failed loading TLS session certificate",
+				      vp->vp_strvalue);
+			talloc_free(session);
+			return NULL;
+		}
+
+		if (SSL_check_private_key(session->ssl) != 1) {
+			tls_error_log(request, "Failed validating TLS session certificate",
+				      vp->vp_strvalue);
+			talloc_free(session);
+			return NULL;
+		}
 	}
 #endif
 
