@@ -169,6 +169,11 @@ int cbtls_password(char *buf,
 		   int rwflag UNUSED,
 		   void *userdata)
 {
+	/*
+	 *	We do this instead of not registering the callback
+	 *	to ensure OpenSSL doesn't try and read a password
+	 *	from stdin (causes server to block).
+	 */
 	if (!userdata) {
 		ERROR("Certificate encrypted but no private_key_password configured");
 		return 0;
