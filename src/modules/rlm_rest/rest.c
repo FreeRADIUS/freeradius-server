@@ -2366,7 +2366,12 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 
 	fr_cursor_init(&list, &request->packet->vps);
 
-	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &cert_info);
+	/*
+	 *	Examples and documentation show cert_info being
+	 *	a struct curl_certinfo *, but CPP checks require
+	 *	it to be a struct curl_slist *.
+	 */
+	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, (struct curl_slist *) &cert_info);
 	if (ret != CURLE_OK) {
 		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
 
