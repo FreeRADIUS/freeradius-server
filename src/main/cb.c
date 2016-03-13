@@ -169,6 +169,11 @@ int cbtls_password(char *buf,
 		   int rwflag UNUSED,
 		   void *userdata)
 {
+	if (!userdata) {
+		ERROR("Certificate encrypted but no private_key_password configured");
+		return 0;
+	}
+
 	strcpy(buf, (char *)userdata);
 	return(strlen((char *)userdata));
 }
