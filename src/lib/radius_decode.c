@@ -27,6 +27,8 @@
 
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 
+bool fr_tunnel_password_zeros = true;
+
 /** Decode Tunnel-Password encrypted attributes
  *
  * Defined in RFC-2868, this uses a two char SALT along with the
@@ -134,7 +136,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char co
 	/*
 	 *	Check trailing bytes
 	 */
-	for (i = embedded_len; i < (encrypted_len - 1); i++) {	/* -1 for length field */
+	if (fr_tunnel_password_zeros) for (i = embedded_len; i < (encrypted_len - 1); i++) {	/* -1 for length field */
 		if (passwd[i] != 0) {
 			fr_strerror_printf("Trailing garbage in Tunnel Password "
 					   "(shared secret is probably incorrect!)");

@@ -297,6 +297,8 @@ int		fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type,
 
 ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, uint8_t const *vector);
 
+extern bool fr_tunnel_password_zeros; /* security check */
+
 ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
 						 uint8_t const *vector);
 
