@@ -859,6 +859,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->xlat.method_str = "GET";
 	inst->xlat.body = HTTP_BODY_NONE;
 	inst->xlat.body_str = "application/x-www-form-urlencoded";
+	inst->xlat.force_to_str = "plain";
 
 	/*
 	 *	Parse sub-section configs.
