@@ -45,7 +45,7 @@ cd "$base_dir"
 
 password=$(grep output_password server.cnf | sed 's/.*=//;s/^ *//')
 
-name=$(echo "${country}${state}${locality_name}${organization_name}${email}${common_name}" | md5)
+name=$(echo "${country}${state}${locality_name}${organization_name}${email}${common_name}" | openssl md5 | grep -E -o '[0-9a-f]+$')
 
 #
 #  Create a temporary configuration file (-subj arg doesn't
