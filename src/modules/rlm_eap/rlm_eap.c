@@ -204,7 +204,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	The submodule failed.  Die.
 	 */
 	if (status == EAP_INVALID) {
-		REDEBUG("Failed continuing EAP session");
 		eap_fail(eap_session);
 		eap_session_destroy(&eap_session);
 		rcode = RLM_MODULE_INVALID;
