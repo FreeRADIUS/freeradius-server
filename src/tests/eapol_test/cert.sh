@@ -90,6 +90,7 @@ rm "${name}.cnf"
 openssl x509 -req -CAkey "ca.key" -CA "ca.pem" -in "${name}.csr" -passin pass:${password} -out "${name}.crt" \
     -CAcreateserial -extensions xpserver_ext -extfile xpextensions 2> /dev/null
 rm "${name}.csr"
+rm "ca.srl"
 
 #
 #  Export signed certificate as p12
