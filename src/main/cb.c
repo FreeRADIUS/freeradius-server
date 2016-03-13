@@ -33,9 +33,9 @@ void cbtls_info(SSL const *s, int where, int ret)
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		str = "TLS Connect";
+		str = "connect";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		str = "TLS Accept";
+		str = "accept";
 	} else {
 		str = NULL;
 	}
@@ -45,9 +45,9 @@ void cbtls_info(SSL const *s, int where, int ret)
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
 		if (str) {
-			RDEBUG2("%s: %s", str, state);
+			RDEBUG2("%s: In state \"%s\"", str, state);
 		} else {
-			RDEBUG2("%s", state);
+			RDEBUG2("In state \"%s\"", state);
 		}
 		return;
 	}
@@ -56,7 +56,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
 		if (where & SSL_CB_READ) {
-			RERROR("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
+			REDEBUG("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
 			       SSL_alert_desc_string_long(ret));
 
 			/*
@@ -64,14 +64,14 @@ void cbtls_info(SSL const *s, int where, int ret)
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				RERROR("Verify client has copy of CA certificate, and trusts CA");
+				REDEBUG("Verify client has copy of CA certificate, and trusts CA");
 				break;
 
 			default:
 				break;
 			}
 		} else {
-			RERROR("Sending client %s TLS alert: %s",  SSL_alert_type_string_long(ret),
+			REDEBUG("Sending client %s TLS alert: %s",  SSL_alert_type_string_long(ret),
 			       SSL_alert_desc_string_long(ret));
 		}
 		return;
@@ -79,7 +79,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			RERROR("%s: Failed in %s", str, state);
+			REDEBUG("%s: In state \"%s\"", str, state);
 			return;
 		}
 
@@ -88,7 +88,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 				RDEBUG2("%s: Need to read more data: %s", str, state);
 				return;
 			}
-			ERROR("tls: %s: Error in %s", str, state);
+			REDEBUG("tls: %s: In state \"%s\"", str, state);
 		}
 	}
 }

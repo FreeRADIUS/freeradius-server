@@ -542,7 +542,7 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 
 	ret = SSL_connect(session->ssl);
 	if (ret <= 0) {
-		tls_error_io_log(NULL, session, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
+		tls_error_io_log(NULL, session, ret, "Failed in SSL_connect");
 		talloc_free(session);
 
 		return NULL;
@@ -732,7 +732,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 		return 1;
 	}
 
-	if (!tls_error_io_log(request, session, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)")) return 0;
+	if (!tls_error_io_log(request, session, ret, "Failed in SSL_read")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
 	if (SSL_is_init_finished(session->ssl)) {
@@ -817,8 +817,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *session)
 		if (ret > 0) {
 			session->dirty_out.used = ret;
 		} else {
-			if (!tls_error_io_log(request, session, ret,
-					      "Failed in " STRINGIFY(__FUNCTION__) " (SSL_write)")) {
+			if (!tls_error_io_log(request, session, ret, "Failed in SSL_write")) {
 				return 0;
 			}
 		}
@@ -3722,8 +3721,7 @@ fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
 
 		default:
 			REDEBUG("Error in fragmentation logic");
-			tls_error_io_log(request, session, ret,
-					 "Failed in " STRINGIFY(__FUNCTION__) " (SSL_read)");
+			tls_error_io_log(request, session, ret, "Failed in SSL_read");
 			break;
 		}
 		return FR_TLS_FAIL;
