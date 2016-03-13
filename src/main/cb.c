@@ -27,10 +27,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/radiusd.h>
 
 #ifdef WITH_TLS
-void cbtls_info(SSL const *s, int where, int ret)
+void cbtls_info(SSL const *ssl, int where, int ret)
 {
 	char const *str, *state;
-	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
+	REQUEST *request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		str = "connect";
@@ -40,14 +40,14 @@ void cbtls_info(SSL const *s, int where, int ret)
 		str = NULL;
 	}
 
-	state = SSL_state_string_long(s);
+	state = SSL_state_string_long(ssl);
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
 		if (str) {
-			RDEBUG2("%s: In state \"%s\"", str, state);
+			RDEBUG2("%s: Handshake state \"%s\"", str, state);
 		} else {
-			RDEBUG2("In state \"%s\"", state);
+			RDEBUG2("Handshake state \"%s\"", state);
 		}
 		return;
 	}
@@ -71,24 +71,24 @@ void cbtls_info(SSL const *s, int where, int ret)
 				break;
 			}
 		} else {
-			REDEBUG("Sending client %s TLS alert: %s",  SSL_alert_type_string_long(ret),
-			       SSL_alert_desc_string_long(ret));
+			REDEBUG("Sending client %s TLS alert: %s %i",  SSL_alert_type_string_long(ret),
+			       SSL_alert_desc_string_long(ret), ret & 0xff);
 		}
 		return;
 	}
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			REDEBUG("%s: In state \"%s\"", str, state);
+			REDEBUG("%s: Handshake exit state \"%s\"", str, state);
 			return;
 		}
 
 		if (ret < 0) {
-			if (SSL_want_read(s)) {
+			if (SSL_want_read(ssl)) {
 				RDEBUG2("%s: Need to read more data: %s", str, state);
 				return;
 			}
-			REDEBUG("tls: %s: In state \"%s\"", str, state);
+			REDEBUG("tls: %s: Handshake exit state \"%s\"", str, state);
 		}
 	}
 }
