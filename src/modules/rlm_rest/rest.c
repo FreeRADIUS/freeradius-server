@@ -2357,21 +2357,28 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
 	CURLcode		ret;
-	struct curl_certinfo	*cert_info = NULL;
 	int			i;
 	char		 	buffer[265];
 	char			*p , *q, *attr = buffer;
 	vp_cursor_t		cursor, list;
 	VALUE_PAIR		*cert_vps = NULL;
 
-	fr_cursor_init(&list, &request->packet->vps);
-
 	/*
 	 *	Examples and documentation show cert_info being
 	 *	a struct curl_certinfo *, but CPP checks require
 	 *	it to be a struct curl_slist *.
+	 *
+	 *	https://curl.haxx.se/libcurl/c/certinfo.html
 	 */
-	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, (struct curl_slist *) &cert_info);
+	union {
+		struct curl_slist    *to_info;
+		struct curl_certinfo *to_certinfo;
+	} ptr;
+	ptr.to_info = NULL;
+
+	fr_cursor_init(&list, &request->packet->vps);
+
+	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
 	if (ret != CURLE_OK) {
 		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
 
@@ -2380,14 +2387,14 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 
 	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
 
-	RDEBUG2("Chain has %i certificate(s)", cert_info->num_of_certs);
-	for (i = 0; i < cert_info->num_of_certs; i++) {
+	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
+	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
 		struct curl_slist *cert_attrs;
 
 		RDEBUG2("Processing certificate %i",i);
 		fr_cursor_init(&cursor, &cert_vps);
 
-		for (cert_attrs = cert_info->certinfo[i];
+		for (cert_attrs = ptr.to_certinfo->certinfo[i];
 		     cert_attrs;
 		     cert_attrs = cert_attrs->next) {
 		     	VALUE_PAIR *vp;
