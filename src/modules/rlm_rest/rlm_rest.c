@@ -43,6 +43,7 @@ static CONF_PARSER tls_config[] = {
 	{ FR_CONF_OFFSET("random_file", PW_TYPE_STRING, rlm_rest_section_t, tls_random_file) },
 	{ FR_CONF_OFFSET("check_cert", PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert), .dflt = "yes" },
 	{ FR_CONF_OFFSET("check_cert_cn", PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert_cn), .dflt = "yes" },
+	{ FR_CONF_OFFSET("extract_cert_attrs", PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_extract_cert_attrs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -62,6 +63,24 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("body", PW_TYPE_STRING, rlm_rest_section_t, body_str), .dflt = "none" },
 	{ FR_CONF_OFFSET("data", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data) },
 	{ FR_CONF_OFFSET("force_to", PW_TYPE_STRING, rlm_rest_section_t, force_to_str) },
+
+	/* User authentication */
+	{ FR_CONF_OFFSET("auth", PW_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("username", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, username) },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET("require_auth", PW_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), .dflt = "no" },
+
+	/* Transfer configuration */
+	{ FR_CONF_OFFSET("timeout", PW_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
+	{ FR_CONF_OFFSET("chunk", PW_TYPE_INTEGER, rlm_rest_section_t, chunk), .dflt = "0" },
+
+	/* TLS Parameters */
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER xlat_config[] = {
+	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING, rlm_rest_section_t, proxy) },
 
 	/* User authentication */
 	{ FR_CONF_OFFSET("auth", PW_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
@@ -146,6 +165,8 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 			return -1;
 		}
 	}
+
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
 
 	return 0;
 }
@@ -252,14 +273,12 @@ static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
 	rad_assert(*out == NULL);
 
 	/* There are no configurable parameters other than the URI */
-	rlm_rest_section_t section = {
-		.name = "xlat",
-		.method = HTTP_METHOD_GET,
-		.body = HTTP_BODY_NONE,
-		.body_str = "application/x-www-form-urlencoded",
-		.require_auth = false,
-		.force_to = HTTP_BODY_PLAIN
-	};
+	rlm_rest_section_t	section;
+
+	/*
+	 *	Section gets modified, so we need our own copy.
+	 */
+	memcpy(&section, &inst->xlat, sizeof(section));
 
 	rad_assert(fmt);
 
@@ -320,6 +339,8 @@ static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
 	 */
 	ret = rest_request_perform(mod_inst, &section, request, handle);
 	if (ret < 0) return -1;
+
+	if (section.tls_extract_cert_attrs) rest_response_certinfo(mod_inst, &section, request, handle);
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
@@ -673,11 +694,10 @@ finish:
 	return rcode;
 }
 
-static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, rlm_components_t comp)
+static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_items,
+			     rlm_rest_section_t *config, char const *name)
 {
 	CONF_SECTION *cs;
-
-	char const *name = section_type_value[comp].section;
 
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
@@ -685,7 +705,7 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 		return 0;
 	}
 
-	if (cf_section_parse(cs, config, section_config) < 0) {
+	if (cf_section_parse(cs, config, config_items) < 0) {
 		config->name = NULL;
 		return -1;
 	}
@@ -836,17 +856,27 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_rest_t *inst = instance;
 
+	inst->xlat.method_str = "GET";
+	inst->xlat.body = HTTP_BODY_NONE;
+	inst->xlat.body_str = "application/x-www-form-urlencoded";
+
 	/*
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, &inst->authorize, MOD_AUTHORIZE) < 0) ||
-		(parse_sub_section(conf, &inst->authenticate, MOD_AUTHENTICATE) < 0) ||
-		(parse_sub_section(conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
+		(parse_sub_section(conf, xlat_config, &inst->xlat, "xlat") < 0) ||
+		(parse_sub_section(conf, section_config, &inst->authorize,
+				   section_type_value[MOD_AUTHORIZE].section) < 0) ||
+		(parse_sub_section(conf, section_config, &inst->authenticate,
+				   section_type_value[MOD_AUTHENTICATE].section) < 0) ||
+		(parse_sub_section(conf, section_config, &inst->accounting,
+				   section_type_value[MOD_ACCOUNTING].section) < 0) ||
 
 /* @todo add behaviour for checksimul */
-/*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
-		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
+/*		(parse_sub_section(conf, section_config, &inst->checksimul,
+				   section_type_value[MOD_SESSION].section) < 0) || */
+		(parse_sub_section(conf, section_config, &inst->post_auth,
+				   section_type_value[MOD_POST_AUTH].section) < 0))
 	{
 		return -1;
 	}

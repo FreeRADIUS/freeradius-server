@@ -2180,6 +2180,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 	SET_OPTION(CURLOPT_SSL_VERIFYPEER, (section->tls_check_cert == true) ? 1 : 0);
 	SET_OPTION(CURLOPT_SSL_VERIFYHOST, (section->tls_check_cert_cn == true) ? 2 : 0);
+	if (section->tls_extract_cert_attrs) SET_OPTION(CURLOPT_CERTINFO, 1);
 
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
@@ -2345,6 +2346,78 @@ int rest_request_perform(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_sect
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
 
 		return -1;
+	}
+
+	return 0;
+}
+
+int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
+			   REQUEST *request, void *handle)
+{
+	rlm_rest_handle_t	*randle = handle;
+	CURL			*candle = randle->handle;
+	CURLcode		ret;
+	struct curl_certinfo	*cert_info = NULL;
+	int			i;
+	char		 	buffer[265];
+	char			*p , *q, *attr = buffer;
+	vp_cursor_t		cursor, list;
+	VALUE_PAIR		*cert_vps = NULL;
+
+	fr_cursor_init(&list, &request->packet->vps);
+
+	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &cert_info);
+	if (ret != CURLE_OK) {
+		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
+
+		return -1;
+	}
+
+	attr += strlcpy(attr, "TLS-Cert-", sizeof(buffer));
+
+	RDEBUG2("Chain has %i certificate(s)", cert_info->num_of_certs);
+	for (i = 0; i < cert_info->num_of_certs; i++) {
+		struct curl_slist *cert_attrs;
+
+		RDEBUG2("Processing certificate %i",i);
+		fr_cursor_init(&cursor, &cert_vps);
+
+		for (cert_attrs = cert_info->certinfo[i];
+		     cert_attrs;
+		     cert_attrs = cert_attrs->next) {
+		     	VALUE_PAIR *vp;
+
+		     	q = strchr(cert_attrs->data, ':');
+			if (!q) {
+				RWDEBUG("Malformed certinfo from libcurl: %s", cert_attrs->data);
+				continue;
+			}
+
+			strlcpy(attr, cert_attrs->data, (q - cert_attrs->data) + 1);
+			for (p = attr; *p != '\0'; p++) {
+				if (*p == ' ') *p = '-';
+			}
+
+			vp = fr_pair_make(request->packet, NULL, buffer, q + 1, T_OP_ADD);
+			if (!vp) {
+				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
+				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
+			} else {
+				fr_cursor_append(&cursor, vp);
+			}
+		}
+
+		/*
+		 *	Add a copy of the cert_vps to session state.
+		 */
+		if (cert_vps) {
+			/*
+			 *	Print out all the pairs we have so far
+			 */
+			rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, "&");
+			fr_cursor_merge(&list, cert_vps);
+			cert_vps = NULL;
+		}
 	}
 
 	return 0;

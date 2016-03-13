@@ -134,6 +134,7 @@ typedef struct rlm_rest_section_t {
 	char const		*tls_random_file;
 	bool			tls_check_cert;
 	bool			tls_check_cert_cn;
+	bool			tls_extract_cert_attrs;
 
 	struct timeval		timeout_tv;	//!< Timeout timeval.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
@@ -152,6 +153,7 @@ typedef struct rlm_rest_t {
 
 	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 
+	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
 	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
 	rlm_rest_section_t	accounting;	//!< Configuration specific to accounting.
@@ -268,6 +270,9 @@ int rest_request_config(rlm_rest_t const *instance,
 int rest_request_perform(rlm_rest_t const *instance,
 			 rlm_rest_section_t *section, REQUEST *request,
 			 void *handle);
+
+int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t *section,
+			   REQUEST *request, void *handle);
 
 int rest_response_decode(rlm_rest_t const *instance,
 			UNUSED rlm_rest_section_t *section, REQUEST *request,

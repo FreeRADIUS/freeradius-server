@@ -28,6 +28,12 @@ rest {
 		#
 		#  The default is "yes"
 #		check_cert_cn = yes
+
+		#  Extract OIDs from presented certificates as OIDs
+		#
+		#  The default is "no"
+#		extract_cert_attrs = no
+
 	}
 
 	#
@@ -129,6 +135,14 @@ rest {
 	#  If the body is processed and found to contain attribute updated will be returned,
 	#  except in the case of a 401 code.
 	#
+
+	#
+	#  Allows a subset of section configuration items to be configured for any calls
+	#  to this module's xlat function.
+	#
+	xlat {
+		tls = ${..tls}
+	}
 
 	#  Authorize/Authenticate
 	#
