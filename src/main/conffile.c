@@ -1952,14 +1952,19 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	 *	If no default quote was set, determine it from the type
 	 */
 	if (dflt_quote == T_INVALID) {
-		dflt_quote = T_BARE_WORD;
-
-		if (type == PW_TYPE_STRING) {
+		switch (type) {
+		case PW_TYPE_STRING:
 			dflt_quote = T_DOUBLE_QUOTED_STRING;
+			break;
 
-		} else if ((type == PW_TYPE_FILE_INPUT) || /* may have spaces */
-			   (type == PW_TYPE_FILE_OUTPUT)) {
+		case PW_TYPE_FILE_INPUT:
+		case PW_TYPE_FILE_OUTPUT:
 			dflt_quote = T_DOUBLE_QUOTED_STRING;
+			break;
+
+		default:
+			dflt_quote = T_BARE_WORD;
+			break;
 		}
 	}
 
