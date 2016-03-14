@@ -86,6 +86,9 @@ void request_stats_reply(REQUEST *request);
 void radius_stats_ema(fr_stats_ema_t *ema,
 		      struct timeval *start, struct timeval *end);
 void fr_stats_bins(fr_stats_t *stats, struct timeval *start, struct timeval *end);
+int fr_snmp_process(REQUEST *request);
+int fr_snmp_init(void);
+
 
 #define FR_STATS_INC(_x, _y) radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x._y++;
 #define FR_STATS_TYPE_INC(_x) _x++

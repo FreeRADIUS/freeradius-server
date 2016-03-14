@@ -1,11 +1,25 @@
 TARGET	:= radiusd
-SOURCES := acct.c auth.c client.c crypt.c files.c \
-		  listen.c  mainconfig.c modules.c modcall.c \
-		  interpreter.c \
-		  radiusd.c state.c stats.c soh.c \
-		  session.c channel.c \
-		  process.c realms.c detail.c \
-		  threads.c
+SOURCES := acct.c \
+        auth.c \
+        channel.c \
+        client.c \
+        crypt.c \
+        detail.c \
+        files.c \
+        interpreter.c \
+        listen.c \
+        mainconfig.c \
+        modules.c \
+        modcall.c \
+        radiusd.c \
+        realms.c \
+        state.c \
+        stats.c \
+        soh.c \
+        session.c \
+        snmp.c \
+        threads.c \
+        process.c
 
 ifneq ($(OPENSSL_LIBS),)
 SOURCES	+= cb.c tls.c tls_listen.c

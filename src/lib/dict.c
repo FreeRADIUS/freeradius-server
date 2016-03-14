@@ -2544,13 +2544,17 @@ size_t dict_print_attr_oid(char *out, size_t outlen,
 	fr_proto_tlv_stack_build(tlv_stack, da);
 
 	if (ancestor) {
-		depth = ancestor->depth - 1;
-		if (tlv_stack[depth] != ancestor) {
+		if (tlv_stack[ancestor->depth - 1] != ancestor) {
 			fr_strerror_printf("Attribute \"%s\" is not a descendent of \"%s\"", da->name, ancestor->name);
 			return -1;
 		}
+		depth = ancestor->depth;
 	}
 
+	/*
+	 *	We don't print the ancestor, we print the OID
+	 *	between it and the da.
+	 */
 	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
 	if ((p + len) >= end) return p - out;
 	p += len;
@@ -2611,7 +2615,7 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
  * @copybrief fr_dict_unknown_from_fields
  *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
- *	the correct EVS or VSA attribute. This is accessible via vp->parent,
+ *	the correct EVS or VSA attribute. This is accessible via da->parent,
  *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx to allocate DA in.
@@ -3073,6 +3077,34 @@ int fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_d
 	*name = p;
 
 	return 0;
+}
+
+
+/** Check to see if we can convert a nested TLV structure to known attributes
+ *
+ * @param dict to search in.
+ * @param da Nested tlv structure to convert.
+ * @return
+ *	- NULL if we can't.
+ *	- Known attribute if we can.
+ */
+fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da)
+{
+	INTERNAL_IF_NULL(dict);
+
+	if (!da->flags.is_unknown) return da;	/* It's known */
+
+	if (da->parent) {
+		fr_dict_attr_t const *parent;
+
+		parent = fr_dict_attr_known(dict, da->parent);
+		if (!parent) return NULL;
+
+		return fr_dict_attr_child_by_num(parent, da->attr);
+	}
+
+	if (dict->root == da) return dict->root;
+	return NULL;
 }
 
 static void fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t flags)

@@ -686,7 +686,7 @@ int rad_status_server(REQUEST *request)
 	 *	socket.
 	 */
 	if (request->listener->type == RAD_LISTEN_NONE) {
-		request_stats_reply(request);
+		fr_snmp_process(request);
 	}
 #endif
 

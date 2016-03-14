@@ -173,23 +173,25 @@ static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
  * table index numbers as TLV attributes.
  *
  * @param ctx to allocate new pairs in.
+ * @param conf radsnmp config.
  * @param cursor to add pairs to.
- * @param dict for RADIUS protocol.
- * @param parent Where to start evaluating OID strings from.
  * @param oid string to evaluate.
+ * @param type SNMP value type.
  * @param value to assign to OID attribute (SET operations only).
  * @return
  *	- >0 on success (how much of the OID string we parsed).
  *	- <=0 on failure (where format error occurred).
  */
-static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-				     fr_dict_t *dict, fr_dict_attr_t const *parent, char const *oid, char const *value)
+static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_cursor_t *cursor,
+				     char const *oid, int type, char const *value)
 {
 	ssize_t			slen;
 	char const		*p = oid;
 	unsigned int		attr;
 	fr_dict_attr_t const	*index_attr, *da;
+	fr_dict_attr_t const	*parent = conf->snmp_root;
 	VALUE_PAIR		*vp;
+	int			ret;
 
 	if (!oid) return 0;
 
@@ -209,7 +211,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	for (;;) {
 		unsigned int num = 0;
 
-		slen = fr_dict_attr_by_oid(dict, &parent, NULL, &attr, p);
+		slen = fr_dict_attr_by_oid(conf->dict, &parent, NULL, &attr, p);
 		if (slen > 0) break;
 		p += -(slen);
 
@@ -270,8 +272,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	fr_strerror();	/* Clear pending errors */
 
 	/*
-	 *	SNMP requests the leaf under the OID
-	 *	with .0.
+	 *	SNMP requests the leaf under the OID with .0.
 	 */
 	if (attr != 0) {
 		da = fr_dict_attr_child_by_num(parent, attr);
@@ -281,11 +282,6 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		}
 	} else {
 		da = parent;
-	}
-
-	if (da->type == PW_TYPE_TLV) {
-		fr_strerror_printf("OID must specify a leaf, \"%s\" is a \"tlv\"", da->name);
-		return -(slen);
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
@@ -299,12 +295,23 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	 */
 	if (!value) {
 		switch (da->type) {
-		case PW_TYPE_STRING:
-			fr_pair_value_bstrncpy(vp, "\0", 1);
-			break;
+		/*
+		 *	We can blame the authors of RFC 6929 for
+		 *	this hack.  Apparently the presence or absence
+		 *	of an attribute isn't considered a useful means
+		 *	of conveying information, so empty TLVs are
+		 *	disallowed.
+		 */
+		case PW_TYPE_TLV:
+			vp->da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
+			/* FALL-THROUGH */
 
 		case PW_TYPE_OCTETS:
 			fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1);
+			break;
+
+		case PW_TYPE_STRING:
+			fr_pair_value_bstrncpy(vp, "\0", 1);
 			break;
 
 		/*
@@ -313,9 +320,26 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		default:
 			break;
 		}
-	} else {
-		if (fr_pair_value_from_str(vp, value, strlen(value)) < 0) goto error;
+
+		fr_cursor_append(cursor, vp);
+		return slen;
 	}
+
+	if (da->type == PW_TYPE_TLV) {
+		fr_strerror_printf("TLVs cannot hold values");
+		return -(slen);
+	}
+
+	ret = fr_pair_value_from_str(vp, value, strlen(value));
+	if (ret < 0) {
+		slen = -(slen);
+		goto error;
+	}
+
+	vp = fr_pair_afrom_da(ctx, conf->snmp_type);
+	vp->vp_integer = type;
+	vp->vp_length = sizeof(vp->vp_integer);
+
 	fr_cursor_append(cursor, vp);
 
 	return slen;
@@ -346,7 +370,7 @@ static int radsnmp_get_response(int fd,
 				VALUE_PAIR *head)
 {
 	vp_cursor_t		cursor;
-	VALUE_PAIR		*vp;
+	VALUE_PAIR		*vp, *type_vp;
 	fr_dict_attr_t const	*parent = root;
 	unsigned int		written = 0;
 
@@ -364,6 +388,18 @@ static int radsnmp_get_response(int fd,
 	char			newline[] = "\n";
 
 	type_buff[0] = '\0';
+
+	/*
+	 *	Print first part of OID string.
+	 */
+	slen = snprintf(oid_buff, sizeof(oid_buff), "%u.", parent->attr);
+	if (is_truncated((size_t)slen, sizeof(oid_buff))) {
+	oob:
+		fr_strerror_printf("OID Buffer too small");
+		return -1;
+	}
+	p += slen;
+
 	/*
 	 *	@fixme, this is very dependent on ordering
 	 *
@@ -375,15 +411,6 @@ static int radsnmp_get_response(int fd,
 	      vp;
 	      vp = fr_cursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
-
-		/*
-		 *	Not beneath root, at same level as root...
-		 */
-		if (vp->da == type) {
-			type_len = fr_pair_value_snprint(type_buff, sizeof(type_buff), vp, '\0');
-			continue;
-		}
-
 	      	/*
 	      	 *	We only care about TLV attributes beneath our root
 	      	 */
@@ -408,7 +435,7 @@ static int radsnmp_get_response(int fd,
 			 *	Print OID from last index/root up to the parent of
 			 *	the index attribute.
 			 */
-			slen = dict_print_attr_oid(p, end - p, common, vp->da->parent);
+			slen = dict_print_attr_oid(p, end - p, parent, vp->da->parent);
 			if (slen < 0) return -1;
 
 			if (vp->da->type != PW_TYPE_INTEGER) {
@@ -416,11 +443,7 @@ static int radsnmp_get_response(int fd,
 				return -1;
 			}
 
-			if (slen >= (end - p)) {
-			oob:
-				fr_strerror_printf("OID Buffer too small");
-				return -1;
-			}
+			if (slen >= (end - p)) goto oob;
 			p += slen;
 
 			/*
@@ -432,7 +455,11 @@ static int radsnmp_get_response(int fd,
 
 			p += len;
 
-			parent = vp->da->parent;
+			/*
+			 *	Set the parent to be the attribute representing
+			 *	the entry.
+			 */
+			parent = fr_dict_attr_child_by_num(vp->da->parent, 1);
 			continue;
 		}
 
@@ -442,10 +469,15 @@ static int radsnmp_get_response(int fd,
 		slen = dict_print_attr_oid(p, end - p, parent, vp->da);
 		if (slen < 0) return -1;
 
-		if (type_len == 0) {
-			fr_strerror_printf("No %s found in response, or occurred after value attribute", type->name);
+		/*
+		 *	Next attribute should be the type
+		 */
+		type_vp = fr_cursor_next(&cursor);
+		if (!type_vp || (type_vp->da != type)) {
+			fr_strerror_printf("No %s found in response, or occurred out of order", type->name);
 			return -1;
 		}
+		type_len = fr_pair_value_snprint(type_buff, sizeof(type_buff), type_vp, '\0');
 
 		/*
 		 *	Build up the vector
@@ -473,7 +505,12 @@ static int radsnmp_get_response(int fd,
 			break;
 
 		default:
-			len = fr_pair_value_snprint(value_buff, sizeof(value_buff), vp, '\0');
+			/*
+			 *	We call value_data_snprint with a NULL da pointer
+			 *	because we always need return integer values not
+			 *	value aliases.
+			 */
+			len = value_data_snprint(value_buff, sizeof(value_buff), vp->da->type, NULL, &vp->data, '\0');
 			if (is_truncated(len, sizeof(value_buff))) {
 				fr_strerror_printf("Insufficient fixed value buffer");
 				return -1;
@@ -619,19 +656,45 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 		case RADSNMP_SET:
 		{
-			char	value_buff[254];	/* RADIUS attribute length + 1 */
-			char	*value;
+			char		value_buff[254];	/* RADIUS attribute length + 1 */
+			char		*value;
+			char		type_str[64];
+			char		*p;
+			fr_dict_enum_t	*type;
 
 			NEXT_LINE(line, buffer);	/* Should be the OID */
 			NEXT_LINE(value, value_buff);	/* Should be the value */
-			slen = radsnmp_pair_from_oid(conf, &cursor, conf->dict, conf->snmp_root, line, value);
+
+			p = strchr(value, ' ');
+			if (!p) {
+				ERROR("No SNMP type specified (or type/value string was malformed)");
+				RESPOND_STATIC("NONE");
+				continue;
+			}
+
+			if ((size_t)(p - value) >= sizeof(type_str)) {
+				ERROR("SNMP Type string too long");
+				RESPOND_STATIC("NONE");
+				continue;
+			}
+
+			strlcpy(type_str, value, (p - value) + 1);
+
+			type = fr_dict_enum_by_name(NULL, conf->snmp_type, type_str);
+			if (!type) {
+				ERROR("Unknown type \"%s\"", type_str);
+				RESPOND_STATIC("NONE");
+				continue;
+			}
+
+			slen = radsnmp_pair_from_oid(conf, conf, &cursor, line, type->value, p + 1);
 		}
 			break;
 
 		case RADSNMP_GET:
 		case RADSNMP_GETNEXT:
 			NEXT_LINE(line, buffer);	/* Should be the OID */
-			slen = radsnmp_pair_from_oid(conf, &cursor, conf->dict, conf->snmp_root, line, NULL);
+			slen = radsnmp_pair_from_oid(conf, conf, &cursor, line, 0, NULL);
 			break;
 
 		default:

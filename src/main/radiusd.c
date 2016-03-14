@@ -450,6 +450,14 @@ int main(int argc, char *argv[])
 	if (virtual_servers_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	Initialise the SNMP stats structures
+	 */
+	if (fr_snmp_init() < 0) {
+		ERROR("%s", fr_strerror());
+		exit(EXIT_FAILURE);
+	}
+
+	/*
 	 *  Initialize any event loops just enough so module instantiations can
 	 *  add fd/event to them, but do not start them yet.
 	 *
