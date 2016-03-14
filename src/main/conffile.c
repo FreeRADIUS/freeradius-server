@@ -41,6 +41,7 @@ RCSID("$Id$")
 #endif
 
 #include <ctype.h>
+#include <fcntl.h>
 
 bool check_config = false;
 
@@ -388,16 +389,25 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	return fp;
 }
 
-/*
- *	Do some checks on the file as an "input" file.  i.e. one read
- *	by a module.
+/** Do some checks on the file as an "input" file.  i.e. one read by a module.
+ *
+ * @note Must be called with super user permissions (rad_suid_up()).
+ *
+ * @param cs		currently being processed.
+ * @param filename	to check.
+ * @param check_perms	If true - will return false if file is world readable,
+ *			or not readable by the unprivileged user/group.
+ * @return
+ *	- true if permissions are OK, or the file exists.
+ *	- false if the file does not exist or the permissions are incorrect.
  */
 static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 {
-	cf_file_t *file;
-	CONF_DATA *cd;
-	CONF_SECTION *top;
-	rbtree_t *tree;
+	cf_file_t	*file;
+	CONF_DATA	*cd;
+	CONF_SECTION	*top;
+	rbtree_t	*tree;
+	int		fd;
 
 	top = cf_top_section(cs);
 	cd = cf_data_find_internal(top, "filename", 0);
@@ -412,17 +422,29 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	file->cs = cs;
 	file->input = true;
 
-	if (stat(filename, &file->buf) < 0) {
-		rad_file_error(errno);	/* Write error and euid/egid to error buff */
-		ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
-		talloc_free(file);
-		return false;
-	}
-
 	if (!check_perms) {
+		if (stat(filename, &file->buf) < 0) {
+		error:
+			rad_file_error(errno);	/* Write error and euid/egid to error buff */
+			ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
+			talloc_free(file);
+			return false;
+		}
 		talloc_free(file);
 		return true;
 	}
+
+	/*
+	 *	This really does seem to be the simplest way
+	 *	to check that the file can be read with the
+	 *	euid/egid.
+	 */
+	rad_suid_down();
+	fd = open(filename, O_RDONLY);
+	rad_suid_up();
+
+	if (fd < 0) goto error;
+	if (fstat(fd, &file->buf) < 0) goto error;
 
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
@@ -436,9 +458,7 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	/*
 	 *	It's OK to include the same file twice...
 	 */
-	if (!rbtree_insert(tree, file)) {
-		talloc_free(file);
-	}
+	if (!rbtree_insert(tree, file)) talloc_free(file);
 
 	return true;
 
