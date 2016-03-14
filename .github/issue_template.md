@@ -3,7 +3,7 @@
 - Remote security exploits **MUST** be sent to security@freeradius.org.
 - [ ] Defect - Crash or memory corruption.
 - [ ] Defect - Non compliance with a standards document, or incorrect API usage.
-- [ ] Feature request,
+- [ ] Feature request.
 
 See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/bugs) for debugging instructions.
 
