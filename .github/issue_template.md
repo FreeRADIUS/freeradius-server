@@ -1,5 +1,4 @@
 # Issue type
-
 - Questions about the server should be posted to the [users mailing list](http://freeradius.org/list/users.html).
 - Remote security exploits **MUST** be sent to security@freeradius.org.
 - [ ] Defect - Crash or memory corruption.
