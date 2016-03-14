@@ -67,7 +67,7 @@ typedef struct detail_instance {
 
 	bool		escape;		//!< do filename escaping, yes / no
 
-	xlat_escape_t escape_func; //!< escape function
+	xlat_escape_t	escape_func; //!< escape function
 
 	exfile_t    	*ef;		//!< Log file handler
 
