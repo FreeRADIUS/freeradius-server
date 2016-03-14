@@ -2769,6 +2769,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		 */
 		if (cf_section_name2(subcs)) {
 			c = compile_item(parent, method, cf_section_to_item(subcs), parent_grouptype, modname);
+			if (!c) return NULL;
 
 		} else {
 			/*
@@ -2781,6 +2782,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 			 *	group foo { ...
 			 */
 			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
+			if (!c) return NULL;
 
 			c->name = cf_section_name1(subcs);
 			c->debug_name = c->name;
@@ -2789,7 +2791,6 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		/*
 		 *	Return the compiled thing if we can.
 		 */
-		if (!c) return NULL;
 		if (cf_item_is_pair(ci)) return c;
 
 		/*
