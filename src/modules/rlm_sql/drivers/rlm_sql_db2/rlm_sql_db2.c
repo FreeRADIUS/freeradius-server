@@ -86,6 +86,18 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		memcpy(&login, &config->sql_login, sizeof(login));
 		memcpy(&password, &config->sql_password, sizeof(password));
 
+		/*
+		 *	We probably want to use SQLDriverConnect, which connects
+		 *	to a remote server.
+		 *
+		 *	http://www.ibm.com/support/knowledgecenter/SSEPGG_10.5.0/com.ibm.db2.luw.apdv.cli.doc/doc/r0000584.html
+		 *	http://stackoverflow.com/questions/27167070/connection-string-to-a-remote-db2-db-in-another-server
+		 *
+		 *	And probably synthesis the retarded connection string ourselves,
+		 *	probably via config file expansions:
+		 *
+		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PO‌​RT=50000
+		 */
 		retval = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
 				    login,  SQL_NTS,
