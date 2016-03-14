@@ -44,6 +44,8 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 bool check_config = false;
+uid_t conf_check_uid = (uid_t)-1;
+gid_t conf_check_gid = (gid_t)-1;
 
 typedef enum conf_property {
 	CONF_PROPERTY_INVALID = 0,
@@ -389,9 +391,25 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	return fp;
 }
 
+/** Set the euid/egid used when performing file checks
+ *
+ * Sets the euid, and egid used when cf_file_check is called to check
+ * permissions on conf items of type #PW_TYPE_FILE_INPUT.
+ *
+ * @note This is probably only useful for the freeradius daemon itself.
+ *
+ * @param uid to set, (uid_t)-1 to use current euid.
+ * @param gid to set, (gid_t)-1 to use current egid.
+ */
+void cf_file_check_user(uid_t uid, gid_t gid)
+{
+	if (uid != 0) conf_check_uid = uid;
+	if (gid != 0) conf_check_gid = gid;
+}
+
 /** Do some checks on the file as an "input" file.  i.e. one read by a module.
  *
- * @note Must be called with super user permissions (rad_suid_up()).
+ * @note Must be called with super user privileges.
  *
  * @param cs		currently being processed.
  * @param filename	to check.
@@ -424,9 +442,10 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 
 	if (!check_perms) {
 		if (stat(filename, &file->buf) < 0) {
-		error:
+		perm_error:
 			rad_file_error(errno);	/* Write error and euid/egid to error buff */
 			ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
+		error:
 			talloc_free(file);
 			return false;
 		}
@@ -439,12 +458,41 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	 *	to check that the file can be read with the
 	 *	euid/egid.
 	 */
-	rad_suid_down();
-	fd = open(filename, O_RDONLY);
-	rad_suid_up();
+	{
+		uid_t euid = (uid_t)-1;
+		gid_t egid = (gid_t)-1;
 
-	if (fd < 0) goto error;
-	if (fstat(fd, &file->buf) < 0) goto error;
+		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
+			if (setegid(conf_check_gid) < 0) {
+				ERROR("Failed setting effective group ID for file check");
+				goto error;
+			}
+		}
+		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
+			if (seteuid(conf_check_uid) < 0) {
+				ERROR("Failed setting effective user ID for file check");
+				goto error;
+			}
+		}
+		fd = open(filename, O_RDONLY);
+		if (conf_check_uid != euid) {
+			if (seteuid(euid) < 0) {
+				ERROR("Failed restoring effective user ID after file check");
+				close(fd);
+				goto error;
+			}
+		}
+		if (conf_check_gid != egid) {
+			if (setegid(egid) < 0) {
+				ERROR("Failed restoring effective group ID after file check");
+				close(fd);
+				goto error;
+			}
+		}
+	}
+
+	if (fd < 0) goto perm_error;
+	if (fstat(fd, &file->buf) < 0) goto perm_error;
 
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {

@@ -575,6 +575,12 @@ static int switch_users(CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Set the user/group we're going to use
+	 *	to check read permissions on configuration files.
+	 */
+	cf_file_check_user(server_uid ? server_uid : (uid_t)-1, server_gid ? server_gid : (gid_t)-1);
+
+	/*
 	 *	Do chroot BEFORE changing UIDs.
 	 */
 	if (chroot_dir) {

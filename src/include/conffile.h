@@ -289,6 +289,8 @@ typedef struct CONF_PARSER {
 
 #define CONF_PARSER_TERMINATOR	{ NULL, -1, 0, NULL, NULL, T_INVALID }
 
+void		cf_file_check_user(uid_t uid, gid_t gid);
+
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
