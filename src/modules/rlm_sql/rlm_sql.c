@@ -684,8 +684,13 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 
 	fr_pair_value_strsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
-	vp->op = T_OP_SET;
-	radius_pairmove(request, &request->packet->vps, vp, false);	/* needs to be pair move else op is not respected */
+	vp->op = T_OP_SET;	
+
+	/*
+	 *	Delete any existing SQL-User-Name, and replace it with ours.
+	 */
+	fr_pair_delete_by_num(&request->packet->vps, vp->da->vendor, vp->da->attr, TAG_ANY);
+	fr_pair_add(&request->packet->vps, vp);
 
 	return 0;
 }
