@@ -165,13 +165,13 @@ static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_data_t *out,
 
 static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 			     UNUSED fr_snmp_map_t const *map,
-			     UNUSED void const *snmp_ctx_in, uint32_t index)
+			     UNUSED void const *snmp_ctx_in, uint32_t index_num)
 {
 	RADCLIENT *client;
 
 	rad_assert(!snmp_ctx_in);
 
-	client = client_findbynumber(NULL, index - 1);	/* Clients indexed from 0 */
+	client = client_findbynumber(NULL, index_num - 1);	/* Clients indexed from 0 */
 	if (!client) return 1;		/* No more clients */
 
 	*snmp_ctx_out = client;
@@ -508,7 +508,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 				  fr_dict_attr_t const *tlv_stack[], unsigned int depth,
 				  vp_cursor_t cursor,
 				  fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op,
-				  uint32_t index)
+				  uint32_t index_num)
 {
 	ssize_t		ret;
 	uint32_t 	i;
@@ -520,7 +520,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 	void		*this_snmp_ctx = NULL;
 	TALLOC_CTX	*tmp_ctx;
 
-	for (i = index; i < UINT32_MAX; i++) {
+	for (i = index_num; i < UINT32_MAX; i++) {
 		fr_dict_attr_t const	*da;
 		VALUE_PAIR		*vp;
 
@@ -600,7 +600,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 				       fr_snmp_map_t const *map, void *snmp_ctx, unsigned int snmp_op)
 {
 	VALUE_PAIR	*next;
-	uint32_t	index;
+	uint32_t	index_num;
 	VALUE_PAIR	*vp;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -633,7 +633,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 	 *	Get the index from the index attribute's value.
 	 */
 	vp = fr_cursor_current(cursor);
-	index = vp->vp_integer;
+	index_num = vp->vp_integer;
 
 	/*
 	 *	Advance the cursor to the next index attribute
@@ -645,7 +645,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 		fr_cursor_next_by_ancestor(cursor, vp->da, TAG_ANY);
 	}
 
-	return snmp_process_index(out, request, tlv_stack, depth, *cursor, &map[1], snmp_ctx, snmp_op, index);
+	return snmp_process_index(out, request, tlv_stack, depth, *cursor, &map[1], snmp_ctx, snmp_op, index_num);
 }
 
 static ssize_t snmp_process_tlv(vp_cursor_t *out, REQUEST *request,
