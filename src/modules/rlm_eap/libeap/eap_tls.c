@@ -800,7 +800,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	Update the dirty_in buffer (data for reading by OpenSSL)
 		 *
 		 *	This buffer will contain partial data when M bit is set, and should
-		 * 	should only be reinitialized when M but is not set.
+		 * 	should only be reinitialized when M bit is not set.
 		 */
 		if ((tls_session->record_from_buff)(&tls_session->dirty_in, data, data_len) != data_len) {
 			REDEBUG("Exceeded maximum record size");
