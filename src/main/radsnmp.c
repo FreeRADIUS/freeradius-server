@@ -92,7 +92,7 @@ typedef struct radsnmp_conf {
 
 	unsigned int		retries;		//!< Number of retries.
 	struct timeval		timeout;
-	char const		*secret;		//!< Shared secret.
+	char			*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 
 static void NEVER_RETURNS usage(void)
@@ -894,7 +894,7 @@ int main(int argc, char **argv)
 	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
 	conf->radius_dir = RADDBDIR;
-	conf->secret = "testing123";
+	conf->secret = talloc_strdup(conf, "testing123");
 	conf->timeout.tv_sec = 3;
 	conf->retries = 5;
 
@@ -991,7 +991,8 @@ int main(int argc, char **argv)
 			       ERROR("Secret in %s is too short", optarg);
 			       exit(EXIT_FAILURE);
 			}
-			conf->secret = filesecret;
+			talloc_free(conf->secret);
+			conf->secret = talloc_strdup(conf, filesecret);
 		}
 		       break;
 
@@ -1069,7 +1070,10 @@ int main(int argc, char **argv)
 	/*
 	 *	Add the secret
 	 */
-	if (argv[3]) conf->secret = argv[3];
+	if (argv[3]) {
+		talloc_free(conf->secret);
+		conf->secret = talloc_strdup(conf, argv[3]);
+	}
 
 	{
 		fr_dict_attr_t const *parent;

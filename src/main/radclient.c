@@ -41,7 +41,7 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 
 static int retries = 3;
 static float timeout = 5;
-static char const *secret = NULL;
+static char *secret = NULL;
 static bool do_output = true;
 
 static rc_stats_t stats;
@@ -1311,7 +1311,7 @@ int main(int argc, char **argv)
 			       ERROR("Secret in %s is too short", optarg);
 			       exit(1);
 			}
-			secret = filesecret;
+			secret = talloc_strdup(NULL, filesecret);
 		}
 		       break;
 
@@ -1392,7 +1392,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Add the secret.
 	 */
-	if (argv[3]) secret = argv[3];
+	if (argv[3]) secret = talloc_strdup(NULL, argv[3]);
 
 	/*
 	 *	If no '-f' is specified, we're reading from stdin.
@@ -1607,6 +1607,7 @@ int main(int argc, char **argv)
 	fr_packet_list_free(pl);
 	while (request_head) TALLOC_FREE(request_head);
 	talloc_free(dict);
+	talloc_free(secret);
 
 	if (do_summary) {
 		DEBUG("Packet summary:\n"

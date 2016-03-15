@@ -2176,7 +2176,7 @@ int main(int argc, char *argv[])
 #ifdef HAVE_COLLECTDC_H
 	conf->stats.prefix = RS_DEFAULT_PREFIX;
 #endif
-	conf->radius_secret = RS_DEFAULT_SECRET;
+	conf->radius_secret = talloc_strdup(conf, RS_DEFAULT_SECRET);
 	conf->logger = NULL;
 
 #ifdef HAVE_COLLECTDC_H
@@ -2307,7 +2307,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 's':
-			conf->radius_secret = optarg;
+			talloc_free(conf->radius_secret);
+			conf->radius_secret = talloc_strdup(conf, optarg);
 			break;
 
 		case 'S':

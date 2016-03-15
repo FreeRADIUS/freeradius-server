@@ -261,7 +261,7 @@ struct rs {
 							//!< and response.
 	bool			verify_udp_checksum;	//!< Check UDP checksum in packets.
 
-	char const		*radius_secret;		//!< Secret to decode encrypted attributes.
+	char			*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
 
