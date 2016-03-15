@@ -10,6 +10,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  %{home_server_pool:state}, which show the
 	  state of the server / pool.
 	* Mark rlm_sql_freetds as stable.
+	* Make rlm_perl less fragile.  Patch from
+	  Herwin Weststrate
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
@@ -33,6 +35,7 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Fix leak when creating unknown attributes
 	* Fix Debian / logrotate.
 	* Make OpenSSL error functions thread-safe.
+	* Fix crash with rlm_sql and updating SQL-User-Name.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
