@@ -83,7 +83,7 @@ static RADIUS_PACKET my_packet = {
 };
 
 
-static char const *my_secret = "testing123";
+static char *my_secret = NULL;
 
 /*
  *	End of hacks for xlat
@@ -1019,6 +1019,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	my_secret = talloc_strdup(NULL, "testing123");
+
 	if (argc < 2) {
 		process_file(dict, NULL, "-");
 
@@ -1028,6 +1030,7 @@ int main(int argc, char *argv[])
 
 	if (report) {
 		talloc_free(dict);
+		talloc_free(my_secret);
 		fr_log_talloc_report(NULL);
 	}
 
