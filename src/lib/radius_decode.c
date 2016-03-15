@@ -73,7 +73,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char co
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
-	secretlen = talloc_array_length(secret);
+	secretlen = talloc_array_length(secret) - 1;
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
@@ -177,7 +177,7 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
-	secretlen = talloc_array_length(secret);
+	secretlen = talloc_array_length(secret) - 1;
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);

@@ -156,7 +156,7 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
-	secretlen = talloc_array_length(secret);
+	secretlen = talloc_array_length(secret) - 1;
 	memcpy(buffer, secret, secretlen);
 
 	for (n2 = 0; n2 < len; n2 +=AUTH_PASS_LEN) {
@@ -215,7 +215,7 @@ int fr_radius_encode_password(char *passwd, size_t *pwlen, char const *secret, u
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
-	secretlen = talloc_array_length(secret);
+	secretlen = talloc_array_length(secret) - 1;
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
@@ -268,7 +268,7 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 	*outlen = len;
 
 	fr_md5_init(&context);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret));
+	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_copy(&old, &context);
 
 	/*
@@ -354,7 +354,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	out[2] = inlen;	/* length of the password string */
 
 	fr_md5_init(&context);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret));
+	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_copy(&old, &context);
 
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);

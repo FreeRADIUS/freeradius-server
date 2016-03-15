@@ -271,7 +271,7 @@ void fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *s
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret));
+	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_final(digest, &context);
 
 	for (i = 0; i < AUTH_VECTOR_LEN; i++ ) digest[i] ^= value[i];
@@ -472,7 +472,7 @@ int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	attribute.
 		 */
 		fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
-			    (uint8_t const *) secret, talloc_array_length(secret));
+			    (uint8_t const *) secret, talloc_array_length(secret) - 1);
 		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
 	}
@@ -507,7 +507,7 @@ int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			fr_md5_init(&context);
 			fr_md5_update(&context, packet->data, packet->data_len);
 			fr_md5_update(&context, (uint8_t const *) secret,
-				     talloc_array_length(secret));
+				     talloc_array_length(secret) - 1);
 			fr_md5_final(digest, &context);
 
 			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
@@ -630,7 +630,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, packet->data, packet->data_len);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret));
+	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_final(digest, &context);
 
 	/*
@@ -669,7 +669,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, packet->data, packet->data_len);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret));
+	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_final(calc_digest, &context);
 
 	/*
@@ -1223,7 +1223,7 @@ int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 			}
 
 			fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
-				    (uint8_t const *) secret, talloc_array_length(secret));
+				    (uint8_t const *) secret, talloc_array_length(secret) - 1);
 			if (fr_radius_digest_cmp(calc_auth_vector, msg_auth_vector,
 						 sizeof(calc_auth_vector)) != 0) {
 				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  "
