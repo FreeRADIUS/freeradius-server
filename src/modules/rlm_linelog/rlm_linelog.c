@@ -176,11 +176,11 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	Log destinations
 	 */
-	{ FR_CONF_POINTER("file", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) file_config },
-	{ FR_CONF_POINTER("syslog", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) syslog_config },
-	{ FR_CONF_POINTER("unix", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) unix_config },
-	{ FR_CONF_OFFSET("tcp", PW_TYPE_SUBSECTION, linelog_instance_t, tcp), .dflt = (void const *) tcp_config },
-	{ FR_CONF_OFFSET("udp", PW_TYPE_SUBSECTION, linelog_instance_t, udp), .dflt = (void const *) udp_config },
+	{ FR_CONF_POINTER("file", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) file_config },
+	{ FR_CONF_POINTER("syslog", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) syslog_config },
+	{ FR_CONF_POINTER("unix", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) unix_config },
+	{ FR_CONF_OFFSET("tcp", PW_TYPE_SUBSECTION, linelog_instance_t, tcp), .subcs= (void const *) tcp_config },
+	{ FR_CONF_OFFSET("udp", PW_TYPE_SUBSECTION, linelog_instance_t, udp), .subcs = (void const *) udp_config },
 
 	/*
 	 *	Deprecated config items

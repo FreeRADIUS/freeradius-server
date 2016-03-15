@@ -1305,12 +1305,12 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("disable_tlsv1_2", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2) },
 #endif
 
-	{ FR_CONF_POINTER("cache", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) cache_config },
+	{ FR_CONF_POINTER("cache", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) cache_config },
 
-	{ FR_CONF_POINTER("verify", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) verify_config },
+	{ FR_CONF_POINTER("verify", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) verify_config },
 
 #ifdef HAVE_OPENSSL_OCSP_H
-	{ FR_CONF_POINTER("ocsp", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) ocsp_config },
+	{ FR_CONF_POINTER("ocsp", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) ocsp_config },
 #endif
 	CONF_PARSER_TERMINATOR
 };

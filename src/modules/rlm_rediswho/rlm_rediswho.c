@@ -69,9 +69,9 @@ static CONF_PARSER module_config[] = {
 	 *	These all smash the same variables, because we don't care about them right now.
 	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
 	 */
-	{ FR_CONF_POINTER("Start", PW_TYPE_SUBSECTION, NULL), .dflt = section_config },
-	{ FR_CONF_POINTER("Interim-Update", PW_TYPE_SUBSECTION, NULL), .dflt = section_config },
-	{ FR_CONF_POINTER("Stop", PW_TYPE_SUBSECTION, NULL), .dflt = section_config },
+	{ FR_CONF_POINTER("Start", PW_TYPE_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Interim-Update", PW_TYPE_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Stop", PW_TYPE_SUBSECTION, NULL), .subcs = section_config },
 
 	CONF_PARSER_TERMINATOR
 };

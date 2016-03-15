@@ -382,10 +382,10 @@ static CONF_PARSER home_server_config[] = {
 	{ FR_CONF_OFFSET("historic_average_window", PW_TYPE_INTEGER, home_server_t, ema.window) },
 #endif
 
-	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) limit_config },
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 #ifdef WITH_COA
-	{ FR_CONF_POINTER("coa", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) home_server_coa },
+	{ FR_CONF_POINTER("coa", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) home_server_coa },
 #endif
 	CONF_PARSER_TERMINATOR
 };

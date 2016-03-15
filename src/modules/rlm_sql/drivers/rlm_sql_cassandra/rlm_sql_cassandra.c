@@ -233,16 +233,16 @@ static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("spawn_max", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_max) },
 	{ FR_CONF_OFFSET("spawn_retry_delay", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, spawn_retry_delay) },
 
-	{ FR_CONF_POINTER("load_balance_dc_aware", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) load_balance_dc_aware_config },
+	{ FR_CONF_POINTER("load_balance_dc_aware", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) load_balance_dc_aware_config },
 	{ FR_CONF_OFFSET("load_balance_round_robin", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, load_balance_round_robin), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("token_aware_routing", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, token_aware_routing), .dflt = "yes" },
-	{ FR_CONF_POINTER("latency_aware_routing", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) latency_aware_routing_config },
+	{ FR_CONF_POINTER("latency_aware_routing", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) latency_aware_routing_config },
 
 	{ FR_CONF_OFFSET("tcp_keepalive", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, tcp_keepalive) },
 	{ FR_CONF_OFFSET("tcp_nodelay", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, tcp_nodelay), .dflt = "no" },
 
-	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 

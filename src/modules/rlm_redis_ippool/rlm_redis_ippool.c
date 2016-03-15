@@ -129,7 +129,7 @@ static CONF_PARSER module_config[] = {
 	 *	Split out to allow conversion to universal ippool module with
 	 *	minimum of config changes.
 	 */
-	{ FR_CONF_POINTER("redis", PW_TYPE_SUBSECTION, NULL), .dflt = redis_config },
+	{ FR_CONF_POINTER("redis", PW_TYPE_SUBSECTION, NULL), .subcs = redis_config },
 	CONF_PARSER_TERMINATOR
 };
 

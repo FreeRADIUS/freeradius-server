@@ -55,11 +55,11 @@ static const CONF_PARSER query_config[] = {
  *	helps the average case.
  */
 static const CONF_PARSER type_config[] = {
-	{ FR_CONF_POINTER("accounting-on", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
-	{ FR_CONF_POINTER("accounting-off", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
-	{ FR_CONF_POINTER("start", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
-	{ FR_CONF_POINTER("interim-update", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
-	{ FR_CONF_POINTER("stop", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
+	{ FR_CONF_POINTER("accounting-on", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
+	{ FR_CONF_POINTER("accounting-off", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
+	{ FR_CONF_POINTER("start", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
+	{ FR_CONF_POINTER("interim-update", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
+	{ FR_CONF_POINTER("stop", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -67,7 +67,7 @@ static const CONF_PARSER acct_config[] = {
 	{ FR_CONF_OFFSET("reference", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
 	{ FR_CONF_OFFSET("logfile", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.logfile) },
 
-	{ FR_CONF_POINTER("type", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) type_config },
+	{ FR_CONF_POINTER("type", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) type_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -114,9 +114,9 @@ static const CONF_PARSER module_config[] = {
 	 */
 	{ FR_CONF_OFFSET("query_timeout", PW_TYPE_INTEGER, rlm_sql_config_t, query_timeout) },
 
-	{ FR_CONF_POINTER("accounting", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) acct_config },
+	{ FR_CONF_POINTER("accounting", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
 
-	{ FR_CONF_POINTER("post-auth", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) postauth_config },
+	{ FR_CONF_POINTER("post-auth", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) postauth_config },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -174,7 +174,7 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("off_commit", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, off_commit), .dflt = "COMMIT" },
 
-	{ FR_CONF_POINTER("messages", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) message_config },
+	{ FR_CONF_POINTER("messages", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) message_config },
 	CONF_PARSER_TERMINATOR
 };
 

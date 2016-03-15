@@ -512,7 +512,7 @@ static const CONF_PARSER client_config[] = {
 
 #ifdef WITH_TCP
 	{ FR_CONF_POINTER("proto", PW_TYPE_STRING, &hs_proto) },
-	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) limit_config },
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS

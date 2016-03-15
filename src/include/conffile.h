@@ -279,15 +279,18 @@ typedef struct CONF_PARSER {
 	void		*data;			//!< Pointer to a static variable to write the parsed value to.
 						//!< @note Must be used exclusively to #offset.
 
-	const void	*dflt;			//!< Default as it would appear in radiusd.conf.
-						//!< When #type is set to #PW_TYPE_SUBSECTION, should be a pointer
+	union {
+		char const	*dflt;		//!< Default as it would appear in radiusd.conf.
+
+		void const	*subcs;		//!< When #type is set to #PW_TYPE_SUBSECTION, should be a pointer
 						//!< to the start of another array of #CONF_PARSER structs, forming
 						//!< the subsection.
+	};
 
 	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
 } CONF_PARSER;
 
-#define CONF_PARSER_TERMINATOR	{ NULL, -1, 0, NULL, NULL, T_INVALID }
+#define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = -1, .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
 void		cf_file_check_user(uid_t uid, gid_t gid);
 

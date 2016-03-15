@@ -118,7 +118,7 @@ static const CONF_PARSER startup_log_config[] = {
  *	Basic configuration for the server.
  */
 static const CONF_PARSER startup_server_config[] = {
-	{ FR_CONF_POINTER("log", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) startup_log_config },
+	{ FR_CONF_POINTER("log", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) startup_log_config },
 
 	{ FR_CONF_POINTER("name", PW_TYPE_STRING, &my_name), .dflt = "radiusd" },
 	{ FR_CONF_POINTER("prefix", PW_TYPE_STRING, &prefix), .dflt = "/usr/local" },
@@ -213,9 +213,9 @@ static const CONF_PARSER server_config[] = {
 #ifdef WITH_PROXY
 	{ FR_CONF_POINTER("proxy_requests", PW_TYPE_BOOLEAN, &main_config.proxy_requests), .dflt = "yes" },
 #endif
-	{ FR_CONF_POINTER("log", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) log_config },
+	{ FR_CONF_POINTER("log", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
-	{ FR_CONF_POINTER("resources", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) resources },
+	{ FR_CONF_POINTER("resources", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -230,7 +230,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
 	{ FR_CONF_POINTER("log_stripped_names", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &log_stripped_names) },
 
-	{ FR_CONF_POINTER("security", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) security_config },
+	{ FR_CONF_POINTER("security", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -259,7 +259,7 @@ static const CONF_PARSER bootstrap_security_config[] = {
 };
 
 static const CONF_PARSER bootstrap_config[] = {
-	{ FR_CONF_POINTER("security", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) bootstrap_security_config },
+	{ FR_CONF_POINTER("security", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) bootstrap_security_config },
 
 	{ FR_CONF_POINTER("name", PW_TYPE_STRING, &my_name), .dflt = "radiusd" },
 	{ FR_CONF_POINTER("prefix", PW_TYPE_STRING, &prefix), .dflt = "/usr/local" },

@@ -98,7 +98,7 @@ static CONF_PARSER tls_config[] = {
 };
 
 static const CONF_PARSER driver_config[] = {
-	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 
 	{ FR_CONF_OFFSET("warnings", PW_TYPE_STRING, rlm_sql_mysql_config_t, warnings_str), .dflt = "auto" },
 	CONF_PARSER_TERMINATOR

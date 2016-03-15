@@ -75,7 +75,7 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("chunk", PW_TYPE_INTEGER, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
-	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -93,7 +93,7 @@ static const CONF_PARSER xlat_config[] = {
 	{ FR_CONF_OFFSET("chunk", PW_TYPE_INTEGER, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
-	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 

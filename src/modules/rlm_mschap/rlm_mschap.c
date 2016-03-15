@@ -555,7 +555,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", PW_TYPE_BOOLEAN, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
 	{ FR_CONF_OFFSET("ntlm_auth", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
 	{ FR_CONF_OFFSET("ntlm_auth_timeout", PW_TYPE_INTEGER, rlm_mschap_t, ntlm_auth_timeout) },
-	{ FR_CONF_POINTER("passchange", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) passchange_config },
+	{ FR_CONF_POINTER("passchange", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
 	{ FR_CONF_OFFSET("allow_retry", PW_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), .dflt = "yes" },
 	{ FR_CONF_OFFSET("retry_msg", PW_TYPE_STRING, rlm_mschap_t, retry_msg) },
 	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_TMPL, rlm_mschap_t, wb_username) },

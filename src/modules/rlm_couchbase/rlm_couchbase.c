@@ -61,7 +61,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ FR_CONF_OFFSET("user_key", PW_TYPE_TMPL, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("read_clients", PW_TYPE_BOOLEAN, rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
-	{ FR_CONF_POINTER("client", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) client_config },
+	{ FR_CONF_POINTER("client", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) client_config },
 #ifdef WITH_SESSION_MGMT
 	{ FR_CONF_OFFSET("check_simul", PW_TYPE_BOOLEAN, rlm_couchbase_t, check_simul) }, /* NULL defaults to "no" */
 	{ FR_CONF_OFFSET("simul_view", PW_TYPE_STRING, rlm_couchbase_t, simul_view), .dflt = "_design/acct/_view/by_user" },
