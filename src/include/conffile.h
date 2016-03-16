@@ -282,7 +282,7 @@ typedef struct CONF_PARSER {
 	union {
 		char const	*dflt;		//!< Default as it would appear in radiusd.conf.
 
-		void const	*subcs;		//!< When #type is set to #PW_TYPE_SUBSECTION, should be a pointer
+		void const	*subcs;		//!< When type is set to #PW_TYPE_SUBSECTION, should be a pointer
 						//!< to the start of another array of #CONF_PARSER structs, forming
 						//!< the subsection.
 	};

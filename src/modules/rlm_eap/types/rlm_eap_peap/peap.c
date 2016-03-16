@@ -1133,6 +1133,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	Do NOT free the fake request!
 				 */
 				rcode = RLM_MODULE_UPDATED;
+				goto finish;
 			}
 
 			/*
