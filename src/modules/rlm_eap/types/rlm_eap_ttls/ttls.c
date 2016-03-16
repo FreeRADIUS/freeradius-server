@@ -801,15 +801,18 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
  */
 PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
-	PW_CODE code = PW_CODE_ACCESS_REJECT;
-	rlm_rcode_t rcode;
-	REQUEST *fake;
-	VALUE_PAIR *vp;
-	ttls_tunnel_t *t;
-	uint8_t const *data;
-	size_t data_len;
-	REQUEST *request = eap_session->request;
-	chbind_packet_t *chbind;
+	PW_CODE			code = PW_CODE_ACCESS_REJECT;
+	rlm_rcode_t		rcode;
+	REQUEST			*fake = NULL;
+	VALUE_PAIR		*vp;
+	ttls_tunnel_t		*t;
+	uint8_t			const *data;
+	size_t			data_len;
+	REQUEST			*request = eap_session->request;
+	chbind_packet_t		*chbind;
+
+	RDEBUG3("TTLS Tunnelled request data (%zu bytes)", tls_session->clean_out.used);
+	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, tls_session->clean_out.data, tls_session->clean_out.used);
 
 	/*
 	 *	Just look at the buffer directly, without doing
@@ -828,7 +831,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG("Got ACK, and the user was already authenticated");
-			return PW_CODE_ACCESS_ACCEPT;
+			code = PW_CODE_ACCESS_ACCEPT;
+			goto finish;
 		} /* else no session, no data, die. */
 
 		/*
@@ -836,13 +840,14 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 *	wrong.
 		 */
 		RDEBUG2("SSL_read Error");
-		return PW_CODE_ACCESS_REJECT;
+		code = PW_CODE_ACCESS_REJECT;
+		goto finish;
 	}
 
-	RDEBUG3("TTLS Tunnel Data (%zu bytes)", data_len);
-	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, data, data_len);
-
-	if (!diameter_verify(request, data, data_len)) return PW_CODE_ACCESS_REJECT;
+	if (!diameter_verify(request, data, data_len)) {
+		code = PW_CODE_ACCESS_REJECT;
+		goto finish;
+	}
 
 	/*
 	 *	Allocate a fake REQUEST structure.
@@ -857,7 +862,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	fake->packet->vps = diameter2vp(request, fake, tls_session->ssl, data, data_len);
 	if (!fake->packet->vps) {
 		talloc_free(fake);
-		return PW_CODE_ACCESS_REJECT;
+		code = PW_CODE_ACCESS_REJECT;
+		goto finish;
 	}
 
 	/*
@@ -1036,7 +1042,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		talloc_free(req);
 
 		if (chbind_code != PW_CODE_ACCESS_ACCEPT) {
-			return chbind_code;
+			code = chbind_code;
+			goto finish;
 		}
 	}
 
@@ -1152,7 +1159,11 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		break;
 	}
 
+finish:
 	talloc_free(fake);
+
+	RDEBUG3("TTLS Tunnelled response data (%zu bytes)", tls_session->clean_in.used);
+	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, tls_session->clean_in.data, tls_session->clean_in.used);
 
 	return code;
 }
