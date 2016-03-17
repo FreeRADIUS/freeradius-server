@@ -12,7 +12,7 @@ See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/bugs)
 ## How to reproduce issue
 *REMOVE SECTION IF FEATURE REQUEST*
  
-## Output of ``radiusd -X`` or ``freeradius -X`` showing issue ocurring
+## Output of ``[radiusd|freeradius] -X`` showing issue ocurring
 *REMOVE SECTION IF FEATURE REQUEST*
 
 ```text
