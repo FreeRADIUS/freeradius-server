@@ -3,6 +3,7 @@
 - Remote security exploits **MUST** be sent to security@freeradius.org.
 - [ ] Defect - Crash or memory corruption.
 - [ ] Defect - Non compliance with a standards document, or incorrect API usage.
+- [ ] Defect - Unexpected behaviour.
 - [ ] Feature request.
 
 See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/bugs) for debugging instructions.
@@ -11,11 +12,11 @@ See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/bugs)
 ## How to reproduce issue
 *REMOVE SECTION IF FEATURE REQUEST*
  
-## Output of ``radiusd -X`` showing issue ocurring
+## Output of ``radiusd -X`` or ``freeradius -X`` showing issue ocurring
 *REMOVE SECTION IF FEATURE REQUEST*
 
 ```text
-COPY/PASTE OUTPUT HERE.  NO PASTEBIN (ET AL) LINKS!
+COPY/PASTE OUTPUT HERE (WITHIN BACKTICKS).  NO PASTEBIN (ET AL) LINKS!
 ```
 ## Full backtrace from LLDB or GDB
 *REMOVE SECTION IF FEATURE REQUEST OR NOT CRASH/MEMORY CORRUPTION*
