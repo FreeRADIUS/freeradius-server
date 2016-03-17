@@ -28,19 +28,18 @@
 #include <freeradius-devel/realms.h>
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
-#include "trustrouter.h"
+#  include "trustrouter.h"
 
-#include <trust_router/tr_dh.h>
+#  include <trust_router/tr_dh.h>
 static TIDC_INSTANCE *global_tidc = NULL;
 
 struct resp_opaque {
-	REALM *orig_realm;
-	REALM *output_realm;
-	TID_RC result;
-	char err_msg[1024];
-	char *fr_realm_name;
+	REALM	*orig_realm;
+	REALM	*output_realm;
+	TID_RC	result;
+	char	err_msg[1024];
+	char	*fr_realm_name;
 };
-
 
 bool tr_init(void)
 {
@@ -48,12 +47,12 @@ bool tr_init(void)
 
 	global_tidc = tidc_create();
 	if (!global_tidc) {
-		DEBUG2( "tr_init: Error creating global TIDC instance.\n");
+		DEBUG2("Error creating global TIDC instance");
 		return false;
 	}
 
 	if (!tidc_set_dh(global_tidc, tr_create_dh_params(NULL, 0))) {
-		DEBUG2( "tr_init: Error creating client DH params.\n");
+		DEBUG2("Error creating client DH params");
 		return false;
 	}
 
@@ -64,74 +63,78 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 					   home_server_t *hs,
 					   TID_SRVR_BLK *server)
 {
-	fr_tls_server_conf_t *tls;
-	unsigned char *key_buf = NULL;
-	ssize_t keylen;
-	char *hexbuf = NULL;
-	DH *aaa_server_dh;
+	fr_tls_server_conf_t	*tls;
+	uint8_t			*key_buf = NULL;
+	ssize_t			keylen;
+	char			*hexbuf = NULL;
+	DH			*aaa_server_dh;
 
-	tls = talloc_zero( hs, fr_tls_server_conf_t);
+	tls = talloc_zero(hs, fr_tls_server_conf_t);
 	if (!tls) return NULL;
 
 	aaa_server_dh = tid_srvr_get_dh(server);
-	keylen = tr_compute_dh_key(&key_buf, aaa_server_dh->pub_key,
-				   tidc_get_dh(inst));
+	keylen = tr_compute_dh_key(&key_buf, aaa_server_dh->pub_key, tidc_get_dh(inst));
 	if (keylen <= 0) {
 		DEBUG2("DH error");
-		goto error;
+	error:
+		if (key_buf) {
+			memset(key_buf, 0, keylen);
+			tr_dh_free(key_buf);
+		}
+		if (hexbuf) memset(hexbuf, 0, keylen * 2);
+		talloc_free(tls);
+
+		return NULL;
 	}
 
-	hexbuf = talloc_size(tls, keylen*2 + 1);
+	hexbuf = talloc_size(tls, (keylen * 2) + 1);
 	if (!hexbuf) goto error;
 
-	tr_bin_to_hex(key_buf, keylen, hexbuf, 2*keylen + 1);
+	tr_bin_to_hex(key_buf, keylen, hexbuf, (keylen * 2) + 1);
 
 	tls->psk_password = hexbuf;
 	tls->psk_identity = talloc_strdup(tls, tid_srvr_get_key_name(server)->buf);
 
 	tls->cipher_list = talloc_strdup(tls, "PSK");
 	tls->fragment_size = 4200;
-	tls->ctx = tls_init_ctx(tls, true);
+
+	tls->ctx = talloc(tls, SSL_CTX *);
 	if (!tls->ctx) goto error;
+	tls->ctx_count = 1;
+
+	tls->ctx[0] = tls_init_ctx(tls, true);
+	if (!tls->ctx[0]) goto error;
 
 	memset(key_buf, 0, keylen);
 	tr_dh_free(key_buf);
+
 	return tls;
-
-error:
-	if (key_buf) {
-		memset(key_buf, 0, keylen);
-		tr_dh_free(key_buf);
-	}
-	if (hexbuf) memset(hexbuf, 0, keylen*2);
-
-	if (tls) talloc_free(tls);
-	return NULL;
 }
 
 static char *build_pool_name(TALLOC_CTX *ctx, TID_RESP *resp)
 {
-	size_t index, sa_len, sl;
-	TID_SRVR_BLK *server;
-	char *pool_name = NULL;
-	char addr_buf[256];
-	const struct sockaddr *sa;
+	size_t		index, sa_len, sl;
+	TID_SRVR_BLK 	*server;
+	char		*pool_name = NULL;
+	char		addr_buf[256];
+	const		struct sockaddr *sa;
+
 	pool_name = talloc_strdup(ctx, "hp-");
 
 	tid_resp_servers_foreach(resp, server, index) {
 		tid_srvr_get_address(server, &sa, &sa_len);
-		if (0 != getnameinfo(sa, sa_len,
-				     addr_buf, sizeof(addr_buf)-1,
-				     NULL, 0, NI_NUMERICHOST)) {
+		if (getnameinfo(sa, sa_len,
+				addr_buf, sizeof(addr_buf)-1,
+				NULL, 0, NI_NUMERICHOST) != 0) {
 			DEBUG2("getnameinfo failed");
 			return NULL;
 		}
 
 		sl = strlen(addr_buf);
-		rad_assert(sl+2 <= sizeof(addr_buf));
+		rad_assert(sl + 2 <= sizeof(addr_buf));
 
 		addr_buf[sl] = '-';
-		addr_buf[sl+1] = '\0';
+		addr_buf[sl + 1] = '\0';
 
 		pool_name = talloc_strdup_append(pool_name, addr_buf);
 	}
@@ -144,23 +147,19 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 					      TID_SRVR_BLK *blk,
 					      char const *realm_name)
 {
-	home_server_t *hs = NULL;
-	const struct sockaddr *sa = NULL;
-	size_t sa_len = 0;
-	fr_ipaddr_t home_server_ip;
-	uint16_t port;
-	char nametemp[256];
+	home_server_t		*hs = NULL;
+	const struct sockaddr	*sa = NULL;
+	size_t			sa_len = 0;
+	fr_ipaddr_t		home_server_ip;
+	uint16_t		port;
+	char			nametemp[256];
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
 
-	fr_ipaddr_from_sockaddr((struct sockaddr_storage *) sa, sa_len, &home_server_ip, &port);
+	fr_ipaddr_from_sockaddr((struct sockaddr_storage const *)sa, sa_len, &home_server_ip, &port);
 
-	if (0 != getnameinfo(sa, sa_len,
-			     nametemp,
-			     sizeof nametemp,
-			     NULL, 0,
-			     NI_NUMERICHOST)) {
+	if (getnameinfo(sa, sa_len, nametemp, sizeof nametemp, NULL, 0, NI_NUMERICHOST) != 0) {
 		DEBUG2("getnameinfo failed");
 		return NULL;
 	}
@@ -183,14 +182,14 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	hs->last_packet_recv = time(NULL);
 
 	hs->tls = construct_tls(inst, hs, blk);
-	if (!hs->tls) goto error;
+	if (!hs->tls) {
+		talloc_free(hs);
+		return NULL;
+	}
 
 	realm_home_server_sanitize(hs, NULL);
 
 	return hs;
-error:
-	talloc_free(hs);
-	return NULL;
 }
 
 static home_pool_t *servers_to_pool(TALLOC_CTX *ctx,
@@ -198,20 +197,24 @@ static home_pool_t *servers_to_pool(TALLOC_CTX *ctx,
 				    TID_RESP *resp,
 				    const char *realm_name)
 {
-	home_pool_t *pool = NULL;
-	size_t num_servers = 0, index;
-	TID_SRVR_BLK *server = NULL;
+	home_pool_t	*pool = NULL;
+	size_t		num_servers = 0, index;
+	TID_SRVR_BLK	*server = NULL;
 
 	num_servers = tid_resp_get_num_servers(resp);
 
 	pool = talloc_zero_size(ctx, sizeof(*pool) + num_servers *sizeof(home_server_t *));
-	if (!pool) goto error;
+	if (!pool) return NULL;
 
 	pool->type = HOME_POOL_CLIENT_PORT_BALANCE;
 	pool->server_type = HOME_TYPE_AUTH;
 
 	pool->name = build_pool_name(pool, resp);
-	if (!pool->name) goto error;
+	if (!pool->name) {
+	error:
+		talloc_free(pool);
+		return NULL;
+	}
 
 	pool->num_home_servers = num_servers;
 
@@ -224,31 +227,28 @@ static home_pool_t *servers_to_pool(TALLOC_CTX *ctx,
 	}
 
 	return pool;
-
-error:
-	if (pool) talloc_free(pool);
-
-	return NULL;
 }
 
-static void tr_response_func( TIDC_INSTANCE *inst,
-			      UNUSED TID_REQ *req, TID_RESP *resp,
-			      void *cookie)
+static void tr_response_func(TIDC_INSTANCE *inst,
+			     UNUSED TID_REQ *req, TID_RESP *resp,
+			     void *cookie)
 {
-	struct resp_opaque  *opaque = (struct resp_opaque *) cookie;
-	REALM *nr = opaque->orig_realm;
+	struct resp_opaque	*opaque = (struct resp_opaque *) cookie;
+	REALM			*nr = opaque->orig_realm;
 
 	if (tid_resp_get_result(resp) != TID_SUCCESS) {
-
 		size_t err_msg_len;
+
 		opaque->result = tid_resp_get_result(resp);
 		memset(opaque->err_msg, 0, sizeof(opaque->err_msg));
 
 		if (tid_resp_get_err_msg(resp)) {
-			TR_NAME *err_msg = tid_resp_get_err_msg(resp);
-			err_msg_len = err_msg->len+1;
-			if (err_msg_len > sizeof(opaque->err_msg))
-				err_msg_len = sizeof(opaque->err_msg);
+			TR_NAME *err_msg;
+
+			err_msg = tid_resp_get_err_msg(resp);
+			err_msg_len = err_msg->len + 1;
+
+			if (err_msg_len > sizeof(opaque->err_msg)) err_msg_len = sizeof(opaque->err_msg);
 			strlcpy(opaque->err_msg, err_msg->buf, err_msg_len);
 		}
 		return;
@@ -256,11 +256,15 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 
 	if (!nr) {
 		nr = talloc_zero(NULL, REALM);
-		if (!nr) goto error;
+		if (!nr) return;
+
 		nr->name = talloc_move(nr, &opaque->fr_realm_name);
 		nr->auth_pool = servers_to_pool(nr, inst, resp, opaque->fr_realm_name);
-		if (!realm_realm_add(nr, NULL)) goto error;
-
+		if (!realm_realm_add(nr, NULL)) {
+		error:
+			if (!opaque->orig_realm) talloc_free(nr);
+			return;
+		}
 	} else {
 		home_pool_t *old_pool = nr->auth_pool;
 		home_pool_t *new_pool;
@@ -277,24 +281,17 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 		 */
 		realm_pool_free(old_pool);
 	}
-
 	opaque->output_realm = nr;
-	return;
-
-error:
-	if (nr && !opaque->orig_realm) {
-		talloc_free(nr);
-	}
 
 	return;
 }
 
 static bool update_required(REALM const *r)
 {
-	const home_pool_t *pool;
-	int i;
-	const home_server_t *server;
-	time_t now = time(NULL);
+	const home_pool_t	*pool;
+	int			i;
+	const home_server_t	*server;
+	time_t			now = time(NULL);
 
 	/*
 	 *	No pool.  Not our realm.
@@ -324,17 +321,13 @@ static bool update_required(REALM const *r)
 		 *	This server has received a packet in the last
 		 *	5 minutes.  It doesn't need an update.
 		 */
-		if ((now - server->last_packet_recv) < 300) {
-			return false;
-		}
+		if ((now - server->last_packet_recv) < 300) return false;
 
 		/*
 		 *	If we've opened in the last 10 minutes, then
 		 *	open rather than update.
 		 */
-		if ((now - server->last_failed_open) > 600) {
-			return false;
-		}
+		if ((now - server->last_failed_open) > 600) return false;
 	}
 
 	return true;
@@ -348,29 +341,28 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		      char const *trustrouter,
 		      unsigned int port)
 {
-	int conn = 0;
-	int rcode;
-	VALUE_PAIR *vp;
-	gss_ctx_id_t gssctx;
-	struct resp_opaque cookie;
+	int			conn = 0;
+	int			rcode;
+	VALUE_PAIR		*vp;
+	gss_ctx_id_t		gssctx;
+	struct resp_opaque	cookie;
 
 	if (!realm) return NULL;
 
 	if (!trustrouter || (strcmp(trustrouter, "none") == 0)) return NULL;
 
 	/* clear the cookie structure */
-	memset (&cookie, 0, sizeof(cookie));
+	memset(&cookie, 0, sizeof(cookie));
 
 	/* See if the request overrides the community*/
-	vp = fr_pair_find_by_num(request->packet->vps, PW_UKERNA_TR_COI, VENDORPEC_UKERNA, TAG_ANY);
-	if (vp)
+	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_UKERNA, PW_UKERNA_TR_COI, TAG_ANY);
+	if (vp) {
 		community = vp->vp_strvalue;
-	else pair_make_request("Trust-Router-COI", community, T_OP_SET);
+	} else {
+		pair_make_request("Trust-Router-COI", community, T_OP_SET);
+	}
 
-	cookie.fr_realm_name = talloc_asprintf(NULL,
-					       "%s%%%s",
-					       community, realm);
-
+	cookie.fr_realm_name = talloc_asprintf(NULL, "%s%%%s", community, realm);
 	cookie.orig_realm = cookie.output_realm = realm_find(cookie.fr_realm_name);
 
 	if (cookie.orig_realm && !update_required(cookie.orig_realm)) {
@@ -381,7 +373,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	/* Set-up TID connection */
 	DEBUG2("Opening TIDC connection to %s:%u", trustrouter, port);
 
-	conn = tidc_open_connection(global_tidc, (char *)trustrouter, port, &gssctx);
+	conn = tidc_open_connection(global_tidc, trustrouter, port, &gssctx);
 	if (conn < 0) {
 		/* Handle error */
 		DEBUG2("Error in tidc_open_connection.\n");
@@ -389,8 +381,8 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	}
 
 	/* Send a TID request */
-	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *)rprealm,
-				  (char *) realm, (char *)community,
+	rcode = tidc_send_request(global_tidc, conn, gssctx, rprealm,
+				  realm, community,
 				  &tr_response_func, &cookie);
 	if (rcode < 0) {
 		/* Handle error */
@@ -399,15 +391,13 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	}
 	if (cookie.result != TID_SUCCESS) {
 		DEBUG2("TID response is error, rc = %d: %s.\n", cookie.result,
-		       cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
-		if (cookie.err_msg)
-			pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
+		       cookie.err_msg ? cookie.err_msg:"(NO ERROR TEXT)");
+		if (cookie.err_msg[0]) pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
 		pair_make_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
 	}
 
 cleanup:
-	if (cookie.fr_realm_name)
-		talloc_free(cookie.fr_realm_name);
+	if (cookie.fr_realm_name) talloc_free(cookie.fr_realm_name);
 
 	return cookie.output_realm;
 }
