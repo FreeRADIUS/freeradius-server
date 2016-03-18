@@ -446,21 +446,6 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	 *	Write the data in the buffer to the SSL session.
 	 */
 	if (total > 0) {
-#ifndef NDEBUG
-		size_t i;
-
-		if ((rad_debug_lvl > 2) && fr_log_fp) {
-			for (i = 0; i < total; i++) {
-				if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", (int) i);
-
-				fprintf(fr_log_fp, "%02x ", buffer[i]);
-
-				if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
-			}
-			if ((total & 0x0f) != 0) fprintf(fr_log_fp, "\n");
-		}
-#endif
-
 		(tls_session->record_from_buff)(&tls_session->clean_in, buffer, total);
 
 		/*
