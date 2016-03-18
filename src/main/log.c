@@ -50,17 +50,17 @@ static bool	rate_limit = true;		//!< Whether repeated log entries should be rate
 /** Maps log categories to message prefixes
  */
 static const FR_NAME_NUMBER levels[] = {
-	{ ": Debug: ",		L_DBG		},
-	{ ": Auth: ",		L_AUTH		},
-	{ ": Proxy: ",		L_PROXY		},
-	{ ": Info: ",		L_INFO		},
-	{ ": Warning: ",	L_WARN		},
-	{ ": Acct: ",		L_ACCT		},
-	{ ": Error: ",		L_ERR		},
-	{ ": WARNING: ",	L_DBG_WARN	},
-	{ ": ERROR: ",		L_DBG_ERR	},
-	{ ": WARNING: ",	L_DBG_WARN_REQ	},
-	{ ": ERROR: ",		L_DBG_ERR_REQ	},
+	{ ": Debug   : ",		L_DBG		},
+	{ ": Auth    : ",		L_AUTH		},
+	{ ": Proxy   : ",		L_PROXY		},
+	{ ": Info    : ",		L_INFO		},
+	{ ": Warning : ",		L_WARN		},
+	{ ": Acct    : ",		L_ACCT		},
+	{ ": Error   : ",		L_ERR		},
+	{ ": WARNING : ",		L_DBG_WARN	},
+	{ ": ERROR   : ",		L_DBG_ERR	},
+	{ ": WARNING : ",		L_DBG_WARN_REQ	},
+	{ ": ERROR   : ",		L_DBG_ERR_REQ	},
 	{ NULL, 0 }
 };
 
