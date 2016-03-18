@@ -320,8 +320,8 @@ tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t const *conf, bool client);
-int 		tls_handshake_recv(REQUEST *, tls_session_t *tls_session);
-int 		tls_handshake_send(REQUEST *, tls_session_t *tls_session);
+int 		tls_tunnel_recv(REQUEST *, tls_session_t *tls_session);
+int 		tls_tunnel_send(REQUEST *, tls_session_t *tls_session);
 void 		tls_session_information(tls_session_t *tls_session);
 ssize_t		tls_session_id(uint8_t *out, size_t outlen, SSL_SESSION *tls_session);
 

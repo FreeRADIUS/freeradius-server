@@ -725,7 +725,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
  *	- 0 on error.
  *	- 1 on success.
  */
-int tls_handshake_recv(REQUEST *request, tls_session_t *session)
+int tls_tunnel_recv(REQUEST *request, tls_session_t *session)
 {
 	int ret;
 
@@ -808,7 +808,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
  *	Take cleartext user data, and encrypt it into the output buffer,
  *	to send to the client at the other end of the SSL connection.
  */
-int tls_handshake_send(REQUEST *request, tls_session_t *session)
+int tls_tunnel_send(REQUEST *request, tls_session_t *session)
 {
 	/*
 	 *	If there's un-encrypted data in 'clean_in', then write

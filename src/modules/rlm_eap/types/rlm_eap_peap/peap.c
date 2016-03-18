@@ -57,7 +57,7 @@ static int eap_peap_failure(eap_session_t *eap_session, tls_session_t *tls_sessi
 	/*
 	 *	FIXME: Check the return code.
 	 */
-	tls_handshake_send(request, tls_session);
+	tls_tunnel_send(request, tls_session);
 
 	return 1;
 }
@@ -92,7 +92,7 @@ static int eap_peap_success(eap_session_t *eap_session, tls_session_t *tls_sessi
 	/*
 	 *	FIXME: Check the return code.
 	 */
-	tls_handshake_send(request, tls_session);
+	tls_tunnel_send(request, tls_session);
 
 	return 1;
 }
@@ -109,8 +109,7 @@ static int eap_peap_identity(eap_session_t *eap_session, tls_session_t *tls_sess
 	eap_packet.data[0] = PW_EAP_IDENTITY;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, &eap_packet, sizeof(eap_packet));
-
-	tls_handshake_send(eap_session->request, tls_session);
+	tls_tunnel_send(eap_session->request, tls_session);
 	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
@@ -151,7 +150,7 @@ static int eap_peap_soh(eap_session_t *eap_session, tls_session_t *tls_session)
 	tlv_packet[19] = 0;
 
 	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 20);
-	tls_handshake_send(eap_session->request, tls_session);
+	tls_tunnel_send(eap_session->request, tls_session);
 	return 1;
 }
 
@@ -332,7 +331,7 @@ static int eap_peap_inner_from_pairs(REQUEST *request, tls_session_t *tls_sessio
 		(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 
-	tls_handshake_send(request, tls_session);
+	tls_tunnel_send(request, tls_session);
 
 	return 1;
 }

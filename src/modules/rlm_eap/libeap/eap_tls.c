@@ -670,7 +670,7 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 *
 	 *	If more info is required then send another request.
 	 */
-	if (!tls_handshake_recv(eap_session->request, tls_session)) {
+	if (!tls_tunnel_recv(eap_session->request, tls_session)) {
 		REDEBUG("TLS receive handshake failed during operation");
 		tls_fail(tls_session);
 		return FR_TLS_FAIL;

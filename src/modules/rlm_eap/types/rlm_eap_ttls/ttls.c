@@ -451,7 +451,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		/*
 		 *	FIXME: Check the return code.
 		 */
-		tls_handshake_send(request, tls_session);
+		tls_tunnel_send(request, tls_session);
 	}
 
 	/*

@@ -215,7 +215,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	If we need to do more initialization, do that here.
 	 */
 	if (!SSL_is_init_finished(sock->tls_session->ssl)) {
-		if (!tls_handshake_recv(request, sock->tls_session)) {
+		if (!tls_tunnel_recv(request, sock->tls_session)) {
 			RDEBUG("FAILED in TLS handshake receive");
 			goto do_close;
 		}
@@ -454,7 +454,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Do SSL magic to get encrypted data.
 	 */
-	tls_handshake_send(request, sock->tls_session);
+	tls_tunnel_send(request, sock->tls_session);
 
 	/*
 	 *	And finally write the data to the socket.
