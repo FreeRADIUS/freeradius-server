@@ -304,7 +304,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		eap_session->prev_round = eap_session->this_round;
 		eap_session->this_round = NULL;
 	} else {
-		RDEBUG2("Freeing eap_session");
+		RDEBUG2("Cleaning up EAP session");
 		eap_session_destroy(&eap_session);
 	}
 
