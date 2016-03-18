@@ -2131,12 +2131,27 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 			       cf_section_filename(server->subcs[comp]));
 		}
 	}
-	request->component = section_type_value[comp].section;
 
-	rcode = modcall(comp, list, request);
+	{
+		char const *module;
+		char const *component;
 
-	request->module = NULL;
-	request->component = "<core>";
+		/*
+		 *	This handles weird cases, where we're
+		 *	looping back from inside a module like eap-gtc.
+		 */
+		module = request->module;
+		component = request->component;
+
+		request->module = NULL;
+		request->component = section_type_value[comp].section;
+
+		rcode = modcall(comp, list, request);
+
+		request->component = component;
+		request->module = module;
+	}
+
 	return rcode;
 }
 
