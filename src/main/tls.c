@@ -2477,7 +2477,6 @@ do { \
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
 		RERROR("TLS error: %s (%i)", p, err);
-		REXDENT();
 		fr_pair_list_free(&cert_vps);
 		return my_ok;
 	}
