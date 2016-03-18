@@ -316,38 +316,6 @@ static int eap_peap_inner_from_pairs(REQUEST *request, tls_session_t *tls_sessio
 	vp_cursor_t cursor;
 
 	/*
-	 *	Skip the id, code, and length.  Just write the EAP
-	 *	type & data to the client.
-	 */
-#ifndef NDEBUG
-	if ((rad_debug_lvl > 2) && fr_log_fp) {
-		size_t i, total, start = EAP_HEADER_LEN;
-		total = 0;
-
-		for (this = fr_cursor_init(&cursor, &vp); this; this = fr_cursor_next(&cursor)) {
-			for (i = start; i < vp->vp_length; i++) {
-				if ((total & 0x0f) == 0) {
-					fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
-				}
-				fprintf(fr_log_fp, "%02x ", vp->vp_octets[i]);
-
-				if ((total & 0x0f) == 0x0f) {
-					fprintf(fr_log_fp, "\n");
-				}
-
-				total++;
-			}
-
-			start = 0;
-		}
-
-		if ((total & 0x0f) != 0) {
-			fprintf(fr_log_fp, "\n");
-		}
-	}
-#endif
-
-	/*
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
