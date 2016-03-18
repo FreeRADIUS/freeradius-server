@@ -91,6 +91,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
 		    tls_record_t *record, size_t record_len, size_t frag_len)
 {
+	REQUEST		*request = eap_session->request;
 	eap_round_t	*eap_round = eap_session->this_round;
 	tls_session_t	*tls_session = eap_session->opaque;
 	uint8_t		*p;
@@ -143,6 +144,19 @@ int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t 
 		memcpy(p, &net_record_len, sizeof(net_record_len));
 		p += sizeof(net_record_len);
 	}
+
+	/*
+	 *	First output the flags (for debugging)
+	 */
+	RDEBUG3("Setting flags %c%c%c%c%c%c%c%c",
+		TLS_START(flags) ? 'S' : '-',
+		TLS_MORE_FRAGMENTS(flags) ? 'M' : '-',
+		TLS_LENGTH_INCLUDED(flags) ? 'L' : '-',
+		TLS_RESERVED0(flags) ? 'R' : '-',
+		TLS_RESERVED1(flags) ? 'R' : '-',
+		TLS_RESERVED2(flags) ? 'R' : '-',
+		TLS_RESERVED3(flags) ? 'R' : '-',
+		TLS_RESERVED4(flags) ? 'R' : '-');
 
 	if (record) tls_session->record_to_buff(record, p, frag_len);
 
