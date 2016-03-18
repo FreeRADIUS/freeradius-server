@@ -169,6 +169,11 @@ eap {
 		#  only the server certificate, but ALSO all
 		#  of the CA certificates used to sign the
 		#  server certificate.
+		#
+		#  Any certificate chain MUST be in order
+		#  from server certificate (first in the file)
+		#  to intermediaries (second) to root CA
+		#  (last in the file).
 		certificate_file = ${certdir}/server.pem
 
 		#  Trusted Root CA list
