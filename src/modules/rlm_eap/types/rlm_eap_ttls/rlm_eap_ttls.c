@@ -78,7 +78,6 @@ typedef struct rlm_eap_ttls_t {
 
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name) },
-	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_ttls_t, default_method_name), .dflt = "md5" },
 	{ FR_CONF_OFFSET("copy_request_to_tunnel", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, copy_request_to_tunnel), .dflt = "no" },
 	{ FR_CONF_OFFSET("use_tunneled_reply", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, use_tunneled_reply), .dflt = "no" },
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_ttls_t, virtual_server) },
@@ -111,22 +110,10 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	/*
-	 *	Convert the name to an integer, to make it easier to
-	 *	handle.
-	 */
-	inst->default_method = eap_name2type(inst->default_method_name);
-	if (!inst->default_method) {
-		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
-				   inst->default_method_name);
-		return -1;
-	}
-
-	/*
 	 *	Read tls configuration, either from group given by 'tls'
 	 *	option, or from the eap-tls configuration.
 	 */
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
-
 	if (!inst->tls_conf) {
 		ERROR("Failed initializing SSL context");
 		return -1;
@@ -143,11 +130,10 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 	ttls_tunnel_t *t;
 
 	t = talloc_zero(ctx, ttls_tunnel_t);
-
-	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->virtual_server = inst->virtual_server;
+
 	return t;
 }
 

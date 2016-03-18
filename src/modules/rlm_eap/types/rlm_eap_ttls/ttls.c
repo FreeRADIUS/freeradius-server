@@ -903,21 +903,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-				RDEBUG("Got tunneled identity of %s",
-				       t->username->vp_strvalue);
-
-				/*
-				 *	If there's a default EAP type,
-				 *	set it here.
-				 */
-				if (t->default_method != 0) {
-					RDEBUG("Setting default EAP type for tunneled EAP session");
-					vp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
-					rad_assert(vp != NULL);
-					vp->vp_integer = t->default_method;
-					fr_pair_add(&fake->config, vp);
-				}
-
+				RDEBUG("Got tunneled identity of %s", t->username->vp_strvalue);
 			} else {
 				/*
 				 *	Don't reject the request outright,
