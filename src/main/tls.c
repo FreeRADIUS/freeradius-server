@@ -700,6 +700,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	session->mtu = conf->fragment_size;
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_MTU, TAG_ANY);
 	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) {
+		RDEBUG2("Setting fragment_len from &Framed-MTU");
 		session->mtu = vp->vp_integer;
 	}
 
