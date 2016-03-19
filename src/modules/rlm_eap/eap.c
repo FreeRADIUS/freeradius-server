@@ -350,14 +350,16 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		 *	Allow per-user configuration of EAP types.
 		 */
 		vp = fr_pair_find_by_num(eap_session->request->config, 0, PW_EAP_TYPE, TAG_ANY);
-		if (vp) next = vp->vp_integer;
+		if (vp) {
+			RDEBUG2("Setting method from &control:EAP-Type");
+			next = vp->vp_integer;
+		}
 
 		/*
 		 *	Ensure it's valid.
 		 */
 		if ((next < PW_EAP_MD5) || (next >= PW_EAP_MAX_TYPES) || (!inst->methods[next])) {
 			REDEBUG2("Tried to start unsupported method (%d)", next);
-
 			return EAP_INVALID;
 		}
 

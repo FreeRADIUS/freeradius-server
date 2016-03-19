@@ -29,8 +29,6 @@ RCSID("$Id$")
 typedef struct rlm_eap_peap_t {
 	char const		*tls_conf_name;		//!< TLS configuration.
 	fr_tls_server_conf_t	*tls_conf;
-	char const		*default_method_name;	//!< Default tunneled EAP type.
-	int			default_method;
 
 	char const		*inner_eap_module;	//!< module name for inner EAP
 	int			auth_type_eap;
@@ -53,8 +51,6 @@ typedef struct rlm_eap_peap_t {
 
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_peap_t, tls_conf_name) },
-
-	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_peap_t, default_method_name), .dflt = "mschapv2" },
 
 	{ FR_CONF_OFFSET("inner_eap_module", PW_TYPE_STRING, rlm_eap_peap_t, inner_eap_module), },
 
@@ -111,17 +107,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	/*
-	 *	Convert the name to an integer, to make it easier to
-	 *	handle.
-	 */
-	inst->default_method = eap_name2type(inst->default_method_name);
-	if (!inst->default_method) {
-		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
-				   inst->default_method_name);
-		return -1;
-	}
-
-	/*
 	 *	Read tls configuration, either from group given by 'tls'
 	 *	option, or from the eap-tls configuration.
 	 */
@@ -157,7 +142,6 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 
 	t = talloc_zero(ctx, peap_tunnel_t);
 
-	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 #ifdef WITH_PROXY

@@ -887,12 +887,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		fr_pair_value_memsteal(vp, q);
 		fr_pair_add(&fake->packet->vps, vp);
-
-		if (t->default_method != 0) {
-			RDEBUG2("Setting default EAP type for tunneled EAP session");
-			vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
-			vp->vp_integer = t->default_method;
-		}
 	}
 		break;
 
@@ -932,16 +926,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
 
 			RDEBUG2("Got tunneled identity of %s", t->username->vp_strvalue);
-
-			/*
-			 *	If there's a default EAP type,
-			 *	set it here.
-			 */
-			if (t->default_method != 0) {
-				RDEBUG2("Setting default EAP type for tunneled EAP session");
-				vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
-				vp->vp_integer = t->default_method;
-			}
 		}
 	} /* else there WAS a t->username */
 

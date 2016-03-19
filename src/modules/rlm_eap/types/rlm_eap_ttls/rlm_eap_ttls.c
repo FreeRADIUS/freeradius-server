@@ -36,12 +36,6 @@ typedef struct rlm_eap_ttls_t {
 	fr_tls_server_conf_t *tls_conf;
 
 	/*
-	 *	Default tunneled EAP type
-	 */
-	char const *default_method_name;
-	int default_method;
-
-	/*
 	 *	Use the reply attributes from the tunneled session in
 	 *	the non-tunneled reply to the client.
 	 */

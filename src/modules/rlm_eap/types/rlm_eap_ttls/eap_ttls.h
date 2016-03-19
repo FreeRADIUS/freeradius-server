@@ -32,7 +32,6 @@ typedef struct ttls_tunnel_t {
 	VALUE_PAIR	*state;
 	VALUE_PAIR	*accept_vps;
 	bool		authenticated;
-	int		default_method;
 	bool		copy_request_to_tunnel;
 	bool		use_tunneled_reply;
 	char const	*virtual_server;
