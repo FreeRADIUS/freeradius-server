@@ -1567,6 +1567,7 @@ static int cache_key_add(REQUEST *request, uint8_t *key, size_t key_len, tls_cac
 	fr_pair_delete_by_num(&request->packet->vps, 0, PW_TLS_SESSION_ID, TAG_ANY);
 	fr_pair_delete_by_num(&request->config, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
 
+	RDEBUG2("Setting TLS cache control attributes");
 	vp = fr_pair_afrom_num(request->packet, 0, PW_TLS_SESSION_ID);
 	if (!vp) return -1;
 
