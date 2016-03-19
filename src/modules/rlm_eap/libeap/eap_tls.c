@@ -998,13 +998,14 @@ fr_tls_server_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 	}
 
 	/*
-	 *	The maximum size for a RADIUS packet is 4096,
-	 *	minus the header (20), Message-Authenticator (18),
-	 *	and State (18), etc. results in about 4000 bytes of data
-	 *	that can be devoted *solely* to EAP.
+	 *	The maximum size for a RADIUS packet is 4096, but we're
+	 *	not just a RADIUS server.
+	 *
+	 *	Maximum size for a TLS record is 16K, so little point in
+	 *	setting it higher than that.
 	 */
-	if (tls_conf->fragment_size > 4000) {
-		ERROR("Configured fragment size is too large, must be <= 4000");
+	if (tls_conf->fragment_size > 16384) {
+		ERROR("Configured fragment size is too large, must be <= 16384");
 		return NULL;
 	}
 
