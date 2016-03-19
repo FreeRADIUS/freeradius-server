@@ -677,7 +677,7 @@ static int mod_detach(UNUSED void *instance)
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
  */
-void mschap_add_reply(REQUEST *request, unsigned char ident,
+void mschap_add_reply(REQUEST *request, uint8_t ident,
 		      char const *name, char const *value, size_t len)
 {
 	VALUE_PAIR *vp;
@@ -692,7 +692,7 @@ void mschap_add_reply(REQUEST *request, unsigned char ident,
 		char *p;
 
 		p = talloc_array(vp, char, len + 1 + 1);	/* Account for the ident byte */
-		p[vp->vp_length] = '\0';			/* Always \0 terminate */
+		p[len + 1] = '\0';				/* Always \0 terminate */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
 		fr_pair_value_strsteal(vp, p);
