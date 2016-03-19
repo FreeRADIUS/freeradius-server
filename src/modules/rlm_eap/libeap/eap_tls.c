@@ -98,17 +98,35 @@ int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t 
 	size_t		len = 1;	/* Flags */
 
 	/*
+	 *	First output the flags (for debugging)
+	 */
+	RDEBUG3("Setting flags %c%c%c%c%c%c%c%c",
+		TLS_START(flags) ? 'S' : '-',
+		TLS_MORE_FRAGMENTS(flags) ? 'M' : '-',
+		TLS_LENGTH_INCLUDED(flags) ? 'L' : '-',
+		TLS_RESERVED0(flags) ? 'R' : '-',
+		TLS_RESERVED1(flags) ? 'R' : '-',
+		TLS_RESERVED2(flags) ? 'R' : '-',
+		TLS_RESERVED3(flags) ? 'R' : '-',
+		TLS_RESERVED4(flags) ? 'R' : '-');
+
+	/*
 	 *	Determine the length (sans header) of our EAP-TLS
 	 *	packet.  The reason for not including the length is
 	 *	that the fields are the same as normal EAP messages.
 	 */
-	if (status == FR_TLS_REQUEST) {
-		if (TLS_LENGTH_INCLUDED(flags)) len += 4;	/* TLS record length field */
+	switch (status) {
+	case FR_TLS_REQUEST:
+		if (TLS_LENGTH_INCLUDED(flags)) len += TLS_HEADER_LENGTH_FIELD_LEN;	/* TLS record length field */
 		if (record) len += frag_len;
-	}
+		break;
 
-	if ((status == FR_TLS_START) && (record_len != 0)) {
-		len += frag_len;
+	case FR_TLS_START:
+		if (record_len != 0) len += frag_len;
+		break;
+
+	default:
+		break;
 	}
 
 	/*
@@ -144,19 +162,6 @@ int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t 
 		memcpy(p, &net_record_len, sizeof(net_record_len));
 		p += sizeof(net_record_len);
 	}
-
-	/*
-	 *	First output the flags (for debugging)
-	 */
-	RDEBUG3("Setting flags %c%c%c%c%c%c%c%c",
-		TLS_START(flags) ? 'S' : '-',
-		TLS_MORE_FRAGMENTS(flags) ? 'M' : '-',
-		TLS_LENGTH_INCLUDED(flags) ? 'L' : '-',
-		TLS_RESERVED0(flags) ? 'R' : '-',
-		TLS_RESERVED1(flags) ? 'R' : '-',
-		TLS_RESERVED2(flags) ? 'R' : '-',
-		TLS_RESERVED3(flags) ? 'R' : '-',
-		TLS_RESERVED4(flags) ? 'R' : '-');
 
 	if (record) tls_session->record_to_buff(record, p, frag_len);
 
