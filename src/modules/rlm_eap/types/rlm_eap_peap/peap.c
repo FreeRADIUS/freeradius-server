@@ -685,9 +685,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	REQUEST *request = eap_session->request;
 	eap_round_t *eap_round = eap_session->this_round;
 
-	RDEBUG3("PEAP Tunnelled request data (%zu bytes)", tls_session->clean_out.used);
-	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, tls_session->clean_out.data, tls_session->clean_out.used);
-
 	/*
 	 *	Just look at the buffer directly, without doing
 	 *	record_to_buff.  This lets us avoid another data copy.
@@ -1127,8 +1124,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 finish:
 	talloc_free(fake);
-	RDEBUG3("PEAP Tunnelled response data (%zu bytes)", tls_session->clean_in.used);
-	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, tls_session->clean_in.data, tls_session->clean_in.used);
 
 	return rcode;
 }

@@ -708,29 +708,171 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	return session;
 }
 
-/*
- * We are the server, we always get the dirty data
- * (Handshake data is also considered as dirty data)
- * During handshake, since SSL API handles itself,
- * After clean-up, dirty_out will be filled with
- * the data required for handshaking. So we check
- * if dirty_out is empty then we simply send it back.
- * As of now, if handshake is successful, then we keep going,
- * otherwise we fail.
+/** Decrypt application data
  *
- * Fill the Bio with the dirty data to clean it
- * Get the cleaned data from SSL, if it is not Handshake data
+ * @note Handshake must have completed before this function may be called.
  *
+ * Feed data from dirty_in to OpenSSL, and read the clean data into clean_out.
+ *
+ * @param request The current request.
+ * @param session The current TLS session.
+ * @return
+ *	- FR_TLS_FAIL on error.
+ *	- FR_TLS_RECORD_FRAGMENT_MORE if more fragments are required to fully
+ *	  reassemble the record for decryption.
+ *	- FR_TLS_RECORD_COMPLETE if we decrypted a complete record.
+ */
+fr_tls_status_t tls_tunnel_recv(REQUEST *request, tls_session_t *session)
+{
+	int ret;
+
+	if (!SSL_is_init_finished(session->ssl)) {
+		REDEBUG("Attempted to read application data before handshake completed");
+		return FR_TLS_FAIL;
+	}
+
+	/*
+	 *	Decrypt the complete record.
+	 */
+	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+	if (ret != (int) session->dirty_in.used) {
+		record_init(&session->dirty_in);
+		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, ret);
+		return FR_TLS_FAIL;
+	}
+
+	/*
+	 *      Clear the dirty buffer now that we are done with it
+	 *      and init the clean_out buffer to store decrypted data
+	 */
+	record_init(&session->dirty_in);
+	record_init(&session->clean_out);
+
+	/*
+	 *      Read (and decrypt) the tunneled data from the
+	 *      SSL session, and put it into the decrypted
+	 *      data buffer.
+	 */
+	ret = SSL_read(session->ssl, session->clean_out.data, sizeof(session->clean_out.data));
+	if (ret < 0) {
+		int code;
+
+		code = SSL_get_error(session->ssl, ret);
+		switch (code) {
+		case SSL_ERROR_WANT_READ:
+			RWDEBUG("Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
+				"Attempting to continue");
+			return FR_TLS_RECORD_FRAGMENT_MORE;
+
+		case SSL_ERROR_WANT_WRITE:
+			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			break;
+
+		default:
+			REDEBUG("Error in fragmentation logic");
+			tls_error_io_log(request, session, ret, "Failed in SSL_read");
+			break;
+		}
+		return FR_TLS_FAIL;
+	}
+
+	if (ret == 0) RWDEBUG("No data inside of the tunnel");
+
+	/*
+	 *	Passed all checks, successfully decrypted data
+	 */
+	session->clean_out.used = ret;
+
+	RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
+	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_out.data, session->clean_out.used);
+
+	return FR_TLS_RECORD_COMPLETE;
+}
+
+/** Encrypt application data
+ *
+ * @note Handshake must have completed before this function may be called.
+ *
+ * Take cleartext data from clean_in, and feed it to OpenSSL, reading
+ * the encrypted data into dirty_out.
+ *
+ * @param request The current request.
+ * @param session The current TLS session.
+ * @return
+ *	- 0 on failure.
+ *	- 1 on success.
+ */
+int tls_tunnel_send(REQUEST *request, tls_session_t *session)
+{
+	if (!SSL_is_init_finished(session->ssl)) {
+		REDEBUG("Attempted to write application data before handshake completed");
+		return FR_TLS_FAIL;
+	}
+
+	/*
+	 *	If there's un-encrypted data in 'clean_in', then write
+	 *	that data to the SSL session, and then call the BIO function
+	 *	to get that encrypted data from the SSL session, into
+	 *	a buffer which we can then package into an EAP packet.
+	 *
+	 *	Based on Server's logic this clean_in is expected to
+	 *	contain the data to send to the client.
+	 */
+	if (session->clean_in.used > 0) {
+		int ret;
+
+		RDEBUG2("TLS application data to encrypt (%zu bytes)", session->clean_in.used);
+		radlog_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_in.data, session->clean_in.used);
+
+		ret = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
+		record_to_buff(&session->clean_in, NULL, ret);
+
+		/* Get the dirty data from Bio to send it */
+		ret = BIO_read(session->from_ssl, session->dirty_out.data,
+			       sizeof(session->dirty_out.data));
+		if (ret > 0) {
+			session->dirty_out.used = ret;
+		} else {
+			if (!tls_error_io_log(request, session, ret, "Failed in SSL_write")) return 0;
+		}
+	}
+
+	return 1;
+}
+
+/** Continue a TLS handshake
+ *
+ * Advance the TLS handshake by feeding OpenSSL data from dirty_in,
+ * and reading data from OpenSSL into dirty_out.
+ *
+ * @param request The current request.
+ * @param session The current TLS session.
  * @return
  *	- 0 on error.
  *	- 1 on success.
  */
-int tls_tunnel_recv(REQUEST *request, tls_session_t *session)
+int tls_handshake_continue(REQUEST *request, tls_session_t *session)
 {
 	int ret;
 
+	/*
+	 *	This is a logic error.  tls_handshake_continue
+	 *	must not be called if the handshake is
+	 *	complete tls_tunnel_recv must be
+	 *	called instead.
+	 */
+	if (SSL_is_init_finished(session->ssl)) {
+		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
+		return 0;
+	}
+
 	if (session->invalid_hb_used) return 0;
 
+	/*
+	 *	Feed dirty data into OpenSSL, so that is can either
+	 *	process it as Application data (decrypting it)
+	 *	or continue the TLS handshake.
+	 */
 	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
 	if (ret != (int)session->dirty_in.used) {
 		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, ret);
@@ -739,16 +881,39 @@ int tls_tunnel_recv(REQUEST *request, tls_session_t *session)
 	}
 	record_init(&session->dirty_in);
 
+	/*
+	 *	Magic/More magic? Although SSL_read is normally
+	 *	used to read application data, it will also
+	 *	continue the TLS handshake.  Removing this call will
+	 *	cause the handshake to fail.
+	 *
+	 *	We don't ever expect to actually *receive* application
+	 *	data here.
+	 *
+	 *	The reason why we call SSL_read instead of SSL_accept,
+	 *	or SSL_connect, as it allows this function
+	 *	to be used, irrespective or whether we're acting
+	 *	as a client or a server.
+	 *
+	 *	If acting as a client SSL_set_connect_state must have
+	 *	been called before this function.
+	 *
+	 *	If acting as a server SSL_set_accept_state must have
+	 *	been called before this function.
+	 */
 	ret = SSL_read(session->ssl, session->clean_out.data + session->clean_out.used,
 		       sizeof(session->clean_out.data) - session->clean_out.used);
 	if (ret > 0) {
 		session->clean_out.used += ret;
 		return 1;
 	}
-
 	if (!tls_error_io_log(request, session, ret, "Failed in SSL_read")) return 0;
 
-	/* Some Extra STATE information for easy debugging */
+	/*
+	 *	This only occurs once per session, where calling
+	 *	SSL_read updates the state of the SSL session, setting
+	 *	this flag to true.
+	 */
 	if (SSL_is_init_finished(session->ssl)) {
 		SSL_CIPHER const *cipher;
 		char buffer[256];
@@ -757,11 +922,17 @@ int tls_tunnel_recv(REQUEST *request, tls_session_t *session)
 
 		RDEBUG2("TLS established with cipher suite: %s",
 			SSL_CIPHER_description(cipher, buffer, sizeof(buffer)));
+	} else if (SSL_in_init(session->ssl)) {
+		RDEBUG2("In TLS handshake phase");
+	} else if (SSL_in_before(session->ssl)) {
+		RDEBUG2("Before TLS handshake phase");
 	}
-	if (SSL_in_init(session->ssl)) RDEBUG2("In TLS handshake phase");
-	if (SSL_in_before(session->ssl)) RDEBUG2("Before TLS handshake phase");
-	if (SSL_in_accept_init(session->ssl)) RDEBUG2("In TLS accept mode");
-	if (SSL_in_connect_init(session->ssl)) RDEBUG2("In TLS connect mode");
+
+	if (SSL_in_accept_init(session->ssl)) {
+		RDEBUG2("In server (accept) mode");
+	} else if (SSL_in_connect_init(session->ssl)) {
+		RDEBUG2("In client (connect) mode");
+	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	/*
@@ -776,13 +947,15 @@ int tls_tunnel_recv(REQUEST *request, tls_session_t *session)
 	}
 #endif
 
+	/*
+	 *	Get data to pack and send back to the TLS peer.
+	 */
 	ret = BIO_ctrl_pending(session->from_ssl);
 	if (ret > 0) {
 		ret = BIO_read(session->from_ssl, session->dirty_out.data,
 			       sizeof(session->dirty_out.data));
 		if (ret > 0) {
 			session->dirty_out.used = ret;
-
 		} else if (BIO_should_retry(session->from_ssl)) {
 			record_init(&session->dirty_in);
 			RDEBUG2("Asking for more data in tunnel");
@@ -794,49 +967,12 @@ int tls_tunnel_recv(REQUEST *request, tls_session_t *session)
 			return 0;
 		}
 	} else {
-		RDEBUG2("Recived TLS Application Data");
 		/* Its clean application data, do whatever we want */
 		record_init(&session->clean_out);
 	}
 
 	/* We are done with dirty_in, reinitialize it */
 	record_init(&session->dirty_in);
-	return 1;
-}
-
-/*
- *	Take cleartext user data, and encrypt it into the output buffer,
- *	to send to the client at the other end of the SSL connection.
- */
-int tls_tunnel_send(REQUEST *request, tls_session_t *session)
-{
-	/*
-	 *	If there's un-encrypted data in 'clean_in', then write
-	 *	that data to the SSL session, and then call the BIO function
-	 *	to get that encrypted data from the SSL session, into
-	 *	a buffer which we can then package into an EAP packet.
-	 *
-	 *	Based on Server's logic this clean_in is expected to
-	 *	contain the data to send to the client.
-	 */
-	if (session->clean_in.used > 0) {
-		int ret;
-
-		ret = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
-		record_to_buff(&session->clean_in, NULL, ret);
-
-		/* Get the dirty data from Bio to send it */
-		ret = BIO_read(session->from_ssl, session->dirty_out.data,
-			       sizeof(session->dirty_out.data));
-		if (ret > 0) {
-			session->dirty_out.used = ret;
-		} else {
-			if (!tls_error_io_log(request, session, ret, "Failed in SSL_write")) {
-				return 0;
-			}
-		}
-	}
-
 	return 1;
 }
 
@@ -3696,66 +3832,6 @@ void tls_fail(tls_session_t *session)
 	 */
 	SSL_CTX_remove_session(session->ctx, session->ssl->session);
 }
-
-fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
-{
-	int ret;
-
-	/*
-	 *	Decrypt the complete record.
-	 */
-	ret = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
-	if (ret != (int) session->dirty_in.used) {
-		record_init(&session->dirty_in);
-		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, ret);
-		return FR_TLS_FAIL;
-	}
-
-	/*
-	 *      Clear the dirty buffer now that we are done with it
-	 *      and init the clean_out buffer to store decrypted data
-	 */
-	record_init(&session->dirty_in);
-	record_init(&session->clean_out);
-
-	/*
-	 *      Read (and decrypt) the tunneled data from the
-	 *      SSL session, and put it into the decrypted
-	 *      data buffer.
-	 */
-	ret = SSL_read(session->ssl, session->clean_out.data, sizeof(session->clean_out.data));
-	if (ret < 0) {
-		int code;
-
-		code = SSL_get_error(session->ssl, ret);
-		switch (code) {
-		case SSL_ERROR_WANT_READ:
-			RWDEBUG("Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
-				"Attempting to continue");
-			return FR_TLS_RECORD_FRAGMENT_MORE;
-
-		case SSL_ERROR_WANT_WRITE:
-			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
-			break;
-
-		default:
-			REDEBUG("Error in fragmentation logic");
-			tls_error_io_log(request, session, ret, "Failed in SSL_read");
-			break;
-		}
-		return FR_TLS_FAIL;
-	}
-
-	if (ret == 0) RWDEBUG("No data inside of the tunnel");
-
-	/*
-	 *	Passed all checks, successfully decrypted data
-	 */
-	session->clean_out.used = ret;
-
-	return FR_TLS_RECORD_COMPLETE;
-}
-
 
 /*
  * Acknowledge received is for one of the following messages sent earlier

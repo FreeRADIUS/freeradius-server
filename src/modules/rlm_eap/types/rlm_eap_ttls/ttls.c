@@ -796,9 +796,6 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	REQUEST			*request = eap_session->request;
 	chbind_packet_t		*chbind;
 
-	RDEBUG3("TTLS Tunnelled request data (%zu bytes)", tls_session->clean_out.used);
-	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, tls_session->clean_out.data, tls_session->clean_out.used);
-
 	/*
 	 *	Just look at the buffer directly, without doing
 	 *	record_to_buff.
@@ -1132,9 +1129,6 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 finish:
 	talloc_free(fake);
-
-	RDEBUG3("TTLS Tunnelled response data (%zu bytes)", tls_session->clean_in.used);
-	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, tls_session->clean_in.data, tls_session->clean_in.used);
 
 	return code;
 }

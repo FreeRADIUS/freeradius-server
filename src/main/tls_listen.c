@@ -215,7 +215,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	If we need to do more initialization, do that here.
 	 */
 	if (!SSL_is_init_finished(sock->tls_session->ssl)) {
-		if (!tls_tunnel_recv(request, sock->tls_session)) {
+		if (!tls_handshake_continue(request, sock->tls_session)) {
 			RDEBUG("FAILED in TLS handshake receive");
 			goto do_close;
 		}
@@ -239,7 +239,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Try to get application data.
 	 */
-	status = tls_application_data(sock->tls_session, request);
+	status = tls_tunnel_recv(request, sock->tls_session);
 	RDEBUG("Application data status %d", status);
 
 	if (status == FR_TLS_RECORD_FRAGMENT_MORE) {

@@ -336,10 +336,7 @@ int eap_tls_request(eap_session_t *eap_session)
 	 *	If this is the first fragment, record the complete
 	 *	TLS record length.
 	 */
-	if (tls_session->record_out_started == false) {
-		tls_session->record_out_total_len = tls_session->dirty_out.used;
-		length_included = true;
-	}
+	if (tls_session->record_out_started == false) tls_session->record_out_total_len = tls_session->dirty_out.used;
 
 	/*
 	 *	If the data we're sending is greater than the MTU
@@ -358,6 +355,8 @@ int eap_tls_request(eap_session_t *eap_session)
 		 *	and this is the first fragment.
 		 */
 		if (tls_session->record_out_started == false) {
+			length_included = true;
+
 			RDEBUG2("Complete TLS record (%zu bytes) larger than MTU (%zu bytes), will fragment",
 				tls_session->record_out_total_len, frag_len);	/* frag_len is correct here */
 			RDEBUG2("Sending first TLS record fragment (%zu bytes), %zu bytes remaining",
@@ -689,7 +688,7 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 *
 	 *	If more info is required then send another request.
 	 */
-	if (!tls_tunnel_recv(eap_session->request, tls_session)) {
+	if (!tls_handshake_continue(eap_session->request, tls_session)) {
 		REDEBUG("TLS receive handshake failed during operation");
 		tls_fail(tls_session);
 		return FR_TLS_FAIL;
@@ -844,7 +843,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		if (tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
 			tls_session->phase2 = true;
 
-			status = tls_application_data(tls_session, request);
+			status = tls_tunnel_recv(request, tls_session);
 		} else {
 			status = eap_tls_handshake(eap_session);
 		}
