@@ -29,8 +29,8 @@
 
 REALM *tr_query_realm(REQUEST *request, char const *realm,
 		      char const *community,
-		      char const *rprealm,
-		      char const *trustrouter,
+		      char const *rp_realm,
+		      char const *trust_router,
 		      unsigned int port);
 
 bool tr_init(void);

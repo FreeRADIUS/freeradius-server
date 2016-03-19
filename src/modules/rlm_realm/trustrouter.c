@@ -336,9 +336,9 @@ static bool update_required(REALM const *r)
 
 
 REALM *tr_query_realm(REQUEST *request, char const *realm,
-		      char const  *community,
-		      char const *rprealm,
-		      char const *trustrouter,
+		      char const *community,
+		      char const *rp_realm,
+		      char const *trust_router,
 		      unsigned int port)
 {
 	int			conn = 0;
@@ -347,18 +347,20 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	gss_ctx_id_t		gssctx;
 	struct resp_opaque	cookie;
 
-	if (!realm) return NULL;
-
-	if (!trustrouter || (strcmp(trustrouter, "none") == 0)) return NULL;
+	rad_assert(trust_router);
+	rad_assert(realm);
 
 	/* clear the cookie structure */
 	memset(&cookie, 0, sizeof(cookie));
+
+	if (!rp_realm) rp_realm = "none";
+	if (!trust_router) trust_router = "none";
 
 	/* See if the request overrides the community*/
 	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_UKERNA, PW_UKERNA_TR_COI, TAG_ANY);
 	if (vp) {
 		community = vp->vp_strvalue;
-	} else {
+	} else if (community) {
 		pair_make_request("Trust-Router-COI", community, T_OP_SET);
 	}
 
@@ -371,9 +373,9 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	}
 
 	/* Set-up TID connection */
-	DEBUG2("Opening TIDC connection to %s:%u", trustrouter, port);
+	DEBUG2("Opening TIDC connection to %s:%u", trust_router, port);
 
-	conn = tidc_open_connection(global_tidc, trustrouter, port, &gssctx);
+	conn = tidc_open_connection(global_tidc, trust_router, port, &gssctx);
 	if (conn < 0) {
 		/* Handle error */
 		DEBUG2("Error in tidc_open_connection.\n");
@@ -381,7 +383,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	}
 
 	/* Send a TID request */
-	rcode = tidc_send_request(global_tidc, conn, gssctx, rprealm,
+	rcode = tidc_send_request(global_tidc, conn, gssctx, rp_realm,
 				  realm, community,
 				  &tr_response_func, &cookie);
 	if (rcode < 0) {

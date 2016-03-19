@@ -26,7 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-#include "trustrouter.h"
+#include "trust_router.h"
 
 #define  REALM_FORMAT_PREFIX   0
 #define  REALM_FORMAT_SUFFIX   1
@@ -53,9 +53,9 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("ignore_null", PW_TYPE_BOOLEAN, rlm_realm_t, ignore_null), .dflt = "no" },
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
-	{ FR_CONF_OFFSET("default_community", PW_TYPE_STRING, rlm_realm_t, default_community), .dflt = "none" },
-	{ FR_CONF_OFFSET("rp_realm", PW_TYPE_STRING, rlm_realm_t, rp_realm), .dflt = "none" },
-	{ FR_CONF_OFFSET("trust_router", PW_TYPE_STRING, rlm_realm_t, trust_router), .dflt = "none" },
+	{ FR_CONF_OFFSET("default_community", PW_TYPE_STRING, rlm_realm_t, default_community) },
+	{ FR_CONF_OFFSET("rp_realm", PW_TYPE_STRING, rlm_realm_t, rp_realm) },
+	{ FR_CONF_OFFSET("trust_router", PW_TYPE_STRING, rlm_realm_t, trust_router) },
 	{ FR_CONF_OFFSET("tr_port", PW_TYPE_INTEGER, rlm_realm_t, tr_port), .dflt = "0" },
 #endif
 	CONF_PARSER_TERMINATOR
@@ -71,7 +71,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 {
 	char *namebuf;
 	char *username;
-	char const *realmname = NULL;
+	char const *realm_name = NULL;
 	char *ptr;
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -124,7 +124,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		ptr = strrchr(username, inst->delim[0]);
 		if (ptr) {
 			*ptr = '\0';
-			realmname = ptr + 1;
+			realm_name = ptr + 1;
 		}
 		break;
 
@@ -134,13 +134,13 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		if (ptr) {
 			*ptr = '\0';
 			ptr++;
-			realmname = username;
+			realm_name = username;
 			username = ptr;
 		}
 		break;
 
 	default:
-		realmname = NULL;
+		realm_name = NULL;
 		break;
 	}
 
@@ -149,9 +149,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	for the people who find it too difficult to think about
 	 *	what's going on.
 	 */
-	if (realmname) {
+	if (realm_name) {
 		RDEBUG2("Looking up realm \"%s\" for User-Name = \"%s\"",
-		       realmname, request->username->vp_strvalue);
+		       realm_name, request->username->vp_strvalue);
 	} else {
 		if (inst->ignore_null) {
 			RDEBUG2("No '%c' in User-Name = \"%s\", skipping NULL due to config.",
@@ -166,18 +166,19 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	/*
 	 *	Allow DEFAULT realms unless told not to.
 	 */
-	realm = realm_find(realmname);
+	realm = realm_find(realm_name);
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	/*
 	 *	Try querying for the dynamic realm.
 	 */
 	if (!realm && inst->trust_router)
-		realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
+		realm = tr_query_realm(request, realm_name, inst->default_community,
+				       inst->rp_realm, inst->trust_router, inst->tr_port);
 #endif
 
 	if (!realm) {
-		RDEBUG2("No such realm \"%s\"", (!realmname) ? "NULL" : realmname);
+		RDEBUG2("No such realm \"%s\"", (!realm_name) ? "NULL" : realm_name);
 		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
 	}
@@ -219,14 +220,14 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	to use the configured name, rather than what the user
 	 *	entered.
 	 */
-	if (realm->name[0] != '~') realmname = realm->name;
+	if (realm->name[0] != '~') realm_name = realm->name;
 
 	/*
-	 *	A NULL realmname is allowed.
+	 *	A NULL realm_name is allowed.
 	 */
-	if (realmname) {
-		pair_make_request("Realm", realmname, T_OP_EQ);
-		RDEBUG2("Adding Realm = \"%s\"", realmname);
+	if (realm_name) {
+		pair_make_request("Realm", realm_name, T_OP_EQ);
+		RDEBUG2("Adding Realm = \"%s\"", realm_name);
 	}
 
 	talloc_free(namebuf);
