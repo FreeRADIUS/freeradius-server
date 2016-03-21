@@ -829,7 +829,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 #ifdef WITH_DHCP
 		    || flags.array
 #endif
-		    || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		    || ((flags.encrypt != FLAG_ENCRYPT_NONE) && (flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
 			fr_strerror_printf("dict_addattr: The \"extended\" attributes MUST NOT have any flags set");
 			return -1;
 		}
