@@ -859,6 +859,29 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			goto error;
 		}
 
+		/*
+		 *	The Tunnel-Password encryption method can be used anywhere.
+		 *
+		 *	We forbid User-Password and Ascend-Send-Secret
+		 *	methods in the extended space.
+		 */
+		if (flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+			for (v = parent; v != NULL; v = v->parent) {
+				switch (v->type) {
+				case PW_TYPE_EXTENDED:
+				case PW_TYPE_LONG_EXTENDED:
+				case PW_TYPE_EVS:
+					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes of type '%s'",
+							   flags.encrypt, fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+					goto error;
+
+				default:
+					break;
+				}
+
+			}
+		}
+
 		switch (type) {
 		default:
 		encrypt_fail:
