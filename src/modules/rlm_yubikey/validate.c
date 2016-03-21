@@ -1,6 +1,6 @@
 /**
  * $Id$
- * @file validate.c
+ * @file rlm_yubikey/validate.c
  * @brief Authentication for yubikey OTP tokens using the ykclient library.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@networkradius.com>
