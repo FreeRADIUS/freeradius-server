@@ -3734,7 +3734,6 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	rad_assert(request->proxy->listener != NULL);
 	FR_STATS_TYPE_INC(home->stats.total_requests);
 	home->last_packet_sent = now->tv_sec;
-	request->proxy->packet->timestamp = *now;
 	request->proxy->listener->debug(request, request->proxy->packet, false);
 	request->proxy->listener->send(request->proxy->listener, request);
 }
@@ -3808,8 +3807,6 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_TIMER:
-		if (request_max_time(request)) break;
-
 		if (proxy_keep_waiting(request, &now)) break;
 
 		if (setup_post_proxy_fail(request)) {
@@ -4247,8 +4244,6 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		if (request_max_time(request)) break;
-
 		/*
 		 *	@fixme: for TCP, the socket may go away.
 		 *	we probably want to do the checks for proxy_keep_waiting() ??
