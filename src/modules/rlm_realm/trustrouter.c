@@ -59,17 +59,17 @@ bool tr_init(void)
 	return true;
 }
 
-static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
+static fr_tls_conf_t *construct_tls(TIDC_INSTANCE *inst,
 					   home_server_t *hs,
 					   TID_SRVR_BLK *server)
 {
-	fr_tls_server_conf_t	*tls;
+	fr_tls_conf_t	*tls;
 	uint8_t			*key_buf = NULL;
 	ssize_t			keylen;
 	char			*hexbuf = NULL;
 	DH			*aaa_server_dh;
 
-	tls = talloc_zero(hs, fr_tls_server_conf_t);
+	tls = talloc_zero(hs, fr_tls_conf_t);
 	if (!tls) return NULL;
 
 	aaa_server_dh = tid_srvr_get_dh(server);
@@ -102,7 +102,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	if (!tls->ctx) goto error;
 	tls->ctx_count = 1;
 
-	tls->ctx[0] = tls_init_ctx(tls, true);
+	tls->ctx[0] = tls_ctx_alloc(tls, true);
 	if (!tls->ctx[0]) goto error;
 
 	memset(key_buf, 0, keylen);

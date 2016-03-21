@@ -35,7 +35,7 @@ RCSIDH(tls_h, "$Id$")
 #ifndef OPENSSL_NO_KRB5
 #  define OPENSSL_NO_KRB5
 #endif
-#include <openssl/err.h>
+
 #ifdef HAVE_OPENSSL_ENGINE_H
 #  include <openssl/engine.h>
 #endif
@@ -44,29 +44,6 @@ RCSIDH(tls_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct fr_tls_server_conf_t fr_tls_server_conf_t;
-
-typedef enum {
-	FR_TLS_INVALID = 0,	  		//!< Invalid, don't reply.
-	FR_TLS_REQUEST,       			//!< Request, ok to send, invalid to receive.
-	FR_TLS_RESPONSE,       			//!< Response, ok to receive, invalid to send.
-	FR_TLS_SUCCESS,       			//!< Success, send success.
-	FR_TLS_FAIL,       			//!< Fail, send fail.
-	FR_TLS_NOOP,       			//!< Noop, continue.
-
-	FR_TLS_START,       			//!< Start, ok to send, invalid to receive.
-	FR_TLS_RECORD_COMPLETE, 		//!< Ok, continue.
-	FR_TLS_ACK,       			//!< Acknowledge, continue.
-	FR_TLS_RECORD_FRAGMENT_INIT,    	//!< First fragment.
-	FR_TLS_RECORD_FRAGMENT_MORE,    	//!< More fragments, to send/receive.
-	FR_TLS_LENGTH_INCLUDED,	  		//!< Length included.
-	FR_TLS_HANDLED	  			//!< TLS code has handled it.
-} fr_tls_status_t;
-extern FR_NAME_NUMBER const fr_tls_status_table[];
-
-#define MAX_RECORD_SIZE 16384
-
 /*
  *	A single TLS record may be up to 16384 octets in length, but a
  *	TLS message may span multiple TLS records, and a TLS
@@ -81,13 +58,28 @@ extern FR_NAME_NUMBER const fr_tls_status_table[];
  *	total length of the TLS message or set of messages that is
  *	being fragmented; this simplifies buffer allocation.
  */
+#define FR_TLS_MAX_RECORD_SIZE 16384
+
+#define FR_TLS_EX_INDEX_EAP_SESSION 	(10)
+#define FR_TLS_EX_INDEX_CONF		(11)
+#define FR_TLS_EX_INDEX_REQUEST		(12)
+#define FR_TLS_EX_INDEX_IDENTITY	(13)
+#define FR_TLS_EX_INDEX_STORE		(14)
+#define FR_TLS_EX_INDEX_TLS_SESSION	(15)
+#define FR_TLS_EX_INDEX_TALLOC		(16)
+
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+#define ssl_session ssl->session
+#else
+#define ssl_session session
+#endif
 
 /*
- * FIXME: Dynamic allocation of buffer to overcome MAX_RECORD_SIZE overflows.
- * 	or configure TLS not to exceed MAX_RECORD_SIZE.
+ * FIXME: Dynamic allocation of buffer to overcome FR_TLS_MAX_RECORD_SIZE overflows.
+ * 	or configure TLS not to exceed FR_TLS_MAX_RECORD_SIZE.
  */
 typedef struct _tls_record_t {
-	uint8_t data[MAX_RECORD_SIZE];
+	uint8_t data[FR_TLS_MAX_RECORD_SIZE];
 	size_t  used;
 } tls_record_t;
 
@@ -104,15 +96,9 @@ typedef struct _tls_info_t {
 	int		version;
 } tls_info_t;
 
-#if OPENSSL_VERSION_NUMBER < 0x10001000L
-#define ssl_session ssl->session
-#else
-#define ssl_session session
-#endif
-
 /** Contains EAP-REQUEST specific data (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
- * The tls_session_t Structure gets stored as opaque in eap_session_t
+ * The tls_session_t structure gets stored as opaque in eap_session_t
  */
 typedef struct _tls_session_t {
 	SSL_CTX		*ctx;				//!< TLS configuration context.
@@ -168,37 +154,110 @@ typedef struct _tls_session_t {
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 } tls_session_t;
 
-/*
- *	RFC 2716, Section 4.2:
- *
- *	   Flags
- *
- *      0 1 2 3 4 5 6 7 8
- *      +-+-+-+-+-+-+-+-+
- *      |L M S R R R R R|
- *      +-+-+-+-+-+-+-+-+
- *
- *      L = Length included
- *      M = More fragments
- *      S = EAP-TLS start
- *      R = Reserved
+/* configured values goes right here */
+struct fr_tls_conf_t {
+	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
+							//!< Each context may only be used by a single thread
+							//!< concurrently.
+	uint32_t	ctx_count;			//!< Number of contexts we created.
+	uint32_t	ctx_next;			//!< Next context to use.
+
+	CONF_SECTION	*cs;
+
+	char const	*private_key_password;
+	char const	*private_key_file;
+	char const	*certificate_file;
+	char const	*random_file;
+	char const	*ca_path;
+	char const	*ca_file;
+	char const	*dh_file;
+	char const	*rsa_file;
+	uint32_t	verify_depth;
+	bool		file_type;
+	bool		include_length;
+	bool		auto_chain;
+	bool		disable_single_dh_use;
+	bool		disable_tlsv1;
+	bool		disable_tlsv1_1;
+	bool		disable_tlsv1_2;
+
+	uint32_t	fragment_size;
+	bool		check_crl;
+	bool		allow_expired_crl;
+	char const	*check_cert_cn;
+	char const	*cipher_list;
+	char const	*check_cert_issuer;
+
+	bool     	session_cache_enable;
+	uint32_t     	session_timeout;		//!< How long entries should persist in in-memory cache
+	uint32_t     	session_cache_size;		//!< Maximum number of entries in in-memory cache.
+	char const	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
+	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+
+	char const	*session_cache_server;		//!< Virtual server to use as an alternative to the
+							//!< in-memory cache.
+
+	time_t		session_last_flushed;
+
+	char const	*verify_tmp_dir;
+	char const	*verify_client_cert_cmd;
+	bool		require_client_cert;
+
+#ifdef HAVE_OPENSSL_OCSP_H
+	/*
+	 * OCSP Configuration
+	 */
+	bool		ocsp_enable;
+	char const	*ocsp_cache_server;
+	bool		ocsp_override_url;
+	char const	*ocsp_url;
+	bool		ocsp_use_nonce;
+	X509_STORE	*ocsp_store;
+	uint32_t	ocsp_timeout;
+	bool		ocsp_softfail;
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#  ifndef OPENSSL_NO_ECDH
+	char const	*ecdh_curve;
+#  endif
+#endif
+
+#ifdef PSK_MAX_IDENTITY_LEN
+	char const	*psk_identity;
+	char const	*psk_password;
+	char const	*psk_query;
+#endif
+};
+
+typedef struct fr_tls_conf_t fr_tls_conf_t;
+
+typedef enum {
+	FR_TLS_INVALID = 0,	  			//!< Invalid, don't reply.
+	FR_TLS_REQUEST,       				//!< Request, ok to send, invalid to receive.
+	FR_TLS_RESPONSE,       				//!< Response, ok to receive, invalid to send.
+	FR_TLS_SUCCESS,       				//!< Success, send success.
+	FR_TLS_FAIL,       				//!< Fail, send fail.
+	FR_TLS_NOOP,       				//!< Noop, continue.
+
+	FR_TLS_START,       				//!< Start, ok to send, invalid to receive.
+	FR_TLS_RECORD_COMPLETE, 			//!< Ok, continue.
+	FR_TLS_ACK,       				//!< Acknowledge, continue.
+	FR_TLS_RECORD_FRAGMENT_INIT,    		//!< First fragment.
+	FR_TLS_RECORD_FRAGMENT_MORE,    		//!< More fragments, to send/receive.
+	FR_TLS_LENGTH_INCLUDED,	  			//!< Length included.
+	FR_TLS_HANDLED	  				//!< TLS code has handled it.
+} fr_tls_status_t;
+
+/** Macros that match the hardcoded values of the TLS-Session-Cache-Attribute
  */
-#define TLS_RESERVED4(x) 	(((x) & 0x01) != 0)
-#define TLS_RESERVED3(x) 	(((x) & 0x02) != 0)
-#define TLS_RESERVED2(x) 	(((x) & 0x04) != 0)
-#define TLS_RESERVED1(x) 	(((x) & 0x08) != 0)
-#define TLS_RESERVED0(x) 	(((x) & 0x10) != 0)
-#define TLS_START(x) 		(((x) & 0x20) != 0)
-#define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) != 0)
-#define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)
-
-#define TLS_CHANGE_CIPHER_SPEC(x) 	(((x) & 0x0014) == 0x0014)
-#define TLS_ALERT(x) 			(((x) & 0x0015) == 0x0015)
-#define TLS_HANDSHAKE(x) 		(((x) & 0x0016) == 0x0016)
-
-#define SET_START(x) 		((x) | (0x20))
-#define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
-#define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
+typedef enum {
+	CACHE_ACTION_SESSION_READ = 1,			//!< Retrieve session data from the cache.
+	CACHE_ACTION_SESSION_WRITE = 2,			//!< Write session data to the cache.
+	CACHE_ACTION_SESSION_DELETE = 3,		//!< Delete session data from the cache.
+	CACHE_ACTION_OCSP_READ = 4,			//!< Read cached OCSP status.
+	CACHE_ACTION_OCSP_WRITE = 5			//!< Write OCSP status.
+} tls_cache_action_t;
 
 /*
  *	Following enums from rfc2246
@@ -257,174 +316,126 @@ enum HandshakeType {
 	handshake_finished = 20
 };
 
+extern FR_NAME_NUMBER const fr_tls_status_table[];
+extern int fr_tls_ex_index_vps;
+extern int fr_tls_max_threads;
+
+/** Drain log messages from an OpenSSL bio and print them using the specified logging macro
+ *
+ * @param _macro Logging macro e.g. RDEBUG.
+ * @param _prefix Prefix, should be "" if not used.
+ * @param _queue OpenSSL BIO.
+ */
+#define SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue) \
+do {\
+	char const *_p = NULL, *_q, *_end; \
+	size_t _len; \
+	_len = BIO_get_mem_data(_queue, &_p); \
+	_end = _p + _len; \
+	if (!_p) break; \
+	while ((_q = memchr(_p, '\n', _end - _p))) { \
+		_macro(_prefix "%.*s", (int) (_q - _p), _p); \
+		_p = _q + 1; \
+	} \
+	if (_p != _end) _macro(_prefix "%.*s", (int) (_end - _p), _p); \
+	(void) BIO_reset(_queue); \
+} while (0)
+
+/** Drain errors from an OpenSSL bio and print print them using the specified logging macro
+ *
+ * @param _macro Logging macro e.g. RDEBUG.
+ * @param _prefix Prefix, should be "" if not used.
+ * @param _queue OpenSSL BIO.
+ */
+#define SSL_DRAIN_ERROR_QUEUE(_macro, _prefix, _queue) \
+do {\
+	ERR_print_errors(_queue); \
+	SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
+} while (0)
 
 /*
- * From rfc
-   Flags
+ *	tls/cache.c
+ */
+int		tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type);
 
-      0 1 2 3 4 5 6 7 8
-      +-+-+-+-+-+-+-+-+
-      |L M S R R R R R|
-      +-+-+-+-+-+-+-+-+
+int		tls_cache_allow(REQUEST *request, tls_session_t *tls_session);
 
-      L = Length included
-      M = More fragments
-      S = EAP-TLS start
-      R = Reserved
+void		tls_cache_deny(tls_session_t *tls_session);
 
-      The L bit (length included) is set to indicate the presence of the
-      four octet TLS Message Length field, and MUST be set for the first
-      fragment of a fragmented TLS message or set of messages. The M bit
-      (more fragments) is set on all but the last fragment. The S bit
-      (EAP-TLS start) is set in an EAP-TLS Start message.  This
-      differentiates the EAP-TLS Start message from a fragment
-      acknowledgement.
+void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context);
 
-   TLS Message Length
+/*
+ *	tls/conf.c
+ */
+fr_tls_conf_t	*tls_conf_parse_server(CONF_SECTION *cs);
 
-      The TLS Message Length field is four octets, and is present only
-      if the L bit is set. This field provides the total length of the
-      TLS message or set of messages that is being fragmented.
+fr_tls_conf_t	*tls_conf_parse_client(CONF_SECTION *cs);
 
-   TLS data
+/*
+ *	tls/ctx.c
+ */
+SSL_CTX		*tls_ctx_alloc(fr_tls_conf_t const *conf, bool client);
 
-      The TLS data consists of the encapsulated TLS packet in TLS record
-      format.
- *
- * The data structures present here
- * maps only to the typedata in the EAP packet
- *
- * Based on the L bit flag, first 4 bytes of data indicate the length
+/*
+ *	tls/global.c
  */
 
-/* Callbacks */
-int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
-void 		cbtls_info(SSL const *s, int where, int ret);
-void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf, size_t len, SSL *ssl,
-			  void *arg);
-int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
-
-/* TLS */
-int		tls_global_init(void);
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 int		tls_global_version_check(char const *acknowledged);
 #endif
 
-int		tls_error_log(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
-int		tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
-				 CC_HINT(format (printf, 4, 5));
+int		tls_global_init(void);
 
 void		tls_global_cleanup(void);
-tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
-tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
-fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
-fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
-SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t const *conf, bool client);
-
-int 		tls_handshake_continue(REQUEST *, tls_session_t *tls_session);
-fr_tls_status_t tls_tunnel_recv(REQUEST *request, tls_session_t *tls_session);
-int 		tls_tunnel_send(REQUEST *, tls_session_t *tls_session);
-
-void 		tls_session_information(tls_session_t *tls_session);
-ssize_t		tls_session_id(uint8_t *out, size_t outlen, SSL_SESSION *tls_session);
 
 /*
- *	Low-level TLS stuff
+ *	tls/log.c
  */
-int tls_success(tls_session_t *tls_session, REQUEST *request);
-void tls_fail(tls_session_t *tls_session);
-fr_tls_status_t tls_ack_handler(tls_session_t *tls_session, REQUEST *request);
+int		tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
 
-#define FR_TLS_EX_INDEX_EAP_SESSION  (10)
-#define FR_TLS_EX_INDEX_CONF	 (11)
-#define FR_TLS_EX_INDEX_REQUEST	 (12)
-#define FR_TLS_EX_INDEX_IDENTITY (13)
-#define FR_TLS_EX_INDEX_STORE	 (14)
-#define FR_TLS_EX_INDEX_TLS_SESSION	 (15)
-#define FR_TLS_EX_INDEX_TALLOC	 (16)
+int		tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
+				 CC_HINT(format (printf, 4, 5));
 
-extern int fr_tls_ex_index_vps;
-extern int fr_tls_max_threads;
+/*
+ *	tls/ocsp.c
+ */
+int		tls_ocsp_check(REQUEST *request, X509_STORE *store,
+			       X509 *issuer_cert, X509 *client_cert,
+			       fr_tls_conf_t *conf);
 
-/* configured values goes right here */
-struct fr_tls_server_conf_t {
-	SSL_CTX		**ctx;			//!< We use an array of contexts to reduce contention.
-						//!< Each context may only be used by a single thread
-						//!< concurrently.
-	uint32_t	ctx_count;		//!< Number of contexts we created.
-	uint32_t	ctx_next;		//!< Next context to use.
+/*
+ *	tls/session.c
+ */
+int 		tls_session_password_cb(char *buf, int num, int rwflag, void *userdata);
 
-	CONF_SECTION	*cs;
+unsigned int	tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
+					  char *identity, unsigned int max_identity_len,
+					  unsigned char *psk, unsigned int max_psk_len);
 
-	char const	*private_key_password;
-	char const	*private_key_file;
-	char const	*certificate_file;
-	char const	*random_file;
-	char const	*ca_path;
-	char const	*ca_file;
-	char const	*dh_file;
-	char const	*rsa_file;
-	uint32_t	verify_depth;
-	bool		file_type;
-	bool		include_length;
-	bool		auto_chain;
-	bool		disable_single_dh_use;
-	bool		disable_tlsv1;
-	bool		disable_tlsv1_1;
-	bool		disable_tlsv1_2;
+unsigned int	tls_session_psk_server_cb(SSL *ssl, const char *identity,
+					  unsigned char *psk, unsigned int max_psk_len);
 
-	/*
-	 *	Always < 4096 (due to radius limit), 0 by default = 1024
-	 */
-	uint32_t	fragment_size;
-	bool		check_crl;
-	bool		allow_expired_crl;
-	char const	*check_cert_cn;
-	char const	*cipher_list;
-	char const	*check_cert_issuer;
+void 		tls_session_info_cb(SSL const *s, int where, int ret);
 
-	bool     	session_cache_enable;
-	uint32_t     	session_timeout;	//!< How long entries should persist in in-memory cache
-	uint32_t     	session_cache_size;	//!< Maximum number of entries in in-memory cache.
-	char const	*session_id_name;	//!< Context ID to allow multiple sessions stores to be defined.
-	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+void 		tls_session_msg_cb(int write_p, int msg_version, int content_type,
+				   void const *buf, size_t len, SSL *ssl, void *arg);
 
-	char const	*session_cache_server;	//!< Virtual server to use as an alternative to the in-memory cache.
+fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *tls_session);
 
-	time_t		session_last_flushed;
+int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
 
-	char const	*verify_tmp_dir;
-	char const	*verify_client_cert_cmd;
-	bool		require_client_cert;
+int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
 
-#ifdef HAVE_OPENSSL_OCSP_H
-	/*
-	 * OCSP Configuration
-	 */
-	bool		ocsp_enable;
-	char const	*ocsp_cache_server;
-	bool		ocsp_override_url;
-	char const	*ocsp_url;
-	bool		ocsp_use_nonce;
-	X509_STORE	*ocsp_store;
-	uint32_t	ocsp_timeout;
-	bool		ocsp_softfail;
-#endif
+fr_tls_status_t	tls_session_status(REQUEST *request, tls_session_t *tls_session);
 
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-#ifndef OPENSSL_NO_ECDH
-	char const	*ecdh_curve;
-#endif
-#endif
+tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf, int fd);
 
-#ifdef PSK_MAX_IDENTITY_LEN
-	char const	*psk_identity;
-	char const	*psk_password;
-	char const	*psk_query;
-#endif
+tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert);
 
-};
-
+/*
+ *	tls/validate.c
+ */
+int		tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx);
 #ifdef __cplusplus
 }
 #endif

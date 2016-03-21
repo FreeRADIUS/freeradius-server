@@ -33,7 +33,7 @@ typedef struct rlm_eap_ttls_t {
 	 *	TLS configuration
 	 */
 	char const *tls_conf_name;
-	fr_tls_server_conf_t *tls_conf;
+	fr_tls_conf_t *tls_conf;
 
 	/*
 	 *	Use the reply attributes from the tunneled session in

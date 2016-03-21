@@ -1,8 +1,4 @@
 /*
- * tls.c
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,49 +12,27 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * Copyright 2003  Alan DeKok <aland@freeradius.org>
- * Copyright 2006  The FreeRADIUS server project
  */
 
+/**
+ * $Id$
+ *
+ * @file tls/listen.c
+ * @brief TLS server/client socket functions.
+ *
+ * @Copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @Copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @copyright 2006-2016 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
+
+#ifdef WITH_TLS
+#define LOG_PREFIX "tls - "
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
-
-#ifdef HAVE_SYS_STAT_H
-#  include <sys/stat.h>
-#endif
-
-#ifdef WITH_TLS
-#  ifdef HAVE_OPENSSL_RAND_H
-#    include <openssl/rand.h>
-#  endif
-
-#  ifdef HAVE_OPENSSL_OCSP_H
-#    include <openssl/ocsp.h>
-#  endif
-
-static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
-{
-	size_t i;
-
-	if (rad_debug_lvl < 3) return;
-
-	printf("%s %d\n", msg, (int) data_len);
-	if (data_len > 256) data_len = 256;
-
-	for (i = 0; i < data_len; i++) {
-		if ((i & 0x0f) == 0x00) printf ("%02x: ", (unsigned int) i);
-		printf("%02x ", data[i]);
-		if ((i & 0x0f) == 0x0f) printf ("\n");
-	}
-	printf("\n");
-	fflush(stdout);
-}
 
 static void tls_socket_close(rad_listen_t *listener)
 {
@@ -109,7 +83,6 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 
 	return 1;
 }
-
 
 static int tls_socket_recv(rad_listen_t *listener)
 {
@@ -201,7 +174,9 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	sock->tls_session->dirty_in.used = rcode;
 
-	dump_hex("READ FROM SSL", sock->tls_session->dirty_in.data, sock->tls_session->dirty_in.used);
+	RDEBUG2("Encrypted TLS data in (%zu bytes)", sock->tls_session->dirty_in.used);
+	radlog_request_hex(L_DBG, L_DBG_LVL_3,
+			   request, sock->tls_session->dirty_in.data, sock->tls_session->dirty_in.used);
 
 	/*
 	 *	Catch attempts to use non-SSL.
@@ -215,7 +190,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	If we need to do more initialization, do that here.
 	 */
 	if (!SSL_is_init_finished(sock->tls_session->ssl)) {
-		if (!tls_handshake_continue(request, sock->tls_session)) {
+		if (!tls_session_handshake(request, sock->tls_session)) {
 			RDEBUG("FAILED in TLS handshake receive");
 			goto do_close;
 		}
@@ -239,7 +214,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Try to get application data.
 	 */
-	status = tls_tunnel_recv(request, sock->tls_session);
+	status = tls_session_recv(request, sock->tls_session);
 	RDEBUG("Application data status %d", status);
 
 	if (status == FR_TLS_RECORD_FRAGMENT_MORE) {
@@ -251,11 +226,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		pthread_mutex_unlock(&sock->mutex);
 		return 0;
 	}
-
-	/*
-	 *	We now have a bunch of application data.
-	 */
-	dump_hex("TUNNELED DATA > ", sock->tls_session->clean_out.data, sock->tls_session->clean_out.used);
 
 	/*
 	 *	If the packet is a complete RADIUS packet, return it to
@@ -314,7 +284,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	return 1;
 }
-
 
 int dual_tls_recv(rad_listen_t *listener)
 {
@@ -395,7 +364,6 @@ int dual_tls_recv(rad_listen_t *listener)
 	return 1;
 }
 
-
 /*
  *	Send a response packet
  */
@@ -449,18 +417,18 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	sock->tls_session->record_from_buff(&sock->tls_session->clean_in,
 			       request->reply->data, request->reply->data_len);
 
-	dump_hex("TUNNELED DATA < ", sock->tls_session->clean_in.data, sock->tls_session->clean_in.used);
-
 	/*
 	 *	Do SSL magic to get encrypted data.
 	 */
-	tls_tunnel_send(request, sock->tls_session);
+	tls_session_send(request, sock->tls_session);
 
 	/*
 	 *	And finally write the data to the socket.
 	 */
 	if (sock->tls_session->dirty_out.used > 0) {
-		dump_hex("WRITE TO SSL", sock->tls_session->dirty_out.data, sock->tls_session->dirty_out.used);
+		RDEBUG2("Encrypted TLS data out (%zu bytes)", sock->tls_session->dirty_out.used);
+		radlog_request_hex(L_DBG, L_DBG_LVL_3,
+				   request, sock->tls_session->dirty_out.data, sock->tls_session->dirty_out.used);
 
 		tls_socket_write(listener, request);
 	}
@@ -468,7 +436,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 0;
 }
-
 
 #ifdef WITH_PROXY
 /*
@@ -517,7 +484,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 				return -1;
 
 			default:
-				tls_error_log(NULL, "Failed in proxy receive");
+				tls_log_error(NULL, "Failed in proxy receive");
 
 				goto do_close;
 			}
@@ -585,7 +552,6 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	sock->partial = 0;	/* we've now read the packet */
 	return length;
 }
-
 
 int proxy_tls_recv(rad_listen_t *listener)
 {
@@ -662,7 +628,6 @@ int proxy_tls_recv(rad_listen_t *listener)
 	return 1;
 }
 
-
 int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 {
 	int rcode;
@@ -699,7 +664,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 			break;	/* let someone else retry */
 
 		default:
-			tls_error_log(NULL, "Failed in proxy send");
+			tls_log_error(NULL, "Failed in proxy send");
 			DEBUG("Closing TLS socket to home server");
 			tls_socket_close(listener);
 			pthread_mutex_unlock(&sock->mutex);
@@ -711,5 +676,4 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	return 1;
 }
 #endif	/* WITH_PROXY */
-
 #endif	/* WITH_TLS */

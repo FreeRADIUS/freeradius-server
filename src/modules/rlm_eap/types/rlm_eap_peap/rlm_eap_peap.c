@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 typedef struct rlm_eap_peap_t {
 	char const		*tls_conf_name;		//!< TLS configuration.
-	fr_tls_server_conf_t	*tls_conf;
+	fr_tls_conf_t	*tls_conf;
 
 	char const		*inner_eap_module;	//!< module name for inner EAP
 	int			auth_type_eap;

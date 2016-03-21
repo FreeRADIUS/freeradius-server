@@ -14,7 +14,7 @@ ifneq "$(filter libfreeradius-eap%,${ALL_TGTS})" ""
 TGT_PREREQS += libfreeradius-eap.a
 
 ifneq ($(OPENSSL_LIBS),)
-SOURCES += ${top_srcdir}/src/main/cb.c ${top_srcdir}/src/main/tls.c
+include ${top_srcdir}/src/main/tls.mk
 TGT_LDLIBS  += $(OPENSSL_LIBS)
 endif
 

@@ -36,7 +36,7 @@ typedef struct rlm_eap_tls_t {
 	 *	TLS configuration
 	 */
 	char const		*tls_conf_name;		//!< The name of the shared TLS configuration.
-	fr_tls_server_conf_t	*tls_conf;		//!< Shared TLS configuration structure.
+	fr_tls_conf_t	*tls_conf;		//!< Shared TLS configuration structure.
 
 	bool			req_client_cert;	//!< Whether we require the client to provide
 							//!< a certificate or not.  RFC 5216 says it's

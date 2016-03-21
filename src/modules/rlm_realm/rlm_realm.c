@@ -379,7 +379,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	/* initialize the trust router integration code */
-	if (strcmp(inst->trust_router, "none") != 0) {
+	if (inst->trust_router) {
 		if (!tr_init()) return -1;
 	} else {
 		rad_const_free(inst->trust_router);

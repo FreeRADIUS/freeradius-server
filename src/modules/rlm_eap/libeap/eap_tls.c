@@ -239,7 +239,7 @@ int eap_tls_success(eap_session_t *eap_session)
 	/*
 	 *	Check session resumption is allowed (if we're in a resumed session)
 	 */
-	if (tls_success(tls_session, request) < 0) return -1;
+	if (tls_cache_allow(request, tls_session) < 0) return -1;
 
 	/*
 	 *	Build the success packet
@@ -281,7 +281,7 @@ int eap_tls_fail(eap_session_t *eap_session)
 	/*
 	 *	Destroy any cached session data
 	 */
-	tls_fail(tls_session);
+	tls_cache_deny(tls_session);
 
 	if (eap_tls_compose(eap_session, FR_TLS_START, SET_START(tls_session->base_flags), NULL, 0, 0) < 0) return -1;
 	return 0;
@@ -500,7 +500,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 			REDEBUG("Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
-		return tls_ack_handler(eap_session->opaque, request);
+		return tls_session_status(request, eap_session->opaque);
 	}
 
 	/*
@@ -539,9 +539,9 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 			return FR_TLS_INVALID;
 		}
 
-		if (total_len > MAX_RECORD_SIZE) {
+		if (total_len > FR_TLS_MAX_RECORD_SIZE) {
 			REDEBUG("Reassembled TLS record will be %zu bytes, "
-				"greater than our maximum record size (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
+				"greater than our maximum record size (" STRINGIFY(FR_TLS_MAX_RECORD_SIZE) " bytes)",
 				total_len);
 			return FR_TLS_INVALID;
 		}
@@ -688,9 +688,9 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 *
 	 *	If more info is required then send another request.
 	 */
-	if (!tls_handshake_continue(eap_session->request, tls_session)) {
+	if (!tls_session_handshake(eap_session->request, tls_session)) {
 		REDEBUG("TLS receive handshake failed during operation");
-		tls_fail(tls_session);
+		tls_cache_deny(tls_session);
 		return FR_TLS_FAIL;
 	}
 
@@ -843,7 +843,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		if (tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
 			tls_session->phase2 = true;
 
-			status = tls_tunnel_recv(request, tls_session);
+			status = tls_session_recv(request, tls_session);
 		} else {
 			status = eap_tls_handshake(eap_session);
 		}
@@ -901,7 +901,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
  *	- A new tls_session on success.
  *	- NULL on error.
  */
-tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert)
+tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert)
 {
 	tls_session_t	*tls_session;
 	REQUEST		*request = eap_session->request;
@@ -946,15 +946,15 @@ tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_server_co
  * @param attr identifier for common TLS configuration.
  * @return
  *	- NULL on error.
- *	- A new fr_tls_server_conf_t on success.
+ *	- A new fr_tls_conf_t on success.
  */
-fr_tls_server_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
+fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 {
 	char const 		*tls_conf_name;
 	CONF_PAIR		*cp;
 	CONF_SECTION		*parent;
 	CONF_SECTION		*tls_cs;
-	fr_tls_server_conf_t	*tls_conf;
+	fr_tls_conf_t	*tls_conf;
 
 	if (!cs) return NULL;
 
@@ -986,7 +986,7 @@ fr_tls_server_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 
 	if (!tls_cs) return NULL;
 
-	tls_conf = tls_server_conf_parse(tls_cs);
+	tls_conf = tls_conf_parse_server(tls_cs);
 	if (!tls_conf) return NULL;
 
 	/*

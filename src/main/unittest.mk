@@ -7,7 +7,7 @@ SOURCES := acct.c auth.c client.c crypt.c files.c \
 		  realms.c
 
 ifneq ($(OPENSSL_LIBS),)
-SOURCES		+= cb.c tls.c
+include ${top_srcdir}/src/main/tls.mk
 endif
 
 SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"

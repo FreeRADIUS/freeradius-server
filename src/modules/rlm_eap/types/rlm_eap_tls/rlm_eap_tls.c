@@ -240,7 +240,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 		 *	the client can't re-use it.
 		 */
 	default:
-		tls_fail(tls_session);
+		tls_cache_deny(tls_session);
 
 		return 0;
 	}

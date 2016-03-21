@@ -53,6 +53,38 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap.h"
 
 /*
+ *	RFC 2716, Section 4.2:
+ *
+ *	   Flags
+ *
+ *      0 1 2 3 4 5 6 7 8
+ *      +-+-+-+-+-+-+-+-+
+ *      |L M S R R R R R|
+ *      +-+-+-+-+-+-+-+-+
+ *
+ *      L = Length included
+ *      M = More fragments
+ *      S = EAP-TLS start
+ *      R = Reserved
+ */
+#define TLS_RESERVED4(x) 	(((x) & 0x01) != 0)
+#define TLS_RESERVED3(x) 	(((x) & 0x02) != 0)
+#define TLS_RESERVED2(x) 	(((x) & 0x04) != 0)
+#define TLS_RESERVED1(x) 	(((x) & 0x08) != 0)
+#define TLS_RESERVED0(x) 	(((x) & 0x10) != 0)
+#define TLS_START(x) 		(((x) & 0x20) != 0)
+#define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) != 0)
+#define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)
+
+#define TLS_CHANGE_CIPHER_SPEC(x) 	(((x) & 0x0014) == 0x0014)
+#define TLS_ALERT(x) 			(((x) & 0x0015) == 0x0015)
+#define TLS_HANDSHAKE(x) 		(((x) & 0x0016) == 0x0016)
+
+#define SET_START(x) 		((x) | (0x20))
+#define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
+#define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
+
+/*
  *	Externally exported TLS functions.
  */
 fr_tls_status_t eap_tls_process(eap_session_t *eap_session);
@@ -89,9 +121,9 @@ typedef struct tls_data_t {
 } eap_tls_data_t;
 
 /* EAP-TLS framework */
-tls_session_t		*eap_tls_session_init(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert);
+tls_session_t		*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert);
 
 
-fr_tls_server_conf_t	*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
+fr_tls_conf_t	*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
 
 #endif /*_EAP_TLS_H*/

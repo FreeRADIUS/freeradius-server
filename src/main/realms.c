@@ -916,7 +916,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	Parse the SSL client configuration.
 		 */
 		if (tls) {
-			home->tls = tls_client_conf_parse(tls);
+			home->tls = tls_conf_parse_client(tls);
 			if (!home->tls) {
 				goto error;
 			}

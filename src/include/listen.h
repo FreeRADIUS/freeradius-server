@@ -87,7 +87,7 @@ struct rad_listen {
 	bool			nodup;
 
 #ifdef WITH_TLS
-	fr_tls_server_conf_t	*tls;
+	fr_tls_conf_t	*tls;
 #endif
 
 	rad_listen_recv_t	recv;
