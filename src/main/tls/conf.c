@@ -20,8 +20,8 @@
  * @file tls/conf.c
  * @brief Configuration parsing for TLS servers and clients.
  *
- * Copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
- * Copyright 2003  Alan DeKok <aland@freeradius.org>
+ * @Copyright 2001 hereUare Communications, Inc. <raghud@hereuare.com>
+ * @Copyright 2003  Alan DeKok <aland@freeradius.org>
  * @copyright 2006-2016 The FreeRADIUS server project
  */
 RCSID("$Id$")
