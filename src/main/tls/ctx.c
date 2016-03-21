@@ -129,14 +129,14 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	}
 
 	/*
-	 * Save the config on the context so that callbacks which
-	 * only get SSL_CTX* e.g. session persistence, can get it
+	 *	Save the config on the context so that callbacks which
+	 *	only get SSL_CTX* e.g. session persistence, can get it
 	 */
 	memcpy(&app_data_index, &conf, sizeof(app_data_index));
 	SSL_CTX_set_app_data(ctx, app_data_index);
 
 	/*
-	 * Identify the type of certificates that needs to be loaded
+	 *	Identify the type of certificates that needs to be loaded
 	 */
 	if (conf->file_type) {
 		type = SSL_FILETYPE_PEM;
