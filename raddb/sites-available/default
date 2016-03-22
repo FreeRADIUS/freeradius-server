@@ -499,14 +499,8 @@ authenticate {
 #	}
 
 	#
-	#  Allow EAP authentication.
-	eap
-
-	#
-	#  The older configurations sent a number of attributes in
-	#  Access-Challenge packets, which wasn't strictly correct.
-	#  If you want to revert to that bahaviour, comment out the
-	#  following lines.
+	#  Allow EAP authentication, and remove all attributes
+	#  from Access-Challenge
 	#
 	Auth-Type eap {
 		eap {
