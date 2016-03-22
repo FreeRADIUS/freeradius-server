@@ -663,6 +663,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 	char **row;
 
+	TALLOC_FREE(handle->row);
+
 	/*
 	 *	Executes the SQLite query and interates over the results
 	 */
@@ -688,11 +690,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 		conn->col_count = sql_num_fields(handle, config);
 		if (conn->col_count == 0) return RLM_SQL_ERROR;
 	}
-
-	/*
-	 *	Free the previous result (also gets called on finish_query)
-	 */
-	talloc_free(handle->row);
 
 	MEM(row = handle->row = talloc_zero_array(handle->conn, char *, conn->col_count + 1));
 
