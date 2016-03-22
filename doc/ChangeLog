@@ -12,6 +12,7 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Mark rlm_sql_freetds as stable.
 	* Make rlm_perl less fragile.  Patch from
 	  Herwin Weststrate
+	* Allow extended attributes to have "encrypt=2"
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
