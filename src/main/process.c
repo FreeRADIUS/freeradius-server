@@ -1559,10 +1559,54 @@ static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PAC
 }
 
 
+static bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet, struct timeval *now)
+{
+	uint32_t count;
+	listen_socket_t *sock = NULL;
+
+	/*
+	 *	Quench maximum number of outstanding requests.
+	 */
+	if (main_config.max_requests &&
+	    ((count = rbtree_num_elements(pl)) > main_config.max_requests)) {
+		RATE_LIMIT(ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
+				 client->shortname,
+				 packet->src_port, packet->id);
+			   WARN("Please check the configuration file.\n"
+				"\tThe value for 'max_requests' is probably set too low.\n"));
+
+		trigger_exec(NULL, NULL, "server.max_requests", true, NULL);
+		return true;
+	}
+
+#ifdef WITH_ACCOUNTING
+	if (listener->type != RAD_LISTEN_DETAIL)
+#endif
+	{
+		sock = listener->data;
+	}
+
+	/*
+	 *	Rate-limit the incoming packets
+	 */
+	if (sock && sock->max_rate) {
+		uint32_t pps;
+
+		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now, &sock->rate_time, now);
+		if (pps > sock->max_rate) {
+			DEBUG("Dropping request due to rate limiting");
+			return true;
+		}
+		sock->rate_pps_now++;
+	}
+
+	return false;
+}
+
+
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
-	uint32_t count;
 	REQUEST *request = NULL;
 	struct timeval now;
 	listen_socket_t *sock = NULL;
@@ -1592,34 +1636,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	 */
 	if (!listener->nodup && request_is_dup(listener, client, packet)) return 0;
 
-	/*
-	 *	Quench maximum number of outstanding requests.
-	 */
-	if (main_config.max_requests &&
-	    ((count = rbtree_num_elements(pl)) > main_config.max_requests)) {
-		RATE_LIMIT(ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
-				 client->shortname,
-				 packet->src_port, packet->id);
-			   WARN("Please check the configuration file.\n"
-				"\tThe value for 'max_requests' is probably set too low.\n"));
-
-		trigger_exec(NULL, NULL, "server.max_requests", true, NULL);
-		return 0;
-	}
-
-	/*
-	 *	Rate-limit the incoming packets
-	 */
-	if (sock && sock->max_rate) {
-		uint32_t pps;
-
-		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now, &sock->rate_time, &now);
-		if (pps > sock->max_rate) {
-			DEBUG("Dropping request due to rate limiting");
-			return 0;
-		}
-		sock->rate_pps_now++;
-	}
+	if (request_limit(listener, client, packet, &now)) return 0;
 
 	/*
 	 *	Allocate a pool for the request.
