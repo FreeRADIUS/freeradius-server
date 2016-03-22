@@ -327,7 +327,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
  *	- New connection struct.
  *	- NULL on error.
  */
-static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST *request, time_t now, bool in_use)
+static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST *request, time_t now, bool in_use, bool unlock)
 {
 	uint64_t	number;
 	uint32_t	max_pending;
@@ -514,7 +514,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	fr_connection_trigger_exec(pool, request, "open");
 
 	pthread_cond_broadcast(&pool->done_spawn);
-	pthread_mutex_unlock(&pool->mutex);
+	if (unlock) pthread_mutex_unlock(&pool->mutex);
 
 	return this;
 }
@@ -741,7 +741,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	if (spawn) {
 		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach %i spares", spawn, pool->spare);
 		pthread_mutex_unlock(&pool->mutex);
-		fr_connection_spawn(pool, request, now, false); /* ignore return code */
+		(void) fr_connection_spawn(pool, request, now, false, true);
 		pthread_mutex_lock(&pool->mutex);
 	}
 
@@ -867,9 +867,12 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You  may need to increase \"spare\"",
 	       pool->state.active, pool->state.num);
-	this = fr_connection_spawn(pool, request, now, true); /* MY connection! */
+
+	/*
+	 *	Returns unlocked on failure, or locked on success
+	 */
+	this = fr_connection_spawn(pool, request, now, true, false);
 	if (!this) return NULL;
-	pthread_mutex_lock(&pool->mutex);
 
 do_return:
 	pool->state.active++;
@@ -1078,7 +1081,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	not to.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, NULL, now, false);
+		this = fr_connection_spawn(pool, NULL, now, false, true);
 		if (!this) {
 		error:
 			fr_connection_pool_free(pool);
@@ -1246,7 +1249,7 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request)
 	 *	Now attempt to spawn 'start' connections.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, request, now, false);
+		this = fr_connection_spawn(pool, request, now, false, true);
 		if (!this) return -1;
 	}
 
