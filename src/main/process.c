@@ -894,7 +894,7 @@ static void worker_thread(REQUEST *request,
 }
 
 
-static void request_dup(REQUEST *request)
+static void request_dup_msg(REQUEST *request)
 {
 	ERROR("(%u) Ignoring duplicate packet from "
 	      "client %s port %d - ID: %u due to unfinished request "
@@ -1409,7 +1409,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DUP:
-		request_dup(request);
+		request_dup_msg(request);
 		break;
 
 	case FR_ACTION_RUN:
@@ -1468,11 +1468,101 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	}
 }
 
+/*
+ *	See if a new packet is a duplicate of an old one.
+ */
+static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
+{
+	RADIUS_PACKET **packet_p;
+	rad_child_state_t child_state;
+	REQUEST *request;
+
+	packet_p = rbtree_finddata(pl, &packet);
+	if (!packet_p) return false;
+
+	request = fr_packet2myptr(REQUEST, packet, packet_p);
+	rad_assert(request->in_request_hash);
+
+	child_state = request->child_state;
+
+	/*
+	 *	Same src/dst ip/port, length, and
+	 *	authentication vector: must be a duplicate.
+	 */
+	if ((request->packet->data_len == packet->data_len) &&
+	    (memcmp(request->packet->vector, packet->vector,
+		    sizeof(packet->vector)) == 0)) {
+
+#ifdef WITH_STATS
+		switch (packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			FR_STATS_INC(auth, total_dup_requests);
+			break;
+
+#ifdef WITH_ACCOUNTING
+		case PW_CODE_ACCOUNTING_REQUEST:
+			FR_STATS_INC(acct, total_dup_requests);
+			break;
+#endif
+#ifdef WITH_COA
+		case PW_CODE_COA_REQUEST:
+			FR_STATS_INC(coa, total_dup_requests);
+			break;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			FR_STATS_INC(dsc, total_dup_requests);
+			break;
+#endif
+
+		default:
+			break;
+		}
+#endif	/* WITH_STATS */
+
+		/*
+		 *	Tell the state machine that there's a
+		 *	duplicate request.
+		 */
+		request->process(request, FR_ACTION_DUP);
+		return true;
+	}
+
+	/*
+	 *	Mark the old request as done ASAP, and before we log
+	 *	anything.  The child may stop processing the request
+	 *	just as we're logging the complaint.
+	 *
+	 *	If there's no child thread, the request will be marked
+	 *	done immediately.  If there is a child thread, it will
+	 *	be notified, and a timer will be set to clean up the
+	 *	request.
+	 */
+	request_done(request, FR_ACTION_DONE);
+	request = NULL;
+
+	/*
+	 *	It's a new request, not a duplicate.  If the old one
+	 *	is done, then we can clean it up.
+	 */
+	if (child_state <= REQUEST_RUNNING) {
+		/*
+		 *	The request is still QUEUED or RUNNING.  That's a problem.
+		 */
+		ERROR("Received conflicting packet from "
+		      "client %s port %d - ID: %u due to "
+		      "unfinished request.  Giving up on old request.",
+		      client->shortname,
+		      packet->src_port, packet->id);
+	}
+
+	return false;
+}
+
+
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	uint32_t count;
-	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
 	struct timeval now;
 	listen_socket_t *sock = NULL;
@@ -1498,91 +1588,9 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	}
 
 	/*
-	 *	Skip everything if required.
+	 *	Check for duplicates.
 	 */
-	if (listener->nodup) goto skip_dup;
-
-	packet_p = rbtree_finddata(pl, &packet);
-	if (packet_p) {
-		rad_child_state_t child_state;
-
-		request = fr_packet2myptr(REQUEST, packet, packet_p);
-		rad_assert(request->in_request_hash);
-		child_state = request->child_state;
-
-		/*
-		 *	Same src/dst ip/port, length, and
-		 *	authentication vector: must be a duplicate.
-		 */
-		if ((request->packet->data_len == packet->data_len) &&
-		    (memcmp(request->packet->vector, packet->vector,
-			    sizeof(packet->vector)) == 0)) {
-
-#ifdef WITH_STATS
-			switch (packet->code) {
-			case PW_CODE_ACCESS_REQUEST:
-				FR_STATS_INC(auth, total_dup_requests);
-				break;
-
-#ifdef WITH_ACCOUNTING
-			case PW_CODE_ACCOUNTING_REQUEST:
-				FR_STATS_INC(acct, total_dup_requests);
-				break;
-#endif
-#ifdef WITH_COA
-			case PW_CODE_COA_REQUEST:
-				FR_STATS_INC(coa, total_dup_requests);
-				break;
-
-			case PW_CODE_DISCONNECT_REQUEST:
-				FR_STATS_INC(dsc, total_dup_requests);
-				break;
-#endif
-
-			default:
-				break;
-			}
-#endif	/* WITH_STATS */
-
-			/*
-			 *	Tell the state machine that there's a
-			 *	duplicate request.
-			 */
-			request->process(request, FR_ACTION_DUP);
-			return 0; /* duplicate of live request */
-		}
-
-		/*
-		 *	Mark the request as done ASAP, and before we
-		 *	log anything.  The child may stop processing
-		 *	the request just as we're logging the
-		 *	complaint.
-		 */
-		request_done(request, FR_ACTION_DONE);
-		request = NULL;
-
-		/*
-		 *	It's a new request, not a duplicate.  If the
-		 *	old one is done, then we can clean it up.
-		 */
-		if (child_state <= REQUEST_RUNNING) {
-			/*
-			 *	The request is still QUEUED or RUNNING.  That's a problem.
-			 */
-			ERROR("Received conflicting packet from "
-			      "client %s port %d - ID: %u due to "
-			      "unfinished request.  Giving up on old request.",
-			      client->shortname,
-			      packet->src_port, packet->id);
-		}
-
-		/*
-		 *	Mark the old request as done.  If there's no
-		 *	child, the request will be cleaned up
-		 *	immediately.  If there is a child, we'll set a
-		 *	timer to go clean up the request.
-		 */
-	} /* else the new packet is unique */
+	if (!listener->nodup && request_is_dup(listener, client, packet)) return 0;
 
 	/*
 	 *	Quench maximum number of outstanding requests.
@@ -1599,7 +1607,6 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		return 0;
 	}
 
-skip_dup:
 	/*
 	 *	Rate-limit the incoming packets
 	 */
@@ -2510,7 +2517,7 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		request_dup(request);
+		request_dup_msg(request);
 		break;
 
 	case FR_ACTION_TIMER:
@@ -2578,7 +2585,7 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		request_dup(request);
+		request_dup_msg(request);
 		break;
 
 	case FR_ACTION_TIMER:
