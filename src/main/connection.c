@@ -323,6 +323,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
  * @param[in] request	The current request.
  * @param[in] now	Current time.
  * @param[in] in_use	whether the new connection should be "in_use" or not
+ * @param[in] unlock	whether we should unlock the mutex before returning
  * @return
  *	- New connection struct.
  *	- NULL on error.
