@@ -275,7 +275,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		if ((nak->data[i] >= PW_EAP_MAX_TYPES) ||
 		    !inst->methods[nak->data[i]]) {
 			RDEBUG2("Peer NAK'd asking for "
-				"unsupported type %s (%d), skipping...",
+				"unsupported EAP type %s (%d), skipping...",
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
 
@@ -398,7 +398,8 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		if ((next < PW_EAP_MD5) ||
 		    (next >= PW_EAP_MAX_TYPES) ||
 		    (!inst->methods[next])) {
-			REDEBUG2("Tried to start unsupported method (%d)", next);
+			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
+				 eap_type2name(next), next);
 
 			return EAP_INVALID;
 		}
@@ -452,7 +453,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			 *	We haven't configured it, it doesn't exit.
 			 */
 			if (!inst->methods[type->num]) {
-				REDEBUG2("Client asked for unsupported method %s (%d)",
+				REDEBUG2("Client asked for unsupported EAP type %s (%d)",
 					 eap_type2name(type->num),
 					 type->num);
 
@@ -948,7 +949,8 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 
 			if ((eap_packet->data[7] == 0) ||
 			    (eap_packet->data[7] >= PW_EAP_MAX_TYPES)) {
-				RAUTH("Unsupported Expanded EAP type %u: ignoring the packet", eap_packet->data[7]);
+				RAUTH("Unsupported Expanded EAP type %s (%u): ignoring the packet",
+				      eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
 				return EAP_INVALID;
 			}
 
@@ -965,7 +967,8 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 
 			p = talloc_realloc(talloc_parent(eap_packet), eap_packet, uint8_t, len - 7);
 			if (!p) {
-				RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
+				RAUTH("Unsupported EAP type %s (%u): ignoring the packet",
+				      eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
 				return EAP_INVALID;
 			}
 
@@ -980,7 +983,8 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 			return EAP_VALID;
 		}
 
-		RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
+		RAUTH("Unsupported EAP type %s (%u): ignoring the packet",
+		      eap_type2name(eap_packet->data[0]), eap_packet->data[0]);
 		return EAP_INVALID;
 	}
 
