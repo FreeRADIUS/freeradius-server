@@ -885,7 +885,7 @@ VALUE	EAP-Type			IKEv2			49
 VALUE	EAP-Type			AKA2			50
 VALUE	EAP-Type			GPSK			51
 VALUE	EAP-Type			PWD			52
-VALUE	EAP-Type			EVEv1			53
+VALUE	EAP-Type			EKEv1			53
 
 #
 #	And this is what most people mean by MS-CHAPv2
