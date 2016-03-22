@@ -197,8 +197,6 @@ struct fr_tls_conf_t {
 	char const	*session_cache_server;		//!< Virtual server to use as an alternative to the
 							//!< in-memory cache.
 
-	time_t		session_last_flushed;
-
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
