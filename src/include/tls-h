@@ -110,17 +110,17 @@ typedef struct _tls_session_t {
 
 	BIO 		*into_ssl;			//!< Basic I/O input to OpenSSL.
 	BIO 		*from_ssl;			//!< Basic I/O output from OpenSSL.
-	tls_record_t 	clean_in;			//!< Data that needs to be sent but only after it is soiled.
-	tls_record_t 	clean_out;			//!< Data that is cleaned after receiving.
-	tls_record_t 	dirty_in;			//!< Data EAP server receives.
-	tls_record_t 	dirty_out;			//!< Data EAP server sends.
+	tls_record_t 	clean_in;			//!< Cleartext data that needs to be encrypted.
+	tls_record_t 	clean_out;			//!< Cleartext data that's been encrypted.
+	tls_record_t 	dirty_in;			//!< Encrypted data to decrypt.
+	tls_record_t 	dirty_out;			//!< Encrypted data that's been decrypted.
 
 	void 		(*record_init)(tls_record_t *buf);
 	void 		(*record_close)(tls_record_t *buf);
 	unsigned int 	(*record_from_buff)(tls_record_t *buf, void const *ptr, unsigned int size);
 	unsigned int 	(*record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
 
-	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
+	bool		invalid;			//!< Whether heartbleed attack was detected.
 
 	bool		phase2;				//!< Whether we're in phase 2
 
@@ -426,7 +426,7 @@ int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
 
 fr_tls_status_t	tls_session_status(REQUEST *request, tls_session_t *tls_session);
 
-tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf, int fd);
+tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
 
 tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQUEST *request, bool client_cert);
 

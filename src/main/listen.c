@@ -3049,13 +3049,14 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 #if defined(WITH_TCP) && defined(WITH_TLS)
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
 		DEBUG("Trying SSL to port %d\n", home->port);
-		sock->tls_session = tls_session_init_client(sock, home->tls, this->fd);
+		sock->tls_session = tls_session_init_client(sock, home->tls);
 		if (!sock->tls_session) {
 			ERROR("Failed starting SSL to new proxy socket '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
 		}
+		SSL_set_fd(sock->tls_session->ssl, this->fd);
 
 		this->recv = proxy_tls_recv;
 		this->send = proxy_tls_send;

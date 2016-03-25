@@ -49,20 +49,32 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{  NULL , 			-1},
 };
 
-static void record_init(tls_record_t *record)
+/** Clear a record buffer
+ *
+ * @param record buffer to clear.
+ */
+inline static void record_init(tls_record_t *record)
 {
 	record->used = 0;
 }
 
-static void record_close(tls_record_t *record)
+/** Destroy a record buffer
+ *
+ * @param record buffer to destroy clear.
+ */
+inline static void record_close(tls_record_t *record)
 {
 	record->used = 0;
 }
 
 /** Copy data to the intermediate buffer, before we send it somewhere
  *
+ * @param[in] record	buffer to write to.
+ * @param[in] in	data to write.
+ * @param[in] inlen	Length of data to write.
+ * @return the amount of data written to the record buffer.
  */
-static unsigned int record_from_buff(tls_record_t *record, void const *in, unsigned int inlen)
+inline static unsigned int record_from_buff(tls_record_t *record, void const *in, unsigned int inlen)
 {
 	unsigned int added = FR_TLS_MAX_RECORD_SIZE - record->used;
 
@@ -77,8 +89,12 @@ static unsigned int record_from_buff(tls_record_t *record, void const *in, unsig
 
 /** Take data from the buffer, and give it to the caller
  *
+ * @param[in] record	buffer to read from.
+ * @param[out] out	where to write data from record buffer.
+ * @param[in] outlen	The length of the output buffer.
+ * @return the amount of data written to the output buffer.
  */
-static unsigned int record_to_buff(tls_record_t *record, void *out, unsigned int outlen)
+inline static unsigned int record_to_buff(tls_record_t *record, void *out, unsigned int outlen)
 {
 	unsigned int taken = record->used;
 
@@ -98,8 +114,17 @@ static unsigned int record_to_buff(tls_record_t *record, void *out, unsigned int
 
 /** Return the static private key password we have configured
  *
+ * @param[out] buf	Where to write the password to.
+ * @param[in] num	The length of buf.
+ * @param[in] rwflag
+ *			- 0 if password used for decryption.
+ *			- 1 if password used for encryption.
+ * @param[in] userdata	The static password.
+ * @return
+ *	- 0 on error.
+ *	- >0 on success (the length of the password).
  */
-int tls_session_password_cb(char *buf, int num UNUSED, int rwflag UNUSED, void *userdata)
+int tls_session_password_cb(char *buf, int num, int rwflag UNUSED, void *userdata)
 {
 	/*
 	 *	We do this instead of not registering the callback
@@ -141,6 +166,16 @@ static bool session_psk_identity_is_safe(const char *identity)
 	return true;
 }
 
+/** Determine the PSK to use for an outgoing connection
+ *
+ * @param[in] ssl		session.
+ * @param[in] identity		The identity of the PSK to search for.
+ * @param[out] psk		Where to write the PSK we found (if any).
+ * @param[in] max_psk_len	The length of the buffer provided for PSK.
+ * @return
+ *	- 0 if no PSK matching identity was found.
+ *	- >0 if a PSK matching identity was found (the length of bytes written to psk).
+ */
 unsigned int tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 				       char *identity, unsigned int max_identity_len,
 				       unsigned char *psk, unsigned int max_psk_len)
@@ -159,8 +194,16 @@ unsigned int tls_session_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
-/** Determine the PSK to use
+/** Determine the PSK to use for an incoming connection
  *
+ * @param[in] ssl		session.
+ * @param[in] identity		The identity of the PSK to search for.
+ * @param[out] psk		Where to write the PSK we found (if any).
+ * @param[in] max_psk_len	The length of the buffer provided for PSK.
+ * @return
+ *	- 0 if no PSK matching identity was found.
+ *	- >0 if a PSK matching identity was found (the length of bytes written to psk).
+
  */
 unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
 				       unsigned char *psk, unsigned int max_psk_len)
@@ -234,12 +277,22 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
 
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
-#endif
+#endif /* PSK_MAX_IDENTITY_LEN */
 
+/** Record session state changes
+ *
+ * Called by OpenSSL whenever the session state changes, an alert is received or an error occurs.
+ *
+ * @param[in] ssl	session.
+ * @param[in] where	Which context the callback is being called in.
+ *			See https://www.openssl.org/docs/manmaster/ssl/SSL_CTX_set_info_callback.html
+ *			for additional info.
+ * @param[in] ret	0 if an error occurred, or the alert type if an alert was received.
+ */
 void tls_session_info_cb(SSL const *ssl, int where, int ret)
 {
-	char const *str, *state;
-	REQUEST *request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	char const	*str, *state;
+	REQUEST		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
 		str = "connect";
@@ -297,18 +350,22 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 				RDEBUG2("%s: Need to read more data: %s", str, state);
 				return;
 			}
-			REDEBUG("tls: %s: Handshake exit state \"%s\"", str, state);
+			REDEBUG("%s: Handshake exit state \"%s\"", str, state);
 		}
 	}
 }
 
-static void session_msg_log(tls_session_t *tls_session)
+/** Print a message to the request or global log detailing handshake state
+ *
+ * @param[in] request	The current #REQUEST.
+ * @param[in] tls_session	The current TLS session.
+ */
+static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 {
-	char const *str_write_p, *str_version, *str_content_type = "";
-	char const *str_details1 = "", *str_details2= "";
-	REQUEST *request;
-	char buffer[32];
-	char content_type[20];
+	char const	*str_write_p, *str_version, *str_content_type = "";
+	char const	*str_details1 = "", *str_details2= "";
+	char		buffer[32];
+	char		content_type[20];
 
 	/*
 	 *	Don't print this out in the normal course of
@@ -457,7 +514,6 @@ static void session_msg_log(tls_session_t *tls_session)
 		str_details1 = ", ???";
 
 		if (tls_session->info.record_len == 2) {
-
 			switch (tls_session->info.alert_level) {
 			case SSL3_AL_WARNING:
 				str_details1 = ", warning";
@@ -617,19 +673,75 @@ static void session_msg_log(tls_session_t *tls_session)
 		 (unsigned long)tls_session->info.record_len,
 		 str_details1, str_details2);
 
-	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
 	ROPTIONAL(RDEBUG2, DEBUG2, "%s", tls_session->info.info_description);
 }
 
-/*
- *	Fill in our 'info' with TLS data.
+/** Record the progression of the TLS handshake
+ *
+ * This callback is called by OpenSSL whenever a protocol message relating to a handshake is sent
+ * or received.
+ *
+ * This function copies state information from the various arguments into the state->info
+ * structure of the #tls_session_t, to allow us to track the progression of the handshake.
+ *
+ * @param[in] write_p
+ *				- 0 when a message has been received.
+ *				- 1 when a message has been sent.
+ *
+ * @param[in] msg_version	The TLS version negotiated, should be one of:
+ *				- TLS1_VERSION
+ *				- TLS1_1_VERSION
+ *				- TLS1_2_VERSION
+ *				- TLS1_3_VERSION
+ *
+ * @param[in] content_type	One of the contentType values defined for TLS:
+ *				- SSL3_RT_CHANGE_CIPHER_SPEC (20)
+ *				- SSL3_RT_ALERT (21)
+ *				- SSL3_RT_HANDSHAKE (22)
+ *				- TLS1_RT_HEARTBEAT (24)
+ *
+ * @param[in] inbuf		The raw protocol message.
+ * @param[in] len		Length of the raw protocol message.
+ * @param[in] ssl		The SSL session.
+ * @param[in] arg		The #tls_session_t holding the SSL session.
  */
 void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 			void const *inbuf, size_t len,
-			SSL *ssl UNUSED, void *arg)
+			SSL *ssl, void *arg)
 {
-	uint8_t const *buf = inbuf;
-	tls_session_t *state = (tls_session_t *)arg;
+	uint8_t const	*buf = inbuf;
+	tls_session_t	*session = talloc_get_type_abort(arg, tls_session_t);
+	REQUEST		*request = SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST);
+
+	/*
+	 *	Mostly to check for memory corruption...
+	 */
+	if (!rad_cond_assert(session->ssl = ssl)) {
+		ERROR("tls_session_t and ssl arg do not match in tls_session_msg_cb");
+		session->invalid = true;
+		return;
+	}
+
+	/*
+	 *	As per https://tools.ietf.org/html/rfc7568
+	 *
+	 *	We explicitly disable SSLv2/v3, hence the asserts.
+	 */
+#ifdef SSL2_VERSION
+	if (!rad_cond_assert(msg_version != SSL2_VERSION)) {
+		ERROR("Invalid version (SSLv2) in handshake");
+		session->invalid = true;
+		return;
+	}
+#endif
+
+#ifdef SSL3_VERSION
+	if (!rad_cond_assert(msg_version != SSL3_VERSION)) {
+		ERROR("Invalid version (SSLv3) in handshake");
+		session->invalid = true;
+		return;
+	}
+#endif
 
 	/*
 	 *	OpenSSL 1.0.2 calls this function with 'pseudo'
@@ -651,45 +763,51 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	Work around bug #298, where we may be called with a NULL
 	 *	argument.  We should really log a serious error
 	 */
-	if (!state) return;
+	if (!session) return;
 
 	/*
 	 *	0 - received (from peer)
 	 *	1 - sending (to peer)
 	 */
-	state->info.origin = write_p;
-	state->info.content_type = content_type;
-	state->info.record_len = len;
-	state->info.initialized = true;
+	session->info.origin = write_p;
+	session->info.content_type = content_type;
+	session->info.record_len = len;
+	session->info.initialized = true;
 
-	if (content_type == SSL3_RT_ALERT) {
-		state->info.alert_level = buf[0];
-		state->info.alert_description = buf[1];
-		state->info.handshake_type = 0x00;
+	switch (content_type) {
+	case SSL3_RT_ALERT:
+		session->info.alert_level = buf[0];
+		session->info.alert_description = buf[1];
+		session->info.handshake_type = 0x00;
+		break;
 
-	} else if (content_type == SSL3_RT_HANDSHAKE) {
-		state->info.handshake_type = buf[0];
-		state->info.alert_level = 0x00;
-		state->info.alert_description = 0x00;
+	case SSL3_RT_HANDSHAKE:
+		session->info.handshake_type = buf[0];
+		session->info.alert_level = 0x00;
+		session->info.alert_description = 0x00;
+		break;
 
 #ifdef SSL3_RT_HEARTBEAT
-	} else if (content_type == TLS1_RT_HEARTBEAT) {
+	case TLS1_RT_HEARTBEAT:
 		uint8_t *p = buf;
 
 		if ((len >= 3) && (p[0] == 1)) {
 			size_t payload_len;
 
 			payload_len = (p[1] << 8) | p[2];
-
 			if ((payload_len + 3) > len) {
-				state->invalid_hb_used = true;
+				session->invalid = true;
 				ERROR("OpenSSL Heartbeat attack detected.  Closing connection");
 				return;
 			}
 		}
+		break;
 #endif
+	default:
+		break;
 	}
-	session_msg_log(state);
+
+	session_msg_log(request, session);
 }
 
 /** Decrypt application data
@@ -698,8 +816,8 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
  *
  * Feed data from dirty_in to OpenSSL, and read the clean data into clean_out.
  *
- * @param request The current request.
- * @param session The current TLS session.
+ * @param[in] request	The current #REQUEST.
+ * @param[in] session	The current TLS session.
  * @return
  *	- FR_TLS_FAIL on error.
  *	- FR_TLS_RECORD_FRAGMENT_MORE if more fragments are required to fully
@@ -850,7 +968,10 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		return 0;
 	}
 
-	if (session->invalid_hb_used) return 0;
+	if (session->invalid) {
+		REDEBUG("Preventing invalid session from continuing");
+		return 0;
+	}
 
 	/*
 	 *	Feed dirty data into OpenSSL, so that is can either
@@ -906,6 +1027,20 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 
 		RDEBUG2("TLS established with cipher suite: %s",
 			SSL_CIPHER_description(cipher, buffer, sizeof(buffer)));
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+		/*
+		 *	Cache the SSL_SESSION pointer.
+		 *
+		 *	Which contains all the data we need for session resumption.
+		 */
+		if (!session->ssl_session) {
+			session->ssl_session = SSL_get_session(session->ssl);
+			if (!session->ssl_session) {
+				REDEBUG("Failed getting TLS session");
+				return 0;
+			}
+		}
+#endif
 	} else if (SSL_in_init(session->ssl)) {
 		RDEBUG2("In TLS handshake phase");
 	} else if (SSL_in_before(session->ssl)) {
@@ -963,7 +1098,7 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 /** Reduce session states down into an easy to use status
  *
  * @return
- *	- FR_TLS_SUCCESS - Handshake completed Message.
+ *	- FR_TLS_SUCCESS - Handshake completed.
  *	- FR_TLS_FAIL - Fatal alert from the client.
  *	- FR_TLS_REQUEST - Need more data, or previous fragment was acked.
  */
@@ -1059,15 +1194,14 @@ static void session_init(tls_session_t *session)
  *
  * Configures a new client TLS session, configuring options, setting callbacks etc...
  *
- * @param ctx to alloc session data in. Should usually be NULL unless the lifetime of the
- *	session is tied to another talloc'd object.
- * @param conf to use to configure the tls session.
- * @param fd OpenSSL should read from/write to.
+ * @param ctx 	to alloc session data in. Should usually be NULL unless the lifetime of the
+ *		session is tied to another talloc'd object.
+ * @param conf	values for this TLS session.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf, int fd)
+tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 {
 	int		ret;
 	int		verify_mode;
@@ -1111,7 +1245,6 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf, int
 
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)session);
-	SSL_set_fd(session->ssl, fd);
 
 	ret = SSL_connect(session->ssl);
 	if (ret <= 0) {
@@ -1130,11 +1263,11 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf, int
  *
  * Configures a new server TLS session, configuring options, setting callbacks etc...
  *
- * @param ctx to alloc session data in. Should usually be NULL unless the lifetime of the
- *	session is tied to another talloc'd object.
- * @param conf to use to configure the tls session.
- * @param request The current #REQUEST.
- * @param client_cert Whether to require a client_cert.
+ * @param ctx		to alloc session data in. Should usually be NULL unless the lifetime of the
+ *			session is tied to another talloc'd object.
+ * @param conf		values for this TLS session.
+ * @param request	The current #REQUEST.
+ * @param client_cert	Whether to require a client_cert.
  * @return
  *	- A new session on success.
  *	- NULL on error.
@@ -1150,7 +1283,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	rad_assert(request != NULL);
 	rad_assert(conf->ctx_count > 0);
 
-	RDEBUG2("Initiating new EAP-TLS session");
+	RDEBUG2("Initiating new TLS session");
 
 	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
 	rad_assert(ssl_ctx);
@@ -1240,6 +1373,9 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 
 	/*
 	 *	In Server mode we only accept.
+	 *
+	 *	This sets up the SSL session to work correctly with
+	 *	tls_session_handhsake.
 	 */
 	SSL_set_accept_state(session->ssl);
 
