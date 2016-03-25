@@ -126,6 +126,8 @@ inline static unsigned int record_to_buff(tls_record_t *record, void *out, unsig
  */
 int tls_session_password_cb(char *buf, int num, int rwflag UNUSED, void *userdata)
 {
+	size_t len;
+
 	/*
 	 *	We do this instead of not registering the callback
 	 *	to ensure OpenSSL doesn't try and read a password
@@ -136,8 +138,13 @@ int tls_session_password_cb(char *buf, int num, int rwflag UNUSED, void *userdat
 		return 0;
 	}
 
-	strcpy(buf, (char *)userdata);
-	return(strlen((char *)userdata));
+	len = strlcpy(buf, (char *)userdata, num);
+	if (len >= (size_t)num) {
+		ERROR("Password too long.  Maximum length is %i bytes", num);
+		return 0;
+	}
+
+	return len;
 }
 
 #ifdef PSK_MAX_IDENTITY_LEN
