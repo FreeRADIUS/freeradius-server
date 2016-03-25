@@ -393,7 +393,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	}
 	if (cookie.result != TID_SUCCESS) {
 		DEBUG2("TID response is error, rc = %d: %s.\n", cookie.result,
-		       cookie.err_msg ? cookie.err_msg:"(NO ERROR TEXT)");
+		       cookie.err_msg[0] ? cookie.err_msg:"(NO ERROR TEXT)");
 		if (cookie.err_msg[0]) pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
 		pair_make_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
 	}
