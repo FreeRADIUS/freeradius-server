@@ -216,7 +216,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_EAP_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_EAP_TYPE, TAG_ANY);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -349,7 +349,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_num(eap_session->request->config, 0, PW_EAP_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TYPE, TAG_ANY);
 		if (vp) {
 			RDEBUG2("Setting method from &control:EAP-Type");
 			next = vp->vp_integer;
@@ -621,7 +621,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
 	 *	realms (sigh).
 	 */
-	proxy = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
+	proxy = fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
 	if (proxy) {
 		REALM *realm;
 

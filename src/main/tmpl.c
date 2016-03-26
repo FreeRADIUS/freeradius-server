@@ -211,7 +211,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 		return &request->reply->vps;
 
 	case PAIR_LIST_CONTROL:
-		return &request->config;
+		return &request->control;
 
 	case PAIR_LIST_STATE:
 		return &request->state;

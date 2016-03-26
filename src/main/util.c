@@ -920,7 +920,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 	(void) talloc_get_type_abort(request, REQUEST);
 
 #ifdef WITH_VERIFY_PTR
-	fr_pair_list_verify(file, line, request, request->config);
+	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 #endif
 

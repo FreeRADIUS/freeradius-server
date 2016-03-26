@@ -288,7 +288,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 	/* assign ctx and vps for fr_pair_make based on section */
 	if (strcmp(section, "config") == 0) {
 		ctx = request;
-		ptr = &(request->config);
+		ptr = &(request->control);
 	} else if (strcmp(section, "reply") == 0) {
 		ctx = request->reply;
 		ptr = &(request->reply->vps);

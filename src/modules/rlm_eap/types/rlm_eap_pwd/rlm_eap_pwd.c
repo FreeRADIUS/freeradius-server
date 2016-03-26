@@ -439,7 +439,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		fr_pair_value_bstrncpy(fake->username, session->peer_id, session->peer_id_len);
 		fr_pair_add(&fake->packet->vps, fake->username);
 
-		if ((vp = fr_pair_find_by_num(request->config, 0, PW_VIRTUAL_SERVER, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->control, 0, PW_VIRTUAL_SERVER, TAG_ANY)) != NULL) {
 			fake->server = vp->vp_strvalue;
 		} else if (inst->virtual_server) {
 			fake->server = inst->virtual_server;
@@ -475,7 +475,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
-		if ((pw = fr_pair_find_by_num(fake->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) == NULL) {
+		if ((pw = fr_pair_find_by_num(fake->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) == NULL) {
 			DEBUG2("failed to find password for %s to do pwd authentication", session->peer_id);
 			talloc_free(fake);
 			return 0;

@@ -66,7 +66,7 @@ static int tls_cache_attrs(REQUEST *request, uint8_t *key, size_t key_len, tls_c
 	VALUE_PAIR *vp;
 
 	fr_pair_delete_by_num(&request->packet->vps, 0, PW_TLS_SESSION_ID, TAG_ANY);
-	fr_pair_delete_by_num(&request->config, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
+	fr_pair_delete_by_num(&request->control, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
 
 	RDEBUG2("Setting TLS cache control attributes");
 	vp = fr_pair_afrom_num(request->packet, 0, PW_TLS_SESSION_ID);
@@ -82,7 +82,7 @@ static int tls_cache_attrs(REQUEST *request, uint8_t *key, size_t key_len, tls_c
 	if (!vp) return -1;
 
 	vp->vp_integer = action;
-	fr_pair_add(&request->config, vp);
+	fr_pair_add(&request->control, vp);
 	RINDENT();
 	rdebug_pair(L_DBG_LVL_2, request, vp, "&config:");
 	REXDENT();
@@ -122,7 +122,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	request->module = module;
 	request->component = component;
 
-	fr_pair_delete_by_num(&request->config, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
+	fr_pair_delete_by_num(&request->control, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
 
 	return rcode;
 }
@@ -406,7 +406,7 @@ int tls_cache_allow(REQUEST *request, tls_session_t *session)
 	 *	user.
 	 */
 	if ((!session->allow_session_resumption) ||
-	    (((vp = fr_pair_find_by_num(request->config, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY)) != NULL) &&
+	    (((vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(session->ctx, session->ssl->session);
 		session->allow_session_resumption = false;

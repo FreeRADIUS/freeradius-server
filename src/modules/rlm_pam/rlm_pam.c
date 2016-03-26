@@ -232,7 +232,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Let the 'users' file over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = fr_pair_find_by_num(request->config, 0, PW_PAM_AUTH, TAG_ANY);
+	pair = fr_pair_find_by_num(request->control, 0, PW_PAM_AUTH, TAG_ANY);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, request->username->vp_strvalue, request->password->vp_strvalue, pam_auth_string);

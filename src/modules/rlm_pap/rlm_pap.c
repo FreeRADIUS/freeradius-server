@@ -334,7 +334,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 
-	for (vp = fr_cursor_init(&cursor, &request->config);
+	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 	     	VERIFY_VP(vp);
@@ -356,7 +356,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			/*
 			 *	Password already exists: use that instead of this one.
 			 */
-			if (fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
+			if (fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
 				RWDEBUG("Config already contains a \"known good\" password "
 					"(&control:Cleartext-Password).  Ignoring &config:Password-With-Header");
 				break;
@@ -477,8 +477,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (fr_pair_find_by_num(request->config, 0, PW_REALM, TAG_ANY) ||
-		    (fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY))) {
+		if (fr_pair_find_by_num(request->control, 0, PW_REALM, TAG_ANY) ||
+		    (fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY))) {
 			return RLM_MODULE_NOOP;
 		}
 
@@ -516,7 +516,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	if (inst->auth_type) {
-		vp = radius_pair_create(request, &request->config,
+		vp = radius_pair_create(request, &request->control,
 				       PW_AUTH_TYPE, 0);
 		vp->vp_integer = inst->auth_type;
 	}
@@ -983,7 +983,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	config items, to find out which authentication
 	 *	function to call.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->config);
+	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {

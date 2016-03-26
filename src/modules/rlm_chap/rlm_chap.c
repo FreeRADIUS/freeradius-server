@@ -33,7 +33,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY) != NULL) {
 		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -81,9 +81,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_INVALID;
 	}
 
-	password = fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (password == NULL) {
-		if (fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) != NULL){
+		if (fr_pair_find_by_num(request->control, 0, PW_USER_PASSWORD, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
 			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");

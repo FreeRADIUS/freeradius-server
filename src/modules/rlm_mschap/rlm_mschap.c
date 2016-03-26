@@ -1375,7 +1375,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY)) {
 		RWDEBUG2("Auth-Type already set.  Not setting to MS-CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -1522,7 +1522,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	want to suppress it.
 	 */
 	if (auth_method != AUTH_INTERNAL) {
-		VALUE_PAIR *vp = fr_pair_find_by_num(request->config, 0, PW_MS_CHAP_USE_NTLM_AUTH, TAG_ANY);
+		VALUE_PAIR *vp = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_USE_NTLM_AUTH, TAG_ANY);
 		if (vp && vp->vp_integer == 0) auth_method = AUTH_INTERNAL;
 	}
 
@@ -1530,9 +1530,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = fr_pair_find_by_num(request->config, 0, PW_SMB_ACCOUNT_CTRL, TAG_ANY);
+	smb_ctrl = fr_pair_find_by_num(request->control, 0, PW_SMB_ACCOUNT_CTRL, TAG_ANY);
 	if (!smb_ctrl) {
-		password = fr_pair_find_by_num(request->config, 0, PW_SMB_ACCOUNT_CTRL_TEXT, TAG_ANY);
+		password = fr_pair_find_by_num(request->control, 0, PW_SMB_ACCOUNT_CTRL_TEXT, TAG_ANY);
 		if (password) {
 			smb_ctrl = pair_make_config("SMB-Account-CTRL", "0", T_OP_SET);
 			if (smb_ctrl) {
@@ -1558,12 +1558,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	Decide how to get the passwords.
 	 */
-	password = fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
 
 	/*
 	 *	We need an NT-Password.
 	 */
-	nt_password = fr_pair_find_by_num(request->config, 0, PW_NT_PASSWORD, TAG_ANY);
+	nt_password = fr_pair_find_by_num(request->control, 0, PW_NT_PASSWORD, TAG_ANY);
 	if (nt_password) {
 		VERIFY_VP(nt_password);
 
@@ -1616,7 +1616,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	Or an LM-Password.
 	 */
-	lm_password = fr_pair_find_by_num(request->config, 0, PW_LM_PASSWORD, TAG_ANY);
+	lm_password = fr_pair_find_by_num(request->control, 0, PW_LM_PASSWORD, TAG_ANY);
 	if (lm_password) {
 		VERIFY_VP(lm_password);
 

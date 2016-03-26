@@ -197,7 +197,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 	/*
 	 *	Allow us to cache the OCSP verified state externally
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_TLS_OCSP_CERT_VALID, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_TLS_OCSP_CERT_VALID, TAG_ANY);
 	if (vp) switch (vp->vp_integer) {
 	case 0:	/* no */
 		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");

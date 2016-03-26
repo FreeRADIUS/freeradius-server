@@ -690,15 +690,15 @@ static void *request_handler_thread(void *arg)
 		    thread_pool.auto_limit_acct) {
 			VALUE_PAIR *vp;
 
-			vp = radius_pair_create(request, &request->config,
+			vp = radius_pair_create(request, &request->control,
 					       181, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
 
-			vp = radius_pair_create(request, &request->config,
+			vp = radius_pair_create(request, &request->control,
 					       182, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
 
-			vp = radius_pair_create(request, &request->config,
+			vp = radius_pair_create(request, &request->control,
 					       183, VENDORPEC_FREERADIUS);
 			if (vp) {
 				vp->vp_integer = thread_pool.max_queue_size - thread_pool.num_queued;

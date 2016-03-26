@@ -222,7 +222,7 @@ struct rad_request {
 
 	RADIUS_PACKET		*reply;		//!< Outgoing response.
 
-	VALUE_PAIR		*config;	//!< #VALUE_PAIR (s) used to set per request parameters
+	VALUE_PAIR		*control;	//!< #VALUE_PAIR (s) used to set per request parameters
 						//!< for modules and the server core at runtime.
 
 	TALLOC_CTX		*state_ctx;	//!< for request->state
@@ -538,7 +538,7 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
  */
 #define pair_make_request(_a, _b, _c) fr_pair_make(request->packet, &request->packet->vps, _a, _b, _c)
 #define pair_make_reply(_a, _b, _c) fr_pair_make(request->reply, &request->reply->vps, _a, _b, _c)
-#define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->config, _a, _b, _c)
+#define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->control, _a, _b, _c)
 
 /* threads.c */
 int	thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);

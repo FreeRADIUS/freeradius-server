@@ -402,7 +402,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	each EAP sub-module to look for eap_session->request->username,
 	 *	and to get excited if it doesn't appear.
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
 	if ((!vp) || (vp->vp_integer != PW_AUTH_TYPE_REJECT)) {
 		vp = pair_make_config("Auth-Type", inst->name, T_OP_EQ);
 		if (!vp) {
@@ -609,7 +609,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	/*
 	 *	Only build a failure message if something previously rejected the request
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_POST_AUTH_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
 
 	if (!vp || (vp->vp_integer != PW_POST_AUTH_TYPE_REJECT)) return RLM_MODULE_NOOP;
 

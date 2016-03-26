@@ -36,7 +36,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_num(request->config, 0, PW_EXPIRATION, TAG_ANY);
+	check_item = fr_pair_find_by_num(request->control, 0, PW_EXPIRATION, TAG_ANY);
 	if (check_item != NULL) {
 		char date[50];
 		/*

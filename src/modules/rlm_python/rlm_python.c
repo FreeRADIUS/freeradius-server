@@ -597,7 +597,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		mod_vptuple(request->reply, request, &request->reply->vps,
 			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
 		/* Config item tuple */
-		mod_vptuple(request, request, &request->config,
+		mod_vptuple(request, request, &request->control,
 			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
 	} else if (PyInt_CheckExact(pRet)) {

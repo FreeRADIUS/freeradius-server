@@ -178,7 +178,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 
-	if (fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY)) {
 		RWDEBUG2("Auth-Type already set.  Not setting to DIGEST");
 		return RLM_MODULE_NOOP;
 	}
@@ -210,14 +210,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	 *	We require access to the plain-text password, or to the
 	 *	Digest-HA1 parameter.
 	 */
-	passwd = fr_pair_find_by_num(request->config, 0, PW_DIGEST_HA1, TAG_ANY);
+	passwd = fr_pair_find_by_num(request->control, 0, PW_DIGEST_HA1, TAG_ANY);
 	if (passwd) {
 		if (passwd->vp_length != 32) {
 			RAUTH("Digest-HA1 has invalid length, authentication failed");
 			return RLM_MODULE_INVALID;
 		}
 	} else {
-		passwd = fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+		passwd = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
 	}
 	if (!passwd) {
 		RAUTH("Cleartext-Password or Digest-HA1 is required for authentication");

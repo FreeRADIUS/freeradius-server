@@ -281,7 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 
 			add_vp_tuple(request->reply, request, &request->reply->vps,
 				     rb_reply_items, function_name);
-			add_vp_tuple(request, request, &request->config,
+			add_vp_tuple(request, request, &request->control,
 				     rb_config, function_name);
 		}
 	} else if (FIXNUM_P(rb_result)) {

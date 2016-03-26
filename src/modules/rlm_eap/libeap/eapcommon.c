@@ -422,7 +422,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
-	vp = fr_pair_find_by_num(request->config, 0, PW_VIRTUAL_SERVER, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_VIRTUAL_SERVER, TAG_ANY);
 	fake->server = vp ? vp->vp_strvalue : virtual_server;
 
 	if (fake->server) {

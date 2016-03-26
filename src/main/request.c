@@ -96,7 +96,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->proxy = NULL;
 #endif
 	request->reply = NULL;
-	request->config = NULL;
+	request->control = NULL;
 	request->username = NULL;
 	request->password = NULL;
 	gettimeofday(&request->timestamp, NULL);

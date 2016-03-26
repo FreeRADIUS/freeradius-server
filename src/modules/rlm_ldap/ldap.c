@@ -1195,7 +1195,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = fr_pair_find_by_num(request->config, 0, PW_LDAP_USERDN, TAG_ANY);
+		vp = fr_pair_find_by_num(request->control, 0, PW_LDAP_USERDN, TAG_ANY);
 		if (vp) {
 			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);
 			*rcode = RLM_MODULE_OK;
@@ -1308,7 +1308,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	we pass the string back to libldap we must not alter it.
 	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = fr_pair_make(request, &request->config, "LDAP-UserDN", NULL, T_OP_EQ);
+	vp = fr_pair_make(request, &request->control, "LDAP-UserDN", NULL, T_OP_EQ);
 	if (vp) {
 		fr_pair_value_strcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
@@ -1379,11 +1379,11 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 	*/
 	if (!inst->expect_password || (rad_debug_lvl < L_DBG_LVL_2)) return;
 
-	if (!fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->config, 0, PW_NT_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->config, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->control, 0, PW_NT_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->control, 0, PW_USER_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->control, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->control, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
 		switch (inst->directory->type) {
 		case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");

@@ -111,7 +111,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY);
+			auth_type = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
 			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
@@ -179,7 +179,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	if the authentication type is PW_AUTH_TYPE_ACCEPT or
 	 *	PW_AUTH_TYPE_REJECT.
 	 */
-	fr_cursor_init(&cursor, &request->config);
+	fr_cursor_init(&cursor, &request->control);
 	while ((auth_type_pair = fr_cursor_next_by_num(&cursor, 0, PW_AUTH_TYPE, TAG_ANY))) {
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
@@ -222,11 +222,11 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	been set, and complain if so.
 	 */
 	if (auth_type < 0) {
-		if (fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY) != NULL) {
+		if (fr_pair_find_by_num(request->control, 0, PW_CRYPT_PASSWORD, TAG_ANY) != NULL) {
 			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Crypt'");
 			RWDEBUG2("Use the PAP module instead");
 		}
-		else if (fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) != NULL) {
+		else if (fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) != NULL) {
 			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Local'");
 			RWDEBUG2("Use the PAP or CHAP modules instead");
 		}
@@ -293,7 +293,7 @@ int rad_postauth(REQUEST *request)
 	/*
 	 *	Do post-authentication calls. ignoring the return code.
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_POST_AUTH_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
 	if (vp) {
 		postauth_type = vp->vp_integer;
 		RDEBUG2("Using Post-Auth-Type %s",
@@ -377,7 +377,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		case PW_CODE_ACCESS_ACCEPT:
 			tmp = radius_pair_create(request,
-						&request->config,
+						&request->control,
 						PW_AUTH_TYPE, 0);
 			if (tmp) tmp->vp_integer = PW_AUTH_TYPE_ACCEPT;
 			goto authenticate;
@@ -458,7 +458,7 @@ autz_redo:
 		return result;
 	}
 	if (!autz_retry) {
-		tmp = fr_pair_find_by_num(request->config, 0, PW_AUTZ_TYPE, TAG_ANY);
+		tmp = fr_pair_find_by_num(request->control, 0, PW_AUTZ_TYPE, TAG_ANY);
 		if (tmp) {
 			autz_type = tmp->vp_integer;
 			RDEBUG2("Using Autz-Type %s",
@@ -478,7 +478,7 @@ autz_redo:
 #ifdef WITH_PROXY
 	    (request->proxy == NULL) &&
 #endif
-	    ((tmp = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY)) != NULL)) {
+	    ((tmp = fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY)) != NULL)) {
 		REALM *realm;
 
 		realm = realm_find2(tmp->vp_strvalue);
@@ -565,12 +565,12 @@ authenticate:
 
 #ifdef WITH_SESSION_MGMT
 	if (result >= 0 &&
-	    (check_item = fr_pair_find_by_num(request->config, 0, PW_SIMULTANEOUS_USE, TAG_ANY)) != NULL) {
+	    (check_item = fr_pair_find_by_num(request->control, 0, PW_SIMULTANEOUS_USE, TAG_ANY)) != NULL) {
 		int r, session_type = 0;
 		char		logstr[1024];
 		char		umsg[FR_MAX_STRING_LEN + 1];
 
-		tmp = fr_pair_find_by_num(request->config, 0, PW_SESSION_TYPE, TAG_ANY);
+		tmp = fr_pair_find_by_num(request->control, 0, PW_SESSION_TYPE, TAG_ANY);
 		if (tmp) {
 			session_type = tmp->vp_integer;
 			RDEBUG2("Using Session-Type %s",
@@ -769,7 +769,7 @@ skip:
 	result = rad_authenticate(request);
 
 	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
-		fr_pair_delete_by_num(&request->config, 0, PW_POST_AUTH_TYPE, TAG_ANY);
+		fr_pair_delete_by_num(&request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
 		vp = pair_make_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}

@@ -1027,7 +1027,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -1038,7 +1038,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->config, &fake->config, 0, PW_PROXY_TO_REALM,
+			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0, PW_PROXY_TO_REALM,
 						  TAG_ANY);
 
 			/*

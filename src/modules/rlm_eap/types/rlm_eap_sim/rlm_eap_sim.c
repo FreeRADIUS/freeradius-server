@@ -468,9 +468,9 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrieval.
 	 */
-	if (!eap_sim_get_challenge(eap_session, request->config, 0, ess) ||
-	    !eap_sim_get_challenge(eap_session, request->config, 1, ess) ||
-	    !eap_sim_get_challenge(eap_session, request->config, 2, ess)) {
+	if (!eap_sim_get_challenge(eap_session, request->control, 0, ess) ||
+	    !eap_sim_get_challenge(eap_session, request->control, 1, ess) ||
+	    !eap_sim_get_challenge(eap_session, request->control, 2, ess)) {
 		return 0;
 	}
 

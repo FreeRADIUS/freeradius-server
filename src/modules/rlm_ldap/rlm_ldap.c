@@ -1672,7 +1672,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
 		goto skip_edir;
 	}
 
@@ -1698,7 +1698,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		vp = radius_pair_create(request, &request->config, PW_CLEARTEXT_PASSWORD, 0);
+		vp = radius_pair_create(request, &request->control, PW_CLEARTEXT_PASSWORD, 0);
 		fr_pair_value_strcpy(vp, password);
 		vp->vp_length = pass_size;
 

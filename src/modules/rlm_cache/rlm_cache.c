@@ -439,7 +439,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_MERGE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_MERGE, TAG_ANY);
 	if (vp && (vp->vp_integer > 0)) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -577,7 +577,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_STATUS_ONLY, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_STATUS_ONLY, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
 
@@ -593,13 +593,13 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_ALLOW_MERGE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_ALLOW_MERGE, TAG_ANY);
 	if (vp) merge = (bool)vp->vp_integer;
 
-	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_ALLOW_INSERT, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_ALLOW_INSERT, TAG_ANY);
 	if (vp) insert = (bool)vp->vp_integer;
 
-	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_TTL, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_TTL, TAG_ANY);
 	if (vp) {
 		if (vp->vp_signed == 0) {
 			expire = true;
@@ -758,7 +758,7 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->config);
+	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {

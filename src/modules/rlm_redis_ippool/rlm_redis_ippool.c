@@ -1234,7 +1234,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Pool-Action override
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_POOL_ACTION, TAG_ANY);
 	if (vp) return mod_action(inst, request, vp->vp_integer);
 
 	/*
@@ -1273,7 +1273,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_POOL_ACTION, TAG_ANY);
 	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
 }
 
@@ -1287,7 +1287,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 *	Unless it's overridden the default action is to allocate
 	 *	when called in Post-Auth.
 	 */
-	vp = fr_pair_find_by_num(request->config, 0, PW_POOL_ACTION, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_POOL_ACTION, TAG_ANY);
 	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
 }
 
