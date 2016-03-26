@@ -281,26 +281,22 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
  */
 void tls_session_info_cb(SSL const *ssl, int where, int ret)
 {
-	char const	*str, *state;
+	char const	*role, *state;
 	REQUEST		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		str = "connect";
+		role = "client ";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		str = "accept";
+		role = "server ";
 	} else {
-		str = NULL;
+		role = "";
 	}
 
 	state = SSL_state_string_long(ssl);
-	state = state ? state : "<none>";
+	state = state ? state : "<INVALID>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		if (str) {
-			RDEBUG2("%s: Handshake state \"%s\"", str, state);
-		} else {
-			RDEBUG2("Handshake state \"%s\"", state);
-		}
+		RDEBUG2("Handshake state: %s%s", role, state);
 		return;
 	}
 
@@ -309,7 +305,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 		if (where & SSL_CB_READ) {
 			REDEBUG("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
-			       SSL_alert_desc_string_long(ret));
+			        SSL_alert_desc_string_long(ret));
 
 			/*
 			 *	Offer helpful advice... Should be expanded.
@@ -331,16 +327,16 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			REDEBUG("%s: Handshake exit state \"%s\"", str, state);
+			REDEBUG("Handshake exit state %s%s", role, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(ssl)) {
-				RDEBUG2("%s: Need to read more data: %s", str, state);
+				RDEBUG2("Need to read more data: %s%s", role, state);
 				return;
 			}
-			REDEBUG("%s: Handshake exit state \"%s\"", str, state);
+			REDEBUG("Handshake exit state %s%s", role, state);
 		}
 	}
 }
@@ -1007,15 +1003,35 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	 *	This only occurs once per session, where calling
 	 *	SSL_read updates the state of the SSL session, setting
 	 *	this flag to true.
+	 *
+	 *	Callbacks provide enough info so we don't need to
+	 *	print debug statements when the handshake is in other
+	 *	states.
 	 */
 	if (SSL_is_init_finished(session->ssl)) {
 		SSL_CIPHER const *cipher;
-		char buffer[256];
+
+		char cipher_desc[256], cipher_desc_clean[256];
+		char *p = cipher_desc, *q = cipher_desc_clean;
+		bool space = false;
 
 		cipher = SSL_get_current_cipher(session->ssl);
+		SSL_CIPHER_description(cipher, cipher_desc, sizeof(cipher_desc));
+		/*
+		 *	Cleanup the output from OpenSSL
+		 */
+		while (*p++ != '\0') {
+			if (*p == ' ') {
+				if (space) continue;
+				space = true;
+			} else {
+				space = false;
+			}
+			*q++ = *p;
+		}
+		q[0] = '\0';
 
-		RDEBUG2("TLS established with cipher suite: %s",
-			SSL_CIPHER_description(cipher, buffer, sizeof(buffer)));
+		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 		/*
 		 *	Cache the SSL_SESSION pointer.
@@ -1029,17 +1045,20 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 				return 0;
 			}
 		}
-#endif
-	} else if (SSL_in_init(session->ssl)) {
-		RDEBUG2("In TLS handshake phase");
-	} else if (SSL_in_before(session->ssl)) {
-		RDEBUG2("Before TLS handshake phase");
-	}
 
-	if (SSL_in_accept_init(session->ssl)) {
-		RDEBUG2("In server (accept) mode");
-	} else if (SSL_in_connect_init(session->ssl)) {
-		RDEBUG2("In client (connect) mode");
+		if (RDEBUG_ENABLED3) {
+			BIO *ssl_log = BIO_new(BIO_s_mem());
+
+			if (ssl_log) {
+				if (SSL_SESSION_print(ssl_log, session->ssl_session) == 1) {
+					SSL_DRAIN_ERROR_QUEUE(RDEBUG3, "", ssl_log);
+				} else {
+					RDEBUG3("Failed retrieving session data");
+				}
+				BIO_free(ssl_log);
+			}
+		}
+#endif
 	}
 
 	/*
