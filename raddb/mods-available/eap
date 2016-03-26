@@ -620,14 +620,23 @@ eap {
 
 		#
 		#  As of version 3.0.5, this configuration item
-		#  is deprecated.  Instead, you should use
+		#  is deprecated.  Instead, you should use copy any required
+		#  authorizational attributes to outer.session-state.
 		#
 		# 	update outer.session-state {
 		#		...
 		#
 		#	}
 		#
-		#  This will cache attributes for the final Access-Accept.
+		#  In the post-auth section of the outer server, attributes can
+		#  then be copied to the reply list.
+		#
+		#  If you want to copy the entire session-state list to the reply
+		#  the following statement may be used:
+		#
+		#	update {
+		#		&reply: += &session-state:[*]
+		#	}
 		#
 		#  The reply attributes sent to the NAS are usually based on the
 		#  name of the user 'outside' of the tunnel (usually
@@ -693,7 +702,6 @@ eap {
 	#  For additional Windows XP SP2 issues, see:
 	#
 	#	http://support.microsoft.com/kb/885453/en-us
-	#
 	#
 	#  If is still doesn't work, and you're using Samba, you may be
 	#  encountering a Samba bug.  See:
