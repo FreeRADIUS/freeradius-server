@@ -91,7 +91,7 @@ typedef enum {
 	EAP_TLS_INVALID = 0,	  			//!< Invalid, don't reply.
 	EAP_TLS_ESTABLISHED,       			//!< Session established, send success (or start phase2).
 	EAP_TLS_FAIL,       				//!< Fail, send fail.
-	EAP_TLS_HANDLED,	  				//!< TLS code has handled it.
+	EAP_TLS_HANDLED,	  			//!< TLS code has handled it.
 
 	/*
 	 *	Composition statuses, we need to
@@ -99,7 +99,7 @@ typedef enum {
 	 */
 	EAP_TLS_START_SEND,       			//!< We're starting a new TLS session.
 	EAP_TLS_RECORD_SEND,       			//!< We're sending a record.
-	EAP_TLS_ACK_SEND,       				//!< Acknowledge, continue.
+	EAP_TLS_ACK_SEND,       			//!< Acknowledge receipt of a record or record fragment.
 
 	/*
 	 *	Receive statuses, we received a
@@ -121,25 +121,30 @@ extern FR_NAME_NUMBER const eap_tls_status_table[];
 /*
  *	Externally exported TLS functions.
  */
-eap_tls_status_t eap_tls_process(eap_session_t *eap_session);
+eap_tls_status_t	eap_tls_process(eap_session_t *eap_session);
 
-int	eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
-int	eap_tls_success(eap_session_t *eap_session) CC_HINT(nonnull);
-int	eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
-int	eap_tls_request(eap_session_t *eap_session) CC_HINT(nonnull);
+int			eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
 
-int eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
-		    tls_record_t *record, size_t record_len, size_t frag_len);
+int			eap_tls_success(eap_session_t *eap_session) CC_HINT(nonnull);
+
+int			eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
+
+int			eap_tls_request(eap_session_t *eap_session) CC_HINT(nonnull);
+
+int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
+		    			tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
-void	eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
-void	eap_ttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
-void	eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
+void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
+
+void			eap_ttls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size);
+
+void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 
 /* EAP-TLS framework */
-tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert);
+tls_session_t		*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert);
 
 
-fr_tls_conf_t	*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
+fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
 
 #endif /*_EAP_TLS_H*/
