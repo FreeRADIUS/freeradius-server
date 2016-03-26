@@ -411,8 +411,8 @@ ATTRIBUTE	EAP-Type-EAP-AKA2			1330	octets internal
 ATTRIBUTE	EAP-Type-EAP-GPSK			1331	octets internal
 ATTRIBUTE	EAP-Type-EAP-PWD			1332	octets internal
 ATTRIBUTE	EAP-Type-EAP-EVEv1			1333	octets internal
-ATTRIBUTE	EAP-Type-PT				1334	internal octets
-ATTRIBUTE	EAP-Type-TEAP				1335	internal octets
+ATTRIBUTE	EAP-Type-PT				1334	octets internal
+ATTRIBUTE	EAP-Type-TEAP				1335	octets internal
 
 ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets internal
 ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets internal
