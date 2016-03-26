@@ -104,7 +104,7 @@ typedef struct _tls_session_t {
 	SSL_CTX		*ctx;				//!< TLS configuration context.
 	SSL 		*ssl;				//!< This SSL session.
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	SSL_SESSION	*session;			//!< Additional SSL session data.
+	SSL_SESSION	*session;			//!< Session resumption data.
 #endif
 	tls_info_t	info;
 
@@ -230,23 +230,6 @@ struct fr_tls_conf_t {
 
 typedef struct fr_tls_conf_t fr_tls_conf_t;
 
-typedef enum {
-	FR_TLS_INVALID = 0,	  			//!< Invalid, don't reply.
-	FR_TLS_REQUEST,       				//!< Request, ok to send, invalid to receive.
-	FR_TLS_RESPONSE,       				//!< Response, ok to receive, invalid to send.
-	FR_TLS_SUCCESS,       				//!< Success, send success.
-	FR_TLS_FAIL,       				//!< Fail, send fail.
-	FR_TLS_NOOP,       				//!< Noop, continue.
-
-	FR_TLS_START,       				//!< Start, ok to send, invalid to receive.
-	FR_TLS_RECORD_COMPLETE, 			//!< Ok, continue.
-	FR_TLS_ACK,       				//!< Acknowledge, continue.
-	FR_TLS_RECORD_FRAGMENT_INIT,    		//!< First fragment.
-	FR_TLS_RECORD_FRAGMENT_MORE,    		//!< More fragments, to send/receive.
-	FR_TLS_LENGTH_INCLUDED,	  			//!< Length included.
-	FR_TLS_HANDLED	  				//!< TLS code has handled it.
-} fr_tls_status_t;
-
 /** Macros that match the hardcoded values of the TLS-Session-Cache-Attribute
  */
 typedef enum {
@@ -314,7 +297,6 @@ enum HandshakeType {
 	handshake_finished = 20
 };
 
-extern FR_NAME_NUMBER const fr_tls_status_table[];
 extern int fr_tls_ex_index_vps;
 extern int fr_tls_max_threads;
 
@@ -418,13 +400,11 @@ void 		tls_session_info_cb(SSL const *s, int where, int ret);
 void 		tls_session_msg_cb(int write_p, int msg_version, int content_type,
 				   void const *buf, size_t len, SSL *ssl, void *arg);
 
-fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *tls_session);
+int		tls_session_recv(REQUEST *request, tls_session_t *tls_session);
 
 int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
 
 int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
-
-fr_tls_status_t	tls_session_status(REQUEST *request, tls_session_t *tls_session);
 
 tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
 

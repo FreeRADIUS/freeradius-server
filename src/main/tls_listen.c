@@ -91,7 +91,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	RADIUS_PACKET *packet;
 	REQUEST *request;
 	listen_socket_t *sock = listener->data;
-	fr_tls_status_t status;
+	int ret;
 	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
@@ -214,12 +214,17 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Try to get application data.
 	 */
-	status = tls_session_recv(request, sock->tls_session);
-	RDEBUG("Application data status %d", status);
+	ret = tls_session_recv(request, sock->tls_session);
+	switch (ret) {
+	case 0:		/* Record decrypted */
+		break;
 
-	if (status == FR_TLS_RECORD_FRAGMENT_MORE) {
+	case 1:		/* Need more record data */
 		pthread_mutex_unlock(&sock->mutex);
 		return 0;
+
+	default:	/* error */
+		goto do_close;
 	}
 
 	if (sock->tls_session->clean_out.used == 0) {

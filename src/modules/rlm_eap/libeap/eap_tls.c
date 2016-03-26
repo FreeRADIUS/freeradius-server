@@ -73,6 +73,23 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_tls.h"
 
+FR_NAME_NUMBER const eap_tls_status_table[] = {
+	{ "invalid",			EAP_TLS_INVALID },
+	{ "established",		EAP_TLS_ESTABLISHED },
+	{ "fail",			EAP_TLS_FAIL },
+	{ "handled",			EAP_TLS_HANDLED },
+
+	{ "start",			EAP_TLS_START_SEND },
+	{ "request",			EAP_TLS_RECORD_SEND },
+	{ "ack",			EAP_TLS_ACK_SEND },
+
+	{ "first",			EAP_TLS_RECORD_RECV_FIRST },
+	{ "more",			EAP_TLS_RECORD_RECV_MORE },
+	{ "complete",			EAP_TLS_RECORD_RECV_COMPLETE },
+
+	{  NULL , 			-1},
+};
+
 /** Convert the EAP-TLS reply packet into an EAP packet
  *
  * The EAP packet will be written to eap_round->request, with the original reply
@@ -81,14 +98,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * @param eap_session to continue.
  * @param status What type of packet we're sending.
  * @param flags to set.  This is checked to determine if we need to include a length field.
- * @param record The record buffer to read from.  This most only be set for FR_TLS_REQUEST packets.
+ * @param record The record buffer to read from.  This most only be set for EAP_TLS_RECORD_SEND packets.
  * @param record_len the length of the record we're sending.
  * @param frag_len the length of the fragment we're sending.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
+int eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t flags,
 		    tls_record_t *record, size_t record_len, size_t frag_len)
 {
 	REQUEST		*request = eap_session->request;
@@ -116,12 +133,12 @@ int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t 
 	 *	that the fields are the same as normal EAP messages.
 	 */
 	switch (status) {
-	case FR_TLS_REQUEST:
+	case EAP_TLS_RECORD_SEND:
 		if (TLS_LENGTH_INCLUDED(flags)) len += TLS_HEADER_LENGTH_FIELD_LEN;	/* TLS record length field */
 		if (record) len += frag_len;
 		break;
 
-	case FR_TLS_START:
+	case EAP_TLS_START_SEND:
 		if (record_len != 0) len += frag_len;
 		break;
 
@@ -166,17 +183,17 @@ int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t 
 	if (record) tls_session->record_to_buff(record, p, frag_len);
 
 	switch (status) {
-	case FR_TLS_ACK:
-	case FR_TLS_START:
-	case FR_TLS_REQUEST:
+	case EAP_TLS_ACK_SEND:
+	case EAP_TLS_START_SEND:
+	case EAP_TLS_RECORD_SEND:
 		eap_round->request->code = PW_EAP_REQUEST;
 		break;
 
-	case FR_TLS_SUCCESS:
+	case EAP_TLS_ESTABLISHED:
 		eap_round->request->code = PW_EAP_SUCCESS;
 		break;
 
-	case FR_TLS_FAIL:
+	case EAP_TLS_FAIL:
 		eap_round->request->code = PW_EAP_FAILURE;
 		break;
 
@@ -212,13 +229,13 @@ int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t 
  */
 int eap_tls_start(eap_session_t *eap_session)
 {
-	return eap_tls_compose(eap_session, FR_TLS_START,
+	return eap_tls_compose(eap_session, EAP_TLS_START_SEND,
 			       SET_START(((tls_session_t *)eap_session->opaque)->base_flags), NULL, 0, 0);
 }
 
 /** Send an EAP-TLS success
  *
- * Composes an EAP-TLS-Success.  This is a message with code FR_TLS_SUCCESS.
+ * Composes an EAP-TLS-Success.  This is a message with code EAP_TLS_ESTABLISHED.
  * It contains no cryptographic material, and is not protected.
  *
  * We add the MPPE keys here.  These are used by the NAS.  The supplicant
@@ -244,7 +261,7 @@ int eap_tls_success(eap_session_t *eap_session)
 	/*
 	 *	Build the success packet
 	 */
-	if (eap_tls_compose(eap_session, FR_TLS_SUCCESS, tls_session->base_flags, NULL, 0, 0) < 0) return -1;
+	if (eap_tls_compose(eap_session, EAP_TLS_ESTABLISHED, tls_session->base_flags, NULL, 0, 0) < 0) return -1;
 
 	/*
 	 *	Automatically generate MPPE keying material.
@@ -262,7 +279,7 @@ int eap_tls_success(eap_session_t *eap_session)
 
 /** Send an EAP-TLS failure
  *
- * Composes an EAP-TLS-Failure.  This is a message with code FR_TLS_FAILURE.
+ * Composes an EAP-TLS-Failure.  This is a message with code EAP_TLS_FAILURE.
  * It contains no cryptographic material, and is not protected.
  *
  * In addition to sending the failure, will destroy any cached session data.
@@ -283,7 +300,7 @@ int eap_tls_fail(eap_session_t *eap_session)
 	 */
 	tls_cache_deny(tls_session);
 
-	if (eap_tls_compose(eap_session, FR_TLS_START, SET_START(tls_session->base_flags), NULL, 0, 0) < 0) return -1;
+	if (eap_tls_compose(eap_session, EAP_TLS_START_SEND, SET_START(tls_session->base_flags), NULL, 0, 0) < 0) return -1;
 	return 0;
 }
 
@@ -387,7 +404,7 @@ int eap_tls_request(eap_session_t *eap_session)
 	 */
 	if (length_included) flags = SET_LENGTH_INCLUDED(flags);
 
-	return eap_tls_compose(eap_session, FR_TLS_REQUEST, flags,
+	return eap_tls_compose(eap_session, EAP_TLS_RECORD_SEND, flags,
 			       &tls_session->dirty_out, tls_session->record_out_total_len, frag_len);
 }
 
@@ -407,13 +424,72 @@ int eap_tls_request(eap_session_t *eap_session)
  *
  * @param eap_session that we're acking the fragment for.
  */
-static int eap_tls_send_ack(eap_session_t *eap_session)
+static int eap_tls_ack(eap_session_t *eap_session)
 {
 	REQUEST	*request = eap_session->request;
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
-	return eap_tls_compose(eap_session, FR_TLS_ACK,
+	return eap_tls_compose(eap_session, EAP_TLS_ACK_SEND,
 			       ((tls_session_t *)eap_session->opaque)->base_flags, NULL, 0, 0);
+}
+
+/** Reduce session states down into an easy to use status
+ *
+ * @return
+ *	- EAP_TLS_ESTABLISHED - Handshake completed.
+ *	- EAP_TLS_FAIL - Fatal alert from the client.
+ *	- EAP_TLS_RECORD_SEND - Need more data, or previous fragment was acked.
+ */
+static eap_tls_status_t eap_tls_session_status(REQUEST *request, tls_session_t *session)
+{
+	if (session == NULL){
+		REDEBUG("Unexpected ACK received:  No ongoing SSL session");
+		return EAP_TLS_INVALID;
+	}
+	if (!session->info.initialized) {
+		RDEBUG("No SSL info available.  Waiting for more SSL data");
+		return EAP_TLS_RECORD_SEND;
+	}
+
+	if ((session->info.content_type == handshake) && (session->info.origin == 0)) {
+		REDEBUG("Unexpected ACK received:  We sent no previous messages");
+		return EAP_TLS_INVALID;
+	}
+
+	switch (session->info.content_type) {
+	case alert:
+		RDEBUG2("Peer ACKed our alert");
+		return EAP_TLS_FAIL;
+
+	case handshake:
+		if ((session->info.handshake_type == handshake_finished) && (session->dirty_out.used == 0)) {
+			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
+
+			/*
+			 *	From now on all the content is
+			 *	application data set it here as nobody else
+			 *	sets it.
+			 */
+			session->info.content_type = application_data;
+			return EAP_TLS_ESTABLISHED;
+		} /* else more data to send */
+
+		RDEBUG2("Peer ACKed our handshake fragment");
+		/* Fragmentation handler, send next fragment */
+		return EAP_TLS_RECORD_SEND;
+
+	case application_data:
+		RDEBUG2("Peer ACKed our application data fragment");
+		return EAP_TLS_RECORD_SEND;
+
+		/*
+		 *	For the rest of the conditions, switch over
+		 *	to the default section below.
+		 */
+	default:
+		REDEBUG("Invalid ACK received: %d", session->info.content_type);
+		return EAP_TLS_INVALID;
+	}
 }
 
 /** Check that this EAP-TLS packet is correct and the progression of EAP-TLS packets is sane
@@ -423,15 +499,15 @@ static int eap_tls_send_ack(eap_session_t *eap_session)
  *
  * @param[in] eap_session the current EAP session state.
  * @return
- *	- FR_TLS_INVALID if the TLS record or progression is invalid.
- *	- FR_TLS_FAIL handshake failed.
- *	- FR_TLS_RECORD_FRAGMENT_INIT this is the start of a new sequence of record fragments.
- *	- FR_TLS_RECORD_FRAGMENT_MORE this is a continuation of a sequence of fragments.
- *	- FR_TLS_REQUEST send more data to peer.
- *	- FR_TLS_RECORD_COMPLETE we received a completed record.
- *	- FR_TLS_SUCCESS handshake is complete, TLS session has been established.
+ *	- EAP_TLS_INVALID if the TLS record or progression is invalid.
+ *	- EAP_TLS_FAIL handshake failed.
+ *	- EAP_TLS_RECORD_RECV_FIRST this is the start of a new sequence of record fragments.
+ *	- EAP_TLS_RECORD_RECV_MORE this is a continuation of a sequence of fragments.
+ *	- EAP_TLS_RECORD_RECV_COMPLETE we received a completed record.
+ *	- EAP_TLS_RECORD_SEND send more data to peer.
+ *	- EAP_TLS_ESTABLISHED handshake is complete, TLS session has been established.
  */
-static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 {
 	eap_round_t		*this_round = eap_session->this_round;
 	eap_round_t		*prev_round = eap_session->prev_round;
@@ -447,7 +523,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	if (this_round->response->length < (EAP_HEADER_LEN + 2)) {
 		REDEBUG("Invalid EAP-TLS packet: Expected at least %zu bytes got %zu bytes",
 			(size_t)EAP_HEADER_LEN + 2, this_round->response->length);
-		return FR_TLS_INVALID;
+		return EAP_TLS_INVALID;
 	}
 
 	/*
@@ -482,7 +558,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	if (this_round->response->length < header_len) {
 		REDEBUG("Invalid EAP-TLS packet: Expected at least %zu bytes got %zu bytes",
 			header_len, this_round->response->length);
-		return FR_TLS_INVALID;
+		return EAP_TLS_INVALID;
 	}
 
 	/*
@@ -498,9 +574,9 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	     ((eap_tls_data->flags & 0xc0) == 0x00))) {
 		if (!prev_round || (prev_round->request->id != this_round->response->id)) {
 			REDEBUG("Received Invalid TLS ACK");
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
-		return tls_session_status(request, eap_session->opaque);
+		return eap_tls_session_status(request, eap_session->opaque);
 	}
 
 	/*
@@ -508,7 +584,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	 */
 	if (TLS_START(eap_tls_data->flags)) {
 		REDEBUG("Peer sent EAP-TLS Start message (only the server is allowed to do this)");
-		return FR_TLS_INVALID;
+		return EAP_TLS_INVALID;
 	}
 
 	/*
@@ -536,14 +612,14 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 		if (frag_len > total_len) {
 			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)",
 				frag_len, total_len);
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
 
 		if (total_len > FR_TLS_MAX_RECORD_SIZE) {
 			REDEBUG("Reassembled TLS record will be %zu bytes, "
 				"greater than our maximum record size (" STRINGIFY(FR_TLS_MAX_RECORD_SIZE) " bytes)",
 				total_len);
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
 
 		/*
@@ -585,7 +661,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 			tls_session->record_in_recvd_len = frag_len;
 			tls_session->record_in_started = true;
 
-			return FR_TLS_RECORD_FRAGMENT_INIT;
+			return EAP_TLS_RECORD_RECV_FIRST;
 		}
 
 		/*
@@ -594,7 +670,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 		if (total_len != frag_len) {
 			REDEBUG("Peer indicated no more fragments, but TLS record length (%zu bytes) "
 				"does not match EAP-TLS data length (%zu bytes)", total_len, frag_len);
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
 
 		/*
@@ -604,7 +680,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 		 *	We support both options for maximum compatibility.
 		 */
 		RDEBUG2("Got complete TLS record, with length field (%zu bytes)", frag_len);
-		return FR_TLS_RECORD_COMPLETE;
+		return EAP_TLS_RECORD_RECV_COMPLETE;
 	}
 
 ignore_length:
@@ -615,7 +691,7 @@ ignore_length:
 		 */
 		if (!tls_session->record_in_started) {
 			REDEBUG("TLS More (M) flag set, but no fragmented record transfer was in progress");
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
 
 		/*
@@ -629,9 +705,9 @@ ignore_length:
 			REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
 				"indicated TLS record length (%zu bytes)",
 				tls_session->record_in_recvd_len, tls_session->record_in_total_len);
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
-		return FR_TLS_RECORD_FRAGMENT_MORE;
+		return EAP_TLS_RECORD_RECV_MORE;
 	}
 
 	/*
@@ -651,9 +727,9 @@ ignore_length:
 			REDEBUG("Total received TLS record fragments (%zu bytes), does not equal indicated "
 				"TLS record length (%zu bytes)",
 				tls_session->record_in_recvd_len, tls_session->record_in_total_len);
-			return FR_TLS_INVALID;
+			return EAP_TLS_INVALID;
 		}
-		return FR_TLS_RECORD_COMPLETE;
+		return EAP_TLS_RECORD_RECV_COMPLETE;
 	}
 
 	/*
@@ -662,19 +738,19 @@ ignore_length:
 	 */
 	RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
 
-	return FR_TLS_RECORD_COMPLETE;
+	return EAP_TLS_RECORD_RECV_COMPLETE;
 }
 
 /** Continue with the handshake
  *
  * @param eap_session to continue.
  * @return
- *	- FR_TLS_FAIL if the message is invalid.
- *	- FR_TLS_HANDLED if we need to send an additional request to the peer.
- *	- FR_TLS_SUCCESS if the handshake completed successfully, and there's
+ *	- EAP_TLS_FAIL if the message is invalid.
+ *	- EAP_TLS_HANDLED if we need to send an additional request to the peer.
+ *	- EAP_TLS_ESTABLISHED if the handshake completed successfully, and there's
  *	  no more data to send.
  */
-static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
+static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 {
 	REQUEST		*request = eap_session->request;
 	tls_session_t	*tls_session = eap_session->opaque;
@@ -691,7 +767,7 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	if (!tls_session_handshake(eap_session->request, tls_session)) {
 		REDEBUG("TLS receive handshake failed during operation");
 		tls_cache_deny(tls_session);
-		return FR_TLS_FAIL;
+		return EAP_TLS_FAIL;
 	}
 
 	/*
@@ -701,13 +777,13 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 */
 	if (tls_session->dirty_out.used > 0) {
 		eap_tls_request(eap_session);
-		return FR_TLS_HANDLED;
+		return EAP_TLS_HANDLED;
 	}
 
 	/*
 	 *	If there is no data to send i.e dirty_out.used <=0 and
 	 *	if the SSL handshake is finished, then return a
-	 *	FR_TLS_SUCCESS
+	 *	EAP_TLS_ESTABLISHED
 	 */
 	if (tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
 		tls_session->phase2 = true;
@@ -717,14 +793,14 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 		 *	application data.
 		 */
 		tls_session->info.content_type = application_data;
-		return FR_TLS_SUCCESS;
+		return EAP_TLS_ESTABLISHED;
 	}
 
 	/*
 	 *	Who knows what happened...
 	 */
 	REDEBUG("TLS failed during operation");
-	return FR_TLS_FAIL;
+	return EAP_TLS_FAIL;
 }
 
 /** Process an EAP TLS request
@@ -746,21 +822,21 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
  *
  * @param eap_session to continue.
  * @return
- *	- FR_TLS_SUCCESS
- *	- FR_TLS_HANDLED
+ *	- EAP_TLS_ESTABLISHED
+ *	- EAP_TLS_HANDLED
  */
-fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
+eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 {
 	tls_session_t		*tls_session = (tls_session_t *) eap_session->opaque;
 	eap_round_t		*this_round = eap_session->this_round;
-	fr_tls_status_t		status;
+	eap_tls_status_t		status;
 	REQUEST			*request = eap_session->request;
 
 	eap_tls_data_t		*eap_tls_data;
 	uint8_t			*data;
 	size_t			data_len;
 
-	if (!request) return FR_TLS_FAIL;
+	if (!request) return EAP_TLS_FAIL;
 
 	RDEBUG2("Continuing EAP-TLS");
 
@@ -771,13 +847,13 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	 */
 	status = eap_tls_verify(eap_session);
 	switch (status) {
-	case FR_TLS_INVALID:
-	case FR_TLS_FAIL:
-		REDEBUG("[eap-tls verify] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	case EAP_TLS_INVALID:
+	case EAP_TLS_FAIL:
+		REDEBUG("[eap-tls verify] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
 		break;
 
 	default:
-		RDEBUG2("[eap-tls verify] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls verify] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
 		break;
 	}
 
@@ -791,7 +867,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	 *	We've received a complete TLS record, this is the same as receiving a
 	 *	fragment, except we also process the complete record.
 	 */
-	case FR_TLS_RECORD_COMPLETE:
+	case EAP_TLS_RECORD_RECV_COMPLETE:
 	/*
 	 *	We've received a fragment of a TLS record
 	 *
@@ -803,8 +879,8 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	 *	Next - Copy the fragment data into OpenSSL's dirty in buffer so that it
 	 *	can process it in a later call.
 	 */
-	case FR_TLS_RECORD_FRAGMENT_INIT:
-	case FR_TLS_RECORD_FRAGMENT_MORE:
+	case EAP_TLS_RECORD_RECV_FIRST:
+	case EAP_TLS_RECORD_RECV_MORE:
 		eap_tls_data = (eap_tls_data_t *)this_round->response->type.data;
 		if (TLS_LENGTH_INCLUDED(eap_tls_data->flags)) {
 			data = (this_round->response->type.data + 5);		/* flags + TLS-Length */
@@ -822,16 +898,16 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 */
 		if ((tls_session->record_from_buff)(&tls_session->dirty_in, data, data_len) != data_len) {
 			REDEBUG("Exceeded maximum record size");
-			status = FR_TLS_FAIL;
+			status = EAP_TLS_FAIL;
 			goto done;
 		}
 
 		/*
 		 *	ACK fragments until we get a complete TLS record.
 		 */
-		if (status != FR_TLS_RECORD_COMPLETE) {
-			eap_tls_send_ack(eap_session);
-			status = FR_TLS_HANDLED;
+		if (status != EAP_TLS_RECORD_RECV_COMPLETE) {
+			eap_tls_ack(eap_session);
+			status = EAP_TLS_HANDLED;
 			goto done;
 		}
 
@@ -841,9 +917,24 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	the handshake.
 		 */
 		if (tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
+			int ret;
+
 			tls_session->phase2 = true;
 
-			status = tls_session_recv(request, tls_session);
+			ret = tls_session_recv(request, tls_session);
+			switch (ret) {
+			case 0:
+				status = EAP_TLS_RECORD_RECV_COMPLETE;
+				break;
+
+			case 1:
+				status = EAP_TLS_RECORD_RECV_MORE;
+				break;
+
+			default:
+				status = EAP_TLS_FAIL;
+				break;
+			}
 		} else {
 			status = eap_tls_handshake(eap_session);
 		}
@@ -851,7 +942,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	/*
 	 *	We have fragments or records to send to the peer
 	 */
-	case FR_TLS_REQUEST:
+	case EAP_TLS_RECORD_SEND:
 		/*
 		 *	Return a "yes we're done" if there's no more data to send,
 		 *	and we've just managed to finish the SSL session initialization.
@@ -860,24 +951,24 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		    (tls_session->dirty_out.used == 0) &&
 		    SSL_is_init_finished(tls_session->ssl)) {
 			tls_session->phase2 = true;
-			return FR_TLS_RECORD_COMPLETE;
+			return EAP_TLS_RECORD_RECV_COMPLETE;
 		}
 
 		eap_tls_request(eap_session);
-		status = FR_TLS_HANDLED;
+		status = EAP_TLS_HANDLED;
 		goto done;
 
 	/*
 	 *	Bad things happened and we're unable to continue.
 	 */
-	case FR_TLS_INVALID:
-	case FR_TLS_FAIL:
+	case EAP_TLS_INVALID:
+	case EAP_TLS_FAIL:
 	/*
-	 *	Success means that we're done the initial handshake.  For TTLS, this
-	 *	means send stuff back to the peer, and the peer sends us more
-	 *	tunnelled data.
+	 *	Established means that we're done the initial handshake.
+	 *
+	 *	For TTLS and PEAP that means begin phase2
 	 */
-	case FR_TLS_SUCCESS:
+	case EAP_TLS_ESTABLISHED:
 	default:
 		goto done;
 	}

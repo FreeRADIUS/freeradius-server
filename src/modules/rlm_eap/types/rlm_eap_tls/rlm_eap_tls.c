@@ -137,7 +137,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
  */
 static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_session)
 {
-	fr_tls_status_t	status;
+	eap_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) eap_session->opaque;
 	REQUEST *request = eap_session->request;
 	rlm_eap_tls_t *inst;
@@ -145,10 +145,10 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 	inst = type_arg;
 
 	status = eap_tls_process(eap_session);
-	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eap-tls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
+		REDEBUG("[eap-tls process] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eap-tls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls process] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
 	}
 
 	switch (status) {
@@ -159,7 +159,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 	 *	If a virtual server was configured, check that
 	 *	it accepts the certificates, too.
 	 */
-	case FR_TLS_SUCCESS:
+	case EAP_TLS_ESTABLISHED:
 		if (inst->virtual_server) {
 			VALUE_PAIR *vp;
 			REQUEST *fake;
@@ -202,14 +202,14 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 		 *	exchange, and it's a valid TLS request.
 		 *	do nothing.
 		 */
-	case FR_TLS_HANDLED:
+	case EAP_TLS_HANDLED:
 		return 1;
 
 		/*
 		 *	Handshake is done, proceed with decoding tunneled
 		 *	data.
 		 */
-	case FR_TLS_RECORD_COMPLETE:
+	case EAP_TLS_RECORD_RECV_COMPLETE:
 		RDEBUG2("Received unexpected tunneled data after successful handshake");
 #ifndef NDEBUG
 		if ((rad_debug_lvl > 2) && fr_log_fp) {

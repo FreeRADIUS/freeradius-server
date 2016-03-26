@@ -32,23 +32,6 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-FR_NAME_NUMBER const fr_tls_status_table[] = {
-	{ "invalid",			FR_TLS_INVALID },
-	{ "request",			FR_TLS_REQUEST },
-	{ "response",			FR_TLS_RESPONSE },
-	{ "success",			FR_TLS_SUCCESS },
-	{ "fail",			FR_TLS_FAIL },
-	{ "noop",			FR_TLS_NOOP },
-
-	{ "start",			FR_TLS_START },
-	{ "ok",				FR_TLS_RECORD_COMPLETE },
-	{ "ack",			FR_TLS_ACK },
-	{ "first fragment",		FR_TLS_RECORD_FRAGMENT_INIT },
-	{ "more fragments",		FR_TLS_RECORD_FRAGMENT_MORE },
-	{ "handled",			FR_TLS_HANDLED },
-	{  NULL , 			-1},
-};
-
 /** Clear a record buffer
  *
  * @param record buffer to clear.
@@ -826,18 +809,17 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
  * @param[in] request	The current #REQUEST.
  * @param[in] session	The current TLS session.
  * @return
- *	- FR_TLS_FAIL on error.
- *	- FR_TLS_RECORD_FRAGMENT_MORE if more fragments are required to fully
- *	  reassemble the record for decryption.
- *	- FR_TLS_RECORD_COMPLETE if we decrypted a complete record.
+ *	- -1 on error.
+ *	- 1 if more fragments are required to fully reassemble the record for decryption.
+ *	- 0 if we decrypted a complete record.
  */
-fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *session)
+int tls_session_recv(REQUEST *request, tls_session_t *session)
 {
 	int ret;
 
 	if (!SSL_is_init_finished(session->ssl)) {
 		REDEBUG("Attempted to read application data before handshake completed");
-		return FR_TLS_FAIL;
+		return -1;
 	}
 
 	/*
@@ -847,7 +829,7 @@ fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *session)
 	if (ret != (int) session->dirty_in.used) {
 		record_init(&session->dirty_in);
 		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, ret);
-		return FR_TLS_FAIL;
+		return -1;
 	}
 
 	/*
@@ -871,7 +853,7 @@ fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *session)
 		case SSL_ERROR_WANT_READ:
 			RWDEBUG("Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
 				"Attempting to continue");
-			return FR_TLS_RECORD_FRAGMENT_MORE;
+			return 1;
 
 		case SSL_ERROR_WANT_WRITE:
 			REDEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
@@ -882,7 +864,7 @@ fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *session)
 			tls_log_io_error(request, session, ret, "Failed in SSL_read");
 			break;
 		}
-		return FR_TLS_FAIL;
+		return -1;
 	}
 
 	if (ret == 0) RWDEBUG("No data inside of the tunnel");
@@ -895,7 +877,7 @@ fr_tls_status_t tls_session_recv(REQUEST *request, tls_session_t *session)
 	RDEBUG2("Decrypted TLS application data (%zu bytes)", session->clean_out.used);
 	radlog_request_hex(L_DBG, L_DBG_LVL_3, request, session->clean_out.data, session->clean_out.used);
 
-	return FR_TLS_RECORD_COMPLETE;
+	return 0;
 }
 
 /** Encrypt application data
@@ -915,7 +897,7 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 {
 	if (!SSL_is_init_finished(session->ssl)) {
 		REDEBUG("Attempted to write application data before handshake completed");
-		return FR_TLS_FAIL;
+		return 0;
 	}
 
 	/*
@@ -1060,19 +1042,6 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 		RDEBUG2("In client (connect) mode");
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	/*
-	 *	Cache the SSL_SESSION pointer.
-	 */
-	if (!session->ssl_session && SSL_is_init_finished(session->ssl)) {
-		session->ssl_session = SSL_get_session(session->ssl);
-		if (!session->ssl_session) {
-			RDEBUG("Failed getting TLS session");
-			return 0;
-		}
-	}
-#endif
-
 	/*
 	 *	Get data to pack and send back to the TLS peer.
 	 */
@@ -1091,6 +1060,19 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			tls_log_error(NULL, NULL);
 			record_init(&session->dirty_in);
 			return 0;
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	/*
+	 *	Cache the SSL_SESSION pointer.
+	 */
+	if (!session->ssl_session && SSL_is_init_finished(session->ssl)) {
+		session->ssl_session = SSL_get_session(session->ssl);
+		if (!session->ssl_session) {
+			RDEBUG("Failed getting TLS session");
+			return 0;
+		}
+	}
+#endif
+
 		}
 	} else {
 		/* Its clean application data, do whatever we want */
@@ -1100,65 +1082,6 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	/* We are done with dirty_in, reinitialize it */
 	record_init(&session->dirty_in);
 	return 1;
-}
-
-/** Reduce session states down into an easy to use status
- *
- * @return
- *	- FR_TLS_SUCCESS - Handshake completed.
- *	- FR_TLS_FAIL - Fatal alert from the client.
- *	- FR_TLS_REQUEST - Need more data, or previous fragment was acked.
- */
-fr_tls_status_t tls_session_status(REQUEST *request, tls_session_t *session)
-{
-	if (session == NULL){
-		REDEBUG("Unexpected ACK received:  No ongoing SSL session");
-		return FR_TLS_INVALID;
-	}
-	if (!session->info.initialized) {
-		RDEBUG("No SSL info available.  Waiting for more SSL data");
-		return FR_TLS_REQUEST;
-	}
-
-	if ((session->info.content_type == handshake) && (session->info.origin == 0)) {
-		REDEBUG("Unexpected ACK received:  We sent no previous messages");
-		return FR_TLS_INVALID;
-	}
-
-	switch (session->info.content_type) {
-	case alert:
-		RDEBUG2("Peer ACKed our alert");
-		return FR_TLS_FAIL;
-
-	case handshake:
-		if ((session->info.handshake_type == handshake_finished) && (session->dirty_out.used == 0)) {
-			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
-
-			/*
-			 *	From now on all the content is
-			 *	application data set it here as nobody else
-			 *	sets it.
-			 */
-			session->info.content_type = application_data;
-			return FR_TLS_SUCCESS;
-		} /* else more data to send */
-
-		RDEBUG2("Peer ACKed our handshake fragment");
-		/* Fragmentation handler, send next fragment */
-		return FR_TLS_REQUEST;
-
-	case application_data:
-		RDEBUG2("Peer ACKed our application data fragment");
-		return FR_TLS_REQUEST;
-
-		/*
-		 *	For the rest of the conditions, switch over
-		 *	to the default section below.
-		 */
-	default:
-		REDEBUG("Invalid ACK received: %d", session->info.content_type);
-		return FR_TLS_INVALID;
-	}
 }
 
 /** Free a TLS session and any associated OpenSSL data

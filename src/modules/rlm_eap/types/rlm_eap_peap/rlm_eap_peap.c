@@ -234,7 +234,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 static int mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode;
-	fr_tls_status_t status;
+	eap_tls_status_t status;
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) eap_session->opaque;
 	peap_tunnel_t *peap = tls_session->opaque;
@@ -247,10 +247,10 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	if (!tls_session->opaque) peap = tls_session->opaque = peap_alloc(tls_session, inst);
 
 	status = eap_tls_process(eap_session);
-	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eap-tls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
+		REDEBUG("[eap-tls process] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eap-tls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls process] = %s", fr_int2str(eap_tls_status_table, status, "<INVALID>"));
 	}
 
 	switch (status) {
@@ -261,7 +261,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	If this was EAP-TLS, we would just return
 	 *	an EAP-TLS-Success packet here.
 	 */
-	case FR_TLS_SUCCESS:
+	case EAP_TLS_ESTABLISHED:
 		peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
 		break;
 
@@ -270,7 +270,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	exchange, and it's a valid TLS request.
 	 *	do nothing.
 	 */
-	case FR_TLS_HANDLED:
+	case EAP_TLS_HANDLED:
 		/*
 		 *	FIXME: If the SSL session is established, grab the state
 		 *	and EAP id from the inner tunnel, and update it with
@@ -282,7 +282,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	Handshake is done, proceed with decoding tunneled
 	 *	data.
 	 */
-	case FR_TLS_RECORD_COMPLETE:
+	case EAP_TLS_RECORD_RECV_COMPLETE:
 		break;
 
 	/*
