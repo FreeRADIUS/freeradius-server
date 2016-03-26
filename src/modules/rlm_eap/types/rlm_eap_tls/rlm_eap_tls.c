@@ -197,21 +197,22 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 		}
 		break;
 
-		/*
-		 *	The TLS code is still working on the TLS
-		 *	exchange, and it's a valid TLS request.
-		 *	do nothing.
-		 */
+	/*
+	 *	The TLS code is still working on the TLS
+	 *	exchange, and it's a valid TLS request.
+	 *	do nothing.
+	 */
 	case EAP_TLS_HANDLED:
 		return 1;
 
-		/*
-		 *	Handshake is done, proceed with decoding tunneled
-		 *	data.
-		 */
+	/*
+	 *	Handshake is done, proceed with decoding tunneled
+	 *	data.
+	 */
 	case EAP_TLS_RECORD_RECV_COMPLETE:
 		RDEBUG2("Received unexpected tunneled data after successful handshake");
 		eap_tls_fail(eap_session);
+
 		return 0;
 
 		/*
