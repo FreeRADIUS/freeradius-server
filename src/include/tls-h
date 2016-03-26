@@ -162,9 +162,6 @@ struct fr_tls_conf_t {
 	char const	*cipher_list;
 	char const	*check_cert_issuer;
 
-	bool     	session_cache_enable;
-	uint32_t     	session_timeout;		//!< How long entries should persist in in-memory cache
-	uint32_t     	session_cache_size;		//!< Maximum number of entries in in-memory cache.
 	char const	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 
