@@ -211,25 +211,6 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 		 */
 	case EAP_TLS_RECORD_RECV_COMPLETE:
 		RDEBUG2("Received unexpected tunneled data after successful handshake");
-#ifndef NDEBUG
-		if ((rad_debug_lvl > 2) && fr_log_fp) {
-			unsigned int i;
-			unsigned int data_len;
-			unsigned char buffer[1024];
-
-			data_len = (tls_session->record_to_buff)(&tls_session->dirty_in,
-						buffer, sizeof(buffer));
-			DEBUG("  Tunneled data (%u bytes)", data_len);
-			for (i = 0; i < data_len; i++) {
-				if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "  %x: ", i);
-				if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
-
-				fprintf(fr_log_fp, "%02x ", buffer[i]);
-			}
-			fprintf(fr_log_fp, "\n");
-		}
-#endif
-
 		eap_tls_fail(eap_session);
 		return 0;
 
