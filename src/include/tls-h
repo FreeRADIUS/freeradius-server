@@ -123,7 +123,10 @@ typedef struct _tls_session_t {
 	bool		invalid;			//!< Whether heartbleed attack was detected.
 	size_t 		mtu;				//!< Maximum record fragment size.
 
-	char const	*prf_label;
+	char const	*prf_label;			//!< Input to the TLS pseudo random function.
+							//!< Usually set to a well known string describing
+							//!< what the key being generated will be used for.
+
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 	void		*opaque;			//!< Used to store module specific data.
 } tls_session_t;
@@ -138,29 +141,36 @@ struct fr_tls_conf_t {
 
 	CONF_SECTION	*cs;
 
-	char const	*private_key_password;
-	char const	*private_key_file;
-	char const	*certificate_file;
-	char const	*random_file;
+	char const	*private_key_password;		//!< Password to decrypt the private key.
+	char const	*private_key_file;		//!< Private key file.
+	char const	*certificate_file;		//!< Public (certificate) file.
+	char const	*random_file;			//!< If set, we read 10K of data (or the complete file)
+							//!< and use it to seed OpenSSL's PRNG.
 	char const	*ca_path;
 	char const	*ca_file;
-	char const	*dh_file;
-	char const	*rsa_file;
-	uint32_t	verify_depth;
-	bool		file_type;
-	bool		include_length;
-	bool		auto_chain;
-	bool		disable_single_dh_use;
-	bool		disable_tlsv1;
-	bool		disable_tlsv1_1;
-	bool		disable_tlsv1_2;
 
-	uint32_t	fragment_size;
-	bool		check_crl;
-	bool		allow_expired_crl;
-	char const	*check_cert_cn;
-	char const	*cipher_list;
-	char const	*check_cert_issuer;
+	char const	*dh_file;			//!< File to load DH Parameters from.
+
+	uint32_t	verify_depth;			//!< Maximum number of certificates we can traverse
+							//!< when attempting to reach the presented certificate
+							//!< from our Root CA.
+	bool		file_type;
+	bool		auto_chain;			//!< Allow OpenSSL to build certificate chains
+							//!< from all certificates it has available.
+							//!< If false, the complete chain must be provided in
+							//!< certificate file.
+	bool		disable_single_dh_use;
+	bool		disable_tlsv1;			//!< Prevent TLSv1 being negotiated.
+	bool		disable_tlsv1_1;		//!< Prevent TLSv1.1 being negotiated.
+	bool		disable_tlsv1_2;		//!< Prevent TLSv1.2 being negotiated.
+
+	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
+	bool		check_crl;			//!< Check certificate revocation lists.
+	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
+	char const	*check_cert_cn;			//!< Verify cert CN matches the expansion of this string.
+
+	char const	*cipher_list;			//!< Acceptable ciphers.
+	char const	*check_cert_issuer;		//!< Verify cert issuer matches the expansion of this string.
 
 	char const	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
@@ -176,9 +186,10 @@ struct fr_tls_conf_t {
 	/*
 	 * OCSP Configuration
 	 */
-	bool		ocsp_enable;
-	char const	*ocsp_cache_server;
-	bool		ocsp_override_url;
+	bool		ocsp_enable;			//!< Enable OCSP checks
+	char const	*ocsp_cache_server;		//!< Virtual server to restore retrieved OCSP status.
+	bool		ocsp_override_url;		//!< Always use the configured OCSP URL even if the
+							//!< certificate contains one.
 	char const	*ocsp_url;
 	bool		ocsp_use_nonce;
 	X509_STORE	*ocsp_store;
