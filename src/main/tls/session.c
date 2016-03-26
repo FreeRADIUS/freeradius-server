@@ -1276,7 +1276,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	/*
 	 *	Add the session certificate to the session.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
 	if (vp) {
 		RDEBUG2("Loading TLS session certificate \"%s\"", vp->vp_strvalue);
 
