@@ -286,7 +286,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 
 	if (((eap_round = eap_session->this_round) == NULL) || !inst) return 0;
 
-	session = (pwd_session_t *)eap_session->opaque;
+	session = talloc_get_type_abort(eap_session->opaque, pwd_session_t);
 	request = eap_session->request;
 	response = eap_session->this_round->response;
 	hdr = (pwd_hdr *)response->type.data;

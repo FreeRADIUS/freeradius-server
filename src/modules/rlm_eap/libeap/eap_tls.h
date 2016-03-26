@@ -94,7 +94,7 @@ typedef enum {
 	EAP_TLS_HANDLED,	  			//!< TLS code has handled it.
 
 	/*
-	 *	Composition statuses, we need to
+	 *	Composition states, we need to
 	 *	compose a request of this type.
 	 */
 	EAP_TLS_START_SEND,       			//!< We're starting a new TLS session.
@@ -102,7 +102,7 @@ typedef enum {
 	EAP_TLS_ACK_SEND,       			//!< Acknowledge receipt of a record or record fragment.
 
 	/*
-	 *	Receive statuses, we received a
+	 *	Receive states, we received a
 	 *	response containing a fragment of a
 	 *	record.
 	 */
@@ -115,6 +115,31 @@ typedef struct tls_data_t {
 	uint8_t		flags;
 	uint8_t		data[1];
 } eap_tls_data_t;
+
+typedef struct eap_tls_session {
+	eap_tls_status_t	state;			//!< The state of the EAP-TLS session.
+
+	tls_session_t		*tls_session;		//!< TLS session used to authenticate peer
+							//!< or tunnel sensitive data.
+
+	bool			phase2;			//!< Whether we're in phase 2
+
+	bool			include_length;		//!< A flag to include length in every TLS Data/Alert packet.
+							//!< If set to no then only the first fragment contains length.
+	int			base_flags;		//!< Some protocols use the reserved bits of the EAP-TLS
+							//!< flags (such as PEAP).  This allows the base flags to
+							//!< be set.
+
+	bool			record_out_started;	//!< Whether a record transfer to the peer is currently
+							//!< in progress.
+	size_t			record_out_total_len;	//!< Actual/Total TLS message length we're sending.
+
+	bool			record_in_started;	//!< Whether a record transfer from the peer is currently
+							//!< in progress.
+	size_t			record_in_total_len;	//!< How long the peer indicated the complete tls record
+							//!< would be.
+	size_t			record_in_recvd_len;	//!< How much of the record we've received so far.
+} eap_tls_session_t;
 
 extern FR_NAME_NUMBER const eap_tls_status_table[];
 
@@ -142,7 +167,7 @@ void			eap_ttls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size);
 void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 
 /* EAP-TLS framework */
-tls_session_t		*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert);
+eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert);
 
 
 fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);

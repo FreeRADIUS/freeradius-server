@@ -32,20 +32,20 @@ typedef struct rlm_eap_ttls_t {
 	/*
 	 *	TLS configuration
 	 */
-	char const *tls_conf_name;
-	fr_tls_conf_t *tls_conf;
+	char const	*tls_conf_name;
+	fr_tls_conf_t	*tls_conf;
 
 	/*
 	 *	Use the reply attributes from the tunneled session in
 	 *	the non-tunneled reply to the client.
 	 */
-	bool use_tunneled_reply;
+	bool		use_tunneled_reply;
 
 	/*
 	 *	Use SOME of the request attributes from outside of the
 	 *	tunneled session in the tunneled request
 	 */
-	bool copy_request_to_tunnel;
+	bool		copy_request_to_tunnel;
 
 	/*
 	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
@@ -56,17 +56,17 @@ typedef struct rlm_eap_ttls_t {
 	 *	RFC, we add the option here.  If set to "no", it sends
 	 *	the length field in ONLY the first fragment.
 	 */
-	bool include_length;
+	bool		include_length;
 
 	/*
 	 *	Virtual server for inner tunnel session.
 	 */
-	char const *virtual_server;
+	char const	*virtual_server;
 
 	/*
 	 * 	Do we do require a client cert?
 	 */
-	bool req_client_cert;
+	bool		req_client_cert;
 } rlm_eap_ttls_t;
 
 
@@ -138,12 +138,10 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
  */
 static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
-	tls_session_t	*tls_session;
-	rlm_eap_ttls_t	*inst;
-	VALUE_PAIR	*vp;
-	bool		client_cert;
-
-	inst = type_arg;
+	eap_tls_session_t	*eap_tls_session;
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_ttls_t);
+	VALUE_PAIR		*vp;
+	bool			client_cert;
 
 	eap_session->tls = true;
 
@@ -158,22 +156,20 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 		client_cert = inst->req_client_cert;
 	}
 
-	tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!tls_session) return 0;
-
-	eap_session->opaque = ((void *)tls_session);
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	if (!eap_tls_session) return 0;
 
 	/*
 	 *	Set up type-specific information.
 	 */
-	tls_session->prf_label = "ttls keying material";
+	eap_tls_session->tls_session->prf_label = "ttls keying material";
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
 	if (eap_tls_start(eap_session) < 0) {
-		talloc_free(tls_session);
+		talloc_free(eap_tls_session);
 		return 0;
 	}
 
@@ -190,14 +186,15 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode;
 	eap_tls_status_t	status;
-	rlm_eap_ttls_t *inst = (rlm_eap_ttls_t *) arg;
-	tls_session_t *tls_session = (tls_session_t *) eap_session->opaque;
-	ttls_tunnel_t *t = (ttls_tunnel_t *) tls_session->opaque;
-	REQUEST *request = eap_session->request;
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(arg, rlm_eap_ttls_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	ttls_tunnel_t		*tunnel = NULL;
+	REQUEST			*request = eap_session->request;
 
-	RDEBUG2("Authenticate");
+	if (tls_session->opaque) tunnel = talloc_get_type_abort(tls_session->opaque, ttls_tunnel_t);
 
-	tls_session->length_flag = inst->include_length;
+	eap_tls_session->include_length = inst->include_length;
 
 	/*
 	 *	Process TLS layer until done.
@@ -223,14 +220,14 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 			goto do_keys;
 		}
 
-		if (t && t->authenticated) {
-			if (t->accept_vps) {
+		if (tunnel && tunnel->authenticated) {
+			if (tunnel->accept_vps) {
 				RDEBUG2("Using saved attributes from the original Access-Accept");
-				rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
+				rdebug_pair_list(L_DBG_LVL_2, request, tunnel->accept_vps, NULL);
 				fr_pair_list_mcopy_by_num(eap_session->request->reply,
-							  &eap_session->request->reply->vps, &t->accept_vps, 0, 0,
+							  &eap_session->request->reply->vps, &tunnel->accept_vps, 0, 0,
 							  TAG_ANY);
-			} else if (t->use_tunneled_reply) {
+			} else if (tunnel->use_tunneled_reply) {
 				RDEBUG2("No saved attributes in the original Access-Accept");
 			}
 

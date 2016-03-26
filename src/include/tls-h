@@ -121,37 +121,11 @@ typedef struct _tls_session_t {
 	unsigned int 	(*record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
 
 	bool		invalid;			//!< Whether heartbleed attack was detected.
-
-	bool		phase2;				//!< Whether we're in phase 2
-
-	/*
-	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
-	 */
-	bool		length_flag;			//!< A flag to include length in every TLS Data/Alert packet.
-							//!< If set to no then only the first fragment contains length.
-	int		base_flags;			//!< Some protocols use the reserved bits of the EAP-TLS
-							//!< flags (such as PEAP).  This allows the base flags to
-							//!< be set.
-
-	size_t 		mtu;				//!< Current fragment size transmitted.
-
-	bool		record_out_started;		//!< Whether a record transfer to the peer is currently
-							//!< in progress.
-	size_t		record_out_total_len;		//!< Actual/Total TLS message length we're sending.
-
-	bool		record_in_started;		//!< Whether a record transfer from the peer is currently
-							//!< in progress.
-	size_t		record_in_total_len;		//!< How long the peer indicated the complete tls record
-							//!< would be.
-	size_t		record_in_recvd_len;		//!< How much of the record we've received so far.
-
-	/*
-	 *	Used by TTLS & PEAP to keep track of other per-session data.
-	 */
-	void 		*opaque;
+	size_t 		mtu;				//!< Maximum record fragment size.
 
 	char const	*prf_label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
+	void		*opaque;			//!< Used to store module specific data.
 } tls_session_t;
 
 /* configured values goes right here */

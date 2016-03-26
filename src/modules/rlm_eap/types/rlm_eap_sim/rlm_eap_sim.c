@@ -66,7 +66,7 @@ static int eap_sim_sendstart(eap_session_t *eap_session)
 	rad_assert(eap_session->request != NULL);
 	rad_assert(eap_session->request->reply);
 
-	ess = (eap_sim_state_t *)eap_session->opaque;
+	ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 
 	/* these are the outgoing attributes */
 	packet = eap_session->request->reply;
@@ -271,7 +271,7 @@ static int eap_sim_sendchallenge(eap_session_t *eap_session)
 	RADIUS_PACKET *packet;
 	uint8_t *p;
 
-	ess = (eap_sim_state_t *)eap_session->opaque;
+	ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 	rad_assert(eap_session->request != NULL);
 	rad_assert(eap_session->request->reply);
 
@@ -386,7 +386,7 @@ static int eap_sim_sendsuccess(eap_session_t *eap_session)
 
 	/* outvps is the data to the client. */
 	packet = eap_session->request->reply;
-	ess = (eap_sim_state_t *)eap_session->opaque;
+	ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 
 	/* set the EAP_ID - new value */
 	vp = fr_pair_afrom_num(packet, 0, PW_EAP_ID);
@@ -500,7 +500,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	VALUE_PAIR *nonce_vp, *selectedversion_vp;
 	eap_sim_state_t *ess;
 	uint16_t simversion;
-	ess = (eap_sim_state_t *)eap_session->opaque;
+	ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 
 	nonce_vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_NONCE_MT, TAG_ANY);
 	selectedversion_vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SELECTED_VERSION, TAG_ANY);
@@ -557,7 +557,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps)
 {
 	REQUEST *request = eap_session->request;
-	eap_sim_state_t *ess = eap_session->opaque;
+	eap_sim_state_t *ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 
 	uint8_t srescat[EAPSIM_SRES_SIZE * 3];
 	uint8_t *p = srescat;
@@ -607,7 +607,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
 	REQUEST *request = eap_session->request;
-	eap_sim_state_t *ess = eap_session->opaque;
+	eap_sim_state_t *ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 
 	VALUE_PAIR *vp, *vps;
 

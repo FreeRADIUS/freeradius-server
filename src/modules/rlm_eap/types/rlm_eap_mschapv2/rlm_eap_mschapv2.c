@@ -316,7 +316,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	mschapv2_opaque_t *data;
 	REQUEST *request = eap_session->request;
 
-	data = (mschapv2_opaque_t *) eap_session->opaque;
+	data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	rad_assert(request != NULL);
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d", request->reply->code);

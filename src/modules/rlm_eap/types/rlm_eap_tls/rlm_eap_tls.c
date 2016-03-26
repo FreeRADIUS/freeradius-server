@@ -45,7 +45,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
 	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
-
+	{ FR_CONF_OFFSET("include_length", PW_TYPE_BOOLEAN, rlm_eap_tls_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_eap_tls_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
@@ -85,12 +85,10 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
  */
 static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
-	tls_session_t	*tls_session;
-	rlm_eap_tls_t	*inst;
-	VALUE_PAIR	*vp;
-	bool		client_cert;
-
-	inst = type_arg;
+	eap_tls_session_t	*eap_tls_session;
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_tls_t);
+	VALUE_PAIR		*vp;
+	bool			client_cert;
 
 	eap_session->tls = true;
 
@@ -108,22 +106,18 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	/*
 	 *	EAP-TLS always requires a client certificate.
 	 */
-	tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!tls_session) return 0;
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	if (!eap_tls_session) return 0;
 
-	eap_session->opaque = ((void *)tls_session);
-
-	/*
-	 *	Set up type-specific information.
-	 */
-	tls_session->prf_label = "client EAP encryption";
+	eap_tls_session->include_length = inst->include_length;
+	eap_tls_session->tls_session->prf_label = "client EAP encryption";
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
 	if (eap_tls_start(eap_session) < 0) {
-		talloc_free(tls_session);
+		talloc_free(eap_tls_session);
 		return 0;
 	}
 
@@ -138,9 +132,10 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_session)
 {
 	eap_tls_status_t	status;
-	tls_session_t *tls_session = (tls_session_t *) eap_session->opaque;
-	REQUEST *request = eap_session->request;
-	rlm_eap_tls_t *inst;
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	REQUEST			*request = eap_session->request;
+	rlm_eap_tls_t		*inst;
 
 	inst = type_arg;
 

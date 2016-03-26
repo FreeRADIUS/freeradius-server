@@ -162,18 +162,12 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
  */
 static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
-	tls_session_t	*tls_session;
-	rlm_eap_peap_t	*inst;
-	VALUE_PAIR	*vp;
-	bool		client_cert;
-
-	inst = type_arg;
+	eap_tls_session_t	*eap_tls_session;
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_peap_t);
+	VALUE_PAIR		*vp;
+	bool			client_cert;
 
 	eap_session->tls = true;
-
-	/*
-	 *	Check if we need a client certificate.
-	 */
 
 	/*
 	 *	EAP-TLS-Require-Client-Cert attribute will override
@@ -186,15 +180,13 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 		client_cert = inst->req_client_cert;
 	}
 
-	tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!tls_session) return 0;
-
-	eap_session->opaque = ((void *)tls_session);
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	if (!eap_tls_session) return 0;
 
 	/*
 	 *	Set up type-specific information.
 	 */
-	tls_session->prf_label = "client EAP encryption";
+	eap_tls_session->tls_session->prf_label = "client EAP encryption";
 
 	/*
 	 *	As it is a poorly designed protocol, PEAP uses
@@ -205,21 +197,21 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	we will need this flag to indicate which
 	 *	version we're currently dealing with.
 	 */
-	tls_session->base_flags = 0x00;
+	eap_tls_session->base_flags = 0x00;
 
 	/*
 	 *	PEAP version 0 requires 'include_length = no',
 	 *	so rather than hoping the user figures it out,
 	 *	we force it here.
 	 */
-	tls_session->length_flag = false;
+	eap_tls_session->include_length = false;
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
 	if (eap_tls_start(eap_session) < 0) {
-		talloc_free(tls_session);
+		talloc_free(eap_tls_session);
 		return 0;
 	}
 
@@ -233,18 +225,24 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
  */
 static int mod_process(void *arg, eap_session_t *eap_session)
 {
-	int rcode;
-	eap_tls_status_t status;
-	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
-	tls_session_t *tls_session = (tls_session_t *) eap_session->opaque;
-	peap_tunnel_t *peap = tls_session->opaque;
-	REQUEST *request = eap_session->request;
+	int			rcode;
+	eap_tls_status_t	status;
+	rlm_eap_peap_t		*inst = (rlm_eap_peap_t *) arg;
 
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	tls_session_t		*tls_session = eap_tls_session->tls_session;
+	peap_tunnel_t		*peap = NULL;
+	REQUEST			*request = eap_session->request;
+
+	if (tls_session->opaque) {
+		peap = talloc_get_type_abort(tls_session->opaque, peap_tunnel_t);
 	/*
 	 *	Session resumption requires the storage of data, so
 	 *	allocate it if it doesn't already exist.
 	 */
-	if (!tls_session->opaque) peap = tls_session->opaque = peap_alloc(tls_session, inst);
+	} else {
+		peap = tls_session->opaque = peap_alloc(tls_session, inst);
+	}
 
 	status = eap_tls_process(eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {

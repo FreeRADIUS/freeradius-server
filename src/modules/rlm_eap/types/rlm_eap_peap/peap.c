@@ -505,7 +505,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void *data)
 {
 	int rcode;
-	tls_session_t *tls_session = (tls_session_t *) data;
+	tls_session_t *tls_session = talloc_get_type_abort(data, tls_session_t);
 	REQUEST *fake, *request = eap_session->request;
 
 	RDEBUG2("Passing reply from proxy back into the tunnel");
