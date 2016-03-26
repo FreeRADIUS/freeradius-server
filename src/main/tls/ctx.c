@@ -423,7 +423,7 @@ post_ca:
 	/*
 	 *	Setup session caching
 	 */
-	tls_cache_init(ctx, (bool)conf->session_cache_server, conf->session_context_id);
+	tls_cache_init(ctx, (bool)conf->session_cache_server, conf->session_context_id, conf->session_cache_lifetime);
 
 	/*
 	 *	Load dh params

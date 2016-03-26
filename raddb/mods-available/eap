@@ -366,6 +366,15 @@ eap {
 			#
 #			name = 'shared_session_context'
 
+			#
+			#  The period for which a resumable session remains valid.
+			#  The actual period is the lower of this value, and the
+			#  ttl set in rlm_cache.
+			#
+			#  Default is 24hrs inline with RFC4346.
+			#
+#			lifetime = 86400
+
 			#  As of 3.1 OpenSSL's internal cache has been disabled due to
 			#  scoping/threading issues.
 			#
@@ -373,7 +382,6 @@ eap {
 			#
 			#    enable
 			#    persist_dir
-			#    lifetime
 			#    max_entries
 			#
 		}

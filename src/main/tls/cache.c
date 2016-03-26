@@ -455,8 +455,10 @@ void tls_cache_deny(tls_session_t *session)
  * @param session_context	under which cache entries should be stored.
  *				Prevents sessions being restored between
  *				different rlm_eap instances.
+ * @param lifetime		The maximum period a cached session remains
+ *				valid for.
  */
-void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context)
+void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uint32_t lifetime)
 {
 	if (!enabled) {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
@@ -471,6 +473,7 @@ void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context)
 	SSL_CTX_set_quiet_shutdown(ctx, 1);
 
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+	SSL_CTX_set_timeout(ctx, lifetime);
 
 	/*
 	 *	This sets the context sessions can be resumed in.

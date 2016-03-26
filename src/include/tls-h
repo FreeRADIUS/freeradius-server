@@ -177,6 +177,7 @@ struct fr_tls_conf_t {
 
 	char const	*session_cache_server;		//!< Virtual server to use as an alternative to the
 							//!< in-memory cache.
+	uint32_t	session_cache_lifetime;		//!< The maximum period a session can be resumed after.
 
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
@@ -324,7 +325,7 @@ int		tls_cache_allow(REQUEST *request, tls_session_t *tls_session);
 
 void		tls_cache_deny(tls_session_t *tls_session);
 
-void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context);
+void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uint32_t lifetime);
 
 /*
  *	tls/conf.c

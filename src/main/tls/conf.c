@@ -42,9 +42,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
 	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_conf_t, session_id_name) },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
 
 	{ FR_CONF_DEPRECATED("enable", PW_TYPE_BOOLEAN, fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("lifetime", PW_TYPE_INTEGER, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("max_entries", PW_TYPE_INTEGER, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("persist_dir", PW_TYPE_STRING, fr_tls_conf_t, NULL) },
 
