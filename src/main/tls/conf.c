@@ -315,22 +315,6 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
 	/*
-	 *	Only enforce this if there's no mechanism for
-	 *	certificates to be loaded at runtime.
-	 */
-#ifndef WITH_TLS_SESSION_CERTS
-	if (!conf->private_key_file) {
-		ERROR("TLS Server requires a private key file");
-		goto error;
-	}
-
-	if (!conf->certificate_file) {
-		ERROR("TLS Server requires a certificate file");
-		goto error;
-	}
-#endif
-
-	/*
 	 *	Setup session caching
 	 */
 	if (conf->session_cache_server) {

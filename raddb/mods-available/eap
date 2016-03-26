@@ -176,6 +176,28 @@ eap {
 		certificate_file = ${certdir}/server.pem
 
 		#
+		#  Server certificate may also be specified at runtime on a per
+		#  session basis.  Here, the certificate file must consist
+		#  of the certificate and private key, PEM encoded, with no
+		#  password or the password set above.
+		#
+		#  The file should be provided as the attribute:
+		#
+		#      &control:TLS-Session-Cert-File
+		#
+		#  If there are any errors, authentication will not continue.
+		#
+		#  This can be used to periodically verify correct supplicant
+		#  behaviour, by presenting an untrusted or invalid server
+		#  certificate and verifying that the supplicant returns the
+		#  correct TLS alert (available in Module-Failure-Message).
+		#
+		#  Note that after receiving a fatal alert, TLS negotiation
+		#  cannot continue, but as most supplicants retry
+		#  enthusiastically this probably won't be an issue.
+		#
+
+		#
 		#  Trusted Root CA list
 		#
 		#  ALL of the CA's in this list will be trusted to issue client

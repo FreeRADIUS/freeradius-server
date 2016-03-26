@@ -1273,11 +1273,10 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	SSL_set_msg_callback_arg(new_tls, session);
 	SSL_set_info_callback(new_tls, tls_session_info_cb);
 
-#ifdef WITH_TLS_SESSION_CERTS
 	/*
 	 *	Add the session certificate to the session.
 	 */
-	vp = fr_pair_find_by_num(request->state, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
 	if (vp) {
 		RDEBUG2("Loading TLS session certificate \"%s\"", vp->vp_strvalue);
 
@@ -1301,8 +1300,23 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 			talloc_free(session);
 			return NULL;
 		}
+	/*
+	 *	Better to perform explicit checks, that rely
+	 *	on OpenSSL's opaque error messages.
+	 */
+	} else {
+		if (!conf->private_key_file) {
+			ERROR("TLS Server requires a private key file");
+			talloc_free(session);
+			return NULL;
+		}
+
+		if (!conf->certificate_file) {
+			ERROR("TLS Server requires a certificate file");
+			talloc_free(session);
+			return NULL;
+		}
 	}
-#endif
 
 	/*
 	 *	In Server mode we only accept.
