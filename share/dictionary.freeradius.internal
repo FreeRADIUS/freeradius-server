@@ -355,7 +355,7 @@ ATTRIBUTE	Inner-Realm-Name			1219	string internal
 #		These are used mostly for radeapclient, and aren't
 #		that useful for anyone else.
 #
-#  egrep VALUE dictionary.freeradius. | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " internal octets"}' > foo;./format.pl foo internal
+#  egrep VALUE dictionary.freeradius.internal | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " internal octets"}' > foo;./format.pl foo freeradius.dictionary.internal
 #
 ATTRIBUTE	EAP-Type-Base				1280	octets internal
 ATTRIBUTE	EAP-Type-VALUE				1280	octets internal
@@ -411,6 +411,8 @@ ATTRIBUTE	EAP-Type-EAP-AKA2			1330	octets internal
 ATTRIBUTE	EAP-Type-EAP-GPSK			1331	octets internal
 ATTRIBUTE	EAP-Type-EAP-PWD			1332	octets internal
 ATTRIBUTE	EAP-Type-EAP-EVEv1			1333	octets internal
+ATTRIBUTE	EAP-Type-PT				1334	internal octets
+ATTRIBUTE	EAP-Type-TEAP				1335	internal octets
 
 ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets internal
 ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets internal
@@ -602,7 +604,7 @@ VALUE	TLS-Session-Cache-Action	Delete			3
 ATTRIBUTE	TLS-Session-Data			1942	octets	internal
 
 # Set and retrieved by EAP-TLS code
-ATTRIBUTE	TLS-OCSP-Cert-Valid			1943    integer internal
+ATTRIBUTE	TLS-OCSP-Cert-Valid			1943	integer internal
 VALUE	TLS-OCSP-Cert-Valid		unknown			3
 VALUE	TLS-OCSP-Cert-Valid		skipped			2
 VALUE	TLS-OCSP-Cert-Valid		yes			1
@@ -886,6 +888,8 @@ VALUE	EAP-Type			AKA2			50
 VALUE	EAP-Type			GPSK			51
 VALUE	EAP-Type			PWD			52
 VALUE	EAP-Type			EKEv1			53
+VALUE	EAP-Type			PT			54
+VALUE	EAP-Type			TEAP			55
 
 #
 #	And this is what most people mean by MS-CHAPv2
