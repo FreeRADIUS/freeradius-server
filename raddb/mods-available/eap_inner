@@ -1,0 +1,138 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Sample configuration for an EAP module that occurs *inside*
+#  of a tunneled method.  It is used to limit the EAP types that
+#  can occur inside of the inner tunnel.
+#
+#  See also raddb/sites-available/inner-tunnel
+#
+#  See raddb/mods-available/eap for full documentation on the meaning of these
+#  configuration entries.
+#
+eap inner-eap {
+	#
+	#  Set the correct method from the table below. The inner method can be
+	#  negotiated, but it's more efficient to offer the correct one the
+	#  first time.
+	#
+	#  PEAP   username/password    - mschapv2
+	#  TTLS   username/password    - gtc, mschapv2
+	#  PEAP   certificate          - tls
+	#  TTLS   certificate          - tls
+	#
+	default_eap_type = mschapv2
+
+	#
+	#  Supported EAP-types
+	#
+
+	#
+	#  MD5 is OK to use the inner tunnel, as keying material is provided by
+	#  the outer EAP method.
+	#
+	md5 {
+	}
+
+	gtc {
+		#  The default challenge, which many clients
+		#  ignore..
+		#challenge = "Password: "
+
+		auth_type = PAP
+	}
+
+	mschapv2 {
+		#  See mods-available/eap for documentation
+#		send_error = no
+	}
+
+	# No TTLS or PEAP configuration should be listed here.
+
+	#
+	#  The primary rationale for using PEAP-TLS or TTLS-TLS instead of
+	#  EAP-TLS, is that it protects the certificate the user presents.
+	#
+	#  In the case of PEAP it also allows SoH with client certificates.
+	#
+	tls-config tls-peer {
+		private_key_password = whatever
+		private_key_file = ${certdir}/server.key
+		certificate_file = ${certdir}/server.pem
+
+		#
+		#  Trusted Root CA list
+		#
+		#  ALL of the CA's in this list will be trusted to issue client
+		#  certificates for authentication.
+		#
+		#  You should not use a public CA here.  This should either be
+		#  set to a certificate chain for your institution's CA
+		#  or a self signed Root CA.
+		#
+		ca_file = ${cadir}/ca.pem
+
+		#
+		#  OpenSSL will automatically create certificate chains, unless
+		#  we tell it to not do that.  The problem is that it sometimes
+		#  gets the chains right from a certificate signature view, but
+		#  wrong from the clients view.
+		#
+		#  When setting "auto_chain = no", the server certificate file
+		#  MUST include the full certificate chain.
+		#
+#		auto_chain = yes
+
+		#
+		#  For DH cipher suites to work, you have to run OpenSSL to
+		#  create the DH file first:
+		#
+		#  	openssl dhparam -out certs/dh 2048
+		#
+		dh_file = ${certdir}/dh
+
+		#
+		#  If your system doesn't have /dev/urandom, you will need to
+		#  create this file, and periodically change its contents.
+		#
+		#  For security reasons, FreeRADIUS doesn't write to files in
+		#  its configuration directory.
+		#
+#		random_file = /dev/urandom
+
+		#
+		#  As this is the inner tunnel, the fragment size is limited by
+		#  the TLVs used to represent the inner EAP method.
+		#
+		#  For PEAPv0 and TTLS, the length field of these TLVs is 16bits.
+		#
+		#  The maximum TLS record size however is 16k, so that's what
+		#  we set here.
+		#
+		#  This can be set lower for diagnostics, but will make EAP
+		#  slightly less efficient, as there'll be additional header
+		#  data in the inner tunnel.
+		#
+		fragment_size = 16384
+
+#		check_crl = yes
+		ca_path = ${cadir}
+#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
+#		check_cert_cn = %{User-Name}
+	}
+
+	## EAP-TLS
+	#
+	#  You SHOULD use different certificates than are used
+	#  for the outer EAP configuration!
+	#
+	#  Support for PEAP/TLS and RFC 5176 TLS/TLS is experimental.
+	#  It might work, or it might not.
+	#
+	tls {
+		tls = tls-peer
+		require_client_cert = yes
+	}
+}
