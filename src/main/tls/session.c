@@ -1060,19 +1060,6 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			tls_log_error(NULL, NULL);
 			record_init(&session->dirty_in);
 			return 0;
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	/*
-	 *	Cache the SSL_SESSION pointer.
-	 */
-	if (!session->ssl_session && SSL_is_init_finished(session->ssl)) {
-		session->ssl_session = SSL_get_session(session->ssl);
-		if (!session->ssl_session) {
-			RDEBUG("Failed getting TLS session");
-			return 0;
-		}
-	}
-#endif
-
 		}
 	} else {
 		/* Its clean application data, do whatever we want */
