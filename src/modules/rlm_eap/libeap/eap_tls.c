@@ -306,8 +306,8 @@ int eap_tls_fail(eap_session_t *eap_session)
 	 */
 	tls_cache_deny(tls_session);
 
-	if (eap_tls_compose(eap_session, EAP_TLS_START_SEND,
-			    SET_START(eap_tls_session->base_flags), NULL, 0, 0) < 0) return -1;
+	if (eap_tls_compose(eap_session, EAP_TLS_FAIL,
+			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
 	return 0;
 }
 
