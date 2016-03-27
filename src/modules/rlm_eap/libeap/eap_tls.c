@@ -323,16 +323,16 @@ int eap_tls_fail(eap_session_t *eap_session)
  * In other methods this function is also called to package up application data
  * for the inner tunnel method.
  *
- * The tls_session->length_included flag determines whether we include the extra
+ * The eap_tls_session->length_included flag determines whether we include the extra
  * four byte length field in the request and set the L flag.
  *
  * If present, the tls_length field indicates the total length of the reassembled
  * TLS record.
  *
- * If tls_session->length_included this means we include L flag and the tls_length
+ * If eap_tls_session->length_included this means we include L flag and the tls_length
  * field in EVERY packet we send out.
  *
- * If !tls_session->length_included this means we include L flag and tls_length
+ * If !eap_tls_session->length_included this means we include L flag and tls_length
  * field **ONLY** in First packet of a fragment series. We do not use it anywhere
  * else.
  *

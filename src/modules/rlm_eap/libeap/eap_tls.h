@@ -116,6 +116,13 @@ typedef struct tls_data_t {
 	uint8_t		data[1];
 } eap_tls_data_t;
 
+/** Tracks the state of an EAP-TLS session
+ *
+ * Contains any EAP-TLS specific state information, such as whether we're
+ * sending/receiving fragments, and the progress of those operations.
+ *
+ * TLS session state is stored in a #tls_session_t accessed via the tls_session field.
+ */
 typedef struct eap_tls_session {
 	eap_tls_status_t	state;			//!< The state of the EAP-TLS session.
 

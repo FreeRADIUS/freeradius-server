@@ -96,9 +96,12 @@ typedef struct _tls_info_t {
 	int		version;
 } tls_info_t;
 
-/** Contains EAP-REQUEST specific data (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
+/** Tracks the state of a TLS session
  *
- * The tls_session_t structure gets stored as opaque in eap_session_t
+ * Currently used for RADSEC and EAP-TLS + dependents (EAP-TTLS, EAP-PEAP etc...).
+ *
+ * In the case of EAP-TLS + dependents a #eap_tls_session_t struct is used to track
+ * the transfer of TLS records.
  */
 typedef struct _tls_session_t {
 	SSL_CTX		*ctx;				//!< TLS configuration context.
@@ -106,7 +109,7 @@ typedef struct _tls_session_t {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	SSL_SESSION	*session;			//!< Session resumption data.
 #endif
-	tls_info_t	info;
+	tls_info_t	info;				//!< Information about the state of the TLS session.
 
 	BIO 		*into_ssl;			//!< Basic I/O input to OpenSSL.
 	BIO 		*from_ssl;			//!< Basic I/O output from OpenSSL.
