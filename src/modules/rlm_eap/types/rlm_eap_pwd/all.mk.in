@@ -11,6 +11,7 @@ SOURCES		:= $(TARGETNAME).c eap_pwd.c
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 
-SRC_INCDIRS	:= ../../ ../../libeap/
+SRC_INCDIRS	:= ${top_srcdir}/src/modules/rlm_eap/ ${top_srcdir}/src/modules/rlm_eap/libeap/
+
 TGT_PREREQS	:= libfreeradius-eap.a
 
