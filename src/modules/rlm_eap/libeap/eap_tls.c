@@ -348,20 +348,22 @@ int eap_tls_request(eap_session_t *eap_session)
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 	uint8_t			flags = eap_tls_session->base_flags;
 	size_t			frag_len;
-	bool			length_included = false;
+	bool			length_included;
 
 	/*
 	 *	We don't need to always include the length
 	 *	(just in the first fragment) but it is
 	 *	configurable for compatibility.
 	 */
-	if (eap_tls_session->include_length) length_included = true;
+	length_included = eap_tls_session->include_length;
 
 	/*
 	 *	If this is the first fragment, record the complete
 	 *	TLS record length.
 	 */
-	if (eap_tls_session->record_out_started  == false) eap_tls_session->record_out_total_len = tls_session->dirty_out.used;
+	if (eap_tls_session->record_out_started  == false) {
+		eap_tls_session->record_out_total_len = tls_session->dirty_out.used;
+	}
 
 	/*
 	 *	If the data we're sending is greater than the MTU
@@ -369,20 +371,18 @@ int eap_tls_request(eap_session_t *eap_session)
 	 */
 	if ((tls_session->dirty_out.used +
 	    (length_included ? TLS_HEADER_LENGTH_FIELD_LEN : 0)) > tls_session->mtu) {
-		/*
-		 *	Data we're draining for this fragment
-		 */
+		if (eap_tls_session->record_out_started == false) length_included = true;
+
 		frag_len = length_included ? tls_session->mtu - TLS_HEADER_LENGTH_FIELD_LEN:
 					     tls_session->mtu;
+
 		flags = SET_MORE_FRAGMENTS(flags);
 
 		/*
 		 *	Length MUST be included if we're record_out_started
 		 *	and this is the first fragment.
 		 */
-		if (eap_tls_session->record_out_started  == false) {
-			length_included = true;
-
+		if (eap_tls_session->record_out_started == false) {
 			RDEBUG2("Complete TLS record (%zu bytes) larger than MTU (%zu bytes), will fragment",
 				eap_tls_session->record_out_total_len, frag_len);	/* frag_len is correct here */
 			RDEBUG2("Sending first TLS record fragment (%zu bytes), %zu bytes remaining",
@@ -1020,6 +1020,11 @@ eap_tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_
 	 */
 	eap_session->tls = true;
 	eap_tls_session = talloc_zero(eap_session, eap_tls_session_t);
+
+	/*
+	 *	Initial state.
+	 */
+	eap_tls_session->state = EAP_TLS_START_SEND;
 
 	/*
 	 *	As per the RFC...
