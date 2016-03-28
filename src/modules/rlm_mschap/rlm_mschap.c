@@ -1616,6 +1616,135 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t *inst,
 
 
 /*
+ *	process_cpw_request() - do the work to handle an MS-CHAP password
+ *	change request.
+ */
+static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t *inst,
+							REQUEST *request,
+							VALUE_PAIR *cpw,
+							VALUE_PAIR *nt_password)
+{
+	uint8_t		new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
+	VALUE_PAIR	*nt_enc=NULL;
+	int		seq, new_nt_enc_len;
+
+	/*
+	 *	mschap2 password change request.
+	 *
+	 *	We cheat - first decode and execute the passchange.
+	 *	Then extract the response, add it into the request
+	 *	and then jump into mschap2 auth with the challenge/
+	 *	response.
+	 */
+	RDEBUG("MS-CHAPv2 password change request received");
+
+	if (cpw->vp_length != 68) {
+		REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
+		return RLM_MODULE_INVALID;
+	}
+
+	if (cpw->vp_octets[0] != 7) {
+		REDEBUG("MS-CHAP2-CPW has the wrong format: code %d != 7", cpw->vp_octets[0]);
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Look for the new (encrypted) password.
+	 *
+	 *	Bah, stupid composite attributes...
+	 *	we're expecting 3 attributes with the leading bytes -
+	 *	06:<mschapid>:00:01:<1st chunk>
+	 *	06:<mschapid>:00:02:<2nd chunk>
+	 *	06:<mschapid>:00:03:<3rd chunk>
+	 */
+	new_nt_enc_len = 0;
+	for (seq = 1; seq < 4; seq++) {
+		vp_cursor_t cursor;
+		int found = 0;
+
+		for (nt_enc = fr_cursor_init(&cursor, &request->packet->vps);
+		     nt_enc;
+		     nt_enc = fr_cursor_next(&cursor)) {
+			if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
+				continue;
+
+			if (nt_enc->da->attr != PW_MSCHAP_NT_ENC_PW)
+				continue;
+
+			if (nt_enc->vp_length < 4) {
+				REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
+				return RLM_MODULE_INVALID;
+			}
+
+			if (nt_enc->vp_octets[0] != 6) {
+				REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
+				return RLM_MODULE_INVALID;
+			}
+
+			if ((nt_enc->vp_octets[2] == 0) && (nt_enc->vp_octets[3] == seq)) {
+				found = 1;
+				break;
+			}
+		}
+
+		if (!found) {
+			REDEBUG("Could not find MS-CHAP-NT-Enc-PW w/ sequence number %d", seq);
+			return RLM_MODULE_INVALID;
+		}
+
+		if ((new_nt_enc_len + nt_enc->vp_length - 4) > sizeof(new_nt_encrypted)) {
+			REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length > 516");
+			return RLM_MODULE_INVALID;
+		}
+
+		memcpy(new_nt_encrypted + new_nt_enc_len, nt_enc->vp_octets + 4, nt_enc->vp_length - 4);
+		new_nt_enc_len += nt_enc->vp_length - 4;
+	}
+
+	if (new_nt_enc_len != 516) {
+		REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length != 516");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	RFC 2548 is confusing here. It claims:
+	 *
+	 *	1 byte code
+	 *	1 byte ident
+	 *	16 octets - old hash encrypted with new hash
+	 *	24 octets - peer challenge
+	 *	  this is actually:
+	 *	  16 octets - peer challenge
+	 *	   8 octets - reserved
+	 *	24 octets - nt response
+	 *	2 octets  - flags (ignored)
+	 */
+
+	memcpy(old_nt_encrypted, cpw->vp_octets + 2, sizeof(old_nt_encrypted));
+
+	RDEBUG2("Password change payload valid");
+
+	/*
+	 *	Perform the actual password change
+	 */
+	if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, inst->method) < 0) {
+		char buffer[128];
+
+		REDEBUG("Password change failed");
+
+		snprintf(buffer, sizeof(buffer), "E=709 R=0 M=Password change failed");
+		mschap_add_reply(request, cpw->vp_octets[1], "MS-CHAP-Error", buffer, strlen(buffer));
+
+		return RLM_MODULE_REJECT;
+	}
+
+	RDEBUG("Password change successful");
+
+	return RLM_MODULE_OK;
+}
+
+
+/*
  *	mod_authenticate() - authenticate user based on given
  *	attributes and configuration.
  *	We will try to find out password in configuration
@@ -1711,124 +1840,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_FAIL;
 	}
 
+
+	/*
+	 *	Check to see if this is a change password request, and process
+	 *	it accordingly if so.
+	 */
 	cpw = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP2_CPW, TAG_ANY);
 	if (cpw) {
-		/*
-		 * mschap2 password change request
-		 * we cheat - first decode and execute the passchange
-		 * we then extract the response, add it into the request
-		 * then jump into mschap2 auth with the chal/resp
-		 */
-		uint8_t		new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
-		VALUE_PAIR	*nt_enc=NULL;
-		int		seq, new_nt_enc_len;
 		uint8_t		*p;
+		rlm_rcode_t	rc;
 
-		RDEBUG("MS-CHAPv2 password change request received");
-
-		if (cpw->vp_length != 68) {
-			REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
-			return RLM_MODULE_INVALID;
-		}
-
-		if (cpw->vp_octets[0] != 7) {
-			REDEBUG("MS-CHAP2-CPW has the wrong format: code %d != 7", cpw->vp_octets[0]);
-			return RLM_MODULE_INVALID;
+		rc = process_cpw_request(instance, request, cpw, nt_password);
+		if (rc != RLM_MODULE_OK) {
+			return rc;
 		}
 
 		/*
-		 *  look for the new (encrypted) password
-		 *  bah stupid composite attributes
-		 *  we're expecting 3 attributes with the leading bytes
-		 *  06:<mschapid>:00:01:<1st chunk>
-		 *  06:<mschapid>:00:02:<2nd chunk>
-		 *  06:<mschapid>:00:03:<3rd chunk>
-		 */
-		new_nt_enc_len = 0;
-		for (seq = 1; seq < 4; seq++) {
-			vp_cursor_t cursor;
-			int found = 0;
-
-			for (nt_enc = fr_cursor_init(&cursor, &request->packet->vps);
-			     nt_enc;
-			     nt_enc = fr_cursor_next(&cursor)) {
-				if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
-					continue;
-
-				if (nt_enc->da->attr != PW_MSCHAP_NT_ENC_PW)
-					continue;
-
-				if (nt_enc->vp_length < 4) {
-					REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
-					return RLM_MODULE_INVALID;
-				}
-
-				if (nt_enc->vp_octets[0] != 6) {
-					REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");
-					return RLM_MODULE_INVALID;
-				}
-
-				if ((nt_enc->vp_octets[2] == 0) && (nt_enc->vp_octets[3] == seq)) {
-					found = 1;
-					break;
-				}
-			}
-
-			if (!found) {
-				REDEBUG("Could not find MS-CHAP-NT-Enc-PW w/ sequence number %d", seq);
-				return RLM_MODULE_INVALID;
-			}
-
-			if ((new_nt_enc_len + nt_enc->vp_length - 4) > sizeof(new_nt_encrypted)) {
-				REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length > 516");
-				return RLM_MODULE_INVALID;
-			}
-
-			memcpy(new_nt_encrypted + new_nt_enc_len, nt_enc->vp_octets + 4, nt_enc->vp_length - 4);
-			new_nt_enc_len += nt_enc->vp_length - 4;
-		}
-
-		if (new_nt_enc_len != 516) {
-			REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length != 516");
-			return RLM_MODULE_INVALID;
-		}
-
-		/*
-		 * RFC 2548 is confusing here
-		 * it claims:
-		 *
-		 * 1 byte code
-		 * 1 byte ident
-		 * 16 octets - old hash encrypted with new hash
-		 * 24 octets - peer challenge
-		 *   this is actually:
-		 *   16 octets - peer challenge
-		 *    8 octets - reserved
-		 * 24 octets - nt response
-		 * 2 octets  - flags (ignored)
-		 */
-
-		memcpy(old_nt_encrypted, cpw->vp_octets + 2, sizeof(old_nt_encrypted));
-
-		RDEBUG2("Password change payload valid");
-
-		/* perform the actual password change */
-		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, auth_method) < 0) {
-			char buffer[128];
-
-			REDEBUG("Password change failed");
-
-			snprintf(buffer, sizeof(buffer), "E=709 R=0 M=Password change failed");
-			mschap_add_reply(request, cpw->vp_octets[1], "MS-CHAP-Error", buffer, strlen(buffer));
-
-			return RLM_MODULE_REJECT;
-		}
-		RDEBUG("Password change successful");
-
-		/*
-		 *  Clear any expiry bit so the user can now login;
-		 *  obviously the password change action will need
-		 *  to have cleared this bit in the config/SQL/wherever
+		 *	Clear any expiry bit so the user can now login;
+		 *	obviously the password change action will need
+		 *	to have cleared this bit in the config/SQL/wherever.
 		 */
 		if (smb_ctrl && smb_ctrl->vp_integer & ACB_PW_EXPIRED) {
 			RDEBUG("Clearing expiry bit in SMB-Acct-Ctrl to allow authentication");
@@ -1836,13 +1866,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		}
 
 		/*
-		 *  Extract the challenge & response from the end of the password
-		 *  change, add them into the request and then continue with
-		 *  the authentication
+		 *	Extract the challenge & response from the end of the
+		 *	password change, add them into the request and then
+		 *	continue with the authentication.
 		 */
 		response = radius_pair_create(request->packet, &request->packet->vps,
-					     PW_MSCHAP2_RESPONSE,
-					     VENDORPEC_MICROSOFT);
+					PW_MSCHAP2_RESPONSE,
+					VENDORPEC_MICROSOFT);
 		p = talloc_array(response, uint8_t, 50);
 
 		/* ident & flags */
