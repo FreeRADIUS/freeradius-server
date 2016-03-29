@@ -351,7 +351,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto finish;
 	}
-#endif
+#endif /* OPENSSL_VERSION_NUMBER < 0x1000003f */
 
 	/* Verify OCSP response status */
 	status = OCSP_response_status(resp);
