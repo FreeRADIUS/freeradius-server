@@ -1,5 +1,5 @@
 %bcond_with rlm_yubikey
-#%bcond_with experimental_modules
+%bcond_with experimental_modules
 
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
