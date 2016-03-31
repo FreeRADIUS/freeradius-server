@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include	<freeradius-devel/map_proc.h>
+#include <freeradius-devel/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
 				char const *key, vp_map_t const *maps);
