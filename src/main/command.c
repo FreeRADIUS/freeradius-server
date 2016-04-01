@@ -405,6 +405,7 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 			close(client_fd);
 			goto error;
 		}
+		fr_strerror();	/* Clear any errors */
 	}
 
 	name = strrchr(path, FR_DIR_SEP);
