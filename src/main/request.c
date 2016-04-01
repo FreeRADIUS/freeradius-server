@@ -223,7 +223,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;
 	request->coa->proxy = request_alloc(request->coa);
-	if (!request->coa->proxy->packet) {
+	if (!request->coa->proxy) {
 		TALLOC_FREE(request->coa);
 		return NULL;
 	}
