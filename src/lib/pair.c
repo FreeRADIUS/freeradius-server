@@ -881,7 +881,7 @@ int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 
 			if (!fr_cond_assert(a->da->type == PW_TYPE_STRING)) return -1;
 
-			slen = regex_compile(NULL, &preg, a->vp_strvalue, a->vp_length, false, false, false, true);
+			slen = regex_compile(NULL, &preg, a->xlat, talloc_array_length(a->xlat) - 1, false, false, false, true);
 			if (slen <= 0) {
 				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
 						   -slen, a->da->name, fr_strerror());
