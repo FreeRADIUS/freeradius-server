@@ -75,7 +75,7 @@ typedef struct listen_config_t {
 	CONF_SECTION	*server;	//!< encapsulating server configuratiuon
 	CONF_SECTION	*cs;		//!< configuration for this listener
 	char const	*server_name;	//!< name of the virtual server (if any)
-	void	*handle;	//!< to dynamically loaded library (if any)
+	void		*handle;	//!< to dynamically loaded library (if any)
 	RAD_LISTEN_TYPE	type;		//! same as Listen-Socket-Type
 	fr_protocol_t	*proto;		//!< pointer to the protocol handler.
 
@@ -3203,7 +3203,11 @@ int listen_init(rad_listen_t **head,
 
 	for (lc = listen_config; lc != NULL; lc = lc->next) {
 		if (lc->proto->open(lc->cs, lc->listener) < 0) {
-			ERROR("Failed creating listener for server \"%s\"", lc->server_name);
+			if (lc->server_name) {
+				ERROR("Failed creating listener for server \"%s\"", lc->server_name);
+			} else {
+				ERROR("Failed creating global listener for type %i", lc->type);	/* Fixme to print str */
+			}
 			TALLOC_FREE(listen_ctx);
 			return -1;
 		}

@@ -225,7 +225,7 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 	dir = dirname(buff);
 	if (dir != buff) {
 		dir = talloc_strdup(NULL, dir);
-		if (!dir) return -1;
+		MEM(dir);
 		talloc_free(buff);
 	}
 
