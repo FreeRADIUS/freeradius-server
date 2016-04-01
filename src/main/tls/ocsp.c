@@ -460,7 +460,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 		 *	Print any messages we may have accumulated
 		 */
 		SSL_DRAIN_LOG_QUEUE(RDEBUG, "ocsp: ", ssl_log);
-		if (RDEBUG_ENABLED) {
+		if (RDEBUG_ENABLED2) {
 			RDEBUG2("ocsp: Revocation time:");
 			ASN1_GENERALIZEDTIME_print(ssl_log, rev);
 			RINDENT();
