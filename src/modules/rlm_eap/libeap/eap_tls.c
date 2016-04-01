@@ -771,13 +771,7 @@ static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 
 	/*
-	 *	We have the complete TLS-data or TLS-message.
-	 *
-	 *	Clean the dirty message.
-	 *
-	 *	Authenticate the user and send Success/Failure.
-	 *
-	 *	If more info is required then send another request.
+	 *	Continue the TLS handshake
 	 */
 	if (!tls_session_handshake(eap_session->request, tls_session)) {
 		REDEBUG("TLS receive handshake failed during operation");
@@ -797,8 +791,11 @@ static eap_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 
 	/*
 	 *	If there is no data to send i.e dirty_out.used <=0 and
-	 *	if the SSL handshake is finished, then return a
-	 *	EAP_TLS_ESTABLISHED
+	 *	if the SSL handshake is finished, then return
+	 *	EAP_TLS_ESTABLISHED.
+	 *
+	 *	For EAP-TLS this translates to an EAP-Success, for others
+	 *	this begins phase2.
 	 */
 	if (eap_tls_session->phase2 || SSL_is_init_finished(tls_session->ssl)) {
 		eap_tls_session->phase2 = true;
@@ -964,8 +961,7 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	Return a "yes we're done" if there's no more data to send,
 		 *	and we've just managed to finish the SSL session initialization.
 		 */
-		if (!eap_tls_session->phase2 &&
-		    (tls_session->dirty_out.used == 0) &&
+		if (!eap_tls_session->phase2 && (tls_session->dirty_out.used == 0) &&
 		    SSL_is_init_finished(tls_session->ssl)) {
 			eap_tls_session->phase2 = true;
 			return EAP_TLS_RECORD_RECV_COMPLETE;
