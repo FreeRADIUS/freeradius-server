@@ -262,7 +262,7 @@ static inline void fr_connection_trigger_exec(fr_connection_pool_t *pool, REQUES
 	if (!pool->trigger_prefix) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
-	trigger_exec(request, pool->cs, name, true, NULL);
+	trigger_exec(request, pool->cs, name, true, pool->trigger_args);
 }
 
 /** Find a connection handle in the connection list
