@@ -2136,6 +2136,10 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
+	if (vp->type == VT_XLAT) {
+		return fr_asprint(ctx, vp->xlat, talloc_array_length(vp->xlat) - 1, quote);
+	}
+
 	return value_data_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
 }
 
