@@ -1122,8 +1122,7 @@ int thread_pool_init(void)
 #else
 	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
 	if (!thread_pool.queue) {
-		ERROR("Failed creating dispatch queue: %s\n",
-		       fr_syserror(errno));
+		ERROR("Failed creating dispatch queue: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
 #endif
