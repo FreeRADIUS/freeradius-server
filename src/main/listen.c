@@ -3203,6 +3203,7 @@ int listen_init(rad_listen_t **head,
 
 	for (lc = listen_config; lc != NULL; lc = lc->next) {
 		if (lc->proto->open(lc->cs, lc->listener) < 0) {
+			ERROR("Failed creating listener for server \"%s\"", lc->server_name);
 			TALLOC_FREE(listen_ctx);
 			return -1;
 		}

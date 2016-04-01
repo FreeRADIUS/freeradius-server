@@ -5113,8 +5113,7 @@ int radius_event_start(bool have_children)
 		 */
 		rad_assert(el);
 
-		pl = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
-		if (!pl) return 0;	/* leak el */
+		MEM(pl = rbtree_create(NULL, packet_entry_cmp, NULL, 0));
 	}
 
 	request_num_counter = 0;
@@ -5125,8 +5124,7 @@ int radius_event_start(bool have_children)
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
 		 */
-		proxy_list = fr_packet_list_create(1);
-		if (!proxy_list) return 0;
+		MEM(proxy_list = fr_packet_list_create(1));
 
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			ERROR("Failed to initialize proxy mutex: %s", fr_syserror(errno));
