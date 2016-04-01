@@ -414,7 +414,7 @@ void *rad_malloc(size_t size)
 {
 	void *ptr;
 
-	MEM(mem = malloc(size));
+	MEM(ptr = malloc(size));
 
 	return ptr;
 }
