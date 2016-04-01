@@ -1221,6 +1221,12 @@ if test "x$WITH_OPENSSL" = xyes; then
         AC_MSG_RESULT([cross-compiling (assuming yes)])
       ]
     )
+
+    AC_CHECK_FUNCS( \
+      SSL_get_client_random \
+      SSL_get_server_random \
+    )
+
     CPPFLAGS="$old_CPPFLAGS"
   fi
 
@@ -1229,7 +1235,6 @@ if test "x$WITH_OPENSSL" = xyes; then
   AC_SUBST(OPENSSL_LDFLAGS)
   AC_SUBST(OPENSSL_CPPFLAGS)
   export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
-  AC_CHECK_FUNCS(SSL_get_client_random,SSL_get_server_random)
 fi
 
 dnl #
