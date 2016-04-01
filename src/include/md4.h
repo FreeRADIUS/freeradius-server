@@ -38,14 +38,14 @@ extern "C" {
 
 #ifndef HAVE_OPENSSL_EVP_H
 /*
- * The MD5 code used here and in md4.c was originally retrieved from:
+ * The MD4 code used here and in md4.c was originally retrieved from:
  *   http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
  *
  * This code implements the MD4 message-digest algorithm.
  * The algorithm is due to Ron Rivest.  This code was
  * written by Colin Plumb in 1993, no copyright is claimed.
  * This code is in the public domain; do with it what you wish.
- * Todd C. Miller modified the MD5 code to do MD4 based on RFC 1186.
+ * Todd C. Miller modified the MD4 code to do MD4 based on RFC 1186.
  *
  * Equivalent code is available from RSA Data Security, Inc.
  * This code has been tested against that, and is equivalent,
@@ -71,13 +71,12 @@ void	fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
 	CC_BOUNDED(__minbytes__, 2, MD4_BLOCK_LENGTH);
 #else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
-#  define FR_MD4_CTX			EVP_MD_CTX
-#  define fr_md4_init(_ctx) do { \
-	EVP_MD_CTX_init(_ctx);\
-	EVP_DigestInit(_ctx, EVP_md4());\
-} while (0)
-#  define fr_md4_update			EVP_DigestUpdate
-#  define fr_md4_final(_out, _ctx)	EVP_DigestFinal_ex(_ctx, _out, NULL)
+#include <openssl/md4.h>
+#  define FR_MD4_CTX			MD4_CTX
+#  define fr_md4_init			MD4_Init
+#  define fr_md4_update			MD4_Update
+#  define fr_md4_final			MD4_Final
+#  define fr_md4_transform		MD4_Transform
 #endif
 
 /* md4.c */
