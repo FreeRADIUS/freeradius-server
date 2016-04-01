@@ -90,8 +90,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx)
 	char		cn_str[1024];
 	char		buf[64];
 	X509		*client_cert;
-	X509_CINF	*client_inf;
-	STACK_OF(X509_EXTENSION) *ext_list;
+	STACK_OF(X509_EXTENSION) *ext_list = NULL;
 	SSL		*ssl;
 	int		err, depth, lookup, loc;
 	fr_tls_conf_t *conf;
@@ -285,10 +284,11 @@ do { \
 	}
 
 	if (lookup == 0) {
-		client_inf = client_cert->cert_info;
-		ext_list = client_inf->extensions;
-	} else {
-		ext_list = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		ext_list = X509_get0_extensions(client_cert);
+#else
+		ext_list = client_cert->cert_info->extensions;
+#endif
 	}
 
 	/*

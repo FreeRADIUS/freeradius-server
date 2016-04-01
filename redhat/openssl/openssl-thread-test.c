@@ -260,7 +260,7 @@ main(int argc, char **argv)
 	/* Turn on a hardware crypto device if asked to do so. */
 #ifdef USE_ENGINE
 	if (engine) {
-#if OPENSSL_VERSION_NUMBER  >= 0x0090700fL
+#if OPENSSL_VERSION_NUMBER >= 0x0090700fL
 		ENGINE_load_builtin_engines();
 #endif
 		if (print) {
@@ -337,7 +337,7 @@ main(int argc, char **argv)
 	master_args.signature = correct_signature;
 	master_args.signature_len = correct_siglen;
 	master_args.main_thread = pthread_self();
-	
+
 	fprintf(stdout, "Performing %d signatures in each of %d threads "
 		"(%d, %d).\n", ITERATION_COUNT, thread_count,
 		digest_len, correct_siglen);

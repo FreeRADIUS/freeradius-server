@@ -813,14 +813,14 @@ static void *request_handler_thread(void *arg)
 
 	DEBUG2("Thread %d exiting...", thread->thread_num);
 
-#  ifdef HAVE_OPENSSL_ERR_H
+#ifdef HAVE_OPENSSL_ERR_H
 	/*
 	 *	If we linked with OpenSSL, the application
 	 *	must remove the thread's error queue before
 	 *	exiting to prevent memory leaks.
 	 */
-	ERR_remove_state(0);
-#  endif
+	FR_TLS_REMOVE_THREAD_STATE();
+#endif
 
 	trigger_exec(NULL, NULL, "server.thread.stop", true, NULL);
 	thread->status = THREAD_EXITED;

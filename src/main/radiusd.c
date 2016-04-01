@@ -659,7 +659,7 @@ cleanup:
 	WSACleanup();
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
 	tls_global_cleanup();		/* Cleanup any memory malloced by OpenSSL and placed into globals */
 #endif
 	talloc_free(autofree);		/* Cleanup everything else */

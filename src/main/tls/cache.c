@@ -61,7 +61,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int tls_cache_attrs(REQUEST *request, uint8_t *key, size_t key_len, tls_cache_action_t action)
+
+static int tls_cache_attrs(REQUEST *request,
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			   uint8_t const *key,
+#else
+			   uint8_t *key,
+#endif
+			   size_t key_len, tls_cache_action_t action)
 {
 	VALUE_PAIR *vp;
 
@@ -260,7 +267,14 @@ error:
  *	- Deserialised session data on success.
  *	- NULL on error.
  */
-static SSL_SESSION *tls_cache_read(SSL *ssl, unsigned char *key, int key_len, int *copy)
+
+static SSL_SESSION *tls_cache_read(SSL *ssl,
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+				   unsigned char const *key,
+#else
+				   unsigned char *key,
+#endif
+				   int key_len, int *copy)
 {
 	fr_tls_conf_t	*conf;
 	REQUEST			*request;
@@ -408,7 +422,7 @@ int tls_cache_allow(REQUEST *request, tls_session_t *session)
 	if ((!session->allow_session_resumption) ||
 	    (((vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
-		SSL_CTX_remove_session(session->ctx, session->ssl->session);
+		SSL_CTX_remove_session(session->ctx, session->ssl_session);
 		session->allow_session_resumption = false;
 
 		/*
@@ -445,7 +459,7 @@ void tls_cache_deny(tls_session_t *session)
 	/*
 	 *	Force the session to NOT be cached.
 	 */
-	SSL_CTX_remove_session(session->ctx, session->ssl->session);
+	SSL_CTX_remove_session(session->ctx, session->ssl_session);
 }
 
 /** Sets callbacks on a SSL_CTX to enable/disable session resumption

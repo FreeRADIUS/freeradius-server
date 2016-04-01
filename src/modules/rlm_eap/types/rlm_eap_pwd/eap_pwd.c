@@ -39,59 +39,58 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static uint8_t allzero[SHA256_DIGEST_LENGTH];
+static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 
 /* The random function H(x) = HMAC-SHA256(0^32, x) */
-static void pwd_hmac_init(HMAC_CTX *hmac_ctx)
-{
-	memset(allzero, 0, SHA256_DIGEST_LENGTH);
-	HMAC_Init(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256());
-}
-
-static void pwd_hmac_update(HMAC_CTX *hmac_ctx, uint8_t const *data, int len)
-{
-	HMAC_Update(hmac_ctx, data, len);
-}
-
+#  define pwd_hmac_init(_ctx) HMAC_Init_ex(_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL)
+#  define pwd_hmac_update HMAC_Update
 static void pwd_hmac_final(HMAC_CTX *hmac_ctx, uint8_t *digest)
 {
 	unsigned int mdlen = SHA256_DIGEST_LENGTH;
-
 	HMAC_Final(hmac_ctx, digest, &mdlen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	HMAC_CTX_reset(hmac_ctx);
+#else
 	HMAC_CTX_cleanup(hmac_ctx);
+#endif
 }
 
 /* a counter-based KDF based on NIST SP800-108 */
 static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 			int label_len, uint8_t *result, int result_bit_len)
 {
-	HMAC_CTX	hmac_ctx;
+	HMAC_CTX	*hmac_ctx;
 	uint8_t		digest[SHA256_DIGEST_LENGTH];
 	uint16_t	i, ctr, L;
 	int		result_byte_len, len = 0;
 	unsigned int	mdlen = SHA256_DIGEST_LENGTH;
 	uint8_t		mask = 0xff;
 
-	result_byte_len = (result_bit_len + 7)/8;
+	hmac_ctx = HMAC_CTX_new();
+	result_byte_len = (result_bit_len + 7) / 8;
+
 	ctr = 0;
 	L = htons(result_bit_len);
 	while (len < result_byte_len) {
 		ctr++; i = htons(ctr);
-		HMAC_Init(&hmac_ctx, key, keylen, EVP_sha256());
-		if (ctr > 1) {
-			HMAC_Update(&hmac_ctx, digest, mdlen);
-		}
-		HMAC_Update(&hmac_ctx, (uint8_t *) &i, sizeof(uint16_t));
-		HMAC_Update(&hmac_ctx, (uint8_t const *)label, label_len);
-		HMAC_Update(&hmac_ctx, (uint8_t *) &L, sizeof(uint16_t));
-		HMAC_Final(&hmac_ctx, digest, &mdlen);
+
+		HMAC_Init_ex(hmac_ctx, key, keylen, EVP_sha256(), NULL);
+		if (ctr > 1) HMAC_Update(hmac_ctx, digest, mdlen);
+		HMAC_Update(hmac_ctx, (uint8_t *) &i, sizeof(uint16_t));
+		HMAC_Update(hmac_ctx, (uint8_t const *)label, label_len);
+		HMAC_Update(hmac_ctx, (uint8_t *) &L, sizeof(uint16_t));
+		HMAC_Final(hmac_ctx, digest, &mdlen);
 		if ((len + (int) mdlen) > result_byte_len) {
 			memcpy(result + len, digest, result_byte_len - len);
 		} else {
 			memcpy(result + len, digest, mdlen);
 		}
 		len += mdlen;
-		HMAC_CTX_cleanup(&hmac_ctx);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		HMAC_CTX_reset(hmac_ctx);
+#else
+		HMAC_CTX_cleanup(hmac_ctx);
+#endif
 	}
 
 	/* since we're expanding to a bit length, mask off the excess */
@@ -99,6 +98,8 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 		mask <<= (8 - (result_bit_len % 8));
 		result[result_byte_len - 1] &= mask;
 	}
+
+	HMAC_CTX_free(hmac_ctx);
 }
 
 int compute_password_element(pwd_session_t *session, uint16_t grp_num,
@@ -108,7 +109,7 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 			     uint32_t *token)
 {
 	BIGNUM		*x_candidate = NULL, *rnd = NULL, *cofactor = NULL;
-	HMAC_CTX	hmac_ctx;
+	HMAC_CTX	*hmac_ctx = NULL;
 	uint8_t		pwe_digest[SHA256_DIGEST_LENGTH], *prf_buf = NULL, ctr;
 	int		nid, is_odd, prime_bit_len, prime_byte_len, ret = 0;
 
@@ -181,6 +182,8 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 		ERROR("Unable to alloc space for prf buffer");
 		goto error;
 	}
+
+	hmac_ctx = HMAC_CTX_new();
 	ctr = 0;
 	for (;;) {
 		if (ctr > 10) {
@@ -194,13 +197,13 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 		 *    pwd-seed = H(token | peer-id | server-id | password |
 		 *		   counter)
 		 */
-		pwd_hmac_init(&hmac_ctx);
-		pwd_hmac_update(&hmac_ctx, (uint8_t *)token, sizeof(*token));
-		pwd_hmac_update(&hmac_ctx, (uint8_t const *)id_peer, id_peer_len);
-		pwd_hmac_update(&hmac_ctx, (uint8_t const *)id_server, id_server_len);
-		pwd_hmac_update(&hmac_ctx, (uint8_t const *)password, password_len);
-		pwd_hmac_update(&hmac_ctx, (uint8_t *)&ctr, sizeof(ctr));
-		pwd_hmac_final(&hmac_ctx, pwe_digest);
+		pwd_hmac_init(hmac_ctx);
+		pwd_hmac_update(hmac_ctx, (uint8_t *)token, sizeof(*token));
+		pwd_hmac_update(hmac_ctx, (uint8_t const *)id_peer, id_peer_len);
+		pwd_hmac_update(hmac_ctx, (uint8_t const *)id_server, id_server_len);
+		pwd_hmac_update(hmac_ctx, (uint8_t const *)password, password_len);
+		pwd_hmac_update(hmac_ctx, (uint8_t *)&ctr, sizeof(ctr));
+		pwd_hmac_final(hmac_ctx, pwe_digest);
 
 		BN_bin2bn(pwe_digest, SHA256_DIGEST_LENGTH, rnd);
 		eap_pwd_kdf(pwe_digest, SHA256_DIGEST_LENGTH, "EAP-pwd Hunting And Pecking",
@@ -263,6 +266,7 @@ int compute_password_element(pwd_session_t *session, uint16_t grp_num,
 
 finish:
 	/* cleanliness and order.... */
+	HMAC_CTX_free(hmac_ctx);
 	BN_clear_free(cofactor);
 	BN_clear_free(x_candidate);
 	BN_clear_free(rnd);
@@ -377,9 +381,9 @@ int process_peer_commit(pwd_session_t *session, uint8_t *in, size_t in_len, BN_C
 	}
 
 	/* compute the shared key, k */
-	if ((!EC_POINT_mul(session->group, K, NULL, session->pwe, session->peer_scalar, bnhmac_ctx)) ||
-	    (!EC_POINT_add(session->group, K, K, session->peer_element, bnhmac_ctx)) ||
-	    (!EC_POINT_mul(session->group, K, NULL, K, session->private_value, bnhmac_ctx))) {
+	if ((!EC_POINT_mul(session->group, K, NULL, session->pwe, session->peer_scalar, bn_ctx)) ||
+	    (!EC_POINT_add(session->group, K, K, session->peer_element, bn_ctx)) ||
+	    (!EC_POINT_mul(session->group, K, NULL, K, session->private_value, bn_ctx))) {
 		ERROR("Unable to compute shared key, k");
 		goto finish;
 	}
@@ -419,10 +423,10 @@ finish:
 	return res;
 }
 
-int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bnhmac_ctx)
+int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
-	HMAC_CTX	hmac_ctx;
+	HMAC_CTX	*hmac_ctx = NULL;
 	uint8_t		*cruft = NULL;
 	int		offset, req = -1;
 
@@ -439,7 +443,8 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bnhmac_
 	 * commit is H(k | server_element | server_scalar | peer_element |
 	 *	       peer_scalar | ciphersuite)
 	 */
-	pwd_hmac_init(&hmac_ctx);
+	hmac_ctx = HMAC_CTX_new();
+	pwd_hmac_init(hmac_ctx);
 
 	/*
 	 * Zero the memory each time because this is mod prime math and some
@@ -449,7 +454,7 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bnhmac_
 	 */
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
 	BN_bn2bin(session->k, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * next is server element: x, y
@@ -474,7 +479,7 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bnhmac_
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
 	BN_bn2bin(session->my_scalar, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->order));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * next is peer element: x, y
@@ -487,12 +492,12 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bnhmac_
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and peer scalar
@@ -500,17 +505,19 @@ int compute_server_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bnhmac_
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
 	BN_bn2bin(session->peer_scalar, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->order));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * finally, ciphersuite
 	 */
-	pwd_hmac_update(&hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	pwd_hmac_update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
-	pwd_hmac_final(&hmac_ctx, out);
+	pwd_hmac_final(hmac_ctx, out);
 
 	req = 0;
+
 finish:
+	HMAC_CTX_free(hmac_ctx);
 	talloc_free(cruft);
 	BN_free(x);
 	BN_free(y);
@@ -521,7 +528,7 @@ finish:
 int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
-	HMAC_CTX	hmac_ctx;
+	HMAC_CTX	*hmac_ctx = NULL;
 	uint8_t		*cruft = NULL;
 	int		offset, req = -1;
 
@@ -538,7 +545,8 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 * commit is H(k | server_element | server_scalar | peer_element |
 	 *	       peer_scalar | ciphersuite)
 	 */
-	pwd_hmac_init(&hmac_ctx);
+	hmac_ctx = HMAC_CTX_new();
+	pwd_hmac_init(hmac_ctx);
 
 	/*
 	 * Zero the memory each time because this is mod prime math and some
@@ -548,7 +556,7 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	 */
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
 	BN_bn2bin(session->k, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	* then peer element: x, y
@@ -561,12 +569,12 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and peer scalar
@@ -574,7 +582,7 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
 	BN_bn2bin(session->peer_scalar, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->order));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * then server element: x, y
@@ -586,12 +594,12 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and server scalar
@@ -599,17 +607,18 @@ int compute_peer_confirm(pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
 	BN_bn2bin(session->my_scalar, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->order));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * finally, ciphersuite
 	 */
-	pwd_hmac_update(&hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	pwd_hmac_update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
-	pwd_hmac_final(&hmac_ctx, out);
+	pwd_hmac_final(hmac_ctx, out);
 
 	req = 0;
 finish:
+	HMAC_CTX_free(hmac_ctx);
 	talloc_free(cruft);
 	BN_free(x);
 	BN_free(y);
@@ -619,7 +628,7 @@ finish:
 
 int compute_keys(pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
 {
-	HMAC_CTX	hmac_ctx;
+	HMAC_CTX	*hmac_ctx;
 	uint8_t		mk[SHA256_DIGEST_LENGTH], *cruft;
 	uint8_t		session_id[SHA256_DIGEST_LENGTH + 1];
 	uint8_t		msk_emsk[128];		/* 64 each */
@@ -631,36 +640,38 @@ int compute_keys(pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, ui
 		return -1;
 	}
 
+	hmac_ctx = HMAC_CTX_new();
+
 	/*
 	 * first compute the session-id = TypeCode | H(ciphersuite | scal_p |
 	 *	scal_s)
 	 */
 	session_id[0] = PW_EAP_PWD;
-	pwd_hmac_init(&hmac_ctx);
-	pwd_hmac_update(&hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	pwd_hmac_init(hmac_ctx);
+	pwd_hmac_update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	BN_bn2bin(session->peer_scalar, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->order));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->order));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	BN_bn2bin(session->my_scalar, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->order));
-	pwd_hmac_final(&hmac_ctx, (uint8_t *)&session_id[1]);
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	pwd_hmac_final(hmac_ctx, (uint8_t *)&session_id[1]);
 
 	/* then compute MK = H(k | commit-peer | commit-server) */
-	pwd_hmac_init(&hmac_ctx);
+	pwd_hmac_init(hmac_ctx);
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
 	BN_bn2bin(session->k, cruft + offset);
-	pwd_hmac_update(&hmac_ctx, cruft, BN_num_bytes(session->prime));
+	pwd_hmac_update(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
-	pwd_hmac_update(&hmac_ctx, peer_confirm, SHA256_DIGEST_LENGTH);
+	pwd_hmac_update(hmac_ctx, peer_confirm, SHA256_DIGEST_LENGTH);
 
-	pwd_hmac_update(&hmac_ctx, session->my_confirm, SHA256_DIGEST_LENGTH);
+	pwd_hmac_update(hmac_ctx, session->my_confirm, SHA256_DIGEST_LENGTH);
 
-	pwd_hmac_final(&hmac_ctx, mk);
+	pwd_hmac_final(hmac_ctx, mk);
 
 	/* stretch the mk with the session-id to get MSK | EMSK */
 	eap_pwd_kdf(mk, SHA256_DIGEST_LENGTH, (char const *)session_id,
@@ -669,6 +680,7 @@ int compute_keys(pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, ui
 	memcpy(msk, msk_emsk, 64);
 	memcpy(emsk, msk_emsk + 64, 64);
 
+	HMAC_CTX_free(hmac_ctx);
 	talloc_free(cruft);
 	return 0;
 }

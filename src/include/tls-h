@@ -49,6 +49,7 @@ RCSIDH(tls_h, "$Id$")
 #  include <openssl/engine.h>
 #endif
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,10 +78,34 @@ extern "C" {
 #define FR_TLS_EX_INDEX_TLS_SESSION	(15)
 #define FR_TLS_EX_INDEX_TALLOC		(16)
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#  define HMAC_CTX_new() malloc(sizeof(HMAC_CTX))
+#  define HMAC_CTX_free(_ctx) \
+do {\
+	if (_ctx) {\
+		memset(_ctx, 0, sizeof(*_ctx));\
+		free(_ctx);\
+	}\
+} while (0)
+#endif
+
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
-#define ssl_session ssl->session
+#  define ssl_session ssl->session
 #else
-#define ssl_session session
+#  define ssl_session session
+#endif
+
+/*
+ *	If we linked with OpenSSL, the application
+ *	must remove the thread's error queue before
+ *	exiting to prevent memory leaks.
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_thread_state();
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
+#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_thread_state(NULL);
+#else
+#  define FR_TLS_REMOVE_THREAD_STATE() ERR_remove_state(0);
 #endif
 
 /*
@@ -361,7 +386,9 @@ int		tls_global_version_check(char const *acknowledged);
 
 int		tls_global_init(void);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 void		tls_global_cleanup(void);
+#endif
 
 /*
  *	tls/log.c

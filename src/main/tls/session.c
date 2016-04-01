@@ -420,9 +420,11 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 		str_content_type = "application_data ";
 		break;
 
+#ifdef TLS1_RT_HEARTBEAT
 	case TLS1_RT_HEARTBEAT:
 		str_content_type = "heartbeat ";
 		break;
+#endif
 
 #ifdef TLS1_RT_CRYPTO
 	case TLS1_RT_CRYPTO:

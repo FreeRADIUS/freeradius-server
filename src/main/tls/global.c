@@ -31,6 +31,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls - "
 
 #include <openssl/conf.h>
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -64,6 +65,7 @@ static libssl_defect_t libssl_defects[] =
 
 static bool tls_done_init = false;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 /*
  *	If we're linking against OpenSSL, then it is the
  *	duty of the application, if it is multithreaded,
@@ -120,48 +122,6 @@ static int _global_mutexes_free(pthread_mutex_t *mutexes)
 
 	return 0;
 }
-
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
-/** Check for vulnerable versions of libssl
- *
- * @param acknowledged The highest CVE number a user has confirmed is not present in the system's
- *	libssl.
- * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
- */
-int tls_global_version_check(char const *acknowledged)
-{
-	uint64_t v;
-
-	if ((strcmp(acknowledged, libssl_defects[0].id) != 0) && (strcmp(acknowledged, "yes") != 0)) {
-		bool bad = false;
-		size_t i;
-
-		/* Check for bad versions */
-		v = (uint64_t) SSLeay();
-
-		for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
-			libssl_defect_t *defect = &libssl_defects[i];
-
-			if ((v >= defect->low) && (v <= defect->high)) {
-				ERROR("Refusing to start with libssl version %s (in range %s)",
-				      ssl_version(), ssl_version_range(defect->low, defect->high));
-				ERROR("Security advisory %s (%s)", defect->id, defect->name);
-				ERROR("%s", defect->comment);
-
-				bad = true;
-			}
-		}
-
-		if (bad) {
-			INFO("Once you have verified libssl has been correctly patched, "
-			     "set security.allow_vulnerable_openssl = '%s'", libssl_defects[0].id);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-#endif
 
 /** OpenSSL uses static mutexes which we need to initialise
  *
@@ -246,6 +206,49 @@ static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
 
 	return mutexes;
 }
+#endif
+
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
+/** Check for vulnerable versions of libssl
+ *
+ * @param acknowledged The highest CVE number a user has confirmed is not present in the system's
+ *	libssl.
+ * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
+ */
+int tls_global_version_check(char const *acknowledged)
+{
+	uint64_t v;
+
+	if ((strcmp(acknowledged, libssl_defects[0].id) != 0) && (strcmp(acknowledged, "yes") != 0)) {
+		bool bad = false;
+		size_t i;
+
+		/* Check for bad versions */
+		v = (uint64_t) SSLeay();
+
+		for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
+			libssl_defect_t *defect = &libssl_defects[i];
+
+			if ((v >= defect->low) && (v <= defect->high)) {
+				ERROR("Refusing to start with libssl version %s (in range %s)",
+				      ssl_version(), ssl_version_range(defect->low, defect->high));
+				ERROR("Security advisory %s (%s)", defect->id, defect->name);
+				ERROR("%s", defect->comment);
+
+				bad = true;
+			}
+		}
+
+		if (bad) {
+			INFO("Once you have verified libssl has been correctly patched, "
+			     "set security.allow_vulnerable_openssl = '%s'", libssl_defects[0].id);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+#endif
 
 /** Add all the default ciphers and message digests to our context.
  *
@@ -258,20 +261,32 @@ int tls_global_init(void)
 
 	if (tls_done_init) return 0;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* Initialize library */
 	OpenSSL_add_all_algorithms();	/* Required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
 	ENGINE_load_builtin_engines();	/* Needed to load AES-NI engine (also loads rdrand, boo) */
 
+#  ifdef HAVE_OPENSSL_EVP_SHA256
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
 	 *	initialized by default.  It's needed for WiMAX
 	 *	certificates.
 	 */
-#ifdef HAVE_OPENSSL_EVP_SHA256
 	EVP_add_digest(EVP_sha256());
+#  endif
+	/*
+	 *	If we're linking with OpenSSL too, then we need
+	 *	to set up the mutexes and enable the thread callbacks.
+	 */
+	global_mutexes = global_mutexes_init(NULL);
+	if (!global_mutexes) {
+		ERROR("FATAL: Failed to set up SSL mutexes");
+		return -1;
+	}
+#else
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_ENGINE_ALL_BUILTIN, NULL);
 #endif
-	OPENSSL_config(NULL);
 
 	/*
 	 *	Mirror the paranoia found elsewhere on the net,
@@ -282,27 +297,21 @@ int tls_global_init(void)
 	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
 	ENGINE_register_all_complete();
 
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	global_mutexes = global_mutexes_init(NULL);
-	if (!global_mutexes) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
-		return -1;
-	}
-
 	tls_done_init = true;
+	OPENSSL_config(NULL);
 
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 /** Free any memory alloced by libssl
  *
+ * OpenSSL >= 1.1.0 uses an atexit handler to automatically free memory
  */
 void tls_global_cleanup(void)
 {
-	ERR_remove_state(0);
+
+	FR_TLS_REMOVE_THREAD_STATE();
 	ENGINE_cleanup();
 	CONF_modules_unload(1);
 	ERR_free_strings();
@@ -313,4 +322,5 @@ void tls_global_cleanup(void)
 
 	tls_done_init = false;
 }
+#endif
 #endif /* WITH_TLS */
