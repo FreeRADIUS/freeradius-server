@@ -2355,21 +2355,13 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	module, and encapsulated into an EAP packet.
 	 */
 	if (!request->proxy) {
-		request->proxy = request_alloc_proxy(request);
-		if (!request->proxy) {
-			ERROR("no memory");
-			fr_exit(1);
-		}
+		MEM(request->proxy = request_alloc_proxy(request));
 	}
 
 	if (!request->proxy->packet) {
 		VALUE_PAIR *vp;
 
-		request->proxy->packet = fr_radius_alloc(request->proxy, true);
-		if (!request->proxy->packet) {
-			ERROR("no memory");
-			fr_exit(1);
-		}
+		MEM(request->proxy->packet = fr_radius_alloc(request->proxy, true));
 
 		/*
 		 *	Initialize the proxied packet based on the original one.

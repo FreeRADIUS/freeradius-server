@@ -412,12 +412,9 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
  */
 void *rad_malloc(size_t size)
 {
-	void *ptr = malloc(size);
+	void *ptr;
 
-	if (ptr == NULL) {
-		ERROR("no memory");
-		fr_exit(1);
-	}
+	MEM(mem = malloc(size));
 
 	return ptr;
 }
