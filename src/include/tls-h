@@ -79,7 +79,13 @@ extern "C" {
 #define FR_TLS_EX_INDEX_TALLOC		(16)
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-#  define HMAC_CTX_new() malloc(sizeof(HMAC_CTX))
+static inline HMAC_CTX *HMAC_CTX_new(void)
+{
+	HMAC_CTX *ctx;
+	ctx = malloc(sizeof(HMAC_CTX));
+	HMAC_CTX_init(ctx);
+	return ctx;
+}
 #  define HMAC_CTX_free(_ctx) \
 do {\
 	if (_ctx) {\
