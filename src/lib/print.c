@@ -436,6 +436,10 @@ char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
+	if (vp->type == VT_XLAT) {
+		return fr_aprints(ctx, vp->value.xlat, talloc_array_length(vp->value.xlat) - 1, quote);
+	}
+
 	return value_data_aprints(ctx, vp->da->type, vp->da, &vp->data, vp->vp_length, quote);
 }
 
