@@ -1094,7 +1094,7 @@ void eap_session_destroy(eap_session_t **eap_session)
  * rounds of EAP) of the #eap_session_t associated with REQUEST_DATA_EAP_SESSION, is
  * done by the state API.
  *
- * @note must be called before the mod_* function rlm_eap returns.
+ * @note must be called before mod_* functions in rlm_eap return.
  *
  * @see eap_session_continue
  * @see eap_session_thaw
@@ -1168,10 +1168,11 @@ eap_session_t *eap_session_thaw(REQUEST *request)
  * @see eap_session_thaw
  * @see eap_session_destroy
  *
- * @param eap_packet_p extracted from the RADIUS Access-Request.  Consumed or freed by this
- *	function.  Do not access after calling this function.
- * @param inst of the rlm_eap module.
- * @param request The current request.
+ * @param[in] eap_packet_p extracted from the RADIUS Access-Request.  Consumed or freed by this
+ *	function.  Do not access after calling this function. Is a **so the packet pointer can be
+ *	set to NULL.
+ * @param[in] inst of the rlm_eap module.
+ * @param[in] request The current request.
  * @return
  *	- A newly allocated eap_session_t, or the one associated with the current request.
  *	  MUST be freed with #eap_session_destroy if being disposed of, OR

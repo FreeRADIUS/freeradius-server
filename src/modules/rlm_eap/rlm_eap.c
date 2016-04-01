@@ -384,10 +384,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	switch (status) {
 	case EAP_NOOP:
 		return RLM_MODULE_NOOP;
+
 	case EAP_FAIL:
 		return RLM_MODULE_FAIL;
+
 	case EAP_FOUND:
 		return RLM_MODULE_HANDLED;
+
 	case EAP_OK:
 	case EAP_NOTFOUND:
 	default:
