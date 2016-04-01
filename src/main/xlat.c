@@ -1946,7 +1946,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	packet = radius_packet(request, vpt->tmpl_list);
 	if (!packet) {
 		if (return_null) return NULL;
-		return fr_pair_type_snprint(ctx, vpt->tmpl_da->type);
+		return fr_pair_type_asprint(ctx, vpt->tmpl_da->type);
 	}
 
 	vp = NULL;
@@ -2135,7 +2135,7 @@ do_print:
 
 	if (!vp) {
 		if (return_null) return NULL;
-		return fr_pair_type_snprint(ctx, vpt->tmpl_da->type);
+		return fr_pair_type_asprint(ctx, vpt->tmpl_da->type);
 	}
 
 print:

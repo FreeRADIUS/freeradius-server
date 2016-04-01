@@ -2143,7 +2143,7 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 	return value_data_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
 }
 
-char *fr_pair_type_snprint(TALLOC_CTX *ctx, PW_TYPE type)
+char *fr_pair_type_asprint(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {
 	case PW_TYPE_STRING :
