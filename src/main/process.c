@@ -5092,6 +5092,13 @@ static void check_proxy(rad_listen_t *head)
 }
 #endif
 
+/** Start the main event loop and initialise the listeners
+ *
+ * @param have_children Whether the server is threaded.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
 int radius_event_start(bool have_children)
 {
 	rad_listen_t *head = NULL;
@@ -5122,9 +5129,8 @@ int radius_event_start(bool have_children)
 		if (!proxy_list) return 0;
 
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
-			ERROR("FATAL: Failed to initialize proxy mutex: %s",
-			       fr_syserror(errno));
-			fr_exit(1);
+			ERROR("Failed to initialize proxy mutex: %s", fr_syserror(errno));
+			return -1;
 		}
 
 		/*
@@ -5153,7 +5159,7 @@ int radius_event_start(bool have_children)
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       main_config.name);
-		return 1;
+		return 0;
 	}
 
 	/*
@@ -5162,23 +5168,23 @@ int radius_event_start(bool have_children)
 	 */
 	if (pipe(self_pipe) < 0) {
 		ERROR("Error opening internal pipe: %s", fr_syserror(errno));
-		fr_exit(1);
+		return -1;
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("Error setting internal flags: %s", fr_syserror(errno));
-		fr_exit(1);
+		return -1;
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
 		ERROR("Error setting internal flags: %s", fr_syserror(errno));
-		fr_exit(1);
+		return -1;
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
 	if (!fr_event_fd_insert(el, 0, self_pipe[0], event_signal_handler, el)) {
 		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
-		fr_exit(1);
+		return -1;
 	}
 
 	DEBUG("%s: #### Opening IP addresses and Ports ####", main_config.name);
@@ -5192,9 +5198,7 @@ int radius_event_start(bool have_children)
 	 *	themselves around the functions that need a privileged
 	 *	uid.
 	 */
-	if (listen_init(&head, spawn_workers) < 0) {
-		fr_exit_now(1);
-	}
+	if (listen_init(&head, spawn_workers) < 0) return -1;
 
 	main_config.listen = head;
 
@@ -5214,7 +5218,7 @@ int radius_event_start(bool have_children)
 	 */
 	fr_reset_dumpable();
 
-	return 1;
+	return 0;
 }
 
 

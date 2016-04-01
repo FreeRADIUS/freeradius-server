@@ -237,17 +237,17 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("%s", main_config.name);
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
 
-	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) exit(EXIT_FAILURE);
+	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) fr_exit(EXIT_FAILURE);
 
 	/*
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (ssl_check_consistency() < 0) exit(EXIT_FAILURE);
+	if (ssl_check_consistency() < 0) fr_exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
 		if (main_config.spawn_workers) {
 			fprintf(stderr, "%s: The server cannot produce memory reports (-M) in threaded mode\n",
 				main_config.name);
-			exit(EXIT_FAILURE);
+			fr_exit(EXIT_FAILURE);
 		}
 		talloc_enable_null_tracking();
 	} else {
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	if (tls_global_init() < 0) exit(EXIT_FAILURE);
+	if (tls_global_init() < 0) fr_exit(EXIT_FAILURE);
 #endif
 
 	/*
@@ -332,8 +332,8 @@ int main(int argc, char *argv[])
 		if (!panic_action) panic_action = main_config.panic_action;
 
 		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
-			fr_perror("%s", main_config.name);
-			exit(EXIT_FAILURE);
+			fr_perror("Failed configuring panic action: %s", main_config.name);
+			fr_exit(EXIT_FAILURE);
 		}
 	}
 
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			ERROR("Failed opening /dev/null: %s", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit(EXIT_FAILURE);
 		}
 		dup2(devnull, STDIN_FILENO);
 
@@ -360,13 +360,13 @@ int main(int argc, char *argv[])
 
 		if (pipe(from_child) != 0) {
 			ERROR("Couldn't open pipe for child status: %s", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit(EXIT_FAILURE);
 		}
 
 		pid = fork();
 		if (pid < 0) {
 			ERROR("Couldn't fork: %s", fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit(EXIT_FAILURE);
 		}
 
 		/*
@@ -453,8 +453,8 @@ int main(int argc, char *argv[])
 	 *	Initialise the SNMP stats structures
 	 */
 	if (fr_snmp_init() < 0) {
-		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
+		ERROR("Failed initialising SNMP: %s", fr_strerror());
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -470,8 +470,8 @@ int main(int argc, char *argv[])
 	 *  Redirect stderr/stdout as appropriate.
 	 */
 	if (radlog_init(&default_log, main_config.daemonize) < 0) {
-		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
+		ERROR("Failed initialising log: %s", fr_strerror());
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -485,7 +485,10 @@ int main(int argc, char *argv[])
 	/*
 	 *  Start the event loop.
 	 */
-	radius_event_start(main_config.spawn_workers);
+	if (radius_event_start(main_config.spawn_workers) < 0) {
+		ERROR("Failed starting event loop");
+		fr_exit(EXIT_FAILURE);
+	}
 
 	/*
 	 *  If we're debugging, then a CTRL-C will cause the server to die
@@ -497,8 +500,8 @@ int main(int argc, char *argv[])
 	     || (fr_set_signal(SIGQUIT, sig_fatal) < 0)
 #endif
 	) {
-		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
+		ERROR("Failed installing signal handler: %s", fr_strerror());
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -521,8 +524,8 @@ int main(int argc, char *argv[])
 
 	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
 	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
-		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
+		ERROR("Failed installing signal handler: %s", fr_strerror());
+		fr_exit(EXIT_FAILURE);
 	}
 
 #ifdef WITH_STATS
@@ -545,7 +548,7 @@ int main(int argc, char *argv[])
 			fclose(fp);
 		} else {
 			ERROR("Failed creating PID file %s: %s", main_config.pid_file, fr_syserror(errno));
-			exit(EXIT_FAILURE);
+			fr_exit(EXIT_FAILURE);
 		}
 	}
 
