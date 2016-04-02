@@ -11,7 +11,7 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  state of the server / pool.
 	* Mark rlm_sql_freetds as stable.
 	* Make rlm_perl less fragile.  Patch from
-	  Herwin Weststrate
+	  Herwin Weststrate.
 	* Allow extended attributes to have "encrypt=2"
 
 	Bug fixes
@@ -37,6 +37,9 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Fix Debian / logrotate.
 	* Make OpenSSL error functions thread-safe.
 	* Fix crash with rlm_sql and updating SQL-User-Name.
+	* Debian build updates.
+	* Allow regular expression comparisons in radclient
+	  fixes #1574.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
