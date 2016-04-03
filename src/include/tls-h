@@ -180,12 +180,6 @@ typedef struct _tls_session_t {
 	} handshake_alert;
 } tls_session_t;
 
-/** Provides a storage for TLS context and hardwired structures
- */
-typedef	struct _ssl_ctx_pool_t {
-	SSL_CTX		*ctx;				//!< TLS context itself
-} ssl_ctx_pool_t;
-
 #ifdef HAVE_OPENSSL_OCSP_H
 /** OCSP Configuration
  *
@@ -204,6 +198,15 @@ typedef struct ft_tls_ocsp_conf {
 } fr_tls_ocsp_conf_t;
 #endif
 
+/** Provides a storage for TLS context and hardwired structures
+ */
+typedef	struct _ssl_ctx_pool_t {
+	SSL_CTX		*ctx;				//!< TLS context itself
+	pthread_mutex_t mtx;				//!< Context-based mutex
+	uint32_t	ca_path_last_reload;		//!< Timestamp of last ca_path reload event
+	X509_STORE	*old_x509_store;		//!< Old X509 store
+} ssl_ctx_pool_t;
+
 /* configured values goes right here */
 struct fr_tls_conf_t {
 	ssl_ctx_pool_t	*ctx_pool;			//!< We use an array of contexts to reduce contention.
@@ -211,6 +214,7 @@ struct fr_tls_conf_t {
 							//!< concurrently.
 	uint32_t	ctx_count;			//!< Number of contexts we created.
 	uint32_t	ctx_next;			//!< Next context to use.
+	uint32_t	ca_path_reload_interval;	//!< Interval for reloading ca_path contents
 
 	CONF_SECTION	*cs;
 
@@ -411,6 +415,8 @@ void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, ui
 fr_tls_conf_t	*tls_conf_parse_server(CONF_SECTION *cs);
 
 fr_tls_conf_t	*tls_conf_parse_client(CONF_SECTION *cs);
+
+X509_STORE	*tls_conf_init_x509_store(fr_tls_conf_t const *conf);
 
 /*
  *	tls/ctx.c

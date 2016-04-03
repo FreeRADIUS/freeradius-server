@@ -110,6 +110,7 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 	{ FR_CONF_OFFSET("check_cert_issuer", PW_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, fr_tls_conf_t, require_client_cert) },
+	{ FR_CONF_OFFSET("ca_path_reload_interval", PW_TYPE_INTEGER, fr_tls_conf_t, ca_path_reload_interval), .dflt = "0" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -232,19 +233,19 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 }
 #endif
 
-#ifdef HAVE_OPENSSL_OCSP_H
 /*
- * 	Create Global X509 revocation store and use it to verify
- * 	OCSP responses
+ *	Configure a X509 CA store to verify OCSP or client repsonses
  *
  * 	- Load the trusted CAs
  * 	- Load the trusted issuer certificates
+ *	- Configure CRLs check if needed
  */
-static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
+X509_STORE *tls_conf_init_x509_store(fr_tls_conf_t const *conf)
 {
 	X509_STORE *store = NULL;
 
 	store = X509_STORE_new();
+	if (store == NULL) return NULL;
 
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
@@ -259,7 +260,6 @@ static X509_STORE *conf_ocsp_revocation_store(fr_tls_conf_t *conf)
 
 	return store;
 }
-#endif
 
 /*
  *	Free TLS client/server config
@@ -271,7 +271,10 @@ static int _conf_server_free(fr_tls_conf_t *conf)
 {
 	uint32_t i;
 
-	for (i = 0; i < conf->ctx_count; i++) SSL_CTX_free(conf->ctx_pool[i].ctx);
+	for (i = 0; i < conf->ctx_count; i++) {
+		SSL_CTX_free(conf->ctx_pool[i].ctx);
+		pthread_mutex_destroy(&conf->ctx_pool[i].mtx);
+	}
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.store) X509_STORE_free(conf->ocsp.store);
@@ -305,6 +308,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 {
 	fr_tls_conf_t *conf;
 	uint32_t i;
+	time_t now;
 
 	/*
 	 *	If cs has already been parsed there should be a cached copy
@@ -359,11 +363,22 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
+	now = time(NULL);
 	conf->ctx_pool = talloc_array(conf, ssl_ctx_pool_t, conf->ctx_count);
 	for (i = 0; i < conf->ctx_count; i++) {
 		conf->ctx_pool[i].ctx = tls_ctx_alloc(conf, false);
 		if (conf->ctx_pool[i].ctx == NULL) goto error;
+		conf->ctx_pool[i].ca_path_last_reload = now;
+		conf->ctx_pool[i].old_x509_store = NULL;
 	}
+
+	/*
+	 * Disable reloading of cert store if we're not using CA path
+	 */
+	if (!conf->ca_path) conf->ca_path_reload_interval = 0;
+
+	if (conf->ca_path_reload_interval > 0)
+		FR_INTEGER_BOUND_CHECK("ca_path_reload_interval", conf->ca_path_reload_interval, >=, 300);
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
@@ -377,12 +392,12 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	 * 	Initialize OCSP Revocation Store
 	 */
 	if (conf->ocsp.enable) {
-		conf->ocsp.store = conf_ocsp_revocation_store(conf);
+		conf->ocsp.store = tls_conf_init_x509_store(conf);
 		if (conf->ocsp.store == NULL) goto error;
 	}
 
 	if (conf->staple.enable) {
-		conf->staple.store = conf_ocsp_revocation_store(conf);
+		conf->staple.store = tls_conf_init_x509_store(conf);
 		if (conf->staple.store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
@@ -479,6 +494,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 	for (i = 0; i < conf->ctx_count; i++) {
 		conf->ctx_pool[i].ctx = tls_ctx_alloc(conf, true);
 		if (conf->ctx_pool[i].ctx == NULL) goto error;
+		pthread_mutex_init(&conf->ctx_pool[i].mtx, NULL);
 	}
 
 	cf_data_add(cs, "tls-conf", conf, NULL);

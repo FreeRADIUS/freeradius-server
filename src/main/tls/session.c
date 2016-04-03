@@ -1424,6 +1424,61 @@ static void session_init(tls_session_t *session)
 	session->opaque = NULL;
 }
 
+
+/*
+ * Return SSL context addressed by ctx_num. Check and flush X509 store for
+ * this context if it is time do do that
+ *
+ * @param conf		TLS configuration
+ * @param ctx_num	SSL contex id to check and return
+ * @param request	request being processed (used in debug/error outpu)
+ * @return
+ *  pointer to SSL context with up-to-date X509 store
+ */
+static SSL_CTX	*tls_session_retrieve_ssl_context(fr_tls_conf_t *conf, int ctx_num, REQUEST *request)
+{
+	X509_STORE	*new_cert_store;
+	ssl_ctx_pool_t	*data;
+	time_t		now;
+
+	now = ((request) ? request->packet->timestamp.tv_sec : time(NULL));
+
+	data = &conf->ctx_pool[ctx_num];
+	/*
+	 *	Replace X509 store if it is time to update CRLs/certs in ca_path
+	*/
+	if (conf->ca_path_reload_interval > 0 && data->ca_path_last_reload + conf->ca_path_reload_interval <= now) {
+		pthread_mutex_lock(&data->mtx);
+		/* recheck data->ca_path_last_reload because it may be inaccurate without mutex */
+		if (data->ca_path_last_reload + conf->ca_path_reload_interval <= now) {
+			if (request) {
+				RDEBUG2("Flushing X509 store to re-read data from ca_path dir");
+			} else {
+				DEBUG2("Flushing X509 store to re-read data from ca_path dir");
+			}
+
+			if ((new_cert_store = tls_conf_init_x509_store(conf)) == NULL) {
+				tls_log_error(request, "Error replacing X509 store, out of memory (?)");
+			} else {
+				/*
+				 * Swap empty store with the old one.
+				 * We do not use SSL_CTX_set_cert_store() call here because
+				 * we are not sure that old X509 store is not in the use by some
+				 * thread (i.e. cert check in progress).
+				 * Keep it allocated till next store replacement.
+				 */
+				if (data->old_x509_store) X509_STORE_free(data->old_x509_store);
+				data->old_x509_store = data->ctx->cert_store;
+				data->ctx->cert_store = new_cert_store;
+				data->ca_path_last_reload = now;
+			}
+		}
+		pthread_mutex_unlock(&data->mtx);
+	}
+	return data->ctx;
+}
+
+
 /** Create a new client TLS session
  *
  * Configures a new client TLS session, configuring options, setting callbacks etc...
@@ -1439,6 +1494,7 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 {
 	int		ret;
 	int		verify_mode;
+	int		ctx_num;
 	tls_session_t	*session = NULL;
 	REQUEST		*request;
 
@@ -1447,7 +1503,8 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 
 	talloc_set_destructor(session, _tls_session_free);
 
-	session->ctx = conf->ctx_pool[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count].ctx;	/* mutex not needed */
+	ctx_num = ((conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count); /* mutex not needed */
+	session->ctx = tls_session_retrieve_ssl_context(conf, ctx_num, NULL);
 	rad_assert(session->ctx);
 
 	SSL_CTX_set_mode(session->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
@@ -1513,13 +1570,15 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
 	SSL_CTX		*ssl_ctx;
+	int		ctx_num;
 
 	rad_assert(request != NULL);
 	rad_assert(conf->ctx_count > 0);
 
 	RDEBUG2("Initiating new TLS session");
 
-	ssl_ctx = conf->ctx_pool[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count].ctx;	/* mutex not needed */
+	ctx_num = ((conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count); /* mutex not needed */
+	ssl_ctx = tls_session_retrieve_ssl_context(conf, ctx_num, request);
 	rad_assert(ssl_ctx);
 
 	new_tls = SSL_new(ssl_ctx);
