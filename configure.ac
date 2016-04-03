@@ -1749,10 +1749,11 @@ dnl # Check for libcrypt
 dnl # We use crypt_r(3) which may be in libc, or in libcrypt (eg FreeBSD)
 dnl #
 AC_CHECK_LIB(crypt, crypt_r,
-  CRYPTLIB="-lcrypt"
+  CRYPTLIB_R="-lcrypt"
 )
 
-if test "$CRYPTLIB" != ""; then
+if test "$CRYPTLIB_R" != ""; then
+  CRYPTLIB="${CRYPTLIB} ${CRYPTLIB_R}"
   AC_DEFINE(HAVE_CRYPT_R, [], [Do we have the crypt_r function])
 else
   AC_CHECK_FUNC(crypt_r, AC_DEFINE(HAVE_CRYPT_R, [], [Do we have the crypt_r function]))
