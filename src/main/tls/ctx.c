@@ -272,8 +272,17 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		return NULL;
 	}
 
-	/* Load the CAs we trust */
 load_ca:
+	/*
+	 * Load the CAs we trust and configure CRL checks if needed
+	 */
+	if (conf->ca_file || conf->ca_path) {
+		if ((cert_vpstore = tls_conf_init_x509_store(conf)) == NULL)
+			return NULL;
+		SSL_CTX_set_cert_store(ctx, cert_vpstore);
+	}
+	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
+
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
@@ -398,20 +407,6 @@ post_ca:
 
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, tls_session_info_cb);
-
-	/*
-	 *	Check the certificates for revocation.
-	 */
-#ifdef X509_V_FLAG_CRL_CHECK_ALL
-	if (conf->check_crl) {
-		cert_vpstore = SSL_CTX_get_cert_store(ctx);
-		if (cert_vpstore == NULL) {
-			tls_log_error(NULL, "Error reading Certificate Store");
-	    		return NULL;
-		}
-		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
-	}
-#endif
 
 	/*
 	 *	Set verify modes
