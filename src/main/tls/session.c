@@ -1447,7 +1447,7 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 
 	talloc_set_destructor(session, _tls_session_free);
 
-	session->ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
+	session->ctx = conf->ctx_pool[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count].ctx;	/* mutex not needed */
 	rad_assert(session->ctx);
 
 	SSL_CTX_set_mode(session->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
@@ -1519,7 +1519,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 
 	RDEBUG2("Initiating new TLS session");
 
-	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
+	ssl_ctx = conf->ctx_pool[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count].ctx;	/* mutex not needed */
 	rad_assert(ssl_ctx);
 
 	new_tls = SSL_new(ssl_ctx);
