@@ -180,6 +180,12 @@ typedef struct _tls_session_t {
 	} handshake_alert;
 } tls_session_t;
 
+/** Provides a storage for TLS context and hardwired structures
+ */
+typedef	struct _ssl_ctx_pool_t {
+	SSL_CTX		*ctx;				//!< TLS context itself
+} ssl_ctx_pool_t;
+
 #ifdef HAVE_OPENSSL_OCSP_H
 /** OCSP Configuration
  *
@@ -200,7 +206,7 @@ typedef struct ft_tls_ocsp_conf {
 
 /* configured values goes right here */
 struct fr_tls_conf_t {
-	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
+	ssl_ctx_pool_t	*ctx_pool;			//!< We use an array of contexts to reduce contention.
 							//!< Each context may only be used by a single thread
 							//!< concurrently.
 	uint32_t	ctx_count;			//!< Number of contexts we created.

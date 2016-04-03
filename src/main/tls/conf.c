@@ -271,7 +271,7 @@ static int _conf_server_free(fr_tls_conf_t *conf)
 {
 	uint32_t i;
 
-	for (i = 0; i < conf->ctx_count; i++) SSL_CTX_free(conf->ctx[i]);
+	for (i = 0; i < conf->ctx_count; i++) SSL_CTX_free(conf->ctx_pool[i].ctx);
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.store) X509_STORE_free(conf->ocsp.store);
@@ -359,10 +359,10 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
+	conf->ctx_pool = talloc_array(conf, ssl_ctx_pool_t, conf->ctx_count);
 	for (i = 0; i < conf->ctx_count; i++) {
-		conf->ctx[i] = tls_ctx_alloc(conf, false);
-		if (conf->ctx[i] == NULL) goto error;
+		conf->ctx_pool[i].ctx = tls_ctx_alloc(conf, false);
+		if (conf->ctx_pool[i].ctx == NULL) goto error;
 	}
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -475,10 +475,10 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
 
-	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
+	conf->ctx_pool = talloc_array(conf, ssl_ctx_pool_t, conf->ctx_count);
 	for (i = 0; i < conf->ctx_count; i++) {
-		conf->ctx[i] = tls_ctx_alloc(conf, true);
-		if (conf->ctx[i] == NULL) goto error;
+		conf->ctx_pool[i].ctx = tls_ctx_alloc(conf, true);
+		if (conf->ctx_pool[i].ctx == NULL) goto error;
 	}
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
