@@ -11,4 +11,5 @@ SUBMAKEFILES := \
     radzap.mk \
     checkrad.mk \
     libfreeradius-server.mk \
-    unittest.mk
+    unittest.mk \
+    $(wildcard ${top_builddir}/src/main/*_ext/all.mk)
