@@ -406,8 +406,14 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 *	must exist.
 	 */
 	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
-	if (!state ||
-	    (state->vp_length != EAP_STATE_LEN)) {
+	if (!state) {
+		REDEBUG("EAP requires the State attribute to work, but no State exists in the Access-Request packet.");
+		REDEBUG("The RADIUS client is broken.  No amount of changing FreeRADIUS will fix the RADIUS client.");
+		return NULL;
+	}
+
+	if (state->vp_length != EAP_STATE_LEN) {
+		REDEBUG("The RADIUS client has mangled the State attribute, OR you are forcing EAP in the wrong situation");
 		return NULL;
 	}
 
