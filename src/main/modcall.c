@@ -1695,11 +1695,12 @@ static void add_child(modgroup *g, modcallable *c)
  */
 static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SECTION *subcs)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci, *next;
 
 	ci = cf_section_to_item(subcs);
 
-	if (cf_item_find_next(cs, ci) != NULL) {
+	next = cf_item_find_next(cs, ci);
+	if (next && (cf_item_is_pair(next) || cf_item_is_section(next))) {
 		cf_log_err(ci, "'actions' MUST be the last block in a section");
 		return false;
 	}
@@ -1839,6 +1840,11 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 	c->type = mod_type;
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
+
+	/*
+	 *	Associate the unlang with the configuration section.
+	 */
+	cf_data_add(cs, "unlang", g, NULL);
 
 	return g;
 }
