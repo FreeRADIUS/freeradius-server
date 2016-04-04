@@ -30,7 +30,7 @@ but be sure to address any warnings when starting v3.0.x before
 attempting to use en existing configuration with v3.1.x.
 
 For a list of changes in version 3.1, please see `doc/changelog
-<https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/ChangeLog.>`_
+<https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/ChangeLog>`_
 
 See `raddb/README.rst
 <https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/raddb/README.rst>`_
