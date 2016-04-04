@@ -516,19 +516,26 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	while (outlen >= 5) {
+		size_t sublen;
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+		/*
+		 *	This attribute carries sub-TLVs.  The sub-TLVs
+		 *	can only carry 255 bytes of data.
+		 */
+		sublen = outlen;
+		if (sublen > 255) sublen = 255;
 
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
-			len = encode_tlv_hdr(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_tlv_hdr(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		} else {
-			len = encode_rfc_hdr_internal(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			len = encode_rfc_hdr_internal(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		}
 
-		if (len < 0) return len;
-		if (len == 0) return out[1];		/* Insufficient space */
+		if (len <= 0) return len;
 
 		p += len;
 		outlen -= len;				/* Subtract from the buffer we have available */
@@ -580,9 +587,10 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	out[0] = tlv_stack[depth]->attr & 0xff;
 	out[1] = 2;	/* TLV header */
 
-	len = encode_tlv_hdr_internal(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+	if (outlen > 255) outlen = 255;
+
+	len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
-	if (len > 253) return 0;
 
 	out[1] += len;
 
@@ -963,6 +971,12 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 	}
 
+	/*
+	 *	"outlen" can be larger than 255 here, but only for the
+	 *	"long" extended type.
+	 */
+	if ((attr_type == PW_TYPE_EXTENDED) && (outlen > 255)) outlen = 255;
+
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	} else {
@@ -971,17 +985,13 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	if (len <= 0) return len;
 
 	/*
-	 *	There may be more than 252 octets of data encoded in
+	 *	There may be more than 255 octets of data encoded in
 	 *	the attribute.  If so, move the data up in the packet,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
 	 */
 	if (len > (255 - out[1])) {
-		if (attr_type == PW_TYPE_LONG_EXTENDED) {
-			return attr_shift(start, start + outlen, out, 4, len, 3, 0);
-		}
-
-		len = (255 - out[1]); /* truncate to fit */
+		return attr_shift(start, start + outlen, out, 4, len, 3, 0);
 	}
 
 	out[1] += len;
@@ -1313,6 +1323,10 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out[6] = tlv_stack[depth]->attr;
 	out[7] = 3;
 	out[8] = 0;		/* continuation byte */
+
+	/*
+	 *	"outlen" can be larger than 255 because of the "continuation" byte.
+	 */
 
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
