@@ -150,7 +150,6 @@ typedef struct unlang_stack_entry_t {
 } unlang_stack_entry_t;
 
 typedef struct unlang_stack_t {
-	rlm_components_t component;
 	int depth;
 	unlang_stack_entry_t entry[UNLANG_STACK_MAX];
 } unlang_stack_t;
@@ -1025,7 +1024,6 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	result = default_component_results[component];
 	priority = 0;
 
-	stack.component = component;
 	stack.depth = 0;
 
 	unlang_push(&stack, c, result, true);
