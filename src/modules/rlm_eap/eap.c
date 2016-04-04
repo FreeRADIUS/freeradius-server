@@ -1204,7 +1204,15 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
 		eap_session = eap_session_thaw(request);
-		if (!eap_session) goto error;
+		if (!eap_session) {
+			vp = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
+			if (!vp) {
+				REDEBUG("EAP requires the State attribute to work, but no State exists in the Access-Request packet.");
+				REDEBUG("The RADIUS client is broken.  No amount of changing FreeRADIUS will fix the RADIUS client.");
+			}
+
+			goto error;
+		}
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 #ifdef WITH_VERIFY_PTR
