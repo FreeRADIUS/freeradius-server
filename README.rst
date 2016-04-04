@@ -29,10 +29,12 @@ Version 3.1.x of the server is largely compatible with version 3.0.x,
 but be sure to address any warnings when starting v3.0.x before
 attempting to use en existing configuration with v3.1.x.
 
-For a list of changes in version 3.1, please see ``doc/ChangeLog``.
+For a list of changes in version 3.1, please see `doc/changelog
+<https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/ChangeLog.>`_
 
-See ``raddb/README.rst`` for information on what to do to update your
-configuration.
+See `raddb/README.rst
+<https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/raddb/README.rst>`_
+for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
 version in a different location from their existing systems.  Any
