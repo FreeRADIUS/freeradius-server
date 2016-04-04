@@ -102,7 +102,6 @@ struct conf_pair {
 struct conf_data {
 	CONF_ITEM  	item;
 	char const 	*name;
-	int	   	flag;
 	void	   	*data;		//!< User data
 	void       	(*free)(void *);	//!< Free user data function
 };
@@ -159,11 +158,6 @@ typedef struct cf_file_t {
 	struct stat	buf;
 } cf_file_t;
 
-
-static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
-					     void (*data_free)(void *), int flag);
-
-static void		*cf_data_find_internal(CONF_SECTION const *cs, char const *name, int flag);
 
 static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     CONF_SECTION *outercs,
@@ -303,13 +297,8 @@ static int name2_cmp(void const *a, void const *b)
  */
 static int data_cmp(void const *a, void const *b)
 {
-	int rcode;
-
 	CONF_DATA const *one = a;
 	CONF_DATA const *two = b;
-
-	rcode = one->flag - two->flag;
-	if (rcode != 0) return rcode;
 
 	return strcmp(one->name, two->name);
 }
@@ -334,17 +323,14 @@ static int filename_cmp(void const *a, void const *b)
 static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 {
 	cf_file_t *file;
-	CONF_DATA *cd;
 	CONF_SECTION *top;
 	rbtree_t *tree;
 	int fd;
 	FILE *fp;
 
 	top = cf_top_section(cs);
-	cd = cf_data_find_internal(top, "filename", 0);
-	if (!cd) return NULL;
-
-	tree = cd->data;
+	tree = cf_data_find(top, "filename");
+	if (!tree) return NULL;
 
 	fp = fopen(filename, "r");
 	if (!fp) {
@@ -422,16 +408,13 @@ void cf_file_check_user(uid_t uid, gid_t gid)
 static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 {
 	cf_file_t	*file;
-	CONF_DATA	*cd;
 	CONF_SECTION	*top;
 	rbtree_t	*tree;
 	int		fd;
 
 	top = cf_top_section(cs);
-	cd = cf_data_find_internal(top, "filename", 0);
-	if (!cd) return false;
-
-	tree = cd->data;
+	tree = cf_data_find(top, "filename");
+	if (!tree) return false;
 
 	file = talloc(tree, cf_file_t);
 	if (!file) return false;
@@ -558,16 +541,13 @@ static int file_callback(void *ctx, void *data)
  */
 int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 {
-	CONF_DATA *cd;
 	CONF_SECTION *top;
 	cf_file_callback_t cb;
 	rbtree_t *tree;
 
 	top = cf_top_section(cs);
-	cd = cf_data_find_internal(top, "filename", 0);
-	if (!cd) return true;
-
-	tree = cd->data;
+	tree = cf_data_find(top, "filename");
+	if (!tree) return true;
 
 	cb.rcode = CF_FILE_NONE;
 	cb.callback = callback;
@@ -3078,7 +3058,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			talloc_free(p);
 			css->name2 = talloc_typed_strdup(css, buff[2]);
 
-			cf_data_add_internal(css, "if", cond, NULL, false);
+			cf_data_add(css, "if", cond, NULL);
 
 		add_section:
 			cf_item_add(this, &(css->item));
@@ -3519,7 +3499,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	tree = rbtree_create(cs, filename_cmp, NULL, 0);
 	if (!tree) return -1;
 
-	cf_data_add_internal(cs, "filename", tree, NULL, 0);
+	cf_data_add(cs, "filename", tree, NULL);
 
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
@@ -4035,7 +4015,10 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 	return cd;
 }
 
-static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name, int flag)
+/*
+ *	Find data from a particular section.
+ */
+void *cf_data_find(CONF_SECTION const *cs, char const *name)
 {
 	if (!cs || !name) return NULL;
 
@@ -4043,24 +4026,13 @@ static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name, int
 	 *	Find the name in the tree, for speed.
 	 */
 	if (cs->data_tree) {
-		CONF_DATA mycd;
+		CONF_DATA mycd, *cd;
 
 		mycd.name = name;
-		mycd.flag = flag;
-		return rbtree_finddata(cs->data_tree, &mycd);
+		cd = rbtree_finddata(cs->data_tree, &mycd);
+		if (cd) return cd->data;
 	}
 
-	return NULL;
-}
-
-/*
- *	Find data from a particular section.
- */
-void *cf_data_find(CONF_SECTION const *cs, char const *name)
-{
-	CONF_DATA *cd = cf_data_find_internal(cs, name, 0);
-
-	if (cd) return cd->data;
 	return NULL;
 }
 
@@ -4068,9 +4040,8 @@ void *cf_data_find(CONF_SECTION const *cs, char const *name)
 /*
  *	Add named data to a configuration section.
  */
-static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
-				void *data, void (*data_free)(void *),
-				int flag)
+int cf_data_add(CONF_SECTION *cs, char const *name,
+		 void *data, void (*data_free)(void *))
 {
 	CONF_DATA *cd;
 
@@ -4079,24 +4050,14 @@ static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
 	/*
 	 *	Already exists.  Can't add it.
 	 */
-	if (cf_data_find_internal(cs, name, flag) != NULL) return -1;
+	if (cf_data_find(cs, name) != NULL) return -1;
 
 	cd = cf_data_alloc(cs, name, data, data_free);
 	if (!cd) return -1;
-	cd->flag = flag;
 
 	cf_item_add(cs, cf_data_to_item(cd));
 
 	return 0;
-}
-
-/*
- *	Add named data to a configuration section.
- */
-int cf_data_add(CONF_SECTION *cs, char const *name,
-		void *data, void (*data_free)(void *))
-{
-	return cf_data_add_internal(cs, name, data, data_free, 0);
 }
 
 /** Remove named data from a configuration section
@@ -4115,7 +4076,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 	 *	Find the name in the tree, for speed.
 	 */
 	mycd.name = name;
-	mycd.flag = 0;
+
 	cd = rbtree_finddata(cs->data_tree, &mycd);
 	if (!cd) return NULL;
 
