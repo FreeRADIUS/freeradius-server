@@ -1024,8 +1024,6 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	result = default_component_results[component];
 	priority = 0;
 
-	stack.depth = 0;
-
 	unlang_push(&stack, c, result, true);
 
 	/*
