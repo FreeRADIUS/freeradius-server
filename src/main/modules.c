@@ -967,7 +967,7 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 	 *	Compile the group.
 	 */
 	ml = modcall_compile_section(NULL, comp, cs);
-	if (!ml) false;
+	if (!ml) return false;
 
 	subcomp = new_sublist(cs, components, comp, dval->value);
 	if (!subcomp) {
