@@ -996,6 +996,7 @@ static int load_component_section(CONF_SECTION *cs,
 {
 	modcallable *this;
 	CONF_ITEM *modref;
+	CONF_SECTION *subcs;
 	int idx;
 	indexed_modcallable *subcomp;
 	char const *modname;
@@ -1013,40 +1014,43 @@ static int load_component_section(CONF_SECTION *cs,
 	}
 
 	/*
+	 *	Load the Autz-Type, Auth-Type, etc. first.
+	 */
+	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
+	     subcs != NULL;
+	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
+		if (!load_subcomponent_section(subcs, components, da, comp)) {
+			return -1; /* FIXME: memleak? */
+		}
+	}
+
+	/*
 	 *	Loop over the entries in the named section, loading
 	 *	the sections this time.
 	 */
 	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
 	     modref = cf_item_find_next(cs, modref)) {
-		char const *name1;
 		CONF_PAIR *cp = NULL;
-		CONF_SECTION *scs = NULL;
 
-		if (cf_item_is_section(modref)) {
-			scs = cf_item_to_section(modref);
+		if (cf_item_is_pair(modref)) {
+			cp = cf_item_to_pair(modref);
+			subcs = NULL;
 
-			name1 = cf_section_name1(scs);
+		} else if (cf_item_is_section(modref)) {
+			cp = NULL;
+			subcs = cf_item_to_section(modref);
 
-			if (strcmp(name1,
-				   section_type_value[comp].typename) == 0) {
-				if (!load_subcomponent_section(scs,
-							       components,
-							       da,
-							       comp)) {
-
-					return -1; /* FIXME: memleak? */
-				}
+			/*
+			 *	Ignore sections which were already compiled as Autz-Type, etc.
+			 */
+			if (cf_data_find(subcs, "unlang")) {
 				continue;
 			}
 
-			cp = NULL;
-
-		} else if (cf_item_is_pair(modref)) {
-			cp = cf_item_to_pair(modref);
-
 		} else {
 			continue; /* ignore it */
+
 		}
 
 		/*
@@ -1063,11 +1067,11 @@ static int load_component_section(CONF_SECTION *cs,
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
 			} else {
-				modrefname = cf_section_name2(scs);
+				modrefname = cf_section_name2(subcs);
 				if (!modrefname) {
 					cf_log_err_cs(cs,
 						      "Errors parsing %s sub-section.\n",
-						      cf_section_name1(scs));
+						      cf_section_name1(subcs));
 					return -1;
 				}
 			}
