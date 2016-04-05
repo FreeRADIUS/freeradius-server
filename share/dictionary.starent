@@ -228,7 +228,7 @@ ATTRIBUTE	SN-Firewall-Policy			239	octets
 ATTRIBUTE	SN-Transparent-Data			247	octets
 ATTRIBUTE	SN-MS-ISDN				248	octets
 ATTRIBUTE	SN-Routing-Area-Id			249	string
-#ATTRIBUTE	SN-Rulebase				249	string
+ATTRIBUTE	SN-Rulebase				250	string
 ATTRIBUTE	SN-Call-Id				251	integer
 ATTRIBUTE	SN-IMSI					252	octets
 ATTRIBUTE	SN-Long-Duration-Notification		253	integer
