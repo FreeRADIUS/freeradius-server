@@ -1347,6 +1347,7 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 {
 	fr_dict_attr_t const *da;
+	CONF_SECTION *subcs;
 	CONF_ITEM *ci;
 
 	/*
@@ -1361,44 +1362,33 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	}
 
 	/*
+	 *	Define the Autz-Type, Auth-Type, etc. first.
+	 */
+	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
+	     subcs != NULL;
+	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
+		if (!define_type(cs, da, cf_section_name2(subcs))) {
+			return false;
+		}
+	}
+
+
+	if (comp != MOD_AUTHENTICATE) return true;
+
+	/*
 	 *	Define dynamic types, so that others can reference
 	 *	them.
 	 */
 	for (ci = cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_find_next(cs, ci)) {
-		char const *name1;
-		CONF_SECTION *subcs;
+		CONF_PAIR *cp;
 
-		/*
-		 *	Create types for simple references
-		 *	only when parsing the authenticate
-		 *	section.
-		 */
-		if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
-		    cf_item_is_pair(ci)) {
-			CONF_PAIR *cp = cf_item_to_pair(ci);
-			if (!define_type(cs, da, cf_pair_attr(cp))) {
-				return false;
-			}
+		if (!cf_item_is_pair(ci)) continue;
 
-			continue;
-		}
+		cp = cf_item_to_pair(ci);
 
-		if (!cf_item_is_section(ci)) continue;
-
-		subcs = cf_item_to_section(ci);
-		name1 = cf_section_name1(subcs);
-
-		/*
-		 *	Not Auth-Type, etc.
-		 */
-		if (strcmp(name1, section_type_value[comp].typename) != 0) continue;
-
-		/*
-		 *	And define it.
-		 */
-		if (!define_type(cs, da, cf_section_name2(subcs))) {
+		if (!define_type(cs, da, cf_pair_attr(cp))) {
 			return false;
 		}
 	}
