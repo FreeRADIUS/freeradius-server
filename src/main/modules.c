@@ -1069,14 +1069,11 @@ static int load_component_section(CONF_SECTION *cs,
 	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
 	     modref = cf_item_find_next(cs, modref)) {
-		CONF_PAIR *cp = NULL;
 
 		if (cf_item_is_pair(modref)) {
-			cp = cf_item_to_pair(modref);
 			subcs = NULL;
 
 		} else if (cf_item_is_section(modref)) {
-			cp = NULL;
 			subcs = cf_item_to_section(modref);
 
 			/*
