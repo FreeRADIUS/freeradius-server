@@ -68,6 +68,9 @@ ATTRIBUTE	TP-CAPWAP-Hardware-Version		56	string
 ATTRIBUTE	TP-CAPWAP-Software-Version		57	string
 ATTRIBUTE	TP-CAPWAP-Boot-Version			58	string
 ATTRIBUTE	TP-CAPWAP-Other-Software-Version	59	string
+ATTRIBUTE	TP-Excess-Input-Octets			60	integer64
+ATTRIBUTE	TP-Excess-Output-Octets			61	integer64
+ATTRIBUTE	TP-Excess-Total-Octets			62	integer64
 
 VALUE	TP-TLS-Auth-Type		Pre-Shared-Key		0
 VALUE	TP-TLS-Auth-Type		X509-Subject-CommonName	1
