@@ -935,7 +935,7 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
  */
-static int load_subcomponent_section(CONF_SECTION *cs,
+static bool load_subcomponent_section(CONF_SECTION *cs,
 				     rbtree_t *components,
 				     fr_dict_attr_t const *da, rlm_components_t comp)
 {
@@ -947,17 +947,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	/*
 	 *	Sanity check.
 	 */
-	if (!name2) {
-		return 1;
-	}
-
-	/*
-	 *	Compile the group.
-	 */
-	ml = modcall_compile_section(NULL, comp, cs);
-	if (!ml) {
-		return 0;
-	}
+	if (!name2) return false;
 
 	/*
 	 *	We must assign a numeric index to this subcomponent.
@@ -967,21 +957,26 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	 */
 	dval = fr_dict_enum_by_name(NULL, da, name2);
 	if (!dval) {
-		talloc_free(ml);
 		cf_log_err_cs(cs,
 			      "The %s attribute has no VALUE defined for %s",
 			      section_type_value[comp].typename, name2);
-		return 0;
+		return false;
 	}
+
+	/*
+	 *	Compile the group.
+	 */
+	ml = modcall_compile_section(NULL, comp, cs);
+	if (!ml) false;
 
 	subcomp = new_sublist(cs, components, comp, dval->value);
 	if (!subcomp) {
 		talloc_free(ml);
-		return 1;
+		return false;
 	}
 
 	subcomp->modulelist = talloc_steal(subcomp, ml);
-	return 1;                /* OK */
+	return true;
 }
 
 /*
