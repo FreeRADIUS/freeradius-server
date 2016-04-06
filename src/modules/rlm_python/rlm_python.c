@@ -36,11 +36,8 @@ RCSID("$Id$")
 #include <Python.h>
 #include <dlfcn.h>
 
-static uint32_t python_instances = 0;
-static void *python_dlhandle;
-
-#define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
-#define Pyx_UNBLOCK_THREADS   PyGILState_Release(__gstate);}
+static uint32_t	python_instances = 0;
+static void	*python_dlhandle;
 
 /** Specifies the module.function to load for processing a section
  *
