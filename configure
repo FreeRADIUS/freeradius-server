@@ -11477,12 +11477,13 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_crypt_crypt_r" >&5
 $as_echo "$ac_cv_lib_crypt_crypt_r" >&6; }
 if test "x$ac_cv_lib_crypt_crypt_r" = xyes; then :
-  CRYPTLIB="-lcrypt"
+  CRYPTLIB_R="-lcrypt"
 
 fi
 
 
-if test "$CRYPTLIB" != ""; then
+if test "$CRYPTLIB_R" != ""; then
+  CRYPTLIB="${CRYPTLIB} ${CRYPTLIB_R}"
 
 $as_echo "#define HAVE_CRYPT_R /**/" >>confdefs.h
 
