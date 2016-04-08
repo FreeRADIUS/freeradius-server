@@ -21,7 +21,7 @@
  *
  * @note Rewritten by Paul P. Komkoff Jr <i@stingr.net>.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006,2015-2016  The FreeRADIUS server project
  * @copyright 2002  Miguel A.L. Paraz <mparaz@mparaz.com>
  * @copyright 2002  Imperium Technology, Inc.
  */
@@ -36,8 +36,11 @@ RCSID("$Id$")
 #include <Python.h>
 #include <dlfcn.h>
 
-static uint32_t	python_instances = 0;
-static void	*python_dlhandle;
+static uint32_t		python_instances = 0;
+static void		*python_dlhandle;
+
+static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
+static PyObject		*main_module;		//!< Pthon configuration dictionary.
 
 /** Specifies the module.function to load for processing a section
  *
@@ -54,10 +57,13 @@ typedef struct python_func_def {
  *
  */
 typedef struct rlm_python_t {
-	char const	*name;
-	PyThreadState	*main_thread;
-	char const	*python_path;
-	PyObject	*module;
+	char const	*name;			//!< Name of the module instance
+	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
+	char const	*python_path;		//!< Path to search for python files in.
+	PyObject	*module;		//!< Local, interpreter specific module, containing
+						//!< FreeRADIUS functions.
+	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
+						//!< instance.
 
 	python_func_def_t
 	instantiate,
@@ -75,7 +81,8 @@ typedef struct rlm_python_t {
 #endif
 	detach;
 
-	PyObject *pythonconf_dict;
+	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
+						//!< made available to the python script.
 } rlm_python_t;
 
 /** Tracks a python module inst/thread state pair
@@ -84,8 +91,8 @@ typedef struct rlm_python_t {
  * thread must have a PyThreadState per interpreter, to track execution.
  */
 typedef struct python_thread_state {
-	PyThreadState		*state;			//!< Module instance/thread specific state.
-	rlm_python_t		*inst;			//!< Module instance that created this thread state.
+	PyThreadState		*state;		//!< Module instance/thread specific state.
+	rlm_python_t		*inst;		//!< Module instance that created this thread state.
 } python_thread_state_t;
 
 /*
@@ -114,6 +121,8 @@ static CONF_PARSER module_config[] = {
 #undef A
 
 	{ FR_CONF_OFFSET("python_path", PW_TYPE_STRING, rlm_python_t, python_path) },
+	{ FR_CONF_OFFSET("cext_compat", PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), .dflt = false },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -576,7 +585,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	if (!this_thread) {
 		PyThreadState *state;
 
-		state = PyThreadState_New(inst->main_thread->interp);
+		state = PyThreadState_New(inst->sub_interpreter->interp);
 
 		RDEBUG3("Initialised new thread state %p", state);
 		if (!state) {
@@ -750,7 +759,7 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 /** Initialises a separate python interpreter for this module instance
  *
  */
-static int python_interpreter_init(rlm_python_t *inst)
+static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 {
 	int i;
 
@@ -784,6 +793,7 @@ static int python_interpreter_init(rlm_python_t *inst)
 
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
 	}
 	rad_assert(PyEval_ThreadsInitialized());
 
@@ -796,47 +806,87 @@ static int python_interpreter_init(rlm_python_t *inst)
 	 *	This sets up a separate environment for each python module instance
 	 *	These will be destroyed on Py_Finalize().
 	 */
-	inst->main_thread = Py_NewInterpreter();
-	PyThreadState_Swap(inst->main_thread);
+	if (!inst->cext_compat) {
+		inst->sub_interpreter = Py_NewInterpreter();
+		PyThreadState_Swap(inst->sub_interpreter);
+	} else {
+		inst->sub_interpreter = main_interpreter;
+	}
 
 	/*
-	 *	Set the python search path
+	 *	Due to limitations in Python, sub-interpreters don't work well
+	 *	with Python C extensions if they use GIL lock functions.
 	 */
-	if (inst->python_path) {
+	if (!inst->cext_compat || !main_module) {
+		CONF_SECTION *cs;
+
+		/*
+		 *	Set the python search path
+		 */
+		if (inst->python_path) {
 #if PY_VERSION_HEX > 0x03050000
-		{
-			wchar_t *name;
+			{
+				wchar_t *name;
 
-			path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
-			PySys_SetPath(path);
-			PyMem_RawFree(path);
-		}
+				path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
+				PySys_SetPath(path);
+				PyMem_RawFree(path);
+			}
 #else
-		{
-			char *path;
+			{
+				char *path;
 
-			path = talloc_strdup(NULL, inst->python_path);
-			PySys_SetPath(path);
-			talloc_free(path);
-		}
+				path = talloc_strdup(NULL, inst->python_path);
+				PySys_SetPath(path);
+				talloc_free(path);
+			}
 #endif
+		}
+
+		/*
+		 *	Initialise a new module, with our default methods
+		 */
+		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
+		if (!inst->module) {
+		error:
+			python_error_log();
+			PyEval_SaveThread();
+			return -1;
+		}
+
+		if (inst->cext_compat) main_module = inst->module;
+
+		for (i = 0; radiusd_constants[i].name; i++) {
+			if ((PyModule_AddIntConstant(inst->module, radiusd_constants[i].name,
+						     radiusd_constants[i].value)) < 0)
+				goto error;
+		}
+
+		/*
+		 *	Convert a FreeRADIUS config structure into a python
+		 *	dictionary.
+		 */
+		inst->pythonconf_dict = PyDict_New();
+		if (!inst->pythonconf_dict) {
+			ERROR("Unable to create python dict for config");
+			python_error_log();
+			return -1;
+		}
+
+		/*
+		 *	Add module configuration as a dict
+		 */
+		if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
+
+		cs = cf_section_sub_find(conf, "config");
+		if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
+	} else {
+		inst->module = main_module;
+		Py_IncRef(inst->module);
+		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
+		Py_IncRef(inst->pythonconf_dict);
 	}
 
-	/*
-	 *	Initialise a new module, with our default methods
-	 */
-	inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
-	if (!inst->module) {
-	error:
-		python_error_log();
-		PyEval_SaveThread();
-		return -1;
-	}
-
-	for (i = 0; radiusd_constants[i].name; i++) {
-		if ((PyModule_AddIntConstant(inst->module, radiusd_constants[i].name,
-					     radiusd_constants[i].value)) < 0) goto error;
-	}
 	PyEval_SaveThread();
 
 	return 0;
@@ -857,7 +907,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_python_t	*inst = instance;
 	int		code = 0;
-	CONF_SECTION	*cs;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -865,32 +914,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the python code required for this module instance
 	 */
-	if (python_interpreter_init(inst) < 0) return -1;
+	if (python_interpreter_init(inst, conf) < 0) return -1;
 
 	/*
 	 *	Switch to our module specific main thread
 	 */
-	PyEval_RestoreThread(inst->main_thread);
-
-	/*
-	 *	Convert a FreeRADIUS config structure into a python
-	 *	dictionary.
-	 */
-	inst->pythonconf_dict = PyDict_New();
-	if (!inst->pythonconf_dict) {
-	error:
-		ERROR("rlm_python: Unable to create python dict for config");
-		python_error_log();
-		return -1;
-	}
-
-	/*
-	 *	Add module configuration as a dict
-	 */
-	if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
-
-	cs = cf_section_sub_find(conf, "config");
-	if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
+	PyEval_RestoreThread(inst->sub_interpreter);
 
 	/*
 	 *	Process the various sections
@@ -916,6 +945,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	code = do_python_single(NULL, inst->instantiate.function, "instantiate");
 	if (code < 0) {
+	error:
 		python_error_log();	/* Needs valid thread with GIL */
 		PyEval_SaveThread();
 		return -1;
@@ -933,7 +963,7 @@ static int mod_detach(void *instance)
 	/*
 	 *	Call module destructor
 	 */
-	PyEval_RestoreThread(inst->main_thread);
+	PyEval_RestoreThread(inst->sub_interpreter);
 
 	ret = do_python_single(NULL, inst->detach.function, "detach");
 
@@ -951,7 +981,10 @@ static int mod_detach(void *instance)
 
 	PyEval_SaveThread();
 
-	python_thread_free(inst->main_thread);	/* Destroy the thread we created during instantiation */
+	/*
+	 *	Only destroy if it's a subinterpreter
+	 */
+	if (!inst->cext_compat) python_thread_free(inst->sub_interpreter);
 
 	if (python_instances == 0) {
 		Py_Finalize();

@@ -1,64 +1,79 @@
 #
-# Make sure the PYTHONPATH environmental variable contains the
-# directory(s) for the modules listed below, or set the
-# python_path configuration item.
+#  Uncomment any func_* which are included in your module. If
+#  rlm_python is called for a section which does not have
+#  a function defined, it will return NOOP.
 #
-# Uncomment any func_* which are included in your module. If
-# rlm_python is called for a section which does not have
-# a function defined, it will return NOOP.
-#
-# threading.local() may be used store thread specific data such
-# as connection handles.
+#  threading.local() may be used store thread specific data such
+#  as connection handles.
 #
 python {
+    #
+    #  Module to load functions from.
+    #
 	module = example
 
+	#
+	#  Uncomment the following line (and set to true) if you need
+	#  to call Python C extensions that acquire the GIL.
+	#
+	#  This will use the first Python interpreter (not a subinterpreter)
+	#  to provide the execution environment for this module instance.
+	#
+	#  The tradeoff is, that any module instance with cext_compat = true,
+	#  will share the same environment, and will use the same user
+	#  configurable configuration items, and python_path, as the first
+	#  instance of rlm_python to be loaded with cext_compat enabled.
+	#
+	#  Not all Python functions use the GIL as it prevents parallel
+	#  execution.  A good indication of whether cext_compat is needed
+	#  is whether your script locks up or crashes when calling a
+	#  python C extension.
+	#
+#	cext_compat = false
+
+    #
+    #  Search path for Python modules, must include the path to your
+    #  python module.
+    #
 #	python_path = ${modconfdir}/${.:name}
 
-#	mod_instantiate = ${.module}
+    #
+    #  You may set mod_<section> for any of the section to module
+    #  mappings below, if you want to reference a function in a
+    #  different module.
+    #
+
+    #
+    #  Uncomment func_<section> lines your module provides methods for.
+    #
+
+    # Called on module instantiation.
 #	func_instantiate = instantiate
 
-#	mod_detach = ${.module}
+    # Called on module unload
 #	func_detach = detach
 
-#	mod_authorize = ${.module}
 #	func_authorize = authorize
-
-#	mod_authenticate = ${.module}
 #	func_authenticate = authenticate
-
-#	mod_preacct = ${.module}
 #	func_preacct = preacct
-
-#	mod_accounting = ${.module}
 #	func_accounting = accounting
-
-#	mod_checksimul = ${.module}
 #	func_checksimul = checksimul
-
-#	mod_pre_proxy = ${.module}
 #	func_pre_proxy = pre_proxy
-
-	mod_post_proxy = ${.module}
 #	func_post_proxy = post_proxy
-
-#	mod_post_auth = ${.module}
 #	func_post_auth = post_auth
-
-#	mod_recv_coa = ${.module}
 #	func_recv_coa = recv_coa
-
-#	mod_send_coa = ${.module}
 #	func_send_coa = send_coa
 
-	# You can define configuration items (and nested sub-sections) in python "config" section.
-	# These items will be accessible in the python script through radiusd.config dict
-	# For instance: radiusd.config['name'], radiusd.config['sub-config']['name']
+    #
+	#  You can define configuration items (and nested sub-sections) in
+	#  python "config" section. These items will be accessible in the python
+	#  script through radiusd.config dict For instance: radiusd.config['name'],
+	#  radiusd.config['sub-config']['name']
 	#
-	#config {
-	#	name = "value"
-	#	sub-config {
-	#		name = "value of name from config.sub-config"
-	#	}
-	#}
+#   config {
+#	    name = "value"
+#	    sub-config {
+#		    name = "value of name from config.sub-config"
+#	    }
+#   }
 }
