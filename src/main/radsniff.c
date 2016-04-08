@@ -2164,7 +2164,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	@fixme causes hang in talloc steal
 	 */
-	 //talloc_set_memlimit(conf, 524288000);		/* 50 MB */
+	 //talloc_set_memlimit(conf, 52428800);		/* 50 MB */
 #endif
 
 	/*
