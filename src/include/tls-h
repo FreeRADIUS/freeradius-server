@@ -428,6 +428,9 @@ void 		tls_session_info_cb(SSL const *s, int where, int ret);
 void 		tls_session_msg_cb(int write_p, int msg_version, int content_type,
 				   void const *buf, size_t len, SSL *ssl, void *arg);
 
+int		tls_session_pairs_from_x509_cert(vp_cursor_t *cursor, TALLOC_CTX *ctx,
+				     	         tls_session_t *session, X509 *cert, int depth);
+
 int		tls_session_recv(REQUEST *request, tls_session_t *tls_session);
 
 int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
