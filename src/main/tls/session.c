@@ -1022,9 +1022,7 @@ do { \
 
 				vp = fr_pair_make(request, NULL, attribute, value, T_OP_ADD);
 				if (!vp) {
-					RDEBUG3("Skipping %s += '%s'.  Please check that both the "
-						"attribute and value are defined in the dictionaries",
-						attribute, value);
+					RDEBUG3("Skipping: %s += '%s'", attribute, value);
 				} else {
 					fr_cursor_append(cursor, vp);
 				}

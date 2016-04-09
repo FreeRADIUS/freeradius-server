@@ -267,7 +267,6 @@ error:
  *	- Deserialised session data on success.
  *	- NULL on error.
  */
-
 static SSL_SESSION *tls_cache_read(SSL *ssl,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 				   unsigned char const *key,

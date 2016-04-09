@@ -189,7 +189,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	Client certificates get better OCSP checks.
 	 */
 	if (depth > 0) {
-		RDEBUG3("Verify intermediary returned: %d", my_ok);
+		RDEBUG2("[verify chain] = %s", my_ok ? "ok" : "invalid");;
 		return my_ok;
 	}
 
@@ -294,7 +294,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 #endif
 
-	RDEBUG3("Verify client returned: %d", my_ok);
+	RDEBUG2("[verify client] = %s", my_ok ? "ok" : "invalid");
 	return my_ok;
 }
 
