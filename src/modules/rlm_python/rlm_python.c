@@ -245,14 +245,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 	/* Get the tuple tuplesize. */
 	tuplesize = PyTuple_GET_SIZE(pValue);
 	for (i = 0; i < tuplesize; i++) {
-		PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
-		PyObject *pStr1;
-		PyObject *pStr2;
-		PyObject *pOp;
-		int pairsize;
-		char const *s1;
-		char const *s2;
-		FR_TOKEN op = T_OP_EQ;
+		PyObject 	*pTupleElement = PyTuple_GET_ITEM(pValue, i);
+		PyObject 	*pStr1;
+		PyObject 	*pStr2;
+		PyObject 	*pOp;
+		int		pairsize;
+		char const	*s1;
+		char const	*s2;
+		FR_TOKEN	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
 			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
@@ -501,7 +501,6 @@ static void python_thread_free(PyThreadState *state)
 
 	PyThreadState_Delete(state);	/* Don't need to hold lock for this */
 }
-
 
 /** Destroy a thread state
  *
