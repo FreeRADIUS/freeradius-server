@@ -102,7 +102,11 @@ install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(R)$(mandir)/%: man/%
 	@echo INSTALL $(notdir $<)
-	@$(INSTALL) -m 644 $< $@
+	@sed -e "s,/etc/raddb,$(raddbdir),g" \
+		-e "s,/usr/local/share,$(datarootdir),g" \
+		$< > $<.subst
+	@$(INSTALL) -m 644 $<.subst $@
+	@rm $<.subst
 
 #
 #  Don't install rlm_test
