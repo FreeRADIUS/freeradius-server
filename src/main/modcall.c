@@ -1763,6 +1763,11 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 			}
 
 			/*
+			 *	Ignore subsections (e.g. Auth-Type) which have already been compiled.
+			 */
+			if (!cf_data_find(subcs, "policy") && cf_data_find(subcs, "unlang")) continue;
+
+			/*
 			 *	Otherwise it's a real keyword.
 			 */
 			single = compile_item(c, component, ci, grouptype, &name1);
@@ -1795,6 +1800,11 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 
 				single = compile_item(c, component, ci, grouptype, &junk);
 				if (!single) {
+					/*
+					 *	Silently skip modules
+					 *	which are optionally
+					 *	loaded.
+					 */
 					if (cf_item_is_pair(ci) &&
 					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
 						continue;
@@ -1843,8 +1853,14 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 
 	/*
 	 *	Associate the unlang with the configuration section.
+	 *
+	 *	This works for normal sections.  Policies can be
+	 *	referenced from different sections, and are compiled
+	 *	differently each time, based on the defaultactions for
+	 *	each section.  We threfore don't cache the compiled
+	 *	unlang for policies.
 	 */
-	cf_data_add(cs, "unlang", g, NULL);
+	if (!cf_data_find(cs, "policy")) cf_data_add(cs, "unlang", g, NULL);
 
 	return g;
 }
@@ -2732,6 +2748,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	p = strrchr(modrefname, '.');
 	if (!p) {
 		subcs = virtual_module_find_cs(&method, modrefname, modrefname, NULL);
+
 	} else {
 		char buffer[256];
 
@@ -2739,6 +2756,14 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		buffer[p - modrefname] = '\0';
 
 		subcs = virtual_module_find_cs(&method, modrefname, buffer, buffer + (p - modrefname) + 1);
+
+		/*
+		 *	Mark it as being a policy with potentially
+		 *	multiple callers.  We just need a marker, and
+		 *	don't care what the value is.  So we cache the
+		 *	subcs with itself.
+		 */
+		cf_data_add(subcs, "policy", subcs, NULL);
 	}
 
 	/*
