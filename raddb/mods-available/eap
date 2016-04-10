@@ -397,6 +397,30 @@ eap {
 			#
 #			lifetime = 86400
 
+			#
+			#  Only allow session resumption if an extended master
+			#  secret has been created.  This requires client support.
+			#
+			#  Extended Master Secrets (RFC 7627) are required to
+			#  prevent a MITM attack, where the attacker can resume
+			#  a session if it can insert itself into the path between
+			#  the TLS client and TLS server.
+			#
+			#    https://mitls.org/pages/attacks/3SHAKE
+			#
+			#  Note: This attack is undetectable by the client.
+			#  Note: Only supported with OpenSSL >= 1.1.0
+			#
+#			require_extended_master_secret = yes
+
+			#
+			#  Only allow session resumption if a cipher which would
+			#  allow perfect forward secrecy has been selected.
+			#
+			#  Note: Only enforced with OpenSSL >= 1.1.0
+			#
+#			require_perfect_forward_secrecy = no
+
 			#  As of 3.1 OpenSSL's internal cache has been disabled due to
 			#  scoping/threading issues.
 			#

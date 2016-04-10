@@ -44,6 +44,11 @@ static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_conf_t, session_id_name) },
 	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{ FR_CONF_OFFSET("require_extended_master_secret", PW_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_require_extms), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", PW_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_require_pfs), .dflt = "no" },
+#endif
+
 	{ FR_CONF_DEPRECATED("enable", PW_TYPE_BOOLEAN, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("max_entries", PW_TYPE_INTEGER, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("persist_dir", PW_TYPE_STRING, fr_tls_conf_t, NULL) },

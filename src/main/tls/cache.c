@@ -279,7 +279,6 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	unsigned char const	**p;
 	uint8_t const		*q;
 	VALUE_PAIR		*vp;
-	tls_session_t		*tls_session;
 	SSL_SESSION		*sess;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
@@ -331,7 +330,6 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	 *	so we don't have to bother unsetting it.
 	 */
 	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION));
-
 
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
@@ -387,29 +385,56 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 	}
 }
 
+/** Prevent a TLS session from being cached
+ *
+ * Usually called if the session has failed for some reason.
+ *
+ * @param session on which to prevent resumption.
+ */
+void tls_cache_deny(tls_session_t *session)
+{
+	/*
+	 *	Even for 1.1.0 we don't know when this function
+	 *	will be called, so better to remove the session
+	 *	directly.
+	 */
+	SSL_CTX_remove_session(session->ctx, session->ssl_session);
+}
+
 /** Allow a TLS session to be resumed in future
  *
- * @param request	The current request.
- * @param session	on which to allow resumption.
+ * @note In OpenSSL > 1.1.0 this should not be called directly, but passed as a callback to
+ *	SSL_CTX_set_not_resumable_session_callback.
+ *
+ * @param ssl			The current OpenSSL session.
+ * @param is_forward_secure	Whether the cipher is forward secure, pass -1 if unknown.
  * @return
- *	- -1 on error (couldn't get fr_tls_server_conf struct from session)
  *	- 0 on success.
- *	- 1 if enabling session resumption was prevented administratively.
+ *	- 1 if enabling session resumption was disabled for this session.
  */
-int tls_cache_allow(REQUEST *request, tls_session_t *session)
+int tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 {
+	REQUEST			*request;
+	fr_tls_conf_t		*conf;
+	tls_session_t		*session;
 	VALUE_PAIR		*vp;
-	fr_tls_conf_t	*conf;
 
-	conf = (fr_tls_conf_t *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF);
-#ifndef NDEBUG
-	rad_assert(conf != NULL);
-#else
-	if (!conf) {
-		REDEBUG("Failed retrieving TLS configuration from SSL session");
-		return -1;
+	session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
+	conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
+	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	if (conf->session_cache_require_extms && (SSL_get_extms_support(session->ssl) != 1)) {
+		RDEBUG2("Client does not support the Extended Master Secret extension, disabling session resumption");
+		goto disable;
+	}
+
+	if (conf->session_cache_require_pfs && !is_forward_secure) {
+		RDEBUG2("Cipher suite is not forward secure, disabling session resumption");
+		goto disable;
 	}
 #endif
+
 	/*
 	 *	If there's no session resumption, delete the entry
 	 *	from the cache.  This means either it's disabled
@@ -419,37 +444,18 @@ int tls_cache_allow(REQUEST *request, tls_session_t *session)
 	 *	This also means you can't turn it on just for one
 	 *	user.
 	 */
-	if ((!session->allow_session_resumption) ||
-	    (((vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY)) != NULL) &&
-	     (vp->vp_integer == 0))) {
+	if (!session->allow_session_resumption) goto disable;
+
+	vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY);
+	if (vp->vp_integer == 0) {
+		RDEBUG2("&control:Allow-Session-Resumption == no, disabling session resumption");
+	disable:
 		SSL_CTX_remove_session(session->ctx, session->ssl_session);
-		session->allow_session_resumption = false;	/* Mostly for debugging, not actually used */
-	/*
-	 *	Else resumption IS allowed, so we store the
-	 *	user data in the cache.
-	 */
-	} else if (SSL_session_reused(session->ssl)) {
-		/*
-		 *	Mark the request as resumed.
-		 */
-		pair_make_request("EAP-Session-Resumed", "1", T_OP_SET);
+		session->allow_session_resumption = false;
+		return 1;
 	}
 
 	return 0;
-}
-
-/** Prevent a TLS session from being resumed
- *
- * Usually called if the session has failed for some reason.
- *
- * @param session on which to prevent resumption.
- */
-void tls_cache_deny(tls_session_t *session)
-{
-	/*
-	 *	Force the session to NOT be cached.
-	 */
-	SSL_CTX_remove_session(session->ctx, session->ssl_session);
 }
 
 /** Sets callbacks on a SSL_CTX to enable/disable session resumption
@@ -478,6 +484,10 @@ void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uin
 
 	SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 	SSL_CTX_set_timeout(ctx, lifetime);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	SSL_CTX_set_not_resumable_session_callback(ctx, tls_cache_disable_cb);
+#endif
 
 	/*
 	 *	This sets the context sessions can be resumed in.

@@ -1310,6 +1310,16 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 			}
 		}
 #endif
+
+		/*
+		 *	Session was resumed, add attribute to mark it as such.
+		 */
+		if (SSL_session_reused(session->ssl)) {
+			/*
+			 *	Mark the request as resumed.
+			 */
+			pair_make_request("EAP-Session-Resumed", "1", T_OP_SET);
+		}
 	}
 
 	/*

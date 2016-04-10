@@ -222,6 +222,13 @@ struct fr_tls_conf_t {
 							//!< in-memory cache.
 	uint32_t	session_cache_lifetime;		//!< The maximum period a session can be resumed after.
 
+	bool		session_cache_require_extms;	//!< Only allow session resumption if the client/server
+							//!< supports the extended master session key.  This protects
+							//!< against the triple handshake attack.
+
+	bool		session_cache_require_pfs;	//!< Only allow session resumption if a cipher suite that
+							//!< supports perfect forward secrecy.
+
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
@@ -364,9 +371,9 @@ do {\
  */
 int		tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type);
 
-int		tls_cache_allow(REQUEST *request, tls_session_t *tls_session);
-
 void		tls_cache_deny(tls_session_t *tls_session);
+
+int		tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
 void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uint32_t lifetime);
 
