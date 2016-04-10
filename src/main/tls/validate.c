@@ -64,7 +64,7 @@
 int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 {
 	X509		*cert;
-	SSL		*ssl_session;
+	SSL		*ssl;
 	tls_session_t	*tls_session;
 	int		err, depth;
 	fr_tls_conf_t	*conf;
@@ -92,17 +92,17 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	Retrieve the pointer to the SSL of the connection currently treated
 	 *	and the application specific data stored into the SSL object.
 	 */
-	ssl_session = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	conf = (fr_tls_conf_t *)SSL_get_ex_data(ssl_session, FR_TLS_EX_INDEX_CONF);
+	ssl = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+	conf = (fr_tls_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	rad_assert(conf != NULL);
 
-	tls_session = SSL_get_ex_data(ssl_session, FR_TLS_EX_INDEX_TLS_SESSION);
+	tls_session = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION);
 	rad_assert(tls_session != NULL);
 
-	request = (REQUEST *)SSL_get_ex_data(ssl_session, FR_TLS_EX_INDEX_REQUEST);
+	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	rad_assert(request != NULL);
 
-	identity = (char **)SSL_get_ex_data(ssl_session, FR_TLS_EX_INDEX_IDENTITY);
+	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 
 	/*
 	 *	For this next bit, we create the attributes *only* if
@@ -285,7 +285,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	if (my_ok && conf->ocsp_enable){
 		X509_STORE *ocsp_store = NULL;
 
-		ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl_session, FR_TLS_EX_INDEX_STORE);
+		ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
 
 		RDEBUG2("Starting OCSP Request");
 		if (X509_STORE_CTX_get1_issuer(&issuer_cert, x509_ctx, cert) != 1) {
