@@ -33,25 +33,27 @@
 
 /** Validates a certificate using custom logic
  *
- * Before trusting a certificate, you must make sure that the certificate is
- * 'valid'. There are several steps that your application can take in determining if a
- * certificate is valid. Commonly used steps are:
+ * Before trusting a certificate, we make sure that the certificate is
+ * 'valid'. There are several checks we perform to verify its validity.
  *
- *   1. Verifying the certificate's signature, and verifying that the certificate has
- *      been issued by a trusted Certificate Authority.
+ *   1. Verify the certificate's signature, and verifying that the certificate has
+ *      been issued by a trusted Certificate Authority (this is done for us by OpenSSL).
  *
- *   2. Verifying that the certificate is valid for the present date (i.e. it is being
+ *   2. Verify that the certificate is valid for the present date (i.e. it is being
  *      presented within its validity dates).
  *
- *   3. Verifying that the certificate has not been revoked by its issuing Certificate
+ *   3. Verify that the certificate has not been revoked by its issuing Certificate
  *      Authority, by checking with respect to a Certificate Revocation List (CRL).
  *
- *   4. Verifying that the credentials presented by the certificate fulfill additional
+ *   4. Verify that the credentials presented by the certificate fulfill additional
  *      requirements specific to the application, such as with respect to access control
  *      lists or with respect to OCSP (Online Certificate Status Processing).
  *
- * NOTE: This callback will be called multiple times based on the depth of the root
- * certificate chain
+ * @note This callback will be called multiple times based on the depth of the root
+ *	certificate chain.
+ *
+ * @note As a byproduct of validation, various OIDs will be extracted from the
+ *	certificates, and inserted into the session-state: list as VALUE_PAIR.
  *
  * @param ok		preverify ok.  1 if true, 0 if false.
  * @param x509_ctx	containing certs to verify.
@@ -259,13 +261,13 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			goto do_unlink;
 		}
 
-		RDEBUG("Verifying client certificate: %s", conf->verify_client_cert_cmd);
+		RDEBUG2("Verifying client certificate with cmd");
 		if (radius_exec_program(request, NULL, 0, NULL, request, conf->verify_client_cert_cmd,
 					request->packet->vps, true, true, EXEC_TIMEOUT) != 0) {
-			AUTH("Certificate CN (%s) fails external verification!", common_name);
+			REDEBUG("Client certificate CN \"%s\" failed external verification", common_name);
 			my_ok = 0;
 		} else {
-			RDEBUG("Client certificate CN %s passed external validation", common_name);
+			RDEBUG("Client certificate CN \"%s\" passed external validation", common_name);
 		}
 
 	do_unlink:

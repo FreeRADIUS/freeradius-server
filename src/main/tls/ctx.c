@@ -405,7 +405,9 @@ post_ca:
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
 	}
 
-	/* Load randomness */
+	/*
+	 *	Load randomness
+	 */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024 * 10))) {
 			tls_log_error(NULL, "Failed loading randomness");
@@ -414,7 +416,7 @@ post_ca:
 	}
 
 	/*
-	 * Set the cipher list if we were told to
+	 *	Set the cipher list if we were told to
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {

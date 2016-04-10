@@ -61,7 +61,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	- 0 on success.
  *	- -1 on failure.
  */
-
 static int tls_cache_attrs(REQUEST *request,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 			   uint8_t const *key,
@@ -275,11 +274,12 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 #endif
 				   int key_len, int *copy)
 {
-	fr_tls_conf_t	*conf;
+	fr_tls_conf_t		*conf;
 	REQUEST			*request;
 	unsigned char const	**p;
 	uint8_t const		*q;
 	VALUE_PAIR		*vp;
+	tls_session_t		*tls_session;
 	SSL_SESSION		*sess;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
@@ -322,6 +322,18 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	RDEBUG3("Read %zu bytes of session data.  Session deserialized successfully", vp->vp_length);
 
 	/*
+	 *	OpenSSL's API is very inconsistent.
+	 *
+	 *	We need to set external data here, so it can be
+	 *	retrieved in tls_cache_delete.
+	 *
+	 *	ex_data is not serialised in i2d_SSL_SESSION
+	 *	so we don't have to bother unsetting it.
+	 */
+	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION));
+
+
+	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
 	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
@@ -336,21 +348,15 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
  */
 static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 {
-	fr_tls_conf_t	*conf;
+	fr_tls_conf_t		*conf;
+	tls_session_t		*tls_session;
 	REQUEST			*request;
 	uint8_t			buffer[MAX_CACHE_ID_SIZE];
 	ssize_t			slen;
 
-	conf = SSL_CTX_get_app_data(ctx);
-
-	/*
-	 *	We need a fake request for the virtual server, but we
-	 *	don't have a parent request to base it on.  So just
-	 *	invent one.
-	 */
-	request = request_alloc(NULL);
-	request->packet = fr_radius_alloc(request, false);
-	request->reply = fr_radius_alloc(request, false);
+	conf = talloc_get_type_abort(SSL_CTX_get_app_data(ctx), fr_tls_conf_t);
+	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
+	request = talloc_get_type_abort(SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
 	slen = tls_cache_id(buffer, sizeof(buffer), sess);
 	if (slen < 0) {
@@ -379,11 +385,6 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 		RWDEBUG("Failed deleting session data");
 		goto error;
 	}
-
-	/*
-	 *	Delete the fake request we created.
-	 */
-	talloc_free(request);
 }
 
 /** Allow a TLS session to be resumed in future
@@ -422,17 +423,7 @@ int tls_cache_allow(REQUEST *request, tls_session_t *session)
 	    (((vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(session->ctx, session->ssl_session);
-		session->allow_session_resumption = false;
-
-		/*
-		 *	If we're in a resumed session and it's
-		 *	not allowed,
-		 */
-		if (SSL_session_reused(session->ssl)) {
-			REDEBUG("Forcibly stopping session resumption as it is not allowed");
-			return 1;
-		}
-
+		session->allow_session_resumption = false;	/* Mostly for debugging, not actually used */
 	/*
 	 *	Else resumption IS allowed, so we store the
 	 *	user data in the cache.

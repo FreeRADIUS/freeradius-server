@@ -308,9 +308,9 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 	REQUEST		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		role = "client ";
+		role = "Client ";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		role = "server ";
+		role = "Server ";
 	} else {
 		role = "";
 	}
@@ -319,7 +319,20 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 	state = state ? state : "<INVALID>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		RDEBUG2("Handshake state: %s%s", role, state);
+		if (RDEBUG_ENABLED3) {
+			char const *abbrv = SSL_state_string(ssl);
+			size_t len;
+
+			/*
+			 *	Trim crappy OpenSSL state strings...
+			 */
+			len = strlen(abbrv);
+			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
+
+			RDEBUG3("Handshake state [%.*s] - %s%s", (int)len, abbrv, role, state);
+		} else {
+			RDEBUG2("Handshake state - %s%s", role, state);
+		}
 		return;
 	}
 
@@ -356,7 +369,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 		if (ret < 0) {
 			if (SSL_want_read(ssl)) {
-				RDEBUG2("Need to read more data: %s%s", role, state);
+				RDEBUG2("Need more data from client"); /* State same as previous call, don't print */
 				return;
 			}
 			REDEBUG("Handshake exit state %s%s", role, state);
