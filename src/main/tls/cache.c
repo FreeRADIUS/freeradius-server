@@ -412,7 +412,11 @@ void tls_cache_deny(tls_session_t *session)
  *	- 0 on success.
  *	- 1 if enabling session resumption was disabled for this session.
  */
-int tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
+int tls_cache_disable_cb(SSL *ssl,
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+			 UNUSED
+#endif
+			 int is_forward_secure)
 {
 	REQUEST			*request;
 	fr_tls_conf_t		*conf;
