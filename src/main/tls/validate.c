@@ -104,6 +104,21 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 
+	if (RDEBUG_ENABLED3) {
+		STACK_OF(X509) *our_chain = X509_STORE_CTX_get_chain(x509_ctx);
+		int i;
+
+		RDEBUG3("Certificate chain - %i cert(s) untrusted", X509_STORE_CTX_get_num_untrusted(x509_ctx));
+		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
+			X509 *this_cert = sk_X509_value(our_chain, i - 1);
+
+			X509_NAME_oneline(X509_get_subject_name(this_cert), subject, sizeof(subject));
+			subject[sizeof(subject) - 1] = '\0';
+
+			RDEBUG3("%s [%i] %s", this_cert == cert ? ">" : " ", i - 1, subject);
+		}
+	}
+
 	/*
 	 *	For this next bit, we create the attributes *only* if
 	 *	we're at the client or issuing certificate, AND we
