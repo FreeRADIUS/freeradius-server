@@ -419,23 +419,28 @@ int tls_cache_disable_cb(SSL *ssl,
 			 int is_forward_secure)
 {
 	REQUEST			*request;
-	fr_tls_conf_t		*conf;
+
 	tls_session_t		*session;
 	VALUE_PAIR		*vp;
 
 	session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
-	conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	if (conf->session_cache_require_extms && (SSL_get_extms_support(session->ssl) != 1)) {
-		RDEBUG2("Client does not support the Extended Master Secret extension, disabling session resumption");
-		goto disable;
-	}
+	{
+		fr_tls_conf_t *conf;
 
-	if (conf->session_cache_require_pfs && !is_forward_secure) {
-		RDEBUG2("Cipher suite is not forward secure, disabling session resumption");
-		goto disable;
+		conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
+		if (conf->session_cache_require_extms && (SSL_get_extms_support(session->ssl) != 1)) {
+			RDEBUG2("Client does not support the Extended Master Secret extension, "
+				"disabling session resumption");
+			goto disable;
+		}
+
+		if (conf->session_cache_require_pfs && !is_forward_secure) {
+			RDEBUG2("Cipher suite is not forward secure, disabling session resumption");
+			goto disable;
+		}
 	}
 #endif
 
