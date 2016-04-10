@@ -255,6 +255,11 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 		struct passwd *user;
 		struct group *group;
 
+		if (errno != ENOENT) {
+			fr_strerror_printf("Can't open directory \"%s\": %s", dir, fr_syserror(errno));
+			goto error;
+		}
+
 		if (rad_getpwuid(NULL, &user, euid) < 0) {
 			fr_strerror_printf("Failed resolving euid to user: %s", fr_strerror());
 			goto error;
@@ -264,9 +269,10 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 			talloc_free(user);
 			goto error;
 		}
-		fr_strerror_printf("Can't open directory \"%s\": %s.  Must be created manually, or modified, "
-				   "with permissions that allow writing by user %s or group %s", dir,
-				   user->pw_name, group->gr_name, fr_syserror(errno));
+
+		fr_strerror_printf("Can't open directory \"%s\": Create it and allow writing by "
+				   "user %s or group %s", dir, user->pw_name, group->gr_name);
+
 		talloc_free(user);
 		talloc_free(group);
 		goto error;
