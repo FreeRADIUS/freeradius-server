@@ -401,7 +401,7 @@ void tls_cache_deny(tls_session_t *session)
 	SSL_CTX_remove_session(session->ctx, session->ssl_session);
 }
 
-/** Allow a TLS session to be resumed in future
+/** Prevent a TLS session from being resumed in future
  *
  * @note In OpenSSL > 1.1.0 this should not be called directly, but passed as a callback to
  *	SSL_CTX_set_not_resumable_session_callback.
