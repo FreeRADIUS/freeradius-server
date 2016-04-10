@@ -262,7 +262,7 @@ int eap_tls_success(eap_session_t *eap_session)
 	 *	Check session resumption is allowed, disabling it
 	 *	if it's not.
 	 */
-	tls_cache_disable_cb(ssl, -1);
+	tls_cache_disable_cb(tls_session->ssl, -1);
 #endif
 
 	/*
