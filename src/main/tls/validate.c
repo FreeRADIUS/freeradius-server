@@ -105,10 +105,15 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 
 	if (RDEBUG_ENABLED3) {
-		STACK_OF(X509) *our_chain = X509_STORE_CTX_get_chain(x509_ctx);
-		int i;
+		STACK_OF(X509)	*our_chain = X509_STORE_CTX_get_chain(x509_ctx);
+		int		i;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		RDEBUG3("Certificate chain - %i cert(s) untrusted", X509_STORE_CTX_get_num_untrusted(x509_ctx));
+#else
+		RDEBUG3("Certificate chain");
+#endif
+
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
 			X509 *this_cert = sk_X509_value(our_chain, i - 1);
 
