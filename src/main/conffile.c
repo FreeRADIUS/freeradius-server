@@ -1953,7 +1953,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 
 	cp->parsed = true;
 	cp->item.filename = "<internal>";
-	cp->item.lineno = 0;
+	cp->item.lineno = -1;
 
 	/*
 	 *	Set the rcode to indicate we used a default value
@@ -2223,7 +2223,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 				if (!subcs) return;
 
 				subcs->item.filename = "<internal>";
-				subcs->item.lineno = 0;
+				subcs->item.lineno = -1;
 				cf_item_add(cs, &(subcs->item));
 			}
 
@@ -2263,7 +2263,7 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 			CONF_PAIR *cp;
 
 			cp = cf_item_to_pair(ci);
-			if (cp->parsed) continue;
+			if (cp->parsed || (ci->lineno < 0)) continue;
 
 			WARN("%s[%d]: The item '%s' is defined, but is unused by the configuration",
 			     cp->item.filename ? cp->item.filename : "unknown",
