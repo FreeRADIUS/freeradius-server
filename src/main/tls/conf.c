@@ -43,6 +43,7 @@ static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
 	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_conf_t, session_id_name) },
 	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
+	{ FR_CONF_OFFSET("verify", PW_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_verify), .dflt = "no" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{ FR_CONF_OFFSET("require_extended_master_secret", PW_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_require_extms), .dflt = "yes" },

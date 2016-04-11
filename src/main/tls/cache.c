@@ -332,6 +332,22 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION));
 
 	/*
+	 *	SSL_set_session increases the reference could
+	 *	on the session, so when OpenSSL attempts to
+	 *	free it, when setting our returned session
+	 *	it becomes a noop.
+	 *
+	 *	Spent many hours trying to find a better place
+	 *	to do validation than this, but it seems
+	 *	like this is the only way.
+	 */
+	SSL_set_session(ssl, sess);
+	if (tls_validate_client_cert_chain(ssl) != 1) {
+		RWDEBUG("Validation failed, forcefully expiring resumed session");
+		SSL_SESSION_set_timeout(sess, 0);
+	}
+
+	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
 	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);

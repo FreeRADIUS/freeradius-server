@@ -129,8 +129,14 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	we're at the client or issuing certificate, AND we
 	 *	have a user identity.  i.e. we don't create the
 	 *	attributes for RadSec connections.
+	 *
+	 *	We do not repopulate the attribute list with cert
+	 *	attributes as these should have been cached previously.
+	 *
+	 *	If we do not have a copy of the cert that issued the
+	 *	client's cert in SSL_CTX's X509_STORE.
 	 */
-	if (identity && (depth <= 1)) {
+	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
 		fr_cursor_init(&cursor, &cert_vps);
 		tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
 
@@ -320,4 +326,51 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	return my_ok;
 }
 
+/** Revalidates the client's certificate chain
+ *
+ * Wraps the tls_validate_cert_cb callback, allowing us to use the same
+ * validation logic whenever we need to.
+ *
+ * @note Only use so far is forcing the chain to be re-validated on session
+ *	resumption.
+ *
+ * @return
+ *	- 1 if the chain could be validated.
+ *	- 0 if the chain failed validation.
+ */
+int tls_validate_client_cert_chain(SSL *ssl)
+{
+	int err;
+	int verify;
+
+	STACK_OF(X509)	*chain;
+	X509		*cert;
+	X509_STORE	*store;
+	X509_STORE_CTX	*store_ctx;
+
+	REQUEST		*request;
+
+	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
+
+	store_ctx = X509_STORE_CTX_new();
+	chain = SSL_get_peer_cert_chain(ssl);			/* Increases ref count */
+	cert = SSL_get_peer_certificate(ssl);			/* Does not increase ref count */
+	store = SSL_CTX_get_cert_store(SSL_get_SSL_CTX(ssl));	/* Does not increase ref count */
+
+	X509_STORE_CTX_init(store_ctx, store, cert, chain);
+	X509_STORE_CTX_set_ex_data(store_ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), ssl);
+	X509_STORE_CTX_set_verify_cb(store_ctx, tls_validate_cert_cb);
+
+	verify = X509_verify_cert(store_ctx);
+	if (verify != 1) {
+		err = X509_STORE_CTX_get_error(store_ctx);
+		REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
+		return 0;
+	}
+
+	X509_free(cert);
+	X509_STORE_CTX_free(store_ctx);
+
+	return 1;
+}
 #endif /* WITH_TLS */

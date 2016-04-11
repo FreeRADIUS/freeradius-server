@@ -398,6 +398,21 @@ eap {
 #			lifetime = 86400
 
 			#
+			#  Revalidate client's certificate chain each time a session
+			#  is resumed.
+			#
+			#  Intermediaries provided by the client are not cached,
+			#  or copied to the server's certificate store, so
+			#  rebuilding the certificate chain will fail if we don't
+			#  have the intermediaries loaded from ca_file or ca_path.
+			#
+			#  This is useful with long cache lifetimes, where a
+			#  certificate may be revoked in the interim between the
+			#  session being created and re-used.
+			#
+#			verify = no
+
+			#
 			#  Only allow session resumption if an extended master
 			#  secret has been created.  This requires client support.
 			#

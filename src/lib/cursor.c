@@ -140,7 +140,7 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
  *
  * Primarily useful for setting up the cursor for freeing attributes added
  * during the execution of a function, which later errors out, requiring only
- * the attribute(s) that it added to be freed, and the attributes already
+ * the attribute(s) that it added to be freed and the attributes already
  * present in the list to remain untouched.
  *
  @code {.c}

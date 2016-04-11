@@ -222,6 +222,8 @@ struct fr_tls_conf_t {
 							//!< in-memory cache.
 	uint32_t	session_cache_lifetime;		//!< The maximum period a session can be resumed after.
 
+	bool		session_cache_verify;		//!< Revalidate any sessions read in from the cache.
+
 	bool		session_cache_require_extms;	//!< Only allow session resumption if the client/server
 							//!< supports the extended master session key.  This protects
 							//!< against the triple handshake attack.
@@ -452,6 +454,8 @@ tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
  *	tls/validate.c
  */
 int		tls_validate_cert_cb(int ok, X509_STORE_CTX *ctx);
+
+int		tls_validate_client_cert_chain(SSL *ssl);
 #ifdef __cplusplus
 }
 #endif
