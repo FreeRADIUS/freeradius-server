@@ -340,8 +340,9 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
  */
 int tls_validate_client_cert_chain(SSL *ssl)
 {
-	int err;
-	int verify;
+	int		err;
+	in		verify;
+	int		ret = 1;
 
 	STACK_OF(X509)	*chain;
 	X509		*cert;
@@ -365,12 +366,12 @@ int tls_validate_client_cert_chain(SSL *ssl)
 	if (verify != 1) {
 		err = X509_STORE_CTX_get_error(store_ctx);
 		REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
-		return 0;
+		ret = 0;
 	}
 
 	X509_free(cert);
 	X509_STORE_CTX_free(store_ctx);
 
-	return 1;
+	return ret;
 }
 #endif /* WITH_TLS */
