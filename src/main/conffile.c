@@ -2266,9 +2266,8 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 			if (cp->parsed || (ci->lineno < 0)) continue;
 
 			WARN("%s[%d]: The item '%s' is defined, but is unused by the configuration",
-			     cp->item.filename ? cp->item.filename : "unknown",
-			     cp->item.lineno ? cp->item.lineno : 0,
-				cp->attr);
+			     ci->filename, ci->lineno,
+			     cp->attr);
 		}
 
 		/*
@@ -4106,9 +4105,8 @@ void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 
 	if (ci) {
 		ERROR("%s[%d]: %s",
-		       ci->filename ? ci->filename : "unknown",
-		       ci->lineno ? ci->lineno : 0,
-		       buffer);
+		      ci->filename, ci->lineno,
+		      buffer);
 	} else {
 		ERROR("<unknown>[*]: %s", buffer);
 	}
@@ -4126,8 +4124,7 @@ void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)
 	rad_assert(cs != NULL);
 
 	ERROR("%s[%d]: %s",
-	       cs->item.filename ? cs->item.filename : "unknown",
-	       cs->item.lineno ? cs->item.lineno : 0,
+	      cs->item.filename, cs->item.lineno,
 	       buffer);
 }
 
@@ -4143,9 +4140,8 @@ void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)
 	rad_assert(cp != NULL);
 
 	ERROR("%s[%d]: %s",
-	       cp->item.filename ? cp->item.filename : "unknown",
-	       cp->item.lineno ? cp->item.lineno : 0,
-	       buffer);
+	      cp->item.filename, cp->item.lineno,
+	      buffer);
 }
 
 void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const *fmt, ...)
@@ -4161,13 +4157,11 @@ void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const
 	cp = cf_pair_find(parent, name);
 	if (cp) {
 		ERROR("%s[%d]: %s",
-		      cp->item.filename ? cp->item.filename : "unknown",
-		      cp->item.lineno ? cp->item.lineno : 0,
+		      cp->item.filename, cp->item.lineno,
 		      buffer);
 	} else {
 		ERROR("%s[%d]: %s",
-		      parent->item.filename ? parent->item.filename : "unknown",
-		      parent->item.lineno ? parent->item.lineno : 0,
+		      parent->item.filename, parent->item.lineno,
 		      buffer);
 	}
 
