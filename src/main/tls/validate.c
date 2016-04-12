@@ -341,7 +341,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 int tls_validate_client_cert_chain(SSL *ssl)
 {
 	int		err;
-	in		verify;
+	int		verify;
 	int		ret = 1;
 
 	STACK_OF(X509)	*chain;
