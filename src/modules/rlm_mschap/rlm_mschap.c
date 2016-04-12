@@ -36,7 +36,10 @@ RCSID("$Id$")
 #include "rlm_mschap.h"
 #include "mschap.h"
 #include "smbdes.h"
+
+#ifdef WITH_AUTH_WINBIND
 #include "auth_wbclient.h"
+#endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
