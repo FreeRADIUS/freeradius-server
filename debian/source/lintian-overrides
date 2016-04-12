@@ -1,0 +1,6 @@
+# The RFCs are included in the debian package for reference. This
+# might be a problem in the official Debian archive, but we don't
+# need lintian complaining about it here.
+
+freeradius source: license-problem-non-free-RFC-BCP78 doc/rfc/*
+freeradius source: license-problem-non-free-RFC doc/rfc/*
