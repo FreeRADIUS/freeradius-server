@@ -843,7 +843,6 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 */
 	fake->packet->vps = diameter2vp(request, fake, tls_session->ssl, data, data_len);
 	if (!fake->packet->vps) {
-		talloc_free(fake);
 		code = PW_CODE_ACCESS_REJECT;
 		goto finish;
 	}
