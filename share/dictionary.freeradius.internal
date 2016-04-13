@@ -292,6 +292,19 @@ ATTRIBUTE	SSHA2-512-Password			1183	octets internal
 
 ATTRIBUTE	Exec-Export				1190	string internal
 
+ATTRIBUTE	EAP-FAST-TLV				1191	tlv internal
+ATTRIBUTE	EAP-FAST-Result				1191.3	short	internal
+ATTRIBUTE	EAP-FAST-NAK				1191.4	octets	internal
+ATTRIBUTE	EAP-FAST-Error				1191.5	integer	internal
+ATTRIBUTE	EAP-FAST-Vendor-Specific		1191.7	octets	internal
+ATTRIBUTE	EAP-FAST-EAP-Payload			1191.9	octets	internal
+ATTRIBUTE	EAP-FAST-Intermediate-Result		1191.10	octets	internal
+ATTRIBUTE	EAP-FAST-PAC				1191.11	octets	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	octets	internal
+ATTRIBUTE	EAP-FAST-Trusted-Root			1191.18	octets	internal
+ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short	internal
+ATTRIBUTE	EAP-FAST-PKCS				1191.20	octets	internal
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
