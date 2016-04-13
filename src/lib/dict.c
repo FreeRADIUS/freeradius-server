@@ -3394,8 +3394,9 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	 *
 	 *	@fixme: find the TLV parent, and check it's size
 	 */
-	if (((*parent)->type != PW_TYPE_VENDOR) && (num > UINT8_MAX)) {
-		fr_strerror_printf("TLV attributes must be between 0-255 inclusive");
+	if (((*parent)->type != PW_TYPE_VENDOR) && !(*parent)->flags.is_root &&
+	    (num > UINT8_MAX)) {
+		fr_strerror_printf("TLV attributes must be between 0..255 inclusive");
 		return 0;
 	}
 
