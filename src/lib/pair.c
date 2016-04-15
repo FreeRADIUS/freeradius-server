@@ -46,6 +46,27 @@ static int _fr_pair_free(NDEBUG_UNUSED VALUE_PAIR *vp)
 	return 0;
 }
 
+
+static VALUE_PAIR *fr_pair_alloc(TALLOC_CTX *ctx)
+{
+	VALUE_PAIR *vp;
+
+	vp = talloc_zero(ctx, VALUE_PAIR);
+	if (!vp) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+
+	vp->op = T_OP_EQ;
+	vp->tag = TAG_ANY;
+	vp->type = VT_NONE;
+
+	talloc_set_destructor(vp, _fr_pair_free);
+
+	return vp;
+}
+
+
 /** Dynamically allocate a new attribute
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
@@ -68,20 +89,18 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		return NULL;
 	}
 
-	vp = talloc_zero(ctx, VALUE_PAIR);
+
+	vp = fr_pair_alloc(ctx);
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
 
+	/*
+	 *	Use the 'da' to initialize more fields.
+	 */
 	vp->da = da;
-	vp->op = T_OP_EQ;
-	vp->tag = TAG_ANY;
-	vp->type = VT_NONE;
-
 	vp->vp_length = da->flags.length;
-
-	talloc_set_destructor(vp, _fr_pair_free);
 
 	return vp;
 }
@@ -110,8 +129,22 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 
 	da = fr_dict_attr_by_num(NULL, vendor, attr);
 	if (!da) {
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_alloc(ctx);
+		if (!vp) return NULL;
+
+		/*
+		 *	Ensure that the DA is parented by the VP.
+		 */
 		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_dict_internal), vendor, attr);
-		if (!da) return NULL;
+		if (!da) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		vp->da = da;
+		return vp;
 	}
 
 	return fr_pair_afrom_da(ctx, da);
