@@ -1315,7 +1315,6 @@ static VALUE_PAIR *fr_pair_from_octets(TALLOC_CTX *ctx, VALUE_PAIR *vp, DICT_ATT
 		return vp;
 	}
 
-	fr_pair_steal(talloc_parent(vp), vp2);
 	fr_pair_list_free(&vp);
 	return vp2;
 }
