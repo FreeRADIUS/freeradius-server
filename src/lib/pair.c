@@ -1288,16 +1288,90 @@ finish:
 }
 
 
-static VALUE_PAIR *fr_pair_from_octets(TALLOC_CTX *ctx, VALUE_PAIR *vp, DICT_ATTR const *da)
+/** Create a valuepair from an ASCII attribute and value
+ *
+ * Where the attribute name is in the form:
+ *  - Attr-%d
+ *  - Attr-%d.%d.%d...
+ *  - Vendor-%d-Attr-%d
+ *  - VendorName-Attr-%d
+ *
+ * @param ctx for talloc
+ * @param attribute name to parse.
+ * @param value to parse (must be a hex string).
+ * @param op to assign to new valuepair.
+ * @return new valuepair or NULL on error.
+ */
+static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
+					char const *attribute, char const *value,
+					FR_TOKEN op)
 {
-	ssize_t len;
-	VALUE_PAIR *vp2;
+	VALUE_PAIR	*vp, *vp2;
+	DICT_ATTR const *da;
 
+	uint8_t 	*data;
+	size_t		size;
+	ssize_t		len;
+
+	vp = fr_pair_alloc(ctx);
+	if (!vp) return NULL;
+
+	da = dict_unknown_afrom_str(vp, attribute);
+	if (!da) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+	/*
+	 *	No value.  Nothing more to do.
+	 */
+	if (!value) return vp;
+
+	/*
+	 *	Unknown attributes MUST be of type 'octets'
+	 */
+	if (strncasecmp(value, "0x", 2) != 0) {
+		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
+				   "string, not \"%s\"", attribute, value);
+		talloc_free(vp);
+		return NULL;
+	}
+
+	/*
+	 *	Convert the hex data to binary.
+	 */
+	size = strlen(value + 2);
+
+	vp->vp_length = size >> 1;
+	vp->vp_octets = data = talloc_array(vp, uint8_t, vp->vp_length);
+	vp->type = VT_DATA;
+	vp->op = (op == 0) ? T_OP_EQ : op;
+	vp->da = da;
+
+	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
+		fr_strerror_printf("Invalid hex string");
+		talloc_free(vp);
+		return NULL;
+	}
+
+	/*
+	 *	It's still unknown, return it as-is.
+	 */
+	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
+	if (!da) return vp;
+
+	/*
+	 *	It MIGHT be known.  See if we can decode the raw data
+	 *	into a valid attribute.
+	 */
 	len = data2vp(ctx, NULL, NULL, NULL, da,
 		      vp->vp_octets, vp->vp_length, vp->vp_length,
 		      &vp2);
-	if (len <= 0) return vp; /* it's really unknown */
+	if (len <= 0) return vp;
 
+	/*
+	 *	It's still unknown.  Return the original VP.
+	 */
 	if (vp2->da->flags.is_unknown) {
 		fr_pair_list_free(&vp2);
 		return vp;
@@ -1317,86 +1391,6 @@ static VALUE_PAIR *fr_pair_from_octets(TALLOC_CTX *ctx, VALUE_PAIR *vp, DICT_ATT
 
 	fr_pair_list_free(&vp);
 	return vp2;
-}
-
-/** Create a valuepair from an ASCII attribute and value
- *
- * Where the attribute name is in the form:
- *  - Attr-%d
- *  - Attr-%d.%d.%d...
- *  - Vendor-%d-Attr-%d
- *  - VendorName-Attr-%d
- *
- * @param ctx for talloc
- * @param attribute name to parse.
- * @param value to parse (must be a hex string).
- * @param op to assign to new valuepair.
- * @return new valuepair or NULL on error.
- */
-static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
-					char const *attribute, char const *value,
-					FR_TOKEN op)
-{
-	VALUE_PAIR	*vp;
-	DICT_ATTR const *da;
-
-	uint8_t 	*data;
-	size_t		size;
-
-	da = dict_unknown_afrom_str(ctx, attribute);
-	if (!da) return NULL;
-
-	/*
-	 *	Unknown attributes MUST be of type 'octets'
-	 */
-	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
-				   "string, not \"%s\"", attribute, value);
-
-		dict_attr_free(&da);
-		return NULL;
-	}
-
-	/*
-	 *	We've now parsed the attribute properly, Let's create
-	 *	it.  This next stop also looks the attribute up in the
-	 *	dictionary, and creates the appropriate type for it.
-	 */
-	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) {
-		dict_attr_free(&da);
-		return NULL;
-	}
-
-	vp->op = (op == 0) ? T_OP_EQ : op;
-
-	if (!value) return vp;
-
-	size = strlen(value + 2);
-	vp->vp_length = size >> 1;
-	data = talloc_array(vp, uint8_t, vp->vp_length);
-
-	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
-		fr_strerror_printf("Invalid hex string");
-		talloc_free(vp);
-		return NULL;
-	}
-
-	vp->vp_octets = data;
-	vp->type = VT_DATA;
-
-	/*
-	 *	We were asked to parse "Attr-26 = 0xabcdef"
-	 *
-	 *	If we have a dictionary entry for it, try to
-	 *	parse it as raw data.
-	 */
-	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
-	if (da) {
-		return fr_pair_from_octets(ctx, vp, da);
-	}
-
-	return vp;
 }
 
 
