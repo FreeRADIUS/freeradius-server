@@ -45,6 +45,26 @@ static int _fr_pair_free(VALUE_PAIR *vp) {
 	return 0;
 }
 
+static VALUE_PAIR *fr_pair_alloc(TALLOC_CTX *ctx)
+{
+	VALUE_PAIR *vp;
+
+	vp = talloc_zero(ctx, VALUE_PAIR);
+	if (!vp) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+
+	vp->op = T_OP_EQ;
+	vp->tag = TAG_ANY;
+	vp->type = VT_NONE;
+
+	talloc_set_destructor(vp, _fr_pair_free);
+
+	return vp;
+}
+
+
 /** Dynamically allocate a new attribute
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
@@ -65,20 +85,17 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da)
 		return NULL;
 	}
 
-	vp = talloc_zero(ctx, VALUE_PAIR);
+	vp = fr_pair_alloc(ctx);
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
 
+	/*
+	 *	Use the 'da' to initialize more fields.
+	 */
 	vp->da = da;
-	vp->op = T_OP_EQ;
-	vp->tag = TAG_ANY;
-	vp->type = VT_NONE;
-
 	vp->vp_length = da->flags.length;
-
-	talloc_set_destructor(vp, _fr_pair_free);
 
 	return vp;
 }
@@ -105,10 +122,22 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int v
 
 	da = dict_attrbyvalue(attr, vendor);
 	if (!da) {
-		da = dict_unknown_afrom_fields(ctx, attr, vendor);
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_alloc(ctx);
+		if (!vp) return NULL;
+
+		/*
+		 *	Ensure that the DA is parented by the VP.
+		 */
+		da = dict_unknown_afrom_fields(vp, attr, vendor);
 		if (!da) {
+			talloc_free(vp);
 			return NULL;
 		}
+
+		vp->da = da;
+		return vp;
 	}
 
 	return fr_pair_afrom_da(ctx, da);
@@ -1259,7 +1288,7 @@ finish:
 }
 
 
-static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, DICT_ATTR const *da)
+static VALUE_PAIR *fr_pair_from_octets(TALLOC_CTX *ctx, VALUE_PAIR *vp, DICT_ATTR const *da)
 {
 	ssize_t len;
 	VALUE_PAIR *vp2;
@@ -1358,11 +1387,14 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	vp->type = VT_DATA;
 
 	/*
-	 *	Convert unknowns to knowns
+	 *	We were asked to parse "Attr-26 = 0xabcdef"
+	 *
+	 *	If we have a dictionary entry for it, try to
+	 *	parse it as raw data.
 	 */
 	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
 	if (da) {
-		return fr_pair_from_unknown(ctx, vp, da);
+		return fr_pair_from_octets(ctx, vp, da);
 	}
 
 	return vp;
