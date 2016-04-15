@@ -244,12 +244,66 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 	}
 }
 
-static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, fr_dict_attr_t const *da)
-{
-	ssize_t len;
-	VALUE_PAIR *vp2 = NULL;
 
+/** Create a valuepair from an ASCII attribute and value
+ *
+ * Where the attribute name is in the form:
+ *  - Attr-%d
+ *  - Attr-%d.%d.%d...
+ *  - Vendor-%d-Attr-%d
+ *  - VendorName-Attr-%d
+ *
+ * @param ctx for talloc
+ * @param attribute name to parse.
+ * @param value to parse (must be a hex string).
+ * @param op to assign to new valuepair.
+ * @return new #VALUE_PAIR or NULL on error.
+ */
+static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
+					char const *attribute, char const *value,
+					FR_TOKEN op)
+{
+	ssize_t		len;
+	VALUE_PAIR	*vp, *vp2;
+	fr_dict_attr_t const *da;
 	vp_cursor_t cursor;
+
+	vp = fr_pair_alloc(ctx);
+	if (!vp) return NULL;
+
+	vp->da = fr_dict_unknown_afrom_oid(ctx, NULL, fr_dict_root(fr_dict_internal), attribute);
+	if (!vp->da) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+	/*
+	 *	No value.  Nothing more to do.
+	 */
+	if (!value) return vp;
+
+	/*
+	 *	Unknown attributes MUST be of type 'octets'
+	 */
+	if (strncasecmp(value, "0x", 2) != 0) {
+		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
+				   "string, not \"%s\"", attribute, value);
+		talloc_free(vp);
+		return NULL;
+	}
+
+	if (fr_pair_value_from_str(vp, value, -1) < 0) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+	vp->op = (op == 0) ? T_OP_EQ : op;
+
+	/*
+	 *	Convert unknowns to knowns
+	 */
+	da = fr_dict_attr_by_num(NULL, vp->da->vendor, vp->da->attr);
+	if (!da) return vp;
 
 	/*
 	 *	Skip decoding if we know it's the wrong size for the
@@ -258,6 +312,7 @@ static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, fr_dict
 	if ((vp->vp_length < dict_attr_sizes[da->type][0]) ||
 	    (vp->vp_length > dict_attr_sizes[da->type][1])) return vp;
 
+	vp2 = NULL;
 	fr_cursor_init(&cursor, &vp2);
 
 	len = fr_radius_decode_pair_value(ctx, &cursor, da, vp->vp_octets, vp->vp_length, vp->vp_length, NULL);
@@ -279,76 +334,9 @@ static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, fr_dict
 		fr_pair_list_free(&vp2);
 		return vp;
 	}
-	
+
 	fr_pair_list_free(&vp);
 	return vp2;
-}
-
-/** Create a valuepair from an ASCII attribute and value
- *
- * Where the attribute name is in the form:
- *  - Attr-%d
- *  - Attr-%d.%d.%d...
- *  - Vendor-%d-Attr-%d
- *  - VendorName-Attr-%d
- *
- * @param ctx for talloc
- * @param attribute name to parse.
- * @param value to parse (must be a hex string).
- * @param op to assign to new valuepair.
- * @return new #VALUE_PAIR or NULL on error.
- */
-static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
-					char const *attribute, char const *value,
-					FR_TOKEN op)
-{
-	VALUE_PAIR	*vp;
-	fr_dict_attr_t const *da;
-
-	da = fr_dict_unknown_afrom_oid(ctx, NULL, fr_dict_root(fr_dict_internal), attribute);
-	if (!da) return NULL;
-
-	/*
-	 *	Unknown attributes MUST be of type 'octets'
-	 */
-	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
-				   "string, not \"%s\"", attribute, value);
-
-		fr_dict_unknown_free(&da);
-		return NULL;
-	}
-
-	/*
-	 *	We've now parsed the attribute properly, Let's create
-	 *	it.  This next stop also looks the attribute up in the
-	 *	dictionary, and creates the appropriate type for it.
-	 */
-	vp = fr_pair_afrom_da(ctx, da);
-	if (!vp) {
-		fr_dict_unknown_free(&da);
-		return NULL;
-	}
-
-	vp->op = (op == 0) ? T_OP_EQ : op;
-
-	if (!value) return vp;
-
-	if (fr_pair_value_from_str(vp, value, -1) < 0) {
-		fr_dict_unknown_free(&da);
-		talloc_free(vp);
-		return NULL;
-	}
-
-	/*
-	 *	Convert unknowns to knowns
-	 */
-	da = fr_dict_attr_by_num(NULL, vp->da->vendor, vp->da->attr);
-	if (da) {
-		return fr_pair_from_unknown(ctx, vp, da);
-	}
-
-	return vp;
 }
 
 /** Create a #VALUE_PAIR from ASCII strings
