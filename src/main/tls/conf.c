@@ -103,6 +103,9 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("allow_expired_crl", PW_TYPE_BOOLEAN, fr_tls_conf_t, allow_expired_crl) },
 	{ FR_CONF_OFFSET("check_cert_cn", PW_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	{ FR_CONF_OFFSET("cipher_list", PW_TYPE_STRING, fr_tls_conf_t, cipher_list) },
+#ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+	{ FR_CONF_OFFSET("allow_renegotiation", PW_TYPE_BOOLEAN, fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
+#endif
 	{ FR_CONF_OFFSET("check_cert_issuer", PW_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
 	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, fr_tls_conf_t, require_client_cert) },
 

@@ -330,6 +330,15 @@ post_ca:
 		ctx_options |= SSL_OP_SINGLE_DH_USE;
 	}
 
+#ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
+	if (conf->allow_renegotiation) {
+		/*
+		 *	Note: This flag isn't honoured by all OpenSSL forks.
+		 */
+		ctx_options |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
+	}
+#endif
+
 	/*
 	 *	SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS to work around issues
 	 *	in Windows Vista client.
