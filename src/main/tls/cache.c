@@ -472,7 +472,7 @@ int tls_cache_disable_cb(SSL *ssl,
 	if (!session->allow_session_resumption) goto disable;
 
 	vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY);
-	if (vp->vp_integer == 0) {
+	if (vp && (vp->vp_integer == 0)) {
 		RDEBUG2("&control:Allow-Session-Resumption == no, disabling session resumption");
 	disable:
 		SSL_CTX_remove_session(session->ctx, session->ssl_session);
