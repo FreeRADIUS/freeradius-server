@@ -37,6 +37,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	char const *value;
 	CONF_PAIR *cp;
 	RADCLIENT *c;
+	CONF_SECTION *server_cs;
 	char buffer[2048];
 
 	/*
@@ -78,7 +79,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	c = client_read(buffer, request->client->server_cs, true);
+	if (request->client->server) {
+		server_cs = request->client->server_cs;
+
+	} else {
+		server_cs = request->listener->server_cs;
+	}
+
+	c = client_read(buffer, server_cs, true);
 	if (!c) return RLM_MODULE_FAIL;
 
 	/*
