@@ -4040,7 +4040,7 @@ void *cf_data_find(CONF_SECTION const *cs, char const *name)
  *	Add named data to a configuration section.
  */
 int cf_data_add(CONF_SECTION *cs, char const *name,
-		 void *data, void (*data_free)(void *))
+		void *data, void (*data_free)(void *))
 {
 	CONF_DATA *cd;
 

@@ -2760,7 +2760,7 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 	/*
 	 *	Read the file and generate the client.
 	 */
-	c = client_read(argv[0], false, false);
+	c = client_read(argv[0], NULL, false);
 	if (!c) {
 		cprintf_error(listener, "Unknown error reading client file.\n");
 		return 0;

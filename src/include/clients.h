@@ -49,7 +49,8 @@ typedef struct radclient {
 	char const		*login;			//!< Username to use for simultaneous use checks.
 	char const		*password;		//!< Password to use for simultaneous use checks.
 
-	char const 		*server;		//!< Virtual server client is associated with.
+	char const 		*server;		//!< Name of the virtual server client is associated with.
+	CONF_SECTION		*server_cs;		//!< Virtual server that the client is associated with
 
 	int			number;			//!< Unique client number.
 
@@ -84,9 +85,8 @@ typedef struct radclient {
 	time_t			last_new_client;	//!< Used for relate limiting addition and deletion of
 							//!< dynamic clients.
 
-	char const		*client_server;		//!< Virtual server associated with this dynamic client.
-							//!< Only used where client specifies a network of potential
-							//!< clients.
+	char const		*client_server;		//!< Name of the virtual server for creating dynamic clients
+	CONF_SECTION		*client_server_cs;	//!< Virtual server for creating dynamic clients
 
 	bool			rate_limit;		//!< Where addition of clients should be rate limited.
 #endif
@@ -153,7 +153,7 @@ RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 
-RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa);
+RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, bool with_coa);
 
 RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				    char const *type, char const *server, bool require_ma)
@@ -167,7 +167,7 @@ RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
 
 bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 
-RADCLIENT	*client_read(char const *filename, int in_server, int flag);
+RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, int flag);
 #ifdef __cplusplus
 }
 #endif

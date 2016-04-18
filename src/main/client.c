@@ -532,10 +532,11 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, bool tls_requir
 RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
 #endif
 {
-	bool		global = false, in_server = false;
+	bool		global = false;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c = NULL;
 	RADCLIENT_LIST	*clients = NULL;
+	CONF_SECTION	*server_cs = NULL;
 
 	/*
 	 *	Be forgiving.  If there's already a clients, return
@@ -549,12 +550,12 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 
 	if (cf_top_section(section) == section) global = true;
 
-	if (strcmp("server", cf_section_name1(section)) == 0) in_server = true;
+	if (strcmp("server", cf_section_name1(section)) == 0) server_cs = section;
 
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
-		c = client_afrom_cs(cs, cs, in_server, false);
+		c = client_afrom_cs(cs, cs, server_cs, false);
 		if (!c) {
 		error:
 			client_free(c);
@@ -634,7 +635,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 
 				if ((stat(buf2, &stat_buf) != 0) || S_ISDIR(stat_buf.st_mode)) continue;
 
-				dc = client_read(buf2, in_server, true);
+				dc = client_read(buf2, server_cs, true);
 				if (!dc) {
 					cf_log_err_cs(cs, "Failed reading client file \"%s\"", buf2);
 					closedir(dir);
@@ -709,24 +710,37 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 {
 	char buffer[128];
 
-	/*
-	 *	No virtual server defined.  Inherit the parent's
-	 *	definition.
-	 */
-	if (master->server && !c->server) {
-		c->server = talloc_typed_strdup(c, master->server);
-	}
+	if (master->server) {
+		/*
+		 *	No virtual server defined.  Inherit the parent's
+		 *	definition.
+		 */
+		if (!c->server) {
+			c->server = talloc_typed_strdup(c, master->server);
+		}
 
-	/*
-	 *	If the client network isn't global (not tied to a
-	 *	virtual server), then ensure that this clients server
-	 *	is the same as the enclosing networks virtual server.
-	 */
-	if (master->server && (strcmp(master->server, c->server) != 0)) {
-		ERROR("Cannot add client %s/%i: Virtual server %s is not the same as the virtual server for the network",
-		      fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->server);
+		/*
+		 *	If the client network isn't global (not tied to a
+		 *	virtual server), then ensure that this clients server
+		 *	is the same as the enclosing networks virtual server.
+		 */
+		else if (strcmp(master->server, c->server) != 0) {
+			ERROR("Cannot add client %s/%i: Virtual server %s is not the same as the virtual server for the network",
+			      fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->server);
+			goto error;
+		}
 
-		goto error;
+		/*
+		 *	Copy it from the master.
+		 */
+		c->server_cs = master->server_cs;
+
+	} else if (c->server) {
+		c->server_cs = cf_section_sub_find_name2(main_config.config, "server", c->server);
+		if (!c->server_cs) {
+			ERROR("Failed to find virtual server %s", c->server);
+			goto error;
+		}
 	}
 
 	if (!client_add(clients, c)) {
@@ -850,12 +864,12 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  *
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
- * @param in_server Whether the client should belong to a specific virtual server.
+ * @param server_cs The virtual server that this client belongs to.
  * @param with_coa If true and coa_server or coa_pool aren't specified automatically,
  *	create a coa home_server section and add it to the client CONF_SECTION.
  * @return new RADCLIENT struct.
  */
-RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa)
+RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, bool with_coa)
 {
 	RADCLIENT	*c;
 	char const	*name2;
@@ -886,12 +900,25 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	}
 
 	/*
-	 *	Global clients can set servers to use, per-server clients cannot.
+	 *	Find the virtual server for this client.
 	 */
-	if (in_server && c->server) {
-		cf_log_err_cs(cs, "Clients inside of an server section cannot point to a server");
-		goto error;
-	}
+	if (c->server) {
+		if (server_cs) {
+			cf_log_err_cs(cs, "Clients inside of a 'server' section cannot point to a server");
+			goto error;
+		}
+
+		c->server_cs = cf_section_sub_find_name2(main_config.config, "server", c->server);
+		if (!c->server_cs) {
+			cf_log_err_cs(cs, "Failed to find virtual server %s", c->server);
+			goto error;
+		}
+
+	} else if (server_cs) {
+		c->server = cf_section_name2(server_cs);
+		c->server_cs = server_cs;
+
+	} /* else don't set c->server or c->server_cs, we will use listener->server */
 
 	/*
 	 *	Newer style client definitions with either ipaddr or ipaddr6
@@ -995,12 +1022,22 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	}
 
 #ifdef WITH_DYNAMIC_CLIENTS
+	/*
+	 *	The virtual server we run UNKNOWN requests through, to
+	 *	see if we need to create a new dynamic client.
+	 */
 	if (c->client_server) {
 		c->secret = talloc_typed_strdup(c, "testing123");
 
 		if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix == 32)) ||
 		    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix == 128))) {
 			cf_log_err_cs(cs, "Dynamic clients MUST be a network, not a single IP address");
+			goto error;
+		}
+
+		c->client_server_cs = cf_section_sub_find_name2(main_config.config, "server", c->client_server);
+		if (!c->client_server_cs) {
+			cf_log_err_cs(cs, "Unknown virtual server '%s'", c->client_server);
 			goto error;
 		}
 
@@ -1446,7 +1483,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 /*
  *	Read a client definition from the given filename.
  */
-RADCLIENT *client_read(char const *filename, int in_server, int flag)
+RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, int flag)
 {
 	char const *p;
 	RADCLIENT *c;
@@ -1469,7 +1506,7 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 		return NULL;
 	}
 
-	c = client_afrom_cs(cs, cs, in_server, false);
+	c = client_afrom_cs(cs, cs, server_cs, false);
 	if (!c) return NULL;
 
 	p = strrchr(filename, FR_DIR_SEP);

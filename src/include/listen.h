@@ -75,7 +75,8 @@ struct rad_listen {
 	 */
 	RAD_LISTEN_TYPE		type;
 	int			fd;
-	char const		*server;
+	char const		*server;	//!< Name of the virtual server that the listener is associated with
+	CONF_SECTION		*server_cs;	//!< Virtual server that the listener is associated with
 	int			status;
 
 #ifdef WITH_TCP
