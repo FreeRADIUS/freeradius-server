@@ -78,7 +78,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	c = client_read(buffer, (request->client->server != NULL), true);
+	c = client_read(buffer, request->client->server, true);
 	if (!c) return RLM_MODULE_FAIL;
 
 	/*
