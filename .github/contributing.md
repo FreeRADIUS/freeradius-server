@@ -7,8 +7,8 @@ We greatly value all comments, defect reports, patches/pull-requests, but must b
 contributor's desires and practices against what's required for the project to operate efficiently.
 
 This document describes best practices when interacting with members of the FreeRADIUS project team
-via GitHub.  If you follow these guidelines, it is very likely that your bug report or pull request will 
-be acted on, and in a timely manor.
+via GitHub.  If you follow these guidelines, it is very likely that your bug report or pull request will
+be acted on, and in a timely manner.
 
 If you choose to ignore these guidelines our response will be a link to this document.
 
@@ -55,8 +55,8 @@ See [doc/bugs](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/b
 on what to include, and how to obtain it.
 
 When logging bug reports using the GitHub issue tracker, pay attention to formatting.  You should
-ensure any log output is surrounded by two sets of tripple backticks (```).  If you don't do this
-Github will automatically link your issue to other pre-existing issues when it encounters a #<num>
+ensure any log output is surrounded by two sets of triple backticks (```).  If you don't do this
+GitHub will automatically link your issue to other pre-existing issues when it encounters a #<num>
 string.
 
 
@@ -72,18 +72,18 @@ or via GitHub by using the GitHub issue tracker.
 
 Contacting the dev team gives us the opportunity to offer feedback.  We may have a solution to your
 problem that doesn't require additional code, or may have ideas as to how your problem can be solved
-in a way that will better fit with the longterm vision for the server.
+in a way that will better fit with the long-term vision for the server.
 
-Once you've got the go ahead read through the 
+Once you've got the go ahead, please read through the
 [coding standards document](http://wiki.freeradius.org/contributing/coding-standards).
 
-If you're creating a new module you may wish to read the 
+If you're creating a new module you may wish to read the
 [module creation guide](http://wiki.freeradius.org/contributing/Modules3).
 
 You may also wish to utilise the [doxygen site](http://doc.freeradius.org) to review code documentation.
 
 The doxygen site contains the complete reference of all API functions with doxygen headers, as well
-as structs, and callback declarations.  http://doc.freeradius.org is updated within one minute of each 
+as structs, and callback declarations.  http://doc.freeradius.org is updated within one minute of each
 commit to the master branch of the freeradius-server repository.
 
 Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
@@ -103,8 +103,9 @@ There are currently three test frameworks for different elements of the server:
 | Module tests | `src/tests/modules/`   | Tests for module functionality.                      |
 | Unlang tests | `src/tests/unlang/`    | Tests for unlang keywords and functions.             |
 
-See README.* docs in the directories above for basic information on writing test cases.  The easiest
+See `README.*` docs in the directories above for basic information on writing test cases.  The easiest
 way to write new tests is to use the existing tests as examples.
 
 Tests are run via Travis for each pull-request, and on every commit by a developer with repository
 access.
+
