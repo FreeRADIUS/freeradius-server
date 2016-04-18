@@ -31,8 +31,7 @@ RCSID("$Id$")
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
-				 REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	size_t length;
 	char const *value;
@@ -74,8 +73,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
 	}
 
 	memcpy(buffer, value, length + 1);
-	fr_inet_ntoh(&request->packet->src_ipaddr,
-		buffer + length, sizeof(buffer) - length - 1);
+	fr_inet_ntoh(&request->packet->src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
 
 	/*
 	 *	Read the buffer and generate the client.
