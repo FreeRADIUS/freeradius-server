@@ -72,7 +72,6 @@ static int tls_cache_attrs(REQUEST *request,
 	VALUE_PAIR *vp;
 
 	fr_pair_delete_by_num(&request->packet->vps, 0, PW_TLS_SESSION_ID, TAG_ANY);
-	fr_pair_delete_by_num(&request->control, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
 
 	RDEBUG2("Setting TLS cache control attributes");
 	vp = fr_pair_afrom_num(request->packet, 0, PW_TLS_SESSION_ID);
@@ -90,8 +89,9 @@ static int tls_cache_attrs(REQUEST *request,
 	vp->vp_integer = action;
 	fr_pair_add(&request->control, vp);
 	RINDENT();
-	rdebug_pair(L_DBG_LVL_2, request, vp, "&config:");
+	rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
 	REXDENT();
+
 	return 0;
 }
 
@@ -105,6 +105,7 @@ static int tls_cache_attrs(REQUEST *request,
 int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type)
 {
 	rlm_rcode_t rcode;
+	VALUE_PAIR *vp;
 
 	/*
 	 *	Save the current status of the request.
@@ -112,6 +113,19 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	char const *server = request->server;
 	char const *module = request->module;
 	char const *component = request->component;
+
+	/*
+	 *	Indicate what action we're performing
+	 */
+	vp = fr_pair_afrom_num(request, 0, PW_TLS_SESSION_CACHE_ACTION);
+	if (!vp) return -1;
+
+	vp->vp_integer = autz_type;
+
+	fr_pair_add(&request->control, vp);
+	RINDENT();
+	rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
+	REXDENT();
 
 	/*
 	 *	Run it through the appropriate virtual server.

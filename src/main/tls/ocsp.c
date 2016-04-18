@@ -174,7 +174,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 	VALUE_PAIR	*vp;
 
 	if (conf->ocsp_cache_server) switch (tls_cache_process(request, conf->ocsp_cache_server,
-							   CACHE_ACTION_OCSP_READ)) {
+							       CACHE_ACTION_OCSP_READ)) {
 	case RLM_MODULE_REJECT:
 		REDEBUG("Told to force OCSP validation failure by virtual server");
 		return OCSP_STATUS_FAILED;
