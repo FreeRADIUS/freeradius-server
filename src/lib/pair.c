@@ -1316,8 +1316,8 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	vp = fr_pair_alloc(ctx);
 	if (!vp) return NULL;
 
-	da = dict_unknown_afrom_str(vp, attribute);
-	if (!da) {
+	vp->da = dict_unknown_afrom_str(vp, attribute);
+	if (!vp->da) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -1346,7 +1346,6 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	vp->vp_octets = data = talloc_array(vp, uint8_t, vp->vp_length);
 	vp->type = VT_DATA;
 	vp->op = (op == 0) ? T_OP_EQ : op;
-	vp->da = da;
 
 	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
 		fr_strerror_printf("Invalid hex string");
