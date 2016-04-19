@@ -112,7 +112,9 @@ char const *fr_errno_macro_names[] = {
 	[ENOTCONN] = "ENOTCONN",
 	[ENOTDIR] = "ENOTDIR",
 	[ENOTEMPTY] = "ENOTEMPTY",
+#ifdef ENOTRECOVERABLE
 	[ENOTRECOVERABLE] = "ENOTRECOVERABLE",
+#endif
 	[ENOTSOCK] = "ENOTSOCK",
 	[ENOTSUP] = "ENOTSUP",
 #if ENOTSUP != EOPNOTSUPP
@@ -121,7 +123,9 @@ char const *fr_errno_macro_names[] = {
 	[ENOTTY] = "ENOTTY",
 	[ENXIO] = "ENXIO",
 	[EOVERFLOW] = "EOVERFLOW",
+#ifdef EOWNERDEAD
 	[EOWNERDEAD] = "EOWNERDEAD",
+#endif
 	[EPERM] = "EPERM",
 	[EPIPE] = "EPIPE",
 	[EPROTO] = "EPROTO",
