@@ -221,7 +221,7 @@ define ADD_LIBTOOL_TARGET
     ifneq "$${$${TGT}_LOCAL}" ""
         # add rules to relink the target
 
-        $${TGT}_LOCAL_PRLIBS := $$(subst /lib/,/lib/${LOCAL},$${$${TGT}_PRLIBS})
+        $${TGT}_LOCAL_PRLIBS := $$(subst $${BUILD_DIR}/lib/,$${BUILD_DIR}/lib/${LOCAL},$${$${TGT}_PRLIBS})
 
         $$(eval $$(call ADD_LOCAL_RULE$${$${TGT}_SUFFIX},$${TGT}))
 
