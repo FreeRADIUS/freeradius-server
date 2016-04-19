@@ -609,10 +609,12 @@ ATTRIBUTE	TLS-Session-Cert-File			1934	string internal
 
 # 1940 - 1949: reserved for TLS session caching
 ATTRIBUTE	TLS-Session-Id				1940	octets	internal
-ATTRIBUTE	TLS-Session-Cache-Action		1941	integer	internal
-VALUE	TLS-Session-Cache-Action	Read			1
-VALUE	TLS-Session-Cache-Action	Write			2
-VALUE	TLS-Session-Cache-Action	Delete			3
+ATTRIBUTE	TLS-Cache-Action		1941	integer	internal
+VALUE	TLS-Cache-Action	Session-Read			1
+VALUE	TLS-Cache-Action	Session-Write			2
+VALUE	TLS-Cache-Action	Session-Delete			3
+VALUE	TLS-Cache-Action	OCSP-Read			4
+VALUE	TLS-Cache-Action	OCSP-Write			5
 
 ATTRIBUTE	TLS-Session-Data			1942	octets	internal
 

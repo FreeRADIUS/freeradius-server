@@ -83,7 +83,7 @@ static int tls_cache_attrs(REQUEST *request,
 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	REXDENT();
 
-	vp = fr_pair_afrom_num(request, 0, PW_TLS_SESSION_CACHE_ACTION);
+	vp = fr_pair_afrom_num(request, 0, PW_TLS_CACHE_ACTION);
 	if (!vp) return -1;
 
 	vp->vp_integer = action;
@@ -117,7 +117,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	/*
 	 *	Indicate what action we're performing
 	 */
-	vp = fr_pair_afrom_num(request, 0, PW_TLS_SESSION_CACHE_ACTION);
+	vp = fr_pair_afrom_num(request, 0, PW_TLS_CACHE_ACTION);
 	if (!vp) return -1;
 
 	vp->vp_integer = autz_type;
@@ -142,7 +142,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	request->module = module;
 	request->component = component;
 
-	fr_pair_delete_by_num(&request->control, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
+	fr_pair_delete_by_num(&request->control, 0, PW_TLS_CACHE_ACTION, TAG_ANY);
 
 	return rcode;
 }
