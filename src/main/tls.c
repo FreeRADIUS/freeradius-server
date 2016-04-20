@@ -414,7 +414,7 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
-#endif // PSK_MAX_IDENTITY_LEN
+#endif /* PSK_MAX_IDENTITY_LEN */
 
 #define MAX_SESSION_SIZE (256)
 
