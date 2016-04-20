@@ -350,9 +350,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 
-		FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->file.max_entries, >=, 0);
+		FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->file.max_entries, >=, 8);
 		FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->file.max_entries, <=, 2048);
-		FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->file.max_idle, >=, 0);
+		FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->file.max_idle, >=, 1);
 		FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->file.max_idle, >=, 3600);
 		inst->file.ef = module_exfile_init(inst, conf, inst->file.max_entries, inst->file.max_idle, true, NULL, NULL);
 		if (!inst->file.ef) {

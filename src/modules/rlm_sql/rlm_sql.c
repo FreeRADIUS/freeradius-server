@@ -1191,9 +1191,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				inst->module->sql_escape_func :
 				sql_escape_func;
 
-	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, >=, 0);
+	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, >=, 8);
 	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, <=, 2048);
-	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, >=, 0);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, >=, 1);
 	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, >=, 3600);
 	inst->ef = module_exfile_init(inst, conf, inst->config->max_entries, inst->config->max_idle, true, NULL, NULL);
 	if (!inst->ef) {

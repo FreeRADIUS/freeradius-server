@@ -136,9 +136,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->escape_func = rad_filename_make_safe;
 	}
 
-	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->max_entries, >=, 0);
+	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->max_entries, >=, 8);
 	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->max_entries, <=, 2048);
-	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->max_idle, >=, 0);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->max_idle, >=, 1);
 	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->max_idle, >=, 3600);
 	inst->ef = module_exfile_init(inst, conf, inst->max_entries, inst->max_idle, inst->locking, NULL, NULL);
 	if (!inst->ef) {
