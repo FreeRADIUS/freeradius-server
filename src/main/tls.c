@@ -118,25 +118,6 @@ static unsigned int 	record_plus(record_t *buf, void const *ptr,
 static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
-#ifdef PSK_MAX_IDENTITY_LEN
-static bool identity_is_safe(const char *identity)
-{
-	char c;
-
-	if (!identity) return true;
-
-	while ((c = *(identity++)) != '\0') {
-		if (isalpha((int) c) || isdigit((int) c) || isspace((int) c) ||
-		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
-			continue;
-		}
-
-		return false;
-	}
-
-	return true;
-}
-
 DIAG_OFF(format-nonliteral)
 /** Print errors in the TLS thread local error stack
  *
@@ -314,6 +295,25 @@ int tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char con
 	return 1;
 }
 
+#ifdef PSK_MAX_IDENTITY_LEN
+static bool identity_is_safe(const char *identity)
+{
+	char c;
+
+	if (!identity) return true;
+
+	while ((c = *(identity++)) != '\0') {
+		if (isalpha((int) c) || isdigit((int) c) || isspace((int) c) ||
+		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
+			continue;
+		}
+
+		return false;
+	}
+
+	return true;
+}
+
 /*
  *	When a client uses TLS-PSK to talk to a server, this callback
  *	is used by the server to determine the PSK to use.
@@ -414,7 +414,7 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
-#endif
+#endif // PSK_MAX_IDENTITY_LEN
 
 #define MAX_SESSION_SIZE (256)
 
