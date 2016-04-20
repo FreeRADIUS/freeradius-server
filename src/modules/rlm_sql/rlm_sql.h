@@ -138,6 +138,9 @@ typedef struct sql_config {
 	void			*driver;			//!< Where drivers should write a
 								//!< pointer to their configurations.
 
+	uint32_t		max_entries;			//!< Maximum number of log files opened for writing simultaneously
+	uint32_t		max_idle;			//!< Timeout before closing `unused' log file opened previously
+
 	/*
 	 *	@todo The rest of the queries should also be moved into
 	 *	their own sections.
