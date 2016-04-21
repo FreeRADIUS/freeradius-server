@@ -77,6 +77,12 @@ typedef struct detail_instance {
 	uint32_t	max_idle;		//!< Timeout before closing `unused' log file opened previously
 } rlm_detail_t;
 
+static const CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("max_files", PW_TYPE_INTEGER, rlm_detail_t, max_entries), .dflt = "64" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, rlm_detail_t, max_idle), .dflt = "30" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
 	{ FR_CONF_OFFSET("header", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
@@ -85,8 +91,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("locking", PW_TYPE_BOOLEAN, rlm_detail_t, locking), .dflt = "no" },
 	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, rlm_detail_t, escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("log_packet_header", PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), .dflt = "no" },
-	{ FR_CONF_OFFSET("max_open_logfiles", PW_TYPE_INTEGER, rlm_detail_t, max_entries), .dflt = "64" },
-	{ FR_CONF_OFFSET("log_idle_timeout", PW_TYPE_INTEGER, rlm_detail_t, max_idle), .dflt = "30" },
+
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+
 	CONF_PARSER_TERMINATOR
 };
 

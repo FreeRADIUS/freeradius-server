@@ -126,13 +126,19 @@ typedef struct linelog_conn {
 } linelog_conn_t;
 
 
+static const CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("max_files", PW_TYPE_INTEGER, linelog_instance_t, file.max_entries), .dflt = "64" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, linelog_instance_t, file.max_idle), .dflt = "30" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const CONF_PARSER file_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_XLAT, linelog_instance_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER, linelog_instance_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", PW_TYPE_STRING, linelog_instance_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, linelog_instance_t, file.escape), .dflt = "no" },
-	{ FR_CONF_OFFSET("max_open_logfiles", PW_TYPE_INTEGER, linelog_instance_t, file.max_entries), .dflt = "64" },
-	{ FR_CONF_OFFSET("log_idle_timeout", PW_TYPE_INTEGER, linelog_instance_t, file.max_idle), .dflt = "30" },
+
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 	CONF_PARSER_TERMINATOR
 };
