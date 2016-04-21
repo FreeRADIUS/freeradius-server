@@ -224,12 +224,9 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 		if (ef->entries[i].hash != hash) continue;
 
 		/*
-		 *	Same hash but different filename.  Give up.
+		 *	Same hash but different filename.
 		 */
-		if (strcmp(ef->entries[i].filename, filename) != 0) {
-			pthread_mutex_unlock(&ef->mutex);
-			return -1;
-		}
+		if (strcmp(ef->entries[i].filename, filename) != 0) continue;
 
 		found = i;
 		break;
