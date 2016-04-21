@@ -183,6 +183,25 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 	MEM(ef->trigger_args = fr_pair_list_copy(ef, trigger_args));
 }
 
+/** Cleanup an entry we do not need anymore
+ *
+ * @param[in] entry to cleanup
+ */
+
+static inline void exfile_cleanup_entry(exfile_entry_t *entry)
+{
+	close(entry->fd);
+
+	/*
+	 *	This will block forever if a thread is
+	 *	doing something stupid.
+	 */
+	TALLOC_FREE(entry->filename);
+	entry->hash = 0;
+	entry->fd = -1;
+	entry->dup = -1;
+}
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -201,7 +220,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 {
 	int i, tries, unused = -1, found = -1;
 	uint32_t hash;
-	time_t now = time(NULL);
+	time_t now = time(NULL), oldest_timestamp;
 	struct stat st;
 	exfile_entry_t *tmp;
 
@@ -245,6 +264,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
 
+			/* We found a to-be-freed slot, clean it up */
 			close(ef->entries[i].fd);
 
 			/*
@@ -252,14 +272,10 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			 */
 			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
 
-			/*
-			 *	This will block forever if a thread is
-			 *	doing something stupid.
-			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			ef->entries[i].fd = -1;
-			ef->entries[i].dup = -1;
+			exfile_cleanup_entry(&ef->entries[i]);
+
+			if (unused < 0) /* There was no empty entries before we cleaned up */
+				unused = i;
 		}
 	}
 
@@ -272,7 +288,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	}
 
 	/*
-	 *	Find an unused entry
+	 *	No unused entries found, make one free
 	 */
 	if (unused < 0) {
 		/*
@@ -289,18 +305,29 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 				ef->entries = tmp;
 				memset(&(ef->entries[i]), 0, sizeof(exfile_entry_t) * (ef->max_entries - i));
 				unused = i;
-				goto new_entry;
 			}
+		} else { /* We can not grow so close the one with oldest last_used */
+			oldest_timestamp = now;
+			for (i = 0; i < (int) ef->entries_count; i++) {
+				/* Check for filename is not needed here - we know all entires are allocated */
+				if (ef->entries[i].last_used < oldest_timestamp) {
+					oldest_timestamp = ef->entries[i].last_used;
+					unused = i;
+				}
+			}
+			i = unused;
+			DEBUG2("Closing '%s' (last write %lu seconds ago) due to lack of vacant logfile entries", ef->entries[i].filename, now - ef->entries[i].last_used);
+			close(ef->entries[i].fd);
+			/* Issue close trigger *after* we've closed the fd */
+			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
+
+			exfile_cleanup_entry(&ef->entries[i]);
 		}
-		fr_strerror_printf("Too many different filenames");
-		pthread_mutex_unlock(&(ef->mutex));
-		return -1;
 	}
 
 	/*
 	 *	Create a new entry.
 	 */
-new_entry:
 	i = unused;
 
 	ef->entries[i].hash = hash;
@@ -363,12 +390,7 @@ do_return:
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
 
 	error:
-		ef->entries[i].hash = 0;
-		TALLOC_FREE(ef->entries[i].filename);
-		close(ef->entries[i].fd);
-		ef->entries[i].fd = -1;
-		ef->entries[i].dup = -1;
-
+		exfile_cleanup_entry(&ef->entries[i]);
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
