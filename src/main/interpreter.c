@@ -249,7 +249,7 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 
 		entry->redundant.child = entry->redundant.found; /* we start at this one */
 
-	} else {		
+	} else {
 		rad_assert(c->type != MOD_LOAD_BALANCE); /* this is never called again */
 
 		/*

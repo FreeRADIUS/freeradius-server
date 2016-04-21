@@ -1278,8 +1278,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 			case BFD_STATE_DOWN:
 				session->local_diag = BFD_NEIGHBOR_DOWN;
 
-				DEBUG("BFD %d State UP -> DOWN (neighbor down)",
-				      session->number);
+				DEBUG("BFD %d State UP -> DOWN (neighbor down)", session->number);
 				session->session_state = BFD_STATE_DOWN;
 				bfd_trigger(session);
 
@@ -1303,8 +1302,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	if (session->remote_demand_mode &&
 	    (session->session_state == BFD_STATE_UP) &&
 	    (session->remote_session_state == BFD_STATE_UP)) {
-		DEBUG("BFD %d demand mode UP / UP, stopping packets",
-		      session->number);
+		DEBUG("BFD %d demand mode UP / UP, stopping packets", session->number);
 		bfd_stop_control(session);
 	}
 

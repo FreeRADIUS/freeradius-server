@@ -742,11 +742,13 @@ int rad_virtual_server(REQUEST *request)
 
 						if ((*suffix != '.') ||
 						    (strcmp(suffix + 1, outer) != 0)) {
-							RWDEBUG("Possible spoofing: Inner realm '%s' is not a subdomain of the outer realm '%s'", inner, outer);
+							RWDEBUG("Possible spoofing: Inner realm '%s' is not a "
+								"subdomain of the outer realm '%s'", inner, outer);
 						}
 
 					} else {
-						RWDEBUG("Possible spoofing: Inner realm and outer realms are different");
+						RWDEBUG("Possible spoofing: Inner realm and "
+							"outer realms are different");
 					}
 				}
 			}

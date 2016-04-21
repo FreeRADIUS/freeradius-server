@@ -446,7 +446,7 @@ open_file:
 		break;
 	}
 
-	
+
 	switch (data->entry_state) {
 	case STATE_HEADER:
 	do_header:
