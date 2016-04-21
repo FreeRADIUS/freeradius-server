@@ -1194,7 +1194,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, >=, 8);
 	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, <=, 2048);
 	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, >=, 1);
-	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, >=, 3600);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, <=, 3600);
 	inst->ef = module_exfile_init(inst, conf, inst->config->max_entries, inst->config->max_idle, true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
