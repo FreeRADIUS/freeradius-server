@@ -630,16 +630,17 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
  */
 void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
-	size_t		len = 0;
 	char const	*filename = request->log.output->file;
 	FILE		*fp = NULL;
-
-	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 
 	char		*p;
 	char const	*extra = "";
 	uint8_t		unlang_indent, module_indent;
 	va_list		aq;
+
+	char		*msg_prefix = NULL;
+	char		*msg_module = NULL;
+	char		*msg_exp = NULL;
 
 	rad_assert(request);
 
@@ -661,7 +662,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 			switch (request->log.output->dst) {
 			case L_DST_FILES:
 				fp = fopen(request->log.output->file, "a");
-				if (!fp) return;
+				if (!fp) goto finish;
 				break;
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
@@ -684,7 +685,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 					     NULL, request->log.output->cookie_write, NULL, NULL);
 
 #  endif
-				if (!fp) return;
+				if (!fp) goto finish;
 			}
 				break;
 #endif
@@ -696,11 +697,13 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	}
 
 	if (filename) {
+		char *exp;
+
 		radlog_func_t log_func = request->log.func;
 
 		/*
 		 *	Prevent infinitely recursive calls if
-		 *	radius_xlat attempts to write to the request log.
+		 *	radius_axlat attempts to write to the request log.
 		 */
 		request->log.func = NULL;
 
@@ -708,7 +711,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	This is SLOW!  Doing it for every log message
 		 *	in every request is NOT recommended!
 		 */
-		if (radius_xlat(buffer, sizeof(buffer), request, filename, rad_filename_escape, NULL) < 0) return;
+		if (radius_axlat(&exp, request, filename, rad_filename_escape, NULL) < 0) return;
 
 		/*
 		 *	Restore the original logging function
@@ -719,32 +722,28 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	Ensure the directory structure exists, for
 		 *	where we're going to write the log file.
 		 */
-		p = strrchr(buffer, FR_DIR_SEP);
+		p = strrchr(exp, FR_DIR_SEP);
 		if (p) {
 			*p = '\0';
-			if (rad_mkdir(buffer, S_IRWXU, -1, -1) < 0) {
-				ERROR("Failed creating %s: %s", buffer, fr_syserror(errno));
+			if (rad_mkdir(exp, S_IRWXU, -1, -1) < 0) {
+				ERROR("Failed creating %s: %s", exp, fr_syserror(errno));
+				talloc_free(exp);
 				return;
 			}
 			*p = FR_DIR_SEP;
 		}
 
-		fp = fopen(buffer, "a");
+		fp = fopen(exp, "a");
+		talloc_free(exp);
 	}
 
 print_msg:
 	/*
-	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
-	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
-	 *  ap is passed into another function. See here:
-	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *	Request prefix i.e.
 	 *
-	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
-	 *  running unit tests which generate errors under CI.
+	 *	(0) <msg>
 	 */
-	va_copy(aq, ap);
-	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
-	va_end(aq);
+	msg_prefix = talloc_asprintf(request, "(%" PRIu64 ")  ", request->number);
 
 	/*
 	 *	Make sure the indent isn't set to something crazy
@@ -756,6 +755,28 @@ print_msg:
 	module_indent = request->log.module_indent > sizeof(spaces) - 1 ?
 			sizeof(spaces) - 1 :
 			request->log.module_indent;
+
+	/*
+	 *	Module name and indentation i.e.
+	 *
+	 *	test -     <msg>
+	 */
+	if (request->module) {
+		msg_module = talloc_asprintf(request, "%s - %.*s", request->module, module_indent, spaces);
+	}
+
+	/*
+	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
+	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
+	 *  ap is passed into another function. See here:
+	 *  http://julipedia.meroh.net/2011/09/using-vacopy-to-safely-pass-ap.html
+	 *
+	 *  I don't buy that explanation, but doing a va_copy here does prevent SEGVs seen when
+	 *  running unit tests which generate errors under CI.
+	 */
+	va_copy(aq, ap);
+	msg_exp = talloc_vasprintf(request, msg, aq);
+	va_end(aq);
 
 	/*
 	 *	Logging to a file descriptor
@@ -783,17 +804,15 @@ print_msg:
 		p = strrchr(time_buff, '\n');
 		if (p) p[0] = '\0';
 
-		if (request->module) {
-			fprintf(fp, "(%" PRIu64 ")  %s%s%.*s%s - %.*s%s\n",
-				request->number, time_buff, fr_int2str(levels, type, ""),
-				unlang_indent, spaces, request->module, module_indent, spaces, buffer);
-		} else {
-			fprintf(fp, "(%" PRIu64 ")  %s%s%.*s%s\n",
-				request->number, time_buff, fr_int2str(levels, type, ""),
-				unlang_indent, spaces, buffer);
-		}
+		fprintf(fp, "%s" "%s" "%s" "%.*s" "%s" "%s" "\n",
+			msg_prefix,
+			time_buff,
+			fr_int2str(levels, type, ""),
+			unlang_indent, spaces,
+			msg_module ? msg_module : "",
+			msg_exp);
 		fclose(fp);
-		return;
+		goto finish;
 	}
 
 	/*
@@ -811,18 +830,19 @@ print_msg:
 		break;
 	default:
 		break;
-	}
+	};
 
-	if (request->module) {
-		radlog_always(type, "(%" PRIu64 ")  %.*s%s - %.*s%s%s", request->number,
-			      unlang_indent, spaces,
-			      request->module,
-			      module_indent, spaces,
-			      extra, buffer);
-	} else {
-		radlog_always(type, "(%" PRIu64 ")  %.*s%s%s", request->number,
-			      unlang_indent, spaces, extra, buffer);
-	}
+	radlog_always(type, "%s" "%.*s" "%s" "%s" "%s",
+		      msg_prefix,
+		      unlang_indent, spaces,
+		      msg_module ? msg_module : "",
+		      extra,
+		      msg_exp);
+
+finish:
+	talloc_free(msg_exp);
+	talloc_free(msg_module);
+	talloc_free(msg_prefix);
 }
 
 /** Martial variadic log arguments into a va_list and pass to normal logging functions
