@@ -131,6 +131,8 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	if (!fake) return NULL;
 
 	fake->number = request->number;
+	fake->seq_start = request->seq_start;
+
 	fake->child_pid = request->child_pid;
 	fake->parent = request;
 	fake->root = request->root;
@@ -247,6 +249,7 @@ REQUEST *request_alloc_proxy(REQUEST *request)
 	request->proxy->log = request->log;
 	request->proxy->parent = request;
 	request->proxy->number = request->number;
+	request->proxy->seq_start = request->seq_start;
 	request->proxy->root = request->root;
 
 	return request->proxy;

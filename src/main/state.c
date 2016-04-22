@@ -54,8 +54,7 @@ RCSID("$Id$")
  *
  */
 typedef struct state_entry {
-	uint64_t		id;				//!< State ID for debugging
-
+	uint64_t		id;				//!< State number within state tree.
 	union {
 		/** Server ID components
 		 *
@@ -93,6 +92,7 @@ typedef struct state_entry {
 		uint8_t		state[sizeof(struct state_comp)];	//!< State value in binary.
 	};
 
+	uint64_t		seq_start;			//!< Number of first request in this sequence.
 	time_t			cleanup;			//!< When this entry should be cleaned up.
 	struct state_entry	*prev;				//!< Previous entry in the cleanup list.
 	struct state_entry	*next;				//!< Next entry in the cleanup list.
@@ -571,6 +571,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	 */
 	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY)) {
 		RDEBUG3("No &request:State attribute, can't restore &session-state");
+		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
 		return;
 	}
 
@@ -580,6 +581,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	if (entry) {
 		if (request->state_ctx) old_ctx = request->state_ctx;
 
+		request->seq_start = entry->seq_start;
 		request->state_ctx = entry->ctx;
 		request->state = entry->vps;
 		request_data_restore(request, entry->data);
@@ -643,6 +645,7 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	rad_assert(entry->ctx == NULL);
 	rad_assert(request->state_ctx);
 
+	entry->seq_start = request->seq_start;
 	entry->ctx = request->state_ctx;
 	entry->vps = request->state;
 	entry->data = data;

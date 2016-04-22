@@ -710,7 +710,7 @@ static void *request_handler_thread(void *arg)
 
 		thread->request_count++;
 
-		DEBUG2("Thread %d handling request %d, (%d handled so far)",
+		DEBUG2("Thread %d handling request %" PRIu64 ", (%d handled so far)",
 		       thread->thread_num, request->number,
 		       thread->request_count);
 

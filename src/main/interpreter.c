@@ -79,7 +79,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, mo
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) return RLM_MODULE_NOOP;
 
-	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
+	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
 		comp2str[component], sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
@@ -104,11 +104,11 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, mo
 	 */
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) {
-		RWARN("Module %s became unblocked for request %u", sp->modinst->module->name, request->number);
+		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->modinst->module->name, request->number);
 	}
 
  fail:
-	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
+	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
 		comp2str[component], sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
@@ -744,7 +744,7 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 	 *	Like MOD_ELSE, but allow for a later "else"
 	 */
 	if (entry->if_taken) {
-		RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
+		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
 			unlang_keyword[c->type], request->number);
 		entry->if_taken = true;
 		return UNLANG_CONTINUE;
@@ -764,7 +764,7 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 	rad_assert(entry->was_if);
 
 	if (entry->if_taken) {
-		RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
+		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
 			unlang_keyword[c->type], request->number);
 		entry->was_if = false;
 		entry->if_taken = false;

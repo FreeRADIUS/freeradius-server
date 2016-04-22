@@ -1095,8 +1095,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		} else
 #endif	/* WITH_PROXY */
 		  {
-			RDEBUG("No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
-			       request->number);
+			RDEBUG("No tunneled reply was found for request %" PRIu64 ", and the request was not "
+			       "proxied: rejecting the user", request->number);
 			code = PW_CODE_ACCESS_REJECT;
 		}
 		break;

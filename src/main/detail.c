@@ -154,7 +154,8 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		 */
 		if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
 
-		RDEBUG3("detail (%s): Received response for request %d.  Will read the next packet in %d seconds",
+		RDEBUG3("detail (%s): Received response for request %" PRIu64 ".  "
+			"Will read the next packet in %d seconds",
 			data->name, request->number, data->delay_time / USEC);
 
 		data->last_packet = now;

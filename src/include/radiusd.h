@@ -206,7 +206,8 @@ struct rad_request {
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
 #endif
-	unsigned int	       	number; 	//!< Monotonically increasing request number. Reset on server restart.
+	uint64_t		number; 	//!< Monotonically increasing request number. Reset on server restart.
+
 	struct timeval		timestamp;	//!< When we started processing the request.
 
 	request_data_t		*data;		//!< Request metadata.
@@ -225,6 +226,8 @@ struct rad_request {
 	VALUE_PAIR		*control;	//!< #VALUE_PAIR (s) used to set per request parameters
 						//!< for modules and the server core at runtime.
 
+	uint64_t		seq_start;	//!< State sequence ID.  Stable identifier for a sequence of requests
+						//!< and responses.
 	TALLOC_CTX		*state_ctx;	//!< for request->state
 	VALUE_PAIR		*state;		//!< #VALUE_PAIR (s) available over the lifetime of the authentication
 						//!< attempt. Useful where the attempt involves a sequence of

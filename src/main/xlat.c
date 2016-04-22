@@ -2209,7 +2209,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'n': /* Request Number*/
-			snprintf(str, freespace, "%u", request->number);
+			snprintf(str, freespace, "%" PRIu64 , request->number);
 			break;
 
 		case 't': /* request timestamp */

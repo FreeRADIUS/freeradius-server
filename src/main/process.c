@@ -34,9 +34,10 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef WITH_DETAIL
-#include <freeradius-devel/detail.h>
+#  include <freeradius-devel/detail.h>
 #endif
 
+#include <stdatomic.h>
 #include <signal.h>
 #include <fcntl.h>
 
@@ -75,7 +76,7 @@ if (rad_debug_lvl) do { \
 	struct timeval debug_tv; \
 	gettimeofday(&debug_tv, NULL); \
 	debug_tv.tv_sec -= fr_start_time; \
-	printf("(%u) %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
+	printf("(%" PRIu64 ") %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
 	       request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec, \
 	       __FUNCTION__, action_codes[action], master_state_names[request->master_state], \
 	       child_state_names[request->child_state]); \
@@ -327,7 +328,12 @@ void radius_update_listener(rad_listen_t *this)
 #  define FD_MUTEX_UNLOCK(_x)
 #endif
 
-static int request_num_counter = 1;
+/** Session sequence number
+ *
+ * Unique for the lifetime of the process (or at least until it wraps).
+ */
+static atomic_uint_fast64_t request_number_counter = ATOMIC_VAR_INIT(1);
+
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
 static int request_proxy_send(REQUEST *request) CC_HINT(nonnull);
@@ -592,7 +598,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		}
 
 #ifdef DEBUG_STATE_MACHINE
-		if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+		if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
 				       request->number, __FUNCTION__,
 				       child_state_names[request->child_state],
 				       child_state_names[REQUEST_DONE]);
@@ -768,7 +774,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 	 */
 	if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-		if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+		if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 		request->process = request_cleanup_delay;
 
@@ -840,7 +846,7 @@ static bool request_max_time(REQUEST *request)
 		 */
 		if (spawn_workers &&
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-			ERROR("Unresponsive child for request %u, in component %s module %s",
+			ERROR("Unresponsive child for request %" PRIu64 ", in component %s module %s",
 			      request->number,
 			      request->component ? request->component : "<core>",
 			      request->module ? request->module : "<core>");
@@ -896,7 +902,7 @@ static void worker_thread(REQUEST *request,
 
 static void request_dup_msg(REQUEST *request)
 {
-	ERROR("(%u) Ignoring duplicate packet from "
+	ERROR("(%" PRIu64 ") Ignoring duplicate packet from "
 	      "client %s port %d - ID: %u due to unfinished request "
 	      "in component %s module %s",
 	      request->number, request->client->shortname,
@@ -975,7 +981,7 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 			STATE_MACHINE_TIMER;
 			return;
@@ -1025,10 +1031,10 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		ERROR("(%u) Discarding duplicate request from "
+		ERROR("(%" PRIu64 ") Discarding duplicate request from "
 		      "client %s port %d - ID: %u due to delayed response",
 		      request->number, request->client->shortname,
-		      request->packet->src_port,request->packet->id);
+		      request->packet->src_port, request->packet->id);
 		break;
 
 #ifdef WITH_PROXY
@@ -1051,7 +1057,8 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
+			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n",
+						  request->number, __FUNCTION__, "request_response_delay");
 #endif
 			STATE_MACHINE_TIMER;
 			return;
@@ -1415,10 +1422,11 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (rad_debug_lvl) printf("(%u) ********\tSTATE %s failed in pre-handler C-%s -> C-%s\t********\n",
-					       request->number, __FUNCTION__,
-					       child_state_names[request->child_state],
-					       child_state_names[REQUEST_DONE]);
+			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s failed in pre-handler C-%s -> "
+						  "C-%s\t********\n",
+						  request->number, __FUNCTION__,
+						  child_state_names[request->child_state],
+						  child_state_names[REQUEST_DONE]);
 #endif
 			FINAL_STATE(REQUEST_DONE);
 			break;
@@ -1435,7 +1443,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		if ((action == FR_ACTION_RUN) &&
 		    request_will_proxy(request)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
+			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tWill Proxy\t********\n", request->number);
 #endif
 			/*
 			 *	If this fails, it
@@ -1448,7 +1456,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 #endif
 		{
 #ifdef DEBUG_STATE_MACHINE
-			if (rad_debug_lvl) printf("(%u) ********\tFinished\t********\n", request->number);
+			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tFinished\t********\n", request->number);
 #endif
 
 #ifdef WITH_PROXY
@@ -1710,7 +1718,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 	request->listener = listener;
 	request->client = client;
 	request->packet = talloc_steal(request, packet);
-	request->number = request_num_counter++;
+	request->number = atomic_fetch_add_explicit(&request_number_counter, 1, memory_order_relaxed);
 	request->priority = listener->type;
 	if (request->priority >= RAD_LISTEN_MAX) {
 		request->priority = RAD_LISTEN_AUTH;
@@ -1719,7 +1727,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 	request->master_state = REQUEST_ACTIVE;
 	request->child_state = REQUEST_RUNNING;
 #ifdef DEBUG_STATE_MACHINE
-	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
 			       request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_RUNNING]);
@@ -3208,7 +3216,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		ERROR("No response to status check %d ID %u for home server %s port %d",
+		ERROR("No response to status check %" PRIu64 " ID %u for home server %s port %d",
 		       request->number,
 		       request->proxy->packet->id,
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
@@ -3221,7 +3229,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		rad_assert(request->in_proxy_hash);
 
 		request->proxy->home_server->num_received_pings++;
-		RPROXY("Received response to status check %d ID %u (%d in current sequence)",
+		RPROXY("Received response to status check %" PRIu64 " ID %u (%d in current sequence)",
 		       request->number, request->proxy->packet->id, home->num_received_pings);
 
 		/*
@@ -3329,7 +3337,7 @@ static void ping_home_server(void *ctx, struct timeval *now)
 
 	request = request_alloc(NULL);
 	if (!request) return;
-	request->number = request_num_counter++;
+	request->number = atomic_fetch_add_explicit(&request_number_counter, 1, memory_order_relaxed);
 	NO_CHILD_THREAD;
 
 	request->proxy = request_alloc_proxy(request);
@@ -3394,10 +3402,12 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	request->proxy->packet->dst_port = home->port;
 	request->proxy->home_server = home;
 #ifdef DEBUG_STATE_MACHINE
-	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
-			       child_state_names[request->child_state],
-			       child_state_names[REQUEST_DONE]);
-	if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
+	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
+				  request->number, __FUNCTION__,
+				  child_state_names[request->child_state],
+				  child_state_names[REQUEST_DONE]);
+	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n",
+				  request->number, __FUNCTION__, "request_ping");
 #endif
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 
@@ -3407,7 +3417,7 @@ static void ping_home_server(void *ctx, struct timeval *now)
 	rad_assert(request->proxy->listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		RPROXY("Failed to insert status check %d into proxy list.  Discarding it.",
+		RPROXY("Failed to insert status check %" PRIu64 " into proxy list.  Discarding it.",
 		       request->number);
 
 		rad_assert(!request->in_request_hash);
@@ -4005,6 +4015,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->proxy->packet->count = 0;
 	coa->handle = null_handler;
 	coa->number = request->number; /* it's associated with the same request */
+	coa->seq_start = request->seq_start;
 
 	/*
 	 *	Call the pre-proxy routines.
@@ -4083,9 +4094,10 @@ static void request_coa_originate(REQUEST *request)
 	coa->proxy->listener->debug(coa, coa->proxy->packet, false);
 
 #ifdef DEBUG_STATE_MACHINE
-	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
-			       child_state_names[request->child_state],
-			       child_state_names[REQUEST_PROXIED]);
+	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
+				  request->number, __FUNCTION__,
+				  child_state_names[request->child_state],
+				  child_state_names[REQUEST_PROXIED]);
 #endif
 
 	/*
@@ -5117,8 +5129,6 @@ int radius_event_start(bool have_children)
 
 		MEM(pl = rbtree_create(NULL, packet_entry_cmp, NULL, 0));
 	}
-
-	request_num_counter = 0;
 
 #ifdef WITH_PROXY
 	if (main_config.proxy_requests && !check_config) {

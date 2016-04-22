@@ -784,11 +784,11 @@ print_msg:
 		if (p) p[0] = '\0';
 
 		if (request->module) {
-			fprintf(fp, "(%u)  %s%s%.*s%s - %.*s%s\n",
+			fprintf(fp, "(%" PRIu64 ")  %s%s%.*s%s - %.*s%s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
 				unlang_indent, spaces, request->module, module_indent, spaces, buffer);
 		} else {
-			fprintf(fp, "(%u)  %s%s%.*s%s\n",
+			fprintf(fp, "(%" PRIu64 ")  %s%s%.*s%s\n",
 				request->number, time_buff, fr_int2str(levels, type, ""),
 				unlang_indent, spaces, buffer);
 		}
@@ -814,13 +814,13 @@ print_msg:
 	}
 
 	if (request->module) {
-		radlog_always(type, "(%u)  %.*s%s - %.*s%s%s", request->number,
+		radlog_always(type, "(%" PRIu64 ")  %.*s%s - %.*s%s%s", request->number,
 			      unlang_indent, spaces,
 			      request->module,
 			      module_indent, spaces,
 			      extra, buffer);
 	} else {
-		radlog_always(type, "(%u)  %.*s%s%s", request->number,
+		radlog_always(type, "(%" PRIu64 ")  %.*s%s%s", request->number,
 			      unlang_indent, spaces, extra, buffer);
 	}
 }

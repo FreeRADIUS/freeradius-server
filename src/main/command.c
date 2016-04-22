@@ -1803,7 +1803,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 
 	output_file = request_data_reference(request, (void *)null_socket_send, 0);
 	if (!output_file) {
-		ERROR("No output file for injected packet %d", request->number);
+		ERROR("No output file for injected packet %" PRIu64 "", request->number);
 		return 0;
 	}
 
