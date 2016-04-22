@@ -743,7 +743,12 @@ print_msg:
 	 *
 	 *	(0) <msg>
 	 */
-	msg_prefix = talloc_asprintf(request, "(%" PRIu64 ")  ", request->number);
+	if ((request->seq_start == 0) || (request->number == request->seq_start)) {
+		msg_prefix = talloc_asprintf(request, "(%" PRIu64 ")  ", request->number);
+	} else {
+		msg_prefix = talloc_asprintf(request, "(%" PRIu64 "..%" PRIu64 ")  ",
+					     request->seq_start, request->number);
+	}
 
 	/*
 	 *	Make sure the indent isn't set to something crazy
