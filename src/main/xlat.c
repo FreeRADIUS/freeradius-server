@@ -2212,6 +2212,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			snprintf(str, freespace, "%" PRIu64 , request->number);
 			break;
 
+		case 's': /* First request in this sequence */
+			snprintf(str, freespace, "%" PRIu64 , request->seq_start);
+			break;
+
 		case 't': /* request timestamp */
 			CTIME_R(&when, str, freespace);
 			nl = strchr(str, '\n');
