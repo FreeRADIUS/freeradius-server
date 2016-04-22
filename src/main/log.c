@@ -746,8 +746,9 @@ print_msg:
 	if ((request->seq_start == 0) || (request->number == request->seq_start)) {
 		msg_prefix = talloc_asprintf(request, "(%" PRIu64 ")  ", request->number);
 	} else {
-		msg_prefix = talloc_asprintf(request, "(%" PRIu64 "..%" PRIu64 ")  ",
-					     request->seq_start, request->number);
+		msg_prefix = talloc_asprintf(request, "(%" PRIu64 ",%" PRIu64 ")  ",
+					     request->number, request->seq_start);
+	}
 	}
 
 	/*
