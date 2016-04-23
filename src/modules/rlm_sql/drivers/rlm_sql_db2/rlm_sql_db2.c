@@ -62,7 +62,7 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
-	SQLRETURN retval;
+	SQLRETURN row;
 	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 	rlm_sql_db2_conn_t *conn;
 
@@ -98,13 +98,13 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 *
 		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PO‌​RT=50000
 		 */
-		retval = SQLConnect(conn->dbc_handle,
+		row = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
 				    login,  SQL_NTS,
 				    password, SQL_NTS);
 	}
 
-	if (retval != SQL_SUCCESS) {
+	if (row != SQL_SUCCESS) {
 		ERROR("could not connect to DB2 server %s", config->sql_server);
 
 		return RLM_SQL_ERROR;
@@ -115,7 +115,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
-	SQLRETURN retval;
+	SQLRETURN row;
 	rlm_sql_db2_conn_t *conn;
 
 	conn = handle->conn;
@@ -128,9 +128,9 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		SQLCHAR *db2_query;
 		memcpy(&db2_query, &query, sizeof(query));
 
-		retval = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
-		if(retval != SQL_SUCCESS) {
-			/* XXX Check if retval means we should return RLM_SQL_RECONNECT */
+		row = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
+		if(row != SQL_SUCCESS) {
+			/* XXX Check if row means we should return RLM_SQL_RECONNECT */
 			ERROR("Could not execute statement \"%s\"", query);
 			return RLM_SQL_ERROR;
 		}
@@ -194,54 +194,44 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	int c, i;
-	SQLINTEGER len, slen;
-	rlm_sql_row_t retval;
-	rlm_sql_db2_conn_t *conn;
+	int			c, i;
+	SQLINTEGER		len, slen;
+	rlm_sql_row_t		row;
+	rlm_sql_db2_conn_t	*conn;
 
 	*out = NULL;
 
-	conn = handle->conn;
+	TALLOC_FREE(handle->row);
 
+	conn = handle->conn;
 	c = sql_num_fields(handle, config);
-	retval = (rlm_sql_row_t)rad_malloc(c*sizeof(char*)+1);
-	memset(retval, 0, c*sizeof(char*)+1);
 
 	/* advance cursor */
-	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
-		handle->row = NULL;
-		goto error;
-	}
+	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) return RLM_SQL_ERROR;
 
-	for(i = 0; i < c; i++) {
+	MEM(row = (rlm_sql_row_t)talloc_zero_array(handle, char *, c + 1));
+	for (i = 0; i < c; i++) {
 		/* get column length */
-		SQLColAttribute(conn->stmt, i+1, SQL_DESC_DISPLAY_SIZE, NULL, 0, NULL, &len);
+		SQLColAttribute(conn->stmt, i + 1, SQL_DESC_DISPLAY_SIZE, NULL, 0, NULL, &len);
 
-		retval[i] = rad_malloc(len+1);
+		MEM(row[i] = talloc_array(row, char, len + 1));
 
 		/* get the actual column */
-		SQLGetData(conn->stmt, i + 1, SQL_C_CHAR, retval[i], len+1, &slen);
-		if(slen == SQL_NULL_DATA) {
-			retval[i][0] = '\0';
-		}
+		SQLGetData(conn->stmt, i + 1, SQL_C_CHAR, row[i], len + 1, &slen);
+		if (slen == SQL_NULL_DATA) row[i][0] = '\0';
 	}
 
-	*out = handle->row = retval;
+	*out = handle->row = row;
+
 	return RLM_SQL_OK;
-
-error:
-	for(i = 0; i < c; i++) {
-		free(retval[i]);
-	}
-	free(retval);
-
-	return RLM_SQL_ERROR;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_db2_conn_t *conn;
+
 	conn = handle->conn;
+	TALLOC_FREE(handle->row);
 	SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
 
 	return RLM_SQL_OK;

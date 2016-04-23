@@ -232,7 +232,7 @@ static int otp_verify(REQUEST *request, rlm_otp_t const *opt,
 	int rc;
 	int tryagain = 2;
 
-	retry:
+retry:
 	if (!tryagain--) {
 		return -1;
 	}
@@ -386,7 +386,7 @@ static int otp_connect(char const *path)
  * requests to otpd and we have no way to demultiplex
  * the responses.
  */
-static otp_fd_t * otp_getfd(rlm_otp_t const *opt)
+static otp_fd_t *otp_getfd(rlm_otp_t const *opt)
 {
 	int rc;
 	otp_fd_t *fdp;
@@ -403,7 +403,7 @@ static otp_fd_t * otp_getfd(rlm_otp_t const *opt)
 
 	if (!fdp) {
 		/* no fd was available, add a new one */
-		fdp = rad_malloc(sizeof(*fdp));
+		MEM(fdp = talloc_zero(NULL, otp_fd_t));
 		otp_pthread_mutex_init(&fdp->mutex, NULL);
 		otp_pthread_mutex_lock(&fdp->mutex);
 
@@ -419,9 +419,7 @@ static otp_fd_t * otp_getfd(rlm_otp_t const *opt)
 	}
 
 	/* establish connection */
-	if (fdp->fd == -1) {
-		fdp->fd = otp_connect(fdp->path);
-	}
+	if (fdp->fd == -1) fdp->fd = otp_connect(fdp->path);
 
 	return fdp;
 }

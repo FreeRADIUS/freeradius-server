@@ -151,28 +151,23 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
-	int numfields = 0;
-	int i = 0;
-	char **row = NULL;
-	long len = 0;
-	rlm_sql_iodbc_conn_t *conn = handle->conn;
+	int			numfields = 0;
+	int			i = 0;
+	char			**row = NULL;
+	long			len = 0;
+	rlm_sql_iodbc_conn_t	*conn = handle->conn;
 
 	if (sql_query(handle, config, query) < 0) return RLM_SQL_ERROR;
 
 	numfields = sql_num_fields(handle, config);
-
-	row = (char **) rad_malloc(sizeof(char *) * (numfields+1));
-	memset(row, 0, (sizeof(char *) * (numfields)));
-	row[numfields] = NULL;
-
-	for(i=1; i<=numfields; i++) {
+	MEM(row = talloc_zero_array(handle, char *, numfields + 1));
+	for (i = 1; i <= numfields; i++) {
 		SQLColAttributes(conn->stmt, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
-		len++;
 
 		/*
-		 * Allocate space for each column
+		 *	Allocate space for each column
 		 */
-		row[i - 1] = rad_malloc((size_t) len);
+		MEM(row[i - 1] = talloc_array(row, char, len + 1));
 
 		/*
 		 * This makes me feel dirty, but, according to Microsoft, it works.
@@ -181,7 +176,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		 *
 		 * http://msdn.microsoft.com/library/psdk/dasdk/odap4o4z.htm
 		 */
-		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)row[i-1], len, 0);
+		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)row[i - 1], len + 1, 0);
 	}
 
 	conn->row = row;
@@ -192,7 +187,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
-	SQLSMALLINT count=0;
+	SQLSMALLINT count = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
 	SQLNumResultCols(conn->stmt, &count);
@@ -257,10 +252,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	int i = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	for (i = 0; i < sql_num_fields(handle, config); i++) free(conn->row[i]);
-	free(conn->row);
-	conn->row = NULL;
-
+	TALLOC_FREE(conn->row);
 	SQLFreeStmt(conn->stmt, SQL_DROP);
 
 	return 0;

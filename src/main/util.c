@@ -405,21 +405,6 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 	return outlen - freespace;	/* how many bytes were written */
 }
 
-/*
- *	Allocate memory, or exit.
- *
- *	This call ALWAYS succeeds!
- */
-void *rad_malloc(size_t size)
-{
-	void *ptr;
-
-	MEM(ptr = malloc(size));
-
-	return ptr;
-}
-
-
 void rad_const_free(void const *ptr)
 {
 	void *tmp;

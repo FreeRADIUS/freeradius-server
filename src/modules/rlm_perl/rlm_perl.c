@@ -150,8 +150,7 @@ static void **rlm_perl_get_handles(pTHX)
 		return NULL;
 	}
 
-	handles = (void **)rad_malloc(sizeof(void *) * (AvFILL(librefs)+2));
-
+	MEM(handles = talloc_array(NULL, void *, AvFILL(librefs) + 2));
 	for (i = 0; i <= AvFILL(librefs); i++) {
 		void *handle;
 		SV *handle_sv = *av_fetch(librefs, i, false);
@@ -185,7 +184,7 @@ static void rlm_perl_close_handles(void **handles)
 		dlclose(handles[i]);
 	}
 
-	free(handles);
+	talloc_free(handles);
 }
 
 DIAG_OFF(shadow)
@@ -506,9 +505,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	pthread_mutex_init(&inst->clone_mutex, NULL);
 
-	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
-	memset(inst->thread_key,0,sizeof(*inst->thread_key));
-
+	MEM(inst->thread_key = talloc_zero(inst, pthread_key_t));
 	rlm_perl_make_key(inst->thread_key);
 #endif
 

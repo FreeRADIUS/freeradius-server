@@ -843,8 +843,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	/*
 	 *	Allocate a new thread handle.
 	 */
-	thread = (THREAD_HANDLE *) rad_malloc(sizeof(THREAD_HANDLE));
-	memset(thread, 0, sizeof(THREAD_HANDLE));
+	MEM(thread = talloc_zero(NULL, THREAD_HANDLE));
 
 	thread->thread_num = thread_pool.max_thread_num++;
 	thread->request_count = 0;
@@ -855,7 +854,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	rcode = sem_init(&thread->semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
 		ERROR("Failed to initialize semaphore: %s", fr_syserror(errno));
-		free(thread);
+		talloc_free(thread);
 		return NULL;
 	}
 
@@ -868,7 +867,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 */
 	rcode = pthread_create(&thread->pthread_id, 0, request_handler_thread, thread);
 	if (rcode != 0) {
-		free(thread);
+		talloc_free(thread);
 		ERROR("Thread create failed: %s",
 		       fr_syserror(rcode));
 		return NULL;
@@ -1033,6 +1032,11 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	return 0;
 }
 
+static void thread_handle_free(void *th)
+{
+	talloc_free(th);
+}
+
 
 /*
  *	Allocate the thread pool, and seed it with an initial number
@@ -1070,7 +1074,7 @@ int thread_pool_init(void)
 	/*
 	 *	Create the hash table of child PID's
 	 */
-	thread_pool.waiters = fr_hash_table_create(NULL, pid_hash, pid_cmp, free);
+	thread_pool.waiters = fr_hash_table_create(NULL, pid_hash, pid_cmp, thread_handle_free);
 	if (!thread_pool.waiters) {
 		ERROR("FATAL: Failed to set up wait hash");
 		return -1;
@@ -1157,7 +1161,7 @@ void thread_pool_stop(void)
 		next = thread->next;
 
 		pthread_join(thread->pthread_id, NULL);
-		free(thread);
+		talloc_free(thread);
 	}
 
 	for (thread = thread_pool.idle_head; thread; thread = next) {
@@ -1167,7 +1171,7 @@ void thread_pool_stop(void)
 		sem_post(&thread->semaphore);
 
 		pthread_join(thread->pthread_id, NULL);
-		free(thread);
+		talloc_free(thread);
 	}
 
 	for (thread = thread_pool.active_head; thread; thread = next) {
@@ -1177,7 +1181,7 @@ void thread_pool_stop(void)
 		sem_post(&thread->semaphore);
 
 		pthread_join(thread->pthread_id, NULL);
-		free(thread);
+		talloc_free(thread);
 	}
 
 	fr_heap_delete(thread_pool.idle_heap);
@@ -1245,7 +1249,7 @@ static void thread_pool_manage(time_t now)
 		 */
 		pthread_mutex_unlock(&thread_pool.mutex);
 		pthread_join(thread->pthread_id, NULL);
-		free(thread);
+		talloc_free(thread);
 		pthread_mutex_lock(&thread_pool.mutex);
 	}
 
@@ -1395,9 +1399,7 @@ static pid_t thread_fork(void)
 		int rcode;
 		thread_fork_t *tf;
 
-		tf = rad_malloc(sizeof(*tf));
-		memset(tf, 0, sizeof(*tf));
-
+		MEM(tf = talloc_zero(NULL, thread_fork_t));
 		tf->pid = child_pid;
 
 		pthread_mutex_lock(&thread_pool.wait_mutex);
@@ -1407,7 +1409,7 @@ static pid_t thread_fork(void)
 		if (!rcode) {
 			ERROR("Failed to store PID, creating what will be a zombie process %d",
 			       (int) child_pid);
-			free(tf);
+			talloc_free(tf);
 		}
 	}
 

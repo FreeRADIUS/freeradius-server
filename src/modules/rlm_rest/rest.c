@@ -1773,9 +1773,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 			p = q + 1;
 		}
 
-		if (*p != '\0') {
-			REDEBUG("%.*s", (int)(t - (p - (char *)ptr)), p);
-		}
+		if (*p != '\0') REDEBUG("%.*s", (int)(t - (p - (char *)ptr)), p);
 
 		return t;
 
@@ -1785,9 +1783,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 			p = q + 1;
 		}
 
-		if (*p != '\0') {
-			RDEBUG3("%.*s", (int)(t - (p - (char *)ptr)), p);
-		}
+		if (*p != '\0') RDEBUG3("%.*s", (int)(t - (p - (char *)ptr)), p);
 
 		return t;
 
@@ -1796,13 +1792,11 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
 
 			tmp = ctx->buffer;
-
-			ctx->buffer = rad_malloc(ctx->alloc);
-
+			ctx->buffer = talloc_array(NULL, char, ctx->alloc);
 			/* If data has been written previously */
 			if (tmp) {
 				strlcpy(ctx->buffer, tmp, (ctx->used + 1));
-				free(tmp);
+				talloc_free(tmp);
 			}
 		}
 		strlcpy(ctx->buffer + ctx->used, p, t + 1);

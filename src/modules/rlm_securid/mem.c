@@ -33,9 +33,7 @@ SECURID_SESSION* securid_session_alloc(void)
 {
 	SECURID_SESSION	*session;
 
-	session = rad_malloc(sizeof(SECURID_SESSION));
-	memset(session, 0, sizeof(SECURID_SESSION));
-
+	session = talloc_zero(NULL, SECURID_SESSION);
 	session->sdiHandle = SDI_HANDLE_NONE;
 
 	return session;
@@ -64,7 +62,7 @@ void securid_session_free(UNUSED rlm_securid_t *inst,REQUEST *request,
 		session->sdiHandle = SDI_HANDLE_NONE;
 	}
 
-	free(session);
+	talloc_free(session);
 }
 
 

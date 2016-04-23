@@ -401,7 +401,7 @@ int paircompare_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *
 
 	paircompare_unregister(attribute, func);
 
-	c = rad_malloc(sizeof(struct cmp));
+	MEM(c = talloc_zero(NULL, struct cmp));
 
 	c->compare   = func;
 	c->attribute = attribute;
@@ -439,7 +439,7 @@ void paircompare_unregister(fr_dict_attr_t const *attribute, RAD_COMPARE_FUNC fu
 		cmp = c->next;
 	}
 
-	free(c);
+	talloc_free(c);
 }
 
 /** Unregister comparison function for a module
@@ -456,7 +456,7 @@ void paircompare_unregister_instance(void *instance)
 	while ((c = *tail) != NULL) {
 		if (c->instance == instance) {
 			*tail = c->next;
-			free(c);
+			talloc_free(c);
 			continue;
 		}
 
