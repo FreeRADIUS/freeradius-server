@@ -48,25 +48,15 @@ USES_APPLE_DEPRECATED_API
  *      be used as the instance handle.
  */
 typedef struct rlm_pap_t {
-	char const	*name;	/* CONF_SECTION->name, not strdup'd */
+	char const	*name;
 	int		auth_type;
 	bool		normify;
 } rlm_pap_t;
 
-/*
- *      A mapping of configuration file names to internal variables.
- *
- *      Note that the string is dynamically allocated, so it MUST
- *      be freed.  When the configuration file parse re-reads the string,
- *      it free's the old one, and strdup's the new one, placing the pointer
- *      to the strdup'd string into 'config.string'.  This gets around
- *      buffer over-flows.
- */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("normalise", PW_TYPE_BOOLEAN, rlm_pap_t, normify), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
-
 
 /*
  *	For auto-header discovery.

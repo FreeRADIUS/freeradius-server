@@ -27,16 +27,6 @@ RCSID("$Id$")
 
 #include "rlm_yubikey.h"
 
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
-
 #ifdef HAVE_YKCLIENT
 static const CONF_PARSER validation_config[] = {
 	{ FR_CONF_OFFSET("client_id", PW_TYPE_INTEGER, rlm_yubikey_t, client_id), .dflt = 0 },

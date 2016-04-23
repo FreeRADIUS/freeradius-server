@@ -79,15 +79,6 @@ typedef struct rlm_ruby_t {
 
 } rlm_ruby_t;
 
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, struct rlm_ruby_t, filename) },
 	{ FR_CONF_OFFSET("module", PW_TYPE_STRING, struct rlm_ruby_t, module_name), .dflt = "Radiusd" },

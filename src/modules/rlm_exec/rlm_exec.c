@@ -49,15 +49,6 @@ typedef struct rlm_exec_t {
 	uint32_t	timeout;
 } rlm_exec_t;
 
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait", PW_TYPE_BOOLEAN, rlm_exec_t, wait), .dflt = "yes" },
 	{ FR_CONF_OFFSET("program", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_exec_t, program) },

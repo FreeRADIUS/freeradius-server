@@ -41,15 +41,6 @@ typedef struct rlm_wimax_t {
 	bool	delete_mppe_keys;
 } rlm_wimax_t;
 
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
 static const CONF_PARSER module_config[] = {
   { FR_CONF_OFFSET("delete_mppe_keys", PW_TYPE_BOOLEAN, rlm_wimax_t, delete_mppe_keys), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
