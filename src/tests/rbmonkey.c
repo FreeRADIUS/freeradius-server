@@ -188,7 +188,7 @@ again:
 
 	for (i = 0; i < n; i++) {
 		int *p;
-		p = malloc(sizeof(*p));
+		p = talloc(NULL, int);
 		*p = fr_rand();
 		vals[i] = *p;
 		rbtree_insert(t, p);

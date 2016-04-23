@@ -2519,16 +2519,13 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_sec
 	/*
 	 *  Free body data (only used if chunking is disabled)
 	 */
-	if (ctx->body != NULL) TALLOC_FREE(ctx->body);
+
 
 	/*
 	 *  Free response data
 	 */
-	if (ctx->response.buffer) {
-		free(ctx->response.buffer);
-		ctx->response.buffer = NULL;
-	}
-
+	TALLOC_FREE(ctx->body);
+	TALLOC_FREE(ctx->response.buffer);
 	TALLOC_FREE(ctx->request.encoder);
 	TALLOC_FREE(ctx->response.decoder);
 }

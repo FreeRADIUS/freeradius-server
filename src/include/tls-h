@@ -82,7 +82,7 @@ extern "C" {
 static inline HMAC_CTX *HMAC_CTX_new(void)
 {
 	HMAC_CTX *ctx;
-	ctx = malloc(sizeof(HMAC_CTX));
+	ctx = talloc(NULL, HMAC_CTX);
 	HMAC_CTX_init(ctx);
 	return ctx;
 }
@@ -90,7 +90,7 @@ static inline HMAC_CTX *HMAC_CTX_new(void)
 do {\
 	if (_ctx) {\
 		memset(_ctx, 0, sizeof(*_ctx));\
-		free(_ctx);\
+		talloc_free(_ctx);\
 	}\
 } while (0)
 #endif

@@ -451,7 +451,7 @@ void fr_packet_list_free(fr_packet_list_t *pl)
 	if (!pl) return;
 
 	rbtree_free(pl->tree);
-	free(pl);
+	talloc_free(pl);
 }
 
 
@@ -463,11 +463,9 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 	int i;
 	fr_packet_list_t	*pl;
 
-	pl = malloc(sizeof(*pl));
+	pl = talloc_zero(NULL, fr_packet_list_t);
 	if (!pl) return NULL;
-	memset(pl, 0, sizeof(*pl));
-
-	pl->tree = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
+	pl->tree = rbtree_create(pl, packet_entry_cmp, NULL, 0);
 	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;

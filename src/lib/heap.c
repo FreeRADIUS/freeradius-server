@@ -37,8 +37,7 @@ void fr_heap_delete(fr_heap_t *hp)
 {
 	if (!hp) return;
 
-	free(hp->p);
-	free(hp);
+	talloc_free(hp);
 }
 
 fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
@@ -47,15 +46,13 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
 
 	if (!cmp) return NULL;
 
-	fh = malloc(sizeof(*fh));
+	fh = talloc_zero(NULL, fr_heap_t);
 	if (!fh) return NULL;
 
-	memset(fh, 0, sizeof(*fh));
-
 	fh->size = 2048;
-	fh->p = malloc(sizeof(*(fh->p)) * fh->size);
+	fh->p = talloc_array(fh, void *, fh->size);
 	if (!fh->p) {
-		free(fh);
+		talloc_free(fh);
 		return NULL;
 	}
 
@@ -99,11 +96,9 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	if (child == hp->size) {
 		void **p;
 
-		p = malloc(2 * hp->size * sizeof(*p));
-		if (!p) return 0;
-
+		p = talloc_array(hp, void *, 2 * hp->size);
 		memcpy(p, hp->p, sizeof(*p) * hp->size);
-		free(hp->p);
+		talloc_free(hp->p);
 		hp->p = p;
 		hp->size *= 2;
 	}

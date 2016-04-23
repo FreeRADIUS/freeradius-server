@@ -142,7 +142,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			securid_session = securid_session_alloc();
 			securid_session->sdiHandle = sdiHandle; /* save ACE handle for future use */
 			securid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
-			securid_session->identity = strdup(username);
+			securid_session->identity = talloc_typed_strdup(securid_session, username);
 
 			/* Get PIN requirements */
 			acm_ret = AceGetPinParams(sdiHandle, &pin_params);
@@ -183,7 +183,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			securid_session = securid_session_alloc();
 			securid_session->sdiHandle = sdiHandle;
 			securid_session->securidSessionState = NEXT_CODE_REQUIRED_STATE;
-			securid_session->identity = strdup(username);
+			securid_session->identity = talloc_typed_strdup(securid_session, username);
 
 			/* insert new session in the session list */
 			securid_sessionlist_add(inst, request, securid_session);
@@ -227,11 +227,8 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				username);
 
 			/* save the previous pin */
-			if (securid_session->pin) {
-				free(securid_session->pin);
-				securid_session->pin = NULL;
-			}
-			securid_session->pin = strdup(passcode);
+			if (securid_session->pin) TALLOC_FREE(securid_session->pin);
+			securid_session->pin = talloc_typed_strdup(securid_session, passcode);
 
 			strlcpy(replyMsgBuffer, "\r\n		 Please re-enter new PIN:", replyMsgBufferSize);
 
@@ -296,12 +293,11 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		case NEW_PIN_AUTH_VALIDATE_STATE:
 			acm_ret = SD_Check(securid_session->sdiHandle, securid_pass, securid_user);
 			if (acm_ret == ACM_OK) {
-				RDEBUG("New SecurID passcode accepted for %s.",
-				       securid_session->identity);
+				RDEBUG("New SecurID passcode accepted for %s", securid_session->identity);
 				rc = RC_SECURID_AUTH_SUCCESS;
 
 			} else {
-				INFO("SecurID: New passcode rejected for [%s].", securid_session->identity);
+				INFO("SecurID: New passcode rejected for [%s]", securid_session->identity);
 				rc = RC_SECURID_AUTH_FAILURE;
 			}
 
@@ -315,11 +311,8 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 				/* Save the PIN for the next session
 				 * continuation */
-				if (securid_session->pin) {
-					free(securid_session->pin);
-					securid_session->pin = NULL;
-				}
-				securid_session->pin = strdup(new_pin);
+				if (securid_session->pin) TALLOC_FREE(securid_session->pin);
+				securid_session->pin = talloc_typed_strdup(securid_session, new_pin);
 
 				snprintf(replyMsgBuffer, replyMsgBufferSize,
 					 "\r\nYour new PIN is: %s\r\nDo you accept this [y/n]?",
@@ -336,9 +329,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				SD_Pin(securid_session->sdiHandle, &empty_pin[0]); //Cancel new PIN
 
 				/* deallocate session */
-				securid_session_free(inst, request,
-						     securid_session);
-
+				securid_session_free(inst, request, securid_session);
 				rc = RC_SECURID_AUTH_FAILURE;
 			}
 
@@ -357,8 +348,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				SD_Pin(securid_session->sdiHandle, &empty_pin[0]); //Cancel new PIN
 				strlcpy(replyMsgBuffer, " \r\n\r\nPin Rejected. Wait for the code on your card to change, then try again.\r\n\r\nEnter PASSCODE:", replyMsgBufferSize);
 				/* deallocate session */
-				securid_session_free(inst, request,
-						     securid_session);
+				securid_session_free(inst, request, securid_session);
 				rc = RC_SECURID_AUTH_FAILURE;
 			}
 

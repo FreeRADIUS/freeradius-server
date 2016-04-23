@@ -195,10 +195,8 @@ static struct addrinfo *malloc_ai(uint16_t port, u_long addr, int socktype, int 
 {
 	struct addrinfo *ai;
 
-	ai = (struct addrinfo *)malloc(sizeof(struct addrinfo) + sizeof(struct sockaddr_in));
-	if (!ai) return NULL;
-
-	memset(ai, 0, sizeof(struct addrinfo) + sizeof(struct sockaddr_in));
+	MEM(ai = (struct addrinfo *)talloc_zero_array(NULL, uint8_t,
+						      sizeof(struct addrinfo) + sizeof(struct sockaddr_in)));
 	ai->ai_addr = (struct sockaddr *)(ai + 1);
 	ai->ai_addrlen = sizeof(struct sockaddr_in);
 #  ifdef HAVE_SOCKADDR_SA_LEN
@@ -237,11 +235,9 @@ void freeaddrinfo(struct addrinfo *ai)
 {
 	struct addrinfo *next;
 
-	if (ai->ai_canonname) free(ai->ai_canonname);
-
 	do {
 		next = ai->ai_next;
-		free(ai);
+		talloc_free(ai);
 	} while ((ai = next) != NULL);
 }
 
@@ -352,7 +348,7 @@ int getaddrinfo(char const *hostname, char const *servname, struct addrinfo cons
 		}
 
 		if (hints && hints->ai_flags & AI_CANONNAME && *res) {
-			if (((*res)->ai_canonname = strdup(hp->h_name)) == NULL) {
+			if (((*res)->ai_canonname = talloc_strdup(*res, hp->h_name)) == NULL) {
 				freeaddrinfo(*res);
 				return EAI_MEMORY;
 			}

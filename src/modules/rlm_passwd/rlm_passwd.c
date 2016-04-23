@@ -195,7 +195,7 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 			}
 			len = string_to_entry(buffer, nfields, ht->delimiter, hashentry, len);
 			if(!hashentry->field[keyfield] || *hashentry->field[keyfield] == '\0') {
-				free(hashentry);
+				talloc_free(hashentry);
 				continue;
 			}
 
@@ -489,7 +489,7 @@ static int mod_detach (void *instance) {
 		release_ht(inst->ht);
 		inst->ht = NULL;
 	}
-	free(inst->pwdfmt);
+	talloc_free(inst->pwdfmt);
 	return 0;
 #undef inst
 }

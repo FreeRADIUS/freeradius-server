@@ -41,7 +41,7 @@ fr_thread_local_setup(char *, krb5_error_buffer)	/* macro */
  */
 static void _krb5_logging_free(void *arg)
 {
-	free(arg);
+	talloc_free(arg);
 }
 
 char const *rlm_krb5_error(rlm_krb5_t *inst, krb5_context context, krb5_error_code code)
@@ -55,10 +55,7 @@ char const *rlm_krb5_error(rlm_krb5_t *inst, krb5_context context, krb5_error_co
 	if (!buffer) {
 		int ret;
 
-		/*
-		 *	malloc is thread safe, talloc is not
-		 */
-		buffer = malloc(sizeof(char) * KRB5_STRERROR_BUFSIZE);
+		buffer = talloc_array(NULL, char, KRB5_STRERROR_BUFSIZE);
 		if (!buffer) {
 			ERROR("Failed allocating memory for krb5 error buffer");
 			return NULL;
@@ -67,7 +64,7 @@ char const *rlm_krb5_error(rlm_krb5_t *inst, krb5_context context, krb5_error_co
 		ret = fr_thread_local_set(krb5_error_buffer, buffer);
 		if (ret != 0) {
 			ERROR("Failed setting up TLS for krb5 error buffer: %s", fr_syserror(ret));
-			free(buffer);
+			talloc_free(buffer);
 			return NULL;
 		}
 	}

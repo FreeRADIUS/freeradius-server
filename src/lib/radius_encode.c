@@ -379,6 +379,11 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	}
 }
 
+static void _hton_buff_free(void *value)
+{
+	talloc_free(value);
+}
+
 /** Converts vp_data to network byte order
  *
  * Provide a pointer to a buffer which contains the value of the VALUE_PAIR
@@ -401,11 +406,11 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 
 	*out = NULL;
 
-	buffer = fr_thread_local_init(fr_radius_encode_value_hton_buff, free);
+	buffer = fr_thread_local_init(fr_radius_encode_value_hton_buff, _hton_buff_free);
 	if (!buffer) {
 		int ret;
 
-		buffer = malloc(sizeof(uint8_t) * sizeof(value_data_t));
+		buffer = (uint8_t *)talloc(NULL, value_data_t);
 		if (!buffer) {
 			fr_strerror_printf("Failed allocating memory for fr_radius_encode_value_hton buffer");
 			return -1;
@@ -414,7 +419,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 		ret = fr_thread_local_set(fr_radius_encode_value_hton_buff, buffer);
 		if (ret != 0) {
 			fr_strerror_printf("Failed setting up TLS for fr_radius_encode_value_hton buffer: %s", strerror(errno));
-			free(buffer);
+			talloc_free(buffer);
 			return -1;
 		}
 	}
