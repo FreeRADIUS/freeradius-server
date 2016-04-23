@@ -218,7 +218,6 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 		}
 		i = unused;
 		DEBUG2("Closing '%s' (last write %lu seconds ago) due to lack of vacant logfile entries", ef->entries[i].filename, now - ef->entries[i].last_used);
-		close(ef->entries[i].fd);
 		exfile_cleanup_entry(&ef->entries[i]);
 	}
 
