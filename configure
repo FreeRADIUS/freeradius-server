@@ -7955,50 +7955,50 @@ fi
 
 
 for ac_header in \
-  dlfcn.h \
-  unistd.h \
-  crypt.h \
-  errno.h \
-  resource.h \
-  sys/resource.h \
-  getopt.h \
-  malloc.h \
-  utmp.h \
-  utmpx.h \
-  signal.h \
-  sys/select.h \
-  syslog.h \
-  inttypes.h \
-  stdint.h \
-  stdbool.h \
-  stdio.h \
-  netdb.h \
-  semaphore.h \
   arpa/inet.h \
-  netinet/in.h \
-  sys/types.h \
-  sys/socket.h \
-  winsock.h \
-  utime.h \
-  sys/time.h \
-  sys/wait.h \
-  sys/security.h \
+  crypt.h \
+  dlfcn.h \
+  errno.h \
   fcntl.h \
+  features.h \
+  fnmatch.h \
+  getopt.h \
+  glob.h \
+  grp.h \
+  inttypes.h \
+  limits.h \
+  malloc.h \
+  netdb.h \
+  netinet/in.h \
+  prot.h \
+  pwd.h \
+  resource.h \
+  semaphore.h \
+  sia.h \
+  siad.h \
+  signal.h \
+  stdbool.h \
+  stddef.h \
+  stdint.h \
+  stdio.h \
+  sys/event.h \
   sys/fcntl.h \
   sys/prctl.h \
   sys/ptrace.h \
+  sys/resource.h \
+  sys/security.h \
+  sys/select.h \
+  sys/socket.h \
+  sys/time.h \
+  sys/types.h \
   sys/un.h \
-  glob.h \
-  prot.h \
-  pwd.h \
-  grp.h \
-  stddef.h \
-  fnmatch.h \
-  sia.h \
-  siad.h \
-  features.h \
-  limits.h \
-  sys/event.h
+  sys/wait.h \
+  syslog.h \
+  unistd.h \
+  utime.h \
+  utmp.h \
+  utmpx.h \
+  winsock.h
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
