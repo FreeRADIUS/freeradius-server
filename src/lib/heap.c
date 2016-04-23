@@ -94,13 +94,8 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	 *	Heap is full.  Double it's size.
 	 */
 	if (child == hp->size) {
-		void **p;
-
-		p = talloc_array(hp, void *, 2 * hp->size);
-		memcpy(p, hp->p, sizeof(*p) * hp->size);
-		talloc_free(hp->p);
-		hp->p = p;
 		hp->size *= 2;
+		hp->p = talloc_realloc(hp, hp->p, void *, hp->size);
 	}
 
 	hp->p[child] = data;
