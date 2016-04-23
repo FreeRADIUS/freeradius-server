@@ -596,7 +596,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 
 		/*
 		 *	Alloc a template from the value of the CONF_PAIR
-		 *	using request as the context (which will hopefully avoid a malloc).
+		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
 				      cf_pair_value_type(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);

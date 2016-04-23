@@ -321,7 +321,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	RDEBUG("Creating new cache entry");
 
 	/*
-	 *	Alloc a pool so we don't have excessive mallocs when
+	 *	Alloc a pool so we don't have excessive allocs when
 	 *	gathering VALUE_PAIRs to cache.
 	 */
 	pool = talloc_pool(NULL, 1024);

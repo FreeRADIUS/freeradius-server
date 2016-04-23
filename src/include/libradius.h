@@ -56,8 +56,9 @@ RCSIDH(libradius_h, "$Id$")
 #endif
 
 /*
- *  Talloc memory allocation is used in preference to malloc throughout
- *  the libraries and server.
+ *  Talloc'd memory must be used throughout the librarys and server.
+ *  This allows us to track allocations in the NULL context and makes
+ *  root causing memory leaks easier.
  */
 #include <talloc.h>
 

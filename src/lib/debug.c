@@ -599,7 +599,7 @@ static int fr_fault_check_permissions(void)
 	 */
 	if ((q = strchr(panic_action, ' '))) {
 		/*
-		 *	need to use a static buffer, because mallocing memory in a signal handler
+		 *	need to use a static buffer, because allocing memory in a signal handler
 		 *	is a bad idea and can result in deadlock.
 		 */
 		len = snprintf(filename, sizeof(filename), "%.*s", (int)(q - panic_action), panic_action);
@@ -1050,9 +1050,9 @@ void fr_fault_set_cb(fr_fault_cb_t func)
 /** Log output to the fr_fault_log_fd
  *
  * We used to support a user defined callback, which was set to a radlog
- * function. Unfortunately, when logging to syslog, syslog would malloc memory
+ * function. Unfortunately, when logging to syslog, syslog would alloc memory
  * which would result in a deadlock if fr_fault was triggered from within
- * a malloc call.
+ * a allocation call.
  *
  * Now we just write directly to the FD.
  */

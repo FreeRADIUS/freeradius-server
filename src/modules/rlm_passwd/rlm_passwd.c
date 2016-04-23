@@ -63,7 +63,7 @@ void printpw(struct mypasswd *pw, int nfields){
 #endif
 
 
-static struct mypasswd * mypasswd_malloc(char const* buffer, int nfields, size_t* len)
+static struct mypasswd *mypasswd_alloc(char const* buffer, int nfields, size_t* len)
 {
 	struct mypasswd *t;
 	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
@@ -189,7 +189,7 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 	MEM(ht->table = talloc_zero_array(ht, struct mypasswd *, tablesize));
 	while (fgets(buffer, 1024, ht->fp)) {
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
-			if(!(hashentry = mypasswd_malloc(buffer, nfields, &len))){
+			if(!(hashentry = mypasswd_alloc(buffer, nfields, &len))){
 				release_hash_table(ht);
 				return ht;
 			}
@@ -213,7 +213,7 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 					for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 					if (*nextlist) *nextlist++ = 0;
 					else nextlist = 0;
-					if(!(hashentry1 = mypasswd_malloc("", nfields, &len))){
+					if(!(hashentry1 = mypasswd_alloc("", nfields, &len))){
 						release_hash_table(ht);
 						return ht;
 					}
@@ -435,7 +435,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		ERROR("Can't build hashtable from passwd file");
 		return -1;
 	}
-	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
+	if (! (inst->pwdfmt = mypasswd_alloc(inst->format, nfields, &len)) ){
 		ERROR("Memory allocation failed");
 		release_ht(inst->ht);
 		inst->ht = NULL;

@@ -663,7 +663,7 @@ cleanup:
 #endif
 
 #if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
-	tls_global_cleanup();		/* Cleanup any memory malloced by OpenSSL and placed into globals */
+	tls_global_cleanup();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 	talloc_free(autofree);		/* Cleanup everything else */
 

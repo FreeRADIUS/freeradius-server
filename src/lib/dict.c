@@ -75,7 +75,7 @@ struct fr_dict {
 	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum value by name.
 
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
-	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
+	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
 };
 
 fr_dict_t *fr_dict_internal = NULL;	//!< Internal server dictionary.
@@ -2194,8 +2194,6 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	/*
 	 *	Create the table of vendor by name.   There MAY NOT
 	 *	be multiple vendors of the same name.
-	 *
-	 *	Each vendor is malloc'd, so the free function is free.
 	 */
 	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
 	if (!dict->vendors_by_name) {
@@ -2215,8 +2213,6 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	/*
 	 *	Create the table of attributes by name.   There MAY NOT
 	 *	be multiple attributes of the same name.
-	 *
-	 *	Each attribute is malloc'd, so the free function is free.
 	 */
 	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, hash_pool_free);
 	if (!dict->attributes_by_name) goto error;

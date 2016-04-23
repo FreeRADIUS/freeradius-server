@@ -2552,7 +2552,7 @@ static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, x
 	}
 
 	/*
-	 *	Otherwise copy the malloced buffer to the fixed one.
+	 *	Otherwise copy the talloced buffer to the fixed one.
 	 */
 	strlcpy(*out, buff, outlen);
 	talloc_free(buff);

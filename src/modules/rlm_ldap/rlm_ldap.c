@@ -393,7 +393,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	ldap_handle_t		*conn;
 
-	rlm_ldap_map_exp_t	expanded; /* faster than mallocing every time */
+	rlm_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
 	if (!ldap_is_ldap_url(url)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
@@ -1591,7 +1591,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	ldap_handle_t		*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
-	rlm_ldap_map_exp_t	expanded; /* faster than mallocing every time */
+	rlm_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
 	/*
 	 *	Don't be tempted to add a check for request->username

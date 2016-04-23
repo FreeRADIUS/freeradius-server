@@ -191,7 +191,7 @@ static struct hostent *gethostbyaddr_r(char const *addr, int len, int type, stru
  */
 
 #ifndef HAVE_GETADDRINFO
-static struct addrinfo *malloc_ai(uint16_t port, u_long addr, int socktype, int proto)
+static struct addrinfo *alloc_ai(uint16_t port, u_long addr, int socktype, int proto)
 {
 	struct addrinfo *ai;
 
@@ -299,9 +299,9 @@ int getaddrinfo(char const *hostname, char const *servname, struct addrinfo cons
 
 	if (!hostname) {
 		if (hints && hints->ai_flags & AI_PASSIVE) {
-			*res = malloc_ai(port, htonl(0x00000000), socktype, proto);
+			*res = alloc_ai(port, htonl(0x00000000), socktype, proto);
 		} else {
-			*res = malloc_ai(port, htonl(0x7f000001), socktype, proto);
+			*res = alloc_ai(port, htonl(0x7f000001), socktype, proto);
 		}
 		if (!*res) return EAI_MEMORY;
 
@@ -310,7 +310,7 @@ int getaddrinfo(char const *hostname, char const *servname, struct addrinfo cons
 
 	/* Numeric IP Address */
 	if (inet_aton(hostname, &in)) {
-		*res = malloc_ai(port, in.s_addr, socktype, proto);
+		*res = alloc_ai(port, in.s_addr, socktype, proto);
 		if (!*res) return EAI_MEMORY;
 
 		return 0;
@@ -333,8 +333,8 @@ int getaddrinfo(char const *hostname, char const *servname, struct addrinfo cons
 
 	if (hp && hp->h_name && hp->h_name[0] && hp->h_addr_list[0]) {
 		for (i = 0; hp->h_addr_list[i]; i++) {
-			if ((cur = malloc_ai(port, ((struct in_addr *)hp->h_addr_list[i])->s_addr,
-					     socktype, proto)) == NULL) {
+			if ((cur = alloc_ai(port, ((struct in_addr *)hp->h_addr_list[i])->s_addr,
+					    socktype, proto)) == NULL) {
 				if (*res) freeaddrinfo(*res);
 				return EAI_MEMORY;
 			}

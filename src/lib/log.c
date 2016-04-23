@@ -251,9 +251,6 @@ char const *fr_syserror(int num)
 
 	buffer = fr_thread_local_init(fr_syserror_buffer, _fr_logging_free);
 	if (!buffer) {
-		/*
-		 *	malloc is thread safe, talloc is not
-		 */
 		buffer = talloc_array(NULL, char, FR_STRERROR_BUFSIZE);
 		if (!buffer) {
 			fr_perror("Failed allocating memory for system error buffer");

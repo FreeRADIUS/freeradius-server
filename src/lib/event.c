@@ -362,7 +362,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	/*
 	 *	We need to store TWO fields with the event.  kqueue
 	 *	only lets us store one.  If we put the two fields into
-	 *	a malloc'd structure, that would help.  Except that
+	 *	a heap allocated structure, that would help.  Except that
 	 *	kqueue can silently delete the event when the socket
 	 *	is closed, and not give us the opportunity to free it.
 	 *	<sigh>
