@@ -299,7 +299,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			ef->entries_count += 64;
 			if (ef->entries_count > ef->max_entries)
 				ef->entries_count = ef->max_entries;
-			DEBUG2("Grow number of logfile entries for %s: %d -> %d", "", i, ef->entries_count);
+			RDEBUG2("Grow number of logfile entries: %d -> %d", i, ef->entries_count);
 			tmp = talloc_realloc(ef, ef->entries, exfile_entry_t, ef->entries_count);
 			if (tmp) {
 				ef->entries = tmp;
@@ -316,7 +316,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 				}
 			}
 			i = unused;
-			DEBUG2("Closing '%s' (last write %lu seconds ago) due to lack of vacant logfile entries", ef->entries[i].filename, now - ef->entries[i].last_used);
+			RDEBUG2("Closing '%s' (last write %lu seconds ago) due to lack of vacant logfile entries", ef->entries[i].filename, now - ef->entries[i].last_used);
 			close(ef->entries[i].fd);
 			/* Issue close trigger *after* we've closed the fd */
 			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
