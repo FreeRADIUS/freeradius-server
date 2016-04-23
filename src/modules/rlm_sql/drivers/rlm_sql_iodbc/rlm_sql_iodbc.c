@@ -247,9 +247,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	int i = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
 	TALLOC_FREE(conn->row);
