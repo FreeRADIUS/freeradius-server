@@ -539,7 +539,7 @@ static ssize_t rand_xlat(char **out, size_t outlen,
  */
 static ssize_t randstr_xlat(char **out, size_t outlen,
 			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			    UNUSED REQUEST *request, char const *fmt)
+			    REQUEST *request, char const *fmt)
 {
 	char const 	*p;
 	char		*out_p = *out;

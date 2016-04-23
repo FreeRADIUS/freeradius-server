@@ -183,7 +183,7 @@ static void unlang_push(unlang_stack_t *stack, modcallable *c, rlm_rcode_t resul
 	next->c = c;
 	next->result = result;
 	next->priority = 0;
-	next->unwind = 0;
+	next->unwind = MOD_NULL;
 	next->do_next_sibling = do_next_sibling;
 	next->was_if = false;
 	next->if_taken = false;
@@ -276,8 +276,8 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 }
 
 
-static unlang_action_t unlang_group(UNUSED REQUEST *request, unlang_stack_t *stack,
-				     UNUSED rlm_rcode_t *result, UNUSED int *priority)
+static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
+				    UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -416,7 +416,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 		 *	we can stop unwinding.
 		 */
 		if (entry->unwind == MOD_BREAK) {
-			entry->unwind = 0;
+			entry->unwind = MOD_NULL;
 			vp = NULL;
 		}
 
@@ -623,7 +623,7 @@ do_null_case:
 
 
 static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
-				       rlm_rcode_t *presult, UNUSED int *priority)
+				       rlm_rcode_t *presult, int *priority)
 {
 	int rcode;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
@@ -649,7 +649,7 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 
 
 static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
-				       rlm_rcode_t *presult, UNUSED int *priority)
+				  rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -664,7 +664,7 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
-				       rlm_rcode_t *presult, UNUSED int *priority)
+				     rlm_rcode_t *presult, int *priority)
 {
 	modsingle *sp;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
@@ -686,7 +686,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 
 
 static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
-				   rlm_rcode_t *presult, UNUSED int *priority)
+				   rlm_rcode_t *presult, int *priority)
 {
 	int condition;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
@@ -734,7 +734,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
-				   rlm_rcode_t *presult, int *priority)
+				    rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -757,7 +757,7 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
-				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+				   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;

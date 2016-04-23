@@ -26,7 +26,7 @@
  */
 #include "rlm_ldap.h"
 
-FR_NAME_NUMBER const ldap_directory_type_table[] = {
+static FR_NAME_NUMBER const ldap_directory_type_table[] = {
 	{ "Unknown",			LDAP_DIRECTORY_UNKNOWN	},
 	{ "Active Directory",		LDAP_DIRECTORY_ACTIVE_DIRECTORY	},
 	{ "eDirectory",			LDAP_DIRECTORY_EDIRECTORY },

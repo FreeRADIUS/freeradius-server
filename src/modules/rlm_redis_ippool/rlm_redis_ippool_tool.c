@@ -797,7 +797,7 @@ static int _driver_modify_lease_process(void *out, UNUSED fr_ipaddr_t const *ipa
  */
 static int _driver_modify_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 					uint8_t const *key_prefix, size_t key_prefix_len,
-					UNUSED uint8_t const *range, UNUSED size_t range_len,
+					uint8_t const *range, size_t range_len,
 					fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
@@ -1301,7 +1301,8 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 	if (start.af == AF_INET6) {
 		uint128_t ip, p_mask;
 
-		rad_assert((prefix > 0) && (prefix <= 128));
+		/* cond assert to satisfy clang scan */
+		if (!rad_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
 
 		/* Don't be tempted to cast */
 		memcpy(&ip, start.ipaddr.ip6addr.s6_addr, sizeof(ip));
@@ -1317,7 +1318,8 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 	} else {
 		uint32_t ip;
 
-		rad_assert((prefix > 0) && (prefix <= 32));
+		/* cond assert to satisfy clang scan */
+		if (!rad_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
 
 		ip = ntohl(start.ipaddr.ip4addr.s_addr);
 

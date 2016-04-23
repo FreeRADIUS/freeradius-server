@@ -2585,7 +2585,7 @@ static modcall_compile_t compile_table[] = {
 	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
 	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
 
-	{ NULL, NULL, 0, 0 }
+	{ NULL, NULL, 0, MOD_NULL }
 };
 
 

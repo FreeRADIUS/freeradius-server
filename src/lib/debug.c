@@ -45,11 +45,11 @@
 
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
-#  if !defined(PTRACE_ATTACH) && defined(PT_ATTACH)
-#    define PTRACE_ATTACH PT_ATTACH
+#  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
+#    define PT_ATTACH PTRACE_ATTACH
 #  endif
-#  if !defined(PTRACE_DETACH) && defined(PT_DETACH)
-#    define PTRACE_DETACH PT_DETACH
+#  if !defined(PT_DETACH) && defined(PTRACE_DETACH)
+#    define PT_DETACH PTRACE_DETACH
 #  endif
 #endif
 
@@ -176,8 +176,8 @@ static int fr_get_debug_state(void)
 
 	/* Child */
 	if (pid == 0) {
-		int8_t ret = DEBUG_STATE_NOT_ATTACHED;
-		int ppid = getppid();
+		int8_t	ret = DEBUG_STATE_NOT_ATTACHED;
+		int	ppid = getppid();
 
 		/* Close parent's side */
 		close(from_child[0]);
@@ -190,7 +190,7 @@ static int fr_get_debug_state(void)
 		 *	If we don't do it in that order the read in the parent triggers
 		 *	a SIGKILL.
 		 */
-		if (_PTRACE(PTRACE_ATTACH, ppid) == 0) {
+		if (_PTRACE(PT_ATTACH, ppid) == 0) {
 			/* Wait for the parent to stop */
 			waitpid(ppid, NULL, 0);
 
@@ -200,7 +200,7 @@ static int fr_get_debug_state(void)
 			}
 
 			/* Detach */
-			_PTRACE(PTRACE_DETACH, ppid);
+			_PTRACE(PT_DETACH, ppid);
 			exit(0);
 		}
 
@@ -1118,7 +1118,7 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 	exit(status);
 }
 #else
-void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, UNUSED int status)
+void NEVER_RETURNS _fr_exit(UNUSED char const *file, UNUSED int line, int status)
 {
 	fr_debug_break(false);	/* If running under GDB we'll break here */
 
@@ -1150,7 +1150,7 @@ void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 	_exit(status);
 }
 #else
-void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, UNUSED int status)
+void NEVER_RETURNS _fr_exit_now(UNUSED char const *file, UNUSED int line, int status)
 {
 	fr_debug_break(false);	/* If running under GDB we'll break here */
 

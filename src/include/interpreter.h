@@ -29,6 +29,7 @@ extern "C" {
  * explanation of what they are all about, see doc/configurable_failover.rst
  */
 typedef enum {
+	MOD_NULL = 0,			//!< Modcallable type not set.
 	MOD_SINGLE = 1,			//!< Module method.
 	MOD_GROUP,			//!< Grouping section.
 	MOD_LOAD_BALANCE,		//!< Load balance section.

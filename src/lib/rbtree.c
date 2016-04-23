@@ -54,7 +54,10 @@ struct rbtree_t {
 	bool			lock;
 	pthread_mutex_t		mutex;
 };
-#define RBTREE_MAGIC (0x5ad09c42)
+
+#ifndef NDEBUG
+#  define RBTREE_MAGIC (0x5ad09c42)
+#endif
 
 /** Walks the tree to delete all nodes Does NOT re-balance it!
  *

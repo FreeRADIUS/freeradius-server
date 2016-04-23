@@ -44,12 +44,12 @@ static ssize_t xlat_trigger(char **out, UNUSED size_t outlen,
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp;
 
-	if (!request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME)) {
+	if (!request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME)) {
 		ERROR("trigger xlat may only be used in a trigger command");
 		return -1;
 	}
 
-	head = request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS);
+	head = request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 	/*
 	 *	No arguments available.
 	 */
@@ -220,7 +220,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 	 *	Add the args to the request data, so they can be picked up by the
 	 *	xlat_trigger function.
 	 */
-	if (args && (request_data_add(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS, args,
+	if (args && (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
 		RERROR("Failed adding trigger request data");
 		return -1;
@@ -231,7 +231,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 
 		memcpy(&name_tmp, &name, sizeof(name_tmp));
 
-		if (request_data_add(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME,
+		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
 			RERROR("Failed marking request as inside trigger");
 			return -1;
@@ -245,8 +245,8 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 						     request, value, vp, false, true, EXEC_TIMEOUT);
 	if (fake) talloc_free(fake);
 
-	request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_NAME);
-	request_data_reference(request, xlat_trigger, REQUEST_INDEX_TRIGGER_ARGS);
+	request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
+	request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 
 	return ret;
 }

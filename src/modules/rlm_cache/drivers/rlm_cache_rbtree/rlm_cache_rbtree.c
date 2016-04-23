@@ -202,7 +202,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
-					 UNUSED REQUEST *request, UNUSED void *handle,
+					 REQUEST *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;

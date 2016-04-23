@@ -264,7 +264,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_acquire_t
  */
 static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
-			UNUSED REQUEST *request)
+			REQUEST *request)
 {
 	rlm_cache_memcached_t *driver = driver_inst;
 	rlm_cache_handle_t *mandle;
@@ -286,7 +286,7 @@ static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, 
  * @copydetails cache_release_t
  */
 static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *driver_inst,
-			     UNUSED REQUEST *request, rlm_cache_handle_t *handle)
+			     REQUEST *request, rlm_cache_handle_t *handle)
 {
 	rlm_cache_memcached_t *driver = driver_inst;
 

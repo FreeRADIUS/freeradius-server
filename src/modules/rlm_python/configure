@@ -588,7 +588,7 @@ LIBOBJS
 targetname
 mod_cflags
 mod_ldflags
-PYTHONBIN
+PYTHON_BIN
 CPP
 OBJEXT
 EXEEXT
@@ -638,6 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_python_bin
 with_rlm_python_lib_dir
 with_rlm_python_include_dir
 '
@@ -1256,6 +1257,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm-python-bin=PATH   Path to python binary
   --with-rlm-python-lib-dir=DIR       Directory for Python library files
   --with-rlm-python-include-dir=DIR   Directory for Python include files
 
@@ -2753,17 +2755,36 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	for ac_prog in  python2.7 python2.6 python2.5 python2.4 python
+		PYHTON_BIN=
+
+# Check whether --with-rlm-python-bin was given.
+if test "${with_rlm_python_bin+set}" = set; then :
+  withval=$with_rlm_python_bin;  case "$withval" in
+	    no)
+		as_fn_error $? "Need rlm-python-bin" "$LINENO" 5
+		;;
+	    yes)
+		;;
+	    *)
+		PYTHON_BIN="$withval"
+		;;
+	  esac
+
+fi
+
+
+	if test "x$PYTHON_BIN" = x; then
+		for ac_prog in  python2.7 python2.6 python
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
 set dummy $ac_prog; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_prog_PYTHONBIN+:} false; then :
+if ${ac_cv_prog_PYTHON_BIN+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  if test -n "$PYTHONBIN"; then
-  ac_cv_prog_PYTHONBIN="$PYTHONBIN" # Let the user override the test.
+  if test -n "$PYTHON_BIN"; then
+  ac_cv_prog_PYTHON_BIN="$PYTHON_BIN" # Let the user override the test.
 else
 as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
 as_dummy="${PATH}:/usr/bin:/usr/local/bin"
@@ -2773,7 +2794,7 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_prog_PYTHONBIN="$ac_prog"
+    ac_cv_prog_PYTHON_BIN="$ac_prog"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -2783,22 +2804,23 @@ IFS=$as_save_IFS
 
 fi
 fi
-PYTHONBIN=$ac_cv_prog_PYTHONBIN
-if test -n "$PYTHONBIN"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PYTHONBIN" >&5
-$as_echo "$PYTHONBIN" >&6; }
+PYTHON_BIN=$ac_cv_prog_PYTHON_BIN
+if test -n "$PYTHON_BIN"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PYTHON_BIN" >&5
+$as_echo "$PYTHON_BIN" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
 
 
-  test -n "$PYTHONBIN" && break
+  test -n "$PYTHON_BIN" && break
 done
-test -n "$PYTHONBIN" || PYTHONBIN="not-found"
+test -n "$PYTHON_BIN" || PYTHON_BIN="not-found"
 
+	fi
 
-	if test x$PYTHONBIN = xnot-found; then
+	if test "x$PYTHON_BIN" = "xnot-found"; then
 		fail="python-binary"
 	fi
 
@@ -2839,25 +2861,41 @@ fi
 
 
 	if test x$fail = x; then
+		PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.prefix \"${PY_PREFIX}\"" >&5
+$as_echo "$as_me: Python sys.prefix \"${PY_PREFIX}\"" >&6;}
 
-		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.prefix)'`
-		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.exec_prefix)'`
-				PY_VERSION=`${PYTHONBIN} -c 'import sys ; print(sys.version[0:3])'`
-				PY_LIBS="-lpython$PY_VERSION"
-		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config/Makefile"
+		PY_EXEC_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.exec_prefix)'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&5
+$as_echo "$as_me: Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"" >&6;}
+
+		PY_SYS_VERSION=`${PYTHON_BIN} -c 'import sys ; print(sys.version[0:3])'`
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Python sys.version \"${PY_SYS_VERSION}\"" >&5
+$as_echo "$as_me: Python sys.version \"${PY_SYS_VERSION}\"" >&6;}
+
+		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+
+		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
 		if test -f ${PY_MAKEFILE}; then
-			PY_LOCALMODLIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-			PY_BASEMODLIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-			PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE`
+			PY_LOCAL_MOD_LIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/^ *//;s/ *$//'`
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"" >&5
+$as_echo "$as_me: Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"" >&6;}
+
+			PY_BASE_MOD_LIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/^ *//;s/ *$//'`
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"" >&5
+$as_echo "$as_me: Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"" >&6;}
+
+			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
+			PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[:blank:]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"" >&5
+$as_echo "$as_me: Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"" >&6;}
 		fi
-		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASEMODLIBS $PY_OTHER_LIBS"
+		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASE_MOD_LIBS $PY_OTHER_LIBS"
 
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $PY_CFLAGS"
-		smart_try_dir="$PY_PREFIX/include/python$PY_VERSION"
+		smart_try_dir="$PY_PREFIX/include/python$PY_SYS_VERSION"
 
 
 
@@ -3099,7 +3137,7 @@ smart_prefix=
 		smart_try_dir=$PY_LIB_DIR
 
 
-sm_lib_safe=`echo "python${PY_VERSION}" | sed 'y%./+-%__p_%'`
+sm_lib_safe=`echo "python${PY_SYS_VERSION}" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
@@ -3110,9 +3148,9 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION} in $try" >&5
-$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION} in $try... " >&6; }
-    LIBS="-lpython${PY_VERSION} $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_SYS_VERSION} in $try" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_SYS_VERSION} in $try... " >&6; }
+    LIBS="-lpython${PY_SYS_VERSION} $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3127,7 +3165,7 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lpython${PY_VERSION}"
+		 smart_lib="-lpython${PY_SYS_VERSION}"
 		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3145,9 +3183,9 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}" >&5
-$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}... " >&6; }
-  LIBS="-lpython${PY_VERSION} $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_SYS_VERSION}" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_SYS_VERSION}... " >&6; }
+  LIBS="-lpython${PY_SYS_VERSION} $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char Py_Initialize();
@@ -3161,7 +3199,7 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lpython${PY_VERSION}"
+	        smart_lib="-lpython${PY_SYS_VERSION}"
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -3179,7 +3217,7 @@ if test "x$smart_lib" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libpython${PY_VERSION}${libltdl_cv_shlibext}
+  file=libpython${PY_SYS_VERSION}${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -3206,7 +3244,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libpython${PY_VERSION}.a
+  file=libpython${PY_SYS_VERSION}.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -3231,9 +3269,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION} in $try" >&5
-$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION} in $try... " >&6; }
-    LIBS="-lpython${PY_VERSION} $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_SYS_VERSION} in $try" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_SYS_VERSION} in $try... " >&6; }
+    LIBS="-lpython${PY_SYS_VERSION} $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3248,7 +3286,7 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lpython${PY_VERSION}"
+		  smart_lib="-lpython${PY_SYS_VERSION}"
 		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3280,7 +3318,7 @@ fi
 		else
 
 
-sm_lib_safe=`echo "python${PY_VERSION}m" | sed 'y%./+-%__p_%'`
+sm_lib_safe=`echo "python${PY_SYS_VERSION}m" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
@@ -3291,9 +3329,9 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m in $try" >&5
-$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m in $try... " >&6; }
-    LIBS="-lpython${PY_VERSION}m $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_SYS_VERSION}m in $try" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_SYS_VERSION}m in $try... " >&6; }
+    LIBS="-lpython${PY_SYS_VERSION}m $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3308,7 +3346,7 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-lpython${PY_VERSION}m"
+		 smart_lib="-lpython${PY_SYS_VERSION}m"
 		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3326,9 +3364,9 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m" >&5
-$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m... " >&6; }
-  LIBS="-lpython${PY_VERSION}m $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_SYS_VERSION}m" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_SYS_VERSION}m... " >&6; }
+  LIBS="-lpython${PY_SYS_VERSION}m $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char Py_Initialize();
@@ -3342,7 +3380,7 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-lpython${PY_VERSION}m"
+	        smart_lib="-lpython${PY_SYS_VERSION}m"
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -3360,7 +3398,7 @@ if test "x$smart_lib" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libpython${PY_VERSION}m${libltdl_cv_shlibext}
+  file=libpython${PY_SYS_VERSION}m${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -3387,7 +3425,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libpython${PY_VERSION}m.a
+  file=libpython${PY_SYS_VERSION}m.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -3412,9 +3450,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_VERSION}m in $try" >&5
-$as_echo_n "checking for Py_Initialize in -lpython${PY_VERSION}m in $try... " >&6; }
-    LIBS="-lpython${PY_VERSION}m $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Py_Initialize in -lpython${PY_SYS_VERSION}m in $try" >&5
+$as_echo_n "checking for Py_Initialize in -lpython${PY_SYS_VERSION}m in $try... " >&6; }
+    LIBS="-lpython${PY_SYS_VERSION}m $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3429,7 +3467,7 @@ Py_Initialize()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-lpython${PY_VERSION}m"
+		  smart_lib="-lpython${PY_SYS_VERSION}m"
 		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3458,7 +3496,7 @@ fi
 				targetname=rlm_python
 			else
 				targetname=
-				fail="$fail libpython$PY_VERSION"
+				fail="$fail libpython$PY_SYS_VERSION"
 			fi
 		fi
 	fi

@@ -44,8 +44,8 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 bool check_config = false;
-uid_t conf_check_uid = (uid_t)-1;
-gid_t conf_check_gid = (gid_t)-1;
+static uid_t conf_check_uid = (uid_t)-1;
+static gid_t conf_check_gid = (gid_t)-1;
 
 typedef enum conf_property {
 	CONF_PROPERTY_INVALID = 0,

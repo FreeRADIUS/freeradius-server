@@ -644,7 +644,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return -1;
 }
 
-static int mod_detach(UNUSED void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_unbound_t *inst = instance;
 

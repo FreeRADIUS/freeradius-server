@@ -485,8 +485,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, REQUEST *reques
 static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
 {
 	return detail_do(instance, request, request->proxy->packet, false);
-
-	return RLM_MODULE_NOOP;
 }
 
 

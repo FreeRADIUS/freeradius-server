@@ -37,7 +37,12 @@ RCSID("$Id$")
 #  include <freeradius-devel/detail.h>
 #endif
 
-#include <stdatomic.h>
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/stdatomic.h>
+#endif
+
 #include <signal.h>
 #include <fcntl.h>
 

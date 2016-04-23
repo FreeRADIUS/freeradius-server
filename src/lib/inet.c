@@ -732,8 +732,9 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr)
 						   (p - out) + len, outlen);
 				return NULL;
 			}
+			return out;
 		}
-		return out;
+
 	}
 #endif
 
