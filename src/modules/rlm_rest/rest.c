@@ -923,8 +923,7 @@ static ssize_t rest_request_encode_wrapper(char **out, rest_read_t func, size_t 
 		alloc = alloc * 2;
 		if (alloc > limit) break;
 
-		buff = talloc_realloc(NULL, buff, char, alloc);
-		if (!buff) return -1;
+		MEM(buff = talloc_realloc(NULL, buff, char, alloc));
 	};
 
 	talloc_free(buff);
@@ -2566,7 +2565,7 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_build(char **out, rlm_rest_t *inst, REQUEST *request, char const *uri)
+ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *inst, REQUEST *request, char const *uri)
 {
 	char const	*p;
 	char		*path_exp = NULL;
@@ -2637,7 +2636,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *inst, REQUEST *request, char cons
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *request,
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request,
 			       void *handle, char const *uri)
 {
 	rlm_rest_handle_t	*randle = handle;

@@ -563,7 +563,7 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
 	 *	Grow the result array...
 	 */
 	existing = talloc_array_length(*modified);
-	*modified = talloc_realloc(NULL, *modified, ippool_tool_lease_t *, existing + 1);
+	MEM(*modified = talloc_realloc(NULL, *modified, ippool_tool_lease_t *, existing + 1));
 	(*modified)[existing - 1] = lease;
 
 	return 0;
@@ -956,7 +956,8 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			}
 
 			if ((talloc_array_length(result) - used) < reply->element[1]->elements) {
-				result = talloc_realloc(ctx, result, uint8_t *, used + reply->element[1]->elements);
+				MEM(result = talloc_realloc(ctx, result, uint8_t *,
+							    used + reply->element[1]->elements));
 				if (!result) {
 					ERROR("Failed expanding array of pool names");
 					goto reply_error;
@@ -1482,7 +1483,7 @@ do { \
 
 		arg = talloc_array(conf, uint8_t, strlen(argv[1]));
 		len = fr_value_str_unescape(arg, argv[1], talloc_array_length(arg), '"');
-		pool_arg = talloc_realloc(conf, arg, uint8_t, len);
+		MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
 	}
 
 	if (argc >= 3) {
@@ -1491,7 +1492,7 @@ do { \
 
 		arg = talloc_array(conf, uint8_t, strlen(argv[2]));
 		len = fr_value_str_unescape(arg, argv[2], talloc_array_length(arg), '"');
-		range_arg = talloc_realloc(conf, arg, uint8_t, len);
+		MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
 	}
 
 	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
