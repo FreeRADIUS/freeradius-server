@@ -749,7 +749,6 @@ print_msg:
 		msg_prefix = talloc_asprintf(request, "(%" PRIu64 ",%" PRIu64 ")  ",
 					     request->number, request->seq_start);
 	}
-	}
 
 	/*
 	 *	Make sure the indent isn't set to something crazy
