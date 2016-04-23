@@ -361,7 +361,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 				if (vp1 && vp2) {
 					nb_offer ++;
-					MEM(offer_list = talloc_realloc(request_p, offer_list, dc_offer_t, nb_offer));
+					offer_list = talloc_realloc(request_p, offer_list, dc_offer_t, nb_offer);
 					offer_list[nb_offer - 1].server_addr = vp1->vp_ipaddr;
 					offer_list[nb_offer - 1].offered_addr = vp2->vp_ipaddr;
 				}

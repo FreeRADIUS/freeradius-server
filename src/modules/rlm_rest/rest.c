@@ -895,6 +895,7 @@ no_space:
  *
  * @param[out] out where the pointer to the alloced buffer should
  *	be written.
+ * @param[in] inst of rlm_rest.
  * @param[in] func Stream function.
  * @param[in] limit Maximum buffer size to alloc.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls to
@@ -903,7 +904,8 @@ no_space:
  *	- Length of the data written to the buffer (excluding NULL).
  *	- -1 if alloc >= limit.
  */
-static ssize_t rest_request_encode_wrapper(char **out, rest_read_t func, size_t limit, void *userdata)
+static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
+					   rest_read_t func, size_t limit, void *userdata)
 {
 	char *buff = NULL;
 
@@ -1886,7 +1888,7 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rest_request_config_body(UNUSED rlm_rest_t const *instance, rlm_rest_section_t *section,
+static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t *section,
 				    REQUEST *request, rlm_rest_handle_t *handle, rest_read_t func)
 {
 	rlm_rest_curl_context_t *ctx = handle->ctx;
@@ -1921,7 +1923,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t const *instance, rlm_rest_
 	 *  If were not doing chunked encoding then we read the entire
 	 *  body into a buffer, and send it in one go.
 	 */
-	len = rest_request_encode_wrapper(&ctx->body, func, REST_BODY_MAX_LEN, &ctx->request);
+	len = rest_request_encode_wrapper(&ctx->body, instance, func, REST_BODY_MAX_LEN, &ctx->request);
 	if (len <= 0) {
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
