@@ -567,7 +567,7 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 }
 #endif
 
-/** Call talloc strdup, setting the type on the new chunk correctly
+/** Call talloc_strdup, setting the type on the new chunk correctly
  *
  * For some bizarre reason the talloc string functions don't set the
  * memory chunk type to char, which causes all kinds of issues with

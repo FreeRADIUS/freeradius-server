@@ -176,8 +176,8 @@ extern const FR_NAME_NUMBER sql_rcode_table[];
  *	being printed multiple times.
  *
  * @param[in,out] ctx to allocate any buffers required. If static buffers are provided by the
- *	driver they need not be strduped, just write the pointer to those buffers to the .msg
- *	field of a sql_log_entry_t element.
+ *	driver they need not be talloc_strdupd, just write the pointer to those buffers to the
+ *	.msg field of a sql_log_entry_t element.
  * @param[out] out a pre-allocated array of log entries to fill. Need not be NULL terminated.
  * @param[in] outlen Number of log entries available for populating. Do not write to index
  *	out[outlen] or higher.

@@ -260,7 +260,7 @@ char const *fr_syserror(int num)
 		ret = fr_thread_local_set(fr_syserror_buffer, buffer);
 		if (ret != 0) {
 			fr_perror("Failed setting up TLS for system error buffer: %s", fr_syserror(ret));
-			free(buffer);
+			talloc_free(buffer);
 			return NULL;
 		}
 	}

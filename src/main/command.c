@@ -2023,7 +2023,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 #else
 		cprintf_error(listener, "This server was built without accounting support.\n");
 		fr_radius_free(&packet);
-		free(fake);
+		talloc_free(fake);
 		return 0;
 #endif
 	}
@@ -2049,7 +2049,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	if (!request_receive(NULL, fake, packet, sock->inject_client, fun)) {
 		cprintf_error(listener, "Failed to inject request.  See log file for details\n");
 		fr_radius_free(&packet);
-		free(fake);
+		talloc_free(fake);
 		return 0;
 	}
 

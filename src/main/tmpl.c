@@ -497,7 +497,7 @@ int radius_request(REQUEST **context, request_refs_t name)
 
 /** Initialise stack allocated #vp_tmpl_t
  *
- * @note Name is not strdupe'd or memcpy'd so must be available, and must not change
+ * @note Name is not talloc_strdup'd or memcpy'd so must be available, and must not change
  *	for the lifetime of the #vp_tmpl_t.
  *
  * @param[out] vpt to initialise.

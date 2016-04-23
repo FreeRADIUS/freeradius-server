@@ -1354,7 +1354,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 			return p - fmt;
 		}
-		*q = ':';	/* Avoids a strdup */
+		*q = ':';	/* Avoids a talloc_strdup */
 	}
 
 	/*

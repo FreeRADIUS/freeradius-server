@@ -86,9 +86,7 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
 
 	request = pam_config->request;
 
-/* strdup(NULL) doesn't work on some platforms */
-#define COPY_STRING(s) ((s) ? strdup(s) : NULL)
-
+#define COPY_STRING(s) ((s) ? talloc_strdup(reply, s) : NULL)
 	MEM(reply = talloc_zero_array(NULL, struct pam_response, num_msg));
 	for (count = 0; count < num_msg; count++) {
 		switch (msg[count]->msg_style) {
@@ -115,7 +113,6 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
 				if (reply[count].resp) {
 	  				/* could be a password, let's be sanitary */
 	  				memset(reply[count].resp, 0, strlen(reply[count].resp));
-	  				free(reply[count].resp);
 				}
 			}
 			talloc_free(reply);

@@ -2202,7 +2202,7 @@ static modcallable *compile_break(modcallable *parent, rlm_components_t componen
 #endif
 
 static modcallable *compile_xlat(modcallable *parent,
-				       rlm_components_t component, char const *fmt)
+				 rlm_components_t component, char const *fmt)
 {
 	modcallable *c;
 	modxlat *mx;
@@ -2220,7 +2220,7 @@ static modcallable *compile_xlat(modcallable *parent,
 	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(c->actions));
 
-	mx->xlat_name = strdup(fmt);
+	mx->xlat_name = talloc_typed_strdup(mx, fmt);
 	if (fmt[0] != '%') {
 		char *p;
 		mx->exec = true;
