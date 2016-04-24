@@ -125,6 +125,25 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 	return ef;
 }
 
+/** Cleanup an entry we do not need anymore
+ *
+ * @param[in] entry to cleanup
+ */
+
+static inline void exfile_cleanup_entry(exfile_entry_t *entry)
+{
+	close(entry->fd);
+
+	/*
+	 *	This will block forever if a thread is
+	 *	doing something stupid.
+	 */
+	TALLOC_FREE(entry->filename);
+	entry->hash = 0;
+	entry->fd = -1;
+	entry->dup = -1;
+}
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -140,7 +159,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 {
 	int i, tries, unused;
 	uint32_t hash;
-	time_t now = time(NULL);
+	time_t now = time(NULL), oldest_timestamp;
 	struct stat st;
 
 	if (!ef || !filename) return -1;
@@ -161,15 +180,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
 
-			/*
-			 *	This will block forever if a thread is
-			 *	doing something stupid.
-			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			close(ef->entries[i].fd);
-			ef->entries[i].fd = -1;
-			ef->entries[i].dup = -1;
+			exfile_cleanup_entry(&ef->entries[i]);
 		}
 	}
 
@@ -185,23 +196,29 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 		if (ef->entries[i].hash != hash) continue;
 
 		/*
-		 *	Same hash but different filename.  Give up.
+		 *	Same hash but different filename.
 		 */
-		if (strcmp(ef->entries[i].filename, filename) != 0) {
-			PTHREAD_MUTEX_UNLOCK(&ef->mutex);
-			return -1;
-		}
+		if (strcmp(ef->entries[i].filename, filename) != 0) continue;
 
 		goto do_return;
 	}
 
 	/*
-	 *	Find an unused entry
+	 *	No unused entries found, make one free
 	 */
 	if (unused < 0) {
-		fr_strerror_printf("Too many different filenames");
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-		return -1;
+		/* Close the one with oldest last_used */
+		oldest_timestamp = now;
+		for (i = 0; i < (int) ef->max_entries; i++) {
+			/* Check for filename is not needed here - we know all entires are allocated */
+			if (ef->entries[i].last_used < oldest_timestamp) {
+				oldest_timestamp = ef->entries[i].last_used;
+				unused = i;
+			}
+		}
+		i = unused;
+		DEBUG2("Closing '%s' (last write %lu seconds ago) due to lack of vacant logfile entries", ef->entries[i].filename, now - ef->entries[i].last_used);
+		exfile_cleanup_entry(&ef->entries[i]);
 	}
 
 	/*
@@ -265,12 +282,7 @@ do_return:
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
 
 	error:
-		ef->entries[i].hash = 0;
-		TALLOC_FREE(ef->entries[i].filename);
-		close(ef->entries[i].fd);
-		ef->entries[i].fd = -1;
-		ef->entries[i].dup = -1;
-
+		exfile_cleanup_entry(&ef->entries[i]);
 		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
 		return -1;
 	}
