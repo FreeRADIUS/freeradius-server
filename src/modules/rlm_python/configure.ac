@@ -126,6 +126,8 @@ if test x$with_[]modname != xno; then
 			fi
 		fi
 	fi
+
+	AC_CHECK_FUNCS([dl_iterate_phdr])
 else
 	targetname=
 	echo \*\*\* module modname is disabled.
@@ -141,6 +143,7 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+AC_CONFIG_HEADER(config.h)
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
