@@ -253,6 +253,25 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		return NULL;
 	}
 
+	if (conf->private_key_file) {
+		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
+			tls_log_error(NULL, "Failed reading private key file \"%s\"",
+				      conf->private_key_file);
+			return NULL;
+		}
+	}
+
+	/*
+	 *	Check if the loaded private key is the right one
+	 *
+	 *	Note: The call to SSL_CTX_use_certificate_chain_file
+	 *	can load in a private key too.
+	 */
+	if (!SSL_CTX_check_private_key(ctx)) {
+		ERROR("Private key does not match the certificate public key");
+		return NULL;
+	}
+
 	/* Load the CAs we trust */
 load_ca:
 	if (conf->ca_file || conf->ca_path) {
@@ -263,22 +282,6 @@ load_ca:
 		}
 	}
 	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
-
-	if (conf->private_key_file) {
-		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-			tls_log_error(NULL, "Failed reading private key file \"%s\"",
-				      conf->private_key_file);
-			return NULL;
-		}
-
-		/*
-		 * Check if the loaded private key is the right one
-		 */
-		if (!SSL_CTX_check_private_key(ctx)) {
-			ERROR("Private key does not match the certificate public key");
-			return NULL;
-		}
-	}
 
 #ifdef PSK_MAX_IDENTITY_LEN
 post_ca:
@@ -412,6 +415,20 @@ post_ca:
 
 	if (conf->verify_depth) {
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
+	}
+
+	/*
+	 *	Configure OCSP stapling for the server cert
+	 */
+	SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_staple_cb);
+
+	{
+		fr_tls_ocsp_conf_t const *staple_conf = &(conf->staple);	/* Need to assign offset first */
+		fr_tls_ocsp_conf_t *tmp;
+
+		memcpy(&tmp, &staple_conf, sizeof(tmp));
+
+		SSL_CTX_set_tlsext_status_arg(ctx, tmp);
 	}
 
 	/*

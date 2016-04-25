@@ -1054,7 +1054,7 @@ eap_tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(eap_session->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp.store);
 #endif
 
 	return eap_tls_session;

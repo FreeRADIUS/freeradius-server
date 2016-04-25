@@ -7,10 +7,10 @@ certs			= $dir
 crl_dir			= $dir/crl
 database		= $dir/index.txt
 new_certs_dir		= $dir
-certificate		= $dir/ca.pem
+certificate		= $dir/server.pem
 serial			= $dir/serial
 crl			= $dir/crl.pem
-private_key		= $dir/ca.key
+private_key		= $dir/server.key
 RANDFILE		= $dir/.rand
 name_opt		= ca_default
 cert_opt		= ca_default
@@ -20,6 +20,7 @@ default_md		= sha256
 preserve		= no
 policy			= policy_match
 unique_subject 		= no
+x509_extensions		= v3_ocsp
 
 [ policy_match ]
 countryName		= match
@@ -40,23 +41,20 @@ emailAddress		= optional
 
 [ req ]
 prompt			= no
-distinguished_name	= certificate_authority
+distinguished_name	= server
 default_bits		= 2048
 input_password		= whatever
 output_password		= whatever
-x509_extensions		= v3_ca
 
-[ certificate_authority ]
+[ server ]
 countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
 organizationName	= Example Inc.
 emailAddress		= admin@example.org
-commonName		= "Example Certificate Authority"
+commonName		= "Example OCSP Responder Certificate"
 
-[ v3_ca ]
-subjectKeyIdentifier	= hash
-authorityKeyIdentifier	= keyid:always,issuer:always
-basicConstraints	= critical,CA:true
-crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
-
+[ v3_ocsp ]
+basicConstraints	= CA:FALSE
+keyUsage		= nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage	= OCSPSigning

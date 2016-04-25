@@ -16,10 +16,10 @@ DEFAULT_MODULES :=	always attr_filter cache_eap chap \
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 LOCAL_CERT_FILES :=	Makefile README xpextensions \
-			ca.cnf server.cnf client.cnf bootstrap
+			ca.cnf server.cnf ocsp.cnf client.cnf bootstrap
 
 LOCAL_CERT_PRODUCTS :=	$(addprefix $(R)$(raddbdir)/certs/,ca.key ca.pem \
-			client.key client.pem server.key server.pem)
+			client.key client.pem ocsp.key ocsp.pem server.key server.pem)
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 

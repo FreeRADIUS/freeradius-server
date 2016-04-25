@@ -22,7 +22,7 @@ DH_KEY_SIZE	= 2048
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh server ca client
+all: index.txt serial dh server ca client ocsp
 
 .PHONY: client
 client: client.pem
@@ -33,13 +33,17 @@ ca: ca.der
 .PHONY: server
 server: server.pem server.vrfy
 
+.PHONY: ocsp
+ocsp: ocsp.pem ocsp.vrfy
+
 .PHONY: verify
 verify: server.vrfy client.vrfy
 
-passwords.mk: server.cnf ca.cnf client.cnf
+passwords.mk: server.cnf ca.cnf client.cnf ocsp.cnf
 	@echo "PASSWORD_SERVER	= '$(shell grep output_password server.cnf | sed 's/.*=//;s/^ *//')'"		> $@
 	@echo "PASSWORD_CA	= '$(shell grep output_password ca.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "PASSWORD_CLIENT	= '$(shell grep output_password client.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
+	@echo "PASSWORD_OCSP	= '$(shell grep output_password ocsp.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "USER_NAME	= '$(shell grep emailAddress client.cnf | grep '@' | sed 's/.*=//;s/^ *//')'"	>> $@
 	@echo "CA_DEFAULT_DAYS  = '$(shell grep default_days ca.cnf | sed 's/.*=//;s/^ *//')'"			>> $@
 
@@ -59,8 +63,7 @@ dh:
 ca.key ca.pem: ca.cnf
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -keyout ca.key -out ca.pem \
-		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf
+	openssl req -new -x509 -keyout ca.key -out ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
 
 ca.der: ca.pem
 	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
@@ -74,7 +77,7 @@ server.csr server.key: server.cnf
 	openssl req -new  -out server.csr -keyout server.key -config ./server.cnf
 
 server.crt: server.csr ca.key ca.pem
-	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
+	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr -key $(PASSWORD_CA) -out server.crt -config ./server.cnf
 
 server.p12: server.crt
 	openssl pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
@@ -88,15 +91,35 @@ server.vrfy: ca.pem
 
 ######################################################################
 #
-#  Create a new client certificate, signed by the the above server
-#  certificate.
+#  Create a new ocsp certificate, signed by the above CA.
+#
+######################################################################
+ocsp.csr ocsp.key: ocsp.cnf
+	openssl req -new  -out ocsp.csr -keyout ocsp.key -config ./ocsp.cnf
+
+ocsp.crt: ocsp.csr ca.key ca.pem
+	openssl ca -batch -keyfile ca.key -cert ca.pem -in ocsp.csr -key $(PASSWORD_CA) -out ocsp.crt -config ./ocsp.cnf
+
+ocsp.p12: ocsp.crt
+	openssl pkcs12 -export -in ocsp.crt -inkey ocsp.key -out ocsp.p12  -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
+
+ocsp.pem: ocsp.p12
+	openssl pkcs12 -in ocsp.p12 -out ocsp.pem -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
+
+.PHONY: ocsp.vrfy
+ocsp.vrfy: ca.pem
+	@openssl verify -CAfile ca.pem ocsp.pem
+
+######################################################################
+#
+#  Create a new client certificate, signed by the the above CA.
 #
 ######################################################################
 client.csr client.key: client.cnf
 	openssl req -new  -out client.csr -keyout client.key -config ./client.cnf
 
 client.crt: client.csr ca.pem ca.key
-	openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
+	openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -config ./client.cnf
 
 client.p12: client.crt
 	openssl pkcs12 -export -in client.crt -inkey client.key -out client.p12  -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
@@ -133,6 +156,6 @@ clean:
 #
 #	Make a target that people won't run too often.
 #
-destroycerts:
+distclean:
 	rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
 			serial*  *\.0 *\.1

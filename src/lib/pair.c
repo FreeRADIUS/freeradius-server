@@ -1973,7 +1973,7 @@ void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src)
 
 	vp->vp_octets = talloc_steal(vp, src);
 	vp->type = VT_DATA;
-	vp->vp_length = talloc_array_length(vp->vp_strvalue);
+	vp->vp_length = talloc_array_length(vp->vp_octets);
 	fr_pair_value_set_type(vp);
 
 	VERIFY_VP(vp);

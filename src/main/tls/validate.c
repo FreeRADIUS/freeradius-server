@@ -308,16 +308,12 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *
 	 *	Fixme: Do we want to store the matching TLS-Client-cert-Filename?
 	 */
-	if (my_ok && conf->ocsp_enable){
-		X509_STORE *ocsp_store = NULL;
-
-		ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
-
+	if (my_ok && conf->ocsp.enable){
 		RDEBUG2("Starting OCSP Request");
 		if (X509_STORE_CTX_get1_issuer(&issuer_cert, x509_ctx, cert) != 1) {
 			RERROR("Couldn't get issuer_cert for %s", common_name);
 		} else {
-			my_ok = tls_ocsp_check(request, ocsp_store, issuer_cert, cert, conf);
+			my_ok = tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
 		}
 	}
 #endif

@@ -65,15 +65,16 @@ static CONF_PARSER verify_config[] = {
 
 #ifdef HAVE_OPENSSL_OCSP_H
 static CONF_PARSER ocsp_config[] = {
-	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_conf_t, ocsp_enable), .dflt = "no" },
+	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, enable), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_conf_t, ocsp_cache_server) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_ocsp_conf_t, cache_server) },
 
-	{ FR_CONF_OFFSET("override_cert_url", PW_TYPE_BOOLEAN, fr_tls_conf_t, ocsp_override_url), .dflt = "no" },
-	{ FR_CONF_OFFSET("url", PW_TYPE_STRING, fr_tls_conf_t, ocsp_url) },
-	{ FR_CONF_OFFSET("use_nonce", PW_TYPE_BOOLEAN, fr_tls_conf_t, ocsp_use_nonce), .dflt = "yes" },
-	{ FR_CONF_OFFSET("timeout", PW_TYPE_INTEGER, fr_tls_conf_t, ocsp_timeout), .dflt = "yes" },
-	{ FR_CONF_OFFSET("softfail", PW_TYPE_BOOLEAN, fr_tls_conf_t, ocsp_softfail), .dflt = "no" },
+	{ FR_CONF_OFFSET("override_cert_url", PW_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, override_url), .dflt = "no" },
+	{ FR_CONF_OFFSET("url", PW_TYPE_STRING, fr_tls_ocsp_conf_t, url) },
+	{ FR_CONF_OFFSET("use_nonce", PW_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, use_nonce), .dflt = "yes" },
+	{ FR_CONF_OFFSET("timeout", PW_TYPE_INTEGER, fr_tls_ocsp_conf_t, timeout), .dflt = "yes" },
+	{ FR_CONF_OFFSET("softfail", PW_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, softfail), .dflt = "no" },
+
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -132,7 +133,9 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_POINTER("verify", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) verify_config },
 
 #ifdef HAVE_OPENSSL_OCSP_H
-	{ FR_CONF_POINTER("ocsp", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) ocsp_config },
+	{ FR_CONF_OFFSET("ocsp", PW_TYPE_SUBSECTION, fr_tls_conf_t, ocsp), .subcs = (void const *) ocsp_config },
+
+	{ FR_CONF_OFFSET("staple", PW_TYPE_SUBSECTION, fr_tls_conf_t, staple), .subcs = (void const *) ocsp_config },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -270,8 +273,10 @@ static int _conf_server_free(fr_tls_conf_t *conf)
 	for (i = 0; i < conf->ctx_count; i++) SSL_CTX_free(conf->ctx[i]);
 
 #ifdef HAVE_OPENSSL_OCSP_H
-	if (conf->ocsp_store) X509_STORE_free(conf->ocsp_store);
-	conf->ocsp_store = NULL;
+	if (conf->ocsp.store) X509_STORE_free(conf->ocsp.store);
+	conf->ocsp.store = NULL;
+	if (conf->staple.store) X509_STORE_free(conf->staple.store);
+	conf->staple.store = NULL;
 #endif
 
 #ifndef NDEBUG
@@ -361,11 +366,23 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
+	 *	@fixme:  This is all pretty terrible.
+	 *	The stores initialized here are for validating
+	 *	OCSP responses.  They have nothing to do with
+	 *	verifying other certificates.
+	 */
+
+	/*
 	 * 	Initialize OCSP Revocation Store
 	 */
-	if (conf->ocsp_enable) {
-		conf->ocsp_store = conf_ocsp_revocation_store(conf);
-		if (conf->ocsp_store == NULL) goto error;
+	if (conf->ocsp.enable) {
+		conf->ocsp.store = conf_ocsp_revocation_store(conf);
+		if (conf->ocsp.store == NULL) goto error;
+	}
+
+	if (conf->staple.enable) {
+		conf->staple.store = conf_ocsp_revocation_store(conf);
+		if (conf->staple.store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
 
@@ -388,9 +405,15 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (conf->ocsp_cache_server &&
-	    !cf_section_sub_find_name2(main_config.config, "server", conf->ocsp_cache_server)) {
-		ERROR("No such virtual server '%s'", conf->ocsp_cache_server);
+	if (conf->ocsp.cache_server &&
+	    !cf_section_sub_find_name2(main_config.config, "server", conf->ocsp.cache_server)) {
+		ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
+		goto error;
+	}
+
+	if (conf->staple.cache_server &&
+	    !cf_section_sub_find_name2(main_config.config, "server", conf->staple.cache_server)) {
+		ERROR("No such virtual server '%s'", conf->staple.cache_server);
 		goto error;
 	}
 

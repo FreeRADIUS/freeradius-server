@@ -587,6 +587,82 @@ eap {
 			#
 #			softfail = no
 		}
+
+
+		#
+		#  Configures OCSP stapling for server certificates.
+		#
+		#  If requested, we query either the server listed below (as url),
+		#  or the one specified in our server certificate, to retrieve an
+		#  OCSP response to pass back to the TLS client.
+		#
+		#  This allows TLS clients to check for certificate revocation before
+		#  divulging credentials to a (possibly rogue) server, that may be
+		#  presenting a compromised certificate.
+		#
+		staple {
+			#
+			#  Enable it.  The default is "no". Deleting the entire
+			#  "ocsp" subsection also disables ocsp checking
+			#
+#			enable = no
+
+			#
+			#  OCSP checks are performed whenever a TLS client includes
+			#  an OCSP stapling extension.
+			#
+			#  In order to retrieve cached OCSP staples, a virtual
+			#  server must be defined here.
+			#
+			#  The same virtual server can be used for caching
+			#  client OCSP response states, and stapling information.
+			#
+			#  See raddb/sites-available/tls-cache for details.
+			#
+#			virtual_server = 'tls-cache'
+
+			#
+			#  The OCSP Responder URL can be automatically extracted
+			#  from the certificate in question. To override the
+			#  OCSP Responder URL set "override_cert_url = yes".
+			#
+			override_cert_url = yes
+
+			#
+			#  If the OCSP Responder address is not extracted from
+			#  the certificate, the URL can be defined here.
+			#
+			url = "http://127.0.0.1/ocsp/"
+
+			#
+			#  If the OCSP Responder can not cope with nonce in the
+			#  request, then it can be disabled here.
+			#
+			#  For security reasons, disabling this option is not
+			#  recommended as nonce protects against replay attacks.
+			#
+			#  Note that Microsoft AD Certificate Services OCSP
+			#  Responder does not enable nonce by default. It is more
+			#  secure to enable nonce on the responder than to
+			#  disable it in the query here. See
+			#  http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
+			#
+#			use_nonce = yes
+
+			#
+			#  Number of seconds before giving up waiting for OCSP
+			#  response. 0 uses system default.
+			#
+#			timeout = 0
+
+			#
+			#  Normally if we can't query the OCSP Responder
+			#  we issue a fatal alert, and abort.  Set this to true
+			#  to allow the session to continue without an OCSP
+			#  stapling response being sent to the TLS client.
+			#
+#			softfail = no
+		}
 	}
 
 	## EAP-TLS

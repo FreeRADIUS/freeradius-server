@@ -627,7 +627,7 @@ VALUE	TLS-OCSP-Cert-Valid		no			0
 
 # Number of seconds before new OCSP status information will be available
 ATTRIBUTE	TLS-OCSP-Next-Update			1944	integer internal
-
+ATTRIBUTE	TLS-OCSP-Response			1945	octets internal
 #
 #	Range:	1951-2099
 #		Free

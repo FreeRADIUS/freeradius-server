@@ -174,6 +174,24 @@ typedef struct _tls_session_t {
 	void		*opaque;			//!< Used to store module specific data.
 } tls_session_t;
 
+#ifdef HAVE_OPENSSL_OCSP_H
+/** OCSP Configuration
+ *
+ */
+typedef struct ft_tls_ocsp_conf {
+
+	bool		enable;				//!< Enable OCSP checks
+	char const	*cache_server;			//!< Virtual server to restore retrieved OCSP status.
+	bool		override_url;			//!< Always use the configured OCSP URL even if the
+							//!< certificate contains one.
+	char const	*url;
+	bool		use_nonce;
+	X509_STORE	*store;
+	uint32_t	timeout;
+	bool		softfail;
+} fr_tls_ocsp_conf_t;
+#endif
+
 /* configured values goes right here */
 struct fr_tls_conf_t {
 	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
@@ -239,18 +257,10 @@ struct fr_tls_conf_t {
 	bool		require_client_cert;
 
 #ifdef HAVE_OPENSSL_OCSP_H
-	/*
-	 * OCSP Configuration
-	 */
-	bool		ocsp_enable;			//!< Enable OCSP checks
-	char const	*ocsp_cache_server;		//!< Virtual server to restore retrieved OCSP status.
-	bool		ocsp_override_url;		//!< Always use the configured OCSP URL even if the
-							//!< certificate contains one.
-	char const	*ocsp_url;
-	bool		ocsp_use_nonce;
-	X509_STORE	*ocsp_store;
-	uint32_t	ocsp_timeout;
-	bool		ocsp_softfail;
+	fr_tls_ocsp_conf_t	ocsp;			//!< Configuration for validating client certificates
+							//!< with ocsp.
+	fr_tls_ocsp_conf_t	staple;			//!< Configuration for validating server certificates
+							//!< with ocsp.
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
@@ -419,9 +429,11 @@ int		tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char co
 /*
  *	tls/ocsp.c
  */
-int		tls_ocsp_check(REQUEST *request, X509_STORE *store,
-			       X509 *issuer_cert, X509 *client_cert,
-			       fr_tls_conf_t *conf);
+int		tls_ocsp_staple_cb(SSL *ssl, void *data);
+
+int		tls_ocsp_check(REQUEST *request, SSL *ssl,
+			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
+			       fr_tls_ocsp_conf_t *conf, bool staple_response);
 
 /*
  *	tls/session.c
