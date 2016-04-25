@@ -198,15 +198,19 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 			oldest = i;
 		}
 
+		/*
+		 *	Hash comparisons are fast.  String comparisons are slow.
+		 */
 		if (ef->entries[i].hash != hash) continue;
 
 		/*
-		 *	Same hash but different filename.  Give up.
+		 *	But we still need to do string comparisons if
+		 *	the hash matches, because 1/2^16 filenames
+		 *	will result in a hash collision.  And that's
+		 *	enough filenames in a long-running server to
+		 *	ensure that it happens.
 		 */
-		if (strcmp(ef->entries[i].filename, filename) != 0) {
-			PTHREAD_MUTEX_UNLOCK(&ef->mutex);
-			return -1;
-		}
+		if (strcmp(ef->entries[i].filename, filename) != 0) continue;
 
 		goto do_return;
 	}
