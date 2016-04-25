@@ -2638,7 +2638,7 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *inst, REQUEST *request, ch
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *inst, REQUEST *request,
+ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *request,
 			       void *handle, char const *uri)
 {
 	rlm_rest_handle_t	*randle = handle;
