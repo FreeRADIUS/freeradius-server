@@ -93,6 +93,24 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 	talloc_free(vp);
 }
 
+
+static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t *entry)
+{
+	TALLOC_FREE(entry->filename);
+
+	close(entry->fd);
+
+	entry->hash = 0;
+	entry->fd = -1;
+	entry->dup = -1;
+
+	/*
+	 *	Issue close trigger *after* we've closed the fd
+	 */
+	exfile_trigger_exec(ef, request, entry, "close");
+}
+
+
 static int _exfile_free(exfile_t *ef)
 {
 	uint32_t i;
@@ -102,12 +120,7 @@ static int _exfile_free(exfile_t *ef)
 	for (i = 0; i < ef->max_entries; i++) {
 		if (!ef->entries[i].filename) continue;
 
-		close(ef->entries[i].fd);
-
-		/*
-		 *	Issue close trigger *after* we've closed the fd
-		 */
-		exfile_trigger_exec(ef, NULL, &ef->entries[i], "close");
+		exfile_cleanup_entry(ef, NULL, &ef->entries[i]);
 	}
 
 	pthread_mutex_unlock(&ef->mutex);
@@ -180,6 +193,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 	MEM(ef->trigger_args = fr_pair_list_copy(ef, trigger_args));
 }
 
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -244,21 +258,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
 
-			close(ef->entries[i].fd);
-
-			/*
-			 *	Issue close trigger *after* we've closed the fd
-			 */
-			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
-
-			/*
-			 *	This will block forever if a thread is
-			 *	doing something stupid.
-			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			ef->entries[i].fd = -1;
-			ef->entries[i].dup = -1;
+			exfile_cleanup_entry(ef, request, &ef->entries[i]);
 		}
 	}
 
@@ -344,11 +344,7 @@ do_return:
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
 
 	error:
-		ef->entries[i].hash = 0;
-		TALLOC_FREE(ef->entries[i].filename);
-		close(ef->entries[i].fd);
-		ef->entries[i].fd = -1;
-		ef->entries[i].dup = -1;
+		exfile_cleanup_entry(ef, request, &ef->entries[i]);
 
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
