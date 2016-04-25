@@ -74,8 +74,7 @@ static int _eap_module_free(eap_module_t *inst)
 	/*
 	 * Check if handle is still valid. If not, type is referencing freed memory
 	 */
-        if (!inst->handle)
-		return 0;
+        if (!inst->handle) return 0;
 
 	/*
 	 *	We have to check inst->type as it's only allocated
