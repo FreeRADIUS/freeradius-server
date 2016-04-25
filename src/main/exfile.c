@@ -125,6 +125,17 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 	return ef;
 }
 
+
+static void exfile_cleanup_entry(exfile_entry_t *entry)
+{
+	TALLOC_FREE(entry->filename);
+
+	close(entry->fd);
+	entry->hash = 0;
+	entry->fd = -1;
+	entry->dup = -1;
+}
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -165,11 +176,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 			 *	This will block forever if a thread is
 			 *	doing something stupid.
 			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			close(ef->entries[i].fd);
-			ef->entries[i].fd = -1;
-			ef->entries[i].dup = -1;
+			exfile_cleanup_entry(&ef->entries[i]);
 		}
 	}
 
@@ -265,11 +272,7 @@ do_return:
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
 
 	error:
-		ef->entries[i].hash = 0;
-		TALLOC_FREE(ef->entries[i].filename);
-		close(ef->entries[i].fd);
-		ef->entries[i].fd = -1;
-		ef->entries[i].dup = -1;
+		exfile_cleanup_entry(&ef->entries[i]);
 
 		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
 		return -1;
