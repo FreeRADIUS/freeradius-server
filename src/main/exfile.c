@@ -149,7 +149,7 @@ static void exfile_cleanup_entry(exfile_entry_t *entry)
  */
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
-	int i, tries, unused;
+	int i, tries, unused, oldest;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -162,7 +162,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	PTHREAD_MUTEX_LOCK(&ef->mutex);
 
 	/*
-	 *	Clean up old entries.
+	 *	Clean up idle entries.
 	 */
 	if (now > (ef->last_cleaned + 1)) {
 		ef->last_cleaned = now;
@@ -182,11 +182,20 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 
 	/*
 	 *	Find the matching entry, or an unused one.
+	 *
+	 *	Also track which entry is the oldest, in case there
+	 *	are no unused entries.
 	 */
+	oldest = -1;
 	for (i = 0; i < (int) ef->max_entries; i++) {
 		if (!ef->entries[i].filename) {
 			if (unused < 0) unused = i;
 			continue;
+		}
+
+		if ((oldest < 0) ||
+		    (ef->entries[i].last_used < ef->entries[oldest].last_used)) {
+			oldest = i;
 		}
 
 		if (ef->entries[i].hash != hash) continue;
@@ -203,12 +212,11 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	}
 
 	/*
-	 *	Find an unused entry
+	 *	There are no unused entries, free the oldest one.
 	 */
 	if (unused < 0) {
-		fr_strerror_printf("Too many different filenames");
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-		return -1;
+		exfile_cleanup_entry(&ef->entries[oldest]);
+		unused = oldest;
 	}
 
 	/*
