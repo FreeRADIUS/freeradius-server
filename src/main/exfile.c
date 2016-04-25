@@ -210,7 +210,7 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  */
 int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions, bool append)
 {
-	int i, tries, unused = -1, found = -1;
+	int i, tries, unused = -1, found = -1, oldest = -1;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -224,11 +224,19 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 
 	/*
 	 *	Find the matching entry, or an unused one.
+	 *
+	 *	Also track which entry is the oldest, in case there
+	 *	are no unused entries.
 	 */
 	for (i = 0; i < (int) ef->max_entries; i++) {
 		if (!ef->entries[i].filename) {
 			if (unused < 0) unused = i;
 			continue;
+		}
+
+		if ((oldest < 0) ||
+		    (ef->entries[i].last_used < ef->entries[oldest].last_used)) {
+			oldest = i;
 		}
 
 		if (ef->entries[i].hash != hash) continue;
@@ -274,9 +282,8 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	 *	Find an unused entry
 	 */
 	if (unused < 0) {
-		fr_strerror_printf("Too many different filenames");
-		pthread_mutex_unlock(&(ef->mutex));
-		return -1;
+		exfile_cleanup_entry(ef, request, &ef->entries[oldest]);
+		unused = oldest;
 	}
 
 	/*
