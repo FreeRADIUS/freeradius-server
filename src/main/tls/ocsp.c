@@ -471,16 +471,6 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 	}
 
 finish:
-	/* Free OCSP Stuff */
-	OCSP_REQUEST_free(req);
-	OCSP_RESPONSE_free(resp);
-	free(host);
-	free(port);
-	free(path);
-	BIO_free_all(conn);
-	BIO_free(ssl_log);
-	OCSP_BASICRESP_free(bresp);
-
 	switch (ocsp_status) {
 	case OCSP_STATUS_OK:
 		RDEBUG2("ocsp: Certificate is valid");
@@ -522,6 +512,16 @@ finish:
 		RWDEBUG("Failed writing cached OCSP status");
 		break;
 	}
+
+	/* Free OCSP Stuff */
+	OCSP_REQUEST_free(req);
+	OCSP_RESPONSE_free(resp);
+	free(host);
+	free(port);
+	free(path);
+	BIO_free_all(conn);
+	BIO_free(ssl_log);
+	OCSP_BASICRESP_free(bresp);
 
 	return ocsp_status;
 }
