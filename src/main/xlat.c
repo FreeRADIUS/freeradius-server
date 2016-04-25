@@ -1505,7 +1505,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			ssize_t slen;
 			xlat_exp_t *next;
 
-			if (!p[1] || !strchr("%}dlmntDGHISTYv", p[1])) {
+			if (!p[1] || !strchr("%}dlmnstDGHIMSTYv", p[1])) {
 				talloc_free(node);
 				*error = "Invalid variable expansion";
 				p++;
@@ -2176,6 +2176,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		size_t freespace = 256;
 		struct tm ts;
 		time_t when;
+		long int microseconds;
 
 		XLAT_DEBUG("xlat_aprint PERCENT");
 
@@ -2183,8 +2184,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		p = node->fmt;
 
 		when = request->timestamp.tv_sec;
+		microseconds = request->timestamp.tv_usec;
 		if (request->packet) {
 			when = request->packet->timestamp.tv_sec;
+			microseconds = request->packet->timestamp.tv_usec;
 		}
 
 		switch (*p) {
@@ -2216,6 +2219,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			snprintf(str, freespace, "%" PRIu64 , request->seq_start);
 			break;
 
+		case 'e': /* Request second */
+			if (!localtime_r(&when, &ts)) goto error;
+			strftime(str, freespace, "%S", &ts);
+			break;
+
 		case 't': /* request timestamp */
 			CTIME_R(&when, str, freespace);
 			nl = strchr(str, '\n');
@@ -2241,6 +2249,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			if (request->packet) {
 				snprintf(str, freespace, "%i", request->packet->id);
 			}
+			break;
+
+		case 'M': /* Request microsecond */
+			snprintf(str, freespace, "%06ld", microseconds);
 			break;
 
 		case 'S': /* request timestamp in SQL format*/
