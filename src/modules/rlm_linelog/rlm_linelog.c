@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/exfile.h>
+#include "rlm_linelog.h"
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
@@ -49,15 +50,6 @@ RCSID("$Id$")
 
 #include <sys/uio.h>
 
-typedef enum {
-	LINELOG_DST_INVALID = 0,
-	LINELOG_DST_FILE,				//!< Log to a file.
-	LINELOG_DST_SYSLOG,				//!< Log to syslog.
-	LINELOG_DST_UNIX,				//!< Log via Unix socket.
-	LINELOG_DST_UDP,				//!< Log via UDP.
-	LINELOG_DST_TCP,				//!< Log via TCP.
-} linelog_dst_t;
-
 static FR_NAME_NUMBER const linelog_dst_table[] = {
 	{ "file",	LINELOG_DST_FILE	},
 	{ "syslog",	LINELOG_DST_SYSLOG	},
@@ -67,57 +59,6 @@ static FR_NAME_NUMBER const linelog_dst_table[] = {
 
 	{  NULL , -1 }
 };
-
-typedef struct linelog_net {
-	fr_ipaddr_t		dst_ipaddr;		//!< Network server.
-	fr_ipaddr_t		src_ipaddr;		//!< Send requests from a given src_ipaddr.
-	uint16_t		port;			//!< Network port.
-	struct timeval		timeout;		//!< How long to wait for read/write operations.
-} linelog_net_t;
-
-/** linelog module instance
- */
-typedef struct linelog_instance_t {
-	char const		*name;			//!< Module instance name.
-	fr_connection_pool_t	*pool;			//!< Connection pool instance.
-
-	char const		*delimiter;		//!< Line termination string (usually \n).
-	size_t			delimiter_len;		//!< Length of line termination string.
-
-	vp_tmpl_t		*log_src;		//!< Source of log messages.
-
-	vp_tmpl_t		*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
-							///< log messages).
-
-	linelog_dst_t		log_dst;		//!< Logging destination.
-	char const		*log_dst_str;		//!< Logging destination string.
-
-	struct {
-		char const		*facility;		//!< Syslog facility string.
-		char const		*severity;		//!< Syslog severity string.
-		int			priority;		//!< Bitwise | of severity and facility.
-	} syslog;
-
-	struct {
-		char const		*name;			//!< File to write to.
-		uint32_t		permissions;		//!< Permissions to use when creating new files.
-		char const		*group_str;		//!< Group to set on new files.
-		gid_t			group;			//!< Resolved gid.
-		exfile_t		*ef;			//!< Exclusive file access handle.
-		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_t		escape_func;		//!< Escape function.
-	} file;
-
-	struct {
-		char const		*path;			//!< Where the UNIX socket lives.
-		struct timeval		timeout;		//!< How long to wait for read/write operations.
-	} unix_sock;	// Lowercase unix is a macro on some systems?!
-
-	linelog_net_t		tcp;			//!< TCP server.
-	linelog_net_t		udp;			//!< UDP server.
-
-	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
-} linelog_instance_t;
 
 typedef struct linelog_conn {
 	int			sockfd;			//!< File descriptor associated with socket
