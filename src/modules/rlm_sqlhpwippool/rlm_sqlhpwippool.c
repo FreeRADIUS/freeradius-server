@@ -280,7 +280,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* check if the given instance is really a rlm_sql instance */
-	if (strcmp(sql_inst->module->name, "rlm_sql") != 0) {
+	if (strcmp(sql_inst->module->name, "sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\" is not an instance of the rlm_sql module",
 			      inst->sql_instance_name);
 		return -1;
