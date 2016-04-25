@@ -40,11 +40,12 @@ typedef struct exfile_entry_t {
 
 
 struct exfile_t {
-	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
+	uint32_t		max_entries;		//!< How many file descriptors we can possibly keep track of.
 	uint32_t		max_idle;		//!< Maximum idle time for a descriptor.
 	time_t			last_cleaned;
 	pthread_mutex_t		mutex;
 	exfile_entry_t		*entries;
+	uint32_t		entries_count;		//!< Number of currently allocated entries for file descriptors.
 	bool			locking;
 	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
 	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
@@ -99,7 +100,7 @@ static int _exfile_free(exfile_t *ef)
 
 	pthread_mutex_lock(&ef->mutex);
 
-	for (i = 0; i < ef->max_entries; i++) {
+	for (i = 0; i < ef->entries_count; i++) {
 		if (!ef->entries[i].filename) continue;
 
 		close(ef->entries[i].fd);
@@ -135,7 +136,9 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 
 	fr_talloc_link_ctx(ctx, ef);
 
-	ef->entries = talloc_zero_array(ef, exfile_entry_t, max_entries);
+	ef->entries_count = 64; // We allocate 64 FDs for a start, in most installations this should be enough
+
+	ef->entries = talloc_zero_array(ef, exfile_entry_t, ef->entries_count);
 	if (!ef->entries) {
 		talloc_free(ef);
 		return NULL;
@@ -180,6 +183,25 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 	MEM(ef->trigger_args = fr_pair_list_copy(ef, trigger_args));
 }
 
+/** Cleanup an entry we do not need anymore
+ *
+ * @param[in] entry to cleanup
+ */
+
+static inline void exfile_cleanup_entry(exfile_entry_t *entry)
+{
+	close(entry->fd);
+
+	/*
+	 *	This will block forever if a thread is
+	 *	doing something stupid.
+	 */
+	TALLOC_FREE(entry->filename);
+	entry->hash = 0;
+	entry->fd = -1;
+	entry->dup = -1;
+}
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -198,8 +220,9 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 {
 	int i, tries, unused = -1, found = -1;
 	uint32_t hash;
-	time_t now = time(NULL);
+	time_t now = time(NULL), oldest_timestamp;
 	struct stat st;
+	exfile_entry_t *tmp;
 
 	if (!ef || !filename) return -1;
 
@@ -211,7 +234,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	/*
 	 *	Find the matching entry, or an unused one.
 	 */
-	for (i = 0; i < (int) ef->max_entries; i++) {
+	for (i = 0; i < (int) ef->entries_count; i++) {
 		if (!ef->entries[i].filename) {
 			if (unused < 0) unused = i;
 			continue;
@@ -220,12 +243,9 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 		if (ef->entries[i].hash != hash) continue;
 
 		/*
-		 *	Same hash but different filename.  Give up.
+		 *	Same hash but different filename.
 		 */
-		if (strcmp(ef->entries[i].filename, filename) != 0) {
-			pthread_mutex_unlock(&ef->mutex);
-			return -1;
-		}
+		if (strcmp(ef->entries[i].filename, filename) != 0) continue;
 
 		found = i;
 		break;
@@ -237,13 +257,14 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	if (now > (ef->last_cleaned + 1)) {
 		ef->last_cleaned = now;
 
-		for (i = 0; i < (int) ef->max_entries; i++) {
+		for (i = 0; i < (int) ef->entries_count; i++) {
 			if (i == found) continue;	/* Don't cleanup the one we're opening */
 
 			if (!ef->entries[i].filename) continue;
 
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
 
+			/* We found a to-be-freed slot, clean it up */
 			close(ef->entries[i].fd);
 
 			/*
@@ -251,14 +272,10 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			 */
 			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
 
-			/*
-			 *	This will block forever if a thread is
-			 *	doing something stupid.
-			 */
-			TALLOC_FREE(ef->entries[i].filename);
-			ef->entries[i].hash = 0;
-			ef->entries[i].fd = -1;
-			ef->entries[i].dup = -1;
+			exfile_cleanup_entry(&ef->entries[i]);
+
+			if (unused < 0) /* There was no empty entries before we cleaned up */
+				unused = i;
 		}
 	}
 
@@ -271,12 +288,41 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	}
 
 	/*
-	 *	Find an unused entry
+	 *	No unused entries found, make one free
 	 */
 	if (unused < 0) {
-		fr_strerror_printf("Too many different filenames");
-		pthread_mutex_unlock(&(ef->mutex));
-		return -1;
+		/*
+		 * Grow entries size?
+		 */
+		if (ef->entries_count < ef->max_entries) {
+			i = ef->entries_count;
+			ef->entries_count += 64;
+			if (ef->entries_count > ef->max_entries)
+				ef->entries_count = ef->max_entries;
+			RDEBUG2("Grow number of logfile entries: %d -> %d", i, ef->entries_count);
+			tmp = talloc_realloc(ef, ef->entries, exfile_entry_t, ef->entries_count);
+			if (tmp) {
+				ef->entries = tmp;
+				memset(&(ef->entries[i]), 0, sizeof(exfile_entry_t) * (ef->max_entries - i));
+				unused = i;
+			}
+		} else { /* We can not grow so close the one with oldest last_used */
+			oldest_timestamp = now;
+			for (i = 0; i < (int) ef->entries_count; i++) {
+				/* Check for filename is not needed here - we know all entires are allocated */
+				if (ef->entries[i].last_used < oldest_timestamp) {
+					oldest_timestamp = ef->entries[i].last_used;
+					unused = i;
+				}
+			}
+			i = unused;
+			RDEBUG2("Closing '%s' (last write %lu seconds ago) due to lack of vacant logfile entries", ef->entries[i].filename, now - ef->entries[i].last_used);
+			close(ef->entries[i].fd);
+			/* Issue close trigger *after* we've closed the fd */
+			exfile_trigger_exec(ef, request, &ef->entries[i], "close");
+
+			exfile_cleanup_entry(&ef->entries[i]);
+		}
 	}
 
 	/*
@@ -344,12 +390,7 @@ do_return:
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
 
 	error:
-		ef->entries[i].hash = 0;
-		TALLOC_FREE(ef->entries[i].filename);
-		close(ef->entries[i].fd);
-		ef->entries[i].fd = -1;
-		ef->entries[i].dup = -1;
-
+		exfile_cleanup_entry(&ef->entries[i]);
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
@@ -441,7 +482,7 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 {
 	uint32_t i;
 
-	for (i = 0; i < ef->max_entries; i++) {
+	for (i = 0; i < ef->entries_count; i++) {
 		if (!ef->entries[i].filename) continue;
 
 		/*
@@ -473,7 +514,7 @@ int exfile_unlock(exfile_t *ef, REQUEST *request, int fd)
 {
 	uint32_t i;
 
-	for (i = 0; i < ef->max_entries; i++) {
+	for (i = 0; i < ef->entries_count; i++) {
 		if (!ef->entries[i].filename) continue;
 
 		if (ef->entries[i].dup == fd) {

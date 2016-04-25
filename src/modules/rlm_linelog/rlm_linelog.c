@@ -106,6 +106,8 @@ typedef struct linelog_instance_t {
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
 		xlat_escape_t		escape_func;		//!< Escape function.
+		uint32_t		max_entries;		//!< Maximum number of log files opened for writing simultaneously
+		uint32_t		max_idle;		//!< Timeout before closing `unused' log file opened previously
 	} file;
 
 	struct {
@@ -124,11 +126,20 @@ typedef struct linelog_conn {
 } linelog_conn_t;
 
 
+static const CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("max_files", PW_TYPE_INTEGER, linelog_instance_t, file.max_entries), .dflt = "64" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, linelog_instance_t, file.max_idle), .dflt = "30" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const CONF_PARSER file_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_XLAT, linelog_instance_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER, linelog_instance_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", PW_TYPE_STRING, linelog_instance_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, linelog_instance_t, file.escape), .dflt = "no" },
+
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -336,7 +347,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 
-		inst->file.ef = module_exfile_init(inst, conf, 64, 30, true, NULL, NULL);
+		FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->file.max_entries, >=, 8);
+		FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->file.max_entries, <=, 2048);
+		FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->file.max_idle, >=, 1);
+		FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->file.max_idle, <=, 3600);
+		inst->file.ef = module_exfile_init(inst, conf, inst->file.max_entries, inst->file.max_idle, true, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err_cs(conf, "Failed creating log file context");
 			return -1;

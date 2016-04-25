@@ -72,7 +72,16 @@ typedef struct detail_instance {
 	exfile_t    	*ef;		//!< Log file handler
 
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
+
+	uint32_t	max_entries;	//!< Maximum number of log files opened for writing simultaneously
+	uint32_t	max_idle;		//!< Timeout before closing `unused' log file opened previously
 } rlm_detail_t;
+
+static const CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("max_files", PW_TYPE_INTEGER, rlm_detail_t, max_entries), .dflt = "64" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, rlm_detail_t, max_idle), .dflt = "30" },
+	CONF_PARSER_TERMINATOR
+};
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
@@ -82,6 +91,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("locking", PW_TYPE_BOOLEAN, rlm_detail_t, locking), .dflt = "no" },
 	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, rlm_detail_t, escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("log_packet_header", PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), .dflt = "no" },
+
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -131,7 +143,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->escape_func = rad_filename_make_safe;
 	}
 
-	inst->ef = module_exfile_init(inst, conf, 64, 30, inst->locking, NULL, NULL);
+	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->max_entries, >=, 8);
+	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->max_entries, <=, 2048);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->max_idle, >=, 1);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->max_idle, <=, 3600);
+	inst->ef = module_exfile_init(inst, conf, inst->max_entries, inst->max_idle, inst->locking, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;

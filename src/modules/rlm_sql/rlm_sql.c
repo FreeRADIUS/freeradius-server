@@ -79,6 +79,12 @@ static const CONF_PARSER postauth_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("max_files", PW_TYPE_INTEGER, rlm_sql_config_t, max_entries), .dflt = "64" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, rlm_sql_config_t, max_idle), .dflt = "30" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", PW_TYPE_STRING, rlm_sql_config_t, sql_driver_name), .dflt = "rlm_sql_null" },
 	{ FR_CONF_OFFSET("server", PW_TYPE_STRING, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
@@ -109,6 +115,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ FR_CONF_OFFSET("safe_characters", PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	/*
 	 *	This only works for a few drivers.
 	 */
@@ -1188,7 +1195,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				inst->module->sql_escape_func :
 				sql_escape_func;
 
-	inst->ef = module_exfile_init(inst, conf, 64, 30, true, NULL, NULL);
+	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, >=, 8);
+	FR_INTEGER_BOUND_CHECK("max_open_logfiles", inst->config->max_entries, <=, 2048);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, >=, 1);
+	FR_INTEGER_BOUND_CHECK("log_idle_timeout", inst->config->max_idle, <=, 3600);
+	inst->ef = module_exfile_init(inst, conf, inst->config->max_entries, inst->config->max_idle, true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
