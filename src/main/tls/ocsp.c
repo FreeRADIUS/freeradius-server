@@ -27,7 +27,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
 #ifdef HAVE_OPENSSL_OCSP_H
-#define LOG_PREFIX "tls - "
+#define LOG_PREFIX "tls - ocsp - "
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
@@ -247,7 +247,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 		/* Reading the libssl src, they do a strdup on the URL, so it could of been const *sigh* */
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
 		if (!host || !port || !path) {
-			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
+			RWDEBUG("Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
 			goto skipped;
 		}
 	} else {
@@ -256,15 +256,15 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 		ret = ocsp_cert_url_parse(client_cert, &host, &port, &path, &use_ssl);
 		switch (ret) {
 		case -1:
-			RWDEBUG("ocsp: Invalid URL in certificate.  Not doing OCSP");
+			RWDEBUG("Invalid URL in certificate.  Not doing OCSP");
 			break;
 
 		case 0:
 			if (conf->ocsp_url) {
-				RWDEBUG("ocsp: No OCSP URL in certificate, falling back to configured URL");
-				goto use_ocsp_url;
+				RWDEBUG("No OCSP URL in certificate, falling back to configured URL");
+				goto use_url;
 			}
-			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
+			RWDEBUG("No OCSP URL in certificate.  Not doing OCSP");
 			goto skipped;
 
 		case 1:
@@ -273,11 +273,11 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 		}
 	}
 
-	RDEBUG2("ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
+	RDEBUG2("Using responder URL \"http://%s:%s%s\"", host, port, path);
 
 	/* Check host and port length are sane, then create Host: HTTP header */
 	if ((strlen(host) + strlen(port) + 2) > sizeof(host_header)) {
-		RWDEBUG("ocsp: Host and port too long");
+		RWDEBUG("Host and port too long");
 		goto skipped;
 	}
 	snprintf(host_header, sizeof(host_header), "%s:%s", host, port);
@@ -292,7 +292,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 	/* Send OCSP request and wait for response */
 	resp = OCSP_sendreq_bio(conn, path, req);
 	if (!resp) {
-		REDEBUG("ocsp: Couldn't get OCSP response");
+		REDEBUG("Couldn't get OCSP response");
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto finish;
 	}
@@ -346,8 +346,8 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 	OCSP_REQ_CTX_free(ctx);
 
 	if (rc == 0) {
-		REDEBUG("ocsp: Couldn't get OCSP response");
-		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		REDEBUG("Couldn't get OCSP response");
+		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		ocsp_status = OCSP_STATUS_SKIPPED;
 		goto finish;
 	}
@@ -356,22 +356,22 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 	/* Verify OCSP response status */
 	status = OCSP_response_status(resp);
 	if (status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-		REDEBUG("ocsp: Response status: %s", OCSP_response_status_str(status));
+		REDEBUG("Response status: %s", OCSP_response_status_str(status));
 		goto finish;
 	}
 	bresp = OCSP_response_get1_basic(resp);
-	if (conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
-		REDEBUG("ocsp: Response has wrong nonce value");
+	if (conf->use_nonce && OCSP_check_nonce(req, bresp) != 1) {
+		REDEBUG("Response has wrong nonce value");
 		goto finish;
 	}
-	if (OCSP_basic_verify(bresp, NULL, store, 0)!=1){
-		REDEBUG("ocsp: Couldn't verify OCSP basic response");
+	if (OCSP_basic_verify(bresp, NULL, store, 0) != 1){
+		REDEBUG("Couldn't verify OCSP basic response");
 		goto finish;
 	}
 
 	/*	Verify OCSP cert status */
 	if (!OCSP_resp_find_status(bresp, certid, (int *)&status, &reason, &rev, &this_update, &next_update)) {
-		REDEBUG("ocsp: No Status found");
+		REDEBUG("No Status found");
 		goto finish;
 	}
 
@@ -389,26 +389,26 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 		 *	We want this to show up in the global log
 		 *	so someone will fix it...
 		 */
-		RATE_LIMIT(RERROR("ocsp: Delta +/- between OCSP response time and our time is greater than %li "
+		RATE_LIMIT(RERROR("Delta +/- between OCSP response time and our time is greater than %li "
 				  "seconds.  Check servers are synchronised to a common time source",
 				  this_fudge));
-		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		goto finish;
 	}
 
 	/*
 	 *	Print any messages we may have accumulated
 	 */
-	SSL_DRAIN_ERROR_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+	SSL_DRAIN_ERROR_QUEUE(RDEBUG2, "", ssl_log);
 	if (RDEBUG_ENABLED) {
-		RDEBUG2("ocsp: OCSP response valid from:");
+		RDEBUG2("OCSP response valid from:");
 		ASN1_GENERALIZEDTIME_print(ssl_log, this_update);
 		RINDENT();
 		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
 		REXDENT();
 
 		if (next_update) {
-			RDEBUG2("ocsp: New information available at:");
+			RDEBUG2("New information available at:");
 			ASN1_GENERALIZEDTIME_print(ssl_log, next_update);
 			RINDENT();
 			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
@@ -432,36 +432,36 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 			goto finish;
 		}
 		if (now.tv_sec < next){
-			RDEBUG2("ocsp: Adding OCSP TTL attribute");
+			RDEBUG2("Adding OCSP TTL attribute");
 			RINDENT();
 			vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
 			vp->vp_integer = next - now.tv_sec;
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			REXDENT();
 		} else {
-			RDEBUG2("ocsp: Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
+			RDEBUG2("Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
 		}
 	} else {
-		RDEBUG2("ocsp: Update time not provided.  Not adding &TLS-OCSP-Next-Update");
+		RDEBUG2("Update time not provided.  Not adding &TLS-OCSP-Next-Update");
 	}
 
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
-		RDEBUG2("ocsp: Cert status: good");
+		RDEBUG2("Cert status: good");
 		ocsp_status = OCSP_STATUS_OK;
 		break;
 
 	default:
 		/* REVOKED / UNKNOWN */
-		REDEBUG("ocsp: Cert status: %s", OCSP_cert_status_str(status));
-		if (reason != -1) REDEBUG("ocsp: Reason: %s", OCSP_crl_reason_str(reason));
+		REDEBUG("Cert status: %s", OCSP_cert_status_str(status));
+		if (reason != -1) REDEBUG("Reason: %s", OCSP_crl_reason_str(reason));
 
 		/*
 		 *	Print any messages we may have accumulated
 		 */
-		SSL_DRAIN_LOG_QUEUE(RDEBUG, "ocsp: ", ssl_log);
+		SSL_DRAIN_LOG_QUEUE(RDEBUG, "", ssl_log);
 		if (RDEBUG_ENABLED2) {
-			RDEBUG2("ocsp: Revocation time:");
+			RDEBUG2("Revocation time:");
 			ASN1_GENERALIZEDTIME_print(ssl_log, rev);
 			RINDENT();
 			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
@@ -473,7 +473,7 @@ int tls_ocsp_check(REQUEST *request, X509_STORE *store,
 finish:
 	switch (ocsp_status) {
 	case OCSP_STATUS_OK:
-		RDEBUG2("ocsp: Certificate is valid");
+		RDEBUG2("Certificate is valid");
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 1;	/* yes */
 		ocsp_status = OCSP_STATUS_OK;
@@ -491,7 +491,7 @@ finish:
 			/* Remove OpenSSL errors from queue or handshake will fail */
 			while (ERR_get_error());
 		} else {
-			REDEBUG("ocsp: Unable to check certificate, failing");
+			REDEBUG("Unable to check certificate, failing");
 			ocsp_status = OCSP_STATUS_FAILED;
 		}
 		break;
@@ -499,7 +499,7 @@ finish:
 	default:
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 0;	/* no */
-		REDEBUG("ocsp: Failed to validate certificate");
+		REDEBUG("Failed to validate certificate");
 		break;
 	}
 
