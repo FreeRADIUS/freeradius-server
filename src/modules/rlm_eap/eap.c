@@ -121,11 +121,6 @@ int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t nu
 		p++;
 	}
 
-#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	method->type = dlsym(RTLD_SELF, mod_name);
-	if (method->type) goto open_self;
-#endif
-
 	/*
 	 *	Link the loaded EAP-Type
 	 */
@@ -143,9 +138,6 @@ int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t nu
 		return -1;
 	}
 
-#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-open_self:
-#endif
 	cf_log_module(cs, "Linked to sub-module %s", mod_name);
 
 	/*
