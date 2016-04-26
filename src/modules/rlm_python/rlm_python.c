@@ -496,6 +496,7 @@ finish:
 static void python_interpreter_free(PyThreadState *interp)
 {
 	PyEval_AcquireLock();
+	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
 	PyEval_ReleaseLock();
 }
