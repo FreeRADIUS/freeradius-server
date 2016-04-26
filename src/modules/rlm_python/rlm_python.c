@@ -493,13 +493,11 @@ finish:
 	return ret;
 }
 
-static void python_thread_free(PyThreadState *state)
+static void python_interpreter_free(PyThreadState *interp)
 {
 	PyEval_AcquireLock();
-	PyThreadState_Clear(state);
+	Py_EndInterpreter(interp);
 	PyEval_ReleaseLock();
-
-	PyThreadState_Delete(state);	/* Don't need to hold lock for this */
 }
 
 /** Destroy a thread state
@@ -983,7 +981,7 @@ static int mod_detach(void *instance)
 	/*
 	 *	Only destroy if it's a subinterpreter
 	 */
-	if (!inst->cext_compat) python_thread_free(inst->sub_interpreter);
+	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if (python_instances == 0) {
 		Py_Finalize();
