@@ -13,6 +13,7 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Make rlm_perl less fragile.  Patch from
 	  Herwin Weststrate.
 	* Allow extended attributes to have "encrypt=2"
+	* Update dictionary.aruba.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
@@ -40,6 +41,20 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Debian build updates.
 	* Allow regular expression comparisons in radclient
 	  fixes #1574.
+	* Fix memory leak on unknown attributes in detail file
+	  reader.
+	* Update example paths in "man" pages when installing
+	  them
+	* Build fixes for rlm_mschap.  Fixes #1489.
+	* BSD build fixes.  Patch from issue #1583.
+	* Be more careful about /lib/ when building.
+	  Fixes #1585.
+	* Correct ifdef placement error.  Fixes #1572.
+	* Allow for more files in internal "exfile" API
+	  So it will be possible to open more than 64
+	  "detail" files at the same time.
+	* Remove support for statically built EAP modules.
+	  Fixes #1591.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
