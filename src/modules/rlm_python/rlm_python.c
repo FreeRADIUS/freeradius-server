@@ -516,6 +516,14 @@ static int _python_thread_free(python_thread_state_t *thread)
 	return 0;
 }
 
+/** Callback for rbtree delete walker
+ *
+ */
+static void _python_thread_entry_free(void *arg)
+{
+	talloc_free(arg);
+}
+
 /** Cleanup any thread local storage on pthread_exit()
  *
  * @param arg The thread currently exiting.
@@ -523,7 +531,7 @@ static int _python_thread_free(python_thread_state_t *thread)
 static void _python_thread_tree_free(void *arg)
 {
 	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
-	talloc_free(tree);
+	rbtree_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
 }
 
 /** Compare instance pointers
@@ -560,7 +568,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	 */
 	thread_tree = fr_thread_local_init(local_thread_state, _python_thread_tree_free);
 	if (!thread_tree) {
-		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_tree_free, 0);
+		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_entry_free, 0);
 		if (!thread_tree) {
 			RERROR("Failed allocating thread state tree");
 			return RLM_MODULE_FAIL;
