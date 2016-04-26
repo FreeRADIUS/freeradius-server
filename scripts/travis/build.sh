@@ -37,7 +37,8 @@ make -j8
 #
 if [ "${COVERITY_SCAN_BRANCH}" != 1 -a "${CC}" = 'clang' ]; then
     echo "Starting clang scan"
-    make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ];
+    # Travis only has two cores
+    make -j2 scan && [ "$(find build/plist/ -name *.html)" = '' ];
 fi
 
 #
