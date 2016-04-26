@@ -72,7 +72,8 @@ static char const *eap_codes[] = {
 static int _eap_module_free(eap_module_t *inst)
 {
 	/*
-	 * Check if handle is still valid. If not, type is referencing freed memory
+	 * Check if handle is still valid. If not, inst was loaded using dlsym(RTLD_SELF, ...)
+	 * No need to call detach or dlclose()
 	 */
         if (!inst->handle) return 0;
 
