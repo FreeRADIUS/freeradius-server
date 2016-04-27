@@ -21,25 +21,19 @@
  * @file include/threads.h
  * @brief Macros to abstract Thread Local Storage
  *
- * @copyright 2013  The FreeRADIUS server project
+ * @copyright 2013-2016 The FreeRADIUS server project
  */
 typedef void (*pthread_destructor_t)(void*);
 
-#if !defined(HAVE_PTHREAD_H) && defined(WITH_THREADS)
-#  error WITH_THREADS defined, but pthreads not available
-#endif
-
-/*
- *	First figure whether we have compiler support.
- */
-#ifdef TLS_STORAGE_CLASS
-#  define _fr_thread_local TLS_STORAGE_CLASS
-#endif
-
 /*
  *	Now we define three macros for initialisation, updating, and retrieving
+ *	These should ONLY be called where __Thread_local is a pointer to heap
+ *	allocated memory that needs to be freed on thread exit.
+ *
+ *	For other types like ints __Thread_local should be used directly
+ *	without the macros.
  */
-#ifndef WITH_THREADS
+#ifndef HAVE_PTHREAD_H
 #  define fr_thread_local_setup(_t, _n)	static _t _n;\
 static inline int __fr_thread_local_destructor_##_n(pthread_destructor_t *ctx)\
 {\
@@ -60,21 +54,25 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 #  define fr_thread_local_init(_n, _f) __fr_thread_local_init_##_n(_f)
 #  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
 #  define fr_thread_local_get(_n) _n
-#  undef _fr_thread_local
-#  define _fr_thread_local
-#elif defined(_fr_thread_local)
+#else
 #  include <pthread.h>
-#  define fr_thread_local_setup(_t, _n) static _fr_thread_local _t _n;\
+#  define fr_thread_local_setup(_t, _n) static _Thread_local _t _n;\
 static pthread_key_t __fr_thread_local_key_##_n;\
 static pthread_once_t __fr_thread_local_once_##_n = PTHREAD_ONCE_INIT;\
 static pthread_destructor_t __fr_thread_local_destructor_##_n = NULL;\
-static inline void __fr_thread_local_key_init_##_n(void)\
+static void __fr_thread_local_destroy_##_n(UNUSED void *unused)\
 {\
-	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destructor_##_n);\
+	__fr_thread_local_destructor_##_n(_n);\
 }\
-static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
+static void __fr_thread_local_key_init_##_n(void)\
+{\
+	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destroy_##_n);\
+	(void) pthread_setspecific(__fr_thread_local_key_##_n, &(_n));\
+}\
+static _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 {\
 	__fr_thread_local_destructor_##_n = func;\
+	if (_n) return _n; \
 	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
 	return _n;\
 }

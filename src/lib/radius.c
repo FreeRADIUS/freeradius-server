@@ -90,8 +90,8 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 }
 
-static _fr_thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
-static _fr_thread_local bool fr_rand_initialized = false;
+static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
+static _Thread_local bool fr_rand_initialized = false;
 
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"",					//!< 0
