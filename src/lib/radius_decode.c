@@ -415,7 +415,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 /** Convert a STRUCT to one or more VPs
  *
  */
-ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 			     void *decoder_ctx)
 {
