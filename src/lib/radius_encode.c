@@ -550,10 +550,10 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			child_da = fr_dict_attr_child_by_num(da, child_num);
 
 			if (!child_da) break;
+
+			if (child_da->flags.length < outlen) break;
+
 			len = child_da->flags.length;
-
-			if (len < outlen) break;
-
 			memset(p, len, 0);
 
 			p += len;
