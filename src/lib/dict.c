@@ -3385,6 +3385,16 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 		return slen;
 	}
 
+	switch ((*parent)->type) {
+	case PW_TYPE_STRUCTURAL:
+		break;
+
+	default:
+		fr_strerror_printf("Parent attribute %s is not TLV for child attribute starting at \"%s\"",
+				   (*parent)->name, oid);
+		return 0;	/* We parsed nothing */
+	}
+
 	/*
 	 *	If it's not a vendor type, it must be between 0..8*type_size
 	 *
