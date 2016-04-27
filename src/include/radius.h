@@ -73,7 +73,6 @@ typedef enum {
 	     PW_TYPE_EXTENDED: \
 	case PW_TYPE_LONG_EXTENDED: \
 	case PW_TYPE_EVS: \
-	case PW_TYPE_STRUCT: \
 	case PW_TYPE_TLV
 
 /** Match all non value types in case statements

@@ -499,6 +499,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_VSA:
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TLV:
+	case PW_TYPE_STRUCT:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_DECIMAL:
 	case PW_TYPE_MAX:
@@ -509,6 +510,87 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	}
 
 	return vp->vp_length;
+}
+
+static ssize_t encode_struct(uint8_t *out, size_t outlen,
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      vp_cursor_t *cursor, void *encoder_ctx)
+{
+	ssize_t			len;
+	unsigned int		child_num = 1;
+	uint8_t			*p = out;
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_dict_attr_t const	*da = tlv_stack[depth];
+
+	VERIFY_VP(fr_cursor_current(cursor));
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+	if (tlv_stack[depth]->type != PW_TYPE_STRUCT) {
+		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
+				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+		return -1;
+	}
+
+	if (!tlv_stack[depth + 1]) {
+		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
+		return -1;
+	}
+
+	while (outlen) {
+		fr_dict_attr_t const *child_da;
+
+		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+		/*
+		 *	The child attributes should be in order.  If
+		 *	they're not, we fill the struct with zeroes.
+		 */
+		child_da = vp->da;
+		if (child_da->attr != child_num) {
+			child_da = fr_dict_attr_child_by_num(da, child_num);
+
+			if (!child_da) break;
+			len = child_da->flags.length;
+
+			if (len < outlen) break;
+
+			memset(p, len, 0);
+
+			p += len;
+			outlen -= len;
+			child_num++;
+			continue;
+		}
+
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 *
+		 *	@fixme: allow structs within structs
+		 */
+		len = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+		if (len <= 0) return len;
+
+		p += len;
+		outlen -= len;				/* Subtract from the buffer we have available */
+		child_num++;
+
+		/*
+		 *	If nothing updated the attribute, stop
+		 */
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+
+		/*
+		 *	We can encode multiple sub TLVs, if after
+		 *	rebuilding the TLV Stack, the attribute
+		 *	at this depth is the same.
+		 */
+		if (da != tlv_stack[depth]) break;
+		vp = fr_cursor_current(cursor);
+
+		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
+	}
+
+	return p - out;
 }
 
 static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
@@ -632,6 +714,18 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (da->type == PW_TYPE_TLV) {
 		return encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
+	}
+
+	/*
+	 *	This has special requirements.
+	 */
+	if (da->type == PW_TYPE_STRUCT) {
+		len = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		if (len < 0) return len;
+
+		vp = fr_cursor_next(cursor);
+		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
+		return len;
 	}
 
 	/*
@@ -768,7 +862,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	switch (vp->da->flags.encrypt) {
+	if (da->type != PW_TYPE_STRUCT) switch (vp->da->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		encode_password(ptr, &len, data, len, ctx->secret, ctx->packet->vector);
 		break;
@@ -1628,8 +1722,8 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_DECIMAL:
-	case PW_TYPE_MAX:
 	case PW_TYPE_EVS:
+	case PW_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
 		return -1;
 	}
