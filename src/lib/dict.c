@@ -111,6 +111,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "cidr",          PW_TYPE_IPV4_PREFIX },
 	{ "vsa",           PW_TYPE_VSA },
 	{ "vendor",        PW_TYPE_VENDOR },
+	{ "struct",        PW_TYPE_STRUCT },
 	{ NULL,            0 }
 };
 
@@ -139,7 +140,8 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 	[PW_TYPE_INTEGER64]	= {8, 8},
 	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
 	[PW_TYPE_VSA]		= {4, ~0},
-	[PW_TYPE_VENDOR]	= {0, 0}
+	[PW_TYPE_VENDOR]	= {0, 0},
+	[PW_TYPE_STRUCT]	= {1, ~0},
 };
 
 const int fr_dict_attr_allowed_chars[256] = {
@@ -1082,6 +1084,14 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	default:
 		break;
+	}
+
+	/*
+	 *	Validate attribute based on parent.
+	 */
+	if ((parent->type == PW_TYPE_STRUCT) && (flags.length == 0)) {
+		fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
+		goto error;
 	}
 
 	/*
@@ -3204,6 +3214,10 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 		name = "LONG EXTENDED";
 		break;
 
+	case PW_TYPE_STRUCT:
+		name = "STRUCT";
+		break;
+
 	default:
 		name = "ATTRIBUTE";
 		break;
@@ -3421,6 +3435,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 			fr_strerror_printf("Unknown child attribute starting at \"%s\"", oid);
 			return 0;	/* We parsed nothing */
 		}
+
 		/*
 		 *	Record progress even if we error out.
 		 *

@@ -412,6 +412,78 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	return data_len;
 }
 
+/** Convert a STRUCT to one or more VPs
+ *
+ */
+ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+			     void *decoder_ctx)
+{
+	unsigned int		child_num;
+	uint8_t const		*p = data, *end = data + data_len;
+	fr_dict_attr_t const	*child;
+	VALUE_PAIR		*head = NULL;
+	vp_cursor_t		child_cursor;
+
+	if (data_len < 1) return -1; /* at least one byte of data */
+
+	FR_PROTO_HEX_DUMP("struct", p, data_len);
+
+	/*
+	 *  Record where we were in the list when this function was called
+	 */
+	fr_cursor_init(&child_cursor, &head);
+	child_num = 1;
+	while (p < end) {
+		ssize_t child_len;
+
+		/*
+		 *	Go to the next child.  If it doesn't exist, we're done.
+		 */
+		child = fr_dict_attr_child_by_num(parent, child_num);
+		if (!child) break;
+
+		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
+
+		/*
+		 *	Decode the next field based on the length of the child.
+		 *	dict.c enforces that child->flags.length is non-zero.
+		 */
+		child_len = fr_radius_decode_pair_value(ctx, &child_cursor, child, p,
+							child->flags.length, child->flags.length,
+							decoder_ctx);
+		if (child_len < 0) {
+			fr_dict_attr_t *unknown_child;
+
+			FR_PROTO_TRACE("Failed to decode child %u of STRUCT %s", child_num, parent->name);
+
+			fr_pair_list_free(&head);
+			fr_cursor_init(&child_cursor, &head);
+
+			/*
+			 *	Build an unknown attr of the entire STRUCT.
+			 */
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent, parent->vendor, p[0]);
+			if (!unknown_child) {
+				return -1;
+			}
+
+			/*
+			 *	Decode the whole STRUCT as an unknown attribute
+			 */
+			child_len = fr_radius_decode_pair_value(ctx, &child_cursor, child, data, data_len, data_len, decoder_ctx);
+			if (child_len < 0) return child_len;
+			break;
+		}
+
+		p += dict_attr_sizes[child->type][0];
+		child_num++;	/* go to the next child */
+	}
+	fr_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+
+	return data_len;
+}
+
 /** Convert a top-level VSA to a VP.
  *
  * "length" can be LONGER than just this sub-vsa.
@@ -1193,6 +1265,16 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *	into a contiguous memory buffer.
 		 */
 		rcode = fr_radius_decode_tlv(ctx, cursor, parent, p, attr_len, decoder_ctx);
+		if (rcode < 0) goto raw;
+		return rcode;
+
+	case PW_TYPE_STRUCT:
+		/*
+		 *	We presume that the struct fits into one
+		 *	attribute, OR it's already been grouped
+		 *	into a contiguous memory buffer.
+		 */
+		rcode = fr_radius_decode_struct(ctx, cursor, parent, p, attr_len, decoder_ctx);
 		if (rcode < 0) goto raw;
 		return rcode;
 

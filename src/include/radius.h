@@ -56,6 +56,7 @@ typedef enum {
 	PW_TYPE_BOOLEAN,			//!< A truth value.
 	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
 	PW_TYPE_DECIMAL,			//!< Double precision floating point.
+	PW_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
 	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 
@@ -72,6 +73,7 @@ typedef enum {
 	     PW_TYPE_EXTENDED: \
 	case PW_TYPE_LONG_EXTENDED: \
 	case PW_TYPE_EVS: \
+	case PW_TYPE_STRUCT: \
 	case PW_TYPE_TLV
 
 /** Match all non value types in case statements
