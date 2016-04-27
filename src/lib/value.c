@@ -1772,6 +1772,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	case PW_TYPE_VSA:
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_STRUCT:
 	case PW_TYPE_MAX:
 		(void)fr_cond_assert(0);
 		return NULL;
@@ -2009,6 +2010,7 @@ print_int:
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_BOOLEAN:
+	case PW_TYPE_STRUCT:
 	case PW_TYPE_MAX:
 		(void)fr_cond_assert(0);
 		*out = '\0';
