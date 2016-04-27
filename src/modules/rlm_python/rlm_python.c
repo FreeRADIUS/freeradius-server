@@ -853,14 +853,19 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	Initialise a new module, with our default methods
 		 */
 		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
-		Py_IncRef(inst->module);
-		
 		if (!inst->module) {
 		error:
 			python_error_log();
 			PyEval_SaveThread();
 			return -1;
 		}
+
+		/*
+		 *	Py_InitModule3 returns a borrowed ref, the actual
+		 *	module is owned by sys.modules, so we also need
+		 *	to own the module to prevent it being freed early.
+		 */
+		Py_IncRef(inst->module);
 
 		if (inst->cext_compat) main_module = inst->module;
 
