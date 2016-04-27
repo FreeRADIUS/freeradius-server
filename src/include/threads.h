@@ -28,7 +28,9 @@ typedef void (*pthread_destructor_t)(void*);
 /*
  *	Because GCC only added support in 2013 *sigh*
  */
-#define _Thread_local TLS_STORAGE_CLASS
+#ifdef TLS_STORAGE_CLASS
+#  define _Thread_local TLS_STORAGE_CLASS
+#endif
 
 /*
  *	Now we define three macros for initialisation, updating, and retrieving
