@@ -853,6 +853,8 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	Initialise a new module, with our default methods
 		 */
 		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
+		Py_IncRef(inst->module);
+		
 		if (!inst->module) {
 		error:
 			python_error_log();
