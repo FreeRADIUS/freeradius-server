@@ -1,5 +1,5 @@
 #
-#  Test the "ldap" module
+#  Test the "redis" module
 #
 
 #  MODULE.test is the main target for this module.
