@@ -897,7 +897,7 @@ static int mod_detach(void *instance)
 
 
 	if ((--python_instances) == 0) {
-		PyThreadState_Swap(main_interpreter);
+		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
 	}
