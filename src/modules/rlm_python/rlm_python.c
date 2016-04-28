@@ -161,11 +161,6 @@ static struct {
 };
 
 /*
- *	This allows us to initialise PyThreadState on a per thread basis
- */
-fr_thread_local_setup(rbtree_t *, local_thread_state)	/* macro */
-
-/*
  *	radiusd Python functions
  */
 
@@ -717,7 +712,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
-	
+
 	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
