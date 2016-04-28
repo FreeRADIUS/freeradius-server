@@ -300,7 +300,15 @@ ATTRIBUTE	EAP-FAST-Vendor-Specific		1191.7	octets	internal
 ATTRIBUTE	EAP-FAST-EAP-Payload			1191.9	octets	internal
 ATTRIBUTE	EAP-FAST-Intermediate-Result		1191.10	octets	internal
 ATTRIBUTE	EAP-FAST-PAC				1191.11	octets	internal
-ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	octets	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	struct	internal
+
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1 byte	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2 byte	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3 byte	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4 byte	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5 octets[32]	internal
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6 octets[20]	internal
+
 ATTRIBUTE	EAP-FAST-Trusted-Root			1191.18	octets	internal
 ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short	internal
 ATTRIBUTE	EAP-FAST-PKCS				1191.20	octets	internal
