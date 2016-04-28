@@ -814,10 +814,11 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 */
 	if (!inst->cext_compat) {
 		inst->sub_interpreter = Py_NewInterpreter();
-		PyThreadState_Swap(inst->sub_interpreter);
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
+	
+	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
 	 *	Due to limitations in Python, sub-interpreters don't work well
@@ -1000,7 +1001,7 @@ static int mod_detach(void *instance)
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
-		PyThreadState_Swap(main_interpreter);
+		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
 	}
