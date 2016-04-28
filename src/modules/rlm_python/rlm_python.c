@@ -508,9 +508,9 @@ static void python_interpreter_free(PyThreadState *interp)
  */
 static int _python_thread_free(python_thread_state_t *thread)
 {
-	PyEval_AcquireLock();
+	PyEval_RestoreThread(thread->state);	/* Swap in our local thread state */
 	PyThreadState_Clear(thread->state);
-	PyEval_ReleaseLock();
+	PyEval_SaveThread();
 
 	PyThreadState_Delete(thread->state);	/* Don't need to hold lock for this */
 
@@ -531,8 +531,12 @@ static void _python_thread_entry_free(void *arg)
  */
 static void _python_thread_tree_free(void *arg)
 {
+	rad_assert(arg == local_thread_state);
+
 	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
 	rbtree_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
+
+	local_thread_state = NULL;	/* Prevent double free in unittest env */
 }
 
 /** Compare instance pointers
@@ -817,7 +821,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
-	
+
 	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
@@ -994,6 +998,15 @@ static int mod_detach(void *instance)
 	Py_DecRef(inst->module);
 
 	PyEval_SaveThread();
+
+	/*
+	 *	Force cleaning up of threads if this is *NOT* a worker
+	 *	thread, which happens if this is being called from
+	 *	unittest framework, and probably with the server running
+	 *	in debug mode.
+	 */
+	rbtree_free(local_thread_state);
+	local_thread_state = NULL;
 
 	/*
 	 *	Only destroy if it's a subinterpreter
