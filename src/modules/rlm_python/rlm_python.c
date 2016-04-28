@@ -1000,6 +1000,7 @@ static int mod_detach(void *instance)
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
+		PyThreadState_Swap(main_interpreter);
 		Py_Finalize();
 		dlclose(python_dlhandle);
 	}
