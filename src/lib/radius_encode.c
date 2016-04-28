@@ -554,7 +554,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			if (child_da->flags.length < outlen) break;
 
 			len = child_da->flags.length;
-			memset(p, len, 0);
+			memset(p, 0, len);
 
 			p += len;
 			outlen -= len;
