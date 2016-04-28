@@ -716,8 +716,8 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		inst->sub_interpreter = Py_NewInterpreter();
 	} else {
 		inst->sub_interpreter = main_interpreter;
-
 	}
+	
 	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
