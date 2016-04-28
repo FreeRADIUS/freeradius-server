@@ -161,11 +161,6 @@ static struct {
 };
 
 /*
- *	This allows us to initialise PyThreadState on a per thread basis
- */
-fr_thread_local_setup(rbtree_t *, local_thread_state)	/* macro */
-
-/*
  *	radiusd Python functions
  */
 
@@ -501,52 +496,6 @@ static void python_interpreter_free(PyThreadState *interp)
 	PyEval_ReleaseLock();
 }
 
-/** Destroy a thread state
- *
- * @param thread to destroy.
- * @return 0
- */
-static int _python_thread_free(python_thread_state_t *thread)
-{
-	PyEval_AcquireLock();
-	PyThreadState_Clear(thread->state);
-	PyEval_ReleaseLock();
-
-	PyThreadState_Delete(thread->state);	/* Don't need to hold lock for this */
-
-	return 0;
-}
-
-/** Callback for rbtree delete walker
- *
- */
-static void _python_thread_entry_free(void *arg)
-{
-	talloc_free(arg);
-}
-
-/** Cleanup any thread local storage on pthread_exit()
- *
- * @param arg The thread currently exiting.
- */
-static void _python_thread_tree_free(void *arg)
-{
-	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
-	rbtree_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
-}
-
-/** Compare instance pointers
- *
- */
-static int _python_inst_cmp(const void *a, const void *b)
-{
-	python_thread_state_t const *a_p = a, *b_p = b;
-
-	if (a_p->inst < b_p->inst) return -1;
-	if (a_p->inst > b_p->inst) return +1;
-	return 0;
-}
-
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
@@ -554,66 +503,12 @@ static int _python_inst_cmp(const void *a, const void *b)
 static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	int			ret;
-	rbtree_t		*thread_tree;
-	python_thread_state_t	*this_thread;
-	python_thread_state_t	find;
-
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
 	if (!pFunc) return RLM_MODULE_NOOP;
 
-	/*
-	 *	Check to see if we've got a thread state tree
-	 *	If not, create one.
-	 */
-	thread_tree = fr_thread_local_init(local_thread_state, _python_thread_tree_free);
-	if (!thread_tree) {
-		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_entry_free, 0);
-		if (!thread_tree) {
-			RERROR("Failed allocating thread state tree");
-			return RLM_MODULE_FAIL;
-		}
-
-		ret = fr_thread_local_set(local_thread_state, thread_tree);
-		if (ret != 0) {
-			talloc_free(thread_tree);
-			return RLM_MODULE_FAIL;
-		}
-	}
-
-	find.inst = inst;
-	/*
-	 *	Find the thread state associated with this instance
-	 *	and this thread, or create a new thread state.
-	 */
-	this_thread = rbtree_finddata(thread_tree, &find);
-	if (!this_thread) {
-		PyThreadState *state;
-
-		state = PyThreadState_New(inst->sub_interpreter->interp);
-
-		RDEBUG3("Initialised new thread state %p", state);
-		if (!state) {
-			REDEBUG("Failed initialising local PyThreadState on first run");
-			return RLM_MODULE_FAIL;
-		}
-
-		this_thread = talloc(NULL, python_thread_state_t);
-		this_thread->inst = inst;
-		this_thread->state = state;
-		talloc_set_destructor(this_thread, _python_thread_free);
-
-		if (!rbtree_insert(thread_tree, this_thread)) {
-			RERROR("Failed inserting thread state into TLS tree");
-			talloc_free(this_thread);
-
-			return RLM_MODULE_FAIL;
-		}
-	}
-	RDEBUG3("Using thread state %p", this_thread->state);
-
-	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
+	PyEval_RestoreThread(inst->sub_interpreter);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname);
 	PyEval_SaveThread();
 
@@ -814,10 +709,11 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 */
 	if (!inst->cext_compat) {
 		inst->sub_interpreter = Py_NewInterpreter();
-		PyThreadState_Swap(inst->sub_interpreter);
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
+
+	PyThreadState_Swap(inst->sub_interpreter);
 
 	/*
 	 *	Due to limitations in Python, sub-interpreters don't work well
@@ -999,7 +895,9 @@ static int mod_detach(void *instance)
 	 */
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
+
 	if ((--python_instances) == 0) {
+		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
 	}
