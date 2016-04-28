@@ -753,7 +753,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	'octets[n]' can only be used in a few limited situations.
 	 */
 	if (flags.length) {
-		if (flags.array || flags.internal || flags.has_value || flags.virtual) {
+		if (flags.array || flags.has_value || flags.virtual) {
 			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
 			goto error;
 		}
