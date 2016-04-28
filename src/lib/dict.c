@@ -1076,6 +1076,14 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		flags.length = 0;
 		break;
 
+		/*
+		 *	The length is calculated from th children, not
+		 *	input as the flags.
+		 */
+	case PW_TYPE_STRUCT:
+		flags.length = 0;
+		break;
+
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_TLV:
@@ -1089,9 +1097,27 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	Validate attribute based on parent.
 	 */
-	if ((parent->type == PW_TYPE_STRUCT) && (flags.length == 0)) {
-		fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-		goto error;
+	if (parent->type == PW_TYPE_STRUCT) {
+		fr_dict_attr_t *mutable;
+
+		/*
+		 *	STRUCTs will have their length filled in later.
+		 */
+		if ((type != PW_TYPE_STRUCT) && (flags.length == 0)) {
+			fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
+			goto error;
+		}
+
+		if ((attr > 1) && !parent->flags.length) {
+			fr_strerror_printf("Children of 'struct' type attributes MUST start with sub-attribute 1.");
+			goto error;
+		}
+
+		/*
+		 *	Sneak in the length of the children.
+		 */
+		memcpy(&mutable, &parent, sizeof(mutable));
+		mutable->flags.length += flags.length;
 	}
 
 	/*

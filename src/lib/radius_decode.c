@@ -416,8 +416,8 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *
  */
 static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			     void *decoder_ctx)
+				       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+				       void *decoder_ctx)
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
@@ -428,6 +428,8 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	if (data_len < 1) return -1; /* at least one byte of data */
 
 	FR_PROTO_HEX_DUMP("struct", p, data_len);
+
+	if (data_len < parent->flags.length) goto raw;
 
 	/*
 	 *  Record where we were in the list when this function was called
@@ -457,13 +459,14 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 			FR_PROTO_TRACE("Failed to decode child %u of STRUCT %s", child_num, parent->name);
 
+		raw:
 			fr_pair_list_free(&head);
 			fr_cursor_init(&child_cursor, &head);
 
 			/*
 			 *	Build an unknown attr of the entire STRUCT.
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent, parent->vendor, p[0]);
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
 			if (!unknown_child) {
 				return -1;
 			}
