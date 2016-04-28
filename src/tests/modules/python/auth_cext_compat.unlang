@@ -1,0 +1,6 @@
+pmod2
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
