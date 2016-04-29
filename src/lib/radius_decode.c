@@ -455,8 +455,6 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 							child->flags.length, child->flags.length,
 							decoder_ctx);
 		if (child_len < 0) {
-			fr_dict_attr_t *unknown_child;
-
 			FR_PROTO_TRACE("Failed to decode child %u of STRUCT %s", child_num, parent->name);
 
 		raw:
@@ -466,10 +464,8 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			/*
 			 *	Build an unknown attr of the entire STRUCT.
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
-			if (!unknown_child) {
-				return -1;
-			}
+			child = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
+			if (!child) return -1;
 
 			/*
 			 *	Decode the whole STRUCT as an unknown attribute
