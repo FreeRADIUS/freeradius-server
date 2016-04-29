@@ -177,10 +177,10 @@ static CONF_PARSER tls_client_config[] = {
 };
 
 #ifdef __APPLE__
-/** Use certadmin to retrieve the password for the private key
+/** Use cert_admin to retrieve the password for the private key
  *
  */
-static int conf_certadmin_password(fr_tls_conf_t *conf)
+static int conf_cert_admin_password(fr_tls_conf_t *conf)
 {
 	if (!conf->private_key_password) return 0;
 
@@ -189,14 +189,14 @@ static int conf_certadmin_password(fr_tls_conf_t *conf)
 	 *	for our special string which indicates we should get the password
 	 *	programmatically.
 	 */
-	char const *special_string = "Apple:UseCertAdmin";
+	char const *special_string = "Apple:Usecert_admin";
 	if (strncmp(conf->private_key_password, special_string, strlen(special_string)) == 0) {
 		char cmd[256];
 		char *password;
 		long const max_password_len = 128;
 		FILE *cmd_pipe;
 
-		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
+		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/cert_admin --get-private-key-passphrase \"%s\"",
 			 conf->private_key_file);
 
 		DEBUG2("Getting private key passphrase using command \"%s\"", cmd);
@@ -345,7 +345,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	}
 
 #ifdef __APPLE__
-	if (conf_certadmin_password(conf) < 0) goto error;
+	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
 
 	if (!main_config.spawn_workers) {
@@ -471,7 +471,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 	}
 
 #ifdef __APPLE__
-	if (conf_certadmin_password(conf) < 0) goto error;
+	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
 
 	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
