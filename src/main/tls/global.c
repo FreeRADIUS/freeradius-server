@@ -255,7 +255,11 @@ int tls_global_version_check(char const *acknowledged)
  * @param len to alloc.
  * @return realloc.
  */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 static void *openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line)
+#else
+static void *openssl_talloc(size_t len)
+#endif
 {
 	return talloc_array(NULL, uint8_t, len);
 }
@@ -266,7 +270,11 @@ static void *openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line
  * @param len to extend to.
  * @return realloced memory.
  */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 static void *openssl_realloc(void *old, size_t len, UNUSED char const *file, UNUSED int line)
+#else
+static void *openssl_realloc(void *old, size_t len)
+#endif
 {
 	return talloc_realloc_size(NULL, old, len);
 }
@@ -275,7 +283,11 @@ static void *openssl_realloc(void *old, size_t len, UNUSED char const *file, UNU
  *
  * @param to_free memory to free.
  */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 static void openssl_free(void *to_free, UNUSED char const *file, UNUSED int line)
+#else
+static void openssl_free(void *to_free)
+#endif
 {
 	(void)talloc_free(to_free);
 }
