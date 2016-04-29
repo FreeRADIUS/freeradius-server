@@ -250,6 +250,36 @@ int tls_global_version_check(char const *acknowledged)
 }
 #endif
 
+/** Allocate memory for OpenSSL in the NULL context
+ *
+ * @param len to alloc.
+ * @return realloc.
+ */
+static void *openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line)
+{
+	return talloc_array(NULL, uint8_t, len);
+}
+
+/** Reallocate memory for OpenSSL in the NULL context
+ *
+ * @param old memory to realloc.
+ * @param len to extend to.
+ * @return realloced memory.
+ */
+static void *openssl_realloc(void *old, size_t len, UNUSED char const *file, UNUSED int line)
+{
+	return talloc_realloc_size(NULL, old, len);
+}
+
+/** Free memory allocated by OpenSSL
+ *
+ * @param to_free memory to free.
+ */
+static void openssl_free(void *to_free, UNUSED char const *file, UNUSED int line)
+{
+	(void)talloc_free(to_free);
+}
+
 /** Add all the default ciphers and message digests to our context.
  *
  * This should be called exactly once from main, before reading the main config
@@ -260,6 +290,10 @@ int tls_global_init(void)
 	ENGINE *rand_engine;
 
 	if (tls_done_init) return 0;
+
+#ifndef NDEBUG
+	CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free);
+#endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
@@ -310,7 +344,6 @@ int tls_global_init(void)
  */
 void tls_global_cleanup(void)
 {
-
 	FR_TLS_REMOVE_THREAD_STATE();
 	ENGINE_cleanup();
 	CONF_modules_unload(1);
