@@ -306,7 +306,9 @@ int tls_global_init(void)
 	if (tls_done_init) return 0;
 
 #ifndef NDEBUG
-	CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free);
+	if (CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free) != 1) {
+		WARN("Failed to set OpenSSL memory allocation functions.  OpenSSL mallocs will not be tracked");
+	}
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
