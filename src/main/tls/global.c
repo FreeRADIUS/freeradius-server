@@ -250,6 +250,7 @@ int tls_global_version_check(char const *acknowledged)
 }
 #endif
 
+#ifdef NDEBUG
 /** Allocate memory for OpenSSL in the NULL context
  *
  * @param len to alloc.
@@ -291,6 +292,7 @@ static void openssl_free(void *to_free)
 {
 	(void)talloc_free(to_free);
 }
+#endif
 
 /** Add all the default ciphers and message digests to our context.
  *
