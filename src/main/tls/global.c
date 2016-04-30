@@ -250,7 +250,7 @@ int tls_global_version_check(char const *acknowledged)
 }
 #endif
 
-#ifdef NDEBUG
+#ifndef NDEBUG
 /** Allocate memory for OpenSSL in the NULL context
  *
  * @param len to alloc.
