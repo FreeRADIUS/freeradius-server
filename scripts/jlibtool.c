@@ -1237,6 +1237,8 @@ static char * load_install_path(char const *arg)
 
 	fclose(f);
 
+	if (!path) return NULL;
+
 	/* Check that we have an absolute path.
 	 * Otherwise the file could be a GNU libtool file.
 	 */
