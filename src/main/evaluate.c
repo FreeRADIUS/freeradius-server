@@ -358,7 +358,7 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 {
 	char *p = out;
 
-	while (*in && (outlen > 2)) {
+	while (*in && (outlen >= 2)) {
 		switch (*in) {
 		case '\\':
 		case '.':
