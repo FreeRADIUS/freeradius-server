@@ -956,6 +956,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
+			rad_assert(reply_tmp != NULL); /* coverity, among others */
 			*do_fall_through = fall_through(reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
