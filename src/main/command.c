@@ -234,8 +234,8 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 		fr_strerror_printf("Failed determining parent directory");
 	error:
 		talloc_free(dir);
-		close(dir_fd);
-		close(path_fd);
+		if (dir_fd >= 0) close(dir_fd);
+		if (path_fd >= 0) close(path_fd);
 		if (sock_fd >= 0) close(sock_fd);
 		if (parent_fd >= 0) close(parent_fd);
 		return -1;
@@ -596,7 +596,7 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 	rad_suid_down();
 
 	close(dir_fd);
-	close(path_fd);
+	if (path_fd >= 0) close(path_fd);
 	close(parent_fd);
 
 	return sock_fd;
