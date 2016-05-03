@@ -189,14 +189,14 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 	 *	for our special string which indicates we should get the password
 	 *	programmatically.
 	 */
-	char const *special_string = "Apple:Usecert_admin";
+	char const *special_string = "Apple:UsecertAdmin";
 	if (strncmp(conf->private_key_password, special_string, strlen(special_string)) == 0) {
 		char cmd[256];
 		char *password;
 		long const max_password_len = 128;
 		FILE *cmd_pipe;
 
-		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/cert_admin --get-private-key-passphrase \"%s\"",
+		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
 			 conf->private_key_file);
 
 		DEBUG2("Getting private key passphrase using command \"%s\"", cmd);
