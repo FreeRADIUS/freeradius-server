@@ -55,8 +55,6 @@ struct py_function_def {
 };
 
 typedef struct rlm_python_t {
-	void		*libpython;
-	PyThreadState	*main_thread_state;
 	char const	*python_path;
 
 	struct py_function_def
@@ -151,6 +149,8 @@ fr_thread_local_setup(PyThreadState *, local_thread_state)	/* macro */
  */
 
 static PyObject *radiusd_module = NULL;
+static void *libpython = NULL;
+static PyThreadState *main_thread_state = NULL;
 
 /*
  *	radiusd Python functions
@@ -215,9 +215,9 @@ static int mod_init(rlm_python_t *inst)
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
-	inst->libpython = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+	libpython = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
 				 RTLD_NOW | RTLD_GLOBAL);
-	if (!inst->libpython) {
+	if (!libpython) {
 		WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 	}
 
@@ -225,7 +225,7 @@ static int mod_init(rlm_python_t *inst)
 #ifdef HAVE_PTHREAD_H
 	Py_InitializeEx(0);				/* Don't override signal handlers */
 	PyEval_InitThreads(); 				/* This also grabs a lock */
-	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
+	main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
 #endif
 	if (inst->python_path) {
 		char *path;
@@ -442,7 +442,7 @@ static void do_python_cleanup(void *arg)
 }
 #endif
 
-static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname, bool worker)
+static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *funcname, bool worker)
 {
 	vp_cursor_t	cursor;
 	VALUE_PAIR      *vp;
@@ -465,7 +465,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		PyThreadState *my_thread_state;
 		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
 		if (!my_thread_state) {
-			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
+			my_thread_state = PyThreadState_New(main_thread_state->interp);
 			RDEBUG3("Initialised new thread state %p", my_thread_state);
 			if (!my_thread_state) {
 				REDEBUG("Failed initialising local PyThreadState on first run");
@@ -730,7 +730,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
 	 */
-	return do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
+	return do_python(NULL, inst->instantiate.function, "instantiate", false);
 failed:
 	Pyx_BLOCK_THREADS
 	mod_error();
@@ -747,16 +747,16 @@ static int mod_detach(void *instance)
 	/*
 	 *	Master should still have no thread state
 	 */
-	ret = do_python(inst, NULL, inst->detach.function, "detach", false);
+	ret = do_python(NULL, inst->detach.function, "detach", false);
 
 	mod_instance_clear(inst);
-	dlclose(inst->libpython);
+	dlclose(libpython);
 
 	return ret;
 }
 
 #define A(x) static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
-		return do_python((rlm_python_t *) instance, request, ((rlm_python_t *)instance)->x.function, #x, true);\
+		return do_python(request, ((rlm_python_t *)instance)->x.function, #x, true);\
 	}
 
 A(authenticate)
