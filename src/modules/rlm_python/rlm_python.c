@@ -134,6 +134,7 @@ static struct {
 #define A(x) { #x, x },
 
 	A(L_DBG)
+	A(L_WARN)
 	A(L_AUTH)
 	A(L_INFO)
 	A(L_ERR)
