@@ -354,9 +354,10 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 
 	PyTuple_SET_ITEM(pPair, 0, pStr);
 
-	vp_prints_value(buf, sizeof(buf), vp, '"');
+	vp_prints_value(buf, sizeof(buf), vp, '\0');	/* Python doesn't need any escaping */
 
-	if ((pStr = PyString_FromString(buf)) == NULL) return -1;
+	pStr = PyString_FromString(buf);
+	if (pStr == NULL) return -1;
 
 	PyTuple_SET_ITEM(pPair, 1, pStr);
 
