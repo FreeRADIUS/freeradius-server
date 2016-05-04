@@ -213,7 +213,7 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, config_server), NULL },	/* Do not set to required */
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_MULTI, rlm_ldap_t, config_server), NULL },	/* Do not set to required */
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, rlm_ldap_t, port), NULL },
 
 	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, admin_identity), NULL },
