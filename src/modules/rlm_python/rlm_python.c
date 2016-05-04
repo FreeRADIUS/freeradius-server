@@ -21,45 +21,51 @@
  *
  * @note Rewritten by Paul P. Komkoff Jr <i@stingr.net>.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000,2006,2015-2016  The FreeRADIUS server project
  * @copyright 2002  Miguel A.L. Paraz <mparaz@mparaz.com>
  * @copyright 2002  Imperium Technology, Inc.
  */
 RCSID("$Id$")
 
+#define LOG_PREFIX "rlm_python - "
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <Python.h>
 #include <dlfcn.h>
 
-#ifdef HAVE_PTHREAD_H
-#define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
-#define Pyx_UNBLOCK_THREADS   PyGILState_Release(__gstate);}
-#else
-#define Pyx_BLOCK_THREADS
-#define Pyx_UNBLOCK_THREADS
-#endif
+static uint32_t		python_instances = 0;
+static void		*python_dlhandle;
 
-/*
- *	TODO: The only needed thing here is function. Anything else is
- *	required for initialization only. I will remove it, putting a
- *	symbolic constant here instead.
+static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
+static PyObject		*main_module;		//!< Pthon configuration dictionary.
+
+/** Specifies the module.function to load for processing a section
+ *
  */
-struct py_function_def {
-	PyObject	*module;
-	PyObject	*function;
+typedef struct python_func_def {
+	PyObject	*module;		//!< Python reference to module.
+	PyObject	*function;		//!< Python reference to function in module.
 
-	char const	*module_name;
-	char const	*function_name;
-};
+	char const	*module_name;		//!< String name of module.
+	char const	*function_name;		//!< String name of function in module.
+} python_func_def_t;
 
+/** An instance of the rlm_python module
+ *
+ */
 typedef struct rlm_python_t {
-	void		*libpython;
-	PyThreadState	*main_thread_state;
-	char const	*python_path;
+	char const	*name;			//!< Name of the module instance
+	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
+	char const	*python_path;		//!< Path to search for python files in.
+	PyObject	*module;		//!< Local, interpreter specific module, containing
+						//!< FreeRADIUS functions.
+	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
+						//!< instance.
 
-	struct py_function_def
+	python_func_def_t
 	instantiate,
 	authorize,
 	authenticate,
@@ -74,15 +80,28 @@ typedef struct rlm_python_t {
 	send_coa,
 #endif
 	detach;
+
+	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
+						//!< made available to the python script.
 } rlm_python_t;
+
+/** Tracks a python module inst/thread state pair
+ *
+ * Multiple instances of python create multiple interpreters and each
+ * thread must have a PyThreadState per interpreter, to track execution.
+ */
+typedef struct python_thread_state {
+	PyThreadState		*state;		//!< Module instance/thread specific state.
+	rlm_python_t		*inst;		//!< Module instance that created this thread state.
+} python_thread_state_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), NULL }, \
-	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name), NULL },
+#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
+	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name), .dflt = NULL },
 
 	A(instantiate)
 	A(authorize)
@@ -101,7 +120,9 @@ static CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
+	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), .dflt = NULL },
+	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), .dflt = false },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -142,21 +163,15 @@ static struct {
 /*
  *	This allows us to initialise PyThreadState on a per thread basis
  */
-fr_thread_local_setup(PyThreadState *, local_thread_state)	/* macro */
-
-
-/*
- *	Let assume that radiusd module is only one since we have only
- *	one intepreter
- */
-
-static PyObject *radiusd_module = NULL;
+fr_thread_local_setup(rbtree_t *, local_thread_state)	/* macro */
 
 /*
  *	radiusd Python functions
  */
 
-/* radlog wrapper */
+/** Allow radlog to be called from python
+ *
+ */
 static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
@@ -172,7 +187,7 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 	return Py_None;
 }
 
-static PyMethodDef radiusd_methods[] = {
+static PyMethodDef module_methods[] = {
 	{ "radlog", &mod_radlog, METH_VARARGS,
 	  "radiusd.radlog(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
@@ -181,12 +196,13 @@ static PyMethodDef radiusd_methods[] = {
 	{ NULL, NULL, 0, NULL },
 };
 
-
-static void mod_error(void)
+/** Print out the current error
+ *
+ * Must be called with a valid thread state set
+ */
+static void python_error_log(void)
 {
 	PyObject *pType = NULL, *pValue = NULL, *pTraceback = NULL, *pStr1 = NULL, *pStr2 = NULL;
-
-	/* This will be called with the GIL lock held */
 
 	PyErr_Fetch(&pType, &pValue, &pTraceback);
 	if (!pType || !pValue)
@@ -195,7 +211,7 @@ static void mod_error(void)
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
 		goto failed;
 
-	ERROR("rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	ERROR("%s (%s)", PyString_AsString(pStr1), PyString_AsString(pStr2));
 
 failed:
 	Py_XDECREF(pStr1);
@@ -204,90 +220,6 @@ failed:
 	Py_XDECREF(pValue);
 	Py_XDECREF(pTraceback);
 }
-
-static int mod_init(rlm_python_t *inst)
-{
-	int i;
-	static char name[] = "radiusd";
-
-	if (radiusd_module) return 0;
-
-	/*
-	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
-	 */
-	inst->libpython = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
-				 RTLD_NOW | RTLD_GLOBAL);
-	if (!inst->libpython) {
-		WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
-	}
-
-	Py_SetProgramName(name);
-#ifdef HAVE_PTHREAD_H
-	Py_InitializeEx(0);				/* Don't override signal handlers */
-	PyEval_InitThreads(); 				/* This also grabs a lock */
-	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
-#endif
-	if (inst->python_path) {
-		char *path;
-
-		memcpy(&path, &inst->python_path, sizeof(path));
-		PySys_SetPath(path);
-	}
-
-	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
-					     "FreeRADIUS Module")) == NULL)
-		goto failed;
-
-	for (i = 0; radiusd_constants[i].name; i++) {
-		if ((PyModule_AddIntConstant(radiusd_module, radiusd_constants[i].name,
-					     radiusd_constants[i].value)) < 0) {
-			goto failed;
-		}
-	}
-
-#ifdef HAVE_PTHREAD_H
-	PyThreadState_Swap(NULL);	/* We have to swap out the current thread else we get deadlocks */
-	PyEval_ReleaseLock();		/* Drop lock grabbed by InitThreads */
-#endif
-	DEBUG("mod_init done");
-	return 0;
-
-failed:
-	Py_XDECREF(radiusd_module);
-
-#ifdef HAVE_PTHREAD_H
-	PyEval_ReleaseLock();
-#endif
-
-	Pyx_BLOCK_THREADS
-	mod_error();
-	Pyx_UNBLOCK_THREADS
-
-	radiusd_module = NULL;
-
-	Py_Finalize();
-	return -1;
-}
-
-#if 0
-
-static int mod_destroy(void)
-{
-	Pyx_BLOCK_THREADS
-	Py_XDECREF(radiusd_module);
-	Py_Finalize();
-	Pyx_UNBLOCK_THREADS
-
-	return 0;
-}
-
-/*
- *	This will need reconsidering in a future. Maybe we'll need to
- *	have our own reference counting for radiusd_module
- */
-#endif
-
-/* TODO: Convert this function to accept any iterable objects? */
 
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
 			char const *funcname, char const *list_name)
@@ -304,86 +236,92 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
 	 */
-	if (pValue == Py_None)
-		return;
+	if (pValue == Py_None) return;
 
 	if (!PyTuple_CheckExact(pValue)) {
-		ERROR("rlm_python:%s: non-tuple passed to %s", funcname, list_name);
+		ERROR("%s - non-tuple passed to %s", funcname, list_name);
 		return;
 	}
 	/* Get the tuple tuplesize. */
 	tuplesize = PyTuple_GET_SIZE(pValue);
 	for (i = 0; i < tuplesize; i++) {
-		PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
-		PyObject *pStr1;
-		PyObject *pStr2;
-		PyObject *pOp;
-		int pairsize;
-		char const *s1;
-		char const *s2;
-		FR_TOKEN op = T_OP_EQ;
+		PyObject 	*pTupleElement = PyTuple_GET_ITEM(pValue, i);
+		PyObject 	*pStr1;
+		PyObject 	*pStr2;
+		PyObject 	*pOp;
+		int		pairsize;
+		char const	*s1;
+		char const	*s2;
+		FR_TOKEN	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
-			ERROR("rlm_python:%s: tuple element %d of %s is not a tuple", funcname, i, list_name);
+			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
 			continue;
 		}
 		/* Check if it's a pair */
 
 		pairsize = PyTuple_GET_SIZE(pTupleElement);
 		if ((pairsize < 2) || (pairsize > 3)) {
-			ERROR("rlm_python:%s: tuple element %d of %s is a tuple of size %d. Must be 2 or 3.", funcname, i, list_name, pairsize);
+			ERROR("%s - Tuple element %d of %s is a tuple of size %d. Must be 2 or 3",
+			      funcname, i, list_name, pairsize);
 			continue;
 		}
 
-		if (pairsize == 2) {
-			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
-			pStr2	= PyTuple_GET_ITEM(pTupleElement, 1);
-		} else {
-			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
-			pStr2	= PyTuple_GET_ITEM(pTupleElement, 2);
-			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
-			if (PyInt_Check(pOp)) {
-				op	= PyInt_AsLong(pOp);
-				if (!fr_int2str(fr_tokens, op, NULL)) {
-					ERROR("rlm_python:%s: Invalid operator '%i', falling back to '='", funcname, op);
-					op = T_OP_EQ;
-				}
-			} else if (PyString_CheckExact(pOp)) {
-				if (!(op = fr_str2int(fr_tokens, PyString_AsString(pOp), 0))) {
-					ERROR("rlm_python:%s: Invalid operator '%s', falling back to '='", funcname, PyString_AsString(pOp));
-					op = T_OP_EQ;
-				}
-			} else {
-				ERROR("rlm_python:%s: Invalid operator type, using default '='", funcname);
-			}
-		}
+		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
+		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
-			ERROR("rlm_python:%s: tuple element %d of %s must be as (str, str)", funcname, i, list_name);
+			ERROR("%s - Tuple element %d of %s must be as (str, str)",
+			      funcname, i, list_name);
 			continue;
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
 
+		if (pairsize == 3) {
+			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
+			if (PyString_CheckExact(pOp)) {
+				if (!(op = fr_str2int(fr_tokens, PyString_AsString(pOp), 0))) {
+					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
+					      funcname, list_name, s1, PyString_AsString(pOp), s2);
+					op = T_OP_EQ;
+				}
+			} else if (PyInt_Check(pOp)) {
+				op	= PyInt_AsLong(pOp);
+				if (!fr_int2str(fr_tokens, op, NULL)) {
+					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
+					      funcname, list_name, s1, op, s2);
+					op = T_OP_EQ;
+				}
+			} else {
+				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
+				      funcname, list_name, s1, s2);
+			}
+		}
+
 		if (tmpl_from_attr_str(&dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
-			DEBUG("rlm_python:%s: Failed to find attribute %s:%s", funcname, list_name, s1);
+			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
 
 		if (radius_request(&current, dst.tmpl_request) < 0) {
-			DEBUG("rlm_python:%s: Attribute name %s:%s refers to outer request but not in a tunnel, skipping...", funcname, list_name, s1);
+			ERROR("%s - Attribute name %s:%s refers to outer request but not in a tunnel, skipping...",
+			      funcname, list_name, s1);
+			continue;
 		}
 
 		if (!(vp = fr_pair_afrom_da(ctx, dst.tmpl_da))) {
-			DEBUG("rlm_python:%s: Failed to create attribute %s:%s", funcname, list_name, s1);
+			ERROR("%s - Failed to create attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
-			DEBUG("rlm_python:%s: Failed: '%s:%s' %s '%s'", funcname, list_name, s1, fr_int2str(fr_tokens, op, "="), s2);
+			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
+			      fr_int2str(fr_tokens, op, "="), s2);
 		} else {
-			DEBUG("rlm_python:%s: '%s:%s' %s '%s'", funcname, list_name, s1, fr_int2str(fr_tokens, op, "="), s2);
+			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
+			      fr_int2str(fr_tokens, op, "="), s2);
 		}
 
 		radius_pairmove(current, vps, vp, false);
@@ -403,46 +341,28 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	PyObject *pStr = NULL;
 	char buf[1024];
 
-	/* Look at the vp_print_name? */
+	/* Look at the fr_pair_fprint_name? */
 
-	if (vp->da->flags.has_tag)
+	if (vp->da->flags.has_tag) {
 		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
-	else
+	} else {
 		pStr = PyString_FromString(vp->da->name);
+	}
 
-	if (!pStr)
-		goto failed;
+	if (!pStr) return -1;
 
 	PyTuple_SET_ITEM(pPair, 0, pStr);
 
 	vp_prints_value(buf, sizeof(buf), vp, '"');
 
-	if ((pStr = PyString_FromString(buf)) == NULL)
-		goto failed;
+	if ((pStr = PyString_FromString(buf)) == NULL) return -1;
+
 	PyTuple_SET_ITEM(pPair, 1, pStr);
 
 	return 0;
-
-failed:
-	return -1;
 }
 
-#ifdef HAVE_PTHREAD_H
-/** Cleanup any thread local storage on pthread_exit()
- */
-static void do_python_cleanup(void *arg)
-{
-	PyThreadState	*my_thread_state = arg;
-
-	PyEval_AcquireLock();
-	PyThreadState_Swap(NULL);	/* Not entirely sure this is needed */
-	PyThreadState_Clear(my_thread_state);
-	PyThreadState_Delete(my_thread_state);
-	PyEval_ReleaseLock();
-}
-#endif
-
-static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname, bool worker)
+static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	vp_cursor_t	cursor;
 	VALUE_PAIR      *vp;
@@ -450,42 +370,6 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	PyObject	*pArgs = NULL;
 	int		tuplelen;
 	int		ret;
-
-	PyGILState_STATE gstate;
-	PyThreadState	*prev_thread_state = NULL;	/* -Wuninitialized */
-	memset(&gstate, 0, sizeof(gstate));		/* -Wuninitialized */
-
-	/* Return with "OK, continue" if the function is not defined. */
-	if (!pFunc)
-		return RLM_MODULE_NOOP;
-
-#ifdef HAVE_PTHREAD_H
-	gstate = PyGILState_Ensure();
-	if (worker) {
-		PyThreadState *my_thread_state;
-		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
-		if (!my_thread_state) {
-			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
-			RDEBUG3("Initialised new thread state %p", my_thread_state);
-			if (!my_thread_state) {
-				REDEBUG("Failed initialising local PyThreadState on first run");
-				PyGILState_Release(gstate);
-				return RLM_MODULE_FAIL;
-			}
-
-			ret = fr_thread_local_set(local_thread_state, my_thread_state);
-			if (ret != 0) {
-				REDEBUG("Failed storing PyThreadState in TLS: %s", fr_syserror(ret));
-				PyThreadState_Clear(my_thread_state);
-				PyThreadState_Delete(my_thread_state);
-				PyGILState_Release(gstate);
-				return RLM_MODULE_FAIL;
-			}
-		}
-		RDEBUG3("Using thread state %p", my_thread_state);
-		prev_thread_state = PyThreadState_Swap(my_thread_state);	/* Swap in our local thread state */
-	}
-#endif
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
@@ -502,9 +386,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	if (request != NULL) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			tuplelen++;
-		}
+		     vp = fr_cursor_next(&cursor)) tuplelen++;
 	}
 
 	if (tuplelen == 0) {
@@ -541,14 +423,16 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 
 	/* Call Python function. */
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
-
 	if (!pRet) {
 		ret = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
-	if (!request)
+	if (!request) {
+		// check return code at module instantiation time
+		if (PyInt_CheckExact(pRet)) ret = PyInt_AsLong(pRet);
 		goto finish;
+	}
 
 	/*
 	 *	The function returns either:
@@ -567,14 +451,14 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		PyObject *pTupleInt;
 
 		if (PyTuple_GET_SIZE(pRet) != 3) {
-			ERROR("rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
+			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
 
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
 		if (!PyInt_CheckExact(pTupleInt)) {
-			ERROR("rlm_python:%s: first tuple element not an integer", funcname);
+			ERROR("%s - First tuple element not an integer", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -596,96 +480,434 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		ret = RLM_MODULE_OK;
 	} else {
 		/* Not tuple or None */
-		ERROR("rlm_python:%s: function did not return a tuple or None", funcname);
+		ERROR("%s - Function did not return a tuple or None", funcname);
 		ret = RLM_MODULE_FAIL;
 		goto finish;
 	}
+
 
 finish:
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
 
-#ifdef HAVE_PTHREAD_H
-	if (worker) {
-		PyThreadState_Swap(prev_thread_state);
+	return ret;
+}
+
+static void python_interpreter_free(PyThreadState *interp)
+{
+	PyEval_AcquireLock();
+	PyThreadState_Swap(interp);
+	Py_EndInterpreter(interp);
+	PyEval_ReleaseLock();
+}
+
+/** Destroy a thread state
+ *
+ * @param thread to destroy.
+ * @return 0
+ */
+static int _python_thread_free(python_thread_state_t *thread)
+{
+	PyEval_RestoreThread(thread->state);	/* Swap in our local thread state */
+	PyThreadState_Clear(thread->state);
+	PyEval_SaveThread();
+
+	PyThreadState_Delete(thread->state);	/* Don't need to hold lock for this */
+
+	return 0;
+}
+
+/** Callback for rbtree delete walker
+ *
+ */
+static void _python_thread_entry_free(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** Cleanup any thread local storage on pthread_exit()
+ *
+ * @param arg The thread currently exiting.
+ */
+static void _python_thread_tree_free(void *arg)
+{
+	rad_assert(arg == local_thread_state);
+
+	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
+	rbtree_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
+
+	local_thread_state = NULL;	/* Prevent double free in unittest env */
+}
+
+/** Compare instance pointers
+ *
+ */
+static int _python_inst_cmp(const void *a, const void *b)
+{
+	python_thread_state_t const *a_p = a, *b_p = b;
+
+	if (a_p->inst < b_p->inst) return -1;
+	if (a_p->inst > b_p->inst) return +1;
+	return 0;
+}
+
+/** Thread safe call to a python function
+ *
+ * Will swap in thread state specific to module/thread.
+ */
+static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
+{
+	int			ret;
+	rbtree_t		*thread_tree;
+	python_thread_state_t	*this_thread;
+	python_thread_state_t	find;
+
+	/*
+	 *	It's a NOOP if the function wasn't defined
+	 */
+	if (!pFunc) return RLM_MODULE_NOOP;
+
+	/*
+	 *	Check to see if we've got a thread state tree
+	 *	If not, create one.
+	 */
+	thread_tree = fr_thread_local_init(local_thread_state, _python_thread_tree_free);
+	if (!thread_tree) {
+		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_entry_free, 0);
+		if (!thread_tree) {
+			RERROR("Failed allocating thread state tree");
+			return RLM_MODULE_FAIL;
+		}
+
+		ret = fr_thread_local_set(local_thread_state, thread_tree);
+		if (ret != 0) {
+			talloc_free(thread_tree);
+			return RLM_MODULE_FAIL;
+		}
 	}
-	PyGILState_Release(gstate);
-#endif
+
+	find.inst = inst;
+	/*
+	 *	Find the thread state associated with this instance
+	 *	and this thread, or create a new thread state.
+	 */
+	this_thread = rbtree_finddata(thread_tree, &find);
+	if (!this_thread) {
+		PyThreadState *state;
+
+		state = PyThreadState_New(inst->sub_interpreter->interp);
+
+		RDEBUG3("Initialised new thread state %p", state);
+		if (!state) {
+			REDEBUG("Failed initialising local PyThreadState on first run");
+			return RLM_MODULE_FAIL;
+		}
+
+		this_thread = talloc(NULL, python_thread_state_t);
+		this_thread->inst = inst;
+		this_thread->state = state;
+		talloc_set_destructor(this_thread, _python_thread_free);
+
+		if (!rbtree_insert(thread_tree, this_thread)) {
+			RERROR("Failed inserting thread state into TLS tree");
+			talloc_free(this_thread);
+
+			return RLM_MODULE_FAIL;
+		}
+	}
+	RDEBUG3("Using thread state %p", this_thread->state);
+
+	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
+	ret = do_python_single(request, pFunc, funcname);
+	PyEval_SaveThread();
 
 	return ret;
 }
 
-/*
- *	Import a user module and load a function from it
- */
-
-static int mod_load_function(struct py_function_def *def)
-{
-	char const *funcname = "mod_load_function";
-	PyGILState_STATE gstate;
-
-	gstate = PyGILState_Ensure();
-
-	if (def->module_name != NULL && def->function_name != NULL) {
-		if ((def->module = PyImport_ImportModule(def->module_name)) == NULL) {
-			ERROR("rlm_python:%s: module '%s' is not found", funcname, def->module_name);
-			goto failed;
-		}
-
-		if ((def->function = PyObject_GetAttrString(def->module, def->function_name)) == NULL) {
-			ERROR("rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
-			goto failed;
-		}
-
-		if (!PyCallable_Check(def->function)) {
-			ERROR("rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
-			goto failed;
-		}
-	}
-	PyGILState_Release(gstate);
-	return 0;
-
-failed:
-	mod_error();
-	ERROR("rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
-	Py_XDECREF(def->function);
-	def->function = NULL;
-	Py_XDECREF(def->module);
-	def->module = NULL;
-	PyGILState_Release(gstate);
-	return -1;
+#define MOD_FUNC(x) \
+static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
+	return do_python((rlm_python_t *) instance, request, ((rlm_python_t *)instance)->x.function, #x);\
 }
 
-
-static void mod_objclear(PyObject **ob)
+MOD_FUNC(authenticate)
+MOD_FUNC(authorize)
+MOD_FUNC(preacct)
+MOD_FUNC(accounting)
+MOD_FUNC(checksimul)
+MOD_FUNC(pre_proxy)
+MOD_FUNC(post_proxy)
+MOD_FUNC(post_auth)
+#ifdef WITH_COA
+MOD_FUNC(recv_coa)
+MOD_FUNC(send_coa)
+#endif
+static void python_obj_destroy(PyObject **ob)
 {
 	if (*ob != NULL) {
-		Pyx_BLOCK_THREADS
 		Py_DECREF(*ob);
-		Pyx_UNBLOCK_THREADS
 		*ob = NULL;
 	}
 }
 
-static void mod_funcdef_clear(struct py_function_def *def)
+static void python_function_destroy(python_func_def_t *def)
 {
-	mod_objclear(&def->function);
-	mod_objclear(&def->module);
+	python_obj_destroy(&def->function);
+	python_obj_destroy(&def->module);
 }
 
-static void mod_instance_clear(rlm_python_t *inst)
+/** Import a user module and load a function from it
+ *
+ */
+static int python_function_load(python_func_def_t *def)
 {
-#define A(x) mod_funcdef_clear(&inst->x)
+	char const *funcname = "python_function_load";
 
-	A(instantiate);
-	A(authorize);
-	A(authenticate);
-	A(preacct);
-	A(accounting);
-	A(checksimul);
-	A(detach);
+	if (def->module_name == NULL || def->function_name == NULL) return 0;
 
-#undef A
+	def->module = PyImport_ImportModule(def->module_name);
+	if (!def->module) {
+		ERROR("%s - Module '%s' not found", funcname, def->module_name);
+
+	error:
+		python_error_log();
+		ERROR("%s - Failed to import python function '%s.%s'",
+		      funcname, def->module_name, def->function_name);
+		Py_XDECREF(def->function);
+		def->function = NULL;
+		Py_XDECREF(def->module);
+		def->module = NULL;
+
+		return -1;
+	}
+
+	def->function = PyObject_GetAttrString(def->module, def->function_name);
+	if (!def->function) {
+		ERROR("%s - Function '%s.%s' is not found", funcname, def->module_name, def->function_name);
+		goto error;
+	}
+
+	if (!PyCallable_Check(def->function)) {
+		ERROR("%s - Function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
+		goto error;
+	}
+
+	return 0;
+}
+
+/*
+ *	Parse a configuration section, and populate a dict.
+ *	This function is recursively called (allows to have nested dicts.)
+ */
+static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
+{
+	int		indent_section = (lvl + 1) * 4;
+	int		indent_item = (lvl + 2) * 4;
+	CONF_ITEM	*ci = NULL;
+
+	if (!cs || !dict) return;
+
+	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
+
+	while ((ci = cf_item_find_next(cs, ci))) {
+		/*
+		 *  This is a section.
+		 *  Create a new dict, store it in current dict,
+		 *  Then recursively call python_parse_config with this section and the new dict.
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *sub_cs = cf_item_to_section(ci);
+			char const *key = cf_section_name1(sub_cs); /* dict key */
+			PyObject *sub_dict, *pKey;
+
+			if (!key) continue;
+
+			pKey = PyString_FromString(key);
+			if (!pKey) continue;
+
+			if (PyDict_Contains(dict, pKey)) {
+				WARN("rlm_python: Ignoring duplicate config section '%s'", key);
+				continue;
+			}
+
+			if (!(sub_dict = PyDict_New())) {
+				WARN("rlm_python: Unable to create subdict for config section '%s'", key);
+			}
+
+			(void)PyDict_SetItem(dict, pKey, sub_dict);
+
+			python_parse_config(sub_cs, lvl + 1, sub_dict);
+		} else if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp = cf_item_to_pair(ci);
+			char const  *key = cf_pair_attr(cp); /* dict key */
+			char const  *value = cf_pair_value(cp); /* dict value */
+			PyObject *pKey, *pValue;
+
+			if (!key || !value) continue;
+
+			pKey = PyString_FromString(key);
+			pValue = PyString_FromString(value);
+			if (!pKey || !pValue) continue;
+
+			/*
+			 *  This is an item.
+			 *  Store item attr / value in current dict.
+			 */
+			if (PyDict_Contains(dict, pKey)) {
+				WARN("rlm_python: Ignoring duplicate config item '%s'", key);
+				continue;
+			}
+
+			(void)PyDict_SetItem(dict, pKey, pValue);
+
+			DEBUG("%*s%s = %s", indent_item, " ", key, value);
+		}
+	}
+
+	DEBUG("%*s}", indent_section, " ");
+}
+
+/** Initialises a separate python interpreter for this module instance
+ *
+ */
+static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
+{
+	int i;
+
+	/*
+	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
+	 */
+	if (python_instances == 0) {
+		INFO("Python version: %s", Py_GetVersion());
+
+		python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+					 RTLD_NOW | RTLD_GLOBAL);
+		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+
+#if PY_VERSION_HEX > 0x03050000
+		{
+			wchar_t *name;
+
+			wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
+			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+			PyMem_RawFree(name);
+		}
+#else
+		{
+			char *name;
+
+			name = talloc_strdup(NULL, main_config.name);
+			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+			talloc_free(name);
+		}
+#endif
+
+		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
+		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
+	}
+	rad_assert(PyEval_ThreadsInitialized());
+
+	/*
+	 *	Increment the reference counter
+	 */
+	python_instances++;
+
+	/*
+	 *	This sets up a separate environment for each python module instance
+	 *	These will be destroyed on Py_Finalize().
+	 */
+	if (!inst->cext_compat) {
+		inst->sub_interpreter = Py_NewInterpreter();
+	} else {
+		inst->sub_interpreter = main_interpreter;
+	}
+
+	PyThreadState_Swap(inst->sub_interpreter);
+
+	/*
+	 *	Due to limitations in Python, sub-interpreters don't work well
+	 *	with Python C extensions if they use GIL lock functions.
+	 */
+	if (!inst->cext_compat || !main_module) {
+		CONF_SECTION *cs;
+
+		/*
+		 *	Set the python search path
+		 */
+		if (inst->python_path) {
+#if PY_VERSION_HEX > 0x03050000
+			{
+				wchar_t *name;
+
+				path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
+				PySys_SetPath(path);
+				PyMem_RawFree(path);
+			}
+#else
+			{
+				char *path;
+
+				path = talloc_strdup(NULL, inst->python_path);
+				PySys_SetPath(path);
+				talloc_free(path);
+			}
+#endif
+		}
+
+		/*
+		 *	Initialise a new module, with our default methods
+		 */
+		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
+		if (!inst->module) {
+		error:
+			python_error_log();
+			PyEval_SaveThread();
+			return -1;
+		}
+
+		/*
+		 *	Py_InitModule3 returns a borrowed ref, the actual
+		 *	module is owned by sys.modules, so we also need
+		 *	to own the module to prevent it being freed early.
+		 */
+		Py_IncRef(inst->module);
+
+		if (inst->cext_compat) main_module = inst->module;
+
+		for (i = 0; radiusd_constants[i].name; i++) {
+			if ((PyModule_AddIntConstant(inst->module, radiusd_constants[i].name,
+						     radiusd_constants[i].value)) < 0)
+				goto error;
+		}
+
+		/*
+		 *	Convert a FreeRADIUS config structure into a python
+		 *	dictionary.
+		 */
+		inst->pythonconf_dict = PyDict_New();
+		if (!inst->pythonconf_dict) {
+			ERROR("Unable to create python dict for config");
+			python_error_log();
+			return -1;
+		}
+
+		/*
+		 *	Add module configuration as a dict
+		 */
+		if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
+
+		cs = cf_section_sub_find(conf, "config");
+		if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
+	} else {
+		inst->module = main_module;
+		Py_IncRef(inst->module);
+		inst->pythonconf_dict = PyObject_GetAttrString(inst->module, "config");
+		Py_IncRef(inst->pythonconf_dict);
+	}
+
+	PyEval_SaveThread();
+
+	return 0;
 }
 
 /*
@@ -699,44 +921,56 @@ static void mod_instance_clear(rlm_python_t *inst)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_python_t *inst = instance;
+	rlm_python_t	*inst = instance;
+	int		code = 0;
 
-	if (mod_init(inst) != 0) {
-		return -1;
-	}
-
-#define A(x) if (mod_load_function(&inst->x) < 0) goto failed
-
-	A(instantiate);
-	A(authenticate);
-	A(authorize);
-	A(preacct);
-	A(accounting);
-	A(checksimul);
-	A(pre_proxy);
-	A(post_proxy);
-	A(post_auth);
-#ifdef WITH_COA
-	A(recv_coa);
-	A(send_coa);
-#endif
-	A(detach);
-
-#undef A
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
-	 *	Call the instantiate function.  No request.  Use the
-	 *	return value.
+	 *	Load the python code required for this module instance
 	 */
-	return do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
-failed:
-	Pyx_BLOCK_THREADS
-	mod_error();
-	Pyx_UNBLOCK_THREADS
-	mod_instance_clear(inst);
-	return -1;
+	if (python_interpreter_init(inst, conf) < 0) return -1;
+
+	/*
+	 *	Switch to our module specific main thread
+	 */
+	PyEval_RestoreThread(inst->sub_interpreter);
+
+	/*
+	 *	Process the various sections
+	 */
+#define PYTHON_FUNC_LOAD(_x) if (python_function_load(&inst->_x) < 0) goto error
+	PYTHON_FUNC_LOAD(instantiate);
+	PYTHON_FUNC_LOAD(authenticate);
+	PYTHON_FUNC_LOAD(authorize);
+	PYTHON_FUNC_LOAD(preacct);
+	PYTHON_FUNC_LOAD(accounting);
+	PYTHON_FUNC_LOAD(checksimul);
+	PYTHON_FUNC_LOAD(pre_proxy);
+	PYTHON_FUNC_LOAD(post_proxy);
+	PYTHON_FUNC_LOAD(post_auth);
+#ifdef WITH_COA
+	PYTHON_FUNC_LOAD(recv_coa);
+	PYTHON_FUNC_LOAD(send_coa);
+#endif
+	PYTHON_FUNC_LOAD(detach);
+
+	/*
+	 *	Call the instantiate function.
+	 */
+	code = do_python_single(NULL, inst->instantiate.function, "instantiate");
+	if (code < 0) {
+	error:
+		python_error_log();	/* Needs valid thread with GIL */
+		PyEval_SaveThread();
+		return -1;
+	}
+	PyEval_SaveThread();
+
+	return 0;
 }
 
 static int mod_detach(void *instance)
@@ -745,34 +979,48 @@ static int mod_detach(void *instance)
 	int	     ret;
 
 	/*
-	 *	Master should still have no thread state
+	 *	Call module destructor
 	 */
-	ret = do_python(inst, NULL, inst->detach.function, "detach", false);
+	PyEval_RestoreThread(inst->sub_interpreter);
 
-	mod_instance_clear(inst);
-	dlclose(inst->libpython);
+	ret = do_python_single(NULL, inst->detach.function, "detach");
+
+#define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
+	PYTHON_FUNC_DESTROY(instantiate);
+	PYTHON_FUNC_DESTROY(authorize);
+	PYTHON_FUNC_DESTROY(authenticate);
+	PYTHON_FUNC_DESTROY(preacct);
+	PYTHON_FUNC_DESTROY(accounting);
+	PYTHON_FUNC_DESTROY(checksimul);
+	PYTHON_FUNC_DESTROY(detach);
+
+	Py_DecRef(inst->pythonconf_dict);
+	Py_DecRef(inst->module);
+
+	PyEval_SaveThread();
+
+	/*
+	 *	Force cleaning up of threads if this is *NOT* a worker
+	 *	thread, which happens if this is being called from
+	 *	unittest framework, and probably with the server running
+	 *	in debug mode.
+	 */
+	rbtree_free(local_thread_state);
+	local_thread_state = NULL;
+
+	/*
+	 *	Only destroy if it's a subinterpreter
+	 */
+	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
+
+	if ((--python_instances) == 0) {
+		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
+		Py_Finalize();
+		dlclose(python_dlhandle);
+	}
 
 	return ret;
 }
-
-#define A(x) static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
-		return do_python((rlm_python_t *) instance, request, ((rlm_python_t *)instance)->x.function, #x, true);\
-	}
-
-A(authenticate)
-A(authorize)
-A(preacct)
-A(accounting)
-A(checksimul)
-A(pre_proxy)
-A(post_proxy)
-A(post_auth)
-#ifdef WITH_COA
-A(recv_coa)
-A(send_coa)
-#endif
-
-#undef A
 
 /*
  *	The module name should be the only globally exported symbol.

@@ -8,9 +8,27 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_PROGS(PYTHONBIN, [ python2.7 python2.6 python2.5 python2.4 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	dnl extra argument: --with-rlm-python-bin
+	PYHTON_BIN=
+	AC_ARG_WITH(rlm-python-bin,
+	[  --with-rlm-python-bin=PATH   Path to python binary []],
+	[ case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need rlm-python-bin)
+		;;
+	    yes)
+		;;
+	    *)
+		PYTHON_BIN="$withval"
+		;;
+	  esac ]
+	)
 
-	if test x$PYTHONBIN = xnot-found; then
+	if test "x$PYTHON_BIN" = x; then
+		AC_CHECK_PROGS(PYTHON_BIN, [ python2.7 python2.6 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+	fi
+
+	if test "x$PYTHON_BIN" = "xnot-found"; then
 		fail="python-binary"
 	fi
 
@@ -47,27 +65,35 @@ if test x$with_[]modname != xno; then
 	)
 
 	if test x$fail = x; then
+		PY_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.prefix)'`
+		AC_MSG_NOTICE([Python sys.prefix \"${PY_PREFIX}\"])
 
-		PY_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.prefix)'`
-		PY_EXEC_PREFIX=`${PYTHONBIN} -c 'import sys ; print(sys.exec_prefix)'`
-		changequote(<<, >>)dnl
-		PY_VERSION=`${PYTHONBIN} -c 'import sys ; print(sys.version[0:3])'`
-		changequote([, ])dnl
-		PY_LIBS="-lpython$PY_VERSION"
-		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config/Makefile"
+		PY_EXEC_PREFIX=`${PYTHON_BIN} -c 'import sys ; print(sys.exec_prefix)'`
+		AC_MSG_NOTICE([Python sys.exec_prefix \"${PY_EXEC_PREFIX}\"])
+
+		PY_SYS_VERSION=`${PYTHON_BIN} -c 'import sys ; print(sys.version[[0:3]])'`
+		AC_MSG_NOTICE([Python sys.version \"${PY_SYS_VERSION}\"])
+
+		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config"
+
+		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python${PY_SYS_VERSION}/config/Makefile"
 		if test -f ${PY_MAKEFILE}; then
-			PY_LOCALMODLIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-			PY_BASEMODLIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE`
-			PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE`
+			PY_LOCAL_MOD_LIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/^ *//;s/ *$//'`
+			AC_MSG_NOTICE([Python local_mod_libs \"${PY_LOCAL_MOD_LIBS}\"])
+
+			PY_BASE_MOD_LIBS=`sed -n -e 's/^BASEMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/^ *//;s/ *$//'`
+			AC_MSG_NOTICE([Python base_mod_libs \"${PY_BASE_MOD_LIBS}\"])
+
+			PY_OTHER_LIBS=`sed -n -e 's/^LIBS=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
+			PY_OTHER_LDFLAGS=`sed -n -e 's/^LINKFORSHARED=\(.*\)/\1/p' $PY_MAKEFILE | sed -e 's/[[[:blank:]]]/ /g;s/  / /g;s/^ *//;s/ *$//'`
+			AC_MSG_NOTICE([Python other_libs \"${PY_OTHER_LDFLAGS} ${PY_OTHER_LIBS}\"])
 		fi
-		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASEMODLIBS $PY_OTHER_LIBS"
+		PY_EXTRA_LIBS="$PY_LOCALMODLIBS $PY_BASE_MOD_LIBS $PY_OTHER_LIBS"
 
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $PY_CFLAGS"
-		smart_try_dir="$PY_PREFIX/include/python$PY_VERSION"
+		smart_try_dir="$PY_PREFIX/include/python$PY_SYS_VERSION"
 		FR_SMART_CHECK_INCLUDE(Python.h)
 		CFLAGS=$old_CFLAGS
 
@@ -81,7 +107,7 @@ if test x$with_[]modname != xno; then
 		old_LIBS=$LIBS
 		LIBS="$LIBS $PY_LIB_LOC $PY_EXTRA_LIBS -lm"
 		smart_try_dir=$PY_LIB_DIR
-		FR_SMART_CHECK_LIB(python${PY_VERSION}, Py_Initialize)
+		FR_SMART_CHECK_LIB(python${PY_SYS_VERSION}, Py_Initialize)
 		LIBS=$old_LIBS
 
 		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
@@ -89,14 +115,14 @@ if test x$with_[]modname != xno; then
 			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
 			targetname=modname
 		else
-			FR_SMART_CHECK_LIB(python${PY_VERSION}m, Py_Initialize)
+			FR_SMART_CHECK_LIB(python${PY_SYS_VERSION}m, Py_Initialize)
 			eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
 			if test "x$t" = "xyes"; then
 				mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS $SMART_LIBS -lm"
 				targetname=modname
 			else
 				targetname=
-				fail="$fail libpython$PY_VERSION"
+				fail="$fail libpython$PY_SYS_VERSION"
 			fi
 		fi
 	fi

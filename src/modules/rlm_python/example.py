@@ -10,6 +10,7 @@ import radiusd
 def instantiate(p):
   print "*** instantiate ***"
   print p
+  # return 0 for success or -1 for failure
 
 def authorize(p):
   print "*** authorize ***"
@@ -17,6 +18,9 @@ def authorize(p):
   radiusd.radlog(radiusd.L_INFO, '*** radlog call in authorize ***')
   print
   print p
+  print
+  print radiusd.config
+  print
   return radiusd.RLM_MODULE_OK
 
 def preacct(p):
