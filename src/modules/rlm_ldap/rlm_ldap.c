@@ -787,8 +787,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	static bool	version_done;
-
-	CONF_PAIR	*cp;
 	size_t		i;
 
 	CONF_SECTION *options, *update;
@@ -1097,10 +1095,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			if (strchr(value, '/')) {
 			bad_server_fmt:
 #ifdef LDAP_CAN_PARSE_URLS
-				cf_log_err_cp(cp, "Invalid server value, must be in format <server>[:<port>] or "
+				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
 					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
 #else
-				cf_log_err_cp(cp, "Invalid server value, must be in format <server>[:<port>]");
+				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
 #endif
 				return -1;
 			}
