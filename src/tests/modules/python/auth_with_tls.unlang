@@ -1,0 +1,46 @@
+# The first call on pmod1 should store var "tls" in a thread local storage and return noop
+pmod1
+if (!noop) {
+    test_fail
+} else {
+    test_pass
+}
+
+# Simply call another second module
+pmod2
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+# The second call on pmod1 should return OK because "tls" is set
+pmod1
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+# Calling another python module configured with mod1.py should be in it's own context and return NOOP on first call
+pmod3_withmod1
+if (!noop) {
+    test_fail
+} else {
+    test_pass
+}
+
+# Should return "OK" on subsequent calls
+pmod3_withmod1
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
+
+pmod3_withmod1
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
