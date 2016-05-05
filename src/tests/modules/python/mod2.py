@@ -1,2 +1,4 @@
+import radiusd
+
 def authorize(p):   
-    return 2
+    return radiusd.RLM_MODULE_OK

@@ -1,4 +1,5 @@
-pmod2
+# This module is cext_compat and should work
+pmod4_cextcompat
 if (!ok) {
     test_fail
 } else {
