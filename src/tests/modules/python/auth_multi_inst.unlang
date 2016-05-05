@@ -1,3 +1,4 @@
+# Call the second configured module firstly should work
 pmod2
 if (!ok) {
     test_fail
@@ -5,6 +6,7 @@ if (!ok) {
     test_pass
 }
 
+# Call the first configured module secondly
 pmod1
 if (!noop) {
     test_fail
