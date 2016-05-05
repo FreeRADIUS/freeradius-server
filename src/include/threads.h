@@ -68,13 +68,19 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 static pthread_key_t __fr_thread_local_key_##_n;\
 static pthread_once_t __fr_thread_local_once_##_n = PTHREAD_ONCE_INIT;\
 static pthread_destructor_t __fr_thread_local_destructor_##_n = NULL;\
-static inline void __fr_thread_local_key_init_##_n(void)\
+static void __fr_thread_local_destroy_##_n(UNUSED void *unused)\
 {\
-	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destructor_##_n);\
+	__fr_thread_local_destructor_##_n(_n);\
 }\
-static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
+static void __fr_thread_local_key_init_##_n(void)\
+{\
+	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destroy_##_n);\
+	(void) pthread_setspecific(__fr_thread_local_key_##_n, &(_n));\
+}\
+static _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 {\
 	__fr_thread_local_destructor_##_n = func;\
+	if (_n) return _n; \
 	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
 	return _n;\
 }
@@ -86,26 +92,22 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 #  define fr_thread_local_setup(_t, _n) \
 static pthread_key_t __fr_thread_local_key_##_n;\
 static pthread_once_t __fr_thread_local_once_##_n = PTHREAD_ONCE_INIT;\
-static pthread_destructor_t __fr_thread_local_destructor_##_n = NULL; \
-static inline void __fr_thread_local_key_init_##_n(void)\
+static pthread_destructor_t __fr_thread_local_destructor_##_n = NULL;\
+static void __fr_thread_local_destroy_##_n(UNUSED void *unused)\
 {\
-	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destructor_##_n);\
+	__fr_thread_local_destructor_##_n(_n);\
 }\
-static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
+static void __fr_thread_local_key_init_##_n(void)\
+{\
+	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destroy_##_n);\
+	(void) pthread_setspecific(__fr_thread_local_key_##_n, &(_n));\
+}\
+static _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 {\
 	__fr_thread_local_destructor_##_n = func;\
+	if (_n) return _n; \
 	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
-	return pthread_getspecific(__fr_thread_local_key_##_n);\
-}\
-DIAG_OFF(unused-function)\
-static inline _t __fr_thread_local_get_##_n(void)\
-{\
-	return pthread_getspecific(__fr_thread_local_key_##_n);\
-}\
-DIAG_ON(unused-function)\
-static inline int __fr_thread_local_set_##_n(_t val)\
-{\
-	return pthread_setspecific(__fr_thread_local_key_##_n, val);\
+	return _n;\
 }
 #  define fr_thread_local_init(_n, _f)			__fr_thread_local_init_##_n(_f)
 #  define fr_thread_local_set(_n, _v)			__fr_thread_local_set_##_n(_v)
