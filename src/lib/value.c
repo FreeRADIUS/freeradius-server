@@ -155,7 +155,6 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_COMBO_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
-	case PW_TYPE_STRUCT:
 	case PW_TYPE_STRUCTURAL:
 	case PW_TYPE_BAD:
 		(void)fr_cond_assert(0);	/* unknown type */
@@ -830,7 +829,6 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		break;
 
 	case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
-	case PW_TYPE_STRUCT:
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_BAD:
 		fr_strerror_printf("Invalid type %d", *src_type);
@@ -1085,7 +1083,6 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 	case PW_TYPE_UNBOUNDED:		/* Should have been dealt with above */
 	case PW_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
-	case PW_TYPE_STRUCT:
 	case PW_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute type %d", *src_type);
 		return -1;
@@ -1765,18 +1762,11 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	/*
 	 *	Don't add default here
 	 */
-	case PW_TYPE_INVALID:
 	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_COMBO_IP_PREFIX:
-	case PW_TYPE_TLV:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_EVS:
-	case PW_TYPE_VSA:
-	case PW_TYPE_VENDOR:
+	case PW_TYPE_STRUCTURAL:
 	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_STRUCT:
-	case PW_TYPE_MAX:
+	case PW_TYPE_BAD:
 		(void)fr_cond_assert(0);
 		return NULL;
 	}

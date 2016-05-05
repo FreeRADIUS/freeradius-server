@@ -411,7 +411,8 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	}
 		break;
 
-	case PW_TYPE_NON_VALUE:
+	case PW_TYPE_STRUCTURAL:
+	case PW_TYPE_BAD:
 		rad_assert(0);
 		return -1;
 	}

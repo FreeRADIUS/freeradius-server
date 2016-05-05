@@ -73,7 +73,8 @@ typedef enum {
 	     PW_TYPE_EXTENDED: \
 	case PW_TYPE_LONG_EXTENDED: \
 	case PW_TYPE_EVS: \
-	case PW_TYPE_TLV
+	case PW_TYPE_TLV: \
+	case PW_TYPE_STRUCT
 
 /** Match all non value types in case statements
  *
@@ -82,8 +83,8 @@ typedef enum {
  */
 #define PW_TYPE_STRUCTURAL \
 	PW_TYPE_STRUCTURAL_EXCEPT_VSA: \
-     	case PW_TYPE_VSA: \
-     	case PW_TYPE_VENDOR
+	case PW_TYPE_VSA: \
+	case PW_TYPE_VENDOR
 
 /** RADIUS packet codes
  *

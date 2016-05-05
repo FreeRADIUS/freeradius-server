@@ -2919,7 +2919,6 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 
 		switch (child->type) {
 		case PW_TYPE_STRUCTURAL:
-		case PW_TYPE_STRUCT:
 			break;
 
 		default:
@@ -3428,7 +3427,6 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 
 	switch ((*parent)->type) {
 	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_STRUCT:
 		break;
 
 	default:
@@ -3696,7 +3694,6 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *pare
 		return NULL;
 
 	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_STRUCT:
 		break;
 	}
 
@@ -3738,7 +3735,6 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
 		return NULL;
 
 	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_STRUCT:
 		break;
 	}
 
