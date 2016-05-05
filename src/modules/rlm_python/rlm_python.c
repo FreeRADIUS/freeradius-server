@@ -337,28 +337,88 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
  *	FIXME: We're not checking the errors. If we have errors, what
  *	do we do?
  */
-static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
+static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 {
-	PyObject *pStr = NULL;
-	char buf[1024];
+	PyObject *attribute = NULL;
+	PyObject *value = NULL;
 
 	/* Look at the fr_pair_fprint_name? */
 
 	if (vp->da->flags.has_tag) {
-		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
+		attribute = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
 	} else {
-		pStr = PyString_FromString(vp->da->name);
+		attribute = PyString_FromString(vp->da->name);
 	}
 
-	if (!pStr) return -1;
+	if (!attribute) return -1;
 
-	PyTuple_SET_ITEM(pPair, 0, pStr);
+	PyTuple_SET_ITEM(pp, 0, attribute);
 
-	fr_pair_value_snprint(buf, sizeof(buf), vp, '"');
+	switch (vp->da->type) {
+	case PW_TYPE_STRING:
+		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
+		break;
 
-	if ((pStr = PyString_FromString(buf)) == NULL) return -1;
+	case PW_TYPE_OCTETS:
+		value = PyString_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
+		break;
 
-	PyTuple_SET_ITEM(pPair, 1, pStr);
+	case PW_TYPE_INTEGER:
+		value = PyLong_FromUnsignedLong(vp->vp_integer);
+		break;
+
+	case PW_TYPE_BYTE:
+		value = PyLong_FromUnsignedLong(vp->vp_byte);
+		break;
+
+	case PW_TYPE_SHORT:
+		value =  PyLong_FromUnsignedLong(vp->vp_short);
+		break;
+
+	case PW_TYPE_SIGNED:
+		value = PyLong_FromLong(vp->vp_signed);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
+		break;
+
+	case PW_TYPE_DECIMAL:
+		value = PyFloat_FromDouble(vp->vp_decimal);
+		break;
+
+	case PW_TYPE_BOOLEAN:
+		value = PyBool_FromLong(vp->vp_bool);
+		break;
+
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_DATE:
+	case PW_TYPE_ABINARY:
+	case PW_TYPE_IFID:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+	case PW_TYPE_ETHERNET:
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
+	case PW_TYPE_COMBO_IP_PREFIX:
+	{
+		size_t len;
+		char buffer[256];
+
+		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
+		value = PyString_FromStringAndSize(buffer, len);
+	}
+		break;
+
+	case PW_TYPE_NON_VALUE:
+		rad_assert(0);
+		return -1;
+	}
+
+	if (value == NULL) return -1;
+
+	PyTuple_SET_ITEM(pp, 1, value);
 
 	return 0;
 }
@@ -403,21 +463,21 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor), i++) {
-			PyObject *pPair;
+			PyObject *pp;
 
 			/* The inside tuple has two only: */
-			if ((pPair = PyTuple_New(2)) == NULL) {
+			if ((pp = PyTuple_New(2)) == NULL) {
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
-			if (mod_populate_vptuple(pPair, vp) == 0) {
+			if (mod_populate_vptuple(pp, vp) == 0) {
 				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(pArgs, i, pPair);
+				PyTuple_SET_ITEM(pArgs, i, pp);
 			} else {
 				Py_INCREF(Py_None);
 				PyTuple_SET_ITEM(pArgs, i, Py_None);
-				Py_DECREF(pPair);
+				Py_DECREF(pp);
 			}
 		}
 	}

@@ -171,6 +171,7 @@ typedef struct value_pair_raw {
 #define vp_ifid		data.ifid
 #define vp_ipv6addr	data.ipv6addr
 #define vp_ipv6prefix	data.ipv6prefix
+#define vp_bool		data.boolean
 #define vp_byte		data.byte
 #define vp_short	data.ushort
 #define vp_ether	data.ether
