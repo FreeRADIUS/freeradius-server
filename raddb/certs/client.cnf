@@ -36,7 +36,8 @@ stateOrProvinceName	= optional
 localityName		= optional
 organizationName	= optional
 organizationalUnitName	= optional
-commonName		= supplied
+commonName		= optional
+subjectAltName		= supplied
 emailAddress		= optional
 
 [ req ]
@@ -50,9 +51,12 @@ output_password		= whatever
 countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
-organizationName	= Example Inc.
-emailAddress		= user@example.org
-commonName		= user@example.org
+organizationName	= Example Inc
+emailAddress		= user.example@example.org
+commonName		= Example user
+
+# Should be the user's NAI as per RFC 5216 (EAP-TLS)
+subjectAltName		= user@example.org
 
 [ v3_client ]
 basicConstraints	= CA:FALSE

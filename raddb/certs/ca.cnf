@@ -50,7 +50,7 @@ x509_extensions		= v3_ca
 countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
-organizationName	= Example Inc.
+organizationName	= Example Inc
 emailAddress		= admin@example.org
 commonName		= "Example Certificate Authority"
 

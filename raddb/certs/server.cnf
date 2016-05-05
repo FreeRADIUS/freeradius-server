@@ -50,9 +50,10 @@ output_password		= whatever
 countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
-organizationName	= Example Inc.
+organizationName	= Example Inc
 emailAddress		= admin@example.org
 commonName		= "Example Server Certificate"
+subjectAltName		= radius.example.org
 
 [ v3_radius ]
 basicConstraints	= CA:FALSE

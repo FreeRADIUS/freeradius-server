@@ -50,9 +50,10 @@ output_password		= whatever
 countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
-organizationName	= Example Inc.
+organizationName	= Example Inc
 emailAddress		= admin@example.org
 commonName		= "Example OCSP Responder Certificate"
+subjectAltName		= ocsp.example.org
 
 [ v3_ocsp ]
 basicConstraints	= CA:FALSE
