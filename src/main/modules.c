@@ -1479,6 +1479,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			 *	Ignore clients and listeners for now.
 			 */
 			if (strcmp(name1, "clients") == 0) continue;
+			if (strcmp(name1, "client") == 0) continue;
 
 			if (strcmp(name1, "listen") == 0) {
 				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
