@@ -121,7 +121,7 @@ static CONF_PARSER module_config[] = {
 #undef A
 
 	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path) },
-	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), true },
+	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), "yes" },
 
 	CONF_PARSER_TERMINATOR
 };
