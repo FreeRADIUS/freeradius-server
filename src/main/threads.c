@@ -992,7 +992,7 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	 */
 	FR_INTEGER_BOUND_CHECK("min_spare_servers", thread_pool.min_spare_threads, >=, 1);
 	FR_INTEGER_BOUND_CHECK("max_spare_servers", thread_pool.max_spare_threads, >=, 1);
-	FR_INTEGER_BOUND_CHECK("max_spare_servers", thread_pool.max_spare_threads, <, thread_pool.min_spare_threads);
+	FR_INTEGER_BOUND_CHECK("max_spare_servers", thread_pool.max_spare_threads, >=, thread_pool.min_spare_threads);
 
 	FR_INTEGER_BOUND_CHECK("max_queue_size", thread_pool.max_queue_size, >=, 2);
 	FR_INTEGER_BOUND_CHECK("max_queue_size", thread_pool.max_queue_size, <, 1024*1024);
