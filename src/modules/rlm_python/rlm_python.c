@@ -100,8 +100,8 @@ typedef struct python_thread_state {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
-	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name), .dflt = NULL },
+#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), "${.module}" }, \
+	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name) },
 
 	A(instantiate)
 	A(authorize)
@@ -120,8 +120,8 @@ static CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), .dflt = NULL },
-	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), .dflt = true },
+	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path) },
+	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), true },
 
 	CONF_PARSER_TERMINATOR
 };
