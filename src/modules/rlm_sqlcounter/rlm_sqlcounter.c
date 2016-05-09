@@ -217,7 +217,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		 *  Round down to the prev nearest week.
 		 */
 		tm->tm_hour = 0;
-		tm->tm_mday -= (7 - tm->tm_wday) +(7*(num-1));
+		tm->tm_mday -= tm->tm_wday +(7*(num-1));
 		inst->last_reset = mktime(tm);
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
