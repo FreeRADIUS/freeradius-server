@@ -424,17 +424,14 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
+static int mod_populate_args(PyObject* pArgs, const int pos, VALUE_PAIR **vps)
 {
+	if(PyTuple_Size(pArgs) < pos) return 0; /* We don't have more space. Bypass this vps */
+
 	vp_cursor_t	cursor;
 	VALUE_PAIR      *vp;
-	PyObject	*pRet = NULL;
-	PyObject	*pArgs = NULL;
-	int		tuplelen;
-	int		ret;
-
-	/* Default return value is "OK, continue" */
-	ret = RLM_MODULE_OK;
+	PyObject *pArg;
+	int tuplelen;
 
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
@@ -445,46 +442,117 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	 *	If request is NULL, pass None.
 	 */
 	tuplelen = 0;
-	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) tuplelen++;
-	}
+	for (vp = fr_cursor_init(&cursor, vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) tuplelen++;
 
-	if (tuplelen == 0) {
-		Py_INCREF(Py_None);
-		pArgs = Py_None;
+	int i = 0;
+	if ((pArg = PyTuple_New(tuplelen)) == NULL) {
+		pArg = NULL;
 	} else {
-		int i = 0;
-		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
-			ret = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
+		for (vp = fr_cursor_init(&cursor, vps);
+			 vp;
+			 vp = fr_cursor_next(&cursor), i++) {
 			PyObject *pp;
 
 			/* The inside tuple has two only: */
 			if ((pp = PyTuple_New(2)) == NULL) {
-				ret = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			if (mod_populate_vptuple(pp, vp) == 0) {
-				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(pArgs, i, pp);
+				return -1;
 			} else {
-				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(pArgs, i, Py_None);
-				Py_DECREF(pp);
+				if (mod_populate_vptuple(pp, vp) == 0) {
+					/* Put the tuple inside the container */
+					PyTuple_SET_ITEM(pArg, i, pp);
+				} else {
+					Py_INCREF(Py_None);
+					PyTuple_SET_ITEM(pArg, i, Py_None);
+					Py_DECREF(pp);
+				}
 			}
 		}
 	}
 
-	/* Call Python function. */
-	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	PyTuple_SET_ITEM(pArgs, pos, pArg);
+
+	return 1;
+}
+
+static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
+{
+	PyObject	*pRet = NULL;
+	PyObject	*pArgs = NULL;
+	PyObject	*pCode = NULL;
+
+	int		ret;
+
+	int		avArgsCount; /* Availables args count */
+	int		currentArgIdx;
+	int		pArgsCount;
+
+	/* Default return value is "OK, continue" */
+	ret = RLM_MODULE_OK;
+
+	if(request) {
+		/* If we have a request, we have a least 4 arguments */
+		avArgsCount = 4; /* Request, Reply, Control, State */
+		currentArgIdx = 0;
+
+#ifdef WITH_PROXY
+		if (request->proxy) {
+			/* Two more if proxy */
+			avArgsCount += 2; /* Proxy-Request, Proxy-Reply */
+		}
+#endif
+
+		if (pFunc != NULL) {
+			pCode = PyFunction_GetCode(pFunc);
+			pArgsCount = ((PyCodeObject *)pCode)->co_argcount;
+			int x = avArgsCount;
+
+			/*
+			 * Check if pFunc has enough argument to assume all data.
+			 * If pFunc has *args, we can bypass this check
+			 */
+			if (!(((PyCodeObject *)pCode)->co_flags & CO_VARARGS) && pArgsCount < avArgsCount) {
+				x = pArgsCount;
+			}
+
+			if ((pArgs = PyTuple_New(x)) == NULL) {
+				ret = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
+			if ( mod_populate_args(pArgs, currentArgIdx++, &request->packet->vps) < 0 ||
+				 mod_populate_args(pArgs, currentArgIdx++, &request->reply->vps) < 0 ||
+				 mod_populate_args(pArgs, currentArgIdx++, &request->control) < 0 ||
+				 mod_populate_args(pArgs, currentArgIdx++, &request->state) < 0 ) {
+
+				ret = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
+#ifdef WITH_PROXY
+			if (request->proxy) {
+				if ( mod_populate_args(pArgs, currentArgIdx++, &request->proxy->packet->vps) < 0 ||
+					 mod_populate_args(pArgs, currentArgIdx++, &request->proxy->reply->vps) < 0 ) {
+
+					ret = RLM_MODULE_FAIL;
+					goto finish;
+				}
+			}
+#endif
+		}
+	}
+
+	if (pArgs == NULL) {
+		Py_INCREF(Py_None);
+		pArgs = Py_None;
+	}
+
+	if (pFunc) {
+		/* Call Python function. */
+		pRet = PyObject_Call(pFunc, pArgs, NULL);
+	}
+
 	if (!pRet) {
 		ret = RLM_MODULE_FAIL;
 		goto finish;

@@ -1,0 +1,15 @@
+# On the first call, pmod7 should return updated with new data in reply and control
+pmod7
+if (!updated) {
+    test_fail
+} else {
+    test_pass
+}
+
+# On the second call, pmod7 should receive those data correctly.
+pmod7
+if (!ok) {
+    test_fail
+} else {
+    test_pass
+}
