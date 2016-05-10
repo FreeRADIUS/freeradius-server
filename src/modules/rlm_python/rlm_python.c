@@ -448,7 +448,7 @@ static int mod_populate_args(PyObject* pArgs, const int pos, VALUE_PAIR **vps)
 
 	int i = 0;
 	if ((pArg = PyTuple_New(tuplelen)) == NULL) {
-		pArg = NULL;
+		return -1;
 	} else {
 		for (vp = fr_cursor_init(&cursor, vps);
 			 vp;
