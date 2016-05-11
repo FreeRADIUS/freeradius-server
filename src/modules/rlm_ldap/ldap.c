@@ -1809,7 +1809,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 #endif /* HAVE_LDAP_START_TLS_S */
 
 	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), false, NULL, NULL, NULL);
+			       &(conn->inst->admin_sasl), false, timeout, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) goto error;
 
 	/*
