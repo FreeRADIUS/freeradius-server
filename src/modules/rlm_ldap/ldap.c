@@ -489,20 +489,22 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
 
 /** Parse response from LDAP server dealing with any errors
  *
- * Should be called after an LDAP operation. Will check result of operation and if it was successful, then attempt
- * to retrieve and parse the result.
+ * Should be called after an LDAP operation. Will check result of operation
+ * and if it was successful, then attempt to retrieve and parse the result.
  *
- * Will also produce extended error output including any messages the server sent, and information about partial
- * DN matches.
+ * Will also produce extended error output including any messages the server
+ * sent, and information about partial DN matches.
  *
- * @param[in] inst of LDAP module.
- * @param[in] conn Current connection.
- * @param[in] msgid returned from last operation. May be -1 if no result processing is required.
- * @param[in] dn Last search or bind DN.
- * @param[out] result Where to write result, if NULL result will be freed.
- * @param[out] error Where to write the error string, may be NULL, must not be freed.
- * @param[out] extra Where to write additional error string to, may be NULL (faster) or must be freed
- *	(with talloc_free).
+ * @param[in] inst	of LDAP module.
+ * @param[in] conn	Current connection.
+ * @param[in] msgid	returned from last operation. May be -1 if no result
+ *			processing is required.
+ * @param[in] dn	Last search or bind DN.
+ * @param[out] result	Where to write result, if NULL result will be freed.
+ * @param[out] error	Where to write the error string, may be NULL, must
+ *			not be freed.
+ * @param[out] extra	Where to write additional error string to, may be NULL
+ *			(faster) or must be freed (with talloc_free).
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
@@ -723,24 +725,28 @@ process_error:
 	return status;
 }
 
-
 /** Bind to the LDAP directory as a user
  *
  * Performs a simple bind to the LDAP directory, and handles any errors that occur.
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request, this may be NULL, in which case all debug logging is done with radlog.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] dn of the user, may be NULL to bind anonymously.
- * @param[in] password of the user, may be NULL if no password is specified.
- * @param[in] sasl mechanism to use for bind, and additional parameters.
- * @param[in] retry if the server is down.
- * @param[in] serverctrls Search controls to pass to the server.  Only used for SASL binds.  May be NULL.
- * @param[in] clientctrls Search controls for sasl_bind.  Only used for SASL binds. May be NULL.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request, this may be NULL, in which case all
+ *				debug logging is done with radlog.
+ * @param[in,out] pconn		to use. May change as this function calls functions
+ *				which auto re-connect.
+ * @param[in] dn		of the user, may be NULL to bind anonymously.
+ * @param[in] password		of the user, may be NULL if no password is specified.
+ * @param[in] sasl		mechanism to use for bind, and additional parameters.
+ * @param[in] retry		whether we're rebinding an existing connection.
+ * @param[in] serverctrls	Only used for SASL binds.  May be NULL.
+ * @param[in] clientctrls	Search controls for sasl_bind.
+ *				Only used for SASL binds. May be NULL.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password,
+ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
+			   REQUEST *request,
+			   ldap_handle_t **pconn,
+			   char const *dn, char const *password,
 #ifdef WITH_SASL
 			   ldap_sasl *sasl,
 #else
@@ -936,10 +942,10 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 
 	if (filter) {
 		ROPTIONAL(RDEBUG, DEBUG, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
-			     fr_int2str(ldap_scope, scope, "<INVALID>"));
+			  fr_int2str(ldap_scope, scope, "<INVALID>"));
 	} else {
 		ROPTIONAL(RDEBUG, DEBUG, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
-			     fr_int2str(ldap_scope, scope, "<INVALID>"));
+			  fr_int2str(ldap_scope, scope, "<INVALID>"));
 	}
 	/*
 	 *	If LDAP search produced an error it should also be logged
