@@ -472,7 +472,7 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in);
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, ldap_sasl *sasl, bool retry,
+			   char const *password, ldap_sasl *sasl, bool retry, struct timeval *timeout,
 			   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);

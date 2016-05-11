@@ -764,6 +764,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			   NDEBUG_UNUSED ldap_sasl *sasl,
 #endif
 			   bool retry,
+			   struct timeval *timeout,
 			   LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
@@ -819,7 +820,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 				ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 			}
 
-			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, NULL, &error, &extra);
+			status = rlm_ldap_result(inst, *pconn, msgid, dn, timeout, NULL, &error, &extra);
 		}
 
 		switch (status) {
@@ -941,7 +942,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	if ((*pconn)->rebound) {
 		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
 				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
-				       NULL, NULL);
+				       NULL, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -1102,7 +1103,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	if ((*pconn)->rebound) {
 		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
 				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
-				       NULL, NULL);
+				       NULL, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -1232,7 +1233,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	if ((*pconn)->rebound) {
 		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
 				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
-				       NULL, NULL);
+				       NULL, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -1571,7 +1572,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	}
 
 	status = rlm_ldap_bind(inst, NULL, &conn, admin_identity, admin_password,
-			       &inst->admin_sasl, false, NULL, NULL);
+			       &inst->admin_sasl, false, NULL, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
@@ -1809,7 +1810,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 #endif /* HAVE_LDAP_START_TLS_S */
 
 	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), false, NULL, NULL);
+			       &(conn->inst->admin_sasl), false, NULL, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) goto error;
 
 	/*
