@@ -819,7 +819,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 				ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 			}
 
-			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, NULL, &error, &extra);
+			status = rlm_ldap_result(inst, *pconn, msgid, dn, timeout, NULL, &error, &extra);
 		}
 
 		switch (status) {
