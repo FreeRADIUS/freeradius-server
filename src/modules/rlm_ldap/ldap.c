@@ -512,7 +512,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst,
 			     ldap_handle_t const *conn,
 			     int msgid,
 			     char const *dn,
-			     struct timeval *timeout,
+			     struct timeval const *timeout,
 			     LDAPMessage **result,
 			     char const **error, char **extra)
 {
@@ -529,8 +529,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst,
 	bool freeit = false;		// Whether the message should be freed after being processed.
 	int len;
 
-	struct timeval tv_buff;		// Holds timeout values.
-	struct timeval *tv;
+	struct timeval tv;		// Holds timeout values.
 
 	LDAPMessage *tmp_msg = NULL;	// Temporary message pointer storage if we weren't provided with one.
 
@@ -558,17 +557,17 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst,
 	if (msgid < 0) return LDAP_SUCCESS;	/* No msgid and no error, return now */
 
 	if (!timeout) {
-		memset(&tv, 0, sizeof(tv));
-		tv_buff.tv_sec = inst->res_timeout;
-		tv = &tv_buff;
+		tv.tv_sec = inst->res_timeout;
+		tv.tv_usec = 0;
 	} else {
-		tv = timeout;
+		tv = *timeout;
 	}
+
 	/*
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
-	lib_errno = ldap_result(conn->handle, msgid, 1, tv, result);
+	lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
 	if (lib_errno == 0) {
 		lib_errno = LDAP_TIMEOUT;
 
@@ -764,7 +763,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			   NDEBUG_UNUSED ldap_sasl *sasl,
 #endif
 			   bool retry,
-			   struct timeval *timeout,
+			   struct timeval const *timeout,
 			   LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
@@ -820,7 +819,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 				ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 			}
 
-			status = rlm_ldap_result(inst, *pconn, msgid, dn, timeout, NULL, &error, &extra);
+			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, NULL, &error, &extra);
 		}
 
 		switch (status) {
