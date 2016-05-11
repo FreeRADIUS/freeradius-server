@@ -380,9 +380,9 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 						   need_group->gr_name, have_group->gr_name);
 				talloc_free(need_group);
 				talloc_free(have_group);
-			}
 
-			goto error;
+				goto error;
+			}
 		}
 
 		if ((dir_perm & 0777) != (st.st_mode & 0777) &&
