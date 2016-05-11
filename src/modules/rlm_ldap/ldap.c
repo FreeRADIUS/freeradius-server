@@ -802,7 +802,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 #ifdef WITH_SASL
 		if (sasl && sasl->mech) {
 			status = rlm_ldap_sasl_interactive(inst, request, *pconn, dn, password, sasl,
-							   serverctrls, clientctrls, &error, &extra);
+							   serverctrls, clientctrls, timeout, &error, &extra);
 		} else
 #endif
 		{
