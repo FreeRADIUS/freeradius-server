@@ -500,6 +500,7 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  * @param[in] msgid	returned from last operation. May be -1 if no result
  *			processing is required.
  * @param[in] dn	Last search or bind DN.
+ * @param[in] timeout	Override the default result timeout.
  * @param[out] result	Where to write result, if NULL result will be freed.
  * @param[out] error	Where to write the error string, may be NULL, must
  *			not be freed.
@@ -507,8 +508,13 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  *			(faster) or must be freed (with talloc_free).
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
-			     LDAPMessage **result, char const **error, char **extra)
+ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst,
+			     ldap_handle_t const *conn,
+			     int msgid,
+			     char const *dn,
+			     struct timeval *timeout,
+			     LDAPMessage **result,
+			     char const **error, char **extra)
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
@@ -523,7 +529,8 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 	bool freeit = false;		// Whether the message should be freed after being processed.
 	int len;
 
-	struct timeval tv;		// Holds timeout values.
+	struct timeval tv_buff;		// Holds timeout values.
+	struct timeval *tv;
 
 	LDAPMessage *tmp_msg = NULL;	// Temporary message pointer storage if we weren't provided with one.
 
@@ -550,14 +557,18 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 	if (lib_errno != LDAP_SUCCESS) goto process_error;
 	if (msgid < 0) return LDAP_SUCCESS;	/* No msgid and no error, return now */
 
-	memset(&tv, 0, sizeof(tv));
-	tv.tv_sec = inst->res_timeout;
-
+	if (!timeout) {
+		memset(&tv, 0, sizeof(tv));
+		tv_buff.tv_sec = inst->res_timeout;
+		tv = &tv_buff;
+	} else {
+		tv = timeout;
+	}
 	/*
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
-	lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
+	lib_errno = ldap_result(conn->handle, msgid, 1, tv, result);
 	if (lib_errno == 0) {
 		lib_errno = LDAP_TIMEOUT;
 
@@ -808,7 +819,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 				ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 			}
 
-			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
+			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, NULL, &error, &extra);
 		}
 
 		switch (status) {
@@ -849,7 +860,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			/* FALL-THROUGH */
 		default:
 			ROPTIONAL(REDEBUG, ERROR, "Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
-				     inst->server, error);
+				  inst->server, error);
 			LDAP_EXT_REQ();
 
 			break;
@@ -969,7 +980,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 				       0, our_serverctrls, our_clientctrls, &tv, 0, &msgid);
 
 		ROPTIONAL(RDEBUG, DEBUG, "Waiting for search result...");
-		status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
+		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &our_result, &error, &extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
@@ -1115,7 +1126,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 		(void) ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, &msgid);
 
 		RDEBUG2("Waiting for modify result...");
-		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
+		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, NULL, &error, &extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;

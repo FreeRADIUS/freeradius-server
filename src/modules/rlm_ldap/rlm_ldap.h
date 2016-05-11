@@ -498,6 +498,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request);
  *	ldap.c - Callbacks for the connection pool API.
  */
 ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+			     struct timeval *timeout,
 			     LDAPMessage **result, char const **error, char **extra);
 
 char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);

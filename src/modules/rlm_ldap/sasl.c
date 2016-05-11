@@ -150,7 +150,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = rlm_ldap_result(inst, conn, -1, identity, NULL, error, extra);
+			status = rlm_ldap_result(inst, conn, -1, identity, NULL, NULL, error, extra);
 			break;		/* Old result gets freed on after exit */
 		}
 
@@ -160,7 +160,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 *	If LDAP parse result indicates there was an error
 		 *	then we're done.
 		 */
-		status = rlm_ldap_result(inst, conn, msgid, identity, &result, error, extra);
+		status = rlm_ldap_result(inst, conn, msgid, identity, NULL, NULL, &result, error, extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:
