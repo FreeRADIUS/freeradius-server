@@ -960,3 +960,19 @@ void radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	for (p = buffer, j = i; j < data_len; j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
 	radlog_request(type, lvl, request, "%04x: %s", (int)i, buffer);
 }
+
+void radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
+{
+	size_t i, j;
+	char buffer[(0x0f * 3) + 1];
+	char *p;
+
+	for (i = 0; (i + 0x0f) <= data_len; i += 0x0f) {
+		for (p = buffer, j = i; j < (i + 0x0f); j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
+		radlog(type, lvl, "%04x: %s", (int)i, buffer);
+	}
+	if (i == data_len) return;
+
+	for (p = buffer, j = i; j < data_len; j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
+	radlog(type, lvl, "%04x: %s", (int)i, buffer);
+}
