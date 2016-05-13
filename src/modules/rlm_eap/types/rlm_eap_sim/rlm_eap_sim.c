@@ -55,7 +55,7 @@ static int eap_sim_compose(eap_session_t *eap_session)
 				     eap_session->this_round->request);
 }
 
-static int eap_sim_sendstart(eap_session_t *eap_session)
+static int eap_sim_send_state(eap_session_t *eap_session)
 {
 	VALUE_PAIR **vps, *newvp;
 	uint16_t words[3];
@@ -263,7 +263,7 @@ static int eap_sim_get_challenge(eap_session_t *eap_session, VALUE_PAIR *vps, in
  * module to generate/calculate things.
  *
  */
-static int eap_sim_sendchallenge(eap_session_t *eap_session)
+static int eap_sim_send_challenge(eap_session_t *eap_session)
 {
 	REQUEST *request = eap_session->request;
 	eap_sim_state_t *ess;
@@ -377,7 +377,7 @@ static int eap_sim_sendchallenge(eap_session_t *eap_session)
  * radius attributes derived from the MSK.
  *
  */
-static int eap_sim_sendsuccess(eap_session_t *eap_session)
+static int eap_sim_send_success(eap_session_t *eap_session)
 {
 	unsigned char *p;
 	eap_sim_state_t *ess;
@@ -405,36 +405,35 @@ static int eap_sim_sendsuccess(eap_session_t *eap_session)
 /** Run the server state machine
  *
  */
-static void eap_sim_stateenter(eap_session_t *eap_session,
-			       eap_sim_state_t *ess,
-			       enum eap_sim_server_states newstate)
+static void eap_sim_state_enter(eap_session_t *eap_session,
+				eap_sim_state_t *ess,
+				enum eap_sim_server_states newstate)
 {
 	switch (newstate) {
 	/*
 	 * 	Send the EAP-SIM Start message, listing the versions that we support.
 	 */
 	case EAPSIM_SERVER_START:
-		eap_sim_sendstart(eap_session);
+		eap_sim_send_state(eap_session);
 		break;
 	/*
 	 *	Send the EAP-SIM Challenge message.
 	 */
 	case EAPSIM_SERVER_CHALLENGE:
-		eap_sim_sendchallenge(eap_session);
+		eap_sim_send_challenge(eap_session);
 		break;
 
 	/*
 	 * 	Send the EAP Success message
 	 */
 	case EAPSIM_SERVER_SUCCESS:
-		eap_sim_sendsuccess(eap_session);
+		eap_sim_send_success(eap_session);
 		eap_session->this_round->request->code = PW_EAP_SUCCESS;
 		break;
 	/*
 	 *	Nothing to do for this transition.
 	 */
 	default:
-
 		break;
 	}
 
@@ -480,7 +479,7 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	time(&n);
 	ess->sim_id = (n & 0xff);
 
-	eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_START);
+	eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_START);
 
 	eap_session->process = mod_process;
 
@@ -506,7 +505,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	selectedversion_vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SELECTED_VERSION, TAG_ANY);
 	if (!nonce_vp || !selectedversion_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
-		eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_START);
+		eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_START);
 
 		return 1;
 	}
@@ -542,7 +541,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	/*
 	 *	Everything looks good, change states
 	 */
-	eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_CHALLENGE);
+	eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_CHALLENGE);
 
 	return 1;
 }
@@ -596,7 +595,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	}
 
 	/* everything looks good, change states */
-	eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_SUCCESS);
+	eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_SUCCESS);
 	return 1;
 }
 
@@ -651,7 +650,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		 */
 		default:
 
-			eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_START);
+			eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_START);
 			return 1;
 		/*
 		 * 	A response to our EAP-Sim/Request/Start!
@@ -666,7 +665,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */
 		default:
-			eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_CHALLENGE);
+			eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_CHALLENGE);
 			return 1;
 		/*
 		 *	A response to our EAP-Sim/Request/Challenge!
