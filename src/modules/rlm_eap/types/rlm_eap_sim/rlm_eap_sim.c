@@ -43,6 +43,13 @@ typedef struct eap_sim_server_state {
 	int  			sim_id;
 } eap_sim_state_t;
 
+typedef enum {
+	EAP_SIM_VECTOR_SRC_AUTO,
+	EAP_SIM_VECTOR_SRC_GSM,
+	EAP_SIM_VECTOR_SRC_UMTS,
+	EAP_SIM_VECTOR_SRC_KI
+} eap_sim_vector_src_t;
+
 /*
  *	build a reply to be sent.
  */
@@ -113,137 +120,297 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	return 1;
 }
 
-static int eap_sim_get_challenge(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
+static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
 {
-	REQUEST *request = eap_session->request;
-	VALUE_PAIR *vp, *ki, *algo_version;
-
-	rad_assert(idx >= 0 && idx < 3);
+	REQUEST	*request = eap_session->request;
+	VALUE_PAIR *vp, *version;
+	int i;
 
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	ki = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KI, TAG_ANY);
-	if (ki) {
-		int i;
+	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KI, TAG_ANY);
+	if (!vp) return -1;
 
-		/*
-		 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
-		 *	of the triplets.
-		 */
-		algo_version = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_ALGO_VERSION, TAG_ANY);
-		if (!algo_version) {
-			REDEBUG("Found Ki, but missing EAP-Sim-Algo-Version");
-			return 0;
-		}
-
-		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-			ess->keys.rand[idx][i] = fr_rand();
-		}
-
-		switch (algo_version->vp_integer) {
-		case 1:
-			comp128v1(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx]);
-			break;
-
-		case 2:
-			comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
-				   true);
-			break;
-
-		case 3:
-			comp128v23(ess->keys.sres[idx], ess->keys.Kc[idx], ki->vp_octets, ess->keys.rand[idx],
-				   false);
-			break;
-
-		case 4:
-			REDEBUG("Comp128-4 algorithm is not supported as details have not yet been published. "
-				"If you have details of this algorithm please contact the FreeRADIUS "
-				"maintainers");
-			return 0;
-
-		default:
-			REDEBUG("Unknown/unsupported algorithm Comp128-%i", algo_version->vp_integer);
-		}
-
-		if (RDEBUG_ENABLED2) {
-			char buffer[33];	/* 32 hexits (16 bytes) + 1 */
-			char *p;
-
-			RDEBUG2("Generated following triplets for round %i:", idx);
-
-			RINDENT();
-			p = buffer;
-			for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-				p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
-			}
-			RDEBUG2("RAND : 0x%s", buffer);
-
-			p = buffer;
-			for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
-				p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
-			}
-			RDEBUG2("SRES : 0x%s", buffer);
-
-			p = buffer;
-			for (i = 0; i < EAPSIM_KC_SIZE; i++) {
-				p += sprintf(p, "%02x", ess->keys.Kc[idx][i]);
-			}
-			RDEBUG2("Kc   : 0x%s", buffer);
-			REXDENT();
-		}
-		return 1;
+	/*
+	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
+	 *	of the triplets.
+	 */
+	version = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_ALGO_VERSION, TAG_ANY);
+	if (!version) {
+		REDEBUG("Found Ki, but missing EAP-Sim-Algo-Version");
+		return 0;
 	}
+
+	for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+		ess->keys.rand[idx][i] = fr_rand();
+	}
+
+	switch (version->vp_integer) {
+	case 1:
+		comp128v1(ess->keys.sres[idx], ess->keys.kc[idx], vp->vp_octets, ess->keys.rand[idx]);
+		break;
+
+	case 2:
+		comp128v23(ess->keys.sres[idx], ess->keys.kc[idx], vp->vp_octets, ess->keys.rand[idx], true);
+		break;
+
+	case 3:
+		comp128v23(ess->keys.sres[idx], ess->keys.kc[idx], vp->vp_octets, ess->keys.rand[idx], false);
+		break;
+
+	case 4:
+		REDEBUG("Milenage not supported (feel free to implement it)");
+		return 0;
+
+	default:
+		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
+	}
+
+	if (RDEBUG_ENABLED2) {
+		char buffer[33];	/* 32 hexits (16 bytes) + 1 */
+		char *p;
+
+		RDEBUG2("Generated following triplets for round %i:", idx);
+
+		RINDENT();
+		p = buffer;
+		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+			p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
+		}
+		RDEBUG2("RAND : 0x%s", buffer);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
+			p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
+		}
+		RDEBUG2("SRES : 0x%s", buffer);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_KC_SIZE; i++) {
+			p += sprintf(p, "%02x", ess->keys.kc[idx][i]);
+		}
+		RDEBUG2("Kc   : 0x%s", buffer);
+		REXDENT();
+	}
+	return 1;
+}
+
+static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
+{
+	REQUEST	*request = eap_session->request;
+	VALUE_PAIR *vp;
 
 	/*
 	 *	Use known RAND, SRES, and Kc values, these may of been pulled in from an AuC,
 	 *	or created by sending challenges to the SIM directly.
 	 */
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_RAND1 + idx, TAG_ANY);
-	if (!vp) {
-		/* bad, we can't find stuff! */
-		REDEBUG("control:EAP-SIM-RAND%i not found", idx + 1);
-		return 0;
-	}
+	if (!vp) return 1;
+
 	if (vp->vp_length != EAPSIM_RAND_SIZE) {
-		REDEBUG("control:EAP-SIM-RAND%i is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
+		REDEBUG("&control:EAP-SIM-RAND%i is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
 			idx + 1, vp->vp_length);
-		return 0;
+		return -1;
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_octets, EAPSIM_RAND_SIZE);
 
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SRES1 + idx, TAG_ANY);
-	if (!vp) {
-		/* bad, we can't find stuff! */
-		REDEBUG("control:EAP-SIM-SRES%i not found", idx + 1);
-		return 0;
-	}
+	if (!vp) return 1;
+
 	if (vp->vp_length != EAPSIM_SRES_SIZE) {
-		REDEBUG("control:EAP-SIM-SRES%i is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
+		REDEBUG("&control:EAP-SIM-SRES%i is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
 			idx + 1, vp->vp_length);
-		return 0;
+		return -1;
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_octets, EAPSIM_SRES_SIZE);
 
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KC1 + idx, TAG_ANY);
-	if (!vp) {
-		/* bad, we can't find stuff! */
-		REDEBUG("control:EAP-SIM-Kc%i not found", idx + 1);
-		return 0;
-	}
-	if (vp->vp_length != EAPSIM_KC_SIZE) {
-		REDEBUG("control:EAP-SIM-Kc%i is not 8 bytes, got %zu bytes", idx + 1, vp->vp_length);
-		return 0;
-	}
-	memcpy(ess->keys.Kc[idx], vp->vp_octets, EAPSIM_KC_SIZE);
-	if (vp->vp_length != EAPSIM_KC_SIZE) {
-		REDEBUG("control:EAP-SIM-Kc%i is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->vp_length);
-		return 0;
-	}
-	memcpy(ess->keys.Kc[idx], vp->vp_strvalue, EAPSIM_KC_SIZE);
+	if (!vp) return 1;
 
-	return 1;
+	if (vp->vp_length != EAPSIM_KC_SIZE) {
+		REDEBUG("&control:EAP-SIM-Kc%i is not 8 bytes, got %zu bytes", idx + 1, vp->vp_length);
+		return -1;
+	}
+	memcpy(ess->keys.kc[idx], vp->vp_octets, EAPSIM_KC_SIZE);
+	if (vp->vp_length != EAPSIM_KC_SIZE) {
+		REDEBUG("&control:EAP-SIM-Kc%i is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
+			idx + 1, vp->vp_length);
+		return -1;
+	}
+	memcpy(ess->keys.kc[idx], vp->vp_strvalue, EAPSIM_KC_SIZE);
+
+	return 0;
+}
+
+/** Derive triplets from quintuplets
+ *
+ * c1: RAND[gsm] = RAND
+ * c2: SRES[gsm] = (XRES*[0]...XRES*[31]) ⊕ (XRES*[32]...XRES*[63]) ⊕
+ *		   (XRES*[64]...XRES*[95]) ⊕ (XRES*[96]...XRES*[127)
+ * c3:   Kc[gsm] = (CK[0]...CK[63]) ⊕ (CK[64]...CK[127]) ⊕
+ *		   (IK[0]...IK[63]) ⊕ (IK[64]...IK[127)
+ */
+static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
+{
+	REQUEST		*request = eap_session->request;
+	vp_cursor_t	cursor;
+
+	VALUE_PAIR	*rand, *xres, *ck, *ik;
+	uint8_t		xres_buff[16];
+	uint32_t	*xres_ptr;
+	uint64_t	*ck_ptr;
+	uint64_t	*ik_ptr;
+
+	int		i;
+
+	/*
+	 *	Fetch RAND
+	 */
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_RAND, TAG_ANY);
+		if (!rand) return 1;
+	}
+	if (rand->vp_length != EAPSIM_RAND_SIZE) {
+		REDEBUG("&control:EAP-AKA-RAND incorrect length.  Expected " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, "
+			"got %zu bytes", rand->vp_length);
+		return -1;
+	}
+
+	/*
+	 *	Fetch XRES
+	 */
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		xres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_XRES, TAG_ANY);
+		if (!xres) return 1;
+	}
+
+	/*
+	 *	Fetch CK
+	 */
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		ck = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_CK, TAG_ANY);
+		if (!ck) return 1;
+	}
+
+	/*
+	 *	Fetch KI
+	 */
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		ik = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_IK, TAG_ANY);
+		if (!ik) return 1;
+	}
+
+	memcpy(ess->keys.rand[idx], rand->vp_octets, EAPSIM_RAND_SIZE);	/* RAND is 128 bits in both */
+
+	/*
+	 *	Have to pad XRES out to 16 octets if it's shorter than that.
+	 */
+	if (xres->vp_length < 16) {
+		memset(&xres_buff, 0, sizeof(xres_buff));
+		memcpy(&xres_buff, &xres->vp_octets, xres->vp_length);
+		xres_ptr = (uint32_t *)&xres_buff[0];
+	} else {
+		xres_ptr = (uint32_t *)xres->vp_octets;
+	}
+
+	/*
+	 *	Fold xres into itself in 32bit quantities using xor to
+	 *	produce sres.
+	 */
+	ess->keys.sres_uint32[idx] = ((xres_ptr[0] ^ xres_ptr[1]) ^ xres_ptr[2]) ^ xres_ptr[3];
+
+	/*
+	 *	Fold CK and IK in 64bit quantities to produce Kc
+	 */
+	ck_ptr = (uint64_t *)ck->vp_octets;
+	ik_ptr = (uint64_t *)ik->vp_octets;
+	ess->keys.kc_uint64[idx] = ((ck_ptr[0] ^ ck_ptr[1]) ^ ik_ptr[0]) ^ ik_ptr[1];
+
+	if (RDEBUG_ENABLED2) {
+		char buffer[33];	/* 32 hexits (16 bytes) + 1 */
+		char *p;
+
+		RDEBUG2("Derived following triplets from UMTS for round %i:", idx);
+
+		RINDENT();
+		p = buffer;
+		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+			p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
+		}
+		RDEBUG2("RAND : 0x%s", buffer);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
+			p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
+		}
+		RDEBUG2("SRES : 0x%s", buffer);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_KC_SIZE; i++) {
+			p += sprintf(p, "%02x", ess->keys.kc[idx][i]);
+		}
+		RDEBUG2("Kc   : 0x%s", buffer);
+		REXDENT();
+	}
+
+	return 0;
+}
+
+/** Retrieve GSM triplets from various locations
+ *
+ * Hunt for a source of SIM triplets
+ *
+ * @param eap_session	The current eap_session.
+ * @param vps		List to hunt for triplets in.
+ * @param ess		EAP session state.
+ * @param src		Forces triplets to be retrieved from a particular src
+ *			and ensures if multiple triplets are being retrieved
+ *			that they all come from the same src.
+ * @return
+ *	- 1	Vector could be retrieved from the specified src.
+ *	- 0	Vector was retrieved OK and written to the specified index.
+ *	- -1	Error retrieving vector from the specified src.
+ */
+static int eap_sim_get_challenge(eap_session_t *eap_session, VALUE_PAIR *vps,
+				 int idx, eap_sim_state_t *ess, eap_sim_vector_src_t *src)
+{
+
+	int ret;
+
+	rad_assert(idx >= 0 && idx < 3);
+
+	switch (*src) {
+	default:
+	case EAP_SIM_VECTOR_SRC_KI:
+		ret = eap_sim_vector_from_ki(eap_session, vps, idx, ess);
+		if (ret == 0) {
+			*src = EAP_SIM_VECTOR_SRC_KI;
+			return 0;
+		}
+		if (ret < 0) return -1;
+		if (src != EAP_SIM_VECTOR_SRC_AUTO) return 1;
+		/* FALL-THROUGH */
+
+	case EAP_SIM_VECTOR_SRC_GSM:
+		ret = eap_sim_vector_from_gsm(eap_session, vps, idx, ess);
+		if (ret == 0) {
+			*src = EAP_SIM_VECTOR_SRC_GSM;
+			return 0;
+		}
+		if (ret < 0) return -1;
+		if (src != EAP_SIM_VECTOR_SRC_AUTO) return 1;
+		/* FALL-THROUGH */
+
+	case EAP_SIM_VECTOR_SRC_UMTS:
+		ret = eap_sim_vector_from_umts(eap_session, vps, idx, ess);
+		if (ret == 0) {
+			*src = EAP_SIM_VECTOR_SRC_UMTS;
+			return 0;
+		}
+		if (ret < 0) return -1;
+		return 1;
+	}
 }
 
 /** Send the challenge itself
@@ -455,6 +622,7 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	REQUEST *request = eap_session->request;
 	eap_sim_state_t *ess;
 	time_t n;
+	eap_sim_vector_src_t src = EAP_SIM_VECTOR_SRC_AUTO;
 
 	ess = talloc_zero(eap_session, eap_sim_state_t);
 	if (!ess) {
@@ -467,9 +635,9 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrieval.
 	 */
-	if (!eap_sim_get_challenge(eap_session, request->control, 0, ess) ||
-	    !eap_sim_get_challenge(eap_session, request->control, 1, ess) ||
-	    !eap_sim_get_challenge(eap_session, request->control, 2, ess)) {
+	if (!eap_sim_get_challenge(eap_session, request->control, 0, ess, &src) ||
+	    !eap_sim_get_challenge(eap_session, request->control, 1, ess, &src) ||
+	    !eap_sim_get_challenge(eap_session, request->control, 2, ess, &src)) {
 		return 0;
 	}
 

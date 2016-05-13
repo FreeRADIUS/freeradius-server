@@ -1064,9 +1064,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("Need to have Kc 1, 2, and 3 set");
 		return 0;
 	}
-	memcpy(eap_context->eap.sim.keys.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[0]));
-	memcpy(eap_context->eap.sim.keys.Kc[1], Kc2->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[1]));
-	memcpy(eap_context->eap.sim.keys.Kc[2], Kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[2]));
+	memcpy(eap_context->eap.sim.keys.kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[0]));
+	memcpy(eap_context->eap.sim.keys.kc[1], Kc2->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[1]));
+	memcpy(eap_context->eap.sim.keys.kc[2], Kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[2]));
 
 	/* all set, calculate keys */
 	eap_sim_calculate_keys(&eap_context->eap.sim.keys);

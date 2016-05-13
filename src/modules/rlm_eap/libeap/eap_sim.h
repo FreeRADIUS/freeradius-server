@@ -86,9 +86,19 @@ typedef struct eap_sim_keys {
 	uint8_t identity[FR_MAX_STRING_LEN];
 	unsigned int  identitylen;
 	uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
+
 	uint8_t rand[3][EAPSIM_RAND_SIZE];
-	uint8_t sres[3][EAPSIM_SRES_SIZE];
-	uint8_t Kc[3][EAPSIM_KC_SIZE];
+
+	union {
+		uint8_t sres[3][EAPSIM_SRES_SIZE];
+		uint32_t sres_uint32[3];
+	};
+
+	union {
+		uint8_t kc[3][EAPSIM_KC_SIZE];
+		uint64_t kc_uint64[3];
+	};
+
 	uint8_t versionlist[FR_MAX_STRING_LEN];
 	uint8_t versionlistlen;
 	uint8_t versionselect[2];
