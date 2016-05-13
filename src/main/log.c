@@ -967,12 +967,14 @@ void radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
 	char buffer[(0x0f * 3) + 1];
 	char *p;
 
+	if (!debug_enabled(L_DBG, lvl)) return;
+
 	for (i = 0; (i + 0x0f) <= data_len; i += 0x0f) {
 		for (p = buffer, j = i; j < (i + 0x0f); j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
-		radlog(type, lvl, "%04x: %s", (int)i, buffer);
+		radlog(type, "%04x: %s", (int)i, buffer);
 	}
 	if (i == data_len) return;
 
 	for (p = buffer, j = i; j < data_len; j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
-	radlog(type, lvl, "%04x: %s", (int)i, buffer);
+	radlog(type, "%04x: %s", (int)i, buffer);
 }
