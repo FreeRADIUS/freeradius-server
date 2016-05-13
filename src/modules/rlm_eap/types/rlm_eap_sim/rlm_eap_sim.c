@@ -46,13 +46,15 @@ typedef struct eap_sim_server_state {
 /*
  *	build a reply to be sent.
  */
-static int eap_sim_compose(eap_handler_t *handler)
+static void eap_sim_compose(REQUEST *request, eap_handler_t *handler)
 {
 	/* we will set the ID on requests, since we have to HMAC it */
 	handler->eap_ds->set_request_id = 1;
 
-	return map_eapsim_basictypes(handler->request->reply,
-				     handler->eap_ds->request);
+	if (!map_eapsim_basictypes(handler->request->reply,
+				   handler->eap_ds->request)) {
+		REDEBUG("Failed decoding EAP-SIM packet: %s", fr_strerror());
+	}
 }
 
 static int eap_sim_sendstart(eap_handler_t *handler)
@@ -416,9 +418,9 @@ static int eap_sim_sendsuccess(eap_handler_t *handler)
 /** Run the server state machine
  *
  */
-static void eap_sim_stateenter(eap_handler_t *handler,
-			       eap_sim_state_t *ess,
-			       enum eapsim_serverstates newstate)
+static void eap_sim_state_enter(REQUEST *request, eap_handler_t *handler,
+				eap_sim_state_t *ess,
+				enum eapsim_serverstates newstate)
 {
 	switch (newstate) {
 	/*
@@ -452,7 +454,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 	ess->state = newstate;
 
 	/* build the target packet */
-	eap_sim_compose(handler);
+	eap_sim_compose(request, handler);
 }
 
 /*
@@ -480,7 +482,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	if (!eap_sim_get_challenge(handler, request->config, 0, ess) ||
 	    !eap_sim_get_challenge(handler, request->config, 1, ess) ||
 	    !eap_sim_get_challenge(handler, request->config, 2, ess)) {
-		return 0;
+		return 0;	/* already printed error */
 	}
 
 	/*
@@ -489,7 +491,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	time(&n);
 	ess->sim_id = (n & 0xff);
 
-	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
+	eap_sim_state_enter(request, handler, ess, EAPSIM_SERVER_START);
 
 	return 1;
 }
@@ -513,8 +515,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	selectedversion_vp = fr_pair_find_by_num(vps, PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
 	if (!nonce_vp || !selectedversion_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
-		eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
-
+		eap_sim_state_enter(request, handler, ess, EAPSIM_SERVER_START);
 		return 1;
 	}
 
@@ -523,7 +524,6 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	 */
 	if (selectedversion_vp->vp_length < 2) {
 		REDEBUG("EAP-SIM version field is too short");
-
 		return 0;
 	}
 	memcpy(&simversion, selectedversion_vp->vp_strvalue, sizeof(simversion));
@@ -550,7 +550,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Everything looks good, change states
 	 */
-	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_CHALLENGE);
+	eap_sim_state_enter(request, handler, ess, EAPSIM_SERVER_CHALLENGE);
 
 	return 1;
 }
@@ -604,7 +604,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 	}
 
 	/* everything looks good, change states */
-	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_SUCCESS);
+	eap_sim_state_enter(request, handler, ess, EAPSIM_SERVER_SUCCESS);
 	return 1;
 }
 
@@ -632,7 +632,10 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 					  handler->eap_ds->response->type.data,
 					  handler->eap_ds->response->type.length);
 
-	if (!success) return 0;
+	if (!success) {
+		REDEBUG("Failed decoding EAP-SIM packet: %s", fr_strerror());
+		return 0;
+	}
 
 	/*
 	 *	See what kind of message we have gotten
@@ -659,7 +662,7 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 		 */
 		default:
 
-			eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
+			eap_sim_state_enter(request, handler, ess, EAPSIM_SERVER_START);
 			return 1;
 		/*
 		 * 	A response to our EAP-Sim/Request/Start!
@@ -674,7 +677,7 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */
 		default:
-			eap_sim_stateenter(handler, ess, EAPSIM_SERVER_CHALLENGE);
+			eap_sim_state_enter(request, handler, ess, EAPSIM_SERVER_CHALLENGE);
 			return 1;
 		/*
 		 *	A response to our EAP-Sim/Request/Challenge!

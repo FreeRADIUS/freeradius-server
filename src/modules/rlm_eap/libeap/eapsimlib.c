@@ -293,12 +293,13 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 	/* big enough to have even a single attribute */
 	if (attrlen < 5) {
-		ERROR("eap: EAP-Sim attribute too short: %d < 5", attrlen);
+		fr_strerror_printf("EAP-Sim attribute too short: %d < 5", attrlen);
 		return 0;
 	}
 
 	newvp = fr_pair_afrom_num(r, PW_EAP_SIM_SUBTYPE, 0);
 	if (!newvp) {
+		fr_strerror_printf("Failed creating EAP-SIM-Subtype");
 		return 0;
 	}
 
@@ -314,7 +315,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		uint8_t *p;
 
 		if(attrlen < 2) {
-			ERROR("eap: EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
+			fr_strerror_printf("EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
 			return 0;
 		}
 
@@ -322,9 +323,8 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		eapsim_len = attr[1] * 4;
 
 		if (eapsim_len > attrlen) {
-			ERROR("eap: EAP-Sim attribute %d (no.%d) has length longer than data (%d > %d)",
-			      eapsim_attribute, es_attribute_count, eapsim_len, attrlen);
-
+			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has length longer than data (%d > %d)",
+					   eapsim_attribute, es_attribute_count, eapsim_len, attrlen);
 			return 0;
 		}
 
@@ -332,9 +332,9 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			eapsim_len = MAX_STRING_LEN;
 		}
 		if (eapsim_len < 2) {
-			ERROR("eap: EAP-Sim attribute %d (no.%d) has length too small", eapsim_attribute,
-			      es_attribute_count);
-			       return 0;
+			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has length too small", eapsim_attribute,
+					   es_attribute_count);
+			return 0;
 		}
 
 		newvp = fr_pair_afrom_num(r, eapsim_attribute+PW_EAP_SIM_BASE, 0);
@@ -349,6 +349,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		attrlen -= eapsim_len;
 		es_attribute_count++;
 	}
+
 	return 1;
 }
 
