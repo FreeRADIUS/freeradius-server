@@ -151,7 +151,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = rlm_ldap_result(inst, conn, -1, identity, timeout, NULL, error, extra);
+			status = rlm_ldap_result(inst, conn, -1, identity, timeout, NULL, NULL, error, extra);
 			break;		/* Old result gets freed on after exit */
 		}
 
