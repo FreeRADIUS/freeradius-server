@@ -2205,7 +2205,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 	int i;
 
 	for (i = 0; variables[i].name != NULL; i++) {
-		if (variables[i].type == PW_TYPE_SUBSECTION) {
+		if ((variables[i].type & 0xff) == PW_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
 
 			if (!variables[i].dflt) continue;
