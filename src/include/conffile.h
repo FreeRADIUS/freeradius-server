@@ -297,7 +297,7 @@ extern bool check_config;
  */
 typedef struct CONF_PARSER {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
-	int		type;			//!< A #PW_TYPE value, may be or'd with one or more PW_TYPE_* flags.
+	uint32_t	type;			//!< A #PW_TYPE value, may be or'd with one or more PW_TYPE_* flags.
 						//!< @see cf_pair_parse.
 
 	size_t		offset;			//!< Relative offset of field or structure to write the parsed value to.
