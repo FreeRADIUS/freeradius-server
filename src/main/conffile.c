@@ -1883,8 +1883,8 @@ static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CON
 		rad_assert(type > PW_TYPE_INVALID);
 		rad_assert(type < PW_TYPE_MAX);
 
-		cf_log_err(&(cp->item), "type '%s' is not supported in the configuration files",
-			   fr_int2str(dict_attr_types, type, "?Unknown?"));
+		cf_log_err(&(cp->item), "type '%s' (%i) is not supported in the configuration files",
+			   fr_int2str(dict_attr_types, type, "?Unknown?"), type);
 		rcode = -1;
 		goto error;
 	}
