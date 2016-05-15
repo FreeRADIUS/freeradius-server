@@ -2293,7 +2293,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 	int ret = 0;
 	int i;
 	void *data;
-	bool *is_set;
+	bool *is_set = NULL;
 
 	cs->variables = variables; /* this doesn't hurt anything */
 
