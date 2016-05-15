@@ -196,20 +196,30 @@ typedef struct timeval _timeval_t;
  *	 correctly by the config parser.
  * @{
  */
-#define PW_TYPE_DEPRECATED	(1 << 10) //!< If a matching #CONF_PAIR is found, error out with a deprecated message.
-#define PW_TYPE_REQUIRED	(1 << 11) //!< Error out if no matching #CONF_PAIR is found, and no dflt value is set.
-#define PW_TYPE_ATTRIBUTE	(1 << 12) //!< Value must resolve to attribute in dict (deprecated, use #PW_TYPE_TMPL).
-#define PW_TYPE_SECRET		(1 << 13) //!< Only print value if debug level >= 3.
+#define PW_TYPE_DEPRECATED		(1 << 10) 			//!< If a matching #CONF_PAIR is found,
+									//!< error out with a deprecated message.
+#define PW_TYPE_REQUIRED		(1 << 11) 			//!< Error out if no matching #CONF_PAIR
+									//!< is found, and no dflt value is set.
+#define PW_TYPE_ATTRIBUTE		(1 << 12) 			//!< Value must resolve to attribute in dict
+									//!< (deprecated, use #PW_TYPE_TMPL).
+#define PW_TYPE_SECRET			(1 << 13)			 //!< Only print value if debug level >= 3.
 
-#define PW_TYPE_FILE_INPUT	((1 << 14) | PW_TYPE_STRING) //!< File matching value must exist, and must be readable.
-#define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING) //!< File matching value must exist, and must be writeable.
+#define PW_TYPE_FILE_INPUT		((1 << 14) | PW_TYPE_STRING)	//!< File matching value must exist,
+								     	//!< and must be readable.
+#define PW_TYPE_FILE_OUTPUT		((1 << 15) | PW_TYPE_STRING)	//!< File matching value must exist,
+									//!< and must be writeable.
 
-#define PW_TYPE_XLAT		(1 << 16) //!< string will be dynamically expanded.
-#define PW_TYPE_TMPL		(1 << 17) //!< CONF_PAIR should be parsed as a template.
+#define PW_TYPE_XLAT			(1 << 16) 			//!< string will be dynamically expanded.
+#define PW_TYPE_TMPL			(1 << 17) 			//!< CONF_PAIR should be parsed as a template.
 
-#define PW_TYPE_MULTI		(1 << 18) //!< CONF_PAIR can have multiple copies.
-#define PW_TYPE_NOT_EMPTY	(1 << 19) //!< CONF_PAIR is required to have a non zero length value.
-#define PW_TYPE_FILE_EXISTS	((1 << 20) | PW_TYPE_STRING) //!< File matching value must exist
+#define PW_TYPE_MULTI			(1 << 18) 			//!< CONF_PAIR can have multiple copies.
+#define PW_TYPE_NOT_EMPTY		(1 << 19)			//!< CONF_PAIR is required to have a non zero
+									//!< length value.
+#define PW_TYPE_FILE_EXISTS		((1 << 20) | PW_TYPE_STRING)	//!< File matching value must exist
+
+#define PW_TYPE_IS_SET			(1 << 21)			//!< Write whether this config item was
+									//!< left as the default to is_set_offset
+									//!< or is_set_ptr.
 /* @} **/
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
@@ -278,6 +288,18 @@ typedef struct CONF_PARSER {
 
 	void		*data;			//!< Pointer to a static variable to write the parsed value to.
 						//!< @note Must be used exclusively to #offset.
+
+	/** Where to write status if PW_TYPE_IS_DEFAULT is set
+	 *
+	 * @note Which field is used, is determined by whether
+	 *	data ptr is set.
+	 */
+	union {
+		size_t		is_set_offset;	//!< If type contains PW_TYPE_IS_DEFAULT write status to bool.
+						//!< at this address.
+		void		*is_set_ptr;	//!< If type contains PW_TYPE_IS_DEFAULT write status to ptr
+						//!< at this address.
+	};
 
 	union {
 		char const	*dflt;		//!< Default as it would appear in radiusd.conf.

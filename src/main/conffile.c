@@ -2020,6 +2020,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	- ``flag`` #PW_TYPE_FILE_INPUT		- @copybrief PW_TYPE_FILE_INPUT
  *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
  *	- ``flag`` #PW_TYPE_MULTI		- @copybrief PW_TYPE_MULTI
+  *	- ``flag`` #PW_TYPE_IS_SET		- @copybrief PW_TYPE_IS_SET
  * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
  * @param dflt_quote around the dflt value.
@@ -2292,6 +2293,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 	int ret = 0;
 	int i;
 	void *data;
+	bool *is_set;
 
 	cs->variables = variables; /* this doesn't hurt anything */
 
@@ -2333,11 +2335,20 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		if (variables[i].data) {
 			data = variables[i].data; /* prefer this. */
 		} else if (base) {
-			data = ((char *)base) + variables[i].offset;
+			data = ((uint8_t *)base) + variables[i].offset;
 		} else {
 			ERROR("Internal sanity check 2 failed in cf_section_parse");
 			ret = -1;
 			goto finish;
+		}
+
+		/*
+		 *	Get pointer to where we need to write out
+		 *	whether the pointer was set.
+		 */
+		if (variables[i].type & PW_TYPE_IS_SET) {
+			is_set = variables[i].data ? variables[i].is_set_ptr :
+						     ((uint8_t *)base) + variables[i].is_set_offset;
 		}
 
 		/*
@@ -2346,11 +2357,13 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		ret = cf_pair_parse(cs, variables[i].name, variables[i].type, data,
 				    variables[i].dflt, variables[i].quote);
 		switch (ret) {
-		case 1:		/* Used default */
+		case 1:		/* Used default (or not present) */
+			if (is_set) *is_set = false;
 			ret = 0;
 			break;
 
 		case 0:		/* OK */
+			if (is_set) *is_set = true;
 			break;
 
 		case -1:	/* Parse error */
