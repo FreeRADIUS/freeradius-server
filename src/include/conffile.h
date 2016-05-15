@@ -159,20 +159,40 @@ typedef struct timeval _timeval_t;
 	.name = _n, \
 	.type = _t, \
 	.offset = FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f))
+#  define FR_CONF_IS_SET_OFFSET(_n, _t, _s, _f) \
+	.name = _n, \
+	.type = _t | PW_TYPE_IS_SET, \
+	.offset = FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), \
+	.is_set_offset = offsetof(_s, _f ## _is_set)
 #  define FR_CONF_POINTER(_n, _t, _p) \
 	.name = _n, \
 	.type = _t, \
 	.data = FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
+#  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
+	.name = _n, \
+	.type = _t | PW_TYPE_IS_SET, \
+	.data = FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p), \
+	.is_set_ptr = _p ## _is_set
 #  define FR_ITEM_POINTER(_t, _p) _t, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
 #else
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
 	.type = _t, \
 	.offset = offsetof(_s, _f)
+#  define FR_CONF_IS_SET_OFFSET(_n, _t, _s, _f) \
+	.name = _n, \
+	.type = _t | PW_TYPE_IS_SET, \
+	.offset = offsetof(_s, _f), \
+	.is_set_offset = offsetof(_s, _f ## _is_set)
 #  define FR_CONF_POINTER(_n, _t, _p) \
 	.name = _n, \
 	.type = _t, \
 	.data = _p
+#  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
+	.name = _n, \
+	.type = _t | PW_TYPE_IS_SET, \
+	.data = _p, \
+	.is_set_ptr = _p ## _is_set
 #  define FR_ITEM_POINTER(_t, _p) .type = _t, .data = _p
 #endif
 
