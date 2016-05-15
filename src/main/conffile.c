@@ -1435,7 +1435,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 		attribute = (type & PW_TYPE_ATTRIBUTE);
 		multi = (type & PW_TYPE_MULTI);
 
-		type &= 0xff;		/* normal types are small */
+		type = PW_BASE_TYPE(type);		/* normal types are small */
 
 		/*
 		 *	It's a section, recurse!
@@ -1633,7 +1633,7 @@ static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CON
 
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
 
-	type &= 0xff;					/* normal types are small */
+	type = PW_BASE_TYPE(type);					/* normal types are small */
 
 	/*
 	 *	Everything except templates must have a base type.
@@ -1917,7 +1917,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	CONF_PAIR	*cp;
 	char		buffer[8192];
 
-	type &= 0xff;
+	type = PW_BASE_TYPE(type);
 
 	/*
 	 *	Defaults may need their values expanding
@@ -2098,7 +2098,7 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	We don't NULL terminate.  Consumer must use
 		 *	talloc_array_length().
 		 */
-		} else switch (type & 0xff) {
+		} else switch (PW_BASE_TYPE(type)) {
 		case PW_TYPE_BOOLEAN:
 			array = (void **)talloc_zero_array(cs, bool, count);
 			break;
@@ -2205,7 +2205,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 	int i;
 
 	for (i = 0; variables[i].name != NULL; i++) {
-		if ((variables[i].type & 0xff) == PW_TYPE_SUBSECTION) {
+		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
 
 			if (!variables[i].dflt) continue;
@@ -2233,7 +2233,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			continue;
 		}
 
-		if ((variables[i].type != PW_TYPE_STRING) &&
+		if ((PW_BASE_TYPE(variables[i].type) != PW_TYPE_STRING) &&
 		    (variables[i].type != PW_TYPE_FILE_INPUT) &&
 		    (variables[i].type != PW_TYPE_FILE_OUTPUT)) {
 			continue;
@@ -2312,7 +2312,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		/*
 		 *	Handle subsections specially
 		 */
-		if (variables[i].type == PW_TYPE_SUBSECTION) {
+		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
 
 			subcs = cf_section_sub_find(cs, variables[i].name);

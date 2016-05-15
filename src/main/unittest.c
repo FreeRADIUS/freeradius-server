@@ -495,7 +495,7 @@ static ssize_t xlat_poke(char **out, size_t outlen,
 	for (i = 0; variables[i].name != NULL; i++) {
 		int ret;
 
-		if (variables[i].type == PW_TYPE_SUBSECTION) continue;
+		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) continue;
 		/* else it's a CONF_PAIR */
 
 		/*

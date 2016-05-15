@@ -240,6 +240,8 @@ typedef struct timeval _timeval_t;
 #define PW_TYPE_IS_SET			(1 << 21)			//!< Write whether this config item was
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
+
+#define PW_BASE_TYPE(_t)		(0xff & (_t))
 /* @} **/
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\

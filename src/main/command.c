@@ -2316,7 +2316,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		/*
 		 *	FIXME: Recurse into sub-types somehow...
 		 */
-		if (variables[i].type == PW_TYPE_SUBSECTION) continue;
+		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) continue;
 
 		if (strcmp(variables[i].name, argv[1]) == 0) {
 			rcode = i;
