@@ -256,7 +256,7 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	REQUEST		*request = eap_session->request;
 	vp_cursor_t	cursor;
 
-	VALUE_PAIR	*rand, *xres, *ck, *ik;
+	VALUE_PAIR	*rand = NULL, *xres = NULL, *ck = NULL, *ik = NULL;
 	uint8_t		xres_buff[16];
 	uint32_t	*xres_ptr;
 	uint64_t	*ck_ptr;
