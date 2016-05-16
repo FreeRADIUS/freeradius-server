@@ -55,6 +55,9 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  "detail" files at the same time.
 	* Remove support for statically built EAP modules.
 	  Fixes #1591.
+	* Many fixes to rlm_python from Guillaume Pannatier.
+	* Use correct week adjustment in SQLcounter.
+	  Fixes #1608
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
