@@ -1019,50 +1019,6 @@ static int load_component_section(CONF_SECTION *cs,
 	}
 
 	/*
-	 *	Load CONF_PAIRs in the authenticate section.
-	 */
-	if (comp == MOD_AUTHENTICATE) for (modref = cf_item_find_next(cs, NULL);
-					   modref != NULL;
-					   modref = cf_item_find_next(cs, modref)) {
-		CONF_PAIR *cp;
-		fr_dict_enum_t *dval;
-		char const *modrefname = NULL;
-
-		if (!cf_item_is_pair(modref)) continue;
-
-		cp = cf_item_to_pair(modref);
-
-
-		modrefname = cf_pair_attr(cp);
-
-		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), modrefname);
-		if (!dval) {
-			cf_log_err_cs(cs,
-				      "Unknown Auth-Type \"%s\" in %s sub-section.",
-				      modrefname, section_type_value[comp].section);
-			return -1;
-		}
-		subcomp = new_sublist(cs, components, comp, dval->value);
-		if (!subcomp) continue;
-
-		/*
-		 *	Try to compile one entry.
-		 */
-		this = modcall_compile(subcomp, &subcomp->modulelist, comp, modref, &modname);
-		if (!this) {
-			cf_log_err_cs(cs,
-				      "Errors parsing %s section.\n",
-				      cf_section_name1(cs));
-			return -1;
-		}
-
-		if (rad_debug_lvl > 2) modcall_debug(this, 2);
-
-		modcall_append(subcomp->modulelist, this);
-
-	} else
-
-	/*
 	 *	Loop over the entries in the named section, loading
 	 *	the sections this time.
 	 */
@@ -1361,33 +1317,33 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	}
 
 	/*
-	 *	Define the Autz-Type, Auth-Type, etc. first.
+	 *	Compatibility hacks: "authenticate" sections can have
+	 *	bare words in them.  Fix those up to be sections.
+	 */
+	if (comp == MOD_AUTHENTICATE) {
+		for (ci = cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(cs, ci)) {
+			CONF_PAIR *cp;
+
+			if (!cf_item_is_pair(ci)) continue;
+
+			cp = cf_item_to_pair(ci);
+
+			subcs = cf_section_alloc(cs, section_type_value[comp].typename, cf_pair_attr(cp));
+			rad_assert(subcs != NULL);
+			cf_section_add(cs, subcs);
+			cf_pair_add(subcs, cf_pair_dup(subcs, cp));
+		}
+	}
+
+	/*
+	 *	Define the Autz-Type, etc. based on the subsections.
 	 */
 	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
 	     subcs != NULL;
 	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
 		if (!define_type(cs, da, cf_section_name2(subcs))) {
-			return false;
-		}
-	}
-
-
-	if (comp != MOD_AUTHENTICATE) return true;
-
-	/*
-	 *	Define dynamic types, so that others can reference
-	 *	them.
-	 */
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
-		CONF_PAIR *cp;
-
-		if (!cf_item_is_pair(ci)) continue;
-
-		cp = cf_item_to_pair(ci);
-
-		if (!define_type(cs, da, cf_pair_attr(cp))) {
 			return false;
 		}
 	}
