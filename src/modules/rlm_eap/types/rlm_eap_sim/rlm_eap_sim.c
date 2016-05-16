@@ -389,7 +389,7 @@ static int eap_sim_get_challenge(eap_session_t *eap_session, VALUE_PAIR *vps,
 			return 0;
 		}
 		if (ret < 0) return -1;
-		if (src != EAP_SIM_VECTOR_SRC_AUTO) return 1;
+		if (*src != EAP_SIM_VECTOR_SRC_AUTO) return 1;
 		/* FALL-THROUGH */
 
 	case EAP_SIM_VECTOR_SRC_GSM:
@@ -399,7 +399,7 @@ static int eap_sim_get_challenge(eap_session_t *eap_session, VALUE_PAIR *vps,
 			return 0;
 		}
 		if (ret < 0) return -1;
-		if (src != EAP_SIM_VECTOR_SRC_AUTO) return 1;
+		if (*src != EAP_SIM_VECTOR_SRC_AUTO) return 1;
 		/* FALL-THROUGH */
 
 	case EAP_SIM_VECTOR_SRC_UMTS:
