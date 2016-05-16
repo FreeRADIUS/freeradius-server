@@ -1343,7 +1343,18 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
 	     subcs != NULL;
 	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
-		if (!define_type(cs, da, cf_section_name2(subcs))) {
+		char const *name2;
+		CONF_SECTION *cs2;
+
+		name2 = cf_section_name2(subcs);
+		cs2 = cf_section_sub_find_name2(cs, section_type_value[comp].typename, name2);
+		if (cs2 != subcs) {
+			cf_log_err_cs(cs2, "Duplicate configuration section %s %s",
+				      section_type_value[comp].typename, name2);
+			return false;
+		}
+
+		if (!define_type(cs, da, name2)) {
 			return false;
 		}
 	}
