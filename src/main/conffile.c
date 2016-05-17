@@ -612,6 +612,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp->lhs_type = lhs_type;
 	cp->rhs_type = rhs_type;
 	cp->op = op;
+	cp->item.filename = "<internal>"; /* will be over-written if necessary */
 
 	cp->attr = talloc_typed_strdup(cp, attr);
 	if (!cp->attr) {
@@ -701,6 +702,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = parent;
+	cs->item.filename = "<internal>"; /* will be over-written if necessary */
 
 	cs->name1 = talloc_typed_strdup(cs, name1);
 	if (!cs->name1) {
@@ -1952,8 +1954,6 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	if (!cp) return -1;
 
 	cp->parsed = true;
-	cp->item.filename = "<internal>";
-	cp->item.lineno = -1;
 
 	/*
 	 *	Set the rcode to indicate we used a default value
@@ -2222,9 +2222,6 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			if (!subcs) {
 				subcs = cf_section_alloc(cs, variables[i].name, NULL);
 				if (!subcs) return;
-
-				subcs->item.filename = "<internal>";
-				subcs->item.lineno = -1;
 				cf_item_add(cs, &(subcs->item));
 			}
 
@@ -3504,8 +3501,6 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
 
-	cp->item.filename = "<internal>";
-	cp->item.lineno = -1;
 	cf_item_add(cs, &(cp->item));
 
 	tree = rbtree_create(cs, filename_cmp, NULL, 0);
