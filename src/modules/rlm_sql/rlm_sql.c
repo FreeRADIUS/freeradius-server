@@ -684,7 +684,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 
 	fr_pair_value_strsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
-	vp->op = T_OP_SET;	
+	vp->op = T_OP_SET;
 
 	/*
 	 *	Delete any existing SQL-User-Name, and replace it with ours.
@@ -957,7 +957,10 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				goto finish;
 			}
 
-			if (rows == 0) continue;
+			if (rows == 0) {
+				*do_fall_through = FALL_THROUGH_DEFAULT;
+				continue;
+			}
 
 			rad_assert(reply_tmp != NULL); /* coverity, among others */
 			*do_fall_through = fall_through(reply_tmp);
