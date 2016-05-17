@@ -398,6 +398,10 @@ void eap_add_reply(REQUEST *request,
 	}
 
 	fr_pair_value_memcpy(vp, value, len);
+
+	RINDENT();
+	rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
+	REXDENT();
 }
 
 /** Send a fake request to a virtual server, managing the eap_session_t of the child
