@@ -1626,14 +1626,16 @@ static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, 
 	return c;
 }
 
-static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
-				  fr_cond_type_t cond_type)
+
+static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
+				grouptype_t grouptype, mod_type_t mod_type)
 {
 	modgroup *g;
 	modcallable *c;
 
 	g = talloc_zero(parent, modgroup);
+	if (!g) return NULL;
+
 	g->grouptype = grouptype;
 	g->children = NULL;
 	g->cs = cs;
@@ -1642,10 +1644,32 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 	c->parent = parent;
 	c->type = mod_type;
 	c->next = NULL;
+	memset(c->actions, 0, sizeof(c->actions));
 
+	/*
+	 *	Associate the unlang with the configuration section.
+	 */
+	cf_data_add(cs, "unlang", g, NULL);
+
+	return g;
+}
+
+
+static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
+				  fr_cond_type_t cond_type)
+{
+	modgroup *g;
+	modcallable *c;
+
+	g = group_allocate(parent, cs, grouptype, mod_type);
+	if (!g) return NULL;
+
+	c = mod_grouptocallable(g);
 	if (!cs) {
 		c->name = unlang_keyword[c->type];
 		c->debug_name = c->name;
+
 	} else {
 		char const *name2;
 
@@ -1819,34 +1843,6 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 	}
 
 	return compile_defaultactions(c, parent, component, parentgrouptype);
-}
-
-
-static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
-				grouptype_t grouptype, mod_type_t mod_type)
-{
-	modgroup *g;
-	modcallable *c;
-
-	g = talloc_zero(parent, modgroup);
-	if (!g) return NULL;
-
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-
-	c = mod_grouptocallable(g);
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-	memset(c->actions, 0, sizeof(c->actions));
-
-	/*
-	 *	Associate the unlang with the configuration section.
-	 */
-	cf_data_add(cs, "unlang", g, NULL);
-
-	return g;
 }
 
 
@@ -2807,6 +2803,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 			talloc_free(c);
 			return NULL;
 		}
+
 		return c;
 	}
 
@@ -2866,12 +2863,15 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 		modcallable *c;
 		modgroup *g;
 		CONF_SECTION *parentcs;
+		CONF_SECTION *cs;
 
-		g = talloc_zero(ctx, modgroup);
-		memset(g, 0, sizeof(*g));
-		g->grouptype = GROUPTYPE_SIMPLE;
+		cs = cf_item_to_section(ci);
+		rad_assert(cs != NULL);
+
+		g = group_allocate(ctx, cs, GROUPTYPE_SIMPLE, MOD_GROUP);
+		if (!g) return NULL;
+
 		c = mod_grouptocallable(g);
-		c->next = NULL;
 		memcpy(c->actions,
 		       defaultactions[component][GROUPTYPE_SIMPLE],
 		       sizeof(c->actions));
@@ -2882,12 +2882,10 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 			c->name = cf_section_name1(parentcs);
 		}
 		c->debug_name = c->name;
-
-		c->type = MOD_GROUP;
 		c->method = component;
-		g->children = NULL;
+		c->parent = NULL; /* group_allocate sets this to 'ctx', which isn't what we want */
 
-		*parent = mod_grouptocallable(g);
+		*parent = c;
 	}
 
 	ret = compile_item(*parent, component, ci, GROUPTYPE_SIMPLE, modname);
