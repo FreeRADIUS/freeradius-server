@@ -1769,6 +1769,11 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
 			/*
+			 *	Skip precompiled blocks.
+			 */
+			if (cf_data_find(subcs, "unlang")) continue;
+
+			/*
 			 *	"actions" apply to the current group.
 			 *	It's not a subgroup.
 			 */
