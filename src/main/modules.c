@@ -982,11 +982,9 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 static int load_component_section(CONF_SECTION *cs,
 				  rbtree_t *components, rlm_components_t comp)
 {
-	modcallable *this;
-	CONF_ITEM *modref;
 	CONF_SECTION *subcs;
 	indexed_modcallable *subcomp;
-	char const *modname;
+	modcallable *ml;
 	fr_dict_attr_t const *da;
 
 	/*
@@ -1001,7 +999,10 @@ static int load_component_section(CONF_SECTION *cs,
 	}
 
 	/*
-	 *	Load the Autz-Type, Auth-Type, etc. first.
+	 *	Compile the Autz-Type, Auth-Type, etc. first.
+	 *
+	 *	The results will be cached, so that the next
+	 *	compilation will skip these sections.
 	 */
 	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
 	     subcs != NULL;
@@ -1012,59 +1013,24 @@ static int load_component_section(CONF_SECTION *cs,
 	}
 
 	/*
-	 *	Loop over the entries in the named section, loading
-	 *	the sections this time.
+	 *	Compile the section.
 	 */
-	for (modref = cf_item_find_next(cs, NULL);
-	     modref != NULL;
-	     modref = cf_item_find_next(cs, modref)) {
-
-		if (cf_item_is_pair(modref)) {
-			subcs = NULL;
-
-		} else if (cf_item_is_section(modref)) {
-			subcs = cf_item_to_section(modref);
-
-			/*
-			 *	Ignore sections which were already compiled as Autz-Type, etc.
-			 */
-			if (cf_data_find(subcs, "unlang")) {
-				continue;
-			}
-
-		} else {
-			continue; /* ignore it */
-
-		}
-
-		subcomp = new_sublist(cs, components, comp, 0);
-		if (!subcomp) continue;
-
-		/*
-		 *	Try to compile one entry.
-		 */
-		this = modcall_compile(subcomp, &subcomp->modulelist, comp, modref, &modname);
-
-		/*
-		 *	It's OK for the module to not exist.
-		 */
-		if (!this && modname && (modname[0] == '-')) continue;
-
-		if (!this) {
-			cf_log_err_cs(cs,
-				      "Errors parsing %s section.\n",
-				      cf_section_name1(cs));
-			return -1;
-		}
-
-		if (rad_debug_lvl > 2) modcall_debug(this, 2);
-
-		modcall_append(subcomp->modulelist, this);
+	ml = modcall_compile_section(NULL, comp, cs);
+	if (!ml) {
+		cf_log_err_cs(cs, "Errors parsing %s section.\n",
+			      cf_section_name1(cs));
+		return -1;
 	}
+
+	subcomp = new_sublist(cs, components, comp, 0);
+	if (!subcomp) {
+		talloc_free(ml);
+		return -1;
+	}
+	subcomp->modulelist = talloc_steal(subcomp, ml);
 
 	return 0;
 }
-
 
 static int _virtual_server_free(virtual_server_t *server)
 {
