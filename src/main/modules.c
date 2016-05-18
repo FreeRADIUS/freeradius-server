@@ -1736,8 +1736,7 @@ static bool server_define_types(CONF_SECTION *cs)
 	 *	Loop over all of the components
 	 */
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
-		CONF_SECTION *subcs;
-		CONF_ITEM *modref;
+		CONF_SECTION *subcs, *type_cs;
 		DICT_ATTR const *da;
 
 		subcs = cf_section_sub_find(cs,
@@ -1760,38 +1759,74 @@ static bool server_define_types(CONF_SECTION *cs)
 		/*
 		 *	Define dynamic types, so that others can reference
 		 *	them.
+		 *
+		 *	First, bare modules for 'authenticate'.
+		 *	Second, Auth-Type, etc.
 		 */
-		for (modref = cf_item_find_next(subcs, NULL);
-		     modref != NULL;
-		     modref = cf_item_find_next(subcs, modref)) {
-			char const *name1;
-			CONF_SECTION *subsubcs;
+		if (section_type_value[comp].attr == PW_AUTH_TYPE) {
+			CONF_ITEM *modref;
 
-			/*
-			 *	Create types for simple references
-			 *	only when parsing the authenticate
-			 *	section.
-			 */
-			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
-			    cf_item_is_pair(modref)) {
-				CONF_PAIR *cp = cf_item_to_pair(modref);
+			for (modref = cf_item_find_next(subcs, NULL);
+			     modref != NULL;
+			     modref = cf_item_find_next(subcs, modref)) {
+				CONF_PAIR *cp;
+
+				if (!cf_item_is_pair(modref)) continue;
+
+				cp = cf_item_to_pair(modref);
 				if (!define_type(cs, da, cf_pair_attr(cp))) {
 					return false;
 				}
 
-				continue;
+				/*
+				 *	Check for duplicates
+				 */
+				if (rad_debug_lvl) {
+					CONF_PAIR *cp2;
+					CONF_SECTION *cs2;
+
+					cp2 = cf_pair_find(subcs, cf_pair_attr(cp));
+					rad_assert(cp2 != NULL);
+					if (cp2 != cp) {
+						WARN("%s[%d]: Duplicate module '%s'",
+						     cf_pair_filename(cp2),
+						     cf_pair_lineno(cp2),
+						     cf_pair_attr(cp));
+					}
+
+					cs2 = cf_section_sub_find_name2(subcs, section_type_value[comp].typename, cf_pair_attr(cp));
+					if (cs2) {
+						WARN("%s[%d]: Duplicate Auth-Type '%s'",
+						     cf_section_filename(cs2),
+						     cf_section_lineno(cs2),
+						     cf_pair_attr(cp));
+					}
+				}
+
+			}
+		}
+
+		/*
+		 *	And loop over the type names
+		 */
+		for (type_cs = cf_subsection_find_next(subcs, NULL, section_type_value[comp].typename);
+		     type_cs != NULL;
+		     type_cs = cf_subsection_find_next(subcs, type_cs, section_type_value[comp].typename)) {
+			if (!define_type(cs, da, cf_section_name2(type_cs))) {
+				return false;
 			}
 
-			if (!cf_item_is_section(modref)) continue;
+			if (rad_debug_lvl) {
+				CONF_SECTION *cs2;
 
-			subsubcs = cf_item_to_section(modref);
-			name1 = cf_section_name1(subsubcs);
-
-			if (strcmp(name1, section_type_value[comp].typename) == 0) {
-			  if (!define_type(cs, da,
-					   cf_section_name2(subsubcs))) {
-				  return false;
-			  }
+				cs2 = cf_section_sub_find_name2(subcs, section_type_value[comp].typename, cf_section_name2(type_cs));
+				rad_assert(cs2 != NULL);
+				if (cs2 != type_cs) {
+					WARN("%s[%d]: Duplicate Auth-Type '%s'",
+					     cf_section_filename(cs2),
+					     cf_section_lineno(cs2),
+					     cf_section_name2(cs2));
+				}
 			}
 		}
 	} /* loop over components */
