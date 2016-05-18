@@ -2858,48 +2858,6 @@ fail:
 	return NULL;
 }
 
-modcallable *modcall_compile(TALLOC_CTX *ctx,
-			     modcallable **parent,
-			     rlm_components_t component, CONF_ITEM *ci,
-			     char const **modname)
-{
-	modcallable *ret;
-
-	if (!*parent) {
-		modcallable *c;
-		modgroup *g;
-		CONF_SECTION *parentcs;
-		CONF_SECTION *cs;
-
-		cs = cf_item_to_section(ci);
-		rad_assert(cs != NULL);
-
-		g = group_allocate(ctx, cs, GROUPTYPE_SIMPLE, MOD_GROUP, component);
-		if (!g) return NULL;
-
-		c = mod_grouptocallable(g);
-		memcpy(c->actions,
-		       defaultactions[component][GROUPTYPE_SIMPLE],
-		       sizeof(c->actions));
-
-		parentcs = cf_item_parent(ci);
-		c->name = cf_section_name2(parentcs);
-		if (!c->name) {
-			c->name = cf_section_name1(parentcs);
-		}
-		c->debug_name = c->name;
-		c->method = component;
-		c->parent = NULL; /* group_allocate sets this to 'ctx', which isn't what we want */
-
-		*parent = c;
-	}
-
-	ret = compile_item(*parent, component, ci, GROUPTYPE_SIMPLE, modname);
-	dump_tree(component, ret);
-	return ret;
-}
-
-
 modcallable *modcall_compile_section(modcallable *parent,
 				     rlm_components_t component, CONF_SECTION *cs)
 {
@@ -2932,17 +2890,6 @@ modcallable *modcall_compile_section(modcallable *parent,
 	 */
 	cf_data_add(cs, "unlang", c, NULL);
 
+	dump_tree(component, c);
 	return c;
-}
-
-void modcall_append(modcallable *parent, modcallable *this)
-{
-	modgroup *g;
-
-	rad_assert(this != NULL);
-	rad_assert(parent != NULL);
-
-	g = mod_callabletogroup(parent);
-
-	add_child(g, this);
 }

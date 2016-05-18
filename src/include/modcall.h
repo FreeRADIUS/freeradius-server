@@ -49,15 +49,6 @@ int modcall_fixup_update(vp_map_t *map, void *ctx);
 modcallable *modcall_compile_section(modcallable *parent,
 			     rlm_components_t component, CONF_SECTION *cs);
 
-/* Create a single modcallable node that references a module instance. This
- * may be a CONF_SECTION containing action specifiers like "notfound = return"
- * or a simple CONF_PAIR, in which case the default actions are used. */
-modcallable *modcall_compile(TALLOC_CTX *ctx, modcallable **parent, rlm_components_t component, CONF_ITEM *ci,
-				     char const **modname);
-
-/* Add an entry to the end of a modgroup */
-void modcall_append(modcallable *parent, modcallable *this);
-
 void modcall_debug(modcallable *mc, int depth);
 
 #ifdef __cplusplus
