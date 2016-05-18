@@ -2196,9 +2196,11 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	return 0;
 }
 
-/*
- *	A copy of cf_section_parse that initializes pointers before
- *	parsing them.
+/** Pre-allocate a config section structure to allow defaults to be set
+ *
+ * @param cs		The parent subsection.
+ * @param base		pointer or variable.
+ * @param variables	that may have defaults in this config section.
  */
 static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 {
@@ -2211,6 +2213,17 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			if (!variables[i].dflt) continue;
 
 			subcs = cf_section_sub_find(cs, variables[i].name);
+
+			/*
+			 *	Set the is_set field for the subsection.
+			 */
+			if (variables[i].type & PW_TYPE_IS_SET) {
+				bool *is_set = NULL;
+
+				is_set = variables[i].data ? variables[i].is_set_ptr :
+							     ((uint8_t *)base) + variables[i].is_set_offset;
+				*is_set = !!subcs;
+			}
 
 			/*
 			 *	If there's no subsection in the
