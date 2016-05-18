@@ -1632,8 +1632,12 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 {
 	modgroup *g;
 	modcallable *c;
+	TALLOC_CTX *ctx;
 
-	g = talloc_zero(parent, modgroup);
+	ctx = parent;
+	if (!ctx) ctx = cs;
+
+	g = talloc_zero(ctx, modgroup);
 	if (!g) return NULL;
 
 	g->grouptype = grouptype;
