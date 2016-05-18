@@ -1816,12 +1816,17 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 			 */
 			if (!value) {
 				modcallable *single;
-				char const *junk = NULL;
+				char const *name = NULL;
 
-				single = compile_item(c, component, ci, grouptype, &junk);
+				single = compile_item(c, component, ci, grouptype, &name);
 				if (!single) {
-					if (cf_item_is_pair(ci) &&
-					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
+					/*
+					 *	Skip optional modules, which start with '-'
+					 */
+					name = cf_pair_attr(cp);
+					if (name[0] == '-') {
+						WARN("%s[%d]: Ignoring \"%s\" (see raddb/mods-available/README.rst)",
+						     cf_pair_filename(cp), cf_pair_lineno(cp), name + 1);
 						continue;
 					}
 
