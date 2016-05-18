@@ -1628,7 +1628,7 @@ static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, 
 
 
 static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
-				grouptype_t grouptype, mod_type_t mod_type)
+				grouptype_t grouptype, mod_type_t mod_type, rlm_components_t component)
 {
 	modgroup *g;
 	modcallable *c;
@@ -1641,6 +1641,7 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 	g->cs = cs;
 
 	c = mod_grouptocallable(g);
+	c->method = component;
 	c->parent = parent;
 	c->type = mod_type;
 	c->next = NULL;
@@ -1662,7 +1663,7 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 	modgroup *g;
 	modcallable *c;
 
-	g = group_allocate(parent, cs, grouptype, mod_type);
+	g = group_allocate(parent, cs, grouptype, mod_type, component);
 	if (!g) return NULL;
 
 	c = mod_grouptocallable(g);
@@ -1855,7 +1856,7 @@ static modcallable *compile_group(modcallable *parent, rlm_components_t componen
 	modgroup *g;
 	modcallable *c;
 
-	g = group_allocate(parent, cs, grouptype, mod_type);
+	g = group_allocate(parent, cs, grouptype, mod_type, component);
 	if (!g) return NULL;
 
 	c = mod_grouptocallable(g);
@@ -1889,7 +1890,7 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, grouptype, mod_type);
+	g = group_allocate(parent, cs, grouptype, mod_type, component);
 	if (!g) return NULL;
 
 	/*
@@ -2868,7 +2869,7 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 		cs = cf_item_to_section(ci);
 		rad_assert(cs != NULL);
 
-		g = group_allocate(ctx, cs, GROUPTYPE_SIMPLE, MOD_GROUP);
+		g = group_allocate(ctx, cs, GROUPTYPE_SIMPLE, MOD_GROUP, component);
 		if (!g) return NULL;
 
 		c = mod_grouptocallable(g);
