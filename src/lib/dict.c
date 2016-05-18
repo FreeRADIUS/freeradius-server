@@ -1490,34 +1490,39 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		block_vendor = vendor; /* Weird case where we're processing 26.<vid>.<tlv> */
 	}
 
-	if (strncmp(argv[2], "octets[", 7) != 0) {
-		/*
-		 *	find the type of the attribute.
-		 */
-		type = fr_str2int(dict_attr_types, argv[2], -1);
-		if (type < 0) {
-			fr_strerror_printf("Unknown data type '%s'", argv[2]);
+	/*
+	 *	Some types can have fixed length
+	 */
+	p = strchr(argv[2], '[');
+	if (p) *p = '\0';
+
+	/*
+	 *	find the type of the attribute.
+	 */
+	type = fr_str2int(dict_attr_types, argv[2], -1);
+	if (type < 0) {
+		fr_strerror_printf("Unknown data type '%s'", argv[2]);
+		return -1;
+	}
+
+	if (p) {
+		char *q;
+
+		q = strchr(p + 1, ']');
+		if (!q) {
+			fr_strerror_printf("Invalid format for '%s[...]'", argv[2]);
 			return -1;
 		}
 
-	} else {
-		type = PW_TYPE_OCTETS;
+		*q = 0;
 
-		p = strchr(argv[2] + 7, ']');
-		if (!p) {
-			fr_strerror_printf("Invalid format for 'octets'");
-			return -1;
-		}
-
-		*p = 0;
-
-		if (!dict_read_sscanf_i(argv[2] + 7, &length)) {
-			fr_strerror_printf("Invalid length for 'octets'");
+		if (!dict_read_sscanf_i(p + 1, &length)) {
+			fr_strerror_printf("Invalid length for '%s[...]'", argv[2]);
 			return -1;
 		}
 
 		if ((length == 0) || (length > 253)) {
-			fr_strerror_printf("Invalid length for 'octets'");
+			fr_strerror_printf("Invalid length for '%s[...]'", argv[2]);
 			return -1;
 		}
 

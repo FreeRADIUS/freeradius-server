@@ -51,7 +51,10 @@ dictionary ATTRIBUTE	Unit-Fail	241.243.255.1	integer
 data Unknown child attribute starting at "255.1"
 
 dictionary ATTRIBUTE	Unit-Array	255		octets[123458]
-data Invalid length for 'octets'
+data Invalid length for 'octets[...]'
+
+dictionary ATTRIBUTE	Unit-Integer	255		integer[1]
+data fr_dict_attr_add: Failed adding 'Unit-Integer': The 'length' flag can only be set for attributes of type 'octets'
 
 dictionary ATTRIBUTE	Unit-$bad$stuff	255		integer
 data Invalid character '$' in attribute name
@@ -60,7 +63,7 @@ data Invalid character '$' in attribute name
 # flags
 #
 dictionary ATTRIBUTE	Unit-Array	241.254		octets[1234]
-data Invalid length for 'octets'
+data Invalid length for 'octets[...]'
 
 dictionary ATTRIBUTE	Unit-Tag	241.255		integer has_tag
 data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'has_tag' flag can only be used with RFC and VSA attributes
@@ -70,3 +73,15 @@ data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'has_tag' flag can only be 
 
 dictionary ATTRIBUTE	Unit-Tag	255		tlv	encrypt=1
 data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'encrypt=1' flag can only be used with attributes of type 'string'
+
+#
+#  structs
+#
+dictionary ATTRIBUTE	Unit-Struct	241.254		struct
+data ok
+
+dictionary ATTRIBUTE	Unit-Struct-Byte	241.254.1		byte
+data ok
+
+dictionary ATTRIBUTE	Unit-Struct-Octets	241.254.2		octets[2]
+data ok
