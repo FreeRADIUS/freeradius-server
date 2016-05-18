@@ -1647,11 +1647,6 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
 
-	/*
-	 *	Associate the unlang with the configuration section.
-	 */
-	cf_data_add(cs, "unlang", g, NULL);
-
 	return g;
 }
 
@@ -2896,7 +2891,7 @@ modcallable *modcall_compile(TALLOC_CTX *ctx,
 
 
 modcallable *modcall_compile_section(modcallable *parent,
-				   rlm_components_t component, CONF_SECTION *cs)
+				     rlm_components_t component, CONF_SECTION *cs)
 {
 	char const *name1, *name2;
 	modcallable *c;
@@ -2921,6 +2916,11 @@ modcallable *modcall_compile_section(modcallable *parent,
 	if (rad_debug_lvl > 3) {
 		modcall_debug(c, 2);
 	}
+
+	/*
+	 *	Associate the unlang with the configuration section.
+	 */
+	cf_data_add(cs, "unlang", c, NULL);
 
 	return c;
 }
