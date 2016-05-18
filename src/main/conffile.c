@@ -2222,11 +2222,10 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			if (!subcs) {
 				subcs = cf_section_alloc(cs, variables[i].name, NULL);
 				if (!subcs) return;
+
 				cf_item_add(cs, &(subcs->item));
 			}
 
-			cf_section_parse_init(subcs, (uint8_t *)base + variables[i].offset,
-					      (CONF_PARSER const *) variables[i].dflt);
 			continue;
 		}
 
