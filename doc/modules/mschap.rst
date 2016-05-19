@@ -132,7 +132,7 @@ change passwords::
 
   mschap {
     passchange {
-      local_cpw = "%{sql:select change_password('%{SQL-User-Name}','%{MS-CHAP-New-NT-Password}')}"
+      local_cpw = "%{sql:select change_password('%{User-Name}','%{MS-CHAP-New-NT-Password}')}"
     }
   }
 
@@ -161,7 +161,7 @@ The local_cpw xlat has access to two variables:
 This allows you to do things like::
 
   # update via SQL
-  local_cpw = "%{sql:update radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{SQL-User-Name} and attribute='NT-Password'}"
+  local_cpw = "%{sql:update radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name} and attribute='NT-Password'}"
 
 Or::
 

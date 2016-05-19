@@ -153,13 +153,6 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 	sql_rcode_t		rcode;
 	ssize_t			ret = 0;
 
-	/*
-	 *	Add SQL-User-Name attribute just in case it is needed
-	 *	We could search the string fmt for SQL-User-Name to see if this is
-	 * 	needed or not
-	 */
-	sql_set_user(inst, request, NULL);
-
 	handle = fr_connection_get(inst->pool, request);	/* connection pool should produce error */
 	if (!handle) return 0;
 

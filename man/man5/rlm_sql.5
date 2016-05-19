@@ -85,7 +85,8 @@ failed database connection.
 This is the definition of the SQL-User-Name attribute.  This is set
 once, so that you can use %{SQL-User-Name} in the SQL queries, rather
 than the nested username substitution.  This ensures that Username is
-parsed consistently for all SQL queries executed.
+parsed consistently for all SQL queries executed.  (However, note that
+SQL-User-Name is not set when processing sql xlats.)
 .IP default_user_profile
 This is the default profile name that will be applied to all users if
 set.  This is not set by default.
