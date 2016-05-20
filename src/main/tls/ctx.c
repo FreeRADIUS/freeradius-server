@@ -420,7 +420,7 @@ post_ca:
 	/*
 	 *	Configure OCSP stapling for the server cert
 	 */
-	if (conf->staple->enable) {
+	if (conf->staple.enable) {
 		SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_staple_cb);
 
 		{
