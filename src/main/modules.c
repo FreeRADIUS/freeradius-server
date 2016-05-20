@@ -2038,7 +2038,7 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 		request->module = NULL;
 		request->component = section_type_value[comp].section;
 
-		rcode = modcall(comp, list, request);
+		rcode = unlang_interpret(request, list, comp);
 
 		request->component = component;
 		request->module = module;

@@ -839,7 +839,7 @@ static bool unlang_brace[MOD_NUM_TYPES] = {
 /*
  *	Interpret the various types of blocks.
  */
-static void unlang_interpret(REQUEST *request, unlang_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
+static void unlang_run(REQUEST *request, unlang_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
 {
 	modcallable *c;
 	int priority;
@@ -1013,11 +1013,13 @@ static int default_component_results[MOD_COUNT] = {
  *
  * What did Paul Graham say about Lisp...?
  */
-int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
+rlm_rcode_t unlang_interpret(REQUEST *request, modcallable *c, rlm_components_t component)
 {
 	int priority;
 	rlm_rcode_t result;
 	unlang_stack_t stack;
+
+	if (!c) return default_component_results[component];
 
 	memset(&stack, 0, sizeof(stack));
 
@@ -1029,7 +1031,7 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	/*
 	 *	Call the main handler.
 	 */
-	unlang_interpret(request, &stack, &result, &priority);
+	unlang_run(request, &stack, &result, &priority);
 
 	/*
 	 *	Return the result.

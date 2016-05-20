@@ -132,7 +132,7 @@ static inline modcallable *mod_xlattocallable(modxlat *p)
 	return (modcallable *)p;
 }
 
-int modcall(rlm_components_t component, modcallable *c, REQUEST *request);
+rlm_rcode_t unlang_interpret(REQUEST *request, modcallable *c, rlm_components_t component);
 
 #ifdef __cplusplus
 }
