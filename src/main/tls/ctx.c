@@ -420,15 +420,17 @@ post_ca:
 	/*
 	 *	Configure OCSP stapling for the server cert
 	 */
-	SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_staple_cb);
+	if (conf->staple->enable) {
+		SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_staple_cb);
 
-	{
-		fr_tls_ocsp_conf_t const *staple_conf = &(conf->staple);	/* Need to assign offset first */
-		fr_tls_ocsp_conf_t *tmp;
+		{
+			fr_tls_ocsp_conf_t const *staple_conf = &(conf->staple);	/* Need to assign offset first */
+			fr_tls_ocsp_conf_t *tmp;
 
-		memcpy(&tmp, &staple_conf, sizeof(tmp));
+			memcpy(&tmp, &staple_conf, sizeof(tmp));
 
-		SSL_CTX_set_tlsext_status_arg(ctx, tmp);
+			SSL_CTX_set_tlsext_status_arg(ctx, tmp);
+		}
 	}
 
 	/*
