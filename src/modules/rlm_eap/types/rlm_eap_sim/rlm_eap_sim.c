@@ -267,10 +267,11 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && rand; i++) {
 		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_RAND, TAG_ANY);
-		if (!rand) return 1;
 	}
+	if (!rand) return 1;
+
 	if (rand->vp_length != EAPSIM_RAND_SIZE) {
 		REDEBUG("&control:EAP-AKA-RAND incorrect length.  Expected " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, "
 			"got %zu bytes", rand->vp_length);
@@ -280,26 +281,26 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && xres; i++) {
 		xres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_XRES, TAG_ANY);
-		if (!xres) return 1;
 	}
+	if (!xres) return 1;
 
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && ck; i++) {
 		ck = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_CK, TAG_ANY);
-		if (!ck) return 1;
 	}
+	if (!ck) return 1;
 
 	/*
-	 *	Fetch KI
+	 *	Fetch IK
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && ik; i++) {
 		ik = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_IK, TAG_ANY);
-		if (!ik) return 1;
 	}
+	if (!ik) return 1;
 
 	memcpy(ess->keys.rand[idx], rand->vp_octets, EAPSIM_RAND_SIZE);	/* RAND is 128 bits in both */
 
