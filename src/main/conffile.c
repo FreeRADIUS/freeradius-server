@@ -46,7 +46,7 @@ RCSID("$Id$")
 bool check_config = false;
 static uid_t conf_check_uid = (uid_t)-1;
 static gid_t conf_check_gid = (gid_t)-1;
-static CONF_PARSER conf_term = { CONF_PARSER_TERMINATOR };
+static CONF_PARSER conf_term = CONF_PARSER_TERMINATOR;
 
 typedef enum conf_property {
 	CONF_PROPERTY_INVALID = 0,
@@ -2393,7 +2393,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 	 *	Ensure we have a proper terminator, type so we catch
 	 *	missing terminators reliably
 	 */
-	rad_assert(variables[i].type == conf_term.type);
+	rad_cond_assert(variables[i].type == conf_term.type);
 
 	/*
 	 *	Warn about items in the configuration which weren't
