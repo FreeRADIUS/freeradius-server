@@ -352,7 +352,7 @@ typedef struct CONF_PARSER {
 	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
 } CONF_PARSER;
 
-#define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1),
+#define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
 void		cf_file_check_user(uid_t uid, gid_t gid);
