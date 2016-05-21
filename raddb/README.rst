@@ -169,6 +169,13 @@ Please use rlm_sqlcounter with sqlite.
 
 
 rlm_ippool
-~~~~~~~~~~~
+~~~~~~~~~~
 
 Please use rlm_sql_ippool with sqlite.
+
+rlm_sql
+~~~~~~~
+
+Driver-specific options have moved from ``mods-available/sql`` to
+``mods-config/sql/driver/<drivername>``.
+
