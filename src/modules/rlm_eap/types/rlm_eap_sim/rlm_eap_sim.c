@@ -258,9 +258,9 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 
 	VALUE_PAIR	*rand = NULL, *xres = NULL, *ck = NULL, *ik = NULL;
 	uint8_t		xres_buff[16];
-	uint32_t	*xres_ptr;
-	uint64_t	*ck_ptr;
-	uint64_t	*ik_ptr;
+	uint32_t const	*xres_ptr;
+	uint64_t const	*ck_ptr;
+	uint64_t const	*ik_ptr;
 
 	int		i;
 
@@ -310,9 +310,9 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	if (xres->vp_length < 16) {
 		memset(&xres_buff, 0, sizeof(xres_buff));
 		memcpy(&xres_buff, &xres->vp_octets, xres->vp_length);
-		xres_ptr = (uint32_t *)&xres_buff[0];
+		xres_ptr = (uint32_t const *)&xres_buff[0];
 	} else {
-		xres_ptr = (uint32_t *)xres->vp_octets;
+		xres_ptr = (uint32_t const *)xres->vp_octets;
 	}
 
 	/*
@@ -324,8 +324,8 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fold CK and IK in 64bit quantities to produce Kc
 	 */
-	ck_ptr = (uint64_t *)ck->vp_octets;
-	ik_ptr = (uint64_t *)ik->vp_octets;
+	ck_ptr = (uint64_t const *)ck->vp_octets;
+	ik_ptr = (uint64_t const *)ik->vp_octets;
 	ess->keys.kc_uint64[idx] = ((ck_ptr[0] ^ ck_ptr[1]) ^ ik_ptr[0]) ^ ik_ptr[1];
 
 	if (RDEBUG_ENABLED2) {
