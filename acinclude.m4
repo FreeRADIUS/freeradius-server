@@ -533,6 +533,31 @@ fi
 ])
 
 dnl #
+dnl #  Check if we have the choose expr builtin
+dnl #
+AC_DEFUN([FR_HAVE_C11_GENERIC],
+[
+AC_CACHE_CHECK([for _Generic support in compiler], [ax_cv_cc_c11_generic],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE(
+      [
+        int main(int argc, char **argv) {
+          int foo = 1;
+          return _Generic(foo, int: 0, char: 1);
+        }
+      ])
+    ],
+    [ax_cv_cc_c11_generic=yes],
+    [ax_cv_cc_c11_generic=no]
+  )
+])
+if test "x$ax_cv_cc_c11_generic" = "xyes"; then
+  AC_DEFINE([HAVE_C11_GENERIC],1,[Define if the compiler supports the C11 _Generic construct])
+fi
+])
+
+dnl #
 dnl #  Check if we have the types compatible p builtin
 dnl #
 AC_DEFUN([FR_HAVE_BUILTIN_TYPES_COMPATIBLE_P],

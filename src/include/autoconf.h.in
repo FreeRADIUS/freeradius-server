@@ -51,6 +51,9 @@
 /* Define if the compiler supports __builtin_types_compatible_p */
 #undef HAVE_BUILTIN_TYPES_COMPATIBLE_P
 
+/* Define if the compiler supports the C11 _Generic construct */
+#undef HAVE_C11_GENERIC
+
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_CAPABILITY_H
 
