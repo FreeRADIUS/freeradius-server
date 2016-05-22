@@ -700,7 +700,7 @@ finish:
 	}
 
 	if (conf->cache_server) switch (tls_cache_process(request, conf->cache_server,
-							       CACHE_ACTION_OCSP_WRITE)) {
+							  CACHE_ACTION_OCSP_WRITE)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
