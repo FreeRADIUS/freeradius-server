@@ -210,7 +210,7 @@ _Generic((_ct), \
 	.type = (_t) | PW_TYPE_IS_SET, \
 	.data = _p, \
 	.is_set_ptr = _p ## _is_set
-#  define FR_ITEM_POINTER(_t, _p) .type = _t, .data = _p
+#  define FR_ITEM_POINTER(_t, _p) _t, _p
 #endif
 
 #define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
