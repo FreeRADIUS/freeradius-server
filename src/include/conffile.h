@@ -44,7 +44,13 @@ typedef struct conf_part CONF_SECTION;	//!< #CONF_ITEM used to group multiple #C
 typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
 					///< with a #CONF_PAIR or #CONF_SECTION.
 
+/*
+ * Dumb hack for GCC which explodes with lots of errors masking the real
+ * error cause, if we don't use typdefs for these structures.
+ */
+typedef struct timeval _timeval_t;
 
+#if defined(HAVE_BUILTIN_CHOOSE_EXPR) && defined(HAVE_C11_GENERIC)
 typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_vp_tmpl_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_char;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
@@ -78,13 +84,6 @@ typedef void _mismatch_default;		//!< Dummy type used to indicate PW_TYPE_*/C ty
 
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid PW_TYPE_*.
-
-#if defined(HAVE_BUILTIN_CHOOSE_EXPR) && defined(HAVE_C11_GENERIC)
-/*
- * Dumb hack for GCC which explodes with lots of errors masking the real
- * error cause, if we don't use typdefs for these structures.
- */
-typedef struct timeval _timeval_t;
 
 /** Check the type #_t matches the destination data type
  *

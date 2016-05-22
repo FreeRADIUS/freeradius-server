@@ -25,6 +25,9 @@ CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --with-pcre=$LIBS_OPTIONAL \
     --with-rlm-python-bin=/usr/bin/python2.7   # Otherwise travis picks up /opt/python, which doesn't have .so available
 
+echo "Contents of src/include/autoconf.h"
+cat "./src/include/autoconf.h"
+
 #
 #  Build the server
 #
