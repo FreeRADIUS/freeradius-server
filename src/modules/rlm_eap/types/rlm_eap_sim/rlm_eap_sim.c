@@ -364,6 +364,7 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
  *
  * @param eap_session	The current eap_session.
  * @param vps		List to hunt for triplets in.
+ * @param idx		To write EAP-SIM triplets to.
  * @param ess		EAP session state.
  * @param src		Forces triplets to be retrieved from a particular src
  *			and ensures if multiple triplets are being retrieved

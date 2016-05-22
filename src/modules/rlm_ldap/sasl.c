@@ -91,15 +91,17 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 /** Initiate an LDAP interactive bind
  *
  * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request, this may be NULL, in which case all debug logging is done with radlog.
- * @param[in] conn to use. May change as this function calls functions which auto re-connect.
- * @param[in] identity of the user.
- * @param[in] password of the user.
- * @param[in] sasl mechanism to use for bind, and additional parameters.
- * @param[in] serverctrls Search controls to pass to the server.  May be NULL.
- * @param[in] clientctrls Search controls for ldap_sasl_interactive.  May be NULL.
- * @param[out] error message resulting from bind.
- * @param[out] extra information about the error.
+ * @param[in] request		Current request, this may be NULL.
+ * @param[in] conn		to use. May change as this function calls functions
+ *				which auto re-connect.
+ * @param[in] identity		of the user.
+ * @param[in] password		of the user.
+ * @param[in] sasl		mechanism to use for bind, and additional parameters.
+ * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Search controls for ldap_sasl_interactive.  May be NULL.
+ * @param[in] timeout		Maximum time bind is allowed to take.
+ * @param[out] error		message resulting from bind.
+ * @param[out] extra		information about the error.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,

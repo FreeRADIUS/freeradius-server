@@ -748,6 +748,7 @@ process_error:
  * @param[in] password		of the user, may be NULL if no password is specified.
  * @param[in] sasl		mechanism to use for bind, and additional parameters.
  * @param[in] retry		whether we're rebinding an existing connection.
+ * @param[in] timeout		Maximum time bind is allowed to take.
  * @param[in] serverctrls	Only used for SASL binds.  May be NULL.
  * @param[in] clientctrls	Search controls for sasl_bind.
  *				Only used for SASL binds. May be NULL.
