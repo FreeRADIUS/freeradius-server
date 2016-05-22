@@ -714,9 +714,9 @@ finish:
 	OCSP_REQUEST_free(req);
 	OCSP_BASICRESP_free(bresp);
 	OCSP_RESPONSE_free(resp);
-	free(host);
-	free(port);
-	free(path);
+	OPENSSL_free(host);
+	OPENSSL_free(port);
+	OPENSSL_free(path);
 	BIO_free_all(conn);
 	BIO_free(ssl_log);
 
