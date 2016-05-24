@@ -660,6 +660,7 @@ int rad_virtual_server(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int result;
+	CONF_SECTION *old_cs;
 
 	RDEBUG("Virtual server %s received request", request->server);
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
@@ -760,6 +761,9 @@ int rad_virtual_server(REQUEST *request)
 
 skip:
 	RDEBUG("server %s {", request->server);
+	old_cs = request->server_cs;
+	request->server_cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
+
 	RINDENT();
 
 	/*
@@ -785,6 +789,7 @@ skip:
 
 	RDEBUG("Virtual server sending reply");
 	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
+	request->server_cs = old_cs;
 
 	return result;
 }
