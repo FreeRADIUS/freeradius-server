@@ -1835,7 +1835,16 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 	char const *module;
 	char const *component;
 
-	rad_assert(request->server_cs != NULL);
+	/*
+	 *	Some modules don't (yet) set this.  It's also
+	 *	debatable as to whether they should be required to set
+	 *	it.
+	 */
+	if (!request->server_cs) {
+		rad_assert(request->server != NULL);
+
+		request->server_cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
+	}
 
 	cs = cf_section_sub_find(request->server_cs, section_type_value[comp].section);
 	if (!cs) {
