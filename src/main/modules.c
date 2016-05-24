@@ -1965,84 +1965,64 @@ int modules_init(CONF_SECTION *root)
 static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
-	modcallable *list = NULL;
-	virtual_server_t *server;
 	CONF_SECTION *cs;
+	char const *module;
+	char const *component;
+
+	rad_assert(request->server_cs != NULL);
+
+	cs = cf_section_sub_find(request->server_cs, section_type_value[comp].section);
+	if (!cs) {
+		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return values.",
+			section_type_value[comp].section, request->server);
+		goto call_unlang;
+	}
 
 	/*
-	 *	Find the correct virtual server.
+	 *	Figure out which section to run.
 	 */
-	cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
-	if (!cs) {
-		RDEBUG("No such virtual server \"%s\"", request->server);
-		return RLM_MODULE_FAIL;
-	}
+	if (!idx) {
+		RDEBUG("Running section %s from file %s",
+		       section_type_value[comp].section, cf_section_filename(cs));
 
-	server = (virtual_server_t *)cf_data_find(cs, request->server);
-	rad_assert(server != NULL);
-
-	if (idx == 0) {
-		list = server->mc[comp];
-		if (!list) {
-			if (server->name) {
-				RDEBUG3("Empty %s section in virtual server \"%s\".  Using default return values.",
-					section_type_value[comp].section, server->name);
-			} else {
-				RDEBUG3("Empty %s section.  Using default return values.",
-					section_type_value[comp].section);
-			}
-		}
 	} else {
-		indexed_modcallable *this;
+		fr_dict_attr_t const *da;
+		fr_dict_enum_t const *dv;
+		CONF_SECTION *subcs;
 
-		this = lookup_by_index(server->components, comp, idx);
-		if (this) {
-			list = this->modulelist;
-		} else {
-			RDEBUG2("%s sub-section not found.  Ignoring.", section_type_value[comp].typename);
-		}
-	}
+		da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
+		if (!da) return RLM_MODULE_FAIL;
 
-	if (server->subcs[comp]) {
-		if (idx == 0) {
-			RDEBUG("Running section %s from file %s",
-			       section_type_value[comp].section,
-			       cf_section_filename(server->subcs[comp]));
-		} else {
-			fr_dict_attr_t const *da;
-			fr_dict_enum_t const *dv;
+		dv = fr_dict_enum_by_da(NULL, da, idx);
+		if (!dv) return RLM_MODULE_FAIL;
 
-			da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-			if (!da) return RLM_MODULE_FAIL;
-
-			dv = fr_dict_enum_by_da(NULL, da, idx);
-			if (!dv) return RLM_MODULE_FAIL;
-
+		subcs = cf_section_sub_find_name2(cs, da->name, dv->name);
+		if (subcs) {
 			RDEBUG("Running %s %s from file %s",
-			       da->name, dv->name,
-			       cf_section_filename(server->subcs[comp]));
+			       da->name, dv->name, cf_section_filename(subcs));
+		} else {
+			RDEBUG2("%s %s sub-section not found.  Using default return values.",
+				da->name, dv->name);
 		}
+
+		cs = subcs;
 	}
 
-	{
-		char const *module;
-		char const *component;
+	/*
+	 *	Cache and restore these, as they're re-set when
+	 *	looping back from inside a module like eap-gtc.
+	 */
+call_unlang:
+	module = request->module;
+	component = request->component;
 
-		/*
-		 *	This handles weird cases, where we're
-		 *	looping back from inside a module like eap-gtc.
-		 */
-		module = request->module;
-		component = request->component;
+	request->module = NULL;
+	request->component = section_type_value[comp].section;
 
-		request->module = NULL;
-		request->component = section_type_value[comp].section;
+	rcode = unlang_interpret(request, cs, comp);
 
-		rcode = unlang_interpret(request, list, comp);
-
-		request->component = component;
-		request->module = module;
-	}
+	request->component = component;
+	request->module = module;
 
 	return rcode;
 }

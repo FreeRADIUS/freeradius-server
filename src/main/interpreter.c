@@ -1013,12 +1013,14 @@ static int default_component_results[MOD_COUNT] = {
  *
  * What did Paul Graham say about Lisp...?
  */
-rlm_rcode_t unlang_interpret(REQUEST *request, modcallable *c, rlm_components_t component)
+rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_components_t component)
 {
 	int priority;
 	rlm_rcode_t result;
+	modcallable *c;
 	unlang_stack_t stack;
 
+	c = cf_data_find(cs, "unlang");
 	if (!c) return default_component_results[component];
 
 	memset(&stack, 0, sizeof(stack));
