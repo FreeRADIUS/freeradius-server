@@ -34,20 +34,6 @@ RCSID("$Id$")
  */
 char const *radlib_dir = NULL;
 
-typedef struct indexed_modcallable {
-	rlm_components_t	comp;
-	int			idx;
-	modcallable		*modulelist;
-} indexed_modcallable;
-
-typedef struct virtual_server_t {
-	char const		*name;			//!< Name of virtual server.
-	CONF_SECTION		*cs;			//!< Server's configuration section.
-	rbtree_t		*components;
-	modcallable		*mc[MOD_COUNT];
-	CONF_SECTION		*subcs[MOD_COUNT];
-} virtual_server_t;
-
 static TALLOC_CTX *instance_ctx = NULL;
 static rbtree_t *dlhandle_tree = NULL;
 
@@ -271,16 +257,6 @@ void *module_dlopen_by_name(char const *name)
 	return handle;
 }
 
-static int indexed_modcallable_cmp(void const *one, void const *two)
-{
-	indexed_modcallable const *a = one;
-	indexed_modcallable const *b = two;
-
-	if (a->comp < b->comp) return -1;
-	if (a->comp > b->comp) return +1;
-
-	return a->idx - b->idx;
-}
 
 /** Free old instances from HUPs
  *
@@ -882,64 +858,14 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	return 1;
 }
 
-static indexed_modcallable *lookup_by_index(rbtree_t *components,
-					    rlm_components_t comp, int idx)
-{
-	indexed_modcallable myc;
-
-	myc.comp = comp;
-	myc.idx = idx;
-
-	return rbtree_finddata(components, &myc);
-}
-
-/*
- *	Create a new sublist.
- */
-static indexed_modcallable *new_sublist(CONF_SECTION *cs,
-					rbtree_t *components, rlm_components_t comp, int idx)
-{
-	indexed_modcallable *c;
-
-	c = lookup_by_index(components, comp, idx);
-
-	/* It is an error to try to create a sublist that already
-	 * exists. It would almost certainly be caused by accidental
-	 * duplication in the config file.
-	 *
-	 * index 0 is the exception, because it is used when we want
-	 * to collect _all_ listed modules under a single index by
-	 * default, which is currently the case in all components
-	 * except authenticate. */
-	if (c) {
-		if (idx == 0) {
-			return c;
-		}
-		return NULL;
-	}
-
-	c = talloc_zero(cs, indexed_modcallable);
-	c->modulelist = NULL;
-	c->comp = comp;
-	c->idx = idx;
-
-	if (!rbtree_insert(components, c)) {
-		talloc_free(c);
-		return NULL;
-	}
-
-	return c;
-}
 
 /*
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
  */
 static bool load_subcomponent_section(CONF_SECTION *cs,
-				     rbtree_t *components,
 				     fr_dict_attr_t const *da, rlm_components_t comp)
 {
-	indexed_modcallable *subcomp;
 	modcallable *ml;
 	fr_dict_enum_t *dval;
 	char const *name2 = cf_section_name2(cs);
@@ -969,21 +895,12 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 	ml = modcall_compile_section(NULL, comp, cs);
 	if (!ml) return false;
 
-	subcomp = new_sublist(cs, components, comp, dval->value);
-	if (!subcomp) {
-		talloc_free(ml);
-		return false;
-	}
-
-	subcomp->modulelist = talloc_steal(subcomp, ml);
 	return true;
 }
 
-static int load_component_section(CONF_SECTION *cs,
-				  rbtree_t *components, rlm_components_t comp)
+static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 {
 	CONF_SECTION *subcs;
-	indexed_modcallable *subcomp;
 	modcallable *ml;
 	fr_dict_attr_t const *da;
 
@@ -1007,7 +924,7 @@ static int load_component_section(CONF_SECTION *cs,
 	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
 	     subcs != NULL;
 	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
-		if (!load_subcomponent_section(subcs, components, da, comp)) {
+		if (!load_subcomponent_section(subcs, da, comp)) {
 			return -1; /* FIXME: memleak? */
 		}
 	}
@@ -1022,49 +939,16 @@ static int load_component_section(CONF_SECTION *cs,
 		return -1;
 	}
 
-	subcomp = new_sublist(cs, components, comp, 0);
-	if (!subcomp) {
-		talloc_free(ml);
-		return -1;
-	}
-	subcomp->modulelist = talloc_steal(subcomp, ml);
-
 	return 0;
 }
-
-static int _virtual_server_free(virtual_server_t *server)
-{
-	server = talloc_get_type_abort(server, virtual_server_t);
-	if (server->components) rbtree_free(server->components);
-	return 0;
-}
-
 
 static int virtual_server_compile(CONF_SECTION *cs)
 {
 	rlm_components_t comp, found;
 	char const *name = cf_section_name2(cs);
-	rbtree_t *components;
-	virtual_server_t *server = NULL;
-	indexed_modcallable *c;
 
 	cf_log_info(cs, "server %s { # from file %s",
 		    name, cf_section_filename(cs));
-
-	server = talloc_zero(cs, virtual_server_t);
-	server->name = name;
-	server->cs = cs;
-	server->components = components = rbtree_create(server, indexed_modcallable_cmp, NULL, 0);
-	if (!components) {
-		ERROR("Failed to initialize components");
-
-		error:
-		if (rad_debug_lvl == 0) {
-			ERROR("Failed to load virtual server \"%s\"", name);
-		}
-		return -1;
-	}
-	talloc_set_destructor(server, _virtual_server_free);
 
 	/*
 	 *	Loop over all of the known components, finding their
@@ -1101,18 +985,13 @@ static int virtual_server_compile(CONF_SECTION *cs)
 		if (comp == MOD_SESSION) continue;
 #endif
 
-		if (load_component_section(subcs, components, comp) < 0) {
-			goto error;
+		if (load_component_section(subcs, comp) < 0) {
+		error:
+			if (rad_debug_lvl == 0) {
+				ERROR("Failed to load virtual server \"%s\"", name);
+			}
+			return -1;
 		}
-
-		/*
-		 *	Cache a default, if it exists.  Some people
-		 *	put empty sections for some reason...
-		 */
-		c = lookup_by_index(components, comp, 0);
-		if (c) server->mc[comp] = c->modulelist;
-
-		server->subcs[comp] = subcs;
 
 		found = 1;
 	} /* loop over components */
@@ -1136,13 +1015,9 @@ static int virtual_server_compile(CONF_SECTION *cs)
 			subcs = cf_section_sub_find(cs, "vmps");
 			if (subcs) {
 				cf_log_module(cs, "Loading vmps {...}");
-				if (load_component_section(subcs, components,
-							   MOD_POST_AUTH) < 0) {
+				if (load_component_section(subcs, MOD_POST_AUTH) < 0) {
 					goto error;
 				}
-				c = lookup_by_index(components,
-						    MOD_POST_AUTH, 0);
-				if (c) server->mc[MOD_POST_AUTH] = c->modulelist;
 				break;
 			}
 #endif
@@ -1168,14 +1043,10 @@ static int virtual_server_compile(CONF_SECTION *cs)
 					cf_log_module(cs, "Loading dhcp {...}");
 				}
 				if (!load_subcomponent_section(subcs,
-							       components,
 							       da,
 							       MOD_POST_AUTH)) {
 					goto error; /* FIXME: memleak? */
 				}
-				c = lookup_by_index(components,
-						    MOD_POST_AUTH, 0);
-				if (c) server->mc[MOD_POST_AUTH] = c->modulelist;
 
 				subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 			}
@@ -1187,11 +1058,6 @@ static int virtual_server_compile(CONF_SECTION *cs)
 	if (rad_debug_lvl == 0) {
 		INFO("Loaded virtual server %s", name);
 	}
-
-	/*
-	 *	Associate the virtual server with the configuration section.
-	 */
-	cf_data_add(cs, name, server, NULL);
 
 	return 0;
 }
