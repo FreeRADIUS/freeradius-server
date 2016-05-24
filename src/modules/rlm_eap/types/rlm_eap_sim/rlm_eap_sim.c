@@ -442,7 +442,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	eap_sim_state_t *ess;
 	VALUE_PAIR **invps, **outvps, *newvp;
 	RADIUS_PACKET *packet;
-	uint8_t *p;
+	uint8_t *p, *rand;
 
 	ess = talloc_get_type_abort(eap_session->opaque, eap_sim_state_t);
 	rad_assert(eap_session->request != NULL);
@@ -469,7 +469,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
 	MEM(newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_RAND));
-	MEM(p = talloc_array(newvp, uint8_t, 2 + (EAPSIM_RAND_SIZE * 3)));
+	MEM(p = rand = talloc_array(newvp, uint8_t, 2 + (EAPSIM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
 	memcpy(p, ess->keys.rand[0], EAPSIM_RAND_SIZE);
@@ -477,7 +477,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	memcpy(p, ess->keys.rand[1], EAPSIM_RAND_SIZE);
 	p += EAPSIM_RAND_SIZE;
 	memcpy(p, ess->keys.rand[2], EAPSIM_RAND_SIZE);
-	fr_pair_value_memsteal(newvp, p);
+	fr_pair_value_memsteal(newvp, rand);
 	fr_pair_add(outvps, newvp);
 
 	/*
