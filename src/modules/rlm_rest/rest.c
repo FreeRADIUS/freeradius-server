@@ -1187,47 +1187,21 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- NULL on error.
  */
 static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
-				      TALLOC_CTX *ctx, REQUEST *request, fr_dict_attr_t const *da,
-				      json_flags_t *flags, json_object *leaf)
+				      TALLOC_CTX *ctx, REQUEST *request,
+				      fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
-	char const *value, *to_parse;
-	char *expanded = NULL;
-	int ret;
+	char const	*value;
+	char		*expanded = NULL;
+	int 		ret;
 
-	VALUE_PAIR *vp;
+	VALUE_PAIR	*vp;
+
+	PW_TYPE		type;
+	value_data_t	src;
 
 	if (fr_json_object_is_type(leaf, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\", skipping...", da->name);
-
 		return NULL;
-	}
-
-	/*
-	 *	Should encode any nested JSON structures into JSON strings.
-	 *
-	 *	"I knew you liked JSON so I put JSON in your JSON!"
-	 */
-	value = json_object_get_string(leaf);
-	if (!value) {
-		RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
-
-		return NULL;
-	}
-
-	RINDENT();
-	RDEBUG3("Type   : %s", fr_int2str(dict_attr_types, da->type, "<INVALID>"));
-	RDEBUG3("Length : %zu", strlen(value));
-	RDEBUG3("Value  : \"%s\"", value);
-	REXDENT();
-
-	if (flags->do_xlat) {
-		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
-			return NULL;
-		}
-
-		to_parse = expanded;
-	} else {
-		to_parse = value;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
@@ -1238,16 +1212,62 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		return NULL;
 	}
 
-	vp->op = flags->op;
+	memset(&src, 0, sizeof(src));
 
-	ret = fr_pair_value_from_str(vp, to_parse, -1);
+	switch (json_object_get_type(leaf)) {
+	case json_type_int:
+		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
+		type = PW_TYPE_SIGNED;
+		src.sinteger = json_object_get_int(leaf);
+		break;
+
+	case json_type_double:
+		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
+		type = PW_TYPE_DECIMAL;
+		src.decimal = json_object_get_double(leaf);
+		break;
+
+	case json_type_string:
+		type = PW_TYPE_STRING;
+		value = json_object_get_string(leaf);
+		if (flags->do_xlat) {
+			if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) return NULL;
+			src.strvalue = expanded;
+			src.length = talloc_array_length(src.strvalue) - 1;
+		} else {
+			src.strvalue = value;
+			src.length = json_object_get_string_len(leaf);
+		}
+
+		break;
+
+	default:
+		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'object', attribute \"%s\"", da->name);
+
+		/*
+		 *	Should encode any nested JSON structures into JSON strings.
+		 *
+		 *	"I knew you liked JSON so I put JSON in your JSON!"
+		 */
+		type = PW_TYPE_STRING;
+		src.strvalue = json_object_get_string(leaf);
+		if (!src.strvalue) {
+			RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
+
+			return NULL;
+		}
+		src.length = strlen(src.strvalue);
+	}
+
+	ret = value_data_cast(vp, &vp->data, vp->da->type, vp->da, type, NULL, &src);
 	talloc_free(expanded);
 	if (ret < 0) {
-		RWDEBUG("Incompatible value assignment for attribute \"%s\", skipping...", da->name);
+		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping): %s", da->name, fr_strerror());
 		talloc_free(vp);
-
 		return NULL;
 	}
+
+	vp->op = flags->op;
 
 	return vp;
 }
