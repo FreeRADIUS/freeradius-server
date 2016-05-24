@@ -62,7 +62,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("proxy_tunneled_request_as_eap", PW_TYPE_BOOLEAN, rlm_eap_peap_t, proxy_tunneled_request_as_eap), .dflt = "yes" },
 #endif
 
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_eap_peap_t, virtual_server) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_peap_t, virtual_server) },
 
 	{ FR_CONF_OFFSET("soh", PW_TYPE_BOOLEAN, rlm_eap_peap_t, soh), .dflt = "no" },
 
@@ -88,11 +88,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 *	Parse the configuration attributes.
 	 */
 	if (cf_section_parse(cs, inst, module_config) < 0) return -1;
-
-	if (!inst->virtual_server) {
-		ERROR("A 'virtual_server' MUST be defined for security");
-		return -1;
-	}
 
 	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
 		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);

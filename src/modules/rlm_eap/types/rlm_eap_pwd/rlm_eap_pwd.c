@@ -47,7 +47,7 @@ static CONF_PARSER pwd_module_config[] = {
 	{ FR_CONF_OFFSET("group", PW_TYPE_INTEGER, eap_pwd_t, group), .dflt = "19" },
 	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, eap_pwd_t, fragment_size), .dflt = "1020" },
 	{ FR_CONF_OFFSET("server_id", PW_TYPE_STRING, eap_pwd_t, server_id) },
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, eap_pwd_t, virtual_server) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, eap_pwd_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -73,6 +73,11 @@ static int mod_instantiate (CONF_SECTION *cs, void **instance)
 
 	if (inst->fragment_size < 100) {
 		cf_log_err_cs(cs, "Fragment size is too small");
+		return -1;
+	}
+
+	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
+		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 
@@ -448,11 +453,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		RDEBUG("Sending tunneled request");
 		rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
-		if (fake->server) {
-			RDEBUG("server %s {", fake->server);
-		} else {
-			RDEBUG("server {");
-		}
+		RDEBUG("server %s {", fake->server);
 
 		/*
 		 *	Call authorization recursively, which will
@@ -466,11 +467,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		 *	Note that we don't do *anything* with the reply
 		 *	attributes.
 		 */
-		if (fake->server) {
-			RDEBUG("} # server %s", fake->server);
-		} else {
-			RDEBUG("}");
-		}
+		RDEBUG("} # server %s", fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
