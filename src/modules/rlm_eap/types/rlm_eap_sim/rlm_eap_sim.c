@@ -105,10 +105,10 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	memcpy(ess->keys.versionlist, words + 1, ess->keys.versionlistlen);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_FULLAUTH_ID_REQ);
-	p = talloc_array(newvp, uint8_t, 2);
+	MEM(newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_FULLAUTH_ID_REQ));
+	MEM(p = talloc_array(newvp, uint8_t, 2));
 	p[0] = 0;
-	p[0] = 1;
+	p[1] = 1;
 	fr_pair_value_memsteal(newvp, p);
 	fr_pair_add(vps, newvp);
 
@@ -267,8 +267,9 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && rand; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
 		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_RAND, TAG_ANY);
+		if (!rand) break;
 	}
 	if (!rand) return 1;
 
@@ -281,24 +282,27 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && xres; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
 		xres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_XRES, TAG_ANY);
+		if (!xres) break;
 	}
 	if (!xres) return 1;
 
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && ck; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
 		ck = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_CK, TAG_ANY);
+		if (!ck) break;
 	}
 	if (!ck) return 1;
 
 	/*
 	 *	Fetch IK
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); (i < idx) && ik; i++) {
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
 		ik = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_IK, TAG_ANY);
+		if (!ik) break;
 	}
 	if (!ik) return 1;
 
@@ -464,8 +468,8 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
-	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_RAND);
-	p = talloc_array(newvp, uint8_t, 2 + (EAPSIM_RAND_SIZE * 3));
+	MEM(newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_RAND));
+	MEM(p = talloc_array(newvp, uint8_t, 2 + (EAPSIM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
 	memcpy(p, ess->keys.rand[0], EAPSIM_RAND_SIZE);
@@ -749,11 +753,10 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		char macline[20*3];
 		char *m = macline;
 
-		j=0;
-		for (i = 0; i < EAPSIM_CALCMAC_SIZE; i++) {
-			if(j==4) {
-			  *m++ = '_';
-			  j=0;
+		for (i = 0, j = 0; i < EAPSIM_CALCMAC_SIZE; i++) {
+			if (j == 4) {
+				*m++ = '_';
+				j=0;
 			}
 			j++;
 
