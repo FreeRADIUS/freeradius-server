@@ -1146,7 +1146,10 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		    PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
 		    value_data_t const *src)
 {
-	if (!fr_cond_assert(dst_type != src_type)) return -1;
+	/*
+	 *	If it's the same type, copy.
+	 */
+	if (dst_type == src_type) return value_data_copy(ctx, dst, src_type, src);
 
 	/*
 	 *	Deserialise a value_data_t
