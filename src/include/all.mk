@@ -26,7 +26,6 @@ HEADERS	= \
 	libradius.h \
 	md4.h \
 	md5.h \
-	modcall.h \
 	modules.h \
 	packet.h \
 	rad_assert.h \

@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/modcall.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_cache.h"
@@ -515,7 +514,7 @@ static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, REQUEST *request,
  */
 static int cache_verify(vp_map_t *map, void *ctx)
 {
-	if (modcall_fixup_update(map, ctx) < 0) return -1;
+	if (unlang_fixup_update(map, ctx) < 0) return -1;
 
 	if ((map->lhs->type != TMPL_TYPE_ATTR) &&
 	    (map->lhs->type != TMPL_TYPE_LIST)) {

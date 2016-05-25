@@ -90,6 +90,8 @@ module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
 int			module_hup(CONF_SECTION *cs, module_instance_t *node, time_t when);
 
+int			unlang_fixup_update(vp_map_t *map, void *ctx);
+
 #ifdef __cplusplus
 }
 #endif

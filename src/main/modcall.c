@@ -1126,7 +1126,7 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
  *	- 0 if valid.
  *	- -1 not valid.
  */
-int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
+int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -1492,7 +1492,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err_cs(cs, "'update' sections cannot be empty");
