@@ -69,7 +69,7 @@ static void safe_unlock(module_instance_t *instance)
 		pthread_mutex_unlock(instance->mutex);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, modsingle *sp, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *sp)
 {
 	int blocked;
 
@@ -80,7 +80,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, mo
 	if (blocked) return RLM_MODULE_NOOP;
 
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
-		comp2str[component], sp->modinst->name,
+		sp->method, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	if (sp->modinst->force) {
@@ -94,7 +94,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, mo
 	request->module = sp->modinst->name;
 
 	safe_lock(sp->modinst);
-	request->rcode = sp->modinst->module->methods[component](sp->modinst->data, request);
+	request->rcode = sp->function(sp->modinst->data, request);
 	safe_unlock(sp->modinst);
 
 	request->module = NULL;
@@ -109,7 +109,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, mo
 
  fail:
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
-		comp2str[component], sp->modinst->name,
+		sp->method, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	return request->rcode;
@@ -676,7 +676,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	sp = mod_callabletosingle(c);
 
-	*presult = unlang_module(c->method, sp, request);
+	*presult = unlang_module(request, sp);
 	*priority = c->actions[*presult];
 
 	RDEBUG2("%s (%s)", c->name ? c->name : "",

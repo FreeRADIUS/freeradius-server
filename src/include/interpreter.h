@@ -86,8 +86,10 @@ typedef struct {
 } modgroup;
 
 typedef struct {
-	modcallable mc;
-	module_instance_t *modinst;
+	modcallable		mc;
+	module_instance_t	*modinst;
+	char const		*method;
+	packetmethod		function;
 } modsingle;
 
 typedef struct {

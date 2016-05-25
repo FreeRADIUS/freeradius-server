@@ -2525,7 +2525,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 }
 
 
-static modcallable *compile_csingle(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t grouptype, char const *realname)
+static modcallable *compile_module(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t grouptype, char const *realname)
 {
 	modcallable *c;
 	modsingle *single;
@@ -2542,6 +2542,8 @@ static modcallable *compile_csingle(modcallable *parent, rlm_components_t compon
 
 	single = talloc_zero(parent, modsingle);
 	single->modinst = this;
+	single->function = this->module->methods[component];
+	single->method = comp2str[component];
 
 	c = mod_singletocallable(single);
 	c->parent = parent;
@@ -2840,7 +2842,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	this = module_instantiate_method(modules, realname, &method);
 	if (this) {
 		*modname = this->module->name;
-		return compile_csingle(parent, method, ci, this, parent_grouptype, realname);
+		return compile_module(parent, method, ci, this, parent_grouptype, realname);
 	}
 
 	/*
