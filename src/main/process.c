@@ -2270,7 +2270,9 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	if (request->home_pool && request->home_pool->virtual_server) {
 		char const *old_server = request->server;
 
-		request->server = request->home_pool->virtual_server;
+		request->server = request->home_pool->virtual_server; /* @fixme 4.0 this shouldn't be necessary! */
+		rad_assert(strcmp(request->proxy->server, request->server) == 0);
+
 		RDEBUG2("server %s {", request->server);
 		RINDENT();
 		rcode = process_post_proxy(vp ? vp->vp_integer : 0, request);
@@ -2926,7 +2928,8 @@ do_home:
 	if (request->home_pool && request->home_pool->virtual_server) {
 		char const *old_server = request->server;
 
-		request->server = request->home_pool->virtual_server;
+		request->proxy->server = request->home_pool->virtual_server;
+		request->server = request->proxy->server; /* @fixme 4.0 this shouldn't be necessary! */
 
 		RDEBUG2("server %s {", request->server);
 		RINDENT();
@@ -4037,7 +4040,9 @@ static void request_coa_originate(REQUEST *request)
 	if (coa->home_pool && coa->home_pool->virtual_server) {
 		char const *old_server = coa->server;
 
-		coa->server = coa->home_pool->virtual_server;
+		coa->proxy->server = coa->home_pool->virtual_server;
+		coa->server = coa->proxy->server; /* @fixme 4.0 this shouldn't be necessary! */
+
 		RDEBUG2("server %s {", coa->server);
 		RINDENT();
 		rcode = process_pre_proxy(pre_proxy_type, coa);
