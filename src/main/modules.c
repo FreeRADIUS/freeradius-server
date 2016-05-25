@@ -1828,6 +1828,23 @@ int modules_init(CONF_SECTION *root)
 }
 
 
+static int default_component_results[MOD_COUNT] = {
+	RLM_MODULE_REJECT,	/* AUTH */
+	RLM_MODULE_NOTFOUND,	/* AUTZ */
+	RLM_MODULE_NOOP,	/* PREACCT */
+	RLM_MODULE_NOOP,	/* ACCT */
+	RLM_MODULE_FAIL,	/* SESS */
+	RLM_MODULE_NOOP,	/* PRE_PROXY */
+	RLM_MODULE_NOOP,	/* POST_PROXY */
+	RLM_MODULE_NOOP       	/* POST_AUTH */
+#ifdef WITH_COA
+	,
+	RLM_MODULE_NOOP,       	/* RECV_COA_TYPE */
+	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
+#endif
+};
+
+
 static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
@@ -1848,9 +1865,10 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 
 	cs = cf_section_sub_find(request->server_cs, section_type_value[comp].section);
 	if (!cs) {
-		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return values.",
-			section_type_value[comp].section, request->server);
-		goto call_unlang;
+		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value %s.",
+			section_type_value[comp].section, request->server,
+			fr_int2str(mod_rcode_table, default_component_results[comp], "<invalid>"));
+		return default_component_results[comp];
 	}
 
 	/*
@@ -1887,14 +1905,13 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 	 *	Cache and restore these, as they're re-set when
 	 *	looping back from inside a module like eap-gtc.
 	 */
-call_unlang:
 	module = request->module;
 	component = request->component;
 
 	request->module = NULL;
 	request->component = section_type_value[comp].section;
 
-	rcode = unlang_interpret(request, cs, comp);
+	rcode = unlang_interpret(request, cs, default_component_results[comp]);
 
 	request->component = component;
 	request->module = module;

@@ -992,40 +992,25 @@ done:
 }
 
 
-static int default_component_results[MOD_COUNT] = {
-	RLM_MODULE_REJECT,	/* AUTH */
-	RLM_MODULE_NOTFOUND,	/* AUTZ */
-	RLM_MODULE_NOOP,	/* PREACCT */
-	RLM_MODULE_NOOP,	/* ACCT */
-	RLM_MODULE_FAIL,	/* SESS */
-	RLM_MODULE_NOOP,	/* PRE_PROXY */
-	RLM_MODULE_NOOP,	/* POST_PROXY */
-	RLM_MODULE_NOOP       	/* POST_AUTH */
-#ifdef WITH_COA
-	,
-	RLM_MODULE_NOOP,       	/* RECV_COA_TYPE */
-	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
-#endif
-};
-
-
 /** Call a module, iteratively, with a local stack, rather than recursively
  *
  * What did Paul Graham say about Lisp...?
  */
-rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_components_t component)
+rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
 	int priority;
 	rlm_rcode_t result;
 	modcallable *c;
 	unlang_stack_t stack;
 
+	if (!cs) return action;
+
 	c = cf_data_find(cs, "unlang");
-	if (!c) return default_component_results[component];
+	if (!c) return action;
 
 	memset(&stack, 0, sizeof(stack));
 
-	result = default_component_results[component];
+	result = action;
 	priority = 0;
 
 	unlang_push(&stack, c, result, true);
