@@ -1309,6 +1309,34 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 }
 
 
+static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
+				grouptype_t grouptype, mod_type_t mod_type, rlm_components_t component)
+{
+	modgroup *g;
+	modcallable *c;
+	TALLOC_CTX *ctx;
+
+	ctx = parent;
+	if (!ctx) ctx = cs;
+
+	g = talloc_zero(ctx, modgroup);
+	if (!g) return NULL;
+
+	g->grouptype = grouptype;
+	g->children = NULL;
+	g->cs = cs;
+
+	c = mod_grouptocallable(g);
+	c->method = component;
+	c->parent = parent;
+	c->type = mod_type;
+	c->next = NULL;
+	memset(c->actions, 0, sizeof(c->actions));
+
+	return g;
+}
+
+
 static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
 {
@@ -1388,7 +1416,9 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 		return NULL;
 	}
 
-	g = talloc_zero(parent, modgroup);
+	g = group_allocate(parent, cs, GROUPTYPE_SIMPLE, MOD_MAP, component);
+	if (!g) return NULL;
+
 	proc_inst = map_proc_instantiate(g, proc, vpt, head);
 	if (!proc_inst) {
 		talloc_free(g);
@@ -1397,9 +1427,6 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 	}
 
 	c = mod_grouptocallable(g);
-
-	c->parent = parent;
-	c->next = NULL;
 
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
@@ -1425,17 +1452,12 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 
 	c->name = talloc_asprintf(c, "map %s %s", name2, quoted_str);
 	c->debug_name = c->name;
-	c->type = MOD_MAP;
-	c->method = component;
 
 	talloc_free(quoted_str);
 
 	memcpy(c->actions, defaultactions[component][parentgrouptype],
 	       sizeof(c->actions));
 
-	g->grouptype = GROUPTYPE_SIMPLE;
-	g->children = NULL;
-	g->cs = cs;
 	g->map = talloc_steal(g, head);
 	g->vpt = talloc_steal(g, vpt);
 	g->proc_inst = proc_inst;
@@ -1477,12 +1499,10 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
-	g = talloc_zero(parent, modgroup);
-	c = mod_grouptocallable(g);
+	g = group_allocate(parent, cs, grouptype, MOD_UPDATE, component);
+	if (!g) return NULL;
 
-	c->type = MOD_UPDATE;
-	c->parent = parent;
-	c->next = NULL;
+	c = mod_grouptocallable(g);
 
 	if (name2) {
 		c->name = name2;
@@ -1491,14 +1511,10 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		c->name = unlang_keyword[c->type];
 		c->debug_name = unlang_keyword[c->type];
 	}
-	c->method = component;
 
 	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(c->actions));
 
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
 	g->map = talloc_steal(g, head);
 
 #ifdef WITH_CONF_WRITE
@@ -1624,34 +1640,6 @@ static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, 
 	 *	FIXME: If there are no children, return NULL?
 	 */
 	return c;
-}
-
-
-static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
-				grouptype_t grouptype, mod_type_t mod_type, rlm_components_t component)
-{
-	modgroup *g;
-	modcallable *c;
-	TALLOC_CTX *ctx;
-
-	ctx = parent;
-	if (!ctx) ctx = cs;
-
-	g = talloc_zero(ctx, modgroup);
-	if (!g) return NULL;
-
-	g->grouptype = grouptype;
-	g->children = NULL;
-	g->cs = cs;
-
-	c = mod_grouptocallable(g);
-	c->method = component;
-	c->parent = parent;
-	c->type = mod_type;
-	c->next = NULL;
-	memset(c->actions, 0, sizeof(c->actions));
-
-	return g;
 }
 
 
