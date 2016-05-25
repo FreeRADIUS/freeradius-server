@@ -866,7 +866,6 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 static bool load_subcomponent_section(CONF_SECTION *cs,
 				     fr_dict_attr_t const *da, rlm_components_t comp)
 {
-	modcallable *ml;
 	fr_dict_enum_t *dval;
 	char const *name2 = cf_section_name2(cs);
 
@@ -892,8 +891,9 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 	/*
 	 *	Compile the group.
 	 */
-	ml = modcall_compile_section(NULL, comp, cs);
-	if (!ml) return false;
+	if (unlang_compile(cs, comp) < 0) {
+		return false;
+	}
 
 	return true;
 }
@@ -901,7 +901,6 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 {
 	CONF_SECTION *subcs;
-	modcallable *ml;
 	fr_dict_attr_t const *da;
 
 	/*
@@ -932,8 +931,7 @@ static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 	/*
 	 *	Compile the section.
 	 */
-	ml = modcall_compile_section(NULL, comp, cs);
-	if (!ml) {
+	if (unlang_compile(cs, comp) < 0) {
 		cf_log_err_cs(cs, "Errors parsing %s section.\n",
 			      cf_section_name1(cs));
 		return -1;

@@ -948,7 +948,7 @@ static bool pass2_fixup_map(modgroup *g)
 }
 #endif
 
-void modcall_debug(modcallable *mc, int depth)
+static void unlang_dump(modcallable *mc, int depth)
 {
 	modcallable *this;
 	modgroup *g;
@@ -994,7 +994,7 @@ void modcall_debug(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_keyword[this->type]);
-			modcall_debug(g->children, depth + 1);
+			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
@@ -1004,7 +1004,7 @@ void modcall_debug(modcallable *mc, int depth)
 			fr_cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
 				unlang_keyword[this->type], buffer);
-			modcall_debug(g->children, depth + 1);
+			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
@@ -1014,7 +1014,7 @@ void modcall_debug(modcallable *mc, int depth)
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_keyword[this->type], buffer);
-			modcall_debug(g->children, depth + 1);
+			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
@@ -1023,7 +1023,7 @@ void modcall_debug(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_keyword[this->type], this->name);
-			modcall_debug(g->children, depth + 1);
+			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
@@ -1036,7 +1036,7 @@ void modcall_debug(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 			      unlang_keyword[this->type]);
-			modcall_debug(g->children, depth + 1);
+			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
@@ -1046,7 +1046,7 @@ void modcall_debug(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_keyword[this->type]);
-			modcall_debug(g->children, depth + 1);
+			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 		}
@@ -2852,14 +2852,13 @@ fail:
 	return NULL;
 }
 
-modcallable *modcall_compile_section(modcallable *parent,
-				     rlm_components_t component, CONF_SECTION *cs)
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 {
 	char const *name1, *name2;
 	modcallable *c;
 
-	c = compile_group(parent, component, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_GROUP);
-	if (!c) return NULL;
+	c = compile_group(NULL, component, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_GROUP);
+	if (!c) return -1;
 
 	/*
 	 *	The name / debug name are set to "group".  We want
@@ -2876,7 +2875,7 @@ modcallable *modcall_compile_section(modcallable *parent,
 	}
 
 	if (rad_debug_lvl > 3) {
-		modcall_debug(c, 2);
+		unlang_dump(c, 2);
 	}
 
 	/*
@@ -2885,5 +2884,5 @@ modcallable *modcall_compile_section(modcallable *parent,
 	cf_data_add(cs, "unlang", c, NULL);
 
 	dump_tree(component, c);
-	return c;
+	return 0;
 }

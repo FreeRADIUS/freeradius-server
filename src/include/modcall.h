@@ -44,12 +44,7 @@ typedef struct modcallable modcallable;
 
 int modcall_fixup_update(vp_map_t *map, void *ctx);
 
-/* Parse a module-method's config section (e.g. authorize{}) into a tree that
- * may be called with modcall() */
-modcallable *modcall_compile_section(modcallable *parent,
-			     rlm_components_t component, CONF_SECTION *cs);
-
-void modcall_debug(modcallable *mc, int depth);
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component);
 
 #ifdef __cplusplus
 }
