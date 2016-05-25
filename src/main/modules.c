@@ -1848,18 +1848,23 @@ static int default_component_results[MOD_COUNT] = {
 static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
 {
 	rlm_rcode_t rcode;
-	CONF_SECTION *cs;
+	CONF_SECTION *cs, *server_cs;
 	char const *module;
 	char const *component;
 
-	/*
-	 *	Some modules don't (yet) set this.  It's also
-	 *	debatable as to whether they should be required to set
-	 *	it.
-	 */
-	if (!request->server_cs) {
-		rad_assert(request->server != NULL);
+	rad_assert(request->server != NULL);
 
+	/*
+	 *	Cache the old server_cs in case it was changed.
+	 *
+	 *	FIXME: request->server should NOT be changed.
+	 *	Instead, we should always create a child REQUEST when
+	 *	we need to use a different virtual server.
+	 *
+	 *	This is mainly for things like proxying
+	 */
+	server_cs = request->server_cs;
+	if (!server_cs || (strcmp(request->server, cf_section_name2(server_cs)) != 0)) {
 		request->server_cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
 	}
 
@@ -1915,6 +1920,7 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 
 	request->component = component;
 	request->module = module;
+	request->server_cs = server_cs;
 
 	return rcode;
 }
