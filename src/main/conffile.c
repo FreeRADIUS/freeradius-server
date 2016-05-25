@@ -3100,9 +3100,17 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			char const *mod;
 			char const *exp;
 
-			if (invalid_location(this, buff[1], filename, *lineno)) return -1;
-
 			t2 = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
+
+			if (invalid_location(this, buff[1], filename, *lineno)) {
+				if (t2 != T_LCBRACE) {
+					ERROR("%s[%d]: Invalid syntax for 'map'", filename, *lineno);
+					goto error;
+				}
+
+				goto alloc_section;				
+			}
+
 			if (t2 != T_BARE_WORD) {
 				ERROR("%s[%d]: Expected module name after 'map'", filename, *lineno);
 				goto error;
@@ -3340,6 +3348,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 			/* FALL-THROUGH */
 
+		alloc_section:
 		case T_LCBRACE:
 			css = cf_section_alloc(this, buff[1],
 					       t2 == T_LCBRACE ? NULL : buff[2]);
