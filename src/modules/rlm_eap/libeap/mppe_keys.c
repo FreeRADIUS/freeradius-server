@@ -112,10 +112,7 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 	prf_size = strlen(prf_label);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	if (SSL_export_keying_material(s, out, sizeof(out), prf_label, prf_size, NULL, 0, 0) != 1) {
-		ERROR("Failed generating keying material");
-		return;
-	}
+	if (SSL_export_keying_material(s, out, sizeof(out), prf_label, prf_size, NULL, 0, 0) != 1) /* Fallback */
 #endif
 
 	{
