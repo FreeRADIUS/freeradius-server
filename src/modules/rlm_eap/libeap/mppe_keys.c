@@ -29,7 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10001000L
 /*
  * TLS PRF from RFC 2246
  */
@@ -98,7 +97,6 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 		out[i] ^= buf[i];
 	}
 }
-#endif
 
 #define EAPTLS_MPPE_KEY_LEN     32
 
@@ -118,7 +116,8 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 		ERROR("Failed generating keying material");
 		return;
 	}
-#else
+#endif
+
 	{
 		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE)];
 		uint8_t buf[4 * EAPTLS_MPPE_KEY_LEN];
@@ -138,7 +137,6 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 		PRF(s->session->master_key, s->session->master_key_length,
 		    seed, prf_size, out, buf, sizeof(out));
 	}
-#endif
 
 	RDEBUG2("Adding session keys");
 	p = out;
@@ -159,15 +157,16 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
  */
 void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, size_t size, char const *prf_label)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	SSL_export_keying_material(s, buffer, size, prf_label,
-				   strlen(prf_label), NULL, 0, 0);
-
-#else
 	uint8_t out[32], buf[32];
 	uint8_t seed[128 + 2*SSL3_RANDOM_SIZE];
 	uint8_t *p = seed;
 	size_t len;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	if (SSL_export_keying_material(s, buffer, size, prf_label,
+				       strlen(prf_label), NULL, 0, 0) == 1) return;
+
+#endif
 
 	len = strlen(prf_label);
 	if (len > 128) len = 128;
@@ -182,7 +181,6 @@ void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, size_t size, char const *prf
 	PRF(s->session->master_key, s->session->master_key_length,
 	    seed, p - seed, out, buf, sizeof(out));
 	memcpy(buffer, out, size);
-#endif
 }
 
 /*
