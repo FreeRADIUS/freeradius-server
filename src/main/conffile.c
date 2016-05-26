@@ -2380,8 +2380,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 			goto finish;
 
 		case -2:	/* Deprecated CONF ITEM */
-			if ((variables[i + 1].offset == variables[i].offset) &&
-			    (variables[i + 1].data == variables[i].data)) {
+			if ((variables[i + 1].offset && (variables[i + 1].offset == variables[i].offset)) ||
+			    (variables[i + 1].data && (variables[i + 1].data == variables[i].data))) {
 				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
 					   variables[i + 1].name);
 			}
@@ -3108,7 +3108,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					goto error;
 				}
 
-				goto alloc_section;				
+				goto alloc_section;
 			}
 
 			if (t2 != T_BARE_WORD) {
