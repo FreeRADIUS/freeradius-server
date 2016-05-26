@@ -192,7 +192,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void * instance, REQUES
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, 55, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, PW_MS_QUARANTINE_SOH, TAG_ANY);
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;

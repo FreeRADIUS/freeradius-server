@@ -504,10 +504,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 *	from the tunneled reply.  These never get sent
 		 *	back to the user.
 		 */
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 7, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 8, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 16, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 17, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_ENCRYPTION_POLICY, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_ENCRYPTION_TYPES, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
 
 		/*
 		 *	MS-CHAP2-Success means that we do NOT return

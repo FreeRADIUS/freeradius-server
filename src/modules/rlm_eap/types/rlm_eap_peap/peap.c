@@ -419,10 +419,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 7, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 8, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 16, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 17, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
+					      PW_MSCHAP_MPPE_ENCRYPTION_POLICY, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
+					      PW_MSCHAP_MPPE_ENCRYPTION_TYPES, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
+					      PW_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
+					      PW_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
 
 			fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
 			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
