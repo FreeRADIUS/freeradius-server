@@ -741,32 +741,33 @@ eap {
 		tls = tls-common
 
 		#
-		#  The tunneled authentication request does not usually contain
-		#  useful attributes like 'Calling-Station-Id', etc.  These
-		#  attributes are outside of the tunnel, and normally
-		#  unavailable to the tunneled authentication request.
+		#  copy_request_to_tunnel has been removed in 3.2.0
 		#
-		#  By setting this configuration entry to 'yes', any attribute
-		#  which is NOT in the tunneled authentication request, but
-		#  which IS available outside of the tunnel, is copied to the
-		#  tunneled request.
+		#  Attributes from the outer request may be accessed with:
 		#
-		#  allowed values: {no, yes}
+		#	&outer:request:<attribute>
 		#
-		copy_request_to_tunnel = no
+		#  The old behaviour may be emulated by adding the following
+		#  to the top of the authorize section of the inner tunnel.
+		#
+		#	update {
+		#		&request: += &reply:[*]
+		#	}
+		#
 
-		#
-		#  As of version 3.0.5, this configuration item
-		#  is deprecated.  Instead, you should use copy any required
-		#  authorizational attributes to outer.session-state.
+		#  
+		#  use_tunneled_reply has been removed in 3.2.0	
+		# 
+		#  Attributes that should be provided in the reply should
+		#  be copied to the outer.session-state list.
 		#
 		# 	update outer.session-state {
 		#		...
 		#
 		#	}
 		#
-		#  In the post-auth section of the outer server, attributes can
-		#  then be copied to the reply list.
+		#  In the post-auth section of the outer server, these attributes
+		#  can then be copied to the reply list.
 		#
 		#  If you want to copy the entire session-state list to the reply
 		#  the following statement may be used:
@@ -775,16 +776,6 @@ eap {
 		#		&reply: += &session-state:[*]
 		#	}
 		#
-		#  The reply attributes sent to the NAS are usually based on the
-		#  name of the user 'outside' of the tunnel (usually
-		#  'anonymous').  If you want to send the reply attributes based
-		#  on the user name inside of the tunnel, then set this
-		#  configuration entry to 'yes', and the reply to the NAS will
-		#  be taken from the reply to the tunneled request.
-		#
-		#  allowed values: {no, yes}
-		#
-		use_tunneled_reply = no
 
 		#
 		#  The inner tunneled request can be sent through a virtual
@@ -887,24 +878,17 @@ eap {
 		default_eap_type = mschapv2
 
 		#
-		#  The PEAP module also has these configuration items, which are
-		#  the same as for TTLS.
+		#  copy_request_to_tunnel has been removed in 3.2.0
 		#
-		copy_request_to_tunnel = no
+		#  See notes in the ttls section about emulating this behaviour.
+		#
 
 		#
-		#  As of version 3.0.5, this configuration item is deprecated.
-		#  Instead, you should use
+		#  use_tunneled_reply has been removed in 3.2.0
 		#
-		# 	update outer.session-state {
-		#		...
+		#  See notes in the ttls section about emulating this behaviour.
 		#
-		#	}
-		#
-		#  This will cache attributes for the final Access-Accept.
-		#
-		use_tunneled_reply = no
-
+			
 		#
 		#  When the tunneled session is proxied, the home server may not
 		#  understand EAP-MSCHAP-V2. Set this entry to "no" to proxy the

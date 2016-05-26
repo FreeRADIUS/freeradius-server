@@ -36,18 +36,6 @@ typedef struct rlm_eap_ttls_t {
 	fr_tls_conf_t	*tls_conf;
 
 	/*
-	 *	Use the reply attributes from the tunneled session in
-	 *	the non-tunneled reply to the client.
-	 */
-	bool		use_tunneled_reply;
-
-	/*
-	 *	Use SOME of the request attributes from outside of the
-	 *	tunneled session in the tunneled request
-	 */
-	bool		copy_request_to_tunnel;
-
-	/*
 	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
 	 *	in fragments after the first one.  However, we've done
 	 *	it that way for years, and no one has complained.
@@ -72,8 +60,8 @@ typedef struct rlm_eap_ttls_t {
 
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name) },
-	{ FR_CONF_OFFSET("copy_request_to_tunnel", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, copy_request_to_tunnel), .dflt = "no" },
-	{ FR_CONF_OFFSET("use_tunneled_reply", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, use_tunneled_reply), .dflt = "no" },
+	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, NULL), .dflt = "no" },
+	{ FR_CONF_DEPRECATED("use_tunneled_reply", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_ttls_t, virtual_server) },
 	{ FR_CONF_OFFSET("include_length", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, req_client_cert), .dflt = "no" },
@@ -124,8 +112,6 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 	ttls_tunnel_t *t;
 
 	t = talloc_zero(ctx, ttls_tunnel_t);
-	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
-	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->virtual_server = inst->virtual_server;
 
 	return t;
@@ -221,16 +207,6 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		}
 
 		if (tunnel && tunnel->authenticated) {
-			if (tunnel->accept_vps) {
-				RDEBUG2("Using saved attributes from the original Access-Accept");
-				rdebug_pair_list(L_DBG_LVL_2, request, tunnel->accept_vps, NULL);
-				fr_pair_list_mcopy_by_num(eap_session->request->reply,
-							  &eap_session->request->reply->vps, &tunnel->accept_vps, 0, 0,
-							  TAG_ANY);
-			} else if (tunnel->use_tunneled_reply) {
-				RDEBUG2("No saved attributes in the original Access-Accept");
-			}
-
 		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.

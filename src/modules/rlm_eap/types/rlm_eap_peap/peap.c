@@ -397,41 +397,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eap_peap_success(eap_session, tls_session);
 		rcode = RLM_MODULE_HANDLED;
-
-		/*
-		 *	If we've been told to use the attributes from
-		 *	the reply, then do so.
-		 *
-		 *	WARNING: This may leak information about the
-		 *	tunneled user!
-		 */
-		if (t->use_tunneled_reply) {
-			RDEBUG2("Saving tunneled attributes for later");
-
-			/*
-			 *	Clean up the tunneled reply.
-			 */
-			fr_pair_delete_by_num(&reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
-
-			/*
-			 *	Delete MPPE keys & encryption policy.  We don't
-			 *	want these here.
-			 */
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
-					      PW_MSCHAP_MPPE_ENCRYPTION_POLICY, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
-					      PW_MSCHAP_MPPE_ENCRYPTION_TYPES, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
-					      PW_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT,
-					      PW_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
-
-			fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
-			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-			rad_assert(!reply->vps);
-		}
 		break;
 
 	case PW_CODE_ACCESS_REJECT:
@@ -445,41 +410,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
-		 *	Keep the State attribute, if necessary.
-		 *
-		 *	Get rid of the old State, too.
-		 */
-		fr_pair_list_free(&t->state);
-		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, 0, PW_STATE, TAG_ANY);
-
-		/*
 		 *	PEAP takes only EAP-Message attributes inside
 		 *	of the tunnel.  Any Reply-Message in the
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
 		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
-
-		/*
-		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
-		 *	from the home server may contain MS-CHAP2-Success,
-		 *	which the module turns into challenges, so that
-		 *	the client may respond to the challenge with
-		 *	an "ack" packet.
-		 */
-		if (t->home_access_accept && t->use_tunneled_reply) {
-			RDEBUG2("Saving tunneled attributes for later");
-
-			/*
-			 *	Clean up the tunneled reply.
-			 */
-			fr_pair_delete_by_num(&reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
-
-			rad_assert(!t->accept_vps);
-			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-			rad_assert(!reply->vps);
-		}
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -1133,85 +1069,6 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 			fake->username->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");
-	}
-
-
-	/*
-	 *	Add the State attribute, too, if it exists.
-	 */
-	if (t->state) {
-		vp = fr_pair_list_copy(fake->packet, t->state);
-		if (vp) fr_pair_add(&fake->packet->vps, vp);
-	}
-
-	/*
-	 *	If this is set, we copy SOME of the request attributes
-	 *	from outside of the tunnel to inside of the tunnel.
-	 *
-	 *	We copy ONLY those attributes which do NOT already
-	 *	exist in the tunneled request.
-	 *
-	 *	This code is copied from ../rlm_eap_ttls/ttls.c
-	 */
-	if (t->copy_request_to_tunnel) {
-		VALUE_PAIR *copy;
-		vp_cursor_t cursor;
-
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			/*
-			 *	The attribute is a server-side thingy,
-			 *	don't copy it.
-			 */
-			if ((vp->da->attr > 255) && (((vp->da->attr >> 16) & 0xffff) == 0)) {
-				continue;
-			}
-
-			/*
-			 *	The outside attribute is already in the
-			 *	tunnel, don't copy it.
-			 *
-			 *	This works for BOTH attributes which
-			 *	are originally in the tunneled request,
-			 *	AND attributes which are copied there
-			 *	from below.
-			 */
-			if (fr_pair_find_by_da(fake->packet->vps, vp->da, TAG_ANY)) continue;
-
-			/*
-			 *	Some attributes are handled specially.
-			 */
-			if (!vp->da->vendor) switch (vp->da->attr) {
-				/*
-				 *	NEVER copy Message-Authenticator,
-				 *	EAP-Message, or State.  They're
-				 *	only for outside of the tunnel.
-				 */
-			case PW_USER_NAME:
-			case PW_USER_PASSWORD:
-			case PW_CHAP_PASSWORD:
-			case PW_CHAP_CHALLENGE:
-			case PW_PROXY_STATE:
-			case PW_MESSAGE_AUTHENTICATOR:
-			case PW_EAP_MESSAGE:
-			case PW_STATE:
-				continue;
-
-				/*
-				 *	By default, copy it over.
-				 */
-			default:
-				break;
-			}
-
-			/*
-			 *	Don't copy from the head, we've already
-			 *	checked it.
-			 */
-			copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->vendor, vp->da->attr, TAG_ANY);
-			fr_pair_add(&fake->packet->vps, copy);
-		}
 	}
 
 	return 0;

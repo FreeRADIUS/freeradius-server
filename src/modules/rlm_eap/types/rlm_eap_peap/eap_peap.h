@@ -47,13 +47,9 @@ typedef enum {
 
 typedef struct peap_tunnel_t {
 	VALUE_PAIR	*username;
-	VALUE_PAIR	*state;
-	VALUE_PAIR	*accept_vps;
 	peap_status	status;
 	bool		home_access_accept;
 	int		default_method;
-	bool		copy_request_to_tunnel;
-	bool		use_tunneled_reply;
 	bool		proxy_tunneled_request_as_eap;
 	char const	*virtual_server;
 	bool		soh;

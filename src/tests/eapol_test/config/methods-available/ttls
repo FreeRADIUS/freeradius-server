@@ -28,45 +28,6 @@ ttls {
 	#
 	default_eap_type = md5
 
-	#  The tunneled authentication request does not usually
-	#  contain useful attributes like 'Calling-Station-Id',
-	#  etc.  These attributes are outside of the tunnel,
-	#  and normally unavailable to the tunneled
-	#  authentication request.
-	#
-	#  By setting this configuration entry to 'yes',
-	#  any attribute which is NOT in the tunneled
-	#  authentication request, but which IS available
-	#  outside of the tunnel, is copied to the tunneled
-	#  request.
-	#
-	#  allowed values: {no, yes}
-	#
-	copy_request_to_tunnel = no
-
-	#
-	#  As of version 3.0.5, this configuration item
-	#  is deprecated.  Instead, you should use
-	#
-	# 	update outer.session-state {
-	#		...
-	#
-	#	}
-	#
-	#  This will cache attributes for the final Access-Accept.
-	#
-	#  The reply attributes sent to the NAS are usually
-	#  based on the name of the user 'outside' of the
-	#  tunnel (usually 'anonymous').  If you want to send
-	#  the reply attributes based on the user name inside
-	#  of the tunnel, then set this configuration entry to
-	#  'yes', and the reply to the NAS will be taken from
-	#  the reply to the tunneled request.
-	#
-	#  allowed values: {no, yes}
-	#
-	use_tunneled_reply = no
-
 	#
 	#  The inner tunneled request can be sent
 	#  through a virtual server constructed

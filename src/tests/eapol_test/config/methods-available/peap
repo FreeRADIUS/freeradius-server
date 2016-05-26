@@ -19,24 +19,6 @@ peap {
 	#
 	default_eap_type = mschapv2
 
-	#  The PEAP module also has these configuration
-	#  items, which are the same as for TTLS.
-	#
-	copy_request_to_tunnel = no
-
-	#
-	#  As of version 3.0.5, this configuration item
-	#  is deprecated.  Instead, you should use
-	#
-	# 	update outer.session-state {
-	#		...
-	#
-	#	}
-	#
-	#  This will cache attributes for the final Access-Accept.
-	#
-	use_tunneled_reply = no
-
 	#  When the tunneled session is proxied, the
 	#  home server may not understand EAP-MSCHAP-V2.
 	#  Set this entry to "no" to proxy the tunneled

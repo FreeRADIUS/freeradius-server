@@ -29,11 +29,7 @@ RCSIDH(eap_ttls_h, "$Id$")
 
 typedef struct ttls_tunnel_t {
 	VALUE_PAIR	*username;
-	VALUE_PAIR	*state;
-	VALUE_PAIR	*accept_vps;
 	bool		authenticated;
-	bool		copy_request_to_tunnel;
-	bool		use_tunneled_reply;
 	char const	*virtual_server;
 } ttls_tunnel_t;
 

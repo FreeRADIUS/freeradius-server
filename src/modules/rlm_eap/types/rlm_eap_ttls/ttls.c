@@ -466,9 +466,12 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
-	rlm_rcode_t rcode = RLM_MODULE_REJECT;
-	VALUE_PAIR *vp;
-	ttls_tunnel_t *t = tls_session->opaque;
+	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
+	VALUE_PAIR	*vp, *tunnel_vps = NULL;
+	vp_cursor_t	cursor;
+	vp_cursor_t	to_tunnel;
+
+	ttls_tunnel_t	*t = tls_session->opaque;
 
 	rad_assert(eap_session->request == request);
 
@@ -495,97 +498,43 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 */
 	switch (reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
+	{
 		RDEBUG("Got tunneled Access-Accept");
 
+		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		/*
-		 *	Always delete MPPE keys & encryption policy
-		 *	from the tunneled reply.  These never get sent
-		 *	back to the user.
+		 *	Copy what we need into the TTLS tunnel and leave
+		 *	the rest to be cleaned up.
 		 */
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_ENCRYPTION_POLICY, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_ENCRYPTION_TYPES, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
+		for (vp = fr_cursor_init(&cursor, &reply->vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+		     	switch (vp->da->vendor) {
+			case VENDORPEC_MICROSOFT:
+				if (vp->da->attr == PW_MSCHAP2_SUCCESS) {
+					RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 
-		/*
-		 *	MS-CHAP2-Success means that we do NOT return
-		 *	an Access-Accept, but instead tunnel that
-		 *	attribute to the client, and keep going with
-		 *	the TTLS session.  Once the client accepts
-		 *	our identity, it will respond with an empty
-		 *	packet, and we will send EAP-Success.
-		 */
-		vp = NULL;
-		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP2_SUCCESS,
-					  TAG_ANY);
-		if (vp) {
-			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
-			rcode = RLM_MODULE_HANDLED;
-			t->authenticated = true;
+					rcode = RLM_MODULE_HANDLED;
+					t->authenticated = true;
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				}
+				break;
 
-			/*
-			 *	Use the tunneled reply, but not now.
-			 */
-			if (t->use_tunneled_reply) {
-				rad_assert(!t->accept_vps);
-				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-				rad_assert(!reply->vps);
+			case VENDORPEC_UKERNA:
+				if (vp->da->attr == PW_UKERNA_CHBIND) {
+					rcode = RLM_MODULE_HANDLED;
+					t->authenticated = true;
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				}
+				break;
+
+			default:
+				break;
 			}
-
-		} else { /* no MS-CHAP2-Success */
-			/*
-			 *	Can only have EAP-Message if there's
-			 *	no MS-CHAP2-Success.
-			 *
-			 *	We also do NOT tunnel the EAP-Success
-			 *	attribute back to the client, as the client
-			 *	can figure it out, from the non-tunneled
-			 *	EAP-Success packet.
-			 */
-			fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
-			fr_pair_list_free(&vp);
 		}
-
-		/* move channel binding responses; we need to send them */
-		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
-		if (fr_pair_find_by_num(vp, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY) != NULL) {
-			t->authenticated = true;
-			/*
-			 *	Use the tunneled reply, but not now.
-			 */
-			if (t->use_tunneled_reply) {
-				rad_assert(!t->accept_vps);
-				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-				rad_assert(!reply->vps);
-			}
-			rcode = RLM_MODULE_HANDLED;
-		}
-
-		/*
-		 *	Handle the ACK, by tunneling any necessary reply
-		 *	VP's back to the client.
-		 */
-		if (vp) {
-			RDEBUG("Sending tunneled reply attributes");
-			rdebug_pair_list(L_DBG_LVL_1, request, vp, NULL);
-
-			vp2diameter(request, tls_session, vp);
-			fr_pair_list_free(&vp);
-		}
-
-		/*
-		 *	If we've been told to use the attributes from
-		 *	the reply, then do so.
-		 *
-		 *	WARNING: This may leak information about the
-		 *	tunneled user!
-		 */
-		if (t->use_tunneled_reply) {
-			fr_pair_delete_by_num(&reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
-			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &reply->vps, 0, 0, TAG_ANY);
-		}
+	}
 		break;
 
 
@@ -594,53 +543,46 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-		/*
-		 *	Handle Access-Challenge, but only if we
-		 *	send tunneled reply data.  This is because
-		 *	an Access-Challenge means that we MUST tunnel
-		 *	a Reply-Message to the client.
-		 */
+	/*
+	 *	Handle Access-Challenge, but only if we
+	 *	send tunneled reply data.  This is because
+	 *	an Access-Challenge means that we MUST tunnel
+	 *	a Reply-Message to the client.
+	 */
 	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
-		/*
-		 *	Keep the State attribute, if necessary.
-		 *
-		 *	Get rid of the old State, too.
-		 */
-		fr_pair_list_free(&t->state);
-		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, 0, PW_STATE, TAG_ANY);
+		fr_cursor_init(&to_tunnel, &tunnel_vps);
 
 		/*
-		 *	We should really be a bit smarter about this,
-		 *	and move over only those attributes which
-		 *	are relevant to the authentication request,
-		 *	but that's a lot more work, and this "dumb"
-		 *	method works in 99.9% of the situations.
+		 *	Copy what we need into the TTLS tunnel and leave
+		 *	the rest to be cleaned up.
 		 */
-		vp = NULL;
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+		for (vp = fr_cursor_init(&cursor, &reply->vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+		     	switch (vp->da->vendor) {
+			case VENDORPEC_UKERNA:
+				if (vp->da->attr == PW_UKERNA_CHBIND) {
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				}
+				break;
 
-		/*
-		 *	There MUST be a Reply-Message in the challenge,
-		 *	which we tunnel back to the client.
-		 *
-		 *	If there isn't one in the reply VP's, then
-		 *	we MUST create one, with an empty string as
-		 *	it's value.
-		 */
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, PW_REPLY_MESSAGE, TAG_ANY);
+			case 0:
+				switch (vp->da->attr) {
+				case PW_EAP_MESSAGE:
+				case PW_REPLY_MESSAGE:
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					break;
 
-		/* also move chbind messages, if any */
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
+				default:
+					break;
 
-		/*
-		 *	Handle the ACK, by tunneling any necessary reply
-		 *	VP's back to the client.
-		 */
-		if (vp) {
-			vp2diameter(request, tls_session, vp);
-			fr_pair_list_free(&vp);
+				}
+
+			default:
+				continue;
+			}
 		}
 		rcode = RLM_MODULE_HANDLED;
 		break;
@@ -649,6 +591,19 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		RDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
+	}
+
+
+	/*
+	 *	Pack any tunnelled VPs and send them back
+	 *	to the supplicant.
+	 */
+	if (tunnel_vps) {
+		RDEBUG("Sending tunneled reply attributes");
+		rdebug_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
+
+		vp2diameter(request, tls_session, tunnel_vps);
+		fr_pair_list_free(&tunnel_vps);
 	}
 
 	return rcode;
@@ -899,83 +854,6 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
 		}
 	} /* else the request ALREADY had a User-Name */
-
-	/*
-	 *	Add the State attribute, too, if it exists.
-	 */
-	if (t->state) {
-		vp = fr_pair_list_copy(fake->packet, t->state);
-		if (vp) fr_pair_add(&fake->packet->vps, vp);
-	}
-
-	/*
-	 *	If this is set, we copy SOME of the request attributes
-	 *	from outside of the tunnel to inside of the tunnel.
-	 *
-	 *	We copy ONLY those attributes which do NOT already
-	 *	exist in the tunneled request.
-	 */
-	if (t->copy_request_to_tunnel) {
-		VALUE_PAIR *copy;
-		vp_cursor_t cursor;
-
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps); vp; vp = fr_cursor_next(&cursor)) {
-			/*
-			 *	The attribute is a server-side thingy,
-			 *	don't copy it.
-			 */
-			if ((vp->da->attr > 255) &&
-			    (vp->da->vendor == 0)) {
-				continue;
-			}
-
-			/*
-			 *	The outside attribute is already in the
-			 *	tunnel, don't copy it.
-			 *
-			 *	This works for BOTH attributes which
-			 *	are originally in the tunneled request,
-			 *	AND attributes which are copied there
-			 *	from below.
-			 */
-			if (fr_pair_find_by_da(fake->packet->vps, vp->da, TAG_ANY)) {
-				continue;
-			}
-
-			/*
-			 *	Some attributes are handled specially.
-			 */
-			if (!vp->da->vendor) switch (vp->da->attr) {
-			/*
-			 *	NEVER copy Message-Authenticator,
-			 *	EAP-Message, or State.  They're
-			 *	only for outside of the tunnel.
-			 */
-			case PW_USER_NAME:
-			case PW_USER_PASSWORD:
-			case PW_CHAP_PASSWORD:
-			case PW_CHAP_CHALLENGE:
-			case PW_PROXY_STATE:
-			case PW_MESSAGE_AUTHENTICATOR:
-			case PW_EAP_MESSAGE:
-			case PW_STATE:
-				continue;
-
-			/*
-			 *	By default, copy it over.
-			 */
-			default:
-				break;
-			}
-
-			/*
-			 *	Don't copy from the head, we've already
-			 *	checked it.
-			 */
-			copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->vendor, vp->da->attr, TAG_ANY);
-			fr_pair_add(&fake->packet->vps, copy);
-		}
-	}
 
 	/*
 	 *	Process channel binding.
