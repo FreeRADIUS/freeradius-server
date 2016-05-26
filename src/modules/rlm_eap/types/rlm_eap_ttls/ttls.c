@@ -264,8 +264,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				return NULL;
 			}
 
-			eap_ttls_gen_challenge(ssl, challenge,
-					      sizeof(challenge));
+			eap_tls_gen_challenge(ssl, challenge,
+					      sizeof(challenge), "ttls challenge");
 
 			if (memcmp(challenge, vp->vp_octets,
 				   vp->vp_length) != 0) {

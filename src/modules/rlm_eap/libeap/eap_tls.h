@@ -169,7 +169,7 @@ int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8
 /* MPPE key generation */
 void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
 
-void			eap_ttls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size);
+void			eap_tls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size, char const *prf_label);
 
 void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 
