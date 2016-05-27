@@ -233,10 +233,11 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	int			i;
 	VALUE_PAIR		*auth_challenge;
+	VALUE_PAIR		*peer_challenge;
 	mschapv2_opaque_t	*data;
 	REQUEST			*request = eap_session->request;
 	uint8_t 		*p;
-	bool			created_auth_challenge = false;
+	bool			created_auth_challenge;
 
 	if (!rad_cond_assert(instance)) return 0;
 
@@ -246,8 +247,25 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 		auth_challenge = NULL;
 	}
 
-	if (!auth_challenge) {
+	peer_challenge = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+		RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
+		peer_challenge = NULL;
+	}
+
+	if (auth_challenge) {
+		created_auth_challenge = false;
+
+		peer_challenge = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+			RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
+			peer_challenge = NULL;
+		}
+
+	} else {
 		created_auth_challenge = true;
+		peer_challenge = NULL;
+
 		auth_challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
 
 		/*
@@ -272,6 +290,11 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
 	data->mppe_keys = NULL;
 	data->reply = NULL;
+
+	if (peer_challenge) {
+		data->has_peer_challenge = true;
+		memcpy(data->peer_challenge, peer_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
+	}
 
 	eap_session->opaque = data;
 
@@ -586,6 +609,14 @@ failure:
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_round->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
+
+	/*
+	 *	If we're forcing a peer challenge, use it instead of
+	 *	the challenge sent by the client.
+	 */
+	if (data->has_peer_challenge) {
+		memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
+	}
 
 	fr_pair_value_memsteal(response, p);
 

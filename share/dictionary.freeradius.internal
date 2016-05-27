@@ -312,6 +312,7 @@ ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6 octets[20]	internal
 ATTRIBUTE	EAP-FAST-Trusted-Root			1191.18	octets	internal
 ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short	internal
 ATTRIBUTE	EAP-FAST-PKCS				1191.20	octets	internal
+ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets	internal
 
 #
 #	Range:	1200-1279
