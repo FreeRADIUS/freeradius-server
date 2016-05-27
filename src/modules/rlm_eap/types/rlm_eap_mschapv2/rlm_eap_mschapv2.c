@@ -650,7 +650,7 @@ packet_ready:
 		 */
 		if (inst->with_ntdomain_hack &&
 		    ((challenge = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
-		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
+		    ((username = memchr(challenge->vp_octets, '\\', challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
 			 *
