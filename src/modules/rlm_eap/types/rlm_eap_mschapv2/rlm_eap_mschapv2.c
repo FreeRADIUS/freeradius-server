@@ -232,30 +232,30 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
 static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	int			i;
-	VALUE_PAIR		*challenge;
+	VALUE_PAIR		*auth_challenge;
 	mschapv2_opaque_t	*data;
 	REQUEST			*request = eap_session->request;
 	uint8_t 		*p;
-	bool			created_challenge = false;
+	bool			created_auth_challenge = false;
 
 	if (!rad_cond_assert(instance)) return 0;
 
-	challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
-	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+	auth_challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
+	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
-		challenge = NULL;
+		auth_challenge = NULL;
 	}
 
-	if (!challenge) {
-		created_challenge = true;
-		challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
+	if (!auth_challenge) {
+		created_auth_challenge = true;
+		auth_challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
 
 		/*
 		 *	Get a random challenge.
 		 */
-		p = talloc_array(challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
+		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
 		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
-		fr_pair_value_memsteal(challenge, p);
+		fr_pair_value_memsteal(auth_challenge, p);
 	}
 	RDEBUG2("Issuing Challenge");
 
@@ -269,7 +269,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	We're at the stage where we're challenging the user.
 	 */
 	data->code = PW_EAP_MSCHAPV2_CHALLENGE;
-	memcpy(data->challenge, challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
+	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
 	data->mppe_keys = NULL;
 	data->reply = NULL;
 
@@ -279,8 +279,8 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmschapv2_compose(instance, eap_session, challenge);
-	if (created_challenge) fr_pair_list_free(&challenge);
+	eapmschapv2_compose(instance, eap_session, auth_challenge);
+	if (created_auth_challenge) fr_pair_list_free(&auth_challenge);
 
 #ifdef WITH_PROXY
 	/*
@@ -394,7 +394,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 	char *q;
 	mschapv2_opaque_t *data;
 	eap_round_t *eap_round = eap_session->this_round;
-	VALUE_PAIR *challenge, *response, *name;
+	VALUE_PAIR *auth_challenge, *response, *name;
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = eap_session->request;
 
@@ -432,9 +432,9 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 
 			RDEBUG2("Password change packet received");
 
-			challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
-			if (!challenge) return 0;
-			fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+			auth_challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
+			if (!auth_challenge) return 0;
+			fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
 			cpw = pair_make_request("MS-CHAP2-CPW", NULL, T_OP_EQ);
 			p = talloc_array(cpw, uint8_t, 68);
@@ -575,9 +575,9 @@ failure:
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
-	if (!challenge) return 0;
-	fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+	auth_challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
+	if (!auth_challenge) return 0;
+	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
 	response = pair_make_request("MS-CHAP2-Response", NULL, T_OP_EQ);
 	if (!response) return 0;
@@ -586,6 +586,7 @@ failure:
 	p[0] = eap_round->response->type.data[1];
 	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_round->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
+
 	fr_pair_value_memsteal(response, p);
 
 	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
@@ -653,15 +654,15 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((challenge = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY)) != NULL) &&
-		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
+		    ((auth_challenge = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY)) != NULL) &&
+		    ((username = memchr(auth_challenge->vp_octets, '\\', auth_challenge->vp_length)) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
 			 *
 			 *	FIXME: Put it into MS-CHAP-Domain?
 			 */
 			username++; /* skip the \\ */
-			fr_pair_value_strcpy(challenge, username);
+			fr_pair_value_strcpy(auth_challenge, username);
 		}
 
 		/*
@@ -714,7 +715,7 @@ packet_ready:
 			if (n == 3) {
 				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
 					err, retry, buf);
-				fr_hex2bin(data->challenge, 16, buf, strlen(buf));
+				fr_hex2bin(data->auth_challenge, 16, buf, strlen(buf));
 			} else {
 				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}

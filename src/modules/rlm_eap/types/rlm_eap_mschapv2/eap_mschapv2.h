@@ -43,7 +43,7 @@ typedef struct mschapv2_header_t {
 
 typedef struct mschapv2_opaque_t {
 	int		code;
-	uint8_t		challenge[MSCHAPV2_CHALLENGE_LEN];
+	uint8_t		auth_challenge[MSCHAPV2_CHALLENGE_LEN];
 	VALUE_PAIR	*mppe_keys;
 	VALUE_PAIR	*reply;
 } mschapv2_opaque_t;
