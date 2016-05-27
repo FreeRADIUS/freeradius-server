@@ -82,11 +82,12 @@ The ``rlm_eap_ikev2`` module was removed.  It does not follow RFC
 
 The ``rlm_eap_tnc`` module was removed.  No one was using or maintaining it.
 
-The internal SSL cache was removed.  Changes in OpenSSL and FreeRADIUS
-made it difficult to continue using the OpenSSL implementation of a
-cache.  See ``raddb/sites-available/tls-cache`` for a better
-replacement.  The OpenSSL cache can now be placed on disk, in memory,
-in memcache, or in a redis cache.
+The in-memory SSL cache was removed.  Changes in OpenSSL and
+FreeRADIUS made it difficult to continue using the OpenSSL
+implementation of a cache.  See ``raddb/sites-available/tls-cache``
+for a better replacement.  The OpenSSL cache can now be placed on
+disk, in memory, in memcache, or in a redis cache.  The result is
+higher performance, and is more configurable.
 
 The ``use_tunneled_reply`` and ``copy_request_to_tunnel``
 configuration items have been removed.  Their functionality has been
@@ -94,6 +95,11 @@ replaced with the ``use_tunneled_reply`` and
 ``copy_request_to_tunnel`` policies.  See
 ``raddb/sites-available/inner-tunnel`` and ``raddb/policy.d/eap`` for
 more information.
+
+These configuration items were removed because they caused issues for
+a number of users, and they made the code substantially more
+complicated.  Experience shows that having configurable policies in
+``unlang`` is preferable to having them hard-coded in C.
 
 
 rlm_rest
