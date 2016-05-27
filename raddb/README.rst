@@ -88,6 +88,13 @@ cache.  See ``raddb/sites-available/tls-cache`` for a better
 replacement.  The OpenSSL cache can now be placed on disk, in memory,
 in memcache, or in a redis cache.
 
+The ``use_tunneled_reply`` and ``copy_request_to_tunnel``
+configuration items have been removed.  Their functionality has been
+replaced with the ``use_tunneled_reply`` and
+``copy_request_to_tunnel`` policies.  See
+``raddb/sites-available/inner-tunnel`` and ``raddb/policy.d/eap`` for
+more information.
+
 
 rlm_rest
 ~~~~~~~~
