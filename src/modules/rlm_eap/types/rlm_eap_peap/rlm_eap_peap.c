@@ -310,12 +310,6 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 
 	case RLM_MODULE_OK:
 		/*
-		 *	Move the saved VP's from the Access-Accept to
-		 *	our Access-Accept.
-		 */
-		peap = tls_session->opaque;
-
-		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 		if (eap_tls_success(eap_session) < 0) return 0;
