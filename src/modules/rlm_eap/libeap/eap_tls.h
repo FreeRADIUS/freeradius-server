@@ -153,7 +153,7 @@ extern FR_NAME_NUMBER const eap_tls_status_table[];
 /*
  *	Externally exported TLS functions.
  */
-eap_tls_status_t	eap_tls_process(eap_session_t *eap_session);
+eap_tls_status_t	eap_tls_process(eap_session_t *eap_session) CC_HINT(nonnull);
 
 int			eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
 
@@ -167,18 +167,18 @@ int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8
 		    			tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
-void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len);
+void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull);
 
-void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
+void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label) CC_HINT(nonnull);
 
-void			eap_tls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size, char const *prf_label);
+void			eap_tls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size, char const *prf_label) CC_HINT(nonnull);
 
-void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
+void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header) CC_HINT(nonnull);
 
 /* EAP-TLS framework */
-eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert);
+eap_tls_session_t	*eap_tls_session_init(eap_session_t *eap_session, fr_tls_conf_t *tls_conf, bool client_cert) CC_HINT(nonnull);
 
 
-fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
+fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key) CC_HINT(nonnull);
 
 #endif /*_EAP_TLS_H*/
