@@ -475,7 +475,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			break;
 		}
 
-		p += dict_attr_sizes[child->type][0];
+		p += child->flags.length;
 		child_num++;	/* go to the next child */
 	}
 	fr_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
