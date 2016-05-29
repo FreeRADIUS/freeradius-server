@@ -402,6 +402,13 @@ do {\
 	} else _x;\
 } while (0)
 
+#define RHEXDUMP(lvl, msg, data, len) \
+	if (rad_debug_lvl >= lvl) do {		\
+		radlog_request(L_DBG, lvl, request, "%s", msg); \
+		radlog_request_hex(L_DBG, lvl, request, data, len); \
+	} while (0)
+
+
 #ifdef __cplusplus
 }
 #endif
