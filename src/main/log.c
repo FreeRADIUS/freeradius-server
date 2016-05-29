@@ -947,34 +947,32 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 void radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			uint8_t const *data, size_t data_len)
 {
-	size_t i, j;
-	char buffer[(0x0f * 3) + 1];
+	size_t i, j, len;
 	char *p;
+	char buffer[(0x10 * 3) + 1];
 
-	for (i = 0; (i + 0x0f) <= data_len; i += 0x0f) {
-		for (p = buffer, j = i; j < (i + 0x0f); j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
+	for (i = 0; i < data_len; i += 0x10) {
+		len = 0x10;
+		if ((i + len) > data_len) len = data_len - i;
+
+		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
 		radlog_request(type, lvl, request, "%04x: %s", (int)i, buffer);
 	}
-	if (i == data_len) return;
-
-	for (p = buffer, j = i; j < data_len; j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
-	radlog_request(type, lvl, request, "%04x: %s", (int)i, buffer);
 }
 
 void radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
 {
-	size_t i, j;
-	char buffer[(0x0f * 3) + 1];
+	size_t i, j, len;
 	char *p;
+	char buffer[(0x10 * 3) + 1];
 
 	if (!debug_enabled(L_DBG, lvl)) return;
 
-	for (i = 0; (i + 0x0f) <= data_len; i += 0x0f) {
-		for (p = buffer, j = i; j < (i + 0x0f); j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
+	for (i = 0; i < data_len; i += 0x10) {
+		len = 0x10;
+		if ((i + len) > data_len) len = data_len - i;
+
+		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
 		radlog(type, "%04x: %s", (int)i, buffer);
 	}
-	if (i == data_len) return;
-
-	for (p = buffer, j = i; j < data_len; j++, p += 3) sprintf(p, "%02x ", (uint8_t)data[j]);
-	radlog(type, "%04x: %s", (int)i, buffer);
 }
