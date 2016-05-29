@@ -575,7 +575,7 @@ static ssize_t xlat_string(char **out, size_t outlen,
 {
 	ssize_t ret;
 	VALUE_PAIR *vp;
-	uint8_t const *p;
+	uint8_t buffer[64];
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -587,8 +587,7 @@ static ssize_t xlat_string(char **out, size_t outlen,
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
 	/*
-	 *	Some things can be printed out as-is.  This saves a
-	 *	function call, and some extra work.
+	 *	These are printed specially.
 	 */
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
@@ -605,12 +604,12 @@ static ssize_t xlat_string(char **out, size_t outlen,
 		break;
 	}
 
-	ret = fr_radius_encode_value_hton(&p, vp);
+	ret = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
 	if (ret < 0) {
 		return ret;
 	}
 
-	return fr_snprint(*out, outlen, (char const *) p, ret, '\0');
+	return fr_snprint(*out, outlen, (char const *) buffer, ret, '\0');
 }
 
 /** xlat expand string attribute value
@@ -1147,7 +1146,11 @@ ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 			return -1;
 		}
 
-		return fr_radius_encode_value_hton(out, vp);
+#if 0
+ 		return fr_radius_encode_value_hton(out, vp);
+#else
+		return -1;
+#endif
 	}
 
 	*out = (uint8_t const *)fmt;

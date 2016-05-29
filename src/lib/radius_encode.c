@@ -28,8 +28,6 @@
 
 static unsigned int salt_offset = 0;
 
-fr_thread_local_setup(uint8_t *, fr_radius_encode_value_hton_buff)
-
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
 			    vp_cursor_t *cursor, void *encoder_ctx);
@@ -379,62 +377,39 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	}
 }
 
-static void _hton_buff_free(void *value)
-{
-	talloc_free(value);
-}
 
 /** Converts vp_data to network byte order
  *
- * Provide a pointer to a buffer which contains the value of the VALUE_PAIR
- * in an architecture independent format.
- *
- * The pointer is only guaranteed to be valid between calls to fr_radius_encode_value_hton, and so long
- * as the source VALUE_PAIR is not freed.
+ *  ONLY for simple data types.  Complex data types are not allowed.
  *
  * @param out where to write the pointer to the value.
+ * @param outlen length of the output buffer
  * @param vp to get the value from.
  * @return
  *	- The length of the value.
  *	- -1 on failure.
  */
-ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
+ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	uint8_t		*buffer;
 	uint32_t	lvalue;
 	uint64_t	lvalue64;
 
-	*out = NULL;
-
-	buffer = fr_thread_local_init(fr_radius_encode_value_hton_buff, _hton_buff_free);
-	if (!buffer) {
-		int ret;
-
-		buffer = (uint8_t *)talloc(NULL, value_data_t);
-		if (!buffer) {
-			fr_strerror_printf("Failed allocating memory for fr_radius_encode_value_hton buffer");
-			return -1;
-		}
-
-		ret = fr_thread_local_set(fr_radius_encode_value_hton_buff, buffer);
-		if (ret != 0) {
-			fr_strerror_printf("Failed setting up TLS for fr_radius_encode_value_hton buffer: %s", strerror(errno));
-			talloc_free(buffer);
-			return -1;
-		}
-	}
-
 	VERIFY_VP(vp);
+
+	/*
+	 *	Mash outlen down to size.
+	 */
+	if (outlen > vp->vp_length) outlen = vp->vp_length;
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-		memcpy(out, &vp->data.ptr, sizeof(*out));
-		break;
+		memcpy(out, vp->data.ptr, outlen);
+		return outlen;
 
-	/*
-	 *	All of these values are at the same location.
-	 */
+		/*
+		 *	All of these values are at the same location.
+		 */
 	case PW_TYPE_IFID:
 	case PW_TYPE_IPV4_ADDR:
 	case PW_TYPE_IPV6_ADDR:
@@ -443,51 +418,41 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_COMBO_IP_ADDR:
-	{
-		void const *p = &vp->data;
-		memcpy(out, &p, sizeof(*out));
+		memcpy(out, &vp->data, outlen);
 		break;
-	}
 
 	case PW_TYPE_BOOLEAN:
-		buffer[0] = vp->vp_byte & 0x01;
-		*out = buffer;
+		out[0] = vp->vp_byte & 0x01;
 		break;
 
 	case PW_TYPE_BYTE:
-		buffer[0] = vp->vp_byte & 0xff;
-		*out = buffer;
+		out[0] = vp->vp_byte & 0xff;
 		break;
 
 	case PW_TYPE_SHORT:
-		buffer[0] = (vp->vp_short >> 8) & 0xff;
-		buffer[1] = vp->vp_short & 0xff;
-		*out = buffer;
+		out[0] = (vp->vp_short >> 8) & 0xff;
+		out[1] = vp->vp_short & 0xff;
 		break;
 
 	case PW_TYPE_INTEGER:
 		lvalue = htonl(vp->vp_integer);
-		memcpy(buffer, &lvalue, sizeof(lvalue));
-		*out = buffer;
+		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 
 	case PW_TYPE_INTEGER64:
 		lvalue64 = htonll(vp->vp_integer64);
-		memcpy(buffer, &lvalue64, sizeof(lvalue64));
-		*out = buffer;
+		memcpy(out, &lvalue64, sizeof(lvalue64));
 		break;
 
 	case PW_TYPE_DATE:
 		lvalue = htonl(vp->vp_date);
-		memcpy(buffer, &lvalue, sizeof(lvalue));
-		*out = buffer;
+		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 
 	case PW_TYPE_SIGNED:
 	{
 		int32_t slvalue = htonl(vp->vp_signed);
-		memcpy(buffer, &slvalue, sizeof(slvalue));
-		*out = buffer;
+		memcpy(out, &slvalue, sizeof(slvalue));
 		break;
 	}
 
@@ -509,7 +474,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	/* Don't add default */
 	}
 
-	return vp->vp_length;
+	return outlen;
 }
 
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
@@ -695,12 +660,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
 			    vp_cursor_t *cursor, void *encoder_ctx)
 {
-	uint32_t		lvalue;
+	size_t			offset;
 	ssize_t			len;
 	uint8_t	const		*data;
 	uint8_t			*ptr = out;
-	uint8_t			array[4];
-	uint64_t		lvalue64;
+	uint8_t			buffer[64];
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 	fr_radius_ctx_t *ctx = encoder_ctx;
@@ -776,6 +740,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		}
 		break;
 
+		/*
+		 *	Simple data types use the common encoder.
+		 */
 	case PW_TYPE_IFID:
 	case PW_TYPE_IPV4_ADDR:
 	case PW_TYPE_IPV6_ADDR:
@@ -783,54 +750,15 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case PW_TYPE_IPV4_PREFIX:
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:	/* just in case */
-		data = (uint8_t const *) &vp->data;
-		break;
-
 	case PW_TYPE_BYTE:
-		len = 1;	/* just in case */
-		array[0] = vp->vp_byte;
-		data = array;
-		break;
-
 	case PW_TYPE_SHORT:
-		len = 2;	/* just in case */
-		array[0] = (vp->vp_short >> 8) & 0xff;
-		array[1] = vp->vp_short & 0xff;
-		data = array;
-		break;
-
 	case PW_TYPE_INTEGER:
-		len = 4;	/* just in case */
-		lvalue = htonl(vp->vp_integer);
-		memcpy(array, &lvalue, sizeof(lvalue));
-		data = array;
-		break;
-
 	case PW_TYPE_INTEGER64:
-		len = 8;	/* just in case */
-		lvalue64 = htonll(vp->vp_integer64);
-		data = (uint8_t *) &lvalue64;
-		break;
-
-		/*
-		 *  There are no tagged date attributes.
-		 */
 	case PW_TYPE_DATE:
-		lvalue = htonl(vp->vp_date);
-		data = (uint8_t const *) &lvalue;
-		len = 4;	/* just in case */
-		break;
-
 	case PW_TYPE_SIGNED:
-	{
-		int32_t slvalue;
-
-		len = 4;	/* just in case */
-		slvalue = htonl(vp->vp_signed);
-		memcpy(array, &slvalue, sizeof(slvalue));
-		data = array;
+		len = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
+		data = buffer;
 		break;
-	}
 
 	default:		/* unknown type: ignore it */
 		fr_strerror_printf("ERROR: Unknown attribute type %d", da->type);
@@ -868,8 +796,8 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-		lvalue = 0;
-		if (da->flags.has_tag) lvalue = 1;
+		offset = 0;
+		if (da->flags.has_tag) offset = 1;
 
 		/*
 		 *	Check if there's enough freespace.  If there isn't,
@@ -878,7 +806,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 *	This is ONLY a problem if we have multiple VSA's
 		 *	in one Vendor-Specific, though.
 		 */
-		if (outlen < (18 + lvalue)) return 0;
+		if (outlen < (18 + offset)) return 0;
 
 		switch (ctx->packet->code) {
 		case PW_CODE_ACCESS_ACCEPT:
@@ -887,17 +815,17 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		default:
 			if (!ctx->original) goto no_ctx_error;
 
-			if (lvalue) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
-			encode_tunnel_password(ptr + lvalue, &len, data, len,
-					       outlen - lvalue, ctx->secret, ctx->original->vector);
-			len += lvalue;
+			if (offset) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
+			encode_tunnel_password(ptr + offset, &len, data, len,
+					       outlen - offset, ctx->secret, ctx->original->vector);
+			len += offset;
 			break;
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
 		case PW_CODE_COA_REQUEST:
 			ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 			encode_tunnel_password(ptr + 1, &len, data, len, outlen - 1, ctx->secret, ctx->packet->vector);
-			len += lvalue;
+			len += offset;
 			break;
 		}
 		break;
@@ -919,7 +847,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 				ptr[0] = vp->tag;
 				ptr++;
 			} else if (vp->da->type == PW_TYPE_INTEGER) {
-				array[0] = vp->tag;
+				buffer[0] = vp->tag;
 			} /* else it can't be any other type */
 		}
 		memcpy(ptr, data, len);

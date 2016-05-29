@@ -287,7 +287,7 @@ int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secr
 
 int		fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR *password);
 
-ssize_t		fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp);
+ssize_t		fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR const *vp);
 
 int		fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
 
