@@ -98,7 +98,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 	buf = talloc_size(NULL, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
 
 	memcpy(buf + SHA1_DIGEST_LENGTH, prf_label, prf_size);
-	memcpy(buf + SHA1_DIGEST_LENGTH + prf_size, seed, seed_len);
+	if (seed) memcpy(buf + SHA1_DIGEST_LENGTH + prf_size, seed, seed_len);
 	*(uint16_t *)&buf[SHA1_DIGEST_LENGTH + prf_size + seed_len] = htons(out_len);
 	buf[SHA1_DIGEST_LENGTH + prf_size + seed_len + 2] = 1;
 
