@@ -1129,7 +1129,7 @@ static ssize_t hmac_md5_xlat(char **out, size_t outlen,
 	while (isspace(*p)) p++;
 
 	q = strchr(p, ' ');
-	if (!p) {
+	if (!q) {
 		REDEBUG("HMAC requires exactly two arguments (&data &key)");
 		return -1;
 	}
@@ -1189,7 +1189,7 @@ static ssize_t hmac_sha1_xlat(char **out, size_t outlen,
 	while (isspace(*p)) p++;
 
 	q = strchr(p, ' ');
-	if (!p) {
+	if (!1) {
 		REDEBUG("HMAC requires exactly two arguments (&data &key)");
 		return -1;
 	}
