@@ -1116,47 +1116,6 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 }
 
 
-/** Crappy temporary function to add attribute ref support to xlats
- *
- * This needs to die, and hopefully will die, when xlat functions accept
- * xlat node structures.
- *
- * Provides either a pointer to a buffer which contains the value of the reference VALUE_PAIR
- * in an architecture independent format. Or a pointer to the start of the fmt string.
- *
- * The pointer is only guaranteed to be valid between calls to xlat_fmt_to_ref,
- * and so long as the source VALUE_PAIR is not freed.
- *
- * @param out where to write a pointer to the buffer to the data the xlat function needs to work on.
- * @param request current request.
- * @param fmt string.
- * @returns
- *	- The length of the data.
- *	- -1 on failure.
- */
-ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if (fmt[0] == '&') {
-		if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-			*out = NULL;
-			return -1;
-		}
-
-#if 0
- 		return fr_radius_encode_value_hton(out, vp);
-#else
-		return -1;
-#endif
-	}
-
-	*out = (uint8_t const *)fmt;
-	return strlen(fmt);
-}
-
 /** De-register all xlat functions, used mainly for debugging.
  *
  */
