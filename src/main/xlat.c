@@ -573,7 +573,6 @@ static ssize_t xlat_string(char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
-	size_t len;
 	ssize_t ret;
 	VALUE_PAIR *vp;
 	uint8_t const *p;
@@ -587,30 +586,31 @@ static ssize_t xlat_string(char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	ret = fr_radius_encode_value_hton(&p, vp);
-	if (ret < 0) {
-		return ret;
-	}
-
+	/*
+	 *	Some things can be printed out as-is.  This saves a
+	 *	function call, and some extra work.
+	 */
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_snprint(*out, outlen, (char const *) p, vp->vp_length, '"');
-		break;
+		return fr_snprint(*out, outlen, (char const *) vp->vp_octets, vp->vp_length, '"');
 
 		/*
 		 *	Note that "%{string:...}" is NOT binary safe!
 		 *	It is explicitly used to get rid of embedded zeros.
 		 */
 	case PW_TYPE_STRING:
-		len = strlcpy(*out, vp->vp_strvalue, outlen);
-		break;
-
+		return strlcpy(*out, vp->vp_strvalue, outlen);
+		
 	default:
-		len = fr_snprint(*out, outlen, (char const *) p, ret, '\0');
 		break;
 	}
 
-	return len;
+	ret = fr_radius_encode_value_hton(&p, vp);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return fr_snprint(*out, outlen, (char const *) p, ret, '\0');
 }
 
 /** xlat expand string attribute value
