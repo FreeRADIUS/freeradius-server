@@ -1310,7 +1310,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 
 static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
-				grouptype_t grouptype, mod_type_t mod_type, rlm_components_t component)
+				grouptype_t grouptype, mod_type_t mod_type)
 {
 	modgroup *g;
 	modcallable *c;
@@ -1327,7 +1327,6 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 	g->cs = cs;
 
 	c = mod_grouptocallable(g);
-	c->method = component;
 	c->parent = parent;
 	c->type = mod_type;
 	c->next = NULL;
@@ -1416,7 +1415,7 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, GROUPTYPE_SIMPLE, MOD_MAP, component);
+	g = group_allocate(parent, cs, GROUPTYPE_SIMPLE, MOD_MAP);
 	if (!g) return NULL;
 
 	proc_inst = map_proc_instantiate(g, proc, vpt, head);
@@ -1499,7 +1498,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, grouptype, MOD_UPDATE, component);
+	g = group_allocate(parent, cs, grouptype, MOD_UPDATE);
 	if (!g) return NULL;
 
 	c = mod_grouptocallable(g);
@@ -1650,7 +1649,7 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 	modgroup *g;
 	modcallable *c;
 
-	g = group_allocate(parent, cs, grouptype, mod_type, component);
+	g = group_allocate(parent, cs, grouptype, mod_type);
 	if (!g) return NULL;
 
 	c = mod_grouptocallable(g);
@@ -1853,7 +1852,7 @@ static modcallable *compile_group(modcallable *parent, rlm_components_t componen
 	modgroup *g;
 	modcallable *c;
 
-	g = group_allocate(parent, cs, grouptype, mod_type, component);
+	g = group_allocate(parent, cs, grouptype, mod_type);
 	if (!g) return NULL;
 
 	c = mod_grouptocallable(g);
@@ -1887,7 +1886,7 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, grouptype, mod_type, component);
+	g = group_allocate(parent, cs, grouptype, mod_type);
 	if (!g) return NULL;
 
 	/*
@@ -2209,7 +2208,6 @@ static modcallable *compile_xlat(modcallable *parent,
 	c->name = "expand";
 	c->debug_name = c->name;
 	c->type = MOD_XLAT;
-	c->method = component;
 
 	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(c->actions));
@@ -2547,7 +2545,6 @@ static modcallable *compile_module(modcallable *parent, rlm_components_t compone
 	c->name = realname;
 	c->debug_name = realname;
 	c->type = MOD_SINGLE;
-	c->method = component;
 
 	if (!compile_action_section(c, ci)) {
 		talloc_free(c);

@@ -58,7 +58,6 @@ typedef struct modcallable {
 	char const		*name;
 	char const 		*debug_name;
 	mod_type_t		type;
-	rlm_components_t	method;
 	int			actions[RLM_MODULE_NUMCODES];
 } modcallable;
 
