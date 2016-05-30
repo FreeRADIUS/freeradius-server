@@ -61,11 +61,11 @@ char const * const comp2str[] = {
 #endif
 };
 
-typedef int const (*unlang_action_table_t)[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES];
+typedef int const unlang_action_table_t[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES];
 typedef struct unlang_compile_t {
 	rlm_components_t	component;
 	char const		*method;
-	unlang_action_table_t	actions;
+	unlang_action_table_t	*actions;
 } unlang_compile_t;
 
 static char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
