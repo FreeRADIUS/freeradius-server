@@ -106,9 +106,9 @@ static void dump_mc(modcallable *c, int indent)
 	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
-static void dump_tree(rlm_components_t comp, modcallable *c)
+static void dump_tree(modcallable *c, char const *name)
 {
-	DEBUG("[%s]", comp2str[comp]);
+	DEBUG("[%s]", name);
 	dump_mc(c, 0);
 }
 #else
@@ -2880,6 +2880,6 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	 */
 	cf_data_add(cs, "unlang", c, NULL);
 
-	dump_tree(component, c);
+	dump_tree(c, c->debug_name);
 	return 0;
 }
