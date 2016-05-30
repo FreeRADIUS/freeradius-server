@@ -1336,7 +1336,7 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 }
 
 
-static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
+static modcallable *compile_action_defaults(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
 {
 	int i;
 
@@ -1479,7 +1479,7 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 
 	talloc_free(quoted_str);
 
-	(void) compile_defaultactions(c, parent, component, parentgrouptype);
+	(void) compile_action_defaults(c, parent, component, parentgrouptype);
 
 	g->map = talloc_steal(g, head);
 	g->vpt = talloc_steal(g, vpt);
@@ -1535,7 +1535,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		c->debug_name = unlang_keyword[c->type];
 	}
 
-	(void) compile_defaultactions(c, parent, component, GROUPTYPE_SIMPLE);
+	(void) compile_action_defaults(c, parent, component, GROUPTYPE_SIMPLE);
 
 	g->map = talloc_steal(g, head);
 
@@ -1673,7 +1673,7 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 		g->cond->type = cond_type;
 	}
 
-	return compile_defaultactions(c, parent, component, parentgrouptype);
+	return compile_action_defaults(c, parent, component, parentgrouptype);
 }
 
 
@@ -1837,7 +1837,7 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 		}
 	}
 
-	return compile_defaultactions(c, parent, component, parentgrouptype);
+	return compile_action_defaults(c, parent, component, parentgrouptype);
 }
 
 
@@ -2207,7 +2207,7 @@ static modcallable *compile_xlat(modcallable *parent,
 	c->debug_name = c->name;
 	c->type = MOD_XLAT;
 
-	(void) compile_defaultactions(c, parent, component, GROUPTYPE_SIMPLE);
+	(void) compile_action_defaults(c, parent, component, GROUPTYPE_SIMPLE);
 
 	mx->xlat_name = talloc_typed_strdup(mx, fmt);
 	if (fmt[0] != '%') {
@@ -2532,7 +2532,7 @@ static modcallable *compile_module(modcallable *parent, rlm_components_t compone
 	c->parent = parent;
 	c->next = NULL;
 
-	(void) compile_defaultactions(c, parent, component, parent_grouptype);
+	(void) compile_action_defaults(c, parent, component, parent_grouptype);
 
 	c->name = realname;
 	c->debug_name = realname;
