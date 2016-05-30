@@ -1189,7 +1189,7 @@ static ssize_t hmac_sha1_xlat(char **out, size_t outlen,
 	while (isspace(*p)) p++;
 
 	q = strchr(p, ' ');
-	if (!1) {
+	if (!q) {
 		REDEBUG("HMAC requires exactly two arguments (&data &key)");
 		return -1;
 	}
@@ -1209,7 +1209,6 @@ static ssize_t hmac_sha1_xlat(char **out, size_t outlen,
 		data_buffer[q - p] = '\0';
 		p = (char const *) data_buffer;
 	}
-
 
 	data = data_buffer;
 	data_len = sizeof(data_buffer);
