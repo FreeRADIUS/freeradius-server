@@ -61,6 +61,12 @@ char const * const comp2str[] = {
 #endif
 };
 
+typedef int const (*unlang_action_table_t)[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES];
+typedef struct unlang_compile_t {
+	rlm_components_t	component;
+	char const		*method;
+	unlang_action_table_t	actions;
+} unlang_compile_t;
 
 static char const modcall_spaces[] = "                                                                                                                                                                                                                                                                ";
 
@@ -1336,7 +1342,7 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 }
 
 
-static modcallable *compile_action_defaults(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
+static modcallable *compile_action_defaults(modcallable *c, unlang_compile_t *unlang_ctx, grouptype_t parentgrouptype)
 {
 	int i;
 
@@ -1346,11 +1352,7 @@ static modcallable *compile_action_defaults(modcallable *c, modcallable *parent,
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			if (!parent || (component != MOD_AUTHENTICATE)) {
-				c->actions[i] = defaultactions[component][parentgrouptype][i];
-			} else { /* inside Auth-Type has different rules */
-				c->actions[i] = authtype_actions[parentgrouptype][i];
-			}
+			c->actions[i] = unlang_ctx->actions[parentgrouptype][i];
 		}
 	}
 
@@ -1361,7 +1363,7 @@ static modcallable *compile_action_defaults(modcallable *c, modcallable *parent,
 }
 
 
-static modcallable *compile_map(modcallable *parent, rlm_components_t component,
+static modcallable *compile_map(modcallable *parent, unlang_compile_t *unlang_ctx,
 				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
 {
 	int rcode;
@@ -1479,7 +1481,7 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 
 	talloc_free(quoted_str);
 
-	(void) compile_action_defaults(c, parent, component, parentgrouptype);
+	(void) compile_action_defaults(c, unlang_ctx, parentgrouptype);
 
 	g->map = talloc_steal(g, head);
 	g->vpt = talloc_steal(g, vpt);
@@ -1502,7 +1504,7 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 
 }
 
-static modcallable *compile_update(modcallable *parent, rlm_components_t component,
+static modcallable *compile_update(modcallable *parent, unlang_compile_t *unlang_ctx,
 				   CONF_SECTION *cs, grouptype_t grouptype, UNUSED grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
 {
 	int rcode;
@@ -1535,7 +1537,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		c->debug_name = unlang_keyword[c->type];
 	}
 
-	(void) compile_action_defaults(c, parent, component, GROUPTYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx, GROUPTYPE_SIMPLE);
 
 	g->map = talloc_steal(g, head);
 
@@ -1640,7 +1642,7 @@ static bool compile_action_section(modcallable *c, CONF_ITEM *ci)
 	return true;
 }
 
-static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_empty(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
 				  fr_cond_type_t cond_type)
 {
@@ -1673,11 +1675,11 @@ static modcallable *compile_empty(modcallable *parent, rlm_components_t componen
 		g->cond->type = cond_type;
 	}
 
-	return compile_action_defaults(c, parent, component, parentgrouptype);
+	return compile_action_defaults(c, unlang_ctx, parentgrouptype);
 }
 
 
-static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
+static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
 				 grouptype_t parent_grouptype, char const **modname);
 
 
@@ -1733,7 +1735,7 @@ static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SEC
 }
 
 
-static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_components_t component,
+static modcallable *compile_children(modgroup *g, UNUSED modcallable *parent, unlang_compile_t *unlang_ctx,
 				     grouptype_t grouptype, grouptype_t parentgrouptype)
 {
 	CONF_ITEM *ci;
@@ -1779,7 +1781,7 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 			/*
 			 *	Otherwise it's a real keyword.
 			 */
-			single = compile_item(c, component, ci, grouptype, &name1);
+			single = compile_item(c, unlang_ctx, ci, grouptype, &name1);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
 				       cf_section_name1(subcs));
@@ -1807,7 +1809,7 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 				modcallable *single;
 				char const *name = NULL;
 
-				single = compile_item(c, component, ci, grouptype, &name);
+				single = compile_item(c, unlang_ctx, ci, grouptype, &name);
 				if (!single) {
 					/*
 					 *	Skip optional modules, which start with '-'
@@ -1837,14 +1839,14 @@ static modcallable *compile_children(modgroup *g, modcallable *parent, rlm_compo
 		}
 	}
 
-	return compile_action_defaults(c, parent, component, parentgrouptype);
+	return compile_action_defaults(c, unlang_ctx, parentgrouptype);
 }
 
 
 /*
  *	Generic "compile a section with more unlang inside of it".
  */
-static modcallable *compile_group(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_group(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	modgroup *g;
@@ -1864,10 +1866,10 @@ static modcallable *compile_group(modcallable *parent, rlm_components_t componen
 	c->name = unlang_keyword[c->type];
 	c->debug_name = c->name;
 
-	return compile_children(g, parent, component, grouptype, parentgrouptype);
+	return compile_children(g, parent, unlang_ctx, grouptype, parentgrouptype);
 }
 
-static modcallable *compile_switch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_switch(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				   grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	CONF_ITEM *ci;
@@ -1963,10 +1965,10 @@ static modcallable *compile_switch(modcallable *parent, rlm_components_t compone
 		return NULL;
 	}
 
-	return compile_children(g, parent, component, grouptype, parentgrouptype);
+	return compile_children(g, parent, unlang_ctx, grouptype, parentgrouptype);
 }
 
-static modcallable *compile_case(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	int i;
@@ -2059,7 +2061,7 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 		}
 	} /* else it's a default 'case' statement */
 
-	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2092,7 +2094,7 @@ static modcallable *compile_case(modcallable *parent, rlm_components_t component
 	return c;
 }
 
-static modcallable *compile_foreach(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_foreach(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				    grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	FR_TOKEN type;
@@ -2157,7 +2159,7 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 	 */
 	vpt->tmpl_num = NUM_ALL;
 
-	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2174,7 +2176,7 @@ static modcallable *compile_foreach(modcallable *parent, rlm_components_t compon
 
 
 
-static modcallable *compile_break(modcallable *parent, rlm_components_t component, CONF_ITEM const *ci)
+static modcallable *compile_break(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	modcallable *foreach;
 
@@ -2187,13 +2189,13 @@ static modcallable *compile_break(modcallable *parent, rlm_components_t componen
 		return NULL;
 	}
 
-	return compile_empty(parent, component, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+	return compile_empty(parent, unlang_ctx, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
 			     MOD_BREAK, COND_TYPE_INVALID);
 }
 #endif
 
 static modcallable *compile_xlat(modcallable *parent,
-				 rlm_components_t component, char const *fmt)
+				 unlang_compile_t *unlang_ctx, char const *fmt)
 {
 	modcallable *c;
 	modxlat *mx;
@@ -2207,7 +2209,7 @@ static modcallable *compile_xlat(modcallable *parent,
 	c->debug_name = c->name;
 	c->type = MOD_XLAT;
 
-	(void) compile_action_defaults(c, parent, component, GROUPTYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx, GROUPTYPE_SIMPLE);
 
 	mx->xlat_name = talloc_typed_strdup(mx, fmt);
 	if (fmt[0] != '%') {
@@ -2222,7 +2224,7 @@ static modcallable *compile_xlat(modcallable *parent,
 	return c;
 }
 
-static modcallable *compile_if(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	modcallable *c;
@@ -2241,7 +2243,7 @@ static modcallable *compile_if(modcallable *parent, rlm_components_t component, 
 		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
 		     unlang_keyword[mod_type],
 		     cf_section_filename(cs), cf_section_lineno(cs));
-		return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
+		return compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
 	}
 
 	/*
@@ -2254,7 +2256,7 @@ static modcallable *compile_if(modcallable *parent, rlm_components_t component, 
 		return NULL;
 	}
 
-	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
 	c->name = unlang_keyword[c->type];
@@ -2292,7 +2294,7 @@ static int previous_if(CONF_SECTION *cs, modcallable *parent, mod_type_t mod_typ
 	return 1;
 }
 
-static modcallable *compile_elsif(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_elsif(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	int rcode;
@@ -2308,13 +2310,13 @@ static modcallable *compile_elsif(modcallable *parent, rlm_components_t componen
 	rcode = previous_if(cs, parent, mod_type);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) return compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
 
-	return compile_if(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	return compile_if(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 }
 
 static modcallable *compile_else(modcallable *parent,
-			       rlm_components_t component, CONF_SECTION *cs,
+			       unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	int rcode;
@@ -2329,9 +2331,9 @@ static modcallable *compile_else(modcallable *parent,
 	if (rcode < 0) return NULL;
 
 	if (rcode == 0) {
-		c = compile_empty(parent, component, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+		c = compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
 	} else {
-		c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+		c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	}
 
 	if (!c) return c;
@@ -2390,7 +2392,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 }
 
 
-static modcallable *compile_redundant(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
 	modcallable *c;
@@ -2407,7 +2409,7 @@ static modcallable *compile_redundant(modcallable *parent, rlm_components_t comp
 		return NULL;
 	}
 
-	c = compile_group(parent, component, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
 	c->name = unlang_keyword[c->type];
@@ -2508,7 +2510,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 }
 
 
-static modcallable *compile_module(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t parent_grouptype, char const *realname)
+static modcallable *compile_module(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, grouptype_t parentgrouptype, char const *realname)
 {
 	modcallable *c;
 	modsingle *single;
@@ -2517,22 +2519,22 @@ static modcallable *compile_module(modcallable *parent, rlm_components_t compone
 	 *	Check if the module in question has the necessary
 	 *	component.
 	 */
-	if (!this->module->methods[component]) {
+	if (!this->module->methods[unlang_ctx->component]) {
 		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->module->name,
-			   comp2str[component]);
+			   unlang_ctx->method);
 		return NULL;
 	}
 
 	single = talloc_zero(parent, modsingle);
 	single->modinst = this;
-	single->function = this->module->methods[component];
-	single->method = comp2str[component];
+	single->function = this->module->methods[unlang_ctx->component];
+	single->method = unlang_ctx->method;
 
 	c = mod_singletocallable(single);
 	c->parent = parent;
 	c->next = NULL;
 
-	(void) compile_action_defaults(c, parent, component, parent_grouptype);
+	(void) compile_action_defaults(c, unlang_ctx, parentgrouptype);
 
 	c->name = realname;
 	c->debug_name = realname;
@@ -2546,7 +2548,7 @@ static modcallable *compile_module(modcallable *parent, rlm_components_t compone
 	return c;
 }
 
-typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
+typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 					 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type);
 typedef struct modcall_compile_t {
 	char const			*name;
@@ -2575,9 +2577,18 @@ static modcall_compile_t compile_table[] = {
 
 
 /*
+ *	When we swithc to a new unlang ctx, we use the new component
+ *	name and number, but we use the CURRENT actions.
+ */
+#define UPDATE_CTX2  \
+	unlang_ctx2.component = component; \
+	unlang_ctx2.method = comp2str[component]; \
+	unlang_ctx2.actions = unlang_ctx->actions
+
+/*
  *	Compile one entry of a module call.
  */
-static modcallable *compile_item(modcallable *parent, rlm_components_t component, CONF_ITEM *ci,
+static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
 				 grouptype_t parent_grouptype, char const **modname)
 {
 	char const *modrefname, *p;
@@ -2586,7 +2597,8 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	CONF_SECTION *cs, *subcs, *modules;
 	CONF_SECTION *loop;
 	char const *realname;
-	rlm_components_t method = component;
+	rlm_components_t component = unlang_ctx->component;
+	unlang_compile_t unlang_ctx2;
 
 	if (cf_item_is_section(ci)) {
 		int i;
@@ -2613,7 +2625,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 					return NULL;
 				}
 
-				return compile_table[i].compile(parent, component, cs,
+				return compile_table[i].compile(parent, unlang_ctx, cs,
 								compile_table[i].grouptype, parent_grouptype,
 								compile_table[i].mod_type);
 			}
@@ -2658,7 +2670,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (modrefname[0] == '`')) {
-			return compile_xlat(parent, component, modrefname);
+			return compile_xlat(parent, unlang_ctx, modrefname);
 		}
 	}
 
@@ -2667,11 +2679,11 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	 *	These can't be over-ridden.
 	 */
 	if (strcmp(modrefname, "break") == 0) {
-		return compile_break(parent, component, ci);
+		return compile_break(parent, unlang_ctx, ci);
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
-		return compile_empty(parent, component, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_RETURN, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_RETURN, COND_TYPE_INVALID);
 	}
 #endif
 
@@ -2716,14 +2728,14 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	subcs = NULL;
 	p = strrchr(modrefname, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(&method, modrefname, modrefname, NULL);
+		subcs = virtual_module_find_cs(&component, modrefname, modrefname, NULL);
 	} else {
 		char buffer[256];
 
 		strlcpy(buffer, modrefname, sizeof(buffer));
 		buffer[p - modrefname] = '\0';
 
-		subcs = virtual_module_find_cs(&method, modrefname, buffer, buffer + (p - modrefname) + 1);
+		subcs = virtual_module_find_cs(&component, modrefname, buffer, buffer + (p - modrefname) + 1);
 	}
 
 	/*
@@ -2759,10 +2771,14 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 		 *	if it was found here.
 		 */
 		if (cf_section_name2(subcs)) {
-			c = compile_item(parent, method, cf_section_to_item(subcs), parent_grouptype, modname);
+			UPDATE_CTX2;
+
+			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), parent_grouptype, modname);
 			if (!c) return NULL;
 
 		} else {
+			UPDATE_CTX2;
+
 			/*
 			 *	We have:
 			 *
@@ -2772,7 +2788,7 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, method, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
+			c = compile_group(parent, &unlang_ctx2, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
 			if (!c) return NULL;
 
 			c->name = cf_section_name1(subcs);
@@ -2816,10 +2832,12 @@ static modcallable *compile_item(modcallable *parent, rlm_components_t component
 	 *	modules belongs in raddb/mods-available/,
 	 *	which isn't loaded into the "modules" section.
 	 */
-	this = module_instantiate_method(modules, realname, &method);
+	this = module_instantiate_method(modules, realname, &component);
 	if (this) {
+		UPDATE_CTX2;
+
 		*modname = this->module->name;
-		return compile_module(parent, method, ci, this, parent_grouptype, realname);
+		return compile_module(parent, &unlang_ctx2, ci, this, parent_grouptype, realname);
 	}
 
 	/*
@@ -2845,8 +2863,18 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 {
 	char const *name1, *name2;
 	modcallable *c;
+	unlang_compile_t unlang_ctx;
 
-	c = compile_group(NULL, component, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_GROUP);
+	unlang_ctx.component = component;
+	unlang_ctx.method = comp2str[component];
+
+	if (component == MOD_AUTHENTICATE) {
+		unlang_ctx.actions = &defaultactions[component];
+	} else {
+		unlang_ctx.actions = &authtype_actions;
+	}
+
+	c = compile_group(NULL, &unlang_ctx, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_GROUP);
 	if (!c) return -1;
 
 	/*
