@@ -62,6 +62,7 @@ char const * const comp2str[] = {
 };
 
 typedef int const unlang_action_table_t[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES];
+
 typedef struct unlang_compile_t {
 	rlm_components_t	component;
 	char const		*method;
@@ -1352,7 +1353,7 @@ static modcallable *compile_action_defaults(modcallable *c, unlang_compile_t *un
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			c->actions[i] = unlang_ctx->actions[parentgrouptype][i];
+			c->actions[i] = unlang_ctx->actions[0][parentgrouptype][i];
 		}
 	}
 
