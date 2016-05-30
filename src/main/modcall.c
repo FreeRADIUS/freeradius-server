@@ -115,7 +115,7 @@ static void dump_tree(modcallable *c, char const *name)
 #define dump_tree(a, b)
 #endif
 
-/* These are the default actions. For each component, the group{} block
+/* These are the default actions. For each section , the group{} block
  * behaves like the code from the old module_*() function. redundant{}
  * are based on my guesses of what they will be used for. --Pac. */
 static const int
@@ -2509,7 +2509,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 }
 
 
-static modcallable *compile_module(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t grouptype, char const *realname)
+static modcallable *compile_module(modcallable *parent, rlm_components_t component, CONF_ITEM *ci, module_instance_t *this, grouptype_t parent_grouptype, char const *realname)
 {
 	modcallable *c;
 	modsingle *single;
@@ -2532,13 +2532,8 @@ static modcallable *compile_module(modcallable *parent, rlm_components_t compone
 	c = mod_singletocallable(single);
 	c->parent = parent;
 	c->next = NULL;
-	if (!parent || (component != MOD_AUTHENTICATE)) {
-		memcpy(c->actions, defaultactions[component][grouptype],
-		       sizeof c->actions);
-	} else { /* inside Auth-Type has different rules */
-		memcpy(c->actions, authtype_actions[grouptype],
-		       sizeof c->actions);
-	}
+
+	(void) compile_defaultactions(c, parent, component, parent_grouptype);
 
 	c->name = realname;
 	c->debug_name = realname;
