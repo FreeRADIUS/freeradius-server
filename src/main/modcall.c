@@ -1336,6 +1336,31 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 }
 
 
+static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
+{
+	int i;
+
+	/*
+	 *	Set the default actions, if they haven't already been
+	 *	set.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (!c->actions[i]) {
+			if (!parent || (component != MOD_AUTHENTICATE)) {
+				c->actions[i] = defaultactions[component][parentgrouptype][i];
+			} else { /* inside Auth-Type has different rules */
+				c->actions[i] = authtype_actions[parentgrouptype][i];
+			}
+		}
+	}
+
+	/*
+	 *	FIXME: If there are no children, return NULL?
+	 */
+	return c;
+}
+
+
 static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
 {
@@ -1454,8 +1479,7 @@ static modcallable *compile_map(modcallable *parent, rlm_components_t component,
 
 	talloc_free(quoted_str);
 
-	memcpy(c->actions, defaultactions[component][parentgrouptype],
-	       sizeof(c->actions));
+	(void) compile_defaultactions(c, parent, component, parentgrouptype);
 
 	g->map = talloc_steal(g, head);
 	g->vpt = talloc_steal(g, vpt);
@@ -1511,8 +1535,7 @@ static modcallable *compile_update(modcallable *parent, rlm_components_t compone
 		c->debug_name = unlang_keyword[c->type];
 	}
 
-	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
-	       sizeof(c->actions));
+	(void) compile_defaultactions(c, parent, component, GROUPTYPE_SIMPLE);
 
 	g->map = talloc_steal(g, head);
 
@@ -1616,31 +1639,6 @@ static bool compile_action_section(modcallable *c, CONF_ITEM *ci)
 
 	return true;
 }
-
-static modcallable *compile_defaultactions(modcallable *c, modcallable *parent, rlm_components_t component, grouptype_t parentgrouptype)
-{
-	int i;
-
-	/*
-	 *	Set the default actions, if they haven't already been
-	 *	set.
-	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (!c->actions[i]) {
-			if (!parent || (component != MOD_AUTHENTICATE)) {
-				c->actions[i] = defaultactions[component][parentgrouptype][i];
-			} else { /* inside Auth-Type has different rules */
-				c->actions[i] = authtype_actions[parentgrouptype][i];
-			}
-		}
-	}
-
-	/*
-	 *	FIXME: If there are no children, return NULL?
-	 */
-	return c;
-}
-
 
 static modcallable *compile_empty(modcallable *parent, rlm_components_t component, CONF_SECTION *cs,
 				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
