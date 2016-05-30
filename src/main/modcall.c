@@ -2207,8 +2207,7 @@ static modcallable *compile_xlat(modcallable *parent,
 	c->debug_name = c->name;
 	c->type = MOD_XLAT;
 
-	memcpy(c->actions, defaultactions[component][GROUPTYPE_SIMPLE],
-	       sizeof(c->actions));
+	(void) compile_defaultactions(c, parent, component, GROUPTYPE_SIMPLE);
 
 	mx->xlat_name = talloc_typed_strdup(mx, fmt);
 	if (fmt[0] != '%') {
