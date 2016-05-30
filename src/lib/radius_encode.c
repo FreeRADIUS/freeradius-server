@@ -757,6 +757,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
 		len = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
+		if (len < 0) return -1;
 		data = buffer;
 		break;
 
