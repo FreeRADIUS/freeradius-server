@@ -106,9 +106,9 @@ _Generic((_ct), \
 			_p, (_mismatch_vp_tmpl) 0), \
 	vp_tmpl_t ***	: __builtin_choose_expr(((_t) & PW_TYPE_TMPL) && ((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl_m) 0), \
-	const char **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_STRING) && !((_t) & PW_TYPE_MULTI), \
+	char const **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_STRING) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_char) 0), \
-	const char ***	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_STRING) && ((_t) & PW_TYPE_MULTI), \
+	char const ***	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_STRING) && ((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_char_m) 0), \
 	bool *		: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_BOOLEAN) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_bool) 0), \
