@@ -66,7 +66,7 @@ typedef struct attr_flags {
 } fr_dict_attr_flags_t;
 
 extern const FR_NAME_NUMBER dict_attr_types[];
-extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
+extern const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2];
 
 typedef struct dict_attr fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;

@@ -83,65 +83,90 @@ fr_dict_t *fr_dict_internal = NULL;	//!< Internal server dictionary.
 /** Map data types to names representing those types
  */
 const FR_NAME_NUMBER dict_attr_types[] = {
-	{ "integer",       PW_TYPE_INTEGER },
-	{ "string",        PW_TYPE_STRING },
-	{ "ipaddr",        PW_TYPE_IPV4_ADDR },
-	{ "date",          PW_TYPE_DATE },
-	{ "abinary",       PW_TYPE_ABINARY },
-	{ "octets",        PW_TYPE_OCTETS },
-	{ "ifid",          PW_TYPE_IFID },
-	{ "ipv6addr",      PW_TYPE_IPV6_ADDR },
-	{ "ipv6prefix",    PW_TYPE_IPV6_PREFIX },
-	{ "byte",          PW_TYPE_BYTE },
-	{ "short",         PW_TYPE_SHORT },
-	{ "ether",         PW_TYPE_ETHERNET },
-	{ "combo-ip",      PW_TYPE_COMBO_IP_ADDR },
-	{ "tlv",           PW_TYPE_TLV },
-	{ "signed",        PW_TYPE_SIGNED },
-	{ "extended",      PW_TYPE_EXTENDED },
-	{ "long-extended", PW_TYPE_LONG_EXTENDED },
-	{ "evs",           PW_TYPE_EVS },
-	{ "uint8",         PW_TYPE_BYTE },
-	{ "uint16",        PW_TYPE_SHORT },
-	{ "uint32",        PW_TYPE_INTEGER },
-	{ "int32",         PW_TYPE_SIGNED },
-	{ "integer64",     PW_TYPE_INTEGER64 },
-	{ "uint64",        PW_TYPE_INTEGER64 },
-	{ "ipv4prefix",    PW_TYPE_IPV4_PREFIX },
-	{ "cidr",          PW_TYPE_IPV4_PREFIX },
-	{ "vsa",           PW_TYPE_VSA },
-	{ "vendor",        PW_TYPE_VENDOR },
-	{ "struct",        PW_TYPE_STRUCT },
-	{ NULL,            0 }
+	{ "string",		PW_TYPE_STRING },
+	{ "octets",		PW_TYPE_OCTETS },
+
+	{ "ipaddr",		PW_TYPE_IPV4_ADDR },
+	{ "ipv4prefix",		PW_TYPE_IPV4_PREFIX },
+	{ "ipv6addr",		PW_TYPE_IPV6_ADDR },
+	{ "ipv6prefix",		PW_TYPE_IPV6_PREFIX },
+	{ "ifid",		PW_TYPE_IFID },
+	{ "combo-ip",		PW_TYPE_COMBO_IP_ADDR },
+	{ "combo-prefix",	PW_TYPE_COMBO_IP_PREFIX },
+	{ "ether",		PW_TYPE_ETHERNET },
+
+	{ "bool",		PW_TYPE_BOOLEAN },
+	{ "byte",		PW_TYPE_BYTE },
+	{ "short",		PW_TYPE_SHORT },
+	{ "integer",		PW_TYPE_INTEGER },
+	{ "integer64",		PW_TYPE_INTEGER64 },
+	{ "signed",        	PW_TYPE_SIGNED },
+
+	{ "decimal",		PW_TYPE_DECIMAL },
+	{ "timeval",		PW_TYPE_TIMEVAL },
+	{ "date",		PW_TYPE_DATE },
+
+	{ "abinary",		PW_TYPE_ABINARY },
+
+	{ "tlv",		PW_TYPE_TLV },
+	{ "struct",        	PW_TYPE_STRUCT },
+
+	{ "extended",      	PW_TYPE_EXTENDED },
+	{ "long-extended", 	PW_TYPE_LONG_EXTENDED },
+
+	{ "vsa",          	PW_TYPE_VSA },
+	{ "evs",           	PW_TYPE_EVS },
+	{ "vendor",        	PW_TYPE_VENDOR },
+
+	/*
+	 *	Alternative names
+	 */
+	{ "cidr",         	PW_TYPE_IPV4_PREFIX },
+	{ "uint8",        	PW_TYPE_BYTE },
+	{ "uint16",        	PW_TYPE_SHORT },
+	{ "uint32",		PW_TYPE_INTEGER },
+	{ "uint64",		PW_TYPE_INTEGER64 },
+	{ "int32",         	PW_TYPE_SIGNED },
+
+	{ NULL,			0 }
 };
 
 /** Map data types to min / max data sizes
  */
-const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
-	[PW_TYPE_INVALID]	= {~0, 0},
+const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
+	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0.
+
 	[PW_TYPE_STRING]	= {0, ~0},
-	[PW_TYPE_INTEGER]	= {4, 4 },
-	[PW_TYPE_IPV4_ADDR]	= {4, 4},
-	[PW_TYPE_DATE]		= {4, 4},
-	[PW_TYPE_ABINARY]	= {32, ~0},
 	[PW_TYPE_OCTETS]	= {0, ~0},
-	[PW_TYPE_IFID]		= {8, 8},
+
+	[PW_TYPE_IPV4_ADDR]	= {4, 4},
+	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
 	[PW_TYPE_IPV6_ADDR]	= {16, 16},
 	[PW_TYPE_IPV6_PREFIX]	= {2, 18},
+	[PW_TYPE_COMBO_IP_ADDR]	= {4, 16},
+	[PW_TYPE_IFID]		= {8, 8},
+	[PW_TYPE_ETHERNET]	= {6, 6},
+
+	[PW_TYPE_BOOLEAN]	= {1, 1},
 	[PW_TYPE_BYTE]		= {1, 1},
 	[PW_TYPE_SHORT]		= {2, 2},
-	[PW_TYPE_ETHERNET]	= {6, 6},
+	[PW_TYPE_INTEGER]	= {4, 4},
+	[PW_TYPE_INTEGER64]	= {8, 8},
 	[PW_TYPE_SIGNED]	= {4, 4},
-	[PW_TYPE_COMBO_IP_ADDR]	= {4, 16},
+
+	[PW_TYPE_DATE]		= {4, 4},
+	[PW_TYPE_ABINARY]	= {32, ~0},
+
 	[PW_TYPE_TLV]		= {2, ~0},
+	[PW_TYPE_STRUCT]	= {1, ~0},
+
 	[PW_TYPE_EXTENDED]	= {2, ~0},
 	[PW_TYPE_LONG_EXTENDED]	= {3, ~0},
-	[PW_TYPE_EVS]		= {6, ~0},
-	[PW_TYPE_INTEGER64]	= {8, 8},
-	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
+
 	[PW_TYPE_VSA]		= {4, ~0},
-	[PW_TYPE_VENDOR]	= {0, 0},
-	[PW_TYPE_STRUCT]	= {1, ~0},
+	[PW_TYPE_EVS]		= {6, ~0},
+
+	[PW_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
 };
 
 const int fr_dict_attr_allowed_chars[256] = {
