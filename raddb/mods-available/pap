@@ -33,23 +33,23 @@ pap {
 #	winbind_domain = "YOUR_AD_DOMAIN"
 
 
-	# The following configuration is of use *only* when winbind_username
-	# is set.
+	# The following configuration shoudl be used only when
+	# winbind_username is set.
 	#
-	# Information for the winbind connection pool.  The configuration
+	# Information for the winbind connection pool. The configuration
 	# items below are the same for all modules which use the new
 	# connection pool.
 	#
-	pool {
+#	pool {
 		#  Connections to create during module instantiation.
 		#  If the server cannot create specified number of
 		#  connections during instantiation it will exit.
 		#  Set to 0 to allow the server to start without the
 		#  winbind daemon being available.
-		start = ${thread[pool].start_servers}
+#		start = ${thread[pool].start_servers}
 
 		#  Minimum number of connections to keep open
-		min = ${thread[pool].min_spare_servers}
+#		min = ${thread[pool].min_spare_servers}
 
 		#  Maximum number of connections
 		#
@@ -62,39 +62,39 @@ pap {
 		#
 		#  Setting 'max' to MORE than the number of threads means
 		#  that there are more connections than necessary.
-		max = ${thread[pool].max_servers}
+#		max = ${thread[pool].max_servers}
 
 		#  Spare connections to be left idle
 		#
 		#  NOTE: Idle connections WILL be closed if "idle_timeout"
 		#  is set.  This should be less than or equal to "max" above.
-		spare = ${thread[pool].max_spare_servers}
+#		spare = ${thread[pool].max_spare_servers}
 
 		#  Number of uses before the connection is closed
 		#
 		#  0 means "infinite"
-		uses = 0
+#		uses = 0
 
 		#  The number of seconds to wait after the server tries
 		#  to open a connection, and fails.  During this time,
 		#  no new connections will be opened.
-		retry_delay = 30
+#		retry_delay = 30
 
 		#  The lifetime (in seconds) of the connection
 		#
 		#  NOTE: A setting of 0 means infinite (no limit).
-		lifetime = 86400
+#		lifetime = 86400
 
 		#  The pool is checked for free connections every
 		#  "cleanup_interval".  If there are free connections,
 		#  then one of them is closed.
-		cleanup_interval = 300
+#		cleanup_interval = 300
 
 		#  The idle timeout (in seconds).  A connection which is
 		#  unused for this length of time will be closed.
 		#
 		#  NOTE: A setting of 0 means infinite (no timeout).
-		idle_timeout = 600
+#		idle_timeout = 600
 
 		#  NOTE: All configuration settings are enforced.  If a
 		#  connection is closed because of "idle_timeout",
@@ -105,5 +105,5 @@ pap {
 		#
 		#  The solution is to either lower the "min" connections,
 		#  or increase lifetime/idle_timeout.
-	}
+#	}
 }
