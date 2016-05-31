@@ -161,11 +161,8 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	int i;
 	char *p, *q;
 
-	e = (rlm_csv_entry_t *) talloc_zero_array(inst->tree, uint8_t, sizeof(*e) + inst->used_fields + sizeof(e->data[0]));
-	if (!e) {
-		cf_log_err_cs(conf, "Out of memory");
-		return NULL;
-	}
+	MEM(e = (rlm_csv_entry_t *)talloc_zero_array(inst->tree, uint8_t,
+						     sizeof(*e) + inst->used_fields + sizeof(e->data[0])));
 
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
 		if (!buf2entry(inst, p, &q)) {
@@ -193,7 +190,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 */
 		if (inst->field_offsets[i] < 0) continue;
 
-		e->data[inst->field_offsets[i]] = talloc_strdup(e, p);
+		MEM(e->data[inst->field_offsets[i]] = talloc_strdup(e, p));
 	}
 
 	if (i < inst->num_fields) {
