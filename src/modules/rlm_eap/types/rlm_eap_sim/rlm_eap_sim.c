@@ -130,7 +130,10 @@ static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, i
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KI, TAG_ANY);
-	if (!vp) return -1;
+	if (!vp) {
+		RDEBUG3("No &control:EAP-SIM-KI found, not generating triplets locally");
+		return 1;
+	}
 
 	/*
 	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
@@ -138,8 +141,8 @@ static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, i
 	 */
 	version = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_ALGO_VERSION, TAG_ANY);
 	if (!version) {
-		REDEBUG("Found Ki, but missing EAP-Sim-Algo-Version");
-		return 0;
+		RDEBUG3("No &control:EAP-SIM-ALGO-VERSION found, not generating triplets locally");
+		return 1;
 	}
 
 	for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
@@ -161,7 +164,7 @@ static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, i
 
 	case 4:
 		REDEBUG("Milenage not supported (feel free to implement it)");
-		return 0;
+		return 1;
 
 	default:
 		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
@@ -193,7 +196,7 @@ static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, i
 		RDEBUG2("Kc   : 0x%s", buffer);
 		REXDENT();
 	}
-	return 1;
+	return 0;
 }
 
 static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
@@ -206,7 +209,10 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	 *	or created by sending challenges to the SIM directly.
 	 */
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_RAND1 + idx, TAG_ANY);
-	if (!vp) return 1;
+	if (!vp) {
+		RDEBUG3("No &control:EAP-SIM-RAND attribute found, not using triplets");
+		return 1;
+	}
 
 	if (vp->vp_length != EAPSIM_RAND_SIZE) {
 		REDEBUG("&control:EAP-SIM-RAND%i is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
@@ -216,7 +222,10 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	memcpy(ess->keys.rand[idx], vp->vp_octets, EAPSIM_RAND_SIZE);
 
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SRES1 + idx, TAG_ANY);
-	if (!vp) return 1;
+	if (!vp) {
+		RDEBUG3("No &control:EAP-SIM-SRES attribute found, not using triplets");
+		return 1;
+	}
 
 	if (vp->vp_length != EAPSIM_SRES_SIZE) {
 		REDEBUG("&control:EAP-SIM-SRES%i is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
@@ -226,7 +235,10 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	memcpy(ess->keys.sres[idx], vp->vp_octets, EAPSIM_SRES_SIZE);
 
 	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KC1 + idx, TAG_ANY);
-	if (!vp) return 1;
+	if (!vp) {
+		RDEBUG3("No &control:EAP-SIM-KC attribute found, not using triplets");
+		return 1;
+	}
 
 	if (vp->vp_length != EAPSIM_KC_SIZE) {
 		REDEBUG("&control:EAP-SIM-Kc%i is not 8 bytes, got %zu bytes", idx + 1, vp->vp_length);
@@ -271,7 +283,10 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_RAND, TAG_ANY);
 		if (!rand) break;
 	}
-	if (!rand) return 1;
+	if (!rand) {
+		RDEBUG3("No &control:EAP-AKA-Rand attribute found, not using quintuplet derivation");
+		return 1;
+	}
 
 	if (rand->vp_length != EAPSIM_RAND_SIZE) {
 		REDEBUG("&control:EAP-AKA-RAND incorrect length.  Expected " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, "
@@ -286,7 +301,10 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		xres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_XRES, TAG_ANY);
 		if (!xres) break;
 	}
-	if (!xres) return 1;
+	if (!xres) {
+		RDEBUG3("No &control:EAP-AKA-XRES attribute found, not using quintuplet derivation");
+		return 1;
+	}
 
 	/*
 	 *	Fetch CK
@@ -295,7 +313,10 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		ck = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_CK, TAG_ANY);
 		if (!ck) break;
 	}
-	if (!ck) return 1;
+	if (!ck) {
+		RDEBUG3("No &control:EAP-AKA-CK attribute found, not using quintuplet derivation");
+		return 1;
+	}
 
 	/*
 	 *	Fetch IK
@@ -304,7 +325,10 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		ik = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_IK, TAG_ANY);
 		if (!ik) break;
 	}
-	if (!ik) return 1;
+	if (!ik) {
+		RDEBUG3("No &control:EAP-AKA-IK attribute found, not using quintuplet derivation");
+		return 1;
+	}
 
 	memcpy(ess->keys.rand[idx], rand->vp_octets, EAPSIM_RAND_SIZE);	/* RAND is 128 bits in both */
 
@@ -374,7 +398,7 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
  *			and ensures if multiple triplets are being retrieved
  *			that they all come from the same src.
  * @return
- *	- 1	Vector could be retrieved from the specified src.
+ *	- 1	Vector could not be retrieved from the specified src.
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
@@ -641,9 +665,10 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrieval.
 	 */
-	if (!eap_sim_get_challenge(eap_session, request->control, 0, ess, &src) ||
-	    !eap_sim_get_challenge(eap_session, request->control, 1, ess, &src) ||
-	    !eap_sim_get_challenge(eap_session, request->control, 2, ess, &src)) {
+	if ((eap_sim_get_challenge(eap_session, request->control, 0, ess, &src) != 0) ||
+	    (eap_sim_get_challenge(eap_session, request->control, 1, ess, &src) < 0) ||
+	    (eap_sim_get_challenge(eap_session, request->control, 2, ess, &src) < 0)) {
+	    	REDEBUG("Failed retrieving SIM triplets");
 		return 0;
 	}
 
@@ -812,6 +837,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 *	Client error supersedes anything else.
 	 */
 	if (subtype == EAPSIM_CLIENT_ERROR) {
+		REDEBUG("Client encountered an error");
 		return 0;
 	}
 
@@ -822,7 +848,6 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */
 		default:
-
 			eap_sim_state_enter(eap_session, ess, EAPSIM_SERVER_START);
 			return 1;
 		/*
