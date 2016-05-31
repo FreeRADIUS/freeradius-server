@@ -685,31 +685,7 @@ ATTRIBUTE	Exfile-Name				2223	string internal
 #		They are automatically defined by the server core.
 #		Do NOT define attributes in this range!
 #
-#  These attributes shouldn't be used anywhere.  They are defined here
-#  only for casting of values in conditional expressions.
-#
-#  The order and number need to be consistent with the typedefs used
-#  in the server source.
-#
 ATTRIBUTE	Cast-Base				2300	byte	internal
-ATTRIBUTE	Tmp-Cast-String				2301	string	internal
-ATTRIBUTE	Tmp-Cast-Integer			2302	integer	internal
-ATTRIBUTE	Tmp-Cast-Ipaddr				2303	ipaddr	internal
-ATTRIBUTE	Tmp-Cast-Date				2304	date	internal
-ATTRIBUTE	Tmp-Cast-Abinary			2305	abinary	internal
-ATTRIBUTE	Tmp-Cast-Octets				2306	octets	internal
-ATTRIBUTE	Tmp-Cast-Ifid				2307	ifid	internal
-ATTRIBUTE	Tmp-Cast-IPv6Addr			2308	ipv6addr internal
-ATTRIBUTE	Tmp-Cast-IPv6Prefix			2309	ipv6prefix internal
-ATTRIBUTE	Tmp-Cast-Byte				2310	byte	internal
-ATTRIBUTE	Tmp-Cast-Short				2311	short	internal
-ATTRIBUTE	Tmp-Cast-Ethernet			2312	ether	internal
-ATTRIBUTE	Tmp-Cast-Signed				2313	signed	internal
-# don't use or define these
-ATTRIBUTE	Tmp-Cast-Integer64			2319	integer64 internal
-ATTRIBUTE	Tmp-Cast-IPv4Prefix			2320	ipv4prefix internal
-# don't use or define VSA or MAX
-
 
 #
 #	Range:	2400-2999

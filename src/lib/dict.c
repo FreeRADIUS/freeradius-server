@@ -2192,6 +2192,10 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 	return 0;
 }
 
+
+static bool defined_cast_types = false;
+
+
 /** (re)initialize a protocol dictionary
  *
  * Initialize the directory, then fix the attr member of all attributes.
@@ -2282,6 +2286,43 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	dict->root->flags.length = 1;
 
 	dict->enum_fixup = NULL;        /* just to be safe. */
+
+	/*
+	 *	Add cast attributes.  We do it this way,
+	 *	so cast attributes get added automatically for new types.
+	 *
+	 *	We manually add the attributes to the dictionary, and bypass
+	 *	fr_dict_attr_add(), because we know what we're doing, and
+	 *	that function does too many checks.
+	 */
+	if (!defined_cast_types) {
+		FR_NAME_NUMBER const	*p;
+		fr_dict_attr_flags_t	flags;
+		char			*type_name;
+
+		memset(&flags, 0, sizeof(flags));
+
+		flags.internal = 1;
+
+		for (p = dict_attr_types; p->name; p++) {
+			fr_dict_attr_t *n;
+
+			type_name = talloc_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
+
+			n = fr_dict_attr_alloc(dict->pool, type_name, 0, PW_CAST_BASE + p->number, p->number, flags);
+			if (!n) goto error;
+
+			if (!fr_hash_table_insert(dict->attributes_by_name, n)) goto error;
+
+			/*
+			 *	Set up parenting for the attribute.
+			 */
+			if (fr_dict_attr_child_add(dict->root, n) < 0) goto error;
+			
+			talloc_free(type_name);
+		}
+		defined_cast_types = true;
+	}
 
 	if (dict_read_init(dict, dir, fn, NULL, 0) < 0) goto error;
 
