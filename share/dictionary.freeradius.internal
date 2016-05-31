@@ -532,58 +532,39 @@ ATTRIBUTE	Tmp-Date-7				1847	date internal
 ATTRIBUTE	Tmp-Date-8				1848	date internal
 ATTRIBUTE	Tmp-Date-9				1849	date internal
 
-ATTRIBUTE	Tmp-Integer64-0				1871	integer64 internal
-ATTRIBUTE	Tmp-Integer64-1				1872	integer64 internal
-ATTRIBUTE	Tmp-Integer64-2				1873	integer64 internal
-ATTRIBUTE	Tmp-Integer64-3				1874	integer64 internal
-ATTRIBUTE	Tmp-Integer64-4				1875	integer64 internal
-ATTRIBUTE	Tmp-Integer64-5				1876	integer64 internal
-ATTRIBUTE	Tmp-Integer64-6				1877	integer64 internal
-ATTRIBUTE	Tmp-Integer64-7				1878	integer64 internal
-ATTRIBUTE	Tmp-Integer64-8				1879	integer64 internal
-ATTRIBUTE	Tmp-Integer64-9				1880	integer64 internal
+#
+#  Attributes 1850 through 1850 + PW_TYPE_MAX are reserved.
+#
 
-ATTRIBUTE	Tmp-Signed-0				1881	signed internal
-ATTRIBUTE	Tmp-Signed-1				1882	signed internal
-ATTRIBUTE	Tmp-Signed-2				1883	signed internal
-ATTRIBUTE	Tmp-Signed-3				1884	signed internal
-ATTRIBUTE	Tmp-Signed-4				1885	signed internal
-ATTRIBUTE	Tmp-Signed-5				1886	signed internal
-ATTRIBUTE	Tmp-Signed-6				1887	signed internal
-ATTRIBUTE	Tmp-Signed-7				1888	signed internal
-ATTRIBUTE	Tmp-Signed-8				1889	signed internal
-ATTRIBUTE	Tmp-Signed-9				1890	signed internal
+ATTRIBUTE	Tmp-Integer64-0				1850	integer64 internal
+ATTRIBUTE	Tmp-Integer64-1				1851	integer64 internal
+ATTRIBUTE	Tmp-Integer64-2				1852	integer64 internal
+ATTRIBUTE	Tmp-Integer64-3				1853	integer64 internal
+ATTRIBUTE	Tmp-Integer64-4				1854	integer64 internal
+ATTRIBUTE	Tmp-Integer64-5				1855	integer64 internal
+ATTRIBUTE	Tmp-Integer64-6				1856	integer64 internal
+ATTRIBUTE	Tmp-Integer64-7				1857	integer64 internal
+ATTRIBUTE	Tmp-Integer64-8				1858	integer64 internal
+ATTRIBUTE	Tmp-Integer64-9				1859	integer64 internal
+
+ATTRIBUTE	Tmp-Signed-0				1860	signed internal
+ATTRIBUTE	Tmp-Signed-1				1861	signed internal
+ATTRIBUTE	Tmp-Signed-2				1862	signed internal
+ATTRIBUTE	Tmp-Signed-3				1863	signed internal
+ATTRIBUTE	Tmp-Signed-4				1864	signed internal
+ATTRIBUTE	Tmp-Signed-5				1865	signed internal
+ATTRIBUTE	Tmp-Signed-6				1866	signed internal
+ATTRIBUTE	Tmp-Signed-7				1867	signed internal
+ATTRIBUTE	Tmp-Signed-8				1868	signed internal
+ATTRIBUTE	Tmp-Signed-9				1869	signed internal
+
+# 1870 - 1890, unused
 
 #
 #  Mostly for testing
 #
 ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag,internal
 ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag,internal
-
-#
-#  These attributes shouldn't be used anywhere.  They are defined here
-#  only for casting of values in conditional expressions.
-#
-#  The order and number need to be consistent with the typedefs used
-#  in the server source.
-#
-ATTRIBUTE	Tmp-Cast-String				1851	string internal
-ATTRIBUTE	Tmp-Cast-Integer			1852	integer internal
-ATTRIBUTE	Tmp-Cast-Ipaddr				1853	ipaddr internal
-ATTRIBUTE	Tmp-Cast-Date				1854	date internal
-ATTRIBUTE	Tmp-Cast-Abinary			1855	abinary internal
-ATTRIBUTE	Tmp-Cast-Octets				1856	octets internal
-ATTRIBUTE	Tmp-Cast-Ifid				1857	ifid internal
-ATTRIBUTE	Tmp-Cast-IPv6Addr			1858	ipv6addr internal
-ATTRIBUTE	Tmp-Cast-IPv6Prefix			1859	ipv6prefix internal
-ATTRIBUTE	Tmp-Cast-Byte				1860	byte internal
-ATTRIBUTE	Tmp-Cast-Short				1861	short internal
-ATTRIBUTE	Tmp-Cast-Ethernet			1862	ether internal
-ATTRIBUTE	Tmp-Cast-Signed				1863	signed internal
-# don't use or define these
-ATTRIBUTE	Tmp-Cast-Integer64			1869	integer64 internal
-ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix internal
-# don't use or define VSA or MAX
 
 #	Range:	1900-1909
 #	WiMAX server-side attributes.
@@ -687,16 +668,54 @@ ATTRIBUTE	SoH-MS-Health-Other			2129	string internal
 ATTRIBUTE	Radclient-Test-Name			2200	string internal
 
 #
-#       Range:  2220-260
+#       Range:  2220-2260
 #               Attributes used as trigger arguments
 #
 ATTRIBUTE	Connection-Pool-Server			2220	string internal
 ATTRIBUTE	Connection-Pool-Port			2221	short internal
 ATTRIBUTE	Exfile-Name				2223	string internal
+
 #
-#	Range:	2261-2999
+#	Range:	2261-2299
 #		Free
 #
+
+#	Range: 2300 - 2399
+#		Attributes used for casting.
+#		They are automatically defined by the server core.
+#		Do NOT define attributes in this range!
+#
+#  These attributes shouldn't be used anywhere.  They are defined here
+#  only for casting of values in conditional expressions.
+#
+#  The order and number need to be consistent with the typedefs used
+#  in the server source.
+#
+ATTRIBUTE	Cast-Base				2300	byte	internal
+ATTRIBUTE	Tmp-Cast-String				2301	string	internal
+ATTRIBUTE	Tmp-Cast-Integer			2302	integer	internal
+ATTRIBUTE	Tmp-Cast-Ipaddr				2303	ipaddr	internal
+ATTRIBUTE	Tmp-Cast-Date				2304	date	internal
+ATTRIBUTE	Tmp-Cast-Abinary			2305	abinary	internal
+ATTRIBUTE	Tmp-Cast-Octets				2306	octets	internal
+ATTRIBUTE	Tmp-Cast-Ifid				2307	ifid	internal
+ATTRIBUTE	Tmp-Cast-IPv6Addr			2308	ipv6addr internal
+ATTRIBUTE	Tmp-Cast-IPv6Prefix			2309	ipv6prefix internal
+ATTRIBUTE	Tmp-Cast-Byte				2310	byte	internal
+ATTRIBUTE	Tmp-Cast-Short				2311	short	internal
+ATTRIBUTE	Tmp-Cast-Ethernet			2312	ether	internal
+ATTRIBUTE	Tmp-Cast-Signed				2313	signed	internal
+# don't use or define these
+ATTRIBUTE	Tmp-Cast-Integer64			2319	integer64 internal
+ATTRIBUTE	Tmp-Cast-IPv4Prefix			2320	ipv4prefix internal
+# don't use or define VSA or MAX
+
+
+#
+#	Range:	2400-2999
+#		Free
+#
+
 #	Range:	3000-3999
 #		Site-local attributes (see raddb/dictionary.in)
 #		Do NOT define attributes in this range!

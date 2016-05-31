@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#define PW_CAST_BASE (1850)
 
 static const FR_NAME_NUMBER allowed_return_codes[] = {
 	{ "reject",     1 },

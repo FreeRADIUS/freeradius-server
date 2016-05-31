@@ -28,8 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <ctype.h>
 
-#define PW_CAST_BASE (1850)
-
 #define GOTO_ERROR do { REDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
 
 /** Unpack data
