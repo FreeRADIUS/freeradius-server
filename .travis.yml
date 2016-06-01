@@ -41,6 +41,7 @@ addons:
       - doxygen
       - fakeroot
       - gcc-4.9
+      - gccgo-4.9
       - gdb
       - graphviz
       - lintian
@@ -90,6 +91,8 @@ services:
   - mysql
   - postgresql
 before_install:
+  - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60; fi
+  - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --config gcc; fi
   - $CC --version
 before_script:
   - ./scripts/travis/build.sh
