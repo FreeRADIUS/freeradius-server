@@ -342,6 +342,40 @@ do {\
 	}\
 } while (0)
 
+
+#define	PW_TYPE_FROM_PTR(_ptr) \
+	_Generic((_ptr), \
+		 char **: PW_TYPE_STRING, \
+		 uint8_t **: PW_TYPE_OCTETS, \
+		 uint8_t *: PW_TYPE_BYTE, \
+		 uint16_t *: PW_TYPE_SHORT, \
+		 uint32_t *: PW_TYPE_INTEGER, \
+		 uint64_t *: PW_TYPE_INTEGER64)
+
+/** Expand a template to a string, allocing a new buffer to hold the string
+ *
+ * @copybrief _tmpl_to_atype.
+ *
+ * @param ctx		to allocate new buffer in.  Must be specified if
+ *			out is a pointer to a uint8_t * or char *.
+ * @param out		Where to write the value from the vp_tmpl_t.
+ * @param request	Current request.
+ * @param vpt		to expand. Must be one of the following types:
+ *			- #TMPL_TYPE_UNPARSED
+ *			- #TMPL_TYPE_EXEC
+ *			- #TMPL_TYPE_XLAT
+ *			- #TMPL_TYPE_XLAT_STRUCT
+ *			- #TMPL_TYPE_ATTR
+ *			- #TMPL_TYPE_DATA
+ * @param		escape xlat escape function (only used for xlat types).
+ * @param		escape_ctx xlat escape function data (only used for xlat types).
+ * @return
+ *	- -1 on failure.
+ *	- The length of data written to buff, or pointed to by out.
+ */
+#define	tmpl_aexpand(_ctx, _out, _request, _vpt, _escape, _escape_ctx) \
+	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, PW_TYPE_FROM_PTR(_out))
+
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
 RADIUS_PACKET		*radius_packet(REQUEST *request, pair_lists_t list_name);
@@ -400,8 +434,11 @@ size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
 ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
 				    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx);
 
-ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
-				     xlat_escape_t escape, void *escape_ctx);
+ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
+		       		       REQUEST *request,
+				       vp_tmpl_t const *vpt,
+				       xlat_escape_t escape, void *escape_ctx,
+				       PW_TYPE dst_type);
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
 					  vp_tmpl_t const *vpt);

@@ -224,12 +224,12 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
  */
 rlm_rcode_t map_proc(REQUEST *request, map_proc_inst_t const *inst)
 {
-	char		*value;
+	char		*value = NULL;
 	rlm_rcode_t	rcode;
 
-	if (tmpl_aexpand(request, &value, request, inst->src, inst->proc->escape, inst->proc->mod_inst) < 0) {
-		return RLM_MODULE_FAIL;
-	}
+	if (tmpl_aexpand(request, &value, request, inst->src,
+			 inst->proc->escape, inst->proc->mod_inst) < 0) return RLM_MODULE_FAIL;
+	rad_assert(value);	/* Leave me here (PITA to track down NULL key issues) */
 
 	rcode = inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, value, inst->maps);
 	talloc_free(value);

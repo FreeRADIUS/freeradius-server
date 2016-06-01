@@ -340,6 +340,9 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_cursor_free(vp_cursor_t *cursor);
 
 /* value.c */
+extern size_t const value_data_field_sizes[];
+extern size_t const value_data_offsets[];
+
 int		value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 			       PW_TYPE b_type, value_data_t const *b);
 
