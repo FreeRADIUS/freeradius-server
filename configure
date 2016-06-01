@@ -11369,6 +11369,7 @@ $as_echo "#define HAVE_ATTRIBUTE_BOUNDED 1" >>confdefs.h
 fi
 
 
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Generic support in compiler" >&5
 $as_echo_n "checking for _Generic support in compiler... " >&6; }
 if ${ax_cv_cc_c11_generic+:} false; then :
@@ -11412,6 +11413,9 @@ $as_echo "#define HAVE_C11_GENERIC 1" >>confdefs.h
 
 fi
 
+if test "x$ax_cv_cc_c11_generic" != "xyes"; then
+  as_fn_error $? "FreeRADIUS requires support for the C11 _Generic keyword" "$LINENO" 5
+fi
 
 
 for ac_func in talloc_set_memlimit \

@@ -1715,7 +1715,11 @@ FR_HAVE_BUILTIN_CHOOSE_EXPR
 FR_HAVE_BUILTIN_TYPES_COMPATIBLE_P
 FR_HAVE_BUILTIN_BSWAP64
 FR_HAVE_BOUNDED_ATTRIBUTE
+
 FR_HAVE_C11_GENERIC
+if test "x$ax_cv_cc_c11_generic" != "xyes"; then
+  AC_MSG_ERROR([FreeRADIUS requires support for the C11 _Generic keyword])
+fi
 
 dnl #############################################################
 dnl #
