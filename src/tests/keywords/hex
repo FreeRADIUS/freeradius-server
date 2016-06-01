@@ -17,7 +17,7 @@ update request {
 	Tmp-Cast-IPv6Prefix := '::3938:3739/128'
 	Tmp-Cast-Byte       := 58
 	Tmp-Cast-Short      := 14139
-	Tmp-Cast-Ethernet   := 00:00:39:38:37:3c
+	Tmp-Cast-Ether   := 00:00:39:38:37:3c
 	Tmp-Cast-Integer64  := 1152921505566832445
 	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 }
@@ -107,7 +107,7 @@ if (Tmp-String-9 != '3a') {
 
 update request {
 	Tmp-String-0        := "%{hex:Tmp-Cast-Short}"
-	Tmp-String-1        := "%{hex:Tmp-Cast-Ethernet}"
+	Tmp-String-1        := "%{hex:Tmp-Cast-Ether}"
 	Tmp-String-2        := "%{hex:Tmp-Cast-Integer64}"
 	Tmp-String-3        := "%{hex:Tmp-Cast-IPv4Prefix}"
 }

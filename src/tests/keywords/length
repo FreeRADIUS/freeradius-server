@@ -21,7 +21,7 @@ abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
 	Tmp-Cast-IPv6Prefix := '::3938:3739/128'
 	Tmp-Cast-Byte       := 58
 	Tmp-Cast-Short      := 14139
-	Tmp-Cast-Ethernet   := 00:00:39:38:37:3c
+	Tmp-Cast-Ether   := 00:00:39:38:37:3c
 	Tmp-Cast-Integer64  := 1152921505566832445
 	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 }
@@ -121,7 +121,7 @@ if (Tmp-Integer-9 != 1) {
 
 update request {
 	Tmp-Integer-0        := "%{length:Tmp-Cast-Short}"
-	Tmp-Integer-1        := "%{length:Tmp-Cast-Ethernet}"
+	Tmp-Integer-1        := "%{length:Tmp-Cast-Ether}"
 	Tmp-Integer-2        := "%{length:Tmp-Cast-Integer64}"
 	Tmp-Integer-3        := "%{length:Tmp-Cast-IPv4Prefix}"
 }

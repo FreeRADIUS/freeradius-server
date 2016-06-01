@@ -21,7 +21,7 @@ update request {
 	Tmp-Cast-IPv6Prefix := '::3938:3739/128'
 	Tmp-Cast-Byte       := 58
 	Tmp-Cast-Short      := 14139
-	Tmp-Cast-Ethernet   := 00:00:39:38:37:3c
+	Tmp-Cast-Ether   := 00:00:39:38:37:3c
 	Tmp-Cast-Integer64  := 1152921505566832445
 	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 }
@@ -159,7 +159,7 @@ if (Tmp-String-8 != '959985465') {
 update request {
 	Tmp-String-0        := "%{integer:Tmp-Cast-Byte}"
 	Tmp-String-1        := "%{integer:Tmp-Cast-Short}"
-	Tmp-String-2        := "%{integer:Tmp-Cast-Ethernet}"
+	Tmp-String-2        := "%{integer:Tmp-Cast-Ether}"
 	Tmp-String-3        := "%{integer:Tmp-Cast-Integer64}"
 	Tmp-String-4        := "%{integer:Tmp-Cast-IPv4Prefix}"
 }
@@ -184,7 +184,7 @@ if (Tmp-String-2 != '62913607630848') {
 		Filter-Id += 'fail 17'
 	}
 }
-if (<ether>Tmp-String-2 != &Tmp-Cast-Ethernet) {
+if (<ether>Tmp-String-2 != &Tmp-Cast-Ether) {
 	update reply {
 		Filter-Id += 'fail 18'
 	}
