@@ -40,6 +40,7 @@ addons:
       - dh-make
       - doxygen
       - fakeroot
+      - gcc-4.9
       - gdb
       - graphviz
       - lintian
