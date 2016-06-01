@@ -1648,18 +1648,19 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  * @note The type (char or uint8_t) can be obtained with talloc_get_type, and may be used as a
  *	hint as to how to process or print the data.
  *
- * @param ctx to allocate new buffer in.
- * @param out Where to write pointer to the new buffer.
- * @param request Current request.
- * @param vpt to expand. Must be one of the following types:
- *	- #TMPL_TYPE_UNPARSED
- *	- #TMPL_TYPE_EXEC
- *	- #TMPL_TYPE_XLAT
- *	- #TMPL_TYPE_XLAT_STRUCT
- *	- #TMPL_TYPE_ATTR
- *	- #TMPL_TYPE_DATA
- * @param escape xlat escape function (only used for xlat types).
- * @param escape_ctx xlat escape function data (only used for xlat types).
+ * @param ctx		to allocate new buffer in.
+ * @param out		Where to write pointer to the new buffer.
+ * @param request	Current request.
+ * @param vpt		to expand. Must be one of the following types:
+ *			- #TMPL_TYPE_UNPARSED
+ *			- #TMPL_TYPE_EXEC
+ *			- #TMPL_TYPE_XLAT
+ *			- #TMPL_TYPE_XLAT_STRUCT
+ *			- #TMPL_TYPE_ATTR
+ *			- #TMPL_TYPE_DATA
+ * @param escape xlat	escape function (only used for TMPL_TYPE_XLAT_* types).
+ * @param escape_ctx	xlat escape function data (only used for TMPL_TYPE_XLAT_* types).
+ * @param dst_type	- PW_TYPE_* matching out pointer.  @see tmpl_aexpand.
  * @return
  *	- -1 on failure.
  *	- The length of data written to buff, or pointed to by out.
