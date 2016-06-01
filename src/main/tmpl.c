@@ -1831,7 +1831,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 *	Don't dup the buffers unless we need to.
 	 */
 	if ((src_type != dst_type) || needs_dup) {
-		ret = value_data_cast(ctx, &from_cast, dst_type, NULL, src_type, vp->da, to_cast);
+		ret = value_data_cast(ctx, &from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
 		talloc_free(vd.ptr);
 		if (ret < 0) return -1;
 	} else {
