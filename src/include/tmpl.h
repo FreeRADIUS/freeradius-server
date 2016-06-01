@@ -361,7 +361,8 @@ do {\
  * @param _out		Where to write the value from the vp_tmpl_t.
  *			Where out is a pointer to a uint8_t * or char * it
  *			should be freed by the caller as even in the case
- *			of attributes it will be duplicated.
+ *			of attribute references, their buffers will be
+ *			duplicated.
  * @param _request	Current request.
  * @param _vpt		to expand. Must be one of the following types:
  *			- #TMPL_TYPE_UNPARSED
@@ -370,8 +371,8 @@ do {\
  *			- #TMPL_TYPE_XLAT_STRUCT
  *			- #TMPL_TYPE_ATTR
  *			- #TMPL_TYPE_DATA
- * @param _escape xlat	escape function (only used for xlat types).
- * @param _escape_ctx	xlat escape function data (only used for xlat types).
+ * @param _escape xlat	escape function (only used for PW_TYPE_XLAT_* types).
+ * @param _escape_ctx	xlat escape function data (only used for PW_TYPE_XLAT_* types).
  * @return
  *	- -1 on failure.
  *	- The length of data written to buff, or pointed to by out.
