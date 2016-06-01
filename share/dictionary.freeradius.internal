@@ -303,6 +303,9 @@ ATTRIBUTE	EAP-FAST-PAC-TLV			1191.11	tlv	internal
 ATTRIBUTE	EAP-FAST-PAC-Key			1191.11.1 octets	internal
 ATTRIBUTE	EAP-FAST-PAC-Opaque-TLV			1191.11.2 tlv	internal
 ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Key		1191.11.2.1 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Lifetime	1191.11.2.3 integer	internal
+ATTRIBUTE	EAP-FAST-PAC-Opaque-I-ID		1191.11.2.5 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Type		1191.11.2.10 short	internal
 
 ATTRIBUTE	EAP-FAST-PAC-Lifetime			1191.11.3 integer	internal
 ATTRIBUTE	EAP-FAST-PAC-A-ID			1191.11.4 octets	internal
