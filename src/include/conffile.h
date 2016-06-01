@@ -50,7 +50,7 @@ typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary 
  */
 typedef struct timeval _timeval_t;
 
-#if defined(HAVE_BUILTIN_CHOOSE_EXPR) && defined(HAVE_C11_GENERIC)
+#ifdef HAVE_BUILTIN_CHOOSE_EXPR
 typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_vp_tmpl_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_char;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
