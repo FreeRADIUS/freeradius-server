@@ -292,16 +292,33 @@ ATTRIBUTE	SSHA2-512-Password			1183	octets internal
 
 ATTRIBUTE	Exec-Export				1190	string internal
 
-ATTRIBUTE	EAP-FAST-TLV				1191	tlv internal
+ATTRIBUTE	EAP-FAST-TLV				1191	tlv	internal
 ATTRIBUTE	EAP-FAST-Result				1191.3	short	internal
 ATTRIBUTE	EAP-FAST-NAK				1191.4	octets	internal
 ATTRIBUTE	EAP-FAST-Error				1191.5	integer	internal
 ATTRIBUTE	EAP-FAST-Vendor-Specific		1191.7	octets	internal
 ATTRIBUTE	EAP-FAST-EAP-Payload			1191.9	octets	internal
 ATTRIBUTE	EAP-FAST-Intermediate-Result		1191.10	octets	internal
-ATTRIBUTE	EAP-FAST-PAC				1191.11	octets	internal
-ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	struct	internal
+ATTRIBUTE	EAP-FAST-PAC-TLV			1191.11	tlv	internal
+ATTRIBUTE	EAP-FAST-PAC-Key			1191.11.1 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Opaque-TLV			1191.11.2 tlv	internal
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Key		1191.11.2.1 octets	internal
 
+ATTRIBUTE	EAP-FAST-PAC-Lifetime			1191.11.3 integer	internal
+ATTRIBUTE	EAP-FAST-PAC-A-ID			1191.11.4 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-I-ID			1191.11.5 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-A-ID-Info			1191.11.7 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Acknowledge		1191.11.8 short	internal
+ATTRIBUTE	EAP-FAST-PAC-Info-TLV			1191.11.9 tlv	internal
+ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Lifetime		1191.11.9.3 integer	internal
+ATTRIBUTE	EAP-FAST-PAC-Info-A-ID			1191.11.9.4 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Info-I-ID			1191.11.9.5 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Info-A-ID-Info		1191.11.9.7 octets	internal
+ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Type		1191.11.9.10 short	internal
+
+ATTRIBUTE	EAP-FAST-PAC-Type			1191.11.10 short	internal
+
+ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	struct	internal
 ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1 byte	internal
 ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2 byte	internal
 ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3 byte	internal
