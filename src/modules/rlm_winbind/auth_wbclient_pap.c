@@ -19,6 +19,8 @@
  * @file auth_wbclient_pap.c
  * @brief PAP authentication against the wbclient library
  *
+ * @author Matthew Newton <matthew@newtoncomputing.co.uk>
+ *
  * @copyright 2015-2016  Matthew Newton
  */
 
@@ -30,19 +32,19 @@ RCSID("$Id$")
 #include <wbclient.h>
 #include <core/ntstatus.h>
 
-#include "rlm_pap.h"
+#include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
 
-/*
- *	Check PAP authentication direct to winbind via
- *	Samba's libwbclient library
+/** PAP authentication direct to winbind via Samba's libwbclient library
  *
- *	Returns:
- *	 0    success
- *	 -1   auth failure
- *	 -648 password expired
+ * @param[in] inst Module instance
+ * @param[in] request The current request
+ * @return
+ *	- 0	Success
+ *	- -1	Authentication failure
+ *	- -648	Password expired
  */
-int do_auth_wbclient_pap(rlm_pap_t *inst, REQUEST *request)
+int do_auth_wbclient_pap(rlm_winbind_t *inst, REQUEST *request)
 {
 	int rcode = -1;
 	struct wbcContext *wb_ctx;

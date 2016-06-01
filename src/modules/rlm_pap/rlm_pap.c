@@ -35,21 +35,26 @@ USES_APPLE_DEPRECATED_API
 
 #include "../../include/md5.h"
 #include "../../include/sha1.h"
-#include "rlm_pap.h"
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
 #endif
 
-#ifdef WITH_AUTH_WINBIND
-#include "auth_wbclient_pap.h"
-#endif
-
+/*
+ *      Define a structure for our module configuration.
+ *
+ *      These variables do not need to be in a structure, but it's
+ *      a lot cleaner to do so, and a pointer to the structure can
+ *      be used as the instance handle.
+ */
+typedef struct rlm_pap_t {
+	char const	*name;
+	int		auth_type;
+	bool		normify;
+} rlm_pap_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("normalise", PW_TYPE_BOOLEAN, rlm_pap_t, normify), .dflt = "yes" },
-	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_TMPL, rlm_pap_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", PW_TYPE_TMPL, rlm_pap_t, wb_domain) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -93,41 +98,6 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ NULL, 0 }
 };
 
-
-#ifdef WITH_AUTH_WINBIND
-/*
- *	Free connection pool winbind context
- */
-static int _mod_conn_free(struct wbcContext **wb_ctx)
-{
-	wbcCtxFree(*wb_ctx);
-
-	return 0;
-}
-
-/*
- *	Create connection pool winbind context
- */
-static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED struct timeval const *timeout)
-{
-	struct wbcContext **wb_ctx;
-
-	wb_ctx = talloc_zero(ctx, struct wbcContext *);
-	*wb_ctx = wbcCtxCreate();
-
-	if (*wb_ctx == NULL) {
-		ERROR("failed to create winbind context");
-		talloc_free(wb_ctx);
-		return NULL;
-	}
-
-	talloc_set_destructor(wb_ctx, _mod_conn_free);
-
-	return *wb_ctx;
-}
-#endif
-
-
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_pap_t		*inst = instance;
@@ -144,33 +114,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->auth_type = 0;
 	}
-
-	if (inst->wb_username) {
-#ifdef WITH_AUTH_WINBIND
-		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
-		if (!inst->wb_pool) {
-			cf_log_err_cs(conf, "Unable to initialise winbind connection pool");
-			return -1;
-		}
-#else
-		cf_log_err_cs(conf, "'winbind' auth not enabled at compiled time");
-		return -1;
-#endif
-	}
-
-	return 0;
-}
-
-/*
- *	Tidy up instance
- */
-static int mod_detach(UNUSED void *instance)
-{
-#ifdef WITH_AUTH_WINBIND
-	rlm_pap_t *inst = instance;
-
-	fr_connection_pool_free(inst->wb_pool);
-#endif
 
 	return 0;
 }
@@ -540,25 +483,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			return RLM_MODULE_NOOP;
 		}
 
-#ifdef WITH_AUTH_WINBIND
-		/*
-		 * If wb_username is defined and we are linked against wbclient then
-		 * we can ask winbind to see if the username and password are correct,
-		 * so don't skip setting Auth-Type.
-		 */
-		if (inst->wb_username) {
-			RDEBUG("winbind_username is defined: will authenticate with winbind.");
-		} else {
-#endif
-
-			RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
-			RWDEBUG("Authentication will fail unless a \"known good\" password is available");
-			return RLM_MODULE_NOOP;
-
-#ifdef WITH_AUTH_WINBIND
-		}
-#endif
-
+		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type");
+		RWDEBUG("Authentication will fail unless a \"known good\" password is available");
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -1041,21 +968,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		RDEBUG("Login attempt with password");
 	}
 
-#ifdef WITH_AUTH_WINBIND
-	/*
-	 * winbind auth doesn't care if Cleartext-Password is available; just
-	 * pass them over and let it do it's job.
-	 */
-	if (inst->wb_username) {
-		if (do_auth_wbclient_pap(inst, request) == 0) {
-			RDEBUG("User authenticated successfully using winbind");
-			return RLM_MODULE_OK;
-		}
-
-		return RLM_MODULE_REJECT;
-	}
-#endif
-
 	/*
 	 *	Auto-detect passwords, by attribute in the
 	 *	config items, to find out which authentication
@@ -1163,7 +1075,6 @@ module_t rlm_pap = {
 	.inst_size	= sizeof(rlm_pap_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

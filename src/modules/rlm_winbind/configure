@@ -582,13 +582,13 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="rlm_pap.c"
+ac_unique_file="rlm_winbind.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
 mod_cflags
 mod_ldflags
-wbclient_sources
+winbind_sources
 CPP
 OBJEXT
 EXEEXT
@@ -1828,7 +1828,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-if test x$with_rlm_pap != xno; then
+if test x$with_rlm_winbind != xno; then
 
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -2811,7 +2811,7 @@ fi
 
 
 
-    wbclient_sources=
+    winbind_sources=
     smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
 
 
@@ -3049,6 +3049,7 @@ smart_prefix=
 $as_echo "$as_me: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&2;}
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
 $as_echo "$as_me: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&2;}
+	fail="$fail wbclient.h"
     fi
 
 
@@ -3286,6 +3287,7 @@ smart_prefix=
 $as_echo "$as_me: WARNING: core/ntstatus.h not found. Use --with-winbind-include-dir=<path>." >&2;}
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
 $as_echo "$as_me: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&2;}
+	fail="$fail core/ntstatus.h"
     fi
 
 
@@ -3472,28 +3474,26 @@ fi
 $as_echo "$as_me: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&2;}
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&5
 $as_echo "$as_me: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&2;}
+	fail="$fail libwbclient"
       else
-        wbclient_sources="$wbclient_sources auth_wbclient_pap.c"
-
-$as_echo "#define WITH_AUTH_WINBIND 1" >>confdefs.h
-
+        winbind_sources="$winbind_sources auth_wbclient_pap.c"
       fi
     fi
 
-    targetname=rlm_pap
+    targetname=rlm_winbind
 else
     targetname=
-    echo \*\*\* module rlm_pap is disabled.
+    echo \*\*\* module rlm_winbind is disabled.
 fi
 
 if test x"$fail" != x""; then
 	if test x"${enable_strict_dependencies}" = x"yes"; then
-		as_fn_error $? "set --without-rlm_pap to disable it explicitly." "$LINENO" 5
+		as_fn_error $? "set --without-rlm_winbind to disable it explicitly." "$LINENO" 5
 	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_pap." >&5
-$as_echo "$as_me: WARNING: silently not building rlm_pap." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_pap requires: $fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_pap requires: $fail." >&2;};
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_winbind." >&5
+$as_echo "$as_me: WARNING: silently not building rlm_winbind." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_winbind requires: $fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: rlm_winbind requires: $fail." >&2;};
 		targetname=""
 	fi
 fi
@@ -3511,7 +3511,7 @@ ac_config_headers="$ac_config_headers config.h"
 unset ac_cv_env_LIBS_set
 unset ac_cv_env_LIBS_value
 
-ac_config_files="$ac_config_files rlm_pap.mk"
+ac_config_files="$ac_config_files rlm_winbind.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4203,7 +4203,7 @@ for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
-    "rlm_pap.mk") CONFIG_FILES="$CONFIG_FILES rlm_pap.mk" ;;
+    "rlm_winbind.mk") CONFIG_FILES="$CONFIG_FILES rlm_winbind.mk" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

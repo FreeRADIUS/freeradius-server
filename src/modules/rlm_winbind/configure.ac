@@ -1,6 +1,6 @@
-AC_INIT(rlm_pap.c)
+AC_INIT(rlm_winbind.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_pap])
+AC_DEFUN(modname,[rlm_winbind])
 
 if test x$with_[]modname != xno; then
 
@@ -64,13 +64,14 @@ if test x$with_[]modname != xno; then
     dnl # Check for header files
     dnl ############################################################
 
-    wbclient_sources=
+    winbind_sources=
     smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
     FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
 					#include <stdbool.h>])
     if test "x$ac_cv_header_wbclient_h" != "xyes"; then
         AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
         AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+	fail="$fail wbclient.h"
     fi
 
     FR_SMART_CHECK_INCLUDE(core/ntstatus.h, [#include <stdint.h>
@@ -78,6 +79,7 @@ if test x$with_[]modname != xno; then
     if test "x$ac_cv_header_core_ntstatus_h" != "xyes"; then
         AC_MSG_WARN([core/ntstatus.h not found. Use --with-winbind-include-dir=<path>.])
         AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+	fail="$fail core/ntstatus.h"
     fi
 
     dnl ############################################################
@@ -92,9 +94,9 @@ if test x$with_[]modname != xno; then
       if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
         AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
         AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
+	fail="$fail libwbclient"
       else
-        wbclient_sources="$wbclient_sources auth_wbclient_pap.c"
-        AC_DEFINE([WITH_AUTH_WINBIND],[1],[Build with direct winbind PAP auth support])
+        winbind_sources="$winbind_sources auth_wbclient_pap.c"
       fi
     fi
 
@@ -116,11 +118,11 @@ fi
 
 mod_ldflags="$mod_ldflags $SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
-AC_SUBST(wbclient_sources)
+AC_SUBST(winbind_sources)
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT(rlm_pap.mk)
+AC_OUTPUT(rlm_winbind.mk)
 

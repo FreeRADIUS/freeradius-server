@@ -17,6 +17,3 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
-
-/* Build with direct winbind PAP auth support */
-#undef WITH_AUTH_WINBIND
