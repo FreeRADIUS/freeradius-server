@@ -107,7 +107,7 @@ static int mod_detach(UNUSED void *instance)
  * Just check there is a password available so we can authenticate
  * against winbind, and if so set Auth-Type to ourself.
  *
- * @param[in] instanvce Module instance
+ * @param[in] instance Module instance
  * @param[in] request The current request
  * @return
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
