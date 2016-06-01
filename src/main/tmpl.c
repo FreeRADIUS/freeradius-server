@@ -1824,8 +1824,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
 		rad_assert(0);
-		slen = -1;
-		break;
+		talloc_free(vd.ptr);
+		return -1;
 	}
 
 	/*
