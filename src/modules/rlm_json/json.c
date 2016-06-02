@@ -141,7 +141,7 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
  *  JSON value to.
  *
  * @param out Where to write the string.
- * @param outlen Lenth of output buffer.
+ * @param outlen Length of output buffer.
  * @param vp to print.
  * @return
  *	- Length of data written to out.
