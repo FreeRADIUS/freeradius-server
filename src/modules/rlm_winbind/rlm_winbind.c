@@ -40,8 +40,11 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Free connection pool winbind context
+
+/** Free connection pool winbind context
+ *
+ * @param[in] wb_ctx libwbclient context
+ *
  */
 static int _mod_conn_free(struct wbcContext **wb_ctx)
 {
@@ -50,8 +53,15 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
 	return 0;
 }
 
-/*
- *	Create connection pool winbind context
+
+/** Create connection pool winbind context
+ *
+ * @param[in] ctx	talloc context
+ * @param[in] instance	Module instance (unused)
+ * @param[in] timeout	Connection timeout
+ *
+ * @return pointer to libwbclient context
+ *
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED struct timeval const *timeout)
 {
@@ -72,6 +82,16 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 }
 
 
+/** Instantiate this module
+ *
+ * @param[in] conf	Module configuration
+ * @param[in] instance	This module's instance
+ *
+ * @return
+ *	- 0	instantiation succeeded
+ *	- -1	instantiation failed
+ *
+ */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_winbind_t		*inst = instance;
@@ -90,8 +110,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-/*
- *	Tidy up instance
+
+/** Tidy up module instance
+ *
+ * Frees up the libwbclient connection pool.
+ *
+ * @param[in] instance This module's instance (unused)
+ *
  */
 static int mod_detach(UNUSED void *instance)
 {
@@ -104,14 +129,16 @@ static int mod_detach(UNUSED void *instance)
 
 /** Authorize for libwbclient/winbind authentication
  *
- * Just check there is a password available so we can authenticate
- * against winbind, and if so set Auth-Type to ourself.
+ * Checks there is a password available so we can authenticate
+ * against winbind and, if so, sets Auth-Type to ourself.
  *
  * @param[in] instance Module instance
  * @param[in] request The current request
+ *
  * @return
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
+ *
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
@@ -136,7 +163,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
  *
  * @param[in] instance Module instance
  * @param[in] request The current request
+ *
  * @return One of the RLM_MODULE_* values
+ *
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {

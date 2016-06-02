@@ -39,10 +39,12 @@ RCSID("$Id$")
  *
  * @param[in] inst Module instance
  * @param[in] request The current request
+ *
  * @return
  *	- 0	Success
  *	- -1	Authentication failure
  *	- -648	Password expired
+ *
  */
 int do_auth_wbclient_pap(rlm_winbind_t *inst, REQUEST *request)
 {
