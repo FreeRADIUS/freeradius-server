@@ -16,7 +16,7 @@
 /**
  * $Id$
  *
- * @file cursor.c
+ * @file lib/cursor.c
  * @brief Functions to iterate over collections of VALUE_PAIRs
  *
  * @note Do not modify collections of VALUE_PAIRs pointed to by a cursor

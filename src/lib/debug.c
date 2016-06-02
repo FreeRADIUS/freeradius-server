@@ -15,7 +15,7 @@
  */
 
 /**
- * @file debug.c
+ * @file lib/debug.c
  * @brief Various functions to aid in debugging
  *
  * @copyright 2013  The FreeRADIUS server project

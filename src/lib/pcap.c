@@ -15,7 +15,7 @@
 
 /**
  * $Id$
- * @file pcap.c
+ * @file lib/pcap.c
  * @brief Wrappers around libpcap functions
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
