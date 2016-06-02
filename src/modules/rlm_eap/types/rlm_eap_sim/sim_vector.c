@@ -89,6 +89,7 @@ static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 
 	default:
 		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
+		return -1;
 	}
 	return 0;
 }
