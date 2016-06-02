@@ -202,14 +202,13 @@ static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, i
 static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
 {
 	REQUEST		*request = eap_session->request;
-	VALUE_PAIR	*rand, *sres, *kc;
+	VALUE_PAIR	*rand = NULL, *sres = NULL, *kc = NULL;
 	vp_cursor_t	cursor;
 	int		i;
 
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_RAND, TAG_ANY);
-		if (!rand) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps);
+	     (i <= idx) && (rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_RAND, TAG_ANY));
+	     i++);
 	if (!rand) {
 		RDEBUG3("No &control:EAP-SIM-Rand[%i] attribute found, not using GSM triplets", idx);
 		return 1;
@@ -220,10 +219,8 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 		return -1;
 	}
 
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		sres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_SRES, TAG_ANY);
-		if (!sres) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps);
+	     (i <= idx) && (sres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_SRES, TAG_ANY)); i++);
 	if (!sres) {
 		RDEBUG3("No &control:EAP-SIM-SRES[%i] attribute found, not using GSM triplets", idx);
 		return 1;
@@ -234,10 +231,8 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 		return -1;
 	}
 
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		kc = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_KC, TAG_ANY);
-		if (!kc) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps);
+	     (i <= idx) && (kc = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_KC, TAG_ANY)); i++);
 	if (!kc) {
 		RDEBUG3("No &control:EAP-SIM-KC[%i] attribute found, not using GSM triplets", idx);
 		return 1;
@@ -279,10 +274,8 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_RAND, TAG_ANY);
-		if (!rand) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps); (i <= idx) &&
+	     (rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_RAND, TAG_ANY)); i++);
 	if (!rand) {
 		RDEBUG3("No &control:EAP-AKA-Rand[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -297,10 +290,8 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		xres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_XRES, TAG_ANY);
-		if (!xres) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps);
+	     (i <= idx) && (xres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_XRES, TAG_ANY)); i++);
 	if (!xres) {
 		RDEBUG3("No &control:EAP-AKA-XRES[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -309,10 +300,8 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		ck = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_CK, TAG_ANY);
-		if (!ck) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps);
+	     (i <= idx) && (ck = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_CK, TAG_ANY)); i++);
 	if (!ck) {
 		RDEBUG3("No &control:EAP-AKA-CK[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -321,10 +310,8 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Fetch IK
 	 */
-	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
-		ik = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_IK, TAG_ANY);
-		if (!ik) break;
-	}
+	for (i = 0, fr_cursor_init(&cursor, &vps);
+	     (i <= idx) && (ik = fr_cursor_next_by_num(&cursor, 0, PW_EAP_AKA_IK, TAG_ANY)); i++);
 	if (!ik) {
 		RDEBUG3("No &control:EAP-AKA-IK[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
