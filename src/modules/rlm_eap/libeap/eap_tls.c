@@ -1078,9 +1078,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 	CONF_PAIR		*cp;
 	CONF_SECTION		*parent;
 	CONF_SECTION		*tls_cs;
-	fr_tls_conf_t	*tls_conf;
-
-	if (!cs) return NULL;
+	fr_tls_conf_t		*tls_conf;
 
 	rad_assert(attr != NULL);
 
