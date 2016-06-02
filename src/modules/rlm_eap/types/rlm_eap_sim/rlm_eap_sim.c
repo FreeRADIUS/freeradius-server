@@ -216,7 +216,7 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	}
 	if (rand->vp_length != EAPSIM_RAND_SIZE) {
 		REDEBUG("&control:EAP-SIM-Rand[%i] is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
-			idx + 1, rand->vp_length);
+			idx, rand->vp_length);
 		return -1;
 	}
 
@@ -230,7 +230,7 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	}
 	if (sres->vp_length != EAPSIM_SRES_SIZE) {
 		REDEBUG("&control:EAP-SIM-SRES[%i] is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
-			idx + 1, sres->vp_length);
+			idx, sres->vp_length);
 		return -1;
 	}
 
@@ -244,7 +244,7 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	}
 	if (kc->vp_length != EAPSIM_KC_SIZE) {
 		REDEBUG("&control:EAP-SIM-KC[%i] is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
-			idx + 1, kc->vp_length);
+			idx, kc->vp_length);
 		return -1;
 	}
 
