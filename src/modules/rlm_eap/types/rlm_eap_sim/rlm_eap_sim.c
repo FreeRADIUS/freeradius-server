@@ -201,56 +201,56 @@ static int eap_sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, i
 
 static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
 {
-	REQUEST	*request = eap_session->request;
-	VALUE_PAIR *vp;
+	REQUEST		*request = eap_session->request;
+	VALUE_PAIR	*rand, *sres, *kc;
+	vp_cursor_t	cursor;
+	int		i;
 
-	/*
-	 *	Use known RAND, SRES, and Kc values, these may of been pulled in from an AuC,
-	 *	or created by sending challenges to the SIM directly.
-	 */
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_RAND + idx, TAG_ANY);
-	if (!vp) {
-		RDEBUG3("No &control:EAP-SIM-RAND attribute found, not using triplets");
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		rand = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_RAND, TAG_ANY);
+		if (!rand) break;
+	}
+	if (!rand) {
+		RDEBUG3("No &control:EAP-SIM-Rand[%i] attribute found, not using GSM triplets", idx);
 		return 1;
 	}
-
-	if (vp->vp_length != EAPSIM_RAND_SIZE) {
-		REDEBUG("&control:EAP-SIM-RAND%i is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->vp_length);
+	if (rand->vp_length != EAPSIM_RAND_SIZE) {
+		REDEBUG("&control:EAP-SIM-Rand[%i] is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
+			idx + 1, rand->vp_length);
 		return -1;
 	}
-	memcpy(ess->keys.rand[idx], vp->vp_octets, EAPSIM_RAND_SIZE);
 
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SRES + idx, TAG_ANY);
-	if (!vp) {
-		RDEBUG3("No &control:EAP-SIM-SRES attribute found, not using triplets");
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		sres = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_SRES, TAG_ANY);
+		if (!sres) break;
+	}
+	if (!sres) {
+		RDEBUG3("No &control:EAP-SIM-SRES[%i] attribute found, not using GSM triplets", idx);
 		return 1;
 	}
-
-	if (vp->vp_length != EAPSIM_SRES_SIZE) {
-		REDEBUG("&control:EAP-SIM-SRES%i is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->vp_length);
+	if (sres->vp_length != EAPSIM_SRES_SIZE) {
+		REDEBUG("&control:EAP-SIM-SRES[%i] is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
+			idx + 1, sres->vp_length);
 		return -1;
 	}
-	memcpy(ess->keys.sres[idx], vp->vp_octets, EAPSIM_SRES_SIZE);
 
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KC + idx, TAG_ANY);
-	if (!vp) {
-		RDEBUG3("No &control:EAP-SIM-KC attribute found, not using triplets");
+	for (i = 0, fr_cursor_init(&cursor, &vps); i < idx; i++) {
+		kc = fr_cursor_next_by_num(&cursor, 0, PW_EAP_SIM_KC, TAG_ANY);
+		if (!kc) break;
+	}
+	if (!kc) {
+		RDEBUG3("No &control:EAP-SIM-KC[%i] attribute found, not using GSM triplets", idx);
 		return 1;
 	}
+	if (kc->vp_length != EAPSIM_KC_SIZE) {
+		REDEBUG("&control:EAP-SIM-KC[%i] is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
+			idx + 1, kc->vp_length);
+		return -1;
+	}
 
-	if (vp->vp_length != EAPSIM_KC_SIZE) {
-		REDEBUG("&control:EAP-SIM-Kc%i is not 8 bytes, got %zu bytes", idx + 1, vp->vp_length);
-		return -1;
-	}
-	memcpy(ess->keys.kc[idx], vp->vp_octets, EAPSIM_KC_SIZE);
-	if (vp->vp_length != EAPSIM_KC_SIZE) {
-		REDEBUG("&control:EAP-SIM-Kc%i is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->vp_length);
-		return -1;
-	}
-	memcpy(ess->keys.kc[idx], vp->vp_strvalue, EAPSIM_KC_SIZE);
+	memcpy(ess->keys.rand[idx], rand->vp_octets, EAPSIM_RAND_SIZE);
+	memcpy(ess->keys.sres[idx], sres->vp_octets, EAPSIM_SRES_SIZE);
+	memcpy(ess->keys.kc[idx], kc->vp_strvalue, EAPSIM_KC_SIZE);
 
 	return 0;
 }
@@ -284,13 +284,13 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		if (!rand) break;
 	}
 	if (!rand) {
-		RDEBUG3("No &control:EAP-AKA-Rand attribute found, not using quintuplet derivation");
+		RDEBUG3("No &control:EAP-AKA-Rand[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
 	}
 
 	if (rand->vp_length != EAPSIM_RAND_SIZE) {
-		REDEBUG("&control:EAP-AKA-RAND incorrect length.  Expected " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, "
-			"got %zu bytes", rand->vp_length);
+		REDEBUG("&control:EAP-AKA-RAND[%i] incorrect length.  Expected " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, "
+			"got %zu bytes", idx, rand->vp_length);
 		return -1;
 	}
 
@@ -302,7 +302,7 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		if (!xres) break;
 	}
 	if (!xres) {
-		RDEBUG3("No &control:EAP-AKA-XRES attribute found, not using quintuplet derivation");
+		RDEBUG3("No &control:EAP-AKA-XRES[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
 	}
 
@@ -314,7 +314,7 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		if (!ck) break;
 	}
 	if (!ck) {
-		RDEBUG3("No &control:EAP-AKA-CK attribute found, not using quintuplet derivation");
+		RDEBUG3("No &control:EAP-AKA-CK[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
 	}
 
@@ -326,7 +326,7 @@ static int eap_sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps,
 		if (!ik) break;
 	}
 	if (!ik) {
-		RDEBUG3("No &control:EAP-AKA-IK attribute found, not using quintuplet derivation");
+		RDEBUG3("No &control:EAP-AKA-IK[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
 	}
 
