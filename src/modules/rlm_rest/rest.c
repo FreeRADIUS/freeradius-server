@@ -708,6 +708,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	size_t len = 0;
 	size_t freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
 
+	bool has_dict_value = 0;
+
 	rad_assert(freespace > 0);
 
 	/* Allow manual chunking */
@@ -752,6 +754,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
 
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
+			has_dict_value = 0;
 
 			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
 			if (len >= freespace) goto no_space;
@@ -791,6 +794,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
 				len = fr_json_from_pair(p, attr_space + 1, vp);
 				if (is_truncated(len, attr_space + 1)) goto no_space;
+				if (!has_dict_value && vp->da->type == PW_TYPE_INTEGER && fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer) != NULL)
+					has_dict_value = 1;
 
 				/*
 				 *  Show actual value length minus quotes
@@ -822,6 +827,14 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				}
 				break;
 			}
+			ctx->state = has_dict_value ? READ_STATE_ATTR_DICT_VALUE : READ_STATE_ATTR_END;
+		}
+
+		if (ctx->state == READ_STATE_ATTR_DICT_VALUE) {
+			if (freespace < 16) goto no_space;
+			strncpy(p, "],\"dict-value\":[", 16);
+			p += 16;
+			freespace -= 16;
 			ctx->state = READ_STATE_ATTR_END;
 		}
 
