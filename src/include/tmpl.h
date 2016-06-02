@@ -352,30 +352,11 @@ do {\
 		 uint32_t *: PW_TYPE_INTEGER, \
 		 uint64_t *: PW_TYPE_INTEGER64)
 
-/** Expand a template to a string, allocing a new buffer to hold the string
+/** Expand a tmpl to a C type, allocing a new buffer to hold the string
  *
- * @copybrief _tmpl_to_atype.
+ * Expands a template using the _out ptr to determinate the cast type.
  *
- * @param _ctx		to allocate new buffer in.  Must be specified if
- *			out is a pointer to a uint8_t * or char *.
- * @param _out		Where to write the value from the vp_tmpl_t.
- *			Where out is a pointer to a uint8_t * or char * it
- *			should be freed by the caller as even in the case
- *			of attribute references, their buffers will be
- *			duplicated.
- * @param _request	Current request.
- * @param _vpt		to expand. Must be one of the following types:
- *			- #TMPL_TYPE_UNPARSED
- *			- #TMPL_TYPE_EXEC
- *			- #TMPL_TYPE_XLAT
- *			- #TMPL_TYPE_XLAT_STRUCT
- *			- #TMPL_TYPE_ATTR
- *			- #TMPL_TYPE_DATA
- * @param _escape	function (only used for PW_TYPE_XLAT_* types).
- * @param _escape_ctx	xlat escape function data (only used for PW_TYPE_XLAT_* types).
- * @return
- *	- -1 on failure.
- *	- The length of data written to buff, or pointed to by out.
+ * @see _tmpl_to_atype
  */
 #define	tmpl_aexpand(_ctx, _out, _request, _vpt, _escape, _escape_ctx) \
 	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, PW_TYPE_FROM_PTR(_out))
