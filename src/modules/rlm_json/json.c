@@ -287,6 +287,30 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 	return outlen - freespace;
 }
 
+/** Prints dictionary value attribute as string, escaped suitably for use as JSON string. In case
+ *  no dictionary value could be found, the JSON null is returned (not a C NULL)
+ *
+ *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
+ *  JSON value to.
+ *
+ * @param out Where to write the string.
+ * @param outlen Length of output buffer.
+ * @param vp to print.
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
+ */
+size_t fr_json_from_pair_dict_value(char *out, size_t outlen, VALUE_PAIR const *vp)
+{
+	fr_dict_enum_t const *dv;
+
+	dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+	if (dv != NULL) {
+		return fr_json_from_string(out, outlen, dv->name, strlen(dv->name));
+	}
+	return snprintf(out, outlen, "null");
+}
+
 /** Print JSON-C version
  *
  */

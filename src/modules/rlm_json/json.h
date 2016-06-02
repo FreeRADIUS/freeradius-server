@@ -64,6 +64,7 @@ int		fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_objec
 size_t    	fr_json_from_string(char *out, size_t outlen, char const *s, size_t slen);
 
 size_t    	fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t    	fr_json_from_pair_dict_value(char *out, size_t outlen, VALUE_PAIR const *vp);
 
 void		fr_json_version_print(void);
 #endif
