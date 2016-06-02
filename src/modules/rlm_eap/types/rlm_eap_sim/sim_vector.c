@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file rlm_eap_sim/vector.c
+ * @file rlm_eap_sim/sim_vector.c
  * @brief Retrieve or derive vectors for EAP-SIM.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

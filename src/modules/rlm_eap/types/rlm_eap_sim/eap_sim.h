@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file rlm_eap_sime/eap_sim.h
+ * @file rlm_eap_sim/eap_sim.h
  * @brief Declarations for EAP-SIM
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
