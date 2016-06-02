@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_session_t *ess)
+static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_session_t *eap_sim_session)
 {
 	REQUEST	*request = eap_session->request;
 	VALUE_PAIR *vp, *version;
@@ -59,20 +59,28 @@ static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	}
 
 	for (i = 0; i < EAP_SIM_RAND_SIZE; i++) {
-		ess->keys.rand[idx][i] = fr_rand();
+		eap_sim_session->keys.rand[idx][i] = fr_rand();
 	}
 
 	switch (version->vp_integer) {
 	case 1:
-		comp128v1(ess->keys.sres[idx], ess->keys.kc[idx], vp->vp_octets, ess->keys.rand[idx]);
+		comp128v1(eap_sim_session->keys.sres[idx],
+			  eap_sim_session->keys.kc[idx], vp->vp_octets,
+			  eap_sim_session->keys.rand[idx]);
 		break;
 
 	case 2:
-		comp128v23(ess->keys.sres[idx], ess->keys.kc[idx], vp->vp_octets, ess->keys.rand[idx], true);
+		comp128v23(eap_sim_session->keys.sres[idx],
+			   eap_sim_session->keys.kc[idx],
+			   vp->vp_octets,
+			   eap_sim_session->keys.rand[idx], true);
 		break;
 
 	case 3:
-		comp128v23(ess->keys.sres[idx], ess->keys.kc[idx], vp->vp_octets, ess->keys.rand[idx], false);
+		comp128v23(eap_sim_session->keys.sres[idx],
+			   eap_sim_session->keys.kc[idx],
+			   vp->vp_octets,
+			   eap_sim_session->keys.rand[idx], false);
 		break;
 
 	case 4:
@@ -85,7 +93,8 @@ static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	return 0;
 }
 
-static int sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_session_t *ess)
+static int sim_vector_from_gsm(eap_session_t *eap_session,
+			       VALUE_PAIR *vps, int idx, eap_sim_session_t *eap_sim_session)
 {
 	REQUEST		*request = eap_session->request;
 	VALUE_PAIR	*rand = NULL, *sres = NULL, *kc = NULL;
@@ -129,9 +138,9 @@ static int sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int 
 		return -1;
 	}
 
-	memcpy(ess->keys.rand[idx], rand->vp_octets, EAP_SIM_RAND_SIZE);
-	memcpy(ess->keys.sres[idx], sres->vp_octets, EAP_SIM_SRES_SIZE);
-	memcpy(ess->keys.kc[idx], kc->vp_strvalue, EAP_SIM_KC_SIZE);
+	memcpy(eap_sim_session->keys.rand[idx], rand->vp_octets, EAP_SIM_RAND_SIZE);
+	memcpy(eap_sim_session->keys.sres[idx], sres->vp_octets, EAP_SIM_SRES_SIZE);
+	memcpy(eap_sim_session->keys.kc[idx], kc->vp_strvalue, EAP_SIM_KC_SIZE);
 
 	return 0;
 }
@@ -144,7 +153,8 @@ static int sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, int 
  * c3:   Kc[gsm] = (CK[0]...CK[63]) ⊕ (CK[64]...CK[127]) ⊕
  *		   (IK[0]...IK[63]) ⊕ (IK[64]...IK[127)
  */
-static int sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_session_t *ess)
+static int sim_vector_from_umts(eap_session_t *eap_session,
+				VALUE_PAIR *vps, int idx, eap_sim_session_t *eap_sim_session)
 {
 	REQUEST		*request = eap_session->request;
 	vp_cursor_t	cursor;
@@ -203,7 +213,7 @@ static int sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps, int
 		return 1;
 	}
 
-	memcpy(ess->keys.rand[idx], rand->vp_octets, EAP_SIM_RAND_SIZE);	/* RAND is 128 bits in both */
+	memcpy(eap_sim_session->keys.rand[idx], rand->vp_octets, EAP_SIM_RAND_SIZE);	/* RAND is 128 bits in both */
 
 	/*
 	 *	Have to pad XRES out to 16 octets if it's shorter than that.
@@ -217,17 +227,17 @@ static int sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps, int
 	}
 
 	/*
-	 *	Fold xres into itself in 32bit quantities using xor to
-	 *	produce sres.
+	 *	Fold XRES into itself in 32bit quantities using xor to
+	 *	produce SRES.
 	 */
-	ess->keys.sres_uint32[idx] = ((xres_ptr[0] ^ xres_ptr[1]) ^ xres_ptr[2]) ^ xres_ptr[3];
+	eap_sim_session->keys.sres_uint32[idx] = ((xres_ptr[0] ^ xres_ptr[1]) ^ xres_ptr[2]) ^ xres_ptr[3];
 
 	/*
 	 *	Fold CK and IK in 64bit quantities to produce Kc
 	 */
 	ck_ptr = (uint64_t const *)ck->vp_octets;
 	ik_ptr = (uint64_t const *)ik->vp_octets;
-	ess->keys.kc_uint64[idx] = ((ck_ptr[0] ^ ck_ptr[1]) ^ ik_ptr[0]) ^ ik_ptr[1];
+	eap_sim_session->keys.kc_uint64[idx] = ((ck_ptr[0] ^ ck_ptr[1]) ^ ik_ptr[0]) ^ ik_ptr[1];
 
 	return 0;
 }
@@ -236,20 +246,20 @@ static int sim_vector_from_umts(eap_session_t *eap_session, VALUE_PAIR *vps, int
  *
  * Hunt for a source of SIM triplets
  *
- * @param eap_session	The current eap_session.
- * @param vps		List to hunt for triplets in.
- * @param idx		To write EAP-SIM triplets to.
- * @param ess		EAP session state.
- * @param src		Forces triplets to be retrieved from a particular src
- *			and ensures if multiple triplets are being retrieved
- *			that they all come from the same src.
+ * @param eap_session		The current eap_session.
+ * @param vps			List to hunt for triplets in.
+ * @param idx			To write EAP-SIM triplets to.
+ * @param eap_sim_session	EAP session state.
+ * @param src			Forces triplets to be retrieved from a particular src
+ *				and ensures if multiple triplets are being retrieved
+ *				that they all come from the same src.
  * @return
  *	- 1	Vector could not be retrieved from the specified src.
  *	- 0	Vector was retrieved OK and written to the specified index.
  *	- -1	Error retrieving vector from the specified src.
  */
 int sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
-			  int idx, eap_sim_session_t *ess, eap_sim_vector_src_t *src)
+			  int idx, eap_sim_session_t *eap_sim_session, eap_sim_vector_src_t *src)
 {
 	REQUEST		*request = eap_session->request;
 	int		ret;
@@ -259,7 +269,7 @@ int sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 	switch (*src) {
 	default:
 	case EAP_SIM_VECTOR_SRC_KI:
-		ret = sim_vector_from_ki(eap_session, vps, idx, ess);
+		ret = sim_vector_from_ki(eap_session, vps, idx, eap_sim_session);
 		if (ret == 0) {
 			*src = EAP_SIM_VECTOR_SRC_KI;
 			return 0;
@@ -269,7 +279,7 @@ int sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		/* FALL-THROUGH */
 
 	case EAP_SIM_VECTOR_SRC_GSM:
-		ret = sim_vector_from_gsm(eap_session, vps, idx, ess);
+		ret = sim_vector_from_gsm(eap_session, vps, idx, eap_sim_session);
 		if (ret == 0) {
 			*src = EAP_SIM_VECTOR_SRC_GSM;
 			return 0;
@@ -279,7 +289,7 @@ int sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		/* FALL-THROUGH */
 
 	case EAP_SIM_VECTOR_SRC_UMTS:
-		ret = sim_vector_from_umts(eap_session, vps, idx, ess);
+		ret = sim_vector_from_umts(eap_session, vps, idx, eap_sim_session);
 		if (ret == 0) {
 			*src = EAP_SIM_VECTOR_SRC_UMTS;
 			return 0;
@@ -298,19 +308,19 @@ int sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		RINDENT();
 		p = buffer;
 		for (i = 0; i < EAP_SIM_RAND_SIZE; i++) {
-			p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
+			p += sprintf(p, "%02x", eap_sim_session->keys.rand[idx][i]);
 		}
 		RDEBUG2("RAND : 0x%s", buffer);
 
 		p = buffer;
 		for (i = 0; i < EAP_SIM_SRES_SIZE; i++) {
-			p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
+			p += sprintf(p, "%02x", eap_sim_session->keys.sres[idx][i]);
 		}
 		RDEBUG2("SRES : 0x%s", buffer);
 
 		p = buffer;
 		for (i = 0; i < EAP_SIM_KC_SIZE; i++) {
-			p += sprintf(p, "%02x", ess->keys.kc[idx][i]);
+			p += sprintf(p, "%02x", eap_sim_session->keys.kc[idx][i]);
 		}
 		RDEBUG2("Kc   : 0x%s", buffer);
 		REXDENT();
