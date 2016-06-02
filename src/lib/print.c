@@ -493,7 +493,7 @@ char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
  *  JSON value to.
  *
  * @param out Where to write the string.
- * @param outlen Lenth of output buffer.
+ * @param outlen Length of output buffer.
  * @param vp to print.
  * @return the length of data written to out, or a value >= outlen on truncation.
  */
@@ -652,7 +652,7 @@ static char const *vp_tokens[] = {
  * to a string.
  *
  * @param out Where to write the string.
- * @param outlen Lenth of output buffer.
+ * @param outlen Length of output buffer.
  * @param vp to print.
  * @return the length of data written to out, or a value >= outlen on truncation.
  */
