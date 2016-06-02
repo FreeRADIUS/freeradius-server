@@ -152,7 +152,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
-	MEM(vp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_RAND));
+	MEM(vp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_PRAND));
 	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (EAP_SIM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
@@ -188,9 +188,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 		len = ntohs(len);
 		if (len <= vp->vp_length - 2 && len <= FR_MAX_STRING_LEN) {
 			eap_sim_session->keys.identity_len = len;
-			memcpy(eap_sim_session->keys.identity,
-			       vp->vp_octets + 2,
-			       eap_sim_session->keys.identity_len);
+			memcpy(eap_sim_session->keys.identity, vp->vp_octets + 2, eap_sim_session->keys.identity_len);
 		}
 	}
 
