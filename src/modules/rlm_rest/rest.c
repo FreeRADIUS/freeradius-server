@@ -827,14 +827,74 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				}
 				break;
 			}
-			ctx->state = has_dict_value ? READ_STATE_ATTR_DICT_VALUE : READ_STATE_ATTR_END;
+			ctx->state = has_dict_value ? READ_STATE_ATTR_DICT_VALUE_BEGIN : READ_STATE_ATTR_END;
 		}
 
-		if (ctx->state == READ_STATE_ATTR_DICT_VALUE) {
+		if (ctx->state == READ_STATE_ATTR_DICT_VALUE_BEGIN) {
 			if (freespace < 16) goto no_space;
 			strncpy(p, "],\"dict-value\":[", 16);
 			p += 16;
 			freespace -= 16;
+
+			// Rewind the cursor to iterate over the values of this VP again
+			fr_cursor_first(&ctx->cursor);
+			vp = fr_cursor_next_by_da(&ctx->cursor, vp->da, TAG_ANY);
+
+			ctx->state = READ_STATE_ATTR_DICT_VALUE_CONT;
+		}
+
+		if (ctx->state == READ_STATE_ATTR_DICT_VALUE_CONT) {
+			for (;;) {
+				size_t attr_space;
+
+				/*
+				 *  We need at least three bytes to write out the
+				 *  shortest attribute value. ("X")
+				 */
+				if (freespace < 3) goto no_space;
+
+				/*
+				 *  Code below expects length of the buffer, so we
+				 *  add +1 to freespace.
+				 *
+				 *  If we know we need a comma after the value, we
+				 *  need to -1 to make sure we have enough room to
+				 *  write that out.
+				 */
+				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
+				len = fr_json_from_pair_dict_value(p, attr_space + 1, vp);
+				if (is_truncated(len, attr_space + 1)) goto no_space;
+
+				/*
+				 *  Show actual value length minus quotes
+				 */
+				RINDENT();
+				RDEBUG3("Length : %zu", (size_t) (*p == '"') ? (len - 2) : len);
+				RDEBUG3("Value  : %s", p);
+				REXDENT();
+
+				p += len;
+				freespace -= len;
+				encoded = p;
+
+				/*
+				 *  Multivalued attribute, we sorted all the attributes earlier, so multiple
+				 *  instances should occur in a contiguous block.
+				 */
+				if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
+					rad_assert(freespace >= 1);
+					*p++ = ',';
+					freespace--;
+
+					/*
+					 *  We wrote one attribute value, record progress.
+					 */
+					encoded = p;
+					vp = next;
+					continue;
+				}
+				break;
+			}
 			ctx->state = READ_STATE_ATTR_END;
 		}
 
