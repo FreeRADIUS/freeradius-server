@@ -43,18 +43,18 @@ void eap_sim_calculate_keys(struct eap_sim_keys *ek)
 	unsigned int  blen;
 
 	p = buf;
-	memcpy(p, ek->identity, ek->identitylen);   p = p+ek->identitylen;
-	memcpy(p, ek->kc[0], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
-	memcpy(p, ek->kc[1], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
-	memcpy(p, ek->kc[2], EAPSIM_KC_SIZE);       p = p+EAPSIM_KC_SIZE;
+	memcpy(p, ek->identity, ek->identity_len);   p = p+ek->identity_len;
+	memcpy(p, ek->kc[0], EAP_SIM_KC_SIZE);       p = p+EAP_SIM_KC_SIZE;
+	memcpy(p, ek->kc[1], EAP_SIM_KC_SIZE);       p = p+EAP_SIM_KC_SIZE;
+	memcpy(p, ek->kc[2], EAP_SIM_KC_SIZE);       p = p+EAP_SIM_KC_SIZE;
 	memcpy(p, ek->nonce_mt, sizeof(ek->nonce_mt)); p=p+sizeof(ek->nonce_mt);
-	memcpy(p, ek->versionlist, ek->versionlistlen);p=p+ek->versionlistlen;
-	memcpy(p, ek->versionselect, sizeof(ek->versionselect)); p=p+sizeof(ek->versionselect);
-	/* *p++ = ek->versionselect[1]; */
+	memcpy(p, ek->version_list, ek->version_list_len);p=p+ek->version_list_len;
+	memcpy(p, ek->version_select, sizeof(ek->version_select)); p=p+sizeof(ek->version_select);
+	/* *p++ = ek->version_select[1]; */
 
 	blen = p - buf;
 
-#if defined(TEST_CASE) || defined(DUMP_EAPSIM_KEYS)
+#if defined(TEST_CASE) || defined(DUMP_EAP_SIM_KEYS)
 	{
 	  unsigned int i, j, k;
 
@@ -87,14 +87,14 @@ void eap_sim_calculate_keys(struct eap_sim_keys *ek)
 	fr_sha1_final(ek->master_key, &context);
 
 	/*
-	 * now use the PRF to expand it, generated K_aut, K_encr,
+	 * now use the PRF to expand it, generated k_aut, k_encr,
 	 * MSK and EMSK.
 	 */
 	fips186_2prf(ek->master_key, fk);
 
 	/* split up the result */
-	memcpy(ek->K_encr, fk +  0, 16);    /* 128 bits for encryption    */
-	memcpy(ek->K_aut,  fk + 16, EAPSIM_AUTH_SIZE); /*128 bits for auth */
+	memcpy(ek->k_encr, fk +  0, 16);    /* 128 bits for encryption    */
+	memcpy(ek->k_aut,  fk + 16, EAP_SIM_AUTH_SIZE); /*128 bits for auth */
 	memcpy(ek->msk,    fk + 32, 64);  /* 64 bytes for Master Session Key */
 	memcpy(ek->emsk,   fk + 96, 64);  /* 64- extended Master Session Key */
 }
@@ -105,45 +105,45 @@ void eap_sim_dump_mk(struct eap_sim_keys *ek)
 	unsigned int i, j, k;
 
 	printf("Input was: \n");
-	printf("   identity: (len=%u)", ek->identitylen);
-	for (i = 0; i < ek->identitylen; i++) {
+	printf("   identity: (len=%u)", ek->identity_len);
+	for (i = 0; i < ek->identity_len; i++) {
 		printf("%02x", ek->identity[i]);
 	}
 
 	printf("\n   nonce_mt: ");
-	for (i = 0; i < EAPSIM_NONCEMT_SIZE; i++) {
+	for (i = 0; i < EAP_SIM_NONCEMT_SIZE; i++) {
 		printf("%02x", ek->nonce_mt[i]);
 	}
 
 	for (k = 0; k<3; k++) {
 		printf("\n   rand%u: ", k);
-		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+		for (i = 0; i < EAP_SIM_RAND_SIZE; i++) {
 			printf("%02x", ek->rand[k][i]);
 		}
 	}
 
 	for (k = 0; k<3; k++) {
 		printf("\n   sres%u: ", k);
-		for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
+		for (i = 0; i < EAP_SIM_SRES_SIZE; i++) {
 			printf("%02x", ek->sres[k][i]);
 		}
 	}
 
 	for (k = 0; k<3; k++) {
 		printf("\n   Kc%u: ", k);
-		for (i = 0; i < EAPSIM_KC_SIZE; i++) {
+		for (i = 0; i < EAP_SIM_KC_SIZE; i++) {
 			printf("%02x", ek->kc[k][i]);
 		}
 	}
 
-	printf("\n   versionlist[%d]: ",ek->versionlistlen);
-	for (i = 0; i < ek->versionlistlen; i++) {
-		printf("%02x", ek->versionlist[i]);
+	printf("\n   version_list[%d]: ",ek->version_list_len);
+	for (i = 0; i < ek->version_list_len; i++) {
+		printf("%02x", ek->version_list[i]);
 	}
 
 	printf("\n   select %02x %02x\n",
-	       ek->versionselect[0],
-	       ek->versionselect[1]);
+	       ek->version_select[0],
+	       ek->version_select[1]);
 
 	printf("\n\nOutput\n");
 
@@ -159,28 +159,28 @@ void eap_sim_dump_mk(struct eap_sim_keys *ek)
 		printf("%02x", ek->master_key[i]);
 	}
 
-	printf("\nK_aut:      ");
+	printf("\nk_aut:      ");
 	j=0;
-	for (i = 0; i < sizeof(ek->K_aut); i++) {
+	for (i = 0; i < sizeof(ek->k_aut); i++) {
 		if(j==4) {
 			printf("_");
 			j=0;
 		}
 		j++;
 
-		printf("%02x", ek->K_aut[i]);
+		printf("%02x", ek->k_aut[i]);
 	}
 
-	printf("\nK_encr:     ");
+	printf("\nk_encr:     ");
 	j=0;
-	for (i = 0; i < sizeof(ek->K_encr); i++) {
+	for (i = 0; i < sizeof(ek->k_encr); i++) {
 		if(j==4) {
 			printf("_");
 			j=0;
 		}
 		j++;
 
-		printf("%02x", ek->K_encr[i]);
+		printf("%02x", ek->k_encr[i]);
 	}
 
 	printf("\nmsk:	");

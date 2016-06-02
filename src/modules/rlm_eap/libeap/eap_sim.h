@@ -31,30 +31,57 @@ RCSIDH(eap_sim_h, "$Id$")
 #define EAP_SIM_VERSION 0x0001
 
 typedef enum eap_sim_subtype {
-	EAPSIM_START		= 10,
-	EAPSIM_CHALLENGE	= 11,
-	EAPSIM_NOTIFICATION	= 12,
-	EAPSIM_REAUTH		= 13,
-	EAPSIM_CLIENT_ERROR	= 14,
-	EAPSIM_MAX_SUBTYPE	= 15
+	EAP_SIM_START		= 10,
+	EAP_SIM_CHALLENGE	= 11,
+	EAP_SIM_NOTIFICATION	= 12,
+	EAP_SIM_REAUTH		= 13,
+	EAP_SIM_CLIENT_ERROR	= 14,
+	EAP_SIM_MAX_SUBTYPE	= 15
 } eap_sim_subtype_t;
 
 typedef enum eap_sim_client_states {
-	EAPSIM_CLIENT_INIT	= 0,
-	EAPSIM_CLIENT_START	= 1,
-	EAPSIM_CLIENT_MAX_STATES
+	EAP_SIM_CLIENT_INIT	= 0,
+	EAP_SIM_CLIENT_START	= 1,
+	EAP_SIM_CLIENT_MAX_STATES
 } eap_sim_client_states_t;
 
-/* Server states
- *
- * In server_start, we send a EAP-SIM Start message.
- */
-typedef enum eap_sim_server_states {
-	EAPSIM_SERVER_START	= 0,
-	EAPSIM_SERVER_CHALLENGE	= 1,
-	EAPSIM_SERVER_SUCCESS	= 10,
-	EAPSIM_SERVER_MAX_STATES
-} eap_sim_server_states_t;
+#define EAP_SIM_SRES_SIZE	4
+#define EAP_SIM_RAND_SIZE	16
+#define EAP_SIM_KC_SIZE		8
+#define EAP_SIM_CALCMAC_SIZE	20
+#define EAP_SIM_NONCEMT_SIZE	16
+#define EAP_SIM_AUTH_SIZE	16
+
+typedef struct eap_sim_keys {
+	/* inputs */
+	uint8_t		identity[FR_MAX_STRING_LEN];
+	unsigned int	identity_len;
+	uint8_t		nonce_mt[EAP_SIM_NONCEMT_SIZE];
+
+	uint8_t		rand[3][EAP_SIM_RAND_SIZE];
+
+	union {
+		uint8_t		sres[3][EAP_SIM_SRES_SIZE];
+		uint32_t	sres_uint32[3];
+	};
+
+	union {
+		uint8_t		kc[3][EAP_SIM_KC_SIZE];
+		uint64_t	kc_uint64[3];
+	};
+
+	uint8_t		version_list[FR_MAX_STRING_LEN];
+	uint8_t		version_list_len;
+	uint8_t		version_select[2];
+
+	/* outputs */
+	uint8_t		master_key[20];
+	uint8_t		k_aut[EAP_SIM_AUTH_SIZE];
+	uint8_t		k_encr[16];
+	uint8_t		msk[64];
+	uint8_t		emsk[64];
+} eap_sim_keys_t;
+
 
 
 /*
@@ -62,55 +89,15 @@ typedef enum eap_sim_server_states {
  */
 int eap_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep);
 int eap_sim_decode(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrlen);
-char const *eap_sim_state_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
+char const *eap_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
 char const *eap_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t subtype);
 
 /************************/
 /*   CRYPTO FUNCTIONS   */
 /************************/
-
 /*
  * key derivation functions/structures
- *
  */
-
-#define EAPSIM_SRES_SIZE	4
-#define EAPSIM_RAND_SIZE	16
-#define EAPSIM_KC_SIZE		8
-#define EAPSIM_CALCMAC_SIZE	20
-#define EAPSIM_NONCEMT_SIZE	16
-#define EAPSIM_AUTH_SIZE	16
-
-typedef struct eap_sim_keys {
-	/* inputs */
-	uint8_t identity[FR_MAX_STRING_LEN];
-	unsigned int  identitylen;
-	uint8_t nonce_mt[EAPSIM_NONCEMT_SIZE];
-
-	uint8_t rand[3][EAPSIM_RAND_SIZE];
-
-	union {
-		uint8_t sres[3][EAPSIM_SRES_SIZE];
-		uint32_t sres_uint32[3];
-	};
-
-	union {
-		uint8_t kc[3][EAPSIM_KC_SIZE];
-		uint64_t kc_uint64[3];
-	};
-
-	uint8_t versionlist[FR_MAX_STRING_LEN];
-	uint8_t versionlistlen;
-	uint8_t versionselect[2];
-
-	/* outputs */
-	uint8_t master_key[20];
-	uint8_t K_aut[EAPSIM_AUTH_SIZE];
-	uint8_t K_encr[16];
-	uint8_t msk[64];
-	uint8_t emsk[64];
-} eap_sim_keys_t;
-
 
 /*
  * interfaces in eap_simlib.c

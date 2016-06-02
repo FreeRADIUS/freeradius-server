@@ -106,7 +106,7 @@ Input was:
    Kc0: a0a1a2a3a4a5a6a7
    Kc1: b0b1b2b3b4b5b6b7
    Kc2: c0c1c2c3c4c5c6c7
-   versionlist[2]: 0001
+   version_list[2]: 0001
    select 00 01
 
 

@@ -807,7 +807,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	VALUE_PAIR *vp, *newvp;
 	VALUE_PAIR *anyidreq_vp, *fullauthidreq_vp, *permanentidreq_vp;
 	uint16_t const *versions;
-	uint16_t selectedversion;
+	uint16_t selected_version;
 	unsigned int i,versioncount;
 
 	/* form new response clear of any EAP stuff */
@@ -838,25 +838,25 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	}
 
 	/*
-	 * record the versionlist for the MK calculation.
+	 * record the version_list for the MK calculation.
 	 */
-	eap_context->eap.sim.keys.versionlistlen = versioncount*2;
-	memcpy(eap_context->eap.sim.keys.versionlist, (unsigned char const *)(versions+1),
-	       eap_context->eap.sim.keys.versionlistlen);
+	eap_context->eap.sim.keys.version_list_len = versioncount*2;
+	memcpy(eap_context->eap.sim.keys.version_list, (unsigned char const *)(versions+1),
+	       eap_context->eap.sim.keys.version_list_len);
 
 	/* walk the version list, and pick the one we support, which
 	 * at present, is 1, EAP_SIM_VERSION.
 	 */
-	selectedversion=0;
+	selected_version=0;
 	for (i=0; i < versioncount; i++)
 	{
 		if (ntohs(versions[i+1]) == EAP_SIM_VERSION)
 		{
-			selectedversion=EAP_SIM_VERSION;
+			selected_version=EAP_SIM_VERSION;
 			break;
 		}
 	}
-	if (selectedversion == 0)
+	if (selected_version == 0)
 	{
 		ERROR("eap-sim start message. No compatible version found. We need %d", EAP_SIM_VERSION);
 		for (i=0; i < versioncount; i++)
@@ -890,21 +890,21 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = fr_pair_afrom_num(rep, 0, PW_EAP_SIM_SUBTYPE);
-	newvp->vp_integer = EAPSIM_START;
+	newvp->vp_integer = EAP_SIM_START;
 	fr_pair_replace(&(rep->vps), newvp);
 
 	/* insert selected version into response. */
 	{
 		uint16_t no_versions;
 
-		no_versions = htons(selectedversion);
+		no_versions = htons(selected_version);
 
 		newvp = fr_pair_afrom_num(rep, 0, PW_EAP_SIM_SELECTED_VERSION);
 		fr_pair_value_memcpy(newvp, (uint8_t *) &no_versions, 2);
 		fr_pair_replace(&(rep->vps), newvp);
 
 		/* record the selected version */
-		memcpy(eap_context->eap.sim.keys.versionselect, &no_versions, 2);
+		memcpy(eap_context->eap.sim.keys.version_select, &no_versions, 2);
 	}
 
 	vp = newvp = NULL;
@@ -959,7 +959,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 
 		/* record it */
 		memcpy(eap_context->eap.sim.keys.identity, vp->vp_strvalue, idlen);
-		eap_context->eap.sim.keys.identitylen = idlen;
+		eap_context->eap.sim.keys.identity_len = idlen;
 	}
 
 	return 1;
@@ -980,7 +980,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	VALUE_PAIR *mac, *randvp;
 	VALUE_PAIR *sres1, *sres2, *sres3;
 	VALUE_PAIR *kc1, *kc2, *kc3;
-	uint8_t calcmac[EAPSIM_CALCMAC_SIZE];
+	uint8_t calcmac[EAP_SIM_CALCMAC_SIZE];
 
 	/* look for the AT_MAC and the challenge data */
 	mac = fr_pair_find_by_num(req->vps, 0, PW_EAP_SIM_MAC, TAG_ANY);
@@ -999,8 +999,8 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		uint8_t const *randcfg[3];
 
 		randcfg[0] = &randvp->vp_octets[2];
-		randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
-		randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
+		randcfg[1] = &randvp->vp_octets[2+EAP_SIM_RAND_SIZE];
+		randcfg[2] = &randvp->vp_octets[2+EAP_SIM_RAND_SIZE*2];
 
 		randcfgvp[0] = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_RAND, TAG_ANY);
 		randcfgvp[1] = fr_pair_find_by_num(randcfgvp[0], 0, PW_EAP_SIM_RAND, TAG_ANY);
@@ -1013,20 +1013,20 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 			return 0;
 		}
 
-		if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE) != 0 ||
-		    memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE) != 0 ||
-		    memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE) != 0)
+		if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAP_SIM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAP_SIM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAP_SIM_RAND_SIZE) != 0)
 		{
 			int rnum;
 
 			ERROR("one of RAND 1, 2, or 3 didn't match");
 
-			char ch_rand[EAPSIM_RAND_SIZE*2 +1 +3] = ""; // +3 for separators.
+			char ch_rand[EAP_SIM_RAND_SIZE*2 +1 +3] = ""; // +3 for separators.
 			for (rnum = 0; rnum < 3; rnum++) {
-				rc_print_hexstr(ch_rand, randcfg[rnum], EAPSIM_RAND_SIZE, 4, '_');
+				rc_print_hexstr(ch_rand, randcfg[rnum], EAP_SIM_RAND_SIZE, 4, '_');
 				ERROR("Received   rand %d: %s", rnum, ch_rand);
 
-				rc_print_hexstr(ch_rand, randcfgvp[rnum]->vp_octets, EAPSIM_RAND_SIZE, 4, '_');
+				rc_print_hexstr(ch_rand, randcfgvp[rnum]->vp_octets, EAP_SIM_RAND_SIZE, 4, '_');
 				ERROR("Configured rand %d: %s", rnum, ch_rand);
 			}
 			return 0;
@@ -1076,12 +1076,12 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	int rcode_mac = eap_sim_check_mac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
+	int rcode_mac = eap_sim_check_mac(NULL, req->vps, eap_context->eap.sim.keys.k_aut,
 	                                eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
 	                                calcmac);
 
-	char ch_calc_mac[EAPSIM_CALCMAC_SIZE*2 +1 +4] = ""; // +4 for separators.
-	rc_print_hexstr(ch_calc_mac, calcmac, EAPSIM_CALCMAC_SIZE, 4, '_');
+	char ch_calc_mac[EAP_SIM_CALCMAC_SIZE*2 +1 +4] = ""; // +4 for separators.
+	rc_print_hexstr(ch_calc_mac, calcmac, EAP_SIM_CALCMAC_SIZE, 4, '_');
 
 	if (rcode_mac) {
 		DEBUG2("MAC check succeeded (%s)", ch_calc_mac);
@@ -1096,7 +1096,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = fr_pair_afrom_num(rep, 0, PW_EAP_SIM_SUBTYPE);
-	newvp->vp_integer = EAPSIM_CHALLENGE;
+	newvp->vp_integer = EAP_SIM_CHALLENGE;
 	fr_pair_replace(&(rep->vps), newvp);
 
 	{
@@ -1107,17 +1107,17 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		 */
 		newvp = fr_pair_afrom_num(rep, 0, PW_EAP_SIM_MAC);
 
-		p = talloc_zero_array(newvp, uint8_t, EAPSIM_SRES_SIZE*3);
-		memcpy(p+EAPSIM_SRES_SIZE * 0, sres1->vp_strvalue, EAPSIM_SRES_SIZE);
-		memcpy(p+EAPSIM_SRES_SIZE * 1, sres2->vp_strvalue, EAPSIM_SRES_SIZE);
-		memcpy(p+EAPSIM_SRES_SIZE * 2, sres3->vp_strvalue, EAPSIM_SRES_SIZE);
+		p = talloc_zero_array(newvp, uint8_t, EAP_SIM_SRES_SIZE*3);
+		memcpy(p+EAP_SIM_SRES_SIZE * 0, sres1->vp_strvalue, EAP_SIM_SRES_SIZE);
+		memcpy(p+EAP_SIM_SRES_SIZE * 1, sres2->vp_strvalue, EAP_SIM_SRES_SIZE);
+		memcpy(p+EAP_SIM_SRES_SIZE * 2, sres3->vp_strvalue, EAP_SIM_SRES_SIZE);
 		fr_pair_value_memsteal(newvp, p);
 
 		fr_pair_replace(&(rep->vps), newvp);
 	}
 
 	newvp = fr_pair_afrom_num(rep, 0, PW_EAP_SIM_KEY);
-	fr_pair_value_memcpy(newvp, eap_context->eap.sim.keys.K_aut, EAPSIM_AUTH_SIZE);
+	fr_pair_value_memcpy(newvp, eap_context->eap.sim.keys.k_aut, EAP_SIM_AUTH_SIZE);
 
 	fr_pair_replace(&(rep->vps), newvp);
 
@@ -1155,7 +1155,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	{
 		/* must be initial request */
 		statevp = fr_pair_afrom_num(resp, 0, PW_EAP_SIM_STATE);
-		statevp->vp_integer = EAPSIM_CLIENT_INIT;
+		statevp->vp_integer = EAP_SIM_CLIENT_INIT;
 		fr_pair_replace(&(resp->vps), statevp);
 	}
 	state = statevp->vp_integer;
@@ -1175,38 +1175,38 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	 * look for the appropriate state, and process incoming message
 	 */
 	switch (state) {
-	case EAPSIM_CLIENT_INIT:
+	case EAP_SIM_CLIENT_INIT:
 		switch (subtype) {
-		case EAPSIM_START:
+		case EAP_SIM_START:
 			rcode_eap = rc_process_eap_start(eap_context, req, resp);
 			break;
 
-		case EAPSIM_CHALLENGE:
-		case EAPSIM_NOTIFICATION:
-		case EAPSIM_REAUTH:
+		case EAP_SIM_CHALLENGE:
+		case EAP_SIM_NOTIFICATION:
+		case EAP_SIM_REAUTH:
 		default:
 			ERROR("sim in state '%s' (%d), message '%s' (%d) is illegal. Reply dropped.",
-				eap_sim_state_to_name(statenamebuf, sizeof(statenamebuf), state), state,
+				eap_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state,
 				eap_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype), subtype);
 			/* invalid state, drop message */
 			return 0;
 		}
 		break;
 
-	case EAPSIM_CLIENT_START:
+	case EAP_SIM_CLIENT_START:
 		switch (subtype) {
-		case EAPSIM_START:
+		case EAP_SIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
 			rcode_eap = rc_process_eap_start(eap_context, req, resp);
 			break;
 
-		case EAPSIM_CHALLENGE:
+		case EAP_SIM_CHALLENGE:
 			rcode_eap = rc_process_eap_challenge(eap_context, req, resp);
 			break;
 
 		default:
 			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				eap_sim_state_to_name(statenamebuf, sizeof(statenamebuf), state),
+				eap_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state),
 				eap_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype));
 			/* invalid state, drop message */
 			return 0;
@@ -1215,7 +1215,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 	default:
 		ERROR("sim in illegal state '%s' (%d)",
-			eap_sim_state_to_name(statenamebuf, sizeof(statenamebuf), state), state);
+			eap_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state);
 		return 0;
 	}
 
@@ -1224,7 +1224,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		ERROR("EAP process failed, aborting EAP-SIM transaction.");
 		return 0;
 	}
-	newstate = EAPSIM_CLIENT_START; // (1)
+	newstate = EAP_SIM_CLIENT_START; // (1)
 
 	/* copy the eap state object in */
 	fr_pair_replace(&(resp->vps), eapid);
