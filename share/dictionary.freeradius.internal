@@ -340,32 +340,24 @@ ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets	internal
 #
 #	For EAP-SIM, some attribute definitions for database interface
 #
-ATTRIBUTE	EAP-Sim-Subtype				1200	integer internal
+ATTRIBUTE	EAP-SIM-Subtype				1200	integer internal
 
-ATTRIBUTE	EAP-Sim-Rand1				1201	octets internal
-ATTRIBUTE	EAP-Sim-Rand2				1202	octets internal
-ATTRIBUTE	EAP-Sim-Rand3				1203	octets internal
+ATTRIBUTE	EAP-SIM-Rand				1201	octets internal
+ATTRIBUTE	EAP-SIM-SRES				1202	octets internal
+ATTRIBUTE	EAP-SIM-KC				1203	octets internal
 
-ATTRIBUTE	EAP-Sim-SRES1				1204	octets internal
-ATTRIBUTE	EAP-Sim-SRES2				1205	octets internal
-ATTRIBUTE	EAP-Sim-SRES3				1206	octets internal
-
-VALUE	EAP-Sim-Subtype			Start			10
-VALUE	EAP-Sim-Subtype			Challenge		11
-VALUE	EAP-Sim-Subtype			Notification		12
-VALUE	EAP-Sim-Subtype			Re-authentication	13
+VALUE	EAP-SIM-Subtype			Start			10
+VALUE	EAP-SIM-Subtype			Challenge		11
+VALUE	EAP-SIM-Subtype			Notification		12
+VALUE	EAP-SIM-Subtype			Re-authentication	13
 
 # this attribute is used internally by the client code.
-ATTRIBUTE	EAP-Sim-State				1207	integer internal
+ATTRIBUTE	EAP-SIM-State				1207	integer internal
 
-ATTRIBUTE	EAP-Sim-IMSI				1208	string internal
-ATTRIBUTE	EAP-Sim-HMAC				1209	string internal
-ATTRIBUTE	EAP-Sim-KEY				1210	octets internal
-ATTRIBUTE	EAP-Sim-EXTRA				1211	octets internal
-
-ATTRIBUTE	EAP-Sim-Kc1				1212	octets internal
-ATTRIBUTE	EAP-Sim-Kc2				1213	octets internal
-ATTRIBUTE	EAP-Sim-Kc3				1214	octets internal
+ATTRIBUTE	EAP-SIM-IMSI				1208	string internal
+ATTRIBUTE	EAP-SIM-HMAC				1209	string internal
+ATTRIBUTE	EAP-SIM-Key				1210	octets internal
+ATTRIBUTE	EAP-SIM-Extra				1211	octets internal
 
 ATTRIBUTE	EAP-Sim-Ki				1215	octets internal
 ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer internal
@@ -473,7 +465,7 @@ ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets internal
 
 # these are PW_EAP_SIM_X + 1536
 ATTRIBUTE	EAP_Sim-Base				1536	octets internal
-ATTRIBUTE	EAP-Sim-RAND				1537	octets internal
+ATTRIBUTE	EAP-Sim-PRAND				1537	octets internal
 ATTRIBUTE	EAP-Sim-PADDING				1542	octets internal
 ATTRIBUTE	EAP-Sim-NONCE_MT			1543	octets internal
 ATTRIBUTE	EAP-Sim-PERMANENT_ID_REQ		1546	octets internal

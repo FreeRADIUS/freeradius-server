@@ -208,7 +208,7 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	 *	Use known RAND, SRES, and Kc values, these may of been pulled in from an AuC,
 	 *	or created by sending challenges to the SIM directly.
 	 */
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_RAND1 + idx, TAG_ANY);
+	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_RAND + idx, TAG_ANY);
 	if (!vp) {
 		RDEBUG3("No &control:EAP-SIM-RAND attribute found, not using triplets");
 		return 1;
@@ -221,7 +221,7 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_octets, EAPSIM_RAND_SIZE);
 
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SRES1 + idx, TAG_ANY);
+	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SRES + idx, TAG_ANY);
 	if (!vp) {
 		RDEBUG3("No &control:EAP-SIM-SRES attribute found, not using triplets");
 		return 1;
@@ -234,7 +234,7 @@ static int eap_sim_vector_from_gsm(eap_session_t *eap_session, VALUE_PAIR *vps, 
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_octets, EAPSIM_SRES_SIZE);
 
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KC1 + idx, TAG_ANY);
+	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KC + idx, TAG_ANY);
 	if (!vp) {
 		RDEBUG3("No &control:EAP-SIM-KC attribute found, not using triplets");
 		return 1;

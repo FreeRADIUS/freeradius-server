@@ -979,7 +979,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	VALUE_PAIR *newvp;
 	VALUE_PAIR *mac, *randvp;
 	VALUE_PAIR *sres1, *sres2, *sres3;
-	VALUE_PAIR *Kc1, *Kc2, *Kc3;
+	VALUE_PAIR *kc1, *kc2, *kc3;
 	uint8_t calcmac[EAPSIM_CALCMAC_SIZE];
 
 	/* look for the AT_MAC and the challenge data */
@@ -1002,9 +1002,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
 		randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
 
-		randcfgvp[0] = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_RAND1, TAG_ANY);
-		randcfgvp[1] = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_RAND2, TAG_ANY);
-		randcfgvp[2] = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_RAND3, TAG_ANY);
+		randcfgvp[0] = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_RAND, TAG_ANY);
+		randcfgvp[1] = fr_pair_find_by_num(randcfgvp[0], 0, PW_EAP_SIM_RAND, TAG_ANY);
+		randcfgvp[2] = fr_pair_find_by_num(randcfgvp[1], 0, PW_EAP_SIM_RAND, TAG_ANY);
 
 		if (!randcfgvp[0] ||
 		    !randcfgvp[1] ||
@@ -1040,9 +1040,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	 * Really, they should be calculated from the RAND!
 	 *
 	 */
-	sres1 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_SRES1, TAG_ANY);
-	sres2 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_SRES2, TAG_ANY);
-	sres3 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_SRES3, TAG_ANY);
+	sres1 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_SRES, TAG_ANY);
+	sres2 = fr_pair_find_by_num(sres1, 0, PW_EAP_SIM_SRES, TAG_ANY);
+	sres3 = fr_pair_find_by_num(sres2, 0, PW_EAP_SIM_SRES, TAG_ANY);
 
 	if (!sres1 ||
 	    !sres2 ||
@@ -1054,19 +1054,19 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	memcpy(eap_context->eap.sim.keys.sres[1], sres2->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[1]));
 	memcpy(eap_context->eap.sim.keys.sres[2], sres3->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[2]));
 
-	Kc1 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_KC1, TAG_ANY);
-	Kc2 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_KC2, TAG_ANY);
-	Kc3 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_KC3, TAG_ANY);
+	kc1 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_KC, TAG_ANY);
+	kc2 = fr_pair_find_by_num(kc1, 0, PW_EAP_SIM_KC, TAG_ANY);
+	kc3 = fr_pair_find_by_num(kc2, 0, PW_EAP_SIM_KC, TAG_ANY);
 
-	if (!Kc1 ||
-	    !Kc2 ||
-	    !Kc3) {
-		ERROR("Need to have Kc 1, 2, and 3 set");
+	if (!kc1 ||
+	    !kc2 ||
+	    !kc3) {
+		ERROR("Need to have kc 1, 2, and 3 set");
 		return 0;
 	}
-	memcpy(eap_context->eap.sim.keys.kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[0]));
-	memcpy(eap_context->eap.sim.keys.kc[1], Kc2->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[1]));
-	memcpy(eap_context->eap.sim.keys.kc[2], Kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[2]));
+	memcpy(eap_context->eap.sim.keys.kc[0], kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[0]));
+	memcpy(eap_context->eap.sim.keys.kc[1], kc2->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[1]));
+	memcpy(eap_context->eap.sim.keys.kc[2], kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[2]));
 
 	/* all set, calculate keys */
 	eap_sim_calculate_keys(&eap_context->eap.sim.keys);
