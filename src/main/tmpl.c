@@ -1671,7 +1671,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       xlat_escape_t escape, void *escape_ctx,
 		       PW_TYPE dst_type)
 {
-	value_data_t const	*to_cast;
+	value_data_t const	*to_cast = NULL;
 	value_data_t		from_cast;
 
 	VALUE_PAIR		*vp = NULL;
@@ -1760,7 +1760,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		talloc_free(vd.ptr);	/* free the old value */
 		if (ret < 0) return -1;
 
-
 		vd.strvalue = tmp.strvalue;
 		vd.length = tmp.length;
 		to_cast = &vd;
@@ -1770,7 +1769,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		break;
 
 	case TMPL_TYPE_ATTR:
-	{
 		RDEBUG4("EXPAND TMPL ATTR");
 
 		ret = tmpl_find_vp(&vp, request, vpt);
@@ -1791,7 +1789,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		default:
 			break;
 		}
-	}
 		break;
 
 	case TMPL_TYPE_DATA:
