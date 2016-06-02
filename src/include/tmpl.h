@@ -371,7 +371,7 @@ do {\
  *			- #TMPL_TYPE_XLAT_STRUCT
  *			- #TMPL_TYPE_ATTR
  *			- #TMPL_TYPE_DATA
- * @param _escape xlat	escape function (only used for PW_TYPE_XLAT_* types).
+ * @param _escape	function (only used for PW_TYPE_XLAT_* types).
  * @param _escape_ctx	xlat escape function data (only used for PW_TYPE_XLAT_* types).
  * @return
  *	- -1 on failure.
