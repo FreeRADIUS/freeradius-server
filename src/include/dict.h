@@ -126,7 +126,7 @@ typedef struct dict_vendor {
  */
 #define FR_DICT_ATTR_SIZE		(sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN)
 
-extern const int	fr_dict_attr_allowed_chars[256];
+extern const bool	fr_dict_attr_allowed_chars[UINT8_MAX];
 /*
  *	Dictionary population
  */
