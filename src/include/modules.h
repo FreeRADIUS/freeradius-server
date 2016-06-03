@@ -192,6 +192,13 @@ rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 int virtual_servers_bootstrap(CONF_SECTION *config);
 int virtual_servers_init(CONF_SECTION *config);
 
+/*
+ *	In interpreter.h, but here for public consumption.
+ */
+rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
+
+int unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+
 #ifdef __cplusplus
 }
 #endif

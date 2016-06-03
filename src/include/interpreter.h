@@ -132,10 +132,6 @@ static inline modcallable *mod_xlattocallable(modxlat *p)
 	return (modcallable *)p;
 }
 
-rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
-
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component);
-
 #ifdef __cplusplus
 }
 #endif
