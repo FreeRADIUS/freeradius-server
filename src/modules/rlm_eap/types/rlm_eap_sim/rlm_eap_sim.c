@@ -526,10 +526,9 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	default:
 		rad_assert(0);
-		return 1;
 	}
 
-	return 0;
+	return 1;
 }
 
 /*
