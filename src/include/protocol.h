@@ -33,6 +33,7 @@ extern "C" {
  *	We'll use this below.
  */
 typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
+typedef int (*rad_listen_unlang_t)(CONF_SECTION *, CONF_SECTION *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
 typedef ssize_t (*rad_listen_size_t)(uint8_t const *data, size_t data_len);
 
@@ -47,6 +48,8 @@ typedef struct fr_protocol_t {
 
 	rad_listen_size_t	size;
 
+	rad_listen_unlang_t	bootstrap;
+	rad_listen_unlang_t	compile;
 	rad_listen_parse_t	parse;
 	rad_listen_parse_t	open;
 	rad_listen_recv_t	recv;

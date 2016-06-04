@@ -210,6 +210,17 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 				return -1;
 			}
 		}
+
+		/*
+		 *	Bootstrap the protocol, which (should) set
+		 *	Auth-Type, etc., along with checking for
+		 *	the protocol-specific processing sections.
+		 */
+		if (proto->bootstrap && (proto->bootstrap(server, cs) < 0)) {
+			cf_log_err_cs(cs, "Failed loading protocol %s", value);
+			dlclose(handle);
+			return -1;
+		}
 	}
 
 	/*
@@ -3116,6 +3127,11 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	char const	*listen_type;
 	rad_listen_t	*this;
 	CONF_SECTION	*cs = lc->cs;
+
+	if (lc->proto->compile && (lc->proto->compile(lc->server, lc->cs) < 0)) {
+		cf_log_err_cs(lc->server, "Failed compiling unlang policies for listen type '%s'", lc->proto->name);
+		return NULL;
+	}
 
 	cf_log_info(cs, "listen {");
 

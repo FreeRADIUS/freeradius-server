@@ -109,6 +109,45 @@ static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return vqp_decode(request->packet);
 }
 
+
+/*
+ *	If there's no "vmps" section, we can't bootstrap anything.
+ */
+static int vqp_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(server_cs, "vmps");
+	if (!cs) {
+		cf_log_err_cs(server_cs, "No 'vmps' sub-section found");
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ *	Ensure that the "vmps" section is compiled.
+ */
+static int vqp_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(server_cs, "vmps");
+	if (!cs) {
+		cf_log_err_cs(server_cs, "No 'vmps' sub-section found");
+		return -1;
+	}
+
+	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
+		cf_log_err_cs(cs, "Failed compiling 'vmps' section");
+		return -1;
+	}
+
+	return 0;
+}
+
+
 extern fr_protocol_t proto_vmps;
 fr_protocol_t proto_vmps = {
 	.magic		= RLM_MODULE_INIT,
@@ -117,6 +156,8 @@ fr_protocol_t proto_vmps = {
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
 	.size		= vqp_packet_size,
+	.bootstrap	= vqp_listen_bootstrap,
+	.compile	= vqp_listen_compile,
 	.parse		= common_socket_parse,
 	.open		= common_socket_open,
 	.recv		= vqp_socket_recv,

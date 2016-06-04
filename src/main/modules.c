@@ -1009,17 +1009,6 @@ static int virtual_server_compile(CONF_SECTION *cs)
 			fr_dict_attr_t const *da;
 #endif
 
-#ifdef WITH_VMPS
-			subcs = cf_section_sub_find(cs, "vmps");
-			if (subcs) {
-				cf_log_module(cs, "Loading vmps {...}");
-				if (load_component_section(subcs, MOD_POST_AUTH) < 0) {
-					goto error;
-				}
-				break;
-			}
-#endif
-
 #ifdef WITH_DHCP
 			/*
 			 *	It's OK to not have DHCP.
