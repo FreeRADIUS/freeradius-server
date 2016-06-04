@@ -4,6 +4,6 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= dhcpd.c
+SOURCES		:= proto_dhcp.c
 
 TGT_PREREQS	:= libfreeradius-dhcp.a

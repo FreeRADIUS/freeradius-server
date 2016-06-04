@@ -1,5 +1,5 @@
 /*
- * dhcp.c	DHCP processing.
+ * proto_dhcp.c	DHCP processing.
  *
  * Version:	$Id$
  *
@@ -18,7 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2008 The FreeRADIUS server project
- * Copyright 2008,2011 Alan DeKok <aland@deployingradius.com>
+ * Copyright 2008,2016 Alan DeKok <aland@deployingradius.com>
  */
 
 /*
