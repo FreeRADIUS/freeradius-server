@@ -56,7 +56,7 @@
 #define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/modpriv.h>
 
-RCSID("$Id$")
+RCSID("$Id: 770ce5485dd2b1d5d59546cbd3842e9f5459d027 $")
 
 #include "rlm_eap.h"
 #include <ctype.h>
@@ -421,7 +421,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
  *	compose EAP reply packet in EAP-Message attr of RADIUS.
  *
  *	Set the RADIUS reply codes based on EAP request codes.  Append
- *	any additonal VPs to RADIUS reply
+ *	any additional VPs to RADIUS reply
  */
 rlm_rcode_t eap_compose(eap_session_t *eap_session)
 {
@@ -850,7 +850,7 @@ void eap_success(eap_session_t *eap_session)
 }
 
 /*
- * Basic EAP packet verfications & validations
+ * Basic EAP packet verifications & validations
  */
 static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 {

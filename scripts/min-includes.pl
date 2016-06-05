@@ -4,7 +4,7 @@
 #  This script find duplicates of #include files, ignoring #ifdef's, etc.
 #  from C source files, and (at your command) removes the duplicates.
 #
-#  It is meant to be run ONLY by FreeRADUS developers, and has nothing
+#  It is meant to be run ONLY by FreeRADIUS developers, and has nothing
 #  whatsoever to do with RADIUS, FreeRADIUS, or configuring a RADIUS server.
 #
 ######################################################################

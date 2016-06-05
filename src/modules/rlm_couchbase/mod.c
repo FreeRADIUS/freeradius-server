@@ -23,7 +23,7 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-RCSID("$Id$")
+RCSID("$Id: 0cb3e6dda82c78ca2e7bf1e036b21f709c93f0ce $")
 
 #define LOG_PREFIX "rlm_couchbase - "
 
@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include "mod.h"
 #include "couchbase.h"
 
-/** Delete a conneciton pool handle and free related resources
+/** Delete a connection pool handle and free related resources
  *
  * Destroys the underlying Couchbase connection handle freeing any related
  * resources and closes the socket connection.
@@ -566,7 +566,7 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  * through all returned rows.  The view is called with "stale=false" to ensure the
  * most accurate data available when the view is called.  This will force an index
  * rebuild on this design document in Couchbase.  However, since this function is only
- * run once at sever startup this should not be a concern.
+ * run once at server startup this should not be a concern.
  *
  * @param  inst The module instance.
  * @param  tmpl Default values for new clients.
