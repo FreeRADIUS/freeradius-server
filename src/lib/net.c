@@ -180,7 +180,7 @@ done:
  * @param ip pointer to IP header structure
  * @return
  *	- 1 if checksum is incorrect.
- *	- 0 if UDP payload lenght and checksum are correct
+ *	- 0 if UDP payload length and checksum are correct
  *	- -1 on validation error.
  */
  int fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const * ip)

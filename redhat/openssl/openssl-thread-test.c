@@ -328,7 +328,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	/* Collect up the inforamtion which other threads will need for
+	/* Collect up the information which other threads will need for
 	 * comparing their signature results with ours. */
 	master_args.rsa = rsa;
 	master_args.digest_type = NID_md5;

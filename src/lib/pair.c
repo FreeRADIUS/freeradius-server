@@ -20,7 +20,7 @@
  * Copyright 2000,2006  The FreeRADIUS server project
  */
 
-RCSID("$Id$")
+RCSID("$Id: 26178d13a1ba68961f18b6aaebb2a3924d506075 $")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/regex.h>
@@ -2216,7 +2216,7 @@ char *fr_pair_type_asprint(TALLOC_CTX *ctx, PW_TYPE type)
  * to a string.
  *
  * @param out Where to write the string.
- * @param outlen Lenth of output buffer.
+ * @param outlen Length of output buffer.
  * @param vp to print.
  * @return
  *	- Length of data written to out.
