@@ -942,7 +942,8 @@ static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 
 static int virtual_server_compile(CONF_SECTION *cs)
 {
-	rlm_components_t comp, found;
+	rlm_components_t comp;
+	bool found;
 	char const *name = cf_section_name2(cs);
 
 	cf_log_info(cs, "server %s { # from file %s",
@@ -952,7 +953,7 @@ static int virtual_server_compile(CONF_SECTION *cs)
 	 *	Loop over all of the known components, finding their
 	 *	configuration section, and loading it.
 	 */
-	found = 0;
+	found = false;
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
@@ -991,7 +992,7 @@ static int virtual_server_compile(CONF_SECTION *cs)
 			return -1;
 		}
 
-		found = 1;
+		found = true;
 	} /* loop over components */
 
 	/*
