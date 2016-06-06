@@ -1186,6 +1186,16 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 				return -1;
 			}
 
+			if (!cf_item_is_section(ci)) continue;
+
+			subcs = cf_item_to_section(ci);
+			name1 = cf_section_name1(subcs);
+			
+			if (strcmp(name1, "listen") == 0) {
+				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
+				continue;
+			}
+
 			/*
 			 *	See if it's a RADIUS section.
 			 */
