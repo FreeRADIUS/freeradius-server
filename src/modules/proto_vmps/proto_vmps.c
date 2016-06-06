@@ -139,6 +139,8 @@ static int vqp_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 		return -1;
 	}
 
+	cf_log_module(cs, "Loading vms {...}");
+
 	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
 		cf_log_err_cs(cs, "Failed compiling 'vmps' section");
 		return -1;
