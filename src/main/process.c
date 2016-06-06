@@ -749,20 +749,10 @@ static void request_cleanup_delay_init(REQUEST *request)
 	if (request->packet->dst_port == 0) goto done;
 
 	/*
-	 *	Accounting packets shouldn't be retransmitted.  They
-	 *	should always be updated with Acct-Delay-Time.
+	 *	Only Access-Requests get cleanup_delay.  Everything
+	 *	else gets cleaned up immediately.
 	 */
-#ifdef WITH_ACCOUNTING
-	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
-#endif
-
-#ifdef WITH_DHCP
-	if (request->listener->type == RAD_LISTEN_DHCP) goto done;
-#endif
-
-#ifdef WITH_VMPS
-	if (request->listener->type == RAD_LISTEN_VQP) goto done;
-#endif
+	if (request->packet->code != PW_CODE_ACCESS_REQUEST) goto done;
 
 	if (!request->root->cleanup_delay) goto done;
 
