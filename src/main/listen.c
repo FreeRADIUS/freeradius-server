@@ -101,6 +101,23 @@ static int _listen_config_free(listen_config_t *lc)
 	return 0;
 }
 
+
+int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
+{
+	fr_protocol_t const *proto;
+
+	proto = cf_data_find(cs, "proto");
+	if (!proto || !proto->compile) return 0;
+
+	if (proto->compile(server, cs) < 0) {
+		cf_log_err_cs(server, "Failed compiling unlang policies for listen type '%s'", proto->name);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /*
  *	Bootstrap a listener.  Do basic sanity checking, load plugins,
  *	define types.
@@ -221,6 +238,8 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			dlclose(handle);
 			return -1;
 		}
+
+		cf_data_add(cs, "proto", proto, NULL);
 	}
 
 	/*
@@ -3127,11 +3146,6 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	char const	*listen_type;
 	rad_listen_t	*this;
 	CONF_SECTION	*cs = lc->cs;
-
-	if (lc->proto->compile && (lc->proto->compile(lc->server, lc->cs) < 0)) {
-		cf_log_err_cs(lc->server, "Failed compiling unlang policies for listen type '%s'", lc->proto->name);
-		return NULL;
-	}
 
 	cf_log_info(cs, "listen {");
 

@@ -1039,6 +1039,16 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 				subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 			}
 #endif
+
+			/*
+			 *	Compile the listeners.
+			 */
+			for (subcs = cf_subsection_find_next(cs, NULL, "listen");
+			     subcs != NULL;
+			     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
+				if (listen_compile(cs, subcs) < 0) return -1;
+			}
+
 		} while (0);
 
 	cf_log_info(cs, "} # server %s", name);

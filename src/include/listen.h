@@ -177,6 +177,7 @@ typedef struct listen_socket_t {
 } listen_socket_t;
 
 int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_name);
+int listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs);
 void listen_free(rad_listen_t **head);
 int listen_init(rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port);
