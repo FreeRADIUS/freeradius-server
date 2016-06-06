@@ -20,7 +20,7 @@
  * Copyright 2000,2006  The FreeRADIUS server project
  */
 
-RCSID("$Id: 26178d13a1ba68961f18b6aaebb2a3924d506075 $")
+RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/regex.h>

@@ -23,7 +23,7 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-RCSID("$Id: 0cb3e6dda82c78ca2e7bf1e036b21f709c93f0ce $")
+RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_couchbase - "
 

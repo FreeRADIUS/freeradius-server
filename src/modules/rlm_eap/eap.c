@@ -56,7 +56,7 @@
 #define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/modpriv.h>
 
-RCSID("$Id: 770ce5485dd2b1d5d59546cbd3842e9f5459d027 $")
+RCSID("$Id$")
 
 #include "rlm_eap.h"
 #include <ctype.h>
