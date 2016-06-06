@@ -239,6 +239,12 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			return -1;
 		}
 
+		if (cf_data_find(cs, "proto") != NULL) {
+			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
+			dlclose(handle);
+			return -1;
+		}
+
 		cf_data_add(cs, "proto", proto, NULL);
 	}
 
