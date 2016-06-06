@@ -1187,60 +1187,13 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			}
 
 			/*
-			 *	CONF_DATA, etc.
-			 */
-			if (!cf_item_is_section(ci)) continue;
-
-			subcs = cf_item_to_section(ci);
-			name1 = cf_section_name1(subcs);
-
-			/*
-			 *	No internal types or checking for VMPS
-			 *	and DHCP.
-			 */
-#ifdef WITH_VMPS
-			if (strcmp(name1, "vmps") == 0) continue;
-#endif
-
-#ifdef WITH_DHCP
-			if (strcmp(name1, "dhcp") == 0) continue;
-#endif
-
-			/*
-			 *	Ignore clients and listeners for now.
-			 */
-			if (strcmp(name1, "clients") == 0) continue;
-			if (strcmp(name1, "client") == 0) continue;
-
-			if (strcmp(name1, "listen") == 0) {
-				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
-				continue;
-			}
-
-			/*
 			 *	See if it's a RADIUS section.
 			 */
 			for (comp = 0; comp < MOD_COUNT; ++comp) {
-				if (strcmp(name1, section_type_value[comp].section) == 0) break;
+				if (strcmp(name1, section_type_value[comp].section) == 0) {
+					if (!virtual_server_define_types(subcs, comp)) return -1;
+				}
 			}
-
-			/*
-			 *	This will be changed into an error in
-			 *	a later release.
-			 */
-			if (comp == MOD_COUNT) {
-				WARN("%s[%d]: Ignoring unknown sub-section \"%s\"",
-				     cf_section_filename(subcs), cf_section_lineno(subcs),
-				     name1);
-				continue;
-			}
-
-			/*
-			 *	Define Auth-Type for "authenticate",
-			 *	Autz-Type for "authorize", etc.
-			 */
-			if (!virtual_server_define_types(subcs, comp)) return -1;
-
 		} /* loop over things inside of a virtual server */
 	} /* loop over virtual servers */
 
