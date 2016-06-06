@@ -985,7 +985,6 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 #endif
 
 		if (load_component_section(subcs, comp) < 0) {
-		error:
 			if (rad_debug_lvl == 0) {
 				ERROR("Failed to load virtual server \"%s\"", name);
 			}
@@ -1003,42 +1002,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	 */
 	if (!found)
 		do {
-#if defined(WITH_VMPS) || defined(WITH_DHCP)
 			CONF_SECTION *subcs;
-#endif
-#ifdef WITH_DHCP
-			fr_dict_attr_t const *da;
-#endif
-
-#ifdef WITH_DHCP
-			/*
-			 *	It's OK to not have DHCP.
-			 */
-			subcs = cf_subsection_find_next(cs, NULL, "dhcp");
-			if (!subcs) break;
-
-			da = fr_dict_attr_by_name(NULL, "DHCP-Message-Type");
-
-			/*
-			 *	Handle each DHCP Message type separately.
-			 */
-			while (subcs) {
-				char const *name2 = cf_section_name2(subcs);
-
-				if (name2) {
-					cf_log_module(cs, "Loading dhcp %s {...}", name2);
-				} else {
-					cf_log_module(cs, "Loading dhcp {...}");
-				}
-				if (!load_subcomponent_section(subcs,
-							       da,
-							       MOD_POST_AUTH)) {
-					goto error; /* FIXME: memleak? */
-				}
-
-				subcs = cf_subsection_find_next(cs, subcs, "dhcp");
-			}
-#endif
 
 			/*
 			 *	Compile the listeners.

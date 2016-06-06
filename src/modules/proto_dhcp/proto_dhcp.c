@@ -987,6 +987,50 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return fr_dhcp_decode(request->packet);
 }
 
+
+/*
+ *	Ensure that the "dhcp FOO" sections are compiled.
+ */
+static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+	fr_dict_attr_t const *da;
+	fr_dict_enum_t const *dv;
+
+	da = fr_dict_attr_by_name(NULL, "DHCP-Message-Type");
+	if (!da) {
+		cf_log_err_cs(listen_cs, "No DHCP-Message-Type attribute found");
+		return -1;
+	}
+
+	for (cs = cf_subsection_find_next(server_cs, NULL, "dhcp");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(server_cs, cs, "dhcp")) {
+		char const *name2 = cf_section_name2(cs);
+		
+
+		if (name2) {
+			cf_log_module(cs, "Loading dhcp %s {...}", name2);
+		} else {
+			cf_log_module(cs, "Loading dhcp {...}");
+		}
+
+		dv = fr_dict_enum_by_name(NULL, da, name2);
+		if (!dv) {
+			cf_log_err_cs(cs, "Server contains 'dhcp %s {...}, but there is no such value for DHCP-Message-Type",
+				      name2);
+			return -1;
+		}
+
+		if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
+			cf_log_err_cs(cs, "Failed compiling 'dhcp %s' section", name2);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 extern fr_protocol_t proto_dhcp;
 fr_protocol_t proto_dhcp = {
 	.magic		= RLM_MODULE_INIT,
@@ -994,6 +1038,7 @@ fr_protocol_t proto_dhcp = {
 	.inst_size	= sizeof(dhcp_socket_t),
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
+	.compile	= dhcp_listen_compile,
 	.parse		= dhcp_socket_parse,
 	.open		= common_socket_open,
 	.recv		= dhcp_socket_recv,
