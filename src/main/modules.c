@@ -940,7 +940,7 @@ static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 	return 0;
 }
 
-static int virtual_server_compile(CONF_SECTION *cs)
+static int virtual_servers_compile(CONF_SECTION *cs)
 {
 	rlm_components_t comp;
 	bool found;
@@ -1288,7 +1288,7 @@ int virtual_servers_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
-		if (virtual_server_compile(cs) < 0) {
+		if (virtual_servers_compile(cs) < 0) {
 			return -1;
 		}
 	}
