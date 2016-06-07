@@ -968,10 +968,6 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	c = cf_data_find(cs, "unlang");
 	if (!c) return action;
 
-#ifndef NDEBUG
-	memset(request->stack, 0, sizeof(request->stack));
-#endif
-
 	result = action;
 	priority = 0;
 
