@@ -17,6 +17,8 @@
 #  are executed when the link is started, goes up, down, or is
 #  administratively down.
 #
+server bfd {
+
 listen {
 	# Type is bfd
 	type = bfd
@@ -47,11 +49,6 @@ listen {
 	#  octets long, and random.
 	#
 	secret = "hello"
-
-	#  The virtual server used to process the packet.
-	#  See below for an example.
-	#
-	server = bfd
 
 	#  Various timer functions, in milliseconds
 	#  These can also be used in a "peer" section.
@@ -87,7 +84,6 @@ listen {
 #  You can't really run any of the normal RADIUS modules here.
 #  But you could run an external shell script, Perl, etc.
 #
-server bfd {
 	bfd {
 		# Say it's OK.
 		ok
