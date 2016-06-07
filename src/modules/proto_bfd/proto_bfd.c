@@ -67,6 +67,7 @@ typedef struct bfd_state_t {
 
 	fr_event_list_t *el;
 	const char	*server;
+	CONF_SECTION	*unlang;
 
 	bool		blocked;
 	int		pipefd[2];
@@ -212,6 +213,7 @@ typedef struct bfd_socket_t {
 
 	int		number;
 	const char	*server;
+	CONF_SECTION	*unlang;
 
 	uint32_t	min_tx_interval;
 	uint32_t	min_rx_interval;
@@ -471,6 +473,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	session->sockfd = sockfd;
 	session->session_state = BFD_STATE_DOWN;
 	session->server = sock->server;
+	session->unlang = sock->unlang;
 	session->local_disc = fr_rand();
 	session->remote_disc = 0;
 	session->local_diag = BFD_DIAG_NONE;
@@ -1369,7 +1372,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		request->module = NULL;
 
 		DEBUG2("server %s {", request->server);
-		process_authorize(0, request);
+		unlang_interpret(request, session->unlang, RLM_MODULE_NOTFOUND);
 		DEBUG("}");
 
 		/*
@@ -1644,6 +1647,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	char const *auth_type_str = NULL;
 	uint16_t listen_port;
 	fr_ipaddr_t ipaddr;
+	CONF_SECTION *server;
 
 	rad_assert(sock != NULL);
 
@@ -1708,6 +1712,9 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		ERROR("Failed creating session tree!");
 		exit(1);
 	}
+
+	server = cf_section_sub_find_name2(main_config.config, "server", this->server);
+	sock->unlang = cf_section_sub_find(server, "bfd");
 
 	return 0;
 }
@@ -1781,6 +1788,46 @@ static int bfd_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 	return 1;
 }
 
+/*
+ *	If there's no "bfd" section, we can't bootstrap anything.
+ */
+static int bfd_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(server_cs, "bfd");
+	if (!cs) {
+		cf_log_err_cs(server_cs, "No 'bfd' sub-section found");
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ *	Ensure that the "bfd" section is compiled.
+ */
+static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(server_cs, "bfd");
+	if (!cs) {
+		cf_log_err_cs(server_cs, "No 'bfd' sub-section found");
+		return -1;
+	}
+
+	cf_log_module(cs, "Loading bfd {...}");
+
+	if (unlang_compile(cs, MOD_AUTHORIZE) < 0) {
+		cf_log_err_cs(cs, "Failed compiling 'bfd' section");
+		return -1;
+	}
+
+	return 0;
+}
+
+
 extern fr_protocol_t proto_bfd;
 fr_protocol_t proto_bfd = {
 	.magic		= RLM_MODULE_INIT,
@@ -1788,6 +1835,8 @@ fr_protocol_t proto_bfd = {
 	.inst_size	= sizeof(bfd_socket_t),
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
+	.bootstrap	= bfd_socket_bootstrap,
+	.compile	= bfd_socket_compile,
 	.parse		= bfd_socket_parse,
 	.open		= bfd_socket_open,
 	.recv		= bfd_socket_recv,
