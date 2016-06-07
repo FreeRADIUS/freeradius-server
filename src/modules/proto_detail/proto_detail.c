@@ -42,8 +42,6 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
-#ifdef WITH_DETAIL
-
 #define USEC (1000000)
 
 static FR_NAME_NUMBER state_names[] = {
@@ -1151,7 +1149,6 @@ static int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 
 	return 0;
 }
-#endif	/* WITH_DETAIL */
 
 /*
  *	HACK for now
