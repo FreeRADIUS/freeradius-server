@@ -1150,11 +1150,6 @@ static int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 
-/*
- *	HACK for now
- */
-extern void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
-
 extern fr_protocol_t proto_detail;
 fr_protocol_t proto_detail = {
 	.magic = RLM_MODULE_INIT,
