@@ -4458,13 +4458,7 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 
 	rad_assert(xel == el);
 
-	if ((listener->fd < 0)
-#ifdef WITH_DETAIL
-#ifndef WITH_DETAIL_THREAD
-	    && (listener->type != RAD_LISTEN_DETAIL)
-#endif
-#endif
-		) {
+	if (listener->fd < 0) {
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));
