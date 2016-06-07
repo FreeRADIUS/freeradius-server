@@ -7,6 +7,7 @@
 
 #include <freeradius-devel/conffile.h> /* Need CONF_* definitions */
 #include <freeradius-devel/map_proc.h>
+#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef __cplusplus
@@ -131,6 +132,45 @@ static inline modcallable *mod_xlattocallable(modxlat *p)
 {
 	return (modcallable *)p;
 }
+
+#define UNLANG_STACK_MAX (32)
+
+typedef struct unlang_foreach_t {
+	vp_cursor_t cursor;
+	VALUE_PAIR *vps;
+	VALUE_PAIR *variable;
+	int depth;
+} unlang_foreach_t;
+
+typedef struct unlang_redundant_t {
+	modcallable *child;
+	modcallable *found;
+} unlang_redundant_t;
+
+/*
+ *	Don't call the modules recursively.  Instead, do them
+ *	iteratively, and manage the call stack ourselves.
+ */
+typedef struct unlang_stack_entry_t {
+	rlm_rcode_t result;
+	int priority;
+	mod_type_t unwind;		/* unwind to this one if it exists */
+	bool do_next_sibling;
+	bool was_if;
+	bool if_taken;
+	bool resume;
+	modcallable *c;
+
+	union {
+		unlang_foreach_t foreach;
+		unlang_redundant_t redundant;
+	};
+} unlang_stack_entry_t;
+
+typedef struct unlang_stack_t {
+	int depth;
+	unlang_stack_entry_t entry[UNLANG_STACK_MAX];
+} unlang_stack_t;
 
 #ifdef __cplusplus
 }

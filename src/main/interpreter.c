@@ -115,45 +115,6 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *s
 	return request->rcode;
 }
 
-#define UNLANG_STACK_MAX (32)
-
-typedef struct unlang_foreach_t {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vps;
-	VALUE_PAIR *variable;
-	int depth;
-} unlang_foreach_t;
-
-typedef struct unlang_redundant_t {
-	modcallable *child;
-	modcallable *found;
-} unlang_redundant_t;
-
-/*
- *	Don't call the modules recursively.  Instead, do them
- *	iteratively, and manage the call stack ourselves.
- */
-typedef struct unlang_stack_entry_t {
-	rlm_rcode_t result;
-	int priority;
-	mod_type_t unwind;		/* unwind to this one if it exists */
-	bool do_next_sibling;
-	bool was_if;
-	bool if_taken;
-	bool resume;
-	modcallable *c;
-
-	union {
-		unlang_foreach_t foreach;
-		unlang_redundant_t redundant;
-	};
-} unlang_stack_entry_t;
-
-typedef struct unlang_stack_t {
-	int depth;
-	unlang_stack_entry_t entry[UNLANG_STACK_MAX];
-} unlang_stack_t;
-
 typedef enum unlang_action_t {
 	UNLANG_CALCULATE_RESULT = 1,
 	UNLANG_CONTINUE,
@@ -1001,24 +962,25 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	int priority;
 	rlm_rcode_t result;
 	modcallable *c;
-	unlang_stack_t stack;
-
+	
 	if (!cs) return action;
 
 	c = cf_data_find(cs, "unlang");
 	if (!c) return action;
 
-	memset(&stack, 0, sizeof(stack));
+#ifndef NDEBUG
+	memset(request->stack, 0, sizeof(request->stack));
+#endif
 
 	result = action;
 	priority = 0;
 
-	unlang_push(&stack, c, result, true);
+	unlang_push(request->stack, c, result, true);
 
 	/*
 	 *	Call the main handler.
 	 */
-	unlang_run(request, &stack, &result, &priority);
+	unlang_run(request, request->stack, &result, &priority);
 
 	/*
 	 *	Return the result.

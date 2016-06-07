@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/rad_assert.h>
 
 /** Per-request opaque data, added by modules
@@ -110,6 +111,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 
 	request->module = NULL;
 	request->component = "<core>";
+	request->stack = talloc_zero(request, unlang_stack_t);
 
 	request->state_ctx = talloc_init("session-state");
 

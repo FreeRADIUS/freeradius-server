@@ -251,6 +251,8 @@ struct rad_request {
 	char const		*component; 	//!< Section the request is in.
 	char const		*module;	//!< Module the request is currently being processed by.
 
+	void			*stack;		//!< unlang interpreter stack.
+
 	REQUEST			*parent;
 
 #ifdef WITH_PROXY
