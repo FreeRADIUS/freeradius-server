@@ -995,10 +995,8 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	} /* loop over components */
 
 	/*
-	 *	We haven't loaded any of the normal sections.  Maybe we're
-	 *	supposed to load the vmps section.
-	 *
-	 *	This is a bit of a hack...
+	 *	We haven't loaded any of the RADIUS sections.  Maybe we're
+	 *	supposed to load a non-RADIUS section.
 	 */
 	if (!found)
 		do {
