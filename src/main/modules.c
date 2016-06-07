@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
+extern int listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs);
+
 /** Path to search for modules in
  *
  */
