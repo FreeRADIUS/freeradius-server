@@ -30,6 +30,7 @@
 
 typedef struct arp_socket_t {
 	listen_socket_t	lsock;
+	CONF_SECTION	*unlang;
 	uint64_t	counter;
 	RADCLIENT	client;
 } arp_socket_t;
@@ -54,6 +55,7 @@ static int arp_process(REQUEST *request)
 	RADIUS_PACKET *packet = request->packet;
 	struct arphdr const *arp;
 	uint8_t const *p;
+	arp_socket_t *sock = request->listener->data;
 
 	arp = (struct arphdr *) request->packet->data;
 
@@ -78,9 +80,11 @@ static int arp_process(REQUEST *request)
 #endif
 
 	/*
-	 *
+	 *	Interpret the section.
 	 */
-	process_post_auth(0, request);
+	DEBUG2("server %s {", request->server);
+	unlang_interpret(request, sock->unlang, RLM_MODULE_NOOP);
+	DEBUG("}");
 
 	return 1;
 }
@@ -250,6 +254,7 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	arp_socket_t	*sock = this->data;
 	RADCLIENT	*client;
 	CONF_PAIR	*cp = NULL;
+	CONF_SECTION	*server;
 
 	sock->lsock.pcap_filter_builder = arp_pcap_filter_builder;
 	sock->lsock.pcap_type = PCAP_INTERFACE_IN;
@@ -281,6 +286,12 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->secret = client->shortname;
 	client->nas_type = talloc_typed_strdup(sock, "none");
 
+	/*
+	 *	Find the sibling "arp" section of the "listen" section.
+	 */
+	server = cf_item_parent(cf_section_to_item(cs));
+	sock->unlang = cf_section_sub_find(server, "arp");
+
 	return 0;
 }
 
@@ -293,6 +304,46 @@ static int arp_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 	return 1;
 }
 
+/*
+ *	If there's no "arp" section, we can't bootstrap anything.
+ */
+static int arp_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(server_cs, "arp");
+	if (!cs) {
+		cf_log_err_cs(server_cs, "No 'arp' sub-section found");
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ *	Ensure that the "arp" section is compiled.
+ */
+static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(server_cs, "arp");
+	if (!cs) {
+		cf_log_err_cs(server_cs, "No 'arp' sub-section found");
+		return -1;
+	}
+
+	cf_log_module(cs, "Loading arp {...}");
+
+	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
+		cf_log_err_cs(cs, "Failed compiling 'arp' section");
+		return -1;
+	}
+
+	return 0;
+}
+
+
 extern fr_protocol_t proto_arp;
 fr_protocol_t proto_arp = {
 	.magic		= RLM_MODULE_INIT,
@@ -300,6 +351,8 @@ fr_protocol_t proto_arp = {
 	.inst_size	= sizeof(arp_socket_t),
 	.transports	= 0,
 	.tls		= false,
+	.bootstrap	= arp_socket_bootstrap,
+	.compile	= arp_socket_compile,
 	.parse		= arp_socket_parse,
 	.open		= common_socket_open,
 	.recv		= arp_socket_recv,

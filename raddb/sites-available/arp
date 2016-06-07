@@ -33,13 +33,9 @@ server arp {
 
 
 	#
-	#  For now, ARP is processed through the "post-auth"
-	#  section.  As we make the server more protocol agnostic,
-	#  this will change.
-	#
 	#  If you need to know the interface, use %{listen:interface}
 	#
-	post-auth {
+	arp {
 		ok
 	}
 }
