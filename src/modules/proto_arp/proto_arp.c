@@ -52,32 +52,7 @@ typedef struct arp_over_ether {
 
 static int arp_process(REQUEST *request)
 {
-	RADIUS_PACKET *packet = request->packet;
-	struct arphdr const *arp;
-	uint8_t const *p;
 	arp_socket_t *sock = request->listener->data;
-
-	arp = (struct arphdr *) request->packet->data;
-
-	p = (const uint8_t *) arp;
-	if (p > (packet->data + packet->data_len)) return 0;
-
-#if 0
-	{
-		size_t len, i;
-		len = packet->data_len;
-		len -= (p - packet->data);
-
-		for (i = 0; i < len; i++) {
-			if ((i & 0x0f) == 0) printf("%04zx: ", i);
-			printf("%02x ", p[i]);
-			if ((i & 0x0f) == 0x0f) printf("\r\n");
-			fflush(stdout);
-		}
-		printf("\n");
-		fflush(stdout);
-	}
-#endif
 
 	/*
 	 *	Interpret the section.
