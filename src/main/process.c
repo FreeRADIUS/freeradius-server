@@ -33,10 +33,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-#ifdef WITH_DETAIL
-#  include <freeradius-devel/detail.h>
-#endif
-
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
 #else
