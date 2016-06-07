@@ -4,7 +4,6 @@ SOURCES := acct.c \
     channel.c \
     client.c \
     crypt.c \
-    detail.c \
     files.c \
     interpreter.c \
     listen.c \

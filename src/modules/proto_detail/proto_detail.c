@@ -1,5 +1,5 @@
 /*
- * detail.c	Process the detail file
+ * proto_detail.c	Process the detail file
  *
  * Version:	$Id$
  *
@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/detail.h>
+#include <freeradius-devel/protocol.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -65,7 +66,7 @@ static FR_NAME_NUMBER state_names[] = {
  *	If we're limiting outstanding packets, then mark the response
  *	as being sent.
  */
-int detail_send(rad_listen_t *listener, REQUEST *request)
+static int detail_send(rad_listen_t *listener, REQUEST *request)
 {
 	char c = 0;
 	listen_detail_t *data = listener->data;
@@ -309,7 +310,7 @@ static int detail_open(rad_listen_t *this)
  *	t_rtt + t_delay wait for signal that the server is idle.
  *
  */
-int detail_recv(rad_listen_t *listener)
+static int detail_recv(rad_listen_t *listener)
 {
 	char c = 0;
 	ssize_t rcode;
@@ -905,7 +906,7 @@ static int _detail_free(listen_detail_t *data)
 }
 
 
-int detail_print(rad_listen_t const *this, char *buffer, size_t bufsize)
+static int detail_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 {
 	if (!this->server) {
 		return snprintf(buffer, bufsize, "%s",
@@ -939,18 +940,12 @@ static int detail_delay(listen_detail_t *data)
 	return delay;
 }
 
-/*
- *	Overloaded to return delay times.
- */
-int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
 	return 0;
 }
 
-/*
- *	Overloaded to return "should we fix delay times"
- */
-int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+static int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
 	return 0;
 }
@@ -1024,7 +1019,7 @@ static const CONF_PARSER detail_config[] = {
 /*
  *	Parse a detail section.
  */
-int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
+static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	listen_detail_t *data;
@@ -1130,7 +1125,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 /*
  *	Open detail files
  */
-int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
+static int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 {
 	listen_detail_t *data;
 
@@ -1157,3 +1152,24 @@ int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 #endif	/* WITH_DETAIL */
+
+/*
+ *	HACK for now
+ */
+extern void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
+
+extern fr_protocol_t proto_detail;
+fr_protocol_t proto_detail = {
+	.magic = RLM_MODULE_INIT,
+	.name = "detail",
+	.inst_size = sizeof(listen_detail_t),
+	.tls = false,
+	.parse = detail_parse,
+	.open = detail_socket_open,
+	.recv = detail_recv,
+	.send = detail_send,
+	.print = detail_print,
+	.debug = common_packet_debug,
+	.encode = detail_encode,
+	.decode = detail_decode
+};

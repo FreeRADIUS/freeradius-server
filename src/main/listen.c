@@ -178,7 +178,6 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	if (!((strcmp(value, "control") == 0) ||
 	      (strcmp(value, "status") == 0) ||
 	      (strcmp(value, "coa") == 0) ||
-	      (strcmp(value, "detail") == 0) ||
 	      (strcmp(value, "auth") == 0) ||
 	      (strcmp(value, "acct") == 0) ||
 	      (strcmp(value, "auth+acct") == 0))) {
@@ -2644,25 +2643,7 @@ static fr_protocol_t master_listen[] = {
 	NO_LISTENER,
 #endif
 
-#ifdef WITH_DETAIL
-	/* detail */
-	{
-		.magic = RLM_MODULE_INIT,
-		.name = "detail",
-		.inst_size = sizeof(listen_detail_t),
-		.tls = false,
-		.parse = detail_parse,
-		.open = detail_socket_open,
-		.recv = detail_recv,
-		.send = detail_send,
-		.print = detail_print,
-		.debug = common_packet_debug,
-		.encode = detail_encode,
-		.decode = detail_decode
-	  },
-#else
-	NO_LISTENER,
-#endif
+	NO_LISTENER,		/* detail */
 
 	NO_LISTENER,		/* vmps */
 
