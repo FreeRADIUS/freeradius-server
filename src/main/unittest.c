@@ -56,6 +56,11 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
  */
 static void usage(int);
 
+int listen_compile(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs)
+{
+	return 0;
+}
+
 int listen_bootstrap(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs, UNUSED char const *server_name)
 {
 	return -1;

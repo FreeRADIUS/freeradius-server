@@ -39,11 +39,6 @@ RCSID("$Id$")
 #include <freeradius-devel/log.h>
 
 /* Linker hacks */
-int listen_compile(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs)
-{
-	return 0;
-}
-
 char const *get_radius_dir(void)
 {
 	return NULL;
