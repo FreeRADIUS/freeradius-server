@@ -2271,6 +2271,7 @@ void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
 	char	*p = buf;
 	size_t	len;
 
+	if (!fp) return;
 	VERIFY_VP(vp);
 
 	*p++ = '\t';
