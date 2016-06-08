@@ -808,6 +808,8 @@ static void unlang_run(REQUEST *request, unlang_stack_t *stack, rlm_rcode_t *pre
 	unlang_stack_entry_t *entry;
 	unlang_action_t action = UNLANG_BREAK;
 
+	stack->entry[stack->depth].top_frame = true;
+
 redo:
 	result = RLM_MODULE_UNKNOWN;
 	priority = -1;
@@ -856,9 +858,8 @@ redo:
 			/*
 			 *	Done the top stack frame, return
 			 */
-			if (stack->depth == 0) return;
-
 			entry = &stack->entry[stack->depth];
+			if (entry->top_frame) return;
 
 			c = entry->c;
 			rad_assert(c != NULL);

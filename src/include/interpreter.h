@@ -159,6 +159,7 @@ typedef struct unlang_stack_entry_t {
 	bool was_if;
 	bool if_taken;
 	bool resume;
+	bool top_frame;
 	modcallable *c;
 
 	union {
