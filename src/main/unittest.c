@@ -109,7 +109,7 @@ static RADCLIENT *client_alloc(void *ctx)
 	return client;
 }
 
-static REQUEST *request_setup(FILE *fp)
+static REQUEST *request_from_file(FILE *fp)
 {
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
@@ -870,7 +870,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_setup(fp);
+	request = request_from_file(fp);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
 		rcode = EXIT_FAILURE;
