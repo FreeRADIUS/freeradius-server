@@ -1558,7 +1558,7 @@ static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PAC
 }
 
 
-static bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet, struct timeval *now)
+static bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
 {
 	uint32_t count;
 	listen_socket_t *sock = NULL;
@@ -1591,7 +1591,7 @@ static bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACK
 	if (sock && sock->max_rate) {
 		uint32_t pps;
 
-		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now, &sock->rate_time, now);
+		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now, &sock->rate_time, &packet->timestamp);
 		if (pps > sock->max_rate) {
 			DEBUG("Dropping request due to rate limiting");
 			return true;
@@ -1635,7 +1635,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	 */
 	if (!listener->nodup && request_is_dup(listener, client, packet)) return 0;
 
-	if (request_limit(listener, client, packet, &now)) return 0;
+	if (request_limit(listener, client, packet)) return 0;
 
 	/*
 	 *	Allocate a pool for the request.
