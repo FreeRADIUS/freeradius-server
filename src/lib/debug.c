@@ -754,6 +754,7 @@ NEVER_RETURNS void fr_fault(int sig)
 
 finish:
 	raise(sig);
+	fr_exit_now(1);
 }
 
 /** Callback executed on fatal talloc error
