@@ -1659,11 +1659,6 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	}
 
 	/*
-	 *	Mark it as a "real" request with a context.
-	 */
-	request->options |= RAD_REQUEST_OPTION_CTX;
-
-	/*
 	 *	Remember the request in the list.
 	 */
 	if (!listener->nodup) {
@@ -1705,6 +1700,11 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 		talloc_free(request);
 		return NULL;
 	}
+
+	/*
+	 *	Mark it as a "real" request with a context.
+	 */
+	request->options |= RAD_REQUEST_OPTION_CTX;
 
 	request->listener = listener;
 	request->client = client;
