@@ -52,6 +52,84 @@ typedef struct rlm_json_jpath_to_eval {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
+static ssize_t jsonquote_xlat(char **out, size_t outlen,
+			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      UNUSED REQUEST *request, char const *fmt)
+{
+	char const *p;
+	char *out_p = *out;
+	size_t freespace = outlen;
+	size_t len;
+
+	for (p = fmt; *p != '\0'; p++) {
+		/* Indicate truncation */
+		if (freespace < 3) {
+			*out_p = '\0';
+			return outlen + 1;
+		}
+
+		if (*p == '"') {
+			*out_p++ = '\\';
+			*out_p++ = '"';
+			freespace -= 2;
+		} else if (*p == '\\') {
+			*out_p++ = '\\';
+			*out_p++ = '\\';
+			freespace -= 2;
+		} else if (*p == '/') {
+			*out_p++ = '\\';
+			*out_p++ = '/';
+			freespace -= 2;
+		} else if (*p >= ' ') {
+			*out_p++ = *p;
+			freespace--;
+		/*
+		 *	Unprintable chars
+		 */
+		} else {
+			*out_p++ = '\\';
+			freespace--;
+
+			switch (*p) {
+			case '\b':
+				*out_p++ = 'b';
+				freespace--;
+				break;
+
+			case '\f':
+				*out_p++ = 'f';
+				freespace--;
+				break;
+
+			case '\n':
+				*out_p++ = 'b';
+				freespace--;
+				break;
+
+			case '\r':
+				*out_p++ = 'r';
+				freespace--;
+				break;
+
+			case '\t':
+				*out_p++ = 't';
+				freespace--;
+				break;
+
+			default:
+				len = snprintf(out_p, freespace, "u%04X", *p);
+				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+				out_p += len;
+				freespace -= len;
+			}
+		}
+	}
+
+	*out_p = '\0';
+
+	return outlen - freespace;
+}
+
 /** Determine if a jpath expression is valid
  *
  * @param mod_inst data.
@@ -307,6 +385,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
 	fr_json_version_print();
 
+	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	if (map_proc_register(instance, "json", mod_map_proc, NULL,
