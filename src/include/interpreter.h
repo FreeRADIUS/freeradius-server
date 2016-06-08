@@ -133,7 +133,7 @@ static inline modcallable *mod_xlattocallable(modxlat *p)
 	return (modcallable *)p;
 }
 
-#define UNLANG_STACK_MAX (32)
+#define UNLANG_STACK_MAX (64)
 
 typedef struct unlang_foreach_t {
 	vp_cursor_t cursor;
