@@ -167,83 +167,6 @@ static void rlm_rest_cleanup(rlm_rest_t const *instance, rlm_rest_section_t *sec
 	rest_request_cleanup(instance, section, handle);
 }
 
-static ssize_t jsonquote_xlat(char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      UNUSED REQUEST *request, char const *fmt)
-{
-	char const *p;
-	char *out_p = *out;
-	size_t freespace = outlen;
-	size_t len;
-
-	for (p = fmt; *p != '\0'; p++) {
-		/* Indicate truncation */
-		if (freespace < 3) {
-			*out_p = '\0';
-			return outlen + 1;
-		}
-
-		if (*p == '"') {
-			*out_p++ = '\\';
-			*out_p++ = '"';
-			freespace -= 2;
-		} else if (*p == '\\') {
-			*out_p++ = '\\';
-			*out_p++ = '\\';
-			freespace -= 2;
-		} else if (*p == '/') {
-			*out_p++ = '\\';
-			*out_p++ = '/';
-			freespace -= 2;
-		} else if (*p >= ' ') {
-			*out_p++ = *p;
-			freespace--;
-		/*
-		 *	Unprintable chars
-		 */
-		} else {
-			*out_p++ = '\\';
-			freespace--;
-
-			switch (*p) {
-			case '\b':
-				*out_p++ = 'b';
-				freespace--;
-				break;
-
-			case '\f':
-				*out_p++ = 'f';
-				freespace--;
-				break;
-
-			case '\n':
-				*out_p++ = 'b';
-				freespace--;
-				break;
-
-			case '\r':
-				*out_p++ = 'r';
-				freespace--;
-				break;
-
-			case '\t':
-				*out_p++ = 't';
-				freespace--;
-				break;
-
-			default:
-				len = snprintf(out_p, freespace, "u%04X", *p);
-				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-				out_p += len;
-				freespace -= len;
-			}
-		}
-	}
-
-	*out_p = '\0';
-
-	return outlen - freespace;
-}
 /*
  *	Simple xlat to read text data from a URL
  */
@@ -827,7 +750,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Register the rest xlat function
 	 */
 	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
-	xlat_register(inst, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }
