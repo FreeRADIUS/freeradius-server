@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/process.h>
+#include <freeradius-devel/udp.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -59,9 +60,18 @@ static int vqp_socket_recv(rad_listen_t *listener)
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
 	RADCLIENT	*client;
+	TALLOC_CTX	*ctx;
 
-	packet = vqp_recv(listener->fd);
+	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
+	if (!ctx) {
+		udp_recv_discard(listener->fd);
+		return 0;
+	}
+	talloc_set_name_const(ctx, "vmps_listener_pool");
+
+	packet = vqp_recv(ctx, listener->fd);
 	if (!packet) {
+		talloc_free(ctx);
 		ERROR("%s", fr_strerror());
 		return 0;
 	}
@@ -78,7 +88,7 @@ static int vqp_socket_recv(rad_listen_t *listener)
 	 */
 	fun = vmps_process;
 
-	if (!request_receive(NULL, listener, packet, client, fun)) {
+	if (!request_receive(ctx, listener, packet, client, fun)) {
 		fr_radius_free(&packet);
 		return 0;
 	}

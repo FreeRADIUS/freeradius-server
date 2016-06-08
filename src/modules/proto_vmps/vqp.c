@@ -111,7 +111,7 @@ static ssize_t vqp_recv_header(int sockfd)
 	return (12 * (4 + 4 + MAX_VMPS_LEN));
 }
 
-RADIUS_PACKET *vqp_recv(int sockfd)
+RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 {
 	uint8_t		*ptr;
 	ssize_t		data_len;
@@ -128,7 +128,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = fr_radius_alloc(NULL, false);
+	packet = fr_radius_alloc(ctx, false);
 	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;

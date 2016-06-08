@@ -32,7 +32,7 @@ RCSIDH(vqp_h, "$Id$")
 extern "C" {
 #endif
 
-RADIUS_PACKET *vqp_recv(int sockfd);
+RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd);
 int vqp_send(RADIUS_PACKET *packet);
 int vqp_decode(RADIUS_PACKET *packet);
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
