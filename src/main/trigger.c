@@ -243,10 +243,10 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 	 */
 	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
 						     request, value, vp, false, true, EXEC_TIMEOUT);
-	if (fake) talloc_free(fake);
-
 	request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
 	request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+
+	if (fake) talloc_free(fake);
 
 	return ret;
 }
