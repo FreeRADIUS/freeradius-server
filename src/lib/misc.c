@@ -76,6 +76,28 @@ int fr_set_signal(int sig, sig_t func)
 	return 0;
 }
 
+/** Uninstall a signal for a specific handler
+ *
+ * man sigaction says these are fine to call from a signal handler.
+ *
+ * @param sig SIGNAL
+ */
+int fr_unset_signal(int sig)
+{
+#ifdef HAVE_SIGACTION
+        struct sigaction act;
+
+        memset(&act, 0, sizeof(act));
+        act.sa_flags = 0; 
+        sigemptyset(&act.sa_mask);
+        act.sa_handler = SIG_DFL;
+
+        return sigaction(sig, &act, NULL);
+#else
+        return signal(sig, SIG_DFLT);
+#endif
+}
+
 static int _fr_talloc_link_ctx_trigger(fr_talloc_link_t *trigger)
 {
 	if (trigger->armed) talloc_free(trigger->child);
