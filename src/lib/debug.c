@@ -703,10 +703,10 @@ NEVER_RETURNS void fr_fault(int sig)
 	if (strlen(p) >= left) goto oob;
 	strlcpy(out, p, left);
 
-	FR_FAULT_LOG("Calling: %s", cmd);
-
 	{
 		bool disable = false;
+
+		FR_FAULT_LOG("Calling: %s", cmd);
 
 		/*
 		 *	Here we temporarily enable the dumpable flag so if GBD or LLDB
@@ -738,13 +738,23 @@ NEVER_RETURNS void fr_fault(int sig)
 			}
 		}
 
-		fr_exit_now(1);
+		FR_FAULT_LOG("Panic action exited with %i", code);
+
+		fr_exit_now(code);
 	}
 
-	FR_FAULT_LOG("Panic action exited with %i", code);
 
 finish:
+	/*
+	 *	(Re-)Raise the signal, so that if we're running under
+	 *	a debugger, the debugger can break when it receives
+	 *	the signal.
+	 */
+	fr_unset_signal(sig);	/* Make sure we don't get into a loop */
+
 	raise(sig);
+
+	fr_exit_now(1);		/* Function marked as noreturn */
 }
 
 /** Callback executed on fatal talloc error
