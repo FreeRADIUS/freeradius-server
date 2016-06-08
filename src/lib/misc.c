@@ -94,7 +94,7 @@ int fr_unset_signal(int sig)
 
         return sigaction(sig, &act, NULL);
 #else
-        return signal(sig, SIG_DFLT);
+        return signal(sig, SIG_DFL);
 #endif
 }
 
