@@ -155,7 +155,7 @@ static void unlang_pop(unlang_stack_t *stack)
 {
 	unlang_stack_entry_t *entry, *next;
 
-	rad_assert(stack->depth > 1);
+	rad_assert(stack->depth > 0);
 
 	stack->depth -= 1;
 
@@ -853,6 +853,11 @@ redo:
 		do_pop:
 			unlang_pop(stack);
 
+			/*
+			 *	Done the top stack frame, return
+			 */
+			if (stack->depth == 0) return;
+
 			entry = &stack->entry[stack->depth];
 
 			c = entry->c;
@@ -942,11 +947,6 @@ done:
 
 	*presult = entry->result;
 	*ppriority = priority;
-
-	/*
-	 *	Done the top stack frame, return
-	 */
-	if (stack->depth == 1) return;
 
 	result = entry->result;
 	goto do_pop;
