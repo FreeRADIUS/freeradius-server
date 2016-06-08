@@ -746,12 +746,14 @@ NEVER_RETURNS void fr_fault(int sig)
 				fr_exit_now(1);
 			}
 		}
+
+		fr_exit_now(1);
 	}
 
 	FR_FAULT_LOG("Panic action exited with %i", code);
 
 finish:
-	fr_exit_now(1);
+	raise(sig);
 }
 
 /** Callback executed on fatal talloc error
