@@ -70,6 +70,14 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 int request_proxy_reply(RADIUS_PACKET *packet);
 #endif
 
+#ifdef DEBUG_STATE_MACHINE
+void request_trace_state_machine(REQUEST *request);
+# define TRACE_STATE_MACHINE if (rad_debug_lvl) request_trace_state_machine(request)
+#else
+#  define TRACE_STATE_MACHINE {}
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif

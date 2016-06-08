@@ -72,17 +72,6 @@ static char const *action_codes[] = {
 };
 
 #ifdef DEBUG_STATE_MACHINE
-#  define TRACE_STATE_MACHINE \
-if (rad_debug_lvl) do { \
-	struct timeval debug_tv; \
-	gettimeofday(&debug_tv, NULL); \
-	debug_tv.tv_sec -= fr_start_time; \
-	printf("(%" PRIu64 ") %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
-	       request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec, \
-	       __FUNCTION__, action_codes[action], master_state_names[request->master_state], \
-	       child_state_names[request->child_state]); \
-} while (0)
-
 static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
 	"active",
@@ -100,8 +89,16 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 	"done"
 };
 
-#else
-#  define TRACE_STATE_MACHINE {}
+void request_trace_state_machine(REQUEST *request)
+{
+	struct timeval debug_tv;
+	gettimeofday(&debug_tv, NULL);
+	debug_tv.tv_sec -= fr_start_time;
+	printf("(%" PRIu64 ") %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",
+	       request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec,
+	       __FUNCTION__, action_codes[action], master_state_names[request->master_state],
+	       child_state_names[request->child_state]);
+}
 #endif
 
 static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char const *msg)
