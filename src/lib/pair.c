@@ -2267,7 +2267,6 @@ size_t fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp)
  */
 void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
 {
-	if (!fp) return;
 	char	buf[1024];
 	char	*p = buf;
 	size_t	len;
