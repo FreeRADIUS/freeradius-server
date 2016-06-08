@@ -7,3 +7,4 @@ dictionary
 test.conf
 radius.log
 radiusd.pid
+eapol_test
