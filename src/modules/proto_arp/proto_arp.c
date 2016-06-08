@@ -30,7 +30,6 @@
 
 typedef struct arp_socket_t {
 	listen_socket_t	lsock;
-	CONF_SECTION	*unlang;
 	uint64_t	counter;
 	RADCLIENT	client;
 } arp_socket_t;
@@ -52,14 +51,15 @@ typedef struct arp_over_ether {
 
 static int arp_process(REQUEST *request)
 {
-	arp_socket_t *sock = request->listener->data;
+	CONF_SECTION *unlang;
 
-	/*
-	 *	Interpret the section.
-	 */
-	DEBUG2("server %s {", request->server);
-	unlang_interpret(request, sock->unlang, RLM_MODULE_NOOP);
-	DEBUG("}");
+	request->server = request->listener->server;
+	request->server_cs = request->listener->server_cs;
+	unlang = cf_section_sub_find(request->server_cs, "arp");
+
+	request->component = "arp";
+
+	unlang_interpret(request, unlang, RLM_MODULE_NOOP);
 
 	return 1;
 }
@@ -229,7 +229,6 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	arp_socket_t	*sock = this->data;
 	RADCLIENT	*client;
 	CONF_PAIR	*cp = NULL;
-	CONF_SECTION	*server;
 
 	sock->lsock.pcap_filter_builder = arp_pcap_filter_builder;
 	sock->lsock.pcap_type = PCAP_INTERFACE_IN;
@@ -260,12 +259,6 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->longname = client->shortname = sock->lsock.interface;
 	client->secret = client->shortname;
 	client->nas_type = talloc_typed_strdup(sock, "none");
-
-	/*
-	 *	Find the sibling "arp" section of the "listen" section.
-	 */
-	server = cf_item_parent(cf_section_to_item(cs));
-	sock->unlang = cf_section_sub_find(server, "arp");
 
 	return 0;
 }
