@@ -355,8 +355,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnu
 static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 #endif
 
-static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
-			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
 static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action) CC_HINT(nonnull);
 
 #ifdef WITH_COA
@@ -862,8 +860,7 @@ static bool request_max_time(REQUEST *request)
 	return false;
 }
 
-static void worker_thread(REQUEST *request,
-			   fr_request_process_t process)
+void request_thread(REQUEST *request, fr_request_process_t process)
 {
 #ifdef DEBUG_STATE_MACHINE
 	fr_state_action_t action = FR_ACTION_TIMER;
@@ -1558,7 +1555,7 @@ static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PAC
 }
 
 
-static bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
+bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
 {
 	uint32_t count;
 	listen_socket_t *sock = NULL;
@@ -1675,14 +1672,14 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
 	 */
-	worker_thread(request, request_running);
+	request_thread(request, request_running);
 
 	return 1;
 }
 
 
-static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
-			      RADCLIENT *client, RAD_REQUEST_FUNP fun)
+REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
+		       RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	REQUEST *request;
 
@@ -3130,7 +3127,7 @@ static int request_proxy_anew(REQUEST *request)
 		REDEBUG2("Failed to find live home server for request");
 	post_proxy_fail:
 		if (setup_post_proxy_fail(request)) {
-			worker_thread(request, proxy_no_reply);
+			request_thread(request, proxy_no_reply);
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request);
@@ -3840,7 +3837,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		if (proxy_keep_waiting(request, &now)) break;
 
 		if (setup_post_proxy_fail(request)) {
-			worker_thread(request, proxy_no_reply);
+			request_thread(request, proxy_no_reply);
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request);
@@ -3851,7 +3848,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		 *	We received a new reply.  Go process it.
 		 */
 	case FR_ACTION_PROXY_REPLY:
-		worker_thread(request, proxy_running);
+		request_thread(request, proxy_running);
 		break;
 
 	case FR_ACTION_DONE:
@@ -4287,14 +4284,14 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		if (coa_keep_waiting(request)) break;
 
 		if (setup_post_proxy_fail(request)) {
-			worker_thread(request, coa_no_reply);
+			request_thread(request, coa_no_reply);
 		} else {
 			request_done(request, FR_ACTION_DONE);
 		}
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
-		worker_thread(request, coa_running);
+		request_thread(request, coa_running);
 		break;
 
 	case FR_ACTION_DONE:

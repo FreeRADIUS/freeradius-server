@@ -58,6 +58,11 @@ extern time_t fr_start_time;
  */
 void request_enqueue(REQUEST *request);
 
+REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
+		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
+bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet);
+void request_thread(REQUEST *request, fr_request_process_t process);
+
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
