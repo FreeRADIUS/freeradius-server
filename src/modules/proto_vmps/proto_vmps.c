@@ -33,14 +33,15 @@ RCSID("$Id$")
 
 static int vmps_process(REQUEST *request)
 {
-	CONF_SECTION *unlang, *server;
+	CONF_SECTION *unlang;
 
-	server = cf_item_parent(cf_section_to_item(request->listener->cs));
-	unlang = cf_section_sub_find(server, "vmps");
+	request->server = request->listener->server;
+	request->server_cs = request->listener->server_cs;
+	unlang = cf_section_sub_find(request->server_cs, "vmps");
 
-	DEBUG2("Doing VMPS");
+	request->component = "vmps";
+
 	unlang_interpret(request, unlang, RLM_MODULE_NOOP);
-	DEBUG2("Done VMPS");
 
 	request->reply->code = PW_CODE_ACCESS_ACCEPT;
 
