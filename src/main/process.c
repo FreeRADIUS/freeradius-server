@@ -1507,6 +1507,7 @@ static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PAC
 		 *	Tell the state machine that there's a
 		 *	duplicate request.
 		 */
+		request->packet->count++;
 		request->process(request, FR_ACTION_DUP);
 		return true;
 	}
