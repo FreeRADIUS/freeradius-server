@@ -521,6 +521,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Force this no matter what.
 	 */
+	request->master_state = REQUEST_STOP_PROCESSING;
 	request->process = request_done;
 	request->component = NULL;
 	request->module = NULL;
@@ -548,11 +549,6 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		return;
 	}
 
-	/*
-	 *	Mark the request as STOP.
-	 */
-	request->master_state = REQUEST_STOP_PROCESSING;
-
 #ifdef WITH_COA
 	/*
 	 *	Move the CoA request to its own handler.
@@ -564,11 +560,6 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 	}
 #endif
 
-	/*
-	 *	It doesn't hurt to send duplicate replies.  All other
-	 *	signals are ignored, as the request will be cleaned up
-	 *	soon anyways.
-	 */
 	switch (action) {
 	case FR_ACTION_DUP:
 #ifdef WITH_DETAIL
