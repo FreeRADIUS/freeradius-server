@@ -506,6 +506,47 @@ static void proxy_reply_too_late(REQUEST *request)
 #endif
 
 
+/*
+ *	Delete a request.
+ */
+static void request_delete(REQUEST *request)
+{
+	ASSERT_MASTER;
+	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+	rad_assert(!request->in_request_hash);
+#ifdef WITH_PROXY
+	rad_assert(!request->in_proxy_hash);
+#endif
+
+	/*
+	 *	@todo: do final states for TCP sockets, too?
+	 */
+	request_stats_final(request);
+#ifdef WITH_TCP
+	if (request->listener) {
+		request->listener->count--;
+
+		/*
+		 *	If we're the last one, remove the listener now.
+		 */
+		if ((request->listener->count == 0) &&
+		    (request->listener->status >= RAD_LISTEN_STATUS_FROZEN)) {
+			event_new_fd(request->listener);
+		}
+	}
+#endif
+
+	if (request->packet) {
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+			request->packet->id,
+			(unsigned int) (request->timestamp.tv_sec - fr_start_time));
+	} /* else don't print anything */
+
+	fr_event_delete(el, &request->ev);
+	request_free(request);
+}
+
+
 /** Mark a request DONE and clean it up.
  *
  *  When a request is DONE, it can have ties to a number of other
@@ -704,35 +745,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		return;
 	}
 
-	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-
-	/*
-	 *	@todo: do final states for TCP sockets, too?
-	 */
-	request_stats_final(request);
-#ifdef WITH_TCP
-	if (request->listener) {
-		request->listener->count--;
-
-		/*
-		 *	If we're the last one, remove the listener now.
-		 */
-		if ((request->listener->count == 0) &&
-		    (request->listener->status >= RAD_LISTEN_STATUS_FROZEN)) {
-			event_new_fd(request->listener);
-		}
-	}
-#endif
-
-	if (request->packet) {
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
-			request->packet->id,
-			(unsigned int) (request->timestamp.tv_sec - fr_start_time));
-	} /* else don't print anything */
-
-	ASSERT_MASTER;
-	fr_event_delete(el, &request->ev);
-	request_free(request);
+	request_delete(request);
 }
 
 
@@ -1482,9 +1495,10 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	}
 }
 
-/** Process a request from a client.
+/** Process events while the request is queued.
  *
- *  The outcome might be that the request is proxied.
+ *  We give different messages on DUP, and on DONE,
+ *  remove the request from the queue
  *
  *  \dot
  *	digraph queued {
@@ -1508,7 +1522,10 @@ static void request_queued(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DUP:
-		request_dup_msg(request);
+		ERROR("(%" PRIu64 ") Ignoring duplicate packet from "
+		      "client %s port %d - ID: %u as request is still queued.",
+		      request->number, request->client->shortname,
+		      request->packet->src_port,request->packet->id);
 		break;
 
 	case FR_ACTION_RUN:
@@ -1517,7 +1534,8 @@ static void request_queued(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_queue_extract(request);
+		request_delete(request);
 		break;
 
 	default:
