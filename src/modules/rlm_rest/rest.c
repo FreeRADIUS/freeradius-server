@@ -749,11 +749,11 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			/*
 			 *  New attribute, write name, type, and beginning of value array.
 			 */
-			RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
+			RDEBUG2("Encoding attribute \"%s:%s\"", ctx->list_name, vp->da->name);
 
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
-			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
+			len = snprintf(p, freespace + 1, "\"%s:%s\":{\"type\":\"%s\",\"value\":[", ctx->list_name, vp->da->name, type);
 			if (len >= freespace) goto no_space;
 			p += len;
 			freespace -= len;
@@ -939,10 +939,11 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  *
  * @param[in] request Current request.
  * @param[in] ctx to initialise.
+ * @param[in] list_name The name of the list
  * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
-static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool sort)
+static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, char const *list_name, bool sort)
 {
 	/*
 	 * 	Setup stream read data
@@ -957,6 +958,7 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool so
 		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
 	}
 	fr_cursor_init(&ctx->cursor, &request->packet->vps);
+	ctx->list_name = list_name;
 }
 
 /** Converts plain response into a single VALUE_PAIR
@@ -2296,7 +2298,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
-		rest_request_init(request, &ctx->request, true);
+		rest_request_init(request, &ctx->request, "request", true);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_json) < 0) {
@@ -2307,7 +2309,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &ctx->request, false);
+		rest_request_init(request, &ctx->request, "request", false);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_post) < 0) {

@@ -194,6 +194,7 @@ typedef struct rlm_rest_request_t {
 	read_state_t		state;		//!< Encoder state
 
 	vp_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
+	char const		*list_name;	//!< Name of the current list
 
 	size_t			chunk;		//!< Chunk size
 
