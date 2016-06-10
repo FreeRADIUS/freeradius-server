@@ -528,8 +528,7 @@ static REQUEST *request_dequeue(void)
 {
 	time_t blocked;
 	static time_t last_complained = 0;
-	static time_t total_blocked = 0;
-	int num_blocked = 0;
+	int num_blocked;
 	REQUEST *request = NULL;
 
 retry:
@@ -566,16 +565,14 @@ retry:
 
 	blocked = time(NULL);
 	if (!request->proxy && (blocked - request->timestamp.tv_sec) > 5) {
-		total_blocked++;
 		if (last_complained < blocked) {
 			last_complained = blocked;
 			blocked -= request->timestamp.tv_sec;
-			num_blocked = total_blocked;
+			num_blocked = fr_heap_num_elements(thread_pool.idle_heap);
 		} else {
 			blocked = 0;
 		}
 	} else {
-		total_blocked = 0;
 		blocked = 0;
 	}
 
