@@ -2958,7 +2958,8 @@ do_home:
 	if (request->coa) {
 		REQUEST *coa = request->coa;
 
-		coa_separate(request->coa);
+		request->coa = NULL;
+		coa->parent = NULL;
 		request_free(coa);
 	}
 #endif
