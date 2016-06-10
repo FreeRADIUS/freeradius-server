@@ -3407,7 +3407,7 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 	 *	Start off by reading 4 bytes of magic, followed by 4 bytes of zero.
 	 */
 	r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, co->offset);
-	if ((r < 0) && (errno == EINTR)) return 0;
+	if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 	if (r <= 0) {
 		ERROR("Failed reading magic: %s", fr_syserror(errno));
