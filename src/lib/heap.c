@@ -136,8 +136,7 @@ static int fr_heap_bubble(fr_heap_t *hp, size_t child)
  */
 int fr_heap_extract(fr_heap_t *hp, void *data)
 {
-	size_t child, parent;
-	size_t  max;
+	int parent, child, max;
 
 	if (!hp || (hp->num_elements == 0)) return 0;
 
@@ -157,7 +156,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		/*
 		 *	Out of bounds.
 		 */
-		if ((parent < 0) || (parent >= hp->num_elements)) return 0;
+		if ((parent < 0) || ((size_t) parent >= hp->num_elements)) return 0;
 	}
 
 	RESET_OFFSET(hp, parent);
