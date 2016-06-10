@@ -346,6 +346,7 @@ STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_queued) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 
@@ -1481,6 +1482,50 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	}
 }
 
+/** Process a request from a client.
+ *
+ *  The outcome might be that the request is proxied.
+ *
+ *  \dot
+ *	digraph queued {
+ *		queued -> queued [ label = "TIMER < max_request_time" ];
+ *		queued -> done [ label = "TIMER >= max_request_time" ];
+ *		queued -> running [ label = "RUNNING" ];
+ *		queued -> dup [ label = "DUP", arrowhead = "none" ];
+ *	}
+ *  \enddot
+ */
+static void request_queued(REQUEST *request, fr_state_action_t action)
+{
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
+
+	switch (action) {
+	case FR_ACTION_TIMER:
+		(void) request_max_time(request);
+		break;
+
+	case FR_ACTION_DUP:
+		request_dup_msg(request);
+		break;
+
+	case FR_ACTION_RUN:
+		request->process = request_running;
+		request->process(request, action);
+		break;
+
+	case FR_ACTION_DONE:
+		request_done(request, action);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
+}
+
 /*
  *	See if a new packet is a duplicate of an old one.
  */
@@ -1694,7 +1739,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
 	 */
-	worker_thread(request, request_running);
+	worker_thread(request, request_queued);
 
 	return 1;
 }
