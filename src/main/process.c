@@ -2955,11 +2955,12 @@ do_home:
 	home_server_update_request(home, request);
 
 #ifdef WITH_COA
-	/*
-	 *	Once we've decided to proxy a request, we cannot send
-	 *	a CoA packet.  So we free up any CoA packet here.
-	 */
-	if (request->coa) request_done(request->coa, FR_ACTION_DONE);
+	if (request->coa) {
+		REQUEST *coa = request->coa;
+
+		coa_separate(request->coa);
+		request_free(coa);
+	}
 #endif
 
 	/*
