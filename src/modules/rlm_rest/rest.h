@@ -120,6 +120,8 @@ typedef struct rlm_rest_section_t {
 
 	char const		*data;		//!< Custom body data (optional).
 
+	bool			all_lists_body;	//!< Include all lists in the HTTP request
+
 	char const		*auth_str;	//!< The string version of the Auth-Type.
 	http_auth_type_t	auth;		//!< HTTP auth type.
 	bool			require_auth;	//!< Whether HTTP-Auth is required or not.
