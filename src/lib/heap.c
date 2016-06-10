@@ -157,7 +157,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		/*
 		 *	Out of bounds.
 		 */
-		if (parent >= hp->num_elements) return 0;
+		if ((parent < 0) || (parent >= hp->num_elements)) return 0;
 	}
 
 	RESET_OFFSET(hp, parent);
