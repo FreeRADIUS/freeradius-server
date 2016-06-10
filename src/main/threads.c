@@ -519,6 +519,18 @@ void request_enqueue(REQUEST *request)
 	sem_post(&thread->semaphore);
 }
 
+
+void request_queue_extract(REQUEST *request)
+{
+	if (request->heap_id < 0) return;
+	
+	pthread_mutex_lock(&thread_pool.mutex);
+	(void) fr_heap_extract(thread_pool.idle_heap, request);
+	thread_pool.num_queued--;
+	pthread_mutex_unlock(&thread_pool.mutex);
+}
+
+
 /*
  *	Remove a request from the queue.
  *
