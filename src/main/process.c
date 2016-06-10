@@ -4401,7 +4401,7 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		if (setup_post_proxy_fail(request)) {
 			request_thread(request, coa_no_reply);
 		} else {
-			request_done(request, FR_ACTION_DONE);
+			goto done;
 		}
 		break;
 
@@ -4409,8 +4409,10 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		request_thread(request, coa_running);
 		break;
 
+	done:
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request->process = proxy_wait_for_id;
+		request->process(request, action);
 		break;
 
 	default:
@@ -4494,7 +4496,8 @@ static void coa_no_reply(REQUEST *request, fr_state_action_t action)
 		/* FALL-THROUGH */
 
 	case FR_ACTION_DONE:
-		request_done(request, FR_ACTION_DONE);
+		request->process = proxy_wait_for_id;
+		request->process(request, action);
 		break;
 
 	default:
@@ -4543,7 +4546,8 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 	done:
 	case FR_ACTION_DONE:
-		request_done(request, FR_ACTION_DONE);
+		request->process = proxy_wait_for_id;
+		request->process(request, action);
 		break;
 
 	default:
