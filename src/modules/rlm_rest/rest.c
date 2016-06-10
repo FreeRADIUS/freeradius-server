@@ -662,11 +662,10 @@ no_space:
  * @param[in] request Current request.
  * @param[in] vps The list of value pairs to initialize
  * @param[in] ctx to initialise.
- * @param[in] list_name The name of the list
  * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
-static void rest_request_init(REQUEST *request, VALUE_PAIR **vps, rlm_rest_request_t *ctx, char const *list_name, bool sort)
+static void rest_request_init(REQUEST *request, VALUE_PAIR **vps, rlm_rest_request_t *ctx, bool sort)
 {
 	/*
 	 * 	Setup stream read data
@@ -681,7 +680,6 @@ static void rest_request_init(REQUEST *request, VALUE_PAIR **vps, rlm_rest_reque
 		fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
 	}
 	fr_cursor_init(&ctx->cursor, vps);
-	ctx->list_name = list_name;
 }
 
 #ifdef HAVE_JSON
@@ -802,7 +800,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		 */
 		if (!vp && (ctx->state == READ_STATE_ATTR_BEGIN)) {
 			if (ctx->next_vps->list_name != NULL) {
-				rest_request_init(request, ctx->next_vps->vps, ctx, ctx->next_vps->list_name, true);
+				rest_request_init(request, ctx->next_vps->vps, ctx, true);
+				ctx->list_name = ctx->next_vps->list_name;
 				vp = fr_cursor_current(&ctx->cursor);
 				ctx->next_vps++;
 				ctx->state = READ_STATE_ATTR_BEGIN;
@@ -2359,7 +2358,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &request->packet->vps, &ctx->request, "request", false);
+		rest_request_init(request, &request->packet->vps, &ctx->request, false);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_post) < 0) {
