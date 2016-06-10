@@ -498,6 +498,17 @@ static void proxy_reply_too_late(REQUEST *request)
 #endif
 
 
+static void request_dup_extract(REQUEST *request)
+{
+	if (!request->in_request_hash) return;
+
+	if (!rbtree_deletebydata(pl, &request->packet)) {
+		rad_assert(0 == 1);
+	}
+	request->in_request_hash = false;
+}
+
+
 /*
  *	Delete a request.
  */
@@ -657,12 +668,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Remove it from the request hash.
 	 */
-	if (request->in_request_hash) {
-		if (!rbtree_deletebydata(pl, &request->packet)) {
-			rad_assert(0 == 1);
-		}
-		request->in_request_hash = false;
-	}
+	request_dup_extract(request);
 
 	/*
 	 *	If there's no children, we can mark the request as done.
@@ -1463,14 +1469,7 @@ static void request_queued(REQUEST *request, fr_state_action_t action)
 
 	case FR_ACTION_DONE:
 		request_queue_extract(request);
-
-		if (request->in_request_hash) {
-			if (!rbtree_deletebydata(pl, &request->packet)) {
-				rad_assert(0 == 1);
-			}
-			request->in_request_hash = false;
-		}
-
+		request_dup_extract(request);
 		request_delete(request);
 		break;
 
