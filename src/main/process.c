@@ -1030,7 +1030,7 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
@@ -1422,7 +1422,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
@@ -3371,7 +3371,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
