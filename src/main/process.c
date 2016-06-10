@@ -366,8 +366,8 @@ static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #  define COA_SEPARATE
 #endif
 
-#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_DONE);return;}} while (0)
-#define CHECK_FOR_PROXY_CANCELLED do { if (!request->proxy->listener) {request_done(request, FR_ACTION_DONE);return;}} while (0)
+#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {action = FR_ACTION_DONE} while (0)
+#define CHECK_FOR_PROXY_CANCELLED do { if (!request->proxy->listener) {action = FR_ACTION_DONE;} while (0)
 
 
 #undef USEC
@@ -609,10 +609,10 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 #endif
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
-			return;
 		} else {
 			RDEBUG("No reply.  Ignoring retransmit");
 		}
+		/* @fixme: increment cleanup_delay */
 		break;
 
 		/*
@@ -1152,11 +1152,11 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
-	CHECK_FOR_STOP;
 
-#ifndef DEBUG_STATE_MACHINE
-	(void) action;	/* -Wunused */
-#endif
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		request->process(request, FR_ACTION_DONE);
+		return;
+	}
 
 #ifdef WITH_COA
 	/*
