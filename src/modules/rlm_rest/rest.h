@@ -185,6 +185,11 @@ typedef enum {
 	WRITE_STATE_DISCARD,
 } write_state_t;
 
+typedef struct rlm_rest_next_vps_t {
+	VALUE_PAIR	**vps;		//!< The actual value pairs
+	char const	*list_name;	//!< The name of the list, used a prefix
+} rlm_rest_next_vps_t;
+
 /*
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
@@ -200,7 +205,7 @@ typedef struct rlm_rest_request_t {
 
 	void			*encoder;	//!< Encoder specific data.
 
-	VALUE_PAIR		**next_vps;	//!< Dirty hack to make things work
+	rlm_rest_next_vps_t	*next_vps;	//!< The list of value pairs to come
 } rlm_rest_request_t;
 
 /*

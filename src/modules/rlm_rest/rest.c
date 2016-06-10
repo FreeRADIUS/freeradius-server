@@ -685,6 +685,20 @@ static void rest_request_init(REQUEST *request, VALUE_PAIR **vps, rlm_rest_reque
 }
 
 #ifdef HAVE_JSON
+/** Internal method called in rest_encode_json
+ *
+ * @param[in] walker Walker to increment if vps are given
+ * @param[in] vps The vps to add
+ * @param[in] list_name The name of the list, like "request" or "control"
+ */
+static void increase_walker_with_next_vps(rlm_rest_next_vps_t **walker, VALUE_PAIR **vps, char const *list_name)
+{
+	rlm_rest_next_vps_t *local_walker = *walker;
+	if (*vps)
+		*local_walker++ = (rlm_rest_next_vps_t){ vps, list_name };
+	*walker = local_walker;
+}
+
 /** Encodes VALUE_PAIR linked list in JSON format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
@@ -747,17 +761,32 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_END) return 0;
 
 	if (ctx->state == READ_STATE_INIT) {
-		if (ctx->next_vps == NULL) {
-			if (freespace < 1) goto no_space;
-			*p++ = '{';
-			freespace--;
-
-			rest_request_init(request, &request->packet->vps, ctx, "request", true);
-			ctx->next_vps = &request->reply->vps;
-		} else {
-			rest_request_init(request, ctx->next_vps, ctx, "reply", true);
-			ctx->next_vps = NULL;
+		rlm_rest_next_vps_t *walker = NULL;
+		size_t next_vps_members = 5; // request, reply, control, session-state and terminator
+#ifdef WITH_PROXY
+		if (request->proxy) {
+			next_vps_members += 2; // proxy_request and proxy_reply
 		}
+#endif
+
+		if (freespace < 1) goto no_space;
+		*p++ = '{';
+		freespace--;
+
+		walker = ctx->next_vps = talloc_zero_array(request, rlm_rest_next_vps_t, next_vps_members); // FIXME: what to do if talloc fails?
+
+		// Initialize next_vps list
+		increase_walker_with_next_vps(&walker, &request->packet->vps, "request");
+		increase_walker_with_next_vps(&walker, &request->reply->vps, "reply");
+		increase_walker_with_next_vps(&walker, &request->control, "control");
+		increase_walker_with_next_vps(&walker, &request->state, "session-state");
+#ifdef WITH_PROXY
+		if (request->proxy) {
+			increase_walker_with_next_vps(&walker, &request->proxy->packet->vps, "proxy-request");
+			increase_walker_with_next_vps(&walker, &request->proxy->reply->vps, "proxy->reply");
+		}
+#endif
+
 		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
@@ -771,14 +800,20 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		 *  READ_STATE_ATTR_END, and need to close out the current attribute
 		 *  array.
 		 */
-		if (!vp && !ctx->next_vps && (ctx->state == READ_STATE_ATTR_BEGIN)) {
-			if (freespace < 1) goto no_space;
-			*p++ = '}';
-			freespace--;
+		if (!vp && (ctx->state == READ_STATE_ATTR_BEGIN)) {
+			if (ctx->next_vps->list_name != NULL) {
+				rest_request_init(request, ctx->next_vps->vps, ctx, ctx->next_vps->list_name, true);
+				vp = fr_cursor_current(&ctx->cursor);
+				ctx->next_vps++;
+				ctx->state = READ_STATE_ATTR_BEGIN;
+			} else {
+				if (freespace < 1) goto no_space;
+				*p++ = '}';
+				freespace--;
 
-			ctx->state = READ_STATE_END;
-
-			break;
+				ctx->state = READ_STATE_END;
+				break;
+			}
 		}
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
@@ -872,19 +907,20 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				if (freespace < 1) goto no_space;
 				*p++ = ',';
 				freespace--;
-			} else if (ctx->next_vps != NULL) {
+			}
+
+			if (!next && ctx->next_vps->list_name != NULL) {
 				if (freespace < 1) goto no_space;
 				*p++ = ',';
 				freespace--;
-				ctx->state = READ_STATE_INIT;
-				break;
 			}
+
+			ctx->state = READ_STATE_ATTR_BEGIN;
 
 			/*
 			 *  We wrote one full attribute value pair, record progress.
 			 */
 			encoded = p;
-			ctx->state = READ_STATE_ATTR_BEGIN;
 		}
 	}
 
