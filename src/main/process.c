@@ -346,6 +346,7 @@ STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_wait_for_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(proxy_wait_for_id) CC_HINT(nonnull);
 
 static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(nonnull (1));
 static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
@@ -366,8 +367,8 @@ static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #  define COA_SEPARATE
 #endif
 
-#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {action = FR_ACTION_DONE} while (0)
-#define CHECK_FOR_PROXY_CANCELLED do { if (!request->proxy->listener) {action = FR_ACTION_DONE;} while (0)
+#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {action = FR_ACTION_DONE;}} while (0)
+#define CHECK_FOR_PROXY_CANCELLED do { if (!request->proxy->listener) {action = FR_ACTION_DONE;}} while (0)
 
 
 #undef USEC
@@ -663,47 +664,6 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		request->in_request_hash = false;
 	}
 
-#ifdef WITH_PROXY
-	/*
-	 *	Wait for the proxy ID to expire.  This allows us to
-	 *	avoid re-use of proxy IDs for a while.
-	 */
-	if (request->in_proxy_hash) {
-		rad_assert(request->proxy != NULL);
-
-		fr_event_now(el, &now);
-		when = request->proxy->packet->timestamp;
-
-#ifdef WITH_COA
-		if (((request->proxy->packet->code == PW_CODE_COA_REQUEST) ||
-		     (request->proxy->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
-		    (request->packet->code != request->proxy->packet->code)) {
-			when.tv_sec += request->proxy->home_server->coa_mrd;
-		} else
-#endif
-			timeradd(&when, request_response_window(request), &when);
-
-		/*
-		 *	We haven't received all responses, AND there's still
-		 *	time to wait.  Do so.
-		 */
-		if (request->proxy->reply &&
-		    (request->proxy->packet->count > request->proxy->reply->count) &&
-#ifdef WITH_TCP
-		    (request->proxy->home_server->proto != IPPROTO_TCP) &&
-#endif
-		    timercmp(&now, &when, <)) {
-			RDEBUG("Waiting for more responses from the home server");
-			goto wait_some_more;
-		}
-
-		/*
-		 *	Time to remove it.
-		 */
-		remove_from_proxy_hash(request);
-	}
-#endif
-
 	/*
 	 *	If there's no children, we can mark the request as done.
 	 */
@@ -714,9 +674,6 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 	 */
 	if (request->child_state <= REQUEST_RUNNING) {
 		gettimeofday(&now, NULL);
-#ifdef WITH_PROXY
-	wait_some_more:
-#endif
 		when = now;
 		if (request->delay < (USEC / 3)) request->delay = USEC / 3;
 		tv_add(&when, request->delay);
@@ -2568,6 +2525,103 @@ static int setup_post_proxy_fail(REQUEST *request)
 }
 
 
+/** Wait for the proxy ID to expire.
+ *
+ *  \dot
+ *	digraph proxy_wait_for_id {
+ *		proxy_wait_for_id;
+ *
+ *		proxy_wait_for_id -> dup [ label = "DUP", arrowhead = "none" ];
+ *		proxy_wait_for_id -> timer [ label = "TIMER < max_request_time" ];
+ *		proxy_wait_for_id -> proxy_reply_too_late [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		proxy_wait_for_id -> process_proxy_reply [ label = "RUN" ];
+ *		proxy_wait_for_id -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
+ */
+static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
+{
+	struct timeval now, when;
+
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
+
+	/*
+	 *	We don't have an ID allocated, so we can just mark
+	 *	this request as done.
+	 */
+	if (!request->in_proxy_hash) {
+		request_done(request, action);
+		return;
+	}
+
+	/*
+	 *	We've been called from a child thread.  Rely on the timers to call us back...
+	 */
+	if (!we_are_master()) return;
+
+	switch (action) {
+	case FR_ACTION_DUP:
+		request_dup_msg(request);
+		break;
+
+	case FR_ACTION_TIMER:
+		(void) request_max_time(request);
+
+#ifdef WITH_TCP
+		/*
+		 *	TCP home servers don't retransmit.  If we have a reply,
+		 *	then we can clean up the ID now.
+		 */
+		if ((request->proxy->home_server->proto == IPPROTO_TCP) &&
+		    request->proxy->reply && request->proxy->reply->count) {
+			goto done;
+		}
+#endif
+
+		fr_event_now(el, &now);
+		when = request->proxy->packet->timestamp;
+
+#ifdef WITH_COA
+		if (((request->proxy->packet->code == PW_CODE_COA_REQUEST) ||
+		     (request->proxy->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
+		    (request->packet->code != request->proxy->packet->code)) {
+			when.tv_sec += request->proxy->home_server->coa_mrd;
+		} else
+#endif
+			timeradd(&when, request_response_window(request), &when);
+
+		/*
+		 *	We may need to keep waiting, if there's no reply, OR
+		 *	there are fewer replies than packets sent.
+		 */
+		if (timercmp(&now, &when, <) &&
+		    (!request->proxy->reply ||
+		     (request->proxy->packet->count > request->proxy->reply->count))) {
+			RDEBUG("Waiting for more responses from the home server");
+			STATE_MACHINE_TIMER;
+			return;
+		}
+		goto done;
+
+	case FR_ACTION_PROXY_REPLY:
+		if (!request->proxy->reply) proxy_reply_too_late(request);
+		break;
+
+	done:
+	case FR_ACTION_DONE:
+		remove_from_proxy_hash(request);
+		request_done(request, FR_ACTION_DONE);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
+}
+
 /** Process a request after the proxy has timed out.
  *
  *  Run the packet through Post-Proxy-Type Fail
@@ -2580,7 +2634,7 @@ static int setup_post_proxy_fail(REQUEST *request)
  *		proxy_no_reply -> timer [ label = "TIMER < max_request_time" ];
  *		proxy_no_reply -> proxy_reply_too_late [ label = "PROXY_REPLY" arrowhead = "none"];
  *		proxy_no_reply -> process_proxy_reply [ label = "RUN" ];
- *		proxy_no_reply -> done [ label = "TIMER >= timeout" ];
+ *		proxy_no_reply -> proxy_wait_for_id [ label = "TIMER >= timeout" ];
  *	}
  *  \enddot
  */
@@ -2627,7 +2681,8 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request->process = proxy_wait_for_id;
+		request->process(request, action);
 		break;
 
 	default:
@@ -2692,7 +2747,8 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 
 	done:
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request->process = proxy_wait_for_id;
+		request->process(request, action);
 		break;
 
 	default:		/* duplicate proxy replies are suppressed */
@@ -3912,7 +3968,8 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, action);
+		request->process = proxy_wait_for_id;
+		request->process(request, action);
 		break;
 
 	default:
