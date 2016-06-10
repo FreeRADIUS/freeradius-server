@@ -1535,6 +1535,14 @@ static void request_queued(REQUEST *request, fr_state_action_t action)
 
 	case FR_ACTION_DONE:
 		request_queue_extract(request);
+
+		if (request->in_request_hash) {
+			if (!rbtree_deletebydata(pl, &request->packet)) {
+				rad_assert(0 == 1);
+			}
+			request->in_request_hash = false;
+		}
+
 		request_delete(request);
 		break;
 
