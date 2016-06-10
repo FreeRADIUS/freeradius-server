@@ -583,9 +583,11 @@ retry:
 			num_blocked = fr_heap_num_elements(thread_pool.idle_heap);
 		} else {
 			blocked = 0;
+			num_blocked = 0;
 		}
 	} else {
 		blocked = 0;
+		num_blocked = 0;
 	}
 
 	if (blocked) {
