@@ -3372,7 +3372,6 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
@@ -3383,7 +3382,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 	rad_assert(!request->in_request_hash);
 	rad_assert(request->ev == NULL);
 	NO_CHILD_THREAD;
-	request_done(request, FR_ACTION_DONE);
+	request_delete(request);
 }
 
 /*
