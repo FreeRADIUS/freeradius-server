@@ -1484,7 +1484,7 @@ static void request_queued(REQUEST *request, fr_state_action_t action)
 /*
  *	See if a new packet is a duplicate of an old one.
  */
-static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
+static bool request_dup_received(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
 {
 	RADIUS_PACKET **packet_p;
 	rad_child_state_t child_state;
@@ -1648,7 +1648,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	/*
 	 *	Check for duplicates.
 	 */
-	if (!listener->nodup && request_is_dup(listener, client, packet)) return 0;
+	if (!listener->nodup && request_dup_received(listener, client, packet)) return 0;
 
 	if (request_limit(listener, client, packet)) return 0;
 
