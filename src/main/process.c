@@ -1550,7 +1550,7 @@ static bool request_is_dup(rad_listen_t *listener, RADCLIENT *client, RADIUS_PAC
 	 *	be notified, and a timer will be set to clean up the
 	 *	request.
 	 */
-	request_done(request, FR_ACTION_DONE);
+	request->process(request, FR_ACTION_DONE);
 	request = NULL;
 
 	/*
@@ -1678,7 +1678,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	if (!listener->nodup) {
 		if (!rbtree_insert(pl, &request->packet)) {
 			RERROR("Failed to insert request in the list of live requests: discarding it");
-			request_done(request, FR_ACTION_DONE);
+			request_queued(request, FR_ACTION_DONE);
 			return 1;
 		}
 
@@ -2552,10 +2552,7 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 	 *	We don't have an ID allocated, so we can just mark
 	 *	this request as done.
 	 */
-	if (!request->in_proxy_hash) {
-		request_done(request, action);
-		return;
-	}
+	if (!request->in_proxy_hash) goto done2;
 
 	/*
 	 *	We've been called from a child thread.  Rely on the timers to call us back...
@@ -2613,6 +2610,7 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 	done:
 	case FR_ACTION_DONE:
 		remove_from_proxy_hash(request);
+	done2:
 		request_done(request, FR_ACTION_DONE);
 		break;
 
@@ -5362,7 +5360,7 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	request->in_proxy_hash = false;
 
 	if (!request->in_request_hash) {
-		request_done(request, FR_ACTION_DONE);
+		request->process(request, FR_ACTION_DONE);
 	}
 
 	/*
