@@ -655,6 +655,35 @@ no_space:
 	return len;
 }
 
+/** (Re-)Initialises the data in a rlm_rest_request_t.
+ *
+ * Resets the values of a rlm_rest_request_t to their defaults.
+ *
+ * @param[in] request Current request.
+ * @param[in] vps The list of value pairs to initialize
+ * @param[in] ctx to initialise.
+ * @param[in] list_name The name of the list
+ * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
+ *	pointer array.
+ */
+static void rest_request_init(REQUEST *request, VALUE_PAIR **vps, rlm_rest_request_t *ctx, char const *list_name, bool sort)
+{
+	/*
+	 * 	Setup stream read data
+	 */
+	ctx->request = request;
+	ctx->state = READ_STATE_INIT;
+
+	/*
+	 *	Sorts pairs in place, oh well...
+	 */
+	if (sort) {
+		fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
+	}
+	fr_cursor_init(&ctx->cursor, vps);
+	ctx->list_name = list_name;
+}
+
 #ifdef HAVE_JSON
 /** Encodes VALUE_PAIR linked list in JSON format
  *
@@ -718,11 +747,18 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_END) return 0;
 
 	if (ctx->state == READ_STATE_INIT) {
-		ctx->state = READ_STATE_ATTR_BEGIN;
+		if (ctx->next_vps == NULL) {
+			if (freespace < 1) goto no_space;
+			*p++ = '{';
+			freespace--;
 
-		if (freespace < 1) goto no_space;
-		*p++ = '{';
-		freespace--;
+			rest_request_init(request, &request->packet->vps, ctx, "request", true);
+			ctx->next_vps = &request->reply->vps;
+		} else {
+			rest_request_init(request, ctx->next_vps, ctx, "reply", true);
+			ctx->next_vps = NULL;
+		}
+		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
 	for (;;) {
@@ -735,7 +771,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		 *  READ_STATE_ATTR_END, and need to close out the current attribute
 		 *  array.
 		 */
-		if (!vp && (ctx->state == READ_STATE_ATTR_BEGIN)) {
+		if (!vp && !ctx->next_vps && (ctx->state == READ_STATE_ATTR_BEGIN)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '}';
 			freespace--;
@@ -836,6 +872,12 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				if (freespace < 1) goto no_space;
 				*p++ = ',';
 				freespace--;
+			} else if (ctx->next_vps != NULL) {
+				if (freespace < 1) goto no_space;
+				*p++ = ',';
+				freespace--;
+				ctx->state = READ_STATE_INIT;
+				break;
 			}
 
 			/*
@@ -931,34 +973,6 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
 	talloc_free(buff);
 
 	return -1;
-}
-
-/** (Re-)Initialises the data in a rlm_rest_request_t.
- *
- * Resets the values of a rlm_rest_request_t to their defaults.
- *
- * @param[in] request Current request.
- * @param[in] ctx to initialise.
- * @param[in] list_name The name of the list
- * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
- *	pointer array.
- */
-static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, char const *list_name, bool sort)
-{
-	/*
-	 * 	Setup stream read data
-	 */
-	ctx->request = request;
-	ctx->state = READ_STATE_INIT;
-
-	/*
-	 *	Sorts pairs in place, oh well...
-	 */
-	if (sort) {
-		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	}
-	fr_cursor_init(&ctx->cursor, &request->packet->vps);
-	ctx->list_name = list_name;
 }
 
 /** Converts plain response into a single VALUE_PAIR
@@ -2298,8 +2312,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
-		rest_request_init(request, &ctx->request, "request", true);
-
+		ctx->request.request = request;
+		ctx->request.next_vps = NULL;
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_json) < 0) {
 			return -1;
@@ -2309,7 +2323,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &ctx->request, "request", false);
+		rest_request_init(request, &request->packet->vps, &ctx->request, "request", false);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_post) < 0) {

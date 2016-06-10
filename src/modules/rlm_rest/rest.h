@@ -199,6 +199,8 @@ typedef struct rlm_rest_request_t {
 	size_t			chunk;		//!< Chunk size
 
 	void			*encoder;	//!< Encoder specific data.
+
+	VALUE_PAIR		**next_vps;	//!< Dirty hack to make things work
 } rlm_rest_request_t;
 
 /*
