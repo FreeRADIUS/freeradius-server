@@ -803,7 +803,7 @@ static bool request_max_time(REQUEST *request)
 	 */
 	if (request->child_state == REQUEST_DONE) {
 	done:
-		request_done(request, FR_ACTION_DONE);
+		request->process(request, FR_ACTION_DONE);
 		return true;
 	}
 
