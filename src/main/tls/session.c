@@ -1178,6 +1178,20 @@ int tls_session_send(REQUEST *request, tls_session_t *session)
 	return 1;
 }
 
+int tls_session_handshake_alert(UNUSED REQUEST *request, tls_session_t *session, uint8_t level, uint8_t description)
+{
+	rad_assert(session->handshake_alert.level == 0);
+
+	session->handshake_alert.count++;
+	if (session->handshake_alert.count > 3)
+		return -1;
+
+	session->handshake_alert.level = level;
+	session->handshake_alert.description = description;
+
+	return 0;
+}
+
 /** Continue a TLS handshake
  *
  * Advance the TLS handshake by feeding OpenSSL data from dirty_in,
@@ -1344,6 +1358,31 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 	} else {
 		/* Its clean application data, do whatever we want */
 		record_init(&session->clean_out);
+	}
+
+	/*
+	 *	W would prefer to latch on info.content_type but
+	 *	(I think its...) tls_session_msg_cb() updates it
+	 *	after the call to tls_session_handshake_alert()
+	 */
+	if (session->handshake_alert.level) {
+		/*
+		 * FIXME RFC 4851 section 3.6.1 - peer might ACK alert and include a restarted ClientHello
+		 *                                 which eap_tls_session_status() will fail on
+		 */
+		session->info.content_type = SSL3_RT_ALERT;
+
+		session->dirty_out.data[0] = session->info.content_type;
+		session->dirty_out.data[1] = 3;
+		session->dirty_out.data[2] = 1;
+		session->dirty_out.data[3] = 0;
+		session->dirty_out.data[4] = 2;
+		session->dirty_out.data[5] = session->handshake_alert.level;
+		session->dirty_out.data[6] = session->handshake_alert.description;
+
+		session->dirty_out.used = 7;
+
+		session->handshake_alert.level = 0;
 	}
 
 	/* We are done with dirty_in, reinitialize it */
