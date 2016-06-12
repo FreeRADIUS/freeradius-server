@@ -256,6 +256,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		if (((vp->da->vendor == 0) && (vp->da->attr == PW_CHAP_CHALLENGE)) ||
 		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == PW_MSCHAP_CHALLENGE))) {
 			uint8_t	challenge[16];
+			uint8_t	scratch[16];
 
 			if ((vp->vp_length < 8) ||
 			    (vp->vp_length > 16)) {
@@ -264,7 +265,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				return NULL;
 			}
 
-			eap_tls_gen_challenge(ssl, challenge,
+			eap_tls_gen_challenge(ssl, challenge, scratch,
 					      sizeof(challenge), "ttls challenge");
 
 			if (memcmp(challenge, vp->vp_octets,
