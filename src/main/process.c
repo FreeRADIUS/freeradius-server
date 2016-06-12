@@ -2568,7 +2568,7 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
+		if (request_max_time(request)) goto done;
 
 #ifdef WITH_TCP
 		/*
@@ -2767,6 +2767,7 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
  *
  *		proxy_queued -> timer [ label = "TIMER < max_request_time" ];
  *		proxy_queued -> proxy_queued [ label = "PROXY_REPLY" ];
+ *		proxy_queued -> proxy_queued [ label = "DUP" ];
  *		proxy_queued -> proxy_running [ label = "RUN with reply" ];
  *		proxy_queued -> proxy_no_reply [ label = "RUN without reply" ];
  *		proxy_queued -> done [ label = "TIMER >= timeout" ];
@@ -4453,6 +4454,8 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
+		if (request_max_time(request)) goto done;
+
 		/*
 		 *	@fixme: for TCP, the socket may go away.
 		 *	we probably want to do the checks for proxy_keep_waiting() ??
@@ -4468,6 +4471,7 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
+	done:
 		request->process = proxy_wait_for_id;
 		request->process(request, action);
 		break;
