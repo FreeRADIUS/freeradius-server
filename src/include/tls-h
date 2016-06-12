@@ -172,6 +172,12 @@ typedef struct _tls_session_t {
 
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 	void		*opaque;			//!< Used to store module specific data.
+
+	struct {
+		unsigned int	count;
+		unsigned int	level;
+		unsigned int	description;
+	} handshake_alert;
 } tls_session_t;
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -460,6 +466,8 @@ int		tls_session_recv(REQUEST *request, tls_session_t *tls_session);
 int 		tls_session_send(REQUEST *request, tls_session_t *tls_session);
 
 int 		tls_session_handshake(REQUEST *request, tls_session_t *tls_session);
+
+int 		tls_session_handshake_alert(REQUEST *request, tls_session_t *tls_session, uint8_t level, uint8_t description);
 
 tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf);
 
