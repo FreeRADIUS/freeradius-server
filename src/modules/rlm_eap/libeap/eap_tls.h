@@ -172,7 +172,7 @@ void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *p
 void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label) CC_HINT(nonnull);
 
 void			eap_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
-void			eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, size_t size, char const *prf_label) CC_HINT(nonnull);
+void			eap_fast_tls_gen_challenge(SSL *ssl, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label) CC_HINT(nonnull);
 
 void			eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header) CC_HINT(nonnull);
 

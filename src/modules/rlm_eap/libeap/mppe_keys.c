@@ -222,6 +222,30 @@ void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t siz
 	    seed, p - seed, buffer, scratch, size);
 }
 
+
+/*
+ *	Same as before, but for EAP-FAST the order of {server,client}_random is flipped
+ */
+void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
+{
+	uint8_t seed[128 + 2*SSL3_RANDOM_SIZE];
+	uint8_t *p = seed;
+	size_t len;
+
+	len = strlen(prf_label);
+	if (len > 128) len = 128;
+
+	memcpy(p, prf_label, len);
+	p += len;
+	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+
+	PRF(s->session->master_key, s->session->master_key_length,
+	    seed, p - seed, buffer, scratch, size);
+}
+
 /*
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name
