@@ -359,6 +359,7 @@ static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action
 #ifdef WITH_COA
 static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(coa_queued) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_running) CC_HINT(nonnull);
 static void coa_separate(REQUEST *request) CC_HINT(nonnull);
@@ -4375,7 +4376,7 @@ static bool coa_keep_waiting(REQUEST *request)
  *
  *		coa_wait_for_reply -> coa_no_reply [ label = "TIMER >= response_window" ];
  *		coa_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
- *		coa_wait_for_reply -> coa_running [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		coa_wait_for_reply -> coa_queued [ label = "PROXY_REPLY" arrowhead = "none"];
  *		coa_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
  *	}
  *  \enddot
@@ -4400,18 +4401,12 @@ static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		 */
 		if (coa_keep_waiting(request)) break;
 
-		if (setup_post_proxy_fail(request)) {
-			request_thread(request, coa_no_reply);
-		} else {
-			goto done;
-		}
-		break;
+		/* FALL-THROUGH */
 
 	case FR_ACTION_PROXY_REPLY:
-		request_thread(request, coa_running);
+		request_thread(request, coa_queued);
 		break;
 
-	done:
 	case FR_ACTION_DONE:
 		request->process = proxy_wait_for_id;
 		request->process(request, action);
@@ -4550,6 +4545,68 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 	case FR_ACTION_DONE:
 		request->process = proxy_wait_for_id;
 		request->process(request, action);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
+}
+
+/** Handle events while a CoA packet is in the queue.
+ *
+ *  \dot
+ *	digraph coa_queued {
+ *		coa_queued;
+ *
+ *		coa_queued -> timer [ label = "TIMER < max_request_time" ];
+ *		coa_queued -> coa_queued [ label = "PROXY_REPLY" ];
+ *		coa_queued -> coa_running [ label = "RUN with reply" ];
+ *		coa_queued -> coa_no_reply [ label = "RUN without reply" ];
+ *		coa_queued -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
+ */
+static void coa_queued(REQUEST *request, fr_state_action_t action)
+{
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
+	CHECK_FOR_PROXY_CANCELLED;
+
+	switch (action) {
+	case FR_ACTION_TIMER:
+		(void) request_max_time(request);
+		break;
+
+		/*
+		 *	We have a proxy reply, but wait for it to be
+		 *	de-queued before doing anything.
+		 */
+	case FR_ACTION_PROXY_REPLY:
+		break;
+
+	case FR_ACTION_RUN:
+		if (request->proxy->reply) {
+			request->process = coa_running;
+			request->process(request, FR_ACTION_RUN);
+			break;
+
+		} else if (setup_post_proxy_fail(request)) {
+			request->process = coa_no_reply;
+			request->process(request, FR_ACTION_RUN);
+			break;
+
+		} else {	/* no Post-Proxy-Type fail */
+			goto done;
+		}
+
+	case FR_ACTION_DONE:
+		request_queue_extract(request);
+	done:
+		request->process = proxy_wait_for_id;
+                request->process(request, action);
 		break;
 
 	default:
