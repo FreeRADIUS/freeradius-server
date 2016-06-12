@@ -343,6 +343,7 @@ STATE_MACHINE_DECL(request_queued) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 
+STATE_MACHINE_DECL(proxy_queued) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_wait_for_reply) CC_HINT(nonnull);
@@ -2757,6 +2758,74 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 	}
 }
 
+
+/** Handle events while a proxy packet is in the queue.
+ *
+ *  \dot
+ *	digraph proxy_queued {
+ *		proxy_queued;
+ *
+ *		proxy_queued -> timer [ label = "TIMER < max_request_time" ];
+ *		proxy_queued -> proxy_queued [ label = "PROXY_REPLY" ];
+ *		proxy_queued -> proxy_running [ label = "RUN with reply" ];
+ *		proxy_queued -> proxy_no_reply [ label = "RUN without reply" ];
+ *		proxy_queued -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
+ */
+static void proxy_queued(REQUEST *request, fr_state_action_t action)
+{
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
+	CHECK_FOR_PROXY_CANCELLED;
+
+	switch (action) {
+	case FR_ACTION_DUP:
+		request_dup_msg(request);
+		break;
+
+	case FR_ACTION_TIMER:
+		(void) request_max_time(request);
+		break;
+
+		/*
+		 *	We have a proxy reply, but wait for it to be
+		 *	de-queued before doing anything.
+		 */
+	case FR_ACTION_PROXY_REPLY:
+		break;
+
+	case FR_ACTION_RUN:
+		if (request->proxy->reply) {
+			request->process = proxy_running;
+			request->process(request, FR_ACTION_RUN);
+			break;
+
+		} else if (setup_post_proxy_fail(request)) {
+			request->process = proxy_no_reply;
+			request->process(request, FR_ACTION_RUN);
+			break;
+
+		} else {	/* no Post-Proxy-Type fail */
+			gettimeofday(&request->reply->timestamp, NULL);
+			goto done;
+		}
+
+	case FR_ACTION_DONE:
+		request_queue_extract(request);
+	done:
+		request->process = proxy_wait_for_id;
+                request->process(request, action);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
+}
+
 /** Determine if a #REQUEST needs to be proxied, and perform pre-proxy operations
  *
  * Whether a request will be proxied is determined by the attributes present
@@ -3896,7 +3965,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
  *		proxy_wait_for_reply -> retransmit_proxied_request [ label = "DUP", arrowhead = "none" ];
  *		proxy_wait_for_reply -> proxy_no_reply [ label = "TIMER >= response_window" ];
  *		proxy_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
- *		proxy_wait_for_reply -> proxy_running [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		proxy_wait_for_reply -> proxy_queued [ label = "PROXY_REPLY" arrowhead = "none"];
  *		proxy_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
  *	}
  *  \enddot
@@ -3953,19 +4022,10 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 	case FR_ACTION_TIMER:
 		if (proxy_keep_waiting(request, &now)) break;
 
-		if (setup_post_proxy_fail(request)) {
-			request_thread(request, proxy_no_reply);
-		} else {
-			gettimeofday(&request->reply->timestamp, NULL);
-			request_cleanup_delay_init(request);
-		}
-		break;
+		/* FALL-THROUGH */
 
-		/*
-		 *	We received a new reply.  Go process it.
-		 */
 	case FR_ACTION_PROXY_REPLY:
-		request_thread(request, proxy_running);
+		request_thread(request, proxy_queued);
 		break;
 
 	case FR_ACTION_DONE:
