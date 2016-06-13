@@ -512,9 +512,40 @@ static void request_dup_extract(REQUEST *request)
 
 
 /*
+ *	If the child is still running, wait for it to be finished.
+ */
+bool request_thread_active(REQUEST *request)
+{
+	struct timeval when, now;
+
+	if (!spawn_workers) return false;
+
+	if (!we_are_master()) return true;
+
+	if (request->child_state > REQUEST_RUNNING) return false;
+
+	gettimeofday(&now, NULL);
+	when = now;
+	if (request->delay < (USEC / 3)) request->delay = USEC / 3;
+	tv_add(&when, request->delay);
+	request->delay += request->delay >> 1;
+	if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
+
+	STATE_MACHINE_TIMER;
+	return true;
+}
+
+
+void request_thread_done(REQUEST *request)
+{
+	request->child_state = REQUEST_DONE;
+	NO_CHILD_THREAD;
+}
+
+/*
  *	Delete a request.
  */
-static void request_delete(REQUEST *request)
+void request_delete(REQUEST *request)
 {
 	ASSERT_MASTER;
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -568,8 +599,6 @@ static void request_delete(REQUEST *request)
  */
 static void request_done(REQUEST *request, fr_state_action_t action)
 {
-	struct timeval now, when;
-
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -677,20 +706,7 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 	 */
 	if (!spawn_workers) request->child_state = REQUEST_DONE;
 
-	/*
-	 *	If the child is still running, wait for it to be finished.
-	 */
-	if (request->child_state <= REQUEST_RUNNING) {
-		gettimeofday(&now, NULL);
-		when = now;
-		if (request->delay < (USEC / 3)) request->delay = USEC / 3;
-		tv_add(&when, request->delay);
-		request->delay += request->delay >> 1;
-		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
-
-		STATE_MACHINE_TIMER;
-		return;
-	}
+	if (request_thread_active(request)) return;
 
 	request_delete(request);
 }
@@ -759,7 +775,7 @@ done:
 /*
  *	Enforce max_request_time.
  */
-static bool request_max_time(REQUEST *request)
+bool request_max_time(REQUEST *request)
 {
 	struct timeval now, when;
 	rad_assert(request->magic == REQUEST_MAGIC);

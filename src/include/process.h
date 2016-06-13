@@ -62,7 +62,6 @@ void request_queue_extract(REQUEST *request);
 REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
 bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet);
-void request_thread(REQUEST *request, fr_request_process_t process);
 
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
@@ -77,6 +76,15 @@ void request_trace_state_machine(REQUEST *request);
 #else
 #  define TRACE_STATE_MACHINE {}
 #endif
+
+/*
+ *	More state machine helper functions.
+ */
+bool request_max_time(REQUEST *request);
+void request_thread(REQUEST *request, fr_request_process_t process);
+bool request_thread_active(REQUEST *request);
+void request_delete(REQUEST *request);
+void request_thread_done(REQUEST *request);
 
 
 #ifdef __cplusplus
