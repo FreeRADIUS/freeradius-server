@@ -32,22 +32,154 @@ RCSID("$Id$")
 
 #include "vqp.h"
 
-static int vmps_process(REQUEST *request)
+static void vmps_done(REQUEST *request, UNUSED fr_state_action_t action)
 {
+	TRACE_STATE_MACHINE;
+
+	request->component = NULL;
+	request->module = NULL;
+
+	/*
+	 *	Wait until the child thread has finished.
+	 */
+	if (request_thread_active(request)) return;
+
+	request->child_state = REQUEST_DONE;
+
+#ifdef DEBUG_STATE_MACHINE
+	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
+				  request->number, __FUNCTION__,
+				  child_state_names[request->child_state],
+				  child_state_names[REQUEST_DONE]);
+#endif
+
+	request_delete(request);
+}
+
+static void vmps_running(REQUEST *request, fr_state_action_t action)
+{
+	VALUE_PAIR *vp;
+	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 
-	request->server = request->listener->server;
-	request->server_cs = request->listener->server_cs;
-	unlang = cf_section_sub_find(request->server_cs, "vmps");
+	VERIFY_REQUEST(request);
 
-	request->component = "vmps";
+	TRACE_STATE_MACHINE;
 
-	unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+	/*
+	 *	Stop if signalled/
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) action = FR_ACTION_DONE;
 
-	request->reply->code = PW_CODE_ACCESS_ACCEPT;
+	switch (action) {
+	case FR_ACTION_TIMER:
+		(void) request_max_time(request);
+		break;
 
-	return 0;
+	case FR_ACTION_RUN:
+		if (vqp_decode(request->packet) < 0) {
+			RDEBUG("Failed decoding VMPS packet: %s", fr_strerror());
+			goto done;
+		}
+
+		request->server = request->listener->server;
+		request->server_cs = request->listener->server_cs;
+		unlang = cf_section_sub_find(request->server_cs, "vmps");
+		request->component = "vmps";
+
+		rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+
+		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+
+		vp = fr_pair_find_by_num(request->reply->vps, 0, 0x2b00, TAG_ANY);
+		if (vp) {
+			if (vp->vp_integer == 256) {
+				request->reply->code = 0;
+			} else {
+				request->reply->code = vp->vp_integer;
+			}
+
+		} else if (rcode != RLM_MODULE_HANDLED) {
+			if (request->packet->code == 1) {
+				request->reply->code = 2;
+
+			} else if (request->packet->code == 3) {
+				request->reply->code = 4;
+			}
+		}
+
+		/*
+		 *	Check for "do not respond".
+		 */
+		if (!request->reply->code) {
+			RDEBUG("Not sending reply to client.");
+
+		} else if (vqp_encode(request->reply, request->packet) < 0) {
+			RDEBUG("Failed encoding VMPS reply: %s", fr_strerror());
+
+		} else if (udp_send(request->reply->sockfd, request->reply->data, request->reply->data_len, 0,
+				    &request->reply->src_ipaddr, request->reply->src_port, request->reply->if_index,
+				    &request->reply->dst_ipaddr, request->reply->dst_port) < 0) {
+			RDEBUG("Failed sending VMPS reply: %s", fr_strerror());
+		}
+		request_thread_done(request);
+
+		/* FALL-THROUGH */
+
+	case FR_ACTION_DONE:
+	done:
+		request->process = vmps_done;
+		request->process(request, FR_ACTION_DONE);
+		break;
+
+	default:
+		break;
+	}
 }
+
+
+/** Process events while the request is queued.
+ *
+ *  We give different messages on DUP, and on DONE,
+ *  remove the request from the queue
+ *
+ *  \dot
+ *	digraph vmps_queued {
+ *		vmps_queued -> vmps_queued [ label = "TIMER < max_request_time" ];
+ *		vmps_queued -> done [ label = "TIMER >= max_request_time" ];
+ *		vmps_queued -> running [ label = "RUNNING" ];
+ *		vmps_queued -> dup [ label = "DUP", arrowhead = "none" ];
+ *	}
+ *  \enddot
+ */
+static void vmps_queued(REQUEST *request, fr_state_action_t action)
+{
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+
+	if (request->master_state == REQUEST_STOP_PROCESSING) action = FR_ACTION_DONE;
+
+	switch (action) {
+	case FR_ACTION_TIMER:
+		(void) request_max_time(request);
+		break;
+
+	case FR_ACTION_RUN:
+		request->process = vmps_running;
+		request->process(request, action);
+		break;
+
+	case FR_ACTION_DONE:
+		request_queue_extract(request);
+		request_delete(request);
+		break;
+
+	default:
+		break;
+	}
+}
+
 
 /*
  *	Check if an incoming request is "ok"
@@ -58,9 +190,9 @@ static int vmps_process(REQUEST *request)
 static int vqp_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
 	RADCLIENT	*client;
 	TALLOC_CTX	*ctx;
+	REQUEST		*request;
 
 	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
@@ -71,58 +203,38 @@ static int vqp_socket_recv(rad_listen_t *listener)
 
 	packet = vqp_recv(ctx, listener->fd);
 	if (!packet) {
-		talloc_free(ctx);
 		ERROR("%s", fr_strerror());
+		talloc_free(ctx);
+		return 0;
+	}
+
+	if ((packet->code != 1) && (packet->code != 3)) {
+		DEBUG2("Invalid packet code %d", packet->code);
+		talloc_free(ctx);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &packet->src_ipaddr,
 					   packet->src_port)) == NULL) {
-		fr_radius_free(&packet);
+		talloc_free(ctx);
 		return 0;
 	}
 
-	/*
-	 *	Do new stuff.
-	 */
-	fun = vmps_process;
-
-	if (!request_receive(ctx, listener, packet, client, fun)) {
-		fr_radius_free(&packet);
+	if (request_limit(listener, client, packet)) {
+		talloc_free(ctx);
 		return 0;
 	}
+
+	request = request_setup(ctx, listener, packet, client, NULL);
+	if (!request) {
+		talloc_free(ctx);
+		return 0;
+	}
+
+	request_thread(request, vmps_queued);
 
 	return 1;
-}
-
-
-/*
- *	Send an authentication response packet
- */
-static int vqp_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	rad_assert(request->listener == listener);
-	rad_assert(listener->send == vqp_socket_send);
-
-	if (vqp_encode(request->reply, request->packet) < 0) {
-		DEBUG2("Failed encoding packet: %s\n", fr_strerror());
-		return -1;
-	}
-
-	return vqp_send(request->reply);
-}
-
-
-static int vqp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	return vqp_encode(request->reply, request->packet);
-}
-
-
-static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	return vqp_decode(request->packet);
 }
 
 
@@ -179,9 +291,6 @@ rad_protocol_t proto_vmps = {
 	.parse		= common_socket_parse,
 	.open		= common_socket_open,
 	.recv		= vqp_socket_recv,
-	.send		= vqp_socket_send,
 	.print		= common_socket_print,
 	.debug		= common_packet_debug,
-	.encode		= vqp_socket_encode,
-	.decode		= vqp_socket_decode
 };

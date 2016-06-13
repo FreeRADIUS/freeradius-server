@@ -161,11 +161,7 @@ RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 	packet->sockfd = sockfd;
 	packet->vps = NULL;
 
-	/*
-	 *	This is more than a bit of a hack.
-	 */
-	packet->code = PW_CODE_ACCESS_REQUEST;
-
+	packet->code = packet->data[1];
 	memcpy(&id, packet->data + 4, 4);
 	packet->id = ntohl(id);
 
@@ -385,16 +381,20 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	if (packet->data) return 0;
 
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_PACKET_TYPE, TAG_ANY);
-	if (!vp) {
-		fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
-		return -1;
-	}
 
-	code = vp->vp_integer;
-	if ((code < 1) || (code > 4)) {
-		fr_strerror_printf("Invalid value %d for VQP-Packet-Type", code);
-		return -1;
+	code = packet->code;
+	if (!code) {
+		vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_PACKET_TYPE, TAG_ANY);
+		if (!vp) {
+			fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
+			return -1;
+		}
+
+		code = vp->vp_integer;
+		if ((code < 1) || (code > 4)) {
+			fr_strerror_printf("Invalid value %d for VQP-Packet-Type", code);
+			return -1;
+		}
 	}
 
 	length = VQP_HDR_LEN;
