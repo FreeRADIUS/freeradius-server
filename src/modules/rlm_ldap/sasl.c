@@ -14,8 +14,6 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "rlm_ldap.h"
-
 /**
  * $Id$
  * @file sasl.c
@@ -25,8 +23,12 @@
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 The FreeRADIUS Server Project.
  */
-#include <freeradius-devel/radiusd.h>
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/radiusd.h>
+#include "rlm_ldap.h"
 
 #include <sasl/sasl.h>
 
