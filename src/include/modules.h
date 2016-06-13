@@ -95,7 +95,7 @@ extern const section_type_value_t section_type_value[];
  * @param[in,out] request being processed.
  * @return the appropriate rcode.
  */
-typedef rlm_rcode_t (*packetmethod)(void *instance, REQUEST *request);
+typedef rlm_rcode_t (*rad_method_t)(void *instance, REQUEST *request);
 
 /** Module instantiation callback
  *
@@ -144,7 +144,7 @@ typedef struct rad_module_t {
 	instantiate_t		instantiate;		//!< Callback to create a new module instance.
 	detach_t		detach;			//!< Callback to free a module instance.
 
-	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+	rad_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 } rad_module_t;
 
 /*
