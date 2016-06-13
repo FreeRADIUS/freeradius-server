@@ -412,8 +412,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_otp;
-module_t rlm_otp = {
+extern rad_module_t rlm_otp;
+rad_module_t rlm_otp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "otp",
 	.type		= RLM_TYPE_THREAD_SAFE,

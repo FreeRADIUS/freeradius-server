@@ -515,8 +515,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 #endif
 
 /* globally exported name */
-extern module_t rlm_detail;
-module_t rlm_detail = {
+extern rad_module_t rlm_detail;
+rad_module_t rlm_detail = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "detail",
 	.type		= RLM_TYPE_HUP_SAFE,

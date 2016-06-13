@@ -1150,8 +1150,8 @@ static int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 
-extern fr_protocol_t proto_detail;
-fr_protocol_t proto_detail = {
+extern rad_protocol_t proto_detail;
+rad_protocol_t proto_detail = {
 	.magic = RLM_MODULE_INIT,
 	.name = "detail",
 	.inst_size = sizeof(listen_detail_t),

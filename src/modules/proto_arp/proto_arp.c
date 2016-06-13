@@ -312,8 +312,8 @@ static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 }
 
 
-extern fr_protocol_t proto_arp;
-fr_protocol_t proto_arp = {
+extern rad_protocol_t proto_arp;
+rad_protocol_t proto_arp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "arp",
 	.inst_size	= sizeof(arp_socket_t),

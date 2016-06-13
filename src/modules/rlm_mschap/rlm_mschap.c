@@ -2117,8 +2117,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 #undef inst
 }
 
-extern module_t rlm_mschap;
-module_t rlm_mschap = {
+extern rad_module_t rlm_mschap;
+rad_module_t rlm_mschap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "mschap",
 	.type		= 0,

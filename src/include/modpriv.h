@@ -45,7 +45,7 @@ extern "C" {
  */
 typedef struct module_handle {
 	char const			*name;		//!< Name of the module e.g. sql.
-	module_t const			*module;	//!< Symbol exported by the module, containing its public
+	rad_module_t const			*module;	//!< Symbol exported by the module, containing its public
 							//!< functions, name and behaviour control flags.
 	void				*handle;	//!< Handle returned by dlopen.
 } module_dl_t;
@@ -61,7 +61,7 @@ typedef struct fr_module_hup_t fr_module_hup_t;
 typedef struct module_instance_t {
 	char const			*name;		//!< Instance name e.g. user_database.
 
-	module_t const			*module;	//!< Module this is an instance of.
+	rad_module_t const			*module;	//!< Module this is an instance of.
 
 	void				*data;		//!< The module's private instance data, containing.
 							//!< its parsed configuration and static state.

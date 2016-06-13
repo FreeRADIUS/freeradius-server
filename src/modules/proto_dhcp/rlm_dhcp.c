@@ -203,8 +203,8 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_dhcp;
-module_t rlm_dhcp = {
+extern rad_module_t rlm_dhcp;
+rad_module_t rlm_dhcp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcp",
 	.inst_size	= sizeof(rlm_dhcp_t),

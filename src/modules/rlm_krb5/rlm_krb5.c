@@ -455,8 +455,8 @@ cleanup:
 
 #endif /* MIT_KRB5 */
 
-extern module_t rlm_krb5;
-module_t rlm_krb5 = {
+extern rad_module_t rlm_krb5;
+rad_module_t rlm_krb5 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "krb5",
 	.type		= RLM_TYPE_HUP_SAFE

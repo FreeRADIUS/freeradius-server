@@ -843,8 +843,8 @@ finish:
 /*
  *	Externally visible module definition.
  */
-extern module_t rlm_linelog;
-module_t rlm_linelog = {
+extern rad_module_t rlm_linelog;
+rad_module_t rlm_linelog = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "linelog",
 	.type		= RLM_TYPE_HUP_SAFE,

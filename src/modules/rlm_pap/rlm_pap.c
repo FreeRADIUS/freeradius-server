@@ -1067,8 +1067,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_pap;
-module_t rlm_pap = {
+extern rad_module_t rlm_pap;
+rad_module_t rlm_pap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "pap",
 	.type		= RLM_TYPE_HUP_SAFE,

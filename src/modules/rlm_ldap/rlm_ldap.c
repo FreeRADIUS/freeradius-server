@@ -2004,8 +2004,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 
 /* globally exported name */
-extern module_t rlm_ldap;
-module_t rlm_ldap = {
+extern rad_module_t rlm_ldap;
+rad_module_t rlm_ldap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "ldap",
 	.type		= 0,

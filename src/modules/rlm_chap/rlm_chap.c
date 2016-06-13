@@ -185,8 +185,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_chap;
-module_t rlm_chap = {
+extern rad_module_t rlm_chap;
+rad_module_t rlm_chap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "chap",
 	.methods = {

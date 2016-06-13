@@ -166,8 +166,8 @@ static int vqp_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 }
 
 
-extern fr_protocol_t proto_vmps;
-fr_protocol_t proto_vmps = {
+extern rad_protocol_t proto_vmps;
+rad_protocol_t proto_vmps = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps",
 	.inst_size	= sizeof(listen_socket_t),

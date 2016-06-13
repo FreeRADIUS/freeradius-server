@@ -237,8 +237,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	return RLM_MODULE_OK;
 }
 
-extern module_t rlm_pam;
-module_t rlm_pam = {
+extern rad_module_t rlm_pam;
+rad_module_t rlm_pam = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "pam",
 	.type		= RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */

@@ -468,8 +468,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 
 
 /* globally exported name */
-extern module_t rlm_opendirectory;
-module_t rlm_opendirectory = {
+extern rad_module_t rlm_opendirectory;
+rad_module_t rlm_opendirectory = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "opendirectory",
 	.type		= RLM_TYPE_THREAD_SAFE,

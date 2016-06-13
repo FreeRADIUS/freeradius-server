@@ -740,8 +740,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-extern module_t rlm_sqlhpwippool;
-module_t rlm_sqlhpwippool = {
+extern rad_module_t rlm_sqlhpwippool;
+rad_module_t rlm_sqlhpwippool = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sqlhpwippool",
 	.type		= RLM_TYPE_THREAD_SAFE,

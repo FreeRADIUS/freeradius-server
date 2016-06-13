@@ -77,7 +77,7 @@ typedef struct listen_config_t {
 	char const	*server_name;	//!< name of the virtual server (if any)
 	void		*handle;	//!< to dynamically loaded library (if any)
 	RAD_LISTEN_TYPE	type;		//! same as Listen-Socket-Type
-	fr_protocol_t	*proto;		//!< pointer to the protocol handler.
+	rad_protocol_t	*proto;		//!< pointer to the protocol handler.
 
 	rad_listen_t	*listener;	//!< created from this configuration
 } listen_config_t;
@@ -85,7 +85,7 @@ typedef struct listen_config_t {
 static TALLOC_CTX *listen_ctx = NULL;
 static listen_config_t *listen_config = NULL;
 
-static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, fr_protocol_t *proto);
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, rad_protocol_t *proto);
 static rad_listen_t *listen_parse(listen_config_t *lc);
 
 #ifdef WITH_COMMAND_SOCKET
@@ -93,7 +93,7 @@ static int command_init_recv(rad_listen_t *listener);
 static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 #endif
 
-static fr_protocol_t master_listen[];
+static rad_protocol_t master_listen[];
 
 static int _listen_config_free(listen_config_t *lc)
 {
@@ -104,7 +104,7 @@ static int _listen_config_free(listen_config_t *lc)
 
 int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
 {
-	fr_protocol_t const *proto;
+	rad_protocol_t const *proto;
 
 	proto = cf_data_find(cs, "proto");
 	if (!proto || !proto->compile) return 0;
@@ -132,7 +132,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	char const	*value;
 	fr_dict_enum_t const *dv;
 	void	*handle = NULL;
-	fr_protocol_t	*proto = NULL;
+	rad_protocol_t	*proto = NULL;
 
 	if (!listen_ctx) listen_ctx = talloc_init("listen_config_t");
 
@@ -2560,7 +2560,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 /*
  *	Handle up to 256 different protocols.
  */
-static fr_protocol_t master_listen[] = {
+static rad_protocol_t master_listen[] = {
 #ifdef WITH_STATS
 	{
 		.magic = RLM_MODULE_INIT,
@@ -2971,7 +2971,7 @@ static int _listener_free(rad_listen_t *this)
 /*
  *	Allocate & initialize a new listener.
  */
-static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, fr_protocol_t *proto)
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, rad_protocol_t *proto)
 {
 	rad_listen_t *this;
 

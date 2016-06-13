@@ -1831,8 +1831,8 @@ static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 }
 
 
-extern fr_protocol_t proto_bfd;
-fr_protocol_t proto_bfd = {
+extern rad_protocol_t proto_bfd;
+rad_protocol_t proto_bfd = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "bfd",
 	.inst_size	= sizeof(bfd_socket_t),

@@ -37,28 +37,42 @@ typedef int (*rad_listen_unlang_t)(CONF_SECTION *, CONF_SECTION *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
 typedef ssize_t (*rad_listen_size_t)(uint8_t const *data, size_t data_len);
 
-typedef struct fr_protocol_t {
-	uint64_t 		magic;	//!< Used to validate loaded library
-	char const		*name;	//!< The name of the protocol
-	size_t			inst_size;
-	CONF_PARSER		*proto_config;
+/** Struct exported by a proto_* module
+ *
+ * Used to pass information common to proto_* modules to the server core,
+ * and to register callbacks that get executed when processing packets of this
+ * protocol type.
+ */
+typedef struct rad_protocol_t {
+	uint64_t 		magic;			//!< Used to validate loaded library
+	char const		*name;			//!< The name of the protocol (without proto_ prefix).
+	size_t			inst_size;		//!< sizeof() instance data.
 
-	uint32_t		transports;
-	bool			tls;
+	CONF_PARSER		*config;		//!< listen section configuration mappings.
+	uint32_t		transports;		//!< What can transport this protocol.
+	bool			tls;			//!< Whether protocol can be wrapped in TLS.
 
 	rad_listen_size_t	size;
 
-	rad_listen_unlang_t	bootstrap;
-	rad_listen_unlang_t	compile;
-	rad_listen_parse_t	parse;
-	rad_listen_parse_t	open;
-	rad_listen_recv_t	recv;
-	rad_listen_send_t	send;
-	rad_listen_print_t	print;
-	rad_listen_debug_t	debug;
-	rad_listen_encode_t	encode;
-	rad_listen_decode_t	decode;
-} fr_protocol_t;
+	rad_listen_unlang_t	bootstrap;		//!< Phase1 - Basic validation checks of virtual server.
+	rad_listen_unlang_t	compile;		//!< Phase2 - Compile unlang sections in the virtual
+							//!< server that map to packet types used by the protocol.
+
+	rad_listen_parse_t	parse;			//!< Perform extra processing of the configuration data
+							//!< specified by #config.
+
+	rad_listen_parse_t	open;			//!< Open a descriptor.
+
+	rad_listen_recv_t	recv;			//!< Read an incoming packet from the descriptor.
+	rad_listen_send_t	send;			//!< Write an outgoing packet to the descriptor.
+
+	rad_listen_print_t	print;			//!< Print a line describing the packet being sent or the
+							//!< packet that was received.
+	rad_listen_debug_t	debug;			//!< Print an attribute list for debugging.
+
+	rad_listen_encode_t	encode;			//!< Encode an outgoing packet.
+	rad_listen_decode_t	decode;			//!< Decode an incoming packet.
+} rad_protocol_t;
 
 #define TRANSPORT_TCP (1 << IPPROTO_TCP)
 #define TRANSPORT_UDP (1 << IPPROTO_UDP)

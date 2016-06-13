@@ -57,7 +57,7 @@ typedef enum RAD_LISTEN_STATUS {
 } RAD_LISTEN_STATUS;
 
 typedef struct rad_listen rad_listen_t;
-typedef struct fr_protocol_t fr_protocol_t;
+typedef struct rad_protocol_t rad_protocol_t;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
@@ -68,7 +68,7 @@ typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
 
 struct rad_listen {
 	rad_listen_t		*next; /* should be rbtree stuff */
-	fr_protocol_t		*proto;
+	rad_protocol_t		*proto;
 
 	/*
 	 *	For normal sockets.

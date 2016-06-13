@@ -113,8 +113,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-extern module_t rlm_date;
-module_t rlm_date = {
+extern rad_module_t rlm_date;
+rad_module_t rlm_date = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "date",
 	.inst_size	= sizeof(rlm_date_t),

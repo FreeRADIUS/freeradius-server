@@ -617,8 +617,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_sqlcounter;
-module_t rlm_sqlcounter = {
+extern rad_module_t rlm_sqlcounter;
+rad_module_t rlm_sqlcounter = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sqlcounter",
 	.type		= RLM_TYPE_THREAD_SAFE,

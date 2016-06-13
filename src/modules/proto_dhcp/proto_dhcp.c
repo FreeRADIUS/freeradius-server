@@ -1043,8 +1043,8 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 	return 0;
 }
 
-extern fr_protocol_t proto_dhcp;
-fr_protocol_t proto_dhcp = {
+extern rad_protocol_t proto_dhcp;
+rad_protocol_t proto_dhcp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcp",
 	.inst_size	= sizeof(dhcp_socket_t),

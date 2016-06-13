@@ -283,8 +283,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *reques
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_replicate;
-module_t rlm_replicate = {
+extern rad_module_t rlm_replicate;
+rad_module_t rlm_replicate = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "replicate",
 	.type		= RLM_TYPE_THREAD_SAFE,

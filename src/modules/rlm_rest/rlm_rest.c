@@ -831,8 +831,8 @@ static int mod_detach(void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_rest;
-module_t rlm_rest = {
+extern rad_module_t rlm_rest;
+rad_module_t rlm_rest = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "rest",
 	.type		= RLM_TYPE_THREAD_SAFE,

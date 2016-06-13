@@ -332,8 +332,8 @@ RLM_AF_FUNC(send_coa, reply)
 #endif
 
 /* globally exported name */
-extern module_t rlm_attr_filter;
-module_t rlm_attr_filter = {
+extern rad_module_t rlm_attr_filter;
+rad_module_t rlm_attr_filter = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "attr_filter",
 	.type		= RLM_TYPE_HUP_SAFE,

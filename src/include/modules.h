@@ -36,7 +36,7 @@ extern "C" {
 
 /** The different section components of the server
  *
- * Used as indexes in the methods array in the module_t struct.
+ * Used as indexes in the methods array in the rad_module_t struct.
  */
 typedef enum rlm_components {
 	MOD_AUTHENTICATE = 0,			//!< 0 methods index for authenticate section.
@@ -127,22 +127,25 @@ typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  */
 typedef int (*detach_t)(void *instance);
 
-/** Metadata exported by the module
+/** Struct export by a rlm_* module
  *
- * This determines the capabilities of the module, and maps internal functions
+ * Determines the capabilities of the module, and maps internal functions
  * within the module to different sections.
  */
-typedef struct module_t {
+typedef struct rad_module_t {
 	uint64_t 		magic;			//!< Used to validate module struct.
 	char const		*name;			//!< The name of the module (without rlm_ prefix).
 	int			type;			//!< One or more of the RLM_TYPE_* constants.
-	size_t			inst_size;		//!< Size of the instance data
-	CONF_PARSER const	*config;		//!< Configuration information
-	instantiate_t		bootstrap;		//!< register dynamic attrs, etc.
-	instantiate_t		instantiate;		//!< Function to use for instantiation.
-	detach_t		detach;			//!< Function to use to free module instance.
-	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions.
-} module_t;
+	size_t			inst_size;		//!< sizeof() instance data.
+
+	CONF_PARSER const	*config;		//!< Module configuration mappings.
+
+	instantiate_t		bootstrap;		//!< Register dynamic attrs, xlats, etc.
+	instantiate_t		instantiate;		//!< Callback to create a new module instance.
+	detach_t		detach;			//!< Callback to free a module instance.
+
+	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+} rad_module_t;
 
 /*
  *	Share connection pool instances between modules

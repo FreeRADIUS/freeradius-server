@@ -1001,8 +1001,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_cache;
-module_t rlm_cache = {
+extern rad_module_t rlm_cache;
+rad_module_t rlm_cache = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "cache",
 	.inst_size	= sizeof(rlm_cache_t),

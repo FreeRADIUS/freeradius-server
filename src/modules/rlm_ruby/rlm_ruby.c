@@ -447,8 +447,8 @@ static int mod_detach(UNUSED void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_ruby;
-module_t rlm_ruby = {
+extern rad_module_t rlm_ruby;
+rad_module_t rlm_ruby = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "ruby",
 	.type		= RLM_TYPE_THREAD_UNSAFE, /* type, ok, let's be honest, MRI is not yet treadsafe */
