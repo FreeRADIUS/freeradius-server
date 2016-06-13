@@ -27,8 +27,12 @@
 RCSIDH(conffile_h, "$Id$")
 
 #include <stddef.h>
-#include <freeradius-devel/token.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
 #include <sys/time.h>
+#include <freeradius-devel/token.h>
+#include <freeradius-devel/rbtree.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -384,7 +388,7 @@ char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 
 void *cf_data_find(CONF_SECTION const *, char const *);
-int cf_data_add(CONF_SECTION *, char const *, void *, void (*)(void *));
+int cf_data_add(CONF_SECTION *, char const *, void const *, void (*)(void *));
 void *cf_data_remove(CONF_SECTION *cs, char const *name);
 
 char const *cf_pair_attr(CONF_PAIR const *pair);
@@ -392,7 +396,6 @@ char const *cf_pair_value(CONF_PAIR const *pair);
 FR_TOKEN cf_pair_operator(CONF_PAIR const *pair);
 FR_TOKEN cf_pair_attr_type(CONF_PAIR const *pair);
 FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair);
-VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 char const *cf_section_name1(CONF_SECTION const *cs);
 char const *cf_section_name2(CONF_SECTION const *cs);
 char const *cf_section_name(CONF_SECTION const *cs);

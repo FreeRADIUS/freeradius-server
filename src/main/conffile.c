@@ -103,7 +103,7 @@ struct conf_pair {
 struct conf_data {
 	CONF_ITEM  	item;
 	char const 	*name;
-	void	   	*data;		//!< User data
+	void const   	*data;		//!< User data
 	void       	(*free)(void *);	//!< Free user data function
 };
 
@@ -246,7 +246,11 @@ static CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 
 static int _cf_data_free(CONF_DATA *cd)
 {
-	if (cd->free) cd->free(cd->data);
+	void *to_free;
+
+	memcpy(&to_free, cd->data, sizeof(to_free));
+
+	if (cd->free) cd->free(to_free);
 
 	return 0;
 }
@@ -3633,48 +3637,6 @@ FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair)
 }
 
 /*
- * Turn a CONF_PAIR into a VALUE_PAIR
- * For now, ignore the "value_type" field...
- */
-VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
-{
-	if (!pair) {
-		fr_strerror_printf("Internal error");
-		return NULL;
-	}
-
-	if (!pair->value) {
-		fr_strerror_printf("No value given for attribute %s", pair->attr);
-		return NULL;
-	}
-
-	/*
-	 *	false comparisons never match.  BUT if it's a "string"
-	 *	or `string`, then remember to expand it later.
-	 */
-	if ((pair->op != T_OP_CMP_FALSE) &&
-	    ((pair->rhs_type == T_DOUBLE_QUOTED_STRING) ||
-	     (pair->rhs_type == T_BACK_QUOTED_STRING))) {
-		VALUE_PAIR *vp;
-
-		vp = fr_pair_make(pair, NULL, pair->attr, NULL, pair->op);
-		if (!vp) {
-			return NULL;
-		}
-
-		if (fr_pair_mark_xlat(vp, pair->value) < 0) {
-			talloc_free(vp);
-
-			return NULL;
-		}
-
-		return vp;
-	}
-
-	return fr_pair_make(pair, NULL, pair->attr, pair->value, pair->op);
-}
-
-/*
  * Return the first label of a CONF_SECTION
  */
 
@@ -4021,7 +3983,7 @@ bool cf_item_is_pair(CONF_ITEM const *item)
 
 
 static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
-				void *data, void (*data_free)(void *))
+				void const *data, void (*data_free)(void *))
 {
 	CONF_DATA *cd;
 
@@ -4059,7 +4021,12 @@ void *cf_data_find(CONF_SECTION const *cs, char const *name)
 
 		mycd.name = name;
 		cd = rbtree_finddata(cs->data_tree, &mycd);
-		if (cd) return cd->data;
+		if (cd) {
+			void *to_return;
+			memcpy(&to_return, &cd->data, sizeof(to_return));
+
+			return to_return;
+		}
 	}
 
 	return NULL;
@@ -4070,7 +4037,7 @@ void *cf_data_find(CONF_SECTION const *cs, char const *name)
  *	Add named data to a configuration section.
  */
 int cf_data_add(CONF_SECTION *cs, char const *name,
-		void *data, void (*data_free)(void *))
+		void const *data, void (*data_free)(void *))
 {
 	CONF_DATA *cd;
 
@@ -4112,7 +4079,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */
 	rbtree_deletebydata(cs->data_tree, &mycd);
 
-	data = cd->data;
+	memcpy(&data, &cd->data, sizeof(data));
 	talloc_free(cd);
 
 	return data;
