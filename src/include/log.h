@@ -64,7 +64,6 @@ typedef enum log_dst {
 	L_DST_NUM_DEST
 } log_dst_t;
 
-
 typedef struct fr_log_t {
 	bool		colourise;	//!< Prefix log messages with VT100 escape codes to change text
 					//!< colour.
