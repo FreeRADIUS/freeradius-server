@@ -13,8 +13,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_LOG_H
-#define _FR_LOG_H
+#ifndef _RAD_LOG_H
+#define _RAD_LOG_H
 /**
  * $Id$
  *

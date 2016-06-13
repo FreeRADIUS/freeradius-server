@@ -91,6 +91,8 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/proto.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/rbtree.h>
+#include <freeradius-devel/fr_log.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #  if SIZEOF_UNSIGNED_INT != 4
@@ -127,20 +129,6 @@ typedef void (*sig_t)(int);
 #  define VENDORPEC_STARENT	8164
 #  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
-
-#define PAD(_x, _y)		(_y - ((_x) % _y))
-
-#define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
-#define NEVER_RETURNS		CC_HINT(noreturn)
-#define UNUSED			CC_HINT(unused)
-
-#ifndef NDEBUG
-#  define NDEBUG_UNUSED
-#else
-#  define NDEBUG_UNUSED		UNUSED
-#endif
-
-#define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
 /*
  *	vector:		Request authenticator from access-request packet
@@ -373,18 +361,6 @@ char		*value_data_asprint(TALLOC_CTX *ctx,
 				    PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data,
 				    char quote);
 
-/*
- *	Error functions.
- */
-void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
-void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
-void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
-
-char const	*fr_strerror(void);
-char const	*fr_syserror(int num);
-extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
-extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
-extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern uint32_t	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
@@ -547,55 +523,6 @@ void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 
 void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #  define	fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
-
-/* rbtree.c */
-typedef struct rbtree_t rbtree_t;
-typedef struct rbnode_t rbnode_t;
-
-/* callback order for walking  */
-typedef enum {
-	RBTREE_PRE_ORDER,
-	RBTREE_IN_ORDER,
-	RBTREE_POST_ORDER,
-	RBTREE_DELETE_ORDER
-} rb_order_t;
-
-#define RBTREE_FLAG_NONE    (0)
-#define RBTREE_FLAG_REPLACE (1 << 0)
-#define RBTREE_FLAG_LOCK    (1 << 1)
-
-typedef int (*rb_comparator_t)(void const *ctx, void const *data);
-typedef int (*rb_walker_t)(void *ctx, void *data);
-typedef void (*rb_free_t)(void *data);
-
-rbtree_t	*rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node_free, int flags);
-void		rbtree_free(rbtree_t *tree);
-bool		rbtree_insert(rbtree_t *tree, void *data);
-rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
-void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
-bool		rbtree_deletebydata(rbtree_t *tree, void const *data);
-rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
-void		*rbtree_finddata(rbtree_t *tree, void const *data);
-uint32_t	rbtree_num_elements(rbtree_t *tree);
-void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
-
-/*
- *	The callback should be declared as:
- *	int callback(void *context, void *data)
- *
- *	The "context" is some user-defined context.
- *	The "data" is the pointer to the user data in the node,
- *	NOT the node itself.
- *
- *	It should return 0 if all is OK, and !0 for any error.
- *	The walking will stop on any error.
- *
- *	Except with RBTREE_DELETE_ORDER, where the callback should return <0 for
- *	errors, and may return 1 to delete the current node and halt,
- *	or 2 to delete the current node and continue.  This may be
- *	used to batch-delete select nodes from a locked rbtree.
- */
-int		rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *context);
 
 /*
  *	FIFOs
