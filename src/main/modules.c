@@ -29,13 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
-/** Path to search for modules in
- *
- */
-char const *radlib_dir = NULL;
-
 static TALLOC_CTX *instance_ctx = NULL;
-static rbtree_t *dlhandle_tree = NULL;
 
 struct fr_module_hup_t {
 	module_instance_t	*mi;
@@ -63,209 +57,12 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 };
 
-#ifndef RTLD_NOW
-#  define RTLD_NOW (0)
-#endif
-#ifndef RTLD_LOCAL
-#  define RTLD_LOCAL (0)
-#endif
-
-#ifdef __APPLE__
-#  define DL_EXTENSION ".dylib"
-#elif defined (WIN32)
-#  define DL_EXTENSION ".dll"
-#else
-#  define DL_EXTENSION ".so"
-#endif
-
-/** Check if the magic number in the module matches the one in the library
- *
- * This is used to detect potential ABI issues caused by running with modules which
- * were built for a different version of the server.
- *
- * @param cs being parsed.
- * @param module being loaded.
- * @returns
- *	- 0 on success.
- *	- -1 if prefix mismatch.
- *	- -2 if version mismatch.
- *	- -3 if commit mismatch.
- */
-static int module_verify_magic(CONF_SECTION *cs, rad_module_t const *module)
-{
-#ifdef HAVE_DLADDR
-	Dl_info dl_info;
-	dladdr(module, &dl_info);
-#endif
-
-	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
-#ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
-#endif
-		cf_log_err_cs(cs, "Application and rlm_%s magic number (prefix) mismatch."
-			      "  application: %x module: %x", module->name,
-			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
-			      MAGIC_PREFIX(module->magic));
-		return -1;
-	}
-
-	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
-#ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
-#endif
-		cf_log_err_cs(cs, "Application and rlm_%s magic number (version) mismatch."
-			      "  application: %lx module: %lx", module->name,
-			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
-			      (unsigned long) MAGIC_VERSION(module->magic));
-		return -2;
-	}
-
-	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
-#ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
-#endif
-		cf_log_err_cs(cs, "Application and rlm_%s magic number (commit) mismatch."
-			      "  application: %lx module: %lx", module->name,
-			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
-			      (unsigned long) MAGIC_COMMIT(module->magic));
-		return -3;
-	}
-
-	return 0;
-}
-
-/** Search for a module's shared object in various locations
- *
- * @param name of module to load.
- */
-void *module_dlopen_by_name(char const *name)
-{
-	int		flags = RTLD_NOW;
-	void		*handle;
-	char		buffer[2048];
-	char		*env;
-	char const	*search_path;
-
-#ifdef RTLD_GLOBAL
-	if (strcmp(name, "rlm_perl") == 0) {
-		flags |= RTLD_GLOBAL;
-	} else
-#endif
-		flags |= RTLD_LOCAL;
-
-#ifndef NDEBUG
-	/*
-	 *	Bind all the symbols *NOW* so we don't hit errors later
-	 */
-	flags |= RTLD_NOW;
-#endif
-
-	/*
-	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
-	 */
-	env = getenv("FR_LIBRARY_PATH");
-	if (env) {
-		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
-		search_path = env;
-	} else {
-		search_path = radlib_dir;
-	}
-
-	/*
-	 *	Prefer loading our libraries by absolute path.
-	 */
-	if (search_path) {
-		char *error;
-		char *ctx, *paths, *path;
-		char *p;
-
-		fr_strerror();
-
-		ctx = paths = talloc_strdup(NULL, search_path);
-		while ((path = strsep(&paths, ":")) != NULL) {
-			/*
-			 *	Trim the trailing slash
-			 */
-			p = strrchr(path, '/');
-			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
-
-			path = talloc_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
-
-			DEBUG4("Loading %s with path: %s", name, path);
-
-			handle = dlopen(path, flags);
-			if (handle) {
-				talloc_free(ctx);
-				return handle;
-			}
-			error = dlerror();
-
-			fr_strerror_printf("%s%s\n", fr_strerror(), error);
-			DEBUG4("Loading %s failed: %s - %s", name, error,
-			       (access(path, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
-			talloc_free(path);
-		}
-		talloc_free(ctx);
-	}
-
-	DEBUG4("Loading library using linker search path(s)");
-	if (DEBUG_ENABLED4) {
-#ifdef __APPLE__
-
-		env = getenv("LD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("LD_LIBRARY_PATH            : %s", env);
-		}
-		env = getenv("DYLD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("DYLB_LIBRARY_PATH          : %s", env);
-		}
-		env = getenv("DYLD_FALLBACK_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("DYLD_FALLBACK_LIBRARY_PATH : %s", env);
-		}
-		env = getcwd(buffer, sizeof(buffer));
-		if (env) {
-			DEBUG4("Current directory          : %s", env);
-		}
-#else
-		env = getenv("LD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("LD_LIBRARY_PATH  : %s", env);
-		}
-		DEBUG4("Defaults         : /lib:/usr/lib");
-#endif
-	}
-
-	strlcpy(buffer, name, sizeof(buffer));
-	/*
-	 *	FIXME: Make this configurable...
-	 */
-	strlcat(buffer, DL_EXTENSION, sizeof(buffer));
-
-	handle = dlopen(buffer, flags);
-	if (!handle) {
-		char *error = dlerror();
-
-		DEBUG4("Failed with error: %s", error);
-		/*
-		 *	Append the error
-		 */
-		fr_strerror_printf("%s: %s", fr_strerror(), error);
-		return NULL;
-	}
-	return handle;
-}
-
-
 /** Free old instances from HUPs
  *
  */
 static void module_hup_free(module_instance_t *instance, time_t when)
 {
 	fr_module_hup_t *mh, **last;
-
-	rad_assert(dlhandle_tree != NULL);
 
 	/*
 	 *	Walk the list, freeing up old instances.
@@ -289,16 +86,6 @@ static void module_hup_free(module_instance_t *instance, time_t when)
 	}
 }
 
-/*
- *	Compare two module handles
- */
-static int module_dlhandle_cmp(void const *one, void const *two)
-{
-	module_dl_t const *a = one;
-	module_dl_t const *b = two;
-
-	return strcmp(a->name, b->name);
-}
 
 /** Free all modules loaded by the server
  *
@@ -310,136 +97,8 @@ int modules_free(void)
 	 *	Free instances first, then dynamic libraries.
 	 */
 	TALLOC_FREE(instance_ctx);
-	TALLOC_FREE(dlhandle_tree);
 
 	return 0;
-}
-
-/** Free a module
- *
- * Close module's dlhandle, unloading it.
- */
-static int _module_dl_free(module_dl_t *module_dl)
-{
-	module_dl = talloc_get_type_abort(module_dl, module_dl_t);
-
-	DEBUG3("Unloading module \"%s\" (%p/%p)", module_dl->name, module_dl->handle, module_dl->module);
-
-	/*
-	 *	The module is about to be unloaded
-	 *	call the unload callback...
-	 */
-	if ((--module_dl->ref == 0) && module_dl->module->unload) module_dl->module->unload();
-
-	if (module_dl->handle) {
-		dlclose(module_dl->handle);        /* ignore any errors */
-		module_dl->handle = NULL;
-	}
-
-	return 0;
-}
-
-/** Load a module library using dlopen() or return a previously loaded module from the cache
- *
- * @param conf section describing the module's configuration.
- * @return
- *	- Module handle holding dlhandle, and module's public interface structure.
- *	- NULL if module couldn't be loaded, or some other error occurred.
- */
-static module_dl_t *module_dlopen(CONF_SECTION *conf)
-{
-	module_dl_t			to_find;
-	module_dl_t			*module_dl;
-	void				*handle = NULL;
-	char const			*name1;
-	char				module_name[256];
-	rad_module_t const			*module;
-
-	name1 = cf_section_name1(conf);
-
-	to_find.name = name1;
-	module_dl = rbtree_finddata(dlhandle_tree, &to_find);
-	if (module_dl) return module_dl;
-
-	/*
-	 *	Link to the interface's rlm_FOO{} structure, the same as
-	 *	the module name.
-	 */
-	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
-
-	/*
-	 *	Check if the module was statically compiled into the server,
-	 *	or linked into the server.
-	 */
-#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	module = dlsym(RTLD_SELF, module_name);
-	if (module) goto open_self;
-#endif
-
-	/*
-	 *	Keep the dlhandle around so we can dlclose() it.
-	 */
-	handle = module_dlopen_by_name(module_name);
-	if (!handle) {
-		cf_log_err_cs(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
-		return NULL;
-	}
-
-	DEBUG3("Loaded \"%s\", checking if it's valid", module_name);
-
-	module = dlsym(handle, module_name);
-	if (!module) {
-		cf_log_err_cs(conf, "Failed linking to \"%s\" structure: %s", module_name, dlerror());
-		dlclose(handle);
-		return NULL;
-	}
-
-#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	open_self:
-#endif
-	/*
-	 *	Before doing anything else, check if it's sane.
-	 */
-	if (module_verify_magic(conf, module) < 0) {
-		dlclose(handle);
-		return NULL;
-	}
-
-	DEBUG3("Validated \"%s\" (%p/%p)", module_name, handle, module);
-
-	/* make room for the module type */
-	module_dl = talloc_zero(dlhandle_tree, module_dl_t);
-	module_dl->module = module;
-	module_dl->handle = handle;
-	module_dl->name = cf_section_name1(conf);
-
-	/*
-	 *	Perform global library initialisation
-	 */
-	if (module_dl->module->load && (module_dl->module->load() < 0)) {
-		cf_log_err_cs(conf, "Initialisation failed for module \"%s\"", module_dl->module->name);
-		dlclose(handle);
-		talloc_free(module_dl);
-		return NULL;
-	}
-
-	cf_log_module(conf, "Loaded module \"%s\"", module_name);
-
-	/*
-	 *	Add the module as "rlm_foo-version" to the configuration
-	 *	section.
-	 */
-	if (!rbtree_insert(dlhandle_tree, module_dl)) {
-		ERROR("Failed to cache module \"%s\"", module_name);
-		dlclose(handle);
-		talloc_free(module_dl);
-		return NULL;
-	}
-
-	talloc_set_destructor(module_dl, _module_dl_free);	/* Do this late */
-	module_dl->ref++;					/* First reference */
-
-	return module_dl;
 }
 
 /** Parse module's configuration section and setup destructors
@@ -514,6 +173,22 @@ static int _module_instance_free(module_instance_t *instance)
 		xlat_unregister_module(instance->data);
 	}
 
+	/*
+	 *	We need to explicitly free all children, so the module instance
+	 *	destructors get executed before we unload the bytecode for the
+	 *	module.
+	 *
+	 *	If we don't do this, we get a SEGV deep inside the talloc code
+	 *	when it tries to call a destructor that no longer exists.
+	 */
+	talloc_free_children(instance);
+
+	/*
+	 *	Decrements the reference count. The module object won't be unloaded
+	 *	until all instances of that module have been destroyed.
+	 */
+	talloc_decrease_ref_count(instance->handle);
+
 	return 0;
 }
 
@@ -537,7 +212,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	int			i;
 	char const		*name1, *instance_name;
 	module_instance_t	*instance;
-	module_dl_t		*module_dl;
+	dl_module_t const	*module;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -574,26 +249,20 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Load the module shared library.
 	 */
-	module_dl = module_dlopen(cs);
-	if (!module_dl) {
+	module = dl_module(cs, name1, "rlm_");
+	if (!module) {
 		talloc_free(instance);
 		return NULL;
 	}
 
-	/*
-	 *	Hang the instance struct off the dlhandle,
-	 *	if the module is unloaded, all its instances
-	 *	will be too.
-	 *
-	 *	@fixme this should be the other way round.
-	 */
 	instance = talloc_zero(instance_ctx, module_instance_t);
 	instance->cs = cs;
 	instance->name = instance_name;
+	instance->handle = module;
 
 	talloc_set_destructor(instance, _module_instance_free);
 
-	instance->module = module_dl->module;
+	instance->module = (rad_module_t const *)module->common;
 	if (!instance->module) {
 		talloc_free(instance);
 		return NULL;
@@ -1537,15 +1206,6 @@ int modules_bootstrap(CONF_SECTION *root)
 {
 	CONF_ITEM *ci, *next;
 	CONF_SECTION *cs, *modules;
-
-	/*
-	 *	Set up the internal module struct.
-	 */
-	dlhandle_tree = rbtree_create(NULL, module_dlhandle_cmp, NULL, 0);
-	if (!dlhandle_tree) {
-		ERROR("Failed to initialize modules\n");
-		return -1;
-	}
 
 	instance_ctx = talloc_init("module instance context");
 

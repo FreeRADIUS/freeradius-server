@@ -2,6 +2,7 @@ TARGET	:= libfreeradius-server.a
 
 SOURCES	:=	conffile.c \
 		connection.c \
+		dl.c \
 		evaluate.c \
 		exec.c \
 		exfile.c \
@@ -19,8 +20,7 @@ SOURCES	:=	conffile.c \
 		xlat.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
-TGT_LDLIBS      := $(OPENSSL_LIBS) $(GPERFTOOLS_FLAGS) $(GPERFTOOLS_LIBS)
-
+TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_FLAGS) $(GPERFTOOLS_LIBS)
 TGT_PREREQS	:= libfreeradius-radius.la
 
 ifneq ($(MAKECMDGOALS),scan)

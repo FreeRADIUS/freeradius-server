@@ -94,8 +94,8 @@ struct _eap_session {
  *
  */
 typedef struct rlm_eap_module {
-	char const *name;				//!< The name of the sub-module
-							//!< (without rlm_ prefix).
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+
 	int (*instantiate)(CONF_SECTION *conf, void **instance); //!< Create a new submodule instance.
 	eap_process_t	session_init;			//!< Callback for creating a new #eap_session_t.
 	eap_process_t	process;			//!< Callback for processing the next #eap_round_t of an

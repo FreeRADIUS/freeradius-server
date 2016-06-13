@@ -68,7 +68,7 @@ typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
 
 struct rad_listen {
 	rad_listen_t		*next; /* should be rbtree stuff */
-	rad_protocol_t		*proto;
+	rad_protocol_t const	*proto;
 
 	/*
 	 *	For normal sockets.

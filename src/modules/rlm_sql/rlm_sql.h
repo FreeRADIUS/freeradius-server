@@ -191,7 +191,8 @@ typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t out
 			      rlm_sql_config_t *config);
 
 typedef struct rlm_sql_module_t {
-	char const	*name;
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+
 	int		flags;
 
 	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
@@ -224,12 +225,12 @@ struct sql_inst {
 	rlm_sql_config_t	*config;
 	CONF_SECTION		*cs;
 
-	fr_dict_attr_t const		*sql_user;		//!< Cached pointer to SQL-User-Name
+	fr_dict_attr_t const	*sql_user;		//!< Cached pointer to SQL-User-Name
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	void			*handle;
-	rlm_sql_module_t	*module;
+	dl_module_t const	*handle;
+	rlm_sql_module_t const	*module;
 
 	int (*sql_set_user)(rlm_sql_t const *inst, REQUEST *request, char const *username);
 	xlat_escape_t sql_escape_func;

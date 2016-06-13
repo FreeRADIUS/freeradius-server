@@ -635,3 +635,21 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 	return p;
 }
 
+/** Decrease the reference count on a ptr
+ *
+ * Ptr will be freed if count reaches zero.
+ *
+ * This is equivalent to talloc 1.0 behaviour of talloc_free.
+ *
+ * @param ptr to decrement ref count for.
+ */
+void talloc_decrease_ref_count(void const *ptr)
+{
+	void *to_free;
+
+	if (!ptr) return;
+
+	memcpy(&to_free, &ptr, sizeof(to_free));
+
+	talloc_unlink(talloc_parent(ptr), to_free);
+}

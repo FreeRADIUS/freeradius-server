@@ -1019,7 +1019,7 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(server_cs, cs, "dhcp")) {
 		char const *name2 = cf_section_name2(cs);
-		
+
 
 		if (name2) {
 			cf_log_module(cs, "Loading dhcp %s {...}", name2);

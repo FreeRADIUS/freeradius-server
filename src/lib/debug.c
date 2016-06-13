@@ -749,7 +749,7 @@ NEVER_RETURNS void fr_fault(int sig)
 
 		FR_FAULT_LOG("Panic action exited with %i", code);
 
-		fr_exit_now(code);
+		fr_exit_now(1);
 	}
 
 

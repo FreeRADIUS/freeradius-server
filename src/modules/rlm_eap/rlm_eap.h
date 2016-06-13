@@ -36,8 +36,8 @@ RCSIDH(rlm_eap_h, "$Id$")
  */
 typedef struct eap_module {
 	char const		*name;
-	rlm_eap_module_t	*type;
-	void			*handle;
+	rlm_eap_module_t const	*type;
+	dl_module_t const	*handle;
 	CONF_SECTION		*cs;
 	void			*instance;
 } eap_module_t;

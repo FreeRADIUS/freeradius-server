@@ -196,6 +196,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 extern rlm_eap_module_t rlm_eap_leap;
 rlm_eap_module_t rlm_eap_leap = {
 	.name		= "eap_leap",
+	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };

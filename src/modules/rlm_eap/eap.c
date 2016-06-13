@@ -77,14 +77,11 @@ static int _eap_module_free(eap_module_t *inst)
 	 */
 	if (inst->type && inst->type->detach) (inst->type->detach)(inst->instance);
 
-#ifndef NDEBUG
 	/*
-	 *	Don't dlclose() modules if this is a debug built
-	 *	ad it removes the symbols needed by valgrind.
+	 *	Decrements the reference count. The driver object won't be unloaded
+	 *	until all instances of rlm_cache that use it have been destroyed.
 	 */
-#else
-	if (inst->handle) dlclose(inst->handle);
-#endif
+	talloc_decrease_ref_count(inst->handle);
 
 	return 0;
 }
@@ -94,66 +91,39 @@ static int _eap_module_free(eap_module_t *inst)
  */
 int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF_SECTION *cs)
 {
-	eap_module_t *method;
-	char *mod_name, *p;
+	eap_module_t *module;
 
 	/* Make room for the EAP-Type */
-	*m_inst = method = talloc_zero(cs, eap_module_t);
+	*m_inst = module = talloc_zero(cs, eap_module_t);
 	if (!inst) return -1;
 
-	talloc_set_destructor(method, _eap_module_free);
+	talloc_set_destructor(module, _eap_module_free);
 
 	/* fill in the structure */
-	method->cs = cs;
-	method->name = eap_type2name(num);
-
-	/*
-	 *	The name of the module were trying to load
-	 */
-	mod_name = talloc_typed_asprintf(method, "rlm_eap_%s", method->name);
-
-	/*
-	 *	dlopen is case sensitive
-	 */
-	p = mod_name;
-	while (*p) {
-		*p = tolower(*p);
-		p++;
-	}
+	module->cs = cs;
+	module->name = eap_type2name(num);
 
 	/*
 	 *	Link the loaded EAP-Type
 	 */
-	method->handle = module_dlopen_by_name(mod_name);
-	if (!method->handle) {
-		ERROR("Failed to link %s: %s", mod_name, fr_strerror());
+	module->handle = dl_module(cs, module->name, "rlm_eap_");
+	if (!module->handle) return -1;
+	module->type = (rlm_eap_module_t const *)module->handle->common;
 
-		return -1;
-	}
-
-	method->type = dlsym(method->handle, mod_name);
-	if (!method->type) {
-		ERROR("Failed linking to structure in %s: %s", method->name, dlerror());
-
-		return -1;
-	}
-
-	cf_log_module(cs, "Linked to sub-module %s", mod_name);
+	cf_log_module(cs, "Linked to sub-module %s", module->handle->name);
 
 	/*
 	 *	Call the attach num in the EAP num module
 	 */
-	if ((method->type->instantiate) && ((method->type->instantiate)(method->cs, &(method->instance)) < 0)) {
-		ERROR("Failed to initialise %s", mod_name);
+	if ((module->type->instantiate) && ((module->type->instantiate)(module->cs, &(module->instance)) < 0)) {
+		ERROR("Failed to initialise %s", module->handle->name);
 
-		if (method->instance) {
-			(void) talloc_steal(method, method->instance);
-		}
+		if (module->instance) (void) talloc_steal(module, module->instance);
 
 		return -1;
 	}
 
-	if (method->instance) (void) talloc_steal(method, method->instance);
+	if (module->instance) (void) talloc_steal(module, module->instance);
 
 	return 0;
 }

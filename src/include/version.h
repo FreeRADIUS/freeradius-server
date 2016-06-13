@@ -25,6 +25,7 @@
  */
 RCSIDH(version_h, "$Id$")
 
+#include <stdint.h>
 
 #ifdef WITHOUT_VERSION_CHECK
 #  define RADIUSD_MAGIC_NUMBER	((uint64_t) (0xf4ee4ad3f4ee4ad3))

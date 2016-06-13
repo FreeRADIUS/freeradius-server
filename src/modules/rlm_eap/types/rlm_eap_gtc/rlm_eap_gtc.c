@@ -198,6 +198,7 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 extern rlm_eap_module_t rlm_eap_gtc;
 rlm_eap_module_t rlm_eap_gtc = {
 	.name		= "eap_gtc",
+	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */

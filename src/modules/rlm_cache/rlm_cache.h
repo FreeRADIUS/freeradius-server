@@ -25,6 +25,7 @@
 RCSIDH(cache_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/dl.h>
 
 typedef struct cache_driver cache_driver_t;
 
@@ -64,8 +65,8 @@ typedef struct rlm_cache_config_t {
 typedef struct rlm_cache_t {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
-	void			*handle;		//!< Driver handle.
-	cache_driver_t		*driver;		//!< Driver.
+	dl_module_t const	*handle;		//!< Driver handle.
+	cache_driver_t const	*driver;		//!< Driver.
 	void			*driver_inst;		//!< Driver instance data.
 
 	vp_map_t		*maps;			//!< Attribute map applied to users.
@@ -276,7 +277,7 @@ typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_
 					     void *driver_inst, REQUEST *request);
 
 struct cache_driver {
-	char const			*name;			//!< Driver name.
+	RAD_MODULE_COMMON;					//!< Common fields for all loadable modules.
 
 	cache_instantiate_t		instantiate;		//!< (optional) Instantiate a driver.
 	cache_entry_alloc_t		alloc;			//!< (optional) Allocate a new entry.
@@ -294,7 +295,4 @@ struct cache_driver {
 	cache_release_t			release;		//!< (optional) Release access to resource acquired
 								//!< with acquire callback.
 	cache_reconnect_t		reconnect;		//!< (optional) Re-initialise resource.
-
-	size_t				inst_size;		//!< How many bytes should be allocated for the driver's
-								//!< instance data.
 };

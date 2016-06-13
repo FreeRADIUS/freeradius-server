@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/dl.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_cache.h"
@@ -846,20 +847,20 @@ static int mod_detach(void *instance)
 	talloc_free(inst->maps);
 
 	/*
-	 *  We need to explicitly free all children, so if the driver
-	 *  parented any memory off the instance, their destructors
-	 *  run before we unload the bytecode for them.
+	 *	We need to explicitly free all children, so if the driver
+	 *	parented any memory off the instance, their destructors
+	 *	run before we unload the bytecode for them.
 	 *
-	 *  If we don't do this, we get a SEGV deep inside the talloc code
-	 *  when it tries to call a destructor that no longer exists.
+	 *	If we don't do this, we get a SEGV deep inside the talloc code
+	 *	when it tries to call a destructor that no longer exists.
 	 */
 	talloc_free_children(inst);
 
 	/*
-	 *  Decrements the reference count. The driver object won't be unloaded
-	 *  until all instances of rlm_cache that use it have been destroyed.
+	 *	Decrements the reference count. The driver object won't be unloaded
+	 *	until all instances of rlm_cache that use it have been destroyed.
 	 */
-	if (inst->handle) dlclose(inst->handle);
+	talloc_decrease_ref_count(inst->handle);
 
 	return 0;
 }
@@ -891,6 +892,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_cache_t	*inst = instance;
 	CONF_SECTION	*update;
+	CONF_SECTION	*driver_cs;
+	char const 	*name;
 
 	inst->cs = conf;
 
@@ -904,22 +907,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	name = strrchr(inst->config.driver_name, '_');
+	if (!name) {
+		name = inst->config.driver_name;
+	} else {
+		name++;
+	}
+
+	driver_cs = cf_section_sub_find(conf, name);
+	if (!driver_cs) {
+		driver_cs = cf_section_alloc(conf, name, NULL);
+		if (!driver_cs) return -1;
+	}
+
 	/*
 	 *	Load the appropriate driver for our database
 	 */
-	inst->handle = module_dlopen_by_name(inst->config.driver_name);
+	inst->handle = dl_module(driver_cs, name, "rlm_cache_");
 	if (!inst->handle) {
 		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->config.driver_name, fr_strerror());
 		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
 			      " of your system's ld");
 		return -1;
 	}
-
-	inst->driver = (cache_driver_t *) dlsym(inst->handle, inst->config.driver_name);
-	if (!inst->driver) {
-		cf_log_err_cs(conf, "Could not link symbol %s: %s", inst->config.driver_name, dlerror());
-		return -1;
-	}
+	inst->driver = (cache_driver_t const *)inst->handle->common;
 
 	DEBUG2("Driver %s loaded and linked", inst->driver->name);
 
@@ -932,22 +943,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->driver->expire);
 
 	if (inst->driver->instantiate) {
-		CONF_SECTION *cs;
-		char const *name;
-
-		name = strrchr(inst->config.driver_name, '_');
-		if (!name) {
-			name = inst->config.driver_name;
-		} else {
-			name++;
-		}
-
-		cs = cf_section_sub_find(conf, name);
-		if (!cs) {
-			cs = cf_section_alloc(conf, name, NULL);
-			if (!cs) return -1;
-		}
-
 		/*
 		 *	It's up to the driver to register a destructor (using talloc)
 		 *
@@ -956,7 +951,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		if (inst->driver->inst_size) MEM(inst->driver_inst = talloc_zero_array(inst, uint8_t,
 										       inst->driver->inst_size));
-		if (inst->driver->instantiate(cs, &inst->config, inst->driver_inst) < 0) return -1;
+		if (inst->driver->instantiate(driver_cs, &inst->config, inst->driver_inst) < 0) return -1;
 	}
 
 	if (inst->config.ttl == 0) {
@@ -986,9 +981,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->maps) {
 		cf_log_err_cs(inst->cs, "Cache config must contain an update section, and "
 			      "that section must not be empty");
-
 		return -1;
 	}
+
 	return 0;
 }
 

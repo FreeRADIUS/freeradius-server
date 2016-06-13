@@ -992,27 +992,29 @@ static int mod_detach(void *instance)
 	if (inst->pool) fr_connection_pool_free(inst->pool);
 
 	/*
-	 *  We need to explicitly free all children, so if the driver
-	 *  parented any memory off the instance, their destructors
-	 *  run before we unload the bytecode for them.
+	 *	We need to explicitly free all children, so if the driver
+	 *	parented any memory off the instance, their destructors
+	 *	run before we unload the bytecode for them.
 	 *
-	 *  If we don't do this, we get a SEGV deep inside the talloc code
-	 *  when it tries to call a destructor that no longer exists.
+	 *	If we don't do this, we get a SEGV deep inside the talloc code
+	 *	when it tries to call a destructor that no longer exists.
 	 */
 	talloc_free_children(inst);
 
 	/*
-	 *  Decrements the reference count. The driver object won't be unloaded
-	 *  until all instances of rlm_sql that use it have been destroyed.
+	 *	Decrements the reference count. The driver object won't be unloaded
+	 *	until all instances of rlm_sql that use it have been destroyed.
 	 */
-	if (inst->handle) dlclose(inst->handle);
+	talloc_decrease_ref_count(inst->handle);
 
 	return 0;
 }
 
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	rlm_sql_t *inst = instance;
+	rlm_sql_t	*inst = instance;
+	CONF_SECTION	*driver_cs;
+	char const	*name;
 
 	/*
 	 *	Hack...
@@ -1024,24 +1026,35 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
-	 *	Load the appropriate driver for our database.
-	 *
-	 *	We need this to check if the sql_fields callback is provided.
+	 *	Accomodate full and partial driver names
 	 */
-	inst->handle = module_dlopen_by_name(inst->config->sql_driver_name);
-	if (!inst->handle) {
-		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, fr_strerror());
-		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
-		return -1;
+	name = strrchr(inst->config->sql_driver_name, '_');
+	if (!name) {
+		name = inst->config->sql_driver_name;
+	} else {
+		name++;
 	}
 
-	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,  inst->config->sql_driver_name);
-	if (!inst->module) {
-		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
-		return -1;
+	/*
+	 *	Get the module's subsection or allocate one
+	 */
+	driver_cs = cf_section_sub_find(conf, name);
+	if (!driver_cs) {
+		driver_cs = cf_section_alloc(conf, name, NULL);
+		if (!driver_cs) return -1;
 	}
 
-	INFO("Driver %s (module %s) loaded and linked", inst->config->sql_driver_name, inst->module->name);
+	/*
+	 *	Load the driver
+	 */
+	inst->handle = dl_module(driver_cs, name, "rlm_sql_");
+	if (!inst->handle) return -1;
+	inst->module = (rlm_sql_module_t const *)inst->handle->common;
+
+	/*
+	 *	It's up to the driver to register a destructor
+	 */
+	if (inst->module->mod_instantiate && (inst->module->mod_instantiate(driver_cs, inst->config)) < 0) return -1;
 
 	if (inst->config->groupmemb_query) {
 		char buffer[256];
@@ -1152,33 +1165,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
-
-	if (inst->module->mod_instantiate) {
-		CONF_SECTION *cs;
-		char const *name;
-
-		name = strrchr(inst->config->sql_driver_name, '_');
-		if (!name) {
-			name = inst->config->sql_driver_name;
-		} else {
-			name++;
-		}
-
-		cs = cf_section_sub_find(conf, name);
-		if (!cs) {
-			cs = cf_section_alloc(conf, name, NULL);
-			if (!cs) {
-				return -1;
-			}
-		}
-
-		/*
-		 *	It's up to the driver to register a destructor
-		 */
-		if (inst->module->mod_instantiate(cs, inst->config) < 0) {
-			return -1;
-		}
-	}
 
 	/*
 	 *	Either use the module specific escape function

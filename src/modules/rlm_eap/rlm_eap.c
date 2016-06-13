@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/dl.h>
 
 #include "rlm_eap.h"
 

@@ -782,6 +782,7 @@ packet_ready:
 extern rlm_eap_module_t rlm_eap_mschapv2;
 rlm_eap_module_t rlm_eap_mschapv2 = {
 	.name		= "eap_mschapv2",
+	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */

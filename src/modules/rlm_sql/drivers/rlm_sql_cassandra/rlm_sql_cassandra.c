@@ -933,6 +933,7 @@ static int sql_affected_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 extern rlm_sql_module_t rlm_sql_cassandra;
 rlm_sql_module_t rlm_sql_cassandra = {
 	.name				= "rlm_sql_cassandra",
+	.magic				= RLM_MODULE_INIT,
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,

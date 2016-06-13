@@ -71,21 +71,21 @@ static void print_packet(RADIUS_PACKET *packet)
  *	to know where they are, without trolling through all of the configuration.
  */
 typedef struct listen_config_t {
-	struct listen_config_t *next;	//!< the next listener
-	CONF_SECTION	*server;	//!< encapsulating server configuratiuon
-	CONF_SECTION	*cs;		//!< configuration for this listener
-	char const	*server_name;	//!< name of the virtual server (if any)
-	void		*handle;	//!< to dynamically loaded library (if any)
-	RAD_LISTEN_TYPE	type;		//! same as Listen-Socket-Type
-	rad_protocol_t	*proto;		//!< pointer to the protocol handler.
+	struct listen_config_t	*next;	//!< the next listener
+	CONF_SECTION		*server;	//!< encapsulating server configuratiuon
+	CONF_SECTION		*cs;		//!< configuration for this listener
+	char const		*server_name;	//!< name of the virtual server (if any)
+	dl_module_t const	*handle;	//!< to dynamically loaded library (if any)
+	RAD_LISTEN_TYPE		type;		//! same as Listen-Socket-Type
+	rad_protocol_t const	*proto;		//!< pointer to the protocol handler.
 
-	rad_listen_t	*listener;	//!< created from this configuration
+	rad_listen_t		*listener;	//!< created from this configuration
 } listen_config_t;
 
 static TALLOC_CTX *listen_ctx = NULL;
 static listen_config_t *listen_config = NULL;
 
-static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, rad_protocol_t *proto);
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, rad_protocol_t const *proto);
 static rad_listen_t *listen_parse(listen_config_t *lc);
 
 #ifdef WITH_COMMAND_SOCKET
@@ -97,7 +97,7 @@ static rad_protocol_t master_listen[];
 
 static int _listen_config_free(listen_config_t *lc)
 {
-	dlclose(lc->handle);
+	rad_const_free(lc->handle);
 	return 0;
 }
 
@@ -124,15 +124,15 @@ int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
  */
 int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_name)
 {
-	listen_config_t **last = &listen_config;
-	listen_config_t	*lc;
-	CONF_PAIR	*cp;
-	CONF_SECTION	*tls;
-	int		transports;
-	char const	*value;
-	fr_dict_enum_t const *dv;
-	void	*handle = NULL;
-	rad_protocol_t	*proto = NULL;
+	listen_config_t		**last = &listen_config;
+	listen_config_t		*lc;
+	CONF_PAIR		*cp;
+	CONF_SECTION		*tls;
+	int			transports;
+	char const		*value;
+	fr_dict_enum_t const	*dv;
+	rad_protocol_t const	*proto = NULL;
+	dl_module_t const	*module = NULL;
 
 	if (!listen_ctx) listen_ctx = talloc_init("listen_config_t");
 
@@ -181,37 +181,11 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	      (strcmp(value, "auth") == 0) ||
 	      (strcmp(value, "acct") == 0) ||
 	      (strcmp(value, "auth+acct") == 0))) {
-		char buffer[256];
-		static int max_listener = 256;
+		static int		max_listener = 256;
 
-		/*
-		 *	Load the library.
-		 */
-		snprintf(buffer, sizeof(buffer), "proto_%s", value);
-		handle = module_dlopen_by_name(buffer);
-		if (!handle) {
-			cf_log_err_cs(cs, "Failed loading dynamic protocol %s", value);
-			return -1;
-		}
-
-		/*
-		 *	Find the main symbol, which is the same as the
-		 *	library name.
-		 */
-		proto = dlsym(handle, buffer);
-		if (!proto) {
-			cf_log_err_cs(cs,
-				      "Failed linking to protocol %s : %s\n",
-				      value, dlerror());
-			dlclose(handle);
-			return -1;
-		}
-
-		if (proto->magic !=  RLM_MODULE_INIT) {
-			ERROR("Failed to load protocol '%s', it has the wrong version.", value);
-			dlclose(handle);
-			return -1;
-		}
+		module = dl_module(cs, value, "proto_");
+		if (!module) return -1;
+		proto = (rad_protocol_t const *)module->common;
 
 		/*
 		 *	We need numbers for internal use.
@@ -222,7 +196,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 				cf_log_err_cs(cs,
 					      "Failed adding dictionary entry for protocol %s: %s",
 					      value, fr_strerror());
-				dlclose(handle);
+				rad_const_free(module);
 				return -1;
 			}
 		}
@@ -234,13 +208,13 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 */
 		if (proto->bootstrap && (proto->bootstrap(server, cs) < 0)) {
 			cf_log_err_cs(cs, "Failed loading protocol %s", value);
-			dlclose(handle);
+			rad_const_free(module);
 			return -1;
 		}
 
 		if (cf_data_find(cs, "proto") != NULL) {
 			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
-			dlclose(handle);
+			rad_const_free(module);
 			return -1;
 		}
 
@@ -254,7 +228,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	if (!dv) {
 		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
 			      value);
-		if (handle) dlclose(handle);
+		rad_const_free(module);
 		return -1;
 	}
 
@@ -355,7 +329,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	lc->server = server;
 	lc->cs = cs;
 	lc->server_name = server_name;
-	lc->handle = handle;
+	lc->handle = module;
 	lc->type = dv->value;
 	lc->proto = proto;
 
@@ -365,7 +339,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		return -1;
 	}
 
-	if (handle) talloc_set_destructor(lc, _listen_config_free);
+	if (module) talloc_set_destructor(lc, _listen_config_free);
 
 
 	return 0;
@@ -2968,10 +2942,10 @@ static int _listener_free(rad_listen_t *this)
 }
 
 
-/*
- *	Allocate & initialize a new listener.
+/** Allocate & initialize a new listener
+ *
  */
-static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, rad_protocol_t *proto)
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, rad_protocol_t const *proto)
 {
 	rad_listen_t *this;
 

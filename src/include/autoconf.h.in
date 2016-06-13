@@ -526,6 +526,9 @@
 /* Define to 1 if you have the <utmp.h> header file. */
 #undef HAVE_UTMP_H
 
+/* Define to 1 if you have the <valgrind.h> header file. */
+#undef HAVE_VALGRIND_H
+
 /* Define to 1 if you have the `vdprintf' function. */
 #undef HAVE_VDPRINTF
 

@@ -532,6 +532,7 @@ static size_t sql_escape_func(REQUEST *request, char *out, size_t outlen, char c
 extern rlm_sql_module_t rlm_sql_postgresql;
 rlm_sql_module_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
+	.magic				= RLM_MODULE_INIT,
 //	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,	/* Needs more testing */
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,

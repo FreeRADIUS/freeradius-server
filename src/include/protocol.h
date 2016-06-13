@@ -29,6 +29,8 @@ RCSIDH(protocol_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/dl.h>
+
 /*
  *	We'll use this below.
  */
@@ -44,11 +46,8 @@ typedef ssize_t (*rad_listen_size_t)(uint8_t const *data, size_t data_len);
  * protocol type.
  */
 typedef struct rad_protocol_t {
-	uint64_t 		magic;			//!< Used to validate loaded library
-	char const		*name;			//!< The name of the protocol (without proto_ prefix).
-	size_t			inst_size;		//!< sizeof() instance data.
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
-	CONF_PARSER		*config;		//!< listen section configuration mappings.
 	uint32_t		transports;		//!< What can transport this protocol.
 	bool			tls;			//!< Whether protocol can be wrapped in TLS.
 
@@ -59,7 +58,7 @@ typedef struct rad_protocol_t {
 							//!< server that map to packet types used by the protocol.
 
 	rad_listen_parse_t	parse;			//!< Perform extra processing of the configuration data
-							//!< specified by #config.
+							//!< specified by config.
 
 	rad_listen_parse_t	open;			//!< Open a descriptor.
 

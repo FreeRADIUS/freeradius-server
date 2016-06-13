@@ -799,6 +799,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 extern rlm_sql_module_t rlm_sql_sqlite;
 rlm_sql_module_t rlm_sql_sqlite = {
 	.name				= "rlm_sql_sqlite",
+	.magic				= RLM_MODULE_INIT,
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,

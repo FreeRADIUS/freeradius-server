@@ -354,6 +354,7 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *driver_
 extern cache_driver_t rlm_cache_rbtree;
 cache_driver_t rlm_cache_rbtree = {
 	.name		= "rlm_cache_rbtree",
+	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,
 	.inst_size	= sizeof(rlm_cache_rbtree_t),
 	.alloc		= cache_entry_alloc,

@@ -8342,6 +8342,7 @@ for ac_header in \
   utime.h \
   utmp.h \
   utmpx.h \
+  valgrind.h \
   winsock.h
 
 do :

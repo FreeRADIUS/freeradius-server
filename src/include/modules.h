@@ -26,6 +26,7 @@
 RCSIDH(modules_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
+#include <freeradius-devel/dl.h>
 #include <freeradius-devel/features.h>
 #include <freeradius-devel/connection.h>
 #include <freeradius-devel/exfile.h>
@@ -82,34 +83,6 @@ extern const section_type_value_t section_type_value[];
 						//!< new instance, and then
 						//!< destroy old instance.
 
-
-/* Stop people using different module/library/server versions together */
-#define RLM_MODULE_INIT RADIUSD_MAGIC_NUMBER
-
-/** Called when a module is first loaded
- *
- * Used to perform global library initialisation.
- *
- * If any handles are required for the call to module_unload they should be
- * stored as static variables within the module.
- *
- * @note module_unload will not be called unless this callback returns 0.
- *	The callback should free any resources allocated if it errors out.
- *
- * @return
- *	- 0 on success.
- *	- -1 if initialisation failed.
- */
-typedef int (*module_load_t)(void);
-
-/** Called when the module is about to be unloaded (all instances destroyed)
- *
- * Used to perform global library unload.
- *
- * Should free any memory allocated by the library during the call to on_load.
- */
-typedef void (*module_unload_t)(void);
-
 /** Module section callback
  *
  * Is called when the module is listed in a particular section of a virtual
@@ -157,15 +130,9 @@ typedef int (*module_detach_t)(void *instance);
  * within the module to different sections.
  */
 typedef struct rad_module_t {
-	uint64_t 		magic;			//!< Used to validate module struct.
-	char const		*name;			//!< The name of the module (without rlm_ prefix).
-	int			type;			//!< One or more of the RLM_TYPE_* constants.
-	size_t			inst_size;		//!< sizeof() instance data.
+	RAD_MODULE_COMMON;
 
-	CONF_PARSER const	*config;		//!< Module configuration mappings.
-
-	module_load_t		load;			//!< Callback for global library init.
-	module_unload_t		unload;			//!< Callback for global library free.
+	int			type;			//!< Type flags that control calling conventions for modules.
 
 	module_instantiate_t	bootstrap;		//!< Callback to register dynamic attrs, xlats, etc.
 	module_instantiate_t	instantiate;		//!< Callback to configure a new module instance.

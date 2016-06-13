@@ -236,6 +236,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 extern rlm_eap_module_t rlm_eap_tls;
 rlm_eap_module_t rlm_eap_tls = {
 	.name		= "eap_tls",
+	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */

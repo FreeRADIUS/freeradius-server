@@ -538,6 +538,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 extern rlm_eap_module_t rlm_eap_sim;
 rlm_eap_module_t rlm_eap_sim = {
 	.name		= "eap_sim",
+	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process,		/* Process next round of EAP method */
 };

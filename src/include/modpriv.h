@@ -29,27 +29,9 @@ RCSIDH(modpriv_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-#ifndef HAVE_DLFCN_H
-#error FreeRADIUS needs a working dlopen()
-#else
-#include <dlfcn.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/** Module handle
- *
- * Contains module's dlhandle, and the functions it exports.
- */
-typedef struct module_handle {
-	char const			*name;		//!< Name of the module e.g. sql.
-	rad_module_t const		*module;	//!< Symbol exported by the module, containing its public
-							//!< functions, name and behaviour control flags.
-	void				*handle;	//!< Handle returned by dlopen.
-	unsigned int			ref;		//!< How many instances of this module exist.
-} module_dl_t;
 
 typedef struct fr_module_hup_t fr_module_hup_t;
 
@@ -59,10 +41,11 @@ typedef struct fr_module_hup_t fr_module_hup_t;
  * instance names (may NOT be the module names!), and the per-instance
  * data structures.
  */
-typedef struct module_instance_t {
+typedef struct module_instance {
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	rad_module_t const		*module;	//!< Module this is an instance of.
+	dl_module_t const		*handle;	//!< dlhandle of module.
 
 	void				*data;		//!< The module's private instance data, containing.
 							//!< its parsed configuration and static state.
@@ -83,7 +66,6 @@ typedef struct module_instance_t {
 							//!< instance data.
 } module_instance_t;
 
-void			*module_dlopen_by_name(char const *name);
 module_instance_t	*module_instantiate(CONF_SECTION *modules, char const *asked_name);
 module_instance_t	*module_instantiate_method(CONF_SECTION *modules, char const *asked_name,
 						   rlm_components_t *method);
