@@ -57,6 +57,8 @@ VALUE	VQP-Packet-Type			VQP-Join-Response	2
 VALUE	VQP-Packet-Type			VQP-Reconfirm-Request	3
 VALUE	VQP-Packet-Type			VQP-Reconfirm-Response	4
 
+VALUE	VQP-Packet-Type			Do-Not-Respond		256
+
 VALUE	VQP-Error-Code			VQP-No-Error		0
 VALUE	VQP-Error-Code			VQP-Wrong-Version	1
 VALUE	VQP-Error-Code			VQP-Insufficient-Resources 2
