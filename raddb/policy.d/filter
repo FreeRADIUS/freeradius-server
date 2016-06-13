@@ -16,7 +16,24 @@ deny_realms {
 #  what constitutes a user name.
 #
 filter_username {
-	if (&User-Name) {
+	if (&State) {
+		if (&User-Name) {
+			if (!&session-state:User-Name) {
+				update request {
+					&Module-Failure-Message += 'No cached session-state:User-Name'
+				}
+				reject
+			}
+
+			if (&User-Name != &session-state:User-Name) {
+				update request {
+					&Module-Failure-Message += 'User-Name does not match cached session-state:User-Name'
+				}
+				reject
+			}
+		}
+	}
+	elsif (&User-Name) {
 		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
@@ -88,6 +105,11 @@ filter_username {
 				&Module-Failure-Message += 'Realm begins with a dot'
 			}
 			reject
+		}
+
+
+		update session-state {
+			&User-Name := &User-Name
 		}
 	}
 }
