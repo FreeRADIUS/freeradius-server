@@ -42,12 +42,10 @@ server vmps {
 	#  be used for anything.
 
 
-	#  And the REAL contents.  This section is just like the
-	#  "post-auth" section of radiusd.conf.  In fact, it calls the
-	#  "post-auth" component of the modules that are listed here.
-	#  But it's called "vmps" to highlight that it's for VMPS.
 	#
-	vmps {
+	#  This section is called when it receives a VMPS-Join-Request.
+	#
+	recv VMPS-Join-Request {
 		#
 		#  Some requests may not have a MAC address.  Try to
 		#  create one using other attributes.
@@ -84,14 +82,13 @@ server vmps {
 			#
 			#&VMPS-VLAN-Name = "%{sql:select ... where mac='%{VMPS-Mac}'}"
 		}
+	}
 
-		# correct reply packet type for reconfirmation requests
-		#
-		if (&VMPS-Packet-Type == VMPS-Reconfirm-Request){
-			update reply {
-				&VMPS-Packet-Type := VMPS-Reconfirm-Response
-			}
-		}
+	#
+	#  This section is called when it sends a VMPS-Join-Response.
+	#
+	send VMPS-Join-Response {
+	     ok
 	}
 
 	# Proxying of VMPS requests is NOT supported.

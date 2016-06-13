@@ -61,6 +61,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 	VALUE_PAIR *vp;
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
+	fr_dict_enum_t const *dv;
 
 	VERIFY_REQUEST(request);
 
@@ -84,9 +85,28 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 
 		request->server = request->listener->server;
 		request->server_cs = request->listener->server_cs;
-		unlang = cf_section_sub_find(request->server_cs, "vmps");
 		request->component = "vmps";
 
+		vp = fr_pair_find_by_num(request->packet->vps, 0, 0x2b00, TAG_ANY);
+		if (!vp) {
+			REDEBUG("Failed to find &request:VMPS-Packet-Type");
+			goto done;
+		}
+
+		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		if (!dv) {
+			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
+			goto done;
+		}
+
+		unlang = cf_section_sub_find_name2(request->server_cs, "recv", dv->name);
+		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "recv", "*");
+		if (!unlang) {
+			REDEBUG("Failed to find 'recv' section");
+			goto done;
+		}
+
+		RDEBUG("Running recv %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
@@ -108,6 +128,19 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			}
 		}
 
+		dv = fr_dict_enum_by_da(NULL, vp->da, request->reply->code);
+		if (dv) {
+			unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
+		}
+		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "send", "*");
+
+		if (unlang) {
+			RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+			(void) unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+
+			if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		}
+
 		/*
 		 *	Check for "do not respond".
 		 */
@@ -122,12 +155,13 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 				    &request->reply->dst_ipaddr, request->reply->dst_port) < 0) {
 			RDEBUG("Failed sending VMPS reply: %s", fr_strerror());
 		}
+
+	done:
 		request_thread_done(request);
 
 		/* FALL-THROUGH */
 
 	case FR_ACTION_DONE:
-	done:
 		request->process = vmps_done;
 		request->process(request, FR_ACTION_DONE);
 		break;
@@ -238,40 +272,57 @@ static int vqp_socket_recv(rad_listen_t *listener)
 }
 
 
-/*
- *	If there's no "vmps" section, we can't bootstrap anything.
- */
-static int vqp_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+static int vqp_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2)
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find(server_cs, "vmps");
-	if (!cs) {
-		cf_log_err_cs(server_cs, "No 'vmps' sub-section found");
+	cs = cf_section_sub_find_name2(server_cs, name1, name2);
+	if (!cs) return 0;
+
+	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+
+	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
+		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}
 
-	return 0;
+	return 1;
 }
+
 
 /*
  *	Ensure that the "vmps" section is compiled.
  */
 static int vqp_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
-	CONF_SECTION *cs;
+	int rcode;
 
-	cs = cf_section_sub_find(server_cs, "vmps");
-	if (!cs) {
-		cf_log_err_cs(server_cs, "No 'vmps' sub-section found");
+	rcode = vqp_compile_section(server_cs, "recv", "VMPS-Join-Request");
+	if (rcode < 0) return rcode;
+
+	if (rcode == 0) {
+		rcode = vqp_compile_section(server_cs, "recv", "*");
+		if (rcode < 0) return rcode;
+	}
+
+	if (rcode == 0) {
+		cf_log_err_cs(server_cs, "Failed finding 'recv VMPS-Join-Request { ... }' section of virtual server %s",
+			      cf_section_name2(server_cs));
 		return -1;
 	}
 
-	cf_log_module(cs, "Loading vmps {...}");
+	rcode = vqp_compile_section(server_cs, "recv", "VMPS-Reconfirm-Request");
+	if (rcode < 0) return rcode;
 
-	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
-		cf_log_err_cs(cs, "Failed compiling 'vmps' section");
-		return -1;
+	rcode = vqp_compile_section(server_cs, "send", "VMPS-Join-Response");
+	if (rcode < 0) return rcode;
+
+	if (rcode == 0) {
+		rcode = vqp_compile_section(server_cs, "send", "*");
+		if (rcode < 0) return rcode;
+	} else {
+		rcode = vqp_compile_section(server_cs, "send", "VMPS-Reconfirm-Response");
+		if (rcode < 0) return rcode;
 	}
 
 	return 0;
@@ -286,7 +337,6 @@ rad_protocol_t proto_vmps = {
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
 	.size		= vqp_packet_size,
-	.bootstrap	= vqp_listen_bootstrap,
 	.compile	= vqp_listen_compile,
 	.parse		= common_socket_parse,
 	.open		= common_socket_open,
