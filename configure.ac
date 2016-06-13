@@ -65,6 +65,11 @@ dnl #
 dnl #############################################################
 
 dnl #
+dnl #  See if we have Git.
+dnl #
+AC_CHECK_PROG(GIT, git, yes, no)
+
+dnl #
 dnl #  Enable developer features like debugging symbols.
 dnl #  These checks must be done before expanding the AC_PROG_CC
 dnl #  and AC_PROG_CXX macros.
@@ -83,9 +88,9 @@ AC_ARG_ENABLE(developer,
 dnl #
 dnl #  Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
-if test -d $srcdir/.git; then
+if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
   if test "x$developer" != "xno"; then
-    AC_MSG_NOTICE([found .git directory, enabling developer build implicitly, disable with --disable-developer])
+    AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi
 fi
@@ -203,11 +208,6 @@ dnl if test "x$ax_cv_system_cores" != "x"; then
 dnl  : ${FR_MAKEFLAGS=-j$ax_cv_system_cores}
 dnl fi
 AC_SUBST(FR_MAKEFLAGS)
-
-dnl #
-dnl #  See if we have Git.
-dnl #
-AC_CHECK_PROG(GIT, git, yes, no)
 
 dnl Put this in later, when all distributed modules use autoconf.
 dnl AC_ARG_WITH(disablemodulefoo,
@@ -1702,7 +1702,7 @@ export EXPERIMENTAL
 dnl #
 dnl #  append the current git hash onto the version string
 dnl #
-if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
+if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
   RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
   AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
 fi
