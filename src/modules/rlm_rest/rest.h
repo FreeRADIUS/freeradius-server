@@ -247,13 +247,6 @@ typedef struct rlm_rest_handle_t {
 typedef size_t (*rest_read_t)(void *ptr, size_t size, size_t nmemb,
 			      void *userdata);
 
-/*
- *	Connection API callbacks
- */
-int rest_init(rlm_rest_t *instance);
-
-void rest_cleanup(void);
-
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 int mod_conn_alive(void *instance, void *handle);

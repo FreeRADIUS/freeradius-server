@@ -325,6 +325,12 @@ static int _module_dl_free(module_dl_t *module_dl)
 
 	DEBUG3("Unloading module \"%s\" (%p/%p)", module_dl->name, module_dl->handle, module_dl->module);
 
+	/*
+	 *	The module is about to be unloaded
+	 *	call the unload callback...
+	 */
+	if ((--module_dl->ref == 0) && module_dl->module->unload) module_dl->module->unload();
+
 	if (module_dl->handle) {
 		dlclose(module_dl->handle);        /* ignore any errors */
 		module_dl->handle = NULL;
@@ -346,8 +352,8 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 	module_dl_t			*module_dl;
 	void				*handle = NULL;
 	char const			*name1;
-	rad_module_t const			*module;
 	char				module_name[256];
+	rad_module_t const			*module;
 
 	name1 = cf_section_name1(conf);
 
@@ -403,11 +409,19 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 
 	/* make room for the module type */
 	module_dl = talloc_zero(dlhandle_tree, module_dl_t);
-	talloc_set_destructor(module_dl, _module_dl_free);
-
 	module_dl->module = module;
 	module_dl->handle = handle;
 	module_dl->name = cf_section_name1(conf);
+
+	/*
+	 *	Perform global library initialisation
+	 */
+	if (module_dl->module->load && (module_dl->module->load() < 0)) {
+		cf_log_err_cs(conf, "Initialisation failed for module \"%s\"", module_dl->module->name);
+		dlclose(handle);
+		talloc_free(module_dl);
+		return NULL;
+	}
 
 	cf_log_module(conf, "Loaded module \"%s\"", module_name);
 
@@ -421,6 +435,9 @@ static module_dl_t *module_dlopen(CONF_SECTION *conf)
 		talloc_free(module_dl);
 		return NULL;
 	}
+
+	talloc_set_destructor(module_dl, _module_dl_free);	/* Do this late */
+	module_dl->ref++;					/* First reference */
 
 	return module_dl;
 }
@@ -1188,7 +1205,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 			subcs = cf_item_to_section(ci);
 			name1 = cf_section_name1(subcs);
-			
+
 			if (strcmp(name1, "listen") == 0) {
 				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
 				continue;

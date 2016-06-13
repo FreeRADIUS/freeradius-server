@@ -88,7 +88,7 @@ typedef struct {
 	modcallable		mc;
 	module_instance_t	*modinst;
 	char const		*method;
-	rad_method_t		function;
+	module_method_t		function;
 } modsingle;
 
 typedef struct {

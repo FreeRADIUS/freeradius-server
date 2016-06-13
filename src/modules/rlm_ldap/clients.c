@@ -26,6 +26,9 @@
 #include <freeradius-devel/rad_assert.h>
 #include <ctype.h>
 
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include "rlm_ldap.h"
 
 /** Iterate over pairs in mapping section recording their values in an array

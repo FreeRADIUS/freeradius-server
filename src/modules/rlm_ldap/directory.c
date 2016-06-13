@@ -24,6 +24,9 @@
  * @copyright 2016 The FreeRADIUS Server Project.
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include "rlm_ldap.h"
 
 static FR_NAME_NUMBER const ldap_directory_type_table[] = {

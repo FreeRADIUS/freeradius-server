@@ -241,66 +241,6 @@ typedef struct json_flags {
 } json_flags_t;
 #endif
 
-/** Initialises libcurl.
- *
- * Allocates global variables and memory required for libcurl to function.
- * MUST only be called once per module instance.
- *
- * rest_cleanup must not be called if rest_init fails.
- *
- * @see rest_cleanup
- *
- * @param[in] inst configuration data.
- * @return
- *	- 0 if init succeeded.
- *	- -1 if it failed.
- */
-int rest_init(rlm_rest_t *inst)
-{
-	static bool version_done;
-	CURLcode ret;
-
-	/* developer sanity */
-	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == HTTP_BODY_NUM_ENTRIES);
-
-	ret = curl_global_init(CURL_GLOBAL_ALL);
-	if (ret != CURLE_OK) {
-		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
-
-		curl_global_cleanup();
-		return -1;
-	}
-
-	if (!version_done) {
-		curl_version_info_data *curlversion;
-
-		version_done = true;
-
-		curlversion = curl_version_info(CURLVERSION_NOW);
-		if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
-			WARN("libcurl version changed since the server was built");
-			WARN("linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
-		}
-
-		INFO("libcurl version: %s", curl_version());
-	}
-
-	return 0;
-}
-
-/** Cleans up after libcurl.
- *
- * Wrapper around curl_global_cleanup, frees any memory allocated by rest_init.
- * Must only be called once per call of rest_init.
- *
- * @see rest_init
- */
-void rest_cleanup(void)
-{
-	curl_global_cleanup();
-}
-
-
 /** Frees a libcurl handle, and any additional memory used by context data.
  *
  * @param[in] randle rlm_rest_handle_t to close and free.

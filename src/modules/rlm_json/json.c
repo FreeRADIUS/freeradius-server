@@ -264,16 +264,10 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
  */
 void fr_json_version_print(void)
 {
-	static bool done_version;
-
-	if (!done_version) {
-		done_version = true;
-
 #ifdef HAVE_JSON_C_VERSION
-		INFO("libfreeradius-json: json-c version: %s", json_c_version());
+	INFO("libfreeradius-json: json-c version: %s", json_c_version());
 #else
-		INFO("libfreeradius-json: json-c version: Unknown (less than 0.10) - Please upgrade");
+	INFO("libfreeradius-json: json-c version: Unknown (less than 0.10) - Please upgrade");
 #endif
-	}
 }
 

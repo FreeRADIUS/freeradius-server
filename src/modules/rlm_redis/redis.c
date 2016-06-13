@@ -51,13 +51,7 @@ FR_NAME_NUMBER const redis_rcodes[] = {
  */
 void fr_redis_version_print(void)
 {
-	static bool version_done;
-
-	if (!version_done) {
-		version_done = true;
-
-		INFO("libfreeradius-redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
-	}
+	INFO("libfreeradius-redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
 }
 
 /** Check the reply for errors

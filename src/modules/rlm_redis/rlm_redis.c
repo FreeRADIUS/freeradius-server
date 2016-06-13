@@ -326,8 +326,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_redis_t *inst = instance;
 
-	fr_redis_version_print();
-
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
@@ -346,6 +344,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+static int mod_load(void)
+{
+	fr_redis_version_print();
+
+	return 0;
+}
+
 extern rad_module_t rlm_redis;
 rad_module_t rlm_redis = {
 	.magic		= RLM_MODULE_INIT,
@@ -353,6 +358,7 @@ rad_module_t rlm_redis = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_redis_t),
 	.config		= module_config,
+	.load		= mod_load,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 };

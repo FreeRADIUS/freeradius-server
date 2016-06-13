@@ -254,6 +254,9 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+
+static LDAP *global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
+
 static ssize_t ldap_escape_xlat(char **out, size_t outlen,
 			 	UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 	REQUEST *request, char const *fmt)
@@ -634,682 +637,6 @@ finish:
 	}
 
 	return 0;
-}
-
-/** Detach from the LDAP server and cleanup internal state.
- *
- */
-static int mod_detach(void *instance)
-{
-	rlm_ldap_t *inst = instance;
-
-	/*
-	 *	Keeping the dummy ld around for the lifetime
-	 *	of the module should always work,
-	 *	irrespective of what changes happen in libldap.
-	 */
-	if (inst->handle) {
-#ifdef HAVE_LDAP_UNBIND_EXT_S
-		ldap_unbind_ext_s(inst->handle, NULL, NULL);
-#else
-		ldap_unbind_s(inst->handle);
-#endif
-	}
-
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
-	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
-#endif
-
-	pthread_mutex_destroy(&inst->directory_mutex);
-
-	fr_connection_pool_free(inst->pool);
-	talloc_free(inst->user_map);
-	talloc_free(inst->directory);
-
-	return 0;
-}
-
-/** Parse an accounting sub section.
- *
- * Allocate a new ldap_acct_section_t and write the config data into it.
- *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] parent of the config section.
- * @param[out] config to write the sub section parameters to.
- * @param[in] comp The section name were parsing the config for.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_section_t **config,
-			     rlm_components_t comp)
-{
-	CONF_SECTION *cs;
-
-	char const *name = section_type_value[comp].section;
-
-	cs = cf_section_sub_find(parent, name);
-	if (!cs) {
-		DEBUG2("Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", name);
-
-		return 0;
-	}
-
-	*config = talloc_zero(inst, ldap_acct_section_t);
-	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
-		ERROR("Failed parsing configuration for section %s", name);
-
-		return -1;
-	}
-
-	(*config)->cs = cs;
-
-	return 0;
-}
-
-/** Bootstrap the module
- *
- * Define attributes.
- *
- * @param conf to parse.
- * @param instance configuration data.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
-{
-	rlm_ldap_t	*inst = instance;
-	char		buffer[256];
-	char const	*group_attribute;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	if (inst->group_attribute) {
-		group_attribute = inst->group_attribute;
-	} else if (cf_section_name2(conf)) {
-		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
-		group_attribute = buffer;
-	} else {
-		group_attribute = "LDAP-Group";
-	}
-
-	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
-					false, rlm_ldap_groupcmp, inst) < 0) {
-		ERROR("Error registering group comparison: %s", fr_strerror());
-		goto error;
-	}
-
-	inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
-
-	/*
-	 *	Setup the cache attribute
-	 */
-	if (inst->cache_attribute) {
-		fr_dict_attr_flags_t flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, PW_TYPE_STRING,
-				     flags) < 0) {
-			ERROR("Error creating cache attribute: %s", fr_strerror());
-		error:
-			return -1;
-
-		}
-		inst->cache_da = fr_dict_attr_by_name(NULL, inst->cache_attribute);
-	} else {
-		inst->cache_da = inst->group_da;	/* Default to the group_da */
-	}
-
-	xlat_register(inst, inst->name, ldap_xlat, rlm_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldapquote", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);	/* Deprecated */
-
-	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
-
-	return 0;
-}
-
-
-/** Instantiate the module
- *
- * Creates a new instance of the module reading parameters from a configuration section.
- *
- * @param conf to parse.
- * @param instance configuration data.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
-{
-	static bool	version_done;
-	size_t		i;
-
-	CONF_SECTION *options, *update;
-	rlm_ldap_t *inst = instance;
-
-	inst->cs = conf;
-
-	options = cf_section_sub_find(conf, "options");
-	if (!options || !cf_pair_find(options, "chase_referrals")) {
-		inst->chase_referrals_unset = true;	 /* use OpenLDAP defaults */
-	}
-
-	/*
-	 *	Only needs to be done once, prevents races in environment
-	 *	initialisation within libldap.
-	 *
-	 *	See: https://github.com/arr2036/ldapperf/issues/2
-	 */
-#ifdef HAVE_LDAP_INITIALIZE
-	ldap_initialize(&inst->handle, "");
-#else
-	inst->handle = ldap_init("", 0);
-#endif
-
-	/*
-	 *	Get version info from the LDAP API.
-	 */
-	if (!version_done) {
-		static LDAPAPIInfo info = { .ldapai_info_version = LDAP_API_INFO_VERSION };	/* static to quiet valgrind about this being uninitialised */
-		int ldap_errno;
-
-		version_done = true;
-
-		ldap_errno = ldap_get_option(NULL, LDAP_OPT_API_INFO, &info);
-		if (ldap_errno == LDAP_OPT_SUCCESS) {
-			/*
-			 *	Don't generate warnings if the compile type vendor name
-			 *	is found within the link time vendor name.
-			 *
-			 *	This allows the server to be built against OpenLDAP but
-			 *	run with Symas OpenLDAP.
-			 */
-			if (strcasestr(info.ldapai_vendor_name, LDAP_VENDOR_NAME) == NULL) {
-				WARN("libldap vendor changed since the server was built");
-				WARN("linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
-			}
-
-			if (info.ldapai_vendor_version < LDAP_VENDOR_VERSION) {
-				WARN("libldap older than the version the server was built against");
-				WARN("linked: %i, built: %i",
-				     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
-			}
-
-			INFO("libldap vendor: %s, version: %i", info.ldapai_vendor_name,
-			     info.ldapai_vendor_version);
-
-			ldap_memfree(info.ldapai_vendor_name);
-			ldap_memfree(info.ldapai_extensions);
-		} else {
-			DEBUG("Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
-			      "returned: %i", ldap_errno);
-			INFO("libldap vendor: %s, version: %i.%i.%i", LDAP_VENDOR_NAME,
-			     LDAP_VENDOR_VERSION_MAJOR, LDAP_VENDOR_VERSION_MINOR, LDAP_VENDOR_VERSION_PATCH);
-		}
-	}
-
-	/*
-	 *	If the configuration parameters can't be parsed, then fail.
-	 */
-	if ((parse_sub_section(inst, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
-	    (parse_sub_section(inst, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
-		cf_log_err_cs(conf, "Failed parsing configuration");
-
-		goto error;
-	}
-
-	/*
-	 *	Sanity checks for cacheable groups code.
-	 */
-	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
-		if (!inst->groupobj_name_attr) {
-			cf_log_err_cs(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
-				      "group names are enabled");
-
-			goto error;
-		}
-	}
-
-	/*
-	 *	If we have a *pair* as opposed to a *section*
-	 *	then the module is referencing another ldap module's
-	 *	connection pool.
-	 */
-	if (!cf_pair_find(conf, "pool")) {
-		if (!inst->config_server) {
-			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
-			goto error;
-		}
-	}
-
-#ifndef WITH_SASL
-	if (inst->user_sasl.mech) {
-		cf_log_err_cs(conf, "Configuration item 'user.sasl.mech' not supported.  "
-			      "Linked libldap does not provide ldap_sasl_bind function");
-		goto error;
-	}
-
-	if (inst->admin_sasl.mech) {
-		cf_log_err_cs(conf, "Configuration item 'sasl.mech' not supported.  "
-			      "Linked libldap does not provide ldap_sasl_interactive_bind function");
-		goto error;
-	}
-#endif
-
-#ifndef HAVE_LDAP_CREATE_SORT_CONTROL
-	if (inst->userobj_sort_by) {
-		cf_log_err_cs(conf, "Configuration item 'sort_by' not supported.  "
-			      "Linked libldap does not provide ldap_create_sort_control function");
-		goto error;
-	}
-#endif
-
-#ifndef HAVE_LDAP_URL_PARSE
-	if (inst->use_referral_credentials) {
-		cf_log_err_cs(conf, "Configuration item 'use_referral_credentials' not supported.  "
-			      "Linked libldap does not support URL parsing");
-		goto error;
-	}
-#endif
-
-	/*
-	 *	Now iterate over all the 'server' config items
-	 */
-	for (i = 0; i < talloc_array_length(inst->config_server); i++) {
-		char const *value = inst->config_server[i];
-		size_t j;
-
-		/*
-		 *	Explicitly prevent multiple server definitions
-		 *	being used in the same string.
-		 */
-		for (j = 0; j < talloc_array_length(value) - 1; j++) {
-			switch (value[j]) {
-			case ' ':
-			case ',':
-			case ';':
-				cf_log_err_cs(conf, "Invalid character '%c' found in 'server' configuration item",
-					      value[j]);
-				goto error;
-
-			default:
-				continue;
-			}
-		}
-
-#ifdef LDAP_CAN_PARSE_URLS
-		/*
-		 *	Split original server value out into URI, server and port
-		 *	so whatever initialization function we use later will have
-		 *	the server information in the format it needs.
-		 */
-		if (ldap_is_ldap_url(value)) {
-			LDAPURLDesc	*ldap_url;
-			bool		set_port_maybe = true;
-			int		default_port = LDAP_PORT;
-			char		*p;
-
-			if (ldap_url_parse(value, &ldap_url)){
-				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
-			ldap_url_error:
-				ldap_free_urldesc(ldap_url);
-				return -1;
-			}
-
-			if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
-				cf_log_err_cs(conf, "Base DN cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-
-			if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
-				cf_log_err_cs(conf, "Attribute list cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-
-			/*
-			 *	ldap_url_parse sets this to base by default.
-			 */
-			if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
-				cf_log_err_cs(conf, "Scope cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
-
-			/*
-			 *	The public ldap_url_parse function sets the default
-			 *	port, so we have to discover whether a port was
-			 *	included ourselves.
-			 */
-			if ((p = strchr(value, ']')) && (p[1] == ':')) {			/* IPv6 */
-				set_port_maybe = false;
-			} else if ((p = strchr(value, ':')) && (p = strchr(p + 1, ':'))) {	/* IPv4 */
-				set_port_maybe = false;
-			}
-
-			/* We allow extensions */
-
-#  ifdef HAVE_LDAP_INITIALIZE
-			{
-				char *url;
-
-				/*
-				 *	Figure out the default port from the URL
-				 */
-				if (ldap_url->lud_scheme) {
-					if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-						if (inst->start_tls == true) {
-							cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
-								      "with 'start_tls'");
-							goto ldap_url_error;
-						}
-						default_port = LDAPS_PORT;
-
-					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-						set_port_maybe = false; /* Unix socket, no port */
-					}
-				}
-
-				if (set_port_maybe) {
-					/*
-					 *	URL port overrides configured port.
-					 */
-					ldap_url->lud_port = inst->port;
-
-					/*
-					 *	If there's no URL port, then set it to the default
-					 *	this is so debugging messages show explicitly
-					 *	the port we're connecting to.
-					 */
-					if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-				}
-
-				url = ldap_url_desc2str(ldap_url);
-				if (!url) {
-					cf_log_err_cs(conf, "Failed recombining URL components");
-					goto ldap_url_error;
-				}
-				inst->server = talloc_asprintf_append(inst->server, "%s ", url);
-				free(url);
-			}
-#  else
-			/*
-			 *	No LDAP initialize function.  Can't specify a scheme.
-			 */
-			if (ldap_url->lud_scheme &&
-			    ((strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "cldap") == 0))) {
-				cf_log_err_cs(conf, "%s is not supported by linked libldap",
-					      ldap_url->lud_scheme);
-				return -1;
-			}
-
-			/*
-			 *	URL port over-rides the configured
-			 *	port.  But if there's no configured
-			 *	port, we use the hard-coded default.
-			 */
-			if (set_port_maybe) {
-				ldap_url->lud_port = inst->port;
-				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-			}
-
-			inst->server = talloc_asprintf_append(inst->server, "%s:%i ",
-							      ldap_url->lud_host ? ldap_url->lud_host : "localhost",
-							      ldap_url->lud_port);
-#  endif
-			/*
-			 *	@todo We could set a few other top level
-			 *	directives using the URL, like base_dn
-			 *	and scope.
-			 */
-			ldap_free_urldesc(ldap_url);
-		/*
-		 *	We need to construct an LDAP URI
-		 */
-		} else
-#endif	/* HAVE_LDAP_URL_PARSE && HAVE_LDAP_IS_LDAP_URL && LDAP_URL_DESC2STR */
-		/*
-		 *	If it's not an URL, or we don't have the functions necessary
-		 *	to break apart the URL and recombine it, then just treat
-		 *	server as a hostname.
-		 */
-		{
-#ifdef HAVE_LDAP_INITIALIZE
-			char	const *p;
-			char	*q;
-			int	port = 0;
-			size_t	len;
-
-			port = inst->port;
-
-			/*
-			 *	We don't support URLs if the library didn't provide
-			 *	URL parsing functions.
-			 */
-			if (strchr(value, '/')) {
-			bad_server_fmt:
-#ifdef LDAP_CAN_PARSE_URLS
-				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
-					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
-#else
-				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
-#endif
-				return -1;
-			}
-
-			p = strrchr(value, ':');
-			if (p) {
-				port = (int)strtol((p + 1), &q, 10);
-				if ((p == value) || ((p + 1) == q) || (*q != '\0')) goto bad_server_fmt;
-				len = p - value;
-			} else {
-				len = strlen(value);
-			}
-			if (port == 0) port = LDAP_PORT;
-
-			inst->server = talloc_asprintf_append(inst->server, "ldap://%.*s:%i ", (int) len, value, port);
-#else
-			/*
-			 *	ldap_init takes port, which can be overridden by :port so
-			 *	we don't need to do any parsing here.
-			 */
-			inst->server = talloc_asprintf_append(inst->server, "%s ", value);
-#endif
-		}
-	}
-	if (inst->server) inst->server[talloc_array_length(inst->server) - 2] = '\0';
-
-	DEBUG4("LDAP server string: %s", inst->server);
-
-#ifdef LDAP_OPT_X_TLS_NEVER
-	/*
-	 *	Workaround for servers which support LDAPS but not START TLS
-	 */
-	if (inst->port == LDAPS_PORT || inst->tls_mode) {
-		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
-	} else {
-		inst->tls_mode = 0;
-	}
-#endif
-
-	/*
-	 *	Convert dereference strings to enumerated constants
-	 */
-	if (inst->dereference_str) {
-		inst->dereference = fr_str2int(ldap_dereference, inst->dereference_str, -1);
-		if (inst->dereference < 0) {
-			cf_log_err_cs(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
-				      "'finding' or 'always'", inst->dereference_str);
-			goto error;
-		}
-	}
-
-#if LDAP_SET_REBIND_PROC_ARGS != 3
-	/*
-	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
-	 *	variable for the username, password, etc.
-	 */
-	if (inst->rebind == true) {
-		cf_log_err_cs(conf, "Cannot use 'rebind' configuration item as this version of libldap "
-			      "does not support the API that we need");
-
-		goto error;
-	}
-#endif
-
-	/*
-	 *	Convert scope strings to enumerated constants
-	 */
-	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
-	if (inst->userobj_scope < 0) {
-		cf_log_err_cs(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
-#ifdef LDAP_SCOPE_CHILDREN
-			      ", 'base' or 'children'"
-#else
-			      " or 'base'"
-#endif
-			 , inst->userobj_scope_str);
-		goto error;
-	}
-
-	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
-	if (inst->groupobj_scope < 0) {
-		cf_log_err_cs(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
-#ifdef LDAP_SCOPE_CHILDREN
-			      ", 'base' or 'children'"
-#else
-			      " or 'base'"
-#endif
-			 , inst->groupobj_scope_str);
-		goto error;
-	}
-
-	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
-	if (inst->clientobj_scope < 0) {
-		cf_log_err_cs(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
-#ifdef LDAP_SCOPE_CHILDREN
-			      ", 'base' or 'children'"
-#else
-			      " or 'base'"
-#endif
-			 , inst->clientobj_scope_str);
-		goto error;
-	}
-
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
-	/*
-	 *	Build the server side sort control for user objects
-	 */
-	if (inst->userobj_sort_by) {
-		LDAPSortKey	**keys;
-		int		ret;
-		char		*p;
-
-		memcpy(&p, &inst->userobj_sort_by, sizeof(p));
-
-		ret = ldap_create_sort_keylist(&keys, p);
-		if (ret != LDAP_SUCCESS) {
-			cf_log_err_cs(conf, "Invalid user.sort_by value \"%s\": %s",
-				      inst->userobj_sort_by, ldap_err2string(ret));
-			goto error;
-		}
-
-		/*
-		 *	Always set the control as critical, if it's not needed
-		 *	the user can comment it out...
-		 */
-		ret = ldap_create_sort_control(inst->handle, keys, 1, &inst->userobj_sort_ctrl);
-		ldap_free_sort_keylist(keys);
-		if (ret != LDAP_SUCCESS) {
-			ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
-			goto error;
-		}
-	}
-#endif
-
-	if (inst->tls_require_cert_str) {
-#ifdef LDAP_OPT_X_TLS_NEVER
-		/*
-		 *	Convert cert strictness to enumerated constants
-		 */
-		inst->tls_require_cert = fr_str2int(ldap_tls_require_cert, inst->tls_require_cert_str, -1);
-		if (inst->tls_require_cert < 0) {
-			cf_log_err_cs(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
-				      "'demand', 'allow', 'try' or 'hard'", inst->tls_require_cert_str);
-			goto error;
-		}
-#else
-		cf_log_err_cs(conf, "Modifying 'tls.require_cert' is not supported by current "
-			      "version of libldap. Please upgrade or substitute current libldap and "
-			      "rebuild this module");
-
-		goto error;
-#endif
-	}
-
-	/*
-	 *	Build the attribute map
-	 */
-	update = cf_section_sub_find(inst->cs, "update");
-	if (update && (map_afrom_cs(&inst->user_map, update,
-				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
-				    LDAP_MAX_ATTRMAP) < 0)) {
-		return -1;
-	}
-
-	/*
-	 *	Initialise the directory mutex
-	 */
-	pthread_mutex_init(&inst->directory_mutex, NULL);
-
-	/*
-	 *	Set global options
-	 */
-	if (rlm_ldap_global_init(inst) < 0) goto error;
-
-	/*
-	 *	Initialize the socket pool.
-	 */
-	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
-	if (!inst->pool) goto error;
-
-	/*
-	 *	Bulk load dynamic clients.
-	 */
-	if (inst->do_clients) {
-		CONF_SECTION *cs, *map, *tmpl;
-
-		cs = cf_section_sub_find(inst->cs, "client");
-		if (!cs) {
-			cf_log_err_cs(conf, "Told to load clients but no client section found");
-			goto error;
-		}
-
-		map = cf_section_sub_find(cs, "attribute");
-		if (!map) {
-			cf_log_err_cs(cs, "Told to load clients but no attribute section found");
-			goto error;
-		}
-
-		tmpl = cf_section_sub_find(cs, "template");
-
-		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
-			cf_log_err_cs(cs, "Error loading clients");
-
-			return -1;
-		}
-	}
-
-	return 0;
-
-error:
-	return -1;
 }
 
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
@@ -2003,6 +1330,679 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 }
 
 
+/** Detach from the LDAP server and cleanup internal state.
+ *
+ */
+static int mod_detach(void *instance)
+{
+	rlm_ldap_t *inst = instance;
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
+#endif
+
+	pthread_mutex_destroy(&inst->directory_mutex);
+
+	fr_connection_pool_free(inst->pool);
+	talloc_free(inst->user_map);
+	talloc_free(inst->directory);
+
+	return 0;
+}
+
+/** Parse an accounting sub section.
+ *
+ * Allocate a new ldap_acct_section_t and write the config data into it.
+ *
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] parent of the config section.
+ * @param[out] config to write the sub section parameters to.
+ * @param[in] comp The section name were parsing the config for.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_section_t **config,
+			     rlm_components_t comp)
+{
+	CONF_SECTION *cs;
+
+	char const *name = section_type_value[comp].section;
+
+	cs = cf_section_sub_find(parent, name);
+	if (!cs) {
+		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
+		       "from this section", inst->name, name);
+
+		return 0;
+	}
+
+	*config = talloc_zero(inst, ldap_acct_section_t);
+	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
+		ERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", inst->name, name);
+
+		return -1;
+	}
+
+	(*config)->cs = cs;
+
+	return 0;
+}
+
+/** Bootstrap the module
+ *
+ * Define attributes.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_ldap_t	*inst = instance;
+	char		buffer[256];
+	char const	*group_attribute;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	if (inst->group_attribute) {
+		group_attribute = inst->group_attribute;
+	} else if (cf_section_name2(conf)) {
+		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
+		group_attribute = buffer;
+	} else {
+		group_attribute = "LDAP-Group";
+	}
+
+	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
+					false, rlm_ldap_groupcmp, inst) < 0) {
+		ERROR("Error registering group comparison: %s", fr_strerror());
+		goto error;
+	}
+
+	inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
+
+	/*
+	 *	Setup the cache attribute
+	 */
+	if (inst->cache_attribute) {
+		fr_dict_attr_flags_t flags;
+
+		memset(&flags, 0, sizeof(flags));
+		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, PW_TYPE_STRING,
+				     flags) < 0) {
+			ERROR("Error creating cache attribute: %s", fr_strerror());
+		error:
+			return -1;
+
+		}
+		inst->cache_da = fr_dict_attr_by_name(NULL, inst->cache_attribute);
+	} else {
+		inst->cache_da = inst->group_da;	/* Default to the group_da */
+	}
+
+	xlat_register(inst, inst->name, ldap_xlat, rlm_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "ldapquote", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);	/* Deprecated */
+
+	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
+
+	return 0;
+}
+
+/** Instantiate the module
+ *
+ * Creates a new instance of the module reading parameters from a configuration section.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	size_t		i;
+
+	CONF_SECTION *options, *update;
+	rlm_ldap_t *inst = instance;
+
+	inst->cs = conf;
+
+	options = cf_section_sub_find(conf, "options");
+	if (!options || !cf_pair_find(options, "chase_referrals")) {
+		inst->chase_referrals_unset = true;	 /* use OpenLDAP defaults */
+	}
+
+	/*
+	 *	If the configuration parameters can't be parsed, then fail.
+	 */
+	if ((parse_sub_section(inst, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
+	    (parse_sub_section(inst, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
+		cf_log_err_cs(conf, "Failed parsing configuration");
+
+		goto error;
+	}
+
+	/*
+	 *	Sanity checks for cacheable groups code.
+	 */
+	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
+		if (!inst->groupobj_name_attr) {
+			cf_log_err_cs(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
+				      "group names are enabled");
+
+			goto error;
+		}
+	}
+
+	/*
+	 *	If we have a *pair* as opposed to a *section*
+	 *	then the module is referencing another ldap module's
+	 *	connection pool.
+	 */
+	if (!cf_pair_find(conf, "pool")) {
+		if (!inst->config_server) {
+			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
+			goto error;
+		}
+	}
+
+#ifndef WITH_SASL
+	if (inst->user_sasl.mech) {
+		cf_log_err_cs(conf, "Configuration item 'user.sasl.mech' not supported.  "
+			      "Linked libldap does not provide ldap_sasl_bind function");
+		goto error;
+	}
+
+	if (inst->admin_sasl.mech) {
+		cf_log_err_cs(conf, "Configuration item 'sasl.mech' not supported.  "
+			      "Linked libldap does not provide ldap_sasl_interactive_bind function");
+		goto error;
+	}
+#endif
+
+#ifndef HAVE_LDAP_CREATE_SORT_CONTROL
+	if (inst->userobj_sort_by) {
+		cf_log_err_cs(conf, "Configuration item 'sort_by' not supported.  "
+			      "Linked libldap does not provide ldap_create_sort_control function");
+		goto error;
+	}
+#endif
+
+#ifndef HAVE_LDAP_URL_PARSE
+	if (inst->use_referral_credentials) {
+		cf_log_err_cs(conf, "Configuration item 'use_referral_credentials' not supported.  "
+			      "Linked libldap does not support URL parsing");
+		goto error;
+	}
+#endif
+
+	/*
+	 *	Now iterate over all the 'server' config items
+	 */
+	for (i = 0; i < talloc_array_length(inst->config_server); i++) {
+		char const *value = inst->config_server[i];
+		size_t j;
+
+		/*
+		 *	Explicitly prevent multiple server definitions
+		 *	being used in the same string.
+		 */
+		for (j = 0; j < talloc_array_length(value) - 1; j++) {
+			switch (value[j]) {
+			case ' ':
+			case ',':
+			case ';':
+				cf_log_err_cs(conf, "Invalid character '%c' found in 'server' configuration item",
+					      value[j]);
+				goto error;
+
+			default:
+				continue;
+			}
+		}
+
+#ifdef LDAP_CAN_PARSE_URLS
+		/*
+		 *	Split original server value out into URI, server and port
+		 *	so whatever initialization function we use later will have
+		 *	the server information in the format it needs.
+		 */
+		if (ldap_is_ldap_url(value)) {
+			LDAPURLDesc	*ldap_url;
+			bool		set_port_maybe = true;
+			int		default_port = LDAP_PORT;
+			char		*p;
+
+			if (ldap_url_parse(value, &ldap_url)){
+				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
+			ldap_url_error:
+				ldap_free_urldesc(ldap_url);
+				return -1;
+			}
+
+			if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
+				cf_log_err_cs(conf, "Base DN cannot be specified via server URL");
+				goto ldap_url_error;
+			}
+
+			if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
+				cf_log_err_cs(conf, "Attribute list cannot be specified via server URL");
+				goto ldap_url_error;
+			}
+
+			/*
+			 *	ldap_url_parse sets this to base by default.
+			 */
+			if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
+				cf_log_err_cs(conf, "Scope cannot be specified via server URL");
+				goto ldap_url_error;
+			}
+			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
+
+			/*
+			 *	The public ldap_url_parse function sets the default
+			 *	port, so we have to discover whether a port was
+			 *	included ourselves.
+			 */
+			if ((p = strchr(value, ']')) && (p[1] == ':')) {			/* IPv6 */
+				set_port_maybe = false;
+			} else if ((p = strchr(value, ':')) && (p = strchr(p + 1, ':'))) {	/* IPv4 */
+				set_port_maybe = false;
+			}
+
+			/* We allow extensions */
+
+#  ifdef HAVE_LDAP_INITIALIZE
+			{
+				char *url;
+
+				/*
+				 *	Figure out the default port from the URL
+				 */
+				if (ldap_url->lud_scheme) {
+					if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+						if (inst->start_tls == true) {
+							cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+								      "with 'start_tls'");
+							goto ldap_url_error;
+						}
+						default_port = LDAPS_PORT;
+
+					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+						set_port_maybe = false; /* Unix socket, no port */
+					}
+				}
+
+				if (set_port_maybe) {
+					/*
+					 *	URL port overrides configured port.
+					 */
+					ldap_url->lud_port = inst->port;
+
+					/*
+					 *	If there's no URL port, then set it to the default
+					 *	this is so debugging messages show explicitly
+					 *	the port we're connecting to.
+					 */
+					if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+				}
+
+				url = ldap_url_desc2str(ldap_url);
+				if (!url) {
+					cf_log_err_cs(conf, "Failed recombining URL components");
+					goto ldap_url_error;
+				}
+				inst->server = talloc_asprintf_append(inst->server, "%s ", url);
+				free(url);
+			}
+#  else
+			/*
+			 *	No LDAP initialize function.  Can't specify a scheme.
+			 */
+			if (ldap_url->lud_scheme &&
+			    ((strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
+			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
+			    (strcmp(ldap_url->lud_scheme, "cldap") == 0))) {
+				cf_log_err_cs(conf, "%s is not supported by linked libldap",
+					      ldap_url->lud_scheme);
+				return -1;
+			}
+
+			/*
+			 *	URL port over-rides the configured
+			 *	port.  But if there's no configured
+			 *	port, we use the hard-coded default.
+			 */
+			if (set_port_maybe) {
+				ldap_url->lud_port = inst->port;
+				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+			}
+
+			inst->server = talloc_asprintf_append(inst->server, "%s:%i ",
+							      ldap_url->lud_host ? ldap_url->lud_host : "localhost",
+							      ldap_url->lud_port);
+#  endif
+			/*
+			 *	@todo We could set a few other top level
+			 *	directives using the URL, like base_dn
+			 *	and scope.
+			 */
+			ldap_free_urldesc(ldap_url);
+		/*
+		 *	We need to construct an LDAP URI
+		 */
+		} else
+#endif	/* HAVE_LDAP_URL_PARSE && HAVE_LDAP_IS_LDAP_URL && LDAP_URL_DESC2STR */
+		/*
+		 *	If it's not an URL, or we don't have the functions necessary
+		 *	to break apart the URL and recombine it, then just treat
+		 *	server as a hostname.
+		 */
+		{
+#ifdef HAVE_LDAP_INITIALIZE
+			char	const *p;
+			char	*q;
+			int	port = 0;
+			size_t	len;
+
+			port = inst->port;
+
+			/*
+			 *	We don't support URLs if the library didn't provide
+			 *	URL parsing functions.
+			 */
+			if (strchr(value, '/')) {
+			bad_server_fmt:
+#ifdef LDAP_CAN_PARSE_URLS
+				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
+					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
+#else
+				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
+#endif
+				return -1;
+			}
+
+			p = strrchr(value, ':');
+			if (p) {
+				port = (int)strtol((p + 1), &q, 10);
+				if ((p == value) || ((p + 1) == q) || (*q != '\0')) goto bad_server_fmt;
+				len = p - value;
+			} else {
+				len = strlen(value);
+			}
+			if (port == 0) port = LDAP_PORT;
+
+			inst->server = talloc_asprintf_append(inst->server, "ldap://%.*s:%i ", (int) len, value, port);
+#else
+			/*
+			 *	ldap_init takes port, which can be overridden by :port so
+			 *	we don't need to do any parsing here.
+			 */
+			inst->server = talloc_asprintf_append(inst->server, "%s ", value);
+#endif
+		}
+	}
+	if (inst->server) inst->server[talloc_array_length(inst->server) - 2] = '\0';
+
+	DEBUG4("rlm_ldap (%s) - LDAP server string: %s", inst->name, inst->server);
+
+#ifdef LDAP_OPT_X_TLS_NEVER
+	/*
+	 *	Workaround for servers which support LDAPS but not START TLS
+	 */
+	if (inst->port == LDAPS_PORT || inst->tls_mode) {
+		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
+	} else {
+		inst->tls_mode = 0;
+	}
+#endif
+
+	/*
+	 *	Convert dereference strings to enumerated constants
+	 */
+	if (inst->dereference_str) {
+		inst->dereference = fr_str2int(ldap_dereference, inst->dereference_str, -1);
+		if (inst->dereference < 0) {
+			cf_log_err_cs(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
+				      "'finding' or 'always'", inst->dereference_str);
+			goto error;
+		}
+	}
+
+#if LDAP_SET_REBIND_PROC_ARGS != 3
+	/*
+	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
+	 *	variable for the username, password, etc.
+	 */
+	if (inst->rebind == true) {
+		cf_log_err_cs(conf, "Cannot use 'rebind' configuration item as this version of libldap "
+			      "does not support the API that we need");
+
+		goto error;
+	}
+#endif
+
+	/*
+	 *	Convert scope strings to enumerated constants
+	 */
+	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
+	if (inst->userobj_scope < 0) {
+		cf_log_err_cs(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
+#ifdef LDAP_SCOPE_CHILDREN
+			      ", 'base' or 'children'"
+#else
+			      " or 'base'"
+#endif
+			 , inst->userobj_scope_str);
+		goto error;
+	}
+
+	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
+	if (inst->groupobj_scope < 0) {
+		cf_log_err_cs(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
+#ifdef LDAP_SCOPE_CHILDREN
+			      ", 'base' or 'children'"
+#else
+			      " or 'base'"
+#endif
+			 , inst->groupobj_scope_str);
+		goto error;
+	}
+
+	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
+	if (inst->clientobj_scope < 0) {
+		cf_log_err_cs(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
+#ifdef LDAP_SCOPE_CHILDREN
+			      ", 'base' or 'children'"
+#else
+			      " or 'base'"
+#endif
+			 , inst->clientobj_scope_str);
+		goto error;
+	}
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	/*
+	 *	Build the server side sort control for user objects
+	 */
+	if (inst->userobj_sort_by) {
+		LDAPSortKey	**keys;
+		int		ret;
+		char		*p;
+
+		memcpy(&p, &inst->userobj_sort_by, sizeof(p));
+
+		ret = ldap_create_sort_keylist(&keys, p);
+		if (ret != LDAP_SUCCESS) {
+			cf_log_err_cs(conf, "Invalid user.sort_by value \"%s\": %s",
+				      inst->userobj_sort_by, ldap_err2string(ret));
+			goto error;
+		}
+
+		/*
+		 *	Always set the control as critical, if it's not needed
+		 *	the user can comment it out...
+		 */
+		ret = ldap_create_sort_control(global_handle, keys, 1, &inst->userobj_sort_ctrl);
+		ldap_free_sort_keylist(keys);
+		if (ret != LDAP_SUCCESS) {
+			ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
+			goto error;
+		}
+	}
+#endif
+
+	if (inst->tls_require_cert_str) {
+#ifdef LDAP_OPT_X_TLS_NEVER
+		/*
+		 *	Convert cert strictness to enumerated constants
+		 */
+		inst->tls_require_cert = fr_str2int(ldap_tls_require_cert, inst->tls_require_cert_str, -1);
+		if (inst->tls_require_cert < 0) {
+			cf_log_err_cs(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
+				      "'demand', 'allow', 'try' or 'hard'", inst->tls_require_cert_str);
+			goto error;
+		}
+#else
+		cf_log_err_cs(conf, "Modifying 'tls.require_cert' is not supported by current "
+			      "version of libldap. Please upgrade or substitute current libldap and "
+			      "rebuild this module");
+
+		goto error;
+#endif
+	}
+
+	/*
+	 *	Build the attribute map
+	 */
+	update = cf_section_sub_find(inst->cs, "update");
+	if (update && (map_afrom_cs(&inst->user_map, update,
+				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
+				    LDAP_MAX_ATTRMAP) < 0)) {
+		return -1;
+	}
+
+	/*
+	 *	Initialise the directory mutex
+	 */
+	pthread_mutex_init(&inst->directory_mutex, NULL);
+
+	/*
+	 *	Set global options
+	 */
+	if (rlm_ldap_global_init(inst) < 0) goto error;
+
+	/*
+	 *	Initialize the socket pool.
+	 */
+	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+	if (!inst->pool) goto error;
+
+	/*
+	 *	Bulk load dynamic clients.
+	 */
+	if (inst->do_clients) {
+		CONF_SECTION *cs, *map, *tmpl;
+
+		cs = cf_section_sub_find(inst->cs, "client");
+		if (!cs) {
+			cf_log_err_cs(conf, "Told to load clients but no client section found");
+			goto error;
+		}
+
+		map = cf_section_sub_find(cs, "attribute");
+		if (!map) {
+			cf_log_err_cs(cs, "Told to load clients but no attribute section found");
+			goto error;
+		}
+
+		tmpl = cf_section_sub_find(cs, "template");
+
+		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
+			cf_log_err_cs(cs, "Error loading clients");
+
+			return -1;
+		}
+	}
+
+	return 0;
+
+error:
+	return -1;
+}
+
+static int mod_load(void)
+{
+	static LDAPAPIInfo info = { .ldapai_info_version = LDAP_API_INFO_VERSION };	/* static to quiet valgrind about this being uninitialised */
+	int ldap_errno;
+
+	/*
+	 *	Only needs to be done once, prevents races in environment
+	 *	initialisation within libldap.
+	 *
+	 *	See: https://github.com/arr2036/ldapperf/issues/2
+	 */
+#ifdef HAVE_LDAP_INITIALIZE
+	ldap_initialize(&global_handle, "");
+#else
+	global_handle = ldap_init("", 0);
+#endif
+
+	ldap_errno = ldap_get_option(NULL, LDAP_OPT_API_INFO, &info);
+	if (ldap_errno == LDAP_OPT_SUCCESS) {
+		/*
+		 *	Don't generate warnings if the compile type vendor name
+		 *	is found within the link time vendor name.
+		 *
+		 *	This allows the server to be built against OpenLDAP but
+		 *	run with Symas OpenLDAP.
+		 */
+		if (strcasestr(info.ldapai_vendor_name, LDAP_VENDOR_NAME) == NULL) {
+			WARN("rlm_ldap - libldap vendor changed since the server was built");
+			WARN("rlm_ldap - linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
+		}
+
+		if (info.ldapai_vendor_version < LDAP_VENDOR_VERSION) {
+			WARN("rlm_ldap - libldap older than the version the server was built against");
+			WARN("rlm_ldap - linked: %i, built: %i",
+			     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
+		}
+
+		INFO("rlm_ldap - libldap vendor: %s, version: %i", info.ldapai_vendor_name,
+		     info.ldapai_vendor_version);
+
+		ldap_memfree(info.ldapai_vendor_name);
+		ldap_memfree(info.ldapai_extensions);
+	} else {
+		DEBUG("rlm_ldap - Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
+		      "returned: %i", ldap_errno);
+		INFO("rlm_ldap - libldap vendor: %s, version: %i.%i.%i", LDAP_VENDOR_NAME,
+		     LDAP_VENDOR_VERSION_MAJOR, LDAP_VENDOR_VERSION_MINOR, LDAP_VENDOR_VERSION_PATCH);
+	}
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	/*
+	 *	Keeping the dummy ld around for the lifetime
+	 *	of the module should always work,
+	 *	irrespective of what changes happen in libldap.
+	 */
+#ifdef HAVE_LDAP_UNBIND_EXT_S
+	ldap_unbind_ext_s(global_handle, NULL, NULL);
+#else
+	ldap_unbind_s(global_handle);
+#endif
+}
+
 /* globally exported name */
 extern rad_module_t rlm_ldap;
 rad_module_t rlm_ldap = {
@@ -2011,6 +2011,8 @@ rad_module_t rlm_ldap = {
 	.type		= 0,
 	.inst_size	= sizeof(rlm_ldap_t),
 	.config		= module_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

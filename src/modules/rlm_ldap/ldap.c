@@ -24,16 +24,17 @@
  * @copyright 2013-2015 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#define LOG_PREFIX "rlm_ldap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <stdarg.h>
 #include <ctype.h>
 
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 #include "rlm_ldap.h"
 
 static const char specials[] = ",+\"\\<>;*=()";

@@ -26,10 +26,13 @@
  * @copyright 2012 Alan DeKok <aland@freeradius.org>
  * @copyright 2002-2004 Novell, Inc.
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
+
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include "rlm_ldap.h"
 
 /* NMAS error codes */

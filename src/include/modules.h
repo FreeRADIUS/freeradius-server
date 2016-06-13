@@ -86,6 +86,30 @@ extern const section_type_value_t section_type_value[];
 /* Stop people using different module/library/server versions together */
 #define RLM_MODULE_INIT RADIUSD_MAGIC_NUMBER
 
+/** Called when a module is first loaded
+ *
+ * Used to perform global library initialisation.
+ *
+ * If any handles are required for the call to module_unload they should be
+ * stored as static variables within the module.
+ *
+ * @note module_unload will not be called unless this callback returns 0.
+ *	The callback should free any resources allocated if it errors out.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 if initialisation failed.
+ */
+typedef int (*module_load_t)(void);
+
+/** Called when the module is about to be unloaded (all instances destroyed)
+ *
+ * Used to perform global library unload.
+ *
+ * Should free any memory allocated by the library during the call to on_load.
+ */
+typedef void (*module_unload_t)(void);
+
 /** Module section callback
  *
  * Is called when the module is listed in a particular section of a virtual
@@ -95,7 +119,7 @@ extern const section_type_value_t section_type_value[];
  * @param[in,out] request being processed.
  * @return the appropriate rcode.
  */
-typedef rlm_rcode_t (*rad_method_t)(void *instance, REQUEST *request);
+typedef rlm_rcode_t (*module_method_t)(void *instance, REQUEST *request);
 
 /** Module instantiation callback
  *
@@ -110,7 +134,7 @@ typedef rlm_rcode_t (*rad_method_t)(void *instance, REQUEST *request);
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void *instance);
+typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
 
 /** Module detach callback
  *
@@ -125,7 +149,7 @@ typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  *	- 0 on success.
  *	- -1 if detach failed.
  */
-typedef int (*detach_t)(void *instance);
+typedef int (*module_detach_t)(void *instance);
 
 /** Struct export by a rlm_* module
  *
@@ -140,11 +164,14 @@ typedef struct rad_module_t {
 
 	CONF_PARSER const	*config;		//!< Module configuration mappings.
 
-	instantiate_t		bootstrap;		//!< Register dynamic attrs, xlats, etc.
-	instantiate_t		instantiate;		//!< Callback to create a new module instance.
-	detach_t		detach;			//!< Callback to free a module instance.
+	module_load_t		load;			//!< Callback for global library init.
+	module_unload_t		unload;			//!< Callback for global library free.
 
-	rad_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+	module_instantiate_t	bootstrap;		//!< Callback to register dynamic attrs, xlats, etc.
+	module_instantiate_t	instantiate;		//!< Callback to configure a new module instance.
+	module_detach_t		detach;			//!< Callback to free a module instance.
+
+	module_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 } rad_module_t;
 
 /*

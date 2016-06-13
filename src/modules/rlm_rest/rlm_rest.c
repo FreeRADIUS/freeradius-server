@@ -795,11 +795,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	/*
-	 *	Initialise REST libraries.
-	 */
-	fr_json_version_print();
-	if (rest_init(inst) < 0) return -1;
 	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
@@ -816,10 +811,57 @@ static int mod_detach(void *instance)
 
 	fr_connection_pool_free(inst->pool);
 
-	/* Free any memory used by libcurl */
-	rest_cleanup();
+	return 0;
+}
+
+/** Initialises libcurl.
+ *
+ * Allocates global variables and memory required for libcurl to function.
+ * MUST only be called once per module instance.
+ *
+ * mod_unload must not be called if mod_load fails.
+ *
+ * @see mod_unload
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_load(void)
+{
+	CURLcode ret;
+
+	curl_version_info_data *curlversion;
+
+	/* developer sanity */
+	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == HTTP_BODY_NUM_ENTRIES);
+
+	ret = curl_global_init(CURL_GLOBAL_ALL);
+	if (ret != CURLE_OK) {
+		ERROR("rlm_curl - CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
+		return -1;
+	}
+
+	curlversion = curl_version_info(CURLVERSION_NOW);
+	if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
+		WARN("rlm_curl - libcurl version changed since the server was built");
+		WARN("rlm_curl - linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
+	}
+
+	INFO("rlm_curl - libcurl version: %s", curl_version());
+
+	fr_json_version_print();
 
 	return 0;
+}
+
+/** Called to free resources held by libcurl
+ *
+ * @see mod_load
+ */
+static void mod_unload(void)
+{
+	curl_global_cleanup();
 }
 
 /*
@@ -838,6 +880,8 @@ rad_module_t rlm_rest = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_rest_t),
 	.config		= module_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

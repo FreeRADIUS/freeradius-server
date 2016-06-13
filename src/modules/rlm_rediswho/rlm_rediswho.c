@@ -146,29 +146,6 @@ static int rediswho_command(rlm_rediswho_t *inst, REQUEST *request, char const *
 	return ret;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
-{
-	rlm_rediswho_t *inst = instance;
-
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, inst->conf, true, NULL, NULL, NULL);
-	if (!inst->cluster) return -1;
-
-	return 0;
-}
-
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
-{
-	rlm_rediswho_t *inst = instance;
-
-	fr_redis_version_print();
-
-	inst->cs = conf;
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	return 0;
-}
-
 static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request,
 				      char const *insert,
 				      char const *trim,
@@ -224,6 +201,34 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return rcode;
 }
 
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_rediswho_t *inst = instance;
+
+	inst->cs = conf;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	return 0;
+}
+
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_rediswho_t *inst = instance;
+
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, inst->conf, true, NULL, NULL, NULL);
+	if (!inst->cluster) return -1;
+
+	return 0;
+}
+
+static int mod_load(void)
+{
+	fr_redis_version_print();
+
+	return 0;
+}
+
 extern rad_module_t rlm_rediswho;
 rad_module_t rlm_rediswho = {
 	.magic		= RLM_MODULE_INIT,
@@ -231,6 +236,7 @@ rad_module_t rlm_rediswho = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_rediswho_t),
 	.config		= module_config,
+	.load		= mod_load,
 	.instantiate	= mod_instantiate,
 	.bootstrap	= mod_bootstrap,
 	.methods = {

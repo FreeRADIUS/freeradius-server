@@ -23,8 +23,11 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013 The FreeRADIUS Server Project.
  */
-
 #include <freeradius-devel/rad_assert.h>
+
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include "rlm_ldap.h"
 
 /** Callback for map_to_request

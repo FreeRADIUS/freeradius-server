@@ -1291,13 +1291,6 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
 }
 
-static int mod_bootstrap(UNUSED CONF_SECTION *conf, UNUSED void *instance)
-{
-	fr_redis_version_print();
-
-	return 0;
-}
-
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	static bool	done_hash = false;
@@ -1348,6 +1341,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+static int mod_load(void)
+{
+	fr_redis_version_print();
+
+	return 0;
+}
+
 extern rad_module_t rlm_redis_ippool;
 rad_module_t rlm_redis_ippool = {
 	.magic		= RLM_MODULE_INIT,
@@ -1355,7 +1355,7 @@ rad_module_t rlm_redis_ippool = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_redis_ippool_t),
 	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
+	.load		= mod_load,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,

@@ -27,6 +27,9 @@
 #include <freeradius-devel/rad_assert.h>
 #include <ctype.h>
 
+#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX_ARGS inst->name
+
 #include "rlm_ldap.h"
 
 /** Convert multiple group names into a DNs

@@ -71,110 +71,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Initialize the rlm_couchbase module
- *
- * Intialize the module and create the initial Couchbase connection pool.
- *
- * @param  conf     The module configuration.
- * @param  instance The module instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
-{
-	static bool version_done;
-
-	rlm_couchbase_t *inst = instance;   /* our module instance */
-
-	if (!version_done) {
-		version_done = true;
-		fr_json_version_print();
-		INFO("libcouchbase version: %s", lcb_get_version(NULL));
-	}
-
-	{
-		char *server, *p;
-		size_t len, i;
-		bool sep = false;
-
-		len = talloc_array_length(inst->server_raw);
-		server = p = talloc_array(inst, char, len);
-		for (i = 0; i < len; i++) {
-			switch (inst->server_raw[i]) {
-			case '\t':
-			case ' ':
-			case ',':
-				/* Consume multiple separators occurring in sequence */
-				if (sep == true) continue;
-
-				sep = true;
-				*p++ = ';';
-				break;
-
-			default:
-				sep = false;
-				*p++ = inst->server_raw[i];
-				break;
-			}
-		}
-
-		*p = '\0';
-		inst->server = server;
-	}
-
-	/* setup item map */
-	if (mod_build_attribute_element_map(conf, inst) != 0) {
-		/* fail */
-		return -1;
-	}
-
-	/* initiate connection pool */
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
-
-	/* check connection pool */
-	if (!inst->pool) {
-		ERROR("failed to initiate connection pool");
-		/* fail */
-		return -1;
-	}
-
-	/* load clients if requested */
-	if (inst->read_clients) {
-		CONF_SECTION *cs, *map, *tmpl; /* conf section */
-
-		/* attempt to find client section */
-		cs = cf_section_sub_find(conf, "client");
-		if (!cs) {
-			ERROR("failed to find client section while loading clients");
-			/* fail */
-			return -1;
-		}
-
-		/* attempt to find attribute subsection */
-		map = cf_section_sub_find(cs, "attribute");
-		if (!map) {
-			ERROR("failed to find attribute subsection while loading clients");
-			/* fail */
-			return -1;
-		}
-
-		tmpl = cf_section_sub_find(cs, "template");
-
-		/* debugging */
-		DEBUG("preparing to load client documents");
-
-		/* attempt to load clients */
-		if (mod_load_client_documents(inst, tmpl, map) != 0) {
-			/* fail */
-			return -1;
-		}
-	}
-
-	/* return okay */
-	return 0;
-}
-
 /** Handle authorization requests using Couchbase document data
  *
  * Attempt to fetch the document assocaited with the requested user by
@@ -859,6 +755,109 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
+/** Initialize the rlm_couchbase module
+ *
+ * Intialize the module and create the initial Couchbase connection pool.
+ *
+ * @param  conf     The module configuration.
+ * @param  instance The module instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_couchbase_t *inst = instance;   /* our module instance */
+
+	{
+		char *server, *p;
+		size_t len, i;
+		bool sep = false;
+
+		len = talloc_array_length(inst->server_raw);
+		server = p = talloc_array(inst, char, len);
+		for (i = 0; i < len; i++) {
+			switch (inst->server_raw[i]) {
+			case '\t':
+			case ' ':
+			case ',':
+				/* Consume multiple separators occurring in sequence */
+				if (sep == true) continue;
+
+				sep = true;
+				*p++ = ';';
+				break;
+
+			default:
+				sep = false;
+				*p++ = inst->server_raw[i];
+				break;
+			}
+		}
+
+		*p = '\0';
+		inst->server = server;
+	}
+
+	/* setup item map */
+	if (mod_build_attribute_element_map(conf, inst) != 0) {
+		/* fail */
+		return -1;
+	}
+
+	/* initiate connection pool */
+	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
+
+	/* check connection pool */
+	if (!inst->pool) {
+		ERROR("failed to initiate connection pool");
+		/* fail */
+		return -1;
+	}
+
+	/* load clients if requested */
+	if (inst->read_clients) {
+		CONF_SECTION *cs, *map, *tmpl; /* conf section */
+
+		/* attempt to find client section */
+		cs = cf_section_sub_find(conf, "client");
+		if (!cs) {
+			ERROR("failed to find client section while loading clients");
+			/* fail */
+			return -1;
+		}
+
+		/* attempt to find attribute subsection */
+		map = cf_section_sub_find(cs, "attribute");
+		if (!map) {
+			ERROR("failed to find attribute subsection while loading clients");
+			/* fail */
+			return -1;
+		}
+
+		tmpl = cf_section_sub_find(cs, "template");
+
+		/* debugging */
+		DEBUG("preparing to load client documents");
+
+		/* attempt to load clients */
+		if (mod_load_client_documents(inst, tmpl, map) != 0) {
+			/* fail */
+			return -1;
+		}
+	}
+
+	/* return okay */
+	return 0;
+}
+
+static int mod_load(void)
+{
+	INFO("libcouchbase version: %s", lcb_get_version(NULL));
+	fr_json_version_print();
+	return 0;
+}
+
 /*
  * Hook into the FreeRADIUS module system.
  */
@@ -869,6 +868,7 @@ rad_module_t rlm_couchbase = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_couchbase_t),
 	.config		= module_config,
+	.load		= mod_load,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {

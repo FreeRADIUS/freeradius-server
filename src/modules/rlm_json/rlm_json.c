@@ -383,13 +383,18 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
-	fr_json_version_print();
-
 	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	if (map_proc_register(instance, "json", mod_map_proc, NULL,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;
+	return 0;
+}
+
+static int mod_load(void)
+{
+	fr_json_version_print();
+
 	return 0;
 }
 
@@ -407,5 +412,6 @@ rad_module_t rlm_json = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "json",
 	.type		= RLM_TYPE_THREAD_SAFE,
+	.load		= mod_load,
 	.bootstrap	= mod_bootstrap,
 };
