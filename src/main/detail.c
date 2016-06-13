@@ -1124,6 +1124,9 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->secret = client->shortname;
 	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */
 
+	this->server_cs = cf_item_parent(cf_section_to_item(this->cs));
+	client->server_cs = this->server_cs;
+
 	return 0;
 }
 
