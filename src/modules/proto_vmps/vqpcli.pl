@@ -20,7 +20,6 @@
 
 use Socket;
 $|=0;
-#$DEBUG=1;
 $DEBUG=0;
 
 sub formatItem($$) {
@@ -46,16 +45,17 @@ sub parseOpts() {
 	use Getopt::Std;
 	my $errors = "";
 	
-	getopts("s:p:v:w:i:m:t:c:",\%opt) or usage();
+	getopts("s:p:v:w:i:m:t:c:x",\%opt) or usage();
 	usage() if $opt{h};
 	my %request = (
 		server_ip	=>	$opt{s} || "",
 		client_ip 	=> 	$opt{w} || "127.0.0.1", # IP to say we are - VMPS doesn't care
 		port_name 	=> 	$opt{i} || "Fa0/1", # Default port name to use
 		vlan 		=>	$opt{c} || "", # Isn't really needed. 
-		port 		=>	$opt{p} || "1589", # Isn't really needed. 
+		port 		=>	$opt{p} || "1589", # UDP port
 		vtp_domain	=>	$opt{v} || "", # Is kinda important
 		macaddr		=>	$opt{m} || "", # Likewise...
+		debug 		=> 	$opt{x} || "0", # do debugging?
 	);
 
 	$opt{m} =~ tr/A-Z/a-z/;
@@ -203,6 +203,8 @@ sub parseVQPresp($) {
 }
 
 %request=parseOpts();
+$DEBUG = $request{debug};
+
 $buf = makeVQPrequest(%request);
 $buf = sendVQP($request{server_ip},$request{port},$buf);
 %response = parseVQPresp($buf);
