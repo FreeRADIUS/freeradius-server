@@ -276,6 +276,43 @@ static int _dl_module_free(dl_module_t *dl_module)
 	return 0;
 }
 
+/** Allocate module instance data, and parse the module's configuration
+ *
+ * @param[out] data	Module's private data, the result of parsing the config.
+ * @param[in] ctx	to allocate this instance data in.
+ * @param[in] module	to alloc instance data for.
+ * @param[in] cs	module's config section.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_module_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_module_t const *module, CONF_SECTION *cs)
+{
+	*data = NULL;
+
+	if (module->common->inst_size == 0) return 0;
+
+	/*
+	 *	If there is supposed to be instance data, allocate it now.
+	 *	Also parse the configuration data, if required.
+	 */
+	MEM(*data = talloc_zero_array(ctx, uint8_t, module->common->inst_size));
+
+	talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
+	if (module->common->config && (cf_section_parse(cs, *data, module->common->config) < 0)) {
+		cf_log_err_cs(cs, "Invalid configuration for module \"%s\"", module->name);
+		talloc_free(*data);
+		return -1;
+	}
+
+	/*
+	 *	Set the destructor.
+	 */
+	if (module->common->detach) talloc_set_destructor((void *)*data, module->common->detach);
+
+	return 0;
+}
+
 /** Load a module library using dlopen() or return a previously loaded module from the cache
  *
  * When the dl_module_t is no longer used, talloc_free() may be used to free it.
@@ -353,7 +390,6 @@ dl_module_t const *dl_module(CONF_SECTION *conf, char const *name, char const *p
 	dl_module->common = module;
 	dl_module->handle = handle;
 	dl_module->name = talloc_steal(dl_module, module_name);
-	dl_module->conf = conf;
 
 	/*
 	 *	Perform global library initialisation

@@ -109,12 +109,13 @@ typedef struct dl_module_common {
  */
 typedef struct dl_module {
 	char const			*name;		//!< Name of the module e.g. sql.
-	CONF_SECTION			*conf;		//!< Module's configuration section.
 	dl_module_common_t const	*common;	//!< Symbol exported by the module, containing its public
 							//!< functions, name and behaviour control flags.
 	void				*handle;	//!< Handle returned by dlopen.
 } dl_module_t;
 
+int			dl_module_instance_data_alloc(void **out, TALLOC_CTX *ctx,
+						      dl_module_t const *module, CONF_SECTION *cs);
 dl_module_t const	*dl_module(CONF_SECTION *conf, char const *name, char const *prefix);
 
 #ifdef __cplusplus

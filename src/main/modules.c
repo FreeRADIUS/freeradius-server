@@ -101,46 +101,6 @@ int modules_free(void)
 	return 0;
 }
 
-/** Parse module's configuration section and setup destructors
- *
- * @param[out] data Module's private data, the result of parsing the config.
- * @param[in] instance data of module.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int module_parse_conf(void **data, module_instance_t *instance)
-{
-	*data = NULL;
-
-	if (!instance->module->inst_size) return 0;
-
-	/*
-	 *	If there is supposed to be instance data, allocate it now.
-	 *	Also parse the configuration data, if required.
-	 */
-	*data = talloc_zero_array(instance, uint8_t, instance->module->inst_size);
-	rad_assert(data);
-
-	talloc_set_name(*data, "rlm_%s_t",
-			instance->module->name ? instance->module->name : "config");
-
-	if (instance->module->config &&
-	    (cf_section_parse(instance->cs, *data, instance->module->config) < 0)) {
-		cf_log_err_cs(instance->cs, "Invalid configuration for module \"%s\"", instance->name);
-		talloc_free(*data);
-
-		return -1;
-	}
-
-	/*
-	 *	Set the destructor.
-	 */
-	if (instance->module->detach) talloc_set_destructor((void *)*data, instance->module->detach);
-
-	return 0;
-}
-
 /** Free module's instance data, and any xlats or paircompares
  *
  */
@@ -274,7 +234,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Parse the modules configuration.
 	 */
-	if (module_parse_conf(&instance->data, instance) < 0) {
+	if (dl_module_instance_data_alloc(&instance->data, instance, instance->handle, cs) < 0) {
 		talloc_free(instance);
 		return NULL;
 	}
@@ -1119,7 +1079,7 @@ int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
 	 *	module's detach method is called when it's instance data is
 	 *	about to be freed.
 	 */
-	if (module_parse_conf(&insthandle, instance) < 0) {
+	if (dl_module_instance_data_alloc(&insthandle, instance, instance->handle, cs) < 0) {
 		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
 			"Using old configuration", instance->name);
 
