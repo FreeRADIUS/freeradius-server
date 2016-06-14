@@ -52,20 +52,20 @@
 RCSID("$Id$")
 
 typedef struct rlm_sqlhpwippool_t {
-	char const *myname;	 		//!< Name of this instance
-	rlm_sql_t *sql_inst;
-	rlm_sql_module_t *db;
+	char const		*myname;	 		//!< Name of this instance
+	rlm_sql_t		*sql_inst;
+	rlm_sql_module_t const	*db;
 #ifdef HAVE_PTHREAD_D
-	pthread_mutex_t mutex;			//!< Used "with" sync_after
+	pthread_mutex_t		mutex;			//!< Used "with" sync_after
 #endif
-	uint32_t	sincesync;		//!< req. done so far since last free IP sync.
+	uint32_t		sincesync;		//!< req. done so far since last free IP sync.
 
 	/* from config */
-	char const	*sql_instance_name;	//!< rlm_sql instance to use.
-	char const	*db_name;		//!< Netvim database.
-	bool		no_free_fail;		//!< Fail if no free IP addresses found.
-	uint32_t	free_after;	      	//!< How many seconds an IP should not be used after freeing.
-	uint32_t	sync_after;		//!< How often to sync with radacct.
+	char const		*sql_instance_name;	//!< rlm_sql instance to use.
+	char const		*db_name;		//!< Netvim database.
+	bool			no_free_fail;		//!< Fail if no free IP addresses found.
+	uint32_t		free_after;	      	//!< How many seconds an IP should not be used after freeing.
+	uint32_t		sync_after;		//!< How often to sync with radacct.
 } rlm_sqlhpwippool_t;
 
 /* char *name, int type,
