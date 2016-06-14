@@ -166,34 +166,36 @@ int udpfromto_init(int s)
  * replies using the correct IP interface, in the case where the server is multihomed.
  * This is not normally possible on unconnected datagram sockets.
  *
- * @param[in] s The file descriptor to read from.
- * @param[out] buf Where to write the received datagram data.
- * @param[in] len of buf.
- * @param[in] flags passed unmolested to recvmsg.
- * @param[out] from Where to write the source address.
- * @param[in] fromlen Length of the structure pointed to by from.
- * @param[out] to Where to write the destination address.  If NULL recvmsg() will be used instead.
- * @param[in] tolen Length of the structure pointed to by to.
- * @param[out] if_index The interface which received the datagram (may be NULL).  Will only be
- *	populated if to is not NULL.
- * @param[out] when the packet was received (may be NULL).  If SO_TIMESTAMP is not available
- *	or SO_TIMESTAMP Was not set on the socket, gettimeofday will be used instead.
+ * @param[in] fd	The file descriptor to read from.
+ * @param[out] buf	Where to write the received datagram data.
+ * @param[in] len	of buf.
+ * @param[in] flags	passed unmolested to recvmsg.
+ * @param[out] from	Where to write the source address.
+ * @param[in] from_len	Length of the structure pointed to by from.
+ * @param[out] to	Where to write the destination address.  If NULL recvmsg()
+ *			will be used instead.
+ * @param[in] to_len	Length of the structure pointed to by to.
+ * @param[out] if_index	The interface which received the datagram (may be NULL).
+ *			Will only be populated if to is not NULL.
+ * @param[out] when	the packet was received (may be NULL).  If SO_TIMESTAMP is
+ *			not available or SO_TIMESTAMP Was not set on the socket,
+ *			gettimeofday will be used instead.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int recvfromto(int s, void *buf, size_t len, int flags,
-	       struct sockaddr *from, socklen_t *fromlen,
-	       struct sockaddr *to, socklen_t *tolen,
+int recvfromto(int fd, void *buf, size_t len, int flags,
+	       struct sockaddr *from, socklen_t *from_len,
+	       struct sockaddr *to, socklen_t *to_len,
 	       int *if_index, struct timeval *when)
 {
-	struct msghdr msgh;
-	struct cmsghdr *cmsg;
-	struct iovec iov;
-	char cbuf[256];
-	int err;
-	struct sockaddr_storage si;
-	socklen_t si_len = sizeof(si);
+	struct msghdr		msgh;
+	struct cmsghdr		*cmsg;
+	struct iovec		iov;
+	char			cbuf[256];
+	int			ret;
+	struct sockaddr_storage	si;
+	socklen_t		si_len = sizeof(si);
 
 #if !defined(IP_PKTINFO) && !defined(IP_RECVDSTADDR) && !defined(IPV6_PKTINFO)
 	/*
@@ -206,9 +208,9 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	/*
 	 *	Catch the case where the caller passes invalid arguments.
 	 */
-	if (!to || !tolen) {
+	if (!to || !to_len) {
 		if (when) gettimeofday(when, NULL);
-		return recvfrom(s, buf, len, flags, from, fromlen);
+		return recvfrom(fd, buf, len, flags, from, from_len);
 	}
 
 	/*
@@ -223,7 +225,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	 *	recvmsg doesn't provide sin_port so we have to
 	 *	retrieve it using getsockname().
 	 */
-	if (getsockname(s, (struct sockaddr *)&si, &si_len) < 0) {
+	if (getsockname(fd, (struct sockaddr *)&si, &si_len) < 0) {
 		return -1;
 	}
 
@@ -233,16 +235,16 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	 */
 	if (si.ss_family == AF_INET) {
 #if !defined(IP_PKTINFO) && !defined(IP_RECVDSTADDR)
-		return recvfrom(s, buf, len, flags, from, fromlen);
+		return recvfrom(fd, buf, len, flags, from, from_len);
 #else
 		struct sockaddr_in *dst = (struct sockaddr_in *) to;
 		struct sockaddr_in *src = (struct sockaddr_in *) &si;
 
-		if (*tolen < sizeof(*dst)) {
+		if (*to_len < sizeof(*dst)) {
 			errno = EINVAL;
 			return -1;
 		}
-		*tolen = sizeof(*dst);
+		*to_len = sizeof(*dst);
 		*dst = *src;
 #endif
 	}
@@ -250,16 +252,16 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 #ifdef AF_INET6
 	else if (si.ss_family == AF_INET6) {
 #if !defined(IPV6_PKTINFO)
-		return recvfrom(s, buf, len, flags, from, fromlen);
+		return recvfrom(fd, buf, len, flags, from, from_len);
 #else
 		struct sockaddr_in6 *dst = (struct sockaddr_in6 *) to;
 		struct sockaddr_in6 *src = (struct sockaddr_in6 *) &si;
 
-		if (*tolen < sizeof(*dst)) {
+		if (*to_len < sizeof(*dst)) {
 			errno = EINVAL;
 			return -1;
 		}
-		*tolen = sizeof(*dst);
+		*to_len = sizeof(*dst);
 		*dst = *src;
 #endif
 	}
@@ -280,17 +282,16 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	msgh.msg_control = cbuf;
 	msgh.msg_controllen = sizeof(cbuf);
 	msgh.msg_name = from;
-	msgh.msg_namelen = fromlen ? *fromlen : 0;
+	msgh.msg_namelen = from_len ? *from_len : 0;
 	msgh.msg_iov  = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_flags = 0;
 
 	/* Receive one packet. */
-	if ((err = recvmsg(s, &msgh, flags)) < 0) {
-		return err;
-	}
+	ret = recvmsg(fd, &msgh, flags);
+	if (ret < 0) return ret;
 
-	if (fromlen) *fromlen = msgh.msg_namelen;
+	if (from_len) *from_len = msgh.msg_namelen;
 
 	if (if_index) *if_index = 0;
 	if (when) {
@@ -301,15 +302,18 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	/* Process auxiliary received data in msgh */
 	for (cmsg = CMSG_FIRSTHDR(&msgh);
 	     cmsg != NULL;
-	     cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
+	     cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
 
 #ifdef IP_PKTINFO
 		if ((cmsg->cmsg_level == SOL_IP) &&
 		    (cmsg->cmsg_type == IP_PKTINFO)) {
 			struct in_pktinfo *i = (struct in_pktinfo *) CMSG_DATA(cmsg);
+
 			((struct sockaddr_in *)to)->sin_addr = i->ipi_addr;
-			*tolen = sizeof(struct sockaddr_in);
+			*to_len = sizeof(struct sockaddr_in);
+
 			if (if_index) *if_index = i->ipi_ifindex;
+
 			break;
 		}
 #endif
@@ -318,8 +322,11 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 		if ((cmsg->cmsg_level == IPPROTO_IP) &&
 		    (cmsg->cmsg_type == IP_RECVDSTADDR)) {
 			struct in_addr *i = (struct in_addr *) CMSG_DATA(cmsg);
+
 			((struct sockaddr_in *)to)->sin_addr = *i;
-			*tolen = sizeof(struct sockaddr_in);
+
+			*to_len = sizeof(struct sockaddr_in);
+
 			break;
 		}
 #endif
@@ -327,18 +334,19 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 #ifdef IPV6_PKTINFO
 		if ((cmsg->cmsg_level == IPPROTO_IPV6) &&
 		    (cmsg->cmsg_type == IPV6_PKTINFO)) {
-			struct in6_pktinfo *i =
-				(struct in6_pktinfo *) CMSG_DATA(cmsg);
+			struct in6_pktinfo *i = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+
 			((struct sockaddr_in6 *)to)->sin6_addr = i->ipi6_addr;
-			*tolen = sizeof(struct sockaddr_in6);
+			*to_len = sizeof(struct sockaddr_in6);
+
 			if (if_index) *if_index = i->ipi6_ifindex;
+
 			break;
 		}
 #endif
 
 #ifdef SO_TIMESTAMP
-		if (when && (cmsg->cmsg_level == SOL_IP) &&
-		    (cmsg->cmsg_type == SO_TIMESTAMP)) {
+		if (when && (cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMP)) {
 			memcpy(when, CMSG_DATA(cmsg), sizeof(*when));
 		}
 #endif
@@ -346,34 +354,34 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 
 	if (when && !when->tv_sec) gettimeofday(when, NULL);
 
-	return err;
+	return ret;
 }
 
 /** Send packet via a file descriptor, setting the src address and outbound interface
  *
  * Abstracts away the complexity of using the complexity of using sendmsg().
  *
- * @param[in] s The file descriptor to write to.
- * @param[out] buf Where to read datagram data.
- * @param[in] len of datagram data.
- * @param[in] flags passed unmolested to sendmsg.
- * @param[out] from The source address.
- * @param[in] fromlen Length of the structure pointed to by from.
- * @param[out] to The destination address.
- * @param[in] tolen Length of the structure pointed to by to.
- * @param[out] if_index The interface on which to send the datagram.  Only used if to
- *	is not NULL.  If automatic interface selection is desired, value should be 0.
+ * @param[in] fd	The file descriptor to write to.
+ * @param[in] buf	Where to read datagram data from.
+ * @param[in] len	of datagram data.
+ * @param[in] flags	passed unmolested to sendmsg.
+ * @param[in] from	The source address.
+ * @param[in] from_len	Length of the structure pointed to by from.
+ * @param[in] to	The destination address.
+ * @param[in] to_len	Length of the structure pointed to by to.
+ * @param[in] if_index	The interface on which to send the datagram.
+ *			If automatic interface selection is desired, value should be 0.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int sendfromto(int s, void *buf, size_t len, int flags,
-	       struct sockaddr *from, socklen_t fromlen,
-	       struct sockaddr *to, socklen_t tolen, int if_index)
+int sendfromto(int fd, void *buf, size_t len, int flags,
+	       struct sockaddr *from, socklen_t from_len,
+	       struct sockaddr *to, socklen_t to_len, int if_index)
 {
-	struct msghdr msgh;
-	struct iovec iov;
-	char cbuf[256];
+	struct msghdr	msgh;
+	struct iovec	iov;
+	char		cbuf[256];
 
 	/*
 	 *	Unknown address family, die.
@@ -393,7 +401,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	struct sockaddr bound;
 	socklen_t bound_len = sizeof(bound);
 
-	if (getsockname(s, &bound, &bound_len) < 0) {
+	if (getsockname(fd, &bound, &bound_len) < 0) {
 		return -1;
 	}
 
@@ -419,23 +427,17 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	 *	code.
 	 */
 #  if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR)
-	if (from && from->sa_family == AF_INET) {
-		from = NULL;
-	}
+	if (from && from->sa_family == AF_INET) from = NULL;
 #  endif
 
 #  if !defined(IPV6_PKTINFO)
-	if (from && from->sa_family == AF_INET6) {
-		from = NULL;
-	}
+	if (from && from->sa_family == AF_INET6) from = NULL;
 #  endif
 
 	/*
 	 *	No "from", just use regular sendto.
 	 */
-	if (!from || (fromlen == 0)) {
-		return sendto(s, buf, len, flags, to, tolen);
-	}
+	if (!from || (from_len == 0)) return sendto(fd, buf, len, flags, to, to_len);
 
 	/* Set up control buffer iov and msgh structures. */
 	memset(&cbuf, 0, sizeof(cbuf));
@@ -447,7 +449,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_name = to;
-	msgh.msg_namelen = tolen;
+	msgh.msg_namelen = to_len;
 
 # if defined(IP_PKTINFO) || defined(IP_SENDSRCADDR)
 	if (from->sa_family == AF_INET) {
@@ -511,7 +513,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	}
 #  endif	/* IPV6_PKTINFO */
 
-	return sendmsg(s, &msgh, flags);
+	return sendmsg(fd, &msgh, flags);
 }
 
 
