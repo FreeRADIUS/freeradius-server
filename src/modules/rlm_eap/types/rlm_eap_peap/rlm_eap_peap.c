@@ -49,7 +49,7 @@ typedef struct rlm_eap_peap_t {
 } rlm_eap_peap_t;
 
 
-static CONF_PARSER module_config[] = {
+static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_peap_t, tls_conf_name) },
 
 	{ FR_CONF_OFFSET("inner_eap_module", PW_TYPE_STRING, rlm_eap_peap_t, inner_eap_module), },
@@ -76,18 +76,10 @@ static CONF_PARSER module_config[] = {
 /*
  *	Attach the module.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	rlm_eap_peap_t		*inst;
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(instance, rlm_eap_peap_t);
 	fr_dict_enum_t		*dv;
-
-	*instance = inst = talloc_zero(cs, rlm_eap_peap_t);
-	if (!inst) return -1;
-
-	/*
-	 *	Parse the configuration attributes.
-	 */
-	if (cf_section_parse(cs, inst, module_config) < 0) return -1;
 
 	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
 		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
@@ -106,7 +98,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 *	option, or from the eap-tls configuration.
 	 */
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
-
 	if (!inst->tls_conf) {
 		ERROR("Failed initializing SSL context");
 		return -1;
@@ -340,11 +331,15 @@ static int mod_process(void *arg, eap_session_t *eap_session)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_peap;
-rlm_eap_module_t rlm_eap_peap = {
+extern rlm_eap_submodule_t rlm_eap_peap;
+rlm_eap_submodule_t rlm_eap_peap = {
 	.name		= "eap_peap",
 	.magic		= RLM_MODULE_INIT,
-	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+
+	.inst_size	= sizeof(rlm_eap_peap_t),
+	.config		= submodule_config,
+	.instantiate	= mod_instantiate,
+
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };

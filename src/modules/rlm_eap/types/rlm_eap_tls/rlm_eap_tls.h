@@ -31,7 +31,7 @@ RCSIDH(rlm_eap_tls_h, "$Id$")
 
 #include "eap_tls.h"
 
-typedef struct rlm_eap_tls_t {
+typedef struct rlm_eap_tls {
 	/*
 	 *	TLS configuration
 	 */

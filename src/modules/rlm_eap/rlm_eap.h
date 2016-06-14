@@ -1,8 +1,4 @@
 /*
- * rlm_eap.h    Local Header file.
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,14 +12,19 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
- * Copyright 2003  Alan DeKok <aland@freeradius.org>
- * Copyright 2006  The FreeRADIUS server project
  */
+
 #ifndef _RLM_EAP_H
 #define _RLM_EAP_H
-
+/**
+ * $Id$
+ * @file rlm_eap.h
+ * @brief Implements the EAP framework.
+ *
+ * @copyright 2000-2003,2006  The FreeRADIUS server project
+ * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * @copyright 2003  Alan DeKok <aland@freeradius.org>
+ */
 RCSIDH(rlm_eap_h, "$Id$")
 
 #include <freeradius-devel/modpriv.h>
@@ -31,42 +32,34 @@ RCSIDH(rlm_eap_h, "$Id$")
 #include "eap.h"
 #include "eap_types.h"
 
-/*
- * Keep track of which sub modules we've loaded.
+/** Private structure to hold handles and interfaces for an EAP method
+ *
  */
-typedef struct eap_module {
-	char const		*name;
-	rlm_eap_module_t const	*type;
-	dl_module_t const	*handle;
-	CONF_SECTION		*cs;
-	void			*instance;
-} eap_module_t;
+typedef struct rlm_eap_method {
+	CONF_SECTION			*cs;
 
-/*
- * This structure contains eap's persistent data.
- * sessions = remembered sessions, in a tree for speed.
- * types = All supported EAP-Types
- * mutex = ensure only one thread is updating the sessions[] struct
+	dl_module_t const		*submodule_handle;		//!< Submodule's dl_handle.
+	void				*submodule_inst;		//!< Submodule's instance data
+	rlm_eap_submodule_t const	*submodule;			//!< Submodule's exported interface.
+} rlm_eap_method_t;
+
+/** Instance data for rlm_eap
+ *
  */
 typedef struct rlm_eap {
-	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
+	rlm_eap_config_t		config;				//!< Configuration for this instance of
+									//!< rlm_eap. Must be first in this struct.
 
-	char const	*default_method_name;
-	eap_type_t	default_method;
+	char const			*name;				//!< Name of this instance.
 
-	bool		ignore_unknown_types;
-	bool		mod_accounting_username_bug;
-
-	pthread_mutex_t	session_mutex;
-
-	char const	*name;
-	fr_randctx	rand_pool;
+	rlm_eap_method_t 		*methods[PW_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
+	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;
 
 /*
  *	EAP Method selection
  */
-int      	eap_module_instantiate(rlm_eap_t *inst, eap_module_t **method, eap_type_t num, CONF_SECTION *cs);
+int      	eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs);
 eap_rcode_t	eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session);
 
 /*

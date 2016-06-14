@@ -41,7 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <sys/stat.h>
 #endif
 
-static CONF_PARSER module_config[] = {
+static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
 	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
@@ -50,26 +50,14 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 /*
  *	Attach the EAP-TLS module.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	rlm_eap_tls_t		*inst;
-
-	/*
-	 *	Parse the config file & get all the configured values
-	 */
-	*instance = inst = talloc_zero(cs, rlm_eap_tls_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_eap_tls_t *inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
 
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
-
 	if (!inst->tls_conf) {
 		ERROR("Failed initializing SSL context");
 		return -1;
@@ -233,11 +221,15 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_tls;
-rlm_eap_module_t rlm_eap_tls = {
+extern rlm_eap_submodule_t rlm_eap_tls;
+rlm_eap_submodule_t rlm_eap_tls = {
 	.name		= "eap_tls",
 	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_tls_t),
+	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };

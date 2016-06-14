@@ -43,33 +43,28 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define MPPE_KEY_LEN    32
 #define MSK_EMSK_LEN    (2*MPPE_KEY_LEN)
 
-static CONF_PARSER pwd_module_config[] = {
-	{ FR_CONF_OFFSET("group", PW_TYPE_INTEGER, eap_pwd_t, group), .dflt = "19" },
-	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, eap_pwd_t, fragment_size), .dflt = "1020" },
-	{ FR_CONF_OFFSET("server_id", PW_TYPE_STRING, eap_pwd_t, server_id) },
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, eap_pwd_t, virtual_server) },
+static CONF_PARSER submodule_config[] = {
+	{ FR_CONF_OFFSET("group", PW_TYPE_INTEGER, rlm_eap_pwd_t, group), .dflt = "19" },
+	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
+	{ FR_CONF_OFFSET("server_id", PW_TYPE_STRING, rlm_eap_pwd_t, server_id) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_pwd_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
-static int mod_detach (void *arg)
+static int mod_detach(void *arg)
 {
-	eap_pwd_t *inst;
+	rlm_eap_pwd_t *inst;
 
-	inst = (eap_pwd_t *) arg;
+	inst = (rlm_eap_pwd_t *) arg;
 
 	if (inst->bnctx) BN_CTX_free(inst->bnctx);
 
 	return 0;
 }
 
-static int mod_instantiate (CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	eap_pwd_t *inst;
-
-	*instance = inst = talloc_zero(cs, eap_pwd_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(cs, inst, pwd_module_config) < 0) return -1;
+	rlm_eap_pwd_t *inst = talloc_get_type_abort(instance, rlm_eap_pwd_t);
 
 	if (inst->fragment_size < 100) {
 		cf_log_err_cs(cs, "Fragment size is too small");
@@ -81,15 +76,16 @@ static int mod_instantiate (CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	if ((inst->bnctx = BN_CTX_new()) == NULL) {
-		cf_log_err_cs(cs, "Failed to get BN context");
+	inst->bnctx = BN_CTX_new();
+	if (!inst->bnctx) {
+		ERROR("Failed to get BN context");
 		return -1;
 	}
 
 	return 0;
 }
 
-static int _free_pwd_session (pwd_session_t *session)
+static int _free_pwd_session(pwd_session_t *session)
 {
 	BN_clear_free(session->private_value);
 	BN_clear_free(session->peer_scalar);
@@ -105,7 +101,7 @@ static int _free_pwd_session (pwd_session_t *session)
 	return 0;
 }
 
-static int send_pwd_request (pwd_session_t *session, eap_round_t *eap_round)
+static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
 {
 	size_t len;
 	uint16_t totlen;
@@ -177,10 +173,10 @@ static int send_pwd_request (pwd_session_t *session, eap_round_t *eap_round)
 
 static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
-static int mod_session_init (void *instance, eap_session_t *eap_session)
+static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	pwd_session_t *session;
-	eap_pwd_t *inst = (eap_pwd_t *)instance;
+	rlm_eap_pwd_t *inst = (rlm_eap_pwd_t *)instance;
 	VALUE_PAIR *vp;
 	pwd_id_packet_t *packet;
 
@@ -283,7 +279,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	eap_round_t *eap_round;
 	size_t in_len;
 	int ret = 0;
-	eap_pwd_t *inst = (eap_pwd_t *)arg;
+	rlm_eap_pwd_t *inst = (rlm_eap_pwd_t *)arg;
 	uint16_t offset;
 	uint8_t exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
@@ -621,13 +617,17 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	return ret;
 }
 
-extern rlm_eap_module_t rlm_eap_pwd;
-rlm_eap_module_t rlm_eap_pwd = {
+extern rlm_eap_submodule_t rlm_eap_pwd;
+rlm_eap_submodule_t rlm_eap_pwd = {
 	.name		= "eap_pwd",
 	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_pwd_t),
+	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.detach		= mod_detach,
+
 	.session_init	= mod_session_init,	/* Create the initial request */
 	.process	= mod_process,		/* Process next round of EAP method */
-	.detach		= mod_detach		/* Destroy the submodule instance */
 };
 

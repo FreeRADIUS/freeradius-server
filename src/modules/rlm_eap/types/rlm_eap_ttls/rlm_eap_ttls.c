@@ -28,7 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_ttls.h"
 
-typedef struct rlm_eap_ttls_t {
+typedef struct rlm_eap_ttls {
 	/*
 	 *	TLS configuration
 	 */
@@ -58,7 +58,7 @@ typedef struct rlm_eap_ttls_t {
 } rlm_eap_ttls_t;
 
 
-static CONF_PARSER module_config[] = {
+static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name) },
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("use_tunneled_reply", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, NULL), .dflt = "no" },
@@ -68,23 +68,12 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 /*
  *	Attach the module.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	rlm_eap_ttls_t		*inst;
-
-	*instance = inst = talloc_zero(cs, rlm_eap_ttls_t);
-	if (!inst) return -1;
-
-	/*
-	 *	Parse the configuration attributes.
-	 */
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_eap_ttls_t *inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
 
 	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
 		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
@@ -302,11 +291,15 @@ static int mod_process(void *arg, eap_session_t *eap_session)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_ttls;
-rlm_eap_module_t rlm_eap_ttls = {
+extern rlm_eap_submodule_t rlm_eap_ttls;
+rlm_eap_submodule_t rlm_eap_ttls = {
 	.name		= "eap_ttls",
 	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_ttls_t),
+	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };

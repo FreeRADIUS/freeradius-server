@@ -160,8 +160,8 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_md5;
-rlm_eap_module_t rlm_eap_md5 = {
+extern rlm_eap_submodule_t rlm_eap_md5;
+rlm_eap_submodule_t rlm_eap_md5 = {
 	.name		= "eap_md5",
 	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */

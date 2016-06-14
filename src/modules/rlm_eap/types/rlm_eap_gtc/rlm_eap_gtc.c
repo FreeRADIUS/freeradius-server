@@ -42,32 +42,21 @@ typedef struct rlm_eap_gtc_t {
 	int		auth_type;
 } rlm_eap_gtc_t;
 
-static CONF_PARSER module_config[] = {
+static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("challenge", PW_TYPE_STRING, rlm_eap_gtc_t, challenge), .dflt = "Password: " },
 	{ FR_CONF_OFFSET("auth_type", PW_TYPE_STRING, rlm_eap_gtc_t, auth_type_name), .dflt = "PAP" },
 	CONF_PARSER_TERMINATOR
 };
-
 
 static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Attach the module.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	rlm_eap_gtc_t	*inst;
+	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
 	fr_dict_enum_t	*dval;
-
-	*instance = inst = talloc_zero(cs, rlm_eap_gtc_t);
-	if (!inst) return -1;
-
-	/*
-	 *	Parse the configuration attributes.
-	 */
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
 
 	if (!inst->auth_type_name) {
 		ERROR("You must specify 'auth_type'");
@@ -195,10 +184,14 @@ static int mod_process(void *instance, eap_session_t *eap_session)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_gtc;
-rlm_eap_module_t rlm_eap_gtc = {
+extern rlm_eap_submodule_t rlm_eap_gtc;
+rlm_eap_submodule_t rlm_eap_gtc = {
 	.name		= "eap_gtc",
 	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_gtc_t),
+	.config		= submodule_config,
+
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */

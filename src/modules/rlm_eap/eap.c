@@ -69,81 +69,22 @@ static char const *eap_codes[] = {
 	"Failure"
 };
 
-static int _eap_module_free(eap_module_t *inst)
-{
-	/*
-	 *	We have to check inst->type as it's only allocated
-	 *	if we loaded the eap method.
-	 */
-	if (inst->type && inst->type->detach) (inst->type->detach)(inst->instance);
-
-	/*
-	 *	Decrements the reference count. The driver object won't be unloaded
-	 *	until all instances of rlm_cache that use it have been destroyed.
-	 */
-	talloc_decrease_ref_count(inst->handle);
-
-	return 0;
-}
-
-/** Load required EAP sub-modules (methods)
- *
- */
-int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF_SECTION *cs)
-{
-	eap_module_t *module;
-
-	/* Make room for the EAP-Type */
-	*m_inst = module = talloc_zero(cs, eap_module_t);
-	if (!inst) return -1;
-
-	talloc_set_destructor(module, _eap_module_free);
-
-	/* fill in the structure */
-	module->cs = cs;
-	module->name = eap_type2name(num);
-
-	/*
-	 *	Link the loaded EAP-Type
-	 */
-	module->handle = dl_module(cs, module->name, "rlm_eap_");
-	if (!module->handle) return -1;
-	module->type = (rlm_eap_module_t const *)module->handle->common;
-
-	cf_log_module(cs, "Linked to sub-module %s", module->handle->name);
-
-	/*
-	 *	Call the attach num in the EAP num module
-	 */
-	if ((module->type->instantiate) && ((module->type->instantiate)(module->cs, &(module->instance)) < 0)) {
-		ERROR("Failed to initialise %s", module->handle->name);
-
-		if (module->instance) (void) talloc_steal(module, module->instance);
-
-		return -1;
-	}
-
-	if (module->instance) (void) talloc_steal(module, module->instance);
-
-	return 0;
-}
-
 /*
  * Call the appropriate handle with the right eap_method.
  */
-static int eap_module_call(eap_module_t *module, eap_session_t *eap_session)
+static int eap_module_call(rlm_eap_method_t *method, eap_session_t *eap_session)
 {
 	int rcode = 1;
 	REQUEST *request = eap_session->request;
 
 	char const *caller = request->module;
 
-	rad_assert(module != NULL);
+	rad_assert(method != NULL);
 
-	RDEBUG2("Calling submodule %s to process data", module->type->name);
+	RDEBUG2("Calling submodule %s to process data", method->submodule->name);
 
-	request->module = module->type->name;
-	rcode = eap_session->process(module->instance, eap_session);
+	request->module = method->submodule->name;
+	rcode = eap_session->process(method->submodule_inst, eap_session);
 	request->module = caller;
 
 	return rcode;
@@ -271,7 +212,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
 
-	eap_type_t		next = inst->default_method;
+	eap_type_t		next = inst->config.default_method;
 	VALUE_PAIR		*vp;
 
 	/*
@@ -334,7 +275,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		rad_assert(next < PW_EAP_MAX_TYPES);
 		rad_assert(inst->methods[next]);
 
-		eap_session->process = inst->methods[next]->type->session_init;
+		eap_session->process = inst->methods[next]->submodule->session_init;
 		eap_session->type = next;
 
 		if (eap_module_call(inst->methods[next], eap_session) == 0) {
@@ -724,7 +665,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	internally, so they never have eap_sessions.
 	 */
 	if ((eap_msg->vp_octets[4] >= PW_EAP_MD5) &&
-	    inst->ignore_unknown_types &&
+	    inst->config.ignore_unknown_types &&
 	    ((eap_msg->vp_octets[4] == 0) ||
 	     (eap_msg->vp_octets[4] >= PW_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[4]]))) {
@@ -749,7 +690,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	if ((eap_msg->vp_octets[4] == PW_EAP_NAK) &&
 	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2)) &&
-	    inst->ignore_unknown_types &&
+	    inst->config.ignore_unknown_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
 	     (eap_msg->vp_octets[5] >= PW_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[5]]))) {

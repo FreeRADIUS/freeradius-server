@@ -31,22 +31,96 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/dl.h>
-
 #include "rlm_eap.h"
 
+
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_t, default_method_name), .dflt = "md5" },
-	{ FR_CONF_DEPRECATED("timer_expire", PW_TYPE_INTEGER, rlm_eap_t, timer_limit), .dflt = "60" },
-	{ FR_CONF_OFFSET("ignore_unknown_eap_types", PW_TYPE_BOOLEAN, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
-	{ FR_CONF_OFFSET("cisco_accounting_username_bug", PW_TYPE_BOOLEAN, rlm_eap_t,
+	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_config_t, default_method_name), .dflt = "md5" },
+	{ FR_CONF_DEPRECATED("timer_expire", PW_TYPE_INTEGER, rlm_eap_config_t, timer_limit), .dflt = "60" },
+	{ FR_CONF_OFFSET("ignore_unknown_eap_types", PW_TYPE_BOOLEAN, rlm_eap_config_t, ignore_unknown_types), .dflt = "no" },
+	{ FR_CONF_OFFSET("cisco_accounting_username_bug", PW_TYPE_BOOLEAN, rlm_eap_config_t,
 			 mod_accounting_username_bug), .dflt = "no" },
-	{ FR_CONF_DEPRECATED("max_sessions", PW_TYPE_INTEGER, rlm_eap_t, max_sessions), .dflt = "2048" },
+	{ FR_CONF_DEPRECATED("max_sessions", PW_TYPE_INTEGER, rlm_eap_config_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
 
 static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
+
+/** Frees the memory allocated to hold method submodule handles and interfaces
+ *
+ */
+static int _eap_method_free(rlm_eap_method_t *method)
+{
+	/*
+	 *	We need to explicitly free all children, so if the submodule
+	 *	parented any memory off the instance, their destructors
+	 *	run before we unload the bytecode for them.
+	 *
+	 *	If we don't do this, we get a SEGV deep inside the talloc code
+	 *	when it tries to call a destructor that no longer exists.
+	 */
+	talloc_free_children(method);
+
+	/*
+	 *	Decrements the reference count. The submodule won't be
+	 *	unloaded until all instances of rlm_eap that use it have been
+	 *	destroyed.
+	 */
+	talloc_decrease_ref_count(method->submodule_handle);
+
+	return 0;
+}
+
+/** Load required EAP sub-module (method)
+ *
+ * @param[out] out	A new instance of the specified EAP method.
+ * @param[in] num	EAP method number.
+ * @param[in] cs	Config section for this instance of the EAP method.
+ */
+int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs)
+{
+	rlm_eap_method_t *method;
+
+	*out = NULL;
+
+	/*
+	 *	Allocate structure to hold method handles and interface
+	 */
+	MEM(method = talloc_zero(inst, rlm_eap_method_t));
+	talloc_set_destructor(method, _eap_method_free);
+	method->cs = cs;
+
+	/*
+	 *	Load the submodule for the specified EAP method
+	 */
+	method->submodule_handle = dl_module(cs, eap_type2name(num), "rlm_eap_");
+	if (!method->submodule_handle) return -1;
+	method->submodule = (rlm_eap_submodule_t const *)method->submodule_handle->common;
+
+	/*
+	 *	Allocate submodule instance data and parse the method's
+	 *	configuration.
+	 */
+	if (dl_module_instance_data_alloc(&method->submodule_inst, method, method->submodule_handle, cs) < 0) {
+		talloc_free(method);
+		return -1;
+	}
+
+	/*
+	 *	Call the instantiated function in the submodule
+	 */
+	if ((method->submodule->instantiate) &&
+	    ((method->submodule->instantiate)(&inst->config, method->submodule_inst, cs) < 0)) {
+	 	talloc_free(method);
+	    	return -1;
+	}
+
+	*out = method;
+
+	return 0;
+}
 
 static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 {
@@ -117,18 +191,12 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 #endif
 
 		/*
-		 *	Load the type.
+		 *	Instantiate the EAP method, possibly
+		 *	loading a submodule.
 		 */
-		ret = eap_module_instantiate(inst, &inst->methods[method], method, scs);
+		ret = eap_method_instantiate(&inst->methods[method], inst, method, scs);
+		if (ret < 0) return -1;
 
-		(void)talloc_get_type_abort(inst->methods[method], eap_module_t);
-
-		if (ret < 0) {
-			(void)talloc_steal(inst, inst->methods[method]);
-			return -1;
-		}
-
-		(void)talloc_steal(inst, inst->methods[method]);
 		num_methods++;        /* successfully loaded one more methods */
 	}
 
@@ -140,19 +208,19 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	/*
 	 *	Ensure that the default EAP type is loaded.
 	 */
-	method = eap_name2type(inst->default_method_name);
+	method = eap_name2type(inst->config.default_method_name);
 	if (method == PW_EAP_INVALID) {
 		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
-				   inst->default_method_name);
+				   inst->config.default_method_name);
 		return -1;
 	}
 
 	if (!inst->methods[method]) {
 		cf_log_err_cs(cs, "No such sub-type for default EAP method %s",
-			      inst->default_method_name);
+			      inst->config.default_method_name);
 		return -1;
 	}
-	inst->default_method = method; /* save the numerical method */
+	inst->config.default_method = method; /* save the numerical method */
 
 	return 0;
 }
@@ -330,7 +398,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
 		 */
-		if (inst->mod_accounting_username_bug) {
+		if (inst->config.mod_accounting_username_bug) {
 			char *new;
 
 			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */

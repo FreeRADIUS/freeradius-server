@@ -36,7 +36,7 @@ typedef struct rlm_eap_mschapv2_t {
 	int auth_type_mschap;
 } rlm_eap_mschapv2_t;
 
-static CONF_PARSER module_config[] = {
+static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("send_error", PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), .dflt = "no" },
@@ -60,20 +60,10 @@ static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 /*
  *	Attach the module.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	rlm_eap_mschapv2_t *inst;
+	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
 	fr_dict_enum_t const *dv;
-
-	*instance = inst = talloc_zero(cs, rlm_eap_mschapv2_t);
-	if (!inst) return -1;
-
-	/*
-	 *	Parse the configuration attributes.
-	 */
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
 
 	if (inst->identity && (strlen(inst->identity) > 255)) {
 		cf_log_err_cs(cs, "identity is too long");
@@ -94,7 +84,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 	return 0;
 }
-
 
 /*
  *	Compose the response.
@@ -779,11 +768,15 @@ packet_ready:
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_mschapv2;
-rlm_eap_module_t rlm_eap_mschapv2 = {
+extern rlm_eap_submodule_t rlm_eap_mschapv2;
+rlm_eap_submodule_t rlm_eap_mschapv2 = {
 	.name		= "eap_mschapv2",
 	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_mschapv2_t),
+	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };
