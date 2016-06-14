@@ -49,7 +49,7 @@ typedef struct arp_over_ether {
 	uint8_t		tpa[4];			//!< Target protocol address.
 } arp_over_ether_t;
 
-static int arp_process(REQUEST *request)
+static rlm_rcode_t arp_process(REQUEST *request)
 {
 	CONF_SECTION *unlang;
 
@@ -59,9 +59,7 @@ static int arp_process(REQUEST *request)
 
 	request->component = "arp";
 
-	unlang_interpret(request, unlang, RLM_MODULE_NOOP);
-
-	return 1;
+	return unlang_interpret(request, unlang, RLM_MODULE_NOOP);
 }
 
 

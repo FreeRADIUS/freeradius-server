@@ -48,23 +48,9 @@ typedef enum fr_state_action_t {	/* server action */
 /*
  *  Function handler for requests.
  */
-typedef	int (*RAD_REQUEST_FUNP)(REQUEST *);
 typedef	void (*fr_request_process_t)(REQUEST *, fr_state_action_t);
 
 extern time_t fr_start_time;
-
-/*
- *	In threads.c
- */
-void request_enqueue(REQUEST *request);
-void request_queue_extract(REQUEST *request);
-
-REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
-		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
-bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet);
-
-int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
-		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
 #ifdef WITH_PROXY
 int request_proxy_reply(RADIUS_PACKET *packet);

@@ -284,9 +284,9 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
  *	sent to the NAS. It can receive both Access-Accept and Access-Reject
  *	replies.
  */
-int rad_postauth(REQUEST *request)
+rlm_rcode_t rad_postauth(REQUEST *request)
 {
-	int	result;
+	rlm_rcode_t rcode;
 	int	postauth_type = 0;
 	VALUE_PAIR *vp;
 
@@ -299,8 +299,8 @@ int rad_postauth(REQUEST *request)
 		RDEBUG2("Using Post-Auth-Type %s",
 			fr_dict_enum_name_by_da(NULL, vp->da, postauth_type));
 	}
-	result = process_post_auth(postauth_type, request);
-	switch (result) {
+	rcode = process_post_auth(postauth_type, request);
+	switch (rcode) {
 	/*
 	 *	The module failed, or said to reject the user: Do so.
 	 */
@@ -311,7 +311,7 @@ int rad_postauth(REQUEST *request)
 	default:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
 		fr_state_discard(global_state, request, request->packet);
-		result = RLM_MODULE_REJECT;
+		rcode = RLM_MODULE_REJECT;
 		break;
 	/*
 	 *	The module handled the request, cancel the reply.
@@ -326,7 +326,7 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_NOTFOUND:
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		result = RLM_MODULE_OK;
+		rcode = RLM_MODULE_OK;
 
 		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
 			fr_request_to_state(global_state, request, request->packet, request->reply);
@@ -336,7 +336,7 @@ int rad_postauth(REQUEST *request)
 		}
 		break;
 	}
-	return result;
+	return rcode;
 }
 
 /*
@@ -345,7 +345,7 @@ int rad_postauth(REQUEST *request)
  *	The return value of this function isn't actually used right now, so
  *	it's not entirely clear if it is returning the right things. --Pac.
  */
-int rad_authenticate(REQUEST *request)
+rlm_rcode_t rad_authenticate(REQUEST *request)
 {
 #ifdef WITH_SESSION_MGMT
 	VALUE_PAIR	*check_item;
@@ -353,6 +353,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
+	rlm_rcode_t    	rcode;
 	char		autz_retry = 0;
 	int		autz_type = 0;
 
@@ -432,15 +433,15 @@ int rad_authenticate(REQUEST *request)
 	 *	Get the user's authorization information from the database
 	 */
 autz_redo:
-	result = process_authorize(autz_type, request);
-	switch (result) {
+	rcode = process_authorize(autz_type, request);
+	switch (rcode) {
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_NOTFOUND:
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
 	case RLM_MODULE_HANDLED:
-		return result;
+		return rcode;
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_REJECT:
@@ -455,7 +456,7 @@ autz_redo:
 			rad_authlog("Invalid user", request, 0);
 		}
 		request->reply->code = PW_CODE_ACCESS_REJECT;
-		return result;
+		return rcode;
 	}
 	if (!autz_retry) {
 		tmp = fr_pair_find_by_num(request->control, 0, PW_AUTZ_TYPE, TAG_ANY);
@@ -636,8 +637,7 @@ authenticate:
 	 *	Set the reply to Access-Accept, if it hasn't already
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */
-	if (request->reply->code == 0)
-	  request->reply->code = PW_CODE_ACCESS_ACCEPT;
+	if (request->reply->code == 0) request->reply->code = PW_CODE_ACCESS_ACCEPT;
 
 	if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
 		char msg[FR_MAX_STRING_LEN+12];
@@ -649,17 +649,17 @@ authenticate:
 		rad_authlog("Login OK", request, 1);
 	}
 
-	return result;
+	return rcode;
 }
 
 /*
  *	Run a virtual server auth and postauth
  *
  */
-int rad_virtual_server(REQUEST *request)
+rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
 	VALUE_PAIR *vp;
-	int result;
+	int rcode;
 
 	RDEBUG("Virtual server %s received request", request->server);
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
@@ -769,16 +769,16 @@ skip:
 	 */
 	rad_assert(request->packet->code == PW_CODE_ACCESS_REQUEST);
 
-	result = rad_authenticate(request);
+	rcode = rad_authenticate(request);
 
 	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
 		fr_pair_delete_by_num(&request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
 		vp = pair_make_config("Post-Auth-Type", "Reject", T_OP_SET);
-		if (vp) rad_postauth(request);
+		if (vp) (void) rad_postauth(request);
 	}
 
 	if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
-		rad_postauth(request);
+		(void) rad_postauth(request);
 	}
 
 	REXDENT();
@@ -787,5 +787,5 @@ skip:
 	RDEBUG("Virtual server sending reply");
 	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
 
-	return result;
+	return rcode;
 }

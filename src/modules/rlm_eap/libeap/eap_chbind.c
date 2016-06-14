@@ -155,7 +155,8 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 
 PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 {
-	PW_CODE rcode;
+	PW_CODE code;
+	rlm_rcode_t rcode;
 	REQUEST *fake = NULL;
 	uint8_t const *attr_data;
 	size_t data_len = 0;
@@ -225,20 +226,20 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
 		if (chbind_build_response(fake, chbind)) {
-			rcode = PW_CODE_ACCESS_ACCEPT;
+			code = PW_CODE_ACCESS_ACCEPT;
 			break;
 		}
 		/* FALL-THROUGH */
 
 		/* If we got any other response from rad_authenticate, it maps to a reject */
 	default:
-		rcode = PW_CODE_ACCESS_REJECT;
+		code = PW_CODE_ACCESS_REJECT;
 		break;
 	}
 
 	talloc_free(fake);
 
-	return rcode;
+	return code;
 }
 
 /*

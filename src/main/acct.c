@@ -35,9 +35,9 @@ RCSID("$Id$")
  *	The return value of this function isn't actually used right now, so
  *	it's not entirely clear if it is returning the right things. --Pac.
  */
-int rad_accounting(REQUEST *request)
+rlm_rcode_t rad_accounting(REQUEST *request)
 {
-	int result = RLM_MODULE_OK;
+	rlm_rcode_t rcode = RLM_MODULE_OK;
 
 
 #ifdef WITH_PROXY
@@ -53,8 +53,8 @@ int rad_accounting(REQUEST *request)
 		VALUE_PAIR	*vp;
 		int		acct_type = 0;
 
-		result = process_preacct(request);
-		switch (result) {
+		rcode = process_preacct(request);
+		switch (rcode) {
 		/*
 		 *	The module has a number of OK return codes.
 		 */
@@ -66,7 +66,7 @@ int rad_accounting(REQUEST *request)
 		 *	The module handled the request, stop here.
 		 */
 		case RLM_MODULE_HANDLED:
-			return result;
+			return rcode;
 		/*
 		 *	The module failed, or said the request is
 		 *	invalid, therefore we stop here.
@@ -77,7 +77,7 @@ int rad_accounting(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			return result;
+			return rcode;
 		}
 
 		/*
@@ -90,8 +90,8 @@ int rad_accounting(REQUEST *request)
 			DEBUG2("  Found Acct-Type %s",
 			       fr_dict_enum_name_by_da(NULL, vp->da, acct_type));
 		}
-		result = process_accounting(acct_type, request);
-		switch (result) {
+		rcode = process_accounting(acct_type, request);
+		switch (rcode) {
 		/*
 		 *	In case the accounting module returns FAIL,
 		 *	it's still useful to send the data to the
@@ -106,7 +106,7 @@ int rad_accounting(REQUEST *request)
 		 *	The module handled the request, don't reply.
 		 */
 		case RLM_MODULE_HANDLED:
-			return result;
+			return rcode;
 		/*
 		 *	Neither proxy, nor reply to invalid requests.
 		 */
@@ -115,7 +115,7 @@ int rad_accounting(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			return result;
+			return rcode;
 		}
 
 		/*
@@ -139,7 +139,7 @@ int rad_accounting(REQUEST *request)
 				 *	we have to send the proxied packet
 				 *	before that.
 				 */
-				return result;
+				return rcode;
 			}
 		}
 	}
@@ -159,7 +159,7 @@ int rad_accounting(REQUEST *request)
 	 *      storage did not succeed, so radiusd should not send
 	 *      Accounting-Response.
 	 */
-	switch (result) {
+	switch (rcode) {
 	/*
 	 *	Send back an ACK to the NAS.
 	 */
@@ -181,6 +181,6 @@ int rad_accounting(REQUEST *request)
 	default:
 		break;
 	}
-	return result;
+	return rcode;
 }
 #endif

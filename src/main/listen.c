@@ -604,9 +604,9 @@ static int init_pcap(rad_listen_t *this);
  *	Like rad_authenticate and rad_accounting this should
  *	live in it's own file but it's so small we don't bother.
  */
-int rad_status_server(REQUEST *request)
+rlm_rcode_t rad_status_server(REQUEST *request)
 {
-	int rcode = RLM_MODULE_OK;
+	rlm_rcode_t rcode = RLM_MODULE_OK;
 	fr_dict_enum_t *dval;
 
 	switch (request->listener->type) {
@@ -2056,9 +2056,9 @@ static int do_proxy(REQUEST *request)
 /*
  *	Receive a CoA packet.
  */
-int rad_coa_recv(REQUEST *request)
+rlm_rcode_t rad_coa_recv(REQUEST *request)
 {
-	int rcode = RLM_MODULE_OK;
+	rlm_rcode_t rcode = RLM_MODULE_OK;
 	int ack, nak;
 	int proxy_status;
 	VALUE_PAIR *vp;

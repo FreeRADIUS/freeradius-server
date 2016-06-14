@@ -291,9 +291,9 @@ static const uint32_t attrnums[] = {
 	267	/* DHCP-Client-Hardware-Address */
 };
 
-static int dhcp_process(REQUEST *request)
+static rlm_rcode_t dhcp_process(REQUEST *request)
 {
-	int		rcode;
+	rlm_rcode_t	rcode;
 	unsigned int	i;
 	VALUE_PAIR	*vp;
 	dhcp_socket_t	*sock;
@@ -387,7 +387,7 @@ static int dhcp_process(REQUEST *request)
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 256, TAG_ANY); /* DHCP-Opcode */
 	if (!vp) {
 		REDEBUG("Someone deleted the DHCP-Opcode!");
-		return 1;
+		return RLM_MODULE_FAIL;
 	}
 
 	/* BOOTREPLY received on port 67 (i.e. from a server) */
@@ -417,7 +417,7 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	if (request->reply->code == 0) {
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	request->reply->sockfd = request->packet->sockfd;
@@ -508,7 +508,7 @@ static int dhcp_process(REQUEST *request)
 		if (fr_ipaddr_from_ifindex(&primary, request->packet->sockfd, request->packet->dst_ipaddr.af,
 					   request->packet->if_index) < 0) {
 			REDEBUG("Failed determining src_ipaddr from if_index: %s", fr_strerror());
-			return -1;
+			return RLM_MODULE_FAIL;
 		}
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = primary.ipaddr.ip4addr.s_addr;
 #endif
@@ -519,7 +519,7 @@ static int dhcp_process(REQUEST *request)
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	} else {
 		REDEBUG("Unable to determine correct src_ipaddr for response");
-		return -1;
+		return RLM_MODULE_FAIL;
 	}
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
@@ -540,7 +540,7 @@ static int dhcp_process(REQUEST *request)
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_DST_PORT, TAG_ANY);
 		if (vp) request->reply->dst_port = vp->vp_integer;
 
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -557,7 +557,7 @@ static int dhcp_process(REQUEST *request)
 		RDEBUG2("Reply will be unicast to giaddr");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		request->reply->dst_port = request->packet->dst_port;
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -579,7 +579,7 @@ static int dhcp_process(REQUEST *request)
 		 */
 		RDEBUG2("Reply will be broadcast");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -591,7 +591,7 @@ static int dhcp_process(REQUEST *request)
 	    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
 		RDEBUG2("Reply will be sent unicast to &DHCP-Client-IP-Address");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-Address */
@@ -602,7 +602,7 @@ static int dhcp_process(REQUEST *request)
 		 *	There is nowhere to send the response to, so don't bother.
 		 */
 		request->reply->code = 0;
-		return -1;
+		return RLM_MODULE_FAIL;
 	}
 
 #ifdef SIOCSARP
@@ -620,7 +620,7 @@ static int dhcp_process(REQUEST *request)
 		WARN("You MUST set \"interface\" if you have \"broadcast = yes\"");
 		RDEBUG2("Reply will be broadcast as no interface was defined");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	RDEBUG2("Reply will be unicast to &DHCP-Your-IP-Address");
@@ -638,11 +638,11 @@ static int dhcp_process(REQUEST *request)
 	if (request->reply->code == PW_DHCP_OFFER) {
 		VALUE_PAIR *hwvp = fr_pair_find_by_num(request->reply->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Client-Hardware-Address */
 
-		if (!hwvp) return -1;
+		if (!hwvp) return RLM_MODULE_FAIL;
 
 		if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
 			REDEBUG("Failed adding arp entry: %s", fr_strerror());
-			return -1;
+			return RLM_MODULE_FAIL;
 		}
 	}
 #else
@@ -655,7 +655,7 @@ static int dhcp_process(REQUEST *request)
 	}
 #endif
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*

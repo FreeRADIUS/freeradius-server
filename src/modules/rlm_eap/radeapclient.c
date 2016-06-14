@@ -272,7 +272,7 @@ static void NEVER_RETURNS usage(void)
 }
 
 /* This is not called, but is required by libfreeradius-eap.so */
-int rad_virtual_server(REQUEST UNUSED *request)
+rlm_rcode_t rad_virtual_server(REQUEST UNUSED *request)
 {
   /* We're not the server so we cannot do this */
   abort();

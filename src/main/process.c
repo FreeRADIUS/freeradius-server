@@ -4065,7 +4065,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
  *
  ***********************************************************************/
 #ifdef WITH_COA
-static int null_handler(UNUSED REQUEST *request)
+static rlm_rcode_t null_handler(UNUSED REQUEST *request)
 {
 	return 0;
 }

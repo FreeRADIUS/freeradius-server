@@ -96,6 +96,8 @@ typedef enum rlm_rcodes {
 } rlm_rcode_t;
 extern const FR_NAME_NUMBER modreturn_table[];
 
+typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(REQUEST *);
+
 /** Main server configuration
  *
  * The parsed version of the main server config.
@@ -366,9 +368,9 @@ typedef enum {
  */
 
 /* acct.c */
-int		rad_accounting(REQUEST *);
+rlm_rcode_t	rad_accounting(REQUEST *);
 
-int		rad_coa_recv(REQUEST *request);
+rlm_rcode_t    	rad_coa_recv(REQUEST *request);
 
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user, char const *sessionid);
@@ -488,9 +490,9 @@ void		version_print(void);
 
 /* auth.c */
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
-int		rad_authenticate (REQUEST *);
-int		rad_postauth(REQUEST *);
-int		rad_virtual_server(REQUEST *);
+rlm_rcode_t    	rad_authenticate (REQUEST *);
+rlm_rcode_t    	rad_postauth(REQUEST *);
+rlm_rcode_t    	rad_virtual_server(REQUEST *);
 
 /* exec.c */
 extern pid_t	(*rad_fork)(void);
@@ -555,6 +557,19 @@ void	thread_pool_lock(void);
 void	thread_pool_unlock(void);
 void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
+/*
+ *	In threads.c
+ */
+void request_enqueue(REQUEST *request);
+void request_queue_extract(REQUEST *request);
+
+REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
+		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
+bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet);
+
+int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
+		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
+
 /* main_config.c */
 /* Define a global config structure */
 extern bool			log_dates_utc;
@@ -572,7 +587,7 @@ void hup_logfile(void);
 RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port, int proto);
 #endif
 rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, int proto);
-int rad_status_server(REQUEST *request);
+rlm_rcode_t rad_status_server(REQUEST *request);
 
 /* event.c */
 typedef enum event_corral_t {
