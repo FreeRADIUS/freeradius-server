@@ -109,21 +109,6 @@ typedef rlm_rcode_t (*module_method_t)(void *instance, REQUEST *request);
  */
 typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
 
-/** Module detach callback
- *
- * Is called just before the server exits, and after re-instantiation on HUP,
- * to free the old module instance.
- *
- * Detach should close all handles associated with the module instance, and
- * free any memory allocated during instantiate.
- *
- * @param[in] instance to free.
- * @return
- *	- 0 on success.
- *	- -1 if detach failed.
- */
-typedef int (*module_detach_t)(void *instance);
-
 /** Struct export by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
@@ -136,7 +121,6 @@ typedef struct rad_module_t {
 
 	module_instantiate_t	bootstrap;		//!< Callback to register dynamic attrs, xlats, etc.
 	module_instantiate_t	instantiate;		//!< Callback to configure a new module instance.
-	module_detach_t		detach;			//!< Callback to free a module instance.
 
 	module_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 } rad_module_t;

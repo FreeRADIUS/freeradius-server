@@ -67,6 +67,21 @@ typedef int (*module_load_t)(void);
  */
 typedef void (*module_unload_t)(void);
 
+/** Module detach callback
+ *
+ * Is called just before the server exits, and after re-instantiation on HUP,
+ * to free the old module instance.
+ *
+ * Detach should close all handles associated with the module instance, and
+ * free any memory allocated during instantiate.
+ *
+ * @param[in] instance to free.
+ * @return
+ *	- 0 on success.
+ *	- -1 if detach failed.
+ */
+typedef int (*module_detach_t)(void *instance);
+
 /** Common fields for the interface struct modules export
  *
  */
@@ -78,6 +93,7 @@ typedef void (*module_unload_t)(void);
 		CONF_PARSER const	*config;        \
 		module_load_t		load;           \
 		module_unload_t		unload;		\
+		module_detach_t		detach;		\
 	}
 
 /** Fields common to all types of loadable modules

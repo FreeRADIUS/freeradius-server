@@ -100,8 +100,6 @@ typedef struct rlm_eap_module {
 	eap_process_t	session_init;			//!< Callback for creating a new #eap_session_t.
 	eap_process_t	process;			//!< Callback for processing the next #eap_round_t of an
 							//!< #eap_session_t.
-
-	int (*detach)(void *instance);			//!< Destroy an EAP submodule instance.
 } rlm_eap_module_t;
 
 #define REQUEST_DATA_EAP_SESSION	 (1)
