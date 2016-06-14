@@ -367,6 +367,8 @@ dl_module_t const *dl_module(CONF_SECTION *conf, char const *name, char const *p
 	handle = dl_by_name(module_name);
 	if (!handle) {
 		cf_log_err_cs(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
+		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
+			      " of your system's ld");
 		goto error;
 	}
 
