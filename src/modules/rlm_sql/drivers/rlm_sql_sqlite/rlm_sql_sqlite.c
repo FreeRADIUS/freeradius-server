@@ -668,7 +668,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 	return -1;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance, rlm_sql_config_t *config)
+static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs)
 {
 	bool			exists;
 	rlm_sql_sqlite_t	*inst = instance;
@@ -687,7 +687,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance, rlm_sql_config_t 
 		return -1;
 	}
 
-	if (cf_pair_find(conf, "bootstrap") && !exists) {
+	if (cf_pair_find(cs, "bootstrap") && !exists) {
 #  ifdef HAVE_SQLITE3_OPEN_V2
 		int		status;
 		int		ret;
@@ -702,10 +702,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance, rlm_sql_config_t 
 		if (p) {
 			size_t len = (p - inst->filename) + 1;
 
-			buff = talloc_array(conf, char, len);
+			buff = talloc_array(cs, char, len);
 			strlcpy(buff, inst->filename, len);
 		} else {
-			MEM(buff = talloc_typed_strdup(conf, inst->filename));
+			MEM(buff = talloc_typed_strdup(cs, inst->filename));
 		}
 
 		ret = rad_mkdir(buff, 0700, -1, -1);
@@ -738,13 +738,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance, rlm_sql_config_t 
 		/*
 		 *	Execute multiple bootstrap SQL files in order
 		 */
-		for (cp = cf_pair_find(conf, "bootstrap");
+		for (cp = cf_pair_find(cs, "bootstrap");
 		     cp;
-		     cp = cf_pair_find_next(conf, cp, "bootstrap")) {
+		     cp = cf_pair_find_next(cs, cp, "bootstrap")) {
 			p = cf_pair_value(cp);
 			if (!p) continue;
 
-			ret = sql_loadfile(conf, db, p);
+			ret = sql_loadfile(cs, db, p);
 			if (ret < 0) goto unlink;
 		}
 

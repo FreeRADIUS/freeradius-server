@@ -195,7 +195,7 @@ typedef struct rlm_sql_driver_t {
 
 	int		flags;
 
-	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, void *instance, rlm_sql_config_t *config);
+	sql_rcode_t (*mod_instantiate)(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 				       struct timeval const *timeout);
 

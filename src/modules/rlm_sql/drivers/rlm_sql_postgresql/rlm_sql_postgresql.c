@@ -425,7 +425,7 @@ static size_t sql_escape_func(REQUEST *request, char *out, size_t outlen, char c
 	return ret;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance, rlm_sql_config_t *config)
+static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
 {
 	rlm_sql_postgres_t	*inst = instance;
 	char 			application_name[NAMEDATALEN];

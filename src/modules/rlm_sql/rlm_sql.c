@@ -1066,9 +1066,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Call the driver's instantiate function (if set)
 	 */
-	if (inst->driver->mod_instantiate && (inst->driver->mod_instantiate(driver_cs,
+	if (inst->driver->mod_instantiate && (inst->driver->mod_instantiate(inst->config,
 									    inst->driver_inst,
-									    inst->config)) < 0) return -1;
+									    driver_cs)) < 0) return -1;
 	/*
 	 *	@fixme Inst should be passed to all driver callbacks
 	 *	instead of being stored here.

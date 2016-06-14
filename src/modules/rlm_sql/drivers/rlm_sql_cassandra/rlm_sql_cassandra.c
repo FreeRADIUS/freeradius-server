@@ -685,7 +685,7 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *cs, void *instance, rlm_sql_config_t *config)
+static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs)
 {
 	bool				do_tls = false;
 	bool				do_latency_aware_routing = false;

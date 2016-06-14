@@ -116,7 +116,7 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 	return 0;
 }
 
-static int mod_instantiate(UNUSED CONF_SECTION *cs, void *instance, UNUSED rlm_sql_config_t *config)
+static int mod_instantiate(UNUSED rlm_sql_config_t const *config, void *instance, UNUSED CONF_SECTION *cs)
 {
 	rlm_sql_mysql_t		*inst = instance;
 	int			warnings;
