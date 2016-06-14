@@ -288,7 +288,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/* save pointers to useful "objects" */
 	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
-	inst->db = (rlm_sql_module_t *) inst->sql_inst->module;
+	inst->db = (rlm_sql_module_t const *) inst->sql_inst->module;
 
 	return ((nvp_cleanup(inst)) ? 0 : -1);
 }
