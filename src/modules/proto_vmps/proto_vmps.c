@@ -62,6 +62,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
+	fr_dict_attr_t const *da;
 
 	VERIFY_REQUEST(request);
 
@@ -113,6 +114,8 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 
 		vp = fr_pair_find_by_num(request->reply->vps, 0, 0x2b00, TAG_ANY);
 		if (vp) {
+			da = vp->da;
+
 			if (vp->vp_integer == 256) {
 				request->reply->code = 0;
 			} else {
@@ -120,6 +123,9 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			}
 
 		} else if (rcode != RLM_MODULE_HANDLED) {
+			da = fr_dict_attr_by_num(NULL, 0, 0x2b00);
+			rad_assert(da != NULL);
+
 			if (request->packet->code == 1) {
 				request->reply->code = 2;
 
@@ -128,7 +134,8 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			}
 		}
 
-		dv = fr_dict_enum_by_da(NULL, vp->da, request->reply->code);
+		dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
+		unlang = NULL;
 		if (dv) {
 			unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
 		}
