@@ -54,7 +54,7 @@ RCSID("$Id$")
 typedef struct rlm_sqlhpwippool_t {
 	char const		*myname;	 		//!< Name of this instance
 	rlm_sql_t		*sql_inst;
-	rlm_sql_module_t const	*db;
+	rlm_sql_driver_t const	*db;
 #ifdef HAVE_PTHREAD_D
 	pthread_mutex_t		mutex;			//!< Used "with" sync_after
 #endif
@@ -279,16 +279,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	/* save pointers to useful "objects" */
+	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
+	inst->db = (rlm_sql_driver_t const *) inst->sql_inst->driver;
+
 	/* check if the given instance is really a rlm_sql instance */
-	if (strcmp(sql_inst->module->name, "sql") != 0) {
+	if (strcmp(inst->sql_inst->driver->name, "sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\" is not an instance of the rlm_sql module",
 			      inst->sql_instance_name);
 		return -1;
 	}
-
-	/* save pointers to useful "objects" */
-	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
-	inst->db = (rlm_sql_module_t const *) inst->sql_inst->module;
 
 	return ((nvp_cleanup(inst)) ? 0 : -1);
 }

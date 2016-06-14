@@ -77,7 +77,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	 */
 	handle->inst = inst;
 
-	rcode = (inst->module->sql_socket_init)(handle, inst->config, timeout);
+	rcode = (inst->driver->sql_socket_init)(handle, inst->config, timeout);
 	if (rcode != 0) {
 	fail:
 		/*
@@ -89,7 +89,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	if (inst->config->connect_query) {
 		if (rlm_sql_select_query(inst, NULL, &handle, inst->config->connect_query) != RLM_SQL_OK) goto fail;
-		(inst->module->sql_finish_select_query)(handle, inst->config);
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
 	}
 
 	return handle;
@@ -239,7 +239,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
 	 *	may require the original connection to free up queries or
 	 *	result sets associated with that connection.
 	 */
-	ret = (inst->module->sql_fetch_row)(out, *handle, inst->config);
+	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
 	if (ret < 0) {
 		ROPTIONAL(RERROR, ERROR, "Error fetching row");
 
@@ -265,7 +265,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle
 	sql_log_entry_t	log[20];
 	size_t		num, i;
 
-	num = (inst->module->sql_error)(handle->log_ctx, log, (sizeof(log) / sizeof(*log)), handle, inst->config);
+	num = (inst->driver->sql_error)(handle->log_ctx, log, (sizeof(log) / sizeof(*log)), handle, inst->config);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;
@@ -302,7 +302,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle
 
 /** Call the driver's sql_query method, reconnecting if necessary.
  *
- * @note Caller must call ``(inst->module->sql_finish_query)(handle, inst->config);``
+ * @note Caller must call ``(inst->driver->sql_finish_query)(handle, inst->config);``
  *	after they're done with the result.
  *
  * @param handle to query the database with. *handle should not be NULL, as this indicates
@@ -342,7 +342,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 	for (i = 0; i < (count + 1); i++) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query);
 
-		ret = (inst->module->sql_query)(*handle, inst->config, query);
+		ret = (inst->driver->sql_query)(*handle, inst->config, query);
 		switch (ret) {
 		case RLM_SQL_OK:
 			break;
@@ -363,7 +363,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 		 */
 		case RLM_SQL_QUERY_INVALID:
 			rlm_sql_print_error(inst, request, *handle, false);
-			(inst->module->sql_finish_query)(*handle, inst->config);
+			(inst->driver->sql_finish_query)(*handle, inst->config);
 			break;
 
 		/*
@@ -376,9 +376,9 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 		 *	Otherwise rewrite it to RLM_SQL_ALT_QUERY.
 		 */
 		case RLM_SQL_ERROR:
-			if (inst->module->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
+			if (inst->driver->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
 				rlm_sql_print_error(inst, request, *handle, false);
-				(inst->module->sql_finish_query)(*handle, inst->config);
+				(inst->driver->sql_finish_query)(*handle, inst->config);
 				break;
 			}
 			ret = RLM_SQL_ALT_QUERY;
@@ -389,7 +389,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 		 */
 		case RLM_SQL_ALT_QUERY:
 			rlm_sql_print_error(inst, request, *handle, true);
-			(inst->module->sql_finish_query)(*handle, inst->config);
+			(inst->driver->sql_finish_query)(*handle, inst->config);
 			break;
 
 		}
@@ -404,7 +404,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.
  *
- * @note Caller must call ``(inst->module->sql_finish_select_query)(handle, inst->config);``
+ * @note Caller must call ``(inst->driver->sql_finish_select_query)(handle, inst->config);``
  *	after they're done with the result.
  *
  * @param inst #rlm_sql_t instance data.
@@ -443,7 +443,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 	for (i = 0; i < (count + 1); i++) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query);
 
-		ret = (inst->module->sql_select_query)(*handle, inst->config, query);
+		ret = (inst->driver->sql_select_query)(*handle, inst->config, query);
 		switch (ret) {
 		case RLM_SQL_OK:
 			break;
@@ -463,7 +463,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 		case RLM_SQL_ERROR:
 		default:
 			rlm_sql_print_error(inst, request, *handle, false);
-			(inst->module->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*handle, inst->config);
 			break;
 		}
 
@@ -500,13 +500,13 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
-			(inst->module->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*handle, inst->config);
 
 			return -1;
 		}
 		rows++;
 	}
-	(inst->module->sql_finish_select_query)(*handle, inst->config);
+	(inst->driver->sql_finish_select_query)(*handle, inst->config);
 
 	return rows;
 }

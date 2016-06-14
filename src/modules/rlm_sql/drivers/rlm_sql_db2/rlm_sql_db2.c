@@ -292,8 +292,8 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 }
 
 /* Exported to rlm_sql */
-extern rlm_sql_module_t rlm_sql_db2;
-rlm_sql_module_t rlm_sql_db2 = {
+extern rlm_sql_driver_t rlm_sql_db2;
+rlm_sql_driver_t rlm_sql_db2 = {
 	.name				= "rlm_sql_db2",
 	.magic				= RLM_MODULE_INIT,
 	.sql_socket_init		= sql_socket_init,

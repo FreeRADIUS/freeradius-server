@@ -288,7 +288,7 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 	}
 	talloc_free(expanded);
 
-	(data->sql_inst->module->sql_finish_query)(handle, data->sql_inst->config);
+	(data->sql_inst->driver->sql_finish_query)(handle, data->sql_inst->config);
 	return 0;
 }
 
@@ -357,7 +357,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	strcpy(out, row[0]);
 	retval = rlen;
 finish:
-	(data->sql_inst->module->sql_finish_select_query)(handle, data->sql_inst->config);
+	(data->sql_inst->driver->sql_finish_select_query)(handle, data->sql_inst->config);
 
 	return retval;
 }
@@ -398,13 +398,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
 	}
 
-	if (strcmp(sql_inst->module->name, "sql") != 0) {
+	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
+
+	if (strcmp(inst->sql_inst->driver->name, "sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\" is not an instance of the rlm_sql module",
 			      inst->sql_instance_name);
 		return -1;
 	}
 
-	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
 	return 0;
 }
 

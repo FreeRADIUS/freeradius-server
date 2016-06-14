@@ -176,7 +176,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 			goto finish;
 		}
 
-		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
+		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
 		if (numaffected < 1) {
 			RDEBUG("SQL query affected no rows");
 
@@ -186,7 +186,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 		MEM(*out = talloc_asprintf(request, "%d", numaffected));
 		ret = talloc_array_length(*out) - 1;
 
-		(inst->module->sql_finish_query)(handle, inst->config);
+		(inst->driver->sql_finish_query)(handle, inst->config);
 
 		goto finish;
 	} /* else it's a SELECT statement */
@@ -199,7 +199,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 
 	if (!row) {
 		RDEBUG("SQL query returned no results");
-		(inst->module->sql_finish_select_query)(handle, inst->config);
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
 		goto finish;
@@ -207,7 +207,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 
 	if (!row[0]){
 		RDEBUG("NULL value in first column of result");
-		(inst->module->sql_finish_select_query)(handle, inst->config);
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
 		goto finish;
@@ -216,7 +216,7 @@ static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
 	*out = talloc_bstrndup(request, row[0], strlen(row[0]));
 	ret = talloc_array_length(*out) - 1;
 
-	(inst->module->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, inst->config);
 
 finish:
 	fr_connection_release(inst->pool, request, handle);
@@ -299,7 +299,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	int			field_index[MAX_SQL_FIELD_INDEX];
 	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
 
-	rad_assert(inst->module->sql_fields);		/* Should have been caught during validation... */
+	rad_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
 
 	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 
@@ -325,12 +325,12 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	/*
 	 *	Not every driver provides an sql_num_rows function
 	 */
-	if (inst->module->sql_num_rows) {
-		ret = inst->module->sql_num_rows(handle, inst->config);
+	if (inst->driver->sql_num_rows) {
+		ret = inst->driver->sql_num_rows(handle, inst->config);
 		if (ret == 0) {
 			RDEBUG2("Server returned an empty result");
 			rcode = RLM_MODULE_NOOP;
-			(inst->module->sql_finish_select_query)(handle, inst->config);
+			(inst->driver->sql_finish_select_query)(handle, inst->config);
 			goto finish;
 		}
 
@@ -338,7 +338,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 			RERROR("Failed retrieving row count");
 		error:
 			rcode = RLM_MODULE_FAIL;
-			(inst->module->sql_finish_select_query)(handle, inst->config);
+			(inst->driver->sql_finish_select_query)(handle, inst->config);
 			goto finish;
 		}
 	}
@@ -346,7 +346,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	/*
 	 *	Map proc only registered if driver provides an sql_fields function
 	 */
-	ret = (inst->module->sql_fields)(&fields, handle, inst->config);
+	ret = (inst->driver->sql_fields)(&fields, handle, inst->config);
 	if (ret != RLM_SQL_OK) {
 		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
 		goto error;
@@ -387,7 +387,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	if (!found_field) {
 		RDEBUG("No fields matching map found in query result");
 		rcode = RLM_MODULE_NOOP;
-		(inst->module->sql_finish_select_query)(handle, inst->config);
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		goto finish;
 	}
 
@@ -416,7 +416,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		rcode = RLM_MODULE_NOOP;
 	}
 
-	(inst->module->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, inst->config);
 
 finish:
 	talloc_free(fields);
@@ -472,7 +472,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			continue;
 		}
 
-		if (((inst->module->sql_num_fields)(handle, inst->config) > 5) && (row[5] != NULL) && *row[5]) {
+		if (((inst->driver->sql_num_fields)(handle, inst->config) > 5) && (row[5] != NULL) && *row[5]) {
 			server = row[5];
 		}
 
@@ -502,7 +502,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		DEBUG("Client \"%s\" (%s) added", c->longname, c->shortname);
 	}
 
-	(inst->module->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, inst->config);
 	fr_connection_release(inst->pool, NULL, handle);
 
 	return ret;
@@ -720,7 +720,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 
 		if (!row[0]){
 			RDEBUG("row[0] returned NULL");
-			(inst->module->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*handle, inst->config);
 			talloc_free(entry);
 			return -1;
 		}
@@ -738,7 +738,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 		num_groups++;
 	}
 
-	(inst->module->sql_finish_select_query)(*handle, inst->config);
+	(inst->driver->sql_finish_select_query)(*handle, inst->config);
 
 	return num_groups;
 }
@@ -1005,7 +1005,7 @@ static int mod_detach(void *instance)
 	 *	Decrements the reference count. The driver object won't be unloaded
 	 *	until all instances of rlm_sql that use it have been destroyed.
 	 */
-	talloc_decrease_ref_count(inst->handle);
+	talloc_decrease_ref_count(inst->driver_handle);
 
 	return 0;
 }
@@ -1047,15 +1047,37 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the driver
 	 */
-	inst->handle = dl_module(driver_cs, name, "rlm_sql_");
-	if (!inst->handle) return -1;
-	inst->module = (rlm_sql_module_t const *)inst->handle->common;
+	inst->driver_handle = dl_module(driver_cs, name, "rlm_sql_");
+	if (!inst->driver_handle) return -1;
+	inst->driver = (rlm_sql_driver_t const *)inst->driver_handle->common;
 
 	/*
-	 *	It's up to the driver to register a destructor
+	 *	Pre-allocate the driver's instance data,
+	 *	and parse the driver's configuration.
 	 */
-	if (inst->module->mod_instantiate && (inst->module->mod_instantiate(driver_cs, inst->config)) < 0) return -1;
+	if (dl_module_instance_data_alloc(&inst->driver_inst, inst, inst->driver_handle, driver_cs) < 0) {
+	error:
+		talloc_decrease_ref_count(inst->driver_handle);
+		return -1;
+	}
 
+	rad_assert(!inst->driver_handle->common->inst_size || inst->driver_inst);
+
+	/*
+	 *	Call the driver's instantiate function (if set)
+	 */
+	if (inst->driver->mod_instantiate && (inst->driver->mod_instantiate(driver_cs,
+									    inst->driver_inst,
+									    inst->config)) < 0) return -1;
+	/*
+	 *	@fixme Inst should be passed to all driver callbacks
+	 *	instead of being stored here.
+	 */
+	inst->config->driver = inst->driver_inst;
+
+	/*
+	 *	Register the group comparison attribute
+	 */
 	if (inst->config->groupmemb_query) {
 		char buffer[256];
 
@@ -1076,13 +1098,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
 						false, sql_groupcmp, inst) < 0) {
 			ERROR("Failed registering group comparison: %s", fr_strerror());
-			return -1;
+			goto error;
 		}
 
 		inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
 		if (!inst->group_da) {
 			ERROR("Failed resolving group attribute \"%s\"", group_attribute);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -1094,9 +1116,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->module->sql_fields) {
-		map_proc_register(inst, inst->name, mod_map_proc, sql_escape_for_xlat_func, NULL, 0);
-	}
+	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc,
+							sql_escape_for_xlat_func, NULL, 0);
 
 	return 0;
 }
@@ -1170,8 +1191,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Either use the module specific escape function
 	 *	or our default one.
 	 */
-	inst->sql_escape_func = inst->module->sql_escape_func ?
-				inst->module->sql_escape_func :
+	inst->sql_escape_func = inst->driver->sql_escape_func ?
+				inst->driver->sql_escape_func :
 				sql_escape_func;
 
 	inst->ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
@@ -1590,8 +1611,8 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 *  We need to have updated something for the query to have been
 		 *  counted as successful.
 		 */
-		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
-		(inst->module->sql_finish_query)(handle, inst->config);
+		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
+		(inst->driver->sql_finish_query)(handle, inst->config);
 		RDEBUG("%i record(s) updated", numaffected);
 
 		if (numaffected > 0) break;	/* A query succeeded, were done! */
@@ -1712,7 +1733,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 
 	request->simul_count = atoi(row[0]);
 
-	(inst->module->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, inst->config);
 	TALLOC_FREE(expanded);
 
 	if (request->simul_count < request->simul_max) {
@@ -1831,7 +1852,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 	}
 
 finish:
-	(inst->module->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, inst->config);
 release:
 	fr_connection_release(inst->pool, request, handle);
 	talloc_free(expanded);

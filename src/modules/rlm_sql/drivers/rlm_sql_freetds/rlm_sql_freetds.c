@@ -805,8 +805,8 @@ error:
 }
 
 /* Exported to rlm_sql */
-extern rlm_sql_module_t rlm_sql_freetds;
-rlm_sql_module_t rlm_sql_freetds = {
+extern rlm_sql_driver_t rlm_sql_freetds;
+rlm_sql_driver_t rlm_sql_freetds = {
 	.name				= "rlm_sql_freetds",
 	.magic				= RLM_MODULE_INIT,
 	.sql_socket_init		= sql_socket_init,

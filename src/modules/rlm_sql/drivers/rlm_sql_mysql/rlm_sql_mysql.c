@@ -49,8 +49,6 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-static int mysql_instance_count = 0;
-
 typedef enum {
 	SERVER_WARNINGS_AUTO = 0,
 	SERVER_WARNINGS_YES,
@@ -82,25 +80,25 @@ typedef struct rlm_sql_mysql_config {
 	char const *warnings_str;		//!< Whether we always query the server for additional warnings.
 	rlm_sql_mysql_warnings	warnings;	//!< mysql_warning_count() doesn't
 						//!< appear to work with NDB cluster
-} rlm_sql_mysql_config_t;
+} rlm_sql_mysql_t;
 
 static CONF_PARSER tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_config_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, rlm_sql_mysql_config_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_config_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
 
 	/*
 	 *	MySQL Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("cipher", PW_TYPE_STRING, rlm_sql_mysql_config_t, tls_cipher) },
+	{ FR_CONF_OFFSET("cipher", PW_TYPE_STRING, rlm_sql_mysql_t, tls_cipher) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 
-	{ FR_CONF_OFFSET("warnings", PW_TYPE_STRING, rlm_sql_mysql_config_t, warnings_str), .dflt = "auto" },
+	{ FR_CONF_OFFSET("warnings", PW_TYPE_STRING, rlm_sql_mysql_t, warnings_str), .dflt = "auto" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -118,48 +116,35 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 	return 0;
 }
 
-static int _mod_destructor(UNUSED rlm_sql_mysql_config_t *driver)
+static int mod_instantiate(UNUSED CONF_SECTION *cs, void *instance, UNUSED rlm_sql_config_t *config)
 {
-	if (--mysql_instance_count == 0) mysql_library_end();
+	rlm_sql_mysql_t		*inst = instance;
+	int			warnings;
+
+	warnings = fr_str2int(server_warnings_table, inst->warnings_str, -1);
+	if (warnings < 0) {
+		ERROR("Invalid warnings value \"%s\", must be yes, no, or auto", inst->warnings_str);
+		return -1;
+	}
+	inst->warnings = (rlm_sql_mysql_warnings)warnings;
 
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
+static void mod_unload(void)
 {
-	rlm_sql_mysql_config_t *driver;
-	int warnings;
+	mysql_library_end();
+}
 
-	static bool version_done = false;
+static int mod_load(void)
+{
+	if (mysql_library_init(0, NULL, NULL)) {
+		ERROR("libmysql initialisation failed");
 
-	if (!version_done) {
-		version_done = true;
-
-		INFO("libmysql version: %s", mysql_get_client_info());
-	}
-
-	if (mysql_instance_count == 0) {
-		if (mysql_library_init(0, NULL, NULL)) {
-			ERROR("libmysql initialisation failed");
-
-			return -1;
-		}
-	}
-	mysql_instance_count++;
-
-	MEM(driver = config->driver = talloc_zero(config, rlm_sql_mysql_config_t));
-	talloc_set_destructor(driver, _mod_destructor);
-
-	if (cf_section_parse(conf, driver, driver_config) < 0) {
 		return -1;
 	}
 
-	warnings = fr_str2int(server_warnings_table, driver->warnings_str, -1);
-	if (warnings < 0) {
-		ERROR("Invalid warnings value \"%s\", must be yes, no, or auto", driver->warnings_str);
-		return -1;
-	}
-	driver->warnings = (rlm_sql_mysql_warnings)warnings;
+	INFO("libmysql version: %s", mysql_get_client_info());
 
 	return 0;
 }
@@ -167,7 +152,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	rlm_sql_mysql_conn_t *conn;
-	rlm_sql_mysql_config_t *driver = config->driver;
+	rlm_sql_mysql_t *inst = config->driver;
 	unsigned int connect_timeout = timeout->tv_usec;
 	unsigned long sql_flags;
 
@@ -184,10 +169,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	According to MySQL docs this function always returns 0, so we won't
 	 *	know if ssl setup succeeded until mysql_real_connect is called below.
 	 */
-	if (driver->tls_ca_file || driver->tls_ca_path ||
-	    driver->tls_certificate_file || driver->tls_private_key_file) {
-		mysql_ssl_set(&(conn->db), driver->tls_private_key_file, driver->tls_certificate_file,
-			      driver->tls_ca_file, driver->tls_ca_path, driver->tls_cipher);
+	if (inst->tls_ca_file || inst->tls_ca_path ||
+	    inst->tls_certificate_file || inst->tls_private_key_file) {
+		mysql_ssl_set(&(conn->db), inst->tls_private_key_file, inst->tls_certificate_file,
+			      inst->tls_ca_file, inst->tls_ca_path, inst->tls_cipher);
 	}
 
 	mysql_options(&(conn->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
@@ -603,7 +588,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t	*conn = handle->conn;
-	rlm_sql_mysql_config_t	*driver = config->driver;
+	rlm_sql_mysql_t	*inst = config->driver;
 	char const		*error;
 	size_t			i = 0;
 
@@ -628,7 +613,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 		size_t ret;
 		unsigned int msgs;
 
-		switch (driver->warnings) {
+		switch (inst->warnings) {
 		case SERVER_WARNINGS_AUTO:
 			/*
 			 *	Check to see if any warnings can be retrieved from the server.
@@ -739,11 +724,15 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 
 
 /* Exported to rlm_sql */
-extern rlm_sql_module_t rlm_sql_mysql;
-rlm_sql_module_t rlm_sql_mysql = {
+extern rlm_sql_driver_t rlm_sql_mysql;
+rlm_sql_driver_t rlm_sql_mysql = {
 	.name				= "rlm_sql_mysql",
 	.magic				= RLM_MODULE_INIT,
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
+	.inst_size			= sizeof(rlm_sql_mysql_t),
+	.load				= mod_load,
+	.unload				= mod_unload,
+	.config				= driver_config,
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
