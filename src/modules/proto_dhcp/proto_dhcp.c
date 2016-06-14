@@ -317,7 +317,7 @@ static int dhcp_process(REQUEST *request)
 	if (vp) {
 		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
 
-		if (dv->name) {
+		if (dv) {
 			CONF_SECTION *server, *unlang;
 
 			RDEBUG("Trying sub-section dhcp %s {...}", dv->name);
