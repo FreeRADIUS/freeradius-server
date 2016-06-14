@@ -860,7 +860,7 @@ static int mod_detach(void *instance)
 	 *	Decrements the reference count. The driver object won't be unloaded
 	 *	until all instances of rlm_cache that use it have been destroyed.
 	 */
-	talloc_decrease_ref_count(inst->handle);
+	talloc_decrease_ref_count(inst->driver_handle);
 
 	return 0;
 }
@@ -921,18 +921,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 *	Load the appropriate driver for our database
+	 *	Load the appropriate driver for our backend
 	 */
-	inst->handle = dl_module(driver_cs, name, "rlm_cache_");
-	if (!inst->handle) {
-		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->config.driver_name, fr_strerror());
-		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
-			      " of your system's ld");
-		return -1;
-	}
-	inst->driver = (cache_driver_t const *)inst->handle->common;
+	inst->driver_handle = dl_module(driver_cs, name, "rlm_cache_");
+	if (!inst->driver_handle) return -1;
 
-	DEBUG2("Driver %s loaded and linked", inst->driver->name);
+	inst->driver = (cache_driver_t const *)inst->driver_handle->common;
 
 	/*
 	 *	Non optional fields and callbacks
@@ -942,17 +936,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->driver->insert);
 	rad_assert(inst->driver->expire);
 
-	if (inst->driver->instantiate) {
-		/*
-		 *	It's up to the driver to register a destructor (using talloc)
-		 *
-		 *	Should write its instance data in inst->driver,
-		 *	and parent it off of inst.
-		 */
-		if (inst->driver->inst_size) MEM(inst->driver_inst = talloc_zero_array(inst, uint8_t,
-										       inst->driver->inst_size));
-		if (inst->driver->instantiate(driver_cs, &inst->config, inst->driver_inst) < 0) return -1;
-	}
+	if (dl_module_instance_data_alloc(&inst->driver_inst, inst, inst->driver_handle, driver_cs) < 0) return -1;
+
+	if (inst->driver->instantiate &&
+	    (inst->driver->instantiate(&inst->config, inst->driver_inst, driver_cs) < 0)) return -1;
 
 	if (inst->config.ttl == 0) {
 		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");

@@ -49,14 +49,12 @@ typedef struct rlm_cache_redis {
  *
  * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config, void *driver_inst)
+static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CONF_SECTION *conf)
 {
-	rlm_cache_redis_t	*driver = driver_inst;
+	rlm_cache_redis_t	*driver = instance;
 	char			buffer[256];
 
 	buffer[0] = '\0';
-
-	fr_redis_version_print();
 
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
 
@@ -87,6 +85,12 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	return 0;
 }
 
+static int mod_load(void)
+{
+	fr_redis_version_print();
+	return 0;
+}
+
 static void cache_entry_free(rlm_cache_entry_t *c)
 {
 	talloc_free(c);
@@ -97,10 +101,10 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  * @copydetails cache_entry_find_t
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
-				       UNUSED rlm_cache_config_t const *config, void *driver_inst,
+				       UNUSED rlm_cache_config_t const *config, void *instance,
 				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
-	rlm_cache_redis_t		*driver = driver_inst;
+	rlm_cache_redis_t		*driver = instance;
 	size_t				i;
 
 	fr_redis_cluster_state_t	state;
@@ -238,10 +242,10 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  *
  * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, void *instance,
 					 REQUEST *request, UNUSED void *handle, const rlm_cache_entry_t *c)
 {
-	rlm_cache_redis_t	*driver = driver_inst;
+	rlm_cache_redis_t	*driver = instance;
 	TALLOC_CTX		*pool;
 
 	vp_map_t		*map;
@@ -420,10 +424,10 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
 					 REQUEST *request, UNUSED void *handle,  uint8_t const *key, size_t key_len)
 {
-	rlm_cache_redis_t		*driver = driver_inst;
+	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;
 	fr_redis_conn_t			*conn;
 	fr_redis_rcode_t			status;
@@ -462,8 +466,10 @@ extern cache_driver_t rlm_cache_redis;
 cache_driver_t rlm_cache_redis = {
 	.name		= "rlm_cache_redis",
 	.magic		= RLM_MODULE_INIT,
+	.load		= mod_load,
 	.instantiate	= mod_instantiate,
 	.inst_size	= sizeof(rlm_cache_redis_t),
+	.config		= driver_config,
 	.free		= cache_entry_free,
 
 	.find		= cache_entry_find,

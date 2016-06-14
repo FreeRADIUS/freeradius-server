@@ -86,8 +86,10 @@ static int _cache_entry_free(UNUSED void *ctx, void *data)
 /** Cleanup a cache_rbtree instance
  *
  */
-static int _mod_detach(rlm_cache_rbtree_t *driver)
+static int mod_detach(void *instance)
 {
+	rlm_cache_rbtree_t *driver = instance;
+
 	if (driver->heap) fr_heap_delete(driver->heap);
 	if (driver->cache) {
 		rbtree_walk(driver->cache, RBTREE_DELETE_ORDER, _cache_entry_free, NULL);
@@ -103,11 +105,9 @@ static int _mod_detach(rlm_cache_rbtree_t *driver)
  *
  * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_cache_config_t const *config, void *driver_inst)
+static int mod_instantiate(UNUSED rlm_cache_config_t const *config, void *instance, UNUSED CONF_SECTION *conf)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
-
-	talloc_set_destructor(driver, _mod_detach);
+	rlm_cache_rbtree_t *driver = instance;
 
 	/*
 	 *	The cache.
@@ -142,7 +142,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_cache_config_t 
  *
  * @copydetails cache_entry_alloc_t
  */
-static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
+static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
 					    REQUEST *request)
 {
 	rlm_cache_rbtree_entry_t *c;
@@ -163,12 +163,14 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  * @copydetails cache_entry_find_t
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
-				       UNUSED rlm_cache_config_t const *config, void *driver_inst,
+				       UNUSED rlm_cache_config_t const *config, void *instance,
 				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 
 	rlm_cache_entry_t *c, my_c;
+
+	rad_assert(driver->cache);
 
 	/*
 	 *	Clear out old entries
@@ -201,11 +203,11 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
 					 REQUEST *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 	rlm_cache_entry_t *c, my_c;
 
 	if (!request) return CACHE_ERROR;
@@ -228,13 +230,13 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  *
  * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void *driver_inst,
+static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void *instance,
 					 REQUEST *request, void *handle,
 					 rlm_cache_entry_t const *c)
 {
 	cache_status_t status;
 
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 	rlm_cache_entry_t *my_c;
 
 	rad_assert(handle == request);
@@ -247,7 +249,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	 *	Allow overwriting
 	 */
 	if (!rbtree_insert(driver->cache, my_c)) {
-		status = cache_entry_expire(config, driver_inst, request, handle, c->key, c->key_len);
+		status = cache_entry_expire(config, instance, request, handle, c->key, c->key_len);
 		if ((status != CACHE_OK) && !rad_cond_assert(0)) return CACHE_ERROR;
 
 		if (!rbtree_insert(driver->cache, my_c)) {
@@ -273,11 +275,11 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
  *
  * @copydetails cache_entry_set_ttl_t
  */
-static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *config, void *instance,
 					  REQUEST *request, UNUSED void *handle,
 					  rlm_cache_entry_t *c)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 	int ret;
 
 #ifdef NDEBUG
@@ -305,10 +307,10 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
  *
  * @copydetails cache_entry_count_t
  */
-static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *instance,
 				  REQUEST *request, UNUSED void *handle)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 
 	if (!request) return CACHE_ERROR;
 
@@ -321,10 +323,10 @@ static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
  *
  * @copydetails cache_acquire_t
  */
-static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
+static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
 			 REQUEST *request)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 
 	pthread_mutex_lock(&driver->mutex);
 
@@ -341,10 +343,10 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
  *
  * @copydetails cache_release_t
  */
-static void cache_release(UNUSED rlm_cache_config_t const *config, void *driver_inst, REQUEST *request,
+static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, REQUEST *request,
 			  UNUSED rlm_cache_handle_t *handle)
 {
-	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_rbtree_t *driver = instance;
 
 	pthread_mutex_unlock(&driver->mutex);
 
@@ -356,6 +358,7 @@ cache_driver_t rlm_cache_rbtree = {
 	.name		= "rlm_cache_rbtree",
 	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
 	.inst_size	= sizeof(rlm_cache_rbtree_t),
 	.alloc		= cache_entry_alloc,
 
