@@ -1172,9 +1172,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 
 	rad_assert(*pconn && (*pconn)->handle);
 
-	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
-		rlm_ldap_timeout_debug(inst, request, *pconn, NULL, __FUNCTION__);
-	}
+	if (RDEBUG_ENABLED4) rlm_ldap_timeout_debug(inst, request, *pconn, NULL, __FUNCTION__);
 
 	/*
 	 *	Perform all modifications as the admin user.
