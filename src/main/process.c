@@ -2015,7 +2015,6 @@ static int eol_listener(void *ctx, void *data)
 	if (request->listener != this) return 0;
 
 	request->master_state = REQUEST_STOP_PROCESSING;
-	request->process = request_done;
 
 	return 0;
 }
@@ -5484,21 +5483,14 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 
 	request->master_state = REQUEST_STOP_PROCESSING;
 
-	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
+	if (request->child_state == REQUEST_QUEUED) {
+		request_queue_extract(request);
+		request->child_state = REQUEST_DONE;
+	}
 
-	/*
-	 *	If it's queued we can't delete it from the queue.
-	 *
-	 *	Otherwise, it's OK to delete it.  Even RUNNING, because
-	 *	that will get caught by the check above.
-	 */
-	if (request->child_state == REQUEST_QUEUED) return 0;
+	if (request->child_state == REQUEST_RUNNING) return 0;
 
 	request->in_proxy_hash = false;
-
-	if (!request->in_request_hash) {
-		request->process(request, FR_ACTION_DONE);
-	}
 
 	/*
 	 *	Delete it from the list.
@@ -5516,12 +5508,12 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 
 	request->master_state = REQUEST_STOP_PROCESSING;
 
-	/*
-	 *	Not done, or the child thread is still processing it.
-	 */
-	if (request->child_state <= REQUEST_RUNNING) return 0; /* continue */
+	if (request->child_state == REQUEST_QUEUED) {
+		request_queue_extract(request);
+		request->child_state = REQUEST_DONE;
+	}
 
-	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
+	if (request->child_state == REQUEST_RUNNING) return 0;
 
 #ifdef WITH_PROXY
 	rad_assert(request->in_proxy_hash == false);
