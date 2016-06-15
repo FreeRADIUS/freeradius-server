@@ -3841,6 +3841,8 @@ fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, in
 {
 	fr_dict_enum_t dval, *dv;
 
+	if (!da) return NULL;
+
 	INTERNAL_IF_NULL(dict);
 
 	/*
@@ -3874,6 +3876,8 @@ fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, in
 char const *fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
 {
 	fr_dict_enum_t *dv;
+
+	if (!da) return NULL;
 
 	INTERNAL_IF_NULL(dict);
 

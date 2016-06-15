@@ -62,7 +62,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *da = NULL;
 
 	VERIFY_REQUEST(request);
 
