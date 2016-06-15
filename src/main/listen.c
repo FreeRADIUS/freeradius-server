@@ -1280,7 +1280,6 @@ static int listener_unlink(UNUSED void *ctx, UNUSED void *data)
 int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
-	uint16_t	listen_port;
 	uint32_t	recv_buff;
 	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
@@ -1313,7 +1312,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
 	}
 
-	rcode = cf_pair_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &listen_port), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 
 	rcode = cf_pair_parse(cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
@@ -1346,6 +1345,18 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
 
+#ifdef WITH_PROXY
+			/*
+			 *	You CANNOT specify a source port for outbound proxy sockets
+			 *	over TCP.
+			 */
+			if ((this->type == RAD_LISTEN_PROXY) &&
+			    (sock->my_port != 0)) {
+				cf_log_err_cs(this->cs, "You must not specify a source port for proxy sockets over TCP");
+				return -1;
+			}
+#endif
+
 		} else {
 			cf_log_err_cs(cs, "Unknown proto name \"%s\"", proto);
 			return -1;
@@ -1357,7 +1368,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			/*
 			 *	If unset, set to default.
 			 */
-			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
+			if (!sock->my_port) sock->my_port = PW_RADIUS_TLS_PORT;
 
 			this->tls = tls_conf_parse_server(tls);
 			if (!this->tls) {
@@ -1430,7 +1441,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	sock->my_ipaddr = ipaddr;
-	sock->my_port = listen_port;
 	sock->recv_buff = recv_buff;
 
 #ifdef WITH_PROXY
@@ -2781,21 +2791,6 @@ static int listen_bind(rad_listen_t *this)
 			return -1;
 		}
 	}
-
-#ifdef WITH_TCP
-#ifdef WITH_PROXY
-	/*
-	 *	You CANNOT specify a source port for outbound proxy sockets
-	 *	over TCP.
-	 */
-	if (sock->my_port &&
-	    (sock->proto == IPPROTO_TCP) &&
-	    (this->type == RAD_LISTEN_PROXY)) {
-		cf_log_err_cs(this->cs, "You must not specify a port for proxy sockets over TCP");
-		return -1;
-	}
-#endif
-#endif
 
 	/*
 	 *	Don't open sockets if we're checking the config.
