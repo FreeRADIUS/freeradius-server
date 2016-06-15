@@ -1898,10 +1898,13 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 #endif
 
 			/*
-			 *	Mark the socket as "don't use if at all possible".
+			 *	Mark the socket as don't use, and
+			 *	remove it from the incoming list of
+			 *	FDs.
 			 */
 			listener->status = RAD_LISTEN_STATUS_FROZEN;
-			event_new_fd(listener);
+			fr_event_fd_delete(el, 0, listener->fd);
+			event_new_fd(listener); /* mainly set a new timer */
 			return;
 		}
 	} else {
@@ -1984,6 +1987,17 @@ static int eol_proxy_listener(void *ctx, void *data)
 	VERIFY_REQUEST(request);
 
 	if (request->proxy->listener != this) return 0;
+
+#ifdef WITH_ACCOUNTING
+	/*
+	 *	Accounting packets should be deleted immediately.
+	 *	They will never be retransmitted by the client.
+	 */
+	if (request->proxy->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+		RDEBUG("Stopping request due to failed connection to home server");
+		request->master_state = REQUEST_STOP_PROCESSING;
+	}
+#endif
 
 	/*
 	 *	The normal "remove_from_proxy_hash" tries to grab the
@@ -4747,78 +4761,6 @@ static void event_status(struct timeval *wake)
 	}
 }
 
-#ifdef WITH_TCP
-static void listener_free_cb(void *ctx, UNUSED struct timeval *now)
-{
-	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
-	char buffer[1024];
-
-	if (this->count > 0) {
-		fr_event_now(el, &this->when);
-		this->when.tv_sec += 3;
-
-		ASSERT_MASTER;
-		INSERT_EVENT(listener_free_cb, this);
-		return;
-	}
-
-	/*
-	 *	It's all free, close the socket.
-	 */
-
-	this->print(this, buffer, sizeof(buffer));
-	DEBUG("... cleaning up socket %s", buffer);
-	rad_assert(this->next == NULL);
-	talloc_free(this);
-}
-#endif
-
-#ifdef WITH_PROXY
-static int proxy_eol_cb(void *ctx, void *data)
-{
-	struct timeval when;
-	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
-
-	VERIFY_REQUEST(request);
-	rad_assert(request->parent != NULL);
-	rad_assert(request->parent->proxy == request);
-	request = request->parent;
-	VERIFY_REQUEST(request);
-
-	if (request->proxy->listener != ctx) return 0;
-
-	/*
-	 *	We don't care if it's being processed in a child thread.
-	 */
-
-#ifdef WITH_ACCOUNTING
-	/*
-	 *	Accounting packets should be deleted immediately.
-	 *	They will never be retransmitted by the client.
-	 */
-	if (request->proxy->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-		RDEBUG("Stopping request due to failed connection to home server");
-		request->master_state = REQUEST_STOP_PROCESSING;
-	}
-#endif
-
-	/*
-	 *	Reset the timer to be now, so that the request is
-	 *	quickly updated.  But spread the requests randomly
-	 *	over the next second, so that we don't overload the
-	 *	server.
-	 */
-	fr_event_now(el, &when);
-	tv_add(&when, fr_rand() % USEC);
-	STATE_MACHINE_TIMER;
-
-	/*
-	 *	Don't delete it from the list.
-	 */
-	return 0;
-}
-#endif
-
 static int event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
@@ -4932,19 +4874,18 @@ static int event_new_fd(rad_listen_t *this)
 		 *	them to finish.
 		 */
 		if (this->count > 0) {
-
+		keep_waiting:
 			/*
-			 *	Try again to clean up the socket in 30
-			 *	seconds.
+			 *	Try again to clean up the socket in a
+			 *	few seconds.  seconds.
 			 */
 			gettimeofday(&this->when, NULL);
-			this->when.tv_sec += 30;
+			this->when.tv_sec += 3;
 
 			INSERT_EVENT((fr_event_callback_t) event_new_fd, this);
 			return 1;
 		}
 
-		fr_event_fd_delete(el, 0, this->fd);
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	}
 
@@ -4952,58 +4893,12 @@ static int event_new_fd(rad_listen_t *this)
 	 *	The socket has had a catastrophic error.  Close it.
 	 */
 	if (this->status == RAD_LISTEN_STATUS_EOL) {
+		int devnull;
+
 		/*
 		 *	Remove it from the list of live FD's.
 		 */
 		fr_event_fd_delete(el, 0, this->fd);
-
-#ifdef WITH_PROXY
-		/*
-		 *	Tell all requests using this socket that the socket is dead.
-		 */
-		if (this->type == RAD_LISTEN_PROXY) {
-			pthread_mutex_lock(&proxy_mutex);
-			if (!fr_packet_list_socket_freeze(proxy_list,
-							  this->fd)) {
-				ERROR("Fatal error freezing socket: %s", fr_strerror());
-				fr_exit(1);
-			}
-
-			if (this->count > 0) {
-				fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
-			}
-			pthread_mutex_unlock(&proxy_mutex);
-		}
-#endif
-
-		/*
-		 *	Requests are still using the socket.  Wait for
-		 *	them to finish.
-		 */
-		if (this->count > 0) {
-			/*
-			 *	Try again to clean up the socket in 30
-			 *	seconds.
-			 */
-			gettimeofday(&this->when, NULL);
-			this->when.tv_sec += 30;
-
-			INSERT_EVENT((fr_event_callback_t) event_new_fd, this);
-			return 1;
-		}
-
-		/*
-		 *	No one is using the socket.  We can remove it now.
-		 */
-		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
-	} /* socket is at EOL */
-#endif
-
-	/*
-	 *	Nuke the socket.
-	 */
-	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
-		int devnull;
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -5032,16 +4927,9 @@ static int event_new_fd(rad_listen_t *this)
 		}
 		close(devnull);
 
-#ifdef WITH_DETAIL
-		rad_assert(this->type != RAD_LISTEN_DETAIL);
-#endif
-
-#ifdef WITH_TCP
 #ifdef WITH_PROXY
 		/*
-		 *	The socket is dead.  Force all proxied packets
-		 *	to stop using it.  And then remove it from the
-		 *	list of outgoing sockets.
+		 *	Tell all requests using this socket that the socket is dead.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			home_server_t *home;
@@ -5056,13 +4944,13 @@ static int event_new_fd(rad_listen_t *this)
 			}
 
 			pthread_mutex_lock(&proxy_mutex);
-			fr_packet_list_walk(proxy_list, this, eol_proxy_listener);
-
-			if (!fr_packet_list_socket_del(proxy_list, this->fd)) {
-				ERROR("Fatal error removing socket %s: %s",
-				      buffer, fr_strerror());
+			if (!fr_packet_list_socket_freeze(proxy_list,
+							  this->fd)) {
+				ERROR("Fatal error freezing socket: %s", fr_strerror());
 				fr_exit(1);
 			}
+
+			fr_packet_list_walk(proxy_list, this, eol_proxy_listener);
 			pthread_mutex_unlock(&proxy_mutex);
 		} else
 #endif
@@ -5075,22 +4963,35 @@ static int event_new_fd(rad_listen_t *this)
 			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
 		}
 
+
 		/*
-		 *	No child threads, clean it up now.
+		 *	Requests are still using the socket.  Wait for
+		 *	them to finish.
 		 */
-		if (!spawn_workers) {
-			fr_event_delete(el, &this->ev);
-			listen_free(&this);
-			return 1;
+		if (this->count > 0) {
+			this->status = RAD_LISTEN_STATUS_FROZEN;
+			goto keep_waiting;
 		}
 
 		/*
-		 *	Wait until all requests using this socket are done.
+		 *	No one is using the socket.  We can remove it now.
 		 */
-		gettimeofday(&this->when, NULL);
-		this->when.tv_sec += 3;
+		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+	} /* socket is at EOL */
 
-		INSERT_EVENT(listener_free_cb, this);
+	/*
+	 *	Nuke the socket.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
+		if (this->count > 0) goto keep_waiting;
+
+		fr_event_delete(el, &this->ev);
+
+		this->print(this, buffer, sizeof(buffer));
+		DEBUG("... cleaning up socket %s", buffer);
+
+		listen_free(&this);
+		return 1;
 	}
 #endif	/* WITH_TCP */
 
