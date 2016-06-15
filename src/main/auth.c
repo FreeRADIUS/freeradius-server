@@ -353,7 +353,7 @@ rlm_rcode_t rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
-	rlm_rcode_t    	rcode = RLM_MODULE_REJECT;
+	rlm_rcode_t    	rcode;
 	char		autz_retry = 0;
 	int		autz_type = 0;
 
