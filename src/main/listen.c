@@ -2792,14 +2792,6 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 
-	/*
-	 *	Don't open sockets if we're checking the config.
-	 */
-	if (check_config) {
-		this->fd = -1;
-		return 0;
-	}
-
 	rad_assert(sock->my_ipaddr.af);
 
 	DEBUG4("[FD XX] Opening socket -- socket(%s, %s, 0)",
