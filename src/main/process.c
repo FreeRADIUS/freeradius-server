@@ -1939,7 +1939,6 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 	 */
 	end.tv_usec = USEC / 2;
 
-	ASSERT_MASTER;
 	listener->when = end;
 
 	INSERT_EVENT(tcp_socket_timer, listener);
@@ -3732,7 +3731,7 @@ void revive_home_server(void *ctx, UNUSED struct timeval *now)
 	 *	Delete any outstanding events.
 	 */
 	ASSERT_MASTER;
-	if (home->ev) fr_event_delete(el, &home->ev);
+	fr_event_delete(el, &home->ev);
 
 	PROXY("Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
 	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer)),
@@ -4885,7 +4884,6 @@ static int event_new_fd(rad_listen_t *this)
 				this->when.tv_sec = sock->opened + 1;
 				this->when.tv_usec = 0;
 
-				ASSERT_MASTER;
 				INSERT_EVENT(tcp_socket_timer, this);
 			}
 #endif
@@ -4906,7 +4904,6 @@ static int event_new_fd(rad_listen_t *this)
 				this->when.tv_sec = sock->opened + 1;
 				this->when.tv_usec = 0;
 
-				ASSERT_MASTER;
 				INSERT_EVENT(tcp_socket_timer, this);
 			}
 #endif
@@ -4944,7 +4941,6 @@ static int event_new_fd(rad_listen_t *this)
 			gettimeofday(&this->when, NULL);
 			this->when.tv_sec += 30;
 
-			ASSERT_MASTER;
 			INSERT_EVENT((fr_event_callback_t) event_new_fd, this);
 			return 1;
 		}
@@ -4993,7 +4989,6 @@ static int event_new_fd(rad_listen_t *this)
 			gettimeofday(&this->when, NULL);
 			this->when.tv_sec += 30;
 
-			ASSERT_MASTER;
 			INSERT_EVENT((fr_event_callback_t) event_new_fd, this);
 			return 1;
 		}
@@ -5085,8 +5080,7 @@ static int event_new_fd(rad_listen_t *this)
 		 *	No child threads, clean it up now.
 		 */
 		if (!spawn_workers) {
-			ASSERT_MASTER;
-			if (this->ev) fr_event_delete(el, &this->ev);
+			fr_event_delete(el, &this->ev);
 			listen_free(&this);
 			return 1;
 		}
@@ -5097,7 +5091,6 @@ static int event_new_fd(rad_listen_t *this)
 		gettimeofday(&this->when, NULL);
 		this->when.tv_sec += 3;
 
-		ASSERT_MASTER;
 		INSERT_EVENT(listener_free_cb, this);
 	}
 #endif	/* WITH_TCP */
@@ -5526,7 +5519,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	/*
 	 *	Not done, or the child thread is still processing it.
 	 */
-	if (request->child_state < REQUEST_RESPONSE_DELAY) return 0; /* continue */
+	if (request->child_state <= REQUEST_RUNNING) return 0; /* continue */
 
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 
@@ -5535,8 +5528,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 #endif
 
 	request->in_request_hash = false;
-	ASSERT_MASTER;
-	if (request->ev) fr_event_delete(el, &request->ev);
+	fr_event_delete(el, &request->ev);
 
 	if (main_config.memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
