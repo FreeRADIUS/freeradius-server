@@ -53,7 +53,7 @@ typedef enum fr_channel_notify_t {
 } fr_channel_notify_t;
 
 
-ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, size_t have_read);
+ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read);
 ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *buffer, size_t buflen);
 ssize_t fr_channel_write(int fd, fr_channel_type_t channel, void const *buffer, size_t buflen);
 
