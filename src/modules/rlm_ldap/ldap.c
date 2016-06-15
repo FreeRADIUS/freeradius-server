@@ -47,6 +47,68 @@ FR_NAME_NUMBER const ldap_supported_extensions[] = {
 	{  NULL , -1 }
 };
 
+/** Prints information to the debug log on the current timeout settings
+ *
+ * There are so many different timers in LDAP it's often hard to debug
+ * issues with them, hence the need for this function.
+ */
+void rlm_ldap_timeout_debug(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn,
+			    struct timeval const *timeout, char const *prefix)
+{
+	struct timeval 	*net = NULL, *client = NULL;
+	int		server = 0;
+
+#ifdef LDAP_OPT_NETWORK_TIMEOUT
+	if (ldap_get_option(conn->handle, LDAP_OPT_NETWORK_TIMEOUT, &net) != LDAP_OPT_SUCCESS) {
+		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_NETWORK_TIMEOUT");
+	}
+#endif
+
+#ifdef LDAP_OPT_TIMEOUT
+	if (ldap_get_option(conn->handle, LDAP_OPT_TIMEOUT, &client) != LDAP_OPT_SUCCESS) {
+		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMEOUT");
+	}
+#endif
+
+	if (ldap_get_option(conn->handle, LDAP_OPT_TIMELIMIT, &server) != LDAP_OPT_SUCCESS) {
+		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMELIMIT");
+	}
+
+	ROPTIONAL(RDEBUG4, DEBUG4, "%s: Timeout settings", prefix);
+
+	if (timeout) {
+		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): %ld.%06ld",
+			  (long)timeout->tv_sec, (long)timeout->tv_usec);
+	} else {
+		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): unset");
+	}
+
+#ifdef LDAP_OPT_TIMEOUT
+	if (client && (client->tv_sec != -1)) {
+		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): %ld.%06ld",
+			  (long)client->tv_sec, (long)client->tv_usec);
+
+	} else {
+		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): unset");
+	}
+#endif
+
+#ifdef LDAP_OPT_NETWORK_TIMEOUT
+	if (net && (net->tv_sec != -1)) {
+		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : %ld.%06ld",
+			  (long)net->tv_sec, (long)net->tv_usec);
+	} else {
+		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : unset");
+
+	}
+#endif
+	ROPTIONAL(RDEBUG4, DEBUG4, "Server side result timeout      : %i", server);
+	if (request) REXDENT();
+
+	free(net);
+	free(client);
+}
+
 /** Converts "bad" strings into ones which are safe for LDAP
  *
  * @note RFC 4515 says filter strings can only use the @verbatim \<hex><hex> @endverbatim
@@ -785,6 +847,10 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 	rad_assert(!sasl || !sasl->mech);
 #endif
 
+	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
+		rlm_ldap_timeout_debug(inst, request, *pconn, timeout, __FUNCTION__);
+	}
+
 	/*
 	 *	Bind as anonymous user
 	 */
@@ -933,6 +999,10 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 			       *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);
+
+	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
+		rlm_ldap_timeout_debug(inst, request, *pconn, NULL, __FUNCTION__);
+	}
 
 	/*
 	 *	OpenLDAP library doesn't declare attrs array as const, but
@@ -1101,6 +1171,10 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 			       *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);
+
+	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
+		rlm_ldap_timeout_debug(inst, request, *pconn, NULL, __FUNCTION__);
+	}
 
 	/*
 	 *	Perform all modifications as the admin user.
