@@ -110,7 +110,7 @@ eap_session_t *eap_session_alloc(rlm_eap_t *inst, REQUEST *request)
 	}
 	eap_session->inst = inst;
 	eap_session->request = request;
-	eap_session->updated = request->timestamp.tv_sec;
+	eap_session->updated = request->packet->timestamp.tv_sec;
 
 	talloc_set_destructor(eap_session, _eap_session_free);
 

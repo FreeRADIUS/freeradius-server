@@ -576,10 +576,10 @@ retry:
 	request->child_state = REQUEST_RUNNING;
 
 	blocked = time(NULL);
-	if (!request->proxy && (blocked - request->timestamp.tv_sec) > 5) {
+	if (!request->proxy && (blocked - request->packet->timestamp.tv_sec) > 5) {
 		if (last_complained < blocked) {
 			last_complained = blocked;
-			blocked -= request->timestamp.tv_sec;
+			blocked -= request->packet->timestamp.tv_sec;
 			num_blocked = fr_heap_num_elements(thread_pool.idle_heap);
 		} else {
 			blocked = 0;
@@ -915,8 +915,8 @@ static int timestamp_cmp(void const *one, void const *two)
 	REQUEST const *a = one;
 	REQUEST const *b = two;
 
-	if (timercmp(&a->timestamp, &b->timestamp, < )) return -1;
-	if (timercmp(&a->timestamp, &b->timestamp, > )) return +1;
+	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, < )) return -1;
+	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, > )) return +1;
 
 	return 0;
 }

@@ -281,7 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	 *      Check if password has expired.
 	 */
 	if (spwd && spwd->sp_lstchg > 0 && spwd->sp_max >= 0 &&
-	    (request->timestamp.tv_sec / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
+	    (request->packet->timestamp.tv_sec / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
 		RAUTH("[%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -289,7 +289,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	 *      Check if account has expired.
 	 */
 	if (spwd && spwd->sp_expire > 0 &&
-	    (request->timestamp.tv_sec / 86400) > spwd->sp_expire) {
+	    (request->packet->timestamp.tv_sec / 86400) > spwd->sp_expire) {
 		RAUTH("[%s]: account has expired", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -300,7 +300,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	 *	Check if password has expired.
 	 */
 	if ((pwd->pw_expire > 0) &&
-	    (request->timestamp.tv_sec > pwd->pw_expire)) {
+	    (request->packet->timestamp.tv_sec > pwd->pw_expire)) {
 		RAUTH("[%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -409,7 +409,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	if (fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY) == NULL)
 		return RLM_MODULE_NOOP;
 
-	t = request->timestamp.tv_sec;
+	t = request->packet->timestamp.tv_sec;
 	memset(&ut, 0, sizeof(ut));
 
 	/*

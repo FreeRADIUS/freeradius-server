@@ -59,7 +59,7 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 	 *      If there's a request, use that timestamp.
 	 */
 	if (timestr_match(check->vp_strvalue,
-	req ? req->timestamp.tv_sec : time(NULL)) >= 0)
+	req ? req->packet->timestamp.tv_sec : time(NULL)) >= 0)
 		return 0;
 
 	return -1;
@@ -83,7 +83,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 		return -1;
 	}
 
-	tm = localtime_r(&request->timestamp.tv_sec, &s_tm);
+	tm = localtime_r(&request->packet->timestamp.tv_sec, &s_tm);
 	hhmmss = (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
 
 	/*
@@ -144,7 +144,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
-	left = timestr_match(ends->vp_strvalue, request->timestamp.tv_sec);
+	left = timestr_match(ends->vp_strvalue, request->packet->timestamp.tv_sec);
 	if (left < 0) return RLM_MODULE_USERLOCK; /* outside of the allowed time */
 
 	/*

@@ -1052,7 +1052,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
 
 	rad_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
 	eap_session->request = request;
-	eap_session->updated = request->timestamp.tv_sec;
+	eap_session->updated = request->packet->timestamp.tv_sec;
 
 	return eap_session;
 }

@@ -100,7 +100,6 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->control = NULL;
 	request->username = NULL;
 	request->password = NULL;
-	gettimeofday(&request->timestamp, NULL);
 
 	/*
 	 *	These may be changed later by request_pre_handler
@@ -180,7 +179,6 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	 */
 	fake->packet->id = fake->number & 0xff;
 	fake->packet->code = request->packet->code;
-	fake->timestamp = request->timestamp;
 	fake->packet->timestamp = request->packet->timestamp;
 
 	/*

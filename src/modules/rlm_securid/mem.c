@@ -89,7 +89,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	The time at which this request was made was the time
 	 *	at which it was received by the RADIUS server.
 	 */
-	session->timestamp = request->timestamp;
+	session->timestamp = request->packet->timestamp;
 
 	session->src_ipaddr = request->packet->src_ipaddr;
 
@@ -176,7 +176,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 
 	/* clean expired sessions if any */
 	pthread_mutex_lock(&(inst->session_mutex));
-	securid_sessionlist_clean_expired(inst, request, request->timestamp);
+	securid_sessionlist_clean_expired(inst, request, request->packet->timestamp);
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	/*

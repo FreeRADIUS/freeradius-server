@@ -575,7 +575,7 @@ void request_delete(REQUEST *request)
 	if (request->packet) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
-			(unsigned int) (request->timestamp.tv_sec - fr_start_time));
+			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
 	} /* else don't print anything */
 
 	fr_event_delete(el, &request->ev);
@@ -5541,7 +5541,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	if (main_config.memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
-			(unsigned int) (request->timestamp.tv_sec - fr_start_time));
+			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
 	}
 
 #ifdef WITH_COA

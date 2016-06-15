@@ -329,7 +329,7 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 		}
 #endif
 	}
-	WRITE("\tTimestamp = %ld\n", (unsigned long) request->timestamp.tv_sec);
+	WRITE("\tTimestamp = %ld\n", (unsigned long) request->packet->timestamp.tv_sec);
 
 	WRITE("\n");
 
