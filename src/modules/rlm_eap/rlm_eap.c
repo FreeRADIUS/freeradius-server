@@ -76,6 +76,7 @@ static int _eap_method_free(rlm_eap_method_t *method)
 /** Load required EAP sub-module (method)
  *
  * @param[out] out	A new instance of the specified EAP method.
+ * @param[in] inst	of rlm_eap that this method is being instantiated for.
  * @param[in] num	EAP method number.
  * @param[in] cs	Config section for this instance of the EAP method.
  */

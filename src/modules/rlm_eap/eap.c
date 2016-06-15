@@ -94,8 +94,8 @@ static int eap_module_call(rlm_eap_method_t *method, eap_session_t *eap_session)
  *
  */
 static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
-				    eap_type_t type,
-				    eap_type_data_t *nak)
+				  eap_type_t type,
+				  eap_type_data_t *nak)
 {
 	unsigned int i;
 	VALUE_PAIR *vp;

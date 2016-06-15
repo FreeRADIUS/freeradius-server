@@ -110,7 +110,7 @@ typedef struct rlm_eap_config {
  * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
  *			this should contain the result of parsing the submodule's
  *			CONF_PARSER array that it specified in the interface struct.
- * @param cs		section holding driver specific #CONF_PAIR(s).
+ * @param cs		section holding driver specific #CONF_PAIR (s).
  * @return
  *	- 0 on success.
  *	- -1 on failure.

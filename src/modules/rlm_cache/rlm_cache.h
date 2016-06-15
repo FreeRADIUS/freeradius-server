@@ -92,7 +92,7 @@ typedef struct rlm_cache_entry_t {
  * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
  *			this should contain the result of parsing the driver's
  *			CONF_PARSER array that it specified in the interface struct.
- * @param conf		section holding driver specific #CONF_PAIR(s).
+ * @param conf		section holding driver specific #CONF_PAIR (s).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
