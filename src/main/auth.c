@@ -381,6 +381,7 @@ rlm_rcode_t rad_authenticate(REQUEST *request)
 						&request->control,
 						PW_AUTH_TYPE, 0);
 			if (tmp) tmp->vp_integer = PW_AUTH_TYPE_ACCEPT;
+			rcode = RLM_MODULE_OK;
 			goto authenticate;
 
 		/*
