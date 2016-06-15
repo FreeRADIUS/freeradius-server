@@ -461,6 +461,9 @@ extern FR_NAME_NUMBER const ldap_tls_require_cert[];
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
+void	rlm_ldap_timeout_debug(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn,
+			       struct timeval const *timeout, char const *prefix);
+
 size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
 size_t rlm_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
