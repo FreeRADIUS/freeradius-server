@@ -58,12 +58,13 @@ static ssize_t lo_read(int fd, void *inbuf, size_t buflen)
 /*
  *	A non-blocking copy of fr_channel_read().
  */
-ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, size_t have_read)
+ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read)
 {
 	ssize_t r;
 	size_t data_len;
 	uint8_t *buffer = inbuf;
 	rchannel_t hdr;
+	size_t offset = *have_read;
 
 	/*
 	 *	If we can't even read a header, die.
@@ -76,15 +77,16 @@ ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_
 	/*
 	 *	Ensure that we read the header first.
 	 */
-	if (have_read < sizeof(hdr)) {
+	if (offset < sizeof(hdr)) {
 		*pchannel = FR_CHANNEL_WANT_MORE;
 
-		r = lo_read(fd, buffer + have_read, sizeof(hdr) - have_read);
+		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
 		if (r <= 0) return r;
 
-		have_read += r;
+		*have_read += r;
+		offset += r;
 
-		if (have_read < sizeof(hdr)) return have_read;
+		if (offset < sizeof(hdr)) return *have_read;
 	}
 
 	/*
@@ -107,19 +109,20 @@ ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_
 	 */
 	buflen = sizeof(hdr) + data_len;
 
-	r = lo_read(fd, buffer + have_read, buflen - have_read);
+	r = lo_read(fd, buffer + offset, buflen - offset);
 	if (r <= 0) return r;
 
-	have_read += r;
+	offset += r;
 
-	if (have_read == buflen) {
+	if (offset == buflen) {
 		*pchannel = ntohl(hdr.channel);
 		*outbuf = buffer + sizeof(hdr);
 		return data_len;
 	}
 
 	*pchannel = FR_CHANNEL_WANT_MORE;
-	return have_read;
+	*have_read = offset;
+	return offset;
 }
 
 ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen)
