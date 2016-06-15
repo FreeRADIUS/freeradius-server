@@ -3208,8 +3208,8 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	fr_command_table_t *table;
 	uint8_t *command;
 
-	r = fr_channel_drain(listener->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &command, co->offset);
-	if ((r < 0) && (errno == EINTR)) return 0;
+	r = fr_channel_drain(listener->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &command, &co->offset);
+	if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 	if (r <= 0) {
 	do_close:
@@ -3221,7 +3221,6 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	 *	We need more data.  Go read it.
 	 */
 	if (channel == FR_CHANNEL_WANT_MORE) {
-		co->offset = r;
 		return 0;
 	}
 
@@ -3322,6 +3321,11 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	}
 
  do_next:
+	/*
+	 * Reset offset now that command has been fully read
+	 */
+	co->offset = 0;
+
 	r = fr_channel_write(listener->fd, FR_CHANNEL_CMD_STATUS, &status, sizeof(status));
 	if (r <= 0) goto do_close;
 
@@ -3346,8 +3350,8 @@ static int command_tcp_recv(rad_listen_t *this)
 		uint8_t *data;
 		uint8_t expected[16];
 
-		r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, co->offset);
-		if ((r < 0) && (errno == EINTR)) return 0;
+		r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, &co->offset);
+		if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 		if (r <= 0) goto do_close;
 
@@ -3355,7 +3359,6 @@ static int command_tcp_recv(rad_listen_t *this)
 		 *	We need more data.  Go read it.
 		 */
 		if (channel == FR_CHANNEL_WANT_MORE) {
-			co->offset = r;
 			return 0;
 		}
 
@@ -3406,7 +3409,7 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 	/*
 	 *	Start off by reading 4 bytes of magic, followed by 4 bytes of zero.
 	 */
-	r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, co->offset);
+	r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, &co->offset);
 	if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 	if (r <= 0) {
@@ -3421,7 +3424,6 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 	 *	We need more data.  Go read it.
 	 */
 	if (channel == FR_CHANNEL_WANT_MORE) {
-		co->offset = r;
 		return 0;
 	}
 
@@ -3454,6 +3456,11 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 		}
 
 	}
+
+	/*
+	 * Reset offset now that version has been fully read
+	 */
+	co->offset = 0;
 
 	return 1;
 }
