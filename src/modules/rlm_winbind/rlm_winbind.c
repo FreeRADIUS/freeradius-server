@@ -49,6 +49,16 @@ static const CONF_PARSER module_config[] = {
 };
 
 
+/** Group comparison for Winbind-Group
+ *
+ */
+static int winbind_group_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, UNUSED VALUE_PAIR *check,
+	UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+{
+	return 1;
+}
+
+
 /** Free connection pool winbind context
  *
  * @param[in] wb_ctx libwbclient context
@@ -87,6 +97,53 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 	talloc_set_destructor(wb_ctx, _mod_conn_free);
 
 	return *wb_ctx;
+}
+
+
+/** Bootstrap this module
+ *
+ * Register pair compare function for Winbind-Group fake attribute
+ *
+ * @param[in] conf	Module configuration
+ * @param[in] instance	This module's instance
+ *
+ * @return
+ *	- 0	success
+ *	- -1	failure
+ *
+ */
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_winbind_t		*inst = instance;
+	fr_dict_attr_t const	*user_name_da;
+	char const		*group_attribute;
+	char			buffer[256];
+
+	user_name_da = fr_dict_attr_by_num(NULL, 0, PW_USER_NAME);
+	if (!user_name_da) {
+		ERROR("Unable to find User-Name attribute in dictionary");
+		return -1;
+	}
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	if (inst->group_attribute) {
+		group_attribute = inst->group_attribute;
+	} else if (cf_section_name2(conf)) {
+		snprintf(buffer, sizeof(buffer), "%s-Winbind-Group", inst->name);
+		group_attribute = buffer;
+	} else {
+		group_attribute = "Winbind-Group";
+	}
+
+	if (paircompare_register_byname(group_attribute, user_name_da, false,
+					winbind_group_cmp, inst) < 0) {
+		ERROR("Error registering group comparison: %s", fr_strerror());
+		return -1;
+	}
+
+	return 0;
 }
 
 
@@ -237,6 +294,7 @@ rad_module_t rlm_winbind = {
 	.inst_size	= sizeof(rlm_winbind_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
