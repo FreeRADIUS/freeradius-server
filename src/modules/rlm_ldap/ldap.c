@@ -814,12 +814,16 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			memcpy(&cred.bv_val, &password, sizeof(cred.bv_val));
 			cred.bv_len = talloc_array_length(password) - 1;
 
+			/*
+			 *	Yes, confusingly named.  This is the simple version
+			 *	of the SASL bind function that should always be
+			 *	available.
+			 */
 			ret = ldap_sasl_bind((*pconn)->handle, dn, LDAP_SASL_SIMPLE, &cred,
 					     serverctrls, clientctrls, &msgid);
+
 			/* We got a valid message ID */
-			if ((ret == 0) && (msgid >= 0)) {
-				ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
-			}
+			if ((ret == 0) && (msgid >= 0)) ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 
 			status = rlm_ldap_result(inst, *pconn, msgid, dn, timeout, NULL, &error, &extra);
 		}
@@ -845,8 +849,8 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			if (retry) {
 				*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 				if (*pconn) {
-					ROPTIONAL(RWDEBUG, WARN, "Bind with %s to %s failed: %s. Got new socket, retrying...",
-						      *dn ? dn : "(anonymous)", inst->server, error);
+					ROPTIONAL(RWDEBUG, WARN, "Bind with %s to %s failed: %s. Got new socket, "
+						  "retrying...", *dn ? dn : "(anonymous)", inst->server, error);
 
 					talloc_free(extra); /* don't leak debug info */
 
@@ -1665,9 +1669,9 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	int ldap_errno, ldap_version;
 
-	rlm_ldap_t *inst = instance;
-	ldap_handle_t *conn;
-	LDAP *handle = NULL;
+	rlm_ldap_t	*inst = instance;
+	ldap_handle_t	*conn;
+	LDAP		*handle = NULL;
 
 	DEBUG("Connecting to %s", inst->server);
 #ifdef HAVE_LDAP_INITIALIZE
