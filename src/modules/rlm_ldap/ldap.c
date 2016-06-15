@@ -782,7 +782,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 	rad_assert(!retry || inst->pool);
 
 #ifndef WITH_SASL
-	rad_assert(!sasl->mech);
+	rad_assert(!sasl || !sasl->mech);
 #endif
 
 	/*
