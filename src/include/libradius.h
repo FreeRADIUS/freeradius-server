@@ -255,8 +255,6 @@ RADIUS_PACKET	*fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_m
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
-void		fr_radius_recv_discard(int sockfd);
-
 int		fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
 
 int		fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
