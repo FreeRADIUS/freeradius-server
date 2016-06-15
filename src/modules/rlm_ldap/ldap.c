@@ -1738,7 +1738,20 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	}
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
-	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "pool.connect_timeout", &timeout);
+	/*
+	 *	A value of zero results in an instant failure.
+	 *
+	 *	When most people specify zero they mean infinite.
+	 *
+	 *	libldap requires tv_sec to be -1 to mean that.
+	 */
+	{
+		struct timeval ldap_timeout = *timeout;
+
+		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
+
+		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "pool.connect_timeout", &ldap_timeout);
+	}
 #endif
 
 	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(inst->srv_timelimit));
