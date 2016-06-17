@@ -293,6 +293,123 @@ static void reap_children(void)
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
+static void idle2active(THREAD_HANDLE *thread)
+{
+	/*
+	 *	Remove the thread from the head of the idle list.
+	 */
+	rad_assert(thread->prev == NULL);
+
+	thread_pool.idle_head = thread->next;
+	if (thread->next) {
+		thread->next->prev = NULL;
+	} else {
+		rad_assert(thread_pool.idle_tail == thread);
+		thread_pool.idle_tail = thread->prev;
+		rad_assert(thread_pool.idle_threads == 1);
+	}
+	thread_pool.idle_threads--;
+
+	/*
+	 *	Move the thread to the head of the active list.
+	 */
+	thread->next = thread_pool.active_head;
+	if (thread->next) {
+		rad_assert(thread_pool.active_tail != NULL);
+		thread->next->prev = thread;
+	} else {
+		rad_assert(thread_pool.active_tail == NULL);
+		thread_pool.active_tail = thread;
+	}
+	thread_pool.active_head = thread;
+	thread_pool.active_threads++;
+
+	thread_pool.requests++;
+
+	thread->status = THREAD_ACTIVE;
+}
+
+static void idle2exited(THREAD_HANDLE *thread)
+{
+	/*
+	 *	Remove ourselves from the idle list
+	 */
+	if (thread->prev) {
+		rad_assert(thread_pool.idle_head != thread);
+		thread->prev->next = thread->next;
+		
+	} else {
+		rad_assert(thread_pool.idle_head == thread);
+		thread_pool.idle_head = thread->next;
+	}
+
+	if (thread->next) {
+		rad_assert(thread_pool.idle_tail != thread);
+		thread->next->prev = NULL;
+	} else {
+		rad_assert(thread_pool.idle_tail == thread);
+		thread_pool.idle_tail = thread->prev;
+		rad_assert(thread_pool.idle_threads == 1);
+	}
+	thread_pool.idle_threads--;
+
+	/*
+	 *	Add the thread to the tail of the exited list.
+	 */
+	if (thread_pool.exited_tail) {
+		thread->prev = thread_pool.exited_tail;
+		thread->prev->next = thread;
+		thread_pool.exited_tail = thread;
+	} else {
+		rad_assert(thread_pool.exited_head == NULL);
+		thread_pool.exited_head = thread;
+		thread_pool.exited_tail = thread;
+		thread->prev = NULL;
+	}
+	thread_pool.total_threads--;
+
+	thread->status = THREAD_CANCELLED;
+}
+
+static void active2idle(THREAD_HANDLE *thread)
+{
+	if (thread->prev) {
+		rad_assert(thread_pool.active_head != thread);
+		thread->prev->next = thread->next;
+		
+	} else {
+		rad_assert(thread_pool.active_head == thread);
+		thread_pool.active_head = thread->next;
+	}
+
+	if (thread->next) {
+		rad_assert(thread_pool.active_tail != thread);
+		thread->next->prev = thread->prev;
+	} else {
+		rad_assert(thread_pool.active_tail == thread);
+		thread_pool.active_tail = thread->prev;
+	}
+	thread_pool.active_threads--;
+
+	/*
+	 *	Insert it into the head of the idle list.
+	 */
+	thread->prev = NULL;
+	thread->next = thread_pool.idle_head;
+	if (thread->next) {
+		rad_assert(thread_pool.idle_tail != NULL);
+		thread->next->prev = thread;
+	} else {
+		rad_assert(thread_pool.idle_tail == NULL);
+		thread_pool.idle_tail = thread;
+	}
+	thread_pool.idle_head = thread;
+	thread_pool.idle_threads++;
+
+	thread->status = THREAD_IDLE;
+}
+
+
 static REQUEST *request_dequeue(void);
 
 /*
@@ -552,39 +669,9 @@ void request_enqueue(REQUEST *request)
 		rad_assert(thread->status == THREAD_IDLE);
 	}
 
-	/*
-	 *	Remove the thread from the head of the idle list.
-	 */
-	rad_assert(thread->prev == NULL);
-
-	thread_pool.idle_head = thread->next;
-	if (thread->next) {
-		thread->next->prev = NULL;
-	} else {
-		rad_assert(thread_pool.idle_tail == thread);
-		thread_pool.idle_tail = thread->prev;
-		rad_assert(thread_pool.idle_threads == 1);
-	}
-	thread_pool.idle_threads--;
-
-	/*
-	 *	Move the thread to the head of the active list.
-	 */
-	thread->next = thread_pool.active_head;
-	if (thread->next) {
-		rad_assert(thread_pool.active_tail != NULL);
-		thread->next->prev = thread;
-	} else {
-		rad_assert(thread_pool.active_tail == NULL);
-		thread_pool.active_tail = thread;
-	}
-	thread_pool.active_head = thread;
-	thread_pool.active_threads++;
-
-	thread_pool.requests++;
+	idle2active(thread);
 
 	thread->request = request;
-	thread->status = THREAD_ACTIVE;
 
 	pthread_mutex_unlock(&thread_pool.mutex);
 
@@ -682,44 +769,7 @@ static void *request_handler_thread(void *arg)
 
 			rad_assert(thread->status == THREAD_IDLE);
 
-			thread->status = THREAD_CANCELLED;
-
-			/*
-			 *	Remove ourselves from the idle list
-			 */
-			if (thread->prev) {
-				rad_assert(thread_pool.idle_head != thread);
-				thread->prev->next = thread->next;
-
-			} else {
-				rad_assert(thread_pool.idle_head == thread);
-				thread_pool.idle_head = thread->next;
-			}
-
-			if (thread->next) {
-				rad_assert(thread_pool.idle_tail != thread);
-				thread->next->prev = NULL;
-			} else {
-				rad_assert(thread_pool.idle_tail == thread);
-				thread_pool.idle_tail = thread->prev;
-				rad_assert(thread_pool.idle_threads == 1);
-			}
-			thread_pool.idle_threads--;
-
-			/*
-			 *	Add the thread to the tail of the exited list.
-			 */
-			if (thread_pool.exited_tail) {
-				thread->prev = thread_pool.exited_tail;
-				thread->prev->next = thread;
-				thread_pool.exited_tail = thread;
-			} else {
-				rad_assert(thread_pool.exited_head == NULL);
-				thread_pool.exited_head = thread;
-				thread_pool.exited_tail = thread;
-				thread->prev = NULL;
-			}
-			thread_pool.total_threads--;
+			idle2exited(thread);
 			break;
 		}
 
@@ -827,40 +877,8 @@ static void *request_handler_thread(void *arg)
 		 */
 		rad_assert(thread->status == THREAD_ACTIVE);
 
-		if (thread->prev) {
-			rad_assert(thread_pool.active_head != thread);
-			thread->prev->next = thread->next;
+		active2idle(thread);
 
-		} else {
-			rad_assert(thread_pool.active_head == thread);
-			thread_pool.active_head = thread->next;
-		}
-
-		if (thread->next) {
-			rad_assert(thread_pool.active_tail != thread);
-			thread->next->prev = thread->prev;
-		} else {
-			rad_assert(thread_pool.active_tail == thread);
-			thread_pool.active_tail = thread->prev;
-		}
-		thread_pool.active_threads--;
-
-		/*
-		 *	Insert it into the head of the idle list.
-		 */
-		thread->prev = NULL;
-		thread->next = thread_pool.idle_head;
-		if (thread->next) {
-			rad_assert(thread_pool.idle_tail != NULL);
-			thread->next->prev = thread;
-		} else {
-			rad_assert(thread_pool.idle_tail == NULL);
-			thread_pool.idle_tail = thread;
-		}
-		thread_pool.idle_head = thread;
-		thread_pool.idle_threads++;
-
-		thread->status = THREAD_IDLE;
 		pthread_mutex_unlock(&thread_pool.mutex);
 	}
 
