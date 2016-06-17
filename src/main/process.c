@@ -468,7 +468,7 @@ static void request_timer(void *ctx, UNUSED struct timeval *now)
  *	request.  If there is a parent, free the parent INSTEAD of the
  *	request.
  */
-static void request_free(REQUEST *request)
+void request_free(REQUEST *request)
 {
 	void *ptr;
 

@@ -70,6 +70,7 @@ bool request_max_time(REQUEST *request);
 void request_thread(REQUEST *request, fr_request_process_t process);
 bool request_thread_active(REQUEST *request);
 void request_delete(REQUEST *request);
+void request_free(REQUEST *request);
 void request_thread_done(REQUEST *request);
 
 
