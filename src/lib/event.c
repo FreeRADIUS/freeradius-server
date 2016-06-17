@@ -616,70 +616,77 @@ int fr_event_wait(fr_event_list_t *el)
 	return el->num_events;
 }
 
-int fr_event_loop(fr_event_list_t *el)
+int fr_event_service(fr_event_list_t *el)
 {
 	int i;
 
+	if (fr_heap_num_elements(el->times) > 0) {
+		struct timeval when;
+
+		do {
+			gettimeofday(&el->now, NULL);
+			when = el->now;
+		} while (fr_event_run(el, &when) == 1);
+	}
+
+#ifndef HAVE_KQUEUE
+	/*
+	 *	Loop over all of the sockets to see if there's
+	 *	an event for that socket.
+	 */
+	for (i = 0; i < el->max_readers; i++) {
+		fr_event_fd_t *ef = &el->readers[i];
+
+		if (ef->fd < 0) continue;
+
+		if (!FD_ISSET(ef->fd, &el->read_fds)) continue;
+
+		ef->handler(el, ef->fd, ef->ctx);
+	}
+
+#else  /* HAVE_KQUEUE */
+
+	/*
+	 *	Loop over all of the events, servicing them.
+	 */
+	for (i = 0; i < el->num_events; i++) {
+		fr_event_fd_t *ef = el->events[i].udata;
+
+		if (el->events[i].flags & EV_EOF) {
+			/*
+			 *	FIXME: delete the handler
+			 *	here, and fix process.c to not
+			 *	call fr_event_fd_delete().
+			 *	It's cleaner.
+			 *
+			 *	Call the handler, which SHOULD
+			 *	delete the connection.
+			 */
+			ef->handler(el, ef->fd, ef->ctx);
+			continue;
+		}
+
+		/*
+		 *	Else it's our event.  We only set
+		 *	EVFILT_READ, so it must be a read
+		 *	event.
+		 */
+		ef->handler(el, ef->fd, ef->ctx);
+	}
+#endif	/* HAVE_KQUEUE */
+
+	return 0;
+}
+
+int fr_event_loop(fr_event_list_t *el)
+{
 	el->exit = 0;
 	el->dispatch = true;
 
 	while (!el->exit) {
 		if (fr_event_wait(el) < 0) break;
 
-		if (fr_heap_num_elements(el->times) > 0) {
-			struct timeval when;
-
-			do {
-				gettimeofday(&el->now, NULL);
-				when = el->now;
-			} while (fr_event_run(el, &when) == 1);
-		}
-
-#ifndef HAVE_KQUEUE
-		/*
-		 *	Loop over all of the sockets to see if there's
-		 *	an event for that socket.
-		 */
-		for (i = 0; i < el->max_readers; i++) {
-			fr_event_fd_t *ef = &el->readers[i];
-
-			if (ef->fd < 0) continue;
-
-			if (!FD_ISSET(ef->fd, &el->read_fds)) continue;
-
-			ef->handler(el, ef->fd, ef->ctx);
-		}
-
-#else  /* HAVE_KQUEUE */
-
-		/*
-		 *	Loop over all of the events, servicing them.
-		 */
-		for (i = 0; i < el->num_events; i++) {
-			fr_event_fd_t *ef = el->events[i].udata;
-
-			if (el->events[i].flags & EV_EOF) {
-				/*
-				 *	FIXME: delete the handler
-				 *	here, and fix process.c to not
-				 *	call fr_event_fd_delete().
-				 *	It's cleaner.
-				 *
-				 *	Call the handler, which SHOULD
-				 *	delete the connection.
-				 */
-				ef->handler(el, ef->fd, ef->ctx);
-				continue;
-			}
-
-			/*
-			 *	Else it's our event.  We only set
-			 *	EVFILT_READ, so it must be a read
-			 *	event.
-			 */
-			ef->handler(el, ef->fd, ef->ctx);
-		}
-#endif	/* HAVE_KQUEUE */
+		(void) fr_event_service(el);
 	}
 
 	el->dispatch = false;
