@@ -733,7 +733,7 @@ static REQUEST *request_dequeue(void)
  *
  *	Wait on the semaphore until we have it, and process the request.
  */
-static void *request_handler_thread(void *arg)
+static void *thread_handler(void *arg)
 {
 	THREAD_HANDLE *thread = (THREAD_HANDLE *) arg;
 
@@ -936,7 +936,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 *	Note that the function returns non-zero on error, NOT
 	 *	-1.  The return code is the error, and errno isn't set.
 	 */
-	rcode = pthread_create(&thread->pthread_id, 0, request_handler_thread, thread);
+	rcode = pthread_create(&thread->pthread_id, 0, thread_handler, thread);
 	if (rcode != 0) {
 		talloc_free(thread);
 		ERROR("Thread create failed: %s",
