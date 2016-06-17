@@ -32,30 +32,6 @@ RCSID("$Id$")
 
 #include "vqp.h"
 
-static void vmps_done(REQUEST *request, UNUSED fr_state_action_t action)
-{
-	TRACE_STATE_MACHINE;
-
-	request->component = NULL;
-	request->module = NULL;
-
-	/*
-	 *	Wait until the child thread has finished.
-	 */
-	if (request_thread_active(request)) return;
-
-	request->child_state = REQUEST_DONE;
-
-#ifdef DEBUG_STATE_MACHINE
-	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
-				  request->number, __FUNCTION__,
-				  child_state_names[request->child_state],
-				  child_state_names[REQUEST_DONE]);
-#endif
-
-	request_delete(request);
-}
-
 static void vmps_running(REQUEST *request, fr_state_action_t action)
 {
 	VALUE_PAIR *vp;
@@ -68,16 +44,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 
-	/*
-	 *	Stop if signalled/
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) action = FR_ACTION_DONE;
-
 	switch (action) {
-	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
-		break;
-
 	case FR_ACTION_RUN:
 		if (vqp_decode(request->packet) < 0) {
 			RDEBUG("Failed decoding VMPS packet: %s", fr_strerror());
@@ -165,12 +132,10 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 
 	done:
 		request_thread_done(request);
-
-		/* FALL-THROUGH */
-
-	case FR_ACTION_DONE:
-		request->process = vmps_done;
-		request->process(request, FR_ACTION_DONE);
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+			request->packet->id,
+			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
+		request_free(request);
 		break;
 
 	default:
@@ -186,10 +151,8 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
  *
  *  \dot
  *	digraph vmps_queued {
- *		vmps_queued -> vmps_queued [ label = "TIMER < max_request_time" ];
  *		vmps_queued -> done [ label = "TIMER >= max_request_time" ];
  *		vmps_queued -> running [ label = "RUNNING" ];
- *		vmps_queued -> dup [ label = "DUP", arrowhead = "none" ];
  *	}
  *  \enddot
  */
@@ -199,20 +162,16 @@ static void vmps_queued(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) action = FR_ACTION_DONE;
-
 	switch (action) {
-	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
-		break;
-
 	case FR_ACTION_RUN:
 		request->process = vmps_running;
 		request->process(request, action);
 		break;
 
 	case FR_ACTION_DONE:
-		request_queue_extract(request);
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+			request->packet->id,
+			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
 		request_delete(request);
 		break;
 
@@ -273,7 +232,8 @@ static int vqp_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	request_thread(request, vmps_queued);
+	request->process = vmps_queued;
+	request_enqueue(request);
 
 	return 1;
 }
