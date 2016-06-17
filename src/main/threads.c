@@ -330,6 +330,7 @@ static void thread_enforce_max_times(time_t now)
 		request = thread->request;
 
 		if (request->packet->timestamp.tv_sec < when) {
+			request->master_state = REQUEST_STOP_PROCESSING;
 			request->process(request, FR_ACTION_DONE);
 		}
 	}
@@ -359,6 +360,7 @@ static void thread_enforce_max_times(time_t now)
 		(void) fr_heap_extract(thread_pool.idle_heap, request);
 		thread_pool.num_queued--;
 
+		request->master_state = REQUEST_STOP_PROCESSING;
 		request->process(request, FR_ACTION_DONE);
 	}
 }
@@ -420,6 +422,7 @@ void request_enqueue(REQUEST *request)
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
 
 	done:
+		request->master_state = REQUEST_STOP_PROCESSING;
 		request->process(request, FR_ACTION_DONE);
 		return;
 	}
