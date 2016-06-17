@@ -534,91 +534,101 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
 	return (el->exit != 0);
 }
 
-int fr_event_loop(fr_event_list_t *el)
+int fr_event_wait(fr_event_list_t *el)
 {
-	int i;
 	struct timeval when, *wake;
 #ifdef HAVE_KQUEUE
 	struct timespec ts_when, *ts_wake;
 #endif
 
+	/*
+	 *	Find the first event.  If there's none, we wait
+	 *	on the socket forever.
+	 */
+	when.tv_sec = 0;
+	when.tv_usec = 0;
+
+	if (fr_heap_num_elements(el->times) > 0) {
+		fr_event_t *ev;
+
+		ev = fr_heap_peek(el->times);
+		if (!ev) {
+			fr_exit_now(42);
+		}
+
+		gettimeofday(&el->now, NULL);
+
+		if (timercmp(&el->now, &ev->when, <)) {
+			when = ev->when;
+			when.tv_sec -= el->now.tv_sec;
+
+			if (when.tv_sec > 0) {
+				when.tv_sec--;
+				when.tv_usec += USEC;
+			} else {
+				when.tv_sec = 0;
+			}
+			when.tv_usec -= el->now.tv_usec;
+			if (when.tv_usec >= USEC) {
+				when.tv_usec -= USEC;
+				when.tv_sec++;
+			}
+		} else { /* we've passed the event time */
+			when.tv_sec = 0;
+			when.tv_usec = 0;
+		}
+
+		wake = &when;
+	} else {
+		wake = NULL;
+	}
+
+	/*
+	 *	Tell someone what the status is.
+	 */
+	if (el->status) el->status(wake);
+
+#ifndef HAVE_KQUEUE
+	FD_COPY(&el->master_fds, &el->read_fds);
+
+	el->num_events = select(el->max_fd + 1, &el->read_fds, NULL, NULL, wake);
+	if ((el->num_events < 0) && (errno != EINTR)) {
+		fr_strerror_printf("Failed in select: %s", fr_syserror(errno));
+		el->dispatch = false;
+		return -1;
+	}
+
+#else  /* HAVE_KQUEUE */
+
+	if (wake) {
+		ts_wake = &ts_when;
+		ts_when.tv_sec = when.tv_sec;
+		ts_when.tv_nsec = when.tv_usec * 1000;
+	} else {
+		ts_wake = NULL;
+	}
+
+	el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
+#endif	/* HAVE_KQUEUE */
+
+	if ((el->num_events < 0) && (errno == EINTR)) el->num_events = 0;
+
+	return el->num_events;
+}
+
+int fr_event_loop(fr_event_list_t *el)
+{
+	int i;
+
 	el->exit = 0;
 	el->dispatch = true;
 
 	while (!el->exit) {
-		/*
-		 *	Find the first event.  If there's none, we wait
-		 *	on the socket forever.
-		 */
-		when.tv_sec = 0;
-		when.tv_usec = 0;
+		if (fr_event_wait(el) < 0) break;
 
 		if (fr_heap_num_elements(el->times) > 0) {
-			fr_event_t *ev;
+			struct timeval when;
 
-			ev = fr_heap_peek(el->times);
-			if (!ev) {
-				fr_exit_now(42);
-			}
-
-			gettimeofday(&el->now, NULL);
-
-			if (timercmp(&el->now, &ev->when, <)) {
-				when = ev->when;
-				when.tv_sec -= el->now.tv_sec;
-
-				if (when.tv_sec > 0) {
-					when.tv_sec--;
-					when.tv_usec += USEC;
-				} else {
-					when.tv_sec = 0;
-				}
-				when.tv_usec -= el->now.tv_usec;
-				if (when.tv_usec >= USEC) {
-					when.tv_usec -= USEC;
-					when.tv_sec++;
-				}
-			} else { /* we've passed the event time */
-				when.tv_sec = 0;
-				when.tv_usec = 0;
-			}
-
-			wake = &when;
-		} else {
-			wake = NULL;
-		}
-
-		/*
-		 *	Tell someone what the status is.
-		 */
-		if (el->status) el->status(wake);
-
-#ifndef HAVE_KQUEUE
-		FD_COPY(&el->master_fds, &el->read_fds);
-
-		el->num_events = select(el->max_fd + 1, &el->read_fds, NULL, NULL, wake);
-		if ((el->num_events < 0) && (errno != EINTR)) {
-			fr_strerror_printf("Failed in select: %s", fr_syserror(errno));
-			el->dispatch = false;
-			return -1;
-		}
-
-#else  /* HAVE_KQUEUE */
-
-		if (wake) {
-			ts_wake = &ts_when;
-			ts_when.tv_sec = when.tv_sec;
-			ts_when.tv_nsec = when.tv_usec * 1000;
-		} else {
-			ts_wake = NULL;
-		}
-
-		el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
-#endif	/* HAVE_KQUEUE */
-
-		if (el->num_events <= 0) continue;
-
-		if (fr_heap_num_elements(el->times) > 0) {
 			do {
 				gettimeofday(&el->now, NULL);
 				when = el->now;
