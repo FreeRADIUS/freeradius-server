@@ -1043,6 +1043,12 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 	return 0;
 }
 
+static int dhcp_load(void)
+{
+	return fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
+}
+
+
 extern rad_protocol_t proto_dhcp;
 rad_protocol_t proto_dhcp = {
 	.magic		= RLM_MODULE_INIT,
@@ -1050,6 +1056,8 @@ rad_protocol_t proto_dhcp = {
 	.inst_size	= sizeof(dhcp_socket_t),
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
+
+	.load		= dhcp_load,
 	.compile	= dhcp_listen_compile,
 	.parse		= dhcp_socket_parse,
 	.open		= common_socket_open,
@@ -1058,5 +1066,5 @@ rad_protocol_t proto_dhcp = {
 	.print		= common_socket_print,
 	.debug		= dhcp_packet_debug,
 	.encode		= dhcp_socket_encode,
-	.decode		= dhcp_socket_decode
+	.decode		= dhcp_socket_decode,
 };

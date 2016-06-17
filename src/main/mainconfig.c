@@ -829,14 +829,6 @@ do {\
 } while (0)
 
 	/*
-	 *	Try to load protocol-specific dictionaries.  It's OK
-	 *	if they don't exist.
-	 */
-#ifdef WITH_DHCP
-	DICT_READ_OPTIONAL(main_config.dictionary_dir, "dictionary.dhcp");
-#endif
-
-	/*
 	 *	It's OK if this one doesn't exist.
 	 */
 	DICT_READ_OPTIONAL(radius_dir, RADIUS_DICTIONARY);
