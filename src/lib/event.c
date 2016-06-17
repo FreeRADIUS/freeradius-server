@@ -58,10 +58,15 @@ struct fr_event_list_t {
 	bool		dispatch;
 
 	int		num_readers;
+	int		num_events;
+
 #ifndef HAVE_KQUEUE
 	int		max_readers;
 
-	bool		changed;
+	int		max_fd;
+	fd_set		master_fds;
+
+	fd_set		read_fds;
 
 #else
 	int		kq;
@@ -138,7 +143,12 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	}
 
 #ifndef HAVE_KQUEUE
-	el->changed = true;	/* force re-set of fds's */
+	el->max_fd = -1;
+#ifdef __clang_analyzer__
+	memset(&el->master_fds, 0, sizeof(el->master_fds));
+#else
+	FD_ZERO(&el->master_fds);
+#endif
 
 #else
 	el->kq = kqueue();
@@ -434,7 +444,8 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	ef->ctx = ctx;
 
 #ifndef HAVE_KQUEUE
-	el->changed = true;
+	if (fd >= el->max_fd) el->max_fd = fd;
+	FD_SET(fd, &el->master_fds);
 #endif
 
 	return 1;
@@ -443,6 +454,9 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 {
 	int i;
+#ifndef HAVE_KQUEUE
+	int max_fd;
+#endif
 
 	if (!el || (fd < 0)) return 0;
 
@@ -473,7 +487,11 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		return 1;
 	}
 
+
+	return 0;
 #else
+
+	max_fd = -1;
 
 	for (i = 0; i < el->max_readers; i++) {
 		if (el->readers[i].fd == fd) {
@@ -481,13 +499,26 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 			el->num_readers--;
 
 			if ((i + 1) == el->max_readers) el->max_readers = i;
-			el->changed = true;
-			return 1;
+			FD_CLR(fd, &el->master_fds);
+			max_fd = fd;
 		}
 	}
-#endif	/* HAVE_KQUEUE */
 
-	return 0;
+	if (max_fd < 0) return 0;
+
+	/*
+	 *	Reset max_fd
+	 */
+	max_fd = -1;
+	for (i = 0; i < el->max_readers; i++) {
+		if (el->readers[i].fd < 0) continue;
+
+		if (el->readers[i].fd >= max_fd) max_fd = el->readers[i].fd;
+	}
+	el->max_fd = max_fd;
+
+	return 1;
+#endif	/* HAVE_KQUEUE */
 }
 
 
@@ -505,44 +536,16 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
 
 int fr_event_loop(fr_event_list_t *el)
 {
-	int i, rcode;
+	int i;
 	struct timeval when, *wake;
 #ifdef HAVE_KQUEUE
 	struct timespec ts_when, *ts_wake;
-#else
-	int maxfd = -1;
-	fd_set read_fds, master_fds;
-
-	el->changed = true;
 #endif
 
 	el->exit = 0;
 	el->dispatch = true;
 
 	while (!el->exit) {
-#ifndef HAVE_KQUEUE
-		/*
-		 *	Cache the list of FD's to watch.
-		 */
-		if (el->changed) {
-#ifdef __clang_analyzer__
-			memset(&master_fds, 0, sizeof(master_fds));
-#else
-			FD_ZERO(&master_fds);
-#endif
-			for (i = 0; i < el->max_readers; i++) {
-				if (el->readers[i].fd < 0) continue;
-
-				if (el->readers[i].fd > maxfd) {
-					maxfd = el->readers[i].fd;
-				}
-				FD_SET(el->readers[i].fd, &master_fds);
-			}
-
-			el->changed = false;
-		}
-#endif	/* HAVE_KQUEUE */
-
 		/*
 		 *	Find the first event.  If there's none, we wait
 		 *	on the socket forever.
@@ -591,9 +594,10 @@ int fr_event_loop(fr_event_list_t *el)
 		if (el->status) el->status(wake);
 
 #ifndef HAVE_KQUEUE
-		read_fds = master_fds;
-		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
-		if ((rcode < 0) && (errno != EINTR)) {
+		FD_COPY(&el->master_fds, &el->read_fds);
+
+		el->num_events = select(el->max_fd + 1, &el->read_fds, NULL, NULL, wake);
+		if ((el->num_events < 0) && (errno != EINTR)) {
 			fr_strerror_printf("Failed in select: %s", fr_syserror(errno));
 			el->dispatch = false;
 			return -1;
@@ -609,8 +613,10 @@ int fr_event_loop(fr_event_list_t *el)
 			ts_wake = NULL;
 		}
 
-		rcode = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
+		el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
 #endif	/* HAVE_KQUEUE */
+
+		if (el->num_events <= 0) continue;
 
 		if (fr_heap_num_elements(el->times) > 0) {
 			do {
@@ -618,8 +624,6 @@ int fr_event_loop(fr_event_list_t *el)
 				when = el->now;
 			} while (fr_event_run(el, &when) == 1);
 		}
-
-		if (rcode <= 0) continue;
 
 #ifndef HAVE_KQUEUE
 		/*
@@ -631,11 +635,9 @@ int fr_event_loop(fr_event_list_t *el)
 
 			if (ef->fd < 0) continue;
 
-			if (!FD_ISSET(ef->fd, &read_fds)) continue;
+			if (!FD_ISSET(ef->fd, &el->read_fds)) continue;
 
 			ef->handler(el, ef->fd, ef->ctx);
-
-			if (el->changed) break;
 		}
 
 #else  /* HAVE_KQUEUE */
@@ -643,7 +645,7 @@ int fr_event_loop(fr_event_list_t *el)
 		/*
 		 *	Loop over all of the events, servicing them.
 		 */
-		for (i = 0; i < rcode; i++) {
+		for (i = 0; i < el->num_events; i++) {
 			fr_event_fd_t *ef = el->events[i].udata;
 
 			if (el->events[i].flags & EV_EOF) {
