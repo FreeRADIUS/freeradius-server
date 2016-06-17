@@ -330,6 +330,12 @@ static void thread_enforce_max_times(time_t now)
 		request = thread->request;
 
 		if (request->packet->timestamp.tv_sec < when) {
+			ERROR("Unresponsive child for request %" PRIu64 ", in component %s module %s",
+			      request->number,
+			      request->component ? request->component : "<core>",
+			      request->module ? request->module : "<core>");
+			trigger_exec(request, NULL, "server.thread.unresponsive", true, NULL);
+
 			request->master_state = REQUEST_STOP_PROCESSING;
 			request->process(request, FR_ACTION_DONE);
 		}
