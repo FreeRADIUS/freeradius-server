@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
 #include <grp.h>
+#include <wbclient.h>
 
 static const CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("group_search_username", PW_TYPE_TMPL, rlm_winbind_t, group_username) },
@@ -346,7 +347,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_winbind_t		*inst = instance;
+	rlm_winbind_t			*inst = instance;
+	struct wbcInterfaceDetails	*winbindinfo;
 
 	if (!inst->wb_username) {
 		cf_log_err_cs(conf, "winbind_username must be defined to use rlm_winbind");
@@ -357,6 +359,48 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->wb_pool) {
 		cf_log_err_cs(conf, "Unable to initialise winbind connection pool");
 		return -1;
+	}
+
+	/*
+	 *	If the domain has not been specified, try and find
+	 *	out what it is from winbind.
+	 */
+	if (!inst->wb_domain) {
+		wbcErr		err;
+		struct wbcContext	*wb_ctx;
+
+		cf_log_err_cs(conf, "winbind_domain unspecified; trying to get it from winbind");
+
+		wb_ctx = wbcCtxCreate();
+		if (!wb_ctx) {
+			/* this should be very unusual */
+			cf_log_err_cs(conf, "Unable to get libwbclient context, cannot get domain");
+			goto nodomain;
+		}
+
+		err = wbcCtxInterfaceDetails(wb_ctx, &winbindinfo);
+		wbcCtxFree(wb_ctx);
+
+		if (err != WBC_ERR_SUCCESS) {
+			cf_log_err_cs(conf, "libwbclient returned wbcErr code %d; unable to get domain name.", err);
+			cf_log_err_cs(conf, "Is winbind running and does the winbind_privileged socket have");
+			cf_log_err_cs(conf, "the correct permissions?");
+			goto nodomain;
+		}
+
+		if (!winbindinfo->netbios_domain) {
+			cf_log_err_cs(conf, "winbind returned blank domain name");
+			goto nodomain;
+		}
+
+		tmpl_afrom_str(instance, &inst->wb_domain, winbindinfo->netbios_domain,
+			       strlen(winbindinfo->netbios_domain), T_SINGLE_QUOTED_STRING,
+			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
+
+		cf_log_err_cs(conf, "Using winbind_domain '%s'", inst->wb_domain->name);
+
+nodomain:
+		wbcFreeMemory(winbindinfo);
 	}
 
 	return 0;
