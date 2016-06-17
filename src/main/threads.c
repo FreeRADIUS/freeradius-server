@@ -296,6 +296,36 @@ static void reap_children(void)
 static REQUEST *request_dequeue(void);
 
 /*
+ *	The only time a request can be blocked is when it's being run
+ *	by an active thread.  So, we only need to check the active
+ *	threads for blocked requests.
+ *
+ *	This function MUST be called with the thread mutex held.
+ */
+static void thread_enforce_max_times(time_t now)
+{
+	time_t when;
+	THREAD_HANDLE *thread;
+
+	static time_t last_checked = 0;
+
+	if (last_checked == now) return;
+
+	last_checked = now;
+
+	when = now - main_config.max_request_time;
+
+	for (thread = thread_pool.active_head;
+	     thread != NULL;
+	     thread = thread->next) {
+		if (thread->request->packet->timestamp.tv_sec < when) {
+			thread->request->process(thread->request, FR_ACTION_DONE);
+		}
+	}
+}
+
+
+/*
  *	Add a request to the list of waiting requests.
  *	This function gets called ONLY from the main handler thread...
  *
@@ -335,6 +365,8 @@ void request_enqueue(REQUEST *request)
 	 *	possible in the contended region.
 	 */
 	pthread_mutex_lock(&thread_pool.mutex);
+
+	thread_enforce_max_times(time(NULL));
 
 	/*
 	 *	If we're too busy, don't do anything.
@@ -733,8 +765,6 @@ static void *request_handler_thread(void *arg)
 
 		request->process(thread->request, FR_ACTION_RUN);
 
-		thread->request = NULL;
-
 		/*
 		 *	Clean up any children we exec'd.
 		 */
@@ -748,6 +778,8 @@ static void *request_handler_thread(void *arg)
 #  endif
 
 		pthread_mutex_lock(&thread_pool.mutex);
+
+		thread->request = NULL;
 
 		/*
 		 *	Manage the thread pool once a second.
@@ -1232,6 +1264,8 @@ static void thread_pool_manage(time_t now)
 	THREAD_HANDLE *thread;
 
 	thread_pool.managed = now;
+
+	thread_enforce_max_times(now);
 
 	/*
 	 *	Delete one exited thread.
