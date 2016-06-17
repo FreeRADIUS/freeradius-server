@@ -790,8 +790,6 @@ bool request_max_time(REQUEST *request)
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
-	if (request->in_request_hash) request_dup_extract(request);
-
 	/*
 	 *	The child thread has acknowledged it's done.
 	 *	Transition to the DONE state.
