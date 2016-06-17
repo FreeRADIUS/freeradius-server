@@ -611,9 +611,15 @@ int fr_event_wait(fr_event_list_t *el)
 	el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
 #endif	/* HAVE_KQUEUE */
 
-	if ((el->num_events < 0) && (errno == EINTR)) el->num_events = 0;
+	/*
+	 *	Interrupt is different from timeout / FD events.
+	 */
+	if ((el->num_events < 0) && (errno == EINTR)) {
+		el->num_events = 0;
+		return 0;
+	}
 
-	return el->num_events;
+	return 1;
 }
 
 int fr_event_service(fr_event_list_t *el)
