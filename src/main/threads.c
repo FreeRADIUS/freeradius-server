@@ -297,17 +297,23 @@ static REQUEST *request_dequeue(void);
 
 /*
  *	The only time a request can be blocked is when it's being run
- *	by an active thread.  So, we only need to check the active
- *	threads for blocked requests.
+ *	by an active thread.  So, we need to check the active threads
+ *	for blocked requests.
+ *
+ *	We also need to check the idle queue, to see if packets have
+ *	been sitting there for too long.
  *
  *	This function MUST be called with the thread mutex held.
  */
 static void thread_enforce_max_times(time_t now)
 {
+	int time_blocked;
 	time_t when;
+	REQUEST *request;
 	THREAD_HANDLE *thread;
 
 	static time_t last_checked = 0;
+	static time_t last_complained = 0;
 
 	if (last_checked == now) return;
 
@@ -315,12 +321,45 @@ static void thread_enforce_max_times(time_t now)
 
 	when = now - main_config.max_request_time;
 
+	/*
+	 *	Check the active threads for requests > max_time
+	 */
 	for (thread = thread_pool.active_head;
 	     thread != NULL;
 	     thread = thread->next) {
-		if (thread->request->packet->timestamp.tv_sec < when) {
-			thread->request->process(thread->request, FR_ACTION_DONE);
+		request = thread->request;
+
+		if (request->packet->timestamp.tv_sec < when) {
+			request->process(request, FR_ACTION_DONE);
 		}
+	}
+
+	request = fr_heap_peek(thread_pool.idle_heap);
+	if (!request) return;
+
+	/*
+	 *	Check the idle heap for problems which aren't
+	 *	necessarily errors.
+	 */
+	time_blocked = now - request->packet->timestamp.tv_sec;
+	if (!request->proxy && (time_blocked > 5) && (last_complained < now)) {
+		last_complained = now;
+
+		ERROR("%zd requests have been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
+		      fr_heap_num_elements(thread_pool.idle_heap), time_blocked);
+	}
+
+	/*
+	 *	Check the idle heap for requests > max_time
+	 */
+	while ((request = fr_heap_peek(thread_pool.idle_heap)) != NULL) {
+
+		if (request->packet->timestamp.tv_sec < when) break;
+
+		(void) fr_heap_extract(thread_pool.idle_heap, request);
+		thread_pool.num_queued--;
+
+		request->process(request, FR_ACTION_DONE);
 	}
 }
 
@@ -570,12 +609,10 @@ void request_queue_extract(REQUEST *request)
  */
 static REQUEST *request_dequeue(void)
 {
-	time_t blocked;
-	static time_t last_complained = 0;
-	int num_blocked;
 	REQUEST *request = NULL;
 
-retry:
+	thread_enforce_max_times(time(NULL));
+
 	/*
 	 *	Grab the first entry.
 	 */
@@ -589,43 +626,6 @@ retry:
 	thread_pool.num_queued--;
 
 	VERIFY_REQUEST(request);
-
-	/*
-	 *	Too late.  Mark it as done, and continue.
-	 *
-	 *	@fixme: with a heap, we can dynamically remove it from the heap!
-	 *	@fixme: Is this memory leaked?  Probably...
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request->process(request, FR_ACTION_DONE);
-		goto retry;
-	}
-
-	rad_assert(request->magic == REQUEST_MAGIC);
-
-	request->component = "<core>";
-	request->module = NULL;
-	request->child_state = REQUEST_RUNNING;
-
-	blocked = time(NULL);
-	if (!request->proxy && (blocked - request->packet->timestamp.tv_sec) > 5) {
-		if (last_complained < blocked) {
-			last_complained = blocked;
-			blocked -= request->packet->timestamp.tv_sec;
-			num_blocked = fr_heap_num_elements(thread_pool.idle_heap);
-		} else {
-			blocked = 0;
-			num_blocked = 0;
-		}
-	} else {
-		blocked = 0;
-		num_blocked = 0;
-	}
-
-	if (blocked) {
-		ERROR("%d requests have been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		      num_blocked, (int) blocked);
-	}
 
 	return request;
 }
