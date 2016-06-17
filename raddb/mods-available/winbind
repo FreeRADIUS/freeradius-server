@@ -16,7 +16,7 @@ winbind {
 
 	# The username to pass to winbind for authentication.
 	#
-	winbind_username = "%{User-Name}"
+	winbind_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	# The Windows Domain. While not required to be set, it is
 	# likely authentication will fail if it is not set correctly.
