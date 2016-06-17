@@ -55,6 +55,8 @@ time_t fr_start_time = (time_t)-1;
 static rbtree_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
+static void mark_home_server_alive(REQUEST *request, home_server_t *home);
+
 fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
 	/* Currently we do not run a second event loop for modules. */
 	return el;
@@ -2328,28 +2330,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	return 1;
 }
 
-static void mark_home_server_alive(REQUEST *request, home_server_t *home)
-{
-	char buffer[INET6_ADDRSTRLEN];
-
-	home->state = HOME_STATE_ALIVE;
-	home->response_timeouts = 0;
-	trigger_exec(request, home->cs, "home_server.alive", false, NULL);
-	home->currently_outstanding = 0;
-	home->num_sent_pings = 0;
-	home->num_received_pings = 0;
-	gettimeofday(&home->revive_time, NULL);
-
-	fr_event_delete(el, &home->ev);
-
-	RPROXY("Marking home server %s port %d alive",
-	       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-			 &request->proxy->packet->dst_ipaddr.ipaddr,
-			 buffer, sizeof(buffer)),
-	       request->proxy->packet->dst_port);
-}
-
-
 int request_proxy_reply(RADIUS_PACKET *reply)
 {
 	RADIUS_PACKET **packet_p;
@@ -3679,6 +3659,28 @@ static void home_trigger(home_server_t *home, char const *trigger)
 	talloc_free(request);
 }
 
+static void mark_home_server_alive(REQUEST *request, home_server_t *home)
+{
+	char buffer[INET6_ADDRSTRLEN];
+
+	home->state = HOME_STATE_ALIVE;
+	home->response_timeouts = 0;
+	trigger_exec(request, home->cs, "home_server.alive", false, NULL);
+	home->currently_outstanding = 0;
+	home->num_sent_pings = 0;
+	home->num_received_pings = 0;
+	gettimeofday(&home->revive_time, NULL);
+
+	fr_event_delete(el, &home->ev);
+
+	RPROXY("Marking home server %s port %d alive",
+	       inet_ntop(request->proxy->packet->dst_ipaddr.af,
+			 &request->proxy->packet->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       request->proxy->packet->dst_port);
+}
+
+
 static void mark_home_server_zombie(home_server_t *home, struct timeval *now, struct timeval *response_window)
 {
 	time_t start;
@@ -3729,28 +3731,6 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 }
 
 
-void revive_home_server(void *ctx, UNUSED struct timeval *now)
-{
-	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
-	char buffer[INET6_ADDRSTRLEN];
-
-	home->state = HOME_STATE_ALIVE;
-	home->response_timeouts = 0;
-	home_trigger(home, "home_server.alive");
-	home->currently_outstanding = 0;
-	gettimeofday(&home->revive_time, NULL);
-
-	/*
-	 *	Delete any outstanding events.
-	 */
-	ASSERT_MASTER;
-	fr_event_delete(el, &home->ev);
-
-	PROXY("Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
-	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer)),
-	      home->port);
-}
-
 void mark_home_server_dead(home_server_t *home, struct timeval *when)
 {
 	int previous_state = home->state;
@@ -3791,6 +3771,29 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 		ASSERT_MASTER;
 		INSERT_EVENT(revive_home_server, home);
 	}
+}
+
+
+void revive_home_server(void *ctx, UNUSED struct timeval *now)
+{
+	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
+	char buffer[INET6_ADDRSTRLEN];
+
+	home->state = HOME_STATE_ALIVE;
+	home->response_timeouts = 0;
+	home_trigger(home, "home_server.alive");
+	home->currently_outstanding = 0;
+	gettimeofday(&home->revive_time, NULL);
+
+	/*
+	 *	Delete any outstanding events.
+	 */
+	ASSERT_MASTER;
+	fr_event_delete(el, &home->ev);
+
+	PROXY("Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
+	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer)),
+	      home->port);
 }
 
 
