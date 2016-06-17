@@ -582,10 +582,11 @@ void request_enqueue(REQUEST *request)
 	thread_pool.active_threads++;
 
 	thread_pool.requests++;
-	pthread_mutex_unlock(&thread_pool.mutex);
 
-	thread->status = THREAD_ACTIVE;
 	thread->request = request;
+	thread->status = THREAD_ACTIVE;
+
+	pthread_mutex_unlock(&thread_pool.mutex);
 
 	/*
 	 *	There's one more request in the queue.
