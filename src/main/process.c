@@ -3263,7 +3263,7 @@ static int request_proxy_send(REQUEST *request)
 				request->proxy->packet->dst_port,
 				(int) response_window->tv_sec, (int) response_window->tv_usec);
 
-
+		request->proxy->response_delay = *response_window;
 	}
 
 	gettimeofday(&request->proxy->packet->timestamp, NULL);
@@ -3800,11 +3800,8 @@ void revive_home_server(void *ctx, UNUSED struct timeval *now)
 static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 {
 	struct timeval when;
-	struct timeval *response_window = NULL;
 	home_server_t *home = request->proxy->home_server;
 	char buffer[INET6_ADDRSTRLEN];
-
-	response_window = request_response_window(request);
 
 #ifdef WITH_TCP
 	if (!request->proxy->listener ||
@@ -3823,7 +3820,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 #endif
 	{
 		/*
-		 *	Wake up "response_window" time in the future.
+		 *	Wake up "response_delay" time in the future.
 		 *	i.e. when MY packet hasn't received a response.
 		 *
 		 *	Note that we DO NOT mark the home server as
@@ -3831,7 +3828,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		 *	responding to other (better looking) packets.
 		 */
 		when = request->proxy->packet->timestamp;
-		timeradd(&when, response_window, &when);
+		timeradd(&when, &request->proxy->response_delay, &when);
 
 		/*
 		 *	Not at the response window.  Set the timer for
@@ -3852,7 +3849,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 
 	/*
 	 *	If we haven't received any packets for
-	 *	"response_window", then mark the home server
+	 *	"response_delay", then mark the home server
 	 *	as zombie.
 	 *
 	 *	This check should really be part of a home
@@ -3863,7 +3860,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		) {
 		home->response_timeouts++;
 		if (home->response_timeouts >= home->max_response_timeouts)
-			mark_home_server_zombie(home, now, response_window);
+			mark_home_server_zombie(home, now, &request->proxy->response_delay);
 	}
 
 	FR_STATS_TYPE_INC(home->stats.total_timeouts);
@@ -3996,7 +3993,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
  *		proxy_wait_for_reply;
  *
  *		proxy_wait_for_reply -> retransmit_proxied_request [ label = "DUP", arrowhead = "none" ];
- *		proxy_wait_for_reply -> proxy_no_reply [ label = "TIMER >= response_window" ];
+ *		proxy_wait_for_reply -> proxy_no_reply [ label = "TIMER >= response_delay" ];
  *		proxy_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
  *		proxy_wait_for_reply -> proxy_queued [ label = "PROXY_REPLY" arrowhead = "none"];
  *		proxy_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
@@ -4467,7 +4464,7 @@ static bool coa_keep_waiting(REQUEST *request)
  *	digraph coa_wait_for_reply {
  *		coa_wait_for_reply;
  *
- *		coa_wait_for_reply -> coa_no_reply [ label = "TIMER >= response_window" ];
+ *		coa_wait_for_reply -> coa_no_reply [ label = "TIMER >= response_delay" ];
  *		coa_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
  *		coa_wait_for_reply -> coa_queued [ label = "PROXY_REPLY" arrowhead = "none"];
  *		coa_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
