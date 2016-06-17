@@ -29,33 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/rad_assert.h>
 
-/*
- *	Other OS's have sem_init, OS X doesn't.
- */
-#ifdef HAVE_SEMAPHORE_H
-#include <semaphore.h>
-#endif
-
-#ifdef __APPLE__
-#  ifdef WITH_GCD
-#    include <dispatch/dispatch.h>
-#  endif
-#  include <mach/task.h>
-#  include <mach/mach_init.h>
-#  include <mach/semaphore.h>
-
-#  ifndef WITH_GCD
-#    undef sem_t
-#    define sem_t semaphore_t
-#    undef sem_init
-#    define sem_init(s,p,c) semaphore_create(mach_task_self(),s,SYNC_POLICY_FIFO,c)
-#    undef sem_wait
-#    define sem_wait(s) semaphore_wait(*s)
-#    undef sem_post
-#    define sem_post(s) semaphore_signal(*s)
-#  endif	/* WITH_GCD */
-#endif	/* __APPLE__ */
-
 #ifdef HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
 #endif
@@ -75,8 +48,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifndef WITH_GCD
-#  define SEMAPHORE_LOCKED	(0)
-
 /*
  *	Threads start off in the idle list.
  *
@@ -120,8 +91,6 @@ typedef struct THREAD_HANDLE {
 	unsigned int		request_count;	//!< The number of requests that this thread has handled.
 	time_t			timestamp;	//!< When the thread started executing.
 	REQUEST			*request;
-
-	sem_t			semaphore;	//!< used to signal the thread when there are new requests
 } THREAD_HANDLE;
 
 #endif	/* WITH_GCD */
@@ -676,15 +645,10 @@ void request_enqueue(REQUEST *request)
 	pthread_mutex_unlock(&thread_pool.mutex);
 
 	/*
-	 *	There's one more request in the queue.
-	 *
-	 *	Note that we're not touching the queue any more, so
-	 *	the semaphore post is outside of the mutex.  This also
-	 *	means that when the thread wakes up and tries to lock
-	 *	the mutex, it will be unlocked, and there won't be
-	 *	contention.
+	 *	Tell the thread that there's a request available for
+	 *	it.
 	 */
-	sem_post(&thread->semaphore);
+	pthread_kill(thread->pthread_id, SIGALRM);
 }
 
 
@@ -727,11 +691,15 @@ static REQUEST *request_dequeue(void)
 	return request;
 }
 
+static void sig_alarm(UNUSED int signal)
+{
+	reset_signal(SIGALRM, sig_alarm);
+}
 
 /*
  *	The main thread handler for requests.
  *
- *	Wait on the semaphore until we have it, and process the request.
+ *	Wait for a request, process it, and continue.
  */
 static void *thread_handler(void *arg)
 {
@@ -754,23 +722,25 @@ static void *thread_handler(void *arg)
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       thread->thread_num);
 
-		while (sem_wait(&thread->semaphore) != 0) {
+		while (select(0, NULL, NULL, NULL, NULL) < 0) {
 			/*
 			 *	Interrupted system call.  Go back to
 			 *	waiting, but DON'T print out any more
 			 *	text.
 			 */
 			if (errno == EINTR) {
+				if (thread->status == THREAD_CANCELLED) break;
+
 				DEBUG2("Re-wait %d", thread->thread_num);
-				continue;
+				break;
 			}
-			ERROR("Thread %d failed waiting for semaphore: %s: Exiting\n",
+			ERROR("Thread %d failed waiting for request: %s: Exiting\n",
 			      thread->thread_num, fr_syserror(errno));
 
 			rad_assert(thread->status == THREAD_IDLE);
 
 			idle2exited(thread);
-			break;
+			goto done;
 		}
 
 	process:
@@ -882,6 +852,7 @@ static void *thread_handler(void *arg)
 		pthread_mutex_unlock(&thread_pool.mutex);
 	}
 
+done:
 	DEBUG2("Thread %d exiting...", thread->thread_num);
 
 #ifdef HAVE_OPENSSL_ERR_H
@@ -902,9 +873,6 @@ static void *thread_handler(void *arg)
 /*
  *	Spawn a new thread, and place it in the thread pool.
  *	Called with the thread mutex locked...
- *
- *	The thread is started initially in the blocked state, waiting
- *	for the semaphore.
  */
 static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 {
@@ -920,14 +888,6 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	thread->request_count = 0;
 	thread->status = THREAD_IDLE;
 	thread->timestamp = now;
-
-	memset(&thread->semaphore, 0, sizeof(thread->semaphore));
-	rcode = sem_init(&thread->semaphore, 0, SEMAPHORE_LOCKED);
-	if (rcode != 0) {
-		ERROR("Failed to initialize semaphore: %s", fr_syserror(errno));
-		talloc_free(thread);
-		return NULL;
-	}
 
 	/*
 	 *	Create the thread joinable, so that it can be cleaned up
@@ -1135,6 +1095,11 @@ int thread_pool_init(void)
 	 */
 	if (pool_initialized) return 0;
 
+	if (fr_set_signal(SIGALRM, sig_alarm) < 0) {
+		ERROR("Failed setting signal catcher in thread handler: %s", fr_strerror());
+		return -1;
+	}
+
 #ifdef WNOHANG
 	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 		ERROR("FATAL: Failed to initialize wait mutex: %s",
@@ -1239,7 +1204,7 @@ void thread_pool_stop(void)
 		next = thread->next;
 
 		thread->status = THREAD_CANCELLED;
-		sem_post(&thread->semaphore);
+		pthread_kill(thread->pthread_id, SIGALRM);
 
 		pthread_join(thread->pthread_id, NULL);
 		talloc_free(thread);
@@ -1249,7 +1214,7 @@ void thread_pool_stop(void)
 		next = thread->next;
 
 		thread->status = THREAD_CANCELLED;
-		sem_post(&thread->semaphore);
+		pthread_kill(thread->pthread_id, SIGALRM);
 
 		pthread_join(thread->pthread_id, NULL);
 		talloc_free(thread);
@@ -1434,10 +1399,10 @@ static void thread_pool_manage(time_t now)
 		thread->status = THREAD_CANCELLED;
 
 		/*
-		 *	Post an extra semaphore, as a
-		 *	signal to wake up, and exit.
+		 *	Post an extra signal so that the thread wakes
+		 *	up and knows to exit.
 		 */
-		sem_post(&thread->semaphore);
+		pthread_kill(thread->pthread_id, SIGALRM);
 	}
 
 	/*
