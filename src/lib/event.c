@@ -510,7 +510,7 @@ int fr_event_loop(fr_event_list_t *el)
 #ifdef HAVE_KQUEUE
 	struct timespec ts_when, *ts_wake;
 #else
-	int maxfd = 0;
+	int maxfd = -1;
 	fd_set read_fds, master_fds;
 
 	el->changed = true;
