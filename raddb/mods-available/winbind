@@ -23,7 +23,11 @@ winbind {
 	# This configuration option, as the username above, is also
 	# expanded before use.
 	#
-	winbind_domain = ""
+	# If unset then winbind will be queried for the correct value.
+	# If you actually want it blank it should be explicitly set
+	# here.
+	#
+	#winbind_domain = ""
 
 
 	# Group membership checking
