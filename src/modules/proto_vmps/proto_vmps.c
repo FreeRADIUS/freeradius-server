@@ -335,6 +335,11 @@ static int vqp_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 	return 0;
 }
 
+static int vmps_load(void)
+{
+	return fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.vqp");
+}
+
 
 extern rad_protocol_t proto_vmps;
 rad_protocol_t proto_vmps = {
@@ -343,6 +348,8 @@ rad_protocol_t proto_vmps = {
 	.inst_size	= sizeof(listen_socket_t),
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
+
+	.load		= vmps_load,
 	.size		= vqp_packet_size,
 	.compile	= vqp_listen_compile,
 	.parse		= common_socket_parse,

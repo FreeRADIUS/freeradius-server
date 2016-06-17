@@ -836,10 +836,6 @@ do {\
 	DICT_READ_OPTIONAL(main_config.dictionary_dir, "dictionary.dhcp");
 #endif
 
-#ifdef WITH_VMPS
-	DICT_READ_OPTIONAL(main_config.dictionary_dir, "dictionary.vqp");
-#endif
-
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
