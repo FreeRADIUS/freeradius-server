@@ -33,6 +33,7 @@ RCSID("$Id$")
 
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
+#include <grp.h>
 
 static const CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("group_search_username", PW_TYPE_TMPL, rlm_winbind_t, group_username) },
@@ -51,11 +52,197 @@ static const CONF_PARSER module_config[] = {
 
 /** Group comparison for Winbind-Group
  *
+ * @param instance	Instance of this module
+ * @param request	The current request
+ * @param attr		Attribute to look up in group
+ * @param check		Value pair containing group to be searched
+ * @param check_pairs	Unknown
+ * @param reply_pairs	Unknown
+ *
+ * @return
+ *	- 0 user is in group
+ *	- 1 failure or user is not in group
  */
-static int winbind_group_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, UNUSED VALUE_PAIR *check,
-	UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr, VALUE_PAIR *check,
+			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	return 1;
+	rlm_winbind_t		*inst = instance;
+	rlm_rcode_t		rcode = 1;
+	struct wbcContext	*wb_ctx;
+	wbcErr			err;
+	uint32_t		num_groups, i;
+	gid_t			*wbgroups = NULL;
+	char const		*username;
+	char			buffer[512];
+	int			len, domain_len, backslash;
+	char			*ptr;
+
+	RINDENT();
+
+	if (check->vp_length == 0) {
+		REDEBUG("Group name is empty, nothing to check!");
+		goto error;
+	}
+
+	username = ptr = buffer;
+
+	/*
+	 *	Work out what username to check groups for, made up from
+	 *	either winbind_domain and either group_search_username or
+	 *	just User-Name.
+	 */
+
+	/*
+	 *	Include the domain in the username?
+	 */
+	domain_len = 0;
+
+	if (inst->group_add_domain && inst->wb_domain) {
+		/* reserve space for \ if needed, so sizeof() - 1 */
+		len = tmpl_expand(NULL, buffer, sizeof(buffer) - 1, request, inst->wb_domain, NULL, NULL);
+		if (len < 0) {
+			REDEBUG("Unable to expand group_search_username");
+			goto error;
+		}
+
+		domain_len += len;
+
+		if (len > 0) {
+			ptr = buffer + len;
+			*ptr = '\\';
+			ptr++;
+			*ptr = 0;
+			domain_len += 1;
+		}
+	}
+
+
+	/*
+	 *	Sort out what User-Name we are going to use.
+	 */
+	if (inst->group_username) {
+		len = tmpl_expand(NULL, ptr, sizeof(buffer) - domain_len - 1, request, inst->group_username, NULL, NULL);
+		if (len < 0) {
+			RERROR("Unable to expand group_search_username");
+			goto error;
+		}
+	} else {
+		/*
+		 *	This is quite unlikely to work without a domain, but
+		 *	we've not been given much else to work on.
+		 */
+		if (domain_len) {
+			strncpy(ptr, attr->vp_strvalue, sizeof(buffer) - domain_len - 1);
+		} else {
+			RWDEBUG("Searching group with plain username, this will");
+			RWDEBUG("probably fail. Try making sure winbind_domain");
+			RWDEBUG("and group_search_username are both correctly set.");
+			username = attr->vp_strvalue;
+		}
+	}
+
+	/*
+	 *	Get a libwbclient connection from the pool
+	 */
+	wb_ctx = fr_connection_get(inst->wb_pool, request);
+	if (wb_ctx == NULL) {
+		RERROR("Unable to get winbind connection from the pool");
+		goto error;
+	}
+
+	RDEBUG("Trying to find user \"%s\" in group \"%s\"", username, check->vp_strvalue);
+
+	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wbgroups);
+
+	fr_connection_release(inst->wb_pool, request, wb_ctx);
+
+	switch (err) {
+	case WBC_ERR_SUCCESS:
+		rcode = 0;
+		RDEBUG2("Successfully retrieved list of user's groups");
+		break;
+	case WBC_ERR_NO_MEMORY:
+		RDEBUG2("Error: Not enough memory");
+		break;
+	case WBC_ERR_WINBIND_NOT_AVAILABLE:
+		RDEBUG2("Error: Unable to contact winbind");
+		break;
+	case WBC_ERR_DOMAIN_NOT_FOUND:
+		/* Yeah, weird. libwbclient returns this if the username is unknown */
+		RDEBUG2("Error: User or Domain not found");
+		break;
+	case WBC_ERR_UNKNOWN_USER:
+		RDEBUG2("Error: User can not be found");
+		break;
+	default:
+		RDEBUG2("Error finding groups (wbcErr = %d)", err);
+		break;
+	}
+
+	if (!num_groups) {
+		RDEBUG("No groups returned");
+	}
+
+	if (rcode) goto finish;
+	rcode = 1;
+
+	/*
+	 *	See if any of the groups match
+	 */
+
+	/*
+	 * We try and find where the '\' is in the returned group, which saves
+	 * looking for it each time. There seems to be no way to get a list of
+	 * groups without the domain in them, but at least the backslash is
+	 * always going to be in the same place.
+	 *
+	 * Maybe there should be an option to include the domain in the compared
+	 * group name in case people have multiple domains?
+	 */
+	backslash = domain_len - 1;
+
+	for (i = 0; i < num_groups; i++) {
+		struct group	*gptr;
+		char		*gname;
+		bool		found = false;
+
+		/* Get the group name from the (fake winbind) gid */
+		err = wbcCtxGetgrgid(wb_ctx, wbgroups[i], &gptr);
+		RDEBUG3("Got group id: %d, name: %s", wbgroups[i], gptr->gr_name);
+
+		gname = gptr->gr_name;
+
+		/* Find the backslash in the returned group name */
+		if (gptr->gr_name[backslash] == '\\') {
+			gname = gptr->gr_name + backslash + 1;
+		} else {
+			if ((gname = index(gptr->gr_name, '\\')) != NULL) {
+				gname++;
+				backslash = gname - gptr->gr_name - 1;
+			}
+		}
+
+		/* See if the group matches */
+		RDEBUG3("  Checking plain group name: '%s'", gname);
+		if (!strcasecmp(gname, check->vp_strvalue)) {
+			RDEBUG("Found matching group: '%s'", gname);
+			found = 1;
+			rcode = 0;
+		}
+		wbcFreeMemory(gptr);
+
+		/* Short-circuit to save unnecessary enumeration */
+		if (found) break;
+	}
+
+	if (rcode) RDEBUG("No groups found that match");
+
+finish:
+	wbcFreeMemory(wbgroups);
+
+error:
+	REXDENT();
+	return rcode;
 }
 
 
