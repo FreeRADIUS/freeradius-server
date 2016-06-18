@@ -421,7 +421,7 @@ static void thread_enforce_max_times(time_t now)
 			      request->number,
 			      request->component ? request->component : "<core>",
 			      request->module ? request->module : "<core>");
-			trigger_exec(request, NULL, "server.thread.unresponsive", true, NULL);
+			trigger_exec(NULL, NULL, "server.thread.unresponsive", true, NULL);
 
 			request->master_state = REQUEST_STOP_PROCESSING;
 			request->process(request, FR_ACTION_DONE);
