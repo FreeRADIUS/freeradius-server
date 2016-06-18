@@ -765,7 +765,6 @@ static void *thread_handler(void *arg)
 		rad_assert(thread->status == THREAD_ACTIVE);
 		rad_assert(thread->request != NULL);
 		request = thread->request;
-		request->el = el;
 
 #ifdef WITH_ACCOUNTING
 		if ((thread->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
