@@ -155,8 +155,6 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wbgroups);
 
-	fr_connection_release(inst->wb_pool, request, wb_ctx);
-
 	switch (err) {
 	case WBC_ERR_SUCCESS:
 		rcode = 0;
@@ -240,9 +238,11 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 
 finish:
 	wbcFreeMemory(wbgroups);
+	fr_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
 	REXDENT();
+
 	return rcode;
 }
 
