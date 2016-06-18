@@ -90,6 +90,7 @@ typedef struct THREAD_HANDLE {
 	int			status;		//!< Is the thread running or exited?
 	unsigned int		request_count;	//!< The number of requests that this thread has handled.
 	time_t			timestamp;	//!< When the thread started executing.
+	time_t			max_time;	//!< for current request
 	REQUEST			*request;
 } THREAD_HANDLE;
 
@@ -264,6 +265,8 @@ static void reap_children(void)
 #ifndef WITH_GCD
 static void idle2active(THREAD_HANDLE *thread)
 {
+	thread->status = THREAD_IDLE;
+
 	/*
 	 *	Remove the thread from the head of the idle list.
 	 */
@@ -405,17 +408,15 @@ static void thread_enforce_max_times(time_t now)
 
 	last_checked = now;
 
-	when = now - main_config.max_request_time;
-
 	/*
 	 *	Check the active threads for requests > max_time
 	 */
 	for (thread = thread_pool.active_head;
 	     thread != NULL;
 	     thread = thread->next) {
-		request = thread->request;
+		if (thread->max_time < now) {
+			request = thread->request;
 
-		if (request->packet->timestamp.tv_sec < when) {
 			ERROR("Unresponsive child for request %" PRIu64 ", in component %s module %s",
 			      request->number,
 			      request->component ? request->component : "<core>",
@@ -445,6 +446,7 @@ static void thread_enforce_max_times(time_t now)
 	/*
 	 *	Check the idle heap for requests > max_time
 	 */
+	when = now - main_config.max_request_time;
 	while ((request = fr_heap_peek(thread_pool.idle_heap)) != NULL) {
 
 		if (request->packet->timestamp.tv_sec < when) break;
@@ -641,6 +643,7 @@ void request_enqueue(REQUEST *request)
 	idle2active(thread);
 
 	thread->request = request;
+	thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 
 	pthread_mutex_unlock(&thread_pool.mutex);
 
@@ -703,7 +706,14 @@ static void sig_alarm(UNUSED int signal)
  */
 static void *thread_handler(void *arg)
 {
+	int rcode;
 	THREAD_HANDLE *thread = (THREAD_HANDLE *) arg;
+	TALLOC_CTX *ctx;
+	fr_event_list_t *el;
+
+	ctx = talloc_init("thread_pool");
+	
+	el = fr_event_list_create(ctx, NULL);
 
 	/*
 	 *	Loop forever, until told to exit.
@@ -721,19 +731,14 @@ static void *thread_handler(void *arg)
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       thread->thread_num);
-
-		while (select(0, NULL, NULL, NULL, NULL) < 0) {
-			/*
-			 *	Interrupted system call.  Go back to
-			 *	waiting, but DON'T print out any more
-			 *	text.
-			 */
-			if (errno == EINTR) {
-				if (thread->status == THREAD_CANCELLED) break;
-
-				DEBUG2("Re-wait %d", thread->thread_num);
-				break;
-			}
+		
+		/*
+		 *	Run until we get a signal.  Any registered
+		 *	timer events or FD events will also be
+		 *	serviced here.
+		 */
+		rcode = fr_event_wait(el);
+		if (rcode < 0) {
 			ERROR("Thread %d failed waiting for request: %s: Exiting\n",
 			      thread->thread_num, fr_syserror(errno));
 
@@ -742,6 +747,8 @@ static void *thread_handler(void *arg)
 			idle2exited(thread);
 			goto done;
 		}
+
+		rad_assert(rcode == 0);
 
 	process:
 		/*
@@ -757,6 +764,7 @@ static void *thread_handler(void *arg)
 
 		rad_assert(thread->request != NULL);
 		request = thread->request;
+		request->el = el;
 
 #ifdef WITH_ACCOUNTING
 		if ((thread->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
@@ -854,6 +862,8 @@ static void *thread_handler(void *arg)
 
 done:
 	DEBUG2("Thread %d exiting...", thread->thread_num);
+
+	talloc_free(ctx);
 
 #ifdef HAVE_OPENSSL_ERR_H
 	/*
