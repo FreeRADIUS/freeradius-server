@@ -762,6 +762,7 @@ static void *thread_handler(void *arg)
 		 */
 		if (thread_pool.stop_flag) break;
 
+		rad_assert(thread->status == THREAD_ACTIVE);
 		rad_assert(thread->request != NULL);
 		request = thread->request;
 		request->el = el;
