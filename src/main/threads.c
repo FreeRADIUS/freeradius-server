@@ -61,7 +61,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  *	When the server is reaching overload, there are no threads in
  *	the idle queue.  In that case, the request is added to the
- *	idle_heap.  Any active threads will check the heap FIRST,
+ *	backlog.  Any active threads will check the heap FIRST,
  *	before moving themselves to the idle list as described above.
  *	If there are requests in the heap, the thread stays in the
  *	active list, and processes the packet.
@@ -154,7 +154,7 @@ typedef struct THREAD_POOL {
 	 *
 	 *	Threads start off on the idle list.  As packets come
 	 *	in, the threads go to the active list.  If the idle
-	 *	list is empty, packets go to the idle_heap.
+	 *	list is empty, packets go to the backlog.
 	 */
 	pthread_mutex_t	mutex;
 
@@ -173,7 +173,7 @@ typedef struct THREAD_POOL {
 	uint32_t	idle_threads;
 	uint32_t	exited_threads;
 
-	fr_heap_t	*idle_heap;
+	fr_heap_t	*backlog;
 
 	THREAD_HANDLE	*idle_head;
 	THREAD_HANDLE	*idle_tail;
@@ -428,7 +428,7 @@ static void thread_enforce_max_times(time_t now)
 		}
 	}
 
-	request = fr_heap_peek(thread_pool.idle_heap);
+	request = fr_heap_peek(thread_pool.backlog);
 	if (!request) return;
 
 	/*
@@ -440,18 +440,18 @@ static void thread_enforce_max_times(time_t now)
 		last_complained = now;
 
 		ERROR("%zd requests have been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		      fr_heap_num_elements(thread_pool.idle_heap), time_blocked);
+		      fr_heap_num_elements(thread_pool.backlog), time_blocked);
 	}
 
 	/*
 	 *	Check the idle heap for requests > max_time
 	 */
 	when = now - main_config.max_request_time;
-	while ((request = fr_heap_peek(thread_pool.idle_heap)) != NULL) {
+	while ((request = fr_heap_peek(thread_pool.backlog)) != NULL) {
 
 		if (request->packet->timestamp.tv_sec < when) break;
 
-		(void) fr_heap_extract(thread_pool.idle_heap, request);
+		(void) fr_heap_extract(thread_pool.backlog, request);
 		thread_pool.num_queued--;
 
 		request->master_state = REQUEST_STOP_PROCESSING;
@@ -608,7 +608,7 @@ void request_enqueue(REQUEST *request)
 	 *	request_dequeue()
 	 */
 	if (thread_pool.num_queued || !thread_pool.idle_head) {
-		if (!fr_heap_insert(thread_pool.idle_heap, request)) {
+		if (!fr_heap_insert(thread_pool.backlog, request)) {
 			pthread_mutex_unlock(&thread_pool.mutex);
 			goto done;
 		}
@@ -660,7 +660,7 @@ void request_queue_extract(REQUEST *request)
 	if (request->heap_id < 0) return;
 	
 	pthread_mutex_lock(&thread_pool.mutex);
-	(void) fr_heap_extract(thread_pool.idle_heap, request);
+	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
 	pthread_mutex_unlock(&thread_pool.mutex);
 }
@@ -680,13 +680,13 @@ static REQUEST *request_dequeue(void)
 	/*
 	 *	Grab the first entry.
 	 */
-	request = fr_heap_peek(thread_pool.idle_heap);
+	request = fr_heap_peek(thread_pool.backlog);
 	if (!request) {
 		rad_assert(thread_pool.num_queued == 0);
 		return NULL;
 	}
 
-	(void) fr_heap_extract(thread_pool.idle_heap, request);
+	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
 
 	VERIFY_REQUEST(request);
@@ -1136,8 +1136,8 @@ int thread_pool_init(void)
 		return -1;
 	}
 
-	thread_pool.idle_heap = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
-	if (!thread_pool.idle_heap) {
+	thread_pool.backlog = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
+	if (!thread_pool.backlog) {
 		ERROR("FATAL: Failed to initialize the incoming queue.");
 		return -1;
 	}
@@ -1230,7 +1230,7 @@ void thread_pool_stop(void)
 		talloc_free(thread);
 	}
 
-	fr_heap_delete(thread_pool.idle_heap);
+	fr_heap_delete(thread_pool.backlog);
 
 #  ifdef WNOHANG
 	fr_hash_table_free(thread_pool.waiters);
@@ -1530,7 +1530,7 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 		 *	fixed in size.
 		 */
 		memset(array, 0, sizeof(array[0]) * RAD_LISTEN_MAX);
-		array[0] = fr_heap_num_elements(thread_pool.idle_heap);
+		array[0] = fr_heap_num_elements(thread_pool.backlog);
 
 		gettimeofday(&now, NULL);
 
