@@ -156,15 +156,11 @@ typedef struct THREAD_POOL {
 	 *	in, the threads go to the active list.  If the idle
 	 *	list is empty, packets go to the backlog.
 	 */
-	pthread_mutex_t	mutex;
-
 	bool		spawning;
 	time_t		managed;
 
 	uint32_t	max_queue_size;
 	uint32_t	num_queued;
-
-	uint32_t        requests;
 
 	fr_heap_cmp_t	heap_cmp;
 
@@ -173,14 +169,18 @@ typedef struct THREAD_POOL {
 	uint32_t	idle_threads;
 	uint32_t	exited_threads;
 
+	pthread_mutex_t	backlog_mutex;
 	fr_heap_t	*backlog;
 
+	pthread_mutex_t	idle_mutex;
 	THREAD_HANDLE	*idle_head;
 	THREAD_HANDLE	*idle_tail;
 
+	pthread_mutex_t	active_mutex;
 	THREAD_HANDLE	*active_head;
 	THREAD_HANDLE	*active_tail;
 
+	pthread_mutex_t	exited_mutex;
 	THREAD_HANDLE	*exited_head;
 	THREAD_HANDLE	*exited_tail;
 #endif	/* WITH_GCD */
@@ -263,46 +263,9 @@ static void reap_children(void)
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
-static void idle2active(THREAD_HANDLE *thread)
-{
-	thread->status = THREAD_IDLE;
-
-	/*
-	 *	Remove the thread from the head of the idle list.
-	 */
-	rad_assert(thread->prev == NULL);
-
-	thread_pool.idle_head = thread->next;
-	if (thread->next) {
-		thread->next->prev = NULL;
-	} else {
-		rad_assert(thread_pool.idle_tail == thread);
-		thread_pool.idle_tail = thread->prev;
-		rad_assert(thread_pool.idle_threads == 1);
-	}
-	thread_pool.idle_threads--;
-
-	/*
-	 *	Move the thread to the head of the active list.
-	 */
-	thread->next = thread_pool.active_head;
-	if (thread->next) {
-		rad_assert(thread_pool.active_tail != NULL);
-		thread->next->prev = thread;
-	} else {
-		rad_assert(thread_pool.active_tail == NULL);
-		thread_pool.active_tail = thread;
-	}
-	thread_pool.active_head = thread;
-	thread_pool.active_threads++;
-
-	thread_pool.requests++;
-
-	thread->status = THREAD_ACTIVE;
-}
-
 static void idle2exited(THREAD_HANDLE *thread)
 {
+	pthread_mutex_lock(&thread_pool.idle_mutex);
 	/*
 	 *	Remove ourselves from the idle list
 	 */
@@ -324,10 +287,12 @@ static void idle2exited(THREAD_HANDLE *thread)
 		rad_assert(thread_pool.idle_threads == 1);
 	}
 	thread_pool.idle_threads--;
+	pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 	/*
 	 *	Add the thread to the tail of the exited list.
 	 */
+	pthread_mutex_lock(&thread_pool.exited_mutex);
 	if (thread_pool.exited_tail) {
 		thread->prev = thread_pool.exited_tail;
 		thread->prev->next = thread;
@@ -341,48 +306,9 @@ static void idle2exited(THREAD_HANDLE *thread)
 	thread_pool.total_threads--;
 
 	thread->status = THREAD_CANCELLED;
+	pthread_mutex_unlock(&thread_pool.exited_mutex);
 }
 
-static void active2idle(THREAD_HANDLE *thread)
-{
-	if (thread->prev) {
-		rad_assert(thread_pool.active_head != thread);
-		thread->prev->next = thread->next;
-		
-	} else {
-		rad_assert(thread_pool.active_head == thread);
-		thread_pool.active_head = thread->next;
-	}
-
-	if (thread->next) {
-		rad_assert(thread_pool.active_tail != thread);
-		thread->next->prev = thread->prev;
-	} else {
-		rad_assert(thread_pool.active_tail == thread);
-		thread_pool.active_tail = thread->prev;
-	}
-	thread_pool.active_threads--;
-
-	/*
-	 *	Insert it into the head of the idle list.
-	 */
-	thread->prev = NULL;
-	thread->next = thread_pool.idle_head;
-	if (thread->next) {
-		rad_assert(thread_pool.idle_tail != NULL);
-		thread->next->prev = thread;
-	} else {
-		rad_assert(thread_pool.idle_tail == NULL);
-		thread_pool.idle_tail = thread;
-	}
-	thread_pool.idle_head = thread;
-	thread_pool.idle_threads++;
-
-	thread->status = THREAD_IDLE;
-}
-
-
-static REQUEST *request_dequeue(void);
 
 /*
  *	The only time a request can be blocked is when it's being run
@@ -403,6 +329,8 @@ static void thread_enforce_max_times(time_t now)
 
 	static time_t last_checked = 0;
 	static time_t last_complained = 0;
+
+// FIXME MUTEX ISSUES
 
 	if (last_checked == now) return;
 
@@ -497,32 +425,87 @@ void request_enqueue(REQUEST *request)
 
 	/*
 	 *	Give the request to a thread, doing as little work as
-	 *	possible in the contended region.
+	 *	possible in the contended regions.
 	 */
-	pthread_mutex_lock(&thread_pool.mutex);
-
-	thread_enforce_max_times(time(NULL));
-
-	/*
-	 *	If we're too busy, don't do anything.
-	 */
-	if ((thread_pool.num_queued + 1) >= thread_pool.max_queue_size) {
-		pthread_mutex_unlock(&thread_pool.mutex);
+	pthread_mutex_lock(&thread_pool.idle_mutex);
+	if (thread_pool.idle_head) {
+		/*
+		 *	Remove the thread from the idle list.
+		 */
+		thread = thread_pool.idle_head;
+		thread_pool.idle_head = thread->next;
+		if (thread->next) {
+			thread->next->prev = NULL;
+		} else {
+			rad_assert(thread_pool.idle_tail == thread);
+			thread_pool.idle_tail = thread->prev;
+			rad_assert(thread_pool.idle_threads == 1);
+		}
+		thread_pool.idle_threads--;
+		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 		/*
-		 *	Mark the request as done.
+		 *	Tell the thread about the request
 		 */
+		thread->request = request;
+		thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+
+		/*
+		 *	Add the thread to the head of the active list.
+		 */
+		pthread_mutex_lock(&thread_pool.active_mutex);
+		thread->next = thread_pool.active_head;
+		if (thread->next) {
+			rad_assert(thread_pool.active_tail != NULL);
+			thread->next->prev = thread;
+		} else {
+			rad_assert(thread_pool.active_tail == NULL);
+			thread_pool.active_tail = thread;
+		}
+		thread_pool.active_head = thread;
+		thread_pool.active_threads++;
+		thread->status = THREAD_ACTIVE;
+		pthread_mutex_unlock(&thread_pool.active_mutex);
+
+		/*
+		 *	Tell the thread that there's a request available for
+		 *	it, once we're done all of the above work.
+		 */
+		pthread_kill(thread->pthread_id, SIGALRM);
+		return;
+	}
+
+	/*
+	 *	No idle threads, add the request to the backlog.
+	 */
+	pthread_mutex_unlock(&thread_pool.idle_mutex);
+
+//	thread_enforce_max_times(time(NULL));
+
+
+	/*
+	 *	If there are too many requests in the backlog, discard
+	 *	this one.  Note that we do these checks without a
+	 *	mutex, as if the backlog is completely full, it's OK
+	 *	to err on the side of tossing packets.
+	 */
+	if ((thread_pool.num_queued + 1) >= thread_pool.max_queue_size) {
 		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
-
 	done:
 		request->master_state = REQUEST_STOP_PROCESSING;
 		request->process(request, FR_ACTION_DONE);
 		return;
 	}
 
+
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
+	/*
+	 *	We MAY automatically limit accounting packets.  Do
+	 *	this before we try inserting the request into the
+	 *	backlog.
+	 */
 	if (thread_pool.auto_limit_acct) {
 		struct timeval now;
 
@@ -579,7 +562,6 @@ void request_enqueue(REQUEST *request)
 			 *	roll, we throw the packet away.
 			 */
 			if (thread_pool.num_queued > keep) {
-				pthread_mutex_unlock(&thread_pool.mutex);
 				goto done;
 			}
 		}
@@ -590,68 +572,25 @@ void request_enqueue(REQUEST *request)
 		 *	Calculate the instantaneous arrival rate into
 		 *	the queue.
 		 */
+		pthread_mutex_lock(&thread_pool.backlog_mutex);
 		thread_pool.pps_in.pps = rad_pps(&thread_pool.pps_in.pps_old,
 						 &thread_pool.pps_in.pps_now,
 						 &thread_pool.pps_in.time_old,
 						 &now);
 
 		thread_pool.pps_in.pps_now++;
-	}
+	} else
 #endif	/* WITH_ACCOUNTING */
 #endif
 
-	/*
-	 *	If there's a queue, OR no idle threads, put the
-	 *	request into the queue, in priority order.
-	 *
-	 *	@fixme: warn of blocked threads here, instead of in
-	 *	request_dequeue()
-	 */
-	if (thread_pool.num_queued || !thread_pool.idle_head) {
-		if (!fr_heap_insert(thread_pool.backlog, request)) {
-			pthread_mutex_unlock(&thread_pool.mutex);
-			goto done;
-		}
-
-		thread_pool.num_queued++;
-
-		if (!thread_pool.idle_head) {
-			pthread_mutex_unlock(&thread_pool.mutex);
-			return;
-		}
-
-		/*
-		 *	Else there is an idle thread.  Pop a request
-		 *	off of the top of the heap, and pass it to the
-		 *	idle thread.
-		 */
-		thread = thread_pool.idle_head;
-		request = request_dequeue();
-		if (!request) {
-			pthread_mutex_unlock(&thread_pool.mutex);
-			return;
-		}
-
-	} else {
-		/*
-		 *	Grab the first idle thread.
-		 */
-		thread = thread_pool.idle_head;
-		rad_assert(thread->status == THREAD_IDLE);
+	pthread_mutex_lock(&thread_pool.backlog_mutex);
+	if (fr_heap_insert(thread_pool.backlog, request) < 0) {
+		pthread_mutex_unlock(&thread_pool.backlog_mutex);
+		goto done;
 	}
 
-	idle2active(thread);
-
-	thread->request = request;
-	thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-
-	pthread_mutex_unlock(&thread_pool.mutex);
-
-	/*
-	 *	Tell the thread that there's a request available for
-	 *	it.
-	 */
-	pthread_kill(thread->pthread_id, SIGALRM);
+	thread_pool.num_queued++;
+	pthread_mutex_unlock(&thread_pool.backlog_mutex);
 }
 
 
@@ -659,17 +598,15 @@ void request_queue_extract(REQUEST *request)
 {
 	if (request->heap_id < 0) return;
 	
-	pthread_mutex_lock(&thread_pool.mutex);
+	pthread_mutex_lock(&thread_pool.backlog_mutex);
 	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
-	pthread_mutex_unlock(&thread_pool.mutex);
+	pthread_mutex_unlock(&thread_pool.backlog_mutex);
 }
 
 
 /*
  *	Remove a request from the queue.
- *
- *	Called with the thread mutex held.
  */
 static REQUEST *request_dequeue(void)
 {
@@ -680,14 +617,17 @@ static REQUEST *request_dequeue(void)
 	/*
 	 *	Grab the first entry.
 	 */
+	pthread_mutex_lock(&thread_pool.backlog_mutex);
 	request = fr_heap_peek(thread_pool.backlog);
 	if (!request) {
+		pthread_mutex_unlock(&thread_pool.backlog_mutex);
 		rad_assert(thread_pool.num_queued == 0);
 		return NULL;
 	}
 
 	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
+	pthread_mutex_unlock(&thread_pool.backlog_mutex);
 
 	VERIFY_REQUEST(request);
 
@@ -814,10 +754,59 @@ static void *thread_handler(void *arg)
 		 */
 		ERR_clear_error();
 #  endif
+		
+		/*
+		 *	Try to get a packet from the backlog.  If we
+		 *	have one, update the max time for the request,
+		 *	and continue processing.
+		 */
+		request = request_dequeue();
+		if (request) {
+			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+			thread->request = request;
+			goto process;
+		}
 
-		pthread_mutex_lock(&thread_pool.mutex);
-
+		/*
+		 *	Remove the thread from the active list.
+		 */
+		pthread_mutex_lock(&thread_pool.active_mutex);
 		thread->request = NULL;
+		if (thread->prev) {
+			rad_assert(thread_pool.active_head != thread);
+			thread->prev->next = thread->next;
+		} else {
+			rad_assert(thread_pool.active_head == thread);
+			thread_pool.active_head = thread->next;
+		}
+
+		if (thread->next) {
+			rad_assert(thread_pool.active_tail != thread);
+			thread->next->prev = thread->prev;
+		} else {
+			rad_assert(thread_pool.active_tail == thread);
+			thread_pool.active_tail = thread->prev;
+		}
+		thread_pool.active_threads--;
+		pthread_mutex_unlock(&thread_pool.active_mutex);
+
+		/*
+		 *      Add it the head of the idle list.
+		 */
+		pthread_mutex_lock(&thread_pool.idle_mutex);
+		thread->prev = NULL;
+		thread->next = thread_pool.idle_head;
+		if (thread->next) {
+			rad_assert(thread_pool.idle_tail != NULL);
+			thread->next->prev = thread;
+		} else {
+			rad_assert(thread_pool.idle_tail == NULL);
+			thread_pool.idle_tail = thread;
+		}
+		thread_pool.idle_head = thread;
+		thread_pool.idle_threads++;
+		thread->status = THREAD_IDLE;
+		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 		/*
 		 *	Manage the thread pool once a second.
@@ -830,34 +819,6 @@ static void *thread_handler(void *arg)
 		if (thread_pool.managed < now) {
 			thread_pool_manage(now);
 		}
-
-		/*
-		 *	If there are requests waiting on the queue,
-		 *	grab one and process it.
-		 */
-		if (thread_pool.num_queued) {
-			request = request_dequeue();
-			if (request) {
-				pthread_mutex_unlock(&thread_pool.mutex);
-				thread->request = request;
-				goto process;
-			}
-
-			/*
-			 *	Else there was an old request which was discard,
-			 *	we're now idle.
-			 */
-			rad_assert(thread_pool.num_queued == 0);
-		}
-
-		/*
-		 *	Remove the thread from the active list.
-		 */
-		rad_assert(thread->status == THREAD_ACTIVE);
-
-		active2idle(thread);
-
-		pthread_mutex_unlock(&thread_pool.mutex);
 	}
 
 done:
@@ -894,7 +855,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 */
 	MEM(thread = talloc_zero(NULL, THREAD_HANDLE));
 
-	thread->thread_num = thread_pool.max_thread_num++;
+	thread->thread_num = thread_pool.max_thread_num++; /* @fixme atomic? */
 	thread->request_count = 0;
 	thread->status = THREAD_IDLE;
 	thread->timestamp = now;
@@ -1129,9 +1090,30 @@ int thread_pool_init(void)
 
 
 #ifndef WITH_GCD
-	rcode = pthread_mutex_init(&thread_pool.mutex, NULL);
+	rcode = pthread_mutex_init(&thread_pool.idle_mutex, NULL);
 	if (rcode != 0) {
-		ERROR("FATAL: Failed to initialize thread pool mutex: %s",
+		ERROR("FATAL: Failed to initialize thread pool idle mutex: %s",
+		       fr_syserror(errno));
+		return -1;
+	}
+
+	rcode = pthread_mutex_init(&thread_pool.active_mutex, NULL);
+	if (rcode != 0) {
+		ERROR("FATAL: Failed to initialize thread pool active mutex: %s",
+		       fr_syserror(errno));
+		return -1;
+	}
+
+	rcode = pthread_mutex_init(&thread_pool.exited_mutex, NULL);
+	if (rcode != 0) {
+		ERROR("FATAL: Failed to initialize thread pool exited mutex: %s",
+		       fr_syserror(errno));
+		return -1;
+	}
+
+	rcode = pthread_mutex_init(&thread_pool.backlog_mutex, NULL);
+	if (rcode != 0) {
+		ERROR("FATAL: Failed to initialize thread pool backlog mutex: %s",
 		       fr_syserror(errno));
 		return -1;
 	}
@@ -1268,8 +1250,11 @@ static void thread_pool_manage(time_t now)
 
 	thread_pool.managed = now;
 
+// FIXME MUTEX ISSUES
+
 	thread_enforce_max_times(now);
 
+	pthread_mutex_lock(&thread_pool.exited_mutex);
 	/*
 	 *	Delete one exited thread.
 	 */
@@ -1295,11 +1280,12 @@ static void thread_pool_manage(time_t now)
 		 *	Deleting old threads can take time, so we join
 		 *	it with the mutex unlocked.
 		 */
-		pthread_mutex_unlock(&thread_pool.mutex);
+		pthread_mutex_unlock(&thread_pool.exited_mutex);
 		pthread_join(thread->pthread_id, NULL);
 		talloc_free(thread);
-		pthread_mutex_lock(&thread_pool.mutex);
+		pthread_mutex_lock(&thread_pool.exited_mutex);
 	}
+	pthread_mutex_unlock(&thread_pool.exited_mutex);
 
 	/*
 	 *	If there are too few spare threads.  Go create some more.
@@ -1327,15 +1313,14 @@ static void thread_pool_manage(time_t now)
 		for (i = 0; i < total; i++) {
 			thread_pool.spawning = true;
 
-			pthread_mutex_unlock(&thread_pool.mutex);
 			thread = spawn_thread(now, 1);
-			pthread_mutex_lock(&thread_pool.mutex);
 
 			thread_pool.spawning = false;
 
 			/*
 			 *	Insert it into the head of the idle list.
 			 */
+			pthread_mutex_lock(&thread_pool.idle_mutex);
 			thread->prev = NULL;
 			thread->next = thread_pool.idle_head;
 			if (thread->next) {
@@ -1346,7 +1331,11 @@ static void thread_pool_manage(time_t now)
 			}
 			thread_pool.idle_head = thread;
 			thread_pool.idle_threads++;
+			pthread_mutex_unlock(&thread_pool.idle_mutex);
+
+			pthread_mutex_unlock(&thread_pool.exited_mutex);
 			thread_pool.total_threads++;
+			pthread_mutex_unlock(&thread_pool.exited_mutex);
 		}
 
 		return;
@@ -1378,6 +1367,7 @@ static void thread_pool_manage(time_t now)
 		/*
 		 *	Remove the thread from the tail of the idle list.
 		 */
+		pthread_mutex_lock(&thread_pool.idle_mutex);
 		thread = thread_pool.idle_tail;
 		rad_assert(thread->next == NULL);
 
@@ -1389,10 +1379,13 @@ static void thread_pool_manage(time_t now)
 			rad_assert(thread_pool.idle_threads == 1);
 		}
 		thread_pool.idle_threads--;
+		thread->status = THREAD_CANCELLED;
+		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 		/*
 		 *	Add the thread to the tail of the exited list.
 		 */
+		pthread_mutex_lock(&thread_pool.exited_mutex);
 		if (thread_pool.exited_tail) {
 			thread->prev = thread_pool.exited_tail;
 			thread->prev->next = thread;
@@ -1404,9 +1397,7 @@ static void thread_pool_manage(time_t now)
 			thread_pool.exited_tail = thread;
 		}
 		thread_pool.total_threads--;
-
-		rad_assert(thread->status == THREAD_IDLE);
-		thread->status = THREAD_CANCELLED;
+		pthread_mutex_unlock(&thread_pool.exited_mutex);
 
 		/*
 		 *	Post an extra signal so that the thread wakes
