@@ -157,7 +157,6 @@ typedef struct THREAD_POOL {
 	 *	list is empty, packets go to the backlog.
 	 */
 	bool		spawning;
-	time_t		managed;
 
 	uint32_t	max_queue_size;
 	uint32_t	num_queued;
@@ -190,9 +189,9 @@ static THREAD_POOL thread_pool;
 static bool pool_initialized = false;
 
 #ifndef WITH_GCD
-static void thread_pool_manage(time_t now);
 static pid_t thread_fork(void);
 static pid_t thread_waitpid(pid_t pid, int *status);
+static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger);
 #endif
 
 #ifndef WITH_GCD
@@ -263,12 +262,81 @@ static void reap_children(void)
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
-static void idle2exited(THREAD_HANDLE *thread)
+/*
+ *	Remove the thread from the active list.
+ */
+static void unlink_active(THREAD_HANDLE *thread)
 {
-	pthread_mutex_lock(&thread_pool.idle_mutex);
+	pthread_mutex_lock(&thread_pool.active_mutex);
+	thread->request = NULL;
+	if (thread->prev) {
+		rad_assert(thread_pool.active_head != thread);
+		thread->prev->next = thread->next;
+	} else {
+		rad_assert(thread_pool.active_head == thread);
+		thread_pool.active_head = thread->next;
+	}
+
+	if (thread->next) {
+		rad_assert(thread_pool.active_tail != thread);
+		thread->next->prev = thread->prev;
+	} else {
+		rad_assert(thread_pool.active_tail == thread);
+		thread_pool.active_tail = thread->prev;
+	}
+	thread_pool.active_threads--;
+	pthread_mutex_unlock(&thread_pool.active_mutex);
+}
+
+
+/*
+ *	Add the thread to the tail of the exited list.
+ */
+static void link_exited_tail(THREAD_HANDLE *thread)
+{
+	pthread_mutex_lock(&thread_pool.exited_mutex);
+	if (thread_pool.exited_tail) {
+		thread->prev = thread_pool.exited_tail;
+		thread->prev->next = thread;
+		thread_pool.exited_tail = thread;
+	} else {
+		rad_assert(thread_pool.exited_head == NULL);
+		thread_pool.exited_head = thread;
+		thread_pool.exited_tail = thread;
+		thread->prev = NULL;
+	}
+	thread_pool.total_threads--;
+
+	thread->status = THREAD_CANCELLED;
+	pthread_mutex_unlock(&thread_pool.exited_mutex);
+}
+
+
+static void link_idle_head(THREAD_HANDLE *thread)
+{
 	/*
-	 *	Remove ourselves from the idle list
+	 *	Insert it into the head of the idle list.
 	 */
+	thread->prev = NULL;
+	thread->next = thread_pool.idle_head;
+	if (thread->next) {
+		thread->next->prev = thread;
+	} else {
+		rad_assert(thread_pool.idle_tail == NULL);
+		thread_pool.idle_tail = thread;
+	}
+	thread_pool.idle_head = thread;
+	thread_pool.idle_threads++;
+}
+			 
+
+/*
+ *	Remove ourselves from the idle list
+ */
+static void unlink_idle(THREAD_HANDLE *thread, bool do_locking)
+{
+	if (do_locking) pthread_mutex_lock(&thread_pool.idle_mutex);
+
 	if (thread->prev) {
 		rad_assert(thread_pool.idle_head != thread);
 		thread->prev->next = thread->next;
@@ -287,26 +355,8 @@ static void idle2exited(THREAD_HANDLE *thread)
 		rad_assert(thread_pool.idle_threads == 1);
 	}
 	thread_pool.idle_threads--;
-	pthread_mutex_unlock(&thread_pool.idle_mutex);
 
-	/*
-	 *	Add the thread to the tail of the exited list.
-	 */
-	pthread_mutex_lock(&thread_pool.exited_mutex);
-	if (thread_pool.exited_tail) {
-		thread->prev = thread_pool.exited_tail;
-		thread->prev->next = thread;
-		thread_pool.exited_tail = thread;
-	} else {
-		rad_assert(thread_pool.exited_head == NULL);
-		thread_pool.exited_head = thread;
-		thread_pool.exited_tail = thread;
-		thread->prev = NULL;
-	}
-	thread_pool.total_threads--;
-
-	thread->status = THREAD_CANCELLED;
-	pthread_mutex_unlock(&thread_pool.exited_mutex);
+	if (do_locking) pthread_mutex_unlock(&thread_pool.idle_mutex);
 }
 
 
@@ -646,6 +696,7 @@ static void sig_alarm(UNUSED int signal)
 static void *thread_handler(void *arg)
 {
 	int rcode;
+	THREAD_HANDLE *idle;
 	THREAD_HANDLE *thread = (THREAD_HANDLE *) arg;
 	TALLOC_CTX *ctx;
 	fr_event_list_t *el;
@@ -683,7 +734,8 @@ static void *thread_handler(void *arg)
 
 			rad_assert(thread->status == THREAD_IDLE);
 
-			idle2exited(thread);
+			unlink_idle(thread, true);
+			link_exited_tail(thread);
 			goto done;
 		}
 
@@ -772,58 +824,95 @@ static void *thread_handler(void *arg)
 			goto process;
 		}
 
-		/*
-		 *	Remove the thread from the active list.
-		 */
-		pthread_mutex_lock(&thread_pool.active_mutex);
-		thread->request = NULL;
-		if (thread->prev) {
-			rad_assert(thread_pool.active_head != thread);
-			thread->prev->next = thread->next;
-		} else {
-			rad_assert(thread_pool.active_head == thread);
-			thread_pool.active_head = thread->next;
-		}
+		unlink_active(thread);
 
-		if (thread->next) {
-			rad_assert(thread_pool.active_tail != thread);
-			thread->next->prev = thread->prev;
-		} else {
-			rad_assert(thread_pool.active_tail == thread);
-			thread_pool.active_tail = thread->prev;
-		}
-		thread_pool.active_threads--;
-		pthread_mutex_unlock(&thread_pool.active_mutex);
+		now = time(NULL);
 
 		/*
 		 *      Add it the head of the idle list.
 		 */
 		pthread_mutex_lock(&thread_pool.idle_mutex);
-		thread->prev = NULL;
-		thread->next = thread_pool.idle_head;
-		if (thread->next) {
-			rad_assert(thread_pool.idle_tail != NULL);
-			thread->next->prev = thread;
-		} else {
-			rad_assert(thread_pool.idle_tail == NULL);
-			thread_pool.idle_tail = thread;
+
+		/*
+		 *	There are too few spare threads.  Create an extra one now.
+		 *	We create new threads aggressively, and clean them up slowly.
+		 */
+		if (!thread_pool.spawning &&
+		    (thread_pool.total_threads < thread_pool.max_threads) &&
+		    ((thread_pool.idle_threads + 1) < thread_pool.min_spare_threads)) {
+			thread_pool.spawning = true;
+
+			pthread_mutex_unlock(&thread_pool.idle_mutex);
+			idle = spawn_thread(now, 1);
+			pthread_mutex_lock(&thread_pool.idle_mutex);
+
+			thread_pool.total_threads++; /* FIXME atomic */
+			link_idle_head(idle);
+		} else		/* don't check for deleted threads if we just created one */
+
+		/*
+		 *	If we haven't spawned a new thread for
+		 *	a while, and we have too many idle
+		 *	threads, then delete the thread from
+		 *	the tail of the idle list, or ourselves.
+		 */
+		if ((now < (thread_pool.time_last_spawned + thread_pool.cleanup_delay)) &&
+		    ((thread_pool.idle_threads + 1) >= thread_pool.max_spare_threads)) {
+			idle = thread_pool.idle_tail;
+			if (!idle) {
+				pthread_mutex_unlock(&thread_pool.idle_mutex);
+				link_exited_tail(thread);
+				goto done;
+			}
+
+			unlink_idle(idle, false);
+			link_exited_tail(idle);
+
+			/*
+			 *	Post an extra signal so that the idle thread wakes
+			 *	up and knows to exit.
+			 */
+			pthread_kill(idle->pthread_id, SIGALRM);			
 		}
-		thread_pool.idle_head = thread;
-		thread_pool.idle_threads++;
-		thread->status = THREAD_IDLE;
+
+		link_idle_head(thread);
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 		/*
-		 *	Manage the thread pool once a second.
-		 *
-		 *	This is done in a child thread to ensure that
-		 *	the main socket thread(s) do as little work as
-		 *	possible.
+		 *	Clean up exited threads.
 		 */
-		now = time(NULL);
-		if (thread_pool.managed < now) {
-			thread_pool_manage(now);
+		if (thread_pool.exited_head) {
+			pthread_mutex_lock(&thread_pool.exited_mutex);
+			if (thread_pool.exited_head &&
+			    (thread_pool.exited_head->status == THREAD_EXITED)) {
+				idle = thread_pool.exited_head;
+				
+				/*
+				 *	Unlink it from the exited list.
+				 *
+				 *	It's already been removed from
+				 *	"total_threads", as we don't count threads
+				 *	which are doing nothing.
+				 */
+				thread_pool.exited_head = idle->next;
+				if (idle->next) {
+					idle->next->prev = NULL;
+				} else {
+					thread_pool.exited_tail = NULL;
+				}
+
+				/*
+				 *	Deleting old threads can take time, so we join
+				 *	it with the mutex unlocked.
+				 */
+				pthread_mutex_unlock(&thread_pool.exited_mutex);
+				pthread_join(idle->pthread_id, NULL);
+				talloc_free(idle);
+			} else {
+				pthread_mutex_unlock(&thread_pool.exited_mutex);
+			}
 		}
+
 	}
 
 done:
@@ -1238,186 +1327,6 @@ void request_enqueue(REQUEST *request)
 	dispatch_async(thread_pool.queue, block);
 }
 #endif
-
-#ifndef WITH_GCD
-/*
- *	Check the min_spare_threads and max_spare_threads.
- *
- *	If there are too many or too few threads waiting, then we
- *	either create some more, or delete some.
- *
- *	This is called only from request_enqueue(), with the
- *	mutex held.
- */
-static void thread_pool_manage(time_t now)
-{
-	THREAD_HANDLE *thread;
-
-	thread_pool.managed = now;
-
-// FIXME MUTEX ISSUES
-
-///	thread_enforce_max_times(now);
-
-	pthread_mutex_lock(&thread_pool.exited_mutex);
-	/*
-	 *	Delete one exited thread.
-	 */
-	if (thread_pool.exited_head &&
-	    (thread_pool.exited_head->status == THREAD_EXITED)) {
-		thread = thread_pool.exited_head;
-
-		/*
-		 *	Unlink it from the exited list.
-		 *
-		 *	It's already been removed from
-		 *	"total_threads", as we don't count threads
-		 *	which are doing nothing.
-		 */
-		thread_pool.exited_head = thread->next;
-		if (thread->next) {
-			thread->next->prev = NULL;
-		} else {
-			thread_pool.exited_tail = NULL;
-		}
-
-		/*
-		 *	Deleting old threads can take time, so we join
-		 *	it with the mutex unlocked.
-		 */
-		pthread_mutex_unlock(&thread_pool.exited_mutex);
-		pthread_join(thread->pthread_id, NULL);
-		talloc_free(thread);
-		pthread_mutex_lock(&thread_pool.exited_mutex);
-	}
-	pthread_mutex_unlock(&thread_pool.exited_mutex);
-
-	/*
-	 *	If there are too few spare threads.  Go create some more.
-	 */
-	if (!thread_pool.spawning &&
-	    (thread_pool.total_threads < thread_pool.max_threads) &&
-	    (thread_pool.idle_threads < thread_pool.min_spare_threads)) {
-		uint32_t i, total;
-
-		total = thread_pool.min_spare_threads - thread_pool.idle_threads;
-
-		if ((total + thread_pool.total_threads) > thread_pool.max_threads) {
-			total = thread_pool.max_threads - thread_pool.total_threads;
-		}
-
-		/*
-		 *	Return if we don't need to create any new spares.
-		 */
-		if (total == 0) return;
-
-		/*
-		 *	Create a number of spare threads, and insert
-		 *	them into the idle queue.
-		 */
-		for (i = 0; i < total; i++) {
-			thread_pool.spawning = true;
-
-			thread = spawn_thread(now, 1);
-
-			thread_pool.spawning = false;
-
-			/*
-			 *	Insert it into the head of the idle list.
-			 */
-			pthread_mutex_lock(&thread_pool.idle_mutex);
-			thread->prev = NULL;
-			thread->next = thread_pool.idle_head;
-			if (thread->next) {
-				thread->next->prev = thread;
-			} else {
-				rad_assert(thread_pool.idle_tail == NULL);
-				thread_pool.idle_tail = thread;
-			}
-			thread_pool.idle_head = thread;
-			thread_pool.idle_threads++;
-			pthread_mutex_unlock(&thread_pool.idle_mutex);
-
-			pthread_mutex_unlock(&thread_pool.exited_mutex);
-			thread_pool.total_threads++;
-			pthread_mutex_unlock(&thread_pool.exited_mutex);
-		}
-
-		return;
-	}
-
-	/*
-	 *	Only delete the spare threads if sufficient time has
-	 *	passed since we last created one.  This helps to minimize
-	 *	the amount of create/delete cycles.
-	 */
-	if ((now - thread_pool.time_last_spawned) < (int)thread_pool.cleanup_delay) {
-		return;
-	}
-
-	/*
-	 *	If there are too many spare threads, delete one.
-	 *
-	 *	Note that we only delete ONE at a time, instead of
-	 *	wiping out many.  This allows the excess threads to be
-	 *	slowly reaped, which is better than suddenly nuking a
-	 *	bunch of them.
-	 */
-	if (thread_pool.idle_threads > thread_pool.max_spare_threads) {
-		DEBUG2("Threads: deleting 1 spare out of %d spares",
-		       thread_pool.idle_threads - thread_pool.max_spare_threads);
-
-		rad_assert(thread_pool.idle_tail != NULL);
-
-		/*
-		 *	Remove the thread from the tail of the idle list.
-		 */
-		pthread_mutex_lock(&thread_pool.idle_mutex);
-		thread = thread_pool.idle_tail;
-		rad_assert(thread->next == NULL);
-
-		thread_pool.idle_tail = thread->prev;
-		if (thread->prev) {
-			thread->prev->next = NULL;
-		} else {
-			thread_pool.idle_head = NULL;
-			rad_assert(thread_pool.idle_threads == 1);
-		}
-		thread_pool.idle_threads--;
-		thread->status = THREAD_CANCELLED;
-		pthread_mutex_unlock(&thread_pool.idle_mutex);
-
-		/*
-		 *	Add the thread to the tail of the exited list.
-		 */
-		pthread_mutex_lock(&thread_pool.exited_mutex);
-		if (thread_pool.exited_tail) {
-			thread->prev = thread_pool.exited_tail;
-			thread->prev->next = thread;
-			thread_pool.exited_tail = thread;
-		} else {
-			thread->prev = NULL;
-			rad_assert(thread_pool.exited_head == NULL);
-			thread_pool.exited_head = thread;
-			thread_pool.exited_tail = thread;
-		}
-		thread_pool.total_threads--;
-		pthread_mutex_unlock(&thread_pool.exited_mutex);
-
-		/*
-		 *	Post an extra signal so that the thread wakes
-		 *	up and knows to exit.
-		 */
-		pthread_kill(thread->pthread_id, SIGALRM);
-	}
-
-	/*
-	 *	Otherwise everything's kosher.  There are not too few,
-	 *	or too many spare threads.
-	 */
-	return;
-}
-#endif	/* WITH_GCD */
 
 #ifdef WNOHANG
 /*
