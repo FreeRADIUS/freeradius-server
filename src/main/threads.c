@@ -174,6 +174,7 @@ typedef struct THREAD_POOL {
 	pthread_mutex_t	idle_mutex;
 	THREAD_HANDLE	*idle_head;
 	THREAD_HANDLE	*idle_tail;
+	time_t		idle_checked;
 
 	pthread_mutex_t	active_mutex;
 	THREAD_HANDLE	*active_head;
@@ -853,28 +854,36 @@ static void *thread_handler(void *arg)
 		} else		/* don't check for deleted threads if we just created one */
 
 		/*
-		 *	If we haven't spawned a new thread for
-		 *	a while, and we have too many idle
-		 *	threads, then delete the thread from
-		 *	the tail of the idle list, or ourselves.
+		 *	Once per second, check if we need to delete a
+		 *	spare thread.  Do so only if we haven't
+		 *	spawned a new thread for a while.
+		 *
+		 *	We delete the thread from the tail of the idle
+		 *	list, which is one which hasn't done anything
+		 *	for the longest time.
 		 */
-		if ((now < (thread_pool.time_last_spawned + thread_pool.cleanup_delay)) &&
-		    ((thread_pool.idle_threads + 1) >= thread_pool.max_spare_threads)) {
-			idle = thread_pool.idle_tail;
-			if (!idle) {
-				pthread_mutex_unlock(&thread_pool.idle_mutex);
-				link_exited_tail(thread);
-				goto done;
+		if (thread_pool.idle_checked < now) {
+			thread_pool.idle_checked = now;
+
+			if ((now < (thread_pool.time_last_spawned + thread_pool.cleanup_delay)) &&
+			    ((thread_pool.idle_threads + 1) >= thread_pool.max_spare_threads)) {
+
+				idle = thread_pool.idle_tail;
+				if (!idle) {
+					pthread_mutex_unlock(&thread_pool.idle_mutex);
+					link_exited_tail(thread);
+					goto done;
+				}
+
+				unlink_idle(idle, false);
+				link_exited_tail(idle);
+
+				/*
+				 *	Post an extra signal so that the idle thread wakes
+				 *	up and knows to exit.
+				 */
+				pthread_kill(idle->pthread_id, SIGALRM);
 			}
-
-			unlink_idle(idle, false);
-			link_exited_tail(idle);
-
-			/*
-			 *	Post an extra signal so that the idle thread wakes
-			 *	up and knows to exit.
-			 */
-			pthread_kill(idle->pthread_id, SIGALRM);			
 		}
 
 		link_idle_head(thread);
