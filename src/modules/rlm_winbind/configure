@@ -588,7 +588,6 @@ LIBOBJS
 targetname
 mod_cflags
 mod_ldflags
-winbind_sources
 CPP
 OBJEXT
 EXEEXT
@@ -2811,7 +2810,6 @@ fi
 
 
 
-    winbind_sources=
     smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
 
 
@@ -3475,8 +3473,6 @@ $as_echo "$as_me: WARNING: winbind libraries not found. Use --with-winbind-lib-d
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&5
 $as_echo "$as_me: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&2;}
 	fail="$fail libwbclient"
-      else
-        winbind_sources="$winbind_sources auth_wbclient_pap.c"
       fi
     fi
 
@@ -3504,14 +3500,13 @@ mod_cflags="$SMART_CPPFLAGS"
 
 
 
-
 ac_config_headers="$ac_config_headers config.h"
 
 
 unset ac_cv_env_LIBS_set
 unset ac_cv_env_LIBS_value
 
-ac_config_files="$ac_config_files rlm_winbind.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4203,7 +4198,7 @@ for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
-    "rlm_winbind.mk") CONFIG_FILES="$CONFIG_FILES rlm_winbind.mk" ;;
+    "all.mk") CONFIG_FILES="$CONFIG_FILES all.mk" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
