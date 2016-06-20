@@ -738,6 +738,11 @@ static void *thread_handler(void *arg)
 
 		rad_assert(rcode == 0);
 
+		/*
+		 *	Got a spurious signal, ignore it.
+		 */
+		if (thread->status == THREAD_IDLE) continue;
+
 	process:
 		/*
 		 *	Maybe we've been idle for too long.
