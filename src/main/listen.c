@@ -3019,8 +3019,10 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 						&home->ipaddr, home->port, false);
 	} else
 #endif
-
+	{
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
+		if (this->fd >= 0) fr_nonblock(this->fd);
+	}
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
