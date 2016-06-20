@@ -319,6 +319,7 @@ static void idle2exited(THREAD_HANDLE *thread)
 void request_enqueue(REQUEST *request)
 {
 	struct timeval now;
+	REQUEST *old;
 	THREAD_HANDLE *thread;
 
 	request->component = "<core>";
@@ -435,9 +436,10 @@ void request_enqueue(REQUEST *request)
 		pthread_kill(thread->pthread_id, SIGALRM);
 
 		/*
-		 *	The request may have been free'd, so don't
-		 *	access it's fields outside of the mutex.
-		 *	Instead, use the cached versions.
+		 *	If a thread is blocked, the request may have
+		 *	already been free'd, so don't access it's
+		 *	fields outside of the mutex.  Instead, use the
+		 *	cached versions.
 		 */
 		if (num_blocked) {
 			ERROR("Unresponsive thread for request %" PRIu64 ", in component %s module %s",
@@ -456,6 +458,33 @@ void request_enqueue(REQUEST *request)
 	 */
 	pthread_mutex_unlock(&thread_pool.idle_mutex);
 
+	gettimeofday(&now, NULL);
+
+	/*
+	 *	Manage the backlog.
+	 *
+	 *	First, by deleting at least one old request from the backlog.
+	 *	Second, by seeing if the backlog is full.
+	 *	Third, by auto-limiting accounting packets, which are low priority.
+	 *	Fourth, by inserting the request into the backlog.
+	 */
+	pthread_mutex_lock(&thread_pool.backlog_mutex);
+
+	/*
+	 *	Only delete one request from the backlog.  Even this
+	 *	code is necessary only when the active threads are
+	 *	blocked.  And if that happens, all bets are off...
+	 *
+	 *	@fixme - Complain when this happens, too.
+	 */
+	old = fr_heap_peek_tail(thread_pool.backlog);
+	if ((old->packet->timestamp.tv_sec + old->root->max_request_time) < now.tv_sec) {
+		(void) fr_heap_extract(thread_pool.backlog, old);
+
+		old->master_state = REQUEST_STOP_PROCESSING;
+		old->process(request, FR_ACTION_DONE);
+	}
+
 	/*
 	 *	If there are too many requests in the backlog, discard
 	 *	this one.  Note that we do these checks without a
@@ -463,6 +492,8 @@ void request_enqueue(REQUEST *request)
 	 *	to err on the side of tossing packets.
 	 */
 	if ((thread_pool.num_queued + 1) >= thread_pool.max_queue_size) {
+		pthread_mutex_unlock(&thread_pool.backlog_mutex);
+
 		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size));
 	done:
@@ -533,17 +564,10 @@ void request_enqueue(REQUEST *request)
 			 *	roll, we throw the packet away.
 			 */
 			if (thread_pool.num_queued > keep) {
+				pthread_mutex_unlock(&thread_pool.backlog_mutex);
 				goto done;
 			}
 		}
-
-		gettimeofday(&now, NULL);
-
-		/*
-		 *	Calculate the instantaneous arrival rate into
-		 *	the queue.
-		 */
-		pthread_mutex_lock(&thread_pool.backlog_mutex);
 
 		thread_pool.pps_in.pps = rad_pps(&thread_pool.pps_in.pps_old,
 						 &thread_pool.pps_in.pps_now,
@@ -551,24 +575,13 @@ void request_enqueue(REQUEST *request)
 						 &now);
 
 		thread_pool.pps_in.pps_now++;
-	} else
+	}
 #endif	/* WITH_ACCOUNTING */
 #endif
 
 	/*
-	 *	Add the request to the backlog.  Note that the backlog
-	 *	is NOT in time order, but instead in priority order.
-	 *	So at some point, we have to walk over all packets in
-	 *	the backlog, ensuring that old packets get removed.
-	 *	Otherwise, the NAS may send one packet which gets
-	 *	ignored, and that packet will sit in the backlog
-	 *	forever.
-	 *
-	 *	Note that the above situation will ONLY occur when the
-	 *	server is overloaded for extended periods of time,
-	 *	which shouldn't really happen...
+	 *	Add the request to the backlog.
 	 */
-	pthread_mutex_lock(&thread_pool.backlog_mutex);
 	if (fr_heap_insert(thread_pool.backlog, request) < 0) {
 		pthread_mutex_unlock(&thread_pool.backlog_mutex);
 		goto done;
