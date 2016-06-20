@@ -658,7 +658,6 @@ void request_queue_extract(REQUEST *request)
  */
 static REQUEST *request_dequeue(void)
 {
-	time_t now;
 	REQUEST *request = NULL;
 
 	/*
@@ -671,8 +670,6 @@ static REQUEST *request_dequeue(void)
 		rad_assert(thread_pool.num_queued == 0);
 		return NULL;
 	}
-
-	now = time(NULL);
 
 	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
