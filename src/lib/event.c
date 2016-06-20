@@ -589,7 +589,7 @@ int fr_event_wait(fr_event_list_t *el)
 	if (el->status) el->status(wake);
 
 #ifndef HAVE_KQUEUE
-	memcpy(&el->master_fds, &el->read_fds, sizeof(el->master_fds));
+	memcpy(&el->read_fds, &el->master_fds, sizeof(el->master_fds));
 
 	el->num_events = select(el->max_fd + 1, &el->read_fds, NULL, NULL, wake);
 	if ((el->num_events < 0) && (errno != EINTR)) {
