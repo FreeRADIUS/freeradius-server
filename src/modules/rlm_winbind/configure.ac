@@ -64,7 +64,6 @@ if test x$with_[]modname != xno; then
     dnl # Check for header files
     dnl ############################################################
 
-    winbind_sources=
     smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
     FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
 					#include <stdbool.h>])
@@ -95,8 +94,6 @@ if test x$with_[]modname != xno; then
         AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
         AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
 	fail="$fail libwbclient"
-      else
-        winbind_sources="$winbind_sources auth_wbclient_pap.c"
       fi
     fi
 
@@ -118,11 +115,10 @@ fi
 
 mod_ldflags="$mod_ldflags $SMART_LIBS"
 mod_cflags="$SMART_CPPFLAGS"
-AC_SUBST(winbind_sources)
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT(rlm_winbind.mk)
+AC_OUTPUT(all.mk)
 
