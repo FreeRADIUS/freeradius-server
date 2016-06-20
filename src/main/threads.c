@@ -311,84 +311,6 @@ static void idle2exited(THREAD_HANDLE *thread)
 
 
 /*
- *	The only time a request can be blocked is when it's being run
- *	by an active thread.  So, we need to check the active threads
- *	for blocked requests.
- *
- *	We also need to check the idle queue, to see if packets have
- *	been sitting there for too long.
- *
- *	This function MUST be called with the thread mutex held.
- */
-static void thread_enforce_max_times(time_t now)
-{
-	int time_blocked;
-	time_t when;
-	REQUEST *request;
-	THREAD_HANDLE *thread;
-
-	static time_t last_checked = 0;
-	static time_t last_complained = 0;
-
-// FIXME MUTEX ISSUES
-
-	if (last_checked == now) return;
-
-	last_checked = now;
-
-	/*
-	 *	Check the active threads for requests > max_time
-	 */
-	for (thread = thread_pool.active_head;
-	     thread != NULL;
-	     thread = thread->next) {
-		if (thread->max_time < now) {
-			request = thread->request;
-
-			ERROR("Unresponsive child for request %" PRIu64 ", in component %s module %s",
-			      request->number,
-			      request->component ? request->component : "<core>",
-			      request->module ? request->module : "<core>");
-			trigger_exec(NULL, NULL, "server.thread.unresponsive", true, NULL);
-
-			request->master_state = REQUEST_STOP_PROCESSING;
-			request->process(request, FR_ACTION_DONE);
-		}
-	}
-
-	request = fr_heap_peek(thread_pool.backlog);
-	if (!request) return;
-
-	/*
-	 *	Check the idle heap for problems which aren't
-	 *	necessarily errors.
-	 */
-	time_blocked = now - request->packet->timestamp.tv_sec;
-	if (!request->proxy && (time_blocked > 5) && (last_complained < now)) {
-		last_complained = now;
-
-		ERROR("%zd requests have been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		      fr_heap_num_elements(thread_pool.backlog), time_blocked);
-	}
-
-	/*
-	 *	Check the idle heap for requests > max_time
-	 */
-	when = now - main_config.max_request_time;
-	while ((request = fr_heap_peek(thread_pool.backlog)) != NULL) {
-
-		if (request->packet->timestamp.tv_sec < when) break;
-
-		(void) fr_heap_extract(thread_pool.backlog, request);
-		thread_pool.num_queued--;
-
-		request->master_state = REQUEST_STOP_PROCESSING;
-		request->process(request, FR_ACTION_DONE);
-	}
-}
-
-
-/*
  *	Add a request to the list of waiting requests.
  *	This function gets called ONLY from the main handler thread...
  *
@@ -396,6 +318,7 @@ static void thread_enforce_max_times(time_t now)
  */
 void request_enqueue(REQUEST *request)
 {
+	struct timeval now;
 	THREAD_HANDLE *thread;
 
 	request->component = "<core>";
@@ -429,6 +352,10 @@ void request_enqueue(REQUEST *request)
 	 */
 	pthread_mutex_lock(&thread_pool.idle_mutex);
 	if (thread_pool.idle_head) {
+		THREAD_HANDLE *blocked;
+
+		static time_t last_checked_active = 0;
+
 		/*
 		 *	Remove the thread from the idle list.
 		 */
@@ -454,6 +381,7 @@ void request_enqueue(REQUEST *request)
 		 *	Add the thread to the head of the active list.
 		 */
 		pthread_mutex_lock(&thread_pool.active_mutex);
+		thread->prev = NULL;
 		thread->next = thread_pool.active_head;
 		if (thread->next) {
 			rad_assert(thread_pool.active_tail != NULL);
@@ -465,6 +393,30 @@ void request_enqueue(REQUEST *request)
 		thread_pool.active_head = thread;
 		thread_pool.active_threads++;
 		thread->status = THREAD_ACTIVE;
+
+		/*
+		 *	Ssee if any active threads have been taking
+		 *	too long.  If so, tell them to stop.
+		 */
+		blocked = NULL;
+		gettimeofday(&now, NULL);
+
+		if (last_checked_active < now.tv_sec) {
+			last_checked_active = now.tv_sec;
+
+			for (blocked = thread_pool.active_tail;
+			     blocked != NULL;
+			     blocked = blocked->prev) {
+				if (blocked->max_time >= now.tv_sec) continue;
+
+				request = thread->request;
+
+				if (request->master_state == REQUEST_STOP_PROCESSING) continue;
+
+				request->master_state = REQUEST_STOP_PROCESSING;
+				request->process(request, FR_ACTION_DONE);
+			}
+		}
 		pthread_mutex_unlock(&thread_pool.active_mutex);
 
 		/*
@@ -479,9 +431,6 @@ void request_enqueue(REQUEST *request)
 	 *	No idle threads, add the request to the backlog.
 	 */
 	pthread_mutex_unlock(&thread_pool.idle_mutex);
-
-//	thread_enforce_max_times(time(NULL));
-
 
 	/*
 	 *	If there are too many requests in the backlog, discard
@@ -507,8 +456,6 @@ void request_enqueue(REQUEST *request)
 	 *	backlog.
 	 */
 	if (thread_pool.auto_limit_acct) {
-		struct timeval now;
-
 		/*
 		 *	Throw away accounting requests if we're too
 		 *	busy.  The NAS should retransmit these, and no
@@ -573,6 +520,7 @@ void request_enqueue(REQUEST *request)
 		 *	the queue.
 		 */
 		pthread_mutex_lock(&thread_pool.backlog_mutex);
+
 		thread_pool.pps_in.pps = rad_pps(&thread_pool.pps_in.pps_old,
 						 &thread_pool.pps_in.pps_now,
 						 &thread_pool.pps_in.time_old,
@@ -583,6 +531,19 @@ void request_enqueue(REQUEST *request)
 #endif	/* WITH_ACCOUNTING */
 #endif
 
+	/*
+	 *	Add the request to the backlog.  Note that the backlog
+	 *	is NOT in time order, but instead in priority order.
+	 *	So at some point, we have to walk over all packets in
+	 *	the backlog, ensuring that old packets get removed.
+	 *	Otherwise, the NAS may send one packet which gets
+	 *	ignored, and that packet will sit in the backlog
+	 *	forever.
+	 *
+	 *	Note that the above situation will ONLY occur when the
+	 *	server is overloaded for extended periods of time,
+	 *	which shouldn't really happen...
+	 */
 	pthread_mutex_lock(&thread_pool.backlog_mutex);
 	if (fr_heap_insert(thread_pool.backlog, request) < 0) {
 		pthread_mutex_unlock(&thread_pool.backlog_mutex);
@@ -610,9 +571,8 @@ void request_queue_extract(REQUEST *request)
  */
 static REQUEST *request_dequeue(void)
 {
+	time_t now;
 	REQUEST *request = NULL;
-
-	thread_enforce_max_times(time(NULL));
 
 	/*
 	 *	Grab the first entry.
@@ -624,6 +584,8 @@ static REQUEST *request_dequeue(void)
 		rad_assert(thread_pool.num_queued == 0);
 		return NULL;
 	}
+
+	now = time(NULL);
 
 	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
@@ -759,11 +721,17 @@ static void *thread_handler(void *arg)
 		 *	Try to get a packet from the backlog.  If we
 		 *	have one, update the max time for the request,
 		 *	and continue processing.
+		 *
+		 *	Note that we have to lock the active mutex, so
+		 *	that the request_enqueue() function doesn't
+		 *	get a stale pointer to thread->request.
 		 */
 		request = request_dequeue();
 		if (request) {
+			pthread_mutex_lock(&thread_pool.active_mutex);
 			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 			thread->request = request;
+			pthread_mutex_unlock(&thread_pool.active_mutex);
 			goto process;
 		}
 
@@ -1252,7 +1220,7 @@ static void thread_pool_manage(time_t now)
 
 // FIXME MUTEX ISSUES
 
-	thread_enforce_max_times(now);
+///	thread_enforce_max_times(now);
 
 	pthread_mutex_lock(&thread_pool.exited_mutex);
 	/*
