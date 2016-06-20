@@ -203,6 +203,16 @@ void *fr_heap_peek(fr_heap_t *hp)
 	return hp->p[0];
 }
 
+void *fr_heap_peek_tail(fr_heap_t *hp)
+{
+	if (!hp || (hp->num_elements == 0)) return NULL;
+
+	/*
+	 *	If this is NULL, we have a problem.
+	 */
+	return hp->p[hp->num_elements - 1];
+}
+
 size_t fr_heap_num_elements(fr_heap_t *hp)
 {
 	if (!hp) return 0;

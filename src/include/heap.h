@@ -38,6 +38,7 @@ void fr_heap_delete(fr_heap_t *hp);
 int fr_heap_insert(fr_heap_t *hp, void *data);
 int fr_heap_extract(fr_heap_t *hp, void *data);
 void *fr_heap_peek(fr_heap_t *hp);
+void *fr_heap_peek_tail(fr_heap_t *hp);
 size_t fr_heap_num_elements(fr_heap_t *hp);
 
 #ifdef __cplusplus
