@@ -352,6 +352,9 @@ void request_enqueue(REQUEST *request)
 	 */
 	pthread_mutex_lock(&thread_pool.idle_mutex);
 	if (thread_pool.idle_head) {
+		int num_blocked;
+		uint64_t number;
+		char const *module, *component;
 		THREAD_HANDLE *blocked;
 
 		static time_t last_checked_active = 0;
@@ -399,6 +402,7 @@ void request_enqueue(REQUEST *request)
 		 *	too long.  If so, tell them to stop.
 		 */
 		blocked = NULL;
+		num_blocked = 0;
 		gettimeofday(&now, NULL);
 
 		if (last_checked_active < now.tv_sec) {
@@ -413,6 +417,11 @@ void request_enqueue(REQUEST *request)
 
 				if (request->master_state == REQUEST_STOP_PROCESSING) continue;
 
+				number = request->number;
+				component = request->component;
+				module = request->module;
+				num_blocked++;
+
 				request->master_state = REQUEST_STOP_PROCESSING;
 				request->process(request, FR_ACTION_DONE);
 			}
@@ -424,6 +433,21 @@ void request_enqueue(REQUEST *request)
 		 *	it, once we're done all of the above work.
 		 */
 		pthread_kill(thread->pthread_id, SIGALRM);
+
+		/*
+		 *	The request may have been free'd, so don't
+		 *	access it's fields outside of the mutex.
+		 *	Instead, use the cached versions.
+		 */
+		if (num_blocked) {
+			ERROR("Unresponsive thread for request %" PRIu64 ", in component %s module %s",
+			      number,
+			      component ? component : "<core>",
+			      module ? module : "<core>");
+			ERROR("There are %d new threads blocked in the last second", num_blocked);
+			trigger_exec(NULL, NULL, "server.thread.unresponsive", true, NULL);
+		}
+
 		return;
 	}
 
