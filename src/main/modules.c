@@ -826,8 +826,19 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			char const *name1;
 
 			if (cf_item_is_pair(ci)) {
-				cf_log_err(ci, "Cannot set variables inside of a virtual server.");
-				return -1;
+				CONF_PAIR *cp;
+
+				cp = cf_item_to_pair(ci);
+				name1 = cf_pair_attr(cp);
+				if (strcmp(name1, "namespace") != 0) {
+					cf_log_err(ci, "Cannot set variables inside of a virtual server.");
+					return -1;
+				}
+
+				if (!cf_pair_value(cp)) {
+					cf_log_err(ci, "'namespace' cannot be empty");
+					return -1;
+				}
 			}
 
 			if (!cf_item_is_section(ci)) continue;
