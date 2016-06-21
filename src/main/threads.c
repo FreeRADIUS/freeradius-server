@@ -456,6 +456,8 @@ void request_enqueue(REQUEST *request)
 		blocked = NULL;
 		num_blocked = 0;
 		gettimeofday(&now, NULL);
+		module = component = NULL;
+		number = 0;
 
 		if (last_checked_active < now.tv_sec) {
 			last_checked_active = now.tv_sec;
