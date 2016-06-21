@@ -1891,8 +1891,10 @@ int modules_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
+#if defined(WITH_DHCP) || defined(WITH_VMPS)
 		CONF_SECTION *subcs;
 		DICT_ATTR const *da;
+#endif
 
 #ifdef WITH_VMPS
 		/*
