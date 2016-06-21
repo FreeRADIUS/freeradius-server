@@ -58,6 +58,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Many fixes to rlm_python from Guillaume Pannatier.
 	* Use correct week adjustment in SQLcounter.
 	  Fixes #1608
+	* Minor fixes to allow compilation without DHCP,
+	  VMPS, or TCP.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
