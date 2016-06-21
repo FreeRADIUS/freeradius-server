@@ -957,7 +957,6 @@ done:
  */
 rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	int priority;
 	rlm_rcode_t result;
 	modcallable *c;
 	
@@ -967,7 +966,6 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	if (!c) return action;
 
 	result = action;
-	priority = 0;
 
 	unlang_push(request->stack, c, result, true);
 
