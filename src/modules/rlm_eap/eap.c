@@ -879,12 +879,12 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 	len = ntohs(len);
 
 	if ((len <= 5) || (eap_packet->data[1] == 0x00)) {
-		RDEBUG("EAP-Identity Unknown");
+		REDEBUG("EAP-Identity Unknown");
 		return NULL;
 	}
 
 	if (len > 1024) {
-		RDEBUG("EAP-Identity too long");
+		REDEBUG("EAP-Identity too long");
 		return NULL;
 	}
 
