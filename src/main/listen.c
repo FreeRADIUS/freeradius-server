@@ -2220,6 +2220,8 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_parse, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, proxy_socket_encode, proxy_socket_decode },
+#else
+	{ 0, "proxy", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 	/* authentication */
@@ -2234,6 +2236,8 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_parse, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, client_socket_encode, client_socket_decode},
+#else
+	{ 0, "acct", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #ifdef WITH_DETAIL
@@ -2244,15 +2248,11 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  detail_print, detail_encode, detail_decode },
 #endif
 
-#ifdef WITH_VMPS
 	/* vlan query protocol */
 	{ 0, "vmps", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
-#endif
 
-#ifdef WITH_DHCP
 	/* dhcp query protocol */
 	{ 0, "dhcp", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
-#endif
 
 #ifdef WITH_COMMAND_SOCKET
 	/* TCP command socket */
@@ -2260,6 +2260,8 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  command_socket_parse, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, command_socket_encode, command_socket_decode },
+#else
+	{ 0, "command", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #ifdef WITH_COA
@@ -2268,6 +2270,8 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	  common_socket_parse, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, client_socket_encode, client_socket_decode },
+#else
+	{ 0, "coa", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 };
