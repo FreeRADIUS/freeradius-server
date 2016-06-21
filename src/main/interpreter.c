@@ -800,7 +800,7 @@ static bool unlang_brace[MOD_NUM_TYPES] = {
 /*
  *	Interpret the various types of blocks.
  */
-static void unlang_run(REQUEST *request, unlang_stack_t *stack, rlm_rcode_t *presult, int *ppriority)
+static void unlang_run(REQUEST *request, unlang_stack_t *stack, rlm_rcode_t *presult)
 {
 	modcallable *c;
 	int priority;
@@ -947,7 +947,6 @@ done:
 	REXDENT();
 
 	*presult = entry->result;
-	*ppriority = priority;
 
 	result = entry->result;
 	goto do_pop;
@@ -977,7 +976,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	/*
 	 *	Call the main handler.
 	 */
-	unlang_run(request, request->stack, &result, &priority);
+	unlang_run(request, request->stack, &result);
 
 	/*
 	 *	Return the result.
