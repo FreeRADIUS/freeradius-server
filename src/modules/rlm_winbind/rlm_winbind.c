@@ -348,7 +348,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_winbind_t			*inst = instance;
-	struct wbcInterfaceDetails	*winbindinfo;
+	struct wbcInterfaceDetails	*winbindinfo = NULL;
 
 	if (!inst->wb_username) {
 		cf_log_err_cs(conf, "winbind_username must be defined to use rlm_winbind");
