@@ -210,6 +210,8 @@ struct rad_request {
 #endif
 	uint64_t		number; 	//!< Monotonically increasing request number. Reset on server restart.
 
+	fr_event_list_t		*el;		//!< thread-specific event list.
+
 	request_data_t		*data;		//!< Request metadata.
 
 	RAD_LISTEN_TYPE		priority;
