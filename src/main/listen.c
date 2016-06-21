@@ -70,9 +70,11 @@ static void print_packet(RADIUS_PACKET *packet)
 static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type);
 
 #ifdef WITH_COMMAND_SOCKET
+#ifdef WITH_TCP
 static int command_tcp_recv(rad_listen_t *listener);
 static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 static int command_write_magic(int newfd, listen_socket_t *sock);
+#endif
 #endif
 
 static fr_protocol_t master_listen[];
@@ -766,9 +768,11 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 	ADDSTRING(name);
 
+#ifdef WITH_TCP
 	if (this->dual) {
 		ADDSTRING("+acct");
 	}
+#endif
 
 	if (sock->interface) {
 		ADDSTRING(" interface ");

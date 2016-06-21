@@ -1583,14 +1583,15 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 #ifdef WITH_ACCOUNTING
 	if (listener->type != RAD_LISTEN_DETAIL)
 #endif
+
+#ifdef WITH_TCP
 	{
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
 
-#ifdef WITH_TCP
 		packet->proto = sock->proto;
-#endif
 	}
+#endif
 
 	/*
 	 *	Skip everything if required.
@@ -2005,26 +2006,6 @@ static void tcp_socket_timer(void *ctx)
 
 
 #ifdef WITH_PROXY
-/*
- *	Add +/- 2s of jitter, as suggested in RFC 3539
- *	and in RFC 5080.
- */
-static void add_jitter(struct timeval *when)
-{
-	uint32_t jitter;
-
-	when->tv_sec -= 2;
-
-	jitter = fr_rand();
-	jitter ^= (jitter >> 10);
-	jitter &= ((1 << 22) - 1); /* 22 bits of 1 */
-
-	/*
-	 *	Add in ~ (4 * USEC) of jitter.
-	 */
-	tv_add(when, jitter);
-}
-
 /*
  *	Called by socket_del to remove requests with this socket
  */
@@ -2520,10 +2501,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	Status-Server packets don't count as real packets.
 	 */
 	if (request->proxy->code != PW_CODE_STATUS_SERVER) {
+#ifdef WITH_TCP
 		listen_socket_t *sock = request->proxy_listener->data;
 
-		request->home_server->last_packet_recv = now.tv_sec;
 		sock->last_packet = now.tv_sec;
+#endif
+		request->home_server->last_packet_recv = now.tv_sec;
 	}
 
 	request->num_proxied_responses++;
@@ -3419,6 +3402,26 @@ static void request_ping(REQUEST *request, int action)
 	rad_assert(request->ev == NULL);
 	NO_CHILD_THREAD;
 	request_done(request, FR_ACTION_DONE);
+}
+
+/*
+ *	Add +/- 2s of jitter, as suggested in RFC 3539
+ *	and in RFC 5080.
+ */
+static void add_jitter(struct timeval *when)
+{
+	uint32_t jitter;
+
+	when->tv_sec -= 2;
+
+	jitter = fr_rand();
+	jitter ^= (jitter >> 10);
+	jitter &= ((1 << 22) - 1); /* 22 bits of 1 */
+
+	/*
+	 *	Add in ~ (4 * USEC) of jitter.
+	 */
+	tv_add(when, jitter);
 }
 
 /*
@@ -4681,7 +4684,6 @@ static void listener_free_cb(void *ctx)
 	rad_assert(this->next == NULL);
 	talloc_free(this);
 }
-#endif
 
 #ifdef WITH_PROXY
 static int proxy_eol_cb(void *ctx, void *data)
@@ -4721,7 +4723,8 @@ static int proxy_eol_cb(void *ctx, void *data)
 	 */
 	return 0;
 }
-#endif
+#endif	/* WITH_PROXY */
+#endif	/* WITH_TCP */
 
 static int event_new_fd(rad_listen_t *this)
 {
@@ -4804,7 +4807,7 @@ static int event_new_fd(rad_listen_t *this)
 					rad_panic("Failed to insert event");
 				}
 			}
-#endif
+#endif	/* WITH_TCP */
 			break;
 #endif	/* WITH_PROXY */
 
@@ -4831,7 +4834,7 @@ static int event_new_fd(rad_listen_t *this)
 					fr_exit(1);
 				}
 			}
-#endif
+#endif	/* WITH_TCP */
 			break;
 		} /* switch over listener types */
 
@@ -4908,7 +4911,7 @@ static int event_new_fd(rad_listen_t *this)
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
-#endif
+#endif	/* WITH_PROXY */
 
 		/*
 		 *	Requests are still using the socket.  Wait for
@@ -4940,7 +4943,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	} /* socket is at EOL */
-#endif
+#endif	  /* WITH_TCP */
 
 	/*
 	 *	Nuke the socket.
@@ -4949,8 +4952,8 @@ static int event_new_fd(rad_listen_t *this)
 		int devnull;
 #ifdef WITH_TCP
 		listen_socket_t *sock = this->data;
-#endif
 		struct timeval when;
+#endif
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -5011,7 +5014,7 @@ static int event_new_fd(rad_listen_t *this)
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		} else
-#endif
+#endif	/* WITH_PROXY */
 		{
 			INFO(" ... shutting down socket %s", buffer);
 
@@ -5042,8 +5045,8 @@ static int event_new_fd(rad_listen_t *this)
 				     &(sock->ev))) {
 			rad_panic("Failed to insert event");
 		}
-	}
 #endif	/* WITH_TCP */
+	}
 
 	return 1;
 }

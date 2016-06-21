@@ -478,9 +478,7 @@ RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
 static fr_ipaddr_t cl_ipaddr;
 static uint32_t cl_netmask;
 static char const *cl_srcipaddr = NULL;
-#ifdef WITH_TCP
 static char const *hs_proto = NULL;
-#endif
 
 #ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {

@@ -33,6 +33,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <sys/stat.h>
 #endif
 
+#ifdef WITH_TCP
 #ifdef WITH_TLS
 #ifdef HAVE_OPENSSL_RAND_H
 #include <openssl/rand.h>
@@ -723,3 +724,4 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 #endif	/* WITH_PROXY */
 
 #endif	/* WITH_TLS */
+#endif	/* WITH_TCP */

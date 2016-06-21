@@ -2692,7 +2692,11 @@ home_server_t *home_server_ldb(char const *realmname,
 }
 
 
-home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto)
+home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port,
+#ifndef WITH_TCP
+				UNUSED
+#endif
+				int proto)
 {
 	home_server_t myhome;
 
