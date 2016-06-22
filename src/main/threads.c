@@ -263,6 +263,22 @@ static void reap_children(void)
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
+static void link_active_head(THREAD_HANDLE *thread)
+{
+	thread->prev = NULL;
+	thread->next = thread_pool.active_head;
+	if (thread->next) {
+		rad_assert(thread_pool.active_tail != NULL);
+		thread->next->prev = thread;
+	} else {
+		rad_assert(thread_pool.active_tail == NULL);
+		thread_pool.active_tail = thread;
+	}
+	thread_pool.active_head = thread;
+	thread_pool.active_threads++;
+	thread->status = THREAD_ACTIVE;
+}
+
 /*
  *	Remove the thread from the active list.
  */
@@ -436,18 +452,7 @@ void request_enqueue(REQUEST *request)
 		 *	Add the thread to the head of the active list.
 		 */
 		pthread_mutex_lock(&thread_pool.active_mutex);
-		thread->prev = NULL;
-		thread->next = thread_pool.active_head;
-		if (thread->next) {
-			rad_assert(thread_pool.active_tail != NULL);
-			thread->next->prev = thread;
-		} else {
-			rad_assert(thread_pool.active_tail == NULL);
-			thread_pool.active_tail = thread;
-		}
-		thread_pool.active_head = thread;
-		thread_pool.active_threads++;
-		thread->status = THREAD_ACTIVE;
+		link_active_head(thread);
 
 		/*
 		 *	Ssee if any active threads have been taking
