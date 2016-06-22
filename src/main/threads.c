@@ -756,7 +756,11 @@ static void *thread_handler(void *arg)
 			 */
 			if (thread->status == THREAD_IDLE) continue;
 
+			DEBUG3("Thread %d got signal for new request", thread->thread_num);
+
 		} else {
+			DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
+
 			/*
 			 *	Timer and/or FD events.  Go service them.
 			 */
@@ -852,6 +856,7 @@ static void *thread_handler(void *arg)
 		 *	We have more work to do, go do it.
 		 */
 		if (fr_heap_num_elements(backlog) > 0) {
+			DEBUG3("Thread %d processing from my backlog (%zd)", thread->thread_num, fr_heap_num_elements(backlog));
 			request = fr_heap_peek(backlog);
 			(void) fr_heap_extract(backlog, request);
 			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
@@ -866,6 +871,7 @@ static void *thread_handler(void *arg)
 		 */
 		request = request_dequeue();
 		if (request) {
+			DEBUG3("Thread %d processing from global backlog", thread->thread_num);
 			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 			thread->request = request;
 			goto process;
