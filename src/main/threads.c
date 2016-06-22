@@ -985,7 +985,6 @@ done:
 #endif
 
 	fr_heap_delete(backlog);
-	talloc_free(el);
 
 	trigger_exec(NULL, NULL, "server.thread.stop", true, NULL);
 	thread->status = THREAD_EXITED;
