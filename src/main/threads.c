@@ -705,10 +705,15 @@ static void *thread_handler(void *arg)
 	THREAD_HANDLE *thread = (THREAD_HANDLE *) arg;
 	TALLOC_CTX *ctx;
 	fr_event_list_t *el;
+	fr_heap_t *backlog;
 
 	ctx = talloc_init("thread_pool");
 	
 	el = fr_event_list_create(ctx, NULL);
+	rad_assert(el != NULL);
+
+	backlog = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
+	rad_assert(backlog != NULL);
 
 	/*
 	 *	Loop forever, until told to exit.
@@ -744,20 +749,36 @@ static void *thread_handler(void *arg)
 			goto done;
 		}
 
-		/*
-		 *	Timer and/or FD events.  Go service them.
-		 */
-		if (rcode == 1) {
+		if (rcode == 0) {
+			/*
+			 *	Got a spurious signal, ignore it.
+			 */
+			if (thread->status == THREAD_IDLE) continue;
+
+		} else {
+			/*
+			 *	Timer and/or FD events.  Go service them.
+			 */
 			(void) fr_event_service(el);
-			continue;
+
+			/*
+			 *	There are requests to process.  Remove
+			 *	ourselves from the idle list, and
+			 *	insert ourselves into the active list.
+			 */
+			if (fr_heap_num_elements(backlog) > 0) {
+				unlink_idle(thread, true);
+
+				request = fr_heap_peek(backlog);
+				(void) fr_heap_extract(backlog, request);
+				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+				thread->request = request;
+
+				pthread_mutex_lock(&thread_pool.active_mutex);
+				link_active_head(thread);
+				pthread_mutex_unlock(&thread_pool.active_mutex);
+			}
 		}
-
-		rad_assert(rcode == 0);
-
-		/*
-		 *	Got a spurious signal, ignore it.
-		 */
-		if (thread->status == THREAD_IDLE) continue;
 
 	process:
 		/*
@@ -772,7 +793,7 @@ static void *thread_handler(void *arg)
 		if (thread_pool.stop_flag) break;
 
 		rad_assert(thread->status == THREAD_ACTIVE);
-		rad_assert(thread->request != NULL);
+
 		request = thread->request;
 		request->el = el;
 
@@ -811,7 +832,8 @@ static void *thread_handler(void *arg)
 		request->child_state = REQUEST_RUNNING;
 		request->log.unlang_indent = 0;
 
-		request->process(thread->request, FR_ACTION_RUN);
+		request->process(request, FR_ACTION_RUN);
+		thread->request = NULL;
 
 		/*
 		 *	Clean up any children we exec'd.
@@ -824,22 +846,27 @@ static void *thread_handler(void *arg)
 		 */
 		ERR_clear_error();
 #  endif
-		
+
 		/*
-		 *	Try to get a packet from the backlog.  If we
-		 *	have one, update the max time for the request,
-		 *	and continue processing.
-		 *
-		 *	Note that we have to lock the active mutex, so
-		 *	that the request_enqueue() function doesn't
-		 *	get a stale pointer to thread->request.
+		 *	We have more work to do, go do it.
+		 */
+		if (fr_heap_num_elements(backlog) > 0) {
+			request = fr_heap_peek(backlog);
+			(void) fr_heap_extract(backlog, request);
+			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+			thread->request = request;
+			goto process;
+		}
+
+		/*
+		 *	We're out of new work.  try to get a packet
+		 *	from the global backlog.  If we have can,
+		 *	go process it.
 		 */
 		request = request_dequeue();
 		if (request) {
-			pthread_mutex_lock(&thread_pool.active_mutex);
 			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 			thread->request = request;
-			pthread_mutex_unlock(&thread_pool.active_mutex);
 			goto process;
 		}
 
@@ -955,6 +982,9 @@ done:
 	 */
 	FR_TLS_REMOVE_THREAD_STATE();
 #endif
+
+	fr_heap_delete(backlog);
+	talloc_free(el);
 
 	trigger_exec(NULL, NULL, "server.thread.stop", true, NULL);
 	thread->status = THREAD_EXITED;
