@@ -182,6 +182,18 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 
 int unlang_compile(CONF_SECTION *cs, rlm_components_t component);
 
+
+typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *, void *, void *, struct timeval *);
+typedef void (*fr_unlang_fd_callback_t)(REQUEST *, void *, void *, int);
+
+int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
+			     void *inst, void *ctx, struct timeval *when);
+int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
+			void *inst, void *ctx, int fd);
+int unlang_event_timeout_delete(REQUEST *request, void *ctx);
+int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
+
+
 #ifdef __cplusplus
 }
 #endif

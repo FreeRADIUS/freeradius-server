@@ -986,3 +986,123 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	 */
 	return unlang_run(request, request->stack);
 }
+
+/*
+ *	Event handlers for unlang.
+ */
+typedef struct unlang_event_t {
+	REQUEST		*request;
+	int		fd;
+	fr_unlang_timeout_callback_t	timeout_callback;
+	fr_unlang_fd_callback_t		fd_callback;
+	void		*inst;
+	void		*ctx;
+	fr_event_t	*ev;
+} unlang_event_t;
+
+
+static int _unlang_event_free(unlang_event_t *ev)
+{
+	if (ev->ev) {
+		(void) fr_event_delete(ev->request->el, &ev->ev);
+		return 0;
+	}
+
+	if (ev->fd >= 0) {
+		(void) fr_event_fd_delete(ev->request->el, 0, ev->fd);
+	}
+
+	return 0;
+}
+
+static void unlang_event_timeout_handler(void *ctx, struct timeval *now)
+{
+	unlang_event_t *ev = ctx;
+
+	ev->timeout_callback(ev->request, ev->inst, ev->ctx, now);
+	talloc_free(ev);
+}
+
+static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+{
+	unlang_event_t *ev = ctx;
+
+	rad_assert(ev->fd == fd);
+
+	ev->fd_callback(ev->request, ev->inst, ev->ctx, fd);
+}
+
+/** Add a timeout
+ *
+ */
+int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
+			     void *inst, void *ctx, struct timeval *when)
+{
+	unlang_event_t *ev;
+
+	ev = talloc_zero(request, unlang_event_t);
+	if (!ev) return -1;
+
+	ev->request = request;
+	ev->fd = -1;
+	ev->timeout_callback = callback;
+	ev->inst = inst;
+	ev->ctx = ctx;
+
+	if (fr_event_insert(request->el, unlang_event_timeout_handler, ev, when, &ev->ev) < 0) {
+		talloc_free(ev);
+		return -1;
+	}
+
+	(void) request_data_add(request, ctx, -1, ev, true, false, false);
+
+	talloc_set_destructor(ev, _unlang_event_free);
+	return 0;
+}
+
+int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
+			void *inst, void *ctx, int fd)
+{
+	unlang_event_t *ev;
+
+	ev = talloc_zero(request, unlang_event_t);
+	if (!ev) return -1;
+
+	ev->request = request;
+	ev->fd = fd;
+	ev->fd_callback = callback;
+	ev->inst = inst;
+	ev->ctx = ctx;
+
+	if (fr_event_fd_insert(request->el, 0, fd, unlang_event_fd_handler, callback) < 0) {
+		talloc_free(ev);
+		return -1;
+	}
+
+	(void) request_data_add(request, ctx, fd, ev, true, false, false);
+
+	talloc_set_destructor(ev, _unlang_event_free);
+	return 0;
+}
+
+int unlang_event_timeout_delete(REQUEST *request, void *ctx)
+{
+	unlang_event_t *ev;
+
+	ev = request_data_get(request, ctx, -1);
+	if (!ev) return -1;
+
+	talloc_free(ev);
+	return 0;
+}
+
+int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
+{
+	unlang_event_t *ev;
+
+	ev = request_data_get(request, ctx, fd);
+	if (!ev) return -1;
+
+	talloc_free(ev);
+	return 0;
+}
