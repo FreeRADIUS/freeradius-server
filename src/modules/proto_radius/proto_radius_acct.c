@@ -40,8 +40,13 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 
-	switch (action) {
-	case FR_ACTION_RUN:
+	/*
+	 *	We ignore all other actions.
+	 */
+	if (action != FR_ACTION_RUN) return;
+
+	switch (request->request_state) {
+	case REQUEST_INIT:
 		if (fr_radius_decode(request->packet, NULL, request->client->secret) < 0) {
 			RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
 			goto done;
@@ -71,6 +76,10 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		RDEBUG("Running recv %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
+		request->request_state = REQUEST_RECV;
+		/* FALL-THROUGH */
+
+	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
@@ -87,7 +96,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		 *	The module handled the request, send the reply and don't process "send" section.
 		 */
 		case RLM_MODULE_HANDLED:
-			goto send;
+			goto send_reply;
 
 		/*
 		 *	The module failed, or said the request is
@@ -121,11 +130,15 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		}
 		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "send", "*");
 
-		if (!unlang) goto send;
+		if (!unlang) goto send_reply;
 
 		RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
+		request->request_state = REQUEST_SEND;
+		/* FALL-THROUGH */
+
+	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
@@ -158,7 +171,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			break;
 		}
 
-	send:
+	send_reply:
 		/*
 		 *	Check for "do not respond".
 		 */
@@ -195,15 +208,13 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 		}
 
+	default:
 	done:
 		request_thread_done(request);
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
 		request_free(request);
-		break;
-
-	default:
 		break;
 	}
 }

@@ -203,6 +203,13 @@ typedef enum {
 } rad_child_state_t;
 #define REQUEST_CHILD_NUM_STATES (REQUEST_DONE + 1)
 
+typedef enum fr_request_state_t {
+	REQUEST_INIT = 0,
+	REQUEST_RECV,
+	REQUEST_PROCESS,
+	REQUEST_SEND
+} fr_request_state_t;
+
 struct rad_request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
@@ -211,6 +218,7 @@ struct rad_request {
 	uint64_t		number; 	//!< Monotonically increasing request number. Reset on server restart.
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
+	fr_request_state_t	request_state;	//!< state for the various protocol handlers.
 
 	request_data_t		*data;		//!< Request metadata.
 
