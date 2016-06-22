@@ -739,6 +739,14 @@ static void *thread_handler(void *arg)
 			goto done;
 		}
 
+		/*
+		 *	Timer and/or FD events.  Go service them.
+		 */
+		if (rcode == 1) {
+			(void) fr_event_service(el);
+			continue;
+		}
+
 		rad_assert(rcode == 0);
 
 		/*
