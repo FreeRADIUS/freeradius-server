@@ -730,7 +730,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/postgresql/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/postgresql/*
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/driver/postgres
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/driver/postgresql
 # sqlite
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/counter/sqlite/*
