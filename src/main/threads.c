@@ -473,6 +473,7 @@ void request_enqueue(REQUEST *request)
 				if (blocked->max_time >= now.tv_sec) continue;
 
 				request = thread->request;
+				if (!request) continue;
 
 				if (request->master_state == REQUEST_STOP_PROCESSING) continue;
 
