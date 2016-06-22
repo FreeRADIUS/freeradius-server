@@ -1074,7 +1074,7 @@ int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 	ev->inst = inst;
 	ev->ctx = ctx;
 
-	if (fr_event_fd_insert(request->el, 0, fd, unlang_event_fd_handler, callback) < 0) {
+	if (fr_event_fd_insert(request->el, 0, fd, unlang_event_fd_handler, ev) < 0) {
 		talloc_free(ev);
 		return -1;
 	}
