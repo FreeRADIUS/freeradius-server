@@ -69,7 +69,9 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		}
 
 		RDEBUG("Running recv %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
-		rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+
+		rcode = unlang_interpret_continue(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 
@@ -119,39 +121,41 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		}
 		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "send", "*");
 
-		if (unlang) {
-			RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
-			rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+		if (!unlang) goto send;
 
-			if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
-			switch (rcode) {
-				/*
-				 *	In case the accounting module returns FAIL,
-				 *	it's still useful to send the data to the
-				 *	proxy.
-				 */
-			case RLM_MODULE_FAIL:
-			case RLM_MODULE_NOOP:
-			case RLM_MODULE_OK:
-			case RLM_MODULE_UPDATED:
-				break;
-				/*
-				 *	The module handled the request, don't reply.
-				 */
-			case RLM_MODULE_HANDLED:
-				goto done;
+		rcode = unlang_interpret_continue(request);
 
-				/*
-				 *	Neither proxy, nor reply to invalid requests.
-				 */
-			case RLM_MODULE_INVALID:
-			case RLM_MODULE_NOTFOUND:
-			case RLM_MODULE_REJECT:
-			case RLM_MODULE_USERLOCK:
-			default:
-				break;
-			}
+		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+
+		switch (rcode) {
+			/*
+			 *	In case the accounting module returns FAIL,
+			 *	it's still useful to send the data to the
+			 *	proxy.
+			 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			break;
+			/*
+			 *	The module handled the request, don't reply.
+			 */
+		case RLM_MODULE_HANDLED:
+			goto done;
+
+			/*
+			 *	Neither proxy, nor reply to invalid requests.
+			 */
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			break;
 		}
 
 	send:
