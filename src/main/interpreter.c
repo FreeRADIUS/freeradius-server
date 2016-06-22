@@ -963,6 +963,14 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	unlang_push(request->stack, c, action, true);
 }
 
+/** Continue interpreting after a previous push or yeild.
+ *
+ */
+rlm_rcode_t unlang_interpret_continue(REQUEST *request)
+{
+	return unlang_run(request, request->stack);
+}
+
 
 /** Call a module, iteratively, with a local stack, rather than recursively
  *
