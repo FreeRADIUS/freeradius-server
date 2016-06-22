@@ -951,23 +951,27 @@ done:
 }
 
 
+/** Push a configuration section onto the request stack for later interpretation.
+ *
+ */
+void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
+{
+	modcallable *c = NULL;
+	
+	if (cs) c = cf_data_find(cs, "unlang");
+
+	unlang_push(request->stack, c, action, true);
+}
+
+
 /** Call a module, iteratively, with a local stack, rather than recursively
  *
  * What did Paul Graham say about Lisp...?
  */
 rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	rlm_rcode_t result;
-	modcallable *c;
-	
-	if (!cs) return action;
+	unlang_push_section(request, cs, action);
 
-	c = cf_data_find(cs, "unlang");
-	if (!c) return action;
-
-	result = action;
-
-	unlang_push(request->stack, c, result, true);
 
 	/*
 	 *	Call the main handler.

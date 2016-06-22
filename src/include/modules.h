@@ -176,6 +176,7 @@ int virtual_servers_init(CONF_SECTION *config);
 /*
  *	In interpreter.h, but here for public consumption.
  */
+void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
 rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
 
 int unlang_compile(CONF_SECTION *cs, rlm_components_t component);
