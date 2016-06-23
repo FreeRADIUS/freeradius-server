@@ -155,7 +155,6 @@ typedef struct conf_include {
 typedef struct cf_file_t {
 	char const	*filename;
 	CONF_SECTION	*cs;
-	bool		input;
 	struct stat	buf;
 } cf_file_t;
 
@@ -354,7 +353,6 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 
 	file->filename = filename;
 	file->cs = cs;
-	file->input = true;
 
 	if (fstat(fd, &file->buf) == 0) {
 #ifdef S_IWOTH
@@ -426,7 +424,6 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 
 	file->filename = filename;
 	file->cs = cs;
-	file->input = true;
 
 	if (!check_perms) {
 		if (stat(filename, &file->buf) < 0) {
@@ -529,11 +526,13 @@ static int file_callback(void *ctx, void *data)
 	 *	The file changed, we'll need to re-read it.
 	 */
 	if (buf.st_mtime != file->buf.st_mtime) {
-		if (!file->input) {
-			cb->rcode |= CF_FILE_CONFIG;
-		} else {
-			(void) cb->callback(cb->modules, file->cs);
+
+		if (cb->callback(cb->modules, file->cs)) {
 			cb->rcode |= CF_FILE_MODULE;
+			DEBUG3("HUP: Changed module file %s", file->filename);
+		} else {
+			DEBUG3("HUP: Changed config file %s", file->filename);
+			cb->rcode |= CF_FILE_CONFIG;
 		}
 	}
 
