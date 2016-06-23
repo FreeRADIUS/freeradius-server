@@ -40,6 +40,7 @@ const FR_NAME_NUMBER mod_rcode_table[] = {
 	{ "notfound",   RLM_MODULE_NOTFOUND     },
 	{ "noop",       RLM_MODULE_NOOP	 },
 	{ "updated",    RLM_MODULE_UPDATED      },
+	{ "yield",      RLM_MODULE_YIELD      },
 	{ NULL, 0 }
 };
 

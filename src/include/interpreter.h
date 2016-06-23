@@ -48,7 +48,8 @@ typedef enum {
 					//!< values from a #map_proc_t call).
 #endif
 	MOD_POLICY,			//!< Policy section.
-	MOD_XLAT			//!< Bare xlat statement.
+	MOD_XLAT,			//!< Bare xlat statement.
+	MOD_RESUME,			//!< where to resume something
 } mod_type_t;
 
 #define MOD_NUM_TYPES (MOD_XLAT + 1)
@@ -97,6 +98,13 @@ typedef struct {
 	char *xlat_name;
 } modxlat;
 
+typedef struct {
+	modsingle	single;
+	fr_unlang_resume_t callback;
+	void *inst;
+	void *ctx;
+} modresume;
+
 extern char const *unlang_keyword[];
 
 extern char const *const comp2str[];
@@ -129,6 +137,15 @@ static inline modxlat *mod_callabletoxlat(modcallable *p)
 	return (modxlat *)p;
 }
 static inline modcallable *mod_xlattocallable(modxlat *p)
+{
+	return (modcallable *)p;
+}
+static inline modresume *mod_callabletoresume(modcallable *p)
+{
+	rad_assert(p->type==MOD_RESUME);
+	return (modresume *)p;
+}
+static inline modcallable *mod_resumetocallable(modresume *p)
 {
 	return (modcallable *)p;
 }

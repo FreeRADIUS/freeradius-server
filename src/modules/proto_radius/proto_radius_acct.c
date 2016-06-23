@@ -109,6 +109,12 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_USERLOCK:
 		default:
 			goto done;
+
+			/*
+			 *	We'll resume at some point.
+			 */
+		case RLM_MODULE_YIELD:
+			return;
 		}
 
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_TYPE, TAG_ANY);
@@ -169,6 +175,12 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_USERLOCK:
 		default:
 			break;
+
+			/*
+			 *	We'll resume at some point.
+			 */
+		case RLM_MODULE_YIELD:
+			return;
 		}
 
 	send_reply:

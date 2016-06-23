@@ -229,7 +229,7 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 	}
 
 	/*
-	 *	Push the child, and yeild for a later return.
+	 *	Push the child, and yield for a later return.
 	 */
 	unlang_push(stack, entry->redundant.child, entry->result, false);
 	entry->resume = true;
@@ -420,7 +420,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	request_data_add(request, (void *)radius_get_vp, entry->foreach.depth, &entry->foreach.variable, false, false, false);
 
 	/*
-	 *	Push the child, and yeild for a later return.
+	 *	Push the child, and yield for a later return.
 	 */
 	unlang_push(stack, g->children, entry->result, true);
 	entry->resume = true;
@@ -744,6 +744,34 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 	return unlang_group(request, stack, presult, priority);
 }
 
+static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
+				     rlm_rcode_t *presult, UNUSED int *priority)
+{
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
+	modcallable *c = entry->c;
+	modresume *mr = mod_callabletoresume(c);
+	modsingle *sp;
+
+	sp = &mr->single;
+
+	RDEBUG3("modsingle[%s]: Resuming %s (%s) for request %" PRIu64,
+		sp->method, sp->modinst->name,
+		sp->modinst->module->name, request->number);
+
+	safe_lock(sp->modinst);
+	*presult = mr->callback(request, mr->inst, mr->ctx);
+	safe_unlock(sp->modinst);
+
+	RDEBUG2("%s (%s)", c->name ? c->name : "",
+		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+
+	/*
+	 *	Leave mr alone, it will be freed when the request is done.
+	 */
+
+	return UNLANG_CALCULATE_RESULT;
+}
+
 /*
  *	Some functions differ mainly in their parsing
  */
@@ -754,7 +782,7 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 /*
  *	The jump table for the interpretor
  */
-static unlang_function_t unlang_functions[MOD_NUM_TYPES] = {
+static unlang_function_t unlang_functions[] = {
 	[MOD_SINGLE]			= unlang_single,
 	[MOD_GROUP]			= unlang_group,
 	[MOD_LOAD_BALANCE]		= unlang_load_balance,
@@ -773,6 +801,7 @@ static unlang_function_t unlang_functions[MOD_NUM_TYPES] = {
 #endif
 	[MOD_POLICY]			= unlang_policy,
 	[MOD_XLAT]			= unlang_xlat,
+	[MOD_RESUME]			= unlang_resume,
 };
 
 static bool unlang_brace[MOD_NUM_TYPES] = {
@@ -873,6 +902,12 @@ redo:
 			/* FALL-THROUGH */
 
 		case UNLANG_CALCULATE_RESULT:
+			if (result == RLM_MODULE_YIELD) {
+				rad_assert(entry->c->type == MOD_RESUME);
+				rad_assert(entry->resume == false);
+				return RLM_MODULE_YIELD;
+			}
+
 			entry->resume = false;
 			if (unlang_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
 							    fr_int2str(mod_rcode_table, result, "<invalid>"));
@@ -963,7 +998,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	unlang_push(request->stack, c, action, true);
 }
 
-/** Continue interpreting after a previous push or yeild.
+/** Continue interpreting after a previous push or yield.
  *
  */
 rlm_rcode_t unlang_interpret_continue(REQUEST *request)
@@ -1105,4 +1140,42 @@ int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
 
 	talloc_free(ev);
 	return 0;
+}
+
+/** Mark a request as resumable.
+ *
+ *  It's not called "unlang_resume", because it doesn't actually
+ *  resume the request, it just schedules it for resumption.
+ */
+void unlang_resumable(REQUEST *request)
+{
+	fr_heap_insert(request->backlog, request);
+}
+
+rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *inst, void *ctx)
+{
+	unlang_stack_entry_t *entry;
+	unlang_stack_t *stack = request->stack;
+	modresume *mr;
+
+	rad_assert(stack->depth > 0);
+
+	entry = &stack->entry[stack->depth];
+
+	rad_assert(entry->c->type == MOD_SINGLE);
+
+	mr = talloc(request, modresume);
+	rad_assert(mr != NULL);
+
+	memcpy(&mr->single, entry->c, sizeof(mr->single));
+
+	mr->single.mc.type = MOD_RESUME;
+	mr->callback = callback;
+	rad_assert(mr->single.modinst->data == inst);
+	mr->inst = inst;
+	mr->ctx = ctx;
+
+	entry->c = mod_resumetocallable(mr);
+
+	return RLM_MODULE_YIELD;
 }

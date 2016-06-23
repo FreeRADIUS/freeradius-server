@@ -193,6 +193,10 @@ int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 int unlang_event_timeout_delete(REQUEST *request, void *ctx);
 int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
 
+typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *, void *, void *);
+void unlang_resumable(REQUEST *request);
+rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *inst, void *ctx);
+
 
 #ifdef __cplusplus
 }

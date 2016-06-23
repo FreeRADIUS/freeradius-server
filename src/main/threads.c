@@ -801,6 +801,7 @@ static void *thread_handler(void *arg)
 
 		request = thread->request;
 		request->el = el;
+		request->backlog = backlog;
 
 #ifdef WITH_ACCOUNTING
 		if ((thread->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&

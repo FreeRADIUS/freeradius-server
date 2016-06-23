@@ -29,6 +29,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/heap.h>
 
 typedef struct rad_request REQUEST;
 
@@ -91,7 +92,8 @@ typedef enum rlm_rcodes {
 	RLM_MODULE_NOOP,	//!< Module succeeded without doing anything.
 	RLM_MODULE_UPDATED,	//!< OK (pairs modified).
 	RLM_MODULE_NUMCODES,	//!< How many valid return codes there are.
-	RLM_MODULE_UNKNOWN	//!< Error resolving rcode (should not be
+	RLM_MODULE_YIELD,	//!< for unlang
+	RLM_MODULE_UNKNOWN,	//!< Error resolving rcode (should not be
 				//!< returned by modules).
 } rlm_rcode_t;
 extern const FR_NAME_NUMBER modreturn_table[];
@@ -218,6 +220,7 @@ struct rad_request {
 	uint64_t		number; 	//!< Monotonically increasing request number. Reset on server restart.
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
+	fr_heap_t		*backlog;	//!< thread-specific backlog
 	fr_request_state_t	request_state;	//!< state for the various protocol handlers.
 
 	request_data_t		*data;		//!< Request metadata.
