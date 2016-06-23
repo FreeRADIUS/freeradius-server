@@ -6,6 +6,7 @@
  * Version: $Id$ */
 
 #include <freeradius-devel/conffile.h> /* Need CONF_* definitions */
+#include <freeradius-devel/modcall.h>
 #include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -52,14 +53,15 @@ typedef enum {
 
 #define MOD_NUM_TYPES (MOD_XLAT + 1)
 
-typedef struct modcallable {
-	struct modcallable	*parent;
+struct modcallable {
+	modcallable		*parent;
 	struct modcallable	*next;
 	char const		*name;
 	char const 		*debug_name;
 	mod_type_t		type;
+	rlm_components_t	method;
 	int			actions[RLM_MODULE_NUMCODES];
-} modcallable;
+};
 
 
 typedef enum {
@@ -84,10 +86,8 @@ typedef struct {
 } modgroup;
 
 typedef struct {
-	modcallable		mc;
-	module_instance_t	*modinst;
-	char const		*method;
-	packetmethod		function;
+	modcallable mc;
+	module_instance_t *modinst;
 } modsingle;
 
 typedef struct {
@@ -131,6 +131,8 @@ static inline modcallable *mod_xlattocallable(modxlat *p)
 {
 	return (modcallable *)p;
 }
+
+rlm_rcode_t unlang_interpret(REQUEST *request, modcallable *c, rlm_components_t component);
 
 #ifdef __cplusplus
 }

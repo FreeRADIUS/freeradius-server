@@ -69,7 +69,7 @@ static void safe_unlock(module_instance_t *instance)
 		pthread_mutex_unlock(instance->mutex);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *sp)
+static rlm_rcode_t CC_HINT(nonnull) unlang_module(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int blocked;
 
@@ -80,7 +80,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *s
 	if (blocked) return RLM_MODULE_NOOP;
 
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
+		comp2str[component], sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	if (sp->modinst->force) {
@@ -94,7 +94,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *s
 	request->module = sp->modinst->name;
 
 	safe_lock(sp->modinst);
-	request->rcode = sp->function(sp->modinst->data, request);
+	request->rcode = sp->modinst->module->methods[component](sp->modinst->data, request);
 	safe_unlock(sp->modinst);
 
 	request->module = NULL;
@@ -109,7 +109,7 @@ static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *s
 
  fail:
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
+		comp2str[component], sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	return request->rcode;
@@ -676,7 +676,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	sp = mod_callabletosingle(c);
 
-	*presult = unlang_module(request, sp);
+	*presult = unlang_module(c->method, sp, request);
 	*priority = c->actions[*presult];
 
 	RDEBUG2("%s (%s)", c->name ? c->name : "",
@@ -992,25 +992,38 @@ done:
 }
 
 
+static int default_component_results[MOD_COUNT] = {
+	RLM_MODULE_REJECT,	/* AUTH */
+	RLM_MODULE_NOTFOUND,	/* AUTZ */
+	RLM_MODULE_NOOP,	/* PREACCT */
+	RLM_MODULE_NOOP,	/* ACCT */
+	RLM_MODULE_FAIL,	/* SESS */
+	RLM_MODULE_NOOP,	/* PRE_PROXY */
+	RLM_MODULE_NOOP,	/* POST_PROXY */
+	RLM_MODULE_NOOP       	/* POST_AUTH */
+#ifdef WITH_COA
+	,
+	RLM_MODULE_NOOP,       	/* RECV_COA_TYPE */
+	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
+#endif
+};
+
+
 /** Call a module, iteratively, with a local stack, rather than recursively
  *
  * What did Paul Graham say about Lisp...?
  */
-rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
+rlm_rcode_t unlang_interpret(REQUEST *request, modcallable *c, rlm_components_t component)
 {
 	int priority;
 	rlm_rcode_t result;
-	modcallable *c;
 	unlang_stack_t stack;
 
-	if (!cs) return action;
-
-	c = cf_data_find(cs, "unlang");
-	if (!c) return action;
+	if (!c) return default_component_results[component];
 
 	memset(&stack, 0, sizeof(stack));
 
-	result = action;
+	result = default_component_results[component];
 	priority = 0;
 
 	unlang_push(&stack, c, result, true);

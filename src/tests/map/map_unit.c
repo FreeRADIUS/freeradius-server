@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/modcall.h>
 
 #include <ctype.h>
 
@@ -99,7 +99,7 @@ static int process_file(char const *filename)
 	/*
 	 *	Convert the update section to a list of maps.
 	 */
-	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_update, NULL, 128);
 	if (rcode < 0) return -1; /* message already printed */
 	if (!head) {
 		cf_log_err_cs(cs, "'update' sections cannot be empty");
