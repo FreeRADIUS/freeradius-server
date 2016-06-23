@@ -1157,7 +1157,7 @@ static int hup_callback(void *ctx, void *data)
 
 	if (!module_hup(instance->cs, instance, time(NULL))) return 0;
 
-	return 0;
+	return 1;
 }
 
 void main_config_hup(void)
