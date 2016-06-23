@@ -60,6 +60,7 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Fixes #1608
 	* Minor fixes to allow compilation without DHCP,
 	  VMPS, or TCP.
+	* Fix checks for module / config file change on HUP.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
