@@ -263,18 +263,76 @@ static void reap_children(void)
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
+static void unlink_list(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_HANDLE *this)
+{
+	if (this->prev) {
+		rad_assert(*head_p != this);
+		this->prev->next = this->next;
+	} else {
+		rad_assert(*head_p == this);
+		*head_p = this->next;
+	}
+	if (this->next) {
+		rad_assert(*tail_p != this);
+		this->next->prev = this->prev;
+	} else {
+		rad_assert(*tail_p == this);
+		*tail_p = this->prev;
+	}
+
+	this->prev = this->next = NULL;
+}
+
+static void link_list_head(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_HANDLE *this)
+{
+	rad_assert(*head_p != this);
+	rad_assert(*tail_p != this);
+
+	if (*head_p) {
+		(*head_p)->prev = this;
+	}
+
+	this->next = *head_p;
+	this->prev = NULL;
+
+	*head_p = this;
+	if (!*tail_p) {
+		rad_assert(this->next == NULL);
+		*tail_p = this;
+	} else {
+		rad_assert(this->next != NULL);
+	}
+}
+
+
+static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_HANDLE *this)
+{
+	rad_assert(*head_p != this);
+	rad_assert(*tail_p != this);
+
+	if (*tail_p) {
+		(*tail_p)->next = this;
+	}
+
+	this->next = NULL;
+	this->prev = *tail_p;
+
+	*tail_p = this;
+	if (!*head_p) {
+		rad_assert(this->prev == NULL);
+		*head_p = this;
+	} else {
+		rad_assert(this->prev != NULL);
+	}
+}
+
+
+
 static void link_active_head(THREAD_HANDLE *thread)
 {
-	thread->prev = NULL;
-	thread->next = thread_pool.active_head;
-	if (thread->next) {
-		rad_assert(thread_pool.active_tail != NULL);
-		thread->next->prev = thread;
-	} else {
-		rad_assert(thread_pool.active_tail == NULL);
-		thread_pool.active_tail = thread;
-	}
-	thread_pool.active_head = thread;
+	DEBUG("%s", __FUNCTION__);
+	link_list_head(&thread_pool.active_head, &thread_pool.active_tail, thread);
+
 	thread_pool.active_threads++;
 	thread->status = THREAD_ACTIVE;
 }
@@ -284,23 +342,9 @@ static void link_active_head(THREAD_HANDLE *thread)
  */
 static void unlink_active(THREAD_HANDLE *thread)
 {
+	DEBUG("%s", __FUNCTION__);
 	pthread_mutex_lock(&thread_pool.active_mutex);
-	thread->request = NULL;
-	if (thread->prev) {
-		rad_assert(thread_pool.active_head != thread);
-		thread->prev->next = thread->next;
-	} else {
-		rad_assert(thread_pool.active_head == thread);
-		thread_pool.active_head = thread->next;
-	}
-
-	if (thread->next) {
-		rad_assert(thread_pool.active_tail != thread);
-		thread->next->prev = thread->prev;
-	} else {
-		rad_assert(thread_pool.active_tail == thread);
-		thread_pool.active_tail = thread->prev;
-	}
+	unlink_list(&thread_pool.active_head, &thread_pool.active_tail, thread);
 	thread_pool.active_threads--;
 	pthread_mutex_unlock(&thread_pool.active_mutex);
 }
@@ -311,19 +355,10 @@ static void unlink_active(THREAD_HANDLE *thread)
  */
 static void link_exited_tail(THREAD_HANDLE *thread)
 {
+	DEBUG("%s", __FUNCTION__);
 	pthread_mutex_lock(&thread_pool.exited_mutex);
-	if (thread_pool.exited_tail) {
-		thread->prev = thread_pool.exited_tail;
-		thread->prev->next = thread;
-		thread_pool.exited_tail = thread;
-	} else {
-		rad_assert(thread_pool.exited_head == NULL);
-		thread_pool.exited_head = thread;
-		thread_pool.exited_tail = thread;
-		thread->prev = NULL;
-	}
+	link_list_tail(&thread_pool.exited_head, &thread_pool.exited_tail, thread);
 	thread_pool.total_threads--;
-
 	thread->status = THREAD_CANCELLED;
 	pthread_mutex_unlock(&thread_pool.exited_mutex);
 }
@@ -331,18 +366,8 @@ static void link_exited_tail(THREAD_HANDLE *thread)
 
 static void link_idle_head(THREAD_HANDLE *thread)
 {
-	/*
-	 *	Insert it into the head of the idle list.
-	 */
-	thread->prev = NULL;
-	thread->next = thread_pool.idle_head;
-	if (thread->next) {
-		thread->next->prev = thread;
-	} else {
-		rad_assert(thread_pool.idle_tail == NULL);
-		thread_pool.idle_tail = thread;
-	}
-	thread_pool.idle_head = thread;
+	DEBUG("%s", __FUNCTION__);
+	link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
 	thread_pool.idle_threads++;
 }
 			 
@@ -352,25 +377,10 @@ static void link_idle_head(THREAD_HANDLE *thread)
  */
 static void unlink_idle(THREAD_HANDLE *thread, bool do_locking)
 {
+	DEBUG("%s", __FUNCTION__);
 	if (do_locking) pthread_mutex_lock(&thread_pool.idle_mutex);
 
-	if (thread->prev) {
-		rad_assert(thread_pool.idle_head != thread);
-		thread->prev->next = thread->next;
-		
-	} else {
-		rad_assert(thread_pool.idle_head == thread);
-		thread_pool.idle_head = thread->next;
-	}
-
-	if (thread->next) {
-		rad_assert(thread_pool.idle_tail != thread);
-		thread->next->prev = NULL;
-	} else {
-		rad_assert(thread_pool.idle_tail == thread);
-		thread_pool.idle_tail = thread->prev;
-		rad_assert(thread_pool.idle_threads == 1);
-	}
+	unlink_list(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
 	thread_pool.idle_threads--;
 
 	if (do_locking) pthread_mutex_unlock(&thread_pool.idle_mutex);
@@ -431,14 +441,7 @@ void request_enqueue(REQUEST *request)
 		 *	Remove the thread from the idle list.
 		 */
 		thread = thread_pool.idle_head;
-		thread_pool.idle_head = thread->next;
-		if (thread->next) {
-			thread->next->prev = NULL;
-		} else {
-			rad_assert(thread_pool.idle_tail == thread);
-			thread_pool.idle_tail = thread->prev;
-			rad_assert(thread_pool.idle_threads == 1);
-		}
+		unlink_list(&thread_pool.idle_head, &thread_pool.idle_tail, thread_pool.idle_head);
 		thread_pool.idle_threads--;
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
@@ -518,6 +521,8 @@ void request_enqueue(REQUEST *request)
 	pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 	gettimeofday(&now, NULL);
+
+	RDEBUG("No idle threads, inserting into the backlog.");
 
 	/*
 	 *	Manage the backlog.
@@ -949,20 +954,8 @@ static void *thread_handler(void *arg)
 			if (thread_pool.exited_head &&
 			    (thread_pool.exited_head->status == THREAD_EXITED)) {
 				idle = thread_pool.exited_head;
-				
-				/*
-				 *	Unlink it from the exited list.
-				 *
-				 *	It's already been removed from
-				 *	"total_threads", as we don't count threads
-				 *	which are doing nothing.
-				 */
-				thread_pool.exited_head = idle->next;
-				if (idle->next) {
-					idle->next->prev = NULL;
-				} else {
-					thread_pool.exited_tail = NULL;
-				}
+
+				unlink_list(&thread_pool.exited_head, &thread_pool.exited_tail, idle);
 
 				/*
 				 *	Deleting old threads can take time, so we join
@@ -1283,6 +1276,10 @@ int thread_pool_init(void)
 		return -1;
 	}
 
+	thread_pool.idle_head = thread_pool.idle_tail = NULL;
+	thread_pool.active_head = thread_pool.active_tail = NULL;
+	thread_pool.exited_head = thread_pool.exited_tail = NULL;
+
 	/*
 	 *	Create a number of waiting threads.  Note we don't
 	 *	need to lock the mutex, as nothing is sending
@@ -1296,20 +1293,14 @@ int thread_pool_init(void)
 		thread = spawn_thread(now, 0);
 		if (!thread) return -1;
 
-		thread->prev = NULL;
-		thread->next = thread_pool.idle_head;
-		if (thread->next) {
-			rad_assert(thread_pool.idle_tail != NULL);
-			thread->next->prev = thread;
-		} else {
-			rad_assert(thread_pool.idle_tail == NULL);
-			thread_pool.idle_tail = thread;
-		}
-		thread_pool.idle_head = thread;
-		thread_pool.idle_threads++;
+		link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
 
+		thread_pool.idle_threads++;
 		thread_pool.total_threads++;
 	}
+
+	rad_assert(thread_pool.idle_head != NULL);
+
 #else
 	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
 	if (!thread_pool.queue) {
