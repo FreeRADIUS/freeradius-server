@@ -330,7 +330,7 @@ static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREA
 
 static void link_active_head(THREAD_HANDLE *thread)
 {
-	DEBUG("%s", __FUNCTION__);
+	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
 	link_list_head(&thread_pool.active_head, &thread_pool.active_tail, thread);
 
 	thread_pool.active_threads++;
@@ -342,8 +342,10 @@ static void link_active_head(THREAD_HANDLE *thread)
  */
 static void unlink_active(THREAD_HANDLE *thread)
 {
-	DEBUG("%s", __FUNCTION__);
+	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+
 	pthread_mutex_lock(&thread_pool.active_mutex);
+	rad_assert(thread->status == THREAD_ACTIVE);
 	unlink_list(&thread_pool.active_head, &thread_pool.active_tail, thread);
 	thread_pool.active_threads--;
 	pthread_mutex_unlock(&thread_pool.active_mutex);
@@ -355,7 +357,8 @@ static void unlink_active(THREAD_HANDLE *thread)
  */
 static void link_exited_tail(THREAD_HANDLE *thread)
 {
-	DEBUG("%s", __FUNCTION__);
+	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+
 	pthread_mutex_lock(&thread_pool.exited_mutex);
 	link_list_tail(&thread_pool.exited_head, &thread_pool.exited_tail, thread);
 	thread_pool.total_threads--;
@@ -366,7 +369,9 @@ static void link_exited_tail(THREAD_HANDLE *thread)
 
 static void link_idle_head(THREAD_HANDLE *thread)
 {
-	DEBUG("%s", __FUNCTION__);
+	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	thread->request = NULL;
+	thread->status = THREAD_IDLE;
 	link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
 	thread_pool.idle_threads++;
 }
@@ -377,7 +382,8 @@ static void link_idle_head(THREAD_HANDLE *thread)
  */
 static void unlink_idle(THREAD_HANDLE *thread, bool do_locking)
 {
-	DEBUG("%s", __FUNCTION__);
+	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	rad_assert(thread->status == THREAD_IDLE);
 	if (do_locking) pthread_mutex_lock(&thread_pool.idle_mutex);
 
 	unlink_list(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
@@ -441,6 +447,7 @@ void request_enqueue(REQUEST *request)
 		 *	Remove the thread from the idle list.
 		 */
 		thread = thread_pool.idle_head;
+		DEBUG2("Thread %d unlink_idle_head", thread->thread_num);
 		unlink_list(&thread_pool.idle_head, &thread_pool.idle_tail, thread_pool.idle_head);
 		thread_pool.idle_threads--;
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
@@ -764,7 +771,15 @@ static void *thread_handler(void *arg)
 
 			DEBUG3("Thread %d got signal for new request", thread->thread_num);
 
+			if (thread->status == THREAD_ACTIVE) rad_assert(thread->request != NULL);
+
 		} else {
+			pthread_mutex_lock(&thread_pool.idle_mutex);
+			if (thread->status == THREAD_IDLE) {
+				unlink_idle(thread, false);
+			}
+			pthread_mutex_unlock(&thread_pool.idle_mutex);
+				
 			DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
 
 			/*
@@ -772,23 +787,43 @@ static void *thread_handler(void *arg)
 			 */
 			(void) fr_event_service(el);
 
-			/*
-			 *	There are requests to process.  Remove
-			 *	ourselves from the idle list, and
-			 *	insert ourselves into the active list.
-			 */
-			if (fr_heap_num_elements(backlog) > 0) {
-				unlink_idle(thread, true);
+			if (thread->status == THREAD_CANCELLED) break;
 
+			/*
+			 *	If we're idle, AND there's no backlog,
+			 *	go back to waiting for a packet from
+			 *	one of the reader threads.
+			 */
+			if (thread->status == THREAD_IDLE) {
+				if (fr_heap_num_elements(backlog) == 0) {
+					pthread_mutex_lock(&thread_pool.idle_mutex);
+					link_idle_head(thread);
+					pthread_mutex_unlock(&thread_pool.idle_mutex);
+					continue;
+				}
+
+				/*
+				 *	Grab a request from the backlog.
+				 */
 				request = fr_heap_peek(backlog);
 				(void) fr_heap_extract(backlog, request);
-				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-				thread->request = request;
+				rad_assert(request != NULL);
 
 				pthread_mutex_lock(&thread_pool.active_mutex);
 				link_active_head(thread);
+				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+				thread->request = request;
 				pthread_mutex_unlock(&thread_pool.active_mutex);
+
+				rad_assert(thread->status == THREAD_ACTIVE);
+				rad_assert(thread->request != NULL);
 			}
+
+			/*
+			 *	@fixme: insert thread->request into
+			 *	the backlog for proper prioritization.
+			 */
+			if (thread->status == THREAD_ACTIVE) rad_assert(thread->request != NULL);
 		}
 
 	process:
@@ -808,6 +843,7 @@ static void *thread_handler(void *arg)
 		request = thread->request;
 		request->el = el;
 		request->backlog = backlog;
+
 
 #ifdef WITH_ACCOUNTING
 		if ((thread->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
@@ -1293,7 +1329,7 @@ int thread_pool_init(void)
 		thread = spawn_thread(now, 0);
 		if (!thread) return -1;
 
-		link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
+		link_idle_head(thread);
 
 		thread_pool.idle_threads++;
 		thread_pool.total_threads++;
