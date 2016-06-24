@@ -771,7 +771,9 @@ static void *thread_handler(void *arg)
 
 			DEBUG3("Thread %d got signal for new request", thread->thread_num);
 
-			if (thread->status == THREAD_ACTIVE) rad_assert(thread->request != NULL);
+			if (thread->status == THREAD_ACTIVE) {
+				rad_assert(thread->request != NULL);
+			}
 
 		} else {
 			DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
@@ -820,7 +822,9 @@ static void *thread_handler(void *arg)
 			 *	@fixme: insert thread->request into
 			 *	the backlog for proper prioritization.
 			 */
-			if (thread->status == THREAD_ACTIVE) rad_assert(thread->request != NULL);
+			if (thread->status == THREAD_ACTIVE) {
+				rad_assert(thread->request != NULL);
+			}
 		}
 
 	process:
