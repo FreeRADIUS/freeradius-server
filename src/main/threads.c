@@ -774,12 +774,6 @@ static void *thread_handler(void *arg)
 			if (thread->status == THREAD_ACTIVE) rad_assert(thread->request != NULL);
 
 		} else {
-			pthread_mutex_lock(&thread_pool.idle_mutex);
-			if (thread->status == THREAD_IDLE) {
-				unlink_idle(thread, false);
-			}
-			pthread_mutex_unlock(&thread_pool.idle_mutex);
-				
 			DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
 
 			/*
@@ -795,12 +789,15 @@ static void *thread_handler(void *arg)
 			 *	one of the reader threads.
 			 */
 			if (thread->status == THREAD_IDLE) {
-				if (fr_heap_num_elements(backlog) == 0) {
-					pthread_mutex_lock(&thread_pool.idle_mutex);
-					link_idle_head(thread);
+				pthread_mutex_lock(&thread_pool.idle_mutex);
+				if ((thread->status == THREAD_IDLE) &&
+				    (fr_heap_num_elements(backlog) == 0)) {
 					pthread_mutex_unlock(&thread_pool.idle_mutex);
 					continue;
 				}
+
+				unlink_idle(thread, false);
+				pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 				/*
 				 *	Grab a request from the backlog.
