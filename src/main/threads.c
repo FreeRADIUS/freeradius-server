@@ -792,14 +792,16 @@ static void *thread_handler(void *arg)
 			 */
 			if (thread->status == THREAD_IDLE) {
 				pthread_mutex_lock(&thread_pool.idle_mutex);
-				if ((thread->status == THREAD_IDLE) &&
-				    (fr_heap_num_elements(backlog) == 0)) {
-					pthread_mutex_unlock(&thread_pool.idle_mutex);
-					continue;
-				}
+				if (thread->status == THREAD_IDLE) {
 
-				unlink_idle(thread, false);
-				pthread_mutex_unlock(&thread_pool.idle_mutex);
+					if (fr_heap_num_elements(backlog) == 0) {
+						pthread_mutex_unlock(&thread_pool.idle_mutex);
+						continue;
+					}
+
+					unlink_idle(thread, false);
+					pthread_mutex_unlock(&thread_pool.idle_mutex);
+				}
 
 				/*
 				 *	Grab a request from the backlog.
