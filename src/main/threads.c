@@ -816,14 +816,29 @@ static void *thread_handler(void *arg)
 
 				rad_assert(thread->status == THREAD_ACTIVE);
 				rad_assert(thread->request != NULL);
-			}
 
-			/*
-			 *	@fixme: insert thread->request into
-			 *	the backlog for proper prioritization.
-			 */
-			if (thread->status == THREAD_ACTIVE) {
+			} else if (thread->status == THREAD_ACTIVE) {
 				rad_assert(thread->request != NULL);
+
+				/*
+				 *	If necessary, insert the request into the backlog for proper prioritization.
+				 */
+				if (fr_heap_num_elements(backlog) > 0) {
+					fr_heap_insert(backlog, thread->request);
+				}
+
+				request = fr_heap_peek(backlog);
+				(void) fr_heap_extract(backlog, request);
+				rad_assert(request != NULL);
+
+				/*
+				 *	@fixme: probably race
+				 *	conditions here... but only
+				 *	when the server is blocked.
+				 *	Oh well.
+				 */
+				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+				thread->request = request;
 			}
 		}
 
