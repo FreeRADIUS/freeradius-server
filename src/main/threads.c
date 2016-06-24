@@ -537,7 +537,8 @@ void request_enqueue(REQUEST *request)
 	 *	@fixme - Complain when this happens, too.
 	 */
 	old = fr_heap_peek_tail(thread_pool.backlog);
-	if ((old->packet->timestamp.tv_sec + old->root->max_request_time) < now.tv_sec) {
+	if (old &&
+	    ((old->packet->timestamp.tv_sec + old->root->max_request_time) < now.tv_sec)) {
 		(void) fr_heap_extract(thread_pool.backlog, old);
 
 		old->master_state = REQUEST_STOP_PROCESSING;
