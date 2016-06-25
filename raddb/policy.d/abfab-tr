@@ -9,14 +9,14 @@
 # Verify rp parameters
 #
 psk_authorize {
-	if (TLS-PSK-Identity) {
+	if (&TLS-PSK-Identity) {
 		# TODO: may need to check trust-router-apc as well
 		if ("%{psksql:select distinct keyid from authorizations_keys where keyid = '%{tls-psk-identity}' and '%{trust-router-coi}' like coi and '%{gss-acceptor-realm-name}' like acceptor_realm and '%{gss-acceptor-host-name}' like hostname;}") {
 			# do things here
 		}
 		else {
-		update reply {
-			Reply-Message = "RP not authorized for this ABFAB request"
+			update reply {
+				&Reply-Message = "RP not authorized for this ABFAB request"
 			}
 			reject
 		}
@@ -25,11 +25,11 @@ psk_authorize {
 
 abfab_client_check {
 	# check that the acceptor host name is correct
-	if ("%{client:gss_acceptor_host_name}" && &gss-acceptor-host-name) {
+	if ("%{client:gss_acceptor_host_name}" && &GSS-acceptor-host-name) {
 		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
 			update reply {
-			        Reply-Message = "GSS-Acceptor-Host-Name incorrect"
-				}
+				&Reply-Message = "GSS-Acceptor-Host-Name incorrect"
+			}
 			reject
 		}
 	}
@@ -37,14 +37,14 @@ abfab_client_check {
 	# set trust-router-coi attribute from the client configuration
 	if ("%{client:trust_router_coi}") {
 		update request {
-			Trust-Router-COI := "%{client:trust_router_coi}"
+			&Trust-Router-COI := "%{client:trust_router_coi}"
 		}
 	}
 
 	# set gss-acceptor-realm-name attribute from the client configuration
 	if ("%{client:gss_acceptor_realm_name}") {
 		update request {
-			GSS-Acceptor-Realm-Name := "%{client:gss_acceptor_realm_name}"
+			&GSS-Acceptor-Realm-Name := "%{client:gss_acceptor_realm_name}"
 		}
 	}
 }
@@ -52,21 +52,21 @@ abfab_client_check {
 #  A policy which is used to validate channel-bindings.
 #
 abfab_channel_bindings {
-	if (GSS-Acceptor-Service-Name && (outer.request:GSS-Acceptor-Service-Name != GSS-Acceptor-Service-Name)) {
+	if (&GSS-Acceptor-Service-Name && (&outer.request:GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
 		reject
 	}
 
-	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name) {
+	if (&GSS-Acceptor-Host-Name && &outer.request:GSS-Acceptor-Host-Name != &GSS-Acceptor-Host-Name) {
 		reject
 	}
 
-	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name) {
+	if (&GSS-Acceptor-Realm-Name && &outer.request:GSS-Acceptor-Realm-Name != &GSS-Acceptor-Realm-Name) {
 		reject
 	}
 
-	if (GSS-Acceptor-Service-Name || GSS-Acceptor-Realm-Name || GSS-Acceptor-Host-Name) {
+	if (&GSS-Acceptor-Service-Name || &GSS-Acceptor-Realm-Name || &GSS-Acceptor-Host-Name) {
 		update control {
-			Chbind-Response-Code := success
+			&Chbind-Response-Code := success
 		}
 
 		#
@@ -76,9 +76,9 @@ abfab_channel_bindings {
 		#  then they won't be copied to the reply.
 		#
 		update reply {
-			GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
-			GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
-			GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
+			&GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
+			&GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
+			&GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
 		}
 	}
 
