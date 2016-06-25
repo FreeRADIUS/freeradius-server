@@ -608,8 +608,8 @@ int fr_hash_table_num_elements(fr_hash_table_t *ht)
  *	Walk over the nodes, allowing deletes & inserts to happen.
  */
 int fr_hash_table_walk(fr_hash_table_t *ht,
-			 fr_hash_table_walk_t callback,
-			 void *context)
+		       fr_hash_table_walk_t callback,
+		       void *context)
 {
 	int i, rcode;
 
