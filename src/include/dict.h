@@ -62,7 +62,7 @@ typedef struct attr_flags {
 	} encrypt;
 
 	uint8_t			length;				//!< length of the attribute
-	uint8_t			type_size;			//!< for TLV2, size of the type
+	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
 extern const FR_NAME_NUMBER dict_attr_types[];
@@ -90,6 +90,8 @@ struct dict_attr {
 };
 
 /** Value of an enumerated attribute
+ *
+ * Maps one of more string values to integers and vice versa.
  */
 typedef struct dict_enum {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
@@ -98,6 +100,11 @@ typedef struct dict_enum {
 } fr_dict_enum_t;
 
 /** Private enterprise
+ *
+ * Represents an IANA private enterprise allocation.
+ *
+ * The width of the private enterprise number must be the same for all protocols
+ * so we can represent a vendor with a single struct.
  */
 typedef struct dict_vendor {
 	unsigned int		vendorpec;			//!< Private enterprise number.
@@ -110,15 +117,23 @@ typedef struct dict_vendor {
 /*
  *	Dictionary constants
  */
-#define FR_DICT_ENUM_MAX_NAME_LEN	(128)
-#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)
-#define FR_DICT_ATTR_MAX_NAME_LEN	(128)
+#define FR_DICT_ENUM_MAX_NAME_LEN	(128)			//!< Maximum length of a enum value.
+#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)			//!< Maximum length of a vendor name.
+#define FR_DICT_ATTR_MAX_NAME_LEN	(128)			//!< Maximum length of a attribute name.
 
 /** Maximum level of TLV nesting allowed
  */
 #define FR_DICT_TLV_NEST_MAX		(24)
 
 /** Maximum TLV stack size
+ *
+ * The additional attributes are to account for
+ *
+ * Root + Vendor + NULL (top frame).
+ * Root + Embedded protocol + Root + Vendor + NULL.
+ *
+ * Code should ensure that it doesn't run off the end of the stack,
+ * as this could be remotely exploitable, using odd nesting.
  */
 #define FR_DICT_MAX_TLV_STACK		(FR_DICT_TLV_NEST_MAX + 5)
 
