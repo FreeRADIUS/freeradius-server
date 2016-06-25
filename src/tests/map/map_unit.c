@@ -171,17 +171,17 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radattr");
-		return 1;
+		exit(1);
 	}
 
 	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY, "radius") < 0) {
 		fr_perror("radattr");
-		return 1;
+		exit(1);
 	}
 
 	if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radattr");
-		return 1;
+		exit(1);
 	}
 
 	if (argc < 2) {
