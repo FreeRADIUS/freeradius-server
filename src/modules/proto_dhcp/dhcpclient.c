@@ -592,10 +592,14 @@ int main(int argc, char **argv)
 	RADIUS_PACKET		*request = NULL;
 	RADIUS_PACKET		*reply = NULL;
 
+	TALLOC_CTX		*autofree;
+
 	int			ret;
 
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
+
+	autofree = talloc_init("main");
 
 	while ((c = getopt(argc, argv, "d:D:f:hr:t:vxi:")) != EOF) switch(c) {
 		case 'D':
@@ -648,6 +652,8 @@ int main(int argc, char **argv)
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
 	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY, "radius") < 0) {
+	autofree = talloc_init("main");
+
 		fr_perror("dhcpclient");
 		exit(1);
 	}
@@ -779,6 +785,7 @@ int main(int argc, char **argv)
 		dhcp_packet_debug(reply, true);
 	}
 	talloc_free(dict);
+	talloc_free(autofree);
 
 	return ret < 0 ? 1 : 0;
 }
