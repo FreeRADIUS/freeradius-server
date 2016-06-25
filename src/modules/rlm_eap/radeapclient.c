@@ -2148,11 +2148,11 @@ static void rc_do_progress_stat(void)
 
 int main(int argc, char **argv)
 {
-	char *p;
-	int c;
-	char *filename = NULL;
-	FILE *fp;
-	fr_dict_t *dict = NULL;
+	char		*p;
+	int		c;
+	char		*filename = NULL;
+	FILE		*fp;
+	fr_dict_t	*dict = NULL;
 
 	static fr_log_t radclient_log = {
 		.colourise = true,
@@ -2309,9 +2309,7 @@ int main(int argc, char **argv)
 	/* Prepare the timeout. */
 	rc_float_to_timeval(&tv_timeout, timeout);
 
-	if (!main_config.dictionary_dir) {
-		main_config.dictionary_dir = DICTDIR;
-	}
+	if (!main_config.dictionary_dir) main_config.dictionary_dir = DICTDIR;
 
 	/*
 	 *	Read the distribution dictionaries first, then
