@@ -71,6 +71,8 @@ static VALUE_PAIR *fr_pair_alloc(TALLOC_CTX *ctx)
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
+ * @note Doesn't require qualification with a dictionary as fr_dict_attr_t are unique.
+ *
  * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET
  * @param[in] da Specifies the dictionary attribute to build the #VALUE_PAIR from.
  * @return
@@ -88,7 +90,6 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		fr_strerror_printf("Invalid arguments");
 		return NULL;
 	}
-
 
 	vp = fr_pair_alloc(ctx);
 	if (!vp) {
