@@ -176,12 +176,12 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY, "radius") < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("radattr");
 		exit(1);
 	}
 
-	if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("radattr");
 		exit(1);
 	}

@@ -467,12 +467,12 @@ int main(int argc, char **argv)
 		 *	Need to read in the dictionaries, else we may get
 		 *	validation errors when we try and parse the config.
 		 */
-		if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY, "radius") < 0) {
+		if (fr_dict_init(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 			fr_perror("radmin");
 			exit(64);
 		}
 
-		if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
+		if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
 			fr_perror("radmin");
 			exit(64);
 		}

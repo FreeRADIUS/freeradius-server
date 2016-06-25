@@ -807,8 +807,8 @@ int main_config_init(void)
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
-	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (fr_dict_init(NULL, &main_config.dict, main_config.dictionary_dir, RADIUS_DICTIONARY, "radius") != 0) {
+	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, FR_DICTIONARY_FILE);
+	if (fr_dict_init(NULL, &main_config.dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
 		ERROR("Errors reading dictionary: %s",
 		      fr_strerror());
 		return -1;
@@ -831,7 +831,7 @@ do {\
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
-	DICT_READ_OPTIONAL(radius_dir, RADIUS_DICTIONARY);
+	DICT_READ_OPTIONAL(radius_dir, FR_DICTIONARY_FILE);
 
 	cs = cf_section_alloc(NULL, "main", NULL);
 	if (!cs) return -1;

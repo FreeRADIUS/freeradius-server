@@ -651,14 +651,14 @@ int main(int argc, char **argv)
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
-	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY, "radius") < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 	autofree = talloc_init("main");
 
 		fr_perror("dhcpclient");
 		exit(1);
 	}
 
-	if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("dhcpclient");
 		exit(1);
 	}

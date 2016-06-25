@@ -2317,8 +2317,8 @@ int main(int argc, char **argv)
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
-	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (fr_dict_init(autofree, &dict, main_config.dictionary_dir, RADIUS_DICTIONARY, "radius") != 0) {
+	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, FR_DICTIONARY_FILE);
+	if (fr_dict_init(autofree, &dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
 		ERROR("Errors reading dictionary: %s", fr_strerror());
 		exit(1);
 	}
@@ -2326,9 +2326,9 @@ int main(int argc, char **argv)
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
-	int rcode = fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY);
+	int rcode = fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE);
 	if (rcode == -1) {
-		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY, fr_strerror());
+		ERROR("Errors reading %s/%s: %s", radius_dir, FR_DICTIONARY_FILE, fr_strerror());
 		exit(1);
 	}
 
@@ -2338,7 +2338,7 @@ int main(int argc, char **argv)
 	 *	anything.
 	 */
 	if (rcode == 0) {
-		DEBUG2("Including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
+		DEBUG2("Including dictionary file %s/%s", radius_dir, FR_DICTIONARY_FILE);
 	}
 
 	/*
