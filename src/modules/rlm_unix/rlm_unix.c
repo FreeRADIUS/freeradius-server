@@ -128,22 +128,22 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
  */
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	rlm_unix_t *inst = instance;
+	rlm_unix_t		*inst = instance;
+	fr_dict_attr_t const	*group_da, *user_name_da;
 
-	fr_dict_attr_t const *group_da, *user_name_da;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	group_da = fr_dict_attr_by_num(NULL, 0, PW_GROUP);
 	if (!group_da) {
-		ERROR("'Group' attribute not found in dictionary");
+		ERROR("&Group attribute not found in dictionary");
 		return -1;
 	}
 
 	user_name_da = fr_dict_attr_by_num(NULL, 0, PW_USER_NAME);
 	if (!user_name_da) {
-		ERROR("'User-Name' attribute not found in dictionary");
+		ERROR("&User-Name attribute not found in dictionary");
 		return -1;
 	}
 
@@ -155,16 +155,20 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	{
 		fr_dict_attr_t const *group_name_da;
 
-		group_name_da = fr_dict_attr_by_num(NULL, 0, PW_GROUP_NAME);
+		group_name_da = fr_dict_attr_by_num(fr_dict_internal, 0, PW_GROUP_NAME);
 		if (!group_name_da) {
-			ERROR("'Group-Name' attribute not found in dictionary");
+			ERROR("&Group-Name attribute not found in dictionary");
 			return -1;
 		}
 		paircompare_register(group_name_da, user_name_da, true, groupcmp, inst);
 	}
 #endif
 
-	if (paircompare_register_byname("Unix-Group", user_name_da, false, groupcmp, inst) < 0) {
+	if (paircompare_register_byname("Unix-Group",
+				        user_name_da,
+				        false,
+					groupcmp,
+					inst) < 0) {
 		ERROR("Failed registering Unix-Group: %s", fr_strerror());
 		return -1;
 	}
