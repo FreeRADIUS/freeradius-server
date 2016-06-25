@@ -138,6 +138,8 @@ int main(int argc, char *argv[])
 	char const *dict_dir = DICTDIR;
 	fr_dict_t *dict = NULL;
 
+	TALLOC_CTX		*autofree = talloc_init("main");
+
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radattr");
@@ -197,6 +199,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (rcode < 0) rcode = 1; /* internal to Unix process return code */
+
+	talloc_free(autofree);
 
 	return rcode;
 }
