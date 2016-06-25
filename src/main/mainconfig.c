@@ -757,14 +757,14 @@ char const *get_radius_dir(void)
  */
 int main_config_init(void)
 {
-	char const *p = NULL;
-	CONF_SECTION *cs, *subcs;
-	struct stat statbuf;
-	cached_config_t *cc;
-	char buffer[1024];
+	char const		*p = NULL;
+	CONF_SECTION		*cs, *subcs;
+	struct stat		statbuf;
+	cached_config_t 	*cc;
+	char			buffer[1024];
 
 	if (stat(radius_dir, &statbuf) < 0) {
-		ERROR("Errors reading %s: %s",
+		ERROR("Error reading %s: %s",
 		       radius_dir, fr_syserror(errno));
 		return -1;
 	}
@@ -792,9 +792,7 @@ int main_config_init(void)
 	 *	pre-compilation in conffile.c.  That should probably
 	 *	be fixed to be done as a second stage.
 	 */
-	if (!main_config.dictionary_dir) {
-		main_config.dictionary_dir = talloc_typed_strdup(NULL, DICTDIR);
-	}
+	if (!main_config.dictionary_dir) main_config.dictionary_dir = talloc_typed_strdup(NULL, DICTDIR);
 
 	/*
 	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
@@ -818,7 +816,7 @@ int main_config_init(void)
 do {\
 	switch (fr_dict_read(main_config.dict, _d, _n)) {\
 	case -1:\
-		ERROR("Errors reading %s/%s: %s", _d, _n, fr_strerror());\
+		ERROR("Error reading %s/%s: %s", _d, _n, fr_strerror());\
 		return -1;\
 	case 0:\
 		DEBUG2("including dictionary file %s/%s", _d,_n);\
@@ -868,7 +866,7 @@ do {\
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
 	if (cf_file_read(cs, buffer) < 0) {
-		ERROR("Errors reading or parsing %s", buffer);
+		ERROR("Error reading or parsing %s", buffer);
 		talloc_free(cs);
 		return -1;
 	}
