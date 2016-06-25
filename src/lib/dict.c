@@ -36,6 +36,16 @@ RCSID("$Id$")
 
 #define MAX_ARGV (16)
 
+/** Magic internal dictionary
+ *
+ * Internal dictionary is checked in addition to the protocol dictionary
+ * when resolving attribute names.
+ *
+ * This is because internal attributes are valid for every
+ * protocol.
+ */
+fr_dict_t	*fr_dict_internal = NULL;	//!< Internal server dictionary.
+
 /*
  *	For faster HUP's, we cache the stat information for
  *	files we've $INCLUDEd
@@ -46,8 +56,8 @@ typedef struct dict_stat_t {
 } dict_stat_t;
 
 typedef struct dict_enum_fixup_t {
-	char			attrstr[FR_DICT_ATTR_MAX_NAME_LEN];
-	fr_dict_enum_t		*dval;
+	char				attrstr[FR_DICT_ATTR_MAX_NAME_LEN];
+	fr_dict_enum_t			*dval;
 	struct dict_enum_fixup_t	*next;
 } dict_enum_fixup_t;
 
@@ -60,7 +70,7 @@ typedef struct dict_enum_fixup_t {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
-	dict_enum_fixup_t		*enum_fixup;
+	dict_enum_fixup_t	*enum_fixup;
 
 	dict_stat_t		*stat_head;
 	dict_stat_t		*stat_tail;
@@ -78,8 +88,6 @@ struct fr_dict {
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce allocs.
 };
-
-fr_dict_t *fr_dict_internal = NULL;	//!< Internal server dictionary.
 
 /** Map data types to names representing those types
  */
@@ -135,7 +143,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 /** Map data types to min / max data sizes
  */
 const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
-	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0.
+	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
 	[PW_TYPE_STRING]	= {0, ~0},
 	[PW_TYPE_OCTETS]	= {0, ~0},
@@ -208,8 +216,8 @@ const bool fr_dict_attr_allowed_chars[UINT8_MAX] = {
 #  define INTERNAL_IF_NULL(_dict) if (!_dict) _dict = fr_dict_internal
 #endif
 
-/*
- *	Empty callback for hash table initialization.
+/** Empty callback for hash table initialization
+ *
  */
 static int hash_null_callback(UNUSED void *ctx, UNUSED void *data)
 {
@@ -221,6 +229,11 @@ static void hash_pool_free(void *to_free)
 	talloc_free(to_free);
 }
 
+/** Apply a simple (case insensitive) hashing function to the name of an attribute, vendor or protocol
+ *
+ * @param[in] name of the attribute, vendor or protocol.
+ * @return the hashed derived from the name.
+ */
 static uint32_t dict_hash_name(char const *name)
 {
 	uint32_t hash = FNV_MAGIC_INIT;
@@ -237,14 +250,19 @@ static uint32_t dict_hash_name(char const *name)
 	return hash;
 }
 
-/*
- *	Hash callback functions.
+/** Wrap name hash function for fr_dict_attr_t
+ *
+ * @param data fr_dict_attr_t to hash.
+ * @return the hash derived from the name of the attribute.
  */
 static uint32_t dict_attr_name_hash(void const *data)
 {
 	return dict_hash_name(((fr_dict_attr_t const *)data)->name);
 }
 
+/** Compare two attribute names
+ *
+ */
 static int dict_attr_name_cmp(void const *one, void const *two)
 {
 	fr_dict_attr_t const *a = one;
@@ -253,6 +271,9 @@ static int dict_attr_name_cmp(void const *one, void const *two)
 	return strcasecmp(a->name, b->name);
 }
 
+/** Hash a combo attribute
+ *
+ */
 static uint32_t dict_attr_combo_hash(void const *data)
 {
 	uint32_t hash;
@@ -263,6 +284,9 @@ static uint32_t dict_attr_combo_hash(void const *data)
 	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
 }
 
+/** Compare two combo attribute entries
+ *
+ */
 static int dict_attr_combo_cmp(void const *one, void const *two)
 {
 	fr_dict_attr_t const *a = one;
@@ -277,11 +301,19 @@ static int dict_attr_combo_cmp(void const *one, void const *two)
 	return a->attr - b->attr;
 }
 
+/** Wrap name hash function for fr_dict_vendor_t
+ *
+ * @param data fr_dict_vendor_t to hash.
+ * @return the hash derived from the name of the attribute.
+ */
 static uint32_t dict_vendor_name_hash(void const *data)
 {
 	return dict_hash_name(((fr_dict_vendor_t const *)data)->name);
 }
 
+/** Compare two attribute names
+ *
+ */
 static int dict_vendor_name_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
@@ -290,13 +322,19 @@ static int dict_vendor_name_cmp(void const *one, void const *two)
 	return strcasecmp(a->name, b->name);
 }
 
-static uint32_t dict_vendor_value_hash(void const *data)
+/** Hash a vendor number
+ *
+ */
+static uint32_t dict_vendor_vendorpec_hash(void const *data)
 {
 	return fr_hash(&(((fr_dict_vendor_t const *)data)->vendorpec),
 		       sizeof(((fr_dict_vendor_t const *)data)->vendorpec));
 }
 
-static int dict_vendor_value_cmp(void const *one, void const *two)
+/** Compare two vendor numbers
+ *
+ */
+static int dict_vendor_vendorpec_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
@@ -304,6 +342,9 @@ static int dict_vendor_value_cmp(void const *one, void const *two)
 	return a->vendorpec - b->vendorpec;
 }
 
+/** Hash a dictionary name
+ *
+ */
 static uint32_t dict_enum_name_hash(void const *data)
 {
 	uint32_t hash;
@@ -313,6 +354,9 @@ static uint32_t dict_enum_name_hash(void const *data)
 	return fr_hash_update(&dval->da, sizeof(dval->da), hash);
 }
 
+/** Compare two dictionary attribute enum values
+ *
+ */
 static int dict_enum_name_cmp(void const *one, void const *two)
 {
 	int rcode;
@@ -325,6 +369,9 @@ static int dict_enum_name_cmp(void const *one, void const *two)
 	return strcasecmp(a->name, b->name);
 }
 
+/** Hash a dictionary enum value
+ *
+ */
 static uint32_t dict_enum_value_hash(void const *data)
 {
 	uint32_t hash = 0;
@@ -334,6 +381,9 @@ static uint32_t dict_enum_value_hash(void const *data)
 	return fr_hash_update(&dval->value, sizeof(dval->value), hash);
 }
 
+/** Compare two dictionary enum values
+ *
+ */
 static int dict_enum_value_cmp(void const *one, void const *two)
 {
 	int rcode;
@@ -427,44 +477,45 @@ static int dict_stat_check(fr_dict_t *dict, char const *dir, char const *file)
  */
 int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 {
-	size_t length;
-	fr_dict_vendor_t *dv;
-
 	INTERNAL_IF_NULL(dict);
+	size_t			len;
+	fr_dict_vendor_t	*vendor;
 
-	if ((length = strlen(name)) >= FR_DICT_VENDOR_MAX_NAME_LEN) {
-		fr_strerror_printf("fr_dict_vendor_add: vendor name too long");
+	len = strlen(name);
+	if (len >= FR_DICT_VENDOR_MAX_NAME_LEN) {
+		fr_strerror_printf("%s: Vendor name too long", __FUNCTION__);
 		return -1;
 	}
 
-	dv = (fr_dict_vendor_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*dv) + length);
-	if (dv == NULL) {
-		fr_strerror_printf("fr_dict_vendor_add: out of memory");
+	vendor = (fr_dict_vendor_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*vendor) + len);
+	if (vendor == NULL) {
+		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
-	talloc_set_type(dv, fr_dict_vendor_t);
+	talloc_set_type(vendor, fr_dict_vendor_t);
 
-	strcpy(dv->name, name);
-	dv->vendorpec = num;
-	dv->type = dv->length = 1; /* defaults */
+	strlcpy(vendor->name, name, len + 1);
+	vendor->vendorpec = num;
+	vendor->type = vendor->length = 1; /* defaults */
 
-	if (!fr_hash_table_insert(dict->vendors_by_name, dv)) {
-		fr_dict_vendor_t *old_dv;
+	if (!fr_hash_table_insert(dict->vendors_by_name, vendor)) {
+		fr_dict_vendor_t *old_vendor;
 
-		old_dv = fr_hash_table_finddata(dict->vendors_by_name, dv);
-		if (!old_dv) {
-			fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor name %s", name);
+		old_vendor = fr_hash_table_finddata(dict->vendors_by_name, vendor);
+		if (!old_vendor) {
+			fr_strerror_printf("%s: Failed inserting vendor name %s", __FUNCTION__, name);
 			return -1;
 		}
-		if (old_dv->vendorpec != dv->vendorpec) {
-			fr_strerror_printf("fr_dict_vendor_add: Duplicate vendor name %s", name);
+		if ((strcmp(old_vendor->name, vendor->name) == 0) && (old_vendor->vendorpec != vendor->vendorpec)) {
+			fr_strerror_printf("%s: Duplicate vendor name %s", __FUNCTION__, name);
 			return -1;
 		}
 
 		/*
 		 *	Already inserted.  Discard the duplicate entry.
 		 */
-		talloc_free(dv);
+		talloc_free(vendor);
+
 		return 0;
 	}
 
@@ -477,8 +528,8 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!fr_hash_table_replace(dict->vendors_by_num, dv)) {
-		fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor %s", name);
+	if (!fr_hash_table_replace(dict->vendors_by_num, vendor)) {
+		fr_strerror_printf("%s: Failed inserting vendor %s", __FUNCTION__, name);
 		return -1;
 	}
 
@@ -624,7 +675,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
 	error:
-		fr_strerror_printf("fr_dict_attr_add: Failed adding '%s': %s", name, fr_strerror());
+		fr_strerror_printf("%s: Failed adding '%s': %s", __FUNCTION__, name, fr_strerror());
 		return -1;
 	}
 
@@ -1247,18 +1298,18 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 	INTERNAL_IF_NULL(dict);
 
 	if (!*alias) {
-		fr_strerror_printf("fr_dict_enum_add: empty names are not permitted");
+		fr_strerror_printf("%s: empty names are not permitted", __FUNCTION__);
 		return -1;
 	}
 
 	if ((length = strlen(alias)) >= FR_DICT_ENUM_MAX_NAME_LEN) {
-		fr_strerror_printf("fr_dict_enum_add: value name too long");
+		fr_strerror_printf("%s: value name too long", __FUNCTION__);
 		return -1;
 	}
 
 	dval = (fr_dict_enum_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*dval) + length);
 	if (dval == NULL) {
-		fr_strerror_printf("fr_dict_enum_add: out of memory");
+		fr_strerror_printf("%s: out of memory", __FUNCTION__);
 		return -1;
 	}
 	talloc_set_type(dval, fr_dict_enum_t);
@@ -1294,16 +1345,16 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		case PW_TYPE_BYTE:
 			if (value > UINT8_MAX) {
 				talloc_free(dval);
-				fr_strerror_printf("fr_dict_enum_add: ATTRIBUTEs of type 'byte' cannot have "
-						   "VALUEs larger than %i", UINT8_MAX);
+				fr_strerror_printf("%s: ATTRIBUTEs of type 'byte' cannot have "
+						   "VALUEs larger than %i", __FUNCTION__, UINT8_MAX);
 				return -1;
 			}
 			break;
 		case PW_TYPE_SHORT:
 			if (value > UINT16_MAX) {
 				talloc_free(dval);
-				fr_strerror_printf("fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have "
-						   "VALUEs larger than %i", UINT16_MAX);
+				fr_strerror_printf("%s: ATTRIBUTEs of type 'short' cannot have "
+						   "VALUEs larger than %i", __FUNCTION__, UINT16_MAX);
 				return -1;
 			}
 			break;
@@ -1313,8 +1364,8 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 
 		default:
 			talloc_free(dval);
-			fr_strerror_printf("fr_dict_enum_add: VALUEs cannot be defined for attributes of type '%s'",
-					   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+			fr_strerror_printf("%s: VALUEs cannot be defined for attributes of type '%s'",
+					   __FUNCTION__, fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 			return -1;
 		}
 	} else {
@@ -1323,7 +1374,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		fixup = talloc_zero(dict->pool, dict_enum_fixup_t);
 		if (!fixup) {
 			talloc_free(dval);
-			fr_strerror_printf("fr_dict_enum_add: out of memory");
+			fr_strerror_printf("Out of memory");
 			return -1;
 		}
 
@@ -1363,7 +1414,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 			}
 
 			talloc_free(dval);
-			fr_strerror_printf("fr_dict_enum_add: Duplicate value name %s for attribute %s", alias,
+			fr_strerror_printf("Duplicate VALUE name '%s' for attribute '%s'", alias,
 					   attr);
 			return -1;
 		}
@@ -1374,8 +1425,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 	 *	take care of that here.
 	 */
 	if (!fr_hash_table_replace(dict->values_by_da, dval)) {
-		fr_strerror_printf("fr_dict_enum_add: Failed inserting value %s",
-				   alias);
+		fr_strerror_printf("%s: Failed inserting value %s", __FUNCTION__, alias);
 		return -1;
 	}
 
@@ -1460,15 +1510,15 @@ static int dict_read_sscanf_i(char const *str, unsigned int *pvalue)
 static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			     	       unsigned int block_vendor, char **argv, int argc)
 {
-	bool		oid = false;
+	bool			oid = false;
 
-	unsigned int	vendor = 0;
-	unsigned int	attr;
+	unsigned int		vendor = 0;
+	unsigned int		attr;
 
-	int		type;
-	unsigned int	length;
+	int			type;
+	unsigned int		length;
 	fr_dict_attr_flags_t	flags;
-	char		*p;
+	char			*p;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("Invalid ATTRIBUTE syntax");
@@ -1754,11 +1804,11 @@ static int dict_read_parse_format(char const *format, unsigned int *pvalue, int 
  */
 static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 {
-	unsigned int value;
-	int type, length;
-	bool continuation = false;
-	fr_dict_vendor_t const *dv;
-	fr_dict_vendor_t *mutable;
+	unsigned int			value;
+	int				type, length;
+	bool				continuation = false;
+	fr_dict_vendor_t const		*dv;
+	fr_dict_vendor_t		*mutable;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf("Invalid VENDOR syntax");
@@ -1835,13 +1885,16 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 	int			argc;
 	fr_dict_attr_t const	*da;
 	int			block_tlv_depth = 0;
-	fr_dict_attr_t const	*parent = dict->root;
+
+	fr_dict_attr_t const	*parent;
 	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
-		fr_strerror_printf("fr_dict_init: filename name too long");
+		fr_strerror_printf("%s: Filename name too long", __FUNCTION__);
 		return -1;
 	}
+
+	parent = dict->root;
 
 	/*
 	 *	If it's an absolute dir, forget the parent dir,
@@ -1899,11 +1952,11 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
-			fr_strerror_printf("fr_dict_init: Couldn't open dictionary '%s': %s",
-					   fn, fr_syserror(errno));
+			fr_strerror_printf("%s: Couldn't open dictionary '%s': %s",
+					   __FUNCTION__, fn, fr_syserror(errno));
 		} else {
-			fr_strerror_printf("fr_dict_init: %s[%d]: Couldn't open dictionary '%s': %s",
-					   src_file, src_line, fn, fr_syserror(errno));
+			fr_strerror_printf("%s: %s[%d]: Couldn't open dictionary '%s': %s",
+					   __FUNCTION__, src_file, src_line, fn, fr_syserror(errno));
 		}
 		return -2;
 	}
@@ -1918,7 +1971,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 
 	if (!S_ISREG(statbuf.st_mode)) {
 		fclose(fp);
-		fr_strerror_printf("fr_dict_init: Dictionary '%s' is not a regular file", fn);
+		fr_strerror_printf("%s: Dictionary '%s' is not a regular file", __FUNCTION__, fn);
 		return -1;
 	}
 
@@ -1929,8 +1982,8 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		fclose(fp);
-		fr_strerror_printf("fr_dict_init: Dictionary '%s' is globally writable.  Refusing to start "
-				   "due to insecure configuration", fn);
+		fr_strerror_printf("%s: Dictionary '%s' is globally writable.  Refusing to start "
+				   "due to insecure configuration", __FUNCTION__, fn);
 		return -1;
 	}
 #endif
@@ -1969,7 +2022,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 			fr_strerror_printf("Invalid entry");
 
 		error:
-			fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
+			fr_strerror_printf("%s: %s[%d]: %s", __FUNCTION__, fn, line, fr_strerror());
 			fclose(fp);
 			return -1;
 		}
@@ -2060,6 +2113,9 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 			continue;
 		} /* BEGIN-TLV */
 
+		/*
+		 *	Switches back to previous TLV parent
+		 */
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
 			if (--block_tlv_depth < 0) {
 				fr_strerror_printf("Too many END-TLV entries.  Mismatch at END-TLV %s", argv[1]);
@@ -2279,7 +2335,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_value_hash, dict_vendor_value_cmp, NULL);
+	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_vendorpec_hash, dict_vendor_vendorpec_cmp, NULL);
 	if (!dict->vendors_by_num) goto error;
 
 	/*
@@ -2362,7 +2418,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 
 			a = fr_dict_attr_by_name(dict, this->attrstr);
 			if (!a) {
-				fr_strerror_printf("fr_dict_init: No ATTRIBUTE '%s' defined for VALUE '%s'",
+				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
 						   this->attrstr, this->dval->name);
 				goto error; /* leak, but they should die... */
 			}
@@ -2373,7 +2429,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 			 *	Add the value into the dictionary.
 			 */
 			if (!fr_hash_table_replace(dict->values_by_name, this->dval)) {
-				fr_strerror_printf("fr_dict_enum_add: Duplicate value name %s for attribute %s",
+				fr_strerror_printf("Duplicate VALUE name '%s' for attribute '%s'",
 						   this->dval->name, a->name);
 				goto error;
 			}
@@ -2420,7 +2476,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 	INTERNAL_IF_NULL(dict);
 
 	if (!dict->attributes_by_name) {
-		fr_strerror_printf("Must call fr_dict_init() before fr_dict_read()");
+		fr_strerror_printf("%s: Must call fr_dict_init() before fr_dict_read()", __FUNCTION__);
 		return -1;
 	}
 
@@ -3650,7 +3706,6 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **
 	len = p - *name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
-
 		return NULL;
 	}
 	strlcpy(find->name, *name, len + 1);
