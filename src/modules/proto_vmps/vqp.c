@@ -22,10 +22,10 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/udp.h>
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/udp.h>
 
-#include	"vqp.h"
+#include "vqp.h"
 
 #define MAX_VMPS_LEN (FR_MAX_STRING_LEN - 1)
 
