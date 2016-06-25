@@ -132,11 +132,11 @@ static int process_file(char const *filename)
 
 int main(int argc, char *argv[])
 {
-	int c, rcode = 0;
-	bool report = false;
-	char const *radius_dir = RADDBDIR;
-	char const *dict_dir = DICTDIR;
-	fr_dict_t *dict = NULL;
+	int			c, rcode = 0;
+	bool			report = false;
+	char const		*radius_dir = RADDBDIR;
+	char const		*dict_dir = DICTDIR;
+	fr_dict_t		*dict = NULL;
 
 	TALLOC_CTX		*autofree = talloc_init("main");
 
