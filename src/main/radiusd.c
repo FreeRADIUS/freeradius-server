@@ -95,6 +95,11 @@ int main(int argc, char *argv[])
 	char		*p;
 
 	/*
+	 *	Setup talloc callbacks so we get useful errors
+	 */
+	fr_talloc_fault_setup();
+
+	/*
 	 *  We probably don't want to free the talloc autofree context
 	 *  directly, so we'll allocate a new context beneath it, and
 	 *  free that before any leak reports.
@@ -141,6 +146,21 @@ int main(int argc, char *argv[])
 	default_log.dst = L_DST_NULL;
 	default_log.fd = -1;
 	main_config.log_file = NULL;
+
+	/*
+	 *  Set the panic action (if required)
+	 */
+	{
+		char const *panic_action = NULL;
+
+		panic_action = getenv("PANIC_ACTION");
+		if (!panic_action) panic_action = main_config.panic_action;
+
+		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
+			fr_perror("Failed configuring panic action: %s", main_config.name);
+			fr_exit(EXIT_FAILURE);
+		}
+	}
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstvxX")) != EOF) {
@@ -319,23 +339,6 @@ int main(int argc, char *argv[])
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
 	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
 #endif
-
-	fr_talloc_fault_setup();
-
-	/*
-	 *  Set the panic action (if required)
-	 */
-	{
-		char const *panic_action = NULL;
-
-		panic_action = getenv("PANIC_ACTION");
-		if (!panic_action) panic_action = main_config.panic_action;
-
-		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
-			fr_perror("Failed configuring panic action: %s", main_config.name);
-			fr_exit(EXIT_FAILURE);
-		}
-	}
 
 #ifndef __MINGW32__
 	/*
