@@ -12,6 +12,7 @@ radpaths.h
 rfc*.h
 tls.h
 vqp.h
+protocol/*
 
 # Build scripts
 build-radpaths-h
