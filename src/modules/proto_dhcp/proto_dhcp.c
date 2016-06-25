@@ -53,7 +53,7 @@
 #include <freeradius-devel/rad_assert.h>
 
 #ifndef __MINGW32__
-#include <sys/ioctl.h>
+#  include <sys/ioctl.h>
 #endif
 
 /*
