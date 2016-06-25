@@ -72,7 +72,7 @@ static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_example_t *inst = instance;
+	rlm_example_t	*inst = instance;
 
 	/*
 	 *	Do more work here
