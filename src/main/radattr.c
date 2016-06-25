@@ -958,12 +958,14 @@ static void NEVER_RETURNS usage(void)
 
 int main(int argc, char *argv[])
 {
-	int c;
-	bool report = false;
-	char const *radius_dir = RADDBDIR;
-	char const *dict_dir = DICTDIR;
-	int *inst = &c;
-	fr_dict_t *dict = NULL;
+	int		c;
+	bool		report = false;
+	char const	*radius_dir = RADDBDIR;
+	char const	*dict_dir = DICTDIR;
+	int		*inst = &c;
+
+	fr_dict_t	*dict = NULL;
+
 	TALLOC_CTX	*autofree = talloc_init("main");
 
 #ifndef NDEBUG
