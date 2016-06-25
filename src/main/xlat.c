@@ -599,7 +599,7 @@ static ssize_t xlat_string(char **out, size_t outlen,
 		 */
 	case PW_TYPE_STRING:
 		return strlcpy(*out, vp->vp_strvalue, outlen);
-		
+
 	default:
 		break;
 	}
