@@ -208,12 +208,12 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
 			goto done;
 		}
-		
+
 		if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
 			goto done;
 		}
-		
+
 		common_packet_debug(request, request->reply, false);
 
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
