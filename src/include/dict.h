@@ -154,7 +154,7 @@ int			fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
-int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
+int			fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out,
 				     char const *dir, char const *fn, char const *name);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);

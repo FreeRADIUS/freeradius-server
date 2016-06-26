@@ -1030,7 +1030,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (fr_dict_init(conf, &conf->dict, conf->dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_from_file(conf, &conf->dict, conf->dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("radsnmp");
 		return EXIT_FAILURE;
 	}

@@ -651,7 +651,7 @@ int main(int argc, char **argv)
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
-	if (fr_dict_init(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("dhcpclient");
 		exit(1);
 	}

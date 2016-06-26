@@ -1349,7 +1349,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_init(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("radclient");
 		return 1;
 	}

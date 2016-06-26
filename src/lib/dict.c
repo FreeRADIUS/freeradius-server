@@ -2295,7 +2295,7 @@ static bool defined_cast_types = false;
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn, char const *name)
+int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn, char const *name)
 {
 	fr_dict_t *dict;
 
@@ -2476,7 +2476,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 	INTERNAL_IF_NULL(dict);
 
 	if (!dict->attributes_by_name) {
-		fr_strerror_printf("%s: Must call fr_dict_init() before fr_dict_read()", __FUNCTION__);
+		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", __FUNCTION__);
 		return -1;
 	}
 
