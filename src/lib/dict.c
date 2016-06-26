@@ -1870,7 +1870,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 /*
  *	Initialize the dictionary.
  */
-static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *filename,
+static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *filename,
 			  char const *src_file, int src_line)
 {
 	FILE			*fp;
@@ -2048,7 +2048,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	See if we need to import another dictionary.
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
-			if (dict_read_init(dict, dir, argv[1], fn, line) < 0) goto error;
+			if (dict_from_file(dict, dir, argv[1], fn, line) < 0) goto error;
 			continue;
 		} /* $INCLUDE */
 
@@ -2056,7 +2056,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Optionally include a dictionary
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
-			int rcode = dict_read_init(dict, dir, argv[1], fn, line);
+			int rcode = dict_from_file(dict, dir, argv[1], fn, line);
 
 			if (rcode == -2) {
 				fr_strerror_printf(NULL); /* reset error to nothing */
@@ -2407,7 +2407,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 		defined_cast_types = true;
 	}
 
-	if (dict_read_init(dict, dir, fn, NULL, 0) < 0) goto error;
+	if (dict_from_file(dict, dir, fn, NULL, 0) < 0) goto error;
 
 	if (dict->enum_fixup) {
 		fr_dict_attr_t const *a;
@@ -2480,7 +2480,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 		return -1;
 	}
 
-	return dict_read_init(dict, dir, filename, NULL, 0);
+	return dict_from_file(dict, dir, filename, NULL, 0);
 }
 
 /*
