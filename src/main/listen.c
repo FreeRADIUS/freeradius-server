@@ -237,8 +237,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	 */
 	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), value);
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
-			      value);
+		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s", value);
 		rad_const_free(module);
 		return -1;
 	}
@@ -617,8 +616,8 @@ static int init_pcap(rad_listen_t *this);
  */
 rlm_rcode_t rad_status_server(REQUEST *request)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_dict_enum_t *dval;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
+	fr_dict_enum_t		*dval;
 
 	switch (request->listener->type) {
 #ifdef WITH_STATS
