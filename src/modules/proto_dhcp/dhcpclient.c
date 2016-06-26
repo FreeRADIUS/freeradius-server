@@ -54,10 +54,11 @@ static float timeout = 5.0;
 static struct timeval tv_timeout;
 
 static int sockfd;
-#ifdef HAVE_LIBPCAP
-static fr_pcap_t *pcap;
 #define ETH_ADDR_LEN   6
-static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+
+#ifdef HAVE_LIBPCAP
+static fr_pcap_t	*pcap;
+static uint8_t		eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 #endif
 
 static char *iface = NULL;
@@ -66,7 +67,6 @@ static int iface_ind = -1;
 #ifdef HAVE_LINUX_IF_PACKET_H
 static struct sockaddr_ll ll;	/* Socket address structure */
 #endif
-
 
 static bool raw_mode = false;
 
