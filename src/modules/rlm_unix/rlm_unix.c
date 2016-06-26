@@ -135,7 +135,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	group_da = fr_dict_attr_by_num(NULL, 0, PW_GROUP);
+	group_da = fr_dict_attr_by_num(fr_dict_internal, 0, PW_GROUP);
 	if (!group_da) {
 		ERROR("&Group attribute not found in dictionary");
 		return -1;

@@ -1101,7 +1101,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 			goto error;
 		}
 
-		inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
+		inst->group_da = fr_dict_attr_by_name(fr_dict_internal, group_attribute);
 		if (!inst->group_da) {
 			ERROR("Failed resolving group attribute \"%s\"", group_attribute);
 			goto error;

@@ -272,7 +272,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	vp = fr_pair_alloc(ctx);
 	if (!vp) return NULL;
 
-	vp->da = fr_dict_unknown_afrom_oid(ctx, NULL, fr_dict_root(fr_dict_internal), attribute);
+	vp->da = fr_dict_unknown_afrom_oid(ctx, fr_dict_internal, fr_dict_root(fr_dict_internal), attribute);
 	if (!vp->da) {
 		talloc_free(vp);
 		return NULL;
@@ -303,7 +303,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	/*
 	 *	Convert unknowns to knowns
 	 */
-	da = fr_dict_attr_by_num(NULL, vp->da->vendor, vp->da->attr);
+	da = fr_dict_attr_by_num(fr_dict_internal, vp->da->vendor, vp->da->attr);
 	if (!da) return vp;
 
 	/*
