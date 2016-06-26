@@ -648,17 +648,17 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, U
  */
 int main(int argc, char *argv[])
 {
-	int rcode = EXIT_SUCCESS;
-	int argval;
-	const char *input_file = NULL;
-	const char *output_file = NULL;
-	const char *filter_file = NULL;
-	FILE *fp;
-	REQUEST *request = NULL;
-	VALUE_PAIR *vp;
-	VALUE_PAIR *filter_vps = NULL;
-	bool xlat_only = false;
-	fr_state_tree_t *state = NULL;
+	int			rcode = EXIT_SUCCESS;
+	int			argval;
+	const char 		*input_file = NULL;
+	const char		*output_file = NULL;
+	const char		*filter_file = NULL;
+	FILE			*fp;
+	REQUEST			*request = NULL;
+	VALUE_PAIR		*vp;
+	VALUE_PAIR		*filter_vps = NULL;
+	bool			xlat_only = false;
+	fr_state_tree_t		*state = NULL;
 
 	fr_talloc_fault_setup();
 
