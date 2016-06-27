@@ -248,11 +248,11 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
  */
 chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 {
-	size_t length;
-	uint8_t *ptr;
-	VALUE_PAIR *first, *vp;
-	chbind_packet_t *packet;
-	vp_cursor_t cursor;
+	size_t			length;
+	uint8_t 		*ptr;
+	VALUE_PAIR		*first, *vp;
+	chbind_packet_t		*packet;
+	vp_cursor_t		cursor;
 
 	first = fr_pair_find_by_num(vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
 	if (!first) return NULL;
