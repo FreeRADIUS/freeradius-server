@@ -43,7 +43,6 @@ typedef struct rlm_preprocess_t {
 	bool		with_specialix_jetstream_hack;
 	bool		with_cisco_vsa_hack;
 	bool		with_alvarion_vsa_hack;
-	bool		with_cablelabs_vsa_hack;
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
@@ -56,9 +55,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("with_specialix_jetstream_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_specialix_jetstream_hack), .dflt = "no" },
 	{ FR_CONF_OFFSET("with_cisco_vsa_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cisco_vsa_hack), .dflt = "no" },
 	{ FR_CONF_OFFSET("with_alvarion_vsa_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_alvarion_vsa_hack), .dflt = "no" },
-#if 0
-	{ FR_CONF_OFFSET("with_cablelabs_vsa_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cablelabs_vsa_hack) },
-#endif
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -238,22 +235,6 @@ typedef struct cl_em_hdr_t {
 	uint16_t	attr_count; /* of normal Cablelabs VSAs */
 	uint8_t		event_object;
 } cl_em_hdr_t;
-
-
-static void cablelabs_vsa_hack(VALUE_PAIR **list)
-{
-	VALUE_PAIR *ev;
-
-	ev = fr_pair_find_by_num(*list, 4491, 1, TAG_ANY); /* Cablelabs-Event-Message */
-	if (!ev) {
-		return;
-	}
-
-	/*
-	 *	FIXME: write 100's of lines of code to decode
-	 *	each data structure above.
-	 */
-}
 
 /*
  *	Mangle username if needed, IN PLACE.
@@ -591,14 +572,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		alvarion_vsa_hack(request->packet->vps);
 	}
 
-	if (inst->with_cablelabs_vsa_hack) {
-		/*
-		 *	We need to run this hack because the Cablelabs
-		 *	people are crazy.
-		 */
-		cablelabs_vsa_hack(&request->packet->vps);
-	}
-
 	/*
 	 *	Add an event timestamp. Means Event-Timestamp can be used
 	 *	consistently instead of one letter expansions.
@@ -673,14 +646,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 		 *	people are crazy.
 		 */
 		alvarion_vsa_hack(request->packet->vps);
-	}
-
-	if (inst->with_cablelabs_vsa_hack) {
-		/*
-		 *	We need to run this hack because the Cablelabs
-		 *	people are crazy.
-		 */
-		cablelabs_vsa_hack(&request->packet->vps);
 	}
 
 	/*
