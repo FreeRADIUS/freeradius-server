@@ -73,7 +73,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		RDEBUG("Running recv %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -144,7 +144,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 
 		if (!unlang) goto send_reply;
 
-		RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_SEND;
