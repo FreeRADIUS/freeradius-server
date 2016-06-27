@@ -450,8 +450,8 @@ int main(int argc, char **argv)
 	}
 
 	if (radius_dir) {
-		int rcode;
-		CONF_SECTION *cs, *subcs;
+		int		rcode;
+		CONF_SECTION	*cs, *subcs;
 		uid_t		uid;
 		gid_t		gid;
 		char const	*uid_name = NULL;
