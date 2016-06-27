@@ -106,7 +106,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
 	fprintf(stderr, "  -l <file>              Log output to file.\n");
-	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");;
+	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -S <file>              read secret from file, not command line.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating "
 		"point number).\n");
