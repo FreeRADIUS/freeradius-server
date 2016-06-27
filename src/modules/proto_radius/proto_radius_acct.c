@@ -47,12 +47,18 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		if (fr_radius_decode(request->packet, NULL, request->client->secret) < 0) {
-			RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
-			goto done;
-		}
+		if (request->packet->data_len != 0) {
+			if (fr_radius_decode(request->packet, NULL, request->client->secret) < 0) {
+				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
+				goto done;
+			}
 
-		common_packet_debug(request, request->packet, true);
+			common_packet_debug(request, request->packet, true);
+		} else {
+			radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID i",
+				       fr_packet_codes[request->packet->code], request->packet->id);
+			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		}
 
 		request->server = request->listener->server;
 		request->server_cs = request->listener->server_cs;
@@ -97,11 +103,9 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_UPDATED:
 			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 			break;
-		/*
-		 *	The module handled the request, send the reply and don't process "send" section.
-		 */
+
 		case RLM_MODULE_HANDLED:
-			goto send_reply;
+			break;
 
 		/*
 		 *	The module failed, or said the request is
@@ -137,7 +141,6 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
 		}
 		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "send", "*");
-
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
@@ -159,14 +162,9 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_HANDLED:
 			/* reply is already set */
 			break;
-
-			/*
-			 *	The module handled the request, don't reply.
-			 */
-		case RLM_MODULE_HANDLED:
-			goto done;
 
 		default:
 			request->reply->code = 0;
@@ -182,6 +180,16 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
+		/*
+		 *	This is an internally generated request.  Don't print IP addresses.
+		 */
+		if (request->packet->data_len == 0) {
+			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID i",
+				       fr_packet_codes[request->reply->code], request->reply->id);
+			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			goto done;
+		}
+
 #ifdef WITH_UDPFROMTO
 		/*
 		 *	Overwrite the src ip address on the outbound packet
@@ -194,6 +202,8 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		}
 #endif
 
+		common_packet_debug(request, request->reply, false);
+
 		if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
 			goto done;
@@ -203,8 +213,6 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
 			goto done;
 		}
-
-		common_packet_debug(request, request->reply, false);
 
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
