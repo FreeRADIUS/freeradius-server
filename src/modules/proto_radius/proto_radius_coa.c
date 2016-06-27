@@ -73,7 +73,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		RDEBUG("Running recv %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -122,6 +122,9 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			}
 		}
 
+		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		rad_assert(da != NULL);
+
 		dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
 		unlang = NULL;
 		if (dv) {
@@ -138,6 +141,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		/* FALL-THROUGH */
 
 	case REQUEST_SEND:
+	rerun_nak:
 		rcode = unlang_interpret_continue(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
@@ -155,9 +159,31 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_USERLOCK:
 		default:
 			/*
-			 *	Over-ride an ACK with a NAK
+			 *	If we over-ride an ACK with a NAK, run
+			 *	the NAK section.
 			 */
-			request->reply->code = request->packet->code + 2;
+			if (request->reply->code == request->packet->code + 1) {
+				request->reply->code = request->packet->code + 2;
+
+				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+				rad_assert(da != NULL);
+
+				dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
+				unlang = NULL;
+				if (!dv) goto send_reply;
+
+				unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
+				if (unlang) {
+					RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+					unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+					goto rerun_nak;
+				}
+
+				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
+			}
+			/*
+			 *	Else it was already a NAK or something else.
+			 */
 			break;
 
 		case RLM_MODULE_HANDLED:
