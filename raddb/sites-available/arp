@@ -33,13 +33,14 @@ server arp {
 
 
 	#
-	#  For now, ARP is processed through the "post-auth"
-	#  section.  As we make the server more protocol agnostic,
-	#  this will change.
+	#  And the REAL contents.  This section is just like the
+	#  "post-auth" section of radiusd.conf.  In fact, it calls the
+	#  "post-auth" component of the modules that are listed here.
+	#  But it's called "arp" to highlight that it's for ARP.
 	#
 	#  If you need to know the interface, use %{listen:interface}
 	#
-	post-auth {
+	arp {
 		ok
 	}
 }

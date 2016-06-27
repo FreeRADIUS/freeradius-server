@@ -1147,6 +1147,19 @@ static int virtual_server_compile(CONF_SECTION *cs)
 			}
 #endif
 
+			subcs = cf_section_sub_find(cs, "arp");
+			if (subcs) {
+				cf_log_module(cs, "Loading arp {...}");
+				if (load_component_section(subcs, components,
+							   MOD_POST_AUTH) < 0) {
+					goto error;
+				}
+				c = lookup_by_index(components,
+						    MOD_POST_AUTH, 0);
+				if (c) server->mc[MOD_POST_AUTH] = c->modulelist;
+				break;
+			}
+
 #ifdef WITH_DHCP
 			/*
 			 *	It's OK to not have DHCP.
