@@ -799,8 +799,7 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, c
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
-		if ((vp->da->vendor == 0) &&
-		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
+		if (vp->da->flags.internal) continue;
 
 		value = fr_pair_asprint(request, vp, '"');
 		RDEBUGX(level, "%s%s", prefix ? prefix : "",  value);
