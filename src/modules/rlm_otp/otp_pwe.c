@@ -128,9 +128,8 @@ otp_pwe_t otp_pwe_present(REQUEST const *request)
 			continue;
 		}
 
-		if (fr_pair_find_by_num(request->packet->vps, pwattr[i]->vendor, pwattr[i]->attr, TAG_ANY) &&
-		    fr_pair_find_by_num(request->packet->vps, pwattr[i + 1]->vendor, pwattr[i + 1]->attr,
-					TAG_ANY)) {
+		if (fr_pair_find_by_da(request->packet->vps, pwattr[i], TAG_ANY) &&
+		    fr_pair_find_by_da(request->packet->vps, pwattr[i + 1], TAG_ANY)) {
 			DEBUG("%s: password attributes %s, %s",
 			      __func__, pwattr[i]->name, pwattr[i + 1]->name);
 
