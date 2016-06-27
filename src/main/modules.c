@@ -1160,6 +1160,19 @@ static int virtual_server_compile(CONF_SECTION *cs)
 				break;
 			}
 
+			subcs = cf_section_sub_find(cs, "bfd");
+			if (subcs) {
+				cf_log_module(cs, "Loading bfd {...}");
+				if (load_component_section(subcs, components,
+							   MOD_AUTHORIZE) < 0) {
+					goto error;
+				}
+				c = lookup_by_index(components,
+						    MOD_AUTHORIZE, 0);
+				if (c) server->mc[MOD_AUTHORIZE] = c->modulelist;
+				break;
+			}
+
 #ifdef WITH_DHCP
 			/*
 			 *	It's OK to not have DHCP.

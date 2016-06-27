@@ -88,11 +88,12 @@ listen {
 #  But you could run an external shell script, Perl, etc.
 #
 server bfd {
+	#  And the REAL contents.  This section is just like the
+	#  "authorize" section of radiusd.conf.  In fact, it calls the
+	#  "authorize" component of the modules that are listed here.
+	#  But it's called "bfd" to highlight that it's for BFD.
 	bfd {
 		# Say it's OK.
 		ok
-
-		#  Any other modules listed here will have their
-		#  "authorize" section run.
 	}
 }
