@@ -868,5 +868,5 @@ fi
 
 
 %changelog
-* Wed Sep 22 2013 Alan DeKok <aland@freeradius.org> - 3.0.0
+* Wed Sep 25 2013 Alan DeKok <aland@freeradius.org> - 3.0.0
 - upgrade to latest upstream release
