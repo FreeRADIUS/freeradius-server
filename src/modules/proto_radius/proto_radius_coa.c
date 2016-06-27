@@ -202,8 +202,6 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			break;
 
 		case RLM_MODULE_HANDLED:
-			goto send_reply;
-
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
