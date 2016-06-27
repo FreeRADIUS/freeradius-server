@@ -106,7 +106,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
@@ -195,7 +195,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_PROCESS:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
@@ -313,7 +313,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
@@ -375,13 +375,17 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		if (!request->reply->code) {
 			RDEBUG("Not sending reply to client.");
 
+			fr_state_discard(global_state, request, request->packet);
+
 			if (request->packet->data_len == 0) goto done;
 
 			goto cleanup_delay;
 		}
 
 		/*
-		 *	This is an internally generated request.  Don't print IP addresses.
+		 *	This is an internally generated request.
+		 *	Don't print IP addresses, and don't discard
+		 *	the state.
 		 */
 		if (request->packet->data_len == 0) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
@@ -404,11 +408,21 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 		if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
-			goto done;
+			goto stop_processing;
 		}
 
 		if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
+
+			/*
+			 *	We can't do anything with the packet.
+			 *	Mark it as "no reply", discard any
+			 *	state we have, and clean up the packet
+			 *	immediately.
+			 */
+		stop_processing:
+			request->reply->code = 0;
+			fr_state_discard(global_state, request, request->packet);
 			goto done;
 		}
 
@@ -417,6 +431,17 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 */
 
 		common_packet_debug(request, request->reply, false);
+
+		/*
+		 *	Save session-state list for Access-Challenge,
+		 *	discard it for everything else.
+		 */
+		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+			fr_request_to_state(global_state, request, request->packet, request->reply);
+
+		} else {
+			fr_state_discard(global_state, request, request->packet);
+		}
 
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
