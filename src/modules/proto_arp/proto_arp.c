@@ -147,6 +147,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 	packet = talloc_zero(NULL, RADIUS_PACKET);
 	if (!packet) return 0;
 
+	packet->timestamp = header->ts;
 	packet->dst_port = 1;	/* so it's not a "fake" request */
 	packet->data_len = header->caplen - link_len;
 	packet->data = talloc_memdup(packet, arp, packet->data_len);
