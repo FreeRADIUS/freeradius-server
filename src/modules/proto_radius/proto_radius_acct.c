@@ -117,6 +117,9 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			return;
 		}
 
+		/*
+		 *	Allow for over-ride of reply code.
+		 */
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_TYPE, TAG_ANY);
 		if (vp) {
 			if (vp->vp_integer == 256) {
@@ -128,6 +131,9 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		} else if (rcode != RLM_MODULE_HANDLED) {
 			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 		}
+
+		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
 		unlang = NULL;
