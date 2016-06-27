@@ -1,10 +1,1 @@
-TARGETNAME	:= proto_radius_acct
-
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= proto_radius_acct.c
-
-TGT_PREREQS	:= libfreeradius-radius.a
-
+SUBMAKEFILES := proto_radius_acct.mk proto_radius_coa.mk
