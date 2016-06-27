@@ -888,10 +888,14 @@ redo:
 			 *	Done the top stack frame, return
 			 */
 			entry = &stack->entry[stack->depth];
-			if (entry->top_frame) return result;
-
 			c = entry->c;
 			rad_assert(c != NULL);
+
+			if (entry->top_frame) {
+				if (unlang_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
+								   fr_int2str(mod_rcode_table, result, "<invalid>"));
+				return result;
+			}
 
 			/*
 			 *	We need to call the function again, to
