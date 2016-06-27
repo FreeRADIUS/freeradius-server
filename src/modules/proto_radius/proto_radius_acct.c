@@ -1,5 +1,5 @@
 /*
- * proto_radius.c	RADIUS processing.
+ * proto_radius_acct.c	RADIUS accounting processing.
  *
  * Version:	$Id$
  *
@@ -95,6 +95,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
+			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 			break;
 		/*
 		 *	The module handled the request, send the reply and don't process "send" section.
@@ -113,12 +114,6 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_USERLOCK:
 		default:
 			goto done;
-
-			/*
-			 *	We'll resume at some point.
-			 */
-		case RLM_MODULE_YIELD:
-			return;
 		}
 
 		/*
@@ -131,9 +126,6 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			} else {
 				request->reply->code = vp->vp_integer;
 			}
-
-		} else if (rcode != RLM_MODULE_HANDLED) {
-			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 		}
 
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
@@ -164,30 +156,20 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		request->log.unlang_indent = 0;
 
 		switch (rcode) {
-			/*
-			 *	In case the accounting module returns FAIL,
-			 *	it's still useful to send the data to the
-			 *	proxy.
-			 */
-		case RLM_MODULE_FAIL:
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
+			/* reply is already set */
 			break;
+
 			/*
 			 *	The module handled the request, don't reply.
 			 */
 		case RLM_MODULE_HANDLED:
 			goto done;
 
-			/*
-			 *	Neither proxy, nor reply to invalid requests.
-			 */
-		case RLM_MODULE_INVALID:
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_REJECT:
-		case RLM_MODULE_USERLOCK:
 		default:
+			request->reply->code = 0;
 			break;
 		}
 
