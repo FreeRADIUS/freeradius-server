@@ -317,7 +317,7 @@ static ssize_t xlat_ptr(char **out, size_t outlen,
 	ubres = talloc(inst, struct ub_result *);
 
 	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));;
+	memcpy(ubres, &mod_inst, sizeof(*ubres));
 
 	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
