@@ -84,6 +84,10 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 
+		if (rcode == RLM_MODULE_YIELD) return;
+
+		request->log.unlang_indent = 0;
+
 		switch (rcode) {
 		/*
 		 *	The module has a number of OK return codes.
@@ -155,6 +159,10 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 
+		if (rcode == RLM_MODULE_YIELD) return;
+
+		request->log.unlang_indent = 0;
+
 		switch (rcode) {
 			/*
 			 *	In case the accounting module returns FAIL,
@@ -181,12 +189,6 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_USERLOCK:
 		default:
 			break;
-
-			/*
-			 *	We'll resume at some point.
-			 */
-		case RLM_MODULE_YIELD:
-			return;
 		}
 
 	send_reply:

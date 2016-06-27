@@ -84,6 +84,10 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 
+		if (rcode == RLM_MODULE_YIELD) return;
+
+		request->log.unlang_indent = 0;
+
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
@@ -102,12 +106,6 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_UPDATED:
 			request->reply->code = request->packet->code + 1; /* ACK */
 			break;
-
-			/*
-			 *	We'll resume at some point.
-			 */
-		case RLM_MODULE_YIELD:
-			return;
 		}
 
 		/*
@@ -134,8 +132,9 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 		if (!unlang) goto send_reply;
 
-		RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		request->log.unlang_indent = 0;
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */
@@ -145,6 +144,10 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		rcode = unlang_interpret_continue(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+
+		if (rcode == RLM_MODULE_YIELD) return;
+
+		request->log.unlang_indent = 0;
 
 		switch (rcode) {
 			/*
@@ -163,10 +166,13 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			 *	the NAK section.
 			 */
 			if (request->reply->code == request->packet->code + 1) {
-				request->reply->code = request->packet->code + 2;
-
 				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 				rad_assert(da != NULL);
+
+				dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
+				RWDEBUG("Failed running 'send %s', trying corresponding NAK section.", dv->name);
+
+				request->reply->code = request->packet->code + 2;
 
 				dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
 				unlang = NULL;
@@ -176,6 +182,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 				if (unlang) {
 					RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 					unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+					request->log.unlang_indent = 0;
 					goto rerun_nak;
 				}
 
@@ -195,12 +202,6 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_UPDATED:
 			/* reply code is already set */
 			break;
-
-			/*
-			 *	We'll resume at some point.
-			 */
-		case RLM_MODULE_YIELD:
-			return;
 		}
 
 	send_reply:
