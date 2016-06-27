@@ -55,7 +55,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 			common_packet_debug(request, request->packet, true);
 		} else {
-			radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID i",
+			radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
 				       fr_packet_codes[request->packet->code], request->packet->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 		}
@@ -223,7 +223,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		 *	This is an internally generated request.  Don't print IP addresses.
 		 */
 		if (request->packet->data_len == 0) {
-			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID i",
+			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			goto done;
