@@ -310,7 +310,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	long prio;
 	rlm_sql_row_t row;
 
-	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
+	rlm_sqlhpwippool_t	*inst = (rlm_sqlhpwippool_t *) instance;
+
 
 	/* if IP is already there, then nothing to do */
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY);
