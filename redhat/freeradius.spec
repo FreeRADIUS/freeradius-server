@@ -625,6 +625,7 @@ fi
 %{_libdir}/freeradius/rlm_eap_sim.so
 %{_libdir}/freeradius/rlm_eap_tls.so
 %{_libdir}/freeradius/rlm_eap_ttls.so
+%{_libdir}/freeradius/rlm_example.so
 %{_libdir}/freeradius/rlm_exec.so
 %{_libdir}/freeradius/rlm_expiration.so
 %{_libdir}/freeradius/rlm_expr.so
@@ -640,6 +641,7 @@ fi
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_realm.so
 %{_libdir}/freeradius/rlm_replicate.so
+%{_libdir}/freeradius/rlm_smsotp.so
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
