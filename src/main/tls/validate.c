@@ -217,7 +217,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	Client certificates get better OCSP checks.
 	 */
 	if (depth > 0) {
-		RDEBUG2("[verify chain] = %s", my_ok ? "ok" : "invalid");;
+		RDEBUG2("[verify chain] = %s", my_ok ? "ok" : "invalid");
 		return my_ok;
 	}
 
