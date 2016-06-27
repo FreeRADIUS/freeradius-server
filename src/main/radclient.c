@@ -143,10 +143,10 @@ static int _rc_request_free(rc_request_t *request)
 static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 			   char const *password)
 {
-	unsigned int i;
-	uint8_t *p;
-	VALUE_PAIR *challenge, *reply;
-	uint8_t nthash[16];
+	unsigned int		i;
+	uint8_t			*p;
+	VALUE_PAIR		*challenge, *reply;
+	uint8_t			nthash[16];
 
 	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
 	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_RESPONSE, TAG_ANY);
