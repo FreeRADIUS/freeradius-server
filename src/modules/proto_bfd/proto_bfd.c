@@ -225,6 +225,8 @@ typedef struct bfd_socket_t {
 	rbtree_t	*session_tree;
 } bfd_socket_t;
 
+extern fr_log_t debug_log;
+
 static int bfd_start_packets(bfd_state_t *session);
 static int bfd_start_control(bfd_state_t *session);
 static int bfd_stop_control(bfd_state_t *session);
@@ -1364,6 +1366,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		if (rad_debug_lvl) {
 			request->log.lvl = RAD_REQUEST_LVL_DEBUG2;
 			request->log.func = vradlog_request;
+			request->log.output = &debug_log;
 		}
 		request->component = NULL;
 		request->module = NULL;
