@@ -132,6 +132,13 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 		if (!unlang) goto send_reply;
 
+		/*
+		 *	Note that for NAKs, we do NOT use
+		 *	reject_delay.  This is because we're acting as
+		 *	a NAS, and we want to respond to the RADIUS
+		 *	server as quickly as possible.
+		 */
+	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 		request->log.unlang_indent = 0;
@@ -140,7 +147,6 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		/* FALL-THROUGH */
 
 	case REQUEST_SEND:
-	rerun_nak:
 		rcode = unlang_interpret_continue(request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
@@ -179,12 +185,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 				if (!dv) goto send_reply;
 
 				unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
-				if (unlang) {
-					RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
-					unlang_push_section(request, unlang, RLM_MODULE_NOOP);
-					request->log.unlang_indent = 0;
-					goto rerun_nak;
-				}
+				if (unlang) goto rerun_nak;
 
 				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
 			}
