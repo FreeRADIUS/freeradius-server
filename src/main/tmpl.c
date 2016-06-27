@@ -2373,7 +2373,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Quote type '%c' (%i) was set for NULL name",
 			     file, line, quote, vpt->quote);
-		if (!fr_cond_assert(0)) fr_exit_now(1);;
+		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
 	if (vpt->name && (vpt->quote == T_INVALID)) {
