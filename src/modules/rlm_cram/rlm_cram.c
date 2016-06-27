@@ -37,12 +37,12 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_cram - "
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
-#include	<freeradius-devel/md5.h>
+#include <freeradius-devel/md5.h>
 
-#include 	<ctype.h>
+#include <ctype.h>
 
 #define VENDORPEC_SM  11406
 #define	SM_AUTHTYPE	101
@@ -134,20 +134,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		return RLM_MODULE_INVALID;
 	}
 	authtype = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_AUTHTYPE, TAG_ANY);
+
 	if (!authtype) {
 		REDEBUG("Required attribute &Sandy-Mail-Authtype missing");
 		return RLM_MODULE_INVALID;
 	}
 	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_CHALLENGE, TAG_ANY);
+
 	if (!challenge) {
 		REDEBUG("Required attribute &Sandy-Mail-Challenge missing");
 		return RLM_MODULE_INVALID;
 	}
 	response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_RESPONSE, TAG_ANY);
+
 	if (!response) {
 		REDEBUG("Required attribute &Sandy-Mail-Response missing");
 		return RLM_MODULE_INVALID;
 	}
+
 	switch (authtype->vp_integer){
 		case 2:				/*	CRAM-MD5	*/
 			if (challenge->vp_length < 5 || response->vp_length != 16) {
@@ -181,6 +185,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 			calc_sha1_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
 			if (!memcmp(buffer, response->vp_octets, 20)) return RLM_MODULE_OK;
 			break;
+
 		default:
 			REDEBUG("Unsupported &Sandy-Mail-Authtype");
 			return RLM_MODULE_INVALID;

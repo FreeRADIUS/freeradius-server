@@ -438,8 +438,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 *	FIXME: Print the name...
 		 */
 		if (!vps[i]) {
-			fr_strerror_printf("Failed to find VQP attribute %02x",
-					   contents[code][i]);
+			fr_strerror_printf("Failed to find VQP attribute %02x", contents[code][i]);
 			return -1;
 		}
 
