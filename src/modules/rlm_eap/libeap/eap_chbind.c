@@ -28,11 +28,11 @@ RCSID("$Id$")
 
 static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 {
-	int length;
-	size_t total;
-	uint8_t *ptr, *end;
-	VALUE_PAIR const *vp;
-	vp_cursor_t cursor;
+	int			length;
+	size_t			total;
+	uint8_t			*ptr, *end;
+	VALUE_PAIR		const *vp;
+	vp_cursor_t		cursor;
 
 	total = 0;
 	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
