@@ -29,6 +29,89 @@
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/rad_assert.h>
 
+/*
+ * Make sure user/pass are clean and then create an attribute which contains the log message.
+ */
+static void auth_message(char const *msg, REQUEST *request, int goodpass)
+{
+	int logit;
+	char const *extra_msg = NULL;
+	char clean_password[1024];
+	char clean_username[1024];
+	char buf[1024];
+	char extra[1024];
+	char *p;
+	VALUE_PAIR *username = NULL;
+
+	/*
+	 * Get the correct username based on the configured value
+	 */
+	if (!log_stripped_names) {
+		username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+	} else {
+		username = request->username;
+	}
+
+	/*
+	 *	Clean up the username
+	 */
+	if (username) {
+		strcpy(clean_username, "<no User-Name attribute>");
+	} else {
+		fr_snprint(clean_username, sizeof(clean_username), username->vp_strvalue, username->vp_length, '\0');
+	}
+
+	/*
+	 *	Clean up the password
+	 */
+	if (request->root->log_auth_badpass || request->root->log_auth_goodpass) {
+		if (!request->password) {
+			VALUE_PAIR *auth_type;
+
+			auth_type = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
+			if (auth_type) {
+				snprintf(clean_password, sizeof(clean_password),
+					 "<via Auth-Type = %s>",
+					 fr_dict_enum_name_by_da(NULL, auth_type->da, auth_type->vp_integer));
+			} else {
+				strcpy(clean_password, "<no User-Password attribute>");
+			}
+		} else if (fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) {
+			strcpy(clean_password, "<CHAP-Password>");
+		} else {
+			fr_snprint(clean_password, sizeof(clean_password),
+				  request->password->vp_strvalue, request->password->vp_length, '\0');
+		}
+	}
+
+	if (goodpass) {
+		logit = request->root->log_auth_goodpass;
+		extra_msg = request->root->auth_goodpass_msg;
+	} else {
+		logit = request->root->log_auth_badpass;
+		extra_msg = request->root->auth_badpass_msg;
+	}
+
+	if (extra_msg) {
+		extra[0] = ' ';
+		p = extra + 1;
+		if (radius_xlat(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) {
+			return;
+		}
+	} else {
+		*extra = '\0';
+	}
+
+	RAUTH("%s: [%s%s%s] (%s)%s",
+		       msg,
+		       clean_username,
+		       logit ? "/" : "",
+		       logit ? clean_password : "",
+		       auth_name(buf, sizeof(buf), request, 1),
+		       extra);
+}
+
+
 static void auth_running(REQUEST *request, fr_state_action_t action)
 {
 	VALUE_PAIR *vp, *auth_type;
@@ -127,16 +210,16 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-#if 0
-			if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
 				char msg[FR_MAX_STRING_LEN + 16];
+
 				snprintf(msg, sizeof(msg), "Invalid user (%s)",
-					 module_msg->vp_strvalue);
-				rad_authlog(msg,request,0);
+					 vp->vp_strvalue);
+				auth_message(msg, request, 0);
 			} else {
-				rad_authlog("Invalid user", request, 0);
+				auth_message("Invalid user", request, 0);
 			}
-#endif
+
 			request->reply->code = PW_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
@@ -219,17 +302,15 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			RDEBUG2("Failed to authenticate the user");
 			request->reply->code = PW_CODE_ACCESS_REJECT;
 
-#if 0
-			if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
 				char msg[FR_MAX_STRING_LEN+19];
 
 				snprintf(msg, sizeof(msg), "Login incorrect (%s)",
-					 module_msg->vp_strvalue);
-				rad_authlog(msg, request, 0);
+					 vp->vp_strvalue);
+				auth_message(msg, request, 0);
 			} else {
-				rad_authlog("Login incorrect", request, 0);
+				auth_message("Login incorrect", request, 0);
 			}
-#endif
 
 			/*
 			 *	Maybe the shared secret is wrong?
@@ -276,19 +357,17 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			}
 		}
 
-#if 0
-		if (request->reply->code == PW_ACCESS_ACCEPT) {
-			if ((module_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
+		if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
 				char msg[FR_MAX_STRING_LEN+12];
 
 				snprintf(msg, sizeof(msg), "Login OK (%s)",
-					 module_msg->vp_strvalue);
-				rad_authlog(msg, request, 1);
+					 vp->vp_strvalue);
+				auth_message(msg, request, 1);
 			} else {
-				rad_authlog("Login OK", request, 1);
+				auth_message("Login OK", request, 1);
 			}
 		}
-#endif
 
 	setup_send:
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
@@ -441,6 +520,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 		} else {
 			fr_state_discard(global_state, request, request->packet);
+		}
+
+		if (request->reply->code == PW_CODE_ACCESS_REJECT) {
 		}
 
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
