@@ -375,7 +375,7 @@ static void link_idle_head(THREAD_HANDLE *thread)
 	link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
 	thread_pool.idle_threads++;
 }
-			 
+
 
 /*
  *	Remove ourselves from the idle list
@@ -667,7 +667,7 @@ void request_enqueue(REQUEST *request)
 void request_queue_extract(REQUEST *request)
 {
 	if (request->heap_id < 0) return;
-	
+
 	pthread_mutex_lock(&thread_pool.backlog_mutex);
 	(void) fr_heap_extract(thread_pool.backlog, request);
 	thread_pool.num_queued--;
@@ -722,7 +722,7 @@ static void *thread_handler(void *arg)
 	fr_heap_t *backlog;
 
 	ctx = talloc_init("thread_pool");
-	
+
 	el = fr_event_list_create(ctx, NULL);
 	rad_assert(el != NULL);
 
@@ -745,7 +745,7 @@ static void *thread_handler(void *arg)
 		 */
 		DEBUG2("Thread %d waiting to be assigned a request",
 		       thread->thread_num);
-		
+
 		/*
 		 *	Run until we get a signal.  Any registered
 		 *	timer events or FD events will also be
