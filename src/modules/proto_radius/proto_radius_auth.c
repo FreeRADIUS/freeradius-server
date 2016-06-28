@@ -58,7 +58,7 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 	/*
 	 *	Clean up the username
 	 */
-	if (username) {
+	if (!username) {
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
 		fr_snprint(clean_username, sizeof(clean_username), username->vp_strvalue, username->vp_length, '\0');
