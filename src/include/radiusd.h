@@ -209,7 +209,11 @@ typedef enum fr_request_state_t {
 	REQUEST_INIT = 0,
 	REQUEST_RECV,
 	REQUEST_PROCESS,
-	REQUEST_SEND
+	REQUEST_SEND,
+	REQUEST_OTHER_1,
+	REQUEST_OTHER_2,
+	REQUEST_OTHER_3,
+	REQUEST_OTHER_4,
 } fr_request_state_t;
 
 struct rad_request {
