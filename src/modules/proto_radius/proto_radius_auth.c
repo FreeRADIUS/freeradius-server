@@ -31,6 +31,10 @@
 
 #define REQUEST_SIMULTANEOUS_USE (REQUEST_OTHER_1)
 
+#ifndef USEC
+#define USEC (1000000)
+#endif
+
 /*
  *	Make sure user/pass are clean and then create an attribute
  *	which contains the log message.
@@ -112,6 +116,160 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 		       logit ? clean_password : "",
 		       auth_name(buf, sizeof(buf), request, 1),
 		       extra);
+}
+
+
+/** Sit on a request until it's time to clean it up.
+ *
+ *  A NAS may not see a response from the server.  When the NAS
+ *  retransmits, we want to be able to send a cached reply back.  The
+ *  alternative is to re-process the packet, which does bad things for
+ *  EAP, among others.
+ *
+ *  IF we do see a NAS retransmit, we extend the cleanup delay,
+ *  because the NAS might miss our cached reply.
+ *
+ *  Otherwise, once we reach cleanup_delay, we transition to DONE.
+ *
+ *  \dot
+ *	digraph cleanup_delay {
+ *		cleanup_delay;
+ *		send_reply [ label = "send_reply\nincrease cleanup delay" ];
+ *
+ *		cleanup_delay -> send_reply [ label = "DUP" ];
+ *		send_reply -> cleanup_delay;
+ *		cleanup_delay -> proxy_reply_too_late [ label = "PROXY_REPLY", arrowhead = "none" ];
+ *		cleanup_delay -> cleanup_delay [ label = "TIMER < timeout" ];
+ *		cleanup_delay -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
+ */
+static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
+{
+	struct timeval when;
+
+	VERIFY_REQUEST(request);
+
+	TRACE_STATE_MACHINE;
+
+	switch (action) {
+	case FR_ACTION_DUP:
+		if (request->reply->code != 0) {
+			gettimeofday(&request->reply->timestamp, NULL);
+
+			if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
+				RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
+				goto done;
+			}
+			request->listener->send(request->listener, request);
+		} else {
+			RDEBUG("No reply.  Ignoring retransmit");
+		}
+
+		/*
+		 *	Increase the cleanup_delay to catch retransmits.
+		 */
+		when.tv_sec = request->root->cleanup_delay;
+		when.tv_usec = 0;
+
+		timeradd(&request->reply->timestamp, &when, &when);
+		if (unlang_delay(request, &when, auth_cleanup_delay) < 0) goto done;
+		break;
+
+
+	case FR_ACTION_TIMER:
+		/* FALL-THROUGH */
+	done:
+	case FR_ACTION_DONE:
+		if (request->ev) fr_event_delete(request->el, &request->ev);
+
+		request_thread_done(request);
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+			request->packet->id,
+			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
+		request_free(request);
+		break;
+
+	default:
+		break;
+	}
+}
+
+
+/** Sit on a request until it's time to respond to it.
+ *
+ *  For security reasons, rejects (and maybe some other) packets are
+ *  delayed for a while before we respond.  This delay means that
+ *  badly behaved NASes don't hammer the server with authentication
+ *  attempts.
+ *
+ *  Otherwise, once we reach reject_delay, we send the reply, and
+ *  transition to cleanup_delay.
+ *
+ *  \dot
+ *	digraph reject_delay {
+ *		reject_delay -> response_delay [ label = "DUP, TIMER < timeout" ];
+ *		reject_delay -> send_reply [ label = "TIMER >= timeout" ];
+ *		send_reply -> cleanup_delay;
+ *	}
+ *  \enddot
+ */
+static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
+{
+	VERIFY_REQUEST(request);
+	TRACE_STATE_MACHINE;
+
+	if (request->master_state == REQUEST_STOP_PROCESSING) action = FR_ACTION_DONE;
+
+	switch (action) {
+	case FR_ACTION_DUP:
+		ERROR("(%" PRIu64 ") Discarding duplicate request from "
+		      "client %s port %d - ID: %u due to delayed response",
+		      request->number, request->client->shortname,
+		      request->packet->src_port, request->packet->id);
+		break;
+
+	case FR_ACTION_TIMER:
+		RDEBUG2("Sending delayed reject");
+		common_packet_debug(request, request->reply, false);
+
+		gettimeofday(&request->reply->timestamp, NULL);
+		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
+			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
+			goto done;
+		}
+
+		/*
+		 *	Set up cleanup_delay
+		 */
+		if (request->root->cleanup_delay) {
+			struct timeval when;
+
+			when.tv_sec = request->root->cleanup_delay;
+			when.tv_usec = 0;
+
+			if (unlang_delay(request, &when, auth_cleanup_delay) < 0) goto done;
+			return;
+		}
+		break;
+
+	done:
+	case FR_ACTION_DONE:
+		if (request->ev) fr_event_delete(request->el, &request->ev);
+
+		request_thread_done(request);
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+			request->packet->id,
+			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
+		request_free(request);
+		break;
+
+		/*
+		 *	Ignore other actions.
+		 */
+	default:
+		break;
+	}
 }
 
 
@@ -512,6 +670,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 			fr_state_discard(global_state, request, request->packet);
 
+			/*
+			 *	If it's an internally generated request, clean it up now.
+			 */
 			if (request->packet->data_len == 0) goto done;
 
 			goto cleanup_delay;
@@ -578,16 +739,68 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			fr_state_discard(global_state, request, request->packet);
 		}
 
-		if (request->reply->code == PW_CODE_ACCESS_REJECT) {
+		gettimeofday(&request->reply->timestamp, NULL);
+
+		/*
+		 *	If we delay rejects, then calculate the
+		 *	correct delay.
+		 */
+		if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
+		    ((request->root->reject_delay.tv_sec > 0) ||
+		     (request->root->reject_delay.tv_usec > 0))) {
+			struct timeval when;
+
+			when = request->root->reject_delay;
+
+			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
+			if (vp) {
+				if (vp->vp_integer <= 10) {
+					when.tv_sec = vp->vp_integer;
+				} else {
+					when.tv_sec = 10;
+				}
+				when.tv_usec = 0;
+			} else {
+				vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
+				if (vp) {
+					if (vp->vp_integer <= 10 * USEC) {
+						when.tv_sec = vp->vp_integer / USEC;
+						when.tv_usec = vp->vp_integer % USEC;
+					} else {
+						when.tv_sec = 10;
+						when.tv_usec = 0;
+					}
+				}
+			}
+
+			RDEBUG2("Delaying response for %d.%06d seconds",
+				(int) when.tv_sec, (int) when.tv_usec);
+
+			if (unlang_delay(request, &when, auth_reject_delay) < 0) {
+				goto done;
+			}
+			return;
 		}
 
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
+			goto done;
 		}
 
-	default:
-	done:
 	cleanup_delay:
+		if (request->root->cleanup_delay) {
+			struct timeval when;
+
+			when.tv_sec = request->root->cleanup_delay;
+			when.tv_usec = 0;
+
+			if (unlang_delay(request, &when, auth_cleanup_delay) < 0) goto done;
+			return;
+		}
+		/* FALL-THROUGH */
+
+	done:
+	default:
 		request_thread_done(request);
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
