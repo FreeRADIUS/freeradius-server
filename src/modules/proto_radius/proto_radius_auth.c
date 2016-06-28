@@ -120,7 +120,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	VALUE_PAIR *vp, *auth_type;
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
+	fr_dict_enum_t const *dv = NULL;
 	fr_dict_attr_t const *da = NULL;
 	vp_cursor_t cursor;
 
@@ -355,11 +355,10 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 */
 		vp = fr_pair_find_by_num(request->control, 0, PW_SIMULTANEOUS_USE, TAG_ANY);
 		if (vp && request->username) {
-			unlang = cf_section_sub_find_name2(request->server_cs, "process", dv->name);
+			unlang = cf_section_sub_find_name2(request->server_cs, "process", "Simultaneous-Use");
 			if (!unlang) {
-				REDEBUG2("No 'process %s' section found: rejecting the user.", dv->name);
-				request->reply->code = PW_CODE_ACCESS_REJECT;
-				goto setup_send;
+				REDEBUG2("No 'process Simultaneous' section found.");
+				goto post_simul;
 			}
 
 			RDEBUG("Running 'process %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
@@ -401,6 +400,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			}
 		} /* else there's no Simultaneous-Use checking */
 
+	post_simul:
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
