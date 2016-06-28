@@ -1183,3 +1183,35 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *in
 
 	return RLM_MODULE_YIELD;
 }
+
+static void unlang_timer_hook(void *ctx, UNUSED struct timeval *now)
+{
+	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
+#ifdef DEBUG_STATE_MACHINE
+	fr_state_action_t action = FR_ACTION_TIMER;
+#endif
+
+	TRACE_STATE_MACHINE;
+
+	request->process(request, FR_ACTION_TIMER);
+}
+
+
+int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process)
+{
+	struct timeval when;
+
+	timeradd(&request->reply->timestamp, delay, &when);
+
+	RDEBUG2("Waiting for %d.%06d seconds",
+		(int) delay->tv_sec, (int) delay->tv_usec);
+
+	if (!fr_event_insert(request->el, unlang_timer_hook,
+			     request, &when, &request->ev)) {
+		RDEBUG("Failed inserting event");
+		return -1;
+	}
+
+	request->process = process;
+	return 0;
+}
