@@ -907,12 +907,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*this = decoder_ctx;
 
-	/*
-	 *	FIXME: Attrlen can be larger than 253 for extended attrs!
-	 */
-	if (!parent || (attr_len > packet_len) ||
-	    ((attr_len > 253) && (attr_len != packet_len)) ||
-	    (attr_len > 128 * 1024)) {
+	if (!parent || (attr_len > packet_len) || (attr_len > 128 * 1024)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
 		return -1;
 	}
