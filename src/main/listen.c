@@ -514,7 +514,6 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	request->number = 0;
 	request->priority = listener->type;
 	request->server = client->client_server;
-	request->server_cs = client->client_server_cs;
 	request->root = &main_config;
 
 	/*
@@ -572,7 +571,6 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	}
 
 	request->server = client->server;
-	request->server_cs = client->server_cs;
 
 	trigger_exec(request, NULL, "server.client.add", false, NULL);
 

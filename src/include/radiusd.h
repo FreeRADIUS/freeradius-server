@@ -246,7 +246,6 @@ struct rad_request {
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 	char const		*server;	//!< name of the virtual server which is processing the request.
-	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.
 
 	char const		*component; 	//!< Section the request is in.
 	char const		*module;	//!< Module the request is currently being processed by.

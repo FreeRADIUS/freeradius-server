@@ -1834,13 +1834,10 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 	 */
 	if (client->server) {
 		request->server = client->server;
-		request->server_cs = client->server_cs;
 
 	} else {
 		request->server = listener->server;
-		request->server_cs = listener->server_cs;
 	}
-	rad_assert(request->server_cs != NULL);
 
 	request->root = &main_config;
 #ifdef WITH_TCP
