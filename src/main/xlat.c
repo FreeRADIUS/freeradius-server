@@ -432,14 +432,10 @@ static ssize_t xlat_debug_attr(UNUSED char **out, UNUSED size_t outlen,
 			switch (type->number) {
 			case PW_TYPE_INVALID:		/* Not real type */
 			case PW_TYPE_MAX:		/* Not real type */
-			case PW_TYPE_EXTENDED:		/* Not safe/appropriate */
-			case PW_TYPE_LONG_EXTENDED:	/* Not safe/appropriate */
-			case PW_TYPE_TLV:		/* Not safe/appropriate */
-			case PW_TYPE_EVS:		/* Not safe/appropriate */
-			case PW_TYPE_VSA:		/* @fixme We need special behaviour for these */
 			case PW_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
 			case PW_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
 			case PW_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
+			case PW_TYPE_STRUCTURAL:
 				goto next_type;
 
 			default:
