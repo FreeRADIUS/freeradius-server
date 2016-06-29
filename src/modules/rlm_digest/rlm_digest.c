@@ -150,9 +150,9 @@ static int digest_fix(REQUEST *request)
 						PW_DIGEST_REALM - 1 + p[0], 0);
 			fr_pair_value_bstrncpy(sub, p + 2, attrlen - 2);
 
-			if ((rad_debug_lvl > 1) && fr_log_fp) {
-				fr_pair_fprint(fr_log_fp, sub);
-			}
+			RINDENT();
+			rdebug_pair(L_DBG_LVL_2, request, sub, "&request:");
+			REXDENT();
 
 			/*
 			 *	FIXME: Check for the existence
