@@ -642,6 +642,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		   fr_int2str(tmpl_names, map->lhs->type, "???"),
 		   fr_int2str(tmpl_names, map->rhs->type, "???"));
 
+	VERIFY_MAP(map);
+
 	switch (map->lhs->type) {
 	/*
 	 *	LHS is an attribute or list
