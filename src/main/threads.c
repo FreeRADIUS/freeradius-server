@@ -330,7 +330,7 @@ static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREA
 
 static void link_active_head(THREAD_HANDLE *thread)
 {
-	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 	link_list_head(&thread_pool.active_head, &thread_pool.active_tail, thread);
 
 	thread_pool.active_threads++;
@@ -342,7 +342,7 @@ static void link_active_head(THREAD_HANDLE *thread)
  */
 static void unlink_active(THREAD_HANDLE *thread)
 {
-	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 
 	pthread_mutex_lock(&thread_pool.active_mutex);
 	rad_assert(thread->status == THREAD_ACTIVE);
@@ -357,7 +357,7 @@ static void unlink_active(THREAD_HANDLE *thread)
  */
 static void link_exited_tail(THREAD_HANDLE *thread)
 {
-	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 
 	pthread_mutex_lock(&thread_pool.exited_mutex);
 	link_list_tail(&thread_pool.exited_head, &thread_pool.exited_tail, thread);
@@ -369,7 +369,7 @@ static void link_exited_tail(THREAD_HANDLE *thread)
 
 static void link_idle_head(THREAD_HANDLE *thread)
 {
-	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 	thread->request = NULL;
 	thread->status = THREAD_IDLE;
 	link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
@@ -382,7 +382,7 @@ static void link_idle_head(THREAD_HANDLE *thread)
  */
 static void unlink_idle(THREAD_HANDLE *thread, bool do_locking)
 {
-	DEBUG("Thread %d %s", thread->thread_num, __FUNCTION__);
+	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 	rad_assert(thread->status == THREAD_IDLE);
 	if (do_locking) pthread_mutex_lock(&thread_pool.idle_mutex);
 
@@ -447,7 +447,7 @@ void request_enqueue(REQUEST *request)
 		 *	Remove the thread from the idle list.
 		 */
 		thread = thread_pool.idle_head;
-		DEBUG2("Thread %d unlink_idle_head", thread->thread_num);
+		DEBUG3("Thread %d unlink_idle_head", thread->thread_num);
 		unlink_list(&thread_pool.idle_head, &thread_pool.idle_tail, thread_pool.idle_head);
 		thread_pool.idle_threads--;
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
