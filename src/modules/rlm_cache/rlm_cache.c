@@ -570,6 +570,10 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_STATUS_ONLY, TAG_ANY);
 	if (vp && vp->vp_integer) {
+		RINDENT();
+		RDEBUG3("status-only: yes");
+		REXDENT();
+
 		if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
 
 		rcode = cache_find(&c, inst, request, &handle, key, key_len);
@@ -604,6 +608,12 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 		}
 	}
 
+	RINDENT();
+	RDEBUG3("merge : %s", merge ? "yes" : "no");
+	RDEBUG3("insert: %s", insert ? "yes" : "no");
+	RDEBUG3("expire: %s", expire ? "yes" : "no");
+	RDEBUG3("ttl   : %i", ttl);
+	REXDENT();
 	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
 
 	/*
