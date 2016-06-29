@@ -793,23 +793,23 @@ static void *thread_handler(void *arg)
 				 */
 				if (fr_heap_num_elements(backlog) > 0) {
 					fr_heap_insert(backlog, thread->request);
+
+				backlog:
+					DEBUG3("Thread %d processing from local backlog (%zd)", thread->thread_num, fr_heap_num_elements(backlog));
+					request = fr_heap_peek(backlog);
+					(void) fr_heap_extract(backlog, request);
+					rad_assert(request != NULL);
+
+					/*
+					 *	@fixme: probably race
+					 *	conditions here... but only
+					 *	when the server is blocked.
+					 *	Oh well.
+					 */
+					thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+					thread->request = request;
+					goto process;
 				}
-
-			backlog:
-				DEBUG3("Thread %d processing from local backlog (%zd)", thread->thread_num, fr_heap_num_elements(backlog));
-				request = fr_heap_peek(backlog);
-				(void) fr_heap_extract(backlog, request);
-				rad_assert(request != NULL);
-
-				/*
-				 *	@fixme: probably race
-				 *	conditions here... but only
-				 *	when the server is blocked.
-				 *	Oh well.
-				 */
-				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-				thread->request = request;
-				goto process;
 			}
 
 			/*
