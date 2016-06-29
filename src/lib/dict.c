@@ -3559,8 +3559,8 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 		break;
 
 	default:
-		fr_strerror_printf("Parent attribute %s is not TLV for child attribute starting at \"%s\"",
-				   (*parent)->name, oid);
+		fr_strerror_printf("Attribute %s (%i) is not a TLV, so cannot contain a child attribute.  "
+				   "Error at sub OID \"%s\"", (*parent)->name, (*parent)->attr, oid);
 		return 0;	/* We parsed nothing */
 	}
 
