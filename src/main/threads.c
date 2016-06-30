@@ -827,23 +827,23 @@ static void *thread_handler(void *arg)
 
 					unlink_idle(thread, false);
 					pthread_mutex_unlock(&thread_pool.idle_mutex);
+
+					/*
+					 *	Grab a request from the backlog.
+					 */
+					request = fr_heap_peek(backlog);
+					(void) fr_heap_extract(backlog, request);
+					rad_assert(request != NULL);
+
+					pthread_mutex_lock(&thread_pool.active_mutex);
+					link_active_head(thread);
+					thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+					thread->request = request;
+					pthread_mutex_unlock(&thread_pool.active_mutex);
+
+					rad_assert(thread->status == THREAD_ACTIVE);
+					rad_assert(thread->request != NULL);
 				}
-
-				/*
-				 *	Grab a request from the backlog.
-				 */
-				request = fr_heap_peek(backlog);
-				(void) fr_heap_extract(backlog, request);
-				rad_assert(request != NULL);
-
-				pthread_mutex_lock(&thread_pool.active_mutex);
-				link_active_head(thread);
-				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-				thread->request = request;
-				pthread_mutex_unlock(&thread_pool.active_mutex);
-
-				rad_assert(thread->status == THREAD_ACTIVE);
-				rad_assert(thread->request != NULL);
 
 			}
 		}
