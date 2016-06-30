@@ -24,6 +24,7 @@
 #ifdef WITH_COMMAND_SOCKET
 
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/modcall.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
 #include <freeradius-devel/state.h>
