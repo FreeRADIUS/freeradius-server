@@ -46,6 +46,8 @@ void add_to_modcallable(modcallable *parent, modcallable *this);
 
 void modcall_debug(modcallable *mc, int depth);
 
+int modcall_pass2_condition(fr_cond_t *c);
+
 #ifdef __cplusplus
 }
 #endif

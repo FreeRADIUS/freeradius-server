@@ -24,6 +24,7 @@
 #ifdef WITH_COMMAND_SOCKET
 
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/modcall.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
 
@@ -1349,6 +1350,8 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 		talloc_free(text);
 		return CMD_FAIL;
 	}
+
+	(void) modcall_pass2_condition(new_condition);
 
 	/*
 	 *	Delete old condition.
