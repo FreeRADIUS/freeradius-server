@@ -2897,3 +2897,10 @@ modcallable *modcall_compile_section(modcallable *parent,
 	dump_tree(component, c);
 	return c;
 }
+
+int modcall_pass2_condition(fr_cond_t *c)
+{
+	if (!fr_condition_walk(c, pass2_callback, NULL)) return -1;
+
+	return 0;
+}

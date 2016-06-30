@@ -1400,6 +1400,8 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 		return CMD_FAIL;
 	}
 
+	(void) modcall_pass2_condition(new_condition);
+
 	/*
 	 *	Delete old condition.
 	 *

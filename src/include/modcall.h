@@ -51,6 +51,8 @@ modcallable *modcall_compile_section(modcallable *parent,
 
 void modcall_debug(modcallable *mc, int depth);
 
+int modcall_pass2_condition(fr_cond_t *c);
+
 #ifdef __cplusplus
 }
 #endif
