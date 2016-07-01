@@ -91,6 +91,7 @@ typedef struct THREAD_HANDLE {
 	unsigned int		request_count;	//!< The number of requests that this thread has handled.
 	time_t			timestamp;	//!< When the thread started executing.
 	time_t			max_time;	//!< for current request
+	int			pipe_fd[2];	//!< for self signal
 	REQUEST			*request;
 } THREAD_HANDLE;
 
@@ -448,6 +449,7 @@ void request_enqueue(REQUEST *request)
 	if (thread_pool.idle_head) {
 		int num_blocked;
 		uint64_t number;
+		char data = 0;
 		char const *module, *component;
 		THREAD_HANDLE *blocked;
 
@@ -512,7 +514,7 @@ void request_enqueue(REQUEST *request)
 		 *	Tell the thread that there's a request available for
 		 *	it, once we're done all of the above work.
 		 */
-		pthread_kill(thread->pthread_id, SIGALRM);
+		(void) write(thread->pipe_fd[1], &data, 1);
 
 		/*
 		 *	If a thread is blocked, the request may have
@@ -712,10 +714,19 @@ static REQUEST *request_dequeue(void)
 	return request;
 }
 
-static void sig_alarm(UNUSED int signal)
+/*
+ *	Drain the socket, but don't do anything else.
+ */
+static void thread_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
 {
-	reset_signal(SIGALRM, sig_alarm);
+	char buffer[16];
+	THREAD_HANDLE *thread = (THREAD_HANDLE *) ctx;
+
+	(void) read(fd, buffer, sizeof(buffer));
+
+	DEBUG3("Thread %d was sent a new request", thread->thread_num);
 }
+
 
 /*
  *	The main thread handler for requests.
@@ -738,6 +749,11 @@ static void *thread_handler(void *arg)
 
 	backlog = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
 	rad_assert(backlog != NULL);
+
+	if (fr_event_fd_insert(el, 0, thread->pipe_fd[0], thread_fd_handler, thread) < 0) {
+		ERROR("Failed inserting event for self");
+		goto done;
+	}
 
 	/*
 	 *	Loop forever, until told to exit.
@@ -779,11 +795,8 @@ static void *thread_handler(void *arg)
 			 */
 			if (thread->status == THREAD_IDLE) continue;
 
-			DEBUG3("Thread %d got signal for new request", thread->thread_num);
-
-			if (thread->status == THREAD_ACTIVE) {
-				rad_assert(thread->request != NULL);
-			}
+			DEBUG3("Thread %d got spurious signal for new request", thread->thread_num);
+			continue;
 
 		} else {
 			DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
@@ -988,6 +1001,7 @@ static void *thread_handler(void *arg)
 
 			if ((now < (thread_pool.time_last_spawned + thread_pool.cleanup_delay)) &&
 			    ((thread_pool.idle_threads + 1) >= thread_pool.max_spare_threads)) {
+				char data = 0;
 
 				idle = thread_pool.idle_tail;
 				if (!idle) {
@@ -1003,7 +1017,7 @@ static void *thread_handler(void *arg)
 				 *	Post an extra signal so that the idle thread wakes
 				 *	up and knows to exit.
 				 */
-				pthread_kill(idle->pthread_id, SIGALRM);
+				(void) write(idle->pipe_fd[1], &data, 1);
 			}
 		}
 
@@ -1030,6 +1044,8 @@ static void *thread_handler(void *arg)
 				 */
 				pthread_mutex_unlock(&thread_pool.exited_mutex);
 				pthread_join(idle->pthread_id, NULL);
+				close(idle->pipe_fd[0]);
+				close(idle->pipe_fd[1]);
 				talloc_free(idle);
 			} else {
 				pthread_mutex_unlock(&thread_pool.exited_mutex);
@@ -1078,6 +1094,21 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	thread->request_count = 0;
 	thread->status = THREAD_IDLE;
 	thread->timestamp = now;
+
+	if (pipe(thread->pipe_fd) < 0) {
+		talloc_free(thread);
+		ERROR("Thread create pipe failed: %s",
+		      fr_strerror());
+		return NULL;
+	}
+
+#ifdef F_SETNOSIGPIPE
+	rcode = 1;
+	(void) fcntl(thread->pipe_fd[0], F_SETNOSIGPIPE, &rcode);
+	(void) fcntl(thread->pipe_fd[1], F_SETNOSIGPIPE, &rcode);
+	fr_nonblock(thread->pipe_fd[0]);
+	fr_nonblock(thread->pipe_fd[1]);
+#endif
 
 	/*
 	 *	Create the thread joinable, so that it can be cleaned up
@@ -1285,11 +1316,6 @@ int thread_pool_init(void)
 	 */
 	if (pool_initialized) return 0;
 
-	if (fr_set_signal(SIGALRM, sig_alarm) < 0) {
-		ERROR("Failed setting signal catcher in thread handler: %s", fr_strerror());
-		return -1;
-	}
-
 #ifdef WNOHANG
 	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 		ERROR("FATAL: Failed to initialize wait mutex: %s",
@@ -1390,6 +1416,7 @@ void thread_pool_stop(void)
 #ifndef WITH_GCD
 	THREAD_HANDLE *thread;
 	THREAD_HANDLE *next;
+	char data = 0;
 
 	if (!pool_initialized) return;
 
@@ -1413,7 +1440,7 @@ void thread_pool_stop(void)
 		next = thread->next;
 
 		thread->status = THREAD_CANCELLED;
-		pthread_kill(thread->pthread_id, SIGALRM);
+		write(thread->pipe_fd[1], &data, 1);
 
 		pthread_join(thread->pthread_id, NULL);
 		talloc_free(thread);
@@ -1423,7 +1450,7 @@ void thread_pool_stop(void)
 		next = thread->next;
 
 		thread->status = THREAD_CANCELLED;
-		pthread_kill(thread->pthread_id, SIGALRM);
+		write(thread->pipe_fd[1], &data, 1);
 
 		pthread_join(thread->pthread_id, NULL);
 		talloc_free(thread);
