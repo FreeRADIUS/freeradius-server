@@ -194,8 +194,6 @@ typedef struct THREAD_POOL {
 	uint32_t	max_queue_size;
 	uint32_t	num_queued;
 
-	uint32_t        requests;
-
 	fr_heap_cmp_t	heap_cmp;
 
 	uint32_t	total_threads;
@@ -501,7 +499,6 @@ void request_enqueue(REQUEST *request)
 	thread_pool.active_head = thread;
 	thread_pool.active_threads++;
 
-	thread_pool.requests++;
 	pthread_mutex_unlock(&thread_pool.mutex);
 
 	thread->status = THREAD_ACTIVE;
