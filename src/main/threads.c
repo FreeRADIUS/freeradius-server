@@ -702,15 +702,15 @@ static void *request_handler_thread(void *arg)
 			VALUE_PAIR *vp;
 
 			vp = radius_pair_create(request, &request->control,
-					       181, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_QUEUE_PPS_IN, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
 
 			vp = radius_pair_create(request, &request->control,
-					       182, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_QUEUE_PPS_OUT, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
 
 			vp = radius_pair_create(request, &request->control,
-					       183, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_QUEUE_USE_PERCENTAGE, VENDORPEC_FREERADIUS);
 			if (vp) {
 				vp->vp_integer = thread_pool.max_queue_size - thread_pool.num_queued;
 				vp->vp_integer *= 100;
