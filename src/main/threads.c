@@ -377,6 +377,16 @@ static void link_idle_head(THREAD_HANDLE *thread)
 }
 
 
+static void link_idle_tail(THREAD_HANDLE *thread)
+{
+	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
+	thread->request = NULL;
+	thread->status = THREAD_IDLE;
+	link_list_tail(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
+	thread_pool.idle_threads++;
+}
+
+
 /*
  *	Remove ourselves from the idle list
  */
@@ -997,7 +1007,10 @@ static void *thread_handler(void *arg)
 			}
 		}
 
-		link_idle_head(thread);
+		/*
+		 *	Link ourselves to the tail of the idle list, so that requests are spread across all threads.
+		 */
+		link_idle_tail(thread);
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
 		/*
