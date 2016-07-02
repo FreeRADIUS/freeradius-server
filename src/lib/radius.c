@@ -562,8 +562,6 @@ int fr_radius_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
 #endif
 
-	fr_radius_print_hex(packet);
-
 #ifdef WITH_TCP
 	/*
 	 *	If the socket is TCP, call write().  Calling sendto()
