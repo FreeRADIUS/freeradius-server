@@ -25,15 +25,15 @@ of people, in sites ranging from 10 to 10 million+ users.
 
 Upgrading
 ---------
-Version 3.1.x of the server is largely compatible with version 3.0.x,
+Version 4.1.x of the server is largely compatible with version 3.0.x,
 but be sure to address any warnings when starting v3.0.x before
-attempting to use en existing configuration with v3.1.x.
+attempting to use en existing configuration with v4.1.x.
 
-For a list of changes in version 3.1, please see `doc/changelog
-<https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/ChangeLog>`_
+For a list of changes in version 4.1, please see `doc/changelog
+<https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog>`_
 
 See `raddb/README.rst
-<https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/raddb/README.rst>`_
+<https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/raddb/README.rst>`_
 for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
@@ -179,5 +179,5 @@ are available from `Network RADIUS
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
 .. _CoverityStatus: https://scan.coverity.com/projects/58
 
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v3.1.x
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v4.0.x
 .. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
