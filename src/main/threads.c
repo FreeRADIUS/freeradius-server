@@ -72,10 +72,14 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	work is done with the mutex released (if at all possible).
  *	This practice minimizes contention on the mutex.
  */
-#  define THREAD_IDLE		(1)
-#  define THREAD_ACTIVE		(2)
-#  define THREAD_CANCELLED	(3)
-#  define THREAD_EXITED		(4)
+
+typedef enum fr_thread_status_t {
+	THREAD_NONE = 0,
+	THREAD_IDLE,
+	THREAD_ACTIVE,
+	THREAD_CANCELLED,
+	THREAD_EXITED
+} fr_thread_status_t;
 
 /*
  *  A data structure which contains the information about
@@ -87,7 +91,7 @@ typedef struct THREAD_HANDLE {
 
 	pthread_t		pthread_id;	//!< pthread_id.
 	int			thread_num;	//!< Server thread number, 1...number of threads.
-	int			status;		//!< Is the thread running or exited?
+	fr_thread_status_t     	status;		//!< Is the thread running or exited?
 	unsigned int		request_count;	//!< The number of requests that this thread has handled.
 	time_t			timestamp;	//!< When the thread started executing.
 	time_t			max_time;	//!< for current request
