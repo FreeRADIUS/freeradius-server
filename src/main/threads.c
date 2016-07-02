@@ -1416,7 +1416,6 @@ void thread_pool_stop(void)
 #ifndef WITH_GCD
 	THREAD_HANDLE *thread;
 	THREAD_HANDLE *next;
-	char data = 0;
 
 	if (!pool_initialized) return;
 
@@ -1425,32 +1424,25 @@ void thread_pool_stop(void)
 	 */
 	thread_pool.stop_flag = true;
 
-
-	/*
-	 *	Join and free all threads.
-	 */
-	for (thread = thread_pool.exited_head; thread; thread = next) {
-		next = thread->next;
-
-		pthread_join(thread->pthread_id, NULL);
-		talloc_free(thread);
-	}
-
 	for (thread = thread_pool.idle_head; thread; thread = next) {
 		next = thread->next;
 
 		thread->status = THREAD_CANCELLED;
-		write(thread->pipe_fd[1], &data, 1);
-
-		pthread_join(thread->pthread_id, NULL);
-		talloc_free(thread);
+		close(thread->pipe_fd[1]);
 	}
 
 	for (thread = thread_pool.active_head; thread; thread = next) {
 		next = thread->next;
 
 		thread->status = THREAD_CANCELLED;
-		write(thread->pipe_fd[1], &data, 1);
+		close(thread->pipe_fd[1]);
+	}
+
+	/*
+	 *	Join and free all threads.
+	 */
+	for (thread = thread_pool.exited_head; thread; thread = next) {
+		next = thread->next;
 
 		pthread_join(thread->pthread_id, NULL);
 		talloc_free(thread);
