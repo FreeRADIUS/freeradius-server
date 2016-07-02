@@ -53,7 +53,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 				goto done;
 			}
 
-			common_packet_debug(request, request->packet, true);
+			if (RDEBUG_ENABLED) common_packet_debug(request, request->packet, true);
 		} else {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
 				       fr_packet_codes[request->packet->code], request->packet->id);
@@ -202,7 +202,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 		}
 #endif
 
-		common_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 
 		if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
