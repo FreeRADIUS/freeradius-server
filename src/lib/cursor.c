@@ -227,6 +227,7 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsi
  * @note If the attribute specified by attr is not a child of the parent, NULL will be returned.
  *
  * @param cursor	to operate on.
+ * @param parent	to search for attr in.
  * @param attr		number to match.
  * @param tag		to match. Either a tag number or TAG_ANY to match any tagged or
  *	  		untagged attribute, TAG_NONE to match attributes without tags.
