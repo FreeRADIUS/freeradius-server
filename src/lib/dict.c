@@ -2130,7 +2130,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			common = fr_dict_parent_common(ctx->parent, da, true);
-			if (!common || common->flags.is_root ||
+			if (!common ||
 			    (common->type == PW_TYPE_VSA) ||
 			    (common->type == PW_TYPE_EVS)) {
 				fr_strerror_printf("Attribute '%s' is not a child of '%s'", argv[1], ctx->parent->name);
@@ -3451,8 +3451,6 @@ fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 	fr_dict_attr_t const *p_a, *p_b;
 
 	if (!a || !b) return NULL;
-
-	if (!a->parent || !b->parent) return NULL;		/* Either are at the root */
 
 	if (is_ancestor && (b->depth <= a->depth)) return NULL;
 
