@@ -1867,34 +1867,41 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
+/** Parser context for dict_from_file
+ *
+ * Allows vendor and TLV context to persist across $INCLUDEs
+ */
+typedef struct dict_from_file_ctx {
+	fr_dict_t		*dict;
+	unsigned int		block_vendor;
+	int			block_tlv_depth;
+	fr_dict_attr_t const	*parent;
+	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];
+} dict_from_file_ctx_t;
+
 /*
  *	Initialize the dictionary.
  */
-static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *filename,
-			  char const *src_file, int src_line)
+static int _dict_from_file(dict_from_file_ctx_t *ctx,
+			   char const *dir_name, char const *filename,
+			   char const *src_file, int src_line)
 {
 	FILE			*fp;
 	char 			dir[256], fn[256];
 	char			buf[256];
 	char			*p;
 	int			line = 0;
-	unsigned int		vendor;
-	unsigned int		block_vendor;
+
 	struct stat		statbuf;
 	char			*argv[MAX_ARGV];
 	int			argc;
 	fr_dict_attr_t const	*da;
-	int			block_tlv_depth = 0;
 
-	fr_dict_attr_t const	*parent;
-	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("%s: Filename name too long", __FUNCTION__);
 		return -1;
 	}
-
-	parent = dict->root;
 
 	/*
 	 *	If it's an absolute dir, forget the parent dir,
@@ -1943,7 +1950,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 	p = strrchr(fn, FR_DIR_SEP);
 	if (p) {
 		*p = '\0';
-		if (dict_stat_check(dict, fn, p + 1)) {
+		if (dict_stat_check(ctx->dict, fn, p + 1)) {
 			*p = FR_DIR_SEP;
 			return 0;
 		}
@@ -1988,14 +1995,12 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 	}
 #endif
 
-	dict_stat_add(dict, &statbuf);
+	dict_stat_add(ctx->dict, &statbuf);
 
 	/*
 	 *	Seed the random pool with data.
 	 */
 	fr_rand_seed(&statbuf, sizeof(statbuf));
-
-	block_vendor = 0;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		line++;
@@ -2031,7 +2036,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Process VALUE lines.
 		 */
 		if (strcasecmp(argv[0], "VALUE") == 0) {
-			if (dict_read_process_value(dict, argv + 1, argc - 1) == -1) goto error;
+			if (dict_read_process_value(ctx->dict, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
@@ -2039,7 +2044,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (dict_read_process_attribute(dict, parent, block_vendor,
+			if (dict_read_process_attribute(ctx->dict, ctx->parent, ctx->block_vendor,
 							argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
@@ -2048,7 +2053,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	See if we need to import another dictionary.
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
-			if (dict_from_file(dict, dir, argv[1], fn, line) < 0) goto error;
+			if (_dict_from_file(ctx, dir, argv[1], fn, line) < 0) goto error;
 			continue;
 		} /* $INCLUDE */
 
@@ -2056,7 +2061,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Optionally include a dictionary
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
-			int rcode = dict_from_file(dict, dir, argv[1], fn, line);
+			int rcode = _dict_from_file(ctx, dir, argv[1], fn, line);
 
 			if (rcode == -2) {
 				fr_strerror_printf(NULL); /* reset error to nothing */
@@ -2071,14 +2076,14 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Process VENDOR lines.
 		 */
 		if (strcasecmp(argv[0], "VENDOR") == 0) {
-			if (dict_read_process_vendor(dict, argv + 1, argc - 1) == -1) goto error;
+			if (dict_read_process_vendor(ctx->dict, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
 		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
 			fr_dict_attr_t const *common;
 
-			if ((block_tlv_depth + 1) > FR_DICT_TLV_NEST_MAX) {
+			if ((ctx->block_tlv_depth + 1) > FR_DICT_TLV_NEST_MAX) {
 				fr_strerror_printf("TLVs are nested too deep");
 				goto error;
 			}
@@ -2088,7 +2093,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 				goto error;
 			}
 
-			da = fr_dict_attr_by_name(dict, argv[1]);
+			da = fr_dict_attr_by_name(ctx->dict, argv[1]);
 			if (!da) {
 				fr_strerror_printf("Unknown attribute '%s'", argv[1]);
 				goto error;
@@ -2101,15 +2106,15 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 				goto error;
 			}
 
-			common = fr_dict_parent_common(parent, da, true);
+			common = fr_dict_parent_common(ctx->parent, da, true);
 			if (!common || common->flags.is_root ||
 			    (common->type == PW_TYPE_VSA) ||
 			    (common->type == PW_TYPE_EVS)) {
-				fr_strerror_printf("Attribute '%s' is not a child of '%s'", argv[1], parent->name);
+				fr_strerror_printf("Attribute '%s' is not a child of '%s'", argv[1], ctx->parent->name);
 				goto error;
 			}
-			block_tlv[block_tlv_depth++] = parent;
-			parent = da;
+			ctx->block_tlv[ctx->block_tlv_depth++] = ctx->parent;
+			ctx->parent = da;
 			continue;
 		} /* BEGIN-TLV */
 
@@ -2117,7 +2122,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Switches back to previous TLV parent
 		 */
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
-			if (--block_tlv_depth < 0) {
+			if (--ctx->block_tlv_depth < 0) {
 				fr_strerror_printf("Too many END-TLV entries.  Mismatch at END-TLV %s", argv[1]);
 				goto error;
 			}
@@ -2127,34 +2132,35 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 				goto error;
 			}
 
-			da = fr_dict_attr_by_name(dict, argv[1]);
+			da = fr_dict_attr_by_name(ctx->dict, argv[1]);
 			if (!da) {
 				fr_strerror_printf("Unknown attribute '%s'", argv[1]);
 				goto error;
 			}
 
-			if (da != parent) {
+			if (da != ctx->parent) {
 				fr_strerror_printf("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
-						   parent->name);
+						   ctx->parent->name);
 				goto error;
 			}
-			parent = block_tlv[block_tlv_depth];
+			ctx->parent = ctx->block_tlv[ctx->block_tlv_depth];
 			continue;
 		} /* END-VENDOR */
 
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
-			fr_dict_attr_flags_t flags;
+			unsigned int		vendor;
+			fr_dict_attr_flags_t	flags;
 
-			fr_dict_attr_t const *vsa_da;
-			fr_dict_attr_t *new;
-			fr_dict_attr_t *mutable;
+			fr_dict_attr_t const	*vsa_da;
+			fr_dict_attr_t		*new;
+			fr_dict_attr_t		*mutable;
 
 			if (argc < 2) {
 				fr_strerror_printf("Invalid BEGIN-VENDOR entry");
 				goto error;
 			}
 
-			vendor = fr_dict_vendor_by_name(dict, argv[1]);
+			vendor = fr_dict_vendor_by_name(ctx->dict, argv[1]);
 			if (!vendor) {
 				fr_strerror_printf("Unknown vendor '%s'", argv[1]);
 				goto error;
@@ -2172,7 +2178,7 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 				}
 
 				p = argv[2] + 7;
-				da = fr_dict_attr_by_name(dict, p);
+				da = fr_dict_attr_by_name(ctx->dict, p);
 				if (!da) {
 					fr_strerror_printf("Invalid format for BEGIN-VENDOR: Unknown attribute '%s'",
 							   p);
@@ -2195,11 +2201,11 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 				 *	the RFC dictionaries we need to add it in the case
 				 *	it doesn't.
 				 */
-				vsa_da = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+				vsa_da = fr_dict_attr_child_by_num(ctx->parent, PW_VENDOR_SPECIFIC);
 				if (!vsa_da) {
 					memset(&flags, 0, sizeof(flags));
 
-					memcpy(&mutable, &parent, sizeof(mutable));
+					memcpy(&mutable, &ctx->parent, sizeof(mutable));
 					new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
 								 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, flags);
 					fr_dict_attr_child_add(mutable, new);
@@ -2211,14 +2217,14 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 			 *	Create a VENDOR attribute on the fly, either in the context
 			 *	of the EVS attribute, or the VSA (26) attribute.
 			 */
-			parent = fr_dict_attr_child_by_num(vsa_da, vendor);
-			if (!parent) {
+			ctx->parent = fr_dict_attr_child_by_num(vsa_da, vendor);
+			if (!ctx->parent) {
 				memset(&flags, 0, sizeof(flags));
 
 				if (vsa_da->type == PW_TYPE_VSA) {
 					fr_dict_vendor_t const *dv;
 
-					dv = fr_dict_vendor_by_num(dict, vendor);
+					dv = fr_dict_vendor_by_num(ctx->dict, vendor);
 					if (dv) {
 						flags.type_size = dv->type;
 						flags.length = dv->length;
@@ -2237,31 +2243,33 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 				new = fr_dict_attr_alloc(mutable, argv[1], 0, vendor, PW_TYPE_VENDOR, flags);
 				fr_dict_attr_child_add(mutable, new);
 
-				parent = new;
+				ctx->parent = new;
 			}
-			block_vendor = vendor;
+			ctx->block_vendor = vendor;
 			continue;
 		} /* BEGIN-VENDOR */
 
 		if (strcasecmp(argv[0], "END-VENDOR") == 0) {
+			unsigned int vendor;
+
 			if (argc != 2) {
 				fr_strerror_printf("Invalid END-VENDOR entry");
 				goto error;
 			}
 
-			vendor = fr_dict_vendor_by_name(dict, argv[1]);
+			vendor = fr_dict_vendor_by_name(ctx->dict, argv[1]);
 			if (!vendor) {
 				fr_strerror_printf("Unknown vendor '%s'", argv[1]);
 				goto error;
 			}
 
-			if (vendor != block_vendor) {
+			if (vendor != ctx->block_vendor) {
 				fr_strerror_printf("END-VENDOR '%s' does not match any previous BEGIN-VENDOR",
 						   argv[1]);
 				goto error;
 			}
-			parent = dict->root;
-			block_vendor = 0;
+			ctx->parent = ctx->dict->root;
+			ctx->block_vendor = 0;
 			continue;
 		} /* END-VENDOR */
 
@@ -2273,6 +2281,20 @@ static int dict_from_file(fr_dict_t *dict, char const *dir_name, char const *fil
 	}
 	fclose(fp);
 	return 0;
+}
+
+static int dict_from_file(fr_dict_t *dict,
+			  char const *dir_name, char const *filename,
+			  char const *src_file, int src_line)
+{
+	dict_from_file_ctx_t ctx;
+
+	memset(&ctx, 0, sizeof(ctx));
+
+	ctx.dict = dict;
+	ctx.parent = dict->root;
+
+	return _dict_from_file(&ctx, dir_name, filename, src_file, src_line);
 }
 
 
