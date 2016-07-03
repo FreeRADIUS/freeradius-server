@@ -9,6 +9,8 @@ freeradius.h
 freeradius.snmp.h
 missing.h
 radpaths.h
+eap.sim.h
+eap.aka.h
 rfc*.h
 tls.h
 vqp.h

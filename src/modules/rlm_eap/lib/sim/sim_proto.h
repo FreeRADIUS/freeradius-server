@@ -30,6 +30,8 @@
 
 RCSIDH(sim_h, "$Id$")
 
+#include <assert.h>
+#include "dict.h"
 #include "eap_types.h"
 #include "eap_sim_common.h"
 
@@ -80,8 +82,12 @@ typedef struct fr_sim_keys {
 /*
  *	proto.c
  */
-int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep);
-int fr_sim_decode(RADIUS_PACKET *r, uint8_t *attr, unsigned int attrlen);
+int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
+		  VALUE_PAIR *to_encode, eap_packet_t *ep);
+
+int fr_sim_decode(REQUEST *request, fr_dict_attr_t const *parent,
+		  vp_cursor_t *decoded,
+		  uint8_t const *data, size_t data_len);
 
 char const *fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
 char const *fr_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t subtype);
@@ -89,7 +95,8 @@ char const *fr_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t s
 /*
  *	crypto.c
  */
-int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
+int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
+			     VALUE_PAIR *rvps,
 		       	     uint8_t key[8],
 			     uint8_t *extra, int extra_len,
 			     uint8_t calc_mac[20])

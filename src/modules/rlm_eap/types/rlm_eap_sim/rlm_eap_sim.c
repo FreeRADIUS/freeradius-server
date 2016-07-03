@@ -35,6 +35,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
+static fr_dict_attr_t const *dict_sim_root;
+
 /*
  *	build a reply to be sent.
  */
@@ -43,7 +45,8 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return fr_sim_encode(eap_session->request->reply, eap_session->this_round->request);
+	return fr_sim_encode(eap_session->request, dict_sim_root,
+			     eap_session->request->reply->vps, eap_session->this_round->request);
 }
 
 static int eap_sim_send_state(eap_session_t *eap_session)
@@ -74,13 +77,13 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
 
-	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_VERSION_LIST);
+	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_VERSION_LIST);
 	fr_pair_value_memcpy(newvp, (uint8_t const *) words, sizeof(words));
 
 	fr_pair_add(vps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_ID);
+	newvp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
 	newvp->vp_integer = eap_sim_session->sim_id++;
 	fr_pair_replace(vps, newvp);
 
@@ -89,7 +92,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	memcpy(eap_sim_session->keys.version_list, words + 1, eap_sim_session->keys.version_list_len);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	MEM(newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_FULLAUTH_ID_REQ));
+	MEM(newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_FULLAUTH_ID_REQ));
 	MEM(p = talloc_array(newvp, uint8_t, 2));
 	p[0] = 0;
 	p[1] = 1;
@@ -97,7 +100,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	fr_pair_add(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
-	newvp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_SUBTYPE);
+	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
 	newvp->vp_integer = EAP_SIM_START;
 	fr_pair_replace(vps, newvp);
 
@@ -123,7 +126,6 @@ static int eap_sim_send_state(eap_session_t *eap_session)
  */
 static int eap_sim_send_challenge(eap_session_t *eap_session)
 {
-	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
 	VALUE_PAIR		**from_client, **to_client, *vp;
 	RADIUS_PACKET		*packet;
@@ -145,15 +147,10 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	packet = eap_session->request->reply;
 	to_client = &packet->vps;
 
-	if (RDEBUG_ENABLED2) {
-		RDEBUG2("EAP-SIM decoded packet");
-		rdebug_pair_list(L_DBG_LVL_2, request, *from_client, NULL);
-	}
-
 	/*
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
-	MEM(vp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_PRAND));
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_RAND));
 	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (EAP_SIM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
@@ -168,15 +165,14 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Set the EAP_ID - new value
 	 */
-	vp = fr_pair_afrom_num(packet, 0, PW_EAP_ID);
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
 	vp->vp_integer = eap_sim_session->sim_id++;
 	fr_pair_replace(to_client, vp);
-
 
 	/*
 	 *	Use the SIM identity, if available
 	 */
-	vp = fr_pair_find_by_num(*from_client, 0, PW_EAP_SIM_IDENTITY, TAG_ANY);
+	vp = fr_pair_find_by_child_num(*from_client, dict_sim_root, PW_EAP_SIM_IDENTITY, TAG_ANY);
 	if (vp && vp->vp_length > 2) {
 		uint16_t len;
 
@@ -222,16 +218,16 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	We store the NONCE_MT in the MAC for the encoder, which
 	 *	will pull it out before it does the operation.
 	 */
-	vp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_MAC);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_MAC);
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.nonce_mt, 16);
 	fr_pair_replace(to_client, vp);
 
-	vp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_KEY);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_KEY);
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/* the SUBTYPE, set to challenge. */
-	vp = fr_pair_afrom_num(packet, 0, PW_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
 	vp->vp_integer = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_client, vp);
 
@@ -259,7 +255,7 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
 	/* set the EAP_ID - new value */
-	vp = fr_pair_afrom_num(packet, 0, PW_EAP_ID);
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
 	vp->vp_integer = eap_sim_session->sim_id++;
 	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
@@ -368,8 +364,8 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
-	nonce_vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_NONCE_MT, TAG_ANY);
-	selected_version_vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SELECTED_VERSION, TAG_ANY);
+	nonce_vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_EAP_SIM_NONCE_MT, TAG_ANY);
+	selected_version_vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_EAP_SIM_SELECTED_VERSION, TAG_ANY);
 	if (!nonce_vp || !selected_version_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
 		eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_START);
@@ -438,7 +434,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	/*
 	 *	Verify the MAC, now that we have all the keys
 	 */
-	if (fr_sim_crypto_mac_verify(eap_session, vps,
+	if (fr_sim_crypto_mac_verify(eap_session, dict_sim_root, vps,
 				     eap_sim_session->keys.k_aut,
 				     srescat, sizeof(srescat), calcmac)) {
 		RDEBUG2("MAC check succeed");
@@ -477,25 +473,35 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	eap_sim_session_t *eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
 	VALUE_PAIR *vp, *vps;
+	vp_cursor_t	cursor;
 
 	eap_sim_subtype_t subtype;
 
-	int success;
+	int ret;
 
 	/*
 	 *	VPS is the data from the client
 	 */
 	vps = eap_session->request->packet->vps;
 
-	success = fr_sim_decode(eap_session->request->packet,
-				 eap_session->this_round->response->type.data,
-				 eap_session->this_round->response->type.length);
-	if (!success) return 0;
+	fr_cursor_init(&cursor, &request->packet->vps);
+
+	ret = fr_sim_decode(eap_session->request, dict_sim_root,
+			    &cursor,
+			    eap_session->this_round->response->type.data,
+			    eap_session->this_round->response->type.length);
+	if (ret < 0) return 0;
+
+	vp = fr_cursor_next(&cursor);
+	if (vp && RDEBUG_ENABLED2) {
+		RDEBUG2("EAP-SIM decoded attributes");
+		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+	}
 
 	/*
 	 *	See what kind of message we have gotten
 	 */
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_SUBTYPE, TAG_ANY);
+	vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_EAP_SIM_SUBTYPE, TAG_ANY);
 	if (!vp) {
 		REDEBUG2("No subtype attribute was created, message dropped");
 		return 0;
@@ -548,6 +554,16 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	return 1;
 }
 
+static int mod_load(void)
+{
+	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_SIM_ROOT);
+	if (!dict_sim_root) {
+		ERROR("Missing EAP-SIM-Root attribute");
+		return -1;
+	}
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -556,6 +572,7 @@ extern rlm_eap_submodule_t rlm_eap_sim;
 rlm_eap_submodule_t rlm_eap_sim = {
 	.name		= "eap_sim",
 	.magic		= RLM_MODULE_INIT,
+	.load		= mod_load,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process,		/* Process next round of EAP method */
 };

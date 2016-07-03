@@ -42,9 +42,9 @@ static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	vp = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_KI, TAG_ANY);
+	vp = fr_pair_find_by_num(vps, 0, PW_SIM_KI, TAG_ANY);
 	if (!vp) {
-		RDEBUG3("No &control:EAP-SIM-KI found, not generating triplets locally");
+		RDEBUG3("No &control:SIM-KI found, not generating triplets locally");
 		return 1;
 	}
 
@@ -52,9 +52,9 @@ static int sim_vector_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
-	version = fr_pair_find_by_num(vps, 0, PW_EAP_SIM_ALGO_VERSION, TAG_ANY);
+	version = fr_pair_find_by_num(vps, 0, PW_SIM_ALGO_VERSION, TAG_ANY);
 	if (!version) {
-		RDEBUG3("No &control:EAP-SIM-ALGO-VERSION found, not generating triplets locally");
+		RDEBUG3("No &control:SIM-ALGO-VERSION found, not generating triplets locally");
 		return 1;
 	}
 

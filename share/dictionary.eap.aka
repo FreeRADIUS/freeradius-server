@@ -1,0 +1,70 @@
+# -*- text -*-
+# Copyright (C) 2016 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	EAP-AKA Protocol attributes
+#
+##############################################################################
+#
+#  Non-Skippable attributes
+#
+ATTRIBUTE	EAP-AKA-Rand				1	octets
+ATTRIBUTE	EAP-AKA-Autn				2	octets
+ATTRIBUTE	EAP-AKA-Res				3	octets
+ATTRIBUTE	EAP-AKA-Auts				4	octets
+ATTRIBUTE	EAP-AKA-Padding				6	octets
+ATTRIBUTE	EAP-AKA-Nonce-MT			7	octets
+ATTRIBUTE	EAP-AKA-Permanent-ID-Req		10	octets
+ATTRIBUTE	EAP-AKA-Mac				11	octets
+ATTRIBUTE	EAP-AKA-Notification			12	short
+
+VALUE	EAP-AKA-Notification		General-Failure-After-Authentication	0
+VALUE	EAP-AKA-Notification		Temporarily-Denied	1026
+VALUE	EAP-AKA-Notification		Not-Subscribed		1031
+VALUE	EAP-AKA-Notification		General-Failure		16384
+VALUE	EAP-AKA-Notification		Success			32768
+
+ATTRIBUTE	EAP-AKA-Any-ID-Req			13	octets
+ATTRIBUTE	EAP-AKA-Identity			14	octets
+ATTRIBUTE	EAP-AKA-Fullauth-ID-Req			17	octets
+ATTRIBUTE	EAP-AKA-Counter				19	octets
+ATTRIBUTE	EAP-AKA-Counter-Too-Small		20	octets
+ATTRIBUTE	EAP-AKA-Nonce-S				21	octets
+ATTRIBUTE	EAP-AKA-Client-Error-Code		22	short
+
+VALUE	EAP-AKA-Client-Error-Code		Unable-To-Process-Packet	0
+VALUE	EAP-AKA-Client-Error-Code		Unsupported-Version		1
+VALUE	EAP-AKA-Client-Error-Code		Insufficient-Challenges		2
+VALUE	EAP-AKA-Client-Error-Code		RANDS-Not-Fresh			3
+
+#
+#  Skippable-Attributes
+#
+ATTRIBUTE	EAP-AKA-IV				129	octets
+ATTRIBUTE	EAP-AKA-Encr-Data			130	octets
+ATTRIBUTE	EAP-AKA-Next-Pseudonym			132	octets
+ATTRIBUTE	EAP-AKA-Next-Reauth-ID			133	octets
+ATTRIBUTE	EAP-AKA-Checkcode			134	octets
+ATTRIBUTE	EAP-AKA-Result-Ind			137	octets
+
+#
+#  Internal attributes used by FreeRADIUS
+#
+ATTRIBUTE	EAP-AKA-Subtype				256	integer internal
+
+VALUE	EAP-AKA-Subtype			AKA-Challenge			1
+VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject	2
+VALUE	EAP-AKA-Subtype			AKA-Synchronization-Failure	4
+VALUE	EAP-AKA-Subtype			AKA-Identity			5
+VALUE	EAP-AKA-Subtype			AKA-Notification		12
+VALUE	EAP-AKA-Subtype			AKA-Reauthentication		13
+VALUE	EAP-AKA-Subtype			AKA-Client-Error		14
+
+ATTRIBUTE	EAP-AKA-HMAC				257	string internal
+ATTRIBUTE	EAP-AKA-Key				258	octets internal
+ATTRIBUTE	EAP-AKA-Extra				259	octets internal
+
+ATTRIBUTE	EAP-AKA-XRES				260	octets internal
+ATTRIBUTE	EAP-AKA-CK				261	octets internal
+ATTRIBUTE	EAP-AKA-IK				262	octets internal
+ATTRIBUTE	EAP-AKA-AUTHN				263	octets internal

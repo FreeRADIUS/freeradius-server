@@ -16,7 +16,7 @@
 
 /**
  * @file rlm_eap/lib/sim/sim_proto.c
- * @brief Code common to EAP-SIM/AKA/AKA' clients and to servers.
+ * @brief Code common to EAP-SIM/AKA/AKA' clients and servers.
  *
  * The development of the EAP-SIM support was funded by Internet Foundation
  * Austria (http://www.nic.at/ipa).
@@ -45,10 +45,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/modules.h>
+
 #include "eap_types.h"
 #include "eap_sim_common.h"
 #include "sim_proto.h"
-#include <freeradius-devel/sha1.h>
 
 /*
  * definitions changed to take a buffer for unknowns
@@ -86,125 +89,222 @@ char const *fr_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t s
 	return subtypes[subtype];
 }
 
-/*
- * given a radius request with an EAP-SIM body, decode it into TLV pairs
+/** Decode SIM/AKA/AKA' attributes
  *
- * return value is true if it succeeded, false if there was something
- * wrong and the packet should be discarded.
- *
+ * @param[in] ctx		to allocate attributes in.
+ * @param[in] cursor		where to insert the attributes.
+ * @param[in] parent		root attribute for the SIM dialect (SIM/AKA/AKA') we're parsing.
+ * @param[in] data		data to parse.
+ * @param[in] data_len		length of data.
+ * @param[in] decoder_ctx	extra context to pass to the decoder(unused).
+ * @return
+ *	- The number of bytes parsed.
+ *	- -1 on error.
  */
-int fr_sim_decode(RADIUS_PACKET *r, uint8_t *attr, unsigned int attr_len)
+static ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				  uint8_t const *data, size_t data_len,
+				  UNUSED void *decoder_ctx)
 {
-	VALUE_PAIR	*newvp;
-	int		eap_sim_attribute;
-	unsigned int	eap_sim_len;
-	int		es_attribute_count;
+	int		sim_at;
+	uint32_t	sim_at_len;
 
-	es_attribute_count = 0;
+	uint8_t const	*p = data;
+	uint8_t const	*end = p + data_len;
 
-	/* big enough to have even a single attribute */
-	if (attr_len < 5) {
-		ERROR("eap: EAP-Sim attribute too short: %d < 5", attr_len);
-		return 0;
-	}
+	/*
+	 *	Move the cursor to the end, so we know if
+	 *	any additional attributes were added.
+	 */
+	fr_cursor_end(cursor);
 
-	newvp = fr_pair_afrom_num(r, 0, PW_EAP_SIM_SUBTYPE);
-	if (!newvp) {
-		return 0;
-	}
+	/*
+	 *	Loop over all the attributes decoding
+	 *	them into the appropriate attributes
+	 *	in the SIM/AKA/AKA' dict.
+	 */
+	while (p < end) {
+		fr_dict_attr_t const	*da;
+		VALUE_PAIR		*vp;
 
-	newvp->vp_integer = attr[0];
-	newvp->vp_length = 1;
-	fr_pair_add(&(r->vps), newvp);
+		if ((end - p) < 2) break;
 
-	attr     += 3;
-	attr_len  -= 3;
+		sim_at = p[0];
+		sim_at_len = p[1] * sizeof(uint32_t);
 
-	/* now, loop processing each attribute that we find */
-	while (attr_len > 0) {
-		if (attr_len < 2) {
-			ERROR("eap: EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attr_len);
-			return 0;
+		if ((p + sim_at_len) > end) {
+			fr_strerror_printf("Malformed attribute %d: Length longer than data (%u > %zu)",
+					   sim_at, sim_at_len, end - p);
+		error:
+			fr_cursor_free(cursor);
+			return -1;
 		}
 
-		eap_sim_attribute = attr[0];
-		eap_sim_len = attr[1] * 4;
-
-		if (eap_sim_len > attr_len) {
-			ERROR("eap: EAP-Sim attribute %d (no.%d) has length longer than data (%d > %d)",
-			      eap_sim_attribute, es_attribute_count, eap_sim_len, attr_len);
-
-			return 0;
+		if (sim_at_len == 0) {
+			fr_strerror_printf("Malformed attribute %d: Length field is zero", sim_at);
+			goto error;
 		}
 
-		if (eap_sim_len > FR_MAX_STRING_LEN) {
-			eap_sim_len = FR_MAX_STRING_LEN;
-		}
-		if (eap_sim_len < 2) {
-			ERROR("eap: EAP-Sim attribute %d (no.%d) has length too small", eap_sim_attribute,
-			      es_attribute_count);
-			       return 0;
+		da = fr_dict_attr_child_by_num(parent, sim_at);
+		if (!da) {
+			/*
+			 *	Encountered none skippable attribute
+			 *
+			 *	RFC says we need to die on these if we don't
+			 *	understand them.  non-skippables are < 128.
+			 */
+			if (sim_at < 128) {
+				fr_strerror_printf("Unknown (non-skippable) attribute %i", sim_at);
+				goto error;
+			}
+
+			/*
+			 *	@fixme We should create unknowns....
+			 */
+			fr_strerror_printf("Skipping unknown attribute %i", sim_at);
+			goto next;
 		}
 
-		newvp = fr_pair_afrom_num(r, 0, eap_sim_attribute + PW_EAP_SIM_BASE);
-		fr_pair_value_memcpy(newvp, &attr[2], eap_sim_len - 2);
-		fr_pair_add(&(r->vps), newvp);
-		newvp = NULL;
+		vp = fr_pair_afrom_da(ctx, da);
+		if (!vp) goto error;
+		fr_pair_value_memcpy(vp, &p[2], sim_at_len - 2);
+		fr_cursor_append(cursor, vp);
 
+	next:
 		/* advance pointers, decrement length */
-		attr += eap_sim_len;
-		attr_len -= eap_sim_len;
-		es_attribute_count++;
+		p += sim_at_len;
 	}
-	return 1;
+
+	return p - data;
 }
 
-int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
+/** Decode SIM/AKA/AKA' specific packet data
+ *
+ * @note data should point to the subtype field in the EAP packet.
+ *
+ * Extracts the SUBTYPE and adds it an attribute, then decodes any TLVs in the
+ * SIM/AKA/AKA' packet.
+ *
+ * @param[in] request		the current request.
+ * @param[in] parent		the root of the dictionary.
+ * @param[in] decoded		where to write decoded attributes.
+ * @param[in] data		to convert to pairs.
+ * @param[in] data_len		length of data to convert.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sim_decode(REQUEST *request, fr_dict_attr_t const *parent,
+		  vp_cursor_t *decoded, uint8_t const *data, size_t data_len)
 {
-	VALUE_PAIR	*vp;
-	int		encoded_size;
-	uint8_t		*encoded_msg, *attr;
-	unsigned int	id, eapcode;
-	uint8_t		*mac_space;
-	uint8_t const	*append;
-	int		append_len;
-	unsigned char	subtype;
-	vp_cursor_t	cursor;
+	ssize_t		slen;
+	uint8_t	const	*p = data;
+	uint8_t const	*end = p + data_len;
+
+	FR_PROTO_HEX_DUMP(NULL, data, data_len);
+
+	fr_strerror();
+
+	/*
+	 *	Check if we have enough data for a single attribute
+	 *	Minimum attribute size is 4 bytes, then + 3 for
+	 *	subtype and the reserved bytes.
+	 */
+	if (data_len < (3 + sizeof(uint32_t))) {
+		REDEBUG("Packet data too small: %zu < %zu" , data_len, 3 + sizeof(uint32_t));
+		return -1;
+	}
+	p += 3;
+
+	slen = fr_sim_decode_pair(request->packet, decoded, parent, p, end - p, NULL);
+	if (slen < 0) {
+		REDEBUG("%s", fr_strerror());
+		return -1;
+	}
+	p += slen;
+	rad_assert(p <= end);
+
+	if (p != end) {
+		REDEBUG("Got %zu bytes of trailing garbage", end - p);
+		RHEXDUMP(L_DBG_LVL_2, p, end - p, "");
+	error:
+		fr_cursor_free(decoded);	/* Free any attributes we added */
+		return -1;
+	}
+
+	/*
+	 *	No point in doing this until we known the rest
+	 *	of the data is OK!
+	 */
+	{
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_afrom_child_num(request->packet, parent, PW_SIM_SUBTYPE);
+		if (!vp) {
+			REDEBUG("Failed allocating subtype attribute");
+			goto error;
+		}
+		vp->vp_integer = data[0];
+		vp->vp_length = 1;
+		fr_cursor_append(decoded, vp);
+	}
+
+	return 0;
+}
+
+int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
+		  VALUE_PAIR *to_encode, eap_packet_t *ep)
+{
+	VALUE_PAIR		*vp;
+	int			encoded_size;
+	uint8_t			*encoded_msg, *attr;
+	unsigned int		id, eap_code;
+	uint8_t			*mac_space;
+	uint8_t const		*append;
+	int			append_len;
+	unsigned char		subtype;
+	vp_cursor_t		cursor;
+
+	fr_dict_attr_t const	*da;
 
 	mac_space = NULL;
 	append = NULL;
 	append_len = 0;
 
+	da = fr_dict_attr_child_by_num(parent, PW_SIM_SUBTYPE);
+	if (!da) {
+		REDEBUG("Missing definition for subtype attribute");
+		return -1;
+	}
+
 	/*
-	 * encoded_msg is now an EAP-SIM message.
-	 * it might be too big for putting into an EAP-Type-SIM
-	 *
+	 *	Encoded_msg is now an EAP-SIM message.
+	 *	It might be too big for putting into an
+	 *	EAP packet.
 	 */
-	subtype = (vp = fr_pair_find_by_num(r->vps, 0, PW_EAP_SIM_SUBTYPE, TAG_ANY)) ?
-		vp->vp_integer : EAP_SIM_START;
+	vp = fr_pair_find_by_da(to_encode, da, TAG_ANY);
+	subtype = vp ? vp->vp_integer : EAP_SIM_START;
 
-	id = (vp = fr_pair_find_by_num(r->vps, 0, PW_EAP_ID, TAG_ANY)) ?
-		vp->vp_integer : ((int)getpid() & 0xff);
+	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_ID, TAG_ANY);
+	id = vp ? vp->vp_integer : ((int)getpid() & 0xff);
 
-	eapcode = (vp = fr_pair_find_by_num(r->vps, 0, PW_EAP_CODE, TAG_ANY)) ?
-		vp->vp_integer : PW_EAP_REQUEST;
+	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_CODE, TAG_ANY);
+	eap_code = vp ? vp->vp_integer : PW_EAP_REQUEST;
 
 	/*
-	 * take a walk through the attribute list to see how much space
-	 * that we need to encode all of this.
+	 *	take a walk through the attribute list to
+	 *	see how much space that we need to encode
+	 *	all of this.
 	 */
 	encoded_size = 0;
-	for (vp = fr_cursor_init(&cursor, &r->vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+
+	(void)fr_cursor_init(&cursor, &to_encode);
+	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
 		int rounded_len;
-		int vplen;
+		int vp_len;
 
-		if ((vp->da->attr < PW_EAP_SIM_BASE) || (vp->da->attr >= (PW_EAP_SIM_BASE + 256))) {
-			continue;
-		}
+		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
 
-		vplen = vp->vp_length;
+		vp_len = vp->vp_length;
 
 		/*
 		 * the AT_MAC attribute is a bit different, when we get to this
@@ -213,18 +313,18 @@ int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
 		 *
 		 * At this point, we only care about the size.
 		 */
-		if (vp->da->attr == PW_EAP_SIM_MAC) vplen = 18;
+		if (vp->da->attr == PW_SIM_MAC) vp_len = 18;
 
 
 		/*
 		 * Round up to next multiple of 4, after taking in
 		 * account the type and length bytes.
 		 */
-		rounded_len = (vplen + 2 + 3) & ~3;
+		rounded_len = (vp_len + 2 + 3) & ~3;
 		encoded_size += rounded_len;
 	}
 
-	if (ep->code != PW_EAP_SUCCESS) ep->code = eapcode;
+	if (ep->code != PW_EAP_SUCCESS) ep->code = eap_code;
 
 	ep->id = (id & 0xff);
 	ep->type.num = PW_EAP_SIM;
@@ -244,7 +344,6 @@ int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
 
 		return 0;
 	}
-
 
 	/*
 	 *	Figured out the length, so allocate some space for the results.
@@ -273,11 +372,11 @@ int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
 	 */
 	attr = encoded_msg + 3;
 
-	for (vp = fr_cursor_first(&cursor); vp; vp = fr_cursor_next(&cursor)) {
+	(void)fr_cursor_first(&cursor);
+	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
 		int rounded_len;
 
-		if (vp->da->attr < PW_EAP_SIM_BASE ||
-		    vp->da->attr >= PW_EAP_SIM_BASE + 256) continue;
+		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
 
 		/*
 		 *	The AT_MAC attribute is a bit different, when we get to this
@@ -298,7 +397,7 @@ int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
 			memset(attr, 0, rounded_len);
 			memcpy(&attr[2], vp->vp_strvalue, vp->vp_length);
 		}
-		attr[0] = vp->da->attr - PW_EAP_SIM_BASE;
+		attr[0] = vp->da->attr;
 		attr[1] = rounded_len >> 2;
 
 		attr += rounded_len;
@@ -314,8 +413,14 @@ int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * 	then we should calculate the HMAC-SHA1 of the resulting EAP-SIM
 	 * 	packet, appended with the value of append.
 	 */
-	vp = fr_pair_find_by_num(r->vps, 0, PW_EAP_SIM_KEY, TAG_ANY);
-	if (mac_space != NULL && vp != NULL) {
+	da = fr_dict_attr_child_by_num(parent, PW_SIM_KEY);
+	if (!da) {
+		REDEBUG("Missing definition for key attribute");
+		return -1;
+	}
+
+	vp = fr_pair_find_by_da(to_encode, da, TAG_ANY);
+	if ((mac_space != NULL) && (vp != NULL)) {
 		unsigned char		*buffer;
 		eap_packet_raw_t	*hdr;
 		uint16_t		hmac_len, total_length = 0;
@@ -323,14 +428,14 @@ int fr_sim_encode(RADIUS_PACKET *r, eap_packet_t *ep)
 
 		total_length = EAP_HEADER_LEN + 1 + encoded_size;
 		hmac_len = total_length + append_len;
-		buffer = talloc_array(r, uint8_t, hmac_len);
+		buffer = talloc_array(to_encode, uint8_t, hmac_len);
 		hdr = (eap_packet_raw_t *) buffer;
 		if (!hdr) {
 			talloc_free(encoded_msg);
 			return 0;
 		}
 
-		hdr->code = eapcode & 0xff;
+		hdr->code = eap_code & 0xff;
 		hdr->id = (id & 0xff);
 		total_length = htons(total_length);
 		memcpy(hdr->length, &total_length, sizeof(total_length));

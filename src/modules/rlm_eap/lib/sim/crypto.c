@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "sim_proto.h"
 #include <freeradius-devel/sha1.h>
+#include <freeradius-devel/eap.sim.h>
 
 /*
  * calculate the MAC for the EAP message, given the key.
@@ -39,18 +40,26 @@ RCSID("$Id$")
  * HMAC.
  *
  */
-int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAP_SIM_AUTH_SIZE],
+int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
+			     VALUE_PAIR *rvps,
+			     uint8_t key[EAP_SIM_AUTH_SIZE],
 			     uint8_t *extra, int extra_len, uint8_t calc_mac[20])
 {
-	int ret;
-	eap_packet_raw_t *e;
-	uint8_t *buffer;
-	int elen,len;
-	VALUE_PAIR *mac;
+	int			ret;
+	eap_packet_raw_t	*e;
+	uint8_t			*buffer;
+	int			elen, len;
+	VALUE_PAIR		*mac;
+	fr_dict_attr_t const	*da;
 
-	mac = fr_pair_find_by_num(rvps, 0, PW_EAP_SIM_MAC, TAG_ANY);
+	da = fr_dict_attr_child_by_num(root, PW_EAP_SIM_MAC);
+	if (!da) {
+		fr_strerror_printf("Missing definition for EAP-SIM-MAC");
+		return -1;
+	}
 
-	if(!mac || mac->vp_length != 18) {
+	mac = fr_pair_find_by_da(rvps, da, TAG_ANY);
+	if (!mac || mac->vp_length != 18) {
 		/* can't check a packet with no AT_MAC attribute */
 		return 0;
 	}
@@ -87,12 +96,12 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAP_
 		 */
 		attr = buffer + 8;
 		while (attr < (buffer + elen)) {
-			if (attr[0] == (PW_EAP_SIM_MAC - PW_EAP_SIM_BASE)) {
+			if (attr[0] == PW_EAP_SIM_MAC) {
 				/* zero the data portion, after making sure
 				 * the size is >=5. Maybe future versions.
 				 * will use more bytes, so be liberal.
 				 */
-				if(attr[1] < 5) {
+				if (attr[1] < 5) {
 					ret = 0;
 					goto done;
 				}

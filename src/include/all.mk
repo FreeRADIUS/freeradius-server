@@ -69,7 +69,12 @@ src/include/autoconf.sed: src/include/autoconf.h
 #  Create the header files from the dictionaries.
 #
 
-RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*)) share/dictionary.vqp share/dictionary.freeradius share/dictionary.freeradius.snmp
+RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*)) \
+    share/dictionary.vqp share/dictionary.freeradius \
+    share/dictionary.freeradius.snmp \
+    share/dictionary.eap.aka \
+    share/dictionary.eap.sim
+
 HEADERS_RFC := $(patsubst share/dictionary.%,src/include/%.h,$(RFC_DICTS))
 HEADERS	+= $(notdir ${HEADERS_RFC})
 

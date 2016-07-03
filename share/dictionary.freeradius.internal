@@ -335,38 +335,43 @@ ATTRIBUTE	EAP-FAST-PKCS				1191.20	octets	internal
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets	internal
 
 #
-#	Range:	1200-1279
+#	Range:	1200-1210
+#
+#	SIM attributes.  These do not belong to either EAP-AKA or EAP-SIM
+#	they represent attributes of a SIM card.
+#
+
+# The Ki for a specific SIM card.
+ATTRIBUTE	SIM-Ki					1200	octets internal
+
+# The IMSI number of a SIM.
+ATTRIBUTE	SIM-IMSI				1201	string	internal
+
+# The algorithm the SIM card uses (Milenage for UMTS, COMP128 for others)
+ATTRIBUTE	SIM-Algo-Version			1202	integer internal
+
+#
+#	Range:	1210-1210
+#		EAP-AKA (and other EAP type) weirdness.
+#
+#	For EAP-SIM, some attribute definitions for database interface
+#
+ATTRIBUTE	EAP-AKA-Root				1210	tlv	internal
+BEGIN-TLV	EAP-AKA-Root
+$INCLUDE dictionary.eap.aka
+END-TLV		EAP-AKA-Root
+
+#
+#	Range:	1200-1210
 #		EAP-SIM (and other EAP type) weirdness.
 #
 #	For EAP-SIM, some attribute definitions for database interface
 #
-ATTRIBUTE	EAP-SIM-Subtype				1200	integer internal
+ATTRIBUTE	EAP-SIM-Root				1220	tlv	internal
 
-ATTRIBUTE	EAP-SIM-Rand				1201	octets internal
-ATTRIBUTE	EAP-SIM-SRES				1202	octets internal
-ATTRIBUTE	EAP-SIM-KC				1203	octets internal
-
-VALUE	EAP-SIM-Subtype			Start			10
-VALUE	EAP-SIM-Subtype			Challenge		11
-VALUE	EAP-SIM-Subtype			Notification		12
-VALUE	EAP-SIM-Subtype			Re-authentication	13
-
-# this attribute is used internally by the client code.
-ATTRIBUTE	EAP-SIM-State				1207	integer internal
-
-ATTRIBUTE	EAP-SIM-IMSI				1208	string internal
-ATTRIBUTE	EAP-SIM-HMAC				1209	string internal
-ATTRIBUTE	EAP-SIM-Key				1210	octets internal
-ATTRIBUTE	EAP-SIM-Extra				1211	octets internal
-
-ATTRIBUTE	EAP-Sim-Ki				1215	octets internal
-ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer internal
-
-ATTRIBUTE	EAP-AKA-RAND				1217	octets internal
-ATTRIBUTE	EAP-AKA-XRES				1218	octets internal
-ATTRIBUTE	EAP-AKA-CK				1219	octets internal
-ATTRIBUTE	EAP-AKA-IK				1220	octets internal
-ATTRIBUTE	EAP-AKA-AUTHN				1221	octets internal
+BEGIN-TLV	EAP-SIM-Root
+$INCLUDE dictionary.eap.sim
+END-TLV		EAP-SIM-Root
 
 #
 #  Server-side "listen type = foo"
@@ -457,33 +462,6 @@ ATTRIBUTE	EAP-Type-TEAP				1335	octets internal
 ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets internal
 ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets internal
 ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets internal
-
-#
-#	Range:	1536 - 1791
-#		EAP Sim sub-types.
-#
-
-# these are PW_EAP_SIM_X + 1536
-ATTRIBUTE	EAP_Sim-Base				1536	octets internal
-ATTRIBUTE	EAP-Sim-PRAND				1537	octets internal
-ATTRIBUTE	EAP-Sim-PADDING				1542	octets internal
-ATTRIBUTE	EAP-Sim-NONCE_MT			1543	octets internal
-ATTRIBUTE	EAP-Sim-PERMANENT_ID_REQ		1546	octets internal
-ATTRIBUTE	EAP-Sim-MAC				1547	octets internal
-ATTRIBUTE	EAP-Sim-NOTIFICATION			1548	octets internal
-ATTRIBUTE	EAP-Sim-ANY_ID_REQ			1549	octets internal
-ATTRIBUTE	EAP-Sim-IDENTITY			1550	octets internal
-ATTRIBUTE	EAP-Sim-VERSION_LIST			1551	octets internal
-ATTRIBUTE	EAP-Sim-SELECTED_VERSION		1552	octets internal
-ATTRIBUTE	EAP-Sim-FULLAUTH_ID_REQ			1553	octets internal
-ATTRIBUTE	EAP-Sim-COUNTER				1555	octets internal
-ATTRIBUTE	EAP-Sim-COUNTER_TOO_SMALL		1556	octets internal
-ATTRIBUTE	EAP-Sim-NONCE_S				1557	octets internal
-ATTRIBUTE	EAP-Sim-IV				1665	octets internal
-ATTRIBUTE	EAP-Sim-ENCR_DATA			1666	octets internal
-ATTRIBUTE	EAP-Sim-NEXT_PSEUDONUM			1668	octets internal
-ATTRIBUTE	EAP-Sim-NEXT_REAUTH_ID			1669	octets internal
-ATTRIBUTE	EAP-Sim-CHECKCODE			1670	octets internal
 
 #
 #	Range: 1800-1899

@@ -242,7 +242,7 @@ static void rc_do_progress_stat(void);
 static uint32_t rc_get_elapsed(void);
 static float rc_get_wf_rate(rc_wf_type_t i);
 
-
+static fr_dict_attr_t const *dict_sim_root;
 
 /** Display usage and exit.
  */
@@ -787,11 +787,9 @@ static void rc_cleanresp(RADIUS_PACKET *resp)
 	for (vp = fr_cursor_init(&cursor, &resp->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		if ((vp->da->attr >= PW_EAP_TYPE_BASE &&
-		     vp->da->attr < PW_EAP_TYPE_BASE+256) ||
-		   (vp->da->attr >= PW_EAP_SIM_BASE &&
-		    vp->da->attr < PW_EAP_SIM_BASE+256))
-		{
+	     	if (fr_dict_parent_common(dict_sim_root, vp->da, true) ||
+	     	    (vp->da->attr >= PW_EAP_TYPE_BASE &&
+		     vp->da->attr < PW_EAP_TYPE_BASE + 256)) {
 			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
 		}
@@ -1085,7 +1083,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 */
 
 	/* verify the MAC, now that we have all the keys. */
-	int rcode_mac = fr_sim_crypto_mac_verify(NULL, req->vps, eap_context->eap.sim.keys.k_aut,
+	int rcode_mac = fr_sim_crypto_mac_verify(NULL, dict_sim_root, req->vps, eap_context->eap.sim.keys.k_aut,
 	                                	 eap_context->eap.sim.keys.nonce_mt,
 	                                	 sizeof(eap_context->eap.sim.keys.nonce_mt),
 	                			 calcmac);
@@ -2349,6 +2347,12 @@ int main(int argc, char **argv)
 		DEBUG2("Including dictionary file %s/%s", radius_dir, FR_DICTIONARY_FILE);
 	}
 
+	dict_sim_root = fr_dict_attr_child_by_num(NULL, PW_EAP_SIM_ROOT);
+	if (!dict_sim_root) {
+		ERROR("Missing definition for EAP-SIM's root attribute");
+		exit(1);
+	}
+
 	/*
 	 *	Get the request type
 	 */
@@ -2575,8 +2579,7 @@ static int rc_map_eap_sim_types(RADIUS_PACKET *r)
 
 	eap_packet_t *pt_ep = talloc_zero(r, eap_packet_t);
 
-	ret = fr_sim_encode(r, pt_ep);
-
+	ret = fr_sim_encode(NULL, dict_sim_root, r->vps, pt_ep);
 	if (ret != 1) {
 		return ret;
 	}
@@ -2588,9 +2591,10 @@ static int rc_map_eap_sim_types(RADIUS_PACKET *r)
 
 static int rc_unmap_eap_sim_types(RADIUS_PACKET *r)
 {
-	VALUE_PAIR	     *esvp;
-	uint8_t *eap_data;
-	int rcode_unmap;
+	VALUE_PAIR	    	*esvp;
+	uint8_t			*eap_data;
+	int			rcode_unmap;
+	vp_cursor_t		cursor;
 
 	esvp = fr_pair_find_by_num(r->vps, 0, PW_EAP_TYPE_BASE + PW_EAP_SIM, TAG_ANY);
 	if (!esvp) {
@@ -2601,7 +2605,8 @@ static int rc_unmap_eap_sim_types(RADIUS_PACKET *r)
 	eap_data = talloc_memdup(esvp, esvp->vp_octets, esvp->vp_length);
 	talloc_set_type(eap_data, uint8_t);
 
-	rcode_unmap = fr_sim_decode(r, eap_data, esvp->vp_length);
+	fr_cursor_init(&cursor, &r->vps);
+	rcode_unmap = fr_sim_decode(NULL, dict_sim_root, &cursor, eap_data, esvp->vp_length);
 
 	talloc_free(eap_data);
 	return rcode_unmap;
