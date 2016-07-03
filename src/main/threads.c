@@ -524,6 +524,8 @@ void request_enqueue(REQUEST *request)
 		}
 		pthread_mutex_unlock(&thread_pool.active_mutex);
 
+		RDEBUG3("Thread %d being signalled",thread->thread_num);
+
 		/*
 		 *	Tell the thread that there's a request available for
 		 *	it, once we're done all of the above work.
@@ -578,6 +580,7 @@ void request_enqueue(REQUEST *request)
 	if (old &&
 	    ((old->packet->timestamp.tv_sec + old->root->max_request_time) < now.tv_sec)) {
 		(void) fr_heap_extract(thread_pool.backlog, old);
+		thread_pool.num_queued = fr_heap_num_elements(thread_pool.backlog);
 
 		old->master_state = REQUEST_STOP_PROCESSING;
 		old->process(request, FR_ACTION_DONE);
@@ -685,7 +688,7 @@ void request_enqueue(REQUEST *request)
 		goto done;
 	}
 
-	thread_pool.num_queued++;
+	thread_pool.num_queued = fr_heap_num_elements(thread_pool.backlog);
 	pthread_mutex_unlock(&thread_pool.backlog_mutex);
 }
 
@@ -696,7 +699,7 @@ void request_queue_extract(REQUEST *request)
 
 	pthread_mutex_lock(&thread_pool.backlog_mutex);
 	(void) fr_heap_extract(thread_pool.backlog, request);
-	thread_pool.num_queued--;
+	thread_pool.num_queued = fr_heap_num_elements(thread_pool.backlog);
 	pthread_mutex_unlock(&thread_pool.backlog_mutex);
 }
 
@@ -715,7 +718,7 @@ static REQUEST *request_dequeue(void)
 	request = fr_heap_peek(thread_pool.backlog);
 	if (!request) {
 		pthread_mutex_unlock(&thread_pool.backlog_mutex);
-		rad_assert(thread_pool.num_queued == 0);
+		thread_pool.num_queued = fr_heap_num_elements(thread_pool.backlog);
 		return NULL;
 	}
 
@@ -773,6 +776,7 @@ static void *thread_handler(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	while (true) {
+		bool no_backlog;
 		time_t now;
 		REQUEST *request;
 
@@ -781,17 +785,31 @@ static void *thread_handler(void *arg)
 #  endif
 
 		/*
-		 *	Wait to be signalled.
+		 *	If there's nothing for us to do, wait to be
+		 *	signalled.
 		 */
-		DEBUG2("Thread %d waiting to be assigned a request",
-		       thread->thread_num);
+		if ((thread->status == THREAD_IDLE) &&
+		    (fr_heap_num_elements(backlog) == 0)) {
+			no_backlog = true;
+
+			DEBUG2("Thread %d waiting to be assigned a request",
+			       thread->thread_num);
+
+		} else {
+			/*
+			 *	Otherwise service the timer and FD
+			 *	queues, but return immediately and
+			 *	process the backlog.
+			 */
+			no_backlog = false;
+		}
 
 		/*
 		 *	Run until we get a signal.  Any registered
 		 *	timer events or FD events will also be
 		 *	serviced here.
 		 */
-		rcode = fr_event_wait(el);
+		rcode = fr_event_check(el, no_backlog);
 		if (rcode < 0) {
 			ERROR("Thread %d failed waiting for request: %s: Exiting\n",
 			      thread->thread_num, fr_syserror(errno));
@@ -803,6 +821,9 @@ static void *thread_handler(void *arg)
 			goto done;
 		}
 
+		/*
+		 *	It only returns 0 on EINTR.
+		 */
 		if (rcode == 0) continue;
 
 		DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
@@ -814,85 +835,47 @@ static void *thread_handler(void *arg)
 
 		if (thread->status == THREAD_CANCELLED) break;
 
-		if (thread->status == THREAD_ACTIVE) {
-			rad_assert(thread->request != NULL);
+		if (thread->status == THREAD_IDLE) {
+			/*
+			 *	We're still idle, and there's nothing in the backlog.  Keep waiting.
+			 */
+			if (fr_heap_num_elements(backlog) == 0) continue;
 
 			/*
-			 *	If necessary, insert the request into the backlog for proper prioritization.
+			 *	Double-check the statsus after we've
+			 *	grabbed the mutex.
 			 */
-			if (fr_heap_num_elements(backlog) > 0) {
-				fr_heap_insert(backlog, thread->request);
-
-			backlog:
-				DEBUG3("Thread %d processing from local backlog (%zd)", thread->thread_num, fr_heap_num_elements(backlog));
-				request = fr_heap_peek(backlog);
-				(void) fr_heap_extract(backlog, request);
-				rad_assert(request != NULL);
-
-				/*
-				 *	@fixme: probably race
-				 *	conditions here... but only
-				 *	when the server is blocked.
-				 *	Oh well.
-				 */
-				thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-				thread->request = request;
+			pthread_mutex_lock(&thread_pool.idle_mutex);
+			if (thread->status != THREAD_IDLE) {
+				pthread_mutex_unlock(&thread_pool.idle_mutex);
+				goto check_status;
 			}
 
-			rad_assert(thread->status == THREAD_ACTIVE);
-			goto process;
-		}
-
-		/*
-		 *	If we're not idle after grabbing the mutex, go
-		 *	process something.
-		 */
-		pthread_mutex_lock(&thread_pool.idle_mutex);
-		if (thread->status != THREAD_IDLE) {
+			unlink_idle(thread, false);
 			pthread_mutex_unlock(&thread_pool.idle_mutex);
 
-			if (thread->status == THREAD_CANCELLED) break;
+			request = fr_heap_peek(backlog);
+			rad_assert(request != NULL);
+			(void) fr_heap_extract(backlog, request);
 
-			rad_assert(thread->status == THREAD_ACTIVE);
-			goto process;
-		}
+			/*
+			 *	Tell the thread about the request
+			 */
+			thread->request = request;
+			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 
-		/*
-		 *	We're idle, and our backlog is empty.  Go back
-		 *	to the event loop.
-		 */
-		if (fr_heap_num_elements(backlog) == 0) {
-			pthread_mutex_unlock(&thread_pool.idle_mutex);
-			continue;
-		}
+			/*
+			 *	Add the thread to the head of the active list.
+			 */
+			pthread_mutex_lock(&thread_pool.active_mutex);
+			link_active_head(request, thread);
+			pthread_mutex_unlock(&thread_pool.active_mutex);
+		} /* and now we SHOULD be active */
 
-		unlink_idle(thread, false);
-		pthread_mutex_unlock(&thread_pool.idle_mutex);
+	check_status:
+		if (thread->status != THREAD_ACTIVE) continue;
 
-		/*
-		 *	Grab a request from the backlog.
-		 */
-
-		DEBUG3("Thread %d idle -> processing from local backlog (%zd)", thread->thread_num, fr_heap_num_elements(backlog));
-
-		request = fr_heap_peek(backlog);
-		(void) fr_heap_extract(backlog, request);
-		rad_assert(request != NULL);
-
-		pthread_mutex_lock(&thread_pool.active_mutex);
-		link_active_head(request, thread);
-		thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-		thread->request = request;
-		pthread_mutex_unlock(&thread_pool.active_mutex);
-
-		rad_assert(thread->status == THREAD_ACTIVE);
 		rad_assert(thread->request != NULL);
-
-	process:
-		/*
-		 *	Maybe we've been idle for too long.
-		 */
-		if (thread->status == THREAD_CANCELLED) break;
 
 		/*
 		 *	The server is exiting.  Don't dequeue any
@@ -905,7 +888,6 @@ static void *thread_handler(void *arg)
 		request = thread->request;
 		request->el = el;
 		request->backlog = backlog;
-
 
 #ifdef WITH_ACCOUNTING
 		if ((thread->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
@@ -932,7 +914,7 @@ static void *thread_handler(void *arg)
 
 		thread->request_count++;
 
-		DEBUG2("Thread %d handling request %" PRIu64 ", (%d handled so far)",
+		RDEBUG2("Thread %d handling request %" PRIu64 ", (%d handled so far)",
 		       thread->thread_num, request->number,
 		       thread->request_count);
 
@@ -958,29 +940,34 @@ static void *thread_handler(void *arg)
 #  endif
 
 		/*
-		 *	We have more work to do, go do it.
-		 */
-		if (fr_heap_num_elements(backlog) > 0) goto backlog;
-
-		/*
-		 *	We're out of new work.  try to get a packet
-		 *	from the global backlog.  If we have can,
-		 *	go process it.
+		 *	Check if there's a global or local backlog.
+		 *	If so, mark the thread as still running, and
+		 *	continue.
 		 */
 		request = request_dequeue();
-		if (request) {
-			DEBUG3("Thread %d processing from global backlog", thread->thread_num);
-			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
-			thread->request = request;
+		if (request) fr_heap_insert(backlog, request);
 
-			rad_assert(thread->status == THREAD_ACTIVE);
-			goto process;
+		request = fr_heap_peek(backlog);
+		if (request) {
+			(void) fr_heap_extract(backlog, request);
+
+			RDEBUG2("Thread %d reading a request from the local backlog",
+				thread->thread_num);
+
+			/*
+			 *	Tell the thread about the request
+			 */
+			thread->request = request;
+			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
+			continue;
 		}
 
+		DEBUG3("Thread %d becoming idle.", thread->thread_num);
 		unlink_active(thread);
 
 		now = time(NULL);
 
+#if 0
 		/*
 		 *      Add it the head of the idle list.
 		 */
@@ -997,9 +984,9 @@ static void *thread_handler(void *arg)
 
 			pthread_mutex_unlock(&thread_pool.idle_mutex);
 			idle = thread_spawn(now, 1);
-			pthread_mutex_lock(&thread_pool.idle_mutex);
-
 			thread_pool.total_threads++; /* FIXME atomic */
+
+			pthread_mutex_lock(&thread_pool.idle_mutex);
 			link_idle_head(idle);
 		} else		/* don't check for deleted threads if we just created one */
 
@@ -1036,6 +1023,7 @@ static void *thread_handler(void *arg)
 				(void) write(idle->pipe_fd[1], &data, 1);
 			}
 		}
+#endif
 
 		/*
 		 *	Link ourselves to the tail of the idle list, so that requests are spread across all threads.
