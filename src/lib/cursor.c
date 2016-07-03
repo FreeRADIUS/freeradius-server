@@ -216,6 +216,48 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsi
 	return fr_cursor_update(cursor, i);
 }
 
+/** Iterate over a collection of VALUE_PAIRs of a given type in the pairlist
+ *
+ * Find the next attribute of a given type. If no fr_cursor_next_by_* function
+ * has been called on a cursor before, or the previous call returned
+ * NULL, the search will start with the current attribute. Subsequent calls to
+ * fr_cursor_next_by_* functions will start the search from the previously
+ * matched attribute.
+ *
+ * @note If the attribute specified by attr is not a child of the parent, NULL will be returned.
+ *
+ * @param cursor	to operate on.
+ * @param attr		number to match.
+ * @param tag		to match. Either a tag number or TAG_ANY to match any tagged or
+ *	  		untagged attribute, TAG_NONE to match attributes without tags.
+ * @return
+ *	- The next matching #VALUE_PAIR.
+	- NULL if no #VALUE_PAIR (s) match (or attr doesn't exist).
+ */
+VALUE_PAIR *fr_cursor_next_by_child_num(vp_cursor_t *cursor,
+					fr_dict_attr_t const *parent, unsigned int attr, int8_t tag)
+{
+	fr_dict_attr_t const *da;
+	VALUE_PAIR *i;
+
+	if (!cursor->first) return NULL;
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) return NULL;
+
+	for (i = cursor->found ? cursor->found->next : cursor->current;
+	     i != NULL;
+	     i = i->next) {
+		VERIFY_VP(i);
+		if ((i->da == da) &&
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			break;
+		}
+	}
+
+	return fr_cursor_update(cursor, i);
+}
+
 /** Iterate over attributes of a given DA in the pairlist
  *
  * Find the next attribute of a given type. If no fr_cursor_next_by_* function
