@@ -15,7 +15,6 @@
  */
 
 /**
- * $Id$
  * @file comp128.c
  * @brief Implementations of comp128v1, comp128v2, comp128v3 algorithms
  *
@@ -38,6 +37,7 @@
  * @copyright 2013 Hacking projects [http://www.hackingprojects.net/]
  * @copyright 2009 Sylvain Munaut <tnt@246tNt.com>
  */
+RCSID("$Id$")
 
 #include "comp128.h"
 #include <stdio.h>

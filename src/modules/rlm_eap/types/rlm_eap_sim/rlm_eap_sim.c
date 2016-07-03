@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include "../../eap.h"
 #include "eap_types.h"
 #include "eap_sim.h"
+#include "sim_proto.h"
 
 #include <freeradius-devel/rad_assert.h>
 
@@ -42,7 +43,7 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return eap_sim_encode(eap_session->request->reply, eap_session->this_round->request);
+	return fr_sim_encode(eap_session->request->reply, eap_session->this_round->request);
 }
 
 static int eap_sim_send_state(eap_session_t *eap_session)
@@ -156,11 +157,11 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (EAP_SIM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
-	memcpy(p, eap_sim_session->keys.rand[0], EAP_SIM_RAND_SIZE);
+	memcpy(p, eap_sim_session->keys.vector[0].rand, EAP_SIM_RAND_SIZE);
 	p += EAP_SIM_RAND_SIZE;
-	memcpy(p, eap_sim_session->keys.rand[1], EAP_SIM_RAND_SIZE);
+	memcpy(p, eap_sim_session->keys.vector[1].rand, EAP_SIM_RAND_SIZE);
 	p += EAP_SIM_RAND_SIZE;
-	memcpy(p, eap_sim_session->keys.rand[2], EAP_SIM_RAND_SIZE);
+	memcpy(p, eap_sim_session->keys.vector[2].rand, EAP_SIM_RAND_SIZE);
 	fr_pair_value_memsteal(vp, rand);
 	fr_pair_add(to_client, vp);
 
@@ -171,11 +172,6 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	vp->vp_integer = eap_sim_session->sim_id++;
 	fr_pair_replace(to_client, vp);
 
-	/*
-	 *	Make a copy of the identity
-	 */
-	eap_sim_session->keys.identity_len = strlen(eap_session->identity);
-	memcpy(eap_sim_session->keys.identity, eap_session->identity, eap_sim_session->keys.identity_len);
 
 	/*
 	 *	Use the SIM identity, if available
@@ -187,18 +183,37 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 		memcpy(&len, vp->vp_octets, sizeof(uint16_t));
 		len = ntohs(len);
 		if (len <= vp->vp_length - 2 && len <= FR_MAX_STRING_LEN) {
+			if (eap_sim_session->keys.identity) talloc_free(eap_sim_session->keys.identity);
+
 			eap_sim_session->keys.identity_len = len;
-			memcpy(eap_sim_session->keys.identity, vp->vp_octets + 2, eap_sim_session->keys.identity_len);
+
+			MEM(eap_sim_session->keys.identity = talloc_array(eap_sim_session, uint8_t,
+								  	  eap_sim_session->keys.identity_len));
+			memcpy(eap_sim_session->keys.identity, vp->vp_octets + 2,
+			       eap_sim_session->keys.identity_len);
 		}
+	/*
+	 *	Make a copy of the identity
+	 */
+	} else {
+		if (eap_sim_session->keys.identity) talloc_free(eap_sim_session->keys.identity);
+
+		eap_sim_session->keys.identity_len = strlen(eap_session->identity);
+
+		MEM(eap_sim_session->keys.identity = talloc_array(eap_sim_session, uint8_t,
+								  eap_sim_session->keys.identity_len));
+		memcpy(eap_sim_session->keys.identity, eap_session->identity,
+		       eap_sim_session->keys.identity_len);
+
 	}
 
 	/*
 	 *	All set, calculate keys!
 	 */
-	eap_sim_calculate_keys(&eap_sim_session->keys);
+	fr_sim_crypto_keys_derive(&eap_sim_session->keys);
 
 #ifdef EAP_SIM_DEBUG_PRF
-	eap_sim_dump_mk(&eap_sim_session->keys);
+	fr_sim_crypto_keys_log(&eap_sim_session->keys);
 #endif
 
 	/*
@@ -318,9 +333,9 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	 *	Save the keying material, because it could change on a subsequent retrieval.
 	 */
 	RDEBUG2("New EAP-SIM session.  Acquiring SIM vectors");
-	if ((sim_vector_from_attrs(eap_session, request->control, 0, eap_sim_session, &src) != 0) ||
-	    (sim_vector_from_attrs(eap_session, request->control, 1, eap_sim_session, &src) < 0) ||
-	    (sim_vector_from_attrs(eap_session, request->control, 2, eap_sim_session, &src) < 0)) {
+	if ((eap_sim_vector_from_attrs(eap_session, request->control, 0, eap_sim_session, &src) != 0) ||
+	    (eap_sim_vector_from_attrs(eap_session, request->control, 1, eap_sim_session, &src) < 0) ||
+	    (eap_sim_vector_from_attrs(eap_session, request->control, 2, eap_sim_session, &src) < 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		return 0;
 	}
@@ -412,25 +427,27 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	uint8_t srescat[EAP_SIM_SRES_SIZE * 3];
 	uint8_t *p = srescat;
 
-	uint8_t calcmac[EAP_SIM_CALCMAC_SIZE];
+	uint8_t calcmac[EAP_SIM_CALC_MAC_SIZE];
 
-	memcpy(p, eap_sim_session->keys.sres[0], EAP_SIM_SRES_SIZE);
+	memcpy(p, eap_sim_session->keys.vector[0].sres, EAP_SIM_SRES_SIZE);
 	p += EAP_SIM_SRES_SIZE;
-	memcpy(p, eap_sim_session->keys.sres[1], EAP_SIM_SRES_SIZE);
+	memcpy(p, eap_sim_session->keys.vector[1].sres, EAP_SIM_SRES_SIZE);
 	p += EAP_SIM_SRES_SIZE;
-	memcpy(p, eap_sim_session->keys.sres[2], EAP_SIM_SRES_SIZE);
+	memcpy(p, eap_sim_session->keys.vector[2].sres, EAP_SIM_SRES_SIZE);
 
 	/*
 	 *	Verify the MAC, now that we have all the keys
 	 */
-	if (eap_sim_check_mac(eap_session, vps, eap_sim_session->keys.k_aut, srescat, sizeof(srescat), calcmac)) {
+	if (fr_sim_crypto_mac_verify(eap_session, vps,
+				     eap_sim_session->keys.k_aut,
+				     srescat, sizeof(srescat), calcmac)) {
 		RDEBUG2("MAC check succeed");
 	} else {
 		int i, j;
 		char macline[20*3];
 		char *m = macline;
 
-		for (i = 0, j = 0; i < EAP_SIM_CALCMAC_SIZE; i++) {
+		for (i = 0, j = 0; i < EAP_SIM_CALC_MAC_SIZE; i++) {
 			if (j == 4) {
 				*m++ = '_';
 				j=0;
@@ -470,7 +487,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	vps = eap_session->request->packet->vps;
 
-	success = eap_sim_decode(eap_session->request->packet,
+	success = fr_sim_decode(eap_session->request->packet,
 				 eap_session->this_round->response->type.data,
 				 eap_session->this_round->response->type.length);
 	if (!success) return 0;

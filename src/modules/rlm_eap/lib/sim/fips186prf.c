@@ -1,20 +1,10 @@
 /*
- * fips186prf.c    An implementation of the FIPS-186-2 SHA1-based PRF.
+ * GPLv2 LICENSE:
  *
- * The development of the EAP/SIM support was funded by Internet Foundation
- * Austria (http://www.nic.at/ipa).
- *
- * This code was written from scratch by Michael Richardson, and it is
- * dual licensed under both GPL and BSD.
- *
- * Version:     $Id$
- *
- * GPL notice:
- *
- *   This program is free software; you can redistribute it and/or modify
+ *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -25,44 +15,42 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * BSD notice:
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of The NetBSD Foundation nor the names of its
- *    contributors may be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * Copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
- * Copyright 2006  The FreeRADIUS server project
- *
  */
 
+/*
+ * BSD LICENSE:
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *   1. Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *   2. Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *   3. Neither the name of The NetBSD Foundation nor the names of its
+ *      contributors may be used to endorse or promote products derived
+ *      from this software without specific prior written permission.
+ */
+
+/**
+ * $Id$
+ * @file rlm_eap/lib/sim/proto.c
+ * @brief EAP sim protocol encoders and decoders.
+ *
+ * The development of the EAP/SIM support was funded by Internet Foundation
+ * Austria (http://www.nic.at/ipa).
+ *
+ * This code was written from scratch by Michael Richardson, and is
+ * dual licensed under both GPL and BSD.
+ *
+ * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2003-2016 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
-#ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#endif
-
 #include <freeradius-devel/sha1.h>
+#include "sim_proto.h"
 
 /*
  * we do it in 8-bit chunks, because we have to keep the numbers
@@ -80,30 +68,33 @@ static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
 	int i, carry;
 
 	carry = 0;
-	for(i=19; i>=0; i--) {
-/*	for(i=0; i<20; i++) {  */
+	for(i = 19; i >= 0; i--) {
 		s = a->p[i] + b->p[i] + carry;
 		sum->p[i] = s & 0xff;
 		carry = s >> 8;
 	}
 }
 
-/*
+/** Implement the FIPS-186-2 PRF to derive keying material from the MK
+ *
  * run the FIPS-186-2 PRF on the given Master Key (160 bits)
  * in order to derive 1280 bits (160 bytes) of keying data from
  * it.
  *
  * Given that in EAP-SIM, this is coming from a 64-bit Kc it seems
- * like an awful lot of "randomness" to pull out.. (MCR)
+ * like an awful lot of "randomness" to pull out..
  *
+ * @param[out] out	Buffer to contain the data derived from the mk.
+ * @param[in] mk	The master key we use to derive all other keying
+ *			data.
  */
-void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
+void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 {
-	fr_sha1_ctx context;
-	int j;
-	onesixty xval, xkey, w_0, w_1, sum, one;
-	uint8_t *f;
-	uint8_t zeros[64];
+	fr_sha1_ctx	context;
+	int		j;
+	onesixty 	xval, xkey, w_0, w_1, sum, one;
+	uint8_t 	*f;
+	uint8_t		zeros[64];
 
 	/*
 	 * let XKEY := MK,
@@ -124,9 +115,9 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 	memset(&one,  0, sizeof(one));
 	one.p[19]=1;
 
-	f=finalkey;
+	f = out;
 
-	for(j=0; j<4; j++) {
+	for (j = 0; j < 4; j++) {
 		/*   a. XVAL = XKEY  */
 		xval = xkey;
 

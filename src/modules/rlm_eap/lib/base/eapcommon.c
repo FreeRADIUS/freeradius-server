@@ -64,7 +64,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/rad_assert.h>
 #include "eap_types.h"
-#include "../eap.h"
+#include "eap.h"
 
 const FR_NAME_NUMBER eap_rcode_table[] = {
 	{ "notfound",		EAP_NOTFOUND		},

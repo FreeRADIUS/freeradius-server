@@ -37,7 +37,8 @@ RCSID("$Id$")
 #include <freeradius-devel/md5.h>
 
 #include "eap_types.h"
-#include "eap_sim.h"
+#include "eap_sim_common.h"
+#include "sim_proto.h"
 
 #ifdef WITH_TLS
 #  include <freeradius-devel/tls.h>
@@ -84,7 +85,7 @@ typedef struct rc_transaction rc_transaction_t;
 /** Structure which contains EAP context, necessary to perform the full EAP transaction.
  */
 typedef struct rc_eap_sim_context {
-	struct eap_sim_keys keys;
+	fr_sim_keys_t keys;
 } rc_eap_sim_context_t;
 
 typedef struct rc_eap_md5_context {
@@ -980,7 +981,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	VALUE_PAIR *mac, *randvp;
 	VALUE_PAIR *sres1, *sres2, *sres3;
 	VALUE_PAIR *kc1, *kc2, *kc3;
-	uint8_t calcmac[EAP_SIM_CALCMAC_SIZE];
+	uint8_t calcmac[EAP_SIM_CALC_MAC_SIZE];
 
 	/* look for the AT_MAC and the challenge data */
 	mac = fr_pair_find_by_num(req->vps, 0, PW_EAP_SIM_MAC, TAG_ANY);
@@ -1050,9 +1051,12 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("Need to have SRES 1, 2, and 3 set");
 		return 0;
 	}
-	memcpy(eap_context->eap.sim.keys.sres[0], sres1->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[0]));
-	memcpy(eap_context->eap.sim.keys.sres[1], sres2->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[1]));
-	memcpy(eap_context->eap.sim.keys.sres[2], sres3->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[2]));
+	memcpy(eap_context->eap.sim.keys.vector[0].sres, sres1->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.vector[0].sres));
+	memcpy(eap_context->eap.sim.keys.vector[1].sres, sres2->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.vector[1].sres));
+	memcpy(eap_context->eap.sim.keys.vector[2].sres, sres3->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.vector[2].sres));
 
 	kc1 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_KC, TAG_ANY);
 	kc2 = fr_pair_find_by_num(kc1, 0, PW_EAP_SIM_KC, TAG_ANY);
@@ -1064,24 +1068,30 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("Need to have kc 1, 2, and 3 set");
 		return 0;
 	}
-	memcpy(eap_context->eap.sim.keys.kc[0], kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[0]));
-	memcpy(eap_context->eap.sim.keys.kc[1], kc2->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[1]));
-	memcpy(eap_context->eap.sim.keys.kc[2], kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.kc[2]));
+	memcpy(eap_context->eap.sim.keys.vector[0].kc, kc1->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.vector[0].kc));
+	memcpy(eap_context->eap.sim.keys.vector[1].kc, kc2->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.vector[1].kc));
+	memcpy(eap_context->eap.sim.keys.vector[2].kc, kc3->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.vector[2].kc));
 
 	/* all set, calculate keys */
-	eap_sim_calculate_keys(&eap_context->eap.sim.keys);
+	fr_sim_crypto_keys_derive(&eap_context->eap.sim.keys);
 
+/*
 	if (rad_debug_lvl) {
-		eap_sim_dump_mk(&eap_context->eap.sim.keys);
+		fr_sim_crypto_keys_log(NULL, &eap_context->eap.sim.keys);
 	}
+*/
 
 	/* verify the MAC, now that we have all the keys. */
-	int rcode_mac = eap_sim_check_mac(NULL, req->vps, eap_context->eap.sim.keys.k_aut,
-	                                eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
-	                                calcmac);
+	int rcode_mac = fr_sim_crypto_mac_verify(NULL, req->vps, eap_context->eap.sim.keys.k_aut,
+	                                	 eap_context->eap.sim.keys.nonce_mt,
+	                                	 sizeof(eap_context->eap.sim.keys.nonce_mt),
+	                			 calcmac);
 
-	char ch_calc_mac[EAP_SIM_CALCMAC_SIZE*2 +1 +4] = ""; // +4 for separators.
-	rc_print_hexstr(ch_calc_mac, calcmac, EAP_SIM_CALCMAC_SIZE, 4, '_');
+	char ch_calc_mac[EAP_SIM_CALC_MAC_SIZE*2 +1 +4] = ""; // +4 for separators.
+	rc_print_hexstr(ch_calc_mac, calcmac, EAP_SIM_CALC_MAC_SIZE, 4, '_');
 
 	if (rcode_mac) {
 		DEBUG2("MAC check succeeded (%s)", ch_calc_mac);
@@ -1186,8 +1196,8 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		case EAP_SIM_REAUTH:
 		default:
 			ERROR("sim in state '%s' (%d), message '%s' (%d) is illegal. Reply dropped.",
-				eap_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state,
-				eap_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype), subtype);
+				fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state,
+				fr_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype), subtype);
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1206,8 +1216,8 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 		default:
 			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				eap_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state),
-				eap_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype));
+				fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state),
+				fr_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype));
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1215,7 +1225,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 	default:
 		ERROR("sim in illegal state '%s' (%d)",
-			eap_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state);
+			fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state);
 		return 0;
 	}
 
@@ -2565,7 +2575,7 @@ static int rc_map_eap_sim_types(RADIUS_PACKET *r)
 
 	eap_packet_t *pt_ep = talloc_zero(r, eap_packet_t);
 
-	ret = eap_sim_encode(r, pt_ep);
+	ret = fr_sim_encode(r, pt_ep);
 
 	if (ret != 1) {
 		return ret;
@@ -2591,7 +2601,7 @@ static int rc_unmap_eap_sim_types(RADIUS_PACKET *r)
 	eap_data = talloc_memdup(esvp, esvp->vp_octets, esvp->vp_length);
 	talloc_set_type(eap_data, uint8_t);
 
-	rcode_unmap = eap_sim_decode(r, eap_data, esvp->vp_length);
+	rcode_unmap = fr_sim_decode(r, eap_data, esvp->vp_length);
 
 	talloc_free(eap_data);
 	return rcode_unmap;

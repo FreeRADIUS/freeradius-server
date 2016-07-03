@@ -26,7 +26,7 @@
  */
 RCSIDH(rlm_eap_sim_eap_sim_h, "$Id$")
 
-#include "../../libeap/eap_sim.h"
+#include "sim_proto.h"
 
 /** Where to get EAP-SIM vectors from
  *
@@ -42,7 +42,7 @@ typedef enum {
  *
  * In server_start, we send a EAP-SIM Start message.
  */
-typedef enum eap_sim_server_states {
+typedef enum {
 	EAP_SIM_SERVER_START		= 0,
 	EAP_SIM_SERVER_CHALLENGE	= 1,
 	EAP_SIM_SERVER_SUCCESS		= 10,
@@ -51,12 +51,12 @@ typedef enum eap_sim_server_states {
 
 typedef struct eap_sim_session {
 	eap_sim_server_state_t	state;		//!< Current session state.
-	eap_sim_keys_t		keys;		//!< Various EAP-SIM keys.
+	fr_sim_keys_t		keys;		//!< Various EAP-SIM keys.
 	int  			sim_id;		//!< Packet ID. (replay protection)
 } eap_sim_session_t;
 
 /*
  *	sim_vector.c
  */
-int sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
-			  int idx, eap_sim_session_t *ess, eap_sim_vector_src_t *src);
+int eap_sim_vector_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
+			      int idx, eap_sim_session_t *ess, eap_sim_vector_src_t *src);

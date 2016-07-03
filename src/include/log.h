@@ -401,11 +401,20 @@ do {\
 	} else _x;\
 } while (0)
 
-#define RHEXDUMP(lvl, msg, data, len) \
-	if (rad_debug_lvl >= lvl) do {		\
-		radlog_request(L_DBG, lvl, request, "%s", msg); \
-		radlog_request_hex(L_DBG, lvl, request, data, len); \
+#define RHEXDUMP(_lvl, _data, _len, _fmt, ...) \
+	if (rad_debug_lvl >= _lvl) do { \
+		radlog_request(L_DBG, _lvl, request, _fmt, ## __VA_ARGS__); \
+		radlog_request_hex(L_DBG, _lvl, request, _data, _len); \
 	} while (0)
+
+#define RHEXDUMP_INLINE(_lvl, _data, _len, _fmt, ...) \
+	if (rad_debug_lvl >= _lvl) do { \
+		char *_tmp; \
+		_tmp = talloc_array(NULL, char, (_len * 2) + 1); \
+		fr_bin2hex(_tmp, _data, _len); \
+		radlog_request(L_DBG, _lvl, request, _fmt " 0x%s", ## __VA_ARGS__, _tmp); \
+		talloc_free(_tmp); \
+	} while(0)
 
 
 #ifdef __cplusplus
