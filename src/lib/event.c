@@ -534,7 +534,7 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
 	return (el->exit != 0);
 }
 
-int fr_event_wait(fr_event_list_t *el)
+int fr_event_check(fr_event_list_t *el, bool wait)
 {
 	struct timeval when, *wake;
 #ifdef HAVE_KQUEUE
@@ -548,39 +548,44 @@ int fr_event_wait(fr_event_list_t *el)
 	when.tv_sec = 0;
 	when.tv_usec = 0;
 
-	if (fr_heap_num_elements(el->times) > 0) {
-		fr_event_t *ev;
+	if (wait) {
+		if (fr_heap_num_elements(el->times) > 0) {
+			fr_event_t *ev;
 
-		ev = fr_heap_peek(el->times);
-		if (!ev) {
-			fr_exit_now(42);
-		}
+			ev = fr_heap_peek(el->times);
+			if (!ev) {
+				fr_exit_now(42);
+			}
 
-		gettimeofday(&el->now, NULL);
+			gettimeofday(&el->now, NULL);
 
-		if (timercmp(&el->now, &ev->when, <)) {
-			when = ev->when;
-			when.tv_sec -= el->now.tv_sec;
+			if (timercmp(&el->now, &ev->when, <)) {
+				when = ev->when;
+				when.tv_sec -= el->now.tv_sec;
 
-			if (when.tv_sec > 0) {
-				when.tv_sec--;
-				when.tv_usec += USEC;
-			} else {
+				if (when.tv_sec > 0) {
+					when.tv_sec--;
+					when.tv_usec += USEC;
+				} else {
+					when.tv_sec = 0;
+				}
+				when.tv_usec -= el->now.tv_usec;
+				if (when.tv_usec >= USEC) {
+					when.tv_usec -= USEC;
+					when.tv_sec++;
+				}
+			} else { /* we've passed the event time */
 				when.tv_sec = 0;
+				when.tv_usec = 0;
 			}
-			when.tv_usec -= el->now.tv_usec;
-			if (when.tv_usec >= USEC) {
-				when.tv_usec -= USEC;
-				when.tv_sec++;
-			}
-		} else { /* we've passed the event time */
-			when.tv_sec = 0;
-			when.tv_usec = 0;
+
+			wake = &when;
+		} else {
+			wake = NULL;
 		}
 
+	} else {		/* not waiting, use timeout of zero */
 		wake = &when;
-	} else {
-		wake = NULL;
 	}
 
 	/*
@@ -690,7 +695,7 @@ int fr_event_loop(fr_event_list_t *el)
 	el->dispatch = true;
 
 	while (!el->exit) {
-		if (fr_event_wait(el) < 0) break;
+		if (fr_event_check(el, true) < 0) break;
 
 		(void) fr_event_service(el);
 	}
