@@ -14,6 +14,10 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+
 #ifndef SHA1_DIGEST_LENGTH
 #  define SHA1_DIGEST_LENGTH 20
 #endif
