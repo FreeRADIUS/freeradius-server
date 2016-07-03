@@ -40,6 +40,36 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      vp_cursor_t *cursor, void *encoder_ctx);
 
+/** Determine if the current attribute is encodable, or find the first one that is
+ *
+ * @param cursor to iterate over.
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
+static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor)
+{
+	VALUE_PAIR *vp;
+
+	for (vp = fr_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_cursor_next(cursor));
+	return fr_cursor_current(cursor);
+}
+
+/** Find the next attribute to encode
+ *
+ * @param cursor to iterate over.
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
+static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor)
+{
+	VALUE_PAIR *vp;
+
+	for (;;) {
+		vp = fr_cursor_next(cursor);
+		if (!vp || !vp->da->flags.internal) break;
+	}
+
+	return fr_cursor_current(cursor);
+}
+
 /** Encode a CHAP password
  *
  * @bug FIXME: might not work with Ascend because
@@ -687,7 +717,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		len = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 		if (len < 0) return len;
 
-		vp = fr_cursor_next(cursor);
+		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return len;
 	}
@@ -770,7 +800,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	No data: skip it.
 	 */
 	if (len == 0) {
-		vp = fr_cursor_next(cursor);
+		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return 0;
 	}
@@ -858,7 +888,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = fr_cursor_next(cursor);
+	vp = next_encodable(cursor);
 	fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 	return len + (ptr - out);
@@ -1103,7 +1133,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 		len -= left;
 	}
 
-	vp = fr_cursor_next(cursor);
+	vp = next_encodable(cursor);
 
 	/*
 	 *	@fixme: attributes with 'concat' MUST of type
@@ -1501,9 +1531,9 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 		out[0] = PW_CHARGEABLE_USER_IDENTITY;
 		out[1] = 2;
 
-		vp = fr_cursor_next(cursor);
+		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
-		return 2;
+		return out[1];
 	}
 
 	/*
@@ -1520,9 +1550,9 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 			fprintf(fr_log_fp, "\t\t50 12 ...\n");
 		}
 #endif
-		vp = fr_cursor_next(cursor);
+		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
-		return 18;
+		return out[1];
 	}
 
 	return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
@@ -1544,7 +1574,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	fr_dict_attr_t const *da = NULL;
 
 	if (!cursor || !out || (outlen <= 2)) return -1;
-	vp = fr_cursor_current(cursor);
+	vp = first_encodable(cursor);
 	if (!vp) return -1;
 
 	VERIFY_VP(vp);
@@ -1556,14 +1586,6 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	}
 
 	/*
-	 *	Ignore attributes which can't go into a RADIUS packet.
-	 */
-	if (!vp->da->vendor && (vp->da->attr > 255)) {
-		fr_cursor_next(cursor);
-		return 0;
-	}
-
-	/*
 	 *	We allow zero-length strings in "unlang", but skip
 	 *	them (except for CUI, thanks WiMAX!) on all other
 	 *	attributes.
@@ -1572,7 +1594,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 		if ((vp->da->vendor != 0) ||
 		    ((vp->da->attr != PW_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != PW_MESSAGE_AUTHENTICATOR))) {
-			fr_cursor_next(cursor);
+			next_encodable(cursor);
 			return 0;
 		}
 	}
