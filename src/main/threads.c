@@ -197,7 +197,7 @@ static bool pool_initialized = false;
 #ifndef WITH_GCD
 static pid_t thread_fork(void);
 static pid_t thread_waitpid(pid_t pid, int *status);
-static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger);
+static THREAD_HANDLE *thread_spawn(time_t now, int do_trigger);
 #endif
 
 #ifndef WITH_GCD
@@ -984,7 +984,7 @@ static void *thread_handler(void *arg)
 			thread_pool.spawning = true;
 
 			pthread_mutex_unlock(&thread_pool.idle_mutex);
-			idle = spawn_thread(now, 1);
+			idle = thread_spawn(now, 1);
 			pthread_mutex_lock(&thread_pool.idle_mutex);
 
 			thread_pool.total_threads++; /* FIXME atomic */
@@ -1084,7 +1084,7 @@ done:
  *	Spawn a new thread, and place it in the thread pool.
  *	Called with the thread mutex locked...
  */
-static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
+static THREAD_HANDLE *thread_spawn(time_t now, int do_trigger)
 {
 	int rcode;
 	THREAD_HANDLE *thread;
@@ -1387,7 +1387,7 @@ int thread_pool_init(void)
 	for (i = 0; i < thread_pool.start_threads; i++) {
 		THREAD_HANDLE *thread;
 
-		thread = spawn_thread(now, 0);
+		thread = thread_spawn(now, 0);
 		if (!thread) return -1;
 
 		link_idle_head(thread);
