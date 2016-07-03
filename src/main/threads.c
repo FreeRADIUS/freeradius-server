@@ -78,7 +78,7 @@ typedef enum fr_thread_status_t {
 	THREAD_IDLE,
 	THREAD_ACTIVE,
 	THREAD_CANCELLED,
-	THREAD_EXITED
+	THREAD_EXITED,
 } fr_thread_status_t;
 
 /*
@@ -286,10 +286,14 @@ static void unlink_list(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_H
 	}
 
 	this->prev = this->next = NULL;
+
+	this->status = THREAD_NONE;
 }
 
 static void link_list_head(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_HANDLE *this)
 {
+	rad_assert(this->status == THREAD_NONE);
+
 	rad_assert(*head_p != this);
 	rad_assert(*tail_p != this);
 
@@ -312,6 +316,8 @@ static void link_list_head(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREA
 
 static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_HANDLE *this)
 {
+	rad_assert(this->status == THREAD_NONE);
+
 	rad_assert(*head_p != this);
 	rad_assert(*tail_p != this);
 
@@ -333,13 +339,13 @@ static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREA
 
 
 
-static void link_active_head(THREAD_HANDLE *thread)
+static void link_active_head(REQUEST *request, THREAD_HANDLE *thread)
 {
-	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
+	RDEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 	link_list_head(&thread_pool.active_head, &thread_pool.active_tail, thread);
 
-	thread_pool.active_threads++;
 	thread->status = THREAD_ACTIVE;
+	thread_pool.active_threads++;
 }
 
 /*
@@ -376,8 +382,9 @@ static void link_idle_head(THREAD_HANDLE *thread)
 {
 	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 	thread->request = NULL;
-	thread->status = THREAD_IDLE;
 	link_list_head(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
+
+	thread->status = THREAD_IDLE;
 	thread_pool.idle_threads++;
 }
 
@@ -386,8 +393,9 @@ static void link_idle_tail(THREAD_HANDLE *thread)
 {
 	DEBUG3("Thread %d %s", thread->thread_num, __FUNCTION__);
 	thread->request = NULL;
-	thread->status = THREAD_IDLE;
 	link_list_tail(&thread_pool.idle_head, &thread_pool.idle_tail, thread);
+
+	thread->status = THREAD_IDLE;
 	thread_pool.idle_threads++;
 }
 
@@ -465,7 +473,7 @@ void request_enqueue(REQUEST *request)
 		 *	Remove the thread from the idle list.
 		 */
 		thread = thread_pool.idle_head;
-		DEBUG3("Thread %d unlink_idle_head", thread->thread_num);
+		RDEBUG3("Thread %d unlink_idle_head", thread->thread_num);
 		unlink_list(&thread_pool.idle_head, &thread_pool.idle_tail, thread_pool.idle_head);
 		thread_pool.idle_threads--;
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
@@ -480,7 +488,7 @@ void request_enqueue(REQUEST *request)
 		 *	Add the thread to the head of the active list.
 		 */
 		pthread_mutex_lock(&thread_pool.active_mutex);
-		link_active_head(thread);
+		link_active_head(request, thread);
 
 		/*
 		 *	Ssee if any active threads have been taking
@@ -831,6 +839,7 @@ static void *thread_handler(void *arg)
 				thread->request = request;
 			}
 
+			rad_assert(thread->status == THREAD_ACTIVE);
 			goto process;
 		}
 
@@ -841,6 +850,10 @@ static void *thread_handler(void *arg)
 		pthread_mutex_lock(&thread_pool.idle_mutex);
 		if (thread->status != THREAD_IDLE) {
 			pthread_mutex_unlock(&thread_pool.idle_mutex);
+
+			if (thread->status == THREAD_CANCELLED) break;
+
+			rad_assert(thread->status == THREAD_ACTIVE);
 			goto process;
 		}
 
@@ -859,12 +872,15 @@ static void *thread_handler(void *arg)
 		/*
 		 *	Grab a request from the backlog.
 		 */
+
+		DEBUG3("Thread %d idle -> processing from local backlog (%zd)", thread->thread_num, fr_heap_num_elements(backlog));
+
 		request = fr_heap_peek(backlog);
 		(void) fr_heap_extract(backlog, request);
 		rad_assert(request != NULL);
 
 		pthread_mutex_lock(&thread_pool.active_mutex);
-		link_active_head(thread);
+		link_active_head(request, thread);
 		thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 		thread->request = request;
 		pthread_mutex_unlock(&thread_pool.active_mutex);
@@ -956,6 +972,8 @@ static void *thread_handler(void *arg)
 			DEBUG3("Thread %d processing from global backlog", thread->thread_num);
 			thread->max_time = request->packet->timestamp.tv_sec + request->root->max_request_time;
 			thread->request = request;
+
+			rad_assert(thread->status == THREAD_ACTIVE);
 			goto process;
 		}
 
@@ -1022,6 +1040,7 @@ static void *thread_handler(void *arg)
 		/*
 		 *	Link ourselves to the tail of the idle list, so that requests are spread across all threads.
 		 */
+		pthread_mutex_lock(&thread_pool.idle_mutex);
 		link_idle_tail(thread);
 		pthread_mutex_unlock(&thread_pool.idle_mutex);
 
@@ -1049,7 +1068,6 @@ static void *thread_handler(void *arg)
 				pthread_mutex_unlock(&thread_pool.exited_mutex);
 			}
 		}
-
 	}
 
 done:
@@ -1090,7 +1108,7 @@ static THREAD_HANDLE *thread_spawn(time_t now, int do_trigger)
 
 	thread->thread_num = thread_pool.max_thread_num++; /* @fixme atomic? */
 	thread->request_count = 0;
-	thread->status = THREAD_IDLE;
+	thread->status = THREAD_NONE;
 	thread->timestamp = now;
 
 	if (pipe(thread->pipe_fd) < 0) {
