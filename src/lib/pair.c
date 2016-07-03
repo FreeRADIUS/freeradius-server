@@ -151,6 +151,57 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 	return fr_pair_afrom_da(ctx, da);
 }
 
+/** Create a new valuepair
+ *
+ * If attr and vendor match a dictionary entry then a VP with that #fr_dict_attr_t
+ * will be returned.
+ *
+ * If attr or vendor are uknown will call dict_attruknown to create a dynamic
+ * #fr_dict_attr_t of #PW_TYPE_OCTETS.
+ *
+ * Which type of #fr_dict_attr_t the #VALUE_PAIR was created with can be determined by
+ * checking @verbatim vp->da->flags.is_unknown @endverbatim.
+ *
+ * @param[in] ctx	for allocated memory, usually a pointer to a #RADIUS_PACKET.
+ * @param[in] parent	of the attribute being allocated (usually a dictionary or vendor).
+ * @param[in] attr	number.
+ * @return
+ *	- A new #VALUE_PAIR.
+ *	- NULL on error.
+ */
+VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr)
+{
+	fr_dict_attr_t const *da;
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) {
+		fr_dict_attr_t const	*vendor;
+		VALUE_PAIR		*vp;
+
+		vp = fr_pair_alloc(ctx);
+		if (!vp) return NULL;
+
+		/*
+		 *	If parent is a vendor, that's fine. If parent
+		 *	is a TLV attribute parented by a vendor, that's
+		 *	also fine...
+		 */
+		vendor = fr_dict_vendor_attr_by_da(parent);
+
+		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_dict_internal),
+						  vendor ? vendor->vendor : 0, attr);
+		if (!da) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		vp = fr_pair_afrom_child_num(ctx, vendor, attr);
+		return vp;
+	}
+
+	return fr_pair_afrom_da(ctx, da);
+}
+
 /** Copy a single valuepair
  *
  * Allocate a new valuepair and copy the da from the old vp.
