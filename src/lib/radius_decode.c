@@ -898,7 +898,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 				    void *decoder_ctx)
 {
 	int8_t			tag = TAG_NONE;
-	size_t			datalen;
+	size_t			data_len;
 	ssize_t			rcode;
 	uint32_t		vendor;
 	fr_dict_attr_t const	*child;
@@ -916,7 +916,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
-	datalen = attr_len;
+	data_len = attr_len;
 
 	/*
 	 *	Hacks for CUI.  The WiMAX spec says that it can be
@@ -936,7 +936,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 #endif
 
 		p = NULL;
-		datalen = 0;
+		data_len = 0;
 		goto alloc_cui;	/* skip everything */
 	}
 
@@ -946,17 +946,17 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 *	there is a tag, or it's encrypted with Tunnel-Password,
 	 *	then decode the tag.
 	 */
-	if (parent->flags.has_tag && (datalen > 1) && ((p[0] < 0x20) ||
+	if (parent->flags.has_tag && (data_len > 1) && ((p[0] < 0x20) ||
 						       (parent->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
 		/*
 		 *	Only "short" attributes can be encrypted.
 		 */
-		if (datalen >= sizeof(buffer)) return -1;
+		if (data_len >= sizeof(buffer)) return -1;
 
 		if (parent->type == PW_TYPE_STRING) {
-			memcpy(buffer, p + 1, datalen - 1);
+			memcpy(buffer, p + 1, data_len - 1);
 			tag = p[0];
-			datalen -= 1;
+			data_len -= 1;
 
 		} else if (parent->type == PW_TYPE_INTEGER) {
 			memcpy(buffer, p, attr_len);
@@ -1005,9 +1005,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			 *	look for trailing zeros.
 			 */
 			if (parent->flags.length) {
-				if (datalen > parent->flags.length) {
-					datalen = parent->flags.length;
-				} /* else leave datalen alone */
+				if (data_len > parent->flags.length) {
+					data_len = parent->flags.length;
+				} /* else leave data_len alone */
 			} else {
 				/*
 				 *	Take off trailing zeros from the END.
@@ -1019,17 +1019,17 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 				 *	code.  There's really no way around
 				 *	that.
 				 */
-				while ((datalen > 0) && (buffer[datalen - 1] == '\0')) datalen--;
+				while ((data_len > 0) && (buffer[data_len - 1] == '\0')) data_len--;
 			}
 			break;
 
 		/*
 		 *	Tunnel-Password's may go ONLY in response
-		 *	packets.  They can have a tag, so datalen is
+		 *	packets.  They can have a tag, so data_len is
 		 *	not the same as attrlen.
 		 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (fr_radius_decode_tunnel_password(buffer, &datalen, this->secret,
+			if (fr_radius_decode_tunnel_password(buffer, &data_len, this->secret,
 							     this->original ? this->original->vector : nullvector) < 0) {
 				goto raw;
 			}
@@ -1046,7 +1046,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 				fr_radius_make_secret(my_digest, this->original->vector, this->secret, p);
 				memcpy(buffer, my_digest, AUTH_VECTOR_LEN );
 				buffer[AUTH_VECTOR_LEN] = '\0';
-				datalen = strlen((char *) buffer);
+				data_len = strlen((char *) buffer);
 			}
 			break;
 
@@ -1055,8 +1055,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			 *	Chop the attribute to its maximum length.
 			 */
 			if ((parent->type == PW_TYPE_OCTETS) &&
-			    (parent->flags.length && (datalen > parent->flags.length))) {
-				    datalen = parent->flags.length;
+			    (parent->flags.length && (data_len > parent->flags.length))) {
+				    data_len = parent->flags.length;
 			    }
 			break;
 		} /* switch over encryption flags */
@@ -1073,46 +1073,46 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (datalen > sizeof(vp->vp_filter)) goto raw;
+		if (data_len > sizeof(vp->vp_filter)) goto raw;
 		break;
 
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_IPV4_ADDR:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
-		if (datalen != 4) goto raw;
+		if (data_len != 4) goto raw;
 		break;
 
 	case PW_TYPE_INTEGER64:
 	case PW_TYPE_IFID:
-		if (datalen != 8) goto raw;
+		if (data_len != 8) goto raw;
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
-		if (datalen != 16) goto raw;
+		if (data_len != 16) goto raw;
 		break;
 
 	case PW_TYPE_IPV6_PREFIX:
-		if ((datalen < 2) || (datalen > 18)) goto raw;
+		if ((data_len < 2) || (data_len > 18)) goto raw;
 		if (p[1] > 128) goto raw;
 		break;
 
 	case PW_TYPE_BYTE:
-		if (datalen != 1) goto raw;
+		if (data_len != 1) goto raw;
 		break;
 
 	case PW_TYPE_SHORT:
-		if (datalen != 2) goto raw;
+		if (data_len != 2) goto raw;
 		break;
 
 	case PW_TYPE_ETHERNET:
-		if (datalen != 6) goto raw;
+		if (data_len != 6) goto raw;
 		break;
 
 	case PW_TYPE_COMBO_IP_ADDR:
-		if (datalen == 4) {
+		if (data_len == 4) {
 			child = fr_dict_attr_by_type(NULL, parent->vendor, parent->attr, PW_TYPE_IPV4_ADDR);
-		} else if (datalen == 16) {
+		} else if (data_len == 16) {
 			child = fr_dict_attr_by_type(NULL, parent->vendor, parent->attr, PW_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
@@ -1122,7 +1122,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case PW_TYPE_IPV4_PREFIX:
-		if (datalen != 6) goto raw;
+		if (data_len != 6) goto raw;
 		if ((p[1] & 0x3f) > 32) goto raw;
 		break;
 
@@ -1132,7 +1132,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 */
 
 	case PW_TYPE_EXTENDED:
-		if (datalen < 2) goto raw; /* etype, value */
+		if (data_len < 2) goto raw; /* etype, value */
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) goto raw;
@@ -1150,13 +1150,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		return 1 + rcode;
 
 	case PW_TYPE_LONG_EXTENDED:
-		if (datalen < 3) goto raw; /* etype, flags, value */
+		if (data_len < 3) goto raw; /* etype, flags, value */
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
 			fr_dict_attr_t *new;
 
-			if ((p[0] != PW_VENDOR_SPECIFIC) || (datalen < (3 + 4 + 1))) {
+			if ((p[0] != PW_VENDOR_SPECIFIC) || (data_len < (3 + 4 + 1))) {
 				/* da->attr < 255, da->vendor == 0 */
 				new = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
 			} else {
@@ -1200,7 +1200,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	{
 		fr_dict_attr_t const *vendor_child;
 
-		if (datalen < 6) goto raw; /* vid, vtype, value */
+		if (data_len < 6) goto raw; /* vid, vtype, value */
 
 		memcpy(&vendor, p, 4);
 		vendor = ntohl(vendor);
@@ -1225,7 +1225,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			 */
 			parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[4]);
 			p += 5;
-			datalen -= 5;
+			data_len -= 5;
 			break;
 		}
 
@@ -1238,7 +1238,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			 */
 			parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[4]);
 			p += 5;
-			datalen -= 5;
+			data_len -= 5;
 			break;
 		}
 
@@ -1314,16 +1314,16 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
-	vp->vp_length = datalen;
+	vp->vp_length = data_len;
 	vp->tag = tag;
 
 	switch (parent->type) {
 	case PW_TYPE_STRING:
-		fr_pair_value_bstrncpy(vp, p, datalen);
+		fr_pair_value_bstrncpy(vp, p, data_len);
 		break;
 
 	case PW_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, p, datalen);
+		fr_pair_value_memcpy(vp, p, data_len);
 		break;
 
 	case PW_TYPE_ABINARY:
