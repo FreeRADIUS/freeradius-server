@@ -462,6 +462,28 @@ static int dict_stat_check(fr_dict_t *dict, char const *dir, char const *file)
 	return 0;
 }
 
+static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
+{
+	unsigned int		i;
+	size_t			len;
+	fr_dict_attr_t const	*p;
+
+	printf("%p - %s (%i) %s\n", da, da->name, da->attr, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+
+	len = talloc_array_length(da->children);
+	for (i = 0; i < len; i++) {
+		for (p = da->children[i]; p; p = p->next) {
+			_fr_dict_dump(p, lvl + 1);
+		}
+	}
+
+}
+
+void fr_dict_dump(fr_dict_t *dict)
+{
+	_fr_dict_dump(dict->root, 0);
+}
+
 /** Add a vendor to the dictionary
  *
  * Inserts a vendor entry into the vendor hash table.  This must be done before adding
@@ -951,8 +973,9 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				case PW_TYPE_EXTENDED:
 				case PW_TYPE_LONG_EXTENDED:
 				case PW_TYPE_EVS:
-					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes of type '%s'",
-							   flags.encrypt, fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
+							   "of type '%s'", flags.encrypt,
+							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
 					goto error;
 
 				default:
@@ -2299,7 +2322,6 @@ static int dict_from_file(fr_dict_t *dict,
 
 
 static bool defined_cast_types = false;
-
 
 /** (re)initialize a protocol dictionary
  *
@@ -3682,6 +3704,78 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t *dict, int vendorpec)
 	dv.vendorpec = vendorpec;
 
 	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
+}
+
+/** Return the vendor that parents this attribute
+ *
+ * @note Uses the dictionary hierachy to determine the parent
+ *
+ * @param[in] da The dictionary attribute to find parent for.
+ * @return
+ *	- NULL if the attribute has no vendor.
+ *	- A fr_dict_attr_t representing this attribute's associated vendor.
+ */
+fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const *da_p = da;
+
+	while (da_p->parent) {
+		if (da_p->type == PW_TYPE_VENDOR) break;
+		da_p = da_p->parent;
+	}
+	if (da_p->type != PW_TYPE_VENDOR) return NULL;
+
+	return da_p;
+}
+
+/** Return vendor attribute for the specified dictionary and vendorpec
+ *
+ * @param[in] dict		to search for the vendor in.
+ * @param[in] vendor_root	of the vendor root attribute.  Could be 26 (for example) in RADIUS.
+ * @param[in] vendor		to find.
+ * @return
+ *	- NULL if vendor does not exist.
+ *	- A fr_dict_attr_t representing the vendor in the dictionary hierarchy.
+ */
+fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int vendor_root, unsigned int vendor)
+{
+	fr_dict_attr_t const *da;
+
+	if (!dict) return NULL;
+
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict), vendor_root);
+	if (!da) {
+		fr_strerror_printf("Vendor root attribute %i not defined in dict %s", vendor_root, dict->root->name);
+		return NULL;
+	}
+
+	switch (da->type) {
+	case PW_TYPE_VSA:	/* Vendor specific attribute */
+	case PW_TYPE_EVS:	/* Extended vendor specific attribute */
+		break;
+
+	default:
+		fr_strerror_printf("Wrong type for vendor root, expected '%s' or '%s' got '%s'",
+				   fr_int2str(dict_attr_types, PW_TYPE_VSA, "<INVALID>"),
+				   fr_int2str(dict_attr_types, PW_TYPE_EVS, "<INVALID>"),
+				   fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+		return NULL;
+	}
+
+	da = fr_dict_attr_child_by_num(da, vendor);
+	if (!da) {
+		fr_strerror_printf("Vendor %i not defined", vendor);
+		return NULL;
+	}
+
+	if (da->type != PW_TYPE_VENDOR) {
+		fr_strerror_printf("Wrong type for vendor, expected '%s' got '%s'",
+				   fr_int2str(dict_attr_types, da->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, PW_TYPE_VENDOR, "<INVALID>"));
+		return NULL;
+	}
+
+	return da;
 }
 
 /** Look up a dictionary attribute by a name embedded in another string

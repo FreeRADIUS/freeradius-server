@@ -142,6 +142,12 @@ typedef struct dict_vendor {
 #define FR_DICT_ATTR_SIZE		(sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN)
 
 extern const bool	fr_dict_attr_allowed_chars[UINT8_MAX];
+
+/*
+ *	Dictionary debug
+ */
+void			fr_dict_dump(fr_dict_t *dict);
+
 /*
  *	Dictionary population
  */
@@ -212,6 +218,10 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 int			fr_dict_vendor_by_name(fr_dict_t *dict, char const *name);
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t *dict, int vendor);
+
+fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
+
+fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int vendor_root, unsigned int vendor);
 
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name);
 
