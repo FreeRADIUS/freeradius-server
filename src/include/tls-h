@@ -432,6 +432,8 @@ int		tls_log_error(REQUEST *request, char const *msg, ...) CC_HINT(format (print
 int		tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char const *msg, ...)
 				 CC_HINT(format (printf, 4, 5));
 
+int		tls_strerror_printf(bool drain_all, char const *msg, ...);
+
 /*
  *	tls/ocsp.c
  */

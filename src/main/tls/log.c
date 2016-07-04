@@ -42,7 +42,7 @@ DIAG_OFF(format-nonliteral)
  * @param[in] ap	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-static int log_verror(REQUEST *request, char const *msg, va_list ap)
+static int tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
 {
 	unsigned long	error;
 	char		*p;
@@ -122,7 +122,91 @@ int tls_log_error(REQUEST *request, char const *msg, ...)
 	int ret;
 
 	va_start(ap, msg);
-	ret = log_verror(request, msg, ap);
+	ret = tls_log_error_va(request, msg, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+DIAG_OFF(format-nonliteral)
+/** Print errors in the TLS thread local error stack
+ *
+ * Drains the thread local OpenSSL error queue, and prints out the first error
+ * storing it in libfreeradius's error buffer.
+ *
+ * @param[in] drain_all	drain all errors in TLS stack.
+ * @param[in] msg	Error message describing the operation being attempted.
+ * @param[in] ap	Arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+static int tls_strerror_printf_va(bool drain_all, char const *msg, va_list ap)
+{
+	unsigned long	error;
+	char		*p = NULL;
+	int		drained = 0;
+	char		buffer[256];
+
+	int		line;
+	char const	*file;
+
+	/*
+	 *	Pop the first error, so ERR_peek_error()
+	 *	can be used to determine if there are
+	 *	multiple errors.
+	 */
+	error = ERR_get_error_line(&file, &line);
+
+	if (msg) {
+		/*
+		 *	Print the error we were passed, and
+		 *	OpenSSL's error.
+		 */
+		p = talloc_vasprintf(NULL, msg, ap);
+		if (error) {
+			ERR_error_string_n(error, buffer, sizeof(buffer));
+			fr_strerror_printf("%s: %s", p, buffer);
+			talloc_free(p);
+			drained++;
+		/*
+		 *	Print the error we were given, irrespective
+		 *	of whether there were any OpenSSL errors.
+		 */
+		} else {
+			fr_strerror_printf("%s", p);
+			talloc_free(p);
+		}
+	} else if (error) {
+		ERR_error_string_n(error, buffer, sizeof(buffer));
+		fr_strerror_printf("%s", buffer);
+		drained++;
+	} else {
+		return 0;
+	}
+
+	if (!drain_all) return drained;
+
+	while ((error = ERR_get_error_line(&file, &line))) drained++;
+
+	return drained;
+}
+DIAG_ON(format-nonliteral)
+
+/** Wrapper around fr_strerror_printf to log error messages for library functions calling libssl
+ *
+ * @note Will only drain the first error.
+ *
+ * @param[in] drain_all	drain all errors in TLS stack.
+ * @param[in] msg	Error message describing the operation being attempted.
+ * @param[in] ...	Arguments for msg.
+ * @return the number of errors drained from the stack.
+ */
+int tls_strerror_printf(bool drain_all, char const *msg, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, msg);
+	ret = tls_strerror_printf_va(drain_all, msg, ap);
 	va_end(ap);
 
 	return ret;
@@ -157,7 +241,7 @@ int tls_log_io_error(REQUEST *request, tls_session_t *session, int ret, char con
 
 	if (ERR_peek_error()) {
 		va_start(ap, msg);
-		log_verror(request, msg, ap);
+		tls_log_error_va(request, msg, ap);
 		va_end(ap);
 	}
 
