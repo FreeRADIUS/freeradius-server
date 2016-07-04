@@ -95,7 +95,7 @@ struct dict_attr {
  */
 typedef struct dict_enum {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
-	int			value;				//!< Enum value
+	int64_t			value;				//!< Enum value
 	char			name[1];			//!< Enum name.
 } fr_dict_enum_t;
 
@@ -235,9 +235,9 @@ fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_enum_t		*fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+fr_dict_enum_t		*fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int64_t value);
 
-char const		*fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+char const		*fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int64_t value);
 
 fr_dict_enum_t		*fr_dict_enum_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
 

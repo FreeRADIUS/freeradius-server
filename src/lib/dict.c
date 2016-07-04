@@ -1452,6 +1452,11 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		return -1;
 	}
 
+	/*
+	 *	Mark the attribute up as having an enumv
+	 */
+	da->flags.has_value = 1;
+
 	return 0;
 }
 
@@ -4006,7 +4011,7 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
  * 	- Matching #fr_dict_enum_t.
  * 	- NULL if no matching #fr_dict_enum_t could be found.
  */
-fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
+fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int64_t value)
 {
 	fr_dict_enum_t dval, *dv;
 
@@ -4042,7 +4047,7 @@ fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, in
  * 	- Name of value.
  * 	- NULL if no matching value could be found.
  */
-char const *fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
+char const *fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int64_t value)
 {
 	fr_dict_enum_t *dv;
 

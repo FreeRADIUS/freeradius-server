@@ -2232,6 +2232,68 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 	return value_data_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
 }
 
+/** Return a const buffer for an enum type attribute
+ *
+ * Where the vp type is numeric but does not have any enumv, or its value
+ * does not map to an enumv, the integer value of the pair will be printed
+ * to buff, and a pointer to buff will be returned.
+ *
+ * @param[in] vp	to print.
+ * @param[in] buff	to print integer value to.
+ * @return a talloced buffer.
+ */
+char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
+{
+	char const		*str;
+	fr_dict_enum_t const	*enumv = NULL;
+
+	switch (vp->da->type) {
+	case PW_TYPE_NUMERIC:
+		break;
+
+	default:
+		fr_strerror_printf("Pair %s is not numeric", vp->da->name);
+		return NULL;
+	}
+
+	if (vp->da->flags.has_value) switch (vp->da->type) {
+	case PW_TYPE_BOOLEAN:
+		return vp->vp_bool ? "yes" : "no";
+
+	case PW_TYPE_BYTE:
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_byte);
+		break;
+
+	case PW_TYPE_SHORT:
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_short);
+		break;
+
+	case PW_TYPE_INTEGER:
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer64);
+		break;
+
+	case PW_TYPE_SIGNED:
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_signed);
+		break;
+
+	default:
+		break;
+	}
+
+	if (!enumv) {
+		fr_pair_value_snprint(buff, sizeof(buff), vp, '\0');
+		str = buff;
+	} else {
+		str = enumv->name;
+	}
+
+	return str;
+}
+
 char *fr_pair_type_asprint(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {

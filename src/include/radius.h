@@ -95,6 +95,18 @@ typedef enum {
 	case PW_TYPE_VSA: \
 	case PW_TYPE_VENDOR
 
+/** Naturally numeric types
+ *
+ */
+#define PW_TYPE_NUMERIC \
+	PW_TYPE_BOOLEAN: \
+	case PW_TYPE_BYTE: \
+	case PW_TYPE_SHORT: \
+	case PW_TYPE_INTEGER: \
+	case PW_TYPE_INTEGER64: \
+	case PW_TYPE_SIGNED: \
+	case PW_TYPE_DATE
+
 /** RADIUS packet codes
  *
  */
