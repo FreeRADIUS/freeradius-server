@@ -524,7 +524,7 @@ void request_enqueue(REQUEST *request)
 		}
 		pthread_mutex_unlock(&thread_pool.active_mutex);
 
-		RDEBUG3("Thread %d being signalled",thread->thread_num);
+		DEBUG3("Thread %d being signalled",thread->thread_num);
 
 		/*
 		 *	Tell the thread that there's a request available for
@@ -788,8 +788,10 @@ static void *thread_handler(void *arg)
 	 */
 	while (true) {
 		bool no_backlog;
-		time_t now;
 		REQUEST *request;
+#if 0
+		time_t now;
+#endif
 
 #  ifdef HAVE_GPERFTOOLS_PROFILER_H
 		ProfilerRegisterThread();
@@ -976,9 +978,9 @@ static void *thread_handler(void *arg)
 		DEBUG3("Thread %d becoming idle.", thread->thread_num);
 		unlink_active(thread);
 
+#if 0
 		now = time(NULL);
 
-#if 0
 		/*
 		 *      Add it the head of the idle list.
 		 */
