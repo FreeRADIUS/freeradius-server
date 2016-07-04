@@ -744,6 +744,17 @@ static void thread_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	DEBUG3("Thread %d was sent a new request", thread->thread_num);
 }
 
+static int timestamp_cmp(void const *one, void const *two)
+{
+	REQUEST const *a = one;
+	REQUEST const *b = two;
+
+	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, < )) return -1;
+	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, > )) return +1;
+
+	return 0;
+}
+
 
 /*
  *	The main thread handler for requests.
@@ -764,7 +775,7 @@ static void *thread_handler(void *arg)
 	el = fr_event_list_create(ctx, NULL);
 	rad_assert(el != NULL);
 
-	backlog = fr_heap_create(thread_pool.heap_cmp, offsetof(REQUEST, heap_id));
+	backlog = fr_heap_create(timestamp_cmp, offsetof(REQUEST, heap_id));
 	rad_assert(backlog != NULL);
 
 	if (fr_event_fd_insert(el, 0, thread->pipe_fd[0], thread_fd_handler, thread) < 0) {
@@ -1154,17 +1165,6 @@ static int pid_cmp(void const *one, void const *two)
 	return (a->pid - b->pid);
 }
 #endif
-
-static int timestamp_cmp(void const *one, void const *two)
-{
-	REQUEST const *a = one;
-	REQUEST const *b = two;
-
-	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, < )) return -1;
-	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, > )) return +1;
-
-	return 0;
-}
 
 /*
  *	Smaller entries go to the top of the heap.
