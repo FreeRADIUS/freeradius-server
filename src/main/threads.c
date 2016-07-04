@@ -1036,11 +1036,6 @@ static void *thread_handler(void *arg)
 				(void) write(idle->pipe_fd[1], &data, 1);
 			}
 		}
-#else
-		/*
-		 *	FIXME
-		 */
-		if (now == 0) return NULL;
 #endif
 
 		/*
