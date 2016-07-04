@@ -490,26 +490,6 @@ void request_stats_reply(REQUEST *request)
 		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       PW_FREERADIUS_STATS_HUP_TIME, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = hup_time.tv_sec;
-
-		int i, array[RAD_LISTEN_MAX], pps[2];
-
-		thread_pool_queue_stats(array, pps);
-
-		for (i = 0; i <= 4; i++) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       PW_FREERADIUS_QUEUE_LEN_INTERNAL + i, VENDORPEC_FREERADIUS);
-
-			if (!vp) continue;
-			vp->vp_integer = array[i];
-		}
-
-		for (i = 0; i < 2; i++) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       PW_FREERADIUS_QUEUE_PPS_IN + i, VENDORPEC_FREERADIUS);
-
-			if (!vp) continue;
-			vp->vp_integer = pps[i];
-		}
 	}
 
 	/*

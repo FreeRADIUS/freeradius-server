@@ -2473,24 +2473,6 @@ static int command_stats_state(rad_listen_t *listener, UNUSED int argc, UNUSED c
 	return CMD_OK;
 }
 
-static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
-{
-	int array[RAD_LISTEN_MAX], pps[2];
-
-	thread_pool_queue_stats(array, pps);
-
-	cprintf(listener, "queue_len_internal\t" PU "\n", array[0]);
-	cprintf(listener, "queue_len_proxy\t\t" PU "\n", array[1]);
-	cprintf(listener, "queue_len_auth\t\t" PU "\n", array[2]);
-	cprintf(listener, "queue_len_acct\t\t" PU "\n", array[3]);
-	cprintf(listener, "queue_len_detail\t" PU "\n", array[4]);
-
-	cprintf(listener, "queue_pps_in\t\t" PU "\n", pps[0]);
-	cprintf(listener, "queue_pps_out\t\t" PU "\n", pps[1]);
-
-	return CMD_OK;
-}
-
 #ifndef NDEBUG
 static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -2893,10 +2875,6 @@ static fr_command_table_t command_table_stats[] = {
 	  "stats home_server [<ipaddr>|auth|acct|coa|disconnect] <port> [udp|tcp] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
 #endif
-
-	{ "queue", FR_READ,
-	  "stats queue - show statistics for packet queues",
-	  command_stats_queue, NULL },
 
 	{ "state", FR_READ,
 	  "stats state - show statistics for states",

@@ -49,33 +49,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifndef WITH_GCD
 /*
- *	Threads start off in the idle list.
- *
- *	When a packet comes in, the first thread in the idle list is
- *	assigned the request, and is moved to the head of the active
- *	list.  When the thread is done processing the request, it
- *	removes itself from the active list, and adds itself to the
- *	HEAD of the idle list.  This ensures that "hot" threads
- *	continue to get scheduled, and "cold" threads age out of the
- *	CPU cache.
- *
- *	When the server is reaching overload, there are no threads in
- *	the idle queue.  In that case, the request is added to the
- *	backlog.  Any active threads will check the heap FIRST,
- *	before moving themselves to the idle list as described above.
- *	If there are requests in the heap, the thread stays in the
- *	active list, and processes the packet.
- *
- *	Once a second, a random one of the worker threads will manage
- *	the thread pool.  This work involves spawning more threads if
- *	needed, marking old "idle" threads as cancelled, etc.  That
- *	work is done with the mutex released (if at all possible).
- *	This practice minimizes contention on the mutex.
+ *	Incoming packets are spread across all worker threads.
  */
-
 typedef enum fr_thread_status_t {
 	THREAD_NONE = 0,
-	THREAD_IDLE,
 	THREAD_ACTIVE,
 	THREAD_CANCELLED,
 	THREAD_EXITED,
@@ -389,6 +366,8 @@ static void *thread_handler(void *arg)
 		ERROR("Failed inserting event for self");
 		goto done;
 	}
+
+	thread->status = THREAD_ACTIVE;
 
 	/*
 	 *	Loop forever, until told to exit.
@@ -963,40 +942,3 @@ static pid_t thread_waitpid(pid_t pid, int *status)
  *	No rad_fork or rad_waitpid
  */
 #endif
-
-void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
-{
-	int i;
-
-#ifndef WITH_GCD
-	if (pool_initialized) {
-		struct timeval now;
-
-		/*
-		 *	@fixme: the list of listeners is no longer
-		 *	fixed in size.
-		 */
-		memset(array, 0, sizeof(array[0]) * RAD_LISTEN_MAX);
-		array[0] = 0;
-
-		gettimeofday(&now, NULL);
-
-		pps[0] = rad_pps(&thread_pool.pps_in.pps_old,
-				 &thread_pool.pps_in.pps_now,
-				 &thread_pool.pps_in.time_old,
-				 &now);
-		pps[1] = rad_pps(&thread_pool.pps_out.pps_old,
-				 &thread_pool.pps_out.pps_now,
-				 &thread_pool.pps_out.time_old,
-				 &now);
-
-	} else
-#endif	/* WITH_GCD */
-	{
-		for (i = 0; i < RAD_LISTEN_MAX; i++) {
-			array[i] = 0;
-		}
-
-		pps[0] = pps[1] = 0;
-	}
-}
