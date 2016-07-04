@@ -724,6 +724,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 			REDEBUG("%s", fr_strerror());
 		error:
 			fr_cursor_free(decoded);	/* Free any attributes we added */
+			return -1;
 		}
 
 		p += rcode;
