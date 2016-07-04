@@ -67,7 +67,7 @@ static unsigned int retries = 3;
 static float timeout = 5;
 static struct timeval tv_timeout;
 static unsigned int recycle_count = 1;
-static char const *secret = NULL;
+static char *secret = NULL;
 static bool do_output = true;
 static bool do_summary = false;
 static char filesecret[256];
@@ -2278,7 +2278,7 @@ int main(int argc, char **argv)
 				ERROR("Secret in %s is too short", optarg);
 				exit(1);
 			}
-			secret = filesecret;
+			secret = talloc_strdup(NULL, filesecret);
 			break;
 
 		case 'h':
@@ -2362,7 +2362,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Add the secret.
 	 */
-	if (argv[3]) secret = argv[3];
+	if (argv[3]) secret = talloc_strdup(NULL, argv[3]);
 
 	/*
 	 *	Read input data vp(s) from the file (or stdin).
@@ -2403,6 +2403,8 @@ int main(int argc, char **argv)
 	 *	Do summary / statistics (if asked for).
 	 */
 	rc_summary();
+
+	talloc_free(secret);
 
 	talloc_free(autofree);
 
