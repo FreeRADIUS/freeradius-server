@@ -781,6 +781,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:	/* just in case */
 	case PW_TYPE_BYTE:
+	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_INTEGER64:

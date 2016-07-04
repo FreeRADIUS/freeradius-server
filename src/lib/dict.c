@@ -1103,7 +1103,6 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	case PW_TYPE_INVALID:
 	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_DECIMAL:
 	case PW_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
@@ -1119,6 +1118,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	switch (type) {
 	case PW_TYPE_BYTE:
+	case PW_TYPE_BOOLEAN:
 		flags.length = 1;
 		break;
 
