@@ -815,7 +815,7 @@ int thread_pool_init(void)
 	 *	need to lock the mutex, as nothing is sending
 	 *	requests.
 	 *
-	 *	FIXE: If we fail while creating them, do something intelligent.
+	 *	FIXME: If we fail while creating them, do something intelligent.
 	 */
 	for (i = 0; i < thread_pool.start_threads; i++) {
 		THREAD_HANDLE *thread;
