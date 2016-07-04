@@ -97,6 +97,9 @@ typedef struct THREAD_HANDLE {
 	time_t			max_time;	//!< for current request
 	int			pipe_fd[2];	//!< for self signal
 	REQUEST			*request;
+
+	pthread_mutex_t		backlog_mutex;
+	fr_heap_t		*backlog;
 } THREAD_HANDLE;
 
 #endif	/* WITH_GCD */
@@ -1139,6 +1142,20 @@ static THREAD_HANDLE *thread_spawn(time_t now, int do_trigger)
 		talloc_free(thread);
 		ERROR("Thread create failed: %s",
 		       fr_syserror(rcode));
+		return NULL;
+	}
+
+	if ((pthread_mutex_init(&thread->backlog_mutex,NULL) != 0)) {
+		talloc_free(thread);
+		ERROR("FATAL: Failed to initialize thread backlog mutex: %s",
+		       fr_syserror(errno));
+		return NULL;
+	}
+
+	thread->backlog = fr_heap_create(timestamp_cmp, offsetof(REQUEST, heap_id));
+	if (!thread->backlog) {
+		ERROR("FATAL: Failed to initialize thread backlog");
+		talloc_free(thread);
 		return NULL;
 	}
 
