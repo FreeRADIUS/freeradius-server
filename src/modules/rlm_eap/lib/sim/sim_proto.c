@@ -48,6 +48,7 @@ RCSID("$Id$")
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/tls.h>
 #include <openssl/evp.h>
 
 #include "eap_types.h"
