@@ -1148,7 +1148,7 @@ finish:
 /** Performs byte order reversal for types that need it
  *
  */
-static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len)
+void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len)
 {
 	/* 8 byte integers */
 	switch (type) {
