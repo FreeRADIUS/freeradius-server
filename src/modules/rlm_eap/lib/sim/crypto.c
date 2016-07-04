@@ -122,10 +122,14 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 	return(ret);
 }
 
-/** Use the fips186_2prf to derive the various EAP SIM keys
+/** RFC4186 Key Derivation Function
  *
+ * @note expects keys to contain a SIM_VECTOR_GSM.
+ *
+ * @param[in,out] keys		Contains the authentication vectors and the buffers
+ *				to store the result of the derivation.
  */
-void fr_sim_crypto_keys_derive(fr_sim_keys_t *ek)
+void fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 {
 	fr_sha1_ctx	context;
 	uint8_t		fk[160];
@@ -133,85 +137,177 @@ void fr_sim_crypto_keys_derive(fr_sim_keys_t *ek)
 	uint8_t		*p;
 	uint8_t		blen;
 
+	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_GSM)) return;
+
 	p = buf;
-	memcpy(p, ek->identity, ek->identity_len);
-	p = p + ek->identity_len;
+	memcpy(p, keys->identity, keys->identity_len);
+	p = p + keys->identity_len;
 
-	memcpy(p, ek->vector[0].kc, EAP_SIM_KC_SIZE);
-	p = p+EAP_SIM_KC_SIZE;
+	memcpy(p, keys->gsm.vector[0].kc, SIM_VECTOR_GSM_KC_SIZE);
+	p = p+SIM_VECTOR_GSM_KC_SIZE;
 
-	memcpy(p, ek->vector[1].kc, EAP_SIM_KC_SIZE);
-	p = p + EAP_SIM_KC_SIZE;
+	memcpy(p, keys->gsm.vector[1].kc, SIM_VECTOR_GSM_KC_SIZE);
+	p = p + SIM_VECTOR_GSM_KC_SIZE;
 
-	memcpy(p, ek->vector[2].kc, EAP_SIM_KC_SIZE);
-	p = p + EAP_SIM_KC_SIZE;
+	memcpy(p, keys->gsm.vector[2].kc, SIM_VECTOR_GSM_KC_SIZE);
+	p = p + SIM_VECTOR_GSM_KC_SIZE;
 
-	memcpy(p, ek->nonce_mt, sizeof(ek->nonce_mt));
-	p = p + sizeof(ek->nonce_mt);
+	memcpy(p, keys->gsm.nonce_mt, sizeof(keys->gsm.nonce_mt));
+	p = p + sizeof(keys->gsm.nonce_mt);
 
-	memcpy(p, ek->version_list, ek->version_list_len);
-	p = p+ek->version_list_len;
+	memcpy(p, keys->gsm.version_list, keys->gsm.version_list_len);
+	p = p + keys->gsm.version_list_len;
 
-	memcpy(p, ek->version_select, sizeof(ek->version_select));
-	p = p + sizeof(ek->version_select);
-
-	/* *p++ = ek->version_select[1]; */
+	memcpy(p, keys->gsm.version_select, sizeof(keys->gsm.version_select));
+	p = p + sizeof(keys->gsm.version_select);
 
 	blen = p - buf;
 
 	/* do the master key first */
 	fr_sha1_init(&context);
 	fr_sha1_update(&context, buf, blen);
-	fr_sha1_final(ek->master_key, &context);
+	fr_sha1_final(keys->master_key, &context);
 
 	/*
 	 * now use the PRF to expand it, generated k_aut, k_encr,
 	 * MSK and EMSK.
 	 */
-	fr_sim_fips186_2prf(fk, ek->master_key);
+	fr_sim_fips186_2prf(fk, keys->master_key);
 
 	/* split up the result */
-	memcpy(ek->k_encr, fk +  0, 16);    /* 128 bits for encryption    */
-	memcpy(ek->k_aut,  fk + 16, EAP_SIM_AUTH_SIZE); /*128 bits for auth */
-	memcpy(ek->msk,    fk + 32, 64);  /* 64 bytes for Master Session Key */
-	memcpy(ek->emsk,   fk + 96, 64);  /* 64- extended Master Session Key */
+	memcpy(keys->k_encr, fk +  0, 16);    /* 128 bits for encryption    */
+	memcpy(keys->k_aut,  fk + 16, EAP_SIM_AUTH_SIZE); /* 128 bits for auth */
+	memcpy(keys->msk,    fk + 32, 64);  /* 64 bytes for Master Session Key */
+	memcpy(keys->emsk,   fk + 96, 64);  /* 64- extended Master Session Key */
 }
+
+/** RFC4187 Key derivation function
+ *
+ * @note expects keys to contain a SIM_VECTOR_UMTS.
+ *
+ * @param[in,out] keys		Contains the authentication vectors and the buffers
+ *				to store the result of the derivation.
+ */
+void fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
+{
+	fr_sha1_ctx	context;
+	uint8_t		fk[160];
+	uint8_t		buf[256];
+	uint8_t		*p;
+	uint8_t		blen;
+
+	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return;
+
+	p = buf;
+	memcpy(p, keys->identity, keys->identity_len);
+	p = p + keys->identity_len;
+
+	memcpy(p, keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE);
+	p = p + SIM_VECTOR_UMTS_IK_SIZE;
+
+	memcpy(p, keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE);
+	p = p + SIM_VECTOR_UMTS_CK_SIZE;
+
+	blen = p - buf;
+
+	/* do the master key first */
+	fr_sha1_init(&context);
+	fr_sha1_update(&context, buf, blen);
+	fr_sha1_final(keys->master_key, &context);
+
+	/*
+   	 * now use the PRF to expand it, generated k_aut, k_encr,
+	 * MSK and EMSK.
+	 */
+	fr_sim_fips186_2prf(keys->master_key, fk);
+
+	/* split up the result */
+	memcpy(keys->k_encr, fk +  0, 16);    /* 128 bits for encryption    */
+	memcpy(keys->k_aut,  fk + 16, EAP_SIM_AUTH_SIZE); /*128 bits for auth */
+	memcpy(keys->msk,    fk + 32, 64);  /* 64 bytes for Master Session Key */
+	memcpy(keys->emsk,   fk + 96, 64);  /* 64- extended Master Session Key */
+}
+
+#if 0
+/** RFC5448 Key derivation function
+ *
+ * @note expects keys to contain a SIM_VECTOR_UMTS.
+ *
+ * @param[in,out] keys		Contains the authentication vectors and the buffers
+ *				to store the result of the derivation.
+ */
+void fr_sim_crypto_kdf_1_umts(UNUSED fr_sim_keys_t *keys)
+{
+	return;
+}
+#endif
 
 /** Dump the current state of all keys associated with the EAP SIM session
  *
  * @param[in] request	The current request.
- * @param[in] ek	EAP SIM keys associated with the session.
+ * @param[in] keys	SIM keys associated with the session.
  */
-void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *ek)
+void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 {
-	unsigned int i;
+	RDEBUG3("Key data from AuC/static vectors");
 
-	RDEBUG3("Key data from client");
 	RINDENT();
+	switch (keys->vector_type) {
+	case SIM_VECTOR_GSM:
+	{
+		unsigned int i;
 
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->identity, ek->identity_len, "identity:");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->nonce_mt, sizeof(ek->nonce_mt), "nonce_mt:");
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len, "identity:");
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.nonce_mt, sizeof(keys->gsm.nonce_mt), "nonce_mt:");
 
-	for (i = 0; i < ek->num_vectors; i++) {
-		RHEXDUMP_INLINE(L_DBG_LVL_3, ek->vector[i].rand, sizeof(ek->vector[i].rand),
-				"[%i] rand :", i);
-		RHEXDUMP_INLINE(L_DBG_LVL_3, ek->vector[i].sres, sizeof(ek->vector[i].sres),
-				"[%i] sres :", i);
-		RHEXDUMP_INLINE(L_DBG_LVL_3, ek->vector[i].kc, sizeof(ek->vector[i].kc),
-				"[%i] kc   :", i);
+		for (i = 0; i < keys->gsm.num_vectors; i++) {
+			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].rand, SIM_VECTOR_GSM_RAND_SIZE,
+					"[%i] RAND :", i);
+			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].sres, SIM_VECTOR_GSM_SRES_SIZE,
+					"[%i] SRES :", i);
+			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].kc, SIM_VECTOR_GSM_KC_SIZE,
+					"[%i] KC   :", i);
+		}
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.version_list, keys->gsm.version_list_len, "version_list:");
 	}
+		break;
 
-	RHEXDUMP(L_DBG_LVL_3, ek->version_list, ek->version_list_len, "version_list:");
+	case SIM_VECTOR_UMTS:
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len, "identity:");
 
-	RDEBUG3("Key data to client");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->master_key, sizeof(ek->master_key),
-			"mk      :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->k_aut, sizeof(ek->k_aut),
-			"k_aut  :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->k_encr,sizeof(ek->k_encr),
-			"k_encr :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->msk, sizeof(ek->msk),
-			"msk     :");
-	RHEXDUMP_INLINE(L_DBG_LVL_3, ek->emsk, sizeof(ek->emsk),
-			"emsk    :");
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE,
+				"AUTN :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE,
+				"CK   :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE,
+				"IK   :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE,
+				"RAND :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.xres, keys->umts.vector.xres_len,
+				"XRES :");
+		break;
+
+	case SIM_VECTOR_NONE:
+		break;
+	}
+	REXDENT();
+
+	RDEBUG3("Derived keys");
+	RINDENT();
+	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->master_key, sizeof(keys->master_key),
+			"mk           :");
+	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_aut, sizeof(keys->k_aut),
+			"k_aut        :");
+	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->k_encr, sizeof(keys->k_encr),
+			"k_encr       :");
+	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->msk, sizeof(keys->msk),
+			"msk          :");
+	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->emsk, sizeof(keys->emsk),
+			"emsk         :");
+	REXDENT();
 }

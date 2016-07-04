@@ -55,6 +55,9 @@ RCSID("$Id$")
 #include "eap_sim_common.h"
 #include "sim_proto.h"
 
+fr_dict_attr_t const *dict_sim_root;
+fr_dict_attr_t const *dict_aka_root;
+
 /*
  * definitions changed to take a buffer for unknowns
  * as this is more thread safe.
@@ -71,26 +74,6 @@ char const *fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_stat
 	return sim_states[state];
 }
 
-char const *fr_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t subtype)
-{
-	static char const *subtypes[] = { "subtype0", "subtype1", "subtype2", "subtype3",
-					   "subtype4", "subtype5", "subtype6", "subtype7",
-					   "subtype8", "subtype9",
-					   "start",
-					   "challenge",
-					   "notification",
-					   "reauth",
-					   "client-error",
-					   NULL };
-
-	if (subtype >= EAP_SIM_MAX_SUBTYPE) {
-		snprintf(out, outlen, "illegal-subtype:%d", subtype);
-		return out;
-	}
-
-	return subtypes[subtype];
-}
-
 /** Extract the IV value from an AT_IV attribute
  *
  * SIM uses padding at the start of the attribute to make it a multiple of 4.
@@ -103,16 +86,16 @@ char const *fr_sim_subtype_to_name(char *out, size_t outlen, eap_sim_subtype_t s
  *	- 0 on success.
  *	- < 0 on failure (bad IV).
  */
-static inline int sim_iv_extract(uint8_t out[SIM_IV_LENGTH], uint8_t const *in, size_t in_len)
+static inline int sim_iv_extract(uint8_t out[SIM_IV_SIZE], uint8_t const *in, size_t in_len)
 {
 	/*
 	 *	Two bytes are reserved, so although
 	 *	the IV is actually 16 bytes, we
 	 *	check for 18.
 	 */
-	if (in_len != (SIM_IV_LENGTH + 2)) {
+	if (in_len != (SIM_IV_SIZE + 2)) {
 		fr_strerror_printf("%s: Invalid IV length, expected %u got %zu",
-				   __FUNCTION__, (SIM_IV_LENGTH + 2), in_len);
+				   __FUNCTION__, (SIM_IV_SIZE + 2), in_len);
 		return -1;
 	}
 
@@ -123,7 +106,7 @@ static inline int sim_iv_extract(uint8_t out[SIM_IV_LENGTH], uint8_t const *in, 
 	}
 
 	/* skip reserved bytes */
-	memcpy(out, in + 2, SIM_IV_LENGTH);
+	memcpy(out, in + 2, SIM_IV_SIZE);
 
 	return 0;
 }
@@ -629,7 +612,7 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t 
 	/*
 	 *	We have an AES-128-CBC encrypted attribute
 	 *
-	 *	IV is from AT_IV, key is from K_encr.
+	 *	IV is from AT_IV, key is from k_encr.
 	 *
 	 *	unfortunately the ordering of these two attributes
 	 *	aren't specified, so we may have to hunt for the IV.
@@ -1065,5 +1048,28 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 	}
 
 	return 1;
+}
+
+int fr_sim_global_init(void)
+{
+	static bool done_init;
+
+	if (done_init) return 0;
+
+	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_AKA_ROOT);
+	if (!dict_aka_root) {
+		fr_strerror_printf("Missing AKA root");
+		return -1;
+	}
+
+	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_SIM_ROOT);
+	if (!dict_sim_root) {
+		fr_strerror_printf("Missing SIM root");
+		return -1;
+	}
+
+	done_init = true;
+
+	return 0;
 }
 

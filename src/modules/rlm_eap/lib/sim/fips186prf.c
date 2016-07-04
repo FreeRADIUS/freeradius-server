@@ -225,7 +225,7 @@ main(int argc, char *argv[])
 	uint8_t finalkey[160];
 	int i, j, k;
 
-	fips186_2prf(mk, finalkey);
+	fr_sim_fips186_2prf(mk, finalkey);
 
 	printf("Input was: |");
 	j=0;

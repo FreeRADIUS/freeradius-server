@@ -13,34 +13,32 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
+#ifndef _EAP_AKA_COMMON_H
+#define _EAP_AKA_COMMON_H
 /**
  * $Id$
- * @file rlm_eap_sim/eap_sim.h
- * @brief Declarations for EAP-SIM
+ * @file rlm_eap/lib/sim/eap_aka_common.h
+ * @brief Declarations for EAP-AKA
+ *
+ * @note These are needed for the quintuplet -> triplet conversion in EAP-SIM.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  *
- * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2016 The FreeRADIUS server project
  */
-RCSIDH(rlm_eap_sim_eap_sim_h, "$Id$")
+#include <freeradius-devel/eap.aka.h>
 
-#include "sim_proto.h"
+#define EAP_AKA_AUTS_SIZE		14	//!< Server sequence number.  SIM checks this
+						//!< is within the correct range.
 
-/** Server states
- *
- * In server_start, we send a EAP-SIM Start message.
- */
-typedef enum {
-	EAP_SIM_SERVER_START		= 0,
-	EAP_SIM_SERVER_CHALLENGE	= 1,
-	EAP_SIM_SERVER_SUCCESS		= 10,
-	EAP_SIM_SERVER_MAX_STATES
-} eap_sim_server_state_t;
-
-typedef struct eap_aka_session {
-	eap_sim_server_state_t	state;		//!< Current session state.
-	fr_sim_keys_t		keys;		//!< Various EAP-AKA keys.
-	int  			sim_id;		//!< Packet ID. (replay protection)
-} eap_sim_session_t;
+typedef enum eap_aka_subtype {
+	EAP_AKA_CHALLENGE 		= 1,	//!< Challenge packet for distributing NONCE and RAND values.
+	EAP_AKA_AUTHENTICATION_REJECT	= 2,
+	EAP_AKA_SYNCHRONIZATION_FAILURE	= 4,
+	EAP_AKA_IDENTITY 		= 5,	//!< Fast Re-Authentication.
+	EAP_AKA_NOTIFICATION		= 12,	//!< Notification packet.
+	EAP_AKA_REAUTHENTICATION	= 13,
+	EAP_AKA_CLIENT_ERROR		= 14,
+	EAP_AKA_MAX_SUBTYPE		= 15
+} eap_aka_subtype_t;
+#endif

@@ -142,14 +142,14 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	}
 }
 
-#define EAPTLS_MPPE_KEY_LEN     32
+#define EAP_TLS_MPPE_KEY_LEN     32
 
 /** Generate keys according to RFC 2716 and add to the reply
  *
  */
 void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 {
-	uint8_t out[4 * EAPTLS_MPPE_KEY_LEN];
+	uint8_t out[4 * EAP_TLS_MPPE_KEY_LEN];
 	uint8_t *p;
 	size_t prf_size;
 
@@ -161,7 +161,7 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 
 	{
 		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE)];
-		uint8_t buf[4 * EAPTLS_MPPE_KEY_LEN];
+		uint8_t buf[4 * EAP_TLS_MPPE_KEY_LEN];
 
 		p = seed;
 
@@ -181,9 +181,9 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 
 	RDEBUG2("Adding session keys");
 	p = out;
-	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
-	p += EAPTLS_MPPE_KEY_LEN;
-	eap_add_reply(request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	p += EAP_TLS_MPPE_KEY_LEN;
+	eap_add_reply(request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
 
 	eap_add_reply(request, "EAP-MSK", out, 64);
 	eap_add_reply(request, "EAP-EMSK", out + 64, 64);

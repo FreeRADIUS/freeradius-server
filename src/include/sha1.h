@@ -49,11 +49,6 @@ USES_APPLE_DEPRECATED_API
 #  define fr_sha1_transform SHA1_Transform
 #endif
 
-/*
- * FIPS 186-2 PRF based upon SHA1.
- */
-void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
-
 /* hmacsha1.c */
 
 void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,

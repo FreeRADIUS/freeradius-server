@@ -242,7 +242,7 @@ static void rc_do_progress_stat(void);
 static uint32_t rc_get_elapsed(void);
 static float rc_get_wf_rate(rc_wf_type_t i);
 
-static fr_dict_attr_t const *dict_sim_root;
+fr_dict_attr_t const *dict_sim_root;
 
 /** Display usage and exit.
  */
@@ -839,9 +839,9 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	/*
 	 * record the version_list for the MK calculation.
 	 */
-	eap_context->eap.sim.keys.version_list_len = versioncount*2;
-	memcpy(eap_context->eap.sim.keys.version_list, (unsigned char const *)(versions+1),
-	       eap_context->eap.sim.keys.version_list_len);
+	eap_context->eap.sim.keys.gsm.version_list_len = versioncount*2;
+	memcpy(eap_context->eap.sim.keys.gsm.version_list, (unsigned char const *)(versions+1),
+	       eap_context->eap.sim.keys.gsm.version_list_len);
 
 	/* walk the version list, and pick the one we support, which
 	 * at present, is 1, EAP_SIM_VERSION.
@@ -903,7 +903,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		fr_pair_replace(&(rep->vps), newvp);
 
 		/* record the selected version */
-		memcpy(eap_context->eap.sim.keys.version_select, &no_versions, 2);
+		memcpy(eap_context->eap.sim.keys.gsm.version_select, &no_versions, 2);
 	}
 
 	vp = newvp = NULL;
@@ -928,7 +928,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		fr_pair_replace(&(rep->vps), newvp);
 
 		/* also keep a copy of the nonce! */
-		memcpy(eap_context->eap.sim.keys.nonce_mt, nonce, 16);
+		memcpy(eap_context->eap.sim.keys.gsm.nonce_mt, nonce, 16);
 	}
 
 	{
@@ -979,7 +979,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	VALUE_PAIR *mac, *randvp;
 	VALUE_PAIR *sres1, *sres2, *sres3;
 	VALUE_PAIR *kc1, *kc2, *kc3;
-	uint8_t calcmac[EAP_SIM_CALC_MAC_SIZE];
+	uint8_t calcmac[SIM_CALC_MAC_SIZE	];
 
 	/* look for the AT_MAC and the challenge data */
 	mac = fr_pair_find_by_num(req->vps, 0, PW_EAP_SIM_MAC, TAG_ANY);
@@ -998,8 +998,8 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		uint8_t const *randcfg[3];
 
 		randcfg[0] = &randvp->vp_octets[2];
-		randcfg[1] = &randvp->vp_octets[2+EAP_SIM_RAND_SIZE];
-		randcfg[2] = &randvp->vp_octets[2+EAP_SIM_RAND_SIZE*2];
+		randcfg[1] = &randvp->vp_octets[2+SIM_VECTOR_GSM_RAND_SIZE];
+		randcfg[2] = &randvp->vp_octets[2+SIM_VECTOR_GSM_RAND_SIZE*2];
 
 		randcfgvp[0] = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_RAND, TAG_ANY);
 		randcfgvp[1] = fr_pair_find_by_num(randcfgvp[0], 0, PW_EAP_SIM_RAND, TAG_ANY);
@@ -1012,20 +1012,20 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 			return 0;
 		}
 
-		if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAP_SIM_RAND_SIZE) != 0 ||
-		    memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAP_SIM_RAND_SIZE) != 0 ||
-		    memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAP_SIM_RAND_SIZE) != 0)
+		if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, SIM_VECTOR_GSM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[1], randcfgvp[1]->vp_octets, SIM_VECTOR_GSM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[2], randcfgvp[2]->vp_octets, SIM_VECTOR_GSM_RAND_SIZE) != 0)
 		{
 			int rnum;
 
 			ERROR("one of RAND 1, 2, or 3 didn't match");
 
-			char ch_rand[EAP_SIM_RAND_SIZE*2 +1 +3] = ""; // +3 for separators.
+			char ch_rand[SIM_VECTOR_GSM_RAND_SIZE*2 +1 +3] = ""; // +3 for separators.
 			for (rnum = 0; rnum < 3; rnum++) {
-				rc_print_hexstr(ch_rand, randcfg[rnum], EAP_SIM_RAND_SIZE, 4, '_');
+				rc_print_hexstr(ch_rand, randcfg[rnum], SIM_VECTOR_GSM_RAND_SIZE, 4, '_');
 				ERROR("Received   rand %d: %s", rnum, ch_rand);
 
-				rc_print_hexstr(ch_rand, randcfgvp[rnum]->vp_octets, EAP_SIM_RAND_SIZE, 4, '_');
+				rc_print_hexstr(ch_rand, randcfgvp[rnum]->vp_octets, SIM_VECTOR_GSM_RAND_SIZE, 4, '_');
 				ERROR("Configured rand %d: %s", rnum, ch_rand);
 			}
 			return 0;
@@ -1049,12 +1049,12 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("Need to have SRES 1, 2, and 3 set");
 		return 0;
 	}
-	memcpy(eap_context->eap.sim.keys.vector[0].sres, sres1->vp_strvalue,
-	       sizeof(eap_context->eap.sim.keys.vector[0].sres));
-	memcpy(eap_context->eap.sim.keys.vector[1].sres, sres2->vp_strvalue,
-	       sizeof(eap_context->eap.sim.keys.vector[1].sres));
-	memcpy(eap_context->eap.sim.keys.vector[2].sres, sres3->vp_strvalue,
-	       sizeof(eap_context->eap.sim.keys.vector[2].sres));
+	memcpy(eap_context->eap.sim.keys.gsm.vector[0].sres, sres1->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.gsm.vector[0].sres));
+	memcpy(eap_context->eap.sim.keys.gsm.vector[1].sres, sres2->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.gsm.vector[1].sres));
+	memcpy(eap_context->eap.sim.keys.gsm.vector[2].sres, sres3->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.gsm.vector[2].sres));
 
 	kc1 = fr_pair_find_by_num(rep->vps, 0, PW_EAP_SIM_KC, TAG_ANY);
 	kc2 = fr_pair_find_by_num(kc1, 0, PW_EAP_SIM_KC, TAG_ANY);
@@ -1066,15 +1066,15 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("Need to have kc 1, 2, and 3 set");
 		return 0;
 	}
-	memcpy(eap_context->eap.sim.keys.vector[0].kc, kc1->vp_strvalue,
-	       sizeof(eap_context->eap.sim.keys.vector[0].kc));
-	memcpy(eap_context->eap.sim.keys.vector[1].kc, kc2->vp_strvalue,
-	       sizeof(eap_context->eap.sim.keys.vector[1].kc));
-	memcpy(eap_context->eap.sim.keys.vector[2].kc, kc3->vp_strvalue,
-	       sizeof(eap_context->eap.sim.keys.vector[2].kc));
+	memcpy(eap_context->eap.sim.keys.gsm.vector[0].kc, kc1->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.gsm.vector[0].kc));
+	memcpy(eap_context->eap.sim.keys.gsm.vector[1].kc, kc2->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.gsm.vector[1].kc));
+	memcpy(eap_context->eap.sim.keys.gsm.vector[2].kc, kc3->vp_strvalue,
+	       sizeof(eap_context->eap.sim.keys.gsm.vector[2].kc));
 
 	/* all set, calculate keys */
-	fr_sim_crypto_keys_derive(&eap_context->eap.sim.keys);
+	fr_sim_crypto_kdf_0_gsm(&eap_context->eap.sim.keys);
 
 /*
 	if (rad_debug_lvl) {
@@ -1084,12 +1084,12 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 
 	/* verify the MAC, now that we have all the keys. */
 	int rcode_mac = fr_sim_crypto_mac_verify(NULL, dict_sim_root, req->vps, eap_context->eap.sim.keys.k_aut,
-	                                	 eap_context->eap.sim.keys.nonce_mt,
-	                                	 sizeof(eap_context->eap.sim.keys.nonce_mt),
+	                                	 eap_context->eap.sim.keys.gsm.nonce_mt,
+	                                	 sizeof(eap_context->eap.sim.keys.gsm.nonce_mt),
 	                			 calcmac);
 
-	char ch_calc_mac[EAP_SIM_CALC_MAC_SIZE*2 +1 +4] = ""; // +4 for separators.
-	rc_print_hexstr(ch_calc_mac, calcmac, EAP_SIM_CALC_MAC_SIZE, 4, '_');
+	char ch_calc_mac[SIM_CALC_MAC_SIZE	*2 +1 +4] = ""; // +4 for separators.
+	rc_print_hexstr(ch_calc_mac, calcmac, SIM_CALC_MAC_SIZE	, 4, '_');
 
 	if (rcode_mac) {
 		DEBUG2("MAC check succeeded (%s)", ch_calc_mac);
@@ -1115,10 +1115,10 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		 */
 		newvp = fr_pair_afrom_num(rep, 0, PW_EAP_SIM_MAC);
 
-		p = talloc_zero_array(newvp, uint8_t, EAP_SIM_SRES_SIZE*3);
-		memcpy(p+EAP_SIM_SRES_SIZE * 0, sres1->vp_strvalue, EAP_SIM_SRES_SIZE);
-		memcpy(p+EAP_SIM_SRES_SIZE * 1, sres2->vp_strvalue, EAP_SIM_SRES_SIZE);
-		memcpy(p+EAP_SIM_SRES_SIZE * 2, sres3->vp_strvalue, EAP_SIM_SRES_SIZE);
+		p = talloc_zero_array(newvp, uint8_t, SIM_VECTOR_GSM_SRES_SIZE*3);
+		memcpy(p + SIM_VECTOR_GSM_SRES_SIZE * 0, sres1->vp_strvalue, SIM_VECTOR_GSM_SRES_SIZE);
+		memcpy(p + SIM_VECTOR_GSM_SRES_SIZE * 1, sres2->vp_strvalue, SIM_VECTOR_GSM_SRES_SIZE);
+		memcpy(p + SIM_VECTOR_GSM_SRES_SIZE * 2, sres3->vp_strvalue, SIM_VECTOR_GSM_SRES_SIZE);
 		fr_pair_value_memsteal(newvp, p);
 
 		fr_pair_replace(&(rep->vps), newvp);
@@ -1142,7 +1142,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	eap_sim_client_states_t state, newstate;
 	eap_sim_subtype_t subtype;
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
-	char statenamebuf[32], subtypenamebuf[32];
+	char statenamebuf[32], sub_type_buff[20];
 	int rcode_eap;
 
 	if ((radstate = fr_pair_list_copy_by_num(NULL, req->vps, 0, PW_STATE, TAG_ANY)) == NULL)
@@ -1194,8 +1194,8 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		case EAP_SIM_REAUTH:
 		default:
 			ERROR("sim in state '%s' (%d), message '%s' (%d) is illegal. Reply dropped.",
-				fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state,
-				fr_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype), subtype);
+			      fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state), state,
+			      fr_pair_value_enum(vp, sub_type_buff), vp->vp_short);
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1214,8 +1214,8 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 		default:
 			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state),
-				fr_sim_subtype_to_name(subtypenamebuf, sizeof(subtypenamebuf), subtype));
+			      fr_sim_session_to_name(statenamebuf, sizeof(statenamebuf), state),
+			      fr_pair_value_enum(vp, sub_type_buff));
 			/* invalid state, drop message */
 			return 0;
 		}

@@ -35,7 +35,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-static fr_dict_attr_t const *dict_sim_root;
+#ifndef EAP_TLS_MPPE_KEY_LEN
+#  define EAP_TLS_MPPE_KEY_LEN     32
+#endif
+
+fr_dict_attr_t const *dict_sim_root;
 
 /*
  *	build a reply to be sent.
@@ -88,8 +92,8 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	fr_pair_replace(vps, newvp);
 
 	/* record it in the ess */
-	eap_sim_session->keys.version_list_len = 2;
-	memcpy(eap_sim_session->keys.version_list, words + 1, eap_sim_session->keys.version_list_len);
+	eap_sim_session->keys.gsm.version_list_len = 2;
+	memcpy(eap_sim_session->keys.gsm.version_list, words + 1, eap_sim_session->keys.gsm.version_list_len);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
 	MEM(newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_FULLAUTH_ID_REQ));
@@ -122,10 +126,10 @@ static int eap_sim_send_state(eap_session_t *eap_session)
  * For now, they only come from attributes.
  * It might be that the best way to do 2/3 will be with a different
  * module to generate/calculate things.
- *
  */
 static int eap_sim_send_challenge(eap_session_t *eap_session)
 {
+	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
 	VALUE_PAIR		**from_client, **to_client, *vp;
 	RADIUS_PACKET		*packet;
@@ -136,13 +140,13 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	rad_assert(eap_session->request->reply);
 
 	/*
-	 *	Invps is the data from the client but this is for non-protocol data here.
+	 *	from_client is the data from the client but this is for non-protocol data here.
 	 *	We should already have consumed any client originated data.
 	 */
 	from_client = &eap_session->request->packet->vps;
 
 	/*
-	 *	Outvps is the data to the client
+	 *	to_client is the data to the client
 	 */
 	packet = eap_session->request->reply;
 	to_client = &packet->vps;
@@ -151,14 +155,14 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_RAND));
-	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (EAP_SIM_RAND_SIZE * 3)));
+	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (SIM_VECTOR_GSM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
-	memcpy(p, eap_sim_session->keys.vector[0].rand, EAP_SIM_RAND_SIZE);
-	p += EAP_SIM_RAND_SIZE;
-	memcpy(p, eap_sim_session->keys.vector[1].rand, EAP_SIM_RAND_SIZE);
-	p += EAP_SIM_RAND_SIZE;
-	memcpy(p, eap_sim_session->keys.vector[2].rand, EAP_SIM_RAND_SIZE);
+	memcpy(p, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	p += SIM_VECTOR_GSM_RAND_SIZE;
+	memcpy(p, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	p += SIM_VECTOR_GSM_RAND_SIZE;
+	memcpy(p, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE);
 	fr_pair_value_memsteal(vp, rand);
 	fr_pair_add(to_client, vp);
 
@@ -194,11 +198,9 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	All set, calculate keys!
 	 */
-	fr_sim_crypto_keys_derive(&eap_sim_session->keys);
+	fr_sim_crypto_kdf_0_gsm(&eap_sim_session->keys);
 
-#ifdef EAP_SIM_DEBUG_PRF
-	fr_sim_crypto_keys_log(&eap_sim_session->keys);
-#endif
+	if (RDEBUG_ENABLED3) fr_sim_crypto_keys_log(request, &eap_sim_session->keys);
 
 	/*
 	 *	Need to include an AT_MAC attribute so that it will get
@@ -207,7 +209,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	will pull it out before it does the operation.
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_MAC);
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.nonce_mt, 16);
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.nonce_mt, 16);
 	fr_pair_replace(to_client, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_KEY);
@@ -221,10 +223,6 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 
 	return 1;
 }
-
-#ifndef EAPTLS_MPPE_KEY_LEN
-#define EAPTLS_MPPE_KEY_LEN     32
-#endif
 
 /** Send a success message
  *
@@ -248,9 +246,9 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
 	p = eap_sim_session->keys.msk;
-	eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
-	p += EAPTLS_MPPE_KEY_LEN;
-	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", p, EAP_TLS_MPPE_KEY_LEN);
+	p += EAP_TLS_MPPE_KEY_LEN;
+	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
 
 	return 1;
 }
@@ -307,7 +305,7 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
 	time_t			n;
-	eap_sim_vector_src_t	src = EAP_SIM_VECTOR_SRC_AUTO;
+	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
 
 	MEM(eap_sim_session = talloc_zero(eap_session, eap_sim_session_t));
 
@@ -317,9 +315,9 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	 *	Save the keying material, because it could change on a subsequent retrieval.
 	 */
 	RDEBUG2("New EAP-SIM session.  Acquiring SIM vectors");
-	if ((eap_sim_vector_from_attrs(eap_session, request->control, 0, eap_sim_session, &src) != 0) ||
-	    (eap_sim_vector_from_attrs(eap_session, request->control, 1, eap_sim_session, &src) < 0) ||
-	    (eap_sim_vector_from_attrs(eap_session, request->control, 2, eap_sim_session, &src) < 0)) {
+	if ((fr_sim_vector_gsm_from_attrs(eap_session, request->control, 0, &eap_sim_session->keys, &src) != 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 1, &eap_sim_session->keys, &src) < 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 2, &eap_sim_session->keys, &src) < 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		return 0;
 	}
@@ -371,7 +369,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 *	Record it for later keying
 	 */
 	eap_sim_version = htons(eap_sim_version);
-	memcpy(eap_sim_session->keys.version_select, &eap_sim_version, sizeof(eap_sim_session->keys.version_select));
+	memcpy(eap_sim_session->keys.gsm.version_select, &eap_sim_version, sizeof(eap_sim_session->keys.gsm.version_select));
 
 	/*
 	 *	Double check the nonce size.
@@ -380,7 +378,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu", nonce_vp->vp_length);
 		return 0;
 	}
-	memcpy(eap_sim_session->keys.nonce_mt, nonce_vp->vp_octets + 2, 16);
+	memcpy(eap_sim_session->keys.gsm.nonce_mt, nonce_vp->vp_octets + 2, 16);
 
 	/*
 	 *	Everything looks good, change states
@@ -400,37 +398,37 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	REQUEST *request = eap_session->request;
 	eap_sim_session_t *eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
-	uint8_t srescat[EAP_SIM_SRES_SIZE * 3];
-	uint8_t *p = srescat;
+	uint8_t sres_cat[SIM_VECTOR_GSM_SRES_SIZE * 3];
+	uint8_t *p = sres_cat;
 
-	uint8_t calcmac[EAP_SIM_CALC_MAC_SIZE];
+	uint8_t calc_mac[SIM_CALC_MAC_SIZE];
 
-	memcpy(p, eap_sim_session->keys.vector[0].sres, EAP_SIM_SRES_SIZE);
-	p += EAP_SIM_SRES_SIZE;
-	memcpy(p, eap_sim_session->keys.vector[1].sres, EAP_SIM_SRES_SIZE);
-	p += EAP_SIM_SRES_SIZE;
-	memcpy(p, eap_sim_session->keys.vector[2].sres, EAP_SIM_SRES_SIZE);
+	memcpy(p, eap_sim_session->keys.gsm.vector[0].sres, SIM_VECTOR_GSM_SRES_SIZE);
+	p += SIM_VECTOR_GSM_SRES_SIZE;
+	memcpy(p, eap_sim_session->keys.gsm.vector[1].sres, SIM_VECTOR_GSM_SRES_SIZE);
+	p += SIM_VECTOR_GSM_SRES_SIZE;
+	memcpy(p, eap_sim_session->keys.gsm.vector[2].sres, SIM_VECTOR_GSM_SRES_SIZE);
 
 	/*
 	 *	Verify the MAC, now that we have all the keys
 	 */
 	if (fr_sim_crypto_mac_verify(eap_session, dict_sim_root, vps,
 				     eap_sim_session->keys.k_aut,
-				     srescat, sizeof(srescat), calcmac)) {
+				     sres_cat, sizeof(sres_cat), calc_mac)) {
 		RDEBUG2("MAC check succeed");
 	} else {
 		int i, j;
 		char macline[20*3];
 		char *m = macline;
 
-		for (i = 0, j = 0; i < EAP_SIM_CALC_MAC_SIZE; i++) {
+		for (i = 0, j = 0; i < SIM_CALC_MAC_SIZE; i++) {
 			if (j == 4) {
 				*m++ = '_';
 				j=0;
 			}
 			j++;
 
-			sprintf(m, "%02x", calcmac[i]);
+			sprintf(m, "%02x", calc_mac[i]);
 			m = m + strlen(m);
 		}
 		REDEBUG("Calculated MAC (%s) did not match", macline);
@@ -590,6 +588,7 @@ static int mod_load(void)
 		ERROR("Missing EAP-SIM-Root attribute");
 		return -1;
 	}
+	if (fr_sim_global_init() < 0) return -1;
 	return 0;
 }
 

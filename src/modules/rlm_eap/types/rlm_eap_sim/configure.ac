@@ -5,7 +5,7 @@
 #
 
 AC_PREREQ([2.53])
-AC_INIT(rlm_eap_sim.c)
+AC_INIT(rlm_eap_aka.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_sim])
 

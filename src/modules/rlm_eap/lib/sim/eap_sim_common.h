@@ -26,13 +26,9 @@
  *
  * @copyright 2016 The FreeRADIUS server project
  */
-#define EAP_SIM_VERSION 0x0001
+#include <freeradius-devel/eap.sim.h>
 
-#define EAP_SIM_SRES_SIZE		4	//!< Length of SRES in GSM triplet.
-#define EAP_SIM_RAND_SIZE		16	//!< Length of RAND in GSM triplet.
-#define EAP_SIM_KC_SIZE			8	//!< Length of Kc in GSM triplet.
-
-#define EAP_SIM_CALC_MAC_SIZE		20	//!< Length of MAC used to prevent packet modification.
+#define EAP_SIM_VERSION			1
 #define EAP_SIM_NONCE_MT_SIZE		16	//!< Length of challenge from SIM client.
 #define EAP_SIM_AUTH_SIZE		16
 
