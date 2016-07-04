@@ -567,9 +567,6 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 int	thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);
 int	thread_pool_init(void);
 void	thread_pool_stop(void);
-int	total_active_threads(void);
-void	thread_pool_lock(void);
-void	thread_pool_unlock(void);
 
 /*
  *	In threads.c
