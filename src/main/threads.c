@@ -152,6 +152,8 @@ typedef struct THREAD_POOL {
 	pthread_mutex_t	thread_mutex;
 	THREAD_HANDLE	*thread_head;
 	THREAD_HANDLE	*thread_tail;
+
+	pthread_key_t	thread_handle_key;
 #endif	/* WITH_GCD */
 } THREAD_POOL;
 
@@ -301,6 +303,7 @@ void request_enqueue(REQUEST *request)
 
 	pthread_mutex_lock(&thread->backlog_mutex);
 	fr_heap_insert(thread->backlog, request);
+	request->backlog = thread->backlog;
 	pthread_mutex_unlock(&thread->backlog_mutex);
 
 	/*
@@ -311,9 +314,31 @@ void request_enqueue(REQUEST *request)
 }
 
 
-void request_queue_extract(UNUSED REQUEST *request)
+void request_queue_extract(REQUEST *request)
 {
-	/* @fixme: DO NOTHING */
+	THREAD_HANDLE *thread;
+
+	if (!request->backlog) return;
+
+	thread = pthread_getspecific(thread_pool.thread_handle_key);
+	if (!thread) return;
+
+	/*
+	 *	If it's in the public backlog, lock the mutex and
+	 *	remove it.
+	 */
+	pthread_mutex_lock(&thread->backlog_mutex);
+	if (request->backlog == thread->backlog) {
+		(void) fr_heap_extract(request->backlog, request);
+		pthread_mutex_unlock(&thread->backlog_mutex);
+		return;
+	}
+	pthread_mutex_unlock(&thread->backlog_mutex);
+
+	/*
+	 *	It's in the local backlog, just remove it.
+	 */
+	(void) fr_heap_extract(request->backlog, request);
 }
 
 /*
@@ -364,6 +389,11 @@ static void *thread_handler(void *arg)
 
 	if (fr_event_fd_insert(el, 0, thread->pipe_fd[0], thread_fd_handler, thread) < 0) {
 		ERROR("Failed inserting event for self");
+		goto done;
+	}
+
+	if (pthread_setspecific(thread_pool.thread_handle_key, thread) != 0) {
+		ERROR("Failed setting key for self");
 		goto done;
 	}
 
@@ -772,6 +802,11 @@ int thread_pool_init(void)
 	if (rcode != 0) {
 		ERROR("FATAL: Failed to initialize thread pool handle mutex: %s",
 		       fr_syserror(errno));
+		return -1;
+	}
+
+	if (pthread_key_create(&thread_pool.thread_handle_key, NULL) != 0) {
+		ERROR("Failed creating key for thread");
 		return -1;
 	}
 
