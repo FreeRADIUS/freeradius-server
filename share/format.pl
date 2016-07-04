@@ -211,6 +211,29 @@ while (@ARGV) {
 	}
 
 	#
+	#  Get flags.
+	#
+	if (/^FLAGS\s+([!-\w]+)\s+(.*)/) {
+	    $name=$1;
+	    $len = length $name;
+	    if ($len < 40) {
+		$lenx = 40 - $len;
+		$lenx += 7;		# round up
+		$lenx /= 8;
+		$lenx = int $lenx;
+		$tabs = "\t" x $lenx;
+		if ($tabs eq "") {
+		    $tabs = " ";
+		}
+	    } else {
+		$tabs = " ";
+	    }
+
+	    push @output, "FLAGS\t$name$stuff\n";
+	    next;
+	}
+
+	#
 	#  Remember if we did this.
 	#
 	if (/^END-VENDOR/) {

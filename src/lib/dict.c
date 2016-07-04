@@ -1546,7 +1546,8 @@ static int dict_read_sscanf_i(char const *str, unsigned int *pvalue)
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			     	       unsigned int block_vendor, char **argv, int argc)
+			     	       unsigned int block_vendor, char **argv, int argc,
+				       fr_dict_attr_flags_t *base_flags)
 {
 	bool			oid = false;
 
@@ -1571,7 +1572,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		return -1;
 	}
 
-	memset(&flags, 0, sizeof(flags));
+	memcpy(&flags, base_flags, sizeof(flags));
 
 	/*
 	 *	Look for OIDs before doing anything else.
@@ -1769,6 +1770,34 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 }
 
 
+/*
+ *	Process the FLAGS command
+ */
+static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc,
+				   fr_dict_attr_flags_t *base_flags)
+{
+	bool sense = true;
+
+	if (argc == 1) {
+		char *p;
+
+		p = argv[0];
+		if (*p == '!') {
+			sense = false;
+			p++;
+		}
+
+		if (strcmp(p, "internal") == 0) {
+			base_flags->internal = sense;
+			return 0;
+		}
+	}
+
+	fr_strerror_printf("Invalid FLAGS syntax");
+	return -1;
+}
+
+
 static int dict_read_parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
 				  bool *pcontinuation)
 {
@@ -1931,7 +1960,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	char			*argv[MAX_ARGV];
 	int			argc;
 	fr_dict_attr_t const	*da;
-
+	fr_dict_attr_flags_t	base_flags;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("%s: Filename name too long", __FUNCTION__);
@@ -2037,6 +2066,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	 */
 	fr_rand_seed(&statbuf, sizeof(statbuf));
 
+	memset(&base_flags, 0, sizeof(base_flags));
+
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		line++;
 
@@ -2080,7 +2111,15 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (dict_read_process_attribute(ctx->dict, ctx->parent, ctx->block_vendor,
-							argv + 1, argc - 1) == -1) goto error;
+							argv + 1, argc - 1, &base_flags) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Process VALUE lines.
+		 */
+		if (strcasecmp(argv[0], "FLAGS") == 0) {
+			if (dict_read_process_flags(ctx->dict, argv + 1, argc - 1, &base_flags) == -1) goto error;
 			continue;
 		}
 
@@ -2546,6 +2585,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 {
 	int	argc;
 	char	*argv[MAX_ARGV];
+	fr_dict_attr_flags_t base_flags;
 
 	INTERNAL_IF_NULL(dict);
 
@@ -2559,7 +2599,9 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 	if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 		if (!parent) parent = fr_dict_root(dict);
 
-		return dict_read_process_attribute(dict, parent, vendor, argv + 1, argc - 1);
+		memset(&base_flags, 0, sizeof(base_flags));
+
+		return dict_read_process_attribute(dict, parent, vendor, argv + 1, argc - 1, &base_flags);
 	}
 
 	if (strcasecmp(argv[0], "VENDOR") == 0) {

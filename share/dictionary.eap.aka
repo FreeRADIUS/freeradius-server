@@ -51,7 +51,8 @@ ATTRIBUTE	EAP-AKA-Result-Ind			137	bool
 #
 #  Internal attributes used by FreeRADIUS
 #
-ATTRIBUTE	EAP-AKA-Subtype				256	integer internal
+FLAGS		internal
+ATTRIBUTE	EAP-AKA-Subtype				256	integer
 
 VALUE	EAP-AKA-Subtype			AKA-Challenge			1
 VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject	2
@@ -61,11 +62,11 @@ VALUE	EAP-AKA-Subtype			AKA-Notification		12
 VALUE	EAP-AKA-Subtype			AKA-Reauthentication		13
 VALUE	EAP-AKA-Subtype			AKA-Client-Error		14
 
-ATTRIBUTE	EAP-AKA-HMAC				257	string internal
-ATTRIBUTE	EAP-AKA-Key				258	octets internal
-ATTRIBUTE	EAP-AKA-Extra				259	octets internal
+ATTRIBUTE	EAP-AKA-HMAC				257	string
+ATTRIBUTE	EAP-AKA-Key				258	octets
+ATTRIBUTE	EAP-AKA-Extra				259	octets
 
-ATTRIBUTE	EAP-AKA-XRES				260	octets internal
-ATTRIBUTE	EAP-AKA-CK				261	octets internal
-ATTRIBUTE	EAP-AKA-IK				262	octets internal
-ATTRIBUTE	EAP-AKA-AUTHN				263	octets internal
+ATTRIBUTE	EAP-AKA-XRES				260	octets
+ATTRIBUTE	EAP-AKA-CK				261	octets
+ATTRIBUTE	EAP-AKA-IK				262	octets
+ATTRIBUTE	EAP-AKA-AUTHN				263	octets
