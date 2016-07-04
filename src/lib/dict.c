@@ -1455,7 +1455,13 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 	/*
 	 *	Mark the attribute up as having an enumv
 	 */
-	da->flags.has_value = 1;
+	{
+		fr_dict_attr_t *mutable;
+
+		memcpy(&mutable, &da, sizeof(mutable));
+
+		mutable->flags.has_value = 1;
+	}
 
 	return 0;
 }
