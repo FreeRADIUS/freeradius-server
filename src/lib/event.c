@@ -631,15 +631,6 @@ int fr_event_service(fr_event_list_t *el)
 {
 	int i;
 
-	if (fr_heap_num_elements(el->times) > 0) {
-		struct timeval when;
-
-		do {
-			gettimeofday(&el->now, NULL);
-			when = el->now;
-		} while (fr_event_run(el, &when) == 1);
-	}
-
 #ifndef HAVE_KQUEUE
 	/*
 	 *	Loop over all of the sockets to see if there's
@@ -685,6 +676,15 @@ int fr_event_service(fr_event_list_t *el)
 		ef->handler(el, ef->fd, ef->ctx);
 	}
 #endif	/* HAVE_KQUEUE */
+
+	if (fr_heap_num_elements(el->times) > 0) {
+		struct timeval when;
+
+		do {
+			gettimeofday(&el->now, NULL);
+			when = el->now;
+		} while (fr_event_run(el, &when) == 1);
+	}
 
 	return 0;
 }
