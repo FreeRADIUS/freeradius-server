@@ -2285,7 +2285,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 	}
 
 	if (!enumv) {
-		fr_pair_value_snprint(buff, sizeof(buff), vp, '\0');
+		fr_pair_value_snprint(buff, 20, vp, '\0');
 		str = buff;
 	} else {
 		str = enumv->name;
