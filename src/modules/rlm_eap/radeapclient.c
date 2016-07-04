@@ -2595,6 +2595,9 @@ static int rc_unmap_eap_sim_types(RADIUS_PACKET *r)
 	uint8_t			*eap_data;
 	int			rcode_unmap;
 	vp_cursor_t		cursor;
+	fr_sim_decode_ctx_t	ctx;
+
+	memset(&ctx, 0, sizeof(ctx));
 
 	esvp = fr_pair_find_by_num(r->vps, 0, PW_EAP_TYPE_BASE + PW_EAP_SIM, TAG_ANY);
 	if (!esvp) {
@@ -2606,7 +2609,7 @@ static int rc_unmap_eap_sim_types(RADIUS_PACKET *r)
 	talloc_set_type(eap_data, uint8_t);
 
 	fr_cursor_init(&cursor, &r->vps);
-	rcode_unmap = fr_sim_decode(NULL, dict_sim_root, &cursor, eap_data, esvp->vp_length);
+	rcode_unmap = fr_sim_decode(NULL, &cursor, dict_sim_root, eap_data, esvp->vp_length, &ctx);
 
 	talloc_free(eap_data);
 	return rcode_unmap;

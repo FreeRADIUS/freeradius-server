@@ -173,21 +173,10 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Use the SIM identity, if available
 	 */
 	vp = fr_pair_find_by_child_num(*from_client, dict_sim_root, PW_EAP_SIM_IDENTITY, TAG_ANY);
-	if (vp && vp->vp_length > 2) {
-		uint16_t len;
-
-		memcpy(&len, vp->vp_octets, sizeof(uint16_t));
-		len = ntohs(len);
-		if (len <= vp->vp_length - 2 && len <= FR_MAX_STRING_LEN) {
-			if (eap_sim_session->keys.identity) talloc_free(eap_sim_session->keys.identity);
-
-			eap_sim_session->keys.identity_len = len;
-
-			MEM(eap_sim_session->keys.identity = talloc_array(eap_sim_session, uint8_t,
-								  	  eap_sim_session->keys.identity_len));
-			memcpy(eap_sim_session->keys.identity, vp->vp_octets + 2,
-			       eap_sim_session->keys.identity_len);
-		}
+	if (vp) {
+		MEM(eap_sim_session->keys.identity = (uint8_t *)talloc_bstrndup(eap_sim_session,
+										vp->vp_strvalue, vp->vp_length));
+		eap_sim_session->keys.identity_len = vp->vp_length;
 	/*
 	 *	Make a copy of the identity
 	 */
@@ -200,7 +189,6 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 								  eap_sim_session->keys.identity_len));
 		memcpy(eap_sim_session->keys.identity, eap_session->identity,
 		       eap_sim_session->keys.identity_len);
-
 	}
 
 	/*
@@ -373,15 +361,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 		return 1;
 	}
 
-	/*
-	 *	Okay, good got stuff that we need. Check the version we found.
-	 */
-	if (selected_version_vp->vp_length < 2) {
-		REDEBUG("EAP-SIM version field is too short");
-		return 0;
-	}
-	memcpy(&eap_sim_version, selected_version_vp->vp_strvalue, sizeof(eap_sim_version));
-	eap_sim_version = ntohs(eap_sim_version);
+	eap_sim_version = selected_version_vp->vp_short;
 	if (eap_sim_version != EAP_SIM_VERSION) {
 		REDEBUG("EAP-SIM version %i is unknown", eap_sim_version);
 		return 0;
@@ -390,8 +370,8 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	/*
 	 *	Record it for later keying
 	 */
-	memcpy(eap_sim_session->keys.version_select, selected_version_vp->vp_strvalue,
-	       sizeof(eap_sim_session->keys.version_select));
+	eap_sim_version = htons(eap_sim_version);
+	memcpy(eap_sim_session->keys.version_select, &eap_sim_version, sizeof(eap_sim_session->keys.version_select));
 
 	/*
 	 *	Double check the nonce size.
@@ -400,7 +380,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu", nonce_vp->vp_length);
 		return 0;
 	}
-	memcpy(eap_sim_session->keys.nonce_mt, nonce_vp->vp_strvalue + 2, 16);
+	memcpy(eap_sim_session->keys.nonce_mt, nonce_vp->vp_octets + 2, 16);
 
 	/*
 	 *	Everything looks good, change states
@@ -469,15 +449,18 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
  */
 static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
-	REQUEST *request = eap_session->request;
-	eap_sim_session_t *eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+	REQUEST			*request = eap_session->request;
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
-	VALUE_PAIR *vp, *vps;
-	vp_cursor_t	cursor;
+	fr_sim_decode_ctx_t	ctx;
+	VALUE_PAIR		*vp, *vps;
+	vp_cursor_t		cursor;
 
-	eap_sim_subtype_t subtype;
+	eap_sim_subtype_t	subtype;
 
-	int ret;
+	int			ret;
+
+	memset(&ctx, 0, sizeof(ctx));
 
 	/*
 	 *	VPS is the data from the client
@@ -486,10 +469,12 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	fr_cursor_init(&cursor, &request->packet->vps);
 
-	ret = fr_sim_decode(eap_session->request, dict_sim_root,
-			    &cursor,
+	ctx.keys = &(eap_sim_session->keys);
+	ret = fr_sim_decode(eap_session->request,
+			    &cursor, dict_sim_root,
 			    eap_session->this_round->response->type.data,
-			    eap_session->this_round->response->type.length);
+			    eap_session->this_round->response->type.length,
+			    &ctx);
 	if (ret < 0) return 0;
 
 	vp = fr_cursor_next(&cursor);
