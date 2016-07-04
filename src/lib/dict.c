@@ -956,8 +956,8 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 		}
 
-		if (flags.encrypt > FLAG_ENCRYPT_ASCEND_SECRET) {
-			fr_strerror_printf("The 'encrypt' flag can only be 0..3");
+		if (flags.encrypt > FLAG_ENCRYPT_OTHER) {
+			fr_strerror_printf("The 'encrypt' flag can only be 0..4");
 			goto error;
 		}
 
@@ -967,7 +967,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	We forbid User-Password and Ascend-Send-Secret
 		 *	methods in the extended space.
 		 */
-		if (flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+		if ((flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags.internal && !parent->flags.internal) {
 			for (v = parent; v != NULL; v = v->parent) {
 				switch (v->type) {
 				case PW_TYPE_EXTENDED:
@@ -986,6 +986,10 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 
 		switch (type) {
+		case PW_TYPE_TLV:
+			if (flags.internal || parent->flags.internal) break;
+			/* FALL-THROUGH */
+
 		default:
 		encrypt_fail:
 			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
@@ -1659,10 +1663,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 				flags.has_tag = 1;
 
 			/*
-			 *	Encryption method, defaults to 0 (none).
-			 *	Currently valid is just type 2,
-			 *	Tunnel-Password style, which can only
-			 *	be applied to strings.
+			 *	Encryption method.
 			 */
 			} else if (strncmp(key, "encrypt=", 8) == 0) {
 				flags.encrypt = strtol(key + 8, &last, 0);
@@ -1671,12 +1672,12 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 					return -1;
 				}
 
-			/*
-			 *	Marks the attribute up as internal.
-			 *	This means it can use numbers outside of the allowed
-			 *	protocol range, and also means it will not be included
-			 *	in replies or proxy requests.
-			 */
+				/*
+				 *	Marks the attribute up as internal.
+				 *	This means it can use numbers outside of the allowed
+				 *	protocol range, and also means it will not be included
+				 *	in replies or proxy requests.
+				 */
 			} else if (strncmp(key, "internal", 9) == 0) {
 				flags.internal = 1;
 

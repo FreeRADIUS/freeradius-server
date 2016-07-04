@@ -44,7 +44,7 @@ VALUE	EAP-SIM-Client-Error-Code		RANDS-Not-Fresh			3
 #  Skippable-Attributes
 #
 ATTRIBUTE	EAP-SIM-IV				129	octets
-ATTRIBUTE	EAP-SIM-Encr-Data			130	tlv encrypt=2
+ATTRIBUTE	EAP-SIM-Encr-Data			130	tlv encrypt=4
 ATTRIBUTE	EAP-SIM-Next-Pseudonym			132	string
 ATTRIBUTE	EAP-SIM-Next-Reauth-ID			133	string
 ATTRIBUTE	EAP-SIM-Checkcode			134	octets

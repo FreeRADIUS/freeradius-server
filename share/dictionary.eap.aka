@@ -42,7 +42,7 @@ VALUE	EAP-AKA-Client-Error-Code		RANDS-Not-Fresh			3
 #  Skippable-Attributes
 #
 ATTRIBUTE	EAP-AKA-IV				129	octets
-ATTRIBUTE	EAP-AKA-Encr-Data			130	tlv encrypt=2
+ATTRIBUTE	EAP-AKA-Encr-Data			130	tlv encrypt=4
 ATTRIBUTE	EAP-AKA-Next-Pseudonym			132	string
 ATTRIBUTE	EAP-AKA-Next-Reauth-ID			133	string
 ATTRIBUTE	EAP-AKA-Checkcode			134	octets

@@ -58,7 +58,8 @@ typedef struct attr_flags {
 		FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
 		FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
 		FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
-		FLAG_ENCRYPT_ASCEND_SECRET			//!< Encrypt attribute ascend style.
+		FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
+		FLAG_ENCRYPT_OTHER,				//!< Non-RADIUS encryption
 	} encrypt;
 
 	uint8_t			length;				//!< length of the attribute
