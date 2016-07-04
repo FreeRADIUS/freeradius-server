@@ -46,6 +46,15 @@ bool rad_assert_fail(char const *file, unsigned int line, char const *expr);
 #  define rad_assert assert
 #endif
 
+/** For systems with an old version libc, define static_assert.
+ *
+ */
+#ifndef static_assert
+#  define static_assert _Static_assert
+# else
+#  include <assert.h>
+#endif
+
 /** Use for conditions that should result in an assert in dev builds, and return in non-dev builds
  *
  */
