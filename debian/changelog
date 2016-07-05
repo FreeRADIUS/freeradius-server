@@ -1,5 +1,5 @@
-freeradius (3.1.0+git) UNRELEASED; urgency=low
+freeradius (4.0.0+git) UNRELEASED; urgency=low
 
-  * Development releases for FreeRADIUS master.
+  * Development releases for FreeRADIUS v4.0.x.
 
- -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Sun, 17 Nov 2013 11:30:15 +0000
+ -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Tue, 05 Jul 2016 12:00:00 +0000
