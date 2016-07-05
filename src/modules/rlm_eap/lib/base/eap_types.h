@@ -142,7 +142,7 @@ typedef struct eap_packet {
 
 /** Structure to represent packet format of eap *on wire*
  */
-typedef struct eap_packet_raw {
+typedef struct CC_HINT(__packed__) eap_packet_raw {
 	uint8_t		code;
 	uint8_t		id;
 	uint8_t		length[2];
