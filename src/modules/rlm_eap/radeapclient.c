@@ -2579,7 +2579,7 @@ static int rc_map_eap_sim_types(RADIUS_PACKET *r)
 
 	eap_packet_t *pt_ep = talloc_zero(r, eap_packet_t);
 
-	ret = fr_sim_encode(NULL, dict_sim_root, r->vps, pt_ep);
+	ret = fr_sim_encode(NULL, dict_sim_root, PW_EAP_SIM, r->vps, pt_ep, NULL, 0);
 	if (ret != 1) {
 		return ret;
 	}

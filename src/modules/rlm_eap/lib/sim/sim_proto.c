@@ -735,51 +735,39 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 	return 0;
 }
 
-int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
-		  VALUE_PAIR *to_encode, eap_packet_t *ep)
+int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
+		  VALUE_PAIR *to_encode, eap_packet_t *eap_packet,
+		  uint8_t const *hmac_extra, size_t hmac_extra_len)
 {
 	VALUE_PAIR		*vp;
-	int			encoded_size;
-	uint8_t			*encoded_msg, *attr;
+
 	unsigned int		id, eap_code;
-	uint8_t			*mac_space;
-	uint8_t const		*append;
-	int			append_len;
+
+	uint8_t			*buff, *eap_hdr, *sim_hdr, *mac_value_p, *p;
+	size_t			buff_len = 0, sim_len = 0;
+
+	bool			do_hmac;
+
 	unsigned char		subtype;
 	vp_cursor_t		cursor;
-
-	fr_dict_attr_t const	*da;
-
-	mac_space = NULL;
-	append = NULL;
-	append_len = 0;
-
-	da = fr_dict_attr_child_by_num(parent, PW_SIM_SUBTYPE);
-	if (!da) {
-		REDEBUG("Missing definition for subtype attribute");
-		return -1;
-	}
 
 	/*
 	 *	Encoded_msg is now an EAP-SIM message.
 	 *	It might be too big for putting into an
 	 *	EAP packet.
 	 */
-	vp = fr_pair_find_by_da(to_encode, da, TAG_ANY);
-	subtype = vp ? vp->vp_integer : EAP_SIM_START;
+	vp = fr_pair_find_by_child_num(to_encode, parent, PW_SIM_SUBTYPE, TAG_ANY);
+	if (!vp) {
+		REDEBUG("Missing subtype attribute");
+		return -1;
+	}
+	subtype = vp->vp_short;
 
 	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_ID, TAG_ANY);
 	id = vp ? vp->vp_integer : ((int)getpid() & 0xff);
 
 	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_CODE, TAG_ANY);
 	eap_code = vp ? vp->vp_integer : PW_EAP_REQUEST;
-
-	/*
-	 *	take a walk through the attribute list to
-	 *	see how much space that we need to encode
-	 *	all of this.
-	 */
-	encoded_size = 0;
 
 	(void)fr_cursor_init(&cursor, &to_encode);
 	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
@@ -797,6 +785,7 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 		 */
 		if (vp->da->attr == PW_SIM_MAC) {
 			vp_len = 18;
+			do_hmac = true;
 		/*
 		 *	String attributes have a 16bit "Actual Length" field at the start.
 		 */
@@ -813,85 +802,121 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 		 *	Round up to next multiple of 4, after taking in
 		 *	account the type and length bytes.
 		 */
-		rounded_len = (vp_len + 2 + 3) & ~3;
-		encoded_size += rounded_len;
+		rounded_len = ((vp_len + 2) + 3) & ~3;
+		buff_len += rounded_len;
 	}
 
-	if (ep->code != PW_EAP_SUCCESS) ep->code = eap_code;
-
-	ep->id = (id & 0xff);
-	ep->type.num = PW_EAP_SIM;
+	/*
+	 *	Fill in some bits in the EAP packet
+	 *
+	 *	These are needed even if we're sending an almost empty packet.
+	 */
+	if (eap_packet->code != PW_EAP_SUCCESS) eap_packet->code = eap_code;
+	eap_packet->id = (id & 0xff);
+	eap_packet->type.num = type;
 
 	/*
 	 *	If no attributes were found, do very little.
 	 */
-	if (encoded_size == 0) {
-		MEM(encoded_msg = talloc_array(ep, uint8_t, 3));
+	if (buff_len == 0) {
+		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
-		encoded_msg[0] = subtype;
-		encoded_msg[1] = 0;
-		encoded_msg[2] = 0;
+		buff[0] = subtype;	/* SIM or AKA subtype */
+		buff[1] = 0;		/* Reserved */
+		buff[2] = 0;		/* Reserved */
 
-		ep->type.length = 3;
-		ep->type.data = encoded_msg;
+		eap_packet->type.length = 3;
+		eap_packet->type.data = buff;
 
 		return 0;
 	}
 
 	/*
-	 *	Figured out the length, so allocate some space for the results.
-	 *
-	 *	Note that we do not bother going through an "EAP" stage, which
-	 * 	is a bit strange compared to the unmap, which expects to see
-	 *	an EAP-SIM virtual attributes.
-	 *
-	 *	EAP is 1-code, 1-identifier, 2-length, 1-type = 5 overhead.
 	 *
 	 *	SIM code adds a subtype, and 2 bytes of reserved = 3.
-	 *
 	 */
-	encoded_size += 3;
-	encoded_msg = talloc_array(ep, uint8_t, encoded_size);
-	if (!encoded_msg) return 0;
-
-	memset(encoded_msg, 0, encoded_size);
+	buff_len += 3;	/* subtype + 2 bytes reserved */
+	sim_len = buff_len;
 
 	/*
-	 *	Now walk the attributes again, encoding.
+	 *	EAP is 1-code, 1-identifier, 2-length, 1-type = 5 overhead.
 	 *
-	 *	we go three bytes into the encoded message, because there are two
-	 *	bytes of reserved, and we will fill the "subtype" in later.
+	 *	If we're calculating a MAC, we need to add the extra fields
+	 *	of the EAP packet to the start of the SIM/AKA message.
 	 *
+	 *	The HMAC is run over the entire thing, and we don't have
+	 *	access to the final EAP-Packet, so we have to fake it.
 	 */
-	attr = encoded_msg + 3;
+	if (do_hmac) buff_len += (EAP_HEADER_LEN + 1);	/* EAP_HEADER_LEN (4) + type (1) */
 
+	/*
+	 *	Finally we add some space for the HMAC concatenation data.
+	 */
+	buff_len += hmac_extra_len;
+
+	/*
+	 *	...and allocate a possibly overlarge buffer
+	 *	which we'll fix in just a little while.
+	 */
+	p = buff = talloc_zero_array(eap_packet, uint8_t, buff_len);
+	if (!buff) return 0;
+
+	/*
+	 *	Fill in the bits in the fake EAP header
+	 */
+	if (do_hmac) {
+		uint16_t eap_len;
+
+		eap_hdr = p;
+		*p++ = eap_packet->code;
+		*p++ = eap_packet->id;
+
+		eap_len = htons(buff_len);
+		memcpy(p, &eap_len, sizeof(eap_len));
+		p += 2;
+
+		*p++ = eap_packet->type.num;
+
+		FR_PROTO_HEX_DUMP("eap_header", eap_hdr, EAP_HEADER_LEN + 1);
+	}
+
+	/*
+	 *	Record where the SIM header starts
+	 */
+	sim_hdr = p;
+	sim_hdr[0] = subtype;
+	FR_PROTO_TRACE("Setting subtype %i", subtype);
+
+	/*
+	 *	Now jump over that header Subtype (1) + Reserved (2)
+	 */
+	p = p + 3;
+
+	/*
+	 *	Encode all the things...
+	 */
 	(void)fr_cursor_first(&cursor);
 	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
-		int rounded_len;
-		size_t vp_len;
+		int	rounded_len;
+		size_t	vp_len;
 
 		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
 
 		/*
-		 *	The AT_MAC attribute is a bit different, when we get to this
-		 *	attribute, we pull the contents out, save it for later
-		 *	processing, set the size to 16 bytes (plus 2 bytes padding).
+		 *	The AT_MAC attribute is a bit different.
 		 *
-		 *	At this point, we put in zeros, and remember where the
-		 *	sixteen bytes go.
+		 *	We allocate space in the packet for it, zero that
+		 *	space, and then record a pointer to where the HMAC
+		 *	should start.
 		 */
 		if (vp->da->attr == PW_EAP_SIM_MAC) {
 			rounded_len = 20;
 
-			attr[0] = vp->da->attr;
-			attr[1] = rounded_len >> 2;
+			p[0] = vp->da->attr;
+			p[1] = rounded_len >> 2;
 
-			memset(&attr[2], 0, 18);
-			mac_space = &attr[4];
-			append = vp->vp_octets;
-			append_len = vp->vp_length;
-			attr += rounded_len;
-
+			mac_value_p = &p[4];
+			p += rounded_len;
 			continue;
 		}
 
@@ -907,22 +932,25 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 			vp_len = vp->vp_length;
 		}
 
+		/*
+		 *	Round attr + len + data length out to a multiple
+		 *	of four, and setup the attribute header and
+		 *	length field in the buffer.
+		 */
 		rounded_len = (vp_len + 2 + 3) & ~3;
-		memset(attr, 0, rounded_len);
-
-		attr[0] = vp->da->attr;
-		attr[1] = rounded_len >> 2;
+		p[0] = vp->da->attr;
+		p[1] = rounded_len >> 2;
 
 		switch (vp->da->type) {
 		case PW_TYPE_OCTETS:
-			memcpy(&attr[2], vp->vp_octets, vp->vp_length);
+			memcpy(&p[2], vp->vp_octets, vp->vp_length);
 			break;
 
 		/*
 		 *	In order to represent the string length properly we include a second
 		 *	16bit length field with the real string length.
 		 *
-		 *	The end of the string is padded out to a multiple of 4.
+		 *	The end of the string is padded buff to a multiple of 4.
 		 *
 		 *	0                   1                   2                   3
 		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -939,8 +967,8 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 		{
 			uint16_t actual_len = htons((vp->vp_length & UINT16_MAX));
 
-			memcpy(&attr[2], &actual_len, sizeof(uint16_t));
-			memcpy(&attr[4], vp->vp_strvalue, actual_len);
+			memcpy(&p[2], &actual_len, sizeof(uint16_t));
+			memcpy(&p[4], vp->vp_strvalue, actual_len);
 		}
 			break;
 
@@ -968,7 +996,7 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 			value_data_t data;
 
 			value_data_hton(&data, vp->da->type, &vp->data, vp->vp_length);
-			memcpy(&attr[2], &data, vp->vp_length);
+			memcpy(&p[2], &data, vp->vp_length);
 		}
 
 		/*
@@ -977,75 +1005,63 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
 		 *	to limit to the types of the IANA registered attributes.
 		 */
 		default:
-			memcpy(&attr[2], &vp->data, vp->vp_length);
+			memcpy(&p[2], &vp->data, vp->vp_length);
 			break;
 		}
 
-		attr += rounded_len;
+		p += rounded_len;
 	}
 
-	encoded_msg[0] = subtype;
-	ep->type.length = encoded_size;
-	ep->type.data = encoded_msg;
+	FR_PROTO_HEX_DUMP("sim_packet", sim_hdr, sim_len);
 
 	/*
-	 *	If mac_space was set and we have a key,
-	 * 	then we should calculate the HMAC-SHA1 of the resulting EAP-SIM
-	 * 	packet, appended with the value of append.
+	 *	Add the HMAC concatenation data onto the end of the packet.
 	 */
-	da = fr_dict_attr_child_by_num(parent, PW_SIM_KEY);
-	if (!da) {
-		REDEBUG("Missing definition for key attribute");
-		return -1;
-	}
+	if (hmac_extra) memcpy(p, hmac_extra, hmac_extra_len);
 
-	vp = fr_pair_find_by_da(to_encode, da, TAG_ANY);
-	if ((mac_space != NULL) && (vp != NULL)) {
-		unsigned char		*buffer;
-		eap_packet_raw_t	*hdr;
-		uint16_t		hmac_len, total_length = 0;
-		unsigned char		sha1digest[20];
+	/*
+	 *	The EAP-SIM/AKA code requested that we add
+	 *	a HMAC to the outgoing packet.
+	 *
+	 *	This is calculated over the entire EAP packet
+	 *	so we need to fake the extra bytes of EAP-Header.
+	 */
+	if (do_hmac) {
+		uint8_t	sha1_digest[20];
 
-		total_length = EAP_HEADER_LEN + 1 + encoded_size;
-		hmac_len = total_length + append_len;
-		buffer = talloc_array(to_encode, uint8_t, hmac_len);
-		hdr = (eap_packet_raw_t *) buffer;
-		if (!hdr) {
-			talloc_free(encoded_msg);
+		/*
+		 *	Get the value we're doing to use to key the HMAC
+		 */
+		vp = fr_pair_find_by_child_num(to_encode, parent, PW_SIM_KEY, TAG_ANY);
+		if (!vp && mac_value_p) {
+			fr_strerror_printf("Told to include MAC attribute, but no key found");
+			talloc_free(buff);
 			return 0;
 		}
+		/*
+		 *	HMAC it the complete packet
+		 */
+		FR_PROTO_HEX_DUMP("hmac_input", buff, buff_len);
+		fr_hmac_sha1(sha1_digest, buff, buff_len, vp->vp_octets, vp->vp_length);
+		FR_PROTO_HEX_DUMP("hmac_output", sha1_digest, 16);
 
-		hdr->code = eap_code & 0xff;
-		hdr->id = (id & 0xff);
-		total_length = htons(total_length);
-		memcpy(hdr->length, &total_length, sizeof(total_length));
+		/*
+		 *	now copy the digest to where it belongs in the AT_MAC
+		 *
+		 *	Note that it is truncated to 128-bits.
+		 */
+		memcpy(mac_value_p, sha1_digest, 16);
 
-		hdr->data[0] = PW_EAP_SIM;
-
-		/* copy the data */
-		memcpy(&hdr->data[1], encoded_msg, encoded_size);
-
-		/* copy the nonce */
-		memcpy(&hdr->data[encoded_size+1], append, append_len);
-
-		/* HMAC it! */
-		fr_hmac_sha1(sha1digest, buffer, hmac_len, vp->vp_octets, vp->vp_length);
-
-		talloc_free(buffer);
-
-		/* now copy the digest to where it belongs in the AT_MAC */
-		/* note that it is truncated to 128-bits */
-		memcpy(mac_space, sha1digest, 16);
+		/*
+		 *	Shuffle the data back into the right places
+		 */
+		memmove(buff, sim_hdr, sim_len);
+		sim_hdr = talloc_realloc(eap_packet, buff, uint8_t, sim_len);
 	}
+	FR_PROTO_HEX_DUMP("sim_packet", sim_hdr, sim_len);
 
-	/* if we had an AT_MAC and no key, then fail */
-	if ((mac_space != NULL) && !vp) {
-		if (encoded_msg != NULL) {
-			talloc_free(encoded_msg);
-		}
-
-		return 0;
-	}
+	eap_packet->type.length = sim_len;
+	eap_packet->type.data = sim_hdr;
 
 	return 1;
 }

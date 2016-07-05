@@ -175,7 +175,7 @@ void fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 	fr_sim_fips186_2prf(fk, keys->master_key);
 
 	/* split up the result */
-	memcpy(keys->k_encr, fk +  0, 16);    /* 128 bits for encryption    */
+	memcpy(keys->k_encr, fk + 00, 16);    /* 128 bits for encryption    */
 	memcpy(keys->k_aut,  fk + 16, EAP_SIM_AUTH_SIZE); /* 128 bits for auth */
 	memcpy(keys->msk,    fk + 32, 64);  /* 64 bytes for Master Session Key */
 	memcpy(keys->emsk,   fk + 96, 64);  /* 64- extended Master Session Key */
@@ -202,11 +202,11 @@ void fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
 	memcpy(p, keys->identity, keys->identity_len);
 	p = p + keys->identity_len;
 
-	memcpy(p, keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE);
-	p = p + SIM_VECTOR_UMTS_IK_SIZE;
+	memcpy(p, keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
+	p = p + sizeof(keys->umts.vector.ik);
 
-	memcpy(p, keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE);
-	p = p + SIM_VECTOR_UMTS_CK_SIZE;
+	memcpy(p, keys->umts.vector.ck, sizeof(keys->umts.vector.ck));
+	p = p + sizeof(keys->umts.vector.ck);
 
 	blen = p - buf;
 
@@ -219,13 +219,13 @@ void fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
    	 * now use the PRF to expand it, generated k_aut, k_encr,
 	 * MSK and EMSK.
 	 */
-	fr_sim_fips186_2prf(keys->master_key, fk);
+	fr_sim_fips186_2prf(fk, keys->master_key);
 
 	/* split up the result */
-	memcpy(keys->k_encr, fk +  0, 16);    /* 128 bits for encryption    */
+	memcpy(keys->k_encr, fk + 00, 16);    /* 128 bits for encryption    */
 	memcpy(keys->k_aut,  fk + 16, EAP_SIM_AUTH_SIZE); /*128 bits for auth */
 	memcpy(keys->msk,    fk + 32, 64);  /* 64 bytes for Master Session Key */
-	memcpy(keys->emsk,   fk + 96, 64);  /* 64- extended Master Session Key */
+	memcpy(keys->emsk,   fk + 96, 64);  /* 64 - extended Master Session Key */
 }
 
 #if 0
@@ -252,44 +252,45 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 	RDEBUG3("Key data from AuC/static vectors");
 
 	RINDENT();
+	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len,
+			"identity     :");
 	switch (keys->vector_type) {
 	case SIM_VECTOR_GSM:
 	{
 		unsigned int i;
 
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len, "identity:");
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.nonce_mt, sizeof(keys->gsm.nonce_mt), "nonce_mt:");
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.nonce_mt, sizeof(keys->gsm.nonce_mt),
+				"nonce_mt     :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.version_list, keys->gsm.version_list_len,
+				"version_list :");
 
 		for (i = 0; i < keys->gsm.num_vectors; i++) {
 			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].rand, SIM_VECTOR_GSM_RAND_SIZE,
-					"[%i] RAND :", i);
+					"[%i] RAND    :", i);
 			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].sres, SIM_VECTOR_GSM_SRES_SIZE,
-					"[%i] SRES :", i);
+					"[%i] SRES    :", i);
 			RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.vector[i].kc, SIM_VECTOR_GSM_KC_SIZE,
-					"[%i] KC   :", i);
+					"[%i] KC      :", i);
 		}
-
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->gsm.version_list, keys->gsm.version_list_len, "version_list:");
 	}
 		break;
 
 	case SIM_VECTOR_UMTS:
-		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len, "identity:");
-
 		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE,
-				"AUTN :");
+				"AUTN         :");
 
 		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE,
-				"CK   :");
+				"CK           :");
 
 		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE,
-				"IK   :");
+				"IK           :");
 
 		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE,
-				"RAND :");
+				"RAND         :");
 
 		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.xres, keys->umts.vector.xres_len,
-				"XRES :");
+				"XRES         :");
 		break;
 
 	case SIM_VECTOR_NONE:

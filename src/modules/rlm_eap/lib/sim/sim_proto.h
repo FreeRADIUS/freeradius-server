@@ -166,8 +166,9 @@ int		fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const 
 			      uint8_t const *data, size_t data_len,
 			      fr_sim_decode_ctx_t *ctx);
 
-int		fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent,
-			      VALUE_PAIR *to_encode, eap_packet_t *ep);
+int		fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
+			      VALUE_PAIR *to_encode, eap_packet_t *eap_packet,
+			      uint8_t const *hmac_extra, size_t hmac_extra_len);
 
 char const	*fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
 

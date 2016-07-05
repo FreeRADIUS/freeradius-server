@@ -46,31 +46,31 @@ fr_dict_attr_t const *dict_sim_root;
  */
 static int eap_sim_compose(eap_session_t *eap_session)
 {
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return fr_sim_encode(eap_session->request, dict_sim_root,
-			     eap_session->request->reply->vps, eap_session->this_round->request);
+	return fr_sim_encode(eap_session->request, dict_sim_root, PW_EAP_SIM,
+			     eap_session->request->reply->vps, eap_session->this_round->request,
+			     eap_sim_session->keys.gsm.nonce_mt, sizeof(eap_sim_session->keys.gsm.nonce_mt));
 }
 
 static int eap_sim_send_state(eap_session_t *eap_session)
 {
 	VALUE_PAIR		**vps, *newvp;
 	uint16_t		words[3];
-	eap_sim_session_t	*eap_sim_session;
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	RADIUS_PACKET		*packet;
 	uint8_t			*p;
 
 	rad_assert(eap_session->request != NULL);
 	rad_assert(eap_session->request->reply);
 
-	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
-
 	/* these are the outgoing attributes */
 	packet = eap_session->request->reply;
 	vps = &packet->vps;
 	rad_assert(vps != NULL);
-
 
 	/*
 	 *	Add appropriate TLVs for the EAP things we wish to send.
@@ -129,6 +129,8 @@ static int eap_sim_send_state(eap_session_t *eap_session)
  */
 static int eap_sim_send_challenge(eap_session_t *eap_session)
 {
+	static uint8_t		hmac_zero[16] = { 0x00 };
+
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
 	VALUE_PAIR		**from_client, **to_client, *vp;
@@ -204,19 +206,19 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 
 	/*
 	 *	Need to include an AT_MAC attribute so that it will get
-	 *	calculated. The NONCE_MT and the MAC are both 16 bytes, so
-	 *	We store the NONCE_MT in the MAC for the encoder, which
-	 *	will pull it out before it does the operation.
+	 *	calculated.
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_MAC);
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.nonce_mt, 16);
+	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
 	fr_pair_replace(to_client, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_KEY);
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
-	/* the SUBTYPE, set to challenge. */
+	/*
+	 *	Set subtype to challenge.
+	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
 	vp->vp_integer = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_client, vp);

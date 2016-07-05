@@ -413,7 +413,7 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
 	}
 
 	if (autn->vp_length > SIM_VECTOR_UMTS_AUTN_SIZE) {
-		REDEBUG("&control:PW_EAP_AKA_AUTN incorrect length.  Expected "
+		REDEBUG("&control:EAP-AKA-AUTN incorrect length.  Expected "
 			STRINGIFY(SIM_VECTOR_UMTS_AUTN_SIZE) " bytes, got %zu bytes", autn->vp_length);
 		return -1;
 	}
