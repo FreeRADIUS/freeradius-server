@@ -525,7 +525,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	0                   1                   2                   3
 	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 *	| AT_<PRESENCE> | Length = 1    |           Reserved            |
+	 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
 	 *	+---------------+---------------+-------------------------------+
 	 */
 	case PW_TYPE_BOOLEAN:
@@ -955,7 +955,7 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 		 *	0                   1                   2                   3
 		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *	| AT_<STRING>   | Length        | Actual <STRING> Length        |
+		 *	| AT_<STRING>   | Length        |    Actual <STRING> Length     |
 		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *	|                                                               |
 		 *	.                           String                              .
@@ -977,15 +977,26 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 		 *	by either including or not including the attribute
 		 *	in the packet.
 		 *
-		 *	Where the attribute is included, it still needs
-		 *	to be 4bytes, so the two bytes after type/len
-		 *	get zeroed out.
+		 *	0                   1                   2                   3
+		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
+		 *	+---------------+---------------+-------------------------------+
 		 */
 		case PW_TYPE_BOOLEAN:
 			break;
 
 		/*
-		 *	Convert (possibly) integer types to network order.
+		 *	Numbers are network byte order.
+		 *
+		 *	In the base RFCs only short (16bit) unsigned integers are used.
+		 *	We add support for more, just for completeness.
+		 *
+		 *	0                   1                   2                   3
+		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+		 *	|   AT_<SHORT>  | Length = 1    |    Short 1    |    Short 2    |
+		 *	+---------------+---------------+-------------------------------+
 		 */
 		case PW_TYPE_BYTE:			//!< 8 Bit unsigned integer.
 		case PW_TYPE_SHORT:			//!< 16 Bit unsigned integer.
