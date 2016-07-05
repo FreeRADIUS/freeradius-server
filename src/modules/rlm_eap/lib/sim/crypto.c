@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include "sim_proto.h"
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/eap.sim.h>
+#include <openssl/evp.h>
 
 /*
  * calculate the MAC for the EAP message, given the key.
@@ -121,6 +122,121 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 	talloc_free(buffer);
 	return(ret);
 }
+
+
+/** Append AT_MAC to the end a packet.
+ *
+ * Run SHA1 digest over a fake EAP header, the entire SIM packet and any extra HMAC data,
+ * writing out the complete AT_HMAC and digest to out.
+ *
+ * @note out must point to (buff) end - 20.  It's easier to write AT_MAC last.
+ *
+ * @param[out] out		Where to write the digest.
+ * @param[in] eap_packet	to extract header values from.
+ * @param[in] key		to use to sign the packet.
+ * @param[in] key_len		Length of the key.
+ * @param[in] hmac_extra	data to concatenate with the packet when calculating the HMAC
+ *				(may be NULL).
+ * @param[in] hmac_extra_len	Length of hmac_extra.
+ * @return
+ *	- <= 0 on failure.
+ *	- > 0 the number of bytes written to out.
+ */
+ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
+				  uint8_t const *key, size_t const key_len,
+				  uint8_t const *hmac_extra, size_t const hmac_extra_len)
+{
+	EVP_MD_CTX		*md_ctx = NULL;
+	EVP_MD const		*md = EVP_get_digestbyname("SHA1");
+	EVP_PKEY		*pkey;
+
+	uint8_t			digest[SHA1_DIGEST_LENGTH];
+	size_t			digest_len = 0;
+
+	eap_packet_raw_t	eap_hdr;
+	uint16_t		packet_len;
+
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	if (!pkey) {
+		tls_strerror_printf(true, "Failed creating HMAC signing key");
+	error:
+		if (pkey) EVP_PKEY_free(pkey);
+		if (md_ctx) EVP_MD_CTX_free(md_ctx);
+		return -1;
+	}
+
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx) {
+		tls_strerror_printf(true, "Failed creating HMAC ctx");
+		goto error;
+	}
+
+	if (EVP_DigestSignInit(md_ctx, NULL, md, NULL, pkey) != 1) {
+		tls_strerror_printf(true, "Failed initialising digest");
+		goto error;
+	}
+
+	/*
+	 *	The HMAC has to be over the entire packet, which
+	 *	we don't get access too.  So we create a fake EAP
+	 *	header now, and feed that into the HMAC function.
+	 */
+	eap_hdr.code = eap_packet->code;
+	eap_hdr.id = eap_packet->id;
+	packet_len = htons((sizeof(eap_hdr) + eap_packet->type.length) & UINT16_MAX); /* EAP Header + Method + SIM data */
+	memcpy(&eap_hdr.length, &packet_len, sizeof(packet_len));
+	eap_hdr.data[0] = eap_packet->type.num;
+
+	FR_PROTO_HEX_DUMP("hmac input eap_hdr", (uint8_t *)&eap_hdr, sizeof(eap_hdr));
+	if (EVP_DigestSignUpdate(md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
+		tls_strerror_printf(true, "Failed digesting EAP header");
+		goto error;
+	}
+
+	/*
+	 *	Digest most of the packet, except the bit at
+	 *	the end we're leaving for the HMAC.
+	 */
+	FR_PROTO_HEX_DUMP("hmac input sim_body", eap_packet->type.data, eap_packet->type.length);
+	if (EVP_DigestSignUpdate(md_ctx, eap_packet->type.data, eap_packet->type.length) != 1) {
+		tls_strerror_printf(true, "Failed digesting body");
+		goto error;
+	}
+
+	/*
+	 *	Digest any HMAC concatenated data
+	 *
+	 *	Some subtypes require the HMAC to be calculated over
+	 *	a concatenation of packet data, and something extra...
+	 */
+	if (hmac_extra) {
+		FR_PROTO_HEX_DUMP("hmac input hmac_extra", hmac_extra, hmac_extra_len);
+		if (EVP_DigestSignUpdate(md_ctx, hmac_extra, hmac_extra_len) != 1) {
+			tls_strerror_printf(true, "Failed digesting HMAC extra data");
+			goto error;
+		}
+	}
+
+	if (EVP_DigestSignFinal(md_ctx, digest, &digest_len) != 1) {
+		tls_strerror_printf(true, "Failed finalising digest");
+		goto error;
+	}
+
+	if (!fr_cond_assert(digest_len == sizeof(digest))) goto error;
+
+	FR_PROTO_HEX_DUMP("hmac output", digest, digest_len);
+
+	/*
+	 *	Truncate by four bytes.
+	 */
+	memcpy(out, digest, 16);
+
+	EVP_PKEY_free(pkey);
+	EVP_MD_CTX_free(md_ctx);
+
+	return 16;	/* AT_MAC (1), LEN (1), RESERVED (2) */
+}
+
 
 /** RFC4186 Key Derivation Function
  *

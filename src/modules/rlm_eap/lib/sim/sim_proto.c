@@ -49,7 +49,6 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/tls.h>
-#include <openssl/evp.h>
 
 #include "eap_types.h"
 #include "eap_sim_common.h"
@@ -735,18 +734,18 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 	return 0;
 }
 
-int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
-		  VALUE_PAIR *to_encode, eap_packet_t *eap_packet,
-		  uint8_t const *hmac_extra, size_t hmac_extra_len)
+ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
+		      VALUE_PAIR *to_encode, eap_packet_t *eap_packet,
+		      uint8_t const *hmac_extra, size_t hmac_extra_len)
 {
 	VALUE_PAIR		*vp;
 
 	unsigned int		id, eap_code;
 
-	uint8_t			*buff, *eap_hdr, *sim_hdr, *mac_value_p, *p;
-	size_t			buff_len = 0, sim_len = 0;
+	uint8_t			*buff, *p;
+	size_t			len = 0;
 
-	bool			do_hmac;
+	bool			do_hmac = false;
 
 	unsigned char		subtype;
 	vp_cursor_t		cursor;
@@ -769,9 +768,17 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_CODE, TAG_ANY);
 	eap_code = vp ? vp->vp_integer : PW_EAP_REQUEST;
 
+	/*
+	 *	Fill in some bits in the EAP packet
+	 *
+	 *	These are needed even if we're sending an almost empty packet.
+	 */
+	if (eap_packet->code != PW_EAP_SUCCESS) eap_packet->code = eap_code;
+	eap_packet->id = (id & 0xff);
+	eap_packet->type.num = type;
+
 	(void)fr_cursor_init(&cursor, &to_encode);
 	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
-		int rounded_len;
 		int vp_len;
 
 		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
@@ -802,23 +809,13 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 		 *	Round up to next multiple of 4, after taking in
 		 *	account the type and length bytes.
 		 */
-		rounded_len = ((vp_len + 2) + 3) & ~3;
-		buff_len += rounded_len;
+		len += ((vp_len + 2) + 3) & ~3;
 	}
 
 	/*
-	 *	Fill in some bits in the EAP packet
-	 *
-	 *	These are needed even if we're sending an almost empty packet.
+	 *	Fast path...
 	 */
-	if (eap_packet->code != PW_EAP_SUCCESS) eap_packet->code = eap_code;
-	eap_packet->id = (id & 0xff);
-	eap_packet->type.num = type;
-
-	/*
-	 *	If no attributes were found, do very little.
-	 */
-	if (buff_len == 0) {
+	if (len == 0) {
 		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
 		buff[0] = subtype;	/* SIM or AKA subtype */
@@ -831,66 +828,12 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 		return 0;
 	}
 
-	/*
-	 *
-	 *	SIM code adds a subtype, and 2 bytes of reserved = 3.
-	 */
-	buff_len += 3;	/* subtype + 2 bytes reserved */
-	sim_len = buff_len;
+	len += 3;		/* Subtype + Reserved */
 
-	/*
-	 *	EAP is 1-code, 1-identifier, 2-length, 1-type = 5 overhead.
-	 *
-	 *	If we're calculating a MAC, we need to add the extra fields
-	 *	of the EAP packet to the start of the SIM/AKA message.
-	 *
-	 *	The HMAC is run over the entire thing, and we don't have
-	 *	access to the final EAP-Packet, so we have to fake it.
-	 */
-	if (do_hmac) buff_len += (EAP_HEADER_LEN + 1);	/* EAP_HEADER_LEN (4) + type (1) */
+	MEM(p = buff = talloc_zero_array(eap_packet, uint8_t, len));
 
-	/*
-	 *	Finally we add some space for the HMAC concatenation data.
-	 */
-	buff_len += hmac_extra_len;
-
-	/*
-	 *	...and allocate a possibly overlarge buffer
-	 *	which we'll fix in just a little while.
-	 */
-	p = buff = talloc_zero_array(eap_packet, uint8_t, buff_len);
-	if (!buff) return 0;
-
-	/*
-	 *	Fill in the bits in the fake EAP header
-	 */
-	if (do_hmac) {
-		uint16_t eap_len;
-
-		eap_hdr = p;
-		*p++ = eap_packet->code;
-		*p++ = eap_packet->id;
-
-		eap_len = htons(buff_len);
-		memcpy(p, &eap_len, sizeof(eap_len));
-		p += 2;
-
-		*p++ = eap_packet->type.num;
-
-		FR_PROTO_HEX_DUMP("eap_header", eap_hdr, EAP_HEADER_LEN + 1);
-	}
-
-	/*
-	 *	Record where the SIM header starts
-	 */
-	sim_hdr = p;
-	sim_hdr[0] = subtype;
-	FR_PROTO_TRACE("Setting subtype %i", subtype);
-
-	/*
-	 *	Now jump over that header Subtype (1) + Reserved (2)
-	 */
-	p = p + 3;
+	*p++ = subtype;		/* Subtype  (1) */
+	p += 2;			/* Reserved (2) */
 
 	/*
 	 *	Encode all the things...
@@ -903,22 +846,9 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
 
 		/*
-		 *	The AT_MAC attribute is a bit different.
-		 *
-		 *	We allocate space in the packet for it, zero that
-		 *	space, and then record a pointer to where the HMAC
-		 *	should start.
+		 *	We'll append the HMAC last.
 		 */
-		if (vp->da->attr == PW_EAP_SIM_MAC) {
-			rounded_len = 20;
-
-			p[0] = vp->da->attr;
-			p[1] = rounded_len >> 2;
-
-			mac_value_p = &p[4];
-			p += rounded_len;
-			continue;
-		}
+		if (vp->da->attr == PW_EAP_SIM_MAC) continue;
 
 		/*
 		 *	For strings we have an 'actual' value field.
@@ -1023,58 +953,40 @@ int fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
 		p += rounded_len;
 	}
 
-	FR_PROTO_HEX_DUMP("sim_packet", sim_hdr, sim_len);
+	eap_packet->type.data = buff;
+	eap_packet->type.length = len;
 
 	/*
-	 *	Add the HMAC concatenation data onto the end of the packet.
-	 */
-	if (hmac_extra) memcpy(p, hmac_extra, hmac_extra_len);
-
-	/*
-	 *	The EAP-SIM/AKA code requested that we add
-	 *	a HMAC to the outgoing packet.
-	 *
-	 *	This is calculated over the entire EAP packet
-	 *	so we need to fake the extra bytes of EAP-Header.
+	 *	Calculate a SHA1-HMAC over the complete EAP packet
 	 */
 	if (do_hmac) {
-		uint8_t	sha1_digest[20];
+		ssize_t slen;
 
-		/*
-		 *	Get the value we're doing to use to key the HMAC
-		 */
 		vp = fr_pair_find_by_child_num(to_encode, parent, PW_SIM_KEY, TAG_ANY);
-		if (!vp && mac_value_p) {
-			fr_strerror_printf("Told to include MAC attribute, but no key found");
+		if (!vp) {
+			fr_strerror_printf("Need to sign packet, but no HMAC key set");
+		error:
 			talloc_free(buff);
-			return 0;
+			return -1;
 		}
-		/*
-		 *	HMAC it the complete packet
-		 */
-		FR_PROTO_HEX_DUMP("hmac_input", buff, buff_len);
-		fr_hmac_sha1(sha1_digest, buff, buff_len, vp->vp_octets, vp->vp_length);
-		FR_PROTO_HEX_DUMP("hmac_output", sha1_digest, 16);
 
 		/*
-		 *	now copy the digest to where it belongs in the AT_MAC
-		 *
-		 *	Note that it is truncated to 128-bits.
+		 *	We left some room earlier...
 		 */
-		memcpy(mac_value_p, sha1_digest, 16);
+		*p++ = PW_SIM_MAC;
+		*p++ = (SIM_CALC_MAC_SIZE >> 2);
+		*p++ = 0x00;
+		*p++ = 0x00;
 
-		/*
-		 *	Shuffle the data back into the right places
-		 */
-		memmove(buff, sim_hdr, sim_len);
-		sim_hdr = talloc_realloc(eap_packet, buff, uint8_t, sim_len);
+		slen = fr_sim_crypto_sign_packet(p, eap_packet,
+				       		 vp->vp_octets, vp->vp_length,
+				       		 hmac_extra, hmac_extra_len);
+		if (slen < 0) goto error;
 	}
-	FR_PROTO_HEX_DUMP("sim_packet", sim_hdr, sim_len);
+	FR_PROTO_HEX_DUMP("sim packet", buff, len);
 
-	eap_packet->type.length = sim_len;
-	eap_packet->type.data = sim_hdr;
 
-	return 1;
+	return len;
 }
 
 int fr_sim_global_init(void)
