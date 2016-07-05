@@ -1830,7 +1830,17 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	if ((src_type != dst_type) || needs_dup) {
 		ret = value_data_cast(ctx, &from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
-		talloc_free(vd.ptr);
+
+		switch (str_type) {
+		case PW_TYPE_OCTETS:
+		case PW_TYPE_STRING:
+			talloc_free(vd.ptr);
+			break;
+
+		default:
+			break;
+		}
+
 		if (ret < 0) return -1;
 	} else {
 		memcpy(&from_cast, to_cast, sizeof(from_cast));
