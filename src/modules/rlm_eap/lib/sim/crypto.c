@@ -161,7 +161,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
 		tls_strerror_printf(true, "Failed creating HMAC signing key");
 	error:
 		if (pkey) EVP_PKEY_free(pkey);
-		if (md_ctx) EVP_MD_CTX_free(md_ctx);
+		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
 		return -1;
 	}
 
@@ -232,7 +232,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
 	memcpy(out, digest, 16);
 
 	EVP_PKEY_free(pkey);
-	EVP_MD_CTX_free(md_ctx);
+	EVP_MD_CTX_destroy(md_ctx);
 
 	return 16;	/* AT_MAC (1), LEN (1), RESERVED (2) */
 }
