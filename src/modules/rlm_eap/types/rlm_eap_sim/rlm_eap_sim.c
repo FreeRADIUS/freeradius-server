@@ -318,8 +318,8 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	 */
 	RDEBUG2("New EAP-SIM session.  Acquiring SIM vectors");
 	if ((fr_sim_vector_gsm_from_attrs(eap_session, request->control, 0, &eap_sim_session->keys, &src) != 0) ||
-	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 1, &eap_sim_session->keys, &src) < 0) ||
-	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 2, &eap_sim_session->keys, &src) < 0)) {
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 1, &eap_sim_session->keys, &src) != 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 2, &eap_sim_session->keys, &src) != 0)) {
 	    	REDEBUG("Failed retrieving SIM vectors");
 		return 0;
 	}
