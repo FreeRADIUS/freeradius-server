@@ -1051,19 +1051,14 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		}
 	}
 
-	if (!a_p && !b_p) {
-		return 0;
-	}
-
-	if (!a_p) {
-		return -1;
-	}
+	if (!a_p && !b_p) return 0;
+	if (!a_p) return -1;
 
 	/* if(!b_p) */
 	return 1;
 }
 
-static void fr_pair_list_sort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
+static void _pair_list_sort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
 {
 	VALUE_PAIR *fast;
 	VALUE_PAIR *slow;
@@ -1098,7 +1093,7 @@ static void fr_pair_list_sort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALU
 	slow->next = NULL;
 }
 
-static VALUE_PAIR *fr_pair_list_sort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
+static VALUE_PAIR *_pair_list_sort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
 {
 	VALUE_PAIR *result = NULL;
 
@@ -1110,10 +1105,10 @@ static VALUE_PAIR *fr_pair_list_sort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_
 	 */
 	if (cmp(a, b) <= 0) {
 		result = a;
-		result->next = fr_pair_list_sort_merge(a->next, b, cmp);
+		result->next = _pair_list_sort_merge(a->next, b, cmp);
 	} else {
 		result = b;
-		result->next = fr_pair_list_sort_merge(a, b->next, cmp);
+		result->next = _pair_list_sort_merge(a, b->next, cmp);
 	}
 
 	return result;
@@ -1138,18 +1133,16 @@ void fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp)
 	/*
 	 *	If there's 0-1 elements it must already be sorted.
 	 */
-	if (!head || !head->next) {
-		return;
-	}
+	if (!head || !head->next) return;
 
-	fr_pair_list_sort_split(head, &a, &b);	/* Split into sublists */
+	_pair_list_sort_split(head, &a, &b);	/* Split into sublists */
 	fr_pair_list_sort(&a, cmp);		/* Traverse left */
 	fr_pair_list_sort(&b, cmp);		/* Traverse right */
 
 	/*
 	 *	merge the two sorted lists together
 	 */
-	*vps = fr_pair_list_sort_merge(a, b, cmp);
+	*vps = _pair_list_sort_merge(a, b, cmp);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
@@ -1188,7 +1181,6 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 				   list->da->name, list->tag, filter->tag);
 		return;
 	}
-
 
 	value = fr_pair_asprint(ctx, list, '"');
 	str = fr_pair_asprint(ctx, filter, '"');
@@ -1521,7 +1513,8 @@ VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  * @param[in] tag to match, #TAG_ANY matches any tag, #TAG_NONE matches tagless VPs.
  * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int vendor, unsigned int attr,
+VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
+				     unsigned int vendor, unsigned int attr,
 				     int8_t tag)
 {
 	vp_cursor_t src, dst;
