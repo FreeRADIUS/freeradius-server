@@ -116,6 +116,7 @@ static inline int sim_iv_extract(uint8_t out[SIM_IV_SIZE], uint8_t const *in, si
  * @param[out] out		where to write pointer to plaintext buffer.
  * @param[in] data		to decrypt.
  * @param[in] attr_len		length of encrypted data.
+ * @param[in] data_len		length of data remaining in the packet.
  * @param[in] decoder_ctx	containing keys, and the IV (if we already found it).
  * @return
  *	- Number of plaintext bytes decrypted on success.
@@ -358,7 +359,8 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * @param[in] cursor		to addd new attributes to.
  * @param[in] parent		the current attribute we're processing.
  * @param[in] data		to parse. Points to the data field of the attribute.
- * @param[in] data_len		length of the data being parsed.
+ * @param[in] attr_len		length of the attribute being parsed.
+ * @param[in] data_len		length of the remaining data in the packet.
  * @param[in] decoder_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
