@@ -236,8 +236,6 @@ static void reap_children(void)
 #ifndef WITH_GCD
 static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREAD_HANDLE *this)
 {
-	rad_assert(this->status == THREAD_NONE);
-
 	rad_assert(*head_p != this);
 	rad_assert(*tail_p != this);
 
