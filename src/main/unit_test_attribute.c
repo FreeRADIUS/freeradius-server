@@ -1,5 +1,5 @@
 /*
- * radattr.c	RADIUS Attribute debugging tool.
+ * unit_test_attribute.c	RADIUS Attribute debugging tool.
  *
  * Version:	$Id$
  *
@@ -576,14 +576,14 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 
 static void process_file(fr_dict_t *dict, const char *root_dir, char const *filename)
 {
-	int lineno;
-	size_t i, outlen;
-	ssize_t len, data_len;
-	FILE *fp;
-	char input[8192], buffer[8192];
-	char output[8192];
-	char directory[8192];
-	uint8_t *attr, data[2048];
+	int		lineno;
+	size_t		i, outlen;
+	ssize_t		len, data_len;
+	FILE		*fp;
+	char		input[8192], buffer[8192];
+	char		output[8192];
+	char		directory[8192];
+	uint8_t		*attr, data[2048];
 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
@@ -687,6 +687,9 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 								.original = &my_original,
 								.secret = my_secret };
 
+			/*
+			 *	Encode the previous output
+			 */
 			if (strcmp(p + 7, "-") == 0) {
 				p = output;
 			} else {
@@ -947,7 +950,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 static void NEVER_RETURNS usage(void)
 {
-	fprintf(stderr, "usage: radattr [OPTS] filename\n");
+	fprintf(stderr, "usage: unit_test_attribute [OPTS] filename\n");
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
@@ -970,7 +973,7 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -1003,17 +1006,17 @@ int main(int argc, char *argv[])
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		return 1;
 	}
 
 	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		return 1;
 	}
 
 	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		return 1;
 	}
 

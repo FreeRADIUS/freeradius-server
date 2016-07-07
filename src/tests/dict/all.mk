@@ -13,12 +13,12 @@ FILES := $(wildcard $(DIR)/*.dict)
 #  The parser expects to read "foo/dictionary", so we make a
 #  "foo_dir" directory, and copy "foo" into "foo_dir/dictionary"
 #
-$(BUILD_DIR)/tests/dict/%: $(DIR)/% $(BUILD_DIR)/bin/radattr $(TESTBINDIR)/radattr | $(BUILD_DIR)/tests/dict
+$(BUILD_DIR)/tests/dict/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/dict
 	@echo UNIT-TEST $(notdir $@)
 	@mkdir -p $@_dir
 	@cp $< $@_dir/dictionary
-	@if ! $(TESTBIN)/radattr -D $@_dir $(dir $<)/empty.txt; then \
-		echo "$(TESTBIN)/radattr -D $@_dir $(dir $<)/empty.txt"; \
+	@if ! $(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt; then \
+		echo "$(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt"; \
 		exit 1; \
 	fi
 	@touch $@

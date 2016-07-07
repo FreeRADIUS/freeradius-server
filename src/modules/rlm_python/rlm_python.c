@@ -598,7 +598,7 @@ static void _python_thread_tree_free(void *arg)
 	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
 	rbtree_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
 
-	local_thread_state = NULL;	/* Prevent double free in unittest env */
+	local_thread_state = NULL;	/* Prevent double free in unit_test_module env */
 }
 
 /** Compare instance pointers
@@ -1064,7 +1064,7 @@ static int mod_detach(void *instance)
 	/*
 	 *	Force cleaning up of threads if this is *NOT* a worker
 	 *	thread, which happens if this is being called from
-	 *	unittest framework, and probably with the server running
+	 *	unit_test_module framework, and probably with the server running
 	 *	in debug mode.
 	 */
 	rbtree_free(local_thread_state);

@@ -62,7 +62,7 @@ $(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/auth
 #
 .PRECIOUS: $(BUILD_DIR)/tests/auth/%.attrs raddb/mods-enabled/wimax
 
-AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/unittest.conf  | sed 's,.*/,,')
+AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/unit_test_module.conf  | sed 's,.*/,,')
 AUTH_RADDB	:= $(addprefix raddb/mods-enabled/,$(AUTH_MODULES))
 AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 
@@ -82,13 +82,13 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unittest | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
+$(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
 	@echo UNIT-TEST $(notdir $@)
-	@if ! TESTDIR=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	@if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1"; \
+			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1"; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
@@ -96,7 +96,7 @@ $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1"; \
+			echo "TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1"; \
 			exit 1; \
 		fi \
 	fi

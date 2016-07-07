@@ -32,11 +32,11 @@ $(BUILD_DIR)/tests/xlat:
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/xlat/%: $(DIR)/% $(TESTBINDIR)/unittest | $(BUILD_DIR)/tests/xlat build.raddb
+$(BUILD_DIR)/tests/xlat/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/xlat build.raddb
 	@echo XLAT-TEST $(notdir $@)
-	@if ! $(TESTBIN)/unittest -D share -d src/tests/xlat/ -i $< -xx -O xlat_only > $@.log 2>&1; then \
+	@if ! $(TESTBIN)/unit_test_module -D share -d src/tests/xlat/ -i $< -xx -O xlat_only > $@.log 2>&1; then \
 		cat $@.log; \
-		echo "./$(TESTBIN)/unittest -D share -d src/tests/xlat/ -i $< -xx -O xlat_only"; \
+		echo "./$(TESTBIN)/unit_test_module -D share -d src/tests/xlat/ -i $< -xx -O xlat_only"; \
 		exit 1; \
 	fi
 	@touch $@

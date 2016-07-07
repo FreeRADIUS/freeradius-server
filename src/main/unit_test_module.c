@@ -1,5 +1,5 @@
 /*
- * unittest.c	Unit test wrapper for the RADIUS daemon.
+ * unit_test_module.c	Unit test wrapper for the RADIUS daemon.
  *
  * Version:	$Id$
  *
@@ -153,7 +153,7 @@ static REQUEST *request_from_file(FILE *fp)
 	 *	Read packet from fp
 	 */
 	if (fr_pair_list_afrom_file(request->packet, &request->packet->vps, fp, &filedone) < 0) {
-		fr_perror("unittest");
+		fr_perror("unit_test_module");
 		talloc_free(request);
 		return NULL;
 	}
@@ -668,7 +668,7 @@ int main(int argc, char *argv[])
 	 */
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("unittest");
+		fr_perror("unit_test_module");
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&main_config, 0, sizeof(main_config));
-	main_config.name = "unittest";
+	main_config.name = "unit_test_module";
 
 	/*
 	 *	The tests should have only IPs, not host names.

@@ -1,10 +1,20 @@
-TARGET	:= unittest
-SOURCES := acct.c auth.c client.c crypt.c files.c \
-		  mainconfig.c modules.c modcall.c \
-		  interpreter.c \
-		  unittest.c soh.c state.c \
-		  session.c version.c  \
-		  realms.c
+TARGET	:= unit_test_module
+SOURCES := \
+	acct.c \
+	auth.c \
+	client.c \
+	crypt.c \
+	files.c \
+	mainconfig.c \
+	modules.c \
+	modcall.c \
+	interpreter.c \
+	unit_test_module.c \
+	soh.c \
+	state.c \
+	session.c \
+	version.c  \
+	realms.c
 
 ifneq ($(OPENSSL_LIBS),)
 include ${top_srcdir}/src/main/tls.mk

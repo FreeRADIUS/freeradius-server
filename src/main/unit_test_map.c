@@ -1,5 +1,5 @@
 /*
- * radattr.c	Map debugging tool.
+ * unit_test_attribute.c	Map debugging tool.
  *
  * Version:	$Id$
  *
@@ -60,7 +60,7 @@ main_config_t		main_config;				//!< Main server configuration.
 
 static void NEVER_RETURNS usage(void)
 {
-	fprintf(stderr, "usage: map_unit [OPTS] filename ...\n");
+	fprintf(stderr, "usage: unit_test_map [OPTS] filename ...\n");
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -O <output_dir>	  Set output directory\n");
@@ -82,7 +82,7 @@ static int process_file(char const *filename)
 
 	main_config.config = cf_section_alloc(NULL, "main", NULL);
 	if (cf_file_read(main_config.config, filename) < 0) {
-		fprintf(stderr, "map_unit: Failed parsing %s\n",
+		fprintf(stderr, "unit_test_map: Failed parsing %s\n",
 			filename);
 		exit(1);
 	}
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		exit(EXIT_FAILURE);
 	}
 #endif
@@ -172,17 +172,17 @@ int main(int argc, char *argv[])
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		exit(1);
 	}
 
 	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		exit(1);
 	}
 
 	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_perror("radattr");
+		fr_perror("unit_test_attribute");
 		exit(1);
 	}
 
