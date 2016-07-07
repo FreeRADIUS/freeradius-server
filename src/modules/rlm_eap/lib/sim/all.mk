@@ -1,4 +1,6 @@
+ifneq "$(OPENSSL_LIBS)" ""
 TARGET := libfreeradius-eap-sim.a
+endif
 
 SOURCES	:= \
 	comp128.c \

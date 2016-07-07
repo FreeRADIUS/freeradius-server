@@ -1,13 +1,13 @@
-TARGETNAME	:= @targetname@
+TARGETNAME	:= rlm_eap_sim
 
-ifneq "$(TARGETNAME)" ""
+ifneq "$(OPENSSL_LIBS)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+SRC_CFLAGS	:=
+TGT_LDLIBS	:=
 SRC_INCDIRS	:= ${top_srcdir}/src/modules/rlm_eap/ ${top_srcdir}/src/modules/rlm_eap/lib/base/ ${top_srcdir}/src/modules/rlm_eap/lib/sim/
 
 TGT_PREREQS	:= libfreeradius-eap.a libfreeradius-eap-sim.a
