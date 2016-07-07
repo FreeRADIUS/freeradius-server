@@ -399,7 +399,6 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		case EAP_AKA_CHALLENGE:
 			return process_eap_aka_challenge(eap_session, vps);
 		}
-		break;
 
 	default:
 		REDEBUG("Illegal-unknown state reached");
