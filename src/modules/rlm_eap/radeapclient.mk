@@ -1,5 +1,8 @@
-TARGET   := radeapclient
-SOURCES := radeapclient.c
+TARGETNAME := radeapclient
+
+ifneq "$(OPENSSL_LIBS)" ""
+TARGET		:= $(TARGETNAME).a
+endif
 
 SOURCES += ${top_srcdir}/src/main/files.c \
 	   ${top_srcdir}/src/main/version.c
