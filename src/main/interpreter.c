@@ -196,16 +196,9 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 			char const *p = NULL;
 			char buffer[1024];
 
-			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
-			if (slen < 0) {
-				RDEBUG("Failed expanding template");
-				goto randomly_choose;
-			}
-
-			hash = fr_hash(p, slen);
-
 			/*
-			 *	Choose a child based on the hash;
+			 *	Count the children.  This should
+			 *	really be done at compile time.
 			 */
 			for (entry->redundant.child = entry->redundant.found = g->children;
 			     entry->redundant.child != NULL;
@@ -213,8 +206,57 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 				count++;
 			}
 
-			start = hash % count;
-			RDEBUG3("load-balance starting at child %d", (int) start;
+			/*
+			 *	Integer data types let the admin
+			 *	select which entry is being used.
+			 */
+			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
+			    ((g->vpt->tmpl_da->type == PW_TYPE_BYTE) ||
+			     (g->vpt->tmpl_da->type == PW_TYPE_SHORT) ||
+			     (g->vpt->tmpl_da->type == PW_TYPE_INTEGER) ||
+			     (g->vpt->tmpl_da->type == PW_TYPE_INTEGER64))) {
+				VALUE_PAIR *vp;
+
+				slen = tmpl_find_vp(&vp, request, g->vpt);
+				if (slen < 0) {
+					REDEBUG("Failed finding attribute %s", g->vpt->name);
+					goto randomly_choose;
+				}
+
+				switch (g->vpt->tmpl_da->type) {
+				case PW_TYPE_BYTE:
+					start = ((uint32_t) vp->vp_byte) % count;
+					break;
+
+				case PW_TYPE_SHORT:
+					start = ((uint32_t) vp->vp_short) % count;
+					break;
+
+				case PW_TYPE_INTEGER:
+					start = vp->vp_integer % count;
+					break;
+
+				case PW_TYPE_INTEGER64:
+					start = (uint32_t) (vp->vp_integer64 % ((uint64_t) count));
+					break;
+
+				default:
+					goto randomly_choose;
+				}
+
+			} else {
+				slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
+				if (slen < 0) {
+					REDEBUG("Failed expanding template");
+					goto randomly_choose;
+				}
+
+				hash = fr_hash(p, slen);
+
+				start = hash % count;
+			}
+
+			RDEBUG3("load-balance starting at child %d", (int) start);
 
 			count = 0;
 			for (entry->redundant.child = entry->redundant.found = g->children;
