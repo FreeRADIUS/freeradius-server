@@ -169,8 +169,8 @@ static void unlang_pop(unlang_stack_t *stack)
 }
 
 
-static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack_t *stack,
-					     rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *stack,
+					   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
