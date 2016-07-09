@@ -2483,7 +2483,6 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 		case TMPL_TYPE_XLAT_STRUCT:
 		case TMPL_TYPE_ATTR:
 		case TMPL_TYPE_EXEC:
-		case TMPL_TYPE_DATA:
 			break;
 		}
 
