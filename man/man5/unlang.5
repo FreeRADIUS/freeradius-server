@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "30 December 2015" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "09 July 2016" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -276,18 +276,22 @@ or update an attribute list.
 .DE
 .IP load-balance
 This section contains a simple list of modules.  When the section is
-entered, one module is chosen at random to process the request.  All
-of the modules in the list should be the same type (e.g. ldap or sql).
-All of the modules in the list should behave identically, otherwise
-the load-balance section will return different results for the same
+entered, one module is chosen to process the request.  All of the
+modules in the list should be the same type (e.g. ldap or sql).  All
+of the modules in the list should behave identically, otherwise the
+load-balance section may return different results for the same
 request.
 
 Load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
+or which update an attribute list.
+
+Load-balance sections can optionally take a key.  The key is expanded
+at run time, hashed, and the hash used to select a module.  If no
+key is given, a module is chosen at random.
 
 .DS
-	load-balance {
+	load-balance &User-Name {
 .br
 		ldap1	# 50% of requests go here
 .br
@@ -300,20 +304,24 @@ In general, we recommend using "redundant-load-balance" instead of
 "load-balance".
 .IP redundant-load-balance
 This section contains a simple list of modules.  When the section is
-entered, one module is chosen at random to process the request.  If
-that module succeeds, then the server stops processing the section.
-If, however, the module fails, then one of the remaining modules is
-chosen at random to process the request.  This process repeats until
-one module succeeds, or until the list has been exhausted.
+entered, one module is chosen to process the request.  If that module
+succeeds, then the server stops processing the section.  If, however,
+the module fails, then one of the remaining modules is chosen at
+random to process the request.  This process repeats until one module
+succeeds, or until the list has been exhausted.
 
 All of the modules in the list should be the same type (e.g. ldap or
 sql).  All of the modules in the list should behave identically,
-otherwise the load-balance section will return different results for
+otherwise the load-balance section may return different results for
 the same request.
 
-Load-balance sections can contain only a list of modules, and cannot
+Redundant-load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
 or update an attribute list.
+
+Redundant-load-balance sections can optionally take a key.  The key is expanded
+at run time, hashed, and the hash used to select a module.  If no
+key is given, a module is chosen at random.
 
 .DS
 	redundant-load-balance {

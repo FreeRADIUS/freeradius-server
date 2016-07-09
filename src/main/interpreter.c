@@ -190,16 +190,56 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 	 *	Go find one.
 	 */
 	if (!entry->resume) {
-		/*
-		 *	Choose a child at random.
-		 */
-		for (entry->redundant.child = entry->redundant.found = g->children;
-		     entry->redundant.child != NULL;
-		     entry->redundant.child = entry->redundant.child->next) {
-			count++;
+		if (g->vpt) {
+			uint32_t hash, start;
+			ssize_t slen;
+			char const *p = NULL;
+			char buffer[1024];
 
-			if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-				entry->redundant.found = entry->redundant.child;
+			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
+			if (slen < 0) {
+				RDEBUG("Failed expanding template");
+				goto randomly_choose;
+			}
+
+			hash = fr_hash(p, slen);
+
+			/*
+			 *	Choose a child based on the hash;
+			 */
+			for (entry->redundant.child = entry->redundant.found = g->children;
+			     entry->redundant.child != NULL;
+			     entry->redundant.child = entry->redundant.child->next) {
+				count++;
+			}
+
+			start = hash % count;
+			RDEBUG3("load-balance starting at child %d", (int) start;
+
+			count = 0;
+			for (entry->redundant.child = entry->redundant.found = g->children;
+			     entry->redundant.child != NULL;
+			     entry->redundant.child = entry->redundant.child->next) {
+				count++;
+				if (count == start) {
+					entry->redundant.found = entry->redundant.child;
+					break;
+				}
+			}
+
+		} else {
+		randomly_choose:
+			/*
+			 *	Choose a child at random.
+			 */
+			for (entry->redundant.child = entry->redundant.found = g->children;
+			     entry->redundant.child != NULL;
+			     entry->redundant.child = entry->redundant.child->next) {
+				count++;
+
+				if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
+					entry->redundant.found = entry->redundant.child;
+				}
 			}
 		}
 
@@ -208,7 +248,10 @@ static unlang_action_t unlang_load_balance(UNUSED REQUEST *request, unlang_stack
 			return UNLANG_PUSHED_CHILD;
 		}
 
-		entry->redundant.child = entry->redundant.found; /* we start at this one */
+		/*
+		 *	redundant-load-balance starts at this one.
+		 */
+		entry->redundant.child = entry->redundant.found;
 
 	} else {
 		rad_assert(c->type != MOD_LOAD_BALANCE); /* this is never called again */

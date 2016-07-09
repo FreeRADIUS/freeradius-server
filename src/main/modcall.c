@@ -1048,7 +1048,6 @@ static void unlang_dump(modcallable *mc, int depth)
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-
 		case MOD_LOAD_BALANCE:
 		case MOD_REDUNDANT_LOAD_BALANCE:
 			g = mod_callabletogroup(this);
@@ -2397,7 +2396,9 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
 {
+	char const *name2;
 	modcallable *c;
+	modgroup *g;
 
 	/*
 	 *	No children?  Die!
@@ -2407,6 +2408,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 		return NULL;
 	}
 
+
 	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
 		return NULL;
 	}
@@ -2414,8 +2416,82 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
+	g = mod_callabletogroup(c);
+
+	/*
+	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 *
+	 *	"redundant" is just "group" with different default actions.
+	 */
+	name2 = cf_section_name2(cs);
+	if (mod_type == MOD_GROUP) name2 = NULL;
+
+	/*
+	 *	But only outside of the "instantiate" section.
+	 *	For backwards compatibility.
+	 */
+	if (name2) {
+		if (strcmp(cf_section_name1(mod_callabletogroup(parent)->cs), "instantiate") == 0) name2 = NULL;
+	}
+
+	if (name2) {
+		FR_TOKEN type;
+		ssize_t slen;
+
+		/*
+		 *	Create the template.  All attributes and xlats are
+		 *	defined by now.
+		 */
+		type = cf_section_name2_type(cs);
+		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err_cs(cs, "Syntax error");
+			cf_log_err_cs(cs, "%s", name2);
+			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+			talloc_free(g);
+			talloc_free(spaces);
+			talloc_free(text);
+
+			return NULL;
+		}
+
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+		rad_assert(g->vpt != NULL);
+
+		/*
+		 *	Fixup the templates
+		 */
+		if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
+			talloc_free(g);
+			return NULL;
+		}
+
+		switch (g->vpt->type) {
+		default:
+			cf_log_err_cs(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
+			talloc_free(g);
+			return NULL;
+
+			/*
+			 *	Allow only these ones.
+			 */
+		case TMPL_TYPE_XLAT_STRUCT:
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_EXEC:
+		case TMPL_TYPE_DATA:
+			break;
+		}
+
+	} else {
+		c->debug_name = c->name;
+	}
+
 	c->name = unlang_keyword[c->type];
-	c->debug_name = c->name;
 
 	return c;
 }
