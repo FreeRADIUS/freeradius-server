@@ -59,4 +59,5 @@ DEFAULT
 	State =* ANY,
 	NAS-IP-Address =* ANY,
 	NAS-Identifier =* ANY,
+	Operator-Name =* ANY,
 	Proxy-State =* ANY
