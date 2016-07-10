@@ -119,6 +119,7 @@ src/freeradius-devel:
 #  Ensure we set up the build environment
 #
 BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
+scan: $(BOOTSTRAP_BUILD)
 
 ######################################################################
 #
