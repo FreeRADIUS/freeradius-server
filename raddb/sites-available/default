@@ -276,8 +276,8 @@ authorize {
 	#  attributes in the request, and turning them into attributes
 	#  which are more standard.
 	#
-	#  It takes care of processing the 'raddb/hints' and the
-	#  'raddb/huntgroups' files.
+	#  It takes care of processing the 'raddb/mods-config/preprocess/hints' 
+ 	#  and the 'raddb/mods-config/preprocess/huntgroups' files.
 	preprocess
 
 	#  If you intend to use CUI and you require that the Operator-Name
