@@ -2431,7 +2431,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 	 *	For backwards compatibility.
 	 */
 	if (name2) {
-		if (strcmp(cf_section_name1(mod_callabletogroup(parent)->cs), "instantiate") == 0) name2 = NULL;
+		if (strcmp(cf_section_name1(cf_item_parent(cf_section_to_item(cs))), "instantiate") == 0) name2 = NULL;
 	}
 
 	if (name2) {
