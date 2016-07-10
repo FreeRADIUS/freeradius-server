@@ -79,15 +79,15 @@
 
 3d. HINTS
 
-  Customize the /etc/raddb/hints file. This file is used to give users a
-  different login type based on a prefix/suffix of their loginname. For
-  example, logging in as "user" may result in a rlogin session to a Unix
-  system, and logging in as "Puser" could start a PPP session.
+  Customize the /etc/raddb/mods-config/preprocess/hints file. This file is 
+  used to give users different login type based on a prefix/suffix of their 
+  loginname. For example, logging in as "user" may result in a rlogin session 
+  to a Unix system, and logging in as "Puser" could start a PPP session.
 
 3e. HUNTGROUPS
 
-  This is the /etc/raddb/huntgroups file. Here you can define different
-  huntgroups. These can be used to:
+  This is the /etc/raddb/mods-config/preprocess/huntgroups file. Here you can 
+  define different huntgroups. These can be used to:
 
     - restrict access to certain huntgroups to certain users/groups of
       users (define this in the huntgroups file itself)
