@@ -1,4 +1,4 @@
-FreeRADIUS 4.0.0 Mon  7 Oct 2000 15:48:14 EDT urgency=medium
+FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	Feature improvements
 	* For upgrade instructions, see raddb/README.rst
 	* "authorize", "authenticate", "preacct", etc.
