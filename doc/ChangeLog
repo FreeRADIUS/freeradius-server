@@ -1,10 +1,15 @@
-FreeRADIUS 3.1.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
+FreeRADIUS 4.0.0 Mon  7 Oct 2000 15:48:14 EDT urgency=medium
 	Feature improvements
 	* For upgrade instructions, see raddb/README.rst
+	* "authorize", "authenticate", "preacct", etc.
+	  are deprecated.  We now use "recv Access-Request"
+	  See raddb/README.rst.
 	* Dropped support for -i and -p flags in radiusd
 	* New "map" function in unlang.  See "man unlang".
+	* The "load-balance" and "redundant-load-balance"
+	  sections accept a key.  See "man unlang".
 	* The EAP module tracks certificates in a different
-	  list.  See the upgrade instructions.
+	  attribute list.  See the upgrade instructions.a
 	* The EAP module produces much better messages
 	  when using TLS.
 	* The MySQL and Postgresql modules now call the
