@@ -6,7 +6,6 @@
  * @file md4.c
  * @brief md4 digest functions.
  */
-
 RCSID("$Id$")
 
 /*

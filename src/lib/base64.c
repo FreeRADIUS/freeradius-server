@@ -19,9 +19,11 @@
 
 /**
  * @file lib/base64.c
+ *
+ * @see RFC 3548 <http://www.ietf.org/rfc/rfc3548.txt>.
+ *
  * @brief Encode/decode binary data using printable characters.
  * @author Simon Josefsson.
- * @see RFC 3548 <http://www.ietf.org/rfc/rfc3548.txt>.
  */
 RCSID("$Id$")
 

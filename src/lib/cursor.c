@@ -26,7 +26,6 @@
  * @copyright 2013-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-
 #include <freeradius-devel/libradius.h>
 
 /** Internal function to update cursor state

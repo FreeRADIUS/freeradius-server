@@ -1,10 +1,28 @@
+/*
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software Foundation,
+ *  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
 #ifndef _FR_INTERPRETER_H
 #define _FR_INTERPRETER_H
-
-/* interpreter.h: the outside interface to interpreter
+/**
+ * $Id$
  *
- * Version: $Id$ */
-
+ * @file include/interpreter.h
+ * @brief The outside interface to interpreter.
+ *
+ * @author Alan DeKok <aland@freeradius.org>
+ */
 #include <freeradius-devel/conffile.h> /* Need CONF_* definitions */
 #include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/modpriv.h>
@@ -13,8 +31,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
  * MOD_ACTION_RETURN, to cause an immediate return.

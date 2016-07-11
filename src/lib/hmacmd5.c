@@ -1,9 +1,4 @@
 /*
- * hmac.c	For the sake of illustration we provide the following
- *		sample code for the implementation of HMAC-MD5 as well
- *		as some corresponding test vectors (the code is based
- *		on MD5 code as described in [MD5]).
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -17,14 +12,22 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
  */
 
-/*
-** Function: fr_hmac_md5
-*/
-
+/**
+ * @file lib/hmacmd5.c
+ * @brief MD5 HMAC not dependent on OpenSSL.
+ *
+ * @note New code that needs fast or incremental HMACs should use the OpenSSL EVP_* HMAC
+ *	interface instead, as that can take advantage of acceleration instructions provided
+ *	by various CPUs (and provides an incremental hashing interface).
+ *
+ * For the sake of illustration we provide the following sample code for the implementation
+ * of HMAC-MD5 as well as some corresponding test vectors (the code is based on MD5 code as
+ * described in [MD5]).
+ *
+ * @copyright 2000,2006 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>

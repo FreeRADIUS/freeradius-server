@@ -1,13 +1,36 @@
 /*
- * Adapted from hmac.c (HMAC-MD5) for use by SHA1.
- * by <mcr@sandelman.ottawa.on.ca>. Test cases from RFC2202.
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
  *
+ *   This library is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
-** Function: hmac_sha1
-*/
-
+/**
+ * @file lib/hmacsha1.c
+ * @brief SHA1 HMAC not dependent on OpenSSL.
+ *
+ * @note New code that needs fast or incremental HMACs should use the OpenSSL EVP_* HMAC
+ *	interface instead, as that can take advantage of acceleration instructions provided
+ *	by various CPUs (and provides an incremental hashing interface).
+ *
+ * Adapted from hmacmd5.c (HMAC-MD5).
+ *
+ * Test cases from RFC2202.
+ *
+ * @author Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ *
+ * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2000,2003,2006 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>

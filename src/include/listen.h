@@ -15,7 +15,6 @@
  */
 #ifndef _FR_LISTEN_H
 #define _FR_LISTEN_H
-#include <freeradius-devel/pcap.h>
 /**
  * $Id$
  *
@@ -25,6 +24,8 @@
  * @copyright 2015  The FreeRADIUS server project
  */
 RCSIDH(listen_h, "$Id$")
+
+#include <freeradius-devel/pcap.h>
 
 #ifdef __cplusplus
 extern "C" {

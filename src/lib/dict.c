@@ -16,7 +16,7 @@
 
 /**
  * @file lib/dict.c
- * @brief Routines to read the dictionary file.
+ * @brief Functions to parse FreeRADIUS dictionary file(s).
  *
  * @copyright 2000,2006 The FreeRADIUS server project
  */

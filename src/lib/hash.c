@@ -18,7 +18,6 @@
  * @file lib/hash.c
  * @brief Resizable hash tables.
  *
- *
  *  The weird "reverse" function is based on an idea from
  *  "Split-Ordered Lists - Lock-free Resizable Hash Tables", with
  *  modifications so that they're not lock-free. :(

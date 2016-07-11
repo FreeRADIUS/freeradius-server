@@ -1,15 +1,14 @@
-/*
-------------------------------------------------------------------------------
-http://burtleburtle.net/bob/rand/isaac.html
-rand.c: By Bob Jenkins.  My random number generator, ISAAC.  Public Domain
-MODIFIED:
-  960327: Creation (addition of randinit, really)
-  970719: use context, not global variables, for internal state
-  980324: make a portable version
-  010626: Note this is public domain
-------------------------------------------------------------------------------
-*/
-
+/**
+ * $Id$
+ * @file inet.c
+ * @brief Bob Jenkin's random number generator
+ *
+ * Bob's random number generator, ISAAC.  Public Domain.
+ *
+ * 	http://burtleburtle.net/bob/rand/isaac.html
+ *
+ * @author Bob Jenkins.
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
