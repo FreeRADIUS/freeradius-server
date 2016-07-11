@@ -17,7 +17,7 @@ if ("%{rpad:&Tmp-String-0 7}" != "test   ") {
 	return
 }
 
-if ("%{rpad:&Tmp-String-0 2}" != "te") {
+if ("%{rpad:&Tmp-String-0 2}" != "test") {
 	update reply {
 		Filter-Id := "fail 2"
 	}
@@ -26,7 +26,7 @@ if ("%{rpad:&Tmp-String-0 2}" != "te") {
 
 if ("%{rpad:&Tmp-String-0 7 x}" != "testxxx") {
 	update reply {
-		Filter-Id := "fail 1"
+		Filter-Id := "fail 3"
 	}
 	return
 }
@@ -37,21 +37,21 @@ if ("%{rpad:&Tmp-String-0 7 x}" != "testxxx") {
 
 if ("%{lpad:&Tmp-String-0 7}" != "   test") {
 	update reply {
-		Filter-Id := "fail 1"
+		Filter-Id := "fail 4"
 	}
 	return
 }
 
-if ("%{lpad:&Tmp-String-0 2}" != "te") {
+if ("%{lpad:&Tmp-String-0 2}" != "test") {
 	update reply {
-		Filter-Id := "fail 2"
+		Filter-Id := "fail 5"
 	}
 	return
 }
 
 if ("%{lpad:&Tmp-String-0 7 x}" != "xxxtest") {
 	update reply {
-		Filter-Id := "fail 1"
+		Filter-Id := "fail 6"
 	}
 	return
 }

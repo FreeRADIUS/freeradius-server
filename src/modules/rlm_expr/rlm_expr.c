@@ -1545,63 +1545,68 @@ static ssize_t next_time_xlat(char **out, size_t outlen,
 }
 
 
-/*
- *	Parse the 3 arguments to lpad / rpad.
+/** Parse the 3 arguments to lpad / rpad.
+ *
+ * Parses a fmt string with the components @verbatim <tmpl> <pad_len> <pad_char>@endverbatim
+ *
+ * @param[out] vpt_p		Template to retrieve value to pad.
+ * @param[out] pad_len_p	Length the string needs to be padded to.
+ * @param[out] pad_char_p	Char to use for padding.
+ * @param[in] request		The current request.
+ * @param[in] fmt		string to parse.
+ *
+ * @return
+ *	- <= 0 the negative offset the parse error ocurred at.
+ *	- >0 how many bytes of fmt were parsed.
  */
-static bool parse_pad(REQUEST *request, char const *fmt,
-		      vp_tmpl_t **pvpt, size_t *plength,
-		      char *fill)
+static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p, REQUEST *request, char const *fmt)
 {
-	ssize_t slen;
-	unsigned long length;
-	char const *p;
-	char *end;
-	vp_tmpl_t *vpt;
+	ssize_t		slen;
+	unsigned long	pad_len;
+	char const	*p;
+	char		*end;
+	vp_tmpl_t	*vpt;
 
-	*fill = ' ';		/* the default */
+	*pad_char_p = ' ';		/* the default */
 
 	p = fmt;
 	while (isspace((int) *p)) p++;
 
 	if (*p != '&') {
 		RDEBUG("First argument must be an attribute reference");
-		return false;
+		return -1;
 	}
 
-	vpt = talloc(request, vp_tmpl_t);
-	if (!vpt) return false;
-
-	slen = tmpl_from_attr_substr(vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(request, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
-		talloc_free(vpt);
-		RDEBUG("Failed expanding string: %s", fr_strerror());
-		return false;
+		RDEBUG("Failed parsing input string: %s", fr_strerror());
+		return 0;
 	}
 
 	p = fmt + slen;
 
 	while (isspace((int) *p)) p++;
 
-	length = strtoul(p, &end, 10);
-	if ((length == ULONG_MAX) || (length > 8192)) {
+	pad_len = strtoul(p, &end, 10);
+	if ((pad_len == ULONG_MAX) || (pad_len > 8192)) {
 		talloc_free(vpt);
-		RDEBUG("Invalid length found at: %s", p);
-		return false;
+		RDEBUG("Invalid pad_len found at: %s", p);
+		return fmt - p;
 	}
 
 	p += (end - p);
 
 	/*
-	 *	The fill character is optional.
+	 *	The pad_char_p character is optional.
 	 *
 	 *	But we must have a space after the previous number,
-	 *	and we must have only ONE fill character.
+	 *	and we must have only ONE pad_char_p character.
 	 */
 	if (*p) {
 		if (!isspace(*p)) {
 			talloc_free(vpt);
 			RDEBUG("Invalid text found at: %s", p);
-			return false;
+			return fmt - p;
 		}
 
 		while (isspace((int) *p)) p++;
@@ -1609,16 +1614,16 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 		if (p[1] != '\0') {
 			talloc_free(vpt);
 			RDEBUG("Invalid text found at: %s", p);
-			return false;
+			return fmt - p;
 		}
 
-		*fill = *p;
+		*pad_char_p = *p++;
 	}
 
-	*pvpt = vpt;
-	*plength = length;
+	*vpt_p = vpt;
+	*pad_len_p = pad_len;
 
-	return true;
+	return p - fmt;
 }
 
 
@@ -1626,37 +1631,46 @@ static bool parse_pad(REQUEST *request, char const *fmt,
  *
  *  %{lpad:&Attribute-Name length 'x'}
  */
-static ssize_t lpad_xlat(char **out, size_t outlen,
+static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
-	char fill;
-	size_t pad;
-	ssize_t len;
-	vp_tmpl_t *vpt;
+	char		fill;
+	size_t		pad;
+	ssize_t		len;
+	vp_tmpl_t	*vpt;
+	char		*to_pad;
 
-	if (!parse_pad(request, fmt, &vpt, &pad, &fill)) return 0;
-
-	if (outlen <= pad) {
-		RWARN("Output is too short!  Result will be truncated");
-		pad = outlen - 1;
-	}
+	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
 	/*
 	 *	Print the attribute (left justified).  If it's too
 	 *	big, we're done.
 	 */
-	len = tmpl_expand(NULL, *out, pad + 1, request, vpt, NULL, NULL);
-	if (len <= 0) return 0;
+	len = tmpl_aexpand(request, &to_pad, request, vpt, NULL, NULL);
+	if (len <= 0) return -1;
 
-	if ((size_t) len >= pad) return pad;
+	/*
+	 *	Already big enough, no padding required...
+	 */
+	if ((size_t) len >= pad) {
+		*out = to_pad;
+		return pad;
+	}
+
+	/*
+	 *	Realloc is actually pretty cheap in most cases...
+	 */
+	MEM(to_pad = talloc_realloc(request, to_pad, char, pad + 1));
 
 	/*
 	 *	We have to shift the string to the right, and pad with
 	 *	"fill" characters.
 	 */
-	memmove((*out) + (pad - len), *out, len + 1);
-	memset(*out, fill, pad - len);
+	memmove(to_pad + (pad - len), to_pad, len + 1);
+	memset(to_pad, fill, pad - len);
+
+	*out = to_pad;
 
 	return pad;
 }
@@ -1666,7 +1680,7 @@ static ssize_t lpad_xlat(char **out, size_t outlen,
  *
  *  %{rpad:&Attribute-Name length 'x'}
  */
-static ssize_t rpad_xlat(char **out, size_t outlen,
+static ssize_t rpad_xlat(char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -1674,28 +1688,33 @@ static ssize_t rpad_xlat(char **out, size_t outlen,
 	size_t		pad;
 	ssize_t		len;
 	vp_tmpl_t	*vpt;
+	char		*to_pad;
 
-	if (!parse_pad(request, fmt, &vpt, &pad, &fill)) return 0;
+	rad_assert(!*out);
 
-	if (outlen <= pad) {
-		RWARN("Output is too short!  Result will be truncated");
-		pad = outlen - 1;
-	}
+	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
 	/*
 	 *	Print the attribute (left justified).  If it's too
 	 *	big, we're done.
 	 */
-	len = tmpl_expand(NULL, *out, pad + 1, request, vpt, NULL, NULL);
+	len = tmpl_aexpand(request, &to_pad, request, vpt, NULL, NULL);
 	if (len <= 0) return 0;
 
-	if ((size_t) len >= pad) return pad;
+	if ((size_t) len >= pad) {
+		*out = to_pad;
+		return pad;
+	}
+
+	MEM(to_pad = talloc_realloc(request, to_pad, char, pad + 1));
 
 	/*
 	 *	We have to pad with "fill" characters.
 	 */
-	memset((*out) + len, fill, pad - len);
-	(*out)[pad] = '\0';
+	memset(to_pad + len, fill, pad - len);
+	to_pad[pad] = '\0';
+
+	*out = to_pad;
 
 	return pad;
 }
@@ -1746,8 +1765,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	xlat_register(inst, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	xlat_register(inst, "nexttime", next_time_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "lpad", lpad_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "rpad", rpad_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "lpad", lpad_xlat, NULL, NULL, 0, 0);
+	xlat_register(inst, "rpad", rpad_xlat, NULL, NULL, 0, 0);
 
 	/*
 	 *	Initialize various paircompare functions
