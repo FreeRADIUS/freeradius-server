@@ -2377,10 +2377,10 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	ignore it.  This does the MD5 calculations in the
 	 *	server core, but I guess we can fix that later.
 	 */
-	if (!proxy->reply &&
-	    (fr_radius_verify(reply, proxy->packet,
-			      proxy->home_server->secret) != 0)) {
-		RWDEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
+	if (!proxy->reply && (fr_radius_verify(reply, proxy->packet, proxy->home_server->secret) != 0)) {
+		RWDEBUG("Discarding invalid reply from host %s port %d - ID: %d: $s",
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			reply->src_port, reply->id, fr_strerror());
 		return 0;
 	}
 
@@ -2389,11 +2389,10 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	something we have: ignore it.  This is done only to
 	 *	catch the case of broken systems.
 	 */
-	if (proxy->reply &&
-	    (memcmp(proxy->reply->vector,
-		    reply->vector,
-		    sizeof(proxy->reply->vector)) != 0)) {
-		RWDEBUG("Ignoring conflicting proxy reply");
+	if (proxy->reply && (memcmp(proxy->reply->vector, reply->vector, sizeof(proxy->reply->vector)) != 0)) {
+		RWDEBUG("Discarding conflicting reply from host %s port %d - ID: %d",
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			reply->src_port, reply->id);
 		return 0;
 	}
 
@@ -2416,11 +2415,9 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	if (proxy->reply) {
 		proxy->reply->count++;
 
-		RWDEBUG("Discarding duplicate reply from host %s port %d  - ID: %d",
-			inet_ntop(reply->src_ipaddr.af,
-				  &reply->src_ipaddr.ipaddr,
-				  buffer, sizeof(buffer)),
-				  reply->src_port, reply->id);
+		RWDEBUG("Discarding duplicate reply from host %s port %d - ID: %d",
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			reply->src_port, reply->id);
 		return 0;
 	}
 
