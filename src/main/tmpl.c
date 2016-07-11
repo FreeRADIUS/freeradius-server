@@ -1466,86 +1466,124 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_flags_
  * the #vp_tmpl_t, avoiding unecessary string copies.
  *
  * @note This function is used where raw string values are needed, which may mean the string
- *	returned may be binary data or contain unprintable chars. #fr_snprint or #fr_asprint should
- *	be used before using these values in debug statements. #is_printable can be used to check
- *	if the string only contains printable chars.
+ *	returned may be binary data or contain unprintable chars. #fr_snprint or #fr_asprint
+ *	should be used before using these values in debug statements. #is_printable can be used to
+ *	check if the string only contains printable chars.
  *
- * @param out Where to write a pointer to the string buffer. On return may point to buff if
- *	buff was used to store the value. Otherwise will point to a #value_data_t buffer,
- *	or the name of the template. To force copying to buff, out should be NULL.
- * @param buff Expansion buffer, may be NULL if out is not NULL, and processing #TMPL_TYPE_UNPARSED
- *	or string types.
- * @param bufflen Length of expansion buffer.
- * @param request Current request.
- * @param vpt to expand. Must be one of the following types:
- *	- #TMPL_TYPE_UNPARSED
- *	- #TMPL_TYPE_EXEC
- *	- #TMPL_TYPE_XLAT
- *	- #TMPL_TYPE_XLAT_STRUCT
- *	- #TMPL_TYPE_ATTR
- *	- #TMPL_TYPE_DATA
- * @param escape xlat escape function (only used for xlat types).
- * @param escape_ctx xlat escape function data.
+ * @param[out] out		Where to write a pointer to the string buffer. On return may
+ *				point to buff if buff was used to store the value. Otherwise will
+ *				point to a #value_data_t buffer, or the name of the template.
+ *				Must not be NULL.
+ * @param[out] buff		Expansion buffer, may be NULL except for the following types:
+ *				- #TMPL_TYPE_EXEC
+ *				- #TMPL_TYPE_XLAT
+ *				- #TMPL_TYPE_XLAT_STRUCT
+ * @param[in] bufflen		Length of expansion buffer. Must be >= 2.
+ * @param[in] request		Current request.
+ * @param[in] vpt		to expand. Must be one of the following types:
+ *				- #TMPL_TYPE_UNPARSED
+ *				- #TMPL_TYPE_EXEC
+ *				- #TMPL_TYPE_XLAT
+ *				- #TMPL_TYPE_XLAT_STRUCT
+ *				- #TMPL_TYPE_ATTR
+ *				- #TMPL_TYPE_DATA
+ * @param[in] escape		xlat escape function (only used for xlat types).
+ * @param[in] escape_ctx	xlat escape function data.
+ * @param dst_type		PW_TYPE_* matching out pointer.  @see tmpl_expand.
  * @return
  *	- -1 on failure.
  *	- The length of data written to buff, or pointed to by out.
  */
-ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *request,
-		    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx)
+ssize_t _tmpl_to_type(void *out,
+		      uint8_t *buff, size_t bufflen,
+		      REQUEST *request,
+		      vp_tmpl_t const *vpt,
+		      xlat_escape_t escape, void *escape_ctx,
+		      PW_TYPE dst_type)
 {
-	VALUE_PAIR *vp;
-	ssize_t slen = -1;	/* quiet compiler */
+	value_data_t		vd_to_cast;
+	value_data_t		vd_from_cast;
+	value_data_t const	*to_cast = &vd_to_cast;
+	value_data_t const	*from_cast = &vd_from_cast;
+
+	VALUE_PAIR		*vp = NULL;
+
+	PW_TYPE			src_type = PW_TYPE_STRING;
+
+	ssize_t			slen = -1;	/* quiet compiler */
 
 	VERIFY_TMPL(vpt);
 
 	rad_assert(vpt->type != TMPL_TYPE_LIST);
+	rad_assert(!buff || (bufflen >= 2));
 
-	if (out) *out = NULL;
+	memset(&vd_to_cast, 0, sizeof(vd_to_cast));
+	memset(&vd_from_cast, 0, sizeof(vd_from_cast));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
-		RDEBUG4("EXPAND TMPL LITERAL");
-
-		if (!out) {
-			rad_assert(buff);
-			memcpy(buff, vpt->name, vpt->len >= bufflen ? bufflen : vpt->len + 1);
-		} else {
-			*out = vpt->name;
-		}
-		return vpt->len;
+		RDEBUG4("EXPAND TMPL UNPARSED");
+		vd_to_cast.strvalue = vpt->name;
+		vd_to_cast.length = vpt->len;
+		break;
 
 	case TMPL_TYPE_EXEC:
 	{
 		RDEBUG4("EXPAND TMPL EXEC");
-		rad_assert(buff);
-		if (radius_exec_program(request, buff, bufflen, NULL, request, vpt->name, NULL,
-					true, false, EXEC_TIMEOUT) != 0) {
+		if (!buff) {
+			fr_strerror_printf("Missing expansion buffer for EXEC");
 			return -1;
 		}
-		slen = strlen(buff);
-		if (out) *out = buff;
+
+		if (radius_exec_program(request, (char *)buff, bufflen, NULL, request, vpt->name, NULL,
+					true, false, EXEC_TIMEOUT) != 0) return -1;
+		vd_to_cast.strvalue = (char *)buff;
+		vd_to_cast.length = strlen((char *)buff);
 	}
 		break;
 
 	case TMPL_TYPE_XLAT:
 		RDEBUG4("EXPAND TMPL XLAT");
-		rad_assert(buff);
+		if (!buff) {
+			fr_strerror_printf("Missing expansion buffer for XLAT");
+			return -1;
+		}
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_xlat(buff, bufflen, request, vpt->name, escape, escape_ctx);
+		slen = radius_xlat((char *)buff, bufflen, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) return slen;
-		if (out) *out = buff;
+
+		/*
+		 *	Undo any of the escaping that was done by the
+		 *	xlat expansion function.
+		 *
+		 *	@fixme We need a way of signalling xlat not to escape things.
+		 */
+		vd_to_cast.length = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		vd_to_cast.strvalue = (char *)buff;
 		break;
 
 	case TMPL_TYPE_XLAT_STRUCT:
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
-		rad_assert(buff);
-		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_xlat_struct(buff, bufflen, request, vpt->tmpl_xlat, escape, escape_ctx);
-		if (slen < 0) {
-			return slen;
+		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+		if (!buff) {
+			fr_strerror_printf("Missing expansion buffer for XLAT_STRUCT");
+			return -1;
 		}
-		slen = strlen(buff);
-		if (out) *out = buff;
+		/* Error in expansion, this is distinct from zero length expansion */
+		slen = radius_xlat_struct((char *)buff, bufflen, request, vpt->tmpl_xlat, escape, escape_ctx);
+		if (slen < 0) return slen;
+
+		RDEBUG2("   --> %s", (char *)buff);	/* Print pre-unescaping (so it's escaped) */
+
+		/*
+		 *	Undo any of the escaping that was done by the
+		 *	xlat expansion function.
+		 *
+		 *	@fixme We need a way of signalling xlat not to escape things.
+		 */
+		vd_to_cast.length = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		vd_to_cast.strvalue = (char *)buff;
+
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -1553,34 +1591,24 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 		int ret;
 
 		RDEBUG4("EXPAND TMPL ATTR");
-		rad_assert(buff);
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		if (out && ((vp->da->type == PW_TYPE_STRING) || (vp->da->type == PW_TYPE_OCTETS))) {
-			*out = vp->data.ptr;
-			slen = vp->vp_length;
-		} else {
-			if (out) *out = buff;
-			slen = fr_pair_value_snprint(buff, bufflen, vp, '\0');
-		}
+		to_cast = &vp->data;
+		src_type = vp->da->type;
 	}
 		break;
 
 	case TMPL_TYPE_DATA:
 	{
-		RDEBUG4("EXPAND TMPL DATA");
+		int ret;
 
-		if (out && ((vpt->tmpl_data_type == PW_TYPE_STRING) || (vpt->tmpl_data_type == PW_TYPE_OCTETS))) {
-			*out = vpt->tmpl_data_value.ptr;
-			slen = vpt->tmpl_data_length;
-		} else {
-			if (out) *out = buff;
-			/**
-			 *  @todo tmpl_expand should accept an enumv da from the lhs of the map.
-			 */
-			slen = value_data_snprint(buff, bufflen, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, '\0');
-		}
+		RDEBUG4("EXPAND TMPL DATA");
+		ret = tmpl_find_vp(&vp, request, vpt);
+		if (ret < 0) return -2;
+
+		to_cast = &vpt->tmpl_data_value;
+		src_type = vpt->tmpl_data_type;
 	}
 		break;
 
@@ -1593,41 +1621,135 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
-		rad_assert(0 == 1);
-		slen = -1;
-		break;
+		rad_assert(0);
+		return -1;
 	}
 
-	if (slen < 0) return slen;
-
-
-#if 0
 	/*
-	 *	If we're doing correct escapes, we may have to re-parse the string.
-	 *	If the string is from another expansion, it needs re-parsing.
-	 *	Or, if it's from a "string" attribute, it needs re-parsing.
-	 *	Integers, IP addresses, etc. don't need re-parsing.
+	 *	Deal with casts.
 	 */
-	if (vpt->type != TMPL_TYPE_ATTR) {
-	     	value_data_t	vd;
-	     	int		ret;
+	switch (src_type) {
+	case PW_TYPE_STRING:
+		switch (dst_type) {
+		case PW_TYPE_STRING:
+		case PW_TYPE_OCTETS:
+			from_cast = to_cast;
+			break;
 
-		PW_TYPE type = PW_TYPE_STRING;
+		default:
+			break;
+		}
+		break;
 
-		ret = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
-		talloc_free(*out);	/* free the old value */
+	case PW_TYPE_OCTETS:
+		switch (dst_type) {
+		/*
+		 *	Need to use the expansion buffer for this conversion as
+		 *	we need to add a \0 terminator.
+		 */
+		case PW_TYPE_STRING:
+			if (!buff) {
+				fr_strerror_printf("Missing expansion buffer for octet->string cast");
+				return -1;
+			}
+			if (bufflen <= to_cast->length) {
+				fr_strerror_printf("Expansion buffer too small.  "
+						   "Have %zu bytes, need %zu bytes", bufflen, to_cast->length + 1);
+				return -1;
+			}
+			memcpy(buff, to_cast->octets, to_cast->length);
+			buff[to_cast->length] = '\0';
+			vd_from_cast.strvalue = (char *)buff;
+			vd_from_cast.length = to_cast->length;
+			break;
+
+		/*
+		 *	Just copy the pointer.  Length does not include \0.
+		 */
+		case PW_TYPE_OCTETS:
+			from_cast = to_cast;
+			break;
+
+		default:
+			break;
+		}
+		break;
+
+	default:
+	{
+		int		ret;
+		TALLOC_CTX	*ctx;
+
+		/*
+		 *	Same type, just set from_cast to to_cast and copy the value.
+		 */
+		if (src_type == dst_type) {
+			from_cast = to_cast;
+			break;
+		}
+
+		MEM(ctx = talloc_new(request));
+
+		from_cast = &vd_from_cast;
+
+		/*
+		 *	Data type conversion...
+		 */
+		ret = value_data_cast(ctx, &vd_from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
 		if (ret < 0) return -1;
-		*out = vd.ptr;
-		slen = vd.length;
-	}
-#endif
 
-	if (vpt->type == TMPL_TYPE_XLAT_STRUCT) {
-		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
-		RDEBUG2("   --> %s", buff);
+
+		/*
+		 *	For the dynamic types we need to copy the output
+		 *	to the buffer.  Really we need a version of value_data_cast
+		 *	that works with buffers, but its not a high priority...
+		 */
+		switch (dst_type) {
+		case PW_TYPE_STRING:
+			if (!buff) {
+				fr_strerror_printf("Missing expansion buffer to store cast output");
+			error:
+				talloc_free(ctx);
+				return -1;
+			}
+			if (from_cast->length >= bufflen) {
+				fr_strerror_printf("Expansion buffer too small.  "
+						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->length + 1);
+				goto error;
+			}
+			memcpy(buff, from_cast->strvalue, from_cast->length);
+			buff[from_cast->length] = '\0';
+			vd_from_cast.strvalue = (char *)buff;
+			break;
+
+		case PW_TYPE_OCTETS:
+			if (!buff) {
+				fr_strerror_printf("Missing expansion buffer to store cast output");
+				goto error;
+			}
+			if (from_cast->length > bufflen) {
+				fr_strerror_printf("Expansion buffer too small.  "
+						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->length);
+				goto error;
+			}
+			memcpy(buff, vd_from_cast.octets, from_cast->length);
+			vd_from_cast.octets = buff;
+			break;
+
+		default:
+			break;
+		}
+
+		talloc_free(ctx);	/* Free any dynamically allocated memory from the cast */
+	}
 	}
 
-	return slen;
+	RDEBUG4("Copying %zu bytes to %p from offset %zu",
+		value_data_field_sizes[dst_type], *((void **)out), value_data_offsets[dst_type]);
+
+	memcpy(out, from_cast + value_data_offsets[dst_type], value_data_field_sizes[dst_type]);
+
+	return from_cast->length;
 }
 
 /** Expand a template to a string, allocing a new buffer to hold the string
@@ -1660,7 +1782,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  *			- #TMPL_TYPE_DATA
  * @param escape xlat	escape function (only used for TMPL_TYPE_XLAT_* types).
  * @param escape_ctx	xlat escape function data (only used for TMPL_TYPE_XLAT_* types).
- * @param dst_type	- PW_TYPE_* matching out pointer.  @see tmpl_aexpand.
+ * @param dst_type	PW_TYPE_* matching out pointer.  @see tmpl_aexpand.
  * @return
  *	- -1 on failure.
  *	- The length of data written to buff, or pointed to by out.

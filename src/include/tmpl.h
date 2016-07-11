@@ -357,6 +357,16 @@ do {\
 		 uint32_t *: PW_TYPE_INTEGER, \
 		 uint64_t *: PW_TYPE_INTEGER64)
 
+/** Expand a tmpl to a C type, using existing storage to hold variably sized types
+ *
+ * Expands a template using the _out ptr to determinate the cast type.
+ *
+ * @see _tmpl_to_type
+ */
+#define	tmpl_expand(_out, _buff, _buff_len, _request, _vpt, _escape, _escape_ctx) \
+	_tmpl_to_type((void *)(_out), (uint8_t *)_buff, _buff_len, \
+		      _request, _vpt, _escape, _escape_ctx, PW_TYPE_FROM_PTR(_out))
+
 /** Expand a tmpl to a C type, allocing a new buffer to hold the string
  *
  * Expands a template using the _out ptr to determinate the cast type.
@@ -365,6 +375,7 @@ do {\
  */
 #define	tmpl_aexpand(_ctx, _out, _request, _vpt, _escape, _escape_ctx) \
 	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, PW_TYPE_FROM_PTR(_out))
+
 
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
@@ -421,14 +432,20 @@ int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
 				    fr_dict_attr_t const *values);
 
-ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
-				    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx);
+ssize_t			_tmpl_to_type(void *out,
+				      uint8_t *buff, size_t outlen,
+				      REQUEST *request,
+				      vp_tmpl_t const *vpt,
+				      xlat_escape_t escape, void *escape_ctx,
+				      PW_TYPE dst_type)
+			CC_HINT(nonnull (1, 4, 5));
 
 ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       		       REQUEST *request,
 				       vp_tmpl_t const *vpt,
 				       xlat_escape_t escape, void *escape_ctx,
-				       PW_TYPE dst_type);
+				       PW_TYPE dst_type)
+			CC_HINT(nonnull (2, 3, 4));
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
 					  vp_tmpl_t const *vpt);
