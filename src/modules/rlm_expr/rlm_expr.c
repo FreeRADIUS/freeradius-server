@@ -1569,6 +1569,8 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 
 	*pad_char_p = ' ';		/* the default */
 
+	*vpt_p = NULL;
+
 	p = fmt;
 	while (isspace((int) *p)) p++;
 
