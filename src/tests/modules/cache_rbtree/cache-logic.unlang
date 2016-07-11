@@ -31,7 +31,7 @@ else {
 
 # 2. Check status-only works correctly (should return ok and consume attribute)
 update control {
-	Cache-Status-Only := 'yes'
+	&Cache-Status-Only := 'yes'
 }
 cache
 if (!ok) {
@@ -68,7 +68,7 @@ else {
 
 # 6. Retrieving the entry should not expire it
 update request {
-	Tmp-String-1 !* ANY
+	&Tmp-String-1 !* ANY
 }
 
 cache
@@ -89,9 +89,9 @@ else {
 
 # 8. Force expiry of the entry
 update control {
-	Cache-Allow-Merge := no
-	Cache-Allow-Insert := no
-	Cache-TTL := 0
+	&Cache-Allow-Merge := no
+	&Cache-Allow-Insert := no
+	&Cache-TTL := 0
 }
 cache
 if (!ok) {
@@ -103,7 +103,7 @@ else {
 
 # 9. Check status-only works correctly (should return notfound and consume attribute)
 update control {
-	Cache-Status-Only := 'yes'
+	&Cache-Status-Only := 'yes'
 }
 cache
 if (!notfound) {
@@ -123,8 +123,8 @@ else {
 
 # 11. Check merge-only works correctly (should return notfound and consume attribute)
 update control {
-	Cache-Allow-Merge := 'yes'
-	Cache-Allow-Insert := 'no'
+	&Cache-Allow-Merge := 'yes'
+	&Cache-Allow-Insert := 'no'
 }
 cache
 if (!notfound) {
@@ -144,7 +144,7 @@ else {
 
 # 13. ...and check the entry wasn't recreated
 update control {
-	Cache-Status-Only := 'yes'
+	&Cache-Status-Only := 'yes'
 }
 cache
 if (!notfound) {
@@ -156,7 +156,7 @@ else {
 
 # 14. This should still allow the creation of a new entry
 update control {
-	Cache-TTL := -1
+	&Cache-TTL := -1
 }
 cache
 if (!ok) {
@@ -192,12 +192,12 @@ else {
 }
 
 update control {
-	Tmp-String-1 := 'cache me2'
+	&Tmp-String-1 := 'cache me2'
 }
 
 # 18. Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
 update control {
-	Cache-TTL := 30
+	&Cache-TTL := 30
 }
 cache
 if (!updated) {
@@ -217,7 +217,7 @@ else {
 
 # 20. Check that a new entry is created
 update control {
-	Cache-TTL := -1
+	&Cache-TTL := -1
 }
 cache
 if (!updated) {
@@ -254,9 +254,9 @@ else {
 
 # 24. Check Cache-Merge = yes works as expected (should update current request)
 update control {
-	Tmp-String-1 := 'cache me3'
-	Cache-TTL := -1
-	Cache-Merge := yes
+	&Tmp-String-1 := 'cache me3'
+	&Cache-TTL := -1
+	&Cache-Merge := yes
 }
 cache
 if (!updated) {
