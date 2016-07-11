@@ -513,9 +513,10 @@ static char const hextab[] = "0123456789abcdef";
  *
  * @note The resulting string will not be \0 terminated, and may contain embedded \0s.
  * @note Invalid escape sequences will be copied verbatim.
+ * @note in and out may point to the same buffer.
  *
- * @param[out] out	Where to write the unescaped string.  Length must be >= original
- *			string.  Unescaping never introduces additional chars.
+ * @param[out] out	Where to write the unescaped string.
+ *			Unescaping never introduces additional chars.
  * @param[in] in	The string to unescape.
  * @param[in] inlen	Length of input string.
  * @param[in] quote	Character around the string, determines unescaping mode.
