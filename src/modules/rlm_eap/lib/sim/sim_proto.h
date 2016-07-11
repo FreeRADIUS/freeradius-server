@@ -74,7 +74,7 @@ typedef enum {
 typedef struct gsm_vector {
 	uint8_t		rand[SIM_VECTOR_GSM_RAND_SIZE];			//!< RAND challenge to the SIM.
 	union {
-		uint8_t		sres[SIM_VECTOR_GSM_SRES_SIZE];	//!< Signing response.
+		uint8_t		sres[SIM_VECTOR_GSM_SRES_SIZE];		//!< Signing response.
 		uint32_t	sres_uint32;
 	};
 

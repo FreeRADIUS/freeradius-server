@@ -303,6 +303,11 @@ int fr_sim_vector_gsm_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		break;
 	}
 
+	if (ret == 1) {
+		RWDEBUG("Could not find or derive data for GSM vector[%i]", idx);
+		return 1;
+	}
+
 	if (RDEBUG_ENABLED2) {
 		RDEBUG2("GSM vector[%i]", idx);
 
@@ -533,6 +538,11 @@ int fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		}
 		if (ret < 0) return -1;
 		break;
+	}
+
+	if (ret == 1) {
+		RWDEBUG("Could not find or derive data for UMTS vector");
+		return 1;
 	}
 
 	if (RDEBUG_ENABLED2) {
