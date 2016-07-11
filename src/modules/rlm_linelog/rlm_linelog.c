@@ -526,6 +526,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 	struct timeval		*timeout = NULL;
 
 	char			buff[4096];
+
 	char			*p = buff;
 	linelog_instance_t	*inst = instance;
 	char const		*value;
@@ -538,7 +539,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 	size_t			vector_len;
 	bool			with_delim;
 
-	buff[0] = '.';	/* force to be in current section */
+	buff[0] = '.';	/* force to be in current section (by default) */
 	buff[1] = '\0';
 	buff[2] = '\0';
 
@@ -550,11 +551,14 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 		CONF_ITEM	*ci;
 		CONF_PAIR	*cp;
 		char const	*tmpl_str;
+		char const	*path;
 
-		if (tmpl_expand(NULL, buff + 1, sizeof(buff) - 1,
+		if (tmpl_expand(&path, buff + 1, sizeof(buff) - 1,
 				request, inst->log_ref, linelog_escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
+
+		if (path != buff + 1) strlcpy(buff + 1, path, sizeof(buff) - 1);
 
 		if (buff[1] == '.') p++;
 
