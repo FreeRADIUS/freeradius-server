@@ -1205,7 +1205,7 @@ int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 				memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
-			do_ack:
+		do_ack:
 			case PW_CODE_ACCESS_ACCEPT:
 			case PW_CODE_ACCESS_REJECT:
 			case PW_CODE_ACCESS_CHALLENGE:
@@ -1253,7 +1253,7 @@ int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 	 */
 	if ((packet->code == 0) || (packet->code >= FR_MAX_PACKET_CODE)) {
 		fr_strerror_printf("Received Unknown packet code %d "
-				   "from client %s port %d: Cannot validate Request/Response Authenticator.",
+				   "from client %s port %d: Cannot validate Request/Response-Authenticator.",
 				   packet->code,
 				   inet_ntop(packet->src_ipaddr.af,
 				             &packet->src_ipaddr.ipaddr,
@@ -1279,7 +1279,7 @@ int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 	case PW_CODE_ACCOUNTING_REQUEST:
 		if (calc_acctdigest(packet, secret) > 1) {
 			fr_strerror_printf("Received %s packet "
-					   "from client %s with invalid Request Authenticator!  "
+					   "from client %s with invalid Request-Authenticator!  "
 					   "(Shared secret is incorrect.)",
 					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
@@ -1301,7 +1301,7 @@ int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 		rcode = calc_replydigest(packet, original, secret);
 		if (rcode > 1) {
 			fr_strerror_printf("Received %s packet "
-					   "from home server %s port %d with invalid Response Authenticator!  "
+					   "from home server %s port %d with invalid Response-Authenticator!  "
 					   "(Shared secret is incorrect.)",
 					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
@@ -1314,7 +1314,7 @@ int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 
 	default:
 		fr_strerror_printf("Received Unknown packet code %d "
-				   "from client %s port %d: Cannot validate Request/Response Authenticator",
+				   "from client %s port %d: Cannot validate Request/Response-Authenticator",
 				   packet->code,
 				   inet_ntop(packet->src_ipaddr.af,
 				             &packet->src_ipaddr.ipaddr,
