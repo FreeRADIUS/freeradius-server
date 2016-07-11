@@ -508,7 +508,7 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 }
 
 
-/** Find an element in the tree, returning the data, not the node
+/* Find user data, returning the node
  *
  */
 rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
@@ -534,7 +534,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 	return NULL;
 }
 
-/** Find the user data.
+/** Find an element in the tree, returning the data, not the node
  *
  */
 void *rbtree_finddata(rbtree_t *tree, void const *data)
