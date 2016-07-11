@@ -1639,7 +1639,7 @@ static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
 	size_t		pad;
 	ssize_t		len;
 	vp_tmpl_t	*vpt;
-	char		*to_pad;
+	char		*to_pad = NULL;
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
@@ -1675,7 +1675,6 @@ static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
 	return pad;
 }
 
-
 /** right pad a string
  *
  *  %{rpad:&Attribute-Name length 'x'}
@@ -1688,7 +1687,7 @@ static ssize_t rpad_xlat(char **out, UNUSED size_t outlen,
 	size_t		pad;
 	ssize_t		len;
 	vp_tmpl_t	*vpt;
-	char		*to_pad;
+	char		*to_pad = NULL;
 
 	rad_assert(!*out);
 
