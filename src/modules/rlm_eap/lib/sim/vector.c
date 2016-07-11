@@ -307,15 +307,18 @@ int fr_sim_vector_gsm_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		RDEBUG2("GSM vector[%i]", idx);
 
 		RINDENT();
+		/*
+		 *	Don't change colon indent, matches other messages later...
+		 */
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->gsm.vector[idx].kc, SIM_VECTOR_GSM_KC_SIZE,
-				"KC   :");
+				"KC           :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->gsm.vector[idx].rand, SIM_VECTOR_GSM_RAND_SIZE,
-				"RAND :");
+				"RAND         :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->gsm.vector[idx].sres, SIM_VECTOR_GSM_SRES_SIZE,
-				"SRES :");
+				"SRES         :");
 		REXDENT();
 	}
 
@@ -536,21 +539,24 @@ int fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 		RDEBUG2("UMTS vector");
 
 		RINDENT();
+		/*
+		 *	Don't change colon indent, matches other messages later...
+		 */
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE,
-				"AUTN :");
+				"AUTN         :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->umts.vector.ck, SIM_VECTOR_UMTS_CK_SIZE,
-				"CK   :");
+				"CK           :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->umts.vector.ik, SIM_VECTOR_UMTS_IK_SIZE,
-				"IK   :");
+				"IK           :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE,
-				"RAND :");
+				"RAND         :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2,
 				keys->umts.vector.xres, keys->umts.vector.xres_len,
-				"XRES :");
+				"XRES         :");
 		REXDENT();
 	}
 
