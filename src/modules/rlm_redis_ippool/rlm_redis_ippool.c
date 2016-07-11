@@ -985,22 +985,22 @@ finish:
 
 /** Find the pool name we'll be allocating from
  *
- * @param out Where to write the pool name.
- * @param outlen Size of the output buffer.
- * @param inst This instance of the rlm_redis_ippool module.
- * @param request The current request.
+ * @param[out] out	Where to write the pool name.
+ * @param[out] buff	Where to write the pool name (in the case of an expansion).
+ * @param[in] bufflen	Size of the output buffer.
+ * @param[in] inst	This instance of the rlm_redis_ippool module.
+ * @param[in] request	The current request.
  * @return
  *	- < 0 on error.
  *	- 0 if no pool attribute exists, or the pool name is a zero length string.
  *	- > 0 on success (length of data written to out).
  */
-static inline ssize_t ippool_pool_name(uint8_t out[], size_t outlen, rlm_redis_ippool_t *inst, REQUEST *request)
+static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size_t bufflen,
+				       rlm_redis_ippool_t *inst, REQUEST *request)
 {
 	ssize_t slen;
-	uint8_t *out_p = out;
 
-	slen = tmpl_expand(NULL, (char *)out_p, outlen - (out_p - out), request,
-			   inst->pool_name, NULL, NULL);
+	slen = tmpl_expand(out, (char *)buff, bufflen, request, inst->pool_name, NULL, NULL);
 	if (slen < 0) {
 		if (inst->pool_name->type == TMPL_TYPE_ATTR) {
 			RDEBUG2("Pool attribute not present in request.  Doing nothing");
@@ -1014,19 +1014,18 @@ static inline ssize_t ippool_pool_name(uint8_t out[], size_t outlen, rlm_redis_i
 		return 0;
 	}
 
-	if (is_truncated((size_t)slen, outlen)) {
-		REDEBUG("Pool name too long.  Expected %zu bytes, got %zu bytes", outlen, (size_t)slen);
+	if ((*out == buff) && is_truncated((size_t)slen, bufflen)) {
+		REDEBUG("Pool name too long.  Expected %zu bytes, got %zu bytes", bufflen, (size_t)slen);
 		return -1;
 	}
-	out_p += slen;
 
-	return out_p - out;
+	return slen;
 }
 
 static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool_action_t action)
 {
-	uint8_t		key_prefix[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
-	uint8_t const	*device_id = NULL, *gateway_id = NULL;
+	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
+	uint8_t const	*key_prefix, *device_id = NULL, *gateway_id = NULL;
 	size_t		key_prefix_len, device_id_len = 0, gateway_id_len = 0;
 	ssize_t		slen;
 	fr_ipaddr_t	ip;
@@ -1035,7 +1034,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 	unsigned long	expires = 0;
 	char		*q;
 
-	slen = ippool_pool_name((uint8_t *)&key_prefix, sizeof(key_prefix), inst, request);
+	slen = ippool_pool_name(&key_prefix, (uint8_t *)&key_prefix_buff, sizeof(key_prefix_len), inst, request);
 	if (slen < 0) return RLM_MODULE_FAIL;
 	if (slen == 0) return RLM_MODULE_NOOP;
 
