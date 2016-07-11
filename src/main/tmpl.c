@@ -1837,9 +1837,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	}
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
-		value_data_field_sizes[src_type], *((void **)out), value_data_offsets[src_type]);
+		value_data_field_sizes[dst_type], *((void **)out), value_data_offsets[dst_type]);
 
-	memcpy(out, &from_cast + value_data_offsets[src_type], value_data_field_sizes[src_type]);
+	memcpy(out, &from_cast + value_data_offsets[dst_type], value_data_field_sizes[dst_type]);
 
 	return from_cast.length;
 }
