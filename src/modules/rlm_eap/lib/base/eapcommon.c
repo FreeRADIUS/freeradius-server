@@ -73,7 +73,6 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
 	{ "fail",	        EAP_FAIL		},
 	{ "noop",		EAP_NOOP		},
 	{ "invalid",		EAP_INVALID		},
-	{ "valid",		EAP_VALID		},
 
 	{  NULL , -1 }
 };
@@ -132,13 +131,13 @@ int eap_wireformat(eap_packet_t *reply)
 	eap_packet_raw_t	*header;
 	uint16_t total_length = 0;
 
-	if (!reply) return EAP_INVALID;
+	if (!reply) return 0;
 
 	/*
 	 *	If reply->packet is set, then the wire format
 	 *	has already been calculated, just succeed.
 	 */
-	if(reply->packet != NULL) return EAP_VALID;
+	if(reply->packet != NULL) return 0;
 
 	total_length = EAP_HEADER_LEN;
 	if (reply->code < 3) {
@@ -151,7 +150,7 @@ int eap_wireformat(eap_packet_t *reply)
 	reply->packet = talloc_array(reply, uint8_t, total_length);
 	header = (eap_packet_raw_t *)reply->packet;
 	if (!header) {
-		return EAP_INVALID;
+		return -1;
 	}
 
 	header->code = (reply->code & 0xFF);
@@ -182,7 +181,7 @@ int eap_wireformat(eap_packet_t *reply)
 		}
 	}
 
-	return EAP_VALID;
+	return 0;
 }
 
 
@@ -196,7 +195,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	eap_packet_raw_t *eap_packet;
 	int rcode;
 
-	if (eap_wireformat(reply) == EAP_INVALID) return RLM_MODULE_INVALID;
+	if (eap_wireformat(reply) < 0) return RLM_MODULE_INVALID;
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
 	fr_pair_delete_by_num(&(packet->vps), 0, PW_EAP_MESSAGE, TAG_ANY);

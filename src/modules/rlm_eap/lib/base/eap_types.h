@@ -112,7 +112,6 @@ typedef enum eap_rcode {
 	EAP_FAIL,		//!< Failed, don't reply.
 	EAP_NOOP,		//!< Succeeded without doing anything.
 	EAP_INVALID,     	//!< Invalid, don't reply.
-	EAP_VALID,		//!< Valid, continue.
 	EAP_MAX_RCODES
 } eap_rcode_t;
 
