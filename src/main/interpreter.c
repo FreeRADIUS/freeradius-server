@@ -119,7 +119,8 @@ typedef enum unlang_action_t {
 	UNLANG_CALCULATE_RESULT = 1,
 	UNLANG_CONTINUE,
 	UNLANG_PUSHED_CHILD,
-	UNLANG_BREAK
+	UNLANG_BREAK,
+	UNLANG_STOP_PROCESSING
 } unlang_action_t;
 
 
@@ -949,6 +950,7 @@ redo:
 		if ((request->master_state == REQUEST_STOP_PROCESSING) ||
 		    (request->parent &&
 		     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
+		do_stop:
 			entry->result = RLM_MODULE_FAIL;
 			entry->priority = 9999;
 			entry->unwind = MOD_RETURN;
@@ -959,6 +961,9 @@ redo:
 
 		action = unlang_functions[c->type](request, stack, &result, &priority);
 		switch (action) {
+		case UNLANG_STOP_PROCESSING:
+			goto do_stop;
+
 		case UNLANG_PUSHED_CHILD:
 			goto redo;
 
