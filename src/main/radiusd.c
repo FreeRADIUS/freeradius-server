@@ -1,8 +1,5 @@
 /*
- * radiusd.c	Main loop of the radius server.
- *
- * Version:	$Id$
- *
+/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,15 +13,21 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000-2012  The FreeRADIUS server project
- * Copyright 1999,2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
- * Copyright 2000  Jeff Carneal <jeff@apex.net>
- * Copyright 2000  Chad Miller <cmiller@surfsouth.com>
  */
 
+/**
+ * $Id$
+ *
+ * @file radiusd.c
+ * @brief Main loop of the radius server.
+ *
+ * @copyright 2000-2016 The FreeRADIUS server project
+ * @copyright 1999,2000 Miquel van Smoorenburg <miquels@cistron.nl>
+ * @copyright 2000 Alan DeKok <aland@ox.org>
+ * @copyright 2000 Alan Curry <pacman-radius@cqc.com>
+ * @copyright 2000 Jeff Carneal <jeff@apex.net>
+ * @copyright 2000 Chad Miller <cmiller@surfsouth.com>
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
