@@ -213,12 +213,12 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 }
 
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mod_session_init(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	int			i;
 	VALUE_PAIR		*auth_challenge;
@@ -398,7 +398,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 /*
  *	Authenticate a previously sent challenge.
  */
-static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode, ccode;
 	uint8_t *p;

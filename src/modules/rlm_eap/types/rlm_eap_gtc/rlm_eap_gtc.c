@@ -48,7 +48,7 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Attach the module.
@@ -77,7 +77,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static int mod_session_init(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	char		challenge_str[1024];
 	int		length;
@@ -117,7 +117,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mod_process(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 {
 	int		rcode;
 	VALUE_PAIR	*vp;

@@ -139,12 +139,12 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int mod_session_init(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session;
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_peap_t);
@@ -207,7 +207,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 {
 	int			rcode;
 	eap_tls_status_t	status;

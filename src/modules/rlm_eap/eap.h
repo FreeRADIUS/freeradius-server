@@ -50,7 +50,7 @@ typedef struct _eap_session eap_session_t;
 /*
  *	Function to process EAP packets.
  */
-typedef int (*eap_process_t)(void *instance, eap_session_t *eap_session);
+typedef rlm_rcode_t (*eap_process_t)(void *instance, eap_session_t *eap_session);
 
 #define EAP_STATE_LEN (AUTH_VECTOR_LEN)
 /** Tracks the progress of a single session of any EAP method

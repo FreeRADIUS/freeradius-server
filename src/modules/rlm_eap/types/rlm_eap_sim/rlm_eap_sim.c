@@ -296,13 +296,13 @@ static void eap_sim_state_enter(eap_session_t *eap_session,
 	eap_sim_compose(eap_session);
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
@@ -447,7 +447,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 /** Authenticate a previously sent challenge
  *
  */
-static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);

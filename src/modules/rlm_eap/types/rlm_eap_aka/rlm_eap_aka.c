@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 fr_dict_attr_t const *dict_aka_root;
 
-static int mod_process(UNUSED void *arg, eap_session_t *eap_session);
+static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 /*
  *	build a reply to be sent.
@@ -225,7 +225,7 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 /** Initiate the EAP-SIM session by starting the state machine
  *
  */
-static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session;
@@ -327,7 +327,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 /** Authenticate a previously sent challenge
  *
  */
-static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);

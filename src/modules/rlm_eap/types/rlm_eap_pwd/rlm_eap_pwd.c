@@ -171,9 +171,9 @@ static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
 	return 1;
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
-static int mod_session_init(void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	pwd_session_t *session;
 	rlm_eap_pwd_t *inst = (rlm_eap_pwd_t *)instance;
@@ -268,7 +268,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	return 1;
 }
 
-static int mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 {
 	pwd_session_t *session;
 	pwd_hdr *hdr;

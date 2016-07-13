@@ -66,12 +66,12 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 	return 0;
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int mod_session_init(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session;
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_tls_t);
@@ -117,7 +117,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_session)
 {
 	eap_tls_status_t	status;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);

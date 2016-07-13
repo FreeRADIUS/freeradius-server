@@ -31,12 +31,12 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/md5.h>
 
-static int mod_process(UNUSED void *arg, eap_session_t *eap_session);
+static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
 	int		i;
 	MD5_PACKET	*reply;
@@ -102,7 +102,7 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;

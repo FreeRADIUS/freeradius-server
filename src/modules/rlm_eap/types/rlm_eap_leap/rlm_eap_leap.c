@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include "eap_leap.h"
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  * send an initial eap-leap request
@@ -38,7 +38,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
  * len = header + type + leap_methoddata
  * leap_methoddata = value_size + value
  */
-static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
 	REQUEST 	*request = eap_session->request;
 	leap_session_t	*session;
@@ -84,7 +84,7 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_
 	return 1;
 }
 
-static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
 {
 	int		rcode;
 	REQUEST 	*request = eap_session->request;
