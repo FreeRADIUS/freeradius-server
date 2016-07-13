@@ -69,26 +69,6 @@ static char const *eap_codes[] = {
 	"Failure"
 };
 
-/*
- * Call the appropriate handle with the right eap_method.
- */
-static int eap_module_call(rlm_eap_method_t *method, eap_session_t *eap_session)
-{
-	int rcode = 1;
-	REQUEST *request = eap_session->request;
-
-	char const *caller = request->module;
-
-	rad_assert(method != NULL);
-
-	RDEBUG2("Calling submodule %s to process data", method->submodule->name);
-
-	request->module = method->submodule->name;
-	rcode = eap_session->process(method->submodule_inst, eap_session);
-	request->module = caller;
-
-	return rcode;
-}
 
 /** Process NAK data from EAP peer
  *
@@ -209,6 +189,9 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  */
 rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
+	int			rcode;
+	char const		*caller;
+	rlm_eap_method_t	*method;
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
 
@@ -310,10 +293,18 @@ rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		eap_session->type = type->num;
 
 	module_call:
-		if (eap_module_call(inst->methods[type->num], eap_session) == 0) {
+		caller = request->module;
+		method = inst->methods[type->num];
+
+		RDEBUG2("Calling submodule %s", method->submodule->name);
+
+		request->module = method->submodule->name;
+		rcode = eap_session->process(method->submodule_inst, eap_session);
+		request->module = caller;
+
+		if (rcode != 0) {
 			REDEBUG2("Failed in EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(type->num), type->num);
-
 			return RLM_MODULE_INVALID;
 		}
 		break;
