@@ -105,18 +105,6 @@ typedef enum eap_method {
 
 #define PW_EAP_EXPANDED_TYPE	(254)
 
-typedef enum eap_rcode {
-	EAP_NOTFOUND,    	//!< EAP eap_session data not found.
-	EAP_HANDLED,       	//!< EAP eap_session data found, continue.
-	EAP_OK,		 	//!< Ok, continue.
-	EAP_FAIL,		//!< Failed, don't reply.
-	EAP_NOOP,		//!< Succeeded without doing anything.
-	EAP_INVALID,     	//!< Invalid, don't reply.
-	EAP_MAX_RCODES
-} eap_rcode_t;
-
-extern const FR_NAME_NUMBER eap_rcode_table[];
-
 /** EAP-Type specific data
  */
 typedef struct eap_type_data {

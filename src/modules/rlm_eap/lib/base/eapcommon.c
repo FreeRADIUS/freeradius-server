@@ -66,17 +66,6 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap.h"
 
-const FR_NAME_NUMBER eap_rcode_table[] = {
-	{ "notfound",		EAP_NOTFOUND		},
-	{ "handled",		EAP_HANDLED		},
-	{ "ok",			EAP_OK			},
-	{ "fail",	        EAP_FAIL		},
-	{ "noop",		EAP_NOOP		},
-	{ "invalid",		EAP_INVALID		},
-
-	{  NULL , -1 }
-};
-
 /** Return an EAP-Type for a particular name
  *
  * Converts a name into an IANA EAP type.

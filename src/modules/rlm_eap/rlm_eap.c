@@ -231,7 +231,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	rlm_eap_t		*inst;
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
-	eap_rcode_t		status;
 	rlm_rcode_t		rcode;
 
 	inst = (rlm_eap_t *)instance;
@@ -268,15 +267,14 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	or with simple types like Identity and NAK,
 	 *	process it ourselves.
 	 */
-	status = eap_method_select(inst, eap_session);
+	rcode = eap_method_select(inst, eap_session);
 
 	/*
 	 *	The submodule failed.  Die.
 	 */
-	if (status == EAP_INVALID) {
+	if (rcode == RLM_MODULE_INVALID) {
 		eap_fail(eap_session);
 		eap_session_destroy(&eap_session);
-		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
@@ -452,17 +450,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	status = eap_start(inst, request);
 	switch (status) {
-	case EAP_NOOP:
-		return RLM_MODULE_NOOP;
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_HANDLED:
+		return status;
 
-	case EAP_FAIL:
-		return RLM_MODULE_FAIL;
-
-	case EAP_HANDLED:
-		return RLM_MODULE_HANDLED;
-
-	case EAP_OK:
-	case EAP_NOTFOUND:
 	default:
 		break;
 	}
@@ -487,7 +479,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		RWDEBUG2("Auth-Type already set.  Not setting to EAP");
 	}
 
-	if (status == EAP_OK) return RLM_MODULE_OK;
+	if (status == RLM_MODULE_OK) return RLM_MODULE_OK;
 
 	return RLM_MODULE_UPDATED;
 }

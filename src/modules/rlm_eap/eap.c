@@ -207,7 +207,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  * @param eap_session State data that persists over multiple rounds of EAP.
  * @return a status code.
  */
-eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
+rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
@@ -221,7 +221,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
 		REDEBUG("Peer sent EAP type number %d, which is outside known range", type->num);
 
-		return EAP_INVALID;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -239,7 +239,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 	    !eap_session->request->parent->parent->home_server) {
 		RERROR("Multiple levels of TLS nesting are invalid");
 
-		return EAP_INVALID;
+		return RLM_MODULE_INVALID;
 	}
 
 	RDEBUG2("Peer sent packet with EAP method %s (%d)", eap_type2name(type->num), type->num);
@@ -264,7 +264,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		if ((next < PW_EAP_MD5) || (next >= PW_EAP_MAX_TYPES) || (!inst->methods[next])) {
 			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
 				 eap_type2name(next), next);
-			return EAP_INVALID;
+			return RLM_MODULE_INVALID;
 		}
 
 	do_initiate:
@@ -282,7 +282,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 			REDEBUG2("Failed starting EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(next), next);
 
-			return EAP_INVALID;
+			return RLM_MODULE_INVALID;
 		}
 		break;
 
@@ -298,7 +298,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		/*
 		 *	We probably want to return 'fail' here...
 		 */
-		if (!next) return EAP_INVALID;
+		if (!next) return RLM_MODULE_INVALID;
 		goto do_initiate;
 
 	/*
@@ -311,7 +311,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		if (!inst->methods[type->num]) {
 			REDEBUG2("Client asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
 
-			return EAP_INVALID;
+			return RLM_MODULE_INVALID;
 		}
 
 		eap_session->type = type->num;
@@ -319,12 +319,12 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(type->num), type->num);
 
-			return EAP_INVALID;
+			return RLM_MODULE_INVALID;
 		}
 		break;
 	}
 
-	return EAP_OK;
+	return RLM_MODULE_OK;
 }
 
 
@@ -501,7 +501,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	eap_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
-		return EAP_NOOP;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -511,7 +511,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
 	if (vp && vp->vp_integer == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
-		return EAP_NOOP;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -559,12 +559,12 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		do_proxy:
 			RDEBUG2("Request is supposed to be proxied to "
 				"Realm %s. Not doing EAP.", proxy->vp_strvalue);
-			return EAP_NOOP;
+			return RLM_MODULE_NOOP;
 		}
 
 		RDEBUG2("Got EAP_START message");
 		vp = fr_pair_afrom_num(request->reply, 0, PW_EAP_MESSAGE);
-		if (!vp) return EAP_FAIL;
+		if (!vp) return RLM_MODULE_FAIL;
 		fr_pair_add(&request->reply->vps, vp);
 
 		/*
@@ -578,7 +578,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		p[4] = PW_EAP_IDENTITY;
 		fr_pair_value_memsteal(vp, p);
 
-		return EAP_HANDLED;
+		return RLM_MODULE_HANDLED;
 	} /* end of handling EAP-Start */
 
 	/*
@@ -592,7 +592,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		        eap_msg->vp_octets[0],
 		        eap_msg->vp_octets[1],
 		        eap_msg->vp_length);
-		return EAP_FAIL;
+		return RLM_MODULE_FAIL;
 	/*
 	 *	The EAP packet header is 4 bytes, plus one byte of
 	 *	EAP sub-type.  Short packets are discarded, unless
@@ -602,7 +602,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		if (proxy) goto do_proxy;
 
 		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful");
-		return EAP_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -653,7 +653,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	if ((eap_msg->vp_octets[0] != PW_EAP_REQUEST) &&
 	    (eap_msg->vp_octets[0] != PW_EAP_RESPONSE)) {
 		RDEBUG2("Ignoring EAP packet which we don't know how to handle");
-		return EAP_FAIL;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -670,7 +670,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	     (eap_msg->vp_octets[4] >= PW_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[4]]))) {
 		RDEBUG2("Ignoring Unknown EAP type");
-		return EAP_NOOP;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -695,13 +695,13 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	     (eap_msg->vp_octets[5] >= PW_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[5]]))) {
 		RDEBUG2("Ignoring NAK with request for unknown EAP type");
-		return EAP_NOOP;
+		return RLM_MODULE_NOOP;
 	}
 
 	if ((eap_msg->vp_octets[4] == PW_EAP_TTLS) ||
 	    (eap_msg->vp_octets[4] == PW_EAP_PEAP)) {
 		RDEBUG2("Continuing tunnel setup");
-		return EAP_OK;
+		return RLM_MODULE_OK;
 	}
 	/*
 	 * We return ok in response to EAP identity
@@ -717,7 +717,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	if (eap_msg->vp_octets[4] == PW_EAP_IDENTITY) {
 		RDEBUG2("Peer sent EAP-Identity.  Returning 'ok' so we can short-circuit the rest of authorize");
-		return EAP_OK;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -729,7 +729,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	RDEBUG2("Continuing on-going EAP conversation");
 
-	return EAP_NOTFOUND;
+	return RLM_MODULE_NOTFOUND;
 }
 
 /*
