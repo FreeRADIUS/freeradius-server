@@ -1,0 +1,15 @@
+#
+# JSON quoting
+#
+
+update request {
+	&Tmp-String-0 := 'foo/bar'
+	&Tmp-String-1 := "%{jsonquote:%{Tmp-String-0}}"
+}
+
+# Check for correct escapes
+if (&Tmp-String-1 == 'foo\/bar') {
+	test_pass
+} else {
+	test_fail
+}

@@ -135,6 +135,43 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
 	return 0;
 }
 
+/** Escapes string for use as a JSON string
+ *
+ * @param ctx Talloc context to allocate this string
+ * @param s Input string
+ * @param include_quotes Include the surrounding quotes of JSON strings
+ * @return New allocated character string, or NULL if something failed.
+ */
+char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
+{
+	char const *p;
+	char *out;
+	struct json_object *json;
+	int len;
+
+	json = json_object_new_string(s);
+	if (!json) return NULL;
+
+	p = json_object_to_json_string(json);
+	if (!p) goto alloc_failed;
+
+	if (include_quotes) {
+		out = talloc_strdup(ctx, p);
+		if (!out) goto alloc_failed;
+	} else {
+		len = strlen(p) - 1;
+		out = talloc_strndup(ctx, p+1, len);
+		if (!out) goto alloc_failed;
+		out[len-1] = '\0';
+	}
+	
+	return out;
+
+alloc_failed:
+	free(json);
+	return NULL;
+}
+
 /** Prints attribute as string, escaped suitably for use as JSON string
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
@@ -149,7 +186,6 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
  */
 size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	char const	*q;
 	size_t		len, freespace = outlen;
 
 	if (!vp->da->flags.has_tag) {
@@ -177,78 +213,29 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		}
 	}
 
+	if (vp->da->type == PW_TYPE_STRING) {
+		char *tmp = fr_json_from_string(NULL, vp->vp_strvalue, true);
+
+		/* Indicate truncation */
+		if (!tmp) return outlen + 1;
+		len = strlen(tmp);
+		if (freespace <= len) return outlen + 1;
+
+		strcpy(out, tmp);
+		talloc_free(tmp);
+
+		return len;
+	}
+
 	/* Indicate truncation */
 	if (freespace < 2) return outlen + 1;
 	*out++ = '"';
 	freespace--;
 
-	switch (vp->da->type) {
-	case PW_TYPE_STRING:
-		for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->vp_length; q++) {
-			/* Indicate truncation */
-			if (freespace < 3) return outlen + 1;
-
-			if (*q == '"') {
-				*out++ = '\\';
-				*out++ = '"';
-				freespace -= 2;
-			} else if (*q == '\\') {
-				*out++ = '\\';
-				*out++ = '\\';
-				freespace -= 2;
-			} else if (*q == '/') {
-				*out++ = '\\';
-				*out++ = '/';
-				freespace -= 2;
-			} else if (*q >= ' ') {
-				*out++ = *q;
-				freespace--;
-			} else {
-				*out++ = '\\';
-				freespace--;
-
-				switch (*q) {
-				case '\b':
-					*out++ = 'b';
-					freespace--;
-					break;
-
-				case '\f':
-					*out++ = 'f';
-					freespace--;
-					break;
-
-				case '\n':
-					*out++ = 'b';
-					freespace--;
-					break;
-
-				case '\r':
-					*out++ = 'r';
-					freespace--;
-					break;
-
-				case '\t':
-					*out++ = 't';
-					freespace--;
-					break;
-				default:
-					len = snprintf(out, freespace, "u%04X", *q);
-					if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-					out += len;
-					freespace -= len;
-				}
-			}
-		}
-		break;
-
-	default:
-		len = fr_pair_value_snprint(out, freespace, vp, 0);
-		if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-		out += len;
-		freespace -= len;
-		break;
-	}
+	len = fr_pair_value_snprint(out, freespace, vp, 0);
+	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+	out += len;
+	freespace -= len;
 
 	/* Indicate truncation */
 	if (freespace < 2) return outlen + 1;

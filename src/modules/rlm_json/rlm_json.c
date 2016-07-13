@@ -54,80 +54,21 @@ typedef struct rlm_json_jpath_to_eval {
 
 static ssize_t jsonquote_xlat(char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      UNUSED REQUEST *request, char const *fmt)
+			      REQUEST *request, char const *fmt)
 {
-	char const *p;
-	char *out_p = *out;
-	size_t freespace = outlen;
 	size_t len;
+	char *tmp;
 
-	for (p = fmt; *p != '\0'; p++) {
-		/* Indicate truncation */
-		if (freespace < 3) {
-			*out_p = '\0';
-			return outlen + 1;
-		}
+	tmp = fr_json_from_string(request, fmt, false);
+	
+	/* Indicate truncation */
+	if (!tmp) return outlen + 1;
+	len = strlen(tmp);
+	if (len >= outlen) return outlen + 1;
 
-		if (*p == '"') {
-			*out_p++ = '\\';
-			*out_p++ = '"';
-			freespace -= 2;
-		} else if (*p == '\\') {
-			*out_p++ = '\\';
-			*out_p++ = '\\';
-			freespace -= 2;
-		} else if (*p == '/') {
-			*out_p++ = '\\';
-			*out_p++ = '/';
-			freespace -= 2;
-		} else if (*p >= ' ') {
-			*out_p++ = *p;
-			freespace--;
-		/*
-		 *	Unprintable chars
-		 */
-		} else {
-			*out_p++ = '\\';
-			freespace--;
+	*out = tmp;
 
-			switch (*p) {
-			case '\b':
-				*out_p++ = 'b';
-				freespace--;
-				break;
-
-			case '\f':
-				*out_p++ = 'f';
-				freespace--;
-				break;
-
-			case '\n':
-				*out_p++ = 'b';
-				freespace--;
-				break;
-
-			case '\r':
-				*out_p++ = 'r';
-				freespace--;
-				break;
-
-			case '\t':
-				*out_p++ = 't';
-				freespace--;
-				break;
-
-			default:
-				len = snprintf(out_p, freespace, "u%04X", *p);
-				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-				out_p += len;
-				freespace -= len;
-			}
-		}
-	}
-
-	*out_p = '\0';
-
-	return outlen - freespace;
+	return len;
 }
 
 /** Determine if a jpath expression is valid
