@@ -60,7 +60,6 @@ typedef struct rlm_eap {
  *	EAP Method selection
  */
 int      	eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs);
-rlm_rcode_t	eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session);
 
 /*
  *	EAP Method composition
