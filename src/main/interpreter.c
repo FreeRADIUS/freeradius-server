@@ -69,52 +69,6 @@ static void safe_unlock(module_instance_t *instance)
 		pthread_mutex_unlock(instance->mutex);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) unlang_module(REQUEST *request, modsingle *sp)
-{
-	int blocked;
-
-	/*
-	 *	If the request should stop, refuse to do anything.
-	 */
-	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
-	if (blocked) return RLM_MODULE_NOOP;
-
-	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
-		sp->modinst->module->name, request->number);
-
-	if (sp->modinst->force) {
-		request->rcode = sp->modinst->code;
-		goto fail;
-	}
-
-	/*
-	 *	For logging unresponsive children.
-	 */
-	request->module = sp->modinst->name;
-
-	safe_lock(sp->modinst);
-	request->rcode = sp->function(sp->modinst->data, request);
-	safe_unlock(sp->modinst);
-
-	request->module = NULL;
-
-	/*
-	 *	Wasn't blocked, and now is.  Complain!
-	 */
-	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
-	if (blocked) {
-		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->modinst->module->name, request->number);
-	}
-
- fail:
-	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
-		sp->modinst->module->name, request->number);
-
-	return request->rcode;
-}
-
 typedef enum unlang_action_t {
 	UNLANG_CALCULATE_RESULT = 1,
 	UNLANG_CONTINUE,
@@ -723,7 +677,44 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	sp = mod_callabletosingle(c);
 
-	*presult = unlang_module(request, sp);
+	/*
+	 *	If the request should stop, refuse to do anything.
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_STOP_PROCESSING;
+
+	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
+		sp->method, sp->modinst->name,
+		sp->modinst->module->name, request->number);
+
+	if (sp->modinst->force) {
+		request->rcode = sp->modinst->code;
+		goto fail;
+	}
+
+	/*
+	 *	For logging unresponsive children.
+	 */
+	request->module = sp->modinst->name;
+
+	safe_lock(sp->modinst);
+	request->rcode = sp->function(sp->modinst->data, request);
+	safe_unlock(sp->modinst);
+
+	request->module = NULL;
+
+	/*
+	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->modinst->module->name, request->number);
+	}
+
+ fail:
+	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
+		sp->method, sp->modinst->name,
+		sp->modinst->module->name, request->number);
+
+	*presult = request->rcode;
 	*priority = c->actions[*presult];
 
 	RDEBUG2("%s (%s)", c->name ? c->name : "",
