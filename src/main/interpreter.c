@@ -667,6 +667,7 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
+	int depth = stack->depth;
 	modsingle *sp;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -707,6 +708,16 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->modinst->module->name, request->number);
+		return UNLANG_STOP_PROCESSING;
+	}
+
+	/*
+	 *	Child was pushed by the module.
+	 */
+	if (depth < stack->depth) {
+		rad_assert(entry->resume == true);
+		rad_assert((entry + 1)->c->type == MOD_SINGLE);
+		return UNLANG_PUSHED_CHILD;
 	}
 
  fail:
