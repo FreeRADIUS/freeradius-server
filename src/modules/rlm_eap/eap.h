@@ -62,9 +62,6 @@ struct _eap_session {
 	eap_session_t	*child;				//!< Session for tunnelled EAP method.
 
 	void		*inst;				//!< Instance of the eap module this session was created by.
-	fr_ipaddr_t	src_ipaddr;			//!< of client which sent us the RADIUS request for this
-							//!< session.
-
 	eap_type_t	type;				//!< EAP method number.
 
 	REQUEST		*request;			//!< Current request.  Only used by OpenSSL callbacks to
