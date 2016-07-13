@@ -684,7 +684,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_STOP_PROCESSING;
 
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
+		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	if (sp->modinst->force) {
@@ -722,7 +722,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 
  fail:
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
+		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	*presult = request->rcode;
@@ -843,7 +843,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	sp = &mr->single;
 
 	RDEBUG3("modsingle[%s]: Resuming %s (%s) for request %" PRIu64,
-		sp->method, sp->modinst->name,
+		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	safe_lock(sp->modinst);

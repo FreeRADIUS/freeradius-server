@@ -66,7 +66,7 @@ typedef int const unlang_action_table_t[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES];
 
 typedef struct unlang_compile_t {
 	rlm_components_t	component;
-	char const		*method;
+	char const		*name;
 	unlang_action_table_t	*actions;
 } unlang_compile_t;
 
@@ -2598,13 +2598,13 @@ static modcallable *compile_module(modcallable *parent, unlang_compile_t *unlang
 	 */
 	if (!this->module->methods[unlang_ctx->component]) {
 		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->module->name,
-			   unlang_ctx->method);
+			   unlang_ctx->name);
 		return NULL;
 	}
 
 	single = talloc_zero(parent, modsingle);
 	single->modinst = this;
-	single->method = unlang_ctx->method;
+	single->name = unlang_ctx->name;
 	single->inst = this->data;
 	single->function = this->module->methods[unlang_ctx->component];
 
@@ -2660,7 +2660,7 @@ static modcall_compile_t compile_table[] = {
  */
 #define UPDATE_CTX2  \
 	unlang_ctx2.component = component; \
-	unlang_ctx2.method = comp2str[component]; \
+	unlang_ctx2.name = comp2str[component]; \
 	unlang_ctx2.actions = unlang_ctx->actions
 
 /*
@@ -2944,7 +2944,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	unlang_compile_t unlang_ctx;
 
 	unlang_ctx.component = component;
-	unlang_ctx.method = comp2str[component];
+	unlang_ctx.name = comp2str[component];
 
 	if (component == MOD_AUTHENTICATE) {
 		unlang_ctx.actions = &defaultactions[component];

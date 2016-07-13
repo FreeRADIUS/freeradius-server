@@ -104,7 +104,7 @@ typedef struct {
 typedef struct {
 	modcallable		mc;
 	module_instance_t	*modinst;
-	char const		*method;
+	char const		*name;
 	char			*inst;
 	module_method_t		function;
 } modsingle;
