@@ -68,7 +68,7 @@ RCSID("$Id$")
 
 const FR_NAME_NUMBER eap_rcode_table[] = {
 	{ "notfound",		EAP_NOTFOUND		},
-	{ "found",		EAP_FOUND		},
+	{ "handled",		EAP_HANDLED		},
 	{ "ok",			EAP_OK			},
 	{ "fail",	        EAP_FAIL		},
 	{ "noop",		EAP_NOOP		},

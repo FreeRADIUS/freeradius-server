@@ -458,7 +458,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	case EAP_FAIL:
 		return RLM_MODULE_FAIL;
 
-	case EAP_FOUND:
+	case EAP_HANDLED:
 		return RLM_MODULE_HANDLED;
 
 	case EAP_OK:

@@ -578,7 +578,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		p[4] = PW_EAP_IDENTITY;
 		fr_pair_value_memsteal(vp, p);
 
-		return EAP_FOUND;
+		return EAP_HANDLED;
 	} /* end of handling EAP-Start */
 
 	/*

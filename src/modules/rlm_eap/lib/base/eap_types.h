@@ -107,7 +107,7 @@ typedef enum eap_method {
 
 typedef enum eap_rcode {
 	EAP_NOTFOUND,    	//!< EAP eap_session data not found.
-	EAP_FOUND,       	//!< EAP eap_session data found, continue.
+	EAP_HANDLED,       	//!< EAP eap_session data found, continue.
 	EAP_OK,		 	//!< Ok, continue.
 	EAP_FAIL,		//!< Failed, don't reply.
 	EAP_NOOP,		//!< Succeeded without doing anything.
