@@ -277,14 +277,7 @@ rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 
 		eap_session->process = inst->methods[next]->submodule->session_init;
 		eap_session->type = next;
-
-		if (eap_module_call(inst->methods[next], eap_session) == 0) {
-			REDEBUG2("Failed starting EAP %s (%d) session.  EAP sub-module failed",
-				 eap_type2name(next), next);
-
-			return RLM_MODULE_INVALID;
-		}
-		break;
+		goto module_call;
 
 	case PW_EAP_NAK:
 		/*
@@ -315,8 +308,10 @@ rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		}
 
 		eap_session->type = type->num;
+
+	module_call:
 		if (eap_module_call(inst->methods[type->num], eap_session) == 0) {
-			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
+			REDEBUG2("Failed in EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(type->num), type->num);
 
 			return RLM_MODULE_INVALID;
