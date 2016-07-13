@@ -698,7 +698,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	request->module = sp->modinst->name;
 
 	safe_lock(sp->modinst);
-	request->rcode = sp->function(sp->inst, request);
+	request->rcode = sp->method(sp->inst, request);
 	safe_unlock(sp->modinst);
 
 	request->module = NULL;

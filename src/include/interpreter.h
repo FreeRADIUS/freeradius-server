@@ -106,7 +106,7 @@ typedef struct {
 	module_instance_t	*modinst;
 	char const		*name;
 	char			*inst;
-	module_method_t		function;
+	module_method_t		method;
 } modsingle;
 
 typedef struct {

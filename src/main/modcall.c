@@ -2606,7 +2606,7 @@ static modcallable *compile_module(modcallable *parent, unlang_compile_t *unlang
 	single->modinst = this;
 	single->name = unlang_ctx->name;
 	single->inst = this->data;
-	single->function = this->module->methods[unlang_ctx->component];
+	single->method = this->module->methods[unlang_ctx->component];
 
 	c = mod_singletocallable(single);
 	c->parent = parent;
