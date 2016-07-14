@@ -539,18 +539,27 @@ int fr_set_dumpable(bool allow_core_dumps)
 				return -1;
 			}
 		}
-	} else {
-		if ((current.rlim_cur != 0) || (current.rlim_max != 0)) {
-			struct rlimit no_core;
+	/*
+	 *	We've been told to disable core dumping,
+	 *	rlim_cur is not set to zero.
+	 *
+	 *	Set rlim_cur to zero, but leave rlim_max
+	 *	set to whatever the current value is.
+	 *
+	 *	This is because, later, we may need to
+	 *	re-enable core dumps to allow the debugger
+	 *	to attach *sigh*.
+	 */
+	} else if (current.rlim_cur != 0) {
+		struct rlimit no_core;
 
-			no_core.rlim_cur = 0;
-			no_core.rlim_max = 0;
+		no_core.rlim_cur = 0;
+		no_core.rlim_max = current.rlim_max;
 
-			if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-				fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
+		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
+			fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));
 
-				return -1;
-			}
+			return -1;
 		}
 	}
 #endif
