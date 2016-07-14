@@ -1576,13 +1576,13 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 
 	if (*p != '&') {
 		RDEBUG("First argument must be an attribute reference");
-		return -1;
+		return 0;
 	}
 
 	slen = tmpl_afrom_attr_substr(request, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
 		RDEBUG("Failed parsing input string: %s", fr_strerror());
-		return 0;
+		return slen;
 	}
 
 	p = fmt + slen;
@@ -1645,6 +1645,8 @@ static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
+	if (!rad_cond_assert(vpt)) return 0;
+
 	/*
 	 *	Print the attribute (left justified).  If it's too
 	 *	big, we're done.
@@ -1694,6 +1696,8 @@ static ssize_t rpad_xlat(char **out, UNUSED size_t outlen,
 	rad_assert(!*out);
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
+
+	if (!rad_cond_assert(vpt)) return 0;
 
 	/*
 	 *	Print the attribute (left justified).  If it's too
