@@ -450,7 +450,7 @@ void fr_panic_on_free(TALLOC_CTX *ctx)
  * @param dumpable whether we should allow core dumping
  */
 #if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE)
-static int fr_set_dumpable_flag(bool dumpable)
+static int fr_set_pr_dumpable_flag(bool dumpable)
 {
 	if (prctl(PR_SET_DUMPABLE, dumpable ? 1 : 0) < 0) {
 		fr_strerror_printf("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: %s",
@@ -461,7 +461,7 @@ static int fr_set_dumpable_flag(bool dumpable)
 	return 0;
 }
 #else
-static int fr_set_dumpable_flag(UNUSED bool dumpable)
+static int fr_set_pr_dumpable_flag(UNUSED bool dumpable)
 {
 	fr_strerror_printf("Changing value of PR_DUMPABLE not supported on this system");
 	return -2;
@@ -472,7 +472,7 @@ static int fr_set_dumpable_flag(UNUSED bool dumpable)
  *
  */
 #if defined(HAVE_SYS_PRCTL_H) && defined(PR_GET_DUMPABLE)
-static int fr_get_dumpable_flag(void)
+static int fr_get_pr_dumpable_flag(void)
 {
 	int ret;
 
@@ -489,7 +489,7 @@ static int fr_get_dumpable_flag(void)
 	return 1;
 }
 #else
-static int fr_get_dumpable_flag(void)
+static int fr_get_pr_dumpable_flag(void)
 {
 	fr_strerror_printf("Getting value of PR_DUMPABLE not supported on this system");
 	return -2;
@@ -554,11 +554,11 @@ int fr_set_dumpable(bool allow_core_dumps)
 		}
 	}
 #endif
-#if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE)
 	/*
 	 *	Macro needed so we don't emit spurious errors
 	 */
-	if (fr_set_dumpable_flag(allow_core_dumps) < 0) return -1;
+#if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE)
+	if (fr_set_pr_dumpable_flag(allow_core_dumps) < 0) return -1;
 #endif
 
 	return 0;
@@ -722,8 +722,8 @@ NEVER_RETURNS void fr_fault(int sig)
 		 *	is called in the panic_action, they can pattach to the running
 		 *	process.
 		 */
-		if (fr_get_dumpable_flag() == 0) {
-			if ((fr_set_dumpable_flag(true) < 0) || !fr_get_dumpable_flag()) {
+		if (fr_get_pr_dumpable_flag() == 0) {
+			if ((fr_set_pr_dumpable_flag(true) < 0) || !fr_get_pr_dumpable_flag()) {
 				FR_FAULT_LOG("Failed setting dumpable flag, pattach may not work: %s", fr_strerror());
 			} else {
 				disable = true;
@@ -740,7 +740,7 @@ NEVER_RETURNS void fr_fault(int sig)
 		 */
 		if (disable) {
 			FR_FAULT_LOG("Resetting PR_DUMPABLE to 0");
-			if (fr_set_dumpable_flag(false) < 0) {
+			if (fr_set_pr_dumpable_flag(false) < 0) {
 				FR_FAULT_LOG("Failed reseting dumpable flag to off: %s", fr_strerror());
 				FR_FAULT_LOG("Exiting due to insecure process state");
 				fr_exit_now(1);
