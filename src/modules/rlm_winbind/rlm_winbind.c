@@ -189,37 +189,36 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	 *	Maybe there should be an option to include the domain in the compared
 	 *	group name in case people have multiple domains?
 	 */
-	backslash = domain_len - 1;
+	if (domain_len > 0) backslash = domain_len - 1;
 
 	for (i = 0; i < num_groups; i++) {
-		struct group	*gptr;
-		char		*gname;
+		struct group	*group;
+		char		*group_name;
+
 		bool		found = false;
 
 		/* Get the group name from the (fake winbind) gid */
-		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &gptr);
-		RDEBUG3("Got group id: %d, name: %s", wb_groups[i], gptr->gr_name);
-
-		gname = gptr->gr_name;
+		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
+		RDEBUG3("Got group id: %i, name: %s", wb_groups[i], group->gr_name);
 
 		/* Find the backslash in the returned group name */
-		if (gptr->gr_name[backslash] == '\\') {
-			gname = gptr->gr_name + backslash + 1;
+		if ((backslash < strlen(group->gr_name)) && (group->gr_name[backslash] == '\\')) {
+			group_name = group->gr_name + backslash + 1;
+		} else if ((group_name = strchr(group->gr_name, '\\'))) {
+			group_name++;
+			backslash = group_name - (group->gr_name - 1);
 		} else {
-			if ((gname = index(gptr->gr_name, '\\')) != NULL) {
-				gname++;
-				backslash = gname - gptr->gr_name - 1;
-			}
+			group_name = group->gr_name;
 		}
 
 		/* See if the group matches */
-		RDEBUG3("  Checking plain group name: '%s'", gname);
-		if (!strcasecmp(gname, check->vp_strvalue)) {
-			RDEBUG("Found matching group: '%s'", gname);
-			found = 1;
+		RDEBUG3("Checking plain group name: '%s'", group_name);
+		if (!strcasecmp(group_name, check->vp_strvalue)) {
+			RDEBUG("Found matching group: '%s'", group_name);
+			found = true;
 			rcode = 0;
 		}
-		wbcFreeMemory(gptr);
+		wbcFreeMemory(group);
 
 		/* Short-circuit to save unnecessary enumeration */
 		if (found) break;
