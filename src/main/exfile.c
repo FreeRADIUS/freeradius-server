@@ -181,7 +181,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  */
 void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigger_prefix, VALUE_PAIR *trigger_args)
 {
-	rad_const_free(ef->trigger_prefix);
+	talloc_const_free(ef->trigger_prefix);
 	MEM(ef->trigger_prefix = trigger_prefix ? talloc_typed_strdup(ef, trigger_prefix) : "");
 
 	fr_pair_list_free(&ef->trigger_args);

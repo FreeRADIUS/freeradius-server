@@ -165,7 +165,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	len = radius_list_name(&list, p, PAIR_LIST_UNKNOWN);
 
 	if (list != PAIR_LIST_UNKNOWN) {
-		rad_const_free(vpt->name);
+		talloc_const_free(vpt->name);
 
 		vpt->name = talloc_asprintf(vpt, "%.*s:%s",
 					    (int) len, map->lhs->name,

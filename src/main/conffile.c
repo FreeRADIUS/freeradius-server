@@ -3495,7 +3495,7 @@ static int cf_section_pass2(CONF_SECTION *cs)
 		value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value, NULL);
 		if (!value) return -1;
 
-		rad_const_free(cp->value);
+		talloc_const_free(cp->value);
 		cp->value = talloc_typed_strdup(cp, value);
 	}
 

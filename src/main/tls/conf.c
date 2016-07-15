@@ -208,7 +208,7 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 			return -1;
 		}
 
-		rad_const_free(conf->private_key_password);
+		talloc_const_free(conf->private_key_password);
 		password = talloc_array(conf, char, max_password_len);
 		if (!password) {
 			ERROR("Can't allocate space for private_key_password");

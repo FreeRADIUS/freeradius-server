@@ -97,7 +97,7 @@ static rad_protocol_t master_listen[];
 
 static int _listen_config_free(listen_config_t *lc)
 {
-	rad_const_free(lc->handle);
+	talloc_const_free(lc->handle);
 	return 0;
 }
 
@@ -207,7 +207,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 				cf_log_err_cs(cs,
 					      "Failed adding dictionary entry for protocol %s: %s",
 					      value, fr_strerror());
-				rad_const_free(module);
+				talloc_const_free(module);
 				return -1;
 			}
 		}
@@ -219,13 +219,13 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 */
 		if (proto->bootstrap && (proto->bootstrap(server, cs) < 0)) {
 			cf_log_err_cs(cs, "Failed loading protocol %s", value);
-			rad_const_free(module);
+			talloc_const_free(module);
 			return -1;
 		}
 
 		if (cf_data_find(cs, "proto") != NULL) {
 			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
-			rad_const_free(module);
+			talloc_const_free(module);
 			return -1;
 		}
 
@@ -238,7 +238,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), value);
 	if (!dv) {
 		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s", value);
-		rad_const_free(module);
+		talloc_const_free(module);
 		return -1;
 	}
 

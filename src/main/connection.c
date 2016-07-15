@@ -908,7 +908,7 @@ do_return:
 void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
 					char const *trigger_prefix, VALUE_PAIR *trigger_args)
 {
-	rad_const_free(pool->trigger_prefix);
+	talloc_const_free(pool->trigger_prefix);
 	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
 
 	fr_pair_list_free(&pool->trigger_args);

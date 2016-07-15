@@ -252,14 +252,14 @@ static ssize_t xlat_hex(char **out, size_t outlen,
 	 *	Don't truncate the data.
 	 */
 	if (outlen < (len * 2)) {
-		rad_const_free(buff);
+		talloc_const_free(buff);
 		goto error;
 	}
 
 	for (i = 0; i < len; i++) {
 		snprintf((*out) + (2 * i), 3, "%02x", p[i]);
 	}
-	rad_const_free(buff);
+	talloc_const_free(buff);
 
 	return len * 2;
 }

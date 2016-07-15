@@ -382,7 +382,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->trust_router) {
 		if (!tr_init()) return -1;
 	} else {
-		rad_const_free(inst->trust_router);
+		talloc_const_free(inst->trust_router);
 	}
 #endif
 

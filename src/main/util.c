@@ -405,7 +405,7 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 	return outlen - freespace;	/* how many bytes were written */
 }
 
-void rad_const_free(void const *ptr)
+void talloc_const_free(void const *ptr)
 {
 	void *tmp;
 	if (!ptr) return;

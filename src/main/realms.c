@@ -885,7 +885,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			/*
 			 *	Now that we have a real port, use that.
 			 */
-			rad_const_free(home->log_name);
+			talloc_const_free(home->log_name);
 
 			fr_inet_ntop_prefix(buffer, sizeof(buffer), &home->ipaddr);
 
