@@ -73,10 +73,14 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	wbcErr			err;
 	uint32_t		num_groups, i;
 	gid_t			*wbgroups = NULL;
+
+	char const		*domain = NULL;
+	size_t			domain_len = 0;
+	char const		*user = NULL;
 	char const		*username;
-	char			buffer[512];
-	int			len, domain_len, backslash;
-	char			*ptr;
+
+	ssize_t			slen;
+	int			backslash;
 
 	RINDENT();
 
@@ -84,8 +88,6 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		REDEBUG("Group name is empty, nothing to check!");
 		goto error;
 	}
-
-	username = ptr = buffer;
 
 	/*
 	 *	Work out what username to check groups for, made up from
@@ -96,34 +98,21 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	/*
 	 *	Include the domain in the username?
 	 */
-	domain_len = 0;
-
 	if (inst->group_add_domain && inst->wb_domain) {
-		/* reserve space for \ if needed, so sizeof() - 1 */
-		len = tmpl_expand(NULL, buffer, sizeof(buffer) - 1, request, inst->wb_domain, NULL, NULL);
-		if (len < 0) {
+		slen = tmpl_aexpand(request, &domain, request, inst->wb_domain, NULL, NULL);
+		if (slen < 0) {
 			REDEBUG("Unable to expand group_search_username");
 			goto error;
 		}
-
-		domain_len += len;
-
-		if (len > 0) {
-			ptr = buffer + len;
-			*ptr = '\\';
-			ptr++;
-			*ptr = 0;
-			domain_len += 1;
-		}
+		domain_len = (size_t)slen;
 	}
-
 
 	/*
 	 *	Sort out what User-Name we are going to use.
 	 */
 	if (inst->group_username) {
-		len = tmpl_expand(NULL, ptr, sizeof(buffer) - domain_len - 1, request, inst->group_username, NULL, NULL);
-		if (len < 0) {
+		slen = tmpl_aexpand(request, &user, request, inst->group_username, NULL, NULL);
+		if (slen < 0) {
 			RERROR("Unable to expand group_search_username");
 			goto error;
 		}
@@ -132,14 +121,17 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		 *	This is quite unlikely to work without a domain, but
 		 *	we've not been given much else to work on.
 		 */
-		if (domain_len) {
-			strncpy(ptr, attr->vp_strvalue, sizeof(buffer) - domain_len - 1);
-		} else {
-			RWDEBUG("Searching group with plain username, this will");
-			RWDEBUG("probably fail. Try making sure winbind_domain");
-			RWDEBUG("and group_search_username are both correctly set.");
-			username = attr->vp_strvalue;
+		if (!domain) {
+			RWDEBUG("Searching group with plain username, this will probably fail");
+			RWDEBUG("Ensure winbind_domain and group_search_username are both correctly set");
 		}
+		user = attr->vp_strvalue;
+	}
+
+	if (domain) {
+		username = talloc_asprintf(user, "%s\\%s", domain, user);
+	} else {
+		username = user;
 	}
 
 	/*
@@ -245,6 +237,8 @@ finish:
 	fr_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
+	talloc_const_free(user);
+	talloc_const_free(domain);
 	REXDENT();
 
 	return rcode;
