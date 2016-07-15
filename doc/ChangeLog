@@ -61,6 +61,12 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Minor fixes to allow compilation without DHCP,
 	  VMPS, or TCP.
 	* Fix checks for module / config file change on HUP.
+	* Compile regex comparisons when sent via
+	  "debug condition".  Fixes #1632.
+	* Update filenames in documentation and examples.
+	  Patch from Alan Buxey, #1655.
+	* Don't crash if SQL connection becomes unavailable.
+	  Fixes #1640.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
