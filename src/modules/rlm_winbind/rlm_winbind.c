@@ -340,7 +340,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_winbind_t			*inst = instance;
-	struct wbcInterfaceDetails	*winbindinfo = NULL;
+	struct wbcInterfaceDetails	*wb_info = NULL;
 
 	if (!inst->wb_username) {
 		cf_log_err_cs(conf, "winbind_username must be defined to use rlm_winbind");
@@ -358,7 +358,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	out what it is from winbind.
 	 */
 	if (!inst->wb_domain) {
-		wbcErr		err;
+		wbcErr			err;
 		struct wbcContext	*wb_ctx;
 
 		cf_log_err_cs(conf, "winbind_domain unspecified; trying to get it from winbind");
@@ -367,32 +367,32 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (!wb_ctx) {
 			/* this should be very unusual */
 			cf_log_err_cs(conf, "Unable to get libwbclient context, cannot get domain");
-			goto nodomain;
+			goto no_domain;
 		}
 
-		err = wbcCtxInterfaceDetails(wb_ctx, &winbindinfo);
+		err = wbcCtxInterfaceDetails(wb_ctx, &wb_info);
 		wbcCtxFree(wb_ctx);
 
 		if (err != WBC_ERR_SUCCESS) {
 			cf_log_err_cs(conf, "libwbclient returned wbcErr code %d; unable to get domain name.", err);
 			cf_log_err_cs(conf, "Is winbind running and does the winbind_privileged socket have");
 			cf_log_err_cs(conf, "the correct permissions?");
-			goto nodomain;
+			goto no_domain;
 		}
 
-		if (!winbindinfo->netbios_domain) {
+		if (!wb_info->netbios_domain) {
 			cf_log_err_cs(conf, "winbind returned blank domain name");
-			goto nodomain;
+			goto no_domain;
 		}
 
-		tmpl_afrom_str(instance, &inst->wb_domain, winbindinfo->netbios_domain,
-			       strlen(winbindinfo->netbios_domain), T_SINGLE_QUOTED_STRING,
+		tmpl_afrom_str(instance, &inst->wb_domain, wb_info->netbios_domain,
+			       strlen(wb_info->netbios_domain), T_SINGLE_QUOTED_STRING,
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
 
 		cf_log_err_cs(conf, "Using winbind_domain '%s'", inst->wb_domain->name);
 
-nodomain:
-		wbcFreeMemory(winbindinfo);
+no_domain:
+		wbcFreeMemory(wb_info);
 	}
 
 	return 0;
