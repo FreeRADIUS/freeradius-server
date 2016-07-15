@@ -154,27 +154,31 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	RDEBUG("Trying to find user \"%s\" in group \"%s\"", username, check->vp_strvalue);
 
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wbgroups);
-
 	switch (err) {
 	case WBC_ERR_SUCCESS:
 		rcode = 0;
 		RDEBUG2("Successfully retrieved list of user's groups");
 		break;
+
 	case WBC_ERR_NO_MEMORY:
-		RDEBUG2("Error: Not enough memory");
+		REDEBUG("Not enough memory");
 		break;
+
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
-		RDEBUG2("Error: Unable to contact winbind");
+		REDEBUG("Unable to contact winbind");
 		break;
+
 	case WBC_ERR_DOMAIN_NOT_FOUND:
 		/* Yeah, weird. libwbclient returns this if the username is unknown */
-		RDEBUG2("Error: User or Domain not found");
+		REDEBUG2("User or Domain not found");
 		break;
+
 	case WBC_ERR_UNKNOWN_USER:
-		RDEBUG2("Error: User can not be found");
+		REDEBUG2("User not found");
 		break;
+
 	default:
-		RDEBUG2("Error finding groups (wbcErr = %d)", err);
+		REDEBUG2("Error finding groups (wbcErr = %d)", err);
 		break;
 	}
 
@@ -201,40 +205,40 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	backslash = domain_len - 1;
 
 	for (i = 0; i < num_groups; i++) {
-		struct group	*gptr;
+		struct group	*gp;
 		char		*gname;
 		bool		found = false;
 
 		/* Get the group name from the (fake winbind) gid */
-		err = wbcCtxGetgrgid(wb_ctx, wbgroups[i], &gptr);
-		RDEBUG3("Got group id: %d, name: %s", wbgroups[i], gptr->gr_name);
+		err = wbcCtxGetgrgid(wb_ctx, wbgroups[i], &gp);
+		RDEBUG3("Got group id: %d, name: %s", wbgroups[i], gp->gr_name);
 
-		gname = gptr->gr_name;
+		gname = gp->gr_name;
 
 		/* Find the backslash in the returned group name */
-		if (gptr->gr_name[backslash] == '\\') {
-			gname = gptr->gr_name + backslash + 1;
+		if (gp->gr_name[backslash] == '\\') {
+			gname = gp->gr_name + backslash + 1;
 		} else {
-			if ((gname = index(gptr->gr_name, '\\')) != NULL) {
+			if ((gname = index(gp->gr_name, '\\')) != NULL) {
 				gname++;
-				backslash = gname - gptr->gr_name - 1;
+				backslash = gname - gp->gr_name - 1;
 			}
 		}
 
 		/* See if the group matches */
-		RDEBUG3("  Checking plain group name: '%s'", gname);
+		RDEBUG3("Checking plain group name: '%s'", gname);
 		if (!strcasecmp(gname, check->vp_strvalue)) {
 			RDEBUG("Found matching group: '%s'", gname);
 			found = 1;
 			rcode = 0;
 		}
-		wbcFreeMemory(gptr);
+		wbcFreeMemory(gp);
 
 		/* Short-circuit to save unnecessary enumeration */
 		if (found) break;
 	}
 
-	if (rcode) RDEBUG("No groups found that match");
+	if (rcode) RDEBUG2("No groups found that match");
 
 finish:
 	wbcFreeMemory(wbgroups);
