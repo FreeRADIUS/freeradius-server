@@ -289,7 +289,8 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
  * @param param_len ip address string len.
  * @return 0 on success or < 0 on error.
  */
-static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST *request,
+static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
+			     rlm_sqlippool_t *data, REQUEST *request,
 			     char *param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
@@ -307,18 +308,17 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 	 */
 	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
-	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) {
-		return -1;
-	}
+	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) return -1;
 
-	ret = data->sql_inst->sql_query(data->sql_inst, request, &handle, expanded);
+	ret = data->sql_inst->sql_query(data->sql_inst, request, handle, expanded);
 	if (ret < 0){
 		talloc_free(expanded);
 		return -1;
 	}
 	talloc_free(expanded);
 
-	(data->sql_inst->module->sql_finish_query)(handle, data->sql_inst->config);
+	if (*handle) (data->sql_inst->module->sql_finish_query)(handle, data->sql_inst->config);
+
 	return 0;
 }
 
@@ -327,6 +327,7 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
  */
 #undef DO
 #define DO(_x) sqlippool_command(inst->_x, handle, inst, request, NULL, 0)
+#define DO_PART(_x) sqlippool_command(inst->_x, &handle, inst, request, NULL, 0)
 
 /*
  * Query the database expecting a single result row
@@ -489,7 +490,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	handle = fr_connection_get(inst->sql_inst->pool);
 	if (!handle) {
-		REDEBUG("cannot get sql connection");
+		REDEBUG("Failed reserving SQL connection");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -508,12 +509,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	if (inst->last_clear < now) {
 		inst->last_clear = now;
 
-		DO(allocate_begin);
-		DO(allocate_clear);
-		DO(allocate_commit);
+		DO_PART(allocate_begin);
+		DO_PART(allocate_clear);
+		DO_PART(allocate_commit);
 	}
 
-	DO(allocate_begin);
+	DO_PART(allocate_begin);
 
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 					  inst->allocate_find, handle,
@@ -523,7 +524,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *	Nothing found...
 	 */
 	if (allocation_len == 0) {
-		DO(allocate_commit);
+		DO_PART(allocate_commit);
 
 		/*
 		 *Should we perform pool-check ?
@@ -578,7 +579,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 */
 	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address, 0);
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
-		DO(allocate_commit);
+		DO_PART(allocate_commit);
 
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_connection_release(inst->sql_inst->pool, handle);
@@ -591,18 +592,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	UPDATE
 	 */
-	sqlippool_command(inst->allocate_update, handle, inst, request,
+	sqlippool_command(inst->allocate_update, &handle, inst, request,
 			  allocation, allocation_len);
 
-	DO(allocate_commit);
+	DO_PART(allocate_commit);
 
 	fr_connection_release(inst->sql_inst->pool, handle);
 
 	return do_logging(request, inst->log_success, RLM_MODULE_OK);
 }
 
-static int mod_accounting_start(rlm_sql_handle_t *handle,
-				      rlm_sqlippool_t *inst, REQUEST *request)
+static int mod_accounting_start(rlm_sql_handle_t **handle,
+				rlm_sqlippool_t *inst, REQUEST *request)
 {
 	DO(start_begin);
 	DO(start_update);
@@ -611,8 +612,8 @@ static int mod_accounting_start(rlm_sql_handle_t *handle,
 	return RLM_MODULE_OK;
 }
 
-static int mod_accounting_alive(rlm_sql_handle_t *handle,
-				      rlm_sqlippool_t *inst, REQUEST *request)
+static int mod_accounting_alive(rlm_sql_handle_t **handle,
+				rlm_sqlippool_t *inst, REQUEST *request)
 {
 	DO(alive_begin);
 	DO(alive_update);
@@ -620,8 +621,8 @@ static int mod_accounting_alive(rlm_sql_handle_t *handle,
 	return RLM_MODULE_OK;
 }
 
-static int mod_accounting_stop(rlm_sql_handle_t *handle,
-				      rlm_sqlippool_t *inst, REQUEST *request)
+static int mod_accounting_stop(rlm_sql_handle_t **handle,
+			       rlm_sqlippool_t *inst, REQUEST *request)
 {
 	DO(stop_begin);
 	DO(stop_clear);
@@ -630,8 +631,8 @@ static int mod_accounting_stop(rlm_sql_handle_t *handle,
 	return do_logging(request, inst->log_clear, RLM_MODULE_OK);
 }
 
-static int mod_accounting_on(rlm_sql_handle_t *handle,
-				      rlm_sqlippool_t *inst, REQUEST *request)
+static int mod_accounting_on(rlm_sql_handle_t **handle,
+			     rlm_sqlippool_t *inst, REQUEST *request)
 {
 	DO(on_begin);
 	DO(on_clear);
@@ -640,8 +641,8 @@ static int mod_accounting_on(rlm_sql_handle_t *handle,
 	return RLM_MODULE_OK;
 }
 
-static int mod_accounting_off(rlm_sql_handle_t *handle,
-				      rlm_sqlippool_t *inst, REQUEST *request)
+static int mod_accounting_off(rlm_sql_handle_t **handle,
+			      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	DO(off_begin);
 	DO(off_clear);
@@ -657,11 +658,13 @@ static int mod_accounting_off(rlm_sql_handle_t *handle,
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
-	int rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR *vp;
-	int acct_status_type;
-	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
-	rlm_sql_handle_t *handle;
+	int			rcode = RLM_MODULE_NOOP;
+	VALUE_PAIR		*vp;
+
+	int			acct_status_type;
+
+	rlm_sqlippool_t		*inst = (rlm_sqlippool_t *) instance;
+	rlm_sql_handle_t	*handle;
 
 	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
@@ -685,33 +688,31 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 	handle = fr_connection_get(inst->sql_inst->pool);
 	if (!handle) {
-		RDEBUG("Cannot allocate sql connection");
+		RDEBUG("Failed reserving SQL connection");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
-	}
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) return RLM_MODULE_FAIL;
 
 	switch (acct_status_type) {
 	case PW_STATUS_START:
-		rcode = mod_accounting_start(handle, inst, request);
+		rcode = mod_accounting_start(&handle, inst, request);
 		break;
 
 	case PW_STATUS_ALIVE:
-		rcode = mod_accounting_alive(handle, inst, request);
+		rcode = mod_accounting_alive(&handle, inst, request);
 		break;
 
 	case PW_STATUS_STOP:
-		rcode = mod_accounting_stop(handle, inst, request);
+		rcode = mod_accounting_stop(&handle, inst, request);
 		break;
 
 	case PW_STATUS_ACCOUNTING_ON:
-		rcode = mod_accounting_on(handle, inst, request);
+		rcode = mod_accounting_on(&handle, inst, request);
 		break;
 
 	case PW_STATUS_ACCOUNTING_OFF:
-		rcode = mod_accounting_off(handle, inst, request);
+		rcode = mod_accounting_off(&handle, inst, request);
 		break;
 	}
 
