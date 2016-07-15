@@ -50,7 +50,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 /** Group comparison for Winbind-Group
  *
  * @param instance	Instance of this module
@@ -242,7 +241,7 @@ error:
 /** Free connection pool winbind context
  *
  * @param[in] wb_ctx libwbclient context
- *
+ * @return 0
  */
 static int _mod_conn_free(struct wbcContext **wb_ctx)
 {
@@ -259,7 +258,6 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
  * @param[in] timeout	Connection timeout
  *
  * @return pointer to libwbclient context
- *
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED struct timeval const *timeout)
 {
@@ -290,7 +288,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
  * @return
  *	- 0	success
  *	- -1	failure
- *
  */
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
@@ -335,7 +332,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  * @return
  *	- 0	instantiation succeeded
  *	- -1	instantiation failed
- *
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
@@ -404,7 +400,7 @@ no_domain:
  * Frees up the libwbclient connection pool.
  *
  * @param[in] instance This module's instance (unused)
- *
+ * @return 0
  */
 static int mod_detach(UNUSED void *instance)
 {
@@ -426,7 +422,6 @@ static int mod_detach(UNUSED void *instance)
  * @return
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
- *
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
@@ -453,7 +448,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
  * @param[in] request The current request
  *
  * @return One of the RLM_MODULE_* values
- *
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
@@ -478,10 +472,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	/*
-	 *	Debug the password
+	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Login attempt with password \"%s\" (%zd)", request->password->vp_strvalue, request->password->vp_length);
+		RDEBUG3("Login attempt with password \"%s\" (%zd)", request->password->vp_strvalue,
+			request->password->vp_length);
 	} else {
 		RDEBUG("Login attempt with password");
 	}
