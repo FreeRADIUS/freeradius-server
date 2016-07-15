@@ -317,7 +317,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	}
 	talloc_free(expanded);
 
-	if (*handle) (data->sql_inst->module->sql_finish_query)(handle, data->sql_inst->config);
+	if (*handle) (data->sql_inst->module->sql_finish_query)(*handle, data->sql_inst->config);
 
 	return 0;
 }
