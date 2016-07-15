@@ -72,7 +72,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	struct wbcContext	*wb_ctx;
 	wbcErr			err;
 	uint32_t		num_groups, i;
-	gid_t			*wbgroups = NULL;
+	gid_t			*wb_groups = NULL;
 
 	char const		*domain = NULL;
 	size_t			domain_len = 0;
@@ -80,7 +80,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	char const		*username;
 
 	ssize_t			slen;
-	int			backslash;
+	size_t			backslash = 0;
 
 	RINDENT();
 
@@ -113,7 +113,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	if (inst->group_username) {
 		slen = tmpl_aexpand(request, &user, request, inst->group_username, NULL, NULL);
 		if (slen < 0) {
-			RERROR("Unable to expand group_search_username");
+			REDEBUG("Unable to expand group_search_username");
 			goto error;
 		}
 	} else {
@@ -143,9 +143,9 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		goto error;
 	}
 
-	RDEBUG("Trying to find user \"%s\" in group \"%s\"", username, check->vp_strvalue);
+	RDEBUG2("Trying to find user \"%s\" in group \"%s\"", username, check->vp_strvalue);
 
-	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wbgroups);
+	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wb_groups);
 	switch (err) {
 	case WBC_ERR_SUCCESS:
 		rcode = 0;
@@ -186,13 +186,13 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	 */
 
 	/*
-	 * We try and find where the '\' is in the returned group, which saves
-	 * looking for it each time. There seems to be no way to get a list of
-	 * groups without the domain in them, but at least the backslash is
-	 * always going to be in the same place.
+	 *	We try and find where the '\' is in the returned group, which saves
+	 *	looking for it each time. There seems to be no way to get a list of
+	 *	groups without the domain in them, but at least the backslash is
+	 * 	always going to be in the same place.
 	 *
-	 * Maybe there should be an option to include the domain in the compared
-	 * group name in case people have multiple domains?
+	 *	Maybe there should be an option to include the domain in the compared
+	 *	group name in case people have multiple domains?
 	 */
 	backslash = domain_len - 1;
 
@@ -233,7 +233,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	if (rcode) RDEBUG2("No groups found that match");
 
 finish:
-	wbcFreeMemory(wbgroups);
+	wbcFreeMemory(wb_groups);
 	fr_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
