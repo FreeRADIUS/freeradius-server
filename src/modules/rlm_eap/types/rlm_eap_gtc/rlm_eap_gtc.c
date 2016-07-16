@@ -113,6 +113,29 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	return 1;
 }
 
+/*
+ *	Keep processing the Auth-Type until it doesn't return YIELD.
+ */
+static rlm_rcode_t mod_process_auth_type(UNUSED void *instance, eap_session_t *eap_session)
+{
+	rlm_rcode_t	rcode;
+	eap_round_t	*eap_round = eap_session->this_round;
+	REQUEST		*request = eap_session->request;
+
+	rcode = unlang_interpret_continue(request);
+
+	if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_REJECT;
+
+	if (rcode == RLM_MODULE_YIELD) return rcode;
+
+	if (rcode != RLM_MODULE_OK) {
+		eap_round->request->code = PW_EAP_FAILURE;
+		return 0;
+	}
+
+	eap_round->request->code = PW_EAP_SUCCESS;
+	return 1;
+}
 
 /*
  *	Authenticate a previously sent challenge.
@@ -124,6 +147,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	eap_round_t	*eap_round = eap_session->this_round;
 	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *)instance;
 	REQUEST		*request = eap_session->request;
+	CONF_SECTION	*unlang;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
@@ -166,18 +190,25 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	request->password = vp;
 
-	/*
-	 *	Call the authenticate section of the *current* virtual server.
-	 */
-	rcode = process_authenticate(inst->auth_type, request);
-	if (rcode != RLM_MODULE_OK) {
-		eap_round->request->code = PW_EAP_FAILURE;
-		return 0;
+	unlang = cf_section_sub_find_name2(request->server_cs, "process", inst->auth_type_name);
+	if (!unlang) {
+		/*
+		 *	Call the authenticate section of the *current* virtual server.
+		 */
+		rcode = process_authenticate(inst->auth_type, request);
+		if (rcode != RLM_MODULE_OK) {
+			eap_round->request->code = PW_EAP_FAILURE;
+			return 0;
+		}
+
+		eap_round->request->code = PW_EAP_SUCCESS;
+		return 1;
 	}
 
-	eap_round->request->code = PW_EAP_SUCCESS;
+	unlang_push_section(request, unlang, RLM_MODULE_FAIL);
 
-	return 1;
+	eap_session->process = mod_process_auth_type;
+	return eap_session->process(inst, eap_session);
 }
 
 /*
