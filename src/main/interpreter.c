@@ -1092,7 +1092,7 @@ done:
 void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
 	modcallable *c = NULL;
-	
+
 	if (cs) c = cf_data_find(cs, "unlang");
 
 	unlang_push(request->stack, c, action, true);
@@ -1302,8 +1302,7 @@ int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t p
 	RDEBUG2("Waiting for %d.%06d seconds",
 		(int) delay->tv_sec, (int) delay->tv_usec);
 
-	if (!fr_event_insert(request->el, unlang_timer_hook,
-			     request, &when, &request->ev)) {
+	if (fr_event_insert(request->el, unlang_timer_hook, request, &when, &request->ev) < 0) {
 		RDEBUG("Failed inserting event");
 		return -1;
 	}

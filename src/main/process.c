@@ -131,7 +131,7 @@ static void request_timer(void *ctx, struct timeval *now);
 static inline void state_machine_timer(char const *file, int line, REQUEST *request,
 				       struct timeval *when)
 {
-	if (!fr_event_insert(el, request_timer, request, when, &request->ev)) {
+	if (fr_event_insert(el, request_timer, request, when, &request->ev) < 0) {
 		_rad_panic(file, line, "Failed to insert event");
 	}
 }
@@ -4849,8 +4849,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
-		if (!fr_event_fd_insert(el, 0, this->fd,
-					event_socket_handler, this)) {
+		if (fr_event_fd_insert(el, 0, this->fd, event_socket_handler, this) < 0) {
 			ERROR("Failed adding event handler for socket: %s", fr_strerror());
 			fr_exit(1);
 		}
@@ -5326,7 +5325,7 @@ int radius_event_start(bool have_children)
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (!fr_event_fd_insert(el, 0, self_pipe[0], event_signal_handler, el)) {
+	if (fr_event_fd_insert(el, 0, self_pipe[0], event_signal_handler, el) < 0) {
 		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
 		return -1;
 	}

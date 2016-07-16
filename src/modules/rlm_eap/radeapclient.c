@@ -1718,7 +1718,7 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 	gettimeofday(&tv_event, NULL);
 	timeradd(&tv_event, &tv_timeout, &tv_event);
 
-	if (!fr_event_insert(ev_list, rc_evcb_packet_timeout, (void *)trans, &tv_event, &trans->event)) {
+	if (fr_event_insert(ev_list, rc_evcb_packet_timeout, (void *)trans, &tv_event, &trans->event) < 0) {
 		ERROR("Failed to insert event");
 		exit(1);
 	}
@@ -1748,7 +1748,7 @@ static void rc_evprep_progress_stat(void)
 
 	static fr_event_t *event; /* only one of this kind. */
 
-	if (!fr_event_insert(ev_list, rc_evcb_progress_stat, (void *) NULL, &tv_event, &event)) {
+	if (fr_event_insert(ev_list, rc_evcb_progress_stat, (void *) NULL, &tv_event, &event) < 0) {
 		ERROR("Failed to insert event");
 		exit(1);
 	}

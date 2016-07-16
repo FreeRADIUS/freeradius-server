@@ -165,14 +165,14 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 
 int fr_event_list_num_fds(fr_event_list_t *el)
 {
-	if (!el) return 0;
+	if (!el) return -1;
 
 	return el->num_readers;
 }
 
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
-	if (!el) return 0;
+	if (!el) return -1;
 
 	return fr_heap_num_elements(el->times);
 }
@@ -184,7 +184,7 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 
 	fr_event_t *ev;
 
-	if (!el || !parent || !*parent) return 0;
+	if (!el || !parent || !*parent) return -1;
 
 #ifndef NDEBUG
 	/*
@@ -209,7 +209,18 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 	return ret;
 }
 
-
+/** Insert a timer event into an event list
+ *
+ * @param[in] el	to insert event into.
+ * @param[in] callback	function to execute if the event fires.
+ * @param[in] ctx	for callback function.
+ * @param[in] when	we should run the event.
+ * @param[in] parent	If not NULL modify this event instead of creating a new one.  This is a parent
+ *			in a temporal sense, not in a memory structure or dependency sense.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
 int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx, struct timeval *when,
 		    fr_event_t **parent)
 {
@@ -217,22 +228,22 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 
 	if (!el) {
 		fr_strerror_printf("Invalid arguments (NULL event list)");
-		return 0;
+		return -1;
 	}
 
 	if (!callback) {
 		fr_strerror_printf("Invalid arguments (NULL callback)");
-		return 0;
+		return -1;
 	}
 
 	if (!when || (when->tv_usec >= USEC)) {
 		fr_strerror_printf("Invalid arguments (time)");
-		return 0;
+		return -1;
 	}
 
 	if (!parent) {
 		fr_strerror_printf("Invalid arguments (NULL parent)");
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -249,12 +260,12 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 #endif
 
 		ret = fr_heap_extract(el->times, ev);
-		if (!fr_cond_assert(ret == 1)) return 0;	/* events MUST be in the heap */
+		if (!fr_cond_assert(ret == 1)) return -1;	/* events MUST be in the heap */
 
 		memset(ev, 0, sizeof(*ev));
 	} else {
 		ev = talloc_zero(el, fr_event_t);
-		if (!ev) return 0;
+		if (!ev) return -1;
 	}
 
 	ev->callback = callback;
@@ -264,11 +275,11 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 
 	if (!fr_heap_insert(el->times, ev)) {
 		talloc_free(ev);
-		return 0;
+		return -1;
 	}
 
 	*parent = ev;
-	return 1;
+	return 0;
 }
 
 
@@ -329,7 +340,14 @@ int fr_event_now(fr_event_list_t *el, struct timeval *when)
 	return 1;
 }
 
-
+/** Associate a callback with an FD
+ *
+ * @param[in] el	to insert FD callback into.
+ * @param[in] type	UNUSED.
+ * @param[in] fd	to read from.
+ * @param[in] handler	to call when fd is readable.
+ * @param[in] ctx	to pass to handler.
+ */
 int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		       fr_event_fd_handler_t handler, void *ctx)
 {
@@ -338,32 +356,27 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 	if (!el) {
 		fr_strerror_printf("Invalid arguments (NULL event list)");
-		return 0;
+		return -1;
 	}
 
 	if (!handler) {
 		fr_strerror_printf("Invalid arguments (NULL handler)");
-		return 0;
-	}
-
-	if (!ctx) {
-		fr_strerror_printf("Invalid arguments (NULL ctx)");
-		return 0;
+		return -1;
 	}
 
 	if (fd < 0) {
 		fr_strerror_printf("Invalid arguments (bad FD %i)", fd);
-		return 0;
+		return -1;
 	}
 
 	if (type != 0) {
 		fr_strerror_printf("Invalid type %i", type);
-		return 0;
+		return -1;
 	}
 
 	if (el->num_readers >= FR_EV_MAX_FDS) {
 		fr_strerror_printf("Too many readers");
-		return 0;
+		return -1;
 	}
 	ef = NULL;
 
@@ -397,7 +410,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		EV_SET(&evset, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &el->readers[j]);
 		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
 			fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
-			return 0;
+			return -1;
 		}
 
 		ef = &el->readers[j];
@@ -415,13 +428,13 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 			if ((el->readers[i].handler != handler) ||
 			    (el->readers[i].ctx != ctx)) {
 				fr_strerror_printf("Multiple handlers for same FD");
-				return 0;
+				return -1;
 			}
 
 			/*
 			 *	No change.
 			 */
-			return 1;
+			return 0;
 		}
 
 		if (el->readers[i].fd < 0) {
@@ -436,7 +449,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 	if (!ef) {
 		fr_strerror_printf("Failed assigning FD");
-		return 0;
+		return -1;
 	}
 
 	ef->fd = fd;
@@ -448,7 +461,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	FD_SET(fd, &el->master_fds);
 #endif
 
-	return 1;
+	return 0;
 }
 
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
@@ -458,9 +471,9 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	int max_fd;
 #endif
 
-	if (!el || (fd < 0)) return 0;
+	if (!el || (fd < 0)) return -1;
 
-	if (type != 0) return 0;
+	if (type != 0) return -1;
 
 #ifdef HAVE_KQUEUE
 	for (i = 0; i < FR_EV_MAX_FDS; i++) {
@@ -484,11 +497,11 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		el->readers[j].fd = -1;
 		el->num_readers--;
 
-		return 1;
+		return 0;
 	}
 
 
-	return 0;
+	return -1;
 #else
 
 	max_fd = -1;
@@ -504,7 +517,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		}
 	}
 
-	if (max_fd < 0) return 0;
+	if (max_fd < 0) return -1;
 
 	/*
 	 *	Reset max_fd
@@ -517,7 +530,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	}
 	el->max_fd = max_fd;
 
-	return 1;
+	return 0;
 #endif	/* HAVE_KQUEUE */
 }
 

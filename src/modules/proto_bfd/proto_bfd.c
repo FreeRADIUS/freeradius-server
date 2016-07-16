@@ -332,8 +332,8 @@ static int bfd_pthread_create(bfd_state_t *session)
 	fcntl(session->pipefd[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 #endif
 
-	if (!fr_event_fd_insert(session->el, 0, session->pipefd[0],
-				bfd_pipe_recv, session)) {
+	if (fr_event_fd_insert(session->el, 0, session->pipefd[0],
+			       bfd_pipe_recv, session) < 0) {
 		ERROR("Failed inserting file descriptor into event list: %s", fr_strerror());
 		goto close_pipes;
 	}
@@ -920,8 +920,8 @@ static int bfd_start_packets(bfd_state_t *session)
 		now.tv_usec -= USEC;
 	}
 
-	if (!fr_event_insert(session->el, bfd_send_packet, session, &now,
-			     &session->ev_packet)) {
+	if (fr_event_insert(session->el, bfd_send_packet, session, &now,
+			    &session->ev_packet) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 
@@ -961,8 +961,8 @@ static void bfd_set_timeout(bfd_state_t *session, struct timeval *when)
 		}
 	}
 
-	if (!fr_event_insert(session->el, bfd_detection_timeout, session, &now,
-			     &session->ev_timeout)) {
+	if (fr_event_insert(session->el, bfd_detection_timeout, session, &now,
+			     &session->ev_timeout) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 }
