@@ -449,18 +449,18 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		eap_session->type = type->num;
 
 	module_call:
-		caller = request->module;
-		method = inst->methods[type->num];
+		method = inst->methods[eap_session->type];
 
 		RDEBUG2("Calling submodule %s", method->submodule->name);
 
+		caller = request->module;
 		request->module = method->submodule->name;
 		rcode = eap_session->process(method->submodule_inst, eap_session);
 		request->module = caller;
 
-		if (rcode != 0) {
+		if (rcode == 0) {
 			REDEBUG2("Failed in EAP %s (%d) session.  EAP sub-module failed",
-				 eap_type2name(type->num), type->num);
+				 eap_type2name(eap_session->type), eap_session->type);
 			return RLM_MODULE_INVALID;
 		}
 		break;
