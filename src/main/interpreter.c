@@ -667,7 +667,9 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
+#if 0
 	int depth = stack->depth;
+#endif
 	modsingle *sp;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -711,6 +713,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_STOP_PROCESSING;
 	}
 
+#if 0
 	/*
 	 *	Child was pushed by the module.
 	 */
@@ -719,8 +722,9 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 		rad_assert((entry + 1)->c->type == MOD_SINGLE);
 		return UNLANG_PUSHED_CHILD;
 	}
+#endif
 
- fail:
+fail:
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
 		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
