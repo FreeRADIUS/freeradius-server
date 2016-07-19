@@ -346,6 +346,7 @@ do {\
 #define	PW_TYPE_FROM_PTR(_ptr) \
 	_Generic((_ptr), \
 		 char **: PW_TYPE_STRING, \
+		 char const **: PW_TYPE_STRING, \
 		 uint8_t **: PW_TYPE_OCTETS, \
 		 uint8_t *: PW_TYPE_BYTE, \
 		 uint16_t *: PW_TYPE_SHORT, \
