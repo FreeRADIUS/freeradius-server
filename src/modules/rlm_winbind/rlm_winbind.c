@@ -230,8 +230,8 @@ finish:
 	fr_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
-	talloc_const_free(user);
-	talloc_const_free(domain);
+	rad_const_free(user);
+	rad_const_free(domain);
 	REXDENT();
 
 	return rcode;
