@@ -245,14 +245,20 @@ static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
 	ret = rest_request_config(mod_inst, &section, request, handle, section.method, section.body,
 				  uri, NULL, NULL);
 	talloc_free(uri);
-	if (ret < 0) return -1;
+	if (ret < 0) {
+		slen = -1;
+		goto finish;
+	}
 
 	/*
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
 	ret = rest_request_perform(mod_inst, &section, request, handle);
-	if (ret < 0) return -1;
+	if (ret < 0) {
+		slen = -1;
+		goto finish;
+	}
 
 	if (section.tls_extract_cert_attrs) rest_response_certinfo(mod_inst, &section, request, handle);
 
