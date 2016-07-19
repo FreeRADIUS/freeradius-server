@@ -279,14 +279,20 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	ret = rest_request_config(instance, &section, request, handle, section.method, section.body,
 				  uri, NULL, NULL);
 	talloc_free(uri);
-	if (ret < 0) return -1;
+	if (ret < 0) {
+		slen = -1;
+		goto finish;
+	}
 
 	/*
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
 	ret = rest_request_perform(instance, &section, request, handle);
-	if (ret < 0) return -1;
+	if (ret < 0) {
+		slen = -1;
+		goto finish;
+	}
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
