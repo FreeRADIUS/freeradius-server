@@ -6,4 +6,4 @@
 #
 #	$Id$
 #
-ATTRIBUTE	NAS-Filter-Rule				92	string
+ATTRIBUTE	NAS-Filter-Rule				92	octets
