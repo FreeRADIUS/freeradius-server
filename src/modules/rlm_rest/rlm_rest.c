@@ -95,13 +95,50 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle, REQUEST *request,
-			    char const *username, char const *password)
+/** Update the status attribute
+ *
+ * @param[in] request	The current request.
+ * @param[in] handle	rest handle.
+ * @return
+ *	- 0 if status was updated successfully.
+ *	- -1 if status was not updated successfully.
+ */
+static int rlm_rest_status_update(REQUEST *request,  void *handle)
 {
-	ssize_t	uri_len;
-	char	*uri = NULL;
+	TALLOC_CTX	*ctx;
+	VALUE_PAIR	**list;
+	int		code;
+	value_data_t	value;
 
-	int ret;
+	code = rest_get_handle_code(handle);
+
+	RINDENT();
+	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
+	REXDENT();
+
+	value.length = sizeof(value.integer);
+	value.integer = code;
+
+	/*
+	 *	Find the reply list, and appropriate context in the
+	 *	current request.
+	 */
+	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if (!list || (fr_pair_update_by_num(ctx, list, 0, PW_REST_HTTP_STATUS_CODE,
+					    TAG_ANY, PW_TYPE_INTEGER, &value) < 0)) {
+		REDEBUG("Failed updating &REST-HTTP-Status-Code");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle,
+			    REQUEST *request, char const *username, char const *password)
+{
+	ssize_t		uri_len;
+	char		*uri = NULL;
+	int		ret;
 
 	RDEBUG("Expanding URI components");
 
@@ -130,34 +167,9 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 	ret = rest_request_perform(instance, section, request, handle);
 	if (ret < 0) return -1;
 
-	{
-		TALLOC_CTX	*ctx;
-		VALUE_PAIR	**list;
-		int		code;
-		value_data_t	value;
-
-		code = rest_get_handle_code(handle);
-
-		RINDENT();
-		RDEBUG2("&REST-HTTP-Code := %i", code);
-		REXDENT();
-
-		value.length = sizeof(value.integer);
-		value.integer = code;
-
-		/*
-		 *	Find the reply list, and appropriate context in the
-		 *	current request.
-		 */
-		RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!list || (fr_pair_update_by_num(ctx, list, 0, PW_REST_HTTP_STATUS_CODE, TAG_ANY, PW_TYPE_INTEGER,
-						    &value) < 0)) {
-			REDEBUG("Failed updating &REST-HTTP-Code");
-			return -1;
-		}
-	}
-
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) return -1;
 
 	return 0;
 }
@@ -261,6 +273,8 @@ static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
 	}
 
 	if (section.tls_extract_cert_attrs) rest_response_certinfo(mod_inst, &section, request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) return -1;
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {

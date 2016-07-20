@@ -2805,7 +2805,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 	     vp = fr_cursor_next(&cursor), i++) {
 		VERIFY_VP(vp);
 
-		if ((i > 0) && (head = vp)) {
+		if ((i > 0) && (head == vp)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  Cycle is %i attributes "
 				     "long.  Starts at VALUE_PAIR \"%s\"",
 				     file, line, i + 1, vp->da->name);
