@@ -11,6 +11,8 @@ ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
 ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS -m
 Restart=on-failure
 RestartSec=5
+ExecReload=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
+ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target
