@@ -400,6 +400,7 @@ void fr_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	if (!vp) return;
 
 	VERIFY_VP(vp);
+	VERIFY_LIST(*(cursor->first));
 
 	/*
 	 *	Only allow one VP to by inserted at a time
@@ -435,6 +436,8 @@ void fr_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	 *	pointer to the VALUE_PAIR's next pointer.
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
+
+	VERIFY_LIST(*(cursor->first));
 }
 
 /** Insert a single VALUE_PAIR at the end of the list
@@ -456,6 +459,7 @@ void fr_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	if (!vp) return;
 
 	VERIFY_VP(vp);
+	VERIFY_LIST(*(cursor->first));
 
 	/*
 	 *	Only allow one VP to by inserted at a time
@@ -511,6 +515,8 @@ void fr_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	 *	pointer to the VALUE_PAIR's next pointer.
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
+
+	VERIFY_LIST(*(cursor->first));
 }
 
 /** Merges multiple VALUE_PAIR into the cursor
@@ -623,6 +629,8 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 {
 	VALUE_PAIR *vp, **last;
 
+	VERIFY_LIST(*(cursor->first));
+
 	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = cursor->current;
@@ -641,6 +649,8 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 	*last = new;
 	new->next = vp->next;
 	vp->next = NULL;
+
+	VERIFY_LIST(*(cursor->first));
 
 	return vp;
 }
