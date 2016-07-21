@@ -2670,14 +2670,23 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
  */
 void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	TALLOC_CTX *parent;
+	vp_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	VALUE_PAIR		*head;
+	TALLOC_CTX		*parent;
+	unsigned int	i;
 
-	for (vp = fr_cursor_init(&cursor, &vps);
+	for (vp = head = fr_cursor_init(&cursor, &vps), i = 0;
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor), i++) {
 		VERIFY_VP(vp);
+
+		if ((i > 0) && (head = vp)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  Cycle is %i attributes "
+				     "long.  Starts at VALUE_PAIR \"%s\"",
+				     file, line, i + 1, vp->da->name);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
 
 		parent = talloc_parent(vp);
 		if (expected && (parent != expected)) {
