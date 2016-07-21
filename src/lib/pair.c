@@ -2794,29 +2794,33 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
  */
 void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
 {
-	vp_cursor_t		cursor;
-	VALUE_PAIR		*vp;
-	VALUE_PAIR		*head;
+	vp_cursor_t		slow_cursor, fast_cursor;
+	VALUE_PAIR		*slow, *fast;
 	TALLOC_CTX		*parent;
-	unsigned int	i;
 
-	for (vp = head = fr_cursor_init(&cursor, &vps), i = 0;
-	     vp;
-	     vp = fr_cursor_next(&cursor), i++) {
-		VERIFY_VP(vp);
+	fr_cursor_init(&fast_cursor, &vps);
 
-		if ((i > 0) && (head == vp)) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  Cycle is %i attributes "
-				     "long.  Starts at VALUE_PAIR \"%s\"",
-				     file, line, i + 1, vp->da->name);
+	for (slow = fr_cursor_init(&slow_cursor, &vps), fast = fr_cursor_init(&fast_cursor, &vps);
+	     slow && fast;
+	     slow = fr_cursor_next(&fast_cursor), fast = fr_cursor_next(&fast_cursor)) {
+		VERIFY_VP(slow);
+
+		/*
+		 *	Advances twice as fast as slow...
+		 */
+		fast = fr_cursor_next(&fast_cursor);
+		if (fast == slow) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  "
+						 "Fast pointer hit slow pointer at \"%s\"",
+						 file, line, slow->da->name);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		parent = talloc_parent(vp);
+		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Expected VALUE_PAIR \"%s\" to be parented "
 				     "by %p (%s), instead parented by %p (%s)\n",
-				     file, line, vp->da->name,
+				     file, line, slow->da->name,
 				     expected, talloc_get_name(expected),
 				     parent, parent ? talloc_get_name(parent) : "NULL");
 
@@ -2824,7 +2828,6 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 			if (parent) fr_log_talloc_report(parent);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
-
 	}
 }
 #endif
