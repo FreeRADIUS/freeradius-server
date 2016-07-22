@@ -4910,13 +4910,11 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			ERROR("FATAL failure opening /dev/null: %s",
-			       fr_syserror(errno));
+			ERROR("FATAL failure opening /dev/null: %s", fr_syserror(errno));
 			fr_exit(1);
 		}
 		if (dup2(devnull, this->fd) < 0) {
-			ERROR("FATAL failure closing socket: %s",
-			       fr_syserror(errno));
+			ERROR("FATAL failure closing socket: %s", fr_syserror(errno));
 			fr_exit(1);
 		}
 		close(devnull);
