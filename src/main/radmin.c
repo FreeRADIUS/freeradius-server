@@ -76,6 +76,49 @@ static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
+typedef enum {
+	RADMIN_CONN_NONE = 0,				//!< Don't know, never connected.
+	RADMIN_CONN_UNIX,				//!< Connect via unix socket.
+	RADMIN_CONN_TCP					//!< Connect via TCP.
+} radmin_conn_type_t;
+
+/** A connection to a server
+ *
+ */
+typedef struct radmin_conn {
+	fr_event_list_t		*event_list;		//!< Event list this fd is serviced by.
+	int			fd;			//!< Control socket descriptor.
+
+	char			*last_command;		//!< Last command we executed on this connection.
+	char			*server;		//!< Path or FQDN of server we're connected to.
+	char			*secret;		//!< We use to authenticate ourselves to the server.
+
+	bool			nonblock;		//!< Whether this connection should operate in
+							//!< non-blocking mode.
+	bool			connected;		//!< Whether this connection is currently connected.
+	fr_cs_buffer_t		co;
+	radmin_conn_type_t	type;			//!< Type of connection.
+} radmin_conn_t;
+
+/** Radmin state
+ *
+ * Many of the readline functions don't take callbacks, so we need
+ * to use a global structure to communicate radmin state.
+ */
+typedef struct radmin_state {
+	fr_event_list_t		*event_list;		//!< Our main event list.
+
+	radmin_conn_t		*active_conn;		//!< Connection to remote entity.
+
+	bool			batch;			//!< Whether we're in batch mode.
+	bool			echo;			//!< Whether we should be echoing commands as they're issued.
+	bool			unbuffered;		//!< Whether we're in unbuffered mode...
+} radmin_state_t;
+
+/** Main radmin state
+ *
+ */
+static radmin_state_t state;
 
 /*
  *	The rest of this is because the conffile.c, etc. assume
