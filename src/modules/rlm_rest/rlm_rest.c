@@ -280,7 +280,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 				  uri, NULL, NULL);
 	talloc_free(uri);
 	if (ret < 0) {
-		slen = -1;
+		outlen = -1;
 		goto finish;
 	}
 
@@ -290,7 +290,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	 */
 	ret = rest_request_perform(instance, &section, request, handle);
 	if (ret < 0) {
-		slen = -1;
+		outlen = -1;
 		goto finish;
 	}
 
