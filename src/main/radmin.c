@@ -187,7 +187,7 @@ static ssize_t do_challenge(int sockfd)
 	fr_channel_type_t channel;
 	uint8_t challenge[16];
 
-	challenge[0] = 0;
+	challenge[0] = 0x00;
 
 	/*
 	 *	When connecting over a socket, the server challenges us.
