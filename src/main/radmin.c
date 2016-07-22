@@ -143,8 +143,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -h              Print usage help information.\n");
 	fprintf(output, "  -i input_file   Read commands from 'input_file'.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	fprintf(output, "  -q              Quiet mode.\n");
-
+	fprintf(output, "  -q              Reduce output verbosity\n");
+	fprintf(output, "  -x              Increase output verbosity\n");
 	exit(status);
 }
 
@@ -417,7 +417,9 @@ int main(int argc, char **argv)
 		progname++;
 	}
 
-	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S")) != EOF) {
+	rad_debug_lvl = L_DBG_LVL_1;
+
+	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:x")) != EOF) {
 		switch (argval) {
 		case 'd':
 			if (file) {
@@ -485,6 +487,12 @@ int main(int argc, char **argv)
 
 		case 'S':
 			secret = NULL;
+		case 'q':
+			if (rad_debug_lvl > 0) rad_debug_lvl--;
+			break;
+
+		case 'x':
+			rad_debug_lvl++;
 			break;
 		}
 	}
