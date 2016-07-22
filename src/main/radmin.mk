@@ -1,4 +1,8 @@
-TARGET 		:= radmin
+TARGETNAME  := radmin
+
+ifneq "$(LIBREADLINE)" ""
+TARGET		:= $(TARGETNAME)
+endif
 
 SOURCES		:= radmin.c channel.c
 
