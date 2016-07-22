@@ -208,7 +208,7 @@ static ssize_t do_challenge(int sockfd)
 	if (r <= 0) return r;
 
 	/*
-	 *	If the server doesn't like us, he just closes the
+	 *	If the server doesn't like us, it just closes the
 	 *	socket.  So we don't look for an ACK.
 	 */
 
