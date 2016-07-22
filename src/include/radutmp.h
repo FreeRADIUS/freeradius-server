@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file includes/radutmp.h
+ * @file include/radutmp.h
  * @brief Definitions for session tracking with a 'UTMP' file
  *
  * @copyright 2015 The FreeRADIUS server project
