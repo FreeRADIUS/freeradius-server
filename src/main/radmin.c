@@ -26,9 +26,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/channel.h>
+#include <assert.h>
 
 #include <pwd.h>
 #include <grp.h>
@@ -59,10 +57,14 @@ RCSID("$Id$")
 #    include <history.h>
 #    define USE_READLINE_HISTORY (1)
 #endif /* defined(HAVE_READLINE_HISTORY_H) */
-
 #endif /* HAVE_READLINE_HISTORY */
-
 #endif /* HAVE_LIBREADLINE */
+
+#define LOG_PREFIX "radmin - "
+
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/md5.h>
+#include <freeradius-devel/channel.h>
 
 /*
  *	For configuration file stuff.
