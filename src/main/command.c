@@ -69,16 +69,6 @@ struct fr_command_table_t {
 	fr_command_table_t *table;
 };
 
-#define COMMAND_BUFFER_SIZE (1024)
-
-typedef struct fr_cs_buffer_t {
-	int		auth;
-	int		mode;
-	ssize_t		offset;
-	ssize_t		next;
-	char		buffer[COMMAND_BUFFER_SIZE];
-} fr_cs_buffer_t;
-
 #define COMMAND_SOCKET_MAGIC (0xffdeadee)
 typedef struct fr_command_socket_t {
 	uint32_t	magic;

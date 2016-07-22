@@ -52,6 +52,15 @@ typedef enum fr_channel_notify_t {
 	FR_NOTIFY_UNBUFFERED
 } fr_channel_notify_t;
 
+#define COMMAND_BUFFER_SIZE (1024)
+
+typedef struct fr_cs_buffer_t {
+	int		auth;
+	int		mode;
+	ssize_t		offset;
+	ssize_t		next;
+	char		buffer[COMMAND_BUFFER_SIZE];
+} fr_cs_buffer_t;
 
 ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read);
 ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *buffer, size_t buflen);
