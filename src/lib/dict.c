@@ -871,9 +871,24 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				goto error;
 			}
 
-		} else if (type != PW_TYPE_OCTETS) {
-			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets'");
+		} else if ((type != PW_TYPE_OCTETS) &&
+			   (type != PW_TYPE_STRUCT)) {
+			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
 			goto error;
+		}
+
+		if (type == PW_TYPE_STRUCT) {
+			if (flags.type_size != 0) {
+				fr_strerror_printf("Invalid initializer for type_size");
+				goto error;
+			}
+
+			/*
+			 *	Set maximum length for the struct, and
+			 *	initialize the current length to be zero.
+			 */
+			flags.type_size = flags.length;
+			flags.length = 0;
 		}
 	}
 
@@ -1223,6 +1238,15 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 */
 		memcpy(&mutable, &parent, sizeof(mutable));
 		mutable->flags.length += flags.length;
+
+		/*
+		 *	The struct has a maximum size.  Complain if we exceed it.
+		 */
+		if (mutable->flags.type_size && (mutable->flags.length > mutable->flags.type_size)) {
+			fr_strerror_printf("Child attribute causes struct to overflow maximum size of %d octets",
+					   mutable->flags.type_size);
+			goto error;
+		}
 	}
 
 	/*

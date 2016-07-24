@@ -56,42 +56,42 @@ ATTRIBUTE	Alc-Default-Router			18	ipaddr
 ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 
 # RADIUS subscriber accounting VSAs
-ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	struct
+ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	struct[10]
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets-Selection	19.1	byte
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets-Id		19.2	byte
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets		19.3	integer64
 
-ATTRIBUTE	Alc-Acct-I-Outprof-Octets-64		20	struct
+ATTRIBUTE	Alc-Acct-I-Outprof-Octets-64		20	struct[10]
 ATTRIBUTE	Alc-Acct-I-Outprof-Octets-Selection	20.1	byte
 ATTRIBUTE	Alc-Acct-I-Outprof-Octets-Id		20.2	byte
 ATTRIBUTE	Alc-Acct-I-Outprof-Octets		20.3	integer64
 
-ATTRIBUTE	Alc-Acct-O-Inprof-Octets-64		21	struct
+ATTRIBUTE	Alc-Acct-O-Inprof-Octets-64		21	struct[10]
 ATTRIBUTE	Alc-Acct-O-Inprof-Octets-Selection	21.1	byte
 ATTRIBUTE	Alc-Acct-O-Inprof-Octets-Id		21.2	byte
 ATTRIBUTE	Alc-Acct-O-Inprof-Octets		21.3	integer64
 
-ATTRIBUTE	Alc-Acct-O-Outprof-Octets-64		22	struct
+ATTRIBUTE	Alc-Acct-O-Outprof-Octets-64		22	struct[10]
 ATTRIBUTE	Alc-Acct-O-Outprof-Octets-Selection	22.1	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Octets-Id		22.2	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Octets		22.3	integer64
 
-ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-64		23	struct
+ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-64		23	struct[10]
 ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-Selection	23.1	byte
 ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-Id		23.2	byte
 ATTRIBUTE	Alc-Acct-I-Inprof-Pkts			23.3	integer64
 
-ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	struct
+ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	struct[10]
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Selection	24.1	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Id		24.2	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts			24.3	integer64
 
-ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	struct
+ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	struct[10]
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-Selection	25.1	byte
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-Id		25.2	byte
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts			25.3	integer64
 
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-64		26	struct
+ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-64		26	struct[10]
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Selection	26.1	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Id		26.2	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts			26.3	integer64
