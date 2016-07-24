@@ -96,6 +96,8 @@ ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Selection	26.1	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Id		26.2	byte
 ATTRIBUTE	Alc-Acct-O-Outprof-Pkts			26.3	integer64
 
+ATTRIBUTE	Alc-Client-HardwareAddr			27	ethernet
+
 ATTRIBUTE	Alc-Int-Dest-Id-Str			28	string
 ATTRIBUTE	Alc-Primary-Nbns			29	ipaddr
 ATTRIBUTE	Alc-Secondary-Nbns			30	ipaddr
