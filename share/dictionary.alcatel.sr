@@ -261,7 +261,6 @@ ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop_64		84	struct[10]
 ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop-Id		84.1	short
 ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop		84.2	integer64
 
-
 # RADIUS subscriber accounting VSAs (custom records, HSMDA)
 ATTRIBUTE	Alc-Acct-OC-I-All-Octs-Offer_64		85	octets
 ATTRIBUTE	Alc-Acct-OC-I-All-Pack-Offer_64		86	octets
@@ -295,18 +294,66 @@ ATTRIBUTE	Alc-Ipv6-Secondary-Dns			106	ipv6addr
 
 # RADIUS subscriber accounting VSAs (Policers)
 ATTRIBUTE	Alc-Acct-I-statmode			107	string
-ATTRIBUTE	Alc-Acct-I-Hiprio-Octets_64		108	octets
-ATTRIBUTE	Alc-Acct-I-Lowprio-Octets_64		109	octets
-ATTRIBUTE	Alc-Acct-O-Hiprio-Octets_64		110	octets
-ATTRIBUTE	Alc-Acct-O-Lowprio-Octets_64		111	octets
-ATTRIBUTE	Alc-Acct-I-Hiprio-Packets_64		112	octets
-ATTRIBUTE	Alc-Acct-I-Lowprio-Packets_64		113	octets
-ATTRIBUTE	Alc-Acct-O-Hiprio-Packets_64		114	octets
-ATTRIBUTE	Alc-Acct-O-Lowprio-Packets_64		115	octets
-ATTRIBUTE	Alc-Acct-I-All-Octets_64		116	octets
-ATTRIBUTE	Alc-Acct-O-All-Octets_64		117	octets
-ATTRIBUTE	Alc-Acct-I-All-Packets_64		118	octets
-ATTRIBUTE	Alc-Acct-O-All-Packets_64		119	octets
+
+ATTRIBUTE	Alc-Acct-I-Hiprio-Octets_64		108	struct[10]
+ATTRIBUTE	Alc-Acct-I-Hiprio-Octets-x80		108.1	byte
+ATTRIBUTE	Alc-Acct-I-Hiprio-Octets-Id		108.2	byte
+ATTRIBUTE	Alc-Acct-I-Hiprio-Octets		108.3	integer64
+
+ATTRIBUTE	Alc-Acct-I-Lowprio-Octets_64		109	struct[10]
+ATTRIBUTE	Alc-Acct-I-Lowprio-Octets-x80		109.1	byte
+ATTRIBUTE	Alc-Acct-I-Lowprio-Octets-Id		109.2	byte
+ATTRIBUTE	Alc-Acct-I-Lowprio-Octets		109.3	integer64
+
+ATTRIBUTE	Alc-Acct-O-Hiprio-Octets_64		110	struct[10]
+ATTRIBUTE	Alc-Acct-O-Hiprio-Octets-x80		110.1	byte
+ATTRIBUTE	Alc-Acct-O-Hiprio-Octets-Id		110.2	byte
+ATTRIBUTE	Alc-Acct-O-Hiprio-Octets		110.3	integer64
+
+ATTRIBUTE	Alc-Acct-O-Lowprio-Octets_64		111	struct[10]
+ATTRIBUTE	Alc-Acct-O-Lowprio-Octets-x80		111.1	byte
+ATTRIBUTE	Alc-Acct-O-Lowprio-Octets-Id		111.2	byte
+ATTRIBUTE	Alc-Acct-O-Lowprio-Octets		111.3	integer64
+
+ATTRIBUTE	Alc-Acct-I-Hiprio-Packets_64		112	struct[10]
+ATTRIBUTE	Alc-Acct-I-Hiprio-Packets-x80		112.1	byte
+ATTRIBUTE	Alc-Acct-I-Hiprio-Packets-Id		112.2	byte
+ATTRIBUTE	Alc-Acct-I-Hiprio-Packets		112.3	integer64
+
+ATTRIBUTE	Alc-Acct-I-Lowprio-Packets_64		113	struct[10]
+ATTRIBUTE	Alc-Acct-I-Lowprio-Packets-x80		113.1	byte
+ATTRIBUTE	Alc-Acct-I-Lowprio-Packets-Id		113.2	byte
+ATTRIBUTE	Alc-Acct-I-Lowprio-Packets		113.3	integer64
+
+ATTRIBUTE	Alc-Acct-O-Hiprio-Packets_64		114	struct[10]
+ATTRIBUTE	Alc-Acct-O-Hiprio-Packets-x80		114.1	byte
+ATTRIBUTE	Alc-Acct-O-Hiprio-Packets-Id		114.2	byte
+ATTRIBUTE	Alc-Acct-O-Hiprio-Packets		114.3	integer64
+
+ATTRIBUTE	Alc-Acct-O-Lowprio-Packets_64		115	struct[10]
+ATTRIBUTE	Alc-Acct-O-Lowprio-Packets-x80		115.1	byte
+ATTRIBUTE	Alc-Acct-O-Lowprio-Packets-Id		115.2	byte
+ATTRIBUTE	Alc-Acct-O-Lowprio-Packets		115.3	integer64
+
+ATTRIBUTE	Alc-Acct-I-All-Octets_64		116	struct[10]
+ATTRIBUTE	Alc-Acct-I-All-Octets-x80		116.1	byte
+ATTRIBUTE	Alc-Acct-I-All-Octets-Id		116.2	byte
+ATTRIBUTE	Alc-Acct-I-All-Octets			116.3	integer64
+
+ATTRIBUTE	Alc-Acct-O-All-Octets_64		117	struct[10]
+ATTRIBUTE	Alc-Acct-O-All-Octets-x80		117.1	byte
+ATTRIBUTE	Alc-Acct-O-All-Octets-Id		117.2	byte
+ATTRIBUTE	Alc-Acct-O-All-Octets			117.3	integer64
+
+ATTRIBUTE	Alc-Acct-I-All-Packets_64		118	struct[10]
+ATTRIBUTE	Alc-Acct-I-All-Packets-x80		118.1	byte
+ATTRIBUTE	Alc-Acct-I-All-Packets-Id		118.2	byte
+ATTRIBUTE	Alc-Acct-I-All-Packets			118.3	integer64
+
+ATTRIBUTE	Alc-Acct-O-All-Packets_64		119	struct[10]
+ATTRIBUTE	Alc-Acct-O-All-Packets-x80		119.1	byte
+ATTRIBUTE	Alc-Acct-O-All-Packets-Id		119.2	byte
+ATTRIBUTE	Alc-Acct-O-All-Packets			119.3	integer64
 
 ATTRIBUTE	Alc-Tunnel-Rx-Window-Size		120	integer	has_tag
 
