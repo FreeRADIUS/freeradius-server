@@ -238,6 +238,15 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		p += slen;
 
+		if (vpt.tmpl_num == NUM_COUNT) {
+			REDEBUG("Attribute count is not supported");
+			return false;
+		}
+
+		if (vpt.tmpl_num == NUM_ALL) {
+			RWDEBUG("Asked for '*' which is not supported. Using only the first attribute");
+		}
+
 		if (tmpl_find_vp(&vp, request, &vpt) < 0) {
 			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt.len, vpt.name);
 			x = 0;
