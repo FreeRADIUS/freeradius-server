@@ -1,16 +1,55 @@
-Upgrading to Version 3.1
+Upgrading to Version 4.0
 ========================
 
 .. contents:: Sections
    :depth: 2
    :
 .. important::
-   The configuration for 3.1 is *largely* compatible with the 3.0.x
+   The configuration for 4.0 is *somewhat* compatible with the 3.0.x
    configuration.  It should be possible to reuse most of a 3.0.x
    reconfiguration with minor tweaks.
    If you're upgrading from v2.2.x you should read the v3.0.x version
    of this file.  It describes changed from v2 to v3.0.  This file
-   describes only the changes from v3.0 to v3.1
+   describes only the changes from v3.0 to v4.0
+
+Processing Sections
+-------------------
+
+All of the processing sections have been renamed.  Sorry, but this was
+required for the new features in v4.
+
+========		========
+Old Name		New Name
+--------		--------
+authorize		recv Access-Request
+authenticate		process <Auth-Type>
+post-auth		send Access-Accept
+
+preacct			recv Accounting-Request
+accounting		send Access-Accept
+
+recv-coa		recv CoA-Request
+send-coa		send CoA-ACK
+send-coa		send CoA-NAK
+
+Post-Auth-Type Reject	send Access-Reject
+Post-Auth-Type Challenge  send Access-Challenge
+======== ========
+
+i.e. instead of the section names being (mostly) randomly named, the
+names are now consistent.  `recv` receives packets from the network.
+`send` sends packets back to the network.  The second name of the
+processing section is the *type* of the packet which is being received
+or sent.
+
+
+Dictionaries
+------------
+
+The `struct` data type is now supported.  See `man dictionary`.
+
+There are many more sanity checks and helpful messages for people
+creating new dictionaries.
 
 Attribute references
 --------------------
@@ -38,7 +77,7 @@ In v2.2 and earlier, the config items for configuring connection
 timeouts were either confusingly named, or completely absent in
 the case of many contributed modules.
 
-In v3.1.x connection timeouts can be configured universally for
+In v4.0.x connection timeouts can be configured universally for
 all modules with the ``connect_timeout`` config item of the
 module's ``pool {}`` section.
 
@@ -73,7 +112,7 @@ All certificate attributes are available in the ``&session-state:`` list,
 immediately after they're parsed from their ASN1 form.
 
 The certificates are longer added to the ``&request:`` list.  You are
-advised to update any references during the upgrade to 3.1:
+advised to update any references during the upgrade to 4.0:
 
     ``s/TLS-Cert-/session-state:TLS-Cert-/``.
 
@@ -100,6 +139,19 @@ These configuration items were removed because they caused issues for
 a number of users, and they made the code substantially more
 complicated.  Experience shows that having configurable policies in
 ``unlang`` is preferable to having them hard-coded in C.
+
+rlm_expr
+~~~~~~~~
+
+Allow `&Attr-Name[*]` to mean "sum".  Previously, it just referred to
+the first attribute.
+
+Using `%{expr:0 + &Attr-Name[*]}` will cause it to return the sum of the values
+of all attributes with the given name.
+
+Note that `%{expr:1 * &Attr-Name[*]}` does *not* mean repeated
+multiplication.  Instead, the sum of the attributes is taken as
+before, and then the result is multiplied by one.
 
 
 rlm_rest
@@ -132,7 +184,7 @@ For example where in v3.0.x you would specify the attribute names as::
   reply_name		= Session-Timeout
   key			= User-Name
 
-In v3.1.x they must now be specified as::
+In v4.0.x they must now be specified as::
 
   count_attribute	= &Acct-Session-Time
   counter_name		= &Daily-Session-Time
