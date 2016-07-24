@@ -109,14 +109,37 @@ ATTRIBUTE	Alc-PPPoE-Service-Name			35	string
 ATTRIBUTE	Alc-DHCP-Vendor-Class-Id		36	string
 
 # RADIUS subscriber accounting VSAs (HSMDA override counters)
-ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets-64		37	octets
-ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets-64		38	octets
-ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets-64		39	octets
-ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets-64		40	octets
-ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts-64		41	octets
-ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts-64		42	octets
-ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts-64		43	octets
-ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts-64		44	octets
+ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets-64		37	struct[10]
+ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets-Id		37.1	short
+ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets		37.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets-64		38	struct[10]
+ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets-Id		38.1	short
+ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets		38.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets-64		39	struct[10]
+ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets-Id		39.1	short
+ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets		39.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets-64		40	struct[10]
+ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets-Id		40.1	short
+ATTRIBUTE	Alc-Acct-OC-O-Outprof-Octets		40.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts-64		41	struct[10]
+ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts-Id		41.1	short
+ATTRIBUTE	Alc-Acct-OC-I-Inprof-Pkts		41.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts-64		42	struct[10]
+ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts-Id		42.1	short
+ATTRIBUTE	Alc-Acct-OC-I-Outprof-Pkts		42.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts-64		43	struct[10]
+ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts-Id		43.1	short
+ATTRIBUTE	Alc-Acct-OC-O-Inprof-Pkts		43.2	integer64
+
+ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts-64		44	struct[10]
+ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts-Id		44.1	short
+ATTRIBUTE	Alc-Acct-OC-O-Outprof-Pkts		44.2	integer64
 
 ATTRIBUTE	Alc-App-Prof-Str			45	string
 ATTRIBUTE	Alc-Tunnel-Group			46	string
