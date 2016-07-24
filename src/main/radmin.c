@@ -118,7 +118,7 @@ typedef struct radmin_state {
 /** Main radmin state
  *
  */
-static radmin_state_t state;
+//static radmin_state_t state;
 
 /*
  *	The rest of this is because the conffile.c, etc. assume
