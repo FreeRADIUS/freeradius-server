@@ -281,6 +281,13 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				y = (int64_t)vp->vp_integer64;
 			}
 
+			/*
+			 *	Check for overflow without actually overflowing.
+			 */
+			if ((y > 0) && (x > (int64_t) INT64_MAX - y)) goto overflow;
+
+			if ((y < 0) && (x < (int64_t) INT64_MIN - y)) goto overflow;
+
 			x += y;
 		} /* loop over all found VPs */
 
