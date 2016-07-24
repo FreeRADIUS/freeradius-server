@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 
 	rad_debug_lvl = L_DBG_LVL_1;
 
-	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:x")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:Sx")) != EOF) {
 		switch (argval) {
 		case 'd':
 			if (file) {
@@ -474,6 +474,7 @@ int main(int argc, char **argv)
 
 		case 'q':
 			quiet = true;
+			if (rad_debug_lvl > 0) rad_debug_lvl--;
 			break;
 
 		case 's':
@@ -487,9 +488,6 @@ int main(int argc, char **argv)
 
 		case 'S':
 			secret = NULL;
-		case 'q':
-			if (rad_debug_lvl > 0) rad_debug_lvl--;
-			break;
 
 		case 'x':
 			rad_debug_lvl++;
