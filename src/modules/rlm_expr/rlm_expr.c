@@ -344,21 +344,29 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 {
 	switch (op) {
 	default:
-	case TOKEN_ADD:
-		*answer = lhs + rhs;
-		break;
-
 	case TOKEN_SUBTRACT:
-		*answer = lhs - rhs;
+		rhs = -rhs;
+		/* FALL-THROUGH */
+
+	case TOKEN_ADD:
+		if ((rhs > 0) && (lhs > (int64_t) INT64_MAX - rhs)) {
+		overflow:
+			REDEBUG("Numerical overflow in expression!");
+			return false;
+		}
+
+		if ((rhs < 0) && (lhs < (int64_t) INT64_MIN - rhs)) goto overflow;
+
+		*answer = lhs + rhs;
 		break;
 
 	case TOKEN_DIVIDE:
 		if (rhs == 0) {
-			RDEBUG("Division by zero!");
+			REDEBUG("Division by zero in expression!");
 			return false;
-		} else {
-			*answer = lhs / rhs;
 		}
+
+		*answer = lhs / rhs;
 		break;
 
 	case TOKEN_REMAINDER:
