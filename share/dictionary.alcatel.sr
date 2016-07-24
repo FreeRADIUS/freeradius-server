@@ -197,22 +197,70 @@ VALUE	Alc-IPsec-SA-Auth-Algorithm	sha1			3
 ATTRIBUTE	Alc-IPsec-SA-Replay-Window		68	integer
 
 # RADIUS subscriber accounting VSAs (custom records)
-ATTRIBUTE	Alc-Acct-I-High-Octets-Drop_64		69	octets
-ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop_64		70	octets
-ATTRIBUTE	Alc-Acct-I-High-Pack-Drop_64		71	octets
-ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop_64		72	octets
-ATTRIBUTE	Alc-Acct-I-High-Octets-Offer_64		73	octets
-ATTRIBUTE	Alc-Acct-I-Low-Octets-Offer_64		74	octets
-ATTRIBUTE	Alc-Acct-I-High-Pack-Offer_64		75	octets
-ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer_64		76	octets
-ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer_64		77	octets
-ATTRIBUTE	Alc-Acct-I-Unc-Pack-Offer_64		78	octets
-ATTRIBUTE	Alc-Acct-I-All-Octets-Offer_64		79	octets
-ATTRIBUTE	Alc-Acct-I-All-Pack-Offer_64		80	octets
-ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop_64		81	octets
-ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop_64		82	octets
-ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop_64		83	octets
-ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop_64		84	octets
+ATTRIBUTE	Alc-Acct-I-High-Octets-Drop_64		69	struct[10]
+ATTRIBUTE	Alc-Acct-I-High-Octets-Drop-Id		69.1	short
+ATTRIBUTE	Alc-Acct-I-High-Octets-Drop		69.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop_64		70	struct[10]
+ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop-Id		70.1	short
+ATTRIBUTE	Alc-Acct-I-Low-Octets-Drop		70.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-High-Pack-Drop_64		71	struct[10]
+ATTRIBUTE	Alc-Acct-I-High-Pack-Drop-Id		71.1	short
+ATTRIBUTE	Alc-Acct-I-High-Pack-Drop		71.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop_64		72	struct[10]
+ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop-Id		72.1	short
+ATTRIBUTE	Alc-Acct-I-Low-Pack-Drop		72.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-High-Octets-Offer_64		73	struct[10]
+ATTRIBUTE	Alc-Acct-I-High-Octets-Offer-Id		73.1	short
+ATTRIBUTE	Alc-Acct-I-High-Octets-Offer		73.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-Low-Octets-Offer_64		74	struct[10]
+ATTRIBUTE	Alc-Acct-I-Low-Octets-Offer-Id		74.1	short
+ATTRIBUTE	Alc-Acct-I-HigLow-Octets-Offer		74.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-High-Pack-Offer_64		75	struct[10]
+ATTRIBUTE	Alc-Acct-I-High-Packs-Offer-Id		75.1	short
+ATTRIBUTE	Alc-Acct-I-High-Packs-Offer		75.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer_64		76	struct[10]
+ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer-Id		76.1	short
+ATTRIBUTE	Alc-Acct-I-Low-Pack-Offer		76.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer_64		77	struct[10]
+ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer-Id		77.1	short
+ATTRIBUTE	Alc-Acct-I-Unc-Octets-Offer		77.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-Unc-Pack-Offer_64		78	struct[10]
+ATTRIBUTE	Alc-Acct-I-Unc-Pack-Offer-Id		78.1	short
+ATTRIBUTE	Alc-Acct-I-unc-Pack-Offer		78.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-All-Octets-Offer_64		79	struct[10]
+ATTRIBUTE	Alc-Acct-I-All-Octets-Offer-Id		79.1	short
+ATTRIBUTE	Alc-Acct-I-All-Octets-Offer		79.2	integer64
+
+ATTRIBUTE	Alc-Acct-I-All-Pack-Offer_64		80	struct[10]
+ATTRIBUTE	Alc-Acct-I-All-Pack-Offer-Id		80.1	short
+ATTRIBUTE	Alc-Acct-I-All-Pack-Offer		80.2	integer64
+
+ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop_64		81	struct[10]
+ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop-Id		81.1	short
+ATTRIBUTE	Alc-Acct-O-Inprof-Pack-Drop		81.2	integer64
+
+ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop_64		82	struct[10]
+ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop-Id		82.1	short
+ATTRIBUTE	Alc-Acct-O-Outprof-Pack-Drop		82.2	integer64
+
+ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop_64		83	struct[10]
+ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop-Id		83.1	short
+ATTRIBUTE	Alc-Acct-O-Inprof-Octs-Drop		83.2	integer64
+
+ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop_64		84	struct[10]
+ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop-Id		84.1	short
+ATTRIBUTE	Alc-Acct-O-Outprof-Octs-Drop		84.2	integer64
+
 
 # RADIUS subscriber accounting VSAs (custom records, HSMDA)
 ATTRIBUTE	Alc-Acct-OC-I-All-Octs-Offer_64		85	octets
