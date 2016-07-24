@@ -224,9 +224,11 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	 *	Look for an attribute.
 	 */
 	if (*p == '&') {
+		int		i, max, err;
 		ssize_t		slen;
 		VALUE_PAIR	*vp;
 		vp_tmpl_t	vpt;
+		vp_cursor_t cursor;
 
 		p += 1;
 
@@ -244,37 +246,47 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		}
 
 		if (vpt.tmpl_num == NUM_ALL) {
-			RWDEBUG("Asked for '*' which is not supported. Using only the first attribute");
-		}
-
-		if (tmpl_find_vp(&vp, request, &vpt) < 0) {
-			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt.len, vpt.name);
-			x = 0;
-			goto done;
-		}
-
-		if (vp->da->type != PW_TYPE_INTEGER64) {
-			value_data_t	value;
-
-			if (value_data_cast(vp, &value, PW_TYPE_INTEGER64, NULL, vp->da->type, vp->da, &vp->data) < 0) {
-				REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt.len,
-					vpt.name, fr_strerror());
-				return false;
-			}
-			if (value.integer64 > INT64_MAX) {
-			overflow:
-				REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-					"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.integer64);
-				return false;
-			}
-			x = (int64_t)value.integer64;
-
-			RINDENT();
-			RDEBUG3("&%.*s --> %" PRIu64, (int)vpt.len, vpt.name, x);
-			REXDENT();
+			max = 65535;
 		} else {
-			if (vp->vp_integer64 > INT64_MAX) goto overflow;
-			x = (int64_t)vp->vp_integer64;
+			max = 1;
+		}
+
+		x = 0;
+		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, &vpt);
+		     (i < max) && (vp != NULL);
+		     i++, vp = tmpl_cursor_next(&cursor, &vpt)) {
+			int64_t y;
+
+			if (vp->da->type != PW_TYPE_INTEGER64) {
+				value_data_t	value;
+
+				if (value_data_cast(vp, &value, PW_TYPE_INTEGER64, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt.len,
+						vpt.name, fr_strerror());
+					return false;
+				}
+				if (value.integer64 > INT64_MAX) {
+				overflow:
+					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
+						"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.integer64);
+					return false;
+				}
+				y = (int64_t)value.integer64;
+
+				RINDENT();
+				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt.len, vpt.name, y);
+				REXDENT();
+			} else {
+				if (vp->vp_integer64 > INT64_MAX) goto overflow;
+				y = (int64_t)vp->vp_integer64;
+			}
+
+			x += y;
+		} /* loop over all found VPs */
+
+		if (err != 0) {
+			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt.len, vpt.name);
+			goto done;
 		}
 
 		goto done;
