@@ -370,7 +370,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	ccr->child->parent = request;
 	ccr->child->packet = ccr->packet;
 
-	packet->code = PW_CODE_ACCOUNTING_REQUEST;
+	/*
+	 *	FIXME: allow for changing of the packet code?
+	 *	Also, check the home server compatibility against the packet code?
+	 */
+	packet->code = request->packet->code;
 #ifdef WITH_TCP
 	packet->proto = IPPROTO_UDP;
 #endif
@@ -424,7 +428,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	}
 	ccr->child->in_request_hash = true;
 
-	RDEBUG("Sending Accounting-Request packet to home server %s %s port %d - ID %u",
+	RDEBUG("Sending %s packet to home server %s %s port %d - ID %u",
+	       fr_packet_codes[packet->code],
 	       ccr->inst->home_server->name,
 	       inet_ntop(packet->dst_ipaddr.af,
 			 &packet->dst_ipaddr.ipaddr,
@@ -495,11 +500,6 @@ static int mod_instantiate(CONF_SECTION *config, void *instance)
 		return -1;
 	}
 
-	if (home->type != HOME_TYPE_ACCT) {
-		cf_log_err_cs(config, "Only home servers of 'type = acct' are allowed.");
-		return -1;
-	}
-
 #ifdef WITH_TCP
 	if (home->proto != IPPROTO_UDP) {
 		cf_log_err_cs(config, "Only home servers of 'proto = udp' are allowed.");
@@ -538,5 +538,6 @@ rad_module_t rlm_radius_client = {
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_PREACCT]		= mod_process,
+		[MOD_AUTHENTICATE]     	= mod_process,
 	},
 };
