@@ -32,6 +32,8 @@ RCSID("$Id$")
 typedef struct radius_client_instance {
 	char const		*name;			//!< Module instance name.
 
+	char const		*virtual_server;       	//!< virtual server to run proxied packets through
+
 	fr_ipaddr_t		src_ipaddr;		// Src IP for outgoing packets
 
 	uint32_t		timeout; 		// Timeout to wait for home server replies (ms)
@@ -47,6 +49,8 @@ static const CONF_PARSER listen_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("listen", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) listen_config },
 	{ FR_CONF_OFFSET("timeout", PW_TYPE_INTEGER, rlm_radius_client_instance_t, timeout), .dflt = "100" },
+
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_radius_client_instance_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -64,32 +68,39 @@ typedef struct rlm_radius_client_request {
 	rlm_rcode_t			rcode;
 
 	rlm_radius_client_conn_t	*conn;
-	RADIUS_PACKET			*packet;
+
+	RADIUS_PACKET			*packet;	/* the packet we sent */
+	RADIUS_PACKET			*reply;		/* the reply from the home server */
+
+	REQUEST				*child;		/* the child request */
 } rlm_radius_client_request_t;
 
+/** Clean up whatever intermediate state we're in.
+ *
+ */
 static void mod_cleanup(REQUEST *request, rlm_radius_client_request_t *ccr)
 {
-	VALUE_PAIR *vp;
-	char buffer[INET6_ADDRSTRLEN];
-
-	if (!ccr->packet) {
-		ccr->rcode = RLM_MODULE_OK;
-		return;
+	if (ccr->child->in_request_hash) {
+		(void) fr_packet_list_yank(ccr->conn->pl, ccr->packet);
+		ccr->child->in_request_hash = false;
 	}
-
-	(void) fr_packet_list_yank(ccr->conn->pl, ccr->packet);
 
 	/*
-	 *	Set Failed-Home-Server-IP to IP for which we didn't receive an answer
+	 *	Set Failed-Home-Server-IP if we didn't get an answer.
 	 */
-	vp = pair_make_request("Failed-Home-Server-IP", NULL, T_OP_ADD);
-	if (vp) {
-		fr_pair_value_snprintf(vp, "%s", inet_ntop(ccr->packet->dst_ipaddr.af,
-							   &ccr->packet->dst_ipaddr.ipaddr,
-							   buffer, sizeof(buffer)));
+	if (!ccr->reply) {
+		VALUE_PAIR *vp;
+		char buffer[INET6_ADDRSTRLEN];
+
+		vp = pair_make_request("Failed-Home-Server-IP", NULL, T_OP_ADD);
+		if (vp) {
+			fr_pair_value_snprintf(vp, "%s", inet_ntop(ccr->packet->dst_ipaddr.af,
+								   &ccr->packet->dst_ipaddr.ipaddr,
+								   buffer, sizeof(buffer)));
+		}
 	}
 
-	ccr->rcode = RLM_MODULE_FAIL;
+	TALLOC_FREE(ccr->child);
 }
 
 static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
@@ -102,8 +113,10 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 
 	/*
 	 *	Look for the packet.
+	 *
+	 *	@fixme: if there's an error in the socket, remove the
+	 *	socket from the packet list.
 	 */
-retry:
 	reply = fr_radius_recv(conn, fd, 0, false);
 	if (!reply) {
 		return;
@@ -122,7 +135,7 @@ retry:
 	}
 
 	/*
-	 *	Walk back up the chain of structures.
+	 *	Walk back up the chain of structs.
 	 */
 	ccr = fr_packet2myptr(rlm_radius_client_request_t, packet, packet_p);
 	request = ccr->request;
@@ -135,7 +148,7 @@ retry:
 	       reply->src_port, reply->id);
 
 	/*
-	 *	Fails the signature validation: not a real reply.
+	 *	If the reply fails the signature validation, it's not a real reply.
 	 */
 	if (fr_radius_verify(reply, ccr->packet, ccr->inst->home_server->secret) < 0) {
 		REDEBUG("Reply verification failed for home server %s", ccr->inst->home_server->name);
@@ -146,25 +159,23 @@ retry:
 	RDEBUG("Received response from home server");
 
 	/*
-	 *	Reply is valid, delete the proxied packet and continue.
+	 *	Reply is valid, run the packet through the "recv FOO" stage.
 	 */
 	fr_packet_list_id_free(conn->pl, ccr->packet, true);
-
-	fr_radius_free(&reply);
-	fr_radius_free(&ccr->packet);
-
+	ccr->child->in_request_hash = false;
+	ccr->child->reply = talloc_steal(ccr->child, reply);
+	ccr->reply = reply;
 
 	/*
-	 *	We've received all of the responses.  Remove the
-	 *	timeout handler, and resume.
+	 *	We've received the response.  Remove the timeout
+	 *	handler, and resume.
 	 */
 	unlang_event_timeout_delete(ccr->request, ccr);
 
-	ccr->rcode = RLM_MODULE_OK;
 	RDEBUG("Resuming request");
-	unlang_resumable(ccr->request);
 
-	goto retry;
+	ccr->rcode = RLM_MODULE_OK;
+	unlang_resumable(ccr->request);
 }
 
 static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx, UNUSED struct timeval *now)
@@ -188,14 +199,14 @@ static rlm_rcode_t mod_resume(UNUSED REQUEST *request, void *instance, void *ctx
 	rad_assert(inst == ccr->inst);
 
 	rcode = ccr->rcode;
-	talloc_free(ccr);
+	TALLOC_FREE(ccr);
 
 	return rcode;
 }
 
 
-/**
- * Cleanup socket when deleting connection
+/** Cleanup socket when deleting connection
+ *
  */
 static void mod_conn_free(void *ctx)
 {
@@ -217,9 +228,25 @@ static void mod_conn_free(void *ctx)
 	talloc_free(conn);
 }
 
+/** Clean up an association between a child and parent request.
+ *
+ */
+static int mod_ccr_free(rlm_radius_client_request_t *ccr)
+{
+	if (!ccr->child) return 0;
 
-/*
- *	Create an add a new socket to the connecton handle.
+	if (ccr->child->in_request_hash) {
+		(void) fr_packet_list_yank(ccr->conn->pl, ccr->packet);
+		ccr->child->in_request_hash = false;
+	}
+
+	unlang_event_timeout_delete(ccr->request, ccr);
+
+	return 0;
+}
+
+/** Create and add a new socket to the connecton handle.
+ *
  */
 static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_radius_client_instance_t *inst)
 {
@@ -228,6 +255,9 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 	uint16_t server_port = 0;
 	fr_ipaddr_t ipaddr;
 
+	/*
+	 *	Too many outbound sockets is probably a bad idea.
+	 */
 	if (conn->num_fds > 16) {
 		ERROR("Too many open sockets (%d)", conn->num_fds);
 		return -1;
@@ -245,7 +275,7 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 	fr_nonblock(sockfd);
 
 	/*
-	 *	Destination is any IP address.
+	 *	The default destination is anywhere.
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.af = AF_INET;
@@ -328,10 +358,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	ccr->rcode = RLM_MODULE_FAIL;
 	ccr->conn = conn;
 
+	talloc_set_destructor(ccr, mod_ccr_free);
+
 	/*
-	 *	Create the packet.
+	 *	Create the child request and packet.
 	 */
-	MEM(ccr->packet = packet = fr_radius_alloc(ccr, false));
+	MEM(ccr->child = request_alloc(request));
+
+	MEM(ccr->packet = packet = fr_radius_alloc(ccr->child, false));
+
+	ccr->child->parent = request;
+	ccr->child->packet = ccr->packet;
 
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
 #ifdef WITH_TCP
@@ -374,15 +411,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	 */
 	if (!fr_packet_list_id_alloc(conn->pl, IPPROTO_UDP, &ccr->packet, NULL)) {
 		if (mod_fd_add(request->el, conn, inst) < 0) {
+			talloc_free(ccr);
 			REDEBUG("Failed adding more sockets");
 			return RLM_MODULE_FAIL;
 		}
 
 		if (!fr_packet_list_id_alloc(conn->pl, IPPROTO_UDP, &ccr->packet, NULL)) {
+			talloc_free(ccr);
 			REDEBUG("Failed allocating ID: %s", fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
 	}
+	ccr->child->in_request_hash = true;
 
 	RDEBUG("Sending Accounting-Request packet to home server %s %s port %d - ID %u",
 	       ccr->inst->home_server->name,
