@@ -382,7 +382,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	packet->dst_port = inst->home_server->port;
 
 	packet->src_ipaddr = inst->home_server->src_ipaddr;
-	packet->src_port = 0; /* we don't care what this is */
+	packet->src_port = 0;
 
 #ifndef NDEBUG
 	/*
@@ -408,6 +408,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	 */
 	packet->vps = request->packet->vps;
 #endif
+
+	/*
+	 *	Access-Requests get special mangling.
+	 */
+	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+		/*
+		 *	Add CHAP-Challenge if necessary.
+		 */
+		if ((request->packet->code == packet->code) &&
+		    fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) &&
+		    fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL) {
+			vp = radius_pair_create(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
+			fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+		}
+
+		/*
+		 *	Always add Message-Authenticator.
+		 */
+		fr_pair_make(packet, &packet->vps, "Message-Authenticator", "0x00", T_OP_SET);
+	}
 
 	/*
 	 *	Grab an ID.  If we can't, try to create
