@@ -145,31 +145,25 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
 char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
 {
 	char const *p;
-	char *out;
+	char *out = NULL;
 	struct json_object *json;
 	int len;
 
 	json = json_object_new_string(s);
 	if (!json) return NULL;
 
-	p = json_object_to_json_string(json);
-	if (!p) goto alloc_failed;
-
-	if (include_quotes) {
-		out = talloc_strdup(ctx, p);
-		if (!out) goto alloc_failed;
-	} else {
-		len = strlen(p) - 1;
-		out = talloc_strndup(ctx, p+1, len);
-		if (!out) goto alloc_failed;
-		out[len-1] = '\0';
+	if ((p = json_object_to_json_string(json))) {
+		if (include_quotes) {
+			out = talloc_strdup(ctx, p);
+		} else {
+			len = strlen(p) - 1;
+			out = talloc_strndup(ctx, p+1, len);
+			if (out) out[len-1] = '\0';
+		}
 	}
-	
-	return out;
 
-alloc_failed:
-	free(json);
-	return NULL;
+	json_object_put(json);
+	return out;
 }
 
 /** Prints attribute as string, escaped suitably for use as JSON string
