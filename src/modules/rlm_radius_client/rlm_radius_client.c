@@ -33,6 +33,7 @@ typedef struct radius_client_instance {
 	char const		*name;			//!< Module instance name.
 
 	char const		*virtual_server;       	//!< virtual server to run proxied packets through
+	CONF_SECTION		*server_cs;
 
 	fr_ipaddr_t		src_ipaddr;		// Src IP for outgoing packets
 
@@ -190,7 +191,7 @@ static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx
 }
 
 
-static rlm_rcode_t mod_resume(UNUSED REQUEST *request, void *instance, void *ctx)
+static rlm_rcode_t mod_resume_continue(UNUSED REQUEST *request, void *instance, void *ctx)
 {
 	rlm_rcode_t rcode;
 	rlm_radius_client_instance_t *inst = instance;
@@ -321,6 +322,66 @@ static void *mod_conn_create(fr_event_list_t *el, rlm_radius_client_instance_t *
 	return conn;
 }
 
+
+static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instance_t *inst,
+				      rlm_radius_client_request_t *ccr)
+{
+	struct timeval now, timeout;
+	RADIUS_PACKET *packet = ccr->child->packet;
+	char buffer[INET6_ADDRSTRLEN];
+
+	RDEBUG("Sending %s packet to home server %s %s port %d - ID %u",
+	       fr_packet_codes[packet->code],
+	       ccr->inst->home_server->name,
+	       inet_ntop(packet->dst_ipaddr.af,
+			 &packet->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       packet->dst_port, packet->id);
+
+	fr_radius_send(packet, NULL, inst->home_server->secret);
+
+	/*
+	 *	Calculate the wall clock time of when we want to wake up.
+	 */
+	if (inst->timeout > 1000) {
+		timeout.tv_sec = inst->timeout / 1000;
+		timeout.tv_usec = (inst->timeout % 1000) * 1000;
+	} else {
+		timeout.tv_sec = 0;
+		timeout.tv_usec = inst->timeout * 1000;
+	}
+
+	gettimeofday(&now, NULL);
+	timeradd(&now, &timeout, &timeout);
+
+	unlang_event_timeout_add(request, mod_event_timeout, inst, ccr, &timeout);
+
+	return unlang_yield(request, mod_resume_continue, inst, ccr);
+}
+
+static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
+{
+	rlm_rcode_t rcode;
+	rlm_radius_client_instance_t *inst = instance;
+	rlm_radius_client_request_t *ccr = ctx;
+	REQUEST *child = ccr->child;
+
+	rad_assert(inst == ccr->inst);
+
+	rcode = unlang_interpret_continue(child);
+
+	if (child->master_state == REQUEST_STOP_PROCESSING) {
+		mod_cleanup(request, ccr);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (rcode == RLM_MODULE_YIELD) {
+		return unlang_yield(child, mod_resume_send, inst, ccr);
+	}
+
+	return mod_wait_for_reply(request, inst, ccr);
+}
+
 /** Send packets outbound.
  *
  */
@@ -329,10 +390,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	rlm_radius_client_instance_t *inst = instance;
 	rlm_radius_client_conn_t *conn;
 	rlm_radius_client_request_t *ccr;
-	struct timeval now, timeout;
 	RADIUS_PACKET *packet;
 	VALUE_PAIR *vp;
-	char buffer[INET6_ADDRSTRLEN];
+	REQUEST *child;
+	CONF_SECTION *unlang;
 
 	if (!request->el) {
 		REDEBUG("%s requires the new virtual servers", inst->name);
@@ -367,12 +428,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	/*
 	 *	Create the child request and packet.
 	 */
-	MEM(ccr->child = request_alloc(request));
+	MEM(ccr->child = child = request_alloc(request));
 
-	MEM(ccr->packet = packet = fr_radius_alloc(ccr->child, false));
+	MEM(ccr->packet = packet = fr_radius_alloc(child, false));
 
-	ccr->child->parent = request;
-	ccr->child->packet = ccr->packet;
+	child->number = request->number;
+	child->parent = request;
+	child->packet = ccr->packet;
 
 	/*
 	 *	FIXME: allow for changing of the packet code?
@@ -450,41 +512,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 			return RLM_MODULE_FAIL;
 		}
 	}
-	ccr->child->in_request_hash = true;
-
-	RDEBUG("Sending %s packet to home server %s %s port %d - ID %u",
-	       fr_packet_codes[packet->code],
-	       ccr->inst->home_server->name,
-	       inet_ntop(packet->dst_ipaddr.af,
-			 &packet->dst_ipaddr.ipaddr,
-			 buffer, sizeof(buffer)),
-	       packet->dst_port, packet->id);
-
-	fr_radius_send(packet, NULL, inst->home_server->secret);
-
-#ifndef NDEBUG
-	fr_pair_list_free(&packet->vps);
-#else
-	packet->vps = NULL;
-#endif
+	child->in_request_hash = true;
 
 	/*
-	 *	Calculate the wall clock time of when we want to wake up.
+	 *	If we have a virtual server here, then run it.
 	 */
-	if (inst->timeout > 1000) {
-		timeout.tv_sec = inst->timeout / 1000;
-		timeout.tv_usec = (inst->timeout % 1000) * 1000;
-	} else {
-		timeout.tv_sec = 0;
-		timeout.tv_usec = inst->timeout * 1000;
-	}
+	if (!inst->server_cs) return mod_wait_for_reply(request, inst, ccr);
 
-	gettimeofday(&now, NULL);
-	timeradd(&now, &timeout, &timeout);
+	unlang = cf_section_sub_find_name2(inst->server_cs, "send", fr_packet_codes[packet->code]);
 
-	unlang_event_timeout_add(request, mod_event_timeout, inst, ccr, &timeout);
+	if (!unlang) return mod_wait_for_reply(request, inst, ccr);
 
-	return unlang_yield(request, mod_resume, inst, ccr);
+	RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+	unlang_push_section(child, unlang, RLM_MODULE_NOOP);
+
+	child->request_state = REQUEST_SEND;
+
+	return mod_resume_send(request, instance, ccr);
 }
 
 static char const *auth_names[][2] = {
@@ -584,6 +628,11 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 		return RLM_MODULE_FAIL;
 	}
 
+	inst->server_cs = cs;
+
+	/*
+	 *	Compile the sections.
+	 */
 	switch (home->type) {
 	case HOME_TYPE_AUTH:
 		for (i = 0; auth_names[i][0] != NULL; i++) {
