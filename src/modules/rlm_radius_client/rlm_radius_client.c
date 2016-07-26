@@ -233,6 +233,8 @@ static void mod_conn_free(void *ctx)
  */
 static int mod_ccr_free(rlm_radius_client_request_t *ccr)
 {
+	(void) request_data_get(ccr->request, ccr, 0);
+
 	if (!ccr->child) return 0;
 
 	if (ccr->child->in_request_hash) {
@@ -359,6 +361,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	ccr->conn = conn;
 
 	talloc_set_destructor(ccr, mod_ccr_free);
+
+	request_data_add(request, inst, 0, ccr, false, false, false);
 
 	/*
 	 *	Create the child request and packet.
