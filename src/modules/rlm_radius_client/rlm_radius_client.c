@@ -487,19 +487,61 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, REQUEST *request
 	return unlang_yield(request, mod_resume, inst, ccr);
 }
 
+static char const *auth_names[][2] = {
+	{ "send", "Access-Request" },
+	{ "recv", "Access-Accept" },
+	{ "recv", "Access-Challenge" },
+	{ "recv", "Access-Reject" },
+	{ NULL, NULL}
+};
 
-static int mod_instantiate(CONF_SECTION *config, void *instance)
+static char const *acct_names[][2] = {
+	{ "send", "Accounting-Request" },
+	{ "recv", "Accounting-Response" },
+	{ NULL, NULL}
+};
+
+static char const *coa_names[][2] = {
+	{ "send", "CoA-Request" },
+	{ "recv", "CoA-ACK" },
+	{ "recv", "CoA-NAK" },
+
+	{ "send", "Disconnect-Request" },
+	{ "recv", "Disconnect-ACK" },
+	{ "recv", "Disconnect-NAK" },
+	{ NULL, NULL}
+};
+
+
+static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2)
 {
 	CONF_SECTION *cs;
-	int rcode;
-	rlm_radius_client_instance_t *inst = instance;
-	home_server_t *home;
 
-	FR_INTEGER_BOUND_CHECK("timeout", inst->timeout, >=, 1);
-	FR_INTEGER_BOUND_CHECK("timeout", inst->timeout, <, 500);
+	cs = cf_section_sub_find_name2(server_cs, name1, name2);
+	if (!cs) return 0;
+
+	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+
+	if (unlang_compile(cs, MOD_AUTHORIZE) < 0) {
+		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+		return -1;
+	}
+
+	return 1;
+}
+
+static int mod_bootstrap(CONF_SECTION *config, void *instance)
+{
+	int i;
+	rlm_radius_client_instance_t *inst = instance;
+	CONF_SECTION *cs;
+	home_server_t *home;
 
 	inst->name = cf_section_name2(config);
 	if (!inst->name) inst->name = cf_section_name1(config);
+
+	FR_INTEGER_BOUND_CHECK("timeout", inst->timeout, >=, 1);
+	FR_INTEGER_BOUND_CHECK("timeout", inst->timeout, <, 500);
 
 	cs = cf_subsection_find_next(config, NULL, "home_server");
 	if (!cs) {
@@ -509,12 +551,6 @@ static int mod_instantiate(CONF_SECTION *config, void *instance)
 
 	if (cf_subsection_find_next(config, cs, "home_server") != NULL) {
 		cf_log_err_cs(config, "Too many home servers were given.");
-		return -1;
-	}
-
-	rcode = pthread_key_create(&inst->key, mod_conn_free);
-	if (rcode != 0) {
-		ERROR("Failed creating pthread key: %s", strerror(rcode));
 		return -1;
 	}
 
@@ -540,7 +576,61 @@ static int mod_instantiate(CONF_SECTION *config, void *instance)
 
 	inst->home_server = home;
 
-	return RLM_MODULE_OK;
+	if (!inst->virtual_server) return RLM_MODULE_OK;
+
+	cs = cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server);
+	if (!cs) {
+		cf_log_err_cs(config, "Unknown virtual server '%s'.", inst->virtual_server);
+		return RLM_MODULE_FAIL;
+	}
+
+	switch (home->type) {
+	case HOME_TYPE_AUTH:
+		for (i = 0; auth_names[i][0] != NULL; i++) {
+			if (mod_compile_section(cs, auth_names[i][0], auth_names[i][1]) < 0) {
+				return -1;
+			}
+		}
+		break;
+
+	case HOME_TYPE_ACCT:
+		for (i = 0; acct_names[i][0] != NULL; i++) {
+			if (mod_compile_section(cs, auth_names[i][0], auth_names[i][1]) < 0) {
+				return -1;
+			}
+		}
+		break;
+
+
+	case HOME_TYPE_COA:
+		for (i = 0; coa_names[i][0] != NULL; i++) {
+			if (mod_compile_section(cs, auth_names[i][0], auth_names[i][1]) < 0) {
+				return -1;
+			}
+		}
+		break;
+
+	default:
+		cf_log_err_cs(config, "Internal sanity check error");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+static int mod_instantiate(UNUSED CONF_SECTION *config, void *instance)
+{
+	int rcode;
+	rlm_radius_client_instance_t *inst = instance;
+
+	rcode = pthread_key_create(&inst->key, mod_conn_free);
+	if (rcode != 0) {
+		ERROR("Failed creating pthread key: %s", strerror(rcode));
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
@@ -559,6 +649,7 @@ rad_module_t rlm_radius_client = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_radius_client_instance_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_PREACCT]		= mod_process,
