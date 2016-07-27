@@ -102,6 +102,7 @@ static void mod_cleanup(REQUEST *request, rlm_radius_client_request_t *ccr)
 	}
 
 	TALLOC_FREE(ccr->child);
+	TALLOC_FREE(ccr);
 }
 
 static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
@@ -191,18 +192,63 @@ static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx
 }
 
 
-static rlm_rcode_t mod_resume_continue(UNUSED REQUEST *request, void *instance, void *ctx)
+static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
 {
 	rlm_rcode_t rcode;
 	rlm_radius_client_instance_t *inst = instance;
 	rlm_radius_client_request_t *ccr = ctx;
+	REQUEST *child = ccr->child;
+
+	rad_assert(inst == ccr->inst);
+
+	rcode = unlang_interpret_continue(child);
+
+	if (child->master_state == REQUEST_STOP_PROCESSING) {
+		mod_cleanup(request, ccr);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (rcode == RLM_MODULE_YIELD) {
+		return unlang_yield(child, mod_resume_recv, inst, ccr);
+	}
+
+	rcode = ccr->rcode;
+
+	mod_cleanup(request, ccr);
+	return rcode;
+}
+
+static rlm_rcode_t mod_resume_continue(UNUSED REQUEST *request, void *instance, void *ctx)
+{
+	rlm_rcode_t rcode;
+	CONF_SECTION *unlang;
+	rlm_radius_client_instance_t *inst = instance;
+	rlm_radius_client_request_t *ccr = ctx;
+	REQUEST *child = ccr->child;
 
 	rad_assert(inst == ccr->inst);
 
 	rcode = ccr->rcode;
-	TALLOC_FREE(ccr);
 
-	return rcode;
+	/*
+	 *	If we have a virtual server here, then run it.
+	 */
+	if (!inst->server_cs) {
+	done:
+		mod_cleanup(request, ccr);
+		return rcode;
+	}
+
+	unlang = cf_section_sub_find_name2(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
+
+	if (!unlang) goto done;
+
+	RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+	unlang_push_section(child, unlang, RLM_MODULE_NOOP);
+
+	child->request_state = REQUEST_RECV;
+
+	return mod_resume_recv(request, instance, ccr);
 }
 
 
