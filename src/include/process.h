@@ -72,6 +72,7 @@ bool request_thread_active(REQUEST *request);
 void request_delete(REQUEST *request);
 void request_free(REQUEST *request);
 void request_thread_done(REQUEST *request);
+bool request_dup_received(rad_listen_t *listener, rbtree_t *dup_tree, RADCLIENT *client, RADIUS_PACKET *packet);
 
 
 #ifdef __cplusplus

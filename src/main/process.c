@@ -1503,13 +1503,13 @@ static void request_queued(REQUEST *request, fr_state_action_t action)
 /*
  *	See if a new packet is a duplicate of an old one.
  */
-static bool request_dup_received(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
+bool request_dup_received(rad_listen_t *listener, rbtree_t *dup_tree, RADCLIENT *client, RADIUS_PACKET *packet)
 {
 	RADIUS_PACKET **packet_p;
 	rad_child_state_t child_state;
 	REQUEST *request;
 
-	packet_p = rbtree_finddata(pl, &packet);
+	packet_p = rbtree_finddata(dup_tree, &packet);
 	if (!packet_p) return false;
 
 	request = fr_packet2myptr(REQUEST, packet, packet_p);
@@ -1667,7 +1667,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	/*
 	 *	Check for duplicates.
 	 */
-	if (!listener->nodup && request_dup_received(listener, client, packet)) return 0;
+	if (!listener->nodup && request_dup_received(listener, pl, client, packet)) return 0;
 
 	if (request_limit(listener, client, packet)) return 0;
 
@@ -5258,7 +5258,7 @@ int radius_event_start(bool have_children)
 		 */
 		rad_assert(el);
 
-		MEM(pl = rbtree_create(NULL, packet_entry_cmp, NULL, 0));
+		MEM(pl = rbtree_create(NULL, packet_entry_cmp, NULL, RBTREE_FLAG_LOCK));
 	}
 
 #ifdef WITH_PROXY
