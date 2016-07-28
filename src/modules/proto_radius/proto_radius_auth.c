@@ -119,6 +119,18 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 }
 
 
+static void auth_dup_extract(REQUEST *request)
+{
+	listen_socket_t *sock = request->listener->data;
+
+	if (!request->in_request_hash) return;
+
+	if (!rbtree_deletebydata(sock->dup_tree, &request->packet)) {
+		rad_assert(0 == 1);
+	}
+	request->in_request_hash = false;
+}
+
 /** Sit on a request until it's time to clean it up.
  *
  *  A NAS may not see a response from the server.  When the NAS
@@ -187,6 +199,7 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
+		auth_dup_extract(request);
 		request_free(request);
 		break;
 
@@ -261,6 +274,7 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
+		auth_dup_extract(request);
 		request_free(request);
 		break;
 
@@ -803,6 +817,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
+		auth_dup_extract(request);
 		request_free(request);
 		break;
 	}
@@ -858,6 +873,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	RADCLIENT	*client;
 	TALLOC_CTX	*ctx;
 	REQUEST		*request;
+	listen_socket_t *sock = listener->data;
 
 	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
@@ -886,6 +902,11 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
+	if (request_dup_received(listener, sock->dup_tree, client, packet)) {
+		talloc_free(ctx);
+		return 0;
+	}
+
 	if (request_limit(listener, client, packet)) {
 		talloc_free(ctx);
 		return 0;
@@ -896,6 +917,13 @@ static int auth_socket_recv(rad_listen_t *listener)
 		talloc_free(ctx);
 		return 0;
 	}
+
+	if (!rbtree_insert(sock->dup_tree, &request->packet)) {
+		RERROR("Failed to insert request in the list of live requests: discarding it");
+		request_free(request);
+		return 1;
+	}
+	request->in_request_hash = true;
 
 	request->process = auth_queued;
 	request_enqueue(request);
@@ -1050,6 +1078,26 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	return 0;
 }
 
+static int packet_entry_cmp(void const *one, void const *two)
+{
+	RADIUS_PACKET const * const *a = one;
+	RADIUS_PACKET const * const *b = two;
+
+	return fr_packet_cmp(*a, *b);
+}
+
+static int auth_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+
+	if (common_socket_parse(cs, this) < 0) return -1;
+
+	sock->dup_tree = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
+
+	return 0;
+}
+
+
 extern rad_protocol_t proto_radius_auth;
 rad_protocol_t proto_radius_auth = {
 	.magic		= RLM_MODULE_INIT,
@@ -1059,7 +1107,7 @@ rad_protocol_t proto_radius_auth = {
 	.tls		= false,
 	.bootstrap	= auth_listen_bootstrap,
 	.compile	= auth_listen_compile,
-	.parse		= common_socket_parse,
+	.parse		= auth_socket_parse,
 	.open		= common_socket_open,
 	.recv		= auth_socket_recv,
 	.send		= NULL,

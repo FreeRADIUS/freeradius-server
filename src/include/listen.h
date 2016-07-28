@@ -153,6 +153,8 @@ typedef struct listen_socket_t {
 						//!< configuration of SO_RCVBUF, as SO_SNDBUF
 						//!< controls the maximum datagram size.
 
+	rbtree_t		*dup_tree;	//!< only for auth packets
+
 #ifdef WITH_TCP
 	/* for a proxy connecting to home servers */
 	time_t			last_packet;
