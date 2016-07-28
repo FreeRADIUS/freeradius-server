@@ -218,7 +218,7 @@ static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
 	return rcode;
 }
 
-static rlm_rcode_t mod_resume_continue(UNUSED REQUEST *request, void *instance, void *ctx)
+static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *ctx)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
