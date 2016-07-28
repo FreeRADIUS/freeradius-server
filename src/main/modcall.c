@@ -1699,6 +1699,7 @@ static void add_child(modgroup *g, modcallable *c)
 		g->tail = c;
 	}
 
+	g->num_children++;
 	c->parent = mod_grouptocallable(g);
 }
 

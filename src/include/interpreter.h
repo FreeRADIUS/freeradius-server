@@ -92,6 +92,7 @@ typedef struct {
 	modcallable		*children;
 	modcallable		*tail;		//!< of the children list.
 	CONF_SECTION		*cs;
+	int			num_children;
 
 	vp_map_t		*map;		//!< #MOD_UPDATE, #MOD_MAP.
 	vp_tmpl_t		*vpt;		//!< #MOD_SWITCH, #MOD_MAP.

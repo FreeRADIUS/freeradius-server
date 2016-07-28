@@ -152,16 +152,6 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			char buffer[1024];
 
 			/*
-			 *	Count the children.  This should
-			 *	really be done at compile time.
-			 */
-			for (entry->redundant.child = entry->redundant.found = g->children;
-			     entry->redundant.child != NULL;
-			     entry->redundant.child = entry->redundant.child->next) {
-				count++;
-			}
-
-			/*
 			 *	Integer data types let the admin
 			 *	select which entry is being used.
 			 */
@@ -180,19 +170,19 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 
 				switch (g->vpt->tmpl_da->type) {
 				case PW_TYPE_BYTE:
-					start = ((uint32_t) vp->vp_byte) % count;
+					start = ((uint32_t) vp->vp_byte) % g->num_children;
 					break;
 
 				case PW_TYPE_SHORT:
-					start = ((uint32_t) vp->vp_short) % count;
+					start = ((uint32_t) vp->vp_short) % g->num_children;
 					break;
 
 				case PW_TYPE_INTEGER:
-					start = vp->vp_integer % count;
+					start = vp->vp_integer % g->num_children;
 					break;
 
 				case PW_TYPE_INTEGER64:
-					start = (uint32_t) (vp->vp_integer64 % ((uint64_t) count));
+					start = (uint32_t) (vp->vp_integer64 % ((uint64_t) g->num_children));
 					break;
 
 				default:
@@ -208,7 +198,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 
 				hash = fr_hash(p, slen);
 
-				start = hash % count;
+				start = hash % g->num_children;;
 			}
 
 			RDEBUG3("load-balance starting at child %d", (int) start);
