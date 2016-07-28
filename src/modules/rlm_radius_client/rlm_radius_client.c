@@ -741,7 +741,7 @@ extern rad_module_t rlm_radius_client;
 rad_module_t rlm_radius_client = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_client",
-	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUME,
+	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
 	.inst_size	= sizeof(rlm_radius_client_instance_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,

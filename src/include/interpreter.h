@@ -50,6 +50,7 @@ typedef enum {
 	MOD_GROUP,			//!< Grouping section.
 	MOD_LOAD_BALANCE,		//!< Load balance section.
 	MOD_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
+	MOD_PARALLEL,			//!< execute statements in parallel
 #ifdef WITH_UNLANG
 	MOD_IF,				//!< Condition.
 	MOD_ELSE,			//!< !Condition.

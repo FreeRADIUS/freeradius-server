@@ -2409,7 +2409,6 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 		return NULL;
 	}
 
-
 	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
 		return NULL;
 	}
@@ -2496,6 +2495,53 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 	return c;
 }
 
+static modcallable *compile_parallel(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+{
+	modcallable *c;
+	modcallable *child;
+	modgroup *g;
+
+	/*
+	 *	No children?  Die!
+	 */
+	if (!cf_item_find_next(cs, NULL)) {
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keyword[mod_type]);
+		return NULL;
+	}
+
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_err_cs(cs, "%s sections cannot have an argument", unlang_keyword[mod_type]);
+		return NULL;
+	}
+
+	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	if (!c) return NULL;
+
+	c->name = c->debug_name = unlang_keyword[c->type];
+
+	/*
+	 *	Check that all children are of the new type.
+	 */
+	g = mod_callabletogroup(c);
+
+	for (child = g->children; child != NULL; child = child->next) {
+		modsingle *single;
+
+		if (child->type != MOD_SINGLE) {
+			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_keyword[mod_type], child->debug_name);
+			return NULL;
+		}
+
+		single = mod_callabletosingle(child);
+		if ((single->modinst->module->type & RLM_TYPE_RESUMABLE) == 0) {
+			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_keyword[mod_type], child->debug_name);
+			return NULL;
+		}
+	}
+
+	return c;
+}
 
 /** Load a named module from "instantiate" or "policy".
  *
@@ -2650,6 +2696,7 @@ static modcall_compile_t compile_table[] = {
 	{ "update",		compile_update, GROUPTYPE_SIMPLE, MOD_UPDATE },
 	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
 	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
+	{ "parallel",		compile_parallel, GROUPTYPE_SIMPLE, MOD_PARALLEL },
 
 	{ NULL, NULL, 0, MOD_NULL }
 };

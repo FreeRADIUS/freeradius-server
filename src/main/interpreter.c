@@ -33,6 +33,7 @@ char const *unlang_keyword[] = {
 	"group",
 	"load-balance group",
 	"redundant-load-balance group",
+	"parallel",
 #ifdef WITH_UNLANG
 	"if",
 	"else",
@@ -869,6 +870,7 @@ static unlang_function_t unlang_functions[] = {
 	[MOD_GROUP]			= unlang_group,
 	[MOD_LOAD_BALANCE]		= unlang_load_balance,
 	[MOD_REDUNDANT_LOAD_BALANCE]	= unlang_redundant_load_balance,
+	[MOD_PARALLEL]			= unlang_group,
 #ifdef WITH_UNLANG
 	[MOD_IF]			= unlang_if,
 	[MOD_ELSE]			= unlang_else,
@@ -891,6 +893,7 @@ static bool unlang_brace[MOD_NUM_TYPES] = {
 	[MOD_GROUP]			= true,
 	[MOD_LOAD_BALANCE]		= true,
 	[MOD_REDUNDANT_LOAD_BALANCE]	= true,
+	[MOD_PARALLEL]			= true,
 #ifdef WITH_UNLANG
 	[MOD_IF]			= true,
 	[MOD_ELSE]			= true,
