@@ -82,6 +82,7 @@ extern const section_type_value_t section_type_value[];
 						//!< Server will instantiated
 						//!< new instance, and then
 						//!< destroy old instance.
+#define RLM_TYPE_RESUME		(1 << 3) 	//!< does yield / resume
 
 /** Module section callback
  *
