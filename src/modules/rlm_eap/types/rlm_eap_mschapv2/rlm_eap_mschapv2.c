@@ -562,8 +562,15 @@ failure:
 	 *	The 'value_size' is the size of the response,
 	 *	which is supposed to be the response (48
 	 *	bytes) plus 1 byte of flags at the end.
+	 *
+	 *	NOTE: When using Cisco NEAT with EAP-MSCHAPv2, the
+	 *	      switch supplicant will send MSCHAPv2 data (EAP type = 26)
+	 *	      but will always set a value_size of 16 and NULL out the
+	 *	      peer challenge.
+	 *
 	 */
-	if (eap_round->response->type.data[4] != 49) {
+	if ((eap_round->response->type.data[4] != 49) &&
+	    (eap_round->response->type.data[4] != 16)) {
 		REDEBUG("Response is of incorrect length %d", eap_round->response->type.data[4]);
 		return 0;
 	}
@@ -573,8 +580,8 @@ failure:
 	 *	of name, which is put after the response.
 	 */
 	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
-	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
-		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
+	if ((length < (5 + eap_round->response->type.data[4])) || (length > (256 + 5 + eap_round->response->type.data[4]))) {
+		REDEBUG("Response contains contradictory length %zu %d", length, 5 + eap_round->response->type.data[4]);
 		return 0;
 	}
 
@@ -615,7 +622,7 @@ failure:
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
-	name->vp_length = length - 49 - 5;
+	name->vp_length = length - eap_round->response->type.data[4] - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
 	memcpy(q, &eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
 	q[name->vp_length] = '\0';
