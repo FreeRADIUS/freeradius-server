@@ -293,6 +293,37 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_PUSHED_CHILD;
 }
 
+typedef struct unlang_parallel_t {
+	rlm_rcode_t	rcode;
+	int		priority;
+
+	unlang_stack_t	*stacks;
+} unlang_parallel_t;
+
+static unlang_action_t unlang_parallel(REQUEST *request, unlang_stack_t *stack,
+				    UNUSED rlm_rcode_t *result, UNUSED int *priority)
+{
+	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
+	modcallable *c = entry->c;
+	modgroup *g;
+
+	g = mod_callabletogroup(c);
+
+	if (!entry->resume) {
+		/*
+		 *	Set up some stacks and a return code.
+		 */
+	} else {
+		/*
+		 *	Find a resumable child and run it.
+		 */
+	}
+
+
+	unlang_push(stack, g->children, entry->result, true);
+	return UNLANG_PUSHED_CHILD;
+}
+
 static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
