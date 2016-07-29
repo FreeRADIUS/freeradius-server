@@ -580,7 +580,7 @@ failure:
 	 *	of name, which is put after the response.
 	 */
 	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
-	if ((length < (5 + eap_round->response->type.data[4])) || (length > (256 + 5 + eap_round->response->type.data[4]))) {
+	if ((length < (size_t) (5 + eap_round->response->type.data[4])) || (length > (size_t) (256 + 5 + eap_round->response->type.data[4]))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + eap_round->response->type.data[4]);
 		return 0;
 	}
