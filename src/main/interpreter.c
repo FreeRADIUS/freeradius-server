@@ -300,8 +300,8 @@ typedef struct unlang_parallel_t {
 	unlang_stack_t	*stacks;
 } unlang_parallel_t;
 
-static unlang_action_t unlang_parallel(REQUEST *request, unlang_stack_t *stack,
-				    UNUSED rlm_rcode_t *result, UNUSED int *priority)
+static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *stack,
+				       UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
@@ -901,7 +901,7 @@ static unlang_function_t unlang_functions[] = {
 	[MOD_GROUP]			= unlang_group,
 	[MOD_LOAD_BALANCE]		= unlang_load_balance,
 	[MOD_REDUNDANT_LOAD_BALANCE]	= unlang_redundant_load_balance,
-	[MOD_PARALLEL]			= unlang_group,
+	[MOD_PARALLEL]			= unlang_parallel,
 #ifdef WITH_UNLANG
 	[MOD_IF]			= unlang_if,
 	[MOD_ELSE]			= unlang_else,
