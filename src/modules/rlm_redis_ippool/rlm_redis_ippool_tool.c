@@ -1013,7 +1013,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 
 		memcpy(&to_sort, &result, sizeof(to_sort));
 
-		fr_quick_sort((void const **)to_sort, 0, used - 1, pool_cmp);
+		fr_quick_sort((void const **)to_sort, 0, used, pool_cmp);
 	}
 
 	*out = talloc_array(ctx, uint8_t *, used);

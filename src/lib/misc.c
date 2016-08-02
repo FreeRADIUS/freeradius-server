@@ -1043,46 +1043,38 @@ int8_t fr_pointer_cmp(void const *a, void const *b)
 	return 1;
 }
 
-static int _quick_partition(void const *to_sort[], int min, int max, fr_cmp_t cmp) {
-	void const *pivot = to_sort[min];
-	int i = min;
-	int j = max + 1;
-	void const *tmp;
-
-	for (;;) {
-		do ++i; while((cmp(to_sort[i], pivot) <= 0) && i <= max);
-		do --j; while(cmp(to_sort[j], pivot) > 0);
-
-		if (i >= j) break;
-
-		tmp = to_sort[i];
-		to_sort[i] = to_sort[j];
-		to_sort[j] = tmp;
-	}
-
-	tmp = to_sort[min];
-	to_sort[min] = to_sort[j];
-	to_sort[j] = tmp;
-
-	return j;
-}
-
 /** Quick sort an array of pointers using a comparator
  *
  * @param to_sort array of pointers to sort.
- * @param min_idx the lowest index (usually 0).
- * @param max_idx the highest index (usually length of array - 1).
+ * @param start the lowest index (usually 0).
+ * @param len the length of the array.
  * @param cmp the comparison function to use to sort the array elements.
  */
-void fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp)
+void fr_quick_sort(void const *to_sort[], int start, int len, fr_cmp_t cmp)
 {
-	int part;
+	int i = start;
+	int j = len;
 
-	if (min_idx >= max_idx) return;
+	void const *pivot  = to_sort[(i + j) / 2];
 
-	part = _quick_partition(to_sort, min_idx, max_idx, cmp);
-	fr_quick_sort(to_sort, min_idx, part - 1, cmp);
-	fr_quick_sort(to_sort, part + 1, max_idx, cmp);
+	while (i < j) {
+		void const *tmp;
+
+		do ++i; while ((i < len) && (cmp(to_sort[i], pivot) < 0));
+		do --j; while ((i > start) && (cmp(to_sort[j], pivot) > 0));
+
+		if (i <= j) {
+			tmp = to_sort[i];
+			to_sort[i] = to_sort[j];
+			to_sort[j] = tmp;
+
+			i++;
+			j--;
+		}
+	}
+
+	if (start < j) fr_quick_sort(to_sort, start, j, cmp);
+	if (i < len) fr_quick_sort(to_sort, i, len, cmp);
 }
 
 #ifdef TALLOC_DEBUG
