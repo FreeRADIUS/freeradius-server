@@ -88,7 +88,7 @@ int fr_unset_signal(int sig)
         struct sigaction act;
 
         memset(&act, 0, sizeof(act));
-        act.sa_flags = 0; 
+        act.sa_flags = 0;
         sigemptyset(&act.sa_mask);
         act.sa_handler = SIG_DFL;
 
