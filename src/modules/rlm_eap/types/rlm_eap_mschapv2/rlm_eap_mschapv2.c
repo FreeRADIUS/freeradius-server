@@ -580,8 +580,8 @@ failure:
 	 *	of name, which is put after the response.
 	 */
 	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
-	if ((length < (size_t) (5 + eap_round->response->type.data[4])) || (length > (size_t) (256 + 5 + eap_round->response->type.data[4]))) {
-		REDEBUG("Response contains contradictory length %zu %d", length, 5 + eap_round->response->type.data[4]);
+	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
+		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
 		return 0;
 	}
 
@@ -622,7 +622,7 @@ failure:
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
-	name->vp_length = length - eap_round->response->type.data[4] - 5;
+	name->vp_length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
 	memcpy(q, &eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
 	q[name->vp_length] = '\0';
