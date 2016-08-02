@@ -106,7 +106,7 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	rad_assert(t->simck == NULL);
 
 	ksize = openssl_get_keyblock_size(request, tls_session->ssl);
-	rad_assert(ksize >= 0);
+	rad_assert(ksize > 0);
 	buf = talloc_size(request, ksize + sizeof(*t->keyblock));
 	scratch = talloc_size(request, ksize + sizeof(*t->keyblock));
 
