@@ -999,8 +999,6 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 		fr_connection_release(pool, request, conn);
 	}
 
-	talloc_free(request);
-
 	if (used == 0) {
 		*out = NULL;
 		talloc_free(result);
@@ -1035,6 +1033,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 		while ((i < used) && (pool_cmp(result[i - 1], result[i]) == 0)) i++;
 	} while (i < used);
 
+	talloc_free(request);
 	talloc_free(result);
 
 	return used;
