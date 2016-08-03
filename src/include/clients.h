@@ -167,7 +167,7 @@ RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
 
 bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 
-RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, int flag);
+RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 #ifdef __cplusplus
 }
 #endif
