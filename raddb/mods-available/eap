@@ -314,14 +314,14 @@ eap {
 		# Set this option to specify the allowed TLS cipher suites.
 		# The format is listed in "man 1 ciphers".
 		#
-		cipher_list = "DEFAULT"
+		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 
 		#
 		#  Work-arounds for OpenSSL nonsense OpenSSL 1.0.1f and 1.0.1g do
 		#  not calculate the EAP keys correctly.  The fix is to upgrade
 		#  OpenSSL, or disable TLS 1.2 here.
 		#
-#		disable_tlsv1_2 = no
+#		disable_tlsv1_2 = yes
 
 		#
 		#  Elliptical cryptography configuration
@@ -962,5 +962,47 @@ eap {
 		#  generally be the host name of the RADIUS server.  Or, some
 		#  information to uniquely identify it.
 #		identity = "FreeRADIUS"
+	}
+
+	## EAP-FAST
+	#
+	#  Note: To use EAP-FAST you must also configure an inner method in
+	#  mods-enabled/eap_inner.  You MUST also set "disable_tlsv1_2 = no".
+	#
+	#  The FAST module implements the EAP-FAST protocol.
+	#
+	fast {
+		#  Point to the common TLS configuration
+		#
+		#  Cipher_list though must include "ADH" for anonymous provisioning.
+		#  This is not as straight forward as appending "ADH" alongside
+		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
+		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		#
+		tls = tls-common
+
+		#  PAC lifetime in seconds (default: seven days)
+		#
+		#pac_lifetime = 604800
+
+		#  Authority ID of the server
+		#
+		#  If you are running a cluster of RADIUS servers, you should make
+		#  this and "pac_opaque_key" have the same value on all of the
+		#  systems.
+		#
+		authority_identity = "1234"
+
+		#  PAC Opaque encryption key (must be exactly 32 bytes in size)
+		#
+		#  You MUST change this to a random key for security.  Try using:
+		#
+		#  $ od -vAn -N16 -tx8 < /dev/urandom | sed 's/ //g'
+		#
+		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+
+		#  Same as for TTLS, PEAP, etc.
+		#
+		virtual_server = inner-tunnel
 	}
 }
