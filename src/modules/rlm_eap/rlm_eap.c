@@ -106,6 +106,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 		case PW_EAP_TLS:
 		case PW_EAP_TTLS:
 		case PW_EAP_PEAP:
+		case PW_EAP_FAST:
 		case PW_EAP_PWD:
 			WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 			continue;
