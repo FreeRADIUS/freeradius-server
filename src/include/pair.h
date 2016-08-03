@@ -37,12 +37,16 @@ extern "C" {
 #  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 /*
- *  Even if were building without WITH_VERIFY_PTR
- *  the pointer must not be NULL when these various macros are used
- *  so we can add some sneaky soft asserts.
+ *	Even if were building without WITH_VERIFY_PTR
+ *	the pointer must not be NULL when these various macros are used
+ *	so we can add some sneaky soft asserts.
  */
 #  define VERIFY_VP(_x)		fr_cond_assert(_x)
-#  define VERIFY_LIST(_x)	fr_cond_assert(_x)
+/*
+ *	We don't assert the list head is non-NULL, as it's perfectly
+ *	valid to have an empty list.
+ */
+#  define VERIFY_LIST(_x)
 #  define VERIFY_PACKET(_x)	fr_cond_assert(_x)
 #endif
 
