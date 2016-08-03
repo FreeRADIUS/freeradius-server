@@ -1568,11 +1568,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	If there are no clients in this virtual server, then
 	 *	choose the global list of clients.
 	 */
-	if (!clients_cs &&
-	    (cf_section_sub_find(this->server_cs, "client") != NULL)) {
-		clients_cs = this->server_cs;
-	} else {
-		clients_cs = parent_cs;
+	if (!clients_cs) {
+		if (cf_section_sub_find(this->server_cs, "client") != NULL) {
+			clients_cs = this->server_cs;
+		} else {
+			clients_cs = parent_cs;
+		}
 	}
 
 #ifdef WITH_TLS
