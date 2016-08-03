@@ -2798,6 +2798,8 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 	VALUE_PAIR		*slow, *fast;
 	TALLOC_CTX		*parent;
 
+	if (!vps) return;	/* Fast path */
+
 	fr_cursor_init(&fast_cursor, &vps);
 
 	for (slow = fr_cursor_init(&slow_cursor, &vps), fast = fr_cursor_init(&fast_cursor, &vps);
@@ -2810,9 +2812,8 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 		 */
 		fast = fr_cursor_next(&fast_cursor);
 		if (fast == slow) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  "
-						 "Fast pointer hit slow pointer at \"%s\"",
-						 file, line, slow->da->name);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Looping list found.  Fast pointer hit "
+				     "slow pointer at \"%s\"", file, line, slow->da->name);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
