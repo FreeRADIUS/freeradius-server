@@ -40,24 +40,28 @@ RCSID("$Id$")
 #endif
 #endif
 
+/** Group of clients
+ *
+ */
 struct radclient_list {
-	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
+	char const	*name;			//!< Name of the client list.
+	rbtree_t	*trees[129];		//!< For 0..128, inclusive.
 	uint32_t       	min_prefix;
 };
 
-
 #ifdef WITH_STATS
-static rbtree_t		*tree_num = NULL;     /* client numbers 0..N */
+static rbtree_t		*tree_num = NULL;	//!< client numbers 0..N.
 static int		tree_num_max = 0;
 #endif
-static RADCLIENT_LIST	*root_clients = NULL;
+
+static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
 
 #ifdef WITH_DYNAMIC_CLIENTS
 static fr_fifo_t	*deleted_clients = NULL;
 #endif
 
-/*
- *	Callback for freeing a client.
+/** Free a client
+ *
  */
 void client_free(RADCLIENT *client)
 {
@@ -98,8 +102,8 @@ void client_free(RADCLIENT *client)
 	talloc_free(client);
 }
 
-/*
- *	Callback for comparing two clients.
+/** Compare clients by IP address
+ *
  */
 static int client_ipaddr_cmp(void const *one, void const *two)
 {
@@ -125,6 +129,9 @@ static int client_ipaddr_cmp(void const *one, void const *two)
 }
 
 #ifdef WITH_STATS
+/** Compare clients by number
+ *
+ */
 static int client_num_cmp(void const *one, void const *two)
 {
 	RADCLIENT const *a = one;
@@ -134,8 +141,8 @@ static int client_num_cmp(void const *one, void const *two)
 }
 #endif
 
-/*
- *	Free a RADCLIENT list.
+/** Free a client list and all clients in that list
+ *
  */
 void client_list_free(RADCLIENT_LIST *clients)
 {
@@ -167,8 +174,13 @@ void client_list_free(RADCLIENT_LIST *clients)
 	talloc_free(clients);
 }
 
-/*
- *	Return a new, initialized, set of clients.
+/** Return a new client list
+ *
+ * @note The container won't contain any clients.
+ *
+ * @return
+ *	- New client list on success.
+ *	- NULL on error (OOM).
  */
 RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 {
@@ -176,6 +188,7 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 
 	if (!clients) return NULL;
 
+	clients->name = talloc_strdup(clients, cs ? cf_section_name1(cs) : "root");
 	clients->min_prefix = 128;
 
 	return clients;
