@@ -168,6 +168,9 @@ static int eap_aka_send_success(eap_session_t *eap_session)
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
 
+	eap_session->this_round->request->code = PW_EAP_SUCCESS;
+	eap_session->finished = true;
+
 	/* to_client is the data to the client. */
 	packet = eap_session->request->reply;
 	eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
@@ -205,9 +208,6 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 	 *	Send the EAP Success message
 	 */
 	case EAP_AKA_SERVER_SUCCESS:
-		eap_aka_session->state = new_state;
-		eap_session->this_round->request->code = PW_EAP_SUCCESS;
-		eap_session->finished = true;
 		eap_aka_send_success(eap_session);
 		return;
 
@@ -215,11 +215,12 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 	 *	Nothing to do for this transition.
 	 */
 	default:
+		eap_aka_compose(eap_session);
 		break;
 	}
 
 	eap_aka_session->state = new_state;
-	eap_aka_compose(eap_session);
+
 }
 
 /** Initiate the EAP-SIM session by starting the state machine

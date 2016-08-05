@@ -238,6 +238,9 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
 
+	eap_session->this_round->request->code = PW_EAP_SUCCESS;
+	eap_session->finished = true;
+
 	/* to_client is the data to the client. */
 	packet = eap_session->request->reply;
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
@@ -268,12 +271,14 @@ static void eap_sim_state_enter(eap_session_t *eap_session,
 	 */
 	case EAP_SIM_SERVER_START:
 		eap_sim_send_state(eap_session);
+		eap_sim_compose(eap_session);		/* Encode SIM TLVs */
 		break;
 	/*
 	 *	Send the EAP-SIM Challenge message.
 	 */
 	case EAP_SIM_SERVER_CHALLENGE:
 		eap_sim_send_challenge(eap_session);
+		eap_sim_compose(eap_session);		/* Encode SIM TLVs */
 		break;
 
 	/*
@@ -281,19 +286,17 @@ static void eap_sim_state_enter(eap_session_t *eap_session,
 	 */
 	case EAP_SIM_SERVER_SUCCESS:
 		eap_sim_send_success(eap_session);
-		eap_session->this_round->request->code = PW_EAP_SUCCESS;
+
 		break;
 	/*
 	 *	Nothing to do for this transition.
 	 */
 	default:
+		eap_sim_compose(eap_session);		/* Encode SIM TLVs */
 		break;
 	}
 
 	eap_sim_session->state = new_state;
-
-	/* build the target packet */
-	eap_sim_compose(eap_session);
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
