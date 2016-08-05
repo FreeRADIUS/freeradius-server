@@ -1476,22 +1476,35 @@ do { \
 	/*
 	 *	Unescape sequences in the pool name
 	 */
-	if (argv[1]) {
-		uint8_t *arg;
-		size_t len;
+	if (argv[1] && (argv[1][0] != '\0')) {
+		uint8_t	*arg;
+		size_t	len;
 
-		arg = talloc_array(conf, uint8_t, strlen(argv[1]));
-		len = fr_value_str_unescape(arg, argv[1], talloc_array_length(arg), '"');
-		MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
+		/*
+		 *	Be forgiving about zero length strings...
+		 */
+		len = strlen(argv[1]);
+		MEM(arg = talloc_array(conf, uint8_t, len));
+		len = fr_value_str_unescape(arg, argv[1], len, '"');
+		if (!fr_cond_assert(len)) {
+			TALLOC_FREE(arg);
+		} else {
+			MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
+		}
 	}
 
-	if (argc >= 3) {
-		uint8_t *arg;
-		size_t len;
+	if (argc >= 3 && (argv[2][0] != '\0')) {
+		uint8_t	*arg;
+		size_t	len;
 
-		arg = talloc_array(conf, uint8_t, strlen(argv[2]));
-		len = fr_value_str_unescape(arg, argv[2], talloc_array_length(arg), '"');
-		MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
+		len = strlen(argv[2]);
+		MEM(arg = talloc_array(conf, uint8_t, len));
+		len = fr_value_str_unescape(arg, argv[2], len, '"');
+		if (!fr_cond_assert(len)) {
+			TALLOC_FREE(arg);
+		} else {
+			MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
+		}
 	}
 
 	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
