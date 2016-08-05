@@ -355,6 +355,11 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	VALUE_PAIR		*vp;
 
 	/*
+	 *	Request must have been thawed...
+	 */
+	rad_assert(eap_session->request);
+
+	/*
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
@@ -469,15 +474,12 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	return RLM_MODULE_OK;
 }
 
-
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
-	rlm_eap_t		*inst;
+	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	rlm_rcode_t		rcode;
-
-	inst = (rlm_eap_t *)instance;
 
 	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
@@ -485,8 +487,9 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Reconstruct the EAP packet from EAP-Message fragments
-	 *	in the request.
+	 *	Reconstruct the EAP packet from the EAP-Message
+	 *	attribute.  The relevant decoder should have already
+	 *	concatenated the fragments into a single buffer.
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
