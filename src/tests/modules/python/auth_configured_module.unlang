@@ -1,6 +1,0 @@
-pmod6_configured
-if (!ok) {
-    test_fail
-} else {
-    test_pass
-}
