@@ -5,52 +5,63 @@
 #
 #
 
-VENDOR		Ruckus				25053
+VENDOR        Ruckus                25053
 
-BEGIN-VENDOR	Ruckus
+BEGIN-VENDOR    Ruckus
 
-ATTRIBUTE	Ruckus-User-Groups			1	string
-# Value Format: group_attr1,group_attr2,...
+# Value Format:    group_attr1,group_attr2,...
+ATTRIBUTE       Ruckus-User-Groups                 1      string
+ATTRIBUTE       Ruckus-Sta-RSSI                    2      integer
+ATTRIBUTE       Ruckus-SSID                        3      string
+ATTRIBUTE       Ruckus-Wlan-Id                     4      integer 
+ATTRIBUTE       Ruckus-Location                    5      string
+ATTRIBUTE       Ruckus-Grace-Period                6      integer
+ATTRIBUTE       Ruckus-SCG-CBlade-IP               7      integer
+ATTRIBUTE       Ruckus-SCG-DBlade-IP               8      integer
+ATTRIBUTE       Ruckus-VLAN-ID                     9      integer
+ATTRIBUTE       Ruckus-Sta-Expiration              10     integer # not used by AP anymore. Please check SCG-33602
+ATTRIBUTE       Ruckus-Sta-UUID                    11     string
+ATTRIBUTE       Ruckus-Accept-Enhancement-Reason   12     integer 
+ATTRIBUTE       Ruckus-Sta-Inner-Id                13     string
+ATTRIBUTE       Ruckus-BSSID                       14     octets
 
-ATTRIBUTE	Ruckus-Sta-RSSI				2	integer
-ATTRIBUTE	Ruckus-SSID				3	string
-ATTRIBUTE	Ruckus-WlanID				4	integer
-ATTRIBUTE	Ruckus-Location				5	string
-ATTRIBUTE	Ruckus-Grace-Period			6	integer
-# Sent to the server, range: 1 to 14400 [minutes]
+ATTRIBUTE       Ruckus-WSG-User                    10     string
 
-ATTRIBUTE	Ruckus-SCG-CBlade-IP		7		integer
-ATTRIBUTE	Ruckus-SCG-DBlade-IP		8		integer
-ATTRIBUTE	Ruckus-WSG-User         10	string
-ATTRIBUTE	Ruckus-Session-Type			125	integer
-ATTRIBUTE	Ruckus-Acct-Status			126	integer
-
-ATTRIBUTE Ruckus-Triplets                    101    octets
-ATTRIBUTE Ruckus-IMSI                        102    octets
-ATTRIBUTE Ruckus-MSISDN                      103    octets
-ATTRIBUTE Ruckus-APN-NI                      104    string
-ATTRIBUTE Ruckus-QoS                         105    octets
-ATTRIBUTE Ruckus-Selection-Mode              106    integer
-ATTRIBUTE Ruckus-APN-Resolution-Req          107    integer
-ATTRIBUTE Ruckus-Start-Time                  108    octets
-ATTRIBUTE Ruckus-NAS-Type                    109    integer
-ATTRIBUTE Ruckus-Status                      110    integer
-ATTRIBUTE Ruckus-APN-OI                      111    string
-ATTRIBUTE Ruckus-Auth-Type                   112    integer
-ATTRIBUTE Ruckus-Gn-User-Name                113    string
-ATTRIBUTE Ruckus-Brand-Code                  114    string
-ATTRIBUTE Ruckus-Policy-Name                 115    string
-ATTRIBUTE Ruckus-Client-Local-IP             116    ipaddr
-ATTRIBUTE Ruckus-SGSN-IP                     117    ipaddr
-ATTRIBUTE Ruckus-Charging-Charac             118    octets 
-ATTRIBUTE Ruckus-PDP-Type                    119    octets
-ATTRIBUTE Ruckus-Dynamic-Address-Flag        120    octets
-ATTRIBUTE Ruckus-ChCh-Selection-Mode         121    octets
-ATTRIBUTE Ruckus-AAA-IP                      122    ipaddr
-ATTRIBUTE Ruckus-CDR-TYPE                    123    integer
-ATTRIBUTE Ruckus-SGSN-Number                 124    octets
-ATTRIBUTE Ruckus-Session-Type                125    integer
-ATTRIBUTE Ruckus-Accounting-Status           126    integer
+ATTRIBUTE       Ruckus-Triplets                    101    octets
+ATTRIBUTE       Ruckus-IMSI                        102    octets
+ATTRIBUTE       Ruckus-MSISDN                      103    octets
+ATTRIBUTE       Ruckus-APN-NI                      104    string
+ATTRIBUTE       Ruckus-QoS                         105    octets
+ATTRIBUTE       Ruckus-Selection-Mode              106    integer
+ATTRIBUTE       Ruckus-APN-Resolution-Req          107    integer
+ATTRIBUTE       Ruckus-Start-Time                  108    octets
+ATTRIBUTE       Ruckus-NAS-Type                    109    integer
+ATTRIBUTE       Ruckus-Status                      110    integer
+ATTRIBUTE       Ruckus-APN-OI                      111    string
+ATTRIBUTE       Ruckus-Auth-Type                   112    integer
+ATTRIBUTE       Ruckus-Gn-User-Name                113    string
+ATTRIBUTE       Ruckus-Brand-Code                  114    string
+ATTRIBUTE       Ruckus-Policy-Name                 115    string
+ATTRIBUTE       Ruckus-Client-Local-IP             116    ipaddr
+ATTRIBUTE       Ruckus-SGSN-IP                     117    ipaddr
+ATTRIBUTE       Ruckus-Charging-Charac             118    octets 
+ATTRIBUTE       Ruckus-PDP-Type                    119    octets
+ATTRIBUTE       Ruckus-Dynamic-Address-Flag        120    octets
+ATTRIBUTE       Ruckus-ChCh-Selection-Mode         121    octets
+ATTRIBUTE       Ruckus-AAA-IP                      122    ipaddr
+ATTRIBUTE       Ruckus-CDR-TYPE                    123    integer
+ATTRIBUTE       Ruckus-SGSN-Number                 124    octets
+ATTRIBUTE       Ruckus-Session-Type                125    integer
+ATTRIBUTE       Ruckus-Accounting-Status           126    integer
+ATTRIBUTE       Ruckus-Zone-Id                     127    string
+ATTRIBUTE       Ruckus-Auth-Server-Id              128    string
+ATTRIBUTE       Ruckus-Utp-Id                      129    string
+ATTRIBUTE       Ruckus-Area-Code                   130    octets 
+ATTRIBUTE       Ruckus-Cell-Identifier             131    octets 
+ATTRIBUTE       Ruckus-Wispr-Redirect-Policy       132    string
+ATTRIBUTE       Ruckus-Eth-Profile-Id              133    integer
+ATTRIBUTE       Ruckus-Zone-Name                   134    string
+ATTRIBUTE       Ruckus-Wlan-Name                   135    string
 
 #
 #  Integer Translations
@@ -106,5 +117,4 @@ VALUE        Ruckus-NAS-Type     Others             2
 VALUE        Ruckus-Accounting-Status     Accounting-On          1
 VALUE        Ruckus-Accounting-Status     Accounting-Off         0
 
-
-END-VENDOR      Ruckus
+END-VENDOR Ruckus
