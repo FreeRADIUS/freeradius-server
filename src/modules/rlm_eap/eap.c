@@ -601,21 +601,22 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	return 0;
 }
 
-
-/*
- *  Get the user Identity only from EAP-Identity packets
+/** Extract the EAP identity from EAP-Identity-Response packets
+ *
+ * @param[in] request		The current request.
+ * @param[in] eap_session	EAP-Session to associate identity with.
+ * @param[in] eap_packet	To extract the identity from.
+ * @return
+ *	- The user's EAP-Identity.
+ *	- or NULL on error.
  */
 static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
 {
-	int size;
-	uint16_t len;
-	char *identity;
+	uint16_t 	len;
 
-	if ((!eap_packet) ||
+	if (!eap_packet ||
 	    (eap_packet->code != PW_EAP_RESPONSE) ||
-	    (eap_packet->data[0] != PW_EAP_IDENTITY)) {
-		return NULL;
-	}
+	    (eap_packet->data[0] != PW_EAP_IDENTITY)) return NULL;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
@@ -630,14 +631,8 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 		return NULL;
 	}
 
-	size = len - 5;
-	identity = talloc_array(eap_session, char, size + 1);
-	memcpy(identity, &eap_packet->data[1], size);
-	identity[size] = '\0';
-
-	return identity;
+	return talloc_bstrndup(eap_session, (char *)&eap_packet->data[1], len - 5);
 }
-
 
 /*
  *	Create our Request-Response data structure with the eap packet
