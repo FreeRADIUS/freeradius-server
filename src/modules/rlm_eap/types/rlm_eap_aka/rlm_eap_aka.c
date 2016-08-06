@@ -221,42 +221,6 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 
 }
 
-/** Initiate the EAP-SIM session by starting the state machine
- *
- */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
-{
-	REQUEST			*request = eap_session->request;
-	eap_aka_session_t	*eap_aka_session;
-	time_t			n;
-	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
-
-	MEM(eap_aka_session = talloc_zero(eap_session, eap_aka_session_t));
-
-	eap_session->opaque = eap_aka_session;
-
-	/*
-	 *	Save the keying material, because it could change on a subsequent retrieval.
-	 */
-	RDEBUG2("New EAP-AKA session.  Acquiring AKA vectors");
-	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
-	    	REDEBUG("Failed retrieving AKA vectors");
-		return 0;
-	}
-
-	/*
-	 *	This value doesn't have be strong, but it is good if it is different now and then.
-	 */
-	time(&n);
-	eap_aka_session->aka_id = (n & 0xff);
-
-	eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
-
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
 /**  Process an EAP-AKA/Response/Challenge
  *
  * Verify that MAC, and RES match what we expect.
@@ -350,7 +314,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			    eap_session->this_round->response->type.data,
 			    eap_session->this_round->response->type.length,
 			    &ctx);
-	if (ret < 0) return 0;
+	if (ret < 0) return RLM_MODULE_INVALID;
 
 	vp = fr_cursor_next(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
@@ -366,15 +330,15 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		switch(subtype) {
 		default:
 			eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
-			return 1;
+			return RLM_MODULE_HANDLED;
 
 		case EAP_AKA_SYNCHRONIZATION_FAILURE:
 			REDEBUG("EAP-AKA Peer synchronization failure");
-			return 0;
+			return RLM_MODULE_REJECT;
 
 		case EAP_AKA_AUTHENTICATION_REJECT:
 			REDEBUG("EAP-AKA Peer Rejected AT_AUTN");
-			return 0;
+			return RLM_MODULE_REJECT;
 
 		case EAP_AKA_CLIENT_ERROR:
 		{
@@ -388,7 +352,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 				REDEBUG("Client rejected AKA-Challenge with error: %s (%i)",
 					fr_pair_value_enum(vp, &buff[0]), vp->vp_short);
 			}
-			return 0;
+			return RLM_MODULE_REJECT;
 		}
 
 		case EAP_AKA_CHALLENGE:
@@ -397,8 +361,44 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	default:
 		REDEBUG("Illegal-unknown state reached");
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
+}
+
+/** Initiate the EAP-SIM session by starting the state machine
+ *
+ */
+static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+{
+	REQUEST			*request = eap_session->request;
+	eap_aka_session_t	*eap_aka_session;
+	time_t			n;
+	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
+
+	MEM(eap_aka_session = talloc_zero(eap_session, eap_aka_session_t));
+
+	eap_session->opaque = eap_aka_session;
+
+	/*
+	 *	Save the keying material, because it could change on a subsequent retrieval.
+	 */
+	RDEBUG2("New EAP-AKA session.  Acquiring AKA vectors");
+	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
+	    	REDEBUG("Failed retrieving AKA vectors");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	This value doesn't have be strong, but it is good if it is different now and then.
+	 */
+	time(&n);
+	eap_aka_session->aka_id = (n & 0xff);
+
+	eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
+
+	eap_session->process = mod_process;
+
+	return RLM_MODULE_OK;
 }
 
 static int mod_load(void)

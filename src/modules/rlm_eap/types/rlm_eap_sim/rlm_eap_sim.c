@@ -108,7 +108,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	newvp->vp_integer = EAP_SIM_START;
 	fr_pair_replace(vps, newvp);
 
-	return 1;
+	return 0;
 }
 
 /** Send the challenge itself
@@ -223,7 +223,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	vp->vp_integer = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_client, vp);
 
-	return 1;
+	return 0;
 }
 
 /** Send a success message
@@ -255,7 +255,7 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 	p += EAP_TLS_MPPE_KEY_LEN;
 	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
 
-	return 1;
+	return 0;
 }
 
 /** Run the server state machine
@@ -301,45 +301,6 @@ static void eap_sim_state_enter(eap_session_t *eap_session,
 
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
-/*
- *	Initiate the EAP-SIM session by starting the state machine
- *      and initiating the state.
- */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
-{
-	REQUEST			*request = eap_session->request;
-	eap_sim_session_t	*eap_sim_session;
-	time_t			n;
-	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
-
-	MEM(eap_sim_session = talloc_zero(eap_session, eap_sim_session_t));
-
-	eap_session->opaque = eap_sim_session;
-
-	/*
-	 *	Save the keying material, because it could change on a subsequent retrieval.
-	 */
-	RDEBUG2("New EAP-SIM session.  Acquiring SIM vectors");
-	if ((fr_sim_vector_gsm_from_attrs(eap_session, request->control, 0, &eap_sim_session->keys, &src) != 0) ||
-	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 1, &eap_sim_session->keys, &src) != 0) ||
-	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 2, &eap_sim_session->keys, &src) != 0)) {
-	    	REDEBUG("Failed retrieving SIM vectors");
-		return 0;
-	}
-
-	/*
-	 *	This value doesn't have be strong, but it is good if it is different now and then.
-	 */
-	time(&n);
-	eap_sim_session->sim_id = (n & 0xff);
-
-	eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_START);
-
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
 /** Process an EAP-Sim/Response/Start
  *
  * Verify that client chose a version, and provided a NONCE_MT,
@@ -361,13 +322,13 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 		RDEBUG2("Client did not select a version and send a NONCE");
 		eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_START);
 
-		return 1;
+		return 0;
 	}
 
 	eap_sim_version = selected_version_vp->vp_short;
 	if (eap_sim_version != EAP_SIM_VERSION) {
 		REDEBUG("EAP-SIM version %i is unknown", eap_sim_version);
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -381,7 +342,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 */
 	if (nonce_vp->vp_length != 18) {
 		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu", nonce_vp->vp_length);
-		return 0;
+		return -1;
 	}
 	memcpy(eap_sim_session->keys.gsm.nonce_mt, nonce_vp->vp_octets + 2, 16);
 
@@ -390,7 +351,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 */
 	eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_CHALLENGE);
 
-	return 1;
+	return 0;
 }
 
 /** Process an EAP-Sim/Response/Challenge
@@ -437,13 +398,13 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 			m = m + strlen(m);
 		}
 		REDEBUG("Calculated MAC (%s) did not match", macline);
-		return 0;
+		return -1;
 	}
 
 	/* everything looks good, change states */
 	eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_SUCCESS);
 
-	return 1;
+	return 0;
 }
 
 
@@ -501,7 +462,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	if (subtype == EAP_SIM_CLIENT_ERROR) {
 		REDEBUG("Client encountered an error");
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	switch (eap_sim_session->state) {
@@ -512,7 +473,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		 */
 		default:
 			eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_START);
-			return 1;
+			return RLM_MODULE_OK;
 		/*
 		 * 	A response to our EAP-Sim/Request/Start!
 		 */
@@ -539,7 +500,46 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		rad_assert(0);
 	}
 
-	return 1;
+	return RLM_MODULE_FAIL;
+}
+
+/*
+ *	Initiate the EAP-SIM session by starting the state machine
+ *      and initiating the state.
+ */
+static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+{
+	REQUEST			*request = eap_session->request;
+	eap_sim_session_t	*eap_sim_session;
+	time_t			n;
+	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
+
+	MEM(eap_sim_session = talloc_zero(eap_session, eap_sim_session_t));
+
+	eap_session->opaque = eap_sim_session;
+
+	/*
+	 *	Save the keying material, because it could change on a subsequent retrieval.
+	 */
+	RDEBUG2("New EAP-SIM session.  Acquiring SIM vectors");
+	if ((fr_sim_vector_gsm_from_attrs(eap_session, request->control, 0, &eap_sim_session->keys, &src) != 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 1, &eap_sim_session->keys, &src) != 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 2, &eap_sim_session->keys, &src) != 0)) {
+	    	REDEBUG("Failed retrieving SIM vectors");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	This value doesn't have be strong, but it is good if it is different now and then.
+	 */
+	time(&n);
+	eap_sim_session->sim_id = (n & 0xff);
+
+	eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_START);
+
+	eap_session->process = mod_process;
+
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -581,7 +581,6 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, UNUSED void *i
 			return -1;
 		}
 	}
-
 
 	return 0;
 }

@@ -51,69 +51,6 @@ static CONF_PARSER submodule_config[] = {
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
- *	Attach the module.
- */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
-{
-	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
-	fr_dict_enum_t	*dval;
-
-	if (!inst->auth_type_name) {
-		ERROR("You must specify 'auth_type'");
-		return -1;
-	}
-
-	dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->auth_type_name);
-	if (!dval) {
-		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s",
-				   inst->auth_type_name);
-		return -1;
-	}
-	inst->auth_type = dval->value;
-
-	return 0;
-}
-
-/*
- *	Initiate the EAP-GTC session by sending a challenge to the peer.
- */
-static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
-{
-	char		challenge_str[1024];
-	int		length;
-	eap_round_t	*eap_round = eap_session->this_round;
-	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *) instance;
-
-	if (radius_xlat(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
-		return 0;
-	}
-
-	length = strlen(challenge_str);
-
-	/*
-	 *	We're sending a request...
-	 */
-	eap_round->request->code = PW_EAP_REQUEST;
-
-	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
-	if (!eap_round->request->type.data) return 0;
-
-	memcpy(eap_round->request->type.data, challenge_str, length);
-	eap_round->request->type.length = length;
-
-	/*
-	 *	We don't need to authorize the user at this point.
-	 *
-	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'eap_session->this_round', which will be given back
-	 *	to us...
-	 */
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
-/*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
 static rlm_rcode_t mod_process_auth_type(UNUSED void *instance, eap_session_t *eap_session)
@@ -130,11 +67,11 @@ static rlm_rcode_t mod_process_auth_type(UNUSED void *instance, eap_session_t *e
 
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = PW_EAP_FAILURE;
-		return 0;
+		return rcode;
 	}
 
 	eap_round->request->code = PW_EAP_SUCCESS;
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -160,7 +97,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	if (eap_round->response->length <= 4) {
 		ERROR("Corrupted data");
 		eap_round->request->code = PW_EAP_FAILURE;
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -170,7 +107,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	if (eap_round->response->type.length > 128) {
 		ERROR("Response is too large to understand");
 		eap_round->request->code = PW_EAP_FAILURE;
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -179,9 +116,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	fr_pair_delete_by_num(&request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
 
-	vp = pair_make_request("User-Password", NULL, T_OP_EQ);
-	if (!vp) return 0;
-
+	MEM(vp = pair_make_request("User-Password", NULL, T_OP_EQ));
 	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
 
 	/*
@@ -198,17 +133,82 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		rcode = process_authenticate(inst->auth_type, request);
 		if (rcode != RLM_MODULE_OK) {
 			eap_round->request->code = PW_EAP_FAILURE;
-			return 0;
+			return rcode;
 		}
 
 		eap_round->request->code = PW_EAP_SUCCESS;
-		return 1;
+		return RLM_MODULE_OK;
 	}
 
 	unlang_push_section(request, unlang, RLM_MODULE_FAIL);
 
 	eap_session->process = mod_process_auth_type;
+
 	return eap_session->process(inst, eap_session);
+}
+
+
+/*
+ *	Initiate the EAP-GTC session by sending a challenge to the peer.
+ */
+static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
+{
+	char		challenge_str[1024];
+	int		length;
+	eap_round_t	*eap_round = eap_session->this_round;
+	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *) instance;
+
+	if (radius_xlat(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	length = strlen(challenge_str);
+
+	/*
+	 *	We're sending a request...
+	 */
+	eap_round->request->code = PW_EAP_REQUEST;
+
+	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
+	if (!eap_round->request->type.data) return RLM_MODULE_FAIL;
+
+	memcpy(eap_round->request->type.data, challenge_str, length);
+	eap_round->request->type.length = length;
+
+	/*
+	 *	We don't need to authorize the user at this point.
+	 *
+	 *	We also don't need to keep the challenge, as it's
+	 *	stored in 'eap_session->this_round', which will be given back
+	 *	to us...
+	 */
+	eap_session->process = mod_process;
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *	Attach the module.
+ */
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
+{
+	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
+	fr_dict_enum_t	*dval;
+
+	if (!inst->auth_type_name) {
+		ERROR("You must specify 'auth_type'");
+		return -1;
+	}
+
+	dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->auth_type_name);
+	if (!dval) {
+		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s",
+				   inst->auth_type_name);
+		return -1;
+	}
+	inst->auth_type = dval->value;
+
+	return 0;
 }
 
 /*

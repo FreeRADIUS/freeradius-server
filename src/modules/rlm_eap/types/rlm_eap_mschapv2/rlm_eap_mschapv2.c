@@ -219,7 +219,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	default:
 	case PW_CODE_ACCESS_REJECT:
 		REDEBUG("Proxied authentication was rejected");
-		return 0;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
@@ -227,7 +227,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 */
 	if (!response) {
 		REDEBUG("Proxied reply contained no MS-CHAP2-Success or MS-CHAP-Error");
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -259,7 +259,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 	fr_pair_list_free(&response);
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 #endif
 
@@ -287,7 +287,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 	if (eap_round->response->length < 6) {
 		REDEBUG("Response too short, expected at least 6 bytes, got %zu bytes",
 			eap_round->response->length);
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	ccode = eap_round->response->type.data[0];
@@ -358,13 +358,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 		 */
 		if (ccode != PW_EAP_MSCHAPV2_FAILURE) {
 			REDEBUG("Sent FAILURE expecting FAILURE but got %d", ccode);
-			return 0;
+			return RLM_MODULE_INVALID;
 		}
 
 failure:
 		request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		eap_round->request->code = PW_EAP_FAILURE;
-		return 1;
+		return RLM_MODULE_REJECT;
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
 		/*
@@ -388,10 +388,10 @@ failure:
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
 			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &data->reply, 0, 0, TAG_ANY);
-			return 1;
+			return RLM_MODULE_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
-		return 0;
+		return RLM_MODULE_INVALID;
 
 	case PW_EAP_MSCHAPV2_CHALLENGE:
 		if (ccode == PW_EAP_MSCHAPV2_FAILURE) goto failure;
@@ -401,7 +401,7 @@ failure:
 		 */
 		if (ccode != PW_EAP_MSCHAPV2_RESPONSE) {
 			REDEBUG("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
-			return 0;
+			return RLM_MODULE_INVALID;
 		}
 		/* authentication happens below */
 		break;
@@ -409,7 +409,7 @@ failure:
 	default:
 		/* should never happen */
 		REDEBUG("Unknown state %d", data->code);
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 
@@ -423,7 +423,7 @@ failure:
 	 */
 	if (eap_round->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
 		REDEBUG("Response is too short");
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -440,7 +440,7 @@ failure:
 	if ((eap_round->response->type.data[4] != 49) &&
 	    (eap_round->response->type.data[4] != 16)) {
 		REDEBUG("Response is of incorrect length %d", eap_round->response->type.data[4]);
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -450,7 +450,7 @@ failure:
 	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -463,11 +463,11 @@ failure:
 	 *	but it works.
 	 */
 	auth_challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
-	if (!auth_challenge) return 0;
+	if (!auth_challenge) return RLM_MODULE_FAIL;
 	fr_pair_value_memcpy(auth_challenge, data->auth_challenge, MSCHAPV2_CHALLENGE_LEN);
 
 	response = pair_make_request("MS-CHAP2-Response", NULL, T_OP_EQ);
-	if (!response) return 0;
+	if (!response) return RLM_MODULE_FAIL;
 
 	p = talloc_array(response, uint8_t, MSCHAPV2_RESPONSE_LEN);
 	p[0] = eap_round->response->type.data[1];
@@ -483,7 +483,7 @@ failure:
 	fr_pair_value_memsteal(response, p);
 
 	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
-	if (!name) return 0;
+	if (!name) return RLM_MODULE_FAIL;
 
 	/*
 	 *	MS-Length - MS-Value - 5.
@@ -563,7 +563,7 @@ packet_ready:
 		 *	to do the work below, AFTER the call to MS-CHAP
 		 *	authentication...
 		 */
-		return 1;
+		return RLM_MODULE_OK;
 	}
 #endif
 
@@ -616,7 +616,7 @@ packet_ready:
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
 	} else {
 		eap_round->request->code = PW_EAP_FAILURE;
-		return 1;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
@@ -624,7 +624,7 @@ packet_ready:
 	 */
 	if (!response) {
 		REDEBUG("No MS-CHAP2-Success or MS-CHAP-Error was found");
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 
 	/*
@@ -634,7 +634,7 @@ packet_ready:
 	eapmschapv2_compose(eap_session->inst, eap_session, response);
 	fr_pair_list_free(&response);
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -650,7 +650,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	uint8_t 		*p;
 	bool			created_auth_challenge;
 
-	if (!rad_cond_assert(instance)) return 0;
+	if (!rad_cond_assert(instance)) return RLM_MODULE_FAIL;
 
 	auth_challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
@@ -733,7 +733,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 */
 	eap_session->process = mod_process;
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*

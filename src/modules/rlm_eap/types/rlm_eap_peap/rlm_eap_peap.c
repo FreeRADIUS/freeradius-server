@@ -147,7 +147,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		 *	and EAP id from the inner tunnel, and update it with
 		 *	the expected EAP id!
 		 */
-		return 1;
+		return RLM_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -160,7 +160,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	 *	Anything else: fail.
 	 */
 	default:
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -182,18 +182,18 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(eap_session);
-		return 0;
+		break;
 
 	case RLM_MODULE_HANDLED:
 		eap_tls_request(eap_session);
-		return 1;
+		break;
 
 	case RLM_MODULE_OK:
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 		if (eap_tls_success(eap_session) < 0) return 0;
-		return 1;
+		break;
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -205,14 +205,14 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 #ifdef WITH_PROXY
 		rad_assert(eap_session->request->proxy != NULL);
 #endif
-		return 1;
+		break;
 
 	default:
+		eap_tls_fail(eap_session);
 		break;
 	}
 
-	eap_tls_fail(eap_session);
-	return 0;
+	return rcode;
 }
 
 /*
@@ -239,7 +239,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return 0;
+	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	/*
 	 *	Set up type-specific information.
@@ -270,12 +270,12 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 */
 	if (eap_tls_start(eap_session) < 0) {
 		talloc_free(eap_tls_session);
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	eap_session->process = mod_process;
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*

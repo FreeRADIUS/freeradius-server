@@ -109,7 +109,7 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 				RDEBUG2("Certificate rejected by the virtual server");
 				talloc_free(fake);
 				eap_tls_fail(eap_session);
-				return 0;
+				return RLM_MODULE_REJECT;
 			}
 
 			talloc_free(fake);
@@ -123,7 +123,7 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		return 1;
+		return RLM_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -133,7 +133,7 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 		REDEBUG("Received unexpected tunneled data after successful handshake");
 		eap_tls_fail(eap_session);
 
-		return 0;
+		return RLM_MODULE_INVALID;
 
 		/*
 		 *	Anything else: fail.
@@ -144,14 +144,12 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 	default:
 		tls_cache_deny(tls_session);
 
-		return 0;
+		return RLM_MODULE_REJECT;
 	}
 
-	/*
-	 *	Success: Automatically return MPPE keys.
-	 */
-	if (eap_tls_success(eap_session) < 0) return 0;
-	return 1;
+	if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
+
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -181,7 +179,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	EAP-TLS always requires a client certificate.
 	 */
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return 0;
+	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	eap_tls_session->include_length = inst->include_length;
 	eap_tls_session->tls_session->prf_label = "client EAP encryption";
@@ -192,12 +190,12 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 */
 	if (eap_tls_start(eap_session) < 0) {
 		talloc_free(eap_tls_session);
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	eap_session->process = mod_process;
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*

@@ -85,7 +85,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 */
 	eap_session->process = mod_process;
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -106,14 +106,14 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	password = fr_pair_find_by_num(eap_session->request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (!password) {
 		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
-		return 0;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
-	if (!(packet = eap_md5_extract(eap_session->this_round)))
-		return 0;
+	packet = eap_md5_extract(eap_session->this_round);
+	if (!packet) return RLM_MODULE_INVALID;
 
 	/*
 	 *	Create a reply, and initialize it.
@@ -121,7 +121,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	reply = talloc(packet, MD5_PACKET);
 	if (!reply) {
 		talloc_free(packet);
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 	reply->id = eap_session->this_round->request->id;
 	reply->length = 0;
@@ -142,7 +142,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	eap_md5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
-	return 1;
+
+	return RLM_MODULE_OK;
 }
 
 /*

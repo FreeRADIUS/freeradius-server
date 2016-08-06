@@ -345,7 +345,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  */
 static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
-	int			rcode;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	char const		*caller;
 	rlm_eap_method_t	*method;
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
@@ -463,15 +463,22 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		rcode = eap_session->process(method->submodule_inst, eap_session);
 		request->module = caller;
 
-		if (rcode == 0) {
+		switch (rcode) {
+		default:
 			REDEBUG2("Failed in EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(eap_session->type), eap_session->type);
-			return RLM_MODULE_INVALID;
+			break;
+
+		case RLM_MODULE_OK:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_HANDLED:
+			break;
 		}
 		break;
 	}
 
-	return RLM_MODULE_OK;
+	return rcode;
 }
 
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
@@ -711,13 +718,19 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 		 */
 		RDEBUG2("Doing post-proxy callback");
 		rcode = data->callback(eap_session, data->tls_session);
-
 		talloc_free(data);
-		if (rcode == 0) {
+		switch (rcode) {
+		default:
 			RDEBUG2("Failed in post-proxy callback");
 			eap_fail(eap_session);
 			eap_session_destroy(&eap_session);
-			return RLM_MODULE_REJECT;
+			return rcode;
+
+		case RLM_MODULE_OK:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_HANDLED:
+			break;
 		}
 
 		/*

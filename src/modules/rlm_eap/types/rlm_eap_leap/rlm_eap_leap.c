@@ -30,60 +30,6 @@ RCSID("$Id$")
 
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
-/*
- * send an initial eap-leap request
- * ie access challenge to the user/peer.
-
- * Frame eap reply packet.
- * len = header + type + leap_methoddata
- * leap_methoddata = value_size + value
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
-{
-	REQUEST 	*request = eap_session->request;
-	leap_session_t	*session;
-	leap_packet_t	*reply;
-
-	RDEBUG2("Stage 2");
-
-	/*
-	 *	LEAP requires a User-Name attribute
-	 */
-	if (!eap_session->request->username) {
-		REDEBUG("User-Name is required for EAP-LEAP authentication");
-		return 0;
-	}
-
-	reply = eap_leap_initiate(request, eap_session->this_round, eap_session->request->username);
-	if (!reply) {
-		return 0;
-	}
-
-	eap_leap_compose(request, eap_session->this_round, reply);
-
-	eap_session->opaque = session = talloc(eap_session, leap_session_t);
-	if (!eap_session->opaque) {
-		talloc_free(reply);
-		return 0;
-	}
-
-	/*
-	 *	Remember which stage we're in, and which challenge
-	 *	we sent to the AP.  The later stages will take care
-	 *	of filling in the peer response.
-	 */
-	session->stage = 4;	/* the next stage we're in */
-	memcpy(session->peer_challenge, reply->challenge, reply->count);
-
-	RDEBUG2("Successfully initiated");
-
-	talloc_free(reply);
-
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
 static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session)
 {
 	int		rcode;
@@ -95,7 +41,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 
 	if (!eap_session->opaque) {
 		REDEBUG("Cannot authenticate without LEAP history");
-		return 0;
+		return RLM_MODULE_INVALID;
 	}
 	session = talloc_get_type_abort(eap_session->opaque, leap_session_t);
 	reply = NULL;
@@ -103,9 +49,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	/*
 	 *	Extract the LEAP packet.
 	 */
-	if (!(packet = eap_leap_extract(request, eap_session->this_round))) {
-		return 0;
-	}
+	packet = eap_leap_extract(request, eap_session->this_round);
+	if (!packet) return RLM_MODULE_INVALID;
 
 	/*
 	 *	The password is never sent over the wire.
@@ -116,7 +61,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	if (!password) {
 		REDEBUG("No Cleartext-Password or NT-Password configured for this user");
 		talloc_free(packet);
-		return 0;
+		return RLM_MODULE_REJECT;
 	}
 
 	/*
@@ -155,7 +100,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 		 */
 		eap_session->request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		talloc_free(packet);
-		return 1;
+		return RLM_MODULE_OK;
 
 	case 6:			/* Issue session key */
 		RDEBUG2("Stage 6");
@@ -177,13 +122,60 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	 *	Process the packet.  We don't care about any previous
 	 *	EAP packets, as
 	 */
-	if (!reply) {
-		return 0;
-	}
+	if (!reply) return RLM_MODULE_FAIL;
 
 	eap_leap_compose(request, eap_session->this_round, reply);
 	talloc_free(reply);
-	return 1;
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ * send an initial eap-leap request
+ * ie access challenge to the user/peer.
+
+ * Frame eap reply packet.
+ * len = header + type + leap_methoddata
+ * leap_methoddata = value_size + value
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
+{
+	REQUEST 	*request = eap_session->request;
+	leap_session_t	*session;
+	leap_packet_t	*reply;
+
+	RDEBUG2("Stage 2");
+
+	/*
+	 *	LEAP requires a User-Name attribute
+	 */
+	if (!eap_session->request->username) {
+		REDEBUG("User-Name is required for EAP-LEAP authentication");
+		return RLM_MODULE_REJECT;
+	}
+
+	reply = eap_leap_initiate(request, eap_session->this_round, eap_session->request->username);
+	if (!reply) return RLM_MODULE_FAIL;
+
+	eap_leap_compose(request, eap_session->this_round, reply);
+
+	MEM(eap_session->opaque = session = talloc(eap_session, leap_session_t));
+
+	/*
+	 *	Remember which stage we're in, and which challenge
+	 *	we sent to the AP.  The later stages will take care
+	 *	of filling in the peer response.
+	 */
+	session->stage = 4;	/* the next stage we're in */
+	memcpy(session->peer_challenge, reply->challenge, reply->count);
+
+	RDEBUG2("Successfully initiated");
+
+	talloc_free(reply);
+
+	eap_session->process = mod_process;
+
+	return RLM_MODULE_OK;
 }
 
 /*
