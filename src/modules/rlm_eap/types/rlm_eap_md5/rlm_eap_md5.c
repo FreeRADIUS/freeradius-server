@@ -45,10 +45,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	/*
 	 *	Allocate an EAP-MD5 packet.
 	 */
-	reply = talloc(eap_session, MD5_PACKET);
-	if (!reply)  {
-		return 0;
-	}
+	MEM(reply = talloc(eap_session, MD5_PACKET));
 
 	/*
 	 *	Fill it with data.
@@ -60,25 +57,17 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	/*
 	 *	Allocate user data.
 	 */
-	reply->value = talloc_array(reply, uint8_t, reply->value_size);
-	if (!reply->value) {
-		talloc_free(reply);
-		return 0;
-	}
-
+	MEM(reply->value = talloc_array(reply, uint8_t, reply->value_size));
 	/*
 	 *	Get a random challenge.
 	 */
-	for (i = 0; i < reply->value_size; i++) {
-		reply->value[i] = fr_rand();
-	}
+	for (i = 0; i < reply->value_size; i++) reply->value[i] = fr_rand();
 	RDEBUG2("Issuing MD5 Challenge");
 
 	/*
 	 *	Keep track of the challenge.
 	 */
-	eap_session->opaque = talloc_array(eap_session, uint8_t, reply->value_size);
-	rad_assert(eap_session->opaque != NULL);
+	MEM(eap_session->opaque = talloc_array(eap_session, uint8_t, reply->value_size));
 	memcpy(eap_session->opaque, reply->value, reply->value_size);
 
 	/*
