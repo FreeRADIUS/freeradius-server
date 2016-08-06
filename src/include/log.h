@@ -290,6 +290,7 @@ void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
 	} else {\
 		request->log.unlang_indent += 2;\
 	}\
+	RDEBUG4(">> %i at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
 } while(0)
 
 /** Exdent (unindent) R* messages by one level
@@ -303,6 +304,7 @@ void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
 	} else {\
 		request->log.unlang_indent -= 2;\
 	}\
+	RDEBUG4("<< %i at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
 } while(0)
 
 /** Output string with error marker, showing where format error occurred
