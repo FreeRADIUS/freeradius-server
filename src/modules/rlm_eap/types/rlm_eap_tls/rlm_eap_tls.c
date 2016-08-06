@@ -130,7 +130,7 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 	 *	data.
 	 */
 	case EAP_TLS_RECORD_RECV_COMPLETE:
-		RDEBUG2("Received unexpected tunneled data after successful handshake");
+		REDEBUG("Received unexpected tunneled data after successful handshake");
 		eap_tls_fail(eap_session);
 
 		return 0;
