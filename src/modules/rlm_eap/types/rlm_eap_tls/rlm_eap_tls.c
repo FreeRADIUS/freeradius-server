@@ -28,17 +28,17 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "rlm_eap_tls - "
 
 #ifdef HAVE_OPENSSL_RAND_H
-#include <openssl/rand.h>
+#  include <openssl/rand.h>
 #endif
 
 #ifdef HAVE_OPENSSL_EVP_H
-#include <openssl/evp.h>
+#  include <openssl/evp.h>
 #endif
 
 #include "rlm_eap_tls.h"
 
 #ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
+#  include <sys/stat.h>
 #endif
 
 static CONF_PARSER submodule_config[] = {
@@ -51,73 +51,10 @@ static CONF_PARSER submodule_config[] = {
 };
 
 /*
- *	Attach the EAP-TLS module.
- */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
-{
-	rlm_eap_tls_t *inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
-
-	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
-	if (!inst->tls_conf) {
-		ERROR("Failed initializing SSL context");
-		return -1;
-	}
-
-	return 0;
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
-
-/*
- *	Send an initial eap-tls request to the peer, using the libeap functions.
- */
-static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
-{
-	eap_tls_session_t	*eap_tls_session;
-	rlm_eap_tls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_tls_t);
-	VALUE_PAIR		*vp;
-	bool			client_cert;
-
-	eap_session->tls = true;
-
-	/*
-	 *	EAP-TLS-Require-Client-Cert attribute will override
-	 *	the require_client_cert configuration option.
-	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
-	if (vp) {
-		client_cert = vp->vp_integer ? true : false;
-	} else {
-		client_cert = inst->req_client_cert;
-	}
-
-	/*
-	 *	EAP-TLS always requires a client certificate.
-	 */
-	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return 0;
-
-	eap_tls_session->include_length = inst->include_length;
-	eap_tls_session->tls_session->prf_label = "client EAP encryption";
-
-	/*
-	 *	TLS session initialization is over.  Now handle TLS
-	 *	related handshaking or application data.
-	 */
-	if (eap_tls_start(eap_session) < 0) {
-		talloc_free(eap_tls_session);
-		return 0;
-	}
-
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
-/*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
+static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 {
 	eap_tls_status_t	status;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -215,6 +152,68 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *e
 	 */
 	if (eap_tls_success(eap_session) < 0) return 0;
 	return 1;
+}
+
+/*
+ *	Send an initial eap-tls request to the peer, using the libeap functions.
+ */
+static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
+{
+	eap_tls_session_t	*eap_tls_session;
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_tls_t);
+	VALUE_PAIR		*vp;
+	bool			client_cert;
+
+	eap_session->tls = true;
+
+	/*
+	 *	EAP-TLS-Require-Client-Cert attribute will override
+	 *	the require_client_cert configuration option.
+	 */
+	vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	if (vp) {
+		client_cert = vp->vp_integer ? true : false;
+	} else {
+		client_cert = inst->req_client_cert;
+	}
+
+	/*
+	 *	EAP-TLS always requires a client certificate.
+	 */
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	if (!eap_tls_session) return 0;
+
+	eap_tls_session->include_length = inst->include_length;
+	eap_tls_session->tls_session->prf_label = "client EAP encryption";
+
+	/*
+	 *	TLS session initialization is over.  Now handle TLS
+	 *	related handshaking or application data.
+	 */
+	if (eap_tls_start(eap_session) < 0) {
+		talloc_free(eap_tls_session);
+		return 0;
+	}
+
+	eap_session->process = mod_process;
+
+	return 1;
+}
+
+/*
+ *	Attach the EAP-TLS module.
+ */
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
+{
+	rlm_eap_tls_t *inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
+
+	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
+	if (!inst->tls_conf) {
+		ERROR("Failed initializing SSL context");
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
