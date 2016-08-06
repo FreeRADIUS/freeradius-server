@@ -44,7 +44,6 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 {
 	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 7,
@@ -55,34 +54,6 @@ static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 				  TAG_ANY);
 	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 17,
 				  TAG_ANY);
-}
-
-/*
- *	Attach the module.
- */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
-{
-	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	fr_dict_enum_t const *dv;
-
-	if (inst->identity && (strlen(inst->identity) > 255)) {
-		cf_log_err_cs(cs, "identity is too long");
-		return -1;
-	}
-
-	if (!inst->identity) {
-		inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
-	}
-
-	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "MS-CHAP");
-	if (!dv) dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "MSCHAP");
-	if (!dv) {
-		cf_log_err_cs(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
-		return -1;
-	}
-	inst->auth_type_mschap = dv->value;
-
-	return 0;
 }
 
 /*
@@ -215,105 +186,6 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
-/*
- *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
- */
-static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
-{
-	int			i;
-	VALUE_PAIR		*auth_challenge;
-	VALUE_PAIR		*peer_challenge;
-	mschapv2_opaque_t	*data;
-	REQUEST			*request = eap_session->request;
-	uint8_t 		*p;
-	bool			created_auth_challenge;
-
-	if (!rad_cond_assert(instance)) return 0;
-
-	auth_challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
-	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
-		auth_challenge = NULL;
-	}
-
-	peer_challenge = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
-	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
-		peer_challenge = NULL;
-	}
-
-	if (auth_challenge) {
-		created_auth_challenge = false;
-
-		peer_challenge = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
-		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-			RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
-			peer_challenge = NULL;
-		}
-
-	} else {
-		created_auth_challenge = true;
-		peer_challenge = NULL;
-
-		auth_challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
-
-		/*
-		 *	Get a random challenge.
-		 */
-		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
-		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
-		fr_pair_value_memsteal(auth_challenge, p);
-	}
-	RDEBUG2("Issuing Challenge");
-
-	/*
-	 *	Keep track of the challenge.
-	 */
-	data = talloc_zero(eap_session, mschapv2_opaque_t);
-	rad_assert(data != NULL);
-
-	/*
-	 *	We're at the stage where we're challenging the user.
-	 */
-	data->code = PW_EAP_MSCHAPV2_CHALLENGE;
-	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
-	data->mppe_keys = NULL;
-	data->reply = NULL;
-
-	if (peer_challenge) {
-		data->has_peer_challenge = true;
-		memcpy(data->peer_challenge, peer_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
-	}
-
-	eap_session->opaque = data;
-
-	/*
-	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
-	 *	and free it.
-	 */
-	eapmschapv2_compose(instance, eap_session, auth_challenge);
-	if (created_auth_challenge) fr_pair_list_free(&auth_challenge);
-
-#ifdef WITH_PROXY
-	/*
-	 *	The EAP session doesn't have enough information to
-	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
-	 */
-	eap_session->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-#endif
-
-	/*
-	 *	We don't need to authorize the user at this point.
-	 *
-	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'eap_session->this_round', which will be given back
-	 *	to us...
-	 */
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
 #ifdef WITH_PROXY
 /*
  *	Do post-proxy processing,
@@ -400,15 +272,16 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 {
-	int rcode, ccode;
-	uint8_t *p;
-	size_t length;
-	char *q;
-	mschapv2_opaque_t *data;
-	eap_round_t *eap_round = eap_session->this_round;
-	VALUE_PAIR *auth_challenge, *response, *name;
-	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
-	REQUEST *request = eap_session->request;
+	rlm_rcode_t		rcode;
+	int			ccode;
+	uint8_t			*p;
+	size_t			length;
+	char			*q;
+	mschapv2_opaque_t	*data;
+	eap_round_t		*eap_round = eap_session->this_round;
+	VALUE_PAIR		*auth_challenge, *response, *name;
+	rlm_eap_mschapv2_t	*inst = (rlm_eap_mschapv2_t *) arg;
+	REQUEST			*request = eap_session->request;
 
 	if (!rad_cond_assert(eap_session->inst)) return 0;
 
@@ -769,6 +642,133 @@ packet_ready:
 	fr_pair_list_free(&response);
 
 	return 1;
+}
+
+/*
+ *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
+ */
+static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
+{
+	int			i;
+	VALUE_PAIR		*auth_challenge;
+	VALUE_PAIR		*peer_challenge;
+	mschapv2_opaque_t	*data;
+	REQUEST			*request = eap_session->request;
+	uint8_t 		*p;
+	bool			created_auth_challenge;
+
+	if (!rad_cond_assert(instance)) return 0;
+
+	auth_challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
+	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
+		auth_challenge = NULL;
+	}
+
+	peer_challenge = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+		RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
+		peer_challenge = NULL;
+	}
+
+	if (auth_challenge) {
+		created_auth_challenge = false;
+
+		peer_challenge = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+		if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+			RWDEBUG("control:MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it.");
+			peer_challenge = NULL;
+		}
+
+	} else {
+		created_auth_challenge = true;
+		peer_challenge = NULL;
+
+		auth_challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
+
+		/*
+		 *	Get a random challenge.
+		 */
+		p = talloc_array(auth_challenge, uint8_t, MSCHAPV2_CHALLENGE_LEN);
+		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) p[i] = fr_rand();
+		fr_pair_value_memsteal(auth_challenge, p);
+	}
+	RDEBUG2("Issuing Challenge");
+
+	/*
+	 *	Keep track of the challenge.
+	 */
+	data = talloc_zero(eap_session, mschapv2_opaque_t);
+	rad_assert(data != NULL);
+
+	/*
+	 *	We're at the stage where we're challenging the user.
+	 */
+	data->code = PW_EAP_MSCHAPV2_CHALLENGE;
+	memcpy(data->auth_challenge, auth_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
+	data->mppe_keys = NULL;
+	data->reply = NULL;
+
+	if (peer_challenge) {
+		data->has_peer_challenge = true;
+		memcpy(data->peer_challenge, peer_challenge->vp_octets, MSCHAPV2_CHALLENGE_LEN);
+	}
+
+	eap_session->opaque = data;
+
+	/*
+	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
+	 *	and free it.
+	 */
+	eapmschapv2_compose(instance, eap_session, auth_challenge);
+	if (created_auth_challenge) fr_pair_list_free(&auth_challenge);
+
+#ifdef WITH_PROXY
+	/*
+	 *	The EAP session doesn't have enough information to
+	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
+	 */
+	eap_session->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+#endif
+
+	/*
+	 *	We don't need to authorize the user at this point.
+	 *
+	 *	We also don't need to keep the challenge, as it's
+	 *	stored in 'eap_session->this_round', which will be given back
+	 *	to us...
+	 */
+	eap_session->process = mod_process;
+
+	return 1;
+}
+
+/*
+ *	Attach the module.
+ */
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
+{
+	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
+	fr_dict_enum_t const *dv;
+
+	if (inst->identity && (strlen(inst->identity) > 255)) {
+		cf_log_err_cs(cs, "identity is too long");
+		return -1;
+	}
+
+	if (!inst->identity) {
+		inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
+	}
+
+	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "MS-CHAP");
+	if (!dv) dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "MSCHAP");
+	if (!dv) {
+		cf_log_err_cs(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
+		return -1;
+	}
+	inst->auth_type_mschap = dv->value;
+
+	return 0;
 }
 
 /*
