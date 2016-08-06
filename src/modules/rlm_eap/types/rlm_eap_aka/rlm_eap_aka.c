@@ -161,7 +161,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
  * The only work to be done is the add the appropriate SEND/RECV
  * attributes derived from the MSK.
  */
-static int eap_aka_send_success(eap_session_t *eap_session)
+static void eap_aka_send_success(eap_session_t *eap_session)
 {
 	uint8_t			*p;
 	eap_aka_session_t	*eap_aka_session;
@@ -184,8 +184,6 @@ static int eap_aka_send_success(eap_session_t *eap_session)
 	eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", p, EAP_TLS_MPPE_KEY_LEN);
 	p += EAP_TLS_MPPE_KEY_LEN;
 	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
-
-	return 1;
 }
 
 /** Run the server state machine
@@ -294,19 +292,19 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 			m = m + strlen(m);
 		}
 		REDEBUG("Calculated MAC (%s) did not match", macline);
-		return 0;
+		return -1;
 	}
 
 	vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_RES, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing EAP-AKA-RES from challenge response");
-		return 0;
+		return -1;
 	}
 
 	if ((vp->vp_length - 2) != eap_aka_session->keys.umts.vector.xres_len) {
 		REDEBUG("EAP-AKA-RES length (%zu) does not match XRES length (%zu)",
 			(vp->vp_length - 2), eap_aka_session->keys.umts.vector.xres_len);
-		return 0;
+		return -1;
 	}
 
   	if (memcmp(&vp->vp_octets[2], eap_aka_session->keys.umts.vector.xres, vp->vp_length - 2)) {
@@ -314,7 +312,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		RHEXDUMP_INLINE(L_DBG_LVL_2, &vp->vp_octets[2], vp->vp_length, "RES  :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, eap_aka_session->keys.umts.vector.xres,
 				eap_aka_session->keys.umts.vector.xres_len, "XRES :");
-		return 0;
+		return -1;
 	}
 
 	RDEBUG2("EAP-AKA-RES matches XRES");
@@ -322,7 +320,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	/* everything looks good, change states */
 	eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_SUCCESS);
 
-	return 1;
+	return 0;
 }
 
 /** Authenticate a previously sent challenge
@@ -360,11 +358,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_SUBTYPE, TAG_ANY);
-	if (!vp) {
-		REDEBUG2("No subtype attribute was created, message dropped");
-		return 0;
-	}
+	MEM(vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_SUBTYPE, TAG_ANY));
 	subtype = vp->vp_integer;
 
 	switch (eap_aka_session->state) {
@@ -398,7 +392,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		}
 
 		case EAP_AKA_CHALLENGE:
-			return process_eap_aka_challenge(eap_session, vps);
+			return process_eap_aka_challenge(eap_session, vps) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_HANDLED;
 		}
 
 	default:
