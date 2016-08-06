@@ -604,6 +604,11 @@ fi
 %{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_arp.so
 %{_libdir}/freeradius/proto_bfd.so
+%{_libdir}/freeradius/proto_detail.so
+%{_libdir}/freeradius/proto_radius_acct.so
+%{_libdir}/freeradius/proto_radius_auth.so
+%{_libdir}/freeradius/proto_radius_coa.so
+%{_libdir}/freeradius/proto_radius_status.so
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
@@ -617,6 +622,7 @@ fi
 %{_libdir}/freeradius/rlm_digest.so
 %{_libdir}/freeradius/rlm_dynamic_clients.so
 %{_libdir}/freeradius/rlm_eap.so
+%{_libdir}/freeradius/rlm_eap_aka.so
 %{_libdir}/freeradius/rlm_eap_gtc.so
 %{_libdir}/freeradius/rlm_eap_leap.so
 %{_libdir}/freeradius/rlm_eap_md5.so
@@ -637,6 +643,7 @@ fi
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
 %{_libdir}/freeradius/rlm_preprocess.so
+%{_libdir}/freeradius/rlm_radius_client.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_realm.so
 %{_libdir}/freeradius/rlm_replicate.so
