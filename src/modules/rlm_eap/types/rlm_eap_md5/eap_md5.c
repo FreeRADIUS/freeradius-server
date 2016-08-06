@@ -48,7 +48,7 @@ RCSID("$Id$")
 /*
  *	We expect only RESPONSE for which SUCCESS or FAILURE is sent back
  */
-MD5_PACKET *eapmd5_extract(eap_round_t *eap_round)
+MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
 {
 	md5_packet_t	*data;
 	MD5_PACKET	*packet;
@@ -107,7 +107,7 @@ MD5_PACKET *eapmd5_extract(eap_round_t *eap_round)
 
 	/*
 	 *	Name is optional and is present after Value, but we
-	 *	need to check for it, as eapmd5_compose()
+	 *	need to check for it, as eap_md5_compose()
 	 */
 	name_len =  packet->length - (packet->value_size + 1);
 	if (name_len) {
@@ -128,7 +128,7 @@ MD5_PACKET *eapmd5_extract(eap_round_t *eap_round)
 /*
  * verify = MD5(id+password+challenge_sent)
  */
-int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
+int eap_md5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 		  uint8_t *challenge)
 {
 	char	*ptr;
@@ -178,7 +178,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
  *	Compose the portions of the reply packet specific to the
  *	EAP-MD5 protocol, in the EAP reply typedata
  */
-int eapmd5_compose(eap_round_t *eap_round, MD5_PACKET *reply)
+int eap_md5_compose(eap_round_t *eap_round, MD5_PACKET *reply)
 {
 	uint8_t *ptr;
 	unsigned short name_len;

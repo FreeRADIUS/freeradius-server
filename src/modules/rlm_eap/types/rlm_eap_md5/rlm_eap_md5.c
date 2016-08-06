@@ -85,7 +85,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 *	Compose the EAP-MD5 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmd5_compose(eap_session->this_round, reply);
+	eap_md5_compose(eap_session->this_round, reply);
 
 	/*
 	 *	We don't need to authorize the user at this point.
@@ -123,7 +123,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
-	if (!(packet = eapmd5_extract(eap_session->this_round)))
+	if (!(packet = eap_md5_extract(eap_session->this_round)))
 		return 0;
 
 	/*
@@ -141,7 +141,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 *	Verify the received packet against the previous packet
 	 *	(i.e. challenge) which we sent out.
 	 */
-	if (eapmd5_verify(packet, password, eap_session->opaque)) {
+	if (eap_md5_verify(packet, password, eap_session->opaque)) {
 		reply->code = PW_MD5_SUCCESS;
 	} else {
 		reply->code = PW_MD5_FAILURE;
@@ -151,7 +151,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 *	Compose the EAP-MD5 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmd5_compose(eap_session->this_round, reply);
+	eap_md5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
 	return 1;
 }
