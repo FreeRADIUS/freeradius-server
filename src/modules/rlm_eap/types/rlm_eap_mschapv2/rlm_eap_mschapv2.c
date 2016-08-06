@@ -97,9 +97,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_round->request->type.data) {
-			return 0;
-		}
+		if (!eap_round->request->type.data) return -1;
 		eap_round->request->type.length = length;
 
 		ptr = eap_round->request->type.data;
@@ -139,9 +137,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_round->request->type.data) {
-			return 0;
-		}
+		if (!eap_round->request->type.data) return -1;
 		memset(eap_round->request->type.data, 0, length);
 		eap_round->request->type.length = length;
 
@@ -177,10 +173,10 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 
 	default:
 		RERROR("Internal sanity check failed");
-		return 0;
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 
@@ -277,7 +273,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 	uint8_t			*p;
 	size_t			length;
 	char			*q;
-	mschapv2_opaque_t	*data;
+	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t		*eap_round = eap_session->this_round;
 	VALUE_PAIR		*auth_challenge, *response, *name;
 	rlm_eap_mschapv2_t	*inst = (rlm_eap_mschapv2_t *) arg;
@@ -285,13 +281,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 
 	if (!rad_cond_assert(eap_session->inst)) return 0;
 
-	data = (mschapv2_opaque_t *) eap_session->opaque;
-
 	/*
 	 *	Sanity check the response.
 	 */
-	if (eap_round->response->length <= 5) {
-		REDEBUG("corrupted data");
+	if (eap_round->response->length < 6) {
+		REDEBUG("Response too short, expected at least 6 bytes, got %zu bytes",
+			eap_round->response->length);
 		return 0;
 	}
 
@@ -483,9 +478,7 @@ failure:
 	 *	If we're forcing a peer challenge, use it instead of
 	 *	the challenge sent by the client.
 	 */
-	if (data->has_peer_challenge) {
-		memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
-	}
+	if (data->has_peer_challenge) memcpy(p + 2, data->peer_challenge, MSCHAPV2_CHALLENGE_LEN);
 
 	fr_pair_value_memsteal(response, p);
 
@@ -756,9 +749,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 		return -1;
 	}
 
-	if (!inst->identity) {
-		inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
-	}
+	if (!inst->identity) inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
 
 	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "MS-CHAP");
 	if (!dv) dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), "MSCHAP");
