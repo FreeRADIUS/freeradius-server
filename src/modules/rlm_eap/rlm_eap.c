@@ -355,7 +355,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	VALUE_PAIR		*vp;
 
 	/*
-	 *	Request must have been thawed...
+	 *	Session must have been thawed...
 	 */
 	rad_assert(eap_session->request);
 
