@@ -53,7 +53,7 @@ Source103: freeradius-pam-conf
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
-Obsoletes: freeradius < 3.1.0-1%{?dist}
+Obsoletes: freeradius < 4.0.0-1%{?dist}
 
 %define docdir %{_docdir}/freeradius-%{version}
 
@@ -133,7 +133,7 @@ Adds support for rlm_memcached as a cache driver.
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
 Provides: freeradius-config
-Obsoletes: freeradius < 3.1.0-1%{?dist}
+Obsoletes: freeradius < 4.0.0-1%{?dist}
 
 %description config
 FreeRADIUS default config files
