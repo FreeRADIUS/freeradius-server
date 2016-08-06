@@ -72,53 +72,6 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-/*
- *	Attach the module.
- */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
-{
-	rlm_eap_peap_t		*inst = talloc_get_type_abort(instance, rlm_eap_peap_t);
-	fr_dict_enum_t		*dv;
-
-	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
-		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
-		return -1;
-	}
-
-	if (inst->soh_virtual_server) {
-		if (!cf_section_sub_find_name2(main_config.config, "server", inst->soh_virtual_server)) {
-			cf_log_err_by_name(cs, "soh_virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
-			return -1;
-		}
-	}
-
-	/*
-	 *	Read tls configuration, either from group given by 'tls'
-	 *	option, or from the eap-tls configuration.
-	 */
-	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
-	if (!inst->tls_conf) {
-		ERROR("Failed initializing SSL context");
-		return -1;
-	}
-
-	/*
-	 *	Don't expose this if we don't need it.
-	 */
-	if (!inst->inner_eap_module) inst->inner_eap_module = "eap";
-
-	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->inner_eap_module);
-	if (!dv) {
-		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  The server cannot proxy inner-tunnel EAP packets.",
-		     inst->inner_eap_module, inst->virtual_server);
-	} else {
-		inst->auth_type_eap = dv->value;
-	}
-
-	return 0;
-}
-
 /*
  *	Allocate the PEAP per-session data
  */
@@ -139,74 +92,10 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
-
-/*
- *	Send an initial eap-tls request to the peer, using the libeap functions.
- */
-static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
-{
-	eap_tls_session_t	*eap_tls_session;
-	rlm_eap_peap_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_peap_t);
-	VALUE_PAIR		*vp;
-	bool			client_cert;
-
-	eap_session->tls = true;
-
-	/*
-	 *	EAP-TLS-Require-Client-Cert attribute will override
-	 *	the require_client_cert configuration option.
-	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
-	if (vp) {
-		client_cert = vp->vp_integer ? true : false;
-	} else {
-		client_cert = inst->req_client_cert;
-	}
-
-	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return 0;
-
-	/*
-	 *	Set up type-specific information.
-	 */
-	eap_tls_session->tls_session->prf_label = "client EAP encryption";
-
-	/*
-	 *	As it is a poorly designed protocol, PEAP uses
-	 *	bits in the TLS header to indicate PEAP
-	 *	version numbers.  For now, we only support
-	 *	PEAP version 0, so it doesn't matter too much.
-	 *	However, if we support later versions of PEAP,
-	 *	we will need this flag to indicate which
-	 *	version we're currently dealing with.
-	 */
-	eap_tls_session->base_flags = 0x00;
-
-	/*
-	 *	PEAP version 0 requires 'include_length = no',
-	 *	so rather than hoping the user figures it out,
-	 *	we force it here.
-	 */
-	eap_tls_session->include_length = false;
-
-	/*
-	 *	TLS session initialization is over.  Now handle TLS
-	 *	related handshaking or application data.
-	 */
-	if (eap_tls_start(eap_session) < 0) {
-		talloc_free(eap_tls_session);
-		return 0;
-	}
-
-	eap_session->process = mod_process;
-
-	return 1;
-}
-
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 {
 	int			rcode;
@@ -326,6 +215,115 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	return 0;
 }
 
+/*
+ *	Send an initial eap-tls request to the peer, using the libeap functions.
+ */
+static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
+{
+	eap_tls_session_t	*eap_tls_session;
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_peap_t);
+	VALUE_PAIR		*vp;
+	bool			client_cert;
+
+	eap_session->tls = true;
+
+	/*
+	 *	EAP-TLS-Require-Client-Cert attribute will override
+	 *	the require_client_cert configuration option.
+	 */
+	vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	if (vp) {
+		client_cert = vp->vp_integer ? true : false;
+	} else {
+		client_cert = inst->req_client_cert;
+	}
+
+	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
+	if (!eap_tls_session) return 0;
+
+	/*
+	 *	Set up type-specific information.
+	 */
+	eap_tls_session->tls_session->prf_label = "client EAP encryption";
+
+	/*
+	 *	As it is a poorly designed protocol, PEAP uses
+	 *	bits in the TLS header to indicate PEAP
+	 *	version numbers.  For now, we only support
+	 *	PEAP version 0, so it doesn't matter too much.
+	 *	However, if we support later versions of PEAP,
+	 *	we will need this flag to indicate which
+	 *	version we're currently dealing with.
+	 */
+	eap_tls_session->base_flags = 0x00;
+
+	/*
+	 *	PEAP version 0 requires 'include_length = no',
+	 *	so rather than hoping the user figures it out,
+	 *	we force it here.
+	 */
+	eap_tls_session->include_length = false;
+
+	/*
+	 *	TLS session initialization is over.  Now handle TLS
+	 *	related handshaking or application data.
+	 */
+	if (eap_tls_start(eap_session) < 0) {
+		talloc_free(eap_tls_session);
+		return 0;
+	}
+
+	eap_session->process = mod_process;
+
+	return 1;
+}
+
+/*
+ *	Attach the module.
+ */
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
+{
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(instance, rlm_eap_peap_t);
+	fr_dict_enum_t		*dv;
+
+	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
+		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
+	}
+
+	if (inst->soh_virtual_server) {
+		if (!cf_section_sub_find_name2(main_config.config, "server", inst->soh_virtual_server)) {
+			cf_log_err_by_name(cs, "soh_virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Read tls configuration, either from group given by 'tls'
+	 *	option, or from the eap-tls configuration.
+	 */
+	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
+	if (!inst->tls_conf) {
+		ERROR("Failed initializing SSL context");
+		return -1;
+	}
+
+	/*
+	 *	Don't expose this if we don't need it.
+	 */
+	if (!inst->inner_eap_module) inst->inner_eap_module = "eap";
+
+	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->inner_eap_module);
+	if (!dv) {
+		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  "
+		     "The server cannot proxy inner-tunnel EAP packets",
+		     inst->inner_eap_module, inst->virtual_server);
+	} else {
+		inst->auth_type_eap = dv->value;
+	}
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.
