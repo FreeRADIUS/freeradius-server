@@ -402,9 +402,6 @@ ATTRIBUTE	Inner-Realm-Name			1252	string
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
 #
-#		These are used mostly for radeapclient, and aren't
-#		that useful for anyone else.
-#
 #  egrep VALUE dictionary.freeradius.internal | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " octets"}' > foo;./format.pl foo freeradius.dictionary.internal
 #
 ATTRIBUTE	EAP-Type-Base				1280	octets

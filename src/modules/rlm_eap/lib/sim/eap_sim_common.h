@@ -20,7 +20,7 @@
  * @file rlm_eap/lib/sim/eap_sim_common.h
  * @brief Declarations for EAP-SIM
  *
- * @note These are required by rlm_eap_sim and radeapclient
+ * @note These are required by rlm_eap_sim
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  *

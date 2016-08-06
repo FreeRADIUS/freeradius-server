@@ -1,1 +1,1 @@
-SUBMAKEFILES := lib/all.mk rlm_eap.mk types/all.mk radeapclient.mk
+SUBMAKEFILES := lib/all.mk rlm_eap.mk types/all.mk

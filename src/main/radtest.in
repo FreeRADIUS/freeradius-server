@@ -28,9 +28,6 @@ then
 	radclient=./radclient
 fi
 
-# radeapclient is used for EAP-MD5.
-radeapclient=$bindir/radeapclient
-
 OPTIONS=
 PASSWORD="User-Password"
 NAS_ADDR_ATTR="NAS-IP-Address"
@@ -80,15 +77,6 @@ do
 			mschap)
 				PASSWORD="MS-CHAP-Password"
 				;;
-			eap-md5)
-				PASSWORD="User-Password"
-				if [ ! -x "$radeapclient" ]
-				then
-				    echo "radtest: No 'radeapclient' program was found.  Cannot perform EAP-MD5." >&1
-				    exit 1
-				fi
-				radclient="$radeapclient"
-				;;
 			*)
 				usage
 				;;
@@ -121,11 +109,6 @@ fi
 	echo "$NAS_ADDR_ATTR = $nas"
 	echo "NAS-Port = $4"
 	echo "Message-Authenticator = 0x00"
-	if [ "$radclient" = "$radeapclient" ]
-	then
-	    echo "EAP-Code = Response"
-	    echo "EAP-Type-Identity = \"$1\""
-	fi
 	if [ "$6" != "" -a "$6" != "0" ]
 	then
 		echo "Framed-Protocol = PPP"

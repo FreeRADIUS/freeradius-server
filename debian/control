@@ -78,7 +78,6 @@ Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
  the FreeRADIUS Server project, including:
   - radclient
-  - radeapclient
   - radlast
   - radsniff
   - radsqlrelay

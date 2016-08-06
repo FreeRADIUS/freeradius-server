@@ -170,9 +170,6 @@ EAP CLIENTS
 
    http://www.denobula.com/EAPTLS.pdf
 
-  3. Freeradius has an "radeapclient" that can do EAP-MD5 (passwords),
-     as well as EAP-SIM. It is in modules/rlm_eap/radeapclient.
-
 TESTING
 
   You will find several test cases in src/tests/ for the EAP-SIM code.
