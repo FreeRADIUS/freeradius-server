@@ -49,6 +49,8 @@ static void unlang_push(unlang_stack_t *stack, unlang_node_t *node, rlm_rcode_t 
 {
 	unlang_stack_frame_t *next;
 
+	rad_assert(node);
+
 	if (stack->depth >= UNLANG_STACK_MAX) {
 		ERROR("Internal sanity check failed: module stack is too deep");
 		fr_exit(1);
