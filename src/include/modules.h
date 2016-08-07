@@ -177,28 +177,38 @@ int virtual_servers_init(CONF_SECTION *config);
 /*
  *	In interpreter.h, but here for public consumption.
  */
-void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
-rlm_rcode_t unlang_interpret_continue(REQUEST *request);
-rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
+void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
 
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
 
+rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
 
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+
+/*
+ *	Manipulate the stack, adding conditions for resumption
+ */
 typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *, void *, void *, struct timeval *);
+
 typedef void (*fr_unlang_fd_callback_t)(REQUEST *, void *, void *, int);
 
-int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
-			     void *inst, void *ctx, struct timeval *when);
-int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-			void *inst, void *ctx, int fd);
-int unlang_event_timeout_delete(REQUEST *request, void *ctx);
-int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
-
 typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *, void *, void *);
-void unlang_resumption(REQUEST *request);
-rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ctx);
 
-int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
+int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
+					 void *inst, void *ctx, struct timeval *when);
+
+int		unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
+				    void *inst, void *ctx, int fd);
+
+int		unlang_event_timeout_delete(REQUEST *request, void *ctx);
+
+int		unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
+
+void		unlang_resumption(REQUEST *request);
+
+rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ctx);
+
+int		unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
 
 #ifdef __cplusplus
 }
