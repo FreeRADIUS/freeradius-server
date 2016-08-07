@@ -279,13 +279,14 @@ void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
 #define REDEBUG4(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 /** @} */
 
+#ifdef DEBUG_INDENT
 /** Indent R* messages by one level
  *
  * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
  *	 only RINFO, RWARN, RERROR etc...
  */
-#define RINDENT() do {\
-	RDEBUG4(">> %i at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
+#  define RINDENT() do {\
+	RDEBUG4(">> (%i) at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
 	if (request->module) {\
 		request->log.module_indent += 2;\
 	} else {\
@@ -298,14 +299,41 @@ void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
  * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
  *	 only RINFO, RWARN, RERROR etc...
  */
-#define REXDENT() do {\
+#  define REXDENT() do {\
 	if (request->module) {\
 		request->log.module_indent -= 2;\
 	} else {\
 		request->log.unlang_indent -= 2;\
 	}\
-	RDEBUG4("<< %i at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
+	RDEBUG4("<< (%i) at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
 } while(0)
+#else
+/** Indent R* messages by one level
+ *
+ * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
+ *	 only RINFO, RWARN, RERROR etc...
+ */
+#  define RINDENT() do {\
+	if (request->module) {\
+		request->log.module_indent += 2;\
+	} else {\
+		request->log.unlang_indent += 2;\
+	}\
+} while(0)
+
+/** Exdent (unindent) R* messages by one level
+ *
+ * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
+ *	 only RINFO, RWARN, RERROR etc...
+ */
+#  define REXDENT() do {\
+	if (request->module) {\
+		request->log.module_indent -= 2;\
+	} else {\
+		request->log.unlang_indent -= 2;\
+	}\
+} while(0)
+#endif
 
 /** Output string with error marker, showing where format error occurred
  *
