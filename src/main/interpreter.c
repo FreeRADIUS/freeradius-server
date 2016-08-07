@@ -819,8 +819,8 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 	return unlang_group(request, stack, presult, priority);
 }
 
-static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
-				     rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack,
+				    	 rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	unlang_node_t *c = entry->c;
@@ -944,7 +944,7 @@ unlang_op_t unlang_ops[] = {
 	},
 	[UNLANG_NODE_TYPE_RESUME] = {
 		.name = "resume",
-		.func = unlang_resume,
+		.func = unlang_resumption,
 		.children = false
 	},
 	[UNLANG_NODE_TYPE_MAX] = { NULL, NULL, false }
