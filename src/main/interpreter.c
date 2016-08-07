@@ -955,11 +955,11 @@ unlang_op_t unlang_ops[] = {
  */
 static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 {
-	unlang_node_t *c;
-	int priority;
-	rlm_rcode_t result;
-	unlang_stack_entry_t *entry;
-	unlang_action_t action = UNLANG_ACTION_BREAK;
+	unlang_node_t		*c;
+	int			priority;
+	rlm_rcode_t		result;
+	unlang_stack_entry_t	*entry;
+	unlang_action_t		action = UNLANG_ACTION_BREAK;
 
 	stack->entry[stack->depth].top_frame = true;
 
