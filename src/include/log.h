@@ -285,12 +285,12 @@ void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
  *	 only RINFO, RWARN, RERROR etc...
  */
 #define RINDENT() do {\
+	RDEBUG4(">> %i at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
 	if (request->module) {\
 		request->log.module_indent += 2;\
 	} else {\
 		request->log.unlang_indent += 2;\
 	}\
-	RDEBUG4(">> %i at %s[%u]", request->log.unlang_indent, __FILE__, __LINE__); \
 } while(0)
 
 /** Exdent (unindent) R* messages by one level
