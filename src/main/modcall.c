@@ -100,7 +100,7 @@ static void dump_mc(modcallable *c, int indent)
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
-		      unlang_keyword[c->type]);
+		      unlang_keywords[c->type].name);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	} /* else ignore it for now */
@@ -980,14 +980,14 @@ static void unlang_dump(modcallable *mc, int depth)
 		case MOD_MAP:
 			g = mod_callabletogroup(this); /* FIXMAP: print option 3, too */
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-			      unlang_keyword[this->type],
+			      unlang_keywords[this->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
 		case MOD_UPDATE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_keyword[this->type]);
+				unlang_keywords[this->type].name);
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
@@ -1001,7 +1001,7 @@ static void unlang_dump(modcallable *mc, int depth)
 		case MOD_ELSE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_keyword[this->type]);
+				unlang_keywords[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1011,7 +1011,7 @@ static void unlang_dump(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			fr_cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
-				unlang_keyword[this->type], buffer);
+				unlang_keywords[this->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1021,7 +1021,7 @@ static void unlang_dump(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_keyword[this->type], buffer);
+				unlang_keywords[this->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1030,7 +1030,7 @@ static void unlang_dump(modcallable *mc, int depth)
 		case MOD_FOREACH:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_keyword[this->type], this->name);
+				unlang_keywords[this->type].name, this->name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1043,7 +1043,7 @@ static void unlang_dump(modcallable *mc, int depth)
 		case MOD_GROUP:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-			      unlang_keyword[this->type]);
+			      unlang_keywords[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1052,7 +1052,7 @@ static void unlang_dump(modcallable *mc, int depth)
 		case MOD_REDUNDANT_LOAD_BALANCE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_keyword[this->type]);
+				unlang_keywords[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1534,8 +1534,8 @@ static modcallable *compile_update(modcallable *parent, unlang_compile_t *unlang
 		c->name = name2;
 		c->debug_name = talloc_asprintf(c, "update %s", name2);
 	} else {
-		c->name = unlang_keyword[c->type];
-		c->debug_name = unlang_keyword[c->type];
+		c->name = unlang_keywords[c->type].name;
+		c->debug_name = unlang_keywords[c->type].name;
 	}
 
 	(void) compile_action_defaults(c, unlang_ctx, GROUPTYPE_SIMPLE);
@@ -1655,7 +1655,7 @@ static modcallable *compile_empty(modcallable *parent, unlang_compile_t *unlang_
 
 	c = mod_grouptocallable(g);
 	if (!cs) {
-		c->name = unlang_keyword[c->type];
+		c->name = unlang_keywords[c->type].name;
 		c->debug_name = c->name;
 
 	} else {
@@ -1667,7 +1667,7 @@ static modcallable *compile_empty(modcallable *parent, unlang_compile_t *unlang_
 			c->debug_name = c->name;
 		} else {
 			c->name = name2;
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
 		}
 	}
 
@@ -1729,7 +1729,7 @@ static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SEC
 	 */
 	if (!((c->type == MOD_CASE) || (c->type == MOD_IF) || (c->type == MOD_ELSIF) ||
 	      (c->type == MOD_ELSE))) {
-		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_keyword[c->type]);
+		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_keywords[c->type].name);
 		return false;
 	}
 
@@ -1865,7 +1865,7 @@ static modcallable *compile_group(modcallable *parent, unlang_compile_t *unlang_
 	 *	FIXME: We may also want to put the names into a
 	 *	rbtree, so that groups can reference each other...
 	 */
-	c->name = unlang_keyword[c->type];
+	c->name = unlang_keywords[c->type].name;
 	c->debug_name = c->name;
 
 	return compile_children(g, parent, unlang_ctx, grouptype, parentgrouptype);
@@ -1954,8 +1954,8 @@ static modcallable *compile_switch(modcallable *parent, unlang_compile_t *unlang
 	}
 
 	c = mod_grouptocallable(g);
-	c->name = unlang_keyword[c->type];
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name2(cs));
+	c->name = unlang_keywords[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, cf_section_name2(cs));
 
 	/*
 	 *	Fixup the template before compiling the children.
@@ -2076,9 +2076,9 @@ static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_c
 	 */
 	c->name = name2;
 	if (!name2) {
-		c->debug_name = unlang_keyword[c->type];
+		c->debug_name = unlang_keywords[c->type].name;
 	} else {
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
 	}
 
 	g = mod_callabletogroup(c);
@@ -2167,8 +2167,8 @@ static modcallable *compile_foreach(modcallable *parent, unlang_compile_t *unlan
 		return NULL;
 	}
 
-	c->name = unlang_keyword[c->type];
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+	c->name = unlang_keywords[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
 
 	g = mod_callabletogroup(c);
 	g->vpt = vpt;
@@ -2234,7 +2234,7 @@ static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx
 	fr_cond_t *cond;
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_keyword[mod_type]);
+		cf_log_err_cs(cs, "'%s' without condition", unlang_keywords[mod_type].name);
 		return NULL;
 	}
 
@@ -2243,7 +2243,7 @@ static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx
 
 	if (cond->type == COND_TYPE_FALSE) {
 		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
-		     unlang_keyword[mod_type],
+		     unlang_keywords[mod_type].name,
 		     cf_section_filename(cs), cf_section_lineno(cs));
 		return compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
 	}
@@ -2261,8 +2261,8 @@ static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx
 	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
-	c->name = unlang_keyword[c->type];
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name2(cs));
+	c->name = unlang_keywords[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, cf_section_name2(cs));
 
 	g = mod_callabletogroup(c);
 	g->cond = cond;
@@ -2281,14 +2281,14 @@ static int previous_if(CONF_SECTION *cs, modcallable *parent, mod_type_t mod_typ
 	if ((f->mc.type != MOD_IF) && (f->mc.type != MOD_ELSIF)) {
 	else_fail:
 		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
-			      unlang_keyword[mod_type]);
+			      unlang_keywords[mod_type].name);
 		return -1;
 	}
 
 	if (f->cond->type == COND_TYPE_TRUE) {
 		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
-		     unlang_keyword[mod_type],
-		     unlang_keyword[f->mc.type],
+		     unlang_keywords[mod_type].name,
+		     unlang_keywords[f->mc.type].name,
 		     cf_section_filename(cs), cf_section_lineno(cs));
 		return 0;
 	}
@@ -2305,7 +2305,7 @@ static modcallable *compile_elsif(modcallable *parent, unlang_compile_t *unlang_
 	 *	This is always a syntax error.
 	 */
 	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_keyword[mod_type]);
+		cf_log_err_cs(cs, "'%s' without condition", unlang_keywords[mod_type].name);
 		return NULL;
 	}
 
@@ -2325,7 +2325,7 @@ static modcallable *compile_else(modcallable *parent,
 	modcallable *c;
 
 	if (cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_keyword[mod_type]);
+		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_keywords[mod_type].name);
 		return NULL;
 	}
 
@@ -2340,7 +2340,7 @@ static modcallable *compile_else(modcallable *parent,
 
 	if (!c) return c;
 
-	c->name = unlang_keyword[c->type];
+	c->name = unlang_keywords[c->type].name;
 	c->debug_name = c->name;
 
 	return c;
@@ -2405,7 +2405,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 	 *	No children?  Die!
 	 */
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keyword[mod_type]);
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keywords[mod_type].name);
 		return NULL;
 	}
 
@@ -2460,7 +2460,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 			return NULL;
 		}
 
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
 		rad_assert(g->vpt != NULL);
 
 		/*
@@ -2490,7 +2490,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 		c->debug_name = c->name;
 	}
 
-	c->name = unlang_keyword[c->type];
+	c->name = unlang_keywords[c->type].name;
 
 	return c;
 }
@@ -2506,19 +2506,19 @@ static modcallable *compile_parallel(modcallable *parent, unlang_compile_t *unla
 	 *	No children?  Die!
 	 */
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keyword[mod_type]);
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keywords[mod_type].name);
 		return NULL;
 	}
 
 	if (cf_section_name2(cs) != NULL) {
-		cf_log_err_cs(cs, "%s sections cannot have an argument", unlang_keyword[mod_type]);
+		cf_log_err_cs(cs, "%s sections cannot have an argument", unlang_keywords[mod_type].name);
 		return NULL;
 	}
 
 	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
 	if (!c) return NULL;
 
-	c->name = c->debug_name = unlang_keyword[c->type];
+	c->name = c->debug_name = unlang_keywords[c->type].name;
 
 	/*
 	 *	Check that all children are of the new type.
@@ -2529,13 +2529,13 @@ static modcallable *compile_parallel(modcallable *parent, unlang_compile_t *unla
 		modsingle *single;
 
 		if (child->type != MOD_SINGLE) {
-			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_keyword[mod_type], child->debug_name);
+			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_keywords[mod_type].name, child->debug_name);
 			return NULL;
 		}
 
 		single = mod_callabletosingle(child);
 		if ((single->modinst->module->type & RLM_TYPE_RESUMABLE) == 0) {
-			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_keyword[mod_type], child->debug_name);
+			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_keywords[mod_type].name, child->debug_name);
 			return NULL;
 		}
 	}

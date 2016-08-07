@@ -27,31 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
-char const *unlang_keyword[] = {
-	"",
-	"single",
-	"group",
-	"load-balance group",
-	"redundant-load-balance group",
-	"parallel",
-#ifdef WITH_UNLANG
-	"if",
-	"else",
-	"elsif",
-	"update",
-	"switch",
-	"case",
-	"foreach",
-	"break",
-	"return",
-	"map",
-#endif
-	"policy",
-	"reference",
-	"xlat",
-	NULL
-};
-
 /*
  *	Lock the mutex for the module
  */
@@ -69,18 +44,6 @@ static void safe_unlock(module_instance_t *instance)
 	if (instance->mutex)
 		pthread_mutex_unlock(instance->mutex);
 }
-
-typedef enum unlang_action_t {
-	UNLANG_CALCULATE_RESULT = 1,
-	UNLANG_CONTINUE,
-	UNLANG_PUSHED_CHILD,
-	UNLANG_BREAK,
-	UNLANG_STOP_PROCESSING
-} unlang_action_t;
-
-
-typedef unlang_action_t (*unlang_function_t)(REQUEST *request, unlang_stack_t *stack,
-						      rlm_rcode_t *presult, int *priority);
 
 static void unlang_push(unlang_stack_t *stack, modcallable *c, rlm_rcode_t result, bool do_next_sibling)
 {
@@ -350,7 +313,7 @@ static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
 	modcallable *c = entry->c;
 
-	RDEBUG2("%s", unlang_keyword[c->type]);
+	RDEBUG2("%s", unlang_keywords[c->type].name);
 
 	for (i = 8; i >= 0; i--) {
 		copy_p = request_data_get(request, (void *)radius_get_vp, i);
@@ -820,7 +783,7 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (entry->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_keyword[c->type], request->number);
+			unlang_keywords[c->type].name, request->number);
 		entry->if_taken = true;
 		return UNLANG_CONTINUE;
 	}
@@ -840,7 +803,7 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 
 	if (entry->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_keyword[c->type], request->number);
+			unlang_keywords[c->type].name, request->number);
 		entry->was_if = false;
 		entry->if_taken = false;
 
@@ -893,54 +856,101 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 #define unlang_policy unlang_group
 #define unlang_break unlang_return
 
-/*
- *	The jump table for the interpretor
- */
-static unlang_function_t unlang_functions[] = {
-	[MOD_SINGLE]			= unlang_single,
-	[MOD_GROUP]			= unlang_group,
-	[MOD_LOAD_BALANCE]		= unlang_load_balance,
-	[MOD_REDUNDANT_LOAD_BALANCE]	= unlang_redundant_load_balance,
-	[MOD_PARALLEL]			= unlang_parallel,
+unlang_keyword_t unlang_keywords[] = {
+	[MOD_SINGLE] = {
+		.name = "single",
+		.func = unlang_single,
+		.children = false
+	},
+	[MOD_GROUP] = {
+		.name = "group",
+		.func = unlang_group,
+		.children = true
+	},
+	[MOD_LOAD_BALANCE] = {
+		.name = "load-balance group",
+		.func = unlang_load_balance,
+		.children = true
+	},
+	[MOD_REDUNDANT_LOAD_BALANCE] = {
+		.name = "redundant-load-balance group",
+		.func = unlang_redundant_load_balance,
+		.children = true
+	},
+	[MOD_PARALLEL] = {
+		.name = "parallel",
+		.func = unlang_parallel,
+		.children = true
+	},
 #ifdef WITH_UNLANG
-	[MOD_IF]			= unlang_if,
-	[MOD_ELSE]			= unlang_else,
-	[MOD_ELSIF]			= unlang_elsif,
-	[MOD_UPDATE]			= unlang_update,
-	[MOD_SWITCH]			= unlang_switch,
-	[MOD_CASE]			= unlang_case,
-	[MOD_FOREACH]			= unlang_foreach,
-	[MOD_BREAK]			= unlang_break,
-	[MOD_RETURN]			= unlang_return,
-	[MOD_MAP]			= unlang_map,
+	[MOD_IF] = {
+		.name = "if",
+		.func = unlang_if,
+		.children = true
+	},
+	[MOD_ELSE] = {
+		.name = "else",
+		.func = unlang_else,
+		.children = true
+	},
+	[MOD_ELSIF] = {
+		.name = "elsif",
+		.func = unlang_elsif,
+		.children = true
+	},
+	[MOD_UPDATE] = {
+		.name = "update",
+		.func = unlang_update,
+		.children = true
+	},
+	[MOD_SWITCH] = {
+		.name = "switch",
+		.func = unlang_switch,
+		.children = true
+	},
+	[MOD_CASE] = {
+		.name = "case",
+		.func = unlang_case,
+		.children = true
+	},
+	[MOD_FOREACH] = {
+		.name = "foreach",
+		.func = unlang_foreach,
+		.children = true
+	},
+	[MOD_BREAK] = {
+		.name = "break",
+		.func = unlang_break,
+		.children = false
+	},
+	[MOD_RETURN] = {
+		.name = "return",
+		.func = unlang_return,
+		.children = false
+	},
+	[MOD_MAP] = {
+		.name = "map",
+		.func = unlang_map,
+		.children = true
+	},
+	[MOD_POLICY] = {
+		.name = "policy",
+		.func = unlang_policy,
+		.children = true
+	},
 #endif
-	[MOD_POLICY]			= unlang_policy,
-	[MOD_XLAT]			= unlang_xlat,
-	[MOD_RESUME]			= unlang_resume,
+	[MOD_XLAT] = {
+		.name = "xlat",
+		.func = unlang_xlat,
+		.children = false
+	},
+	[MOD_RESUME] = {
+		.name = "resume",
+		.func = unlang_resume,
+		.children = false
+	},
+	[MOD_MAX] = { NULL, NULL, false }
 };
-
-static bool unlang_brace[MOD_NUM_TYPES] = {
-	[MOD_SINGLE]			= false,
-	[MOD_GROUP]			= true,
-	[MOD_LOAD_BALANCE]		= true,
-	[MOD_REDUNDANT_LOAD_BALANCE]	= true,
-	[MOD_PARALLEL]			= true,
-#ifdef WITH_UNLANG
-	[MOD_IF]			= true,
-	[MOD_ELSE]			= true,
-	[MOD_ELSIF]			= true,
-	[MOD_UPDATE]			= true,
-	[MOD_SWITCH]			= true,
-	[MOD_CASE]			= false,
-	[MOD_FOREACH]			= true,
-	[MOD_BREAK]			= false,
-	[MOD_RETURN]			= false,
-	[MOD_MAP]			= true,
-#endif
-	[MOD_POLICY]			= true,
-	[MOD_XLAT]			= false,
-};
-
 
 /*
  *	Interpret the various types of blocks.
@@ -987,9 +997,9 @@ redo:
 			break;
 		}
 
-		if (unlang_brace[c->type]) RDEBUG2("%s {", c->debug_name);
+		if (unlang_keywords[c->type].children) RDEBUG2("%s {", c->debug_name);
 
-		action = unlang_functions[c->type](request, stack, &result, &priority);
+		action = unlang_keywords[c->type].func(request, stack, &result, &priority);
 		switch (action) {
 		case UNLANG_STOP_PROCESSING:
 			goto do_stop;
@@ -1012,8 +1022,10 @@ redo:
 			rad_assert(c != NULL);
 
 			if (entry->top_frame) {
-				if (unlang_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
-								   fr_int2str(mod_rcode_table, result, "<invalid>"));
+				if (unlang_keywords[c->type].children) {
+					RDEBUG2("} # %s (%s)", c->debug_name,
+						fr_int2str(mod_rcode_table, result, "<invalid>"));
+				}
 				return result;
 			}
 
@@ -1033,8 +1045,10 @@ redo:
 			}
 
 			entry->resume = false;
-			if (unlang_brace[c->type]) RDEBUG2("} # %s (%s)", c->debug_name,
-							    fr_int2str(mod_rcode_table, result, "<invalid>"));
+			if (unlang_keywords[c->type].children) {
+				RDEBUG2("} # %s (%s)", c->debug_name,
+					fr_int2str(mod_rcode_table, result, "<invalid>"));
+			}
 			action = UNLANG_CALCULATE_RESULT;
 
 #if 0
@@ -1077,6 +1091,8 @@ redo:
 			 *	return code and priority.
 			 */
 			if (priority > entry->priority) {
+				RDEBUG2("Setting section code (%s)",
+					fr_int2str(mod_rcode_table, result, "<invalid>"));
 				entry->result = result;
 				entry->priority = priority;
 			}
@@ -1090,7 +1106,7 @@ redo:
 			/* FALL-THROUGH */
 
 		case UNLANG_CONTINUE:
-			if ((action == UNLANG_CONTINUE) && unlang_brace[c->type]) RDEBUG2("}");
+			if ((action == UNLANG_CONTINUE) && unlang_keywords[c->type].children) RDEBUG2("}");
 
 			if (!entry->do_next_sibling) goto done;
 

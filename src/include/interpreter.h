@@ -31,6 +31,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define UNLANG_STACK_MAX (64)
+
 /* Actions may be a positive integer (the highest one returned in the group
  * will be returned), or the keyword "return", represented here by
  * MOD_ACTION_RETURN, to cause an immediate return.
@@ -67,9 +70,16 @@ typedef enum {
 	MOD_POLICY,			//!< Policy section.
 	MOD_XLAT,			//!< Bare xlat statement.
 	MOD_RESUME,			//!< where to resume something
+	MOD_MAX
 } mod_type_t;
 
-#define MOD_NUM_TYPES (MOD_XLAT + 1)
+typedef enum unlang_action_t {
+	UNLANG_CALCULATE_RESULT = 1,
+	UNLANG_CONTINUE,
+	UNLANG_PUSHED_CHILD,
+	UNLANG_BREAK,
+	UNLANG_STOP_PROCESSING
+} unlang_action_t;
 
 typedef struct modcallable {
 	struct modcallable	*parent;
@@ -80,6 +90,17 @@ typedef struct modcallable {
 	int			actions[RLM_MODULE_NUMCODES];
 } modcallable;
 
+typedef struct unlang_foreach_t {
+	vp_cursor_t cursor;
+	VALUE_PAIR *vps;
+	VALUE_PAIR *variable;
+	int depth;
+} unlang_foreach_t;
+
+typedef struct unlang_redundant_t {
+	modcallable *child;
+	modcallable *found;
+} unlang_redundant_t;
 
 typedef enum {
 	GROUPTYPE_SIMPLE = 0,
@@ -124,7 +145,48 @@ typedef struct {
 	void *ctx;
 } modresume;
 
-extern char const *unlang_keyword[];
+/*
+ *	Don't call the modules recursively.  Instead, do them
+ *	iteratively, and manage the call stack ourselves.
+ */
+typedef struct unlang_stack_entry_t {
+	rlm_rcode_t	result;
+	int		priority;
+	mod_type_t	unwind;		/* unwind to this one if it exists */
+	bool		do_next_sibling;
+	bool		was_if;
+	bool		if_taken;
+	bool		resume;
+	bool		top_frame;
+	modcallable	*c;
+
+	union {
+		unlang_foreach_t foreach;
+		unlang_redundant_t redundant;
+	};
+} unlang_stack_entry_t;
+
+typedef struct unlang_stack_t {
+	int depth;
+	unlang_stack_entry_t entry[UNLANG_STACK_MAX];
+} unlang_stack_t;
+
+typedef unlang_action_t (*unlang_function_t)(REQUEST *request, unlang_stack_t *stack,
+					     rlm_rcode_t *presult, int *priority);
+
+/** An unlang keyword
+ *
+ * These define the base functionality of unlang.
+ */
+typedef struct unlang_keyword {
+	char const		*name;		//!< Name of the keyword.
+	unlang_function_t	func;		//!< Function to execute.
+	bool			children;	//!< Whether the keyword can contain children.
+} unlang_keyword_t;
+
+extern unlang_keyword_t unlang_keywords[];
+
+#define MOD_NUM_TYPES (MOD_XLAT + 1)
 
 extern char const *const comp2str[];
 
@@ -168,46 +230,6 @@ static inline modcallable *mod_resumetocallable(modresume *p)
 {
 	return (modcallable *)p;
 }
-
-#define UNLANG_STACK_MAX (64)
-
-typedef struct unlang_foreach_t {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vps;
-	VALUE_PAIR *variable;
-	int depth;
-} unlang_foreach_t;
-
-typedef struct unlang_redundant_t {
-	modcallable *child;
-	modcallable *found;
-} unlang_redundant_t;
-
-/*
- *	Don't call the modules recursively.  Instead, do them
- *	iteratively, and manage the call stack ourselves.
- */
-typedef struct unlang_stack_entry_t {
-	rlm_rcode_t result;
-	int priority;
-	mod_type_t unwind;		/* unwind to this one if it exists */
-	bool do_next_sibling;
-	bool was_if;
-	bool if_taken;
-	bool resume;
-	bool top_frame;
-	modcallable *c;
-
-	union {
-		unlang_foreach_t foreach;
-		unlang_redundant_t redundant;
-	};
-} unlang_stack_entry_t;
-
-typedef struct unlang_stack_t {
-	int depth;
-	unlang_stack_entry_t entry[UNLANG_STACK_MAX];
-} unlang_stack_t;
 
 #ifdef __cplusplus
 }
