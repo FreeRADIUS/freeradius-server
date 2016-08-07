@@ -997,9 +997,9 @@ redo:
 		case UNLANG_PUSHED_CHILD:
 			goto redo;
 
-		 case UNLANG_BREAK:
-			 entry->result = result;
-			 goto done;
+		case UNLANG_BREAK:
+			entry->result = result;
+			goto done;
 
 		do_pop:
 			unlang_pop(stack);
