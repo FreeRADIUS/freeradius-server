@@ -670,9 +670,8 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	RDEBUG3("unlang_node_module_call_t[%s]: calling %s (%s) for request %" PRIu64,
-		sp->name, sp->modinst->name,
-		sp->modinst->module->name, request->number);
+	RDEBUG3("Calling %s (%s) for request %" PRIu64,
+		sp->modinst->name, sp->modinst->module->name, request->number);
 
 	if (sp->modinst->force) {
 		request->rcode = sp->modinst->code;
@@ -685,7 +684,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	request->module = sp->modinst->name;
 
 	safe_lock(sp->modinst);
-	request->rcode = sp->method(sp->inst, request);
+	request->rcode = sp->method(sp->modinst->data, request);
 	safe_unlock(sp->modinst);
 
 	request->module = NULL;
@@ -710,9 +709,8 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 #endif
 
 fail:
-	RDEBUG3("unlang_node_module_call_t[%s]: returned from %s (%s) for request %" PRIu64,
-		sp->name, sp->modinst->name,
-		sp->modinst->module->name, request->number);
+	RDEBUG3("Returned from %s (%s) for request %" PRIu64,
+		sp->modinst->name, sp->modinst->module->name, request->number);
 
 	*presult = request->rcode;
 	*priority = c->actions[*presult];
@@ -831,8 +829,8 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 
 	sp = &mr->module;
 
-	RDEBUG3("unlang_node_module_call_t[%s]: Resuming %s (%s) for request %" PRIu64,
-		sp->name, sp->modinst->name,
+	RDEBUG3("Resuming %s (%s) for request %" PRIu64,
+		sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
 	safe_lock(sp->modinst);

@@ -2651,8 +2651,6 @@ static unlang_node_t *compile_module(unlang_node_t *parent, unlang_compile_t *un
 
 	single = talloc_zero(parent, unlang_node_module_call_t);
 	single->modinst = this;
-	single->name = unlang_ctx->name;
-	single->inst = this->data;
 	single->method = this->module->methods[unlang_ctx->component];
 
 	c = unlang_node_module_call_to_node(single);

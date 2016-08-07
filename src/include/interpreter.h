@@ -141,8 +141,6 @@ typedef struct {
 typedef struct {
 	unlang_node_t		node;		//!< Self.
 	module_instance_t	*modinst;	//!< Instance of the module we're calling.
-	char const		*name;
-	void			*inst;
 	module_method_t		method;
 } unlang_node_module_call_t;
 
