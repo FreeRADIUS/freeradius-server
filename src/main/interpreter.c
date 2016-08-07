@@ -1080,10 +1080,10 @@ redo:
 
 			RDEBUG4("[%i] %s - rcode %s (%d) vs rcode' %s (%d)",
 				stack->depth, __FUNCTION__,
-			        fr_int2str(mod_rcode_table, result, "<invalid>"),
-			        priority,
 			        fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
-			        frame->priority);
+			        frame->priority,
+			        fr_int2str(mod_rcode_table, result, "<invalid>"),
+			        priority);
 
 			rad_assert(result != RLM_MODULE_UNKNOWN);
 
