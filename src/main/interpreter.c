@@ -974,7 +974,7 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	 *	Our entry point *MUST* be a frame where we previously
 	 *	yielded, or a new substack.
 	 */
-	rad_assert(frame->top_frame || frame->resume);
+	if (!rad_cond_assert(frame->top_frame || frame->resume)) return RLM_MODULE_FAIL;
 
 	RDEBUG4("[%i] %s - entered", stack->depth, __FUNCTION__);
 
