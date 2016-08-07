@@ -834,7 +834,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 		sp->modinst->module->name, request->number);
 
 	safe_lock(sp->modinst);
-	*presult = mr->callback(request, mr->inst, mr->ctx);
+	*presult = mr->callback(request, mr->module.modinst->data, mr->ctx);
 	safe_unlock(sp->modinst);
 
 	RDEBUG2("%s (%s)", c->name ? c->name : "",
@@ -1290,7 +1290,7 @@ void unlang_resumption(REQUEST *request)
 	fr_heap_insert(request->backlog, request);
 }
 
-rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *inst, void *ctx)
+rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ctx)
 {
 	unlang_stack_entry_t *entry;
 	unlang_stack_t *stack = request->stack;
@@ -1309,8 +1309,6 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *in
 
 	mr->module.node.type = UNLANG_NODE_TYPE_RESUME;
 	mr->callback = callback;
-	rad_assert(mr->module.modinst->data == inst);
-	mr->inst = inst;
 	mr->ctx = ctx;
 
 	entry->c = unlang_node_resumption_to_node(mr);

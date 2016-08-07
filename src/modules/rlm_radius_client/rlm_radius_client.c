@@ -209,7 +209,7 @@ static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
 	}
 
 	if (rcode == RLM_MODULE_YIELD) {
-		return unlang_yield(child, mod_resume_recv, inst, ccr);
+		return unlang_yield(child, mod_resume_recv, ccr);
 	}
 
 	rcode = ccr->rcode;
@@ -402,7 +402,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 
 	unlang_event_timeout_add(request, mod_event_timeout, inst, ccr, &timeout);
 
-	return unlang_yield(request, mod_resume_continue, inst, ccr);
+	return unlang_yield(request, mod_resume_continue, ccr);
 }
 
 static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
@@ -422,7 +422,7 @@ static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
 	}
 
 	if (rcode == RLM_MODULE_YIELD) {
-		return unlang_yield(child, mod_resume_send, inst, ccr);
+		return unlang_yield(child, mod_resume_send, ccr);
 	}
 
 	return mod_wait_for_reply(request, inst, ccr);

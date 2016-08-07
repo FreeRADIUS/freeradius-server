@@ -164,7 +164,6 @@ typedef struct {
 	unlang_node_module_call_t module;	//!< Module call that returned #RLM_MODULE_YIELD.
 	fr_unlang_resume_t	callback;	//!< Function the yielding module indicated should
 						//!< be called when the request could be resumed.
-	void			*inst;		//!< Unknown...
 	void			*ctx;		//!< Context data for the callback.  Usually represents
 						//!< the module's internal state at the time of yielding.
 } unlang_node_resumption_t;
