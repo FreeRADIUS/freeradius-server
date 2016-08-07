@@ -1285,7 +1285,7 @@ int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
  *  It's not called "unlang_resume", because it doesn't actually
  *  resume the request, it just schedules it for resumption.
  */
-void unlang_resumption(REQUEST *request)
+void unlang_resume(REQUEST *request)
 {
 	fr_heap_insert(request->backlog, request);
 }
