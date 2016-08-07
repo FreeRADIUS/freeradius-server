@@ -681,8 +681,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	RDEBUG3("Calling %s (%s) for request %" PRIu64,
-		sp->modinst->name, sp->modinst->module->name, request->number);
+	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__, sp->modinst->name, sp->modinst->module->name);
 
 	if (sp->modinst->force) {
 		request->rcode = sp->modinst->code;
@@ -720,9 +719,6 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 #endif
 
 fail:
-	RDEBUG3("Returned from %s (%s) for request %" PRIu64,
-		sp->modinst->name, sp->modinst->module->name, request->number);
-
 	*presult = request->rcode;
 	*priority = node->actions[*presult];
 
@@ -1082,13 +1078,12 @@ redo:
 			}
 			action = UNLANG_ACTION_CALCULATE_RESULT;
 
-#if 0
-			RDEBUG("(%s, %d) ? (%s, %d)",
-			       fr_int2str(mod_rcode_table, result, "<invalid>"),
-			       priority,
-			       fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
-			       frame->priority);
-#endif
+			RDEBUG4("[%i] %s - rcode %s (%d) vs rcode' %s (%d)",
+				stack->depth, __FUNCTION__,
+			        fr_int2str(mod_rcode_table, result, "<invalid>"),
+			        priority,
+			        fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+			        frame->priority);
 
 			rad_assert(result != RLM_MODULE_UNKNOWN);
 
