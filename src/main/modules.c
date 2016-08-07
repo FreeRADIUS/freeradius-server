@@ -1466,14 +1466,14 @@ static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *requ
 		if (!dv) return RLM_MODULE_FAIL;
 
 		subcs = cf_section_sub_find_name2(cs, da->name, dv->name);
-		if (subcs) {
-			RDEBUG("Running %s %s from file %s",
-			       da->name, dv->name, cf_section_filename(subcs));
-		} else {
+		if (!subcs) {
 			RDEBUG2("%s %s sub-section not found.  Using default return values.",
 				da->name, dv->name);
+			return default_component_results[comp];
 		}
 
+		RDEBUG("Running %s %s from file %s",
+		       da->name, dv->name, cf_section_filename(subcs));
 		cs = subcs;
 	}
 
