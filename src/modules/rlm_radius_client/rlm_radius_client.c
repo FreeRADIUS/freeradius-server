@@ -194,12 +194,12 @@ static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx
 
 static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
 {
-	rlm_rcode_t rcode;
-	rlm_radius_client_instance_t *inst = instance;
-	rlm_radius_client_request_t *ccr = ctx;
-	REQUEST *child = ccr->child;
+	rlm_rcode_t			rcode;
+	rlm_radius_client_instance_t	*inst = instance;
+	rlm_radius_client_request_t	*ccr = ctx;
+	REQUEST				*child = ccr->child;
 
-	rad_assert(inst == ccr->inst);
+	if (!rad_cond_assert(inst == ccr->inst)) return RLM_MODULE_FAIL;
 
 	rcode = unlang_interpret_continue(child);
 
