@@ -27,6 +27,15 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
+static FR_NAME_NUMBER unlang_action_table[] = {
+	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
+	{ "continue",		UNLANG_ACTION_CONTINUE },
+	{ "pushed-child",	UNLANG_ACTION_PUSHED_CHILD },
+	{ "break", 		UNLANG_ACTION_BREAK },
+	{ "stop",		UNLANG_ACTION_STOP_PROCESSING },
+	{ NULL, -1 }
+};
+
 /*
  *	Lock the mutex for the module
  */
@@ -970,6 +979,9 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	 *	yielded, or a new substack.
 	 */
 	rad_assert(frame->top_frame || frame->resume);
+
+	RDEBUG4("[%i] %s - entered", stack->depth, __FUNCTION__);
+
 redo:
 	result = RLM_MODULE_UNKNOWN;
 	priority = -1;
@@ -1005,12 +1017,21 @@ redo:
 			RINDENT();
 		}
 
+		/*
+		 *	Execute an operation
+		 */
+		RDEBUG4("[%i] %s >> %s", stack->depth, __FUNCTION__,
+			unlang_ops[node->type].name);
 		action = unlang_ops[node->type].func(request, stack, &result, &priority);
+		RDEBUG4("[%i] %s << %s", stack->depth, __FUNCTION__,
+			fr_int2str(unlang_action_table, action, "<INVALID>"));
+
 		switch (action) {
 		case UNLANG_ACTION_STOP_PROCESSING:
 			goto do_stop;
 
 		case UNLANG_ACTION_PUSHED_CHILD:
+			rad_assert(&stack->frame[stack->depth] > frame);
 			goto redo;
 
 		case UNLANG_ACTION_BREAK:
@@ -1033,6 +1054,7 @@ redo:
 					RDEBUG2("} # %s (%s)", node->debug_name,
 						fr_int2str(mod_rcode_table, result, "<invalid>"));
 				}
+				RDEBUG4("[%i] %s - exited (done)", stack->depth, __FUNCTION__);
 				return result;
 			}
 
@@ -1048,6 +1070,7 @@ redo:
 			if (result == RLM_MODULE_YIELD) {
 				rad_assert(frame->node->type == UNLANG_NODE_TYPE_RESUME);
 				rad_assert(frame->resume == false);
+				RDEBUG4("[%i] %s - exited (yield)", stack->depth, __FUNCTION__);
 				return RLM_MODULE_YIELD;
 			}
 
