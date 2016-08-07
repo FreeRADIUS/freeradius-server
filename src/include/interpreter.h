@@ -217,20 +217,20 @@ typedef struct {
 	bool			if_taken;
 	bool			resume;
 	bool			top_frame;
-	unlang_node_t		*c;
+	unlang_node_t		*node;
 
 	union {
 		unlang_stack_entry_foreach_t	foreach;
 		unlang_stack_entry_redundant_t	redundant;
 	};
-} unlang_stack_entry_t;
+} unlang_stack_frame_t;
 
 /** An unlang stack associated with a request
  *
  */
 typedef struct {
 	int			depth;		//!< Current depth we're executing at.
-	unlang_stack_entry_t	entry[UNLANG_STACK_MAX];	//!< The stack...
+	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 
 typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request, unlang_stack_t *stack,
