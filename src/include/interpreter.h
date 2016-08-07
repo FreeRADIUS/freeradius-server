@@ -103,7 +103,7 @@ typedef enum {
  * The #unlang_node_t struct is listed first in the specialisation so that we can cast between
  * parent/child classes without knowledge of the layout of the structures.
  *
- * The specialisations of the nodes describe the action to be performed.
+ * The specialisations of the nodes describe additional details of the operation to be performed.
  */
 typedef struct unlang_node_t {
 	struct unlang_node_t	*parent;	//!< Previous node.
