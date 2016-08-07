@@ -963,8 +963,13 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	unlang_stack_frame_t	*frame;
 	unlang_action_t		action = UNLANG_ACTION_BREAK;
 
-	stack->frame[stack->depth].top_frame = true;
+	frame = &stack->frame[stack->depth];
 
+	/*
+	 *	Our entry point *MUST* be a frame where we previously
+	 *	yielded, or a new substack.
+	 */
+	rad_assert(frame->top_frame || frame->resume);
 redo:
 	result = RLM_MODULE_UNKNOWN;
 	priority = -1;
@@ -1136,11 +1141,26 @@ done:
  */
 void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	unlang_node_t *c = NULL;
+	unlang_node_t *node = NULL;
+	unlang_stack_t *stack = request->stack;
 
-	if (cs) c = cf_data_find(cs, "unlang");
+	/*
+	 *	Interpretable unlang node graphs are stored as CONF_DATA
+	 *	associated with sections.
+	 */
+	if (cs) node = cf_data_find(cs, "unlang");
+	unlang_push(stack, node, action, true);
 
-	unlang_push(request->stack, c, action, true);
+	RDEBUG4("[%i] %s - substack begins", stack->depth, __FUNCTION__);
+
+	/*
+	 *	Mark our entry point into the stack.  This ensures
+	 *	We don't ever rewind past our first frame.
+	 *
+	 *	This allows multiple calls to unlang_run, dividing the
+	 *	stack into segments.
+	 */
+	stack->frame[stack->depth].top_frame = true;
 }
 
 /** Continue interpreting after a previous push or yield.
@@ -1158,13 +1178,27 @@ rlm_rcode_t unlang_interpret_continue(REQUEST *request)
  */
 rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	unlang_push_section(request, cs, action);
-
+	rlm_rcode_t	rcode;
+	unlang_stack_t	*stack = request->stack;
 
 	/*
-	 *	Call the main handler.
+	 *	This pushes a new frame onto the stack, which is the
+	 *	start of a new unlang section...
 	 */
-	return unlang_run(request, request->stack);
+	unlang_push_section(request, cs, action);
+
+	rcode = unlang_run(request, stack);
+	if (rcode != RLM_MODULE_YIELD) {
+		rad_assert(stack->frame[stack->depth].top_frame);
+		rad_assert(stack->frame[stack->depth].node->type == UNLANG_NODE_TYPE_GROUP); /* sections are groups */
+		rad_assert(stack->depth > 0);
+		/*
+		 *	...and must now be popped if we're not yielding.
+		 */
+		stack->depth--;
+	}
+
+	return rcode;
 }
 
 /*
