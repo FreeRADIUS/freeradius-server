@@ -1122,10 +1122,8 @@ redo:
 			 *	return code and priority.
 			 */
 			if (priority > frame->priority) {
-				RDEBUG2("Setting section code (%s)",
-					fr_int2str(mod_rcode_table, result, "<invalid>"));
-				frame->result = result;
 				frame->priority = priority;
+				frame->result = result;
 			}
 
 			/*
