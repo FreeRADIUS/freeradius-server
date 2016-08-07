@@ -177,7 +177,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	RDEBUG("Resuming request");
 
 	ccr->rcode = RLM_MODULE_OK;
-	unlang_resume(ccr->request);
+	unlang_resumable(ccr->request);
 }
 
 static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx, UNUSED struct timeval *now)
@@ -188,7 +188,7 @@ static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx
 
 	mod_cleanup(request, ccr);
 
-	unlang_resume(request);
+	unlang_resumable(request);
 }
 
 

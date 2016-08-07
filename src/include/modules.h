@@ -204,7 +204,7 @@ int		unlang_event_timeout_delete(REQUEST *request, void *ctx);
 
 int		unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
 
-void		unlang_resume(REQUEST *request);
+void		unlang_resumable(REQUEST *request);
 
 rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ctx);
 
