@@ -184,10 +184,10 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Don't allow modules to use reserved words.
 	 */
-	for (i = 1; unlang_keywords[i].name != NULL; i++) {
-		if (strcmp(instance_name, unlang_keywords[i].name) == 0) {
+	for (i = 1; unlang_ops[i].name != NULL; i++) {
+		if (strcmp(instance_name, unlang_ops[i].name) == 0) {
 			ERROR("Module names cannot use a reserved word \"%s\"",
-			      unlang_keywords[i].name);
+			      unlang_ops[i].name);
 			return NULL;
 		}
 	}
@@ -894,8 +894,8 @@ static bool is_reserved_word(const char *name)
 
 	if (!name || !*name) return false;
 
-	for (i = 1; unlang_keywords[i].name != NULL; i++) {
-		if (strcmp(name, unlang_keywords[i].name) == 0) return true;
+	for (i = 1; unlang_ops[i].name != NULL; i++) {
+		if (strcmp(name, unlang_ops[i].name) == 0) return true;
 	}
 
 	return false;

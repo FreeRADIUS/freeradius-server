@@ -195,7 +195,7 @@ int unlang_event_timeout_delete(REQUEST *request, void *ctx);
 int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
 
 typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *, void *, void *);
-void unlang_resumable(REQUEST *request);
+void unlang_resumption(REQUEST *request);
 rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *inst, void *ctx);
 
 int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);

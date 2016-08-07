@@ -62,7 +62,7 @@ char const * const comp2str[] = {
 #endif
 };
 
-typedef int const unlang_action_table_t[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES];
+typedef int const unlang_action_table_t[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES];
 
 typedef struct unlang_compile_t {
 	rlm_components_t	component;
@@ -88,19 +88,19 @@ static char const *action2str(int action)
 /* If you suspect a bug in the parser, you'll want to use these dump
  * functions. dump_tree should reproduce a whole tree exactly as it was found
  * in radiusd.conf, but in long form (all actions explicitly defined) */
-static void dump_mc(modcallable *c, int indent)
+static void dump_mc(unlang_node_t *c, int indent)
 {
 	int i;
 
-	if(c->type==MOD_SINGLE) {
-		modsingle *single = mod_callabletosingle(c);
+	if(c->type==UNLANG_NODE_TYPE_MODULE_CALL) {
+		unlang_node_module_call_t *single = unlang_node_to_module_call(c);
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
-	} else if ((c->type > MOD_SINGLE) && (c->type <= MOD_POLICY)) {
-		modgroup *g = mod_callabletogroup(c);
-		modcallable *p;
+	} else if ((c->type > UNLANG_NODE_TYPE_MODULE_CALL) && (c->type <= UNLANG_NODE_TYPE_POLICY)) {
+		unlang_node_group_t *g = unlang_node_group_to_module_call(c);
+		unlang_node_t *p;
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
-		      unlang_keywords[c->type].name);
+		      unlang_ops[c->type].name);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	} /* else ignore it for now */
@@ -114,7 +114,7 @@ static void dump_mc(modcallable *c, int indent)
 	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
-static void dump_tree(modcallable *c, char const *name)
+static void dump_tree(unlang_node_t *c, char const *name)
 {
 	DEBUG("[%s]", name);
 	dump_mc(c, 0);
@@ -127,7 +127,7 @@ static void dump_tree(modcallable *c, char const *name)
  * behaves like the code from the old module_*() function. redundant{}
  * are based on my guesses of what they will be used for. --Pac. */
 static const int
-defaultactions[MOD_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
+defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 {
 	/* authenticate */
 	{
@@ -404,7 +404,7 @@ defaultactions[MOD_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 #endif
 };
 
-static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
+static const int authtype_actions[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 {
 	/* group */
 	{
@@ -908,7 +908,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 /*
  *	Compile the RHS of update sections to xlat_exp_t
  */
-static bool pass2_fixup_update(modgroup *g)
+static bool pass2_fixup_update(unlang_node_group_t *g)
 {
 	vp_map_t *map;
 
@@ -945,7 +945,7 @@ static bool pass2_fixup_update(modgroup *g)
 /*
  *	Compile the RHS of map sections to xlat_exp_t
  */
-static bool pass2_fixup_map(modgroup *g)
+static bool pass2_fixup_map(unlang_node_group_t *g)
 {
 	/*
 	 *	Compile the map
@@ -956,10 +956,10 @@ static bool pass2_fixup_map(modgroup *g)
 }
 #endif
 
-static void unlang_dump(modcallable *mc, int depth)
+static void unlang_dump(unlang_node_t *mc, int depth)
 {
-	modcallable *this;
-	modgroup *g;
+	unlang_node_t *this;
+	unlang_node_group_t *g;
 	vp_map_t *map;
 	char buffer[1024];
 
@@ -968,8 +968,8 @@ static void unlang_dump(modcallable *mc, int depth)
 		default:
 			break;
 
-		case MOD_SINGLE: {
-			modsingle *single = mod_callabletosingle(this);
+		case UNLANG_NODE_TYPE_MODULE_CALL: {
+			unlang_node_module_call_t *single = unlang_node_to_module_call(this);
 
 			DEBUG("%.*s%s", depth, modcall_spaces,
 				single->modinst->name);
@@ -977,17 +977,17 @@ static void unlang_dump(modcallable *mc, int depth)
 			break;
 
 #ifdef WITH_UNLANG
-		case MOD_MAP:
-			g = mod_callabletogroup(this); /* FIXMAP: print option 3, too */
+		case UNLANG_NODE_TYPE_MAP:
+			g = unlang_node_group_to_module_call(this); /* FIXMAP: print option 3, too */
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-			      unlang_keywords[this->type].name,
+			      unlang_ops[this->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
-		case MOD_UPDATE:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_UPDATE:
+			g = unlang_node_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_keywords[this->type].name);
+				unlang_ops[this->type].name);
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
@@ -998,61 +998,61 @@ static void unlang_dump(modcallable *mc, int depth)
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case MOD_ELSE:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_ELSE:
+			g = unlang_node_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_keywords[this->type].name);
+				unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case MOD_IF:
-		case MOD_ELSIF:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_IF:
+		case UNLANG_NODE_TYPE_ELSIF:
+			g = unlang_node_group_to_module_call(this);
 			fr_cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
-				unlang_keywords[this->type].name, buffer);
+				unlang_ops[this->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case MOD_SWITCH:
-		case MOD_CASE:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_SWITCH:
+		case UNLANG_NODE_TYPE_CASE:
+			g = unlang_node_group_to_module_call(this);
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_keywords[this->type].name, buffer);
+				unlang_ops[this->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case MOD_POLICY:
-		case MOD_FOREACH:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_POLICY:
+		case UNLANG_NODE_TYPE_FOREACH:
+			g = unlang_node_group_to_module_call(this);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				unlang_keywords[this->type].name, this->name);
+				unlang_ops[this->type].name, this->name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case MOD_BREAK:
+		case UNLANG_NODE_TYPE_BREAK:
 			DEBUG("%.*sbreak", depth, modcall_spaces);
 			break;
 
 #endif
-		case MOD_GROUP:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_GROUP:
+			g = unlang_node_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-			      unlang_keywords[this->type].name);
+			      unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case MOD_LOAD_BALANCE:
-		case MOD_REDUNDANT_LOAD_BALANCE:
-			g = mod_callabletogroup(this);
+		case UNLANG_NODE_TYPE_LOAD_BALANCE:
+		case UNLANG_NODE_TYPE_REDUNDANT_LOAD_BALANCE:
+			g = unlang_node_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				unlang_keywords[this->type].name);
+				unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -1316,24 +1316,24 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 }
 
 
-static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
-				grouptype_t grouptype, mod_type_t mod_type)
+static unlang_node_group_t *group_allocate(unlang_node_t *parent, CONF_SECTION *cs,
+				unlang_node_group_type_t group_type, unlang_node_type_t mod_type)
 {
-	modgroup *g;
-	modcallable *c;
+	unlang_node_group_t *g;
+	unlang_node_t *c;
 	TALLOC_CTX *ctx;
 
 	ctx = parent;
 	if (!ctx) ctx = cs;
 
-	g = talloc_zero(ctx, modgroup);
+	g = talloc_zero(ctx, unlang_node_group_t);
 	if (!g) return NULL;
 
-	g->grouptype = grouptype;
+	g->group_type = group_type;
 	g->children = NULL;
 	g->cs = cs;
 
-	c = mod_grouptocallable(g);
+	c = unlang_node_group_to_node(g);
 	c->parent = parent;
 	c->type = mod_type;
 	c->next = NULL;
@@ -1343,7 +1343,7 @@ static modgroup *group_allocate(modcallable *parent, CONF_SECTION *cs,
 }
 
 
-static modcallable *compile_action_defaults(modcallable *c, unlang_compile_t *unlang_ctx, grouptype_t parentgrouptype)
+static unlang_node_t *compile_action_defaults(unlang_node_t *c, unlang_compile_t *unlang_ctx, unlang_node_group_type_t parentgroup_type)
 {
 	int i;
 
@@ -1353,7 +1353,7 @@ static modcallable *compile_action_defaults(modcallable *c, unlang_compile_t *un
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			c->actions[i] = unlang_ctx->actions[0][parentgrouptype][i];
+			c->actions[i] = unlang_ctx->actions[0][parentgroup_type][i];
 		}
 	}
 
@@ -1364,12 +1364,12 @@ static modcallable *compile_action_defaults(modcallable *c, unlang_compile_t *un
 }
 
 
-static modcallable *compile_map(modcallable *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, UNUSED grouptype_t grouptype, grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
+static unlang_node_t *compile_map(unlang_node_t *parent, unlang_compile_t *unlang_ctx,
+				CONF_SECTION *cs, UNUSED unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, UNUSED unlang_node_type_t mod_type)
 {
 	int rcode;
-	modgroup *g;
-	modcallable *c;
+	unlang_node_group_t *g;
+	unlang_node_t *c;
 	CONF_SECTION *modules;
 	ssize_t slen;
 	char const *tmpl_str;
@@ -1443,7 +1443,7 @@ static modcallable *compile_map(modcallable *parent, unlang_compile_t *unlang_ct
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, GROUPTYPE_SIMPLE, MOD_MAP);
+	g = group_allocate(parent, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_MAP);
 	if (!g) return NULL;
 
 	proc_inst = map_proc_instantiate(g, proc, vpt, head);
@@ -1453,7 +1453,7 @@ static modcallable *compile_map(modcallable *parent, unlang_compile_t *unlang_ct
 		return NULL;
 	}
 
-	c = mod_grouptocallable(g);
+	c = unlang_node_group_to_node(g);
 
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
@@ -1482,14 +1482,14 @@ static modcallable *compile_map(modcallable *parent, unlang_compile_t *unlang_ct
 
 	talloc_free(quoted_str);
 
-	(void) compile_action_defaults(c, unlang_ctx, parentgrouptype);
+	(void) compile_action_defaults(c, unlang_ctx, parentgroup_type);
 
 	g->map = talloc_steal(g, head);
 	g->vpt = talloc_steal(g, vpt);
 	g->proc_inst = proc_inst;
 
 	/*
-	 *	Cache the module in the modgroup struct.
+	 *	Cache the module in the unlang_node_group_t struct.
 	 *
 	 *	Ensure that the module has a "map" entry in its module
 	 *	header?  Or ensure that the map is registered in the
@@ -1505,12 +1505,12 @@ static modcallable *compile_map(modcallable *parent, unlang_compile_t *unlang_ct
 
 }
 
-static modcallable *compile_update(modcallable *parent, unlang_compile_t *unlang_ctx,
-				   CONF_SECTION *cs, grouptype_t grouptype, UNUSED grouptype_t parentgrouptype, UNUSED mod_type_t mod_type)
+static unlang_node_t *compile_update(unlang_node_t *parent, unlang_compile_t *unlang_ctx,
+				   CONF_SECTION *cs, unlang_node_group_type_t group_type, UNUSED unlang_node_group_type_t parentgroup_type, UNUSED unlang_node_type_t mod_type)
 {
 	int rcode;
-	modgroup *g;
-	modcallable *c;
+	unlang_node_group_t *g;
+	unlang_node_t *c;
 	char const *name2 = cf_section_name2(cs);
 
 	vp_map_t *head;
@@ -1525,20 +1525,20 @@ static modcallable *compile_update(modcallable *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, grouptype, MOD_UPDATE);
+	g = group_allocate(parent, cs, group_type, UNLANG_NODE_TYPE_UPDATE);
 	if (!g) return NULL;
 
-	c = mod_grouptocallable(g);
+	c = unlang_node_group_to_node(g);
 
 	if (name2) {
 		c->name = name2;
 		c->debug_name = talloc_asprintf(c, "update %s", name2);
 	} else {
-		c->name = unlang_keywords[c->type].name;
-		c->debug_name = unlang_keywords[c->type].name;
+		c->name = unlang_ops[c->type].name;
+		c->debug_name = unlang_ops[c->type].name;
 	}
 
-	(void) compile_action_defaults(c, unlang_ctx, GROUPTYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
 	g->map = talloc_steal(g, head);
 
@@ -1559,7 +1559,7 @@ static modcallable *compile_update(modcallable *parent, unlang_compile_t *unlang
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action_pair(modcallable *c, CONF_PAIR *cp)
+static int compile_action_pair(unlang_node_t *c, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
@@ -1613,7 +1613,7 @@ static int compile_action_pair(modcallable *c, CONF_PAIR *cp)
 	return 1;
 }
 
-static bool compile_action_section(modcallable *c, CONF_ITEM *ci)
+static bool compile_action_section(unlang_node_t *c, CONF_ITEM *ci)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
@@ -1643,19 +1643,19 @@ static bool compile_action_section(modcallable *c, CONF_ITEM *ci)
 	return true;
 }
 
-static modcallable *compile_empty(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type,
+static unlang_node_t *compile_empty(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				  unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type,
 				  fr_cond_type_t cond_type)
 {
-	modgroup *g;
-	modcallable *c;
+	unlang_node_group_t *g;
+	unlang_node_t *c;
 
-	g = group_allocate(parent, cs, grouptype, mod_type);
+	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	c = mod_grouptocallable(g);
+	c = unlang_node_group_to_node(g);
 	if (!cs) {
-		c->name = unlang_keywords[c->type].name;
+		c->name = unlang_ops[c->type].name;
 		c->debug_name = c->name;
 
 	} else {
@@ -1667,7 +1667,7 @@ static modcallable *compile_empty(modcallable *parent, unlang_compile_t *unlang_
 			c->debug_name = c->name;
 		} else {
 			c->name = name2;
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 		}
 	}
 
@@ -1676,16 +1676,16 @@ static modcallable *compile_empty(modcallable *parent, unlang_compile_t *unlang_
 		g->cond->type = cond_type;
 	}
 
-	return compile_action_defaults(c, unlang_ctx, parentgrouptype);
+	return compile_action_defaults(c, unlang_ctx, parentgroup_type);
 }
 
 
-static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				 grouptype_t parent_grouptype, char const **modname);
+static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+				 unlang_node_group_type_t parent_group_type, char const **modname);
 
 
-/* modgroups are grown by adding a modcallable to the end */
-static void add_child(modgroup *g, modcallable *c)
+/* unlang_node_group_ts are grown by adding a unlang_node_t to the end */
+static void add_child(unlang_node_group_t *g, unlang_node_t *c)
 {
 	if (!c) return;
 
@@ -1700,13 +1700,13 @@ static void add_child(modgroup *g, modcallable *c)
 	}
 
 	g->num_children++;
-	c->parent = mod_grouptocallable(g);
+	c->parent = unlang_node_group_to_node(g);
 }
 
 /*
  *	compile 'actions { ... }' inside of another group.
  */
-static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SECTION *subcs)
+static bool compile_action_subsection(unlang_node_t *c, CONF_SECTION *cs, CONF_SECTION *subcs)
 {
 	CONF_ITEM *ci, *next;
 
@@ -1727,9 +1727,9 @@ static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SEC
 	 *	Over-riding actions makes no sense in some situations.
 	 *	They just don't make sense for many group types.
 	 */
-	if (!((c->type == MOD_CASE) || (c->type == MOD_IF) || (c->type == MOD_ELSIF) ||
-	      (c->type == MOD_ELSE))) {
-		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_keywords[c->type].name);
+	if (!((c->type == UNLANG_NODE_TYPE_CASE) || (c->type == UNLANG_NODE_TYPE_IF) || (c->type == UNLANG_NODE_TYPE_ELSIF) ||
+	      (c->type == UNLANG_NODE_TYPE_ELSE))) {
+		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_ops[c->type].name);
 		return false;
 	}
 
@@ -1737,13 +1737,13 @@ static bool compile_action_subsection(modcallable *c, CONF_SECTION *cs, CONF_SEC
 }
 
 
-static modcallable *compile_children(modgroup *g, UNUSED modcallable *parent, unlang_compile_t *unlang_ctx,
-				     grouptype_t grouptype, grouptype_t parentgrouptype)
+static unlang_node_t *compile_children(unlang_node_group_t *g, UNUSED unlang_node_t *parent, unlang_compile_t *unlang_ctx,
+				     unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type)
 {
 	CONF_ITEM *ci;
-	modcallable *c;
+	unlang_node_t *c;
 
-	c = mod_grouptocallable(g);
+	c = unlang_node_group_to_node(g);
 
 	/*
 	 *	Loop over the children of this group.
@@ -1758,7 +1758,7 @@ static modcallable *compile_children(modgroup *g, UNUSED modcallable *parent, un
 		 */
 		if (cf_item_is_section(ci)) {
 			char const *name1 = NULL;
-			modcallable *single;
+			unlang_node_t *single;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
 			/*
@@ -1783,7 +1783,7 @@ static modcallable *compile_children(modgroup *g, UNUSED modcallable *parent, un
 			/*
 			 *	Otherwise it's a real keyword.
 			 */
-			single = compile_item(c, unlang_ctx, ci, grouptype, &name1);
+			single = compile_item(c, unlang_ctx, ci, group_type, &name1);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
 				       cf_section_name1(subcs));
@@ -1808,10 +1808,10 @@ static modcallable *compile_children(modgroup *g, UNUSED modcallable *parent, un
 			 *	specified ...
 			 */
 			if (!value) {
-				modcallable *single;
+				unlang_node_t *single;
 				char const *name = NULL;
 
-				single = compile_item(c, unlang_ctx, ci, grouptype, &name);
+				single = compile_item(c, unlang_ctx, ci, group_type, &name);
 				if (!single) {
 					/*
 					 *	Skip optional modules, which start with '-'
@@ -1841,23 +1841,23 @@ static modcallable *compile_children(modgroup *g, UNUSED modcallable *parent, un
 		}
 	}
 
-	return compile_action_defaults(c, unlang_ctx, parentgrouptype);
+	return compile_action_defaults(c, unlang_ctx, parentgroup_type);
 }
 
 
 /*
  *	Generic "compile a section with more unlang inside of it".
  */
-static modcallable *compile_group(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_group(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				  unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
-	modgroup *g;
-	modcallable *c;
+	unlang_node_group_t *g;
+	unlang_node_t *c;
 
-	g = group_allocate(parent, cs, grouptype, mod_type);
+	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	c = mod_grouptocallable(g);
+	c = unlang_node_group_to_node(g);
 
 	/*
 	 *	Remember the name for printing, etc.
@@ -1865,21 +1865,21 @@ static modcallable *compile_group(modcallable *parent, unlang_compile_t *unlang_
 	 *	FIXME: We may also want to put the names into a
 	 *	rbtree, so that groups can reference each other...
 	 */
-	c->name = unlang_keywords[c->type].name;
+	c->name = unlang_ops[c->type].name;
 	c->debug_name = c->name;
 
-	return compile_children(g, parent, unlang_ctx, grouptype, parentgrouptype);
+	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
-static modcallable *compile_switch(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				   grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_switch(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				   unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
 	char const *name2;
 	bool had_seen_default = false;
-	modcallable *c;
-	modgroup *g;
+	unlang_node_t *c;
+	unlang_node_group_t *g;
 	ssize_t slen;
 
 	name2 = cf_section_name2(cs);
@@ -1888,7 +1888,7 @@ static modcallable *compile_switch(modcallable *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, grouptype, mod_type);
+	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
 	/*
@@ -1953,9 +1953,9 @@ static modcallable *compile_switch(modcallable *parent, unlang_compile_t *unlang
 		}
 	}
 
-	c = mod_grouptocallable(g);
-	c->name = unlang_keywords[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, cf_section_name2(cs));
+	c = unlang_node_group_to_node(g);
+	c->name = unlang_ops[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
 	/*
 	 *	Fixup the template before compiling the children.
@@ -1967,19 +1967,19 @@ static modcallable *compile_switch(modcallable *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
-	return compile_children(g, parent, unlang_ctx, grouptype, parentgrouptype);
+	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
-static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_case(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				 unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
 	int i;
 	char const *name2;
-	modcallable *c;
-	modgroup *g;
+	unlang_node_t *c;
+	unlang_node_group_t *g;
 	vp_tmpl_t *vpt = NULL;
 
-	if (!parent || (parent->type != MOD_SWITCH)) {
+	if (!parent || (parent->type != UNLANG_NODE_TYPE_SWITCH)) {
 		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
 		return NULL;
 	}
@@ -1992,7 +1992,7 @@ static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_c
 	if (name2) {
 		ssize_t slen;
 		FR_TOKEN type;
-		modgroup *f;
+		unlang_node_group_t *f;
 
 		type = cf_section_name2_type(cs);
 
@@ -2019,7 +2019,7 @@ static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_c
 			}
 		}
 
-		f = mod_callabletogroup(parent);
+		f = unlang_node_group_to_module_call(parent);
 		rad_assert(f->vpt != NULL);
 
 		/*
@@ -2063,7 +2063,7 @@ static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_c
 		}
 	} /* else it's a default 'case' statement */
 
-	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -2076,12 +2076,12 @@ static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_c
 	 */
 	c->name = name2;
 	if (!name2) {
-		c->debug_name = unlang_keywords[c->type].name;
+		c->debug_name = unlang_ops[c->type].name;
 	} else {
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 	}
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 	g->vpt = talloc_steal(g, vpt);
 
 	/*
@@ -2096,13 +2096,13 @@ static modcallable *compile_case(modcallable *parent, unlang_compile_t *unlang_c
 	return c;
 }
 
-static modcallable *compile_foreach(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				    grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_foreach(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				    unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
 	FR_TOKEN type;
 	char const *name2;
-	modcallable *c;
-	modgroup *g;
+	unlang_node_t *c;
+	unlang_node_group_t *g;
 	ssize_t slen;
 	vp_tmpl_t *vpt;
 
@@ -2161,16 +2161,16 @@ static modcallable *compile_foreach(modcallable *parent, unlang_compile_t *unlan
 	 */
 	vpt->tmpl_num = NUM_ALL;
 
-	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
 	}
 
-	c->name = unlang_keywords[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
+	c->name = unlang_ops[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 	g->vpt = vpt;
 
 	return c;
@@ -2178,12 +2178,12 @@ static modcallable *compile_foreach(modcallable *parent, unlang_compile_t *unlan
 
 
 
-static modcallable *compile_break(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
+static unlang_node_t *compile_break(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	modcallable *foreach;
+	unlang_node_t *foreach;
 
 	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
-		if (foreach->type == MOD_FOREACH) break;
+		if (foreach->type == UNLANG_NODE_TYPE_FOREACH) break;
 	}
 
 	if (!foreach) {
@@ -2191,27 +2191,27 @@ static modcallable *compile_break(modcallable *parent, unlang_compile_t *unlang_
 		return NULL;
 	}
 
-	return compile_empty(parent, unlang_ctx, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
-			     MOD_BREAK, COND_TYPE_INVALID);
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
+			     UNLANG_NODE_TYPE_BREAK, COND_TYPE_INVALID);
 }
 #endif
 
-static modcallable *compile_xlat(modcallable *parent,
+static unlang_node_t *compile_xlat(unlang_node_t *parent,
 				 unlang_compile_t *unlang_ctx, char const *fmt)
 {
-	modcallable *c;
-	modxlat *mx;
+	unlang_node_t *c;
+	unlang_node_xlat_t *mx;
 
-	mx = talloc_zero(parent, modxlat);
+	mx = talloc_zero(parent, unlang_node_xlat_t);
 
-	c = mod_xlattocallable(mx);
+	c = unlang_node_xlat_to_node(mx);
 	c->parent = parent;
 	c->next = NULL;
 	c->name = "expand";
 	c->debug_name = c->name;
-	c->type = MOD_XLAT;
+	c->type = UNLANG_NODE_TYPE_XLAT;
 
-	(void) compile_action_defaults(c, unlang_ctx, GROUPTYPE_SIMPLE);
+	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
 	mx->xlat_name = talloc_typed_strdup(mx, fmt);
 	if (fmt[0] != '%') {
@@ -2226,15 +2226,15 @@ static modcallable *compile_xlat(modcallable *parent,
 	return c;
 }
 
-static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_if(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+			       unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
-	modcallable *c;
-	modgroup *g;
+	unlang_node_t *c;
+	unlang_node_group_t *g;
 	fr_cond_t *cond;
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_keywords[mod_type].name);
+		cf_log_err_cs(cs, "'%s' without condition", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2243,9 +2243,9 @@ static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx
 
 	if (cond->type == COND_TYPE_FALSE) {
 		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
-		     unlang_keywords[mod_type].name,
+		     unlang_ops[mod_type].name,
 		     cf_section_filename(cs), cf_section_lineno(cs));
-		return compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_FALSE);
+		return compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_FALSE);
 	}
 
 	/*
@@ -2258,37 +2258,37 @@ static modcallable *compile_if(modcallable *parent, unlang_compile_t *unlang_ctx
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
 
-	c->name = unlang_keywords[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, cf_section_name2(cs));
+	c->name = unlang_ops[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 	g->cond = cond;
 
 	return c;
 }
 
-static int previous_if(CONF_SECTION *cs, modcallable *parent, mod_type_t mod_type)
+static int previous_if(CONF_SECTION *cs, unlang_node_t *parent, unlang_node_type_t mod_type)
 {
-	modgroup *p, *f;
+	unlang_node_group_t *p, *f;
 
-	p = mod_callabletogroup(parent);
+	p = unlang_node_group_to_module_call(parent);
 	if (!p->tail) goto else_fail;
 
-	f = mod_callabletogroup(p->tail);
-	if ((f->mc.type != MOD_IF) && (f->mc.type != MOD_ELSIF)) {
+	f = unlang_node_group_to_module_call(p->tail);
+	if ((f->node.type != UNLANG_NODE_TYPE_IF) && (f->node.type != UNLANG_NODE_TYPE_ELSIF)) {
 	else_fail:
 		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
-			      unlang_keywords[mod_type].name);
+			      unlang_ops[mod_type].name);
 		return -1;
 	}
 
 	if (f->cond->type == COND_TYPE_TRUE) {
 		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
-		     unlang_keywords[mod_type].name,
-		     unlang_keywords[f->mc.type].name,
+		     unlang_ops[mod_type].name,
+		     unlang_ops[f->node.type].name,
 		     cf_section_filename(cs), cf_section_lineno(cs));
 		return 0;
 	}
@@ -2296,8 +2296,8 @@ static int previous_if(CONF_SECTION *cs, modcallable *parent, mod_type_t mod_typ
 	return 1;
 }
 
-static modcallable *compile_elsif(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_elsif(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				  unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
 	int rcode;
 
@@ -2305,27 +2305,27 @@ static modcallable *compile_elsif(modcallable *parent, unlang_compile_t *unlang_
 	 *	This is always a syntax error.
 	 */
 	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_keywords[mod_type].name);
+		cf_log_err_cs(cs, "'%s' without condition", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
 	rcode = previous_if(cs, parent, mod_type);
 	if (rcode < 0) return NULL;
 
-	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+	if (rcode == 0) return compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_TRUE);
 
-	return compile_if(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	return compile_if(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 }
 
-static modcallable *compile_else(modcallable *parent,
+static unlang_node_t *compile_else(unlang_node_t *parent,
 			       unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+			       unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
 	int rcode;
-	modcallable *c;
+	unlang_node_t *c;
 
 	if (cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_keywords[mod_type].name);
+		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2333,14 +2333,14 @@ static modcallable *compile_else(modcallable *parent,
 	if (rcode < 0) return NULL;
 
 	if (rcode == 0) {
-		c = compile_empty(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type, COND_TYPE_TRUE);
+		c = compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_TRUE);
 	} else {
-		c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+		c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	}
 
 	if (!c) return c;
 
-	c->name = unlang_keywords[c->type].name;
+	c->name = unlang_ops[c->type].name;
 	c->debug_name = c->name;
 
 	return c;
@@ -2394,18 +2394,18 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 }
 
 
-static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_redundant(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				      unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
 	char const *name2;
-	modcallable *c;
-	modgroup *g;
+	unlang_node_t *c;
+	unlang_node_group_t *g;
 
 	/*
 	 *	No children?  Die!
 	 */
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keywords[mod_type].name);
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2413,10 +2413,10 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	/*
 	 *	Allow for keyed load-balance / redundant-load-balance sections.
@@ -2424,7 +2424,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 	 *	"redundant" is just "group" with different default actions.
 	 */
 	name2 = cf_section_name2(cs);
-	if (mod_type == MOD_GROUP) name2 = NULL;
+	if (mod_type == UNLANG_NODE_TYPE_GROUP) name2 = NULL;
 
 	/*
 	 *	But only outside of the "instantiate" section.
@@ -2460,7 +2460,7 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 			return NULL;
 		}
 
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_keywords[c->type].name, name2);
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 		rad_assert(g->vpt != NULL);
 
 		/*
@@ -2490,52 +2490,52 @@ static modcallable *compile_redundant(modcallable *parent, unlang_compile_t *unl
 		c->debug_name = c->name;
 	}
 
-	c->name = unlang_keywords[c->type].name;
+	c->name = unlang_ops[c->type].name;
 
 	return c;
 }
 
-static modcallable *compile_parallel(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type)
+static unlang_node_t *compile_parallel(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				      unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
 {
-	modcallable *c;
-	modcallable *child;
-	modgroup *g;
+	unlang_node_t *c;
+	unlang_node_t *child;
+	unlang_node_group_t *g;
 
 	/*
 	 *	No children?  Die!
 	 */
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_keywords[mod_type].name);
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
 	if (cf_section_name2(cs) != NULL) {
-		cf_log_err_cs(cs, "%s sections cannot have an argument", unlang_keywords[mod_type].name);
+		cf_log_err_cs(cs, "%s sections cannot have an argument", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
-	c = compile_group(parent, unlang_ctx, cs, grouptype, parentgrouptype, mod_type);
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
 
-	c->name = c->debug_name = unlang_keywords[c->type].name;
+	c->name = c->debug_name = unlang_ops[c->type].name;
 
 	/*
 	 *	Check that all children are of the new type.
 	 */
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	for (child = g->children; child != NULL; child = child->next) {
-		modsingle *single;
+		unlang_node_module_call_t *single;
 
-		if (child->type != MOD_SINGLE) {
-			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_keywords[mod_type].name, child->debug_name);
+		if (child->type != UNLANG_NODE_TYPE_MODULE_CALL) {
+			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_ops[mod_type].name, child->debug_name);
 			return NULL;
 		}
 
-		single = mod_callabletosingle(child);
+		single = unlang_node_to_module_call(child);
 		if ((single->modinst->module->type & RLM_TYPE_RESUMABLE) == 0) {
-			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_keywords[mod_type].name, child->debug_name);
+			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_ops[mod_type].name, child->debug_name);
 			return NULL;
 		}
 	}
@@ -2634,10 +2634,10 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 }
 
 
-static modcallable *compile_module(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, grouptype_t parentgrouptype, char const *realname)
+static unlang_node_t *compile_module(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, unlang_node_group_type_t parentgroup_type, char const *realname)
 {
-	modcallable *c;
-	modsingle *single;
+	unlang_node_t *c;
+	unlang_node_module_call_t *single;
 
 	/*
 	 *	Check if the module in question has the necessary
@@ -2649,21 +2649,21 @@ static modcallable *compile_module(modcallable *parent, unlang_compile_t *unlang
 		return NULL;
 	}
 
-	single = talloc_zero(parent, modsingle);
+	single = talloc_zero(parent, unlang_node_module_call_t);
 	single->modinst = this;
 	single->name = unlang_ctx->name;
 	single->inst = this->data;
 	single->method = this->module->methods[unlang_ctx->component];
 
-	c = mod_singletocallable(single);
+	c = unlang_node_module_call_to_node(single);
 	c->parent = parent;
 	c->next = NULL;
 
-	(void) compile_action_defaults(c, unlang_ctx, parentgrouptype);
+	(void) compile_action_defaults(c, unlang_ctx, parentgroup_type);
 
 	c->name = realname;
 	c->debug_name = realname;
-	c->type = MOD_SINGLE;
+	c->type = UNLANG_NODE_TYPE_MODULE_CALL;
 
 	if (!compile_action_section(c, ci)) {
 		talloc_free(c);
@@ -2673,32 +2673,32 @@ static modcallable *compile_module(modcallable *parent, unlang_compile_t *unlang
 	return c;
 }
 
-typedef modcallable *(*modcall_compile_function_t)(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-					 grouptype_t grouptype, grouptype_t parentgrouptype, mod_type_t mod_type);
+typedef unlang_node_t *(*modcall_compile_function_t)(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+					 unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type);
 typedef struct modcall_compile_t {
 	char const			*name;
 	modcall_compile_function_t	compile;
-	grouptype_t			grouptype;
-	mod_type_t			mod_type;
+	unlang_node_group_type_t			group_type;
+	unlang_node_type_t			mod_type;
 } modcall_compile_t;
 
 static modcall_compile_t compile_table[] = {
-	{ "group",		compile_group, GROUPTYPE_SIMPLE, MOD_GROUP },
-	{ "redundant",		compile_redundant, GROUPTYPE_REDUNDANT, MOD_GROUP },
-	{ "load-balance",	compile_redundant, GROUPTYPE_SIMPLE, MOD_LOAD_BALANCE },
-	{ "redundant-load-balance", compile_redundant, GROUPTYPE_REDUNDANT, MOD_REDUNDANT_LOAD_BALANCE },
+	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_GROUP },
+	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_NODE_TYPE_GROUP },
+	{ "load-balance",	compile_redundant, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_LOAD_BALANCE },
+	{ "redundant-load-balance", compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_NODE_TYPE_REDUNDANT_LOAD_BALANCE },
 
-	{ "case",		compile_case, GROUPTYPE_SIMPLE, MOD_CASE },
-	{ "foreach",		compile_foreach, GROUPTYPE_SIMPLE, MOD_FOREACH },
-	{ "if",			compile_if, GROUPTYPE_SIMPLE, MOD_IF },
-	{ "elsif",		compile_elsif, GROUPTYPE_SIMPLE, MOD_ELSIF },
-	{ "else",		compile_else, GROUPTYPE_SIMPLE, MOD_ELSE },
-	{ "update",		compile_update, GROUPTYPE_SIMPLE, MOD_UPDATE },
-	{ "map",		compile_map, GROUPTYPE_SIMPLE, MOD_MAP },
-	{ "switch",		compile_switch, GROUPTYPE_SIMPLE, MOD_SWITCH },
-	{ "parallel",		compile_parallel, GROUPTYPE_SIMPLE, MOD_PARALLEL },
+	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_CASE },
+	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_FOREACH },
+	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_IF },
+	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_ELSIF },
+	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_ELSE },
+	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_UPDATE },
+	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_MAP },
+	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_SWITCH },
+	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_PARALLEL },
 
-	{ NULL, NULL, 0, MOD_NULL }
+	{ NULL, NULL, 0, UNLANG_NODE_TYPE_NULL }
 };
 
 
@@ -2714,11 +2714,11 @@ static modcall_compile_t compile_table[] = {
 /*
  *	Compile one entry of a module call.
  */
-static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				 grouptype_t parent_grouptype, char const **modname)
+static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+				 unlang_node_group_type_t parent_group_type, char const **modname)
 {
 	char const *modrefname, *p;
-	modcallable *c;
+	unlang_node_t *c;
 	module_instance_t *this;
 	CONF_SECTION *cs, *subcs, *modules;
 	CONF_SECTION *loop;
@@ -2744,15 +2744,15 @@ static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_c
 				 *	to have contents.
 				 */
 				if (!cf_item_find_next(cs, NULL) &&
-				    !((compile_table[i].mod_type == MOD_CASE) ||
-				      (compile_table[i].mod_type == MOD_IF) ||
-				      (compile_table[i].mod_type == MOD_ELSIF))) {
+				    !((compile_table[i].mod_type == UNLANG_NODE_TYPE_CASE) ||
+				      (compile_table[i].mod_type == UNLANG_NODE_TYPE_IF) ||
+				      (compile_table[i].mod_type == UNLANG_NODE_TYPE_ELSIF))) {
 					cf_log_err(ci, "'%s' sections cannot be empty", modrefname);
 					return NULL;
 				}
 
 				return compile_table[i].compile(parent, unlang_ctx, cs,
-								compile_table[i].grouptype, parent_grouptype,
+								compile_table[i].group_type, parent_group_type,
 								compile_table[i].mod_type);
 			}
 		}
@@ -2809,7 +2809,7 @@ static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_c
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
-		return compile_empty(parent, unlang_ctx, NULL, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_RETURN, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_RETURN, COND_TYPE_INVALID);
 	}
 #endif
 
@@ -2899,7 +2899,7 @@ static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_c
 		if (cf_section_name2(subcs)) {
 			UPDATE_CTX2;
 
-			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), parent_grouptype, modname);
+			c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs), parent_group_type, modname);
 			if (!c) return NULL;
 
 		} else {
@@ -2914,7 +2914,7 @@ static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_c
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, &unlang_ctx2, subcs, GROUPTYPE_SIMPLE, parent_grouptype, MOD_GROUP);
+			c = compile_group(parent, &unlang_ctx2, subcs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type, UNLANG_NODE_TYPE_GROUP);
 			if (!c) return NULL;
 
 			c->name = cf_section_name1(subcs);
@@ -2963,7 +2963,7 @@ static modcallable *compile_item(modcallable *parent, unlang_compile_t *unlang_c
 		UPDATE_CTX2;
 
 		*modname = this->module->name;
-		return compile_module(parent, &unlang_ctx2, ci, this, parent_grouptype, realname);
+		return compile_module(parent, &unlang_ctx2, ci, this, parent_group_type, realname);
 	}
 
 	/*
@@ -2988,7 +2988,7 @@ fail:
 int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 {
 	char const *name1, *name2;
-	modcallable *c;
+	unlang_node_t *c;
 	unlang_compile_t unlang_ctx;
 
 	unlang_ctx.component = component;
@@ -3000,7 +3000,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 		unlang_ctx.actions = &authtype_actions;
 	}
 
-	c = compile_group(NULL, &unlang_ctx, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE, MOD_GROUP);
+	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_GROUP);
 	if (!c) return -1;
 
 	/*

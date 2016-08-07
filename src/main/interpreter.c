@@ -45,7 +45,7 @@ static void safe_unlock(module_instance_t *instance)
 		pthread_mutex_unlock(instance->mutex);
 }
 
-static void unlang_push(unlang_stack_t *stack, modcallable *c, rlm_rcode_t result, bool do_next_sibling)
+static void unlang_push(unlang_stack_t *stack, unlang_node_t *c, rlm_rcode_t result, bool do_next_sibling)
 {
 	unlang_stack_entry_t *next;
 
@@ -63,7 +63,7 @@ static void unlang_push(unlang_stack_t *stack, modcallable *c, rlm_rcode_t resul
 	next->c = c;
 	next->result = result;
 	next->priority = 0;
-	next->unwind = MOD_NULL;
+	next->unwind = UNLANG_NODE_TYPE_NULL;
 	next->do_next_sibling = do_next_sibling;
 	next->was_if = false;
 	next->if_taken = false;
@@ -92,16 +92,16 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 					   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g;
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g;
 
 	uint32_t count = 0;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
 		*priority = c->actions[*presult];
-		return UNLANG_CALCULATE_RESULT;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	/*
@@ -194,9 +194,9 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			}
 		}
 
-		if (c->type == MOD_LOAD_BALANCE) {
+		if (c->type == UNLANG_NODE_TYPE_LOAD_BALANCE) {
 			unlang_push(stack, entry->redundant.found, entry->result, false);
-			return UNLANG_PUSHED_CHILD;
+			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
 		/*
@@ -205,20 +205,20 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		entry->redundant.child = entry->redundant.found;
 
 	} else {
-		rad_assert(c->type != MOD_LOAD_BALANCE); /* this is never called again */
+		rad_assert(c->type != UNLANG_NODE_TYPE_LOAD_BALANCE); /* this is never called again */
 
 		/*
 		 *	We were called again.  See if we're done.
 		 */
 		if (entry->redundant.child->actions[*presult] == MOD_ACTION_RETURN) {
-			return UNLANG_CALCULATE_RESULT;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		entry->redundant.child = entry->redundant.child->next;
 		if (!entry->redundant.child) entry->redundant.child = g->children;
 
 		if (entry->redundant.child == entry->redundant.found) {
-			return UNLANG_CALCULATE_RESULT;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
 
@@ -227,7 +227,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	 */
 	unlang_push(stack, entry->redundant.child, entry->result, false);
 	entry->resume = true;
-	return UNLANG_PUSHED_CHILD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
@@ -235,25 +235,25 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 				    UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g;
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	/*
 	 *	This should really have been caught in the
 	 *	compiler, and the node never generated.  But
 	 *	doing that requires changing it's API so that
 	 *	it returns a flag instead of the compiled
-	 *	MOD_GROUP.
+	 *	UNLANG_NODE_TYPE_GROUP.
 	 */
 	if (!g->children) {
 		RDEBUG2("} # %s ... <ignoring empty subsection>", c->debug_name);
-		return UNLANG_CONTINUE;
+		return UNLANG_ACTION_CONTINUE;
 	}
 
 	unlang_push(stack, g->children, entry->result, true);
-	return UNLANG_PUSHED_CHILD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 typedef struct unlang_parallel_t {
@@ -267,10 +267,10 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 				       UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g;
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	if (!entry->resume) {
 		/*
@@ -278,28 +278,28 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 		 */
 	} else {
 		/*
-		 *	Find a resumable child and run it.
+		 *	Find a resumption child and run it.
 		 */
 	}
 
 
 	unlang_push(stack, g->children, entry->result, true);
-	return UNLANG_PUSHED_CHILD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g;
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
 		// ?? priority
-		return UNLANG_CALCULATE_RESULT;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	return unlang_group(request, stack, presult, priority);
@@ -311,14 +311,14 @@ static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 	int i;
 	VALUE_PAIR **copy_p;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
+	unlang_node_t *c = entry->c;
 
-	RDEBUG2("%s", unlang_keywords[c->type].name);
+	RDEBUG2("%s", unlang_ops[c->type].name);
 
 	for (i = 8; i >= 0; i--) {
 		copy_p = request_data_get(request, (void *)radius_get_vp, i);
 		if (copy_p) {
-			if (c->type == MOD_BREAK) {
+			if (c->type == UNLANG_NODE_TYPE_BREAK) {
 				RDEBUG2("# break Foreach-Variable-%d", i);
 				break;
 			}
@@ -330,7 +330,7 @@ static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 	*presult = entry->result;
 	*priority = entry->priority;
 
-	return UNLANG_BREAK;
+	return UNLANG_ACTION_BREAK;
 }
 
 static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
@@ -338,10 +338,10 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 {
 	VALUE_PAIR *vp;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g;
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	if (!entry->resume) {
 		int i, foreach_depth = -1;
@@ -369,7 +369,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 			REDEBUG("foreach Nesting too deep!");
 			*presult = RLM_MODULE_FAIL;
 			*priority = 0;
-			return UNLANG_CALCULATE_RESULT;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		/*
@@ -380,7 +380,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 			*presult = RLM_MODULE_NOOP;
 			*priority = c->actions[RLM_MODULE_NOOP];
-			return UNLANG_CALCULATE_RESULT;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		RDEBUG2("foreach %s ", c->name);
@@ -401,15 +401,15 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 		 *	enclosing "foreach".  We're here, so
 		 *	we can stop unwinding.
 		 */
-		if (entry->unwind == MOD_BREAK) {
-			entry->unwind = MOD_NULL;
+		if (entry->unwind == UNLANG_NODE_TYPE_BREAK) {
+			entry->unwind = UNLANG_NODE_TYPE_NULL;
 			vp = NULL;
 		}
 
 		/*
 		 *	Unwind all the way.
 		 */
-		if (entry->unwind == MOD_RETURN) {
+		if (entry->unwind == UNLANG_NODE_TYPE_RETURN) {
 			vp = NULL;
 		}
 
@@ -424,7 +424,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 
 			*presult = entry->result;
 			*priority = c->actions[*presult];
-			return UNLANG_CALCULATE_RESULT;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
 
@@ -449,15 +449,15 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	 */
 	unlang_push(stack, g->children, entry->result, true);
 	entry->resume = true;
-	return UNLANG_PUSHED_CHILD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static unlang_action_t unlang_xlat(REQUEST *request, unlang_stack_t *stack,
 				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modxlat *mx = mod_callabletoxlat(c);
+	unlang_node_t *c = entry->c;
+	unlang_node_xlat_t *mx = unlang_node_to_xlat(c);
 	char buffer[128];
 
 	if (!mx->exec) {
@@ -468,22 +468,22 @@ static unlang_action_t unlang_xlat(REQUEST *request, unlang_stack_t *stack,
 				    false, true, EXEC_TIMEOUT);
 	}
 
-	return UNLANG_CONTINUE;
+	return UNLANG_ACTION_CONTINUE;
 }
 
 static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 				       UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modcallable *this, *found, *null_case;
-	modgroup *g, *h;
+	unlang_node_t *c = entry->c;
+	unlang_node_t *this, *found, *null_case;
+	unlang_node_group_t *g, *h;
 	fr_cond_t cond;
 	value_data_t data;
 	vp_map_t map;
 	vp_tmpl_t vpt;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
@@ -506,9 +506,9 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	if ((g->vpt->type == TMPL_TYPE_ATTR) && (tmpl_find_vp(NULL, request, g->vpt) < 0)) {
 	find_null_case:
 		for (this = g->children; this; this = this->next) {
-			rad_assert(this->type == MOD_CASE);
+			rad_assert(this->type == UNLANG_NODE_TYPE_CASE);
 
-			h = mod_callabletogroup(this);
+			h = unlang_node_group_to_module_call(this);
 			if (h->vpt) continue;
 
 			found = this;
@@ -540,9 +540,9 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	 *	"case {...}" statement.
 	 */
 	for (this = g->children; this; this = this->next) {
-		rad_assert(this->type == MOD_CASE);
+		rad_assert(this->type == UNLANG_NODE_TYPE_CASE);
 
-		h = mod_callabletogroup(this);
+		h = unlang_node_group_to_module_call(this);
 
 		/*
 		 *	Remember the default case
@@ -604,7 +604,7 @@ do_null_case:
 	talloc_free(data.ptr);
 
 	unlang_push(stack, found, entry->result, false);
-	return UNLANG_PUSHED_CHILD;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 
@@ -613,8 +613,8 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 {
 	int rcode;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g = mod_callabletogroup(c);
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g = unlang_node_group_to_module_call(c);
 	vp_map_t *map;
 
 	RINDENT();
@@ -623,14 +623,14 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 		if (rcode < 0) {
 			*presult = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
 			REXDENT();
-			return UNLANG_CALCULATE_RESULT;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
 	REXDENT();
 
 	*presult = RLM_MODULE_NOOP;
 	*priority = c->actions[RLM_MODULE_NOOP];
-	return UNLANG_CALCULATE_RESULT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
@@ -638,15 +638,15 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 				  rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g = mod_callabletogroup(c);
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g = unlang_node_group_to_module_call(c);
 
 	RINDENT();
 	*presult = map_proc(request, g->proc_inst);
 	REXDENT();
 
 	*priority = c->actions[*presult];
-	return UNLANG_CALCULATE_RESULT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
@@ -655,22 +655,22 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 #if 0
 	int depth = stack->depth;
 #endif
-	modsingle *sp;
+	unlang_node_module_call_t *sp;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
+	unlang_node_t *c = entry->c;
 
 	/*
 	 *	Process a stand-alone child, and fall through
 	 *	to dealing with it's parent.
 	 */
-	sp = mod_callabletosingle(c);
+	sp = unlang_node_to_module_call(c);
 
 	/*
 	 *	If the request should stop, refuse to do anything.
 	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_STOP_PROCESSING;
+	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	RDEBUG3("modsingle[%s]: calling %s (%s) for request %" PRIu64,
+	RDEBUG3("unlang_node_module_call_t[%s]: calling %s (%s) for request %" PRIu64,
 		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
@@ -695,7 +695,7 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->modinst->module->name, request->number);
-		return UNLANG_STOP_PROCESSING;
+		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
 #if 0
@@ -704,13 +704,13 @@ static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (depth < stack->depth) {
 		rad_assert(entry->resume == true);
-		rad_assert((entry + 1)->c->type == MOD_SINGLE);
-		return UNLANG_PUSHED_CHILD;
+		rad_assert((entry + 1)->c->type == UNLANG_NODE_TYPE_MODULE_CALL);
+		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 #endif
 
 fail:
-	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %" PRIu64,
+	RDEBUG3("unlang_node_module_call_t[%s]: returned from %s (%s) for request %" PRIu64,
 		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
@@ -719,7 +719,7 @@ fail:
 
 	RDEBUG2("%s (%s)", c->name ? c->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
-	return UNLANG_CALCULATE_RESULT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
@@ -728,10 +728,10 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 {
 	int condition;
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modgroup *g;
+	unlang_node_t *c = entry->c;
+	unlang_node_group_t *g;
 
-	g = mod_callabletogroup(c);
+	g = unlang_node_group_to_module_call(c);
 	rad_assert(g->cond != NULL);
 
 	condition = radius_evaluate_cond(request, *presult, 0, g->cond);
@@ -759,7 +759,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 		entry->if_taken = false;
 
 		*priority = c->actions[*presult];
-		return UNLANG_CONTINUE;
+		return UNLANG_ACTION_CONTINUE;
 	}
 
 	/*
@@ -775,17 +775,17 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 				    rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
+	unlang_node_t *c = entry->c;
 	rad_assert(entry->was_if);
 
 	/*
-	 *	Like MOD_ELSE, but allow for a later "else"
+	 *	Like UNLANG_NODE_TYPE_ELSE, but allow for a later "else"
 	 */
 	if (entry->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_keywords[c->type].name, request->number);
+			unlang_ops[c->type].name, request->number);
 		entry->if_taken = true;
-		return UNLANG_CONTINUE;
+		return UNLANG_ACTION_CONTINUE;
 	}
 
 	/*
@@ -798,18 +798,18 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
+	unlang_node_t *c = entry->c;
 	rad_assert(entry->was_if);
 
 	if (entry->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_keywords[c->type].name, request->number);
+			unlang_ops[c->type].name, request->number);
 		entry->was_if = false;
 		entry->if_taken = false;
 
 		*presult = RLM_MODULE_NOOP;
 		*priority = c->actions[*presult];
-		return UNLANG_CONTINUE;
+		return UNLANG_ACTION_CONTINUE;
 	}
 
 	/*
@@ -825,13 +825,13 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_entry_t *entry = &stack->entry[stack->depth];
-	modcallable *c = entry->c;
-	modresume *mr = mod_callabletoresume(c);
-	modsingle *sp;
+	unlang_node_t *c = entry->c;
+	unlang_node_resumption_t *mr = unlang_node_to_resumption(c);
+	unlang_node_module_call_t *sp;
 
-	sp = &mr->single;
+	sp = &mr->module;
 
-	RDEBUG3("modsingle[%s]: Resuming %s (%s) for request %" PRIu64,
+	RDEBUG3("unlang_node_module_call_t[%s]: Resuming %s (%s) for request %" PRIu64,
 		sp->name, sp->modinst->name,
 		sp->modinst->module->name, request->number);
 
@@ -846,7 +846,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	 *	Leave mr alone, it will be freed when the request is done.
 	 */
 
-	return UNLANG_CALCULATE_RESULT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /*
@@ -856,100 +856,100 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 #define unlang_policy unlang_group
 #define unlang_break unlang_return
 
-unlang_keyword_t unlang_keywords[] = {
-	[MOD_SINGLE] = {
+unlang_op_t unlang_ops[] = {
+	[UNLANG_NODE_TYPE_MODULE_CALL] = {
 		.name = "single",
 		.func = unlang_single,
 		.children = false
 	},
-	[MOD_GROUP] = {
+	[UNLANG_NODE_TYPE_GROUP] = {
 		.name = "group",
 		.func = unlang_group,
 		.children = true
 	},
-	[MOD_LOAD_BALANCE] = {
+	[UNLANG_NODE_TYPE_LOAD_BALANCE] = {
 		.name = "load-balance group",
 		.func = unlang_load_balance,
 		.children = true
 	},
-	[MOD_REDUNDANT_LOAD_BALANCE] = {
+	[UNLANG_NODE_TYPE_REDUNDANT_LOAD_BALANCE] = {
 		.name = "redundant-load-balance group",
 		.func = unlang_redundant_load_balance,
 		.children = true
 	},
-	[MOD_PARALLEL] = {
+	[UNLANG_NODE_TYPE_PARALLEL] = {
 		.name = "parallel",
 		.func = unlang_parallel,
 		.children = true
 	},
 #ifdef WITH_UNLANG
-	[MOD_IF] = {
+	[UNLANG_NODE_TYPE_IF] = {
 		.name = "if",
 		.func = unlang_if,
 		.children = true
 	},
-	[MOD_ELSE] = {
+	[UNLANG_NODE_TYPE_ELSE] = {
 		.name = "else",
 		.func = unlang_else,
 		.children = true
 	},
-	[MOD_ELSIF] = {
+	[UNLANG_NODE_TYPE_ELSIF] = {
 		.name = "elsif",
 		.func = unlang_elsif,
 		.children = true
 	},
-	[MOD_UPDATE] = {
+	[UNLANG_NODE_TYPE_UPDATE] = {
 		.name = "update",
 		.func = unlang_update,
 		.children = true
 	},
-	[MOD_SWITCH] = {
+	[UNLANG_NODE_TYPE_SWITCH] = {
 		.name = "switch",
 		.func = unlang_switch,
 		.children = true
 	},
-	[MOD_CASE] = {
+	[UNLANG_NODE_TYPE_CASE] = {
 		.name = "case",
 		.func = unlang_case,
 		.children = true
 	},
-	[MOD_FOREACH] = {
+	[UNLANG_NODE_TYPE_FOREACH] = {
 		.name = "foreach",
 		.func = unlang_foreach,
 		.children = true
 	},
-	[MOD_BREAK] = {
+	[UNLANG_NODE_TYPE_BREAK] = {
 		.name = "break",
 		.func = unlang_break,
 		.children = false
 	},
-	[MOD_RETURN] = {
+	[UNLANG_NODE_TYPE_RETURN] = {
 		.name = "return",
 		.func = unlang_return,
 		.children = false
 	},
-	[MOD_MAP] = {
+	[UNLANG_NODE_TYPE_MAP] = {
 		.name = "map",
 		.func = unlang_map,
 		.children = true
 	},
-	[MOD_POLICY] = {
+	[UNLANG_NODE_TYPE_POLICY] = {
 		.name = "policy",
 		.func = unlang_policy,
 		.children = true
 	},
 #endif
-	[MOD_XLAT] = {
+	[UNLANG_NODE_TYPE_XLAT] = {
 		.name = "xlat",
 		.func = unlang_xlat,
 		.children = false
 	},
-	[MOD_RESUME] = {
+	[UNLANG_NODE_TYPE_RESUME] = {
 		.name = "resume",
 		.func = unlang_resume,
 		.children = false
 	},
-	[MOD_MAX] = { NULL, NULL, false }
+	[UNLANG_NODE_TYPE_MAX] = { NULL, NULL, false }
 };
 
 /*
@@ -957,11 +957,11 @@ unlang_keyword_t unlang_keywords[] = {
  */
 static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 {
-	modcallable *c;
+	unlang_node_t *c;
 	int priority;
 	rlm_rcode_t result;
 	unlang_stack_entry_t *entry;
-	unlang_action_t action = UNLANG_BREAK;
+	unlang_action_t action = UNLANG_ACTION_BREAK;
 
 	stack->entry[stack->depth].top_frame = true;
 
@@ -993,21 +993,21 @@ redo:
 		do_stop:
 			entry->result = RLM_MODULE_FAIL;
 			entry->priority = 9999;
-			entry->unwind = MOD_RETURN;
+			entry->unwind = UNLANG_NODE_TYPE_RETURN;
 			break;
 		}
 
-		if (unlang_keywords[c->type].children) RDEBUG2("%s {", c->debug_name);
+		if (unlang_ops[c->type].children) RDEBUG2("%s {", c->debug_name);
 
-		action = unlang_keywords[c->type].func(request, stack, &result, &priority);
+		action = unlang_ops[c->type].func(request, stack, &result, &priority);
 		switch (action) {
-		case UNLANG_STOP_PROCESSING:
+		case UNLANG_ACTION_STOP_PROCESSING:
 			goto do_stop;
 
-		case UNLANG_PUSHED_CHILD:
+		case UNLANG_ACTION_PUSHED_CHILD:
 			goto redo;
 
-		case UNLANG_BREAK:
+		case UNLANG_ACTION_BREAK:
 			entry->result = result;
 			goto done;
 
@@ -1022,7 +1022,7 @@ redo:
 			rad_assert(c != NULL);
 
 			if (entry->top_frame) {
-				if (unlang_keywords[c->type].children) {
+				if (unlang_ops[c->type].children) {
 					RDEBUG2("} # %s (%s)", c->debug_name,
 						fr_int2str(mod_rcode_table, result, "<invalid>"));
 				}
@@ -1037,19 +1037,19 @@ redo:
 
 			/* FALL-THROUGH */
 
-		case UNLANG_CALCULATE_RESULT:
+		case UNLANG_ACTION_CALCULATE_RESULT:
 			if (result == RLM_MODULE_YIELD) {
-				rad_assert(entry->c->type == MOD_RESUME);
+				rad_assert(entry->c->type == UNLANG_NODE_TYPE_RESUME);
 				rad_assert(entry->resume == false);
 				return RLM_MODULE_YIELD;
 			}
 
 			entry->resume = false;
-			if (unlang_keywords[c->type].children) {
+			if (unlang_ops[c->type].children) {
 				RDEBUG2("} # %s (%s)", c->debug_name,
 					fr_int2str(mod_rcode_table, result, "<invalid>"));
 			}
-			action = UNLANG_CALCULATE_RESULT;
+			action = UNLANG_ACTION_CALCULATE_RESULT;
 
 #if 0
 			RDEBUG("(%s, %d) ? (%s, %d)",
@@ -1105,8 +1105,8 @@ redo:
 
 			/* FALL-THROUGH */
 
-		case UNLANG_CONTINUE:
-			if ((action == UNLANG_CONTINUE) && unlang_keywords[c->type].children) RDEBUG2("}");
+		case UNLANG_ACTION_CONTINUE:
+			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[c->type].children) RDEBUG2("}");
 
 			if (!entry->do_next_sibling) goto done;
 
@@ -1131,7 +1131,7 @@ done:
  */
 void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	modcallable *c = NULL;
+	unlang_node_t *c = NULL;
 
 	if (cs) c = cf_data_find(cs, "unlang");
 
@@ -1282,12 +1282,12 @@ int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
 	return 0;
 }
 
-/** Mark a request as resumable.
+/** Mark a request as resumption.
  *
  *  It's not called "unlang_resume", because it doesn't actually
  *  resume the request, it just schedules it for resumption.
  */
-void unlang_resumable(REQUEST *request)
+void unlang_resumption(REQUEST *request)
 {
 	fr_heap_insert(request->backlog, request);
 }
@@ -1296,26 +1296,26 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *in
 {
 	unlang_stack_entry_t *entry;
 	unlang_stack_t *stack = request->stack;
-	modresume *mr;
+	unlang_node_resumption_t *mr;
 
 	rad_assert(stack->depth > 0);
 
 	entry = &stack->entry[stack->depth];
 
-	rad_assert(entry->c->type == MOD_SINGLE);
+	rad_assert(entry->c->type == UNLANG_NODE_TYPE_MODULE_CALL);
 
-	mr = talloc(request, modresume);
+	mr = talloc(request, unlang_node_resumption_t);
 	rad_assert(mr != NULL);
 
-	memcpy(&mr->single, entry->c, sizeof(mr->single));
+	memcpy(&mr->module, entry->c, sizeof(mr->module));
 
-	mr->single.mc.type = MOD_RESUME;
+	mr->module.node.type = UNLANG_NODE_TYPE_RESUME;
 	mr->callback = callback;
-	rad_assert(mr->single.modinst->data == inst);
+	rad_assert(mr->module.modinst->data == inst);
 	mr->inst = inst;
 	mr->ctx = ctx;
 
-	entry->c = mod_resumetocallable(mr);
+	entry->c = unlang_node_resumption_to_node(mr);
 
 	return RLM_MODULE_YIELD;
 }
