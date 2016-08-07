@@ -660,8 +660,8 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_single(REQUEST *request, unlang_stack_t *stack,
-				     rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stack,
+				     	  rlm_rcode_t *presult, int *priority)
 {
 #if 0
 	int depth = stack->depth;
@@ -868,7 +868,7 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 unlang_op_t unlang_ops[] = {
 	[UNLANG_NODE_TYPE_MODULE_CALL] = {
 		.name = "module-call",
-		.func = unlang_single,
+		.func = unlang_module_call,
 		.children = false
 	},
 	[UNLANG_NODE_TYPE_GROUP] = {
