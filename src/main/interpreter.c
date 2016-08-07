@@ -856,7 +856,7 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 
 unlang_op_t unlang_ops[] = {
 	[UNLANG_NODE_TYPE_MODULE_CALL] = {
-		.name = "single",
+		.name = "module-call",
 		.func = unlang_single,
 		.children = false
 	},
