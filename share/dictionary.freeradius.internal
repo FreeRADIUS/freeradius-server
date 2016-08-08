@@ -378,6 +378,8 @@ BEGIN-TLV	EAP-SIM-Root
 $INCLUDE dictionary.eap.sim
 END-TLV		EAP-SIM-Root
 
+ATTRIBUTE	Sigtran-MAP-Version			1230	integer
+
 #
 #  Server-side "listen type = foo"
 #
