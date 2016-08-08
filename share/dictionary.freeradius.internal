@@ -359,7 +359,7 @@ ATTRIBUTE	SIM-Algo-Version			1202	integer
 #	Range:	1210-1210
 #		EAP-AKA (and other EAP type) weirdness.
 #
-#	For EAP-SIM, some attribute definitions for database interface
+#	For EAP-AKA, some attribute definitions for database interface
 #
 ATTRIBUTE	EAP-AKA-Root				1210	tlv
 BEGIN-TLV	EAP-AKA-Root
