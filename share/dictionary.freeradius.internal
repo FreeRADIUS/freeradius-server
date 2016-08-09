@@ -379,6 +379,8 @@ $INCLUDE dictionary.eap.sim
 END-TLV		EAP-SIM-Root
 
 ATTRIBUTE	Sigtran-MAP-Version			1230	integer
+ATTRIBUTE	Sigtran-Mobile-Network-Code		1231	integer
+ATTRIBUTE	Sigtran-Mobile-Country-Code		1232	integer
 
 #
 #  Server-side "listen type = foo"
