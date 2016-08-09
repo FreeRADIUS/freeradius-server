@@ -589,7 +589,7 @@ void request_stats_reply(REQUEST *request)
 						    &client->auth);
 			}
 #ifdef WITH_ACCOUNTING
-			if ((flag->vp_integer & 0x01) != 0) {
+			if ((flag->vp_integer & 0x02) != 0) {
 				request_stats_addvp(request, client_acctvp,
 						    &client->acct);
 			}
