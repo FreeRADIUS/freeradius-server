@@ -124,6 +124,8 @@ static const CONF_PARSER module_config[] = {
  */
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
+static int perl_sys_init3_called = 0;
+
 #ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
 #  define dl_modules "DynaLoader::dl_modules"
@@ -527,7 +529,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Create tweak the server's environment to support
 	 *	perl. Docs say only call this once... Oops.
 	 */
-	PERL_SYS_INIT3(&argc, &embed, &envp);
+	if (!perl_sys_init3_called) {
+		PERL_SYS_INIT3(&argc, &embed, &envp);
+		perl_sys_init3_called = 1;
+	}
 
 	/*
 	 *	Allocate a new perl interpreter to do the parsing
@@ -1027,7 +1032,12 @@ static int mod_detach(void *instance)
 	perl_free(inst->perl);
 #endif
 
-	PERL_SYS_TERM();
+	/*
+	 *	Hope this is not really needed.
+	 *	Is only allowed to be called once just before exit().
+	 *
+	 PERL_SYS_TERM();
+	*/
 	return exitstatus;
 }
 DIAG_ON(nested-externs)
