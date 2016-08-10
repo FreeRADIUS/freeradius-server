@@ -864,6 +864,8 @@ redo:
 	while (entry->c != NULL) {
 		c = entry->c;
 
+		if (fr_debug_lvl >= 3) VERIFY_REQUEST(request);
+
 		rad_assert(c->debug_name != NULL); /* if this happens, all bets are off. */
 
 		/*
