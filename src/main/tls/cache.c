@@ -234,7 +234,7 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_num(request->state, 0, PW_TLS_SESSION_DATA);
+	vp = fr_pair_afrom_num(request->state_ctx, 0, PW_TLS_SESSION_DATA);
 	if (!vp) goto error;
 
 	fr_pair_value_memsteal(vp, data);
