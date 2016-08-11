@@ -361,8 +361,11 @@ int tls_validate_client_cert_chain(SSL *ssl)
 	verify = X509_verify_cert(store_ctx);
 	if (verify != 1) {
 		err = X509_STORE_CTX_get_error(store_ctx);
-		REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
-		ret = 0;
+
+		if (err != X509_V_OK) {
+			REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
+			ret = 0;
+		}
 	}
 
 	X509_free(cert);
