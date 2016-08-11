@@ -408,7 +408,7 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	 *	of debugging.
 	 */
 	if (default_log.dst != L_DST_SYSLOG) {
-		if (rad_debug_lvl > 2) {
+		if ((rad_debug_lvl != 1) && (rad_debug_lvl != 2)) {
 			time_t timeval;
 
 			timeval = time(NULL);
