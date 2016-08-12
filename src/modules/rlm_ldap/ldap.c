@@ -877,8 +877,13 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			int ret;
 			struct berval cred;
 
-			memcpy(&cred.bv_val, &password, sizeof(cred.bv_val));
-			cred.bv_len = password ? talloc_array_length(password) - 1 : 0;
+			if (password) {
+				memcpy(&cred.bv_val, &password, sizeof(cred.bv_val));
+				cred.bv_len = talloc_array_length(password) - 1;
+			} else {
+				cred.bv_val = NULL;
+				cred.bv_len = 0;
+			}
 
 			/*
 			 *	Yes, confusingly named.  This is the simple version
