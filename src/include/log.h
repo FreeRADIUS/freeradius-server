@@ -31,36 +31,36 @@ extern "C" {
 #endif
 
 typedef enum log_type {
-	L_AUTH = 2,		//!< Authentication message.
-	L_INFO = 3,		//!< Informational message.
-	L_ERR = 4,		//!< Error message.
-	L_WARN = 5,		//!< Warning.
-	L_PROXY	= 6,		//!< Proxy messages
-	L_ACCT = 7,		//!< Accounting messages
+	L_AUTH = 2,			//!< Authentication message.
+	L_INFO = 3,			//!< Informational message.
+	L_ERR = 4,			//!< Error message.
+	L_WARN = 5,			//!< Warning.
+	L_PROXY	= 6,			//!< Proxy messages
+	L_ACCT = 7,			//!< Accounting messages
 
-	L_DBG = 16,		//!< Only displayed when debugging is enabled.
-	L_DBG_WARN = 17,	//!< Warning only displayed when debugging is enabled.
-	L_DBG_ERR = 18,		//!< Error only displayed when debugging is enabled.
-	L_DBG_WARN_REQ = 19,	//!< Less severe warning only displayed when debugging is enabled.
-	L_DBG_ERR_REQ = 20	//!< Less severe error only displayed when debugging is enabled.
+	L_DBG = 16,			//!< Only displayed when debugging is enabled.
+	L_DBG_WARN = 17,		//!< Warning only displayed when debugging is enabled.
+	L_DBG_ERR = 18,			//!< Error only displayed when debugging is enabled.
+	L_DBG_WARN_REQ = 19,		//!< Less severe warning only displayed when debugging is enabled.
+	L_DBG_ERR_REQ = 20		//!< Less severe error only displayed when debugging is enabled.
 } log_type_t;
 
 typedef enum log_lvl {
-	L_DBG_LVL_DISABLE = -1,	//!< Don't print messages.
-	L_DBG_LVL_OFF = 0,	//!< No debug messages.
-	L_DBG_LVL_1,		//!< Highest priority debug messages (-x).
-	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X).
-	L_DBG_LVL_3,		//!< 3rd highest priority debug messages (-xxx | -Xx).
-	L_DBG_LVL_MAX		//!< Lowest priority debug messages (-xxxx | -Xxx).
+	L_DBG_LVL_DISABLE = -1,		//!< Don't print messages.
+	L_DBG_LVL_OFF = 0,		//!< No debug messages.
+	L_DBG_LVL_1,			//!< Highest priority debug messages (-x).
+	L_DBG_LVL_2,			//!< 2nd highest priority debug messages (-xx | -X).
+	L_DBG_LVL_3,			//!< 3rd highest priority debug messages (-xxx | -Xx).
+	L_DBG_LVL_MAX			//!< Lowest priority debug messages (-xxxx | -Xxx).
 } log_lvl_t;
 
 typedef enum log_dst {
-	L_DST_STDOUT = 0,	//!< Log to stdout.
-	L_DST_FILES,		//!< Log to a file on disk.
-	L_DST_SYSLOG,		//!< Log to syslog.
-	L_DST_STDERR,		//!< Log to stderr.
-	L_DST_EXTRA,		//!< Send log messages to a FILE*, via fopencookie()
-	L_DST_NULL,		//!< Discard log messages.
+	L_DST_STDOUT = 0,		//!< Log to stdout.
+	L_DST_FILES,			//!< Log to a file on disk.
+	L_DST_SYSLOG,			//!< Log to syslog.
+	L_DST_STDERR,			//!< Log to stderr.
+	L_DST_EXTRA,			//!< Send log messages to a FILE*, via fopencookie()
+	L_DST_NULL,			//!< Discard log messages.
 	L_DST_NUM_DEST
 } log_dst_t;
 
@@ -79,7 +79,7 @@ typedef struct fr_log_t {
 #endif
 } fr_log_t;
 
-typedef		void (*radlog_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
+typedef	void (*radlog_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
 
 extern FR_NAME_NUMBER const syslog_facility_table[];
 extern FR_NAME_NUMBER const syslog_severity_table[];
