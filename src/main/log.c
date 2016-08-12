@@ -370,19 +370,17 @@ int radlog_init(fr_log_t *log, bool daemonize)
  */
 int vradlog(log_type_t type, char const *msg, va_list ap)
 {
-	unsigned char *p;
-	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
-	char *unsan;
-	size_t len;
-	int colourise = default_log.colourise;
+	uint8_t		*p;
+	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
+	char		*unsan;
+	size_t		len;
+	int		colourise = default_log.colourise;
 
 	/*
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (default_log.dst == L_DST_NULL) {
-		return 0;
-	}
+	if (default_log.dst == L_DST_NULL) return 0;
 
 	buffer[0] = '\0';
 	len = 0;
