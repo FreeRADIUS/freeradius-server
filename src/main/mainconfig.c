@@ -85,6 +85,9 @@ static char const	*run_dir = NULL;
 static char const	*syslog_facility = NULL;
 static bool		do_colourise = false;
 
+static bool		*log_timestamp = false;
+static bool		log_timestamp_is_set = false;
+
 static char const	*radius_dir = NULL;	//!< Path to raddb directory
 
 /**********************************************************************
@@ -126,6 +129,7 @@ static const CONF_PARSER startup_server_config[] = {
 	{ FR_CONF_POINTER("log_file", PW_TYPE_STRING, &main_config.log_file) },
 	{ FR_CONF_POINTER("log_destination", PW_TYPE_STRING, &radlog_dest) },
 	{ FR_CONF_POINTER("use_utc", PW_TYPE_BOOLEAN, &log_dates_utc) },
+	{ FR_CONF_IS_SET_POINTER("timestamp", PW_TYPE_BOOLEAN, &log_timestamp) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -144,6 +148,7 @@ static const CONF_PARSER log_config[] = {
 	{ FR_CONF_POINTER("msg_badpass", PW_TYPE_STRING, &main_config.auth_badpass_msg) },
 	{ FR_CONF_POINTER("msg_goodpass", PW_TYPE_STRING, &main_config.auth_goodpass_msg) },
 	{ FR_CONF_POINTER("colourise", PW_TYPE_BOOLEAN, &do_colourise) },
+	{ FR_CONF_POINTER("timestamp", PW_TYPE_BOOLEAN, &log_timestamp) },
 	{ FR_CONF_POINTER("use_utc", PW_TYPE_BOOLEAN, &log_dates_utc) },
 	{ FR_CONF_POINTER("msg_denied", PW_TYPE_STRING, &main_config.denied_msg), .dflt = "You are already logged in - access denied" },
 #ifdef WITH_CONF_WRITE
@@ -936,6 +941,14 @@ do {\
 		}
 	}
 
+	/*
+	 *	Only set timestamp logging from the config file if no value was
+	 *	specified on the command line.
+	 */
+	if (log_timestamp_is_set && (default_log.timestamp == L_TIMESTAMP_AUTO)) {
+		default_log.timestamp = log_timestamp ? L_TIMESTAMP_ON : L_TIMESTAMP_OFF;
+	}
+
 #ifdef HAVE_SETUID
 	/*
 	 *	Switch users as early as possible.
@@ -973,6 +986,8 @@ do {\
 	 */
 	fr_debug_lvl = rad_debug_lvl;
 	if (rad_debug_lvl > req_debug_lvl) req_debug_lvl = rad_debug_lvl;
+
+		INFO("Switching to configured log settings");
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);

@@ -64,9 +64,17 @@ typedef enum log_dst {
 	L_DST_NUM_DEST
 } log_dst_t;
 
+typedef enum {
+	L_TIMESTAMP_AUTO = 0,		//!< Timestamp logging preference not specified. Do it based on
+					//!< debug level and destination.
+	L_TIMESTAMP_ON,			//!< Always log timestamps.
+	L_TIMESTAMP_OFF			//!< Never log timestamps.
+} log_timestamp_t;
+
 typedef struct fr_log_t {
 	bool		colourise;	//!< Prefix log messages with VT100 escape codes to change text
 					//!< colour.
+	log_timestamp_t	timestamp;	//!< Prefix log messages with timestamps.
 	int		fd;		//!< File descriptor to write messages to.
 	log_dst_t	dst;		//!< Log destination.
 	char const	*file;		//!< Path to log file.

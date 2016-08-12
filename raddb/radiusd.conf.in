@@ -256,6 +256,20 @@ log {
 	colourise = yes
 
 	#
+	#  Add a timestamp to the start of every log message.
+	#
+	#  By default this is done with log levels of -Xx or -xxx
+	#  where the destination is not syslog, or at all levels where the
+	#  output is a file.
+	#
+	#  The config option below forcefully enables or disables timestamps
+	#  irrespective of the log destination.
+	#
+	#  Note: Is overridden by the -T command line option.
+	#
+#	timestamp = no
+
+	#
 	#  The logging messages for the server are appended to the
 	#  tail of this file if destination == "files"
 	#

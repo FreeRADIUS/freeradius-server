@@ -50,17 +50,17 @@ static bool	rate_limit = true;		//!< Whether repeated log entries should be rate
 /** Maps log categories to message prefixes
  */
 static const FR_NAME_NUMBER levels[] = {
-	{ ": Debug : ",		L_DBG		},
-	{ ": Auth  : ",		L_AUTH		},
-	{ ": Proxy : ",		L_PROXY		},
-	{ ": Info  : ",		L_INFO		},
-	{ ": Warn  : ",		L_WARN		},
-	{ ": Acct  : ",		L_ACCT		},
-	{ ": Error : ",		L_ERR		},
-	{ ": WARN  : ",		L_DBG_WARN	},
-	{ ": ERROR : ",		L_DBG_ERR	},
-	{ ": WARN  : ",		L_DBG_WARN_REQ	},
-	{ ": ERROR : ",		L_DBG_ERR_REQ	},
+	{ "Debug : ",		L_DBG		},
+	{ "Auth  : ",		L_AUTH		},
+	{ "Proxy : ",		L_PROXY		},
+	{ "Info  : ",		L_INFO		},
+	{ "Warn  : ",		L_WARN		},
+	{ "Acct  : ",		L_ACCT		},
+	{ "Error : ",		L_ERR		},
+	{ "WARN  : ",		L_DBG_WARN	},
+	{ "ERROR : ",		L_DBG_ERR	},
+	{ "WARN  : ",		L_DBG_WARN_REQ	},
+	{ "ERROR : ",		L_DBG_ERR_REQ	},
 	{ NULL, 0 }
 };
 
@@ -216,6 +216,7 @@ fr_log_t default_log = {
 	.fd = STDOUT_FILENO,
 	.dst = L_DST_STDOUT,
 	.file = NULL,
+	.timestamp = L_TIMESTAMP_AUTO
 };
 
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
@@ -385,6 +386,9 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	buffer[0] = '\0';
 	len = 0;
 
+	/*
+	 *	Set colourisation
+	 */
 	if (colourise) {
 		len += strlcpy(buffer + len, fr_int2str(colours, type, ""), sizeof(buffer) - len) ;
 		if (len == 0) {
@@ -398,25 +402,60 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	unsan = buffer + len;
 
 	/*
-	 *	Don't print timestamps to syslog, it does that for us.
-	 *	Don't print timestamps and error types for low levels
-	 *	of debugging.
-	 *
-	 *	Print timestamps for non-debugging, and for high levels
-	 *	of debugging.
+	 *	Determine if we need to add a timestamp to the start of the message
+	 */
+	switch (default_log.timestamp) {
+	case L_TIMESTAMP_OFF:
+		break;
+
+	/*
+	 *	If we're not logging to syslog, and the debug level is -xxx
+	 *	then log timestamps by default.
+	 */
+	case L_TIMESTAMP_AUTO:
+		if (default_log.dst == L_DST_SYSLOG) break;
+		if ((default_log.dst != L_DST_FILES) && (rad_debug_lvl <= L_DBG_LVL_2)) break;
+		/* FALL-THROUGH */
+
+	case L_TIMESTAMP_ON:
+	{
+		time_t timeval;
+
+		timeval = time(NULL);
+#ifdef HAVE_GMTIME_R
+		if (log_dates_utc) {
+			struct tm utc;
+			gmtime_r(&timeval, &utc);
+			ASCTIME_R(&utc, buffer + len, sizeof(buffer) - len - 1);
+		} else
+#endif
+		{
+			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+		}
+		len = strlen(buffer);
+		len += strlcpy(buffer + len, ": ", sizeof(buffer) - len - 1);
+	}
+		break;
+	}
+
+	/*
+	 *	Add ERROR or WARNING prefixes to messages not going to
+	 *	syslog.  It's redundant for syslog because of syslog
+	 *	facilities.
 	 */
 	if (default_log.dst != L_DST_SYSLOG) {
-		if ((rad_debug_lvl != 1) && (rad_debug_lvl != 2)) {
-			time_t timeval;
-
-			timeval = time(NULL);
-			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
-
-			len = strlen(buffer);
+		/*
+		 *	Only print the 'facility' if we're not colourising the log messages
+		 *	and this isn't syslog.
+		 */
+		if (!default_log.colourise) {
 			len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
-		} else goto add_prefix;
-	} else {
-	add_prefix:
+		}
+
+		/*
+		 *	Add an additional prefix to highlight that this is a bad message
+		 *	the user should pay attention to.
+		 */
 		if (len < sizeof(buffer)) switch (type) {
 		case L_DBG_WARN:
 			len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
@@ -431,9 +470,7 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 		}
 	}
 
-	if (len < sizeof(buffer)) {
-		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
-	}
+	if (len < sizeof(buffer)) len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
 
 	/*
 	 *	Filter out control chars and non UTF8 chars
@@ -461,6 +498,9 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 		}
 	}
 
+	/*
+	 *	Reset colourisation if we applied it
+	 */
 	if (colourise && (len < sizeof(buffer))) {
 		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
 	}
@@ -807,7 +847,7 @@ print_msg:
 		p = strrchr(time_buff, '\n');
 		if (p) p[0] = '\0';
 
-		fprintf(fp, "%s" "%s" "%s" "%.*s" "%s" "%s" "\n",
+		fprintf(fp, "%s" "%s : " "%s" "%.*s" "%s" "%s" "\n",
 			msg_prefix,
 			time_buff,
 			fr_int2str(levels, type, ""),

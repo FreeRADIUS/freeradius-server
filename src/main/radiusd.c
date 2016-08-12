@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstvxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstTvxX")) != EOF) {
 
 		switch (argval) {
 			case 'C':
@@ -225,6 +225,10 @@ int main(int argc, char *argv[])
 
 			case 't':	/* no child threads */
 				main_config.spawn_workers = false;
+				break;
+
+			case 'T':	/* enable timestamps */
+				default_log.timestamp = L_TIMESTAMP_ON;
 				break;
 
 			case 'v':
@@ -701,6 +705,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
 	fprintf(output, "  -t            Disable threads.\n");
+	fprintf(output, "  -T            Prepend timestamps to  log messages.\n");
 	fprintf(output, "  -v            Print server version information.\n");
 	fprintf(output, "  -X            Turn on full debugging (similar to -tfxxl stdout).\n");
 	fprintf(output, "  -x            Turn on additional debugging (-xx gives more debugging).\n");
