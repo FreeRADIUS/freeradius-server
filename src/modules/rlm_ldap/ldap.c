@@ -877,7 +877,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			struct berval cred;
 
 			memcpy(&cred.bv_val, &password, sizeof(cred.bv_val));
-			cred.bv_len = talloc_array_length(password) - 1;
+			cred.bv_len = password ? talloc_array_length(password) - 1 : 0;
 
 			ret = ldap_sasl_bind((*pconn)->handle, dn, LDAP_SASL_SIMPLE, &cred,
 					     serverctrls, clientctrls, &msgid);
