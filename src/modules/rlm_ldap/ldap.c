@@ -906,13 +906,13 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 
 		case LDAP_PROC_NOT_PERMITTED:
 			ROPTIONAL(REDEBUG, ERROR, "Bind was not permitted: %s", error);
-			LDAP_EXT_REQ();
+			LDAP_EXTRA_DEBUG();
 
 			break;
 
 		case LDAP_PROC_REJECT:
 			ROPTIONAL(REDEBUG, ERROR, "Bind credentials incorrect: %s", error);
-			LDAP_EXT_REQ();
+			LDAP_EXTRA_DEBUG();
 
 			break;
 
@@ -938,7 +938,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 		default:
 			ROPTIONAL(REDEBUG, ERROR, "Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
 				  inst->server, error);
-			LDAP_EXT_REQ();
+			LDAP_EXTRA_DEBUG();
 
 			break;
 		}

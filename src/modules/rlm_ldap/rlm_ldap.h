@@ -447,8 +447,7 @@ typedef enum {
  *	simplifies switching certain messages from the request log to
  *	the main log.
  */
-#define LDAP_EXT() if (extra) ERROR(extra)
-#define LDAP_EXT_REQ() do { if (extra) { if (request) REDEBUG("%s", extra); else ERROR("%s", extra); }} while (0)
+#define LDAP_EXTRA_DEBUG() do { if (extra) { if (request) REDEBUG("%s", extra); else ERROR("%s", extra); }} while (0)
 
 extern FR_NAME_NUMBER const ldap_scope[];
 extern FR_NAME_NUMBER const ldap_tls_require_cert[];
