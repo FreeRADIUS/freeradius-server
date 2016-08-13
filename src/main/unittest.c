@@ -810,7 +810,7 @@ int main(int argc, char *argv[])
 	 *
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
-	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (modules_bootstrap(main_config.config) < 0) goto exit_failure;
 
 	/*
 	 *	Load the modules
