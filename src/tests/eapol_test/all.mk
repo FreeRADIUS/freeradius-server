@@ -54,7 +54,7 @@ clean: clean.tests.eap
 #   Only run EAP tests if we have a "test" target
 #
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
-EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
+EAPOL_TEST = $(shell test -e "$(OUTPUT_DIR)/eapol_test.skip" || $(top_builddir)/scripts/travis/eapol_test-build.sh)
 endif
 
 # This gets called recursively, so has to be outside of the condition below
@@ -81,7 +81,7 @@ radiusd.kill: | $(OUTPUT_DIR)
 	fi
 
 clean.tests.eap:
-	@rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log
+	@rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
 	@rm -f "$(CONFIG_PATH)/test.conf"
 	@rm -f "$(CONFIG_PATH)/dictionary"
 	@rm -rf "$(CONFIG_PATH)/methods-enabled"
@@ -148,8 +148,7 @@ $(foreach x,$(EAPOL_TEST_FILES),$(eval \
 #
 $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
-	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && \
-		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
+	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
 		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$@) 2>&1; then\
 		touch $@; \
 	else \
@@ -168,5 +167,10 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 tests.eap: $(EAPOL_OK_FILES)
 	@$(MAKE) radiusd.kill
 else
+.PHONY: tests.eap
 tests.eap:
+	@echo "Skipping EAP tests due to previous build error"
+	@echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
+	@mkdir -p $(OUTPUT_DIR)
+	@touch "$(OUTPUT_DIR)/eapol_test.skip"
 endif
