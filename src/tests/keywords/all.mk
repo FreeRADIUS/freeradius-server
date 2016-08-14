@@ -95,7 +95,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 			echo KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
+		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
