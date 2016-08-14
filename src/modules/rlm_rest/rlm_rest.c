@@ -870,7 +870,9 @@ static int mod_load(void)
 
 	INFO("rlm_curl - libcurl version: %s", curl_version());
 
+#ifdef HAVE_JSON
 	fr_json_version_print();
+#endif
 
 	return 0;
 }
