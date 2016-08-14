@@ -407,7 +407,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 		listener->print(listener, name, sizeof(name));
 
-		radlog(L_ERR, "Ignoring request to %s from unknown client %s port %d"
+		radlog(&default_log, L_ERR, "Ignoring request to %s from unknown client %s port %d"
 #ifdef WITH_TCP
 		       " proto %s"
 #endif

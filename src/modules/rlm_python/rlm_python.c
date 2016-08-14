@@ -182,7 +182,7 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 		return NULL;
 	}
 
-	radlog(status, "%s", msg);
+	radlog(&default_log, status, "%s", msg);
 	Py_INCREF(Py_None);
 
 	return Py_None;

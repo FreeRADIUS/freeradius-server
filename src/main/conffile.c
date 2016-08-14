@@ -4168,7 +4168,7 @@ void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	if ((rad_debug_lvl > 1) && cs) vradlog(L_DBG, fmt, ap);
+	if ((rad_debug_lvl > 1) && cs) vradlog(&default_log, L_DBG, fmt, ap);
 	va_end(ap);
 }
 

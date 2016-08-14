@@ -72,11 +72,13 @@ typedef enum {
 } log_timestamp_t;
 
 typedef struct fr_log_t {
+	log_dst_t	dst;		//!< Log destination.
+
 	bool		colourise;	//!< Prefix log messages with VT100 escape codes to change text
 					//!< colour.
 	log_timestamp_t	timestamp;	//!< Prefix log messages with timestamps.
+
 	int		fd;		//!< File descriptor to write messages to.
-	log_dst_t	dst;		//!< Log destination.
 	char const	*file;		//!< Path to log file.
 
 	void		*cookie;	//!< for fopencookie()
@@ -96,10 +98,10 @@ extern fr_log_t default_log;
 
 int	radlog_init(fr_log_t *log, bool daemonize);
 
-int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
-	CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull);
-int	radlog(log_type_t lvl, char const *fmt, ...)
-	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
+int	vradlog(fr_log_t const *log, log_type_t lvl, char const *fmt, va_list ap)
+	CC_HINT(format (printf, 3, 0)) CC_HINT(nonnull (1,3));
+int	radlog(fr_log_t const *log, log_type_t lvl, char const *fmt, ...)
+	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1,3));
 
 bool	debug_enabled(log_type_t type, log_lvl_t lvl);
 
@@ -125,7 +127,7 @@ void	radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			   uint8_t const *data, size_t data_len)
 	CC_HINT(nonnull);
 
-void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
+void	radlog_hex(fr_log_t const *log, log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
 	CC_HINT(nonnull);
 
 /** Prefix for global log messages
@@ -138,9 +140,9 @@ void	radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
 #endif
 
 #ifdef LOG_PREFIX_ARGS
-#  define _RADLOG(_l, _f, ...) radlog(_l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#  define _RADLOG(_l, _f, ...) radlog(&default_log, _l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #else
-#  define _RADLOG(_l, _f, ...) radlog(_l, LOG_PREFIX _f, ## __VA_ARGS__)
+#  define _RADLOG(_l, _f, ...) radlog(&default_log, _l, LOG_PREFIX _f, ## __VA_ARGS__)
 #endif
 
 /** @name Log global messages

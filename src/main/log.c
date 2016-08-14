@@ -365,23 +365,24 @@ int radlog_init(fr_log_t *log, bool daemonize)
 
 /** Send a server log message to its destination
  *
- * @param type of log message.
- * @param msg with printf style substitution tokens.
- * @param ap Substitution arguments.
+ * @param log	destination.
+ * @param type	of log message.
+ * @param msg	with printf style substitution tokens.
+ * @param ap	Substitution arguments.
  */
-int vradlog(log_type_t type, char const *msg, va_list ap)
+int vradlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
 {
 	uint8_t		*p;
 	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
 	char		*unsan;
 	size_t		len;
-	int		colourise = default_log.colourise;
+	int		colourise = log->colourise;
 
 	/*
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (default_log.dst == L_DST_NULL) return 0;
+	if (log->dst == L_DST_NULL) return 0;
 
 	buffer[0] = '\0';
 	len = 0;
@@ -404,7 +405,7 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	/*
 	 *	Determine if we need to add a timestamp to the start of the message
 	 */
-	switch (default_log.timestamp) {
+	switch (log->timestamp) {
 	case L_TIMESTAMP_OFF:
 		break;
 
@@ -413,8 +414,8 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	 *	then log timestamps by default.
 	 */
 	case L_TIMESTAMP_AUTO:
-		if (default_log.dst == L_DST_SYSLOG) break;
-		if ((default_log.dst != L_DST_FILES) && (rad_debug_lvl <= L_DBG_LVL_2)) break;
+		if (log->dst == L_DST_SYSLOG) break;
+		if ((log->dst != L_DST_FILES) && (rad_debug_lvl <= L_DBG_LVL_2)) break;
 		/* FALL-THROUGH */
 
 	case L_TIMESTAMP_ON:
@@ -443,12 +444,12 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	 *	syslog.  It's redundant for syslog because of syslog
 	 *	facilities.
 	 */
-	if (default_log.dst != L_DST_SYSLOG) {
+	if (log->dst != L_DST_SYSLOG) {
 		/*
 		 *	Only print the 'facility' if we're not colourising the log messages
 		 *	and this isn't syslog.
 		 */
-		if (!default_log.colourise) {
+		if (!log->colourise) {
 			len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
 		}
 
@@ -513,7 +514,7 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 		buffer[sizeof(buffer) - 1] = '\0';
 	}
 
-	switch (default_log.dst) {
+	switch (log->dst) {
 
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
@@ -551,7 +552,7 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 	case L_DST_FILES:
 	case L_DST_STDOUT:
 	case L_DST_STDERR:
-		return write(default_log.fd, buffer, strlen(buffer));
+		return write(log->fd, buffer, strlen(buffer));
 
 	default:
 	case L_DST_NULL:	/* should have been caught above */
@@ -563,11 +564,12 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 
 /** Send a server log message to its destination
  *
- * @param type of log message.
- * @param msg with printf style substitution tokens.
- * @param ... Substitution arguments.
+ * @param log	destination.
+ * @param type	of log message.
+ * @param msg	with printf style substitution tokens.
+ * @param ...	Substitution arguments.
  */
-int radlog(log_type_t type, char const *msg, ...)
+int radlog(fr_log_t const *log, log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r = 0;
@@ -578,7 +580,7 @@ int radlog(log_type_t type, char const *msg, ...)
 	 *	Non-debug message, or debugging is enabled.  Log it.
 	 */
 	if (((type & L_DBG) == 0) || (rad_debug_lvl > 0)) {
-		r = vradlog(type, msg, ap);
+		r = vradlog(log, type, msg, ap);
 	}
 	va_end(ap);
 
@@ -587,18 +589,19 @@ int radlog(log_type_t type, char const *msg, ...)
 
 /** Send a server log message to its destination without evaluating its debug level
  *
- * @param type of log message.
- * @param msg with printf style substitution tokens.
- * @param ... Substitution arguments.
+ * @param log	destination.
+ * @param type	of log message.
+ * @param msg	with printf style substitution tokens.
+ * @param ...	Substitution arguments.
  */
-static int radlog_always(log_type_t type, char const *msg, ...) CC_HINT(format (printf, 2, 3));
-static int radlog_always(log_type_t type, char const *msg, ...)
+static int radlog_always(fr_log_t const *log, log_type_t type, char const *msg, ...) CC_HINT(format (printf, 3, 4));
+static int radlog_always(fr_log_t const *log, log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r;
 
 	va_start(ap, msg);
-	r = vradlog(type, msg, ap);
+	r = vradlog(log, type, msg, ap);
 	va_end(ap);
 
 	return r;
@@ -606,8 +609,8 @@ static int radlog_always(log_type_t type, char const *msg, ...)
 
 /** Whether a server debug message should be logged
  *
- * @param type of message.
- * @param lvl of debugging this message should be logged at.
+ * @param type	of message.
+ * @param lvl	of debugging this message should be logged at.
  * @return
  *	- true if message should be logged.
  *	- false if message shouldn't be logged.
@@ -875,7 +878,8 @@ print_msg:
 		break;
 	};
 
-	radlog_always(type, "%s" "%.*s" "%s" "%s" "%s",
+	radlog_always(request->log.output,
+		      type, "%s" "%.*s" "%s" "%s" "%s",
 		      msg_prefix,
 		      unlang_indent, spaces,
 		      msg_module ? msg_module : "",
@@ -998,7 +1002,7 @@ void radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	}
 }
 
-void radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
+void radlog_hex(fr_log_t const *log, log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
 {
 	size_t i, j, len;
 	char *p;
@@ -1011,6 +1015,6 @@ void radlog_hex(log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data
 		if ((i + len) > data_len) len = data_len - i;
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
-		radlog(type, "%04x: %s", (int)i, buffer);
+		radlog(log, type, "%04x: %s", (int)i, buffer);
 	}
 }
