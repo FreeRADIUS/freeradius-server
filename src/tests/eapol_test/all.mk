@@ -167,10 +167,8 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 tests.eap: $(EAPOL_OK_FILES)
 	@$(MAKE) radiusd.kill
 else
-.PHONY: tests.eap
-tests.eap:
+tests.eap: $(OUTPUT_DIR)
 	@echo "Skipping EAP tests due to previous build error"
 	@echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
-	@mkdir -p $(OUTPUT_DIR)
 	@touch "$(OUTPUT_DIR)/eapol_test.skip"
 endif
