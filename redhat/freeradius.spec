@@ -1,5 +1,6 @@
 %bcond_with rlm_yubikey
 %bcond_with experimental_modules
+%bcond_with rlm_sigtran
 
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
@@ -12,6 +13,7 @@
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+%{!?_with_rlm_sigtran: %global _without_rlm_sigtran --without-rlm_sigtran}
 
 # experimental modules
 %bcond_with rlm_idn
@@ -331,6 +333,18 @@ BuildRequires: ruby ruby-devel
 This plugin provides Ruby support for the FreeRADIUS server project.
 %endif
 
+%if %{?_with_rlm_sigtran:1}%{!?_with_rlm_sigtran:0}
+%package sigtran
+Summary: Sigtran support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: libosmo-sccp, libosmo-xua, libosmo-mtp, libosmocore
+BuildRequires: libosmo-sccp-devel, libosmo-xua-devel, libosmo-mtp-devel, libosmocore-devel
+
+%description sigtran
+This plugin provides an experimental M3UA/SCCP/TCAP/MAP stack for the FreeRADIUS server project.
+%endif
+
 %if %{?_with_rlm_yubikey:1}%{!?_with_rlm_yubikey:0}
 %package yubikey
 Summary: YubiCloud support for FreeRADIUS
@@ -405,6 +419,8 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_opendirectory} \
         %{?_with_rlm_securid} \
         %{?_without_rlm_securid} \
+        %{?_with_rlm_sigtran} \
+        %{?_without_rlm_sigtran} \
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby} \
         %{?_with_rlm_cache_memcached} \
@@ -849,6 +865,12 @@ fi
 %files rest
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
+
+%if %{?_with_rlm_sigtran:1}%{!?_with_rlm_sigtran:0}
+%files sigtran
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_sigtran.so
+%endif
 
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %files ruby
