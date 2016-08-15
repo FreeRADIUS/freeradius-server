@@ -1,3 +1,14 @@
+# rlm_mschap
+## Metadata
+<dl>
+  <dt>category</dt><dd>authentication</dd>
+</dl>
+
+## Summary
+Supports MS-CHAP and MS-CHAPv2 authentication. It also enforces the SMB-Account-Ctrl attribute.
+
+## Description
+
 New features were added:
 + LM support to MS-CHAP
 + support  for  SAMBA passwd files. It introduces new files smbpass.c and
@@ -26,9 +37,9 @@ was designed for Cistron-Radius 1.6.4, but the changes to source are
 pretty minimal and should work with previous versions.  It is based on
 RFC 2433, which is included with this package.
 
-I have tested this successfully using Windows 98 and Windows 2000 with Cisco 
-AS5300 terminal servers.  I have not tested it in any other environment, so 
-I can't guarantee it's success everywhere.  I also don't have time to do 
+I have tested this successfully using Windows 98 and Windows 2000 with Cisco
+AS5300 terminal servers.  I have not tested it in any other environment, so
+I can't guarantee it's success everywhere.  I also don't have time to do
 much troubleshooting, though I am interested to hear about problems anyone
 might have.  If you can fix a problem, then I will incorporate the fix into
 the distribution.
@@ -51,26 +62,26 @@ Networking.  Testing showed me that, in Windows 2000 at least, this meant
 MS-CHAP.  If you want to specify CHAP, then Windows 2000 requires you to
 select "Allow unencrypted password". Duh.
 
-MS-CHAP is similar to CHAP.  The NAS creates a challenge string and gives it 
-to the client.  The client then uses the password to encrypt the challenge 
+MS-CHAP is similar to CHAP.  The NAS creates a challenge string and gives it
+to the client.  The client then uses the password to encrypt the challenge
 and gives it back to the NAS, who then gives them both to Radius.  Radius
 performs the same encryption of the challenge string using the locally stored
 password, then compares the result to the response from the client.
 
 The difference between MS-CHAP and CHAP is in the encryption method.  CHAP
 performs one MD5 hash to get the response.  MS-CHAP first encrypts the password
-with MD4.  It then pads the 16-byte hash out to 21 bytes and divides this 
+with MD4.  It then pads the 16-byte hash out to 21 bytes and divides this
 string into 3 parts.  Each 7-byte part is used as a key for a DES encryption
 of the challenge string.  The 8-byte results are then concatonated together
 into a 24-byte response.
 
-The method just described is called NT-encryption by the RFC.  MS-CHAP is 
+The method just described is called NT-encryption by the RFC.  MS-CHAP is
 actually designed for compatability with Microsoft LAN Manager as well.
 The response returned by the client actually contains an LM encrypted
 response as well as the NT-encrypted password.  This implementation only
 uses the NT-encrypted response, which seems to work fine for Windows 98
 and Windows 2000.  The RFC also has a number of other specs for allowing the
-user to change password and things like that.  None of that has been 
+user to change password and things like that.  None of that has been
 implemented here.
 
 A useful extension of this would be in the local storage of passwords.

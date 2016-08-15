@@ -1,0 +1,10 @@
+# rlm_perl
+## Metadata
+<dl>
+  <dt>category</dt><dd></dd>
+</dl>
+
+## Summary
+Allows the server to call a persistent, embedded Perl script.
+
+When there are policies that cannot be implemented in unlang, it is recommended to use rlm_perl or rlm_python.
