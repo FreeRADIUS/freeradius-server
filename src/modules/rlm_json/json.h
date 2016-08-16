@@ -66,5 +66,7 @@ char		*fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes);
 size_t    	fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp);
 
 void		fr_json_version_print(void);
+
+const char *fr_json_from_pair_list(VALUE_PAIR **vps, const char *prefix);
 #endif
 #endif /* _FR_JSON_H */
