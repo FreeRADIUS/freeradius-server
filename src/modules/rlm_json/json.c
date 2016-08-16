@@ -252,3 +252,83 @@ void fr_json_version_print(void)
 #endif
 }
 
+static void json_array_add_vp(TALLOC_CTX *ctx, json_object *arr, VALUE_PAIR *vp) {
+	json_object *to_add = NULL;
+	char *stringified_value;
+
+	switch (vp->da->type) {
+		case PW_TYPE_INTEGER:
+			to_add = json_object_new_int(vp->vp_integer);
+			break;
+		case PW_TYPE_SHORT:
+			to_add = json_object_new_int(vp->vp_short);
+			break;
+		case PW_TYPE_BYTE:
+			to_add = json_object_new_int(vp->vp_byte);
+			break;
+		case PW_TYPE_SIGNED:
+			to_add = json_object_new_int(vp->vp_signed);
+			break;
+		case PW_TYPE_INTEGER64:
+			to_add = json_object_new_int64(vp->vp_integer64);
+			break;
+		case PW_TYPE_BOOLEAN:
+			to_add = json_object_new_boolean(vp->vp_byte);
+			break;
+		default:
+			MEM(stringified_value = fr_pair_value_asprint(ctx, vp, '\0'));
+			to_add = json_object_new_string(stringified_value);
+			talloc_free(stringified_value);
+			break;
+	}
+	MEM(to_add);
+	json_object_array_add(arr, to_add);
+}
+
+const char *fr_json_from_pair_list(VALUE_PAIR **vps, const char *prefix) {
+	TALLOC_CTX *ctx;
+	vp_cursor_t cursor;
+	struct json_object *obj, *vp_object, *values, *type_name;
+	VALUE_PAIR *vp;
+	const char *name_with_prefix;
+	const char *res = NULL;
+
+	MEM(ctx = talloc_pool(NULL, 1024));
+	MEM(obj = json_object_new_object());
+
+	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+
+		if (prefix) {
+			MEM(name_with_prefix = talloc_asprintf(ctx, "%s:%s", prefix, vp->da->name));
+		} else {
+			name_with_prefix = vp->da->name;
+		}
+
+		if (json_object_object_get_ex(obj, name_with_prefix, &vp_object)) {
+			if (!json_object_object_get_ex(vp_object, "value", &values)) {
+				ERROR("Something is broken in the rlm_json encoder");
+				goto error;
+			}
+		} else {
+			MEM(vp_object = json_object_new_object());
+			json_object_object_add(obj, name_with_prefix, vp_object);
+
+			MEM(type_name = json_object_new_string(fr_int2str(dict_attr_types, vp->da->type, "<INVALID>")));
+			json_object_object_add(vp_object, "type", type_name);
+
+			MEM(values = json_object_new_array());
+			json_object_object_add(vp_object, "value", values);
+		}
+
+		json_array_add_vp(ctx, values, vp);
+	}
+	res = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN);
+
+error:
+	talloc_free(ctx);
+	json_object_put(obj);
+
+	return res;
+}
+
