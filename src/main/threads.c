@@ -401,8 +401,8 @@ static void *thread_handler(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	while (true) {
-		bool wait_for_event;
-		REQUEST *request;
+		bool		wait_for_event;
+		REQUEST		*request;
 
 #  ifdef HAVE_GPERFTOOLS_PROFILER_H
 		ProfilerRegisterThread();
@@ -430,9 +430,7 @@ static void *thread_handler(void *arg)
 		if (fr_heap_num_elements(local_backlog) == 0) {
 			wait_for_event = true;
 
-			DEBUG2("Thread %d waiting to be assigned a request",
-			       thread->thread_num);
-
+			DEBUG2("Thread %d waiting to be assigned a request", thread->thread_num);
 		} else {
 			/*
 			 *	Otherwise service the timer and FD
@@ -449,7 +447,7 @@ static void *thread_handler(void *arg)
 		 */
 		rcode = fr_event_check(el, wait_for_event);
 		if (rcode < 0) {
-			ERROR("Thread %d failed waiting for request: %s: Exiting\n",
+			ERROR("Thread %d failed waiting for request: %s: Exiting",
 			      thread->thread_num, fr_syserror(errno));
 			fr_exit(EXIT_FAILURE);
 		}
