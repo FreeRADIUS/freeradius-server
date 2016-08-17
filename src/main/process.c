@@ -103,13 +103,8 @@ void request_trace_state_machine(REQUEST *request)
 }
 #endif
 
-static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char const *msg)
-{
-	ERROR("%s[%u]: %s", file, line, msg);
-	fr_exit_now(1);
-}
 
-#define rad_panic(x) _rad_panic(__FILE__, __LINE__, x)
+#define rad_panic(_x, ...) radlog_fatal("%s[%u]: " _x, __FILE__, __LINE__, ## __VA_ARGS__)
 
 /** Declare a state in the state machine
  *
@@ -132,7 +127,7 @@ static inline void state_machine_timer(char const *file, int line, REQUEST *requ
 				       struct timeval *when)
 {
 	if (fr_event_insert(el, request_timer, request, when, &request->ev) < 0) {
-		_rad_panic(file, line, "Failed to insert event");
+		radlog_fatal("%s[%u]: Failed to insert event: %s", file, line, fr_strerror());
 	}
 }
 
@@ -378,7 +373,10 @@ static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #undef USEC
 #define USEC (1000000)
 
-#define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
+#define INSERT_EVENT(_function, _ctx) \
+	if (fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev)) < 0) { \
+		radlog_fatal("%s[%u]: %s", __FILE__, __LINE__, fr_strerror()); \
+	}
 
 static void tv_add(struct timeval *tv, int usec_delay)
 {

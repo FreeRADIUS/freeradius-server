@@ -1018,3 +1018,18 @@ void radlog_hex(fr_log_t const *log, log_type_t type, log_lvl_t lvl, uint8_t con
 		radlog(log, type, "%04x: %s", (int)i, buffer);
 	}
 }
+
+/** Log a fatal error, then exit
+ *
+ */
+void radlog_fatal(char const *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vradlog(&default_log, L_ERR, fmt, ap);
+	va_end(ap);
+
+	fr_exit_now(1);
+}
+
