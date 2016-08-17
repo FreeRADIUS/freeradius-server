@@ -61,7 +61,7 @@ authorize {
 	#
 	# Check the client certificate common name against the supplied User-Name
 	#
-#	if ("host/%{session-state:TLS-Client-Cert-Common-Name}" == &User-Name) {
+#	if (&User-Name == "host/%{session-state:TLS-Client-Cert-Common-Name}") {
 #		update config {
 #			&Auth-Type := Accept
 #		}
