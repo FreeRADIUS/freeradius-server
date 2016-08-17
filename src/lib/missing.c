@@ -635,6 +635,54 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 	return p;
 }
 
+/** Compares two talloced uint8_t arrays with memcmp
+ *
+ * Talloc arrays carry their length as part of the structure, so can be passed to a generic
+ * comparison function.
+ *
+ * @param a	Pointer to first array.
+ * @param b	Pointer to second array.
+ * @return
+ *	- 0 if the arrays match.
+ *	- a positive or negative integer otherwise.
+ */
+int talloc_memcmp_array(uint8_t const *a, uint8_t const *b)
+{
+	size_t a_len, b_len;
+
+	a_len = talloc_array_length(a);
+	b_len = talloc_array_length(b);
+
+	if (a_len > b_len) return +1;
+	if (b_len < a_len) return -1;
+
+	return memcmp(a, b, a_len);
+}
+
+/** Compares two talloced char arrays with memcmp
+ *
+ * Talloc arrays carry their length as part of the structure, so can be passed to a generic
+ * comparison function.
+ *
+ * @param a	Pointer to first array.
+ * @param b	Pointer to second array.
+ * @return
+ *	- 0 if the arrays match.
+ *	- a positive or negative integer otherwise.
+ */
+int talloc_memcmp_bstr(char const *a, char const *b)
+{
+	size_t a_len, b_len;
+
+	a_len = talloc_array_length(a);
+	b_len = talloc_array_length(b);
+
+	if (a_len > b_len) return +1;
+	if (b_len < a_len) return -1;
+
+	return memcmp(a, b, a_len);
+}
+
 /** Decrease the reference count on a ptr
  *
  * Ptr will be freed if count reaches zero.
