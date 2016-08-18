@@ -74,6 +74,11 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 
 static pid_t radius_pid;
 
+#ifdef HAVE_SYSTEMD_WATCHDOG
+uint64_t sd_watchdog_interval = 0;
+#endif
+
+
 /*
  *  Configuration items.
  */
@@ -342,6 +347,20 @@ int main(int argc, char *argv[])
 			fr_exit(EXIT_FAILURE);
 		}
 	}
+
+	/*
+	 *  The systemd watchdog enablement must be checked before we
+	 *  daemonize, but the notifications can come from any process.
+	 */
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	if (!check_config) {
+		if (sd_watchdog_enabled(0, &sd_watchdog_interval) > 0) {
+			INFO("systemd watchdog interval is %d secs.\n", (int) sd_watchdog_interval / 1000000);
+		} else {
+			INFO("systemd watchdog is disabled.\n");
+		}
+	}
+#endif
 
 #ifndef __MINGW32__
 	/*
