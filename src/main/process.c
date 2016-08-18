@@ -1154,7 +1154,7 @@ static void request_response_delay(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		ERROR("(%u) Discarding duplicate request from "
+		RDEBUG("(%u) Discarding duplicate request from "
 		      "client %s port %d - ID: %u due to delayed response",
 		      request->number, request->client->shortname,
 		      request->packet->src_port,request->packet->id);
