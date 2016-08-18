@@ -357,6 +357,10 @@ static int timestamp_cmp(void const *one, void const *two)
 	REQUEST const *a = one;
 	REQUEST const *b = two;
 
+	if (!a->packet && !b->packet) return 0;
+	if (!a->packet && b->packet) return -1;
+	if (a->packet && !b->packet) return +1;
+
 	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, < )) return -1;
 	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, > )) return +1;
 
