@@ -830,7 +830,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 	 *	Ensure it's a valid EAP-Request, or EAP-Response.
 	 */
 	if (eap_validation(request, eap_packet_p) < 0) {
-	error:
+	error_round:
 		talloc_free(*eap_packet_p);
 		*eap_packet_p = NULL;
 		return NULL;
@@ -851,7 +851,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 				REDEBUG("The RADIUS client is broken.  No amount of changing FreeRADIUS will fix the RADIUS client.");
 			}
 
-			goto error;
+			goto error_round;
 		}
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
@@ -861,9 +861,9 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 		eap_session->rounds++;
 		if (eap_session->rounds >= 50) {
 			RERROR("Failing EAP session due to too many round trips");
-		error2:
+		error_session:
 			eap_session_destroy(&eap_session);
-			goto error;
+			goto error_round;
 		}
 
 		/*
@@ -881,14 +881,14 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 			       eap_type2name(eap_session->type),
 			       eap_type2name(eap_packet->data[0]));
 			RERROR("Your Supplicant or NAS is probably broken");
-			goto error;
+			goto error_round;
 		}
 	/*
 	 *	Packet was EAP identity, allocate a new eap_session.
 	 */
 	} else {
 		eap_session = eap_session_alloc(inst, request);
-		if (!eap_session) goto error;
+		if (!eap_session) goto error_round;
 
 		RDEBUG4("New eap_session_t %p", eap_session);
 
@@ -898,7 +898,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 		eap_session->identity = eap_identity(request, eap_session, eap_packet);
 		if (!eap_session->identity) {
 			RDEBUG("Identity Unknown, authentication failed");
-			goto error2;
+			goto error_session;
 		}
 
 		/*
@@ -928,7 +928,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 	       vp = fr_pair_make(request->packet, &request->packet->vps,
 				 "User-Name", eap_session->identity, T_OP_EQ);
 	       if (!vp) {
-		       goto error;
+		       goto error_round;
 	       }
 	} else {
 	       /*
@@ -943,14 +943,14 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 	       if (talloc_memcmp_bstr(eap_session->identity, vp->vp_strvalue) != 0) {
 		       REDEBUG("Identity from EAP Identity-Response \"%s\" does not match User-Name attribute \"%s\"",
 		       	       eap_session->identity, vp->vp_strvalue);
-		       goto error;
+		       goto error_round;
 	       }
 	}
 
 	eap_session->this_round = eap_round_build(eap_session, eap_packet_p);
 	if (!eap_session->this_round) {
 		REDEBUG("Failed allocating memory for round");
-		goto error2;
+		goto error_session;
 	}
 
 	return eap_session;
