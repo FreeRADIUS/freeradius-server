@@ -2338,7 +2338,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		}
 
 		if (node->xlat->buf_len > 0) {
-			str = talloc_array(request, char, node->xlat->buf_len);
+			str = talloc_array(ctx, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
 		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
