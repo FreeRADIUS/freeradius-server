@@ -54,6 +54,10 @@ RCSID("$Id$")
 #  define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
+#ifdef HAVE_SYSTEMD
+#  include <systemd/sd-daemon.h>
+#endif
+
 /*
  *  Global variables.
  */
@@ -403,6 +407,10 @@ int main(int argc, char *argv[])
 				waitpid(pid, &stat_loc, WNOHANG);
 				exit(EXIT_FAILURE);
 			}
+
+#ifdef HAVE_SYSTEMD
+			sd_notify(0, "READY=1");
+#endif
 
 			exit(EXIT_SUCCESS);
 		}
