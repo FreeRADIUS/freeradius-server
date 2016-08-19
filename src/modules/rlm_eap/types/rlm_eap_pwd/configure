@@ -2694,21 +2694,21 @@ _smart_try_dir=
 _smart_include_dir=
 
 for _prefix in $smart_prefix ""; do
-  for _dir in $smart_try_dir; do
-    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
-  done
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
 
-  for _dir in $smart_include_dir; do
-    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
-  done
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
 done
 
 if test "x$_smart_try_dir" != "x"; then
-  for try in $_smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ec.h in $try" >&5
+for try in $_smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ec.h in $try" >&5
 $as_echo_n "checking for openssl/ec.h in $try... " >&6; }
-    CPPFLAGS="-isystem $try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <openssl/ec.h>
@@ -2735,16 +2735,16 @@ $as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-  CPPFLAGS="$old_CPPFLAGS"
+done
+CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
-  for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/openssl/ec.h" >&5
+for _prefix in $smart_prefix; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/openssl/ec.h" >&5
 $as_echo_n "checking for ${_prefix}/openssl/ec.h... " >&6; }
 
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <openssl/ec.h>
@@ -2771,14 +2771,14 @@ $as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
+done
 fi
 
 if test "x$smart_include" = "x"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ec.h" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ec.h" >&5
 $as_echo_n "checking for openssl/ec.h... " >&6; }
 
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <openssl/ec.h>
@@ -2809,68 +2809,68 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-  for prefix in $smart_prefix; do
+for prefix in $smart_prefix; do
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
-  file="${_prefix}/${1}"
+DIRS=
+file="${_prefix}/${1}"
 
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
 
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
 
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
 fi
 
 eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
-  done
+done
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=openssl/ec.h
+DIRS=
+file=openssl/ec.h
 
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
 
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
 
-                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
 fi
 
 eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
 
-  for try in $_smart_include_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ec.h in $try" >&5
+for try in $_smart_include_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for openssl/ec.h in $try" >&5
 $as_echo_n "checking for openssl/ec.h in $try... " >&6; }
-    CPPFLAGS="-isystem $try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 		    #include <openssl/ec.h>
@@ -2897,14 +2897,14 @@ $as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-  done
-  CPPFLAGS="$old_CPPFLAGS"
+done
+CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
-  eval "ac_cv_header_$ac_safe=yes"
-  CPPFLAGS="$smart_include $old_CPPFLAGS"
-  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
 fi
 
 smart_prefix=
@@ -2926,12 +2926,12 @@ smart_ldflags=
 smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
+for try in $smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
 $as_echo_n "checking for EVP_cleanup in -lcrypto in $try... " >&6; }
-    LIBS="-lcrypto $old_LIBS"
-    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  LIBS="-lcrypto $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char EVP_cleanup();
 int
@@ -2956,16 +2956,16 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-  done
-  LIBS="$old_LIBS"
-  CPPFLAGS="$old_CPPFLAGS"
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto" >&5
 $as_echo_n "checking for EVP_cleanup in -lcrypto... " >&6; }
-  LIBS="-lcrypto $old_LIBS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+LIBS="-lcrypto $old_LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char EVP_cleanup();
 int
@@ -2988,33 +2988,33 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-  LIBS="$old_LIBS"
+LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libcrypto${libltdl_cv_shlibext}
+DIRS=
+file=libcrypto${libltdl_cv_shlibext}
 
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
 
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
+          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
 fi
 
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
@@ -3022,37 +3022,37 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libcrypto.a
+DIRS=
+file=libcrypto.a
 
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
 
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
 
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
+          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
 fi
 
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
+for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
 $as_echo_n "checking for EVP_cleanup in -lcrypto in $try... " >&6; }
-    LIBS="-lcrypto $old_LIBS"
-    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  LIBS="-lcrypto $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char EVP_cleanup();
 int
@@ -3077,15 +3077,15 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-  done
-  LIBS="$old_LIBS"
-  CPPFLAGS="$old_CPPFLAGS"
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" != "x"; then
-  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_ldflags $smart_lib $old_LIBS"
-  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+LIBS="$smart_ldflags $smart_lib $old_LIBS"
+SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
         if test "x$ac_cv_lib_crypto_EVP_cleanup" != "xyes"; then
@@ -3160,10 +3160,10 @@ fi
 
 
 
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
+unset ac_cv_env_LIBS_set
+unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
