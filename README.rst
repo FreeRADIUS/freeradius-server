@@ -25,11 +25,11 @@ of people, in sites ranging from 10 to 10 million+ users.
 
 Upgrading
 ---------
-Version 4.1.x of the server is largely compatible with version 3.0.x,
+Version 4.0.x of the server is largely compatible with version 3.0.x,
 but be sure to address any warnings when starting v3.0.x before
-attempting to use en existing configuration with v4.1.x.
+attempting to use en existing configuration with v4.0.x.
 
-For a list of changes in version 4.1, please see `doc/changelog
+For a list of changes in version 4.0, please see `doc/changelog
 <https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog>`_
 
 See `raddb/README.rst
