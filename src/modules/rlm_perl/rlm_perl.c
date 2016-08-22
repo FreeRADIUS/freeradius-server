@@ -1020,12 +1020,13 @@ static int mod_detach(void *instance)
 	rlm_perl_t	*inst = (rlm_perl_t *) instance;
 	int 		exitstatus = 0, count = 0;
 
-	if (inst->rad_perlconf_hv != NULL) hv_undef(inst->rad_perlconf_hv);
 
-	if (inst->perl_parsed && inst->func_detach) {
+	if (inst->perl_parsed) {
 		dTHXa(inst->perl);
 		PERL_SET_CONTEXT(inst->perl);
-		{
+		if (inst->rad_perlconf_hv != NULL) hv_undef(inst->rad_perlconf_hv);
+
+		if (inst->func_detach) {
 			dSP; ENTER; SAVETMPS;
 			PUSHMARK(SP);
 
