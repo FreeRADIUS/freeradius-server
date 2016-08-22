@@ -4,7 +4,9 @@ After=syslog.target network.target
 Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ http://networkradius.com/doc/
 
 [Service]
-Type=forking
+Type=notify
+WatchdogSec=60
+NotifyAccess=all
 PIDFile=/run/freeradius/freeradius.pid
 EnvironmentFile=-/etc/default/freeradius
 ExecStartPre=/usr/sbin/freeradius $FREERADIUS_OPTIONS -Cx -lstdout
