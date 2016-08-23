@@ -369,6 +369,22 @@ static int timestamp_cmp(void const *one, void const *two)
 
 
 /*
+ *	Enforce max_request_time.
+ */
+static void max_request_time_hook(void *ctx, UNUSED struct timeval *now)
+{
+	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
+#ifdef DEBUG_STATE_MACHINE
+	fr_state_action_t action = FR_ACTION_DONE;
+#endif
+
+	TRACE_STATE_MACHINE;
+
+	request->process(request, FR_ACTION_DONE);
+}
+
+
+/*
  *	The main thread handler for requests.
  *
  *	Wait for a request, process it, and continue.
@@ -413,15 +429,30 @@ static void *thread_handler(void *arg)
 #  endif
 
 		/*
-		 *	Drain the backlog from the reader thread on every round through the loop.
+		 *	Drain the backlog from the reader thread on
+		 *	every round through the loop.  We also add our
+		 *	local event loop, backlog, and
+		 *	max_request_time handler to the request.
 		 */
 		if (fr_heap_num_elements(thread->backlog) > 0) {
+			struct timeval when;
+
+			gettimeofday(&when, NULL);
+			when.tv_sec += main_config.max_request_time;
+
 			pthread_mutex_lock(&thread->backlog_mutex);
 			do {
 				request = fr_heap_peek(thread->backlog);
 				if (!request) break;
 				(void) fr_heap_extract(thread->backlog, request);
+
+				request->el = el;
+				request->backlog = local_backlog;
 				fr_heap_insert(local_backlog, request);
+
+				if (fr_event_insert(request->el, max_request_time_hook, request, &when, &request->ev) < 0) {
+					REDEBUG("Failed inserting max_request_time");
+				}
 			} while (request != NULL);
 
 			pthread_mutex_unlock(&thread->backlog_mutex);
@@ -483,9 +514,6 @@ static void *thread_handler(void *arg)
 		request = fr_heap_peek(local_backlog);
 		rad_assert(request != NULL);
 		(void) fr_heap_extract(local_backlog, request);
-
-		request->el = el;
-		request->backlog = local_backlog;
 
 		thread->request_count++;
 
