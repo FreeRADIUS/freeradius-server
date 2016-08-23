@@ -263,7 +263,7 @@ ATTRIBUTE	Cache-Expires				1170	date internal
 ATTRIBUTE	Cache-Created				1171	date internal
 ATTRIBUTE	Cache-TTL				1172	signed internal
 ATTRIBUTE	Cache-Status-Only			1173	integer internal
-ATTRIBUTE	Cache-Merge				1174	integer internal
+ATTRIBUTE	Cache-Merge-New				1174	integer internal
 ATTRIBUTE	Cache-Entry-Hits			1175	integer internal
 
 ATTRIBUTE	Cache-Allow-Merge			1176	integer	internal
