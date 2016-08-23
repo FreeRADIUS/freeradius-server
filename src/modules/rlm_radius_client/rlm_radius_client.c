@@ -180,11 +180,9 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	unlang_resumable(ccr->request);
 }
 
-static void mod_event_timeout(REQUEST *request, UNUSED void *instance, void *ctx, UNUSED struct timeval *now)
+static void mod_proxy_no_reply(REQUEST *request, UNUSED void *instance, void *ctx, UNUSED struct timeval *now)
 {
 	rlm_radius_client_request_t *ccr = ctx;
-
-	RDEBUG("Timeout on socket");
 
 	mod_cleanup(request, ccr);
 
@@ -239,7 +237,11 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *c
 		return rcode;
 	}
 
-	unlang = cf_section_sub_find_name2(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
+	if (child->reply) {
+		unlang = cf_section_sub_find_name2(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
+	} else {
+		unlang = cf_section_sub_find_name2(inst->server_cs, "recv", "timeout");
+	}
 
 	if (!unlang) goto done;
 
@@ -400,7 +402,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 	gettimeofday(&now, NULL);
 	timeradd(&now, &timeout, &timeout);
 
-	unlang_event_timeout_add(request, mod_event_timeout, inst, ccr, &timeout);
+	unlang_event_timeout_add(request, mod_proxy_no_reply, inst, ccr, &timeout);
 
 	return unlang_yield(request, mod_resume_continue, ccr);
 }
@@ -707,6 +709,13 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 
 	default:
 		cf_log_err_cs(config, "Internal sanity check error");
+		return -1;
+	}
+
+	/*
+	 *	Compile the "timeout" section, too.
+	 */
+	if (mod_compile_section(cs, "recv", "timeout") < 0) {
 		return -1;
 	}
 
