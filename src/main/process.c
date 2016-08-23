@@ -4028,6 +4028,12 @@ static void request_coa_originate(REQUEST *request)
 		}
 	}
 
+	if (!main_config.proxy_requests) {
+		RWDEBUG("Cannot originate CoA packets unless 'proxy_requests = yes'");
+			TALLOC_FREE(request->coa);
+		return;
+	}
+
 	coa = request->coa;
 
 	/*
