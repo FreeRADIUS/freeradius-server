@@ -59,6 +59,16 @@ else
        SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5)"
 endif
 
+# Add libsystemd-dev as a Build-Depends to debian/control if it is known to this system
+ifeq ($(shell apt-cache show libsystemd-dev &>/dev/null && echo yes),yes)
+       CONTROL_BUILDDEPS += libsystemd-dev,
+endif
+
+debian/control: debian/control.in
+	sed -e 's/@BUILDDEPS@/$(CONTROL_BUILDDEPS)/g' \
+	     debian/control.in > debian/control.tmp
+	mv debian/control.tmp debian/control
+
 include /usr/share/quilt/quilt.make
 
 config.status: configure
@@ -99,7 +109,8 @@ endif
 		--with-iodbc-include-dir='/usr/include/iodbc' \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
-		--without-rlm_sql_unixodbc
+		--without-rlm_sql_unixodbc \
+		--with-systemd
 
 	rm config.guess
 	mv config.guess.dist config.guess
@@ -118,7 +129,7 @@ build-indep: patch build-indep-stamp
 build-indep-stamp: config.status
 	touch $@
 
-clean: unpatch
+clean: debian/control unpatch
 	dh_testdir
 	dh_testroot
 	rm -f build-arch-stamp build-indep-stamp
