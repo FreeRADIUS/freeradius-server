@@ -268,14 +268,10 @@ ATTRIBUTE	Cache-Expires				1170	date
 ATTRIBUTE	Cache-Created				1171	date
 ATTRIBUTE	Cache-TTL				1172	signed
 ATTRIBUTE	Cache-Status-Only			1173	integer
-ATTRIBUTE	Cache-Merge				1174	integer
+ATTRIBUTE	Cache-Merge-New				1174	integer
 ATTRIBUTE	Cache-Entry-Hits			1175	integer
 
 ATTRIBUTE	Cache-Allow-Merge			1176	integer
-
-# Old name (should be removed for 4.0)
-ATTRIBUTE	Cache-Read-Only				1176	integer
-
 ATTRIBUTE	Cache-Allow-Insert			1177	integer
 
 VALUE	Cache-Status-Only		no			0

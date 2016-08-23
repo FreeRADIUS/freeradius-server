@@ -180,7 +180,7 @@ cache {
 	#  This is evaluated before Cache-TTL, so entries being expired
 	#  may first be merged.
 	#
-	#  &control:Cache-Merge - If present and set to 'yes' will merge new
+	#  &control:Cache-Merge-New - If present and set to 'yes' will merge new
 	#  cache entries into the current request. Useful if results
 	#  of execs or expansions are stored directly in the cache.
 	#
