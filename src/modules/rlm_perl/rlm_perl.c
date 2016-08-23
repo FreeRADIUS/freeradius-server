@@ -127,6 +127,9 @@ static const CONF_PARSER module_config[] = {
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
 static int perl_sys_init3_called = 0;
+#ifdef USE_ITHREADS
+static pthread_mutex_t perl_sys_init3_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 #ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
@@ -532,10 +535,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Create tweak the server's environment to support
 	 *	perl. Docs say only call this once... Oops.
 	 */
+#ifdef USE_ITHREADS
+	pthread_mutex_lock(&perl_sys_init3_mutex);
+#endif
 	if (!perl_sys_init3_called) {
 		PERL_SYS_INIT3(&argc, &embed, &envp);
 		perl_sys_init3_called = 1;
 	}
+#ifdef USE_ITHREADS
+	pthread_mutex_unlock(&perl_sys_init3_mutex);
+#endif
 
 	/*
 	 *	Allocate a new perl interpreter to do the parsing
