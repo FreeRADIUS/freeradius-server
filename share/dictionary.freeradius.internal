@@ -277,8 +277,8 @@ ATTRIBUTE	Cache-Allow-Insert			1177	integer
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
 
-VALUE	Cache-Merge			no			0
-VALUE	Cache-Merge			yes			1
+VALUE	Cache-Merge-New			no			0
+VALUE	Cache-Merge-New			yes			1
 
 VALUE	Cache-Allow-Merge		no			0
 VALUE	Cache-Allow-Merge		yes			1
