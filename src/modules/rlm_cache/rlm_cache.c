@@ -341,7 +341,6 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			if (map->rhs->type == TMPL_TYPE_LIST) switch (vp->da->attr) {
 			case PW_CACHE_TTL:
 			case PW_CACHE_STATUS_ONLY:
-			case PW_CACHE_READ_ONLY:
 			case PW_CACHE_MERGE_NEW:
 			case PW_CACHE_ENTRY_HITS:
 				RDEBUG2("Skipping %s", vp->da->name);
