@@ -342,7 +342,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			case PW_CACHE_TTL:
 			case PW_CACHE_STATUS_ONLY:
 			case PW_CACHE_READ_ONLY:
-			case PW_CACHE_MERGE:
+			case PW_CACHE_MERGE_NEW:
 			case PW_CACHE_ENTRY_HITS:
 				RDEBUG2("Skipping %s", vp->da->name);
 				continue;
@@ -430,7 +430,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_MERGE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_MERGE_NEW, TAG_ANY);
 	if (vp && (vp->vp_integer > 0)) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -757,7 +757,7 @@ finish:
 		case PW_CACHE_STATUS_ONLY:
 		case PW_CACHE_ALLOW_MERGE:
 		case PW_CACHE_ALLOW_INSERT:
-		case PW_CACHE_MERGE:
+		case PW_CACHE_MERGE_NEW:
 			RDEBUG2("Removing &control:%s", vp->da->name);
 			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
