@@ -198,6 +198,9 @@ static const CONF_PARSER server_config[] = {
 #ifdef WITH_PROXY
 	{ "proxy_requests", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.proxy_requests), "yes" },
 #endif
+#ifdef WITH_COA
+	{ "originate_coa_requests", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.originate_coa_requests), "yes" },
+#endif
 	{ "log", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) log_config },
 
 	{ "resources", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) resources },
