@@ -174,8 +174,6 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	 */
 	unlang_event_timeout_delete(ccr->request, ccr);
 
-	RDEBUG("Resuming request");
-
 	ccr->rcode = RLM_MODULE_OK;
 	unlang_resumable(ccr->request);
 }

@@ -256,7 +256,7 @@ else {
 update control {
 	&Tmp-String-1 := 'cache me3'
 	&Cache-TTL := -1
-	&Cache-Merge := yes
+	&Cache-Merge-New := yes
 }
 cache
 if (!updated) {
