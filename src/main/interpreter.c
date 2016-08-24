@@ -1353,7 +1353,26 @@ void unlang_resumable(REQUEST *request)
 	fr_heap_insert(request->backlog, request);
 }
 
-rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ctx)
+void unlang_action(REQUEST *request, fr_state_action_t action)
+{
+	unlang_stack_frame_t		*frame;
+	unlang_stack_t			*stack = request->stack;
+	unlang_node_resumption_t	*mr;
+
+	rad_assert(stack->depth > 0);
+
+	frame = &stack->frame[stack->depth];
+
+	rad_assert(frame->node->type == UNLANG_NODE_TYPE_RESUME);
+
+	mr = unlang_node_to_resumption(frame->node);
+
+	if (!mr->action_callback) return;
+
+	mr->action_callback(request, mr->module.modinst->data, mr->ctx, action);
+}
+
+rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlang_action_t action_callback, void *ctx)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
@@ -1372,6 +1391,7 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ct
 
 	mr->module.node.type = UNLANG_NODE_TYPE_RESUME;
 	mr->callback = callback;
+	mr->action_callback = action_callback;
 	mr->ctx = ctx;
 
 	frame->node = unlang_node_resumption_to_node(mr);

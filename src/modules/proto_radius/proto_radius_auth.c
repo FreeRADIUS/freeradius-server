@@ -300,15 +300,25 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 
-	/*
-	 *	Async (in the same thread, tho) signal to be done.
-	 */
-	if (action == FR_ACTION_DONE) goto done;
+	switch (action) {
+		/*
+		 *	Async (in the same thread, tho) signal to be done.
+		 */
+	case FR_ACTION_DONE:
+		goto done;
 
-	/*
-	 *	We ignore all other actions.
-	 */
-	if (action != FR_ACTION_RUN) return;
+		/*
+		 *	Running: continue.
+		 */
+	case FR_ACTION_RUN:
+		break;
+
+		/*
+		 *	We ignore all other actions.
+		 */
+	default:
+		break;
+	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:

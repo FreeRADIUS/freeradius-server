@@ -194,6 +194,8 @@ typedef void (*fr_unlang_fd_callback_t)(REQUEST *, void *, void *, int);
 
 typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *, void *, void *);
 
+typedef void (*fr_unlang_action_t)(REQUEST *, void *, void *, fr_state_action_t );
+
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void *inst, void *ctx, struct timeval *when);
 
@@ -206,7 +208,9 @@ int		unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
 
 void		unlang_resumable(REQUEST *request);
 
-rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, void *ctx);
+void		unlang_action(REQUEST *request, fr_state_action_t action);
+
+rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlang_action_t action_callback, void *ctx);
 
 int		unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
 
