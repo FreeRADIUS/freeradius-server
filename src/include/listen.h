@@ -79,6 +79,7 @@ struct rad_listen {
 	char const		*server;	//!< Name of the virtual server that the listener is associated with
 	CONF_SECTION		*server_cs;	//!< Virtual server that the listener is associated with
 	int			status;
+	bool			old_style;
 
 #ifdef WITH_TCP
 	int			count;

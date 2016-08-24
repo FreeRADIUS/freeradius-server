@@ -446,12 +446,14 @@ static void *thread_handler(void *arg)
 				if (!request) break;
 				(void) fr_heap_extract(thread->backlog, request);
 
-				request->el = el;
 				request->backlog = local_backlog;
 				fr_heap_insert(local_backlog, request);
 
-				if (fr_event_insert(request->el, max_request_time_hook, request, &when, &request->ev) < 0) {
-					REDEBUG("Failed inserting max_request_time");
+				if (!request->listener->old_style) {
+					request->el = el;
+					if (fr_event_insert(request->el, max_request_time_hook, request, &when, &request->ev) < 0) {
+						REDEBUG("Failed inserting max_request_time");
+					}
 				}
 			} while (request != NULL);
 

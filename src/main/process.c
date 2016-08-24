@@ -1658,6 +1658,8 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	now = packet->timestamp;
 	rad_assert(packet->timestamp.tv_sec != 0);
 
+	listener->old_style = true; /* hack for now */
+
 #ifdef WITH_ACCOUNTING
 	if (listener->type != RAD_LISTEN_DETAIL)
 #endif
