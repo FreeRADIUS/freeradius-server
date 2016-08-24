@@ -976,7 +976,7 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	 */
 	if (!rad_cond_assert(frame->top_frame || frame->resume)) return RLM_MODULE_FAIL;
 
-	RDEBUG4("[%i] %s - entered", stack->depth, __FUNCTION__);
+	RDEBUG4("** [%i] %s - entered", stack->depth, __FUNCTION__);
 
 redo:
 	result = RLM_MODULE_UNKNOWN;
@@ -1016,11 +1016,16 @@ redo:
 		/*
 		 *	Execute an operation
 		 */
-		RDEBUG4("[%i] %s >> %s", stack->depth, __FUNCTION__,
+		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[node->type].name);
+
 		action = unlang_ops[node->type].func(request, stack, &result, &priority);
-		RDEBUG4("[%i] %s << %s", stack->depth, __FUNCTION__,
-			fr_int2str(unlang_action_table, action, "<INVALID>"));
+
+		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
+			fr_int2str(unlang_action_table, action, "<INVALID>"), priority);
+
+		rad_assert(priority >= -1);
+		rad_assert(priority <= MOD_PRIORITY_MAX);
 
 		switch (action) {
 		case UNLANG_ACTION_STOP_PROCESSING:
@@ -1055,7 +1060,7 @@ redo:
 					RDEBUG2("} # %s (%s)", node->debug_name,
 						fr_int2str(mod_rcode_table, result, "<invalid>"));
 				}
-				RDEBUG4("[%i] %s - exited (done)", stack->depth, __FUNCTION__);
+				RDEBUG4("** [%i] %s - exited (done)", stack->depth, __FUNCTION__);
 				return result;
 			}
 
@@ -1068,13 +1073,10 @@ redo:
 			/* FALL-THROUGH */
 
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			rad_assert(priority >= -1);
-			rad_assert(priority <= MOD_PRIORITY_MAX);
-
 			if (result == RLM_MODULE_YIELD) {
 				rad_assert(frame->node->type == UNLANG_NODE_TYPE_RESUME);
 				rad_assert(frame->resume == false);
-				RDEBUG4("[%i] %s - exited (yield)", stack->depth, __FUNCTION__);
+				RDEBUG4("** [%i] %s - exited (yield)", stack->depth, __FUNCTION__);
 				return RLM_MODULE_YIELD;
 			}
 
@@ -1086,7 +1088,7 @@ redo:
 			}
 			action = UNLANG_ACTION_CALCULATE_RESULT;
 
-			RDEBUG4("[%i] %s - rcode %s (%d) vs rcode' %s (%d)",
+			RDEBUG4("** [%i] %s - rcode %s (%d) vs rcode' %s (%d)",
 				stack->depth, __FUNCTION__,
 			        fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 			        frame->priority,
@@ -1175,7 +1177,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	if (cs) node = cf_data_find(cs, "unlang");
 	unlang_push(stack, node, action, true);
 
-	RDEBUG4("[%i] %s - substack begins", stack->depth, __FUNCTION__);
+	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
 	/*
 	 *	Mark our entry point into the stack.  This ensures
