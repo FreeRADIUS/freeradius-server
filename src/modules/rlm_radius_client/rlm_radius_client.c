@@ -37,7 +37,6 @@ typedef struct radius_client_instance {
 
 	fr_ipaddr_t		src_ipaddr;		// Src IP for outgoing packets
 
-	uint32_t		timeout; 		// Timeout to wait for home server replies (ms)
 	home_server_t		*home_server;		// home servers to send packets to
 	pthread_key_t		key;
 } rlm_radius_client_instance_t;
@@ -49,7 +48,6 @@ static const CONF_PARSER listen_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("listen", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) listen_config },
-	{ FR_CONF_OFFSET("timeout", PW_TYPE_INTEGER, rlm_radius_client_instance_t, timeout), .dflt = "100" },
 
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_radius_client_instance_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
@@ -419,18 +417,9 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 	       packet->dst_port, packet->id);
 
 	fr_radius_send(packet, NULL, inst->home_server->secret);
+	packet->count++;
 
-	/*
-	 *	Calculate the wall clock time of when we want to wake up.
-	 */
-	if (inst->timeout > 1000) {
-		timeout.tv_sec = inst->timeout / 1000;
-		timeout.tv_usec = (inst->timeout % 1000) * 1000;
-	} else {
-		timeout.tv_sec = 0;
-		timeout.tv_usec = inst->timeout * 1000;
-	}
-
+	timeout = ccr->inst->home_server->response_window;
 	gettimeofday(&now, NULL);
 	timeradd(&now, &timeout, &timeout);
 
@@ -663,9 +652,6 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 
 	inst->name = cf_section_name2(config);
 	if (!inst->name) inst->name = cf_section_name1(config);
-
-	FR_INTEGER_BOUND_CHECK("timeout", inst->timeout, >=, 1);
-	FR_INTEGER_BOUND_CHECK("timeout", inst->timeout, <, 500);
 
 	cs = cf_subsection_find_next(config, NULL, "home_server");
 	if (!cs) {
