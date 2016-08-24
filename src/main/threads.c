@@ -356,13 +356,28 @@ static int timestamp_cmp(void const *one, void const *two)
 {
 	REQUEST const *a = one;
 	REQUEST const *b = two;
+	RADIUS_PACKET *pa, *pb;
 
-	if (!a->packet && !b->packet) return 0;
-	if (!a->packet && b->packet) return -1;
-	if (a->packet && !b->packet) return +1;
+	if (!a->packet) {
+		rad_assert(a->proxy != NULL);
+		rad_assert(a->proxy->packet != NULL);
 
-	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, < )) return -1;
-	if (timercmp(&a->packet->timestamp, &b->packet->timestamp, > )) return +1;
+		pa = a->proxy->packet;
+	} else {
+		pa = a->packet;
+	}
+
+	if (!b->packet) {
+		rad_assert(b->proxy != NULL);
+		rad_assert(b->proxy->packet != NULL);
+
+		pb = b->proxy->packet;
+	} else {
+		pb = b->packet;
+	}
+
+	if (timercmp(&pa->timestamp, &pb->timestamp, < )) return -1;
+	if (timercmp(&pa->timestamp, &pb->timestamp, > )) return +1;
 
 	return 0;
 }
