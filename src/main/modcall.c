@@ -1580,10 +1580,11 @@ static int compile_action_pair(unlang_node_t *c, CONF_PAIR *cp)
 	else if (strspn(value, "0123456789")==strlen(value)) {
 		action = atoi(value);
 
-		/*
-		 *	Don't allow priority zero, for future use.
-		 */
-		if (action == 0) return 0;
+		if (!action || (action > MOD_PRIORITY_MAX)) {
+			cf_log_err_cp(cp, "Priorities MUST be between 1 and 64.");
+			return 0;
+		}
+
 	} else {
 		cf_log_err_cp(cp, "Unknown action '%s'.\n",
 			   value);
@@ -1596,7 +1597,7 @@ static int compile_action_pair(unlang_node_t *c, CONF_PAIR *cp)
 		rcode = fr_str2int(mod_rcode_table, attr, -1);
 		if (rcode < 0) {
 			cf_log_err_cp(cp,
-				   "Unknown module rcode '%s'.\n",
+				   "Unknown module rcode '%s'.",
 				   attr);
 			return 0;
 		}

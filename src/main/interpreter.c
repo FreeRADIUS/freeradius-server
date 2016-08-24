@@ -1042,6 +1042,11 @@ redo:
 			 */
 			frame = &stack->frame[stack->depth];
 			node = frame->node;
+
+			if (node == NULL) {
+				DEBUG("depth %d", stack->depth);
+			}
+
 			rad_assert(node != NULL);
 
 			if (frame->top_frame) {
@@ -1063,6 +1068,9 @@ redo:
 			/* FALL-THROUGH */
 
 		case UNLANG_ACTION_CALCULATE_RESULT:
+			rad_assert(priority >= -1);
+			rad_assert(priority <= MOD_PRIORITY_MAX);
+
 			if (result == RLM_MODULE_YIELD) {
 				rad_assert(frame->node->type == UNLANG_NODE_TYPE_RESUME);
 				rad_assert(frame->resume == false);
