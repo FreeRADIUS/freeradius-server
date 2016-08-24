@@ -308,6 +308,13 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		goto done;
 
 		/*
+		 *	DUP: go poke the request, but don't do anything else.
+		 */
+	case FR_ACTION_DUP:
+		unlang_action(request, FR_ACTION_DUP);
+		return;
+
+		/*
 		 *	Running: continue.
 		 */
 	case FR_ACTION_RUN:

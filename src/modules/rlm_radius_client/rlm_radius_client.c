@@ -205,7 +205,7 @@ static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
 	}
 
 	if (rcode == RLM_MODULE_YIELD) {
-		return unlang_yield(child, mod_resume_recv, ccr);
+		return unlang_yield(child, mod_resume_recv, NULL, ccr);
 	}
 
 	rcode = ccr->rcode;
@@ -249,6 +249,40 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *c
 	child->request_state = REQUEST_RECV;
 
 	return mod_resume_recv(request, instance, ccr);
+}
+
+
+static void mod_action_dup(REQUEST *request, void *instance, void *ctx, fr_state_action_t action)
+{
+	rlm_radius_client_instance_t *inst = instance;
+	rlm_radius_client_request_t *ccr = ctx;
+	REQUEST *child = ccr->child;
+	RADIUS_PACKET *packet = child->packet;
+	char buffer[INET6_ADDRSTRLEN];
+
+	rad_assert(inst == ccr->inst);
+
+	if (action != FR_ACTION_DUP) return;
+
+	/*
+	 *	We retransmit only a few kinds of packets.
+	 */
+	if (!((packet->code == PW_CODE_ACCESS_REQUEST) ||
+	      (packet->code == PW_CODE_COA_REQUEST) ||
+	      (packet->code == PW_CODE_DISCONNECT_REQUEST))) {
+		return;
+	}
+
+	RDEBUG("Sending duplicate %s packet to home server %s %s port %d - ID %u",
+	       fr_packet_codes[packet->code],
+	       ccr->inst->home_server->name,
+	       inet_ntop(packet->dst_ipaddr.af,
+			 &packet->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       packet->dst_port, packet->id);
+
+	fr_radius_send(packet, NULL, inst->home_server->secret);
+	packet->count++;
 }
 
 
@@ -402,7 +436,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 
 	unlang_event_timeout_add(request, mod_proxy_no_reply, inst, ccr, &timeout);
 
-	return unlang_yield(request, mod_resume_continue, ccr);
+	return unlang_yield(request, mod_resume_continue, mod_action_dup, ccr);
 }
 
 static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
@@ -422,7 +456,7 @@ static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
 	}
 
 	if (rcode == RLM_MODULE_YIELD) {
-		return unlang_yield(child, mod_resume_send, ccr);
+		return unlang_yield(child, mod_resume_send, NULL, ccr);
 	}
 
 	return mod_wait_for_reply(request, inst, ccr);
