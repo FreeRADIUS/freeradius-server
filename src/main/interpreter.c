@@ -764,6 +764,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 		frame->if_taken = false;
 
 		*priority = node->actions[*presult];
+
 		return UNLANG_ACTION_CONTINUE;
 	}
 
@@ -979,13 +980,13 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	RDEBUG4("** [%i] %s - entered", stack->depth, __FUNCTION__);
 
 redo:
-	result = RLM_MODULE_UNKNOWN;
 	priority = -1;
 
 	rad_assert(stack->depth > 0);
 	rad_assert(stack->depth < UNLANG_STACK_MAX);
 
 	frame = &stack->frame[stack->depth];
+	result = frame->result;
 
 	/*
 	 *	Loop over all modules in this list.
