@@ -1048,11 +1048,6 @@ redo:
 			 */
 			frame = &stack->frame[stack->depth];
 			node = frame->node;
-
-			if (node == NULL) {
-				DEBUG("depth %d", stack->depth);
-			}
-
 			rad_assert(node != NULL);
 
 			if (frame->top_frame) {
