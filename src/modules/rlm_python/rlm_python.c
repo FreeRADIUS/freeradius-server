@@ -869,7 +869,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		{
 			wchar_t *name;
 
-			wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
+			MEM(name = Py_DecodeLocale(main_config.name, NULL));
 			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
 			PyMem_RawFree(name);
 		}
@@ -919,9 +919,9 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		if (inst->python_path) {
 #if PY_VERSION_HEX > 0x03050000
 			{
-				wchar_t *name;
+				wchar_t *path;
 
-				path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
+				MEM(path = Py_DecodeLocale(inst->python_path, NULL));
 				PySys_SetPath(path);
 				PyMem_RawFree(path);
 			}
