@@ -42,7 +42,7 @@ while ($client = $daemon->accept) {
 	$client->timeout(1);
 	while (my $r = $client->get_request) {
 		print "Got " . $r->method . " request for " . $r->url->path . "\n";
-		if ((($r->method eq 'POST') or ($r->method eq 'GET'))  and $r->url->path eq "/") {
+		if (($r->method eq 'POST') or ($r->method eq 'GET')) {
 			my $resp = HTTP::Response->new( '200', 'OK' );
 
 			$resp->header("Content-Type" => "application/json");
