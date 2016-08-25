@@ -25,7 +25,7 @@ addons:
       version: master
       description: The FreeRADIUS server project
     notification_email: freeradius-devel@lists.freeradius.org
-    build_command_prepend: ./configure -with-rlm-python-bin=/usr/bin/python2.7
+    build_command_prepend: ./configure -with-rlm-python-bin=/usr/bin/python3
     build_command: make
     branch_pattern: coverity_scan
   postgresql: "9.4"
