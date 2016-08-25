@@ -37,16 +37,16 @@ if (!defined $daemon) {
 	die "Error opening socket: $!";
 }
 
-print "Please contact me at: ", $daemon->url, "\n";
+printf("Please contact me at: %s\n", $daemon->url);
 while ($client = $daemon->accept) {
 	$client->timeout(1);
 	while (my $r = $client->get_request) {
-		print "Got " . $r->method . " request for " . $r->url->path . "\n";
+		printf("Got %s request for %s\n", $r->method, $r->url->path);
 		if (($r->method eq 'POST') or ($r->method eq 'GET')) {
-			my $resp = HTTP::Response->new( '200', 'OK' );
+			my $resp = HTTP::Response->new('200', 'OK');
 
-			$resp->header("Content-Type" => "application/json");
-			$resp->content("{\"control:Cleartext-Password\":\"testing123\",\"reply:Reply-Message\":\"Hello from demo.pl\"}");
+			$resp->header('Content-Type' => 'application/json');
+			$resp->content('{"control:Cleartext-Password":"testing123","reply:Reply-Message":"Hello from demo.pl"}');
 
 			$client->send_response($resp);
 		} else {
