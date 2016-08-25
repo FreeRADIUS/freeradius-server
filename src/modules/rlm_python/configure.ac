@@ -25,7 +25,7 @@ if test x$with_[]modname != xno; then
 	)
 
 	if test "x$PYTHON_BIN" = x; then
-		AC_CHECK_PROGS(PYTHON_BIN, [ python2.7 python2.6 python ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
+		AC_CHECK_PROGS(PYTHON_BIN, [ python3.5 python3.4 python3 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
 	fi
 
 	if test "x$PYTHON_BIN" = "xnot-found"; then

@@ -212,7 +212,7 @@ static void python_error_log(void)
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
 		goto failed;
 
-	ERROR("%s (%s)", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	ERROR("%s (%s)", PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
 
 failed:
 	Py_XDECREF(pStr1);
@@ -271,24 +271,24 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
 		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
-		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
+		if ((!PyUnicode_CheckExact(pStr1)) || (!PyUnicode_CheckExact(pStr2))) {
 			ERROR("%s - Tuple element %d of %s must be as (str, str)",
 			      funcname, i, list_name);
 			continue;
 		}
-		s1 = PyString_AsString(pStr1);
-		s2 = PyString_AsString(pStr2);
+		s1 = PyUnicode_AsUTF8(pStr1);
+		s2 = PyUnicode_AsUTF8(pStr2);
 
 		if (pairsize == 3) {
 			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
-			if (PyString_CheckExact(pOp)) {
-				if (!(op = fr_str2int(fr_tokens_table, PyString_AsString(pOp), 0))) {
+			if (PyUnicode_CheckExact(pOp)) {
+				if (!(op = fr_str2int(fr_tokens_table, PyUnicode_AsUTF8(pOp), 0))) {
 					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
-					      funcname, list_name, s1, PyString_AsString(pOp), s2);
+					      funcname, list_name, s1, PyUnicode_AsUTF8(pOp), s2);
 					op = T_OP_EQ;
 				}
-			} else if (PyInt_Check(pOp)) {
-				op	= PyInt_AsLong(pOp);
+			} else if (PyLong_Check(pOp)) {
+				op	= PyLong_AsLong(pOp);
 				if (!fr_int2str(fr_tokens_table, op, NULL)) {
 					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
 					      funcname, list_name, s1, op, s2);
@@ -345,9 +345,9 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	/* Look at the fr_pair_fprint_name? */
 
 	if (vp->da->flags.has_tag) {
-		attribute = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
+		attribute = PyUnicode_FromFormat("%s:%d", vp->da->name, vp->tag);
 	} else {
-		attribute = PyString_FromString(vp->da->name);
+		attribute = PyUnicode_FromString(vp->da->name);
 	}
 
 	if (!attribute) return -1;
@@ -360,7 +360,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case PW_TYPE_OCTETS:
-		value = PyString_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
+		value = PyUnicode_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -411,7 +411,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		char buffer[256];
 
 		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		value = PyString_FromStringAndSize(buffer, len);
+		value = PyUnicode_FromStringAndSize(buffer, len);
 	}
 		break;
 
@@ -439,7 +439,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
-
+WARN("set default ret to RLM_MODULE_OK");
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
@@ -452,8 +452,12 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	if (request != NULL) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) tuplelen++;
+		     vp = fr_cursor_next(&cursor)){
+                          tuplelen++;
+                          
+                     }   
 	}
+WARN("tuplelen is %i",tuplelen);
 
 	if (tuplelen == 0) {
 		Py_INCREF(Py_None);
@@ -462,6 +466,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		int i = 0;
 		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
 			ret = RLM_MODULE_FAIL;
+WARN("Could not create outer tuple");
 			goto finish;
 		}
 
@@ -473,6 +478,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			/* The inside tuple has two only: */
 			if ((pp = PyTuple_New(2)) == NULL) {
 				ret = RLM_MODULE_FAIL;
+WARN("Could not create inner tuple");
 				goto finish;
 			}
 
@@ -488,15 +494,25 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	}
 
 	/* Call Python function. */
+WARN("Calling python function %s!",funcname);
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+WARN("Returned from python function %s!",funcname);
 	if (!pRet) {
+WARN("PyObject_CallFunctionObjArgs failed");
+		if(PyErr_Occurred()){
+WARN("Error occured!");
+			PyErr_PrintEx(0);
+		python_error_log();
+			//TODO: Show actual error
+		}
 		ret = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
 	if (!request) {
 		// check return code at module instantiation time
-		if (PyInt_CheckExact(pRet)) ret = PyInt_AsLong(pRet);
+		if (PyLong_CheckExact(pRet)) ret = PyLong_AsLong(pRet);
+WARN("Python function returned integer %i, COULD be RLM_* code, but no tuple",ret);
 		goto finish;
 	}
 
@@ -523,13 +539,13 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		}
 
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
-		if (!PyInt_CheckExact(pTupleInt)) {
+		if (!PyLong_CheckExact(pTupleInt)) {
 			ERROR("%s - First tuple element not an integer", funcname);
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
 		/* Now have the return value */
-		ret = PyInt_AsLong(pTupleInt);
+		ret = PyLong_AsLong(pTupleInt);
 		/* Reply item tuple */
 		mod_vptuple(request->reply, request, &request->reply->vps,
 			    PyTuple_GET_ITEM(pRet, 1), funcname, "reply");
@@ -537,9 +553,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		mod_vptuple(request, request, &request->control,
 			    PyTuple_GET_ITEM(pRet, 2), funcname, "config");
 
-	} else if (PyInt_CheckExact(pRet)) {
+	} else if (PyLong_CheckExact(pRet)) {
 		/* Just an integer */
-		ret = PyInt_AsLong(pRet);
+		ret = PyLong_AsLong(pRet);
 
 	} else if (pRet == Py_None) {
 		/* returned 'None', return value defaults to "OK, continue." */
@@ -787,7 +803,7 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 
 			if (!key) continue;
 
-			pKey = PyString_FromString(key);
+			pKey = PyUnicode_FromString(key);
 			if (!pKey) continue;
 
 			if (PyDict_Contains(dict, pKey)) {
@@ -810,8 +826,8 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 
 			if (!key || !value) continue;
 
-			pKey = PyString_FromString(key);
-			pValue = PyString_FromString(value);
+			pKey = PyUnicode_FromString(key);
+			pValue = PyUnicode_FromString(value);
 			if (!pKey || !pValue) continue;
 
 			/*
@@ -923,7 +939,19 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		/*
 		 *	Initialise a new module, with our default methods
 		 */
-		inst->module = Py_InitModule3("radiusd", module_methods, "FreeRADIUS python module");
+		static struct PyModuleDef moduledef = {
+			PyModuleDef_HEAD_INIT,
+			"radiusd",			/*m_doc*/
+			"FreeRADIUS python module",	/*m_doc*/
+			-1,				/*m_size*/
+			module_methods,			/*m_methods*/
+			NULL,				/*m_reload*/
+			NULL,				/*m_traverse*/
+			NULL,				/*m_clear*/
+			NULL,				/*m_free*/
+			
+		};
+		inst->module = PyModule_Create(&moduledef);
 		if (!inst->module) {
 		error:
 			python_error_log();

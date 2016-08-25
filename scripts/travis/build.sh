@@ -26,7 +26,7 @@ CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --with-udpfromto=$LIBS_OPTIONAL \
     --with-openssl=$LIBS_OPTIONAL \
     --with-pcre=$LIBS_OPTIONAL \
-    --with-rlm-python-bin=/usr/bin/python2.7 \
+    --with-rlm-python-bin=/usr/bin/python3 \
 || cat ./config.log
 
 echo "Contents of src/include/autoconf.h"
