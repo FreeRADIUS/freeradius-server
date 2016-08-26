@@ -1390,6 +1390,42 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		}
 		goto fixed_length;
 	}
+
+	if (dst_type == PW_TYPE_TIMEVAL) {
+		switch (src_type) {
+		case PW_TYPE_BYTE:
+			dst->timeval.tv_sec = src->byte;
+			dst->timeval.tv_usec = 0;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->timeval.tv_sec = src->ushort;
+			dst->timeval.tv_usec = 0;
+			break;
+
+		case PW_TYPE_INTEGER:
+			dst->timeval.tv_sec = src->integer;
+			dst->timeval.tv_usec = 0;
+			break;
+
+		case PW_TYPE_INTEGER64:
+			/*
+			 *	tv_sec is a time_t, which is variable in size
+			 *	depending on the system.
+			 *
+			 *	It should be >= 64bits on modern systems,
+			 *	but you never know...
+			 */
+			if (sizeof(uint64_t) > SIZEOF_MEMBER(struct timeval, tv_sec)) goto invalid_cast;
+			dst->timeval.tv_sec = src->integer64;
+			dst->timeval.tv_usec = 0;
+			break;
+
+		default:
+			goto invalid_cast;
+		}
+	}
+
 	/*
 	 *	Conversions between IPv4 addresses, IPv6 addresses, IPv4 prefixes and IPv6 prefixes
 	 *
