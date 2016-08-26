@@ -1785,6 +1785,9 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 		p = talloc_typed_asprintf(ctx, "%d", data->sinteger);
 		break;
 
+	case PW_TYPE_TIMEVAL:
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%06" PRIu64,
+					  (uint64_t)data->timeval.tv_sec, (uint64_t)data->timeval.tv_usec);
 		break;
 
 	case PW_TYPE_ETHERNET:
@@ -1879,7 +1882,6 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_COMBO_IP_PREFIX:
 	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_BAD:
 		(void)fr_cond_assert(0);
 		return NULL;
@@ -1983,6 +1985,12 @@ print_int:
 
 	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
 		len = snprintf(buf, sizeof(buf), "%d", data->sinteger);
+		a = buf;
+		break;
+
+	case PW_TYPE_TIMEVAL:
+		len = snprintf(buf, sizeof(buf),  "%" PRIu64 ".%06" PRIu64,
+			       (uint64_t)data->timeval.tv_sec, (uint64_t)data->timeval.tv_usec);
 		a = buf;
 		break;
 
@@ -2115,7 +2123,6 @@ print_int:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
 	case PW_TYPE_VENDOR:
-	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_STRUCT:
 	case PW_TYPE_MAX:
