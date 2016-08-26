@@ -1268,38 +1268,17 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		goto fixed_length;
 	}
 
-	/*
-	 *	For integers, we allow the casting of a SMALL type to
-	 *	a larger type, but not vice-versa.
-	 */
-	if (dst_type == PW_TYPE_INTEGER64) {
+	if (dst_type == PW_TYPE_SHORT) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->integer64 = src->byte;
-			break;
-
-		case PW_TYPE_SHORT:
-			dst->integer64 = src->ushort;
-			break;
-
-		case PW_TYPE_INTEGER:
-			dst->integer64 = src->integer;
-			break;
-
-		case PW_TYPE_DATE:
-			dst->integer64 = src->date;
+			dst->ushort = src->byte;
 			break;
 
 		case PW_TYPE_OCTETS:
 			goto do_octets;
 
 		default:
-		invalid_cast:
-			fr_strerror_printf("Invalid cast from %s to %s",
-					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
-					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
-			return -1;
-
+			goto invalid_cast;
 		}
 		goto fixed_length;
 	}
@@ -1336,17 +1315,38 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		goto fixed_length;
 	}
 
-	if (dst_type == PW_TYPE_SHORT) {
+	/*
+	 *	For integers, we allow the casting of a SMALL type to
+	 *	a larger type, but not vice-versa.
+	 */
+	if (dst_type == PW_TYPE_INTEGER64) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->ushort = src->byte;
+			dst->integer64 = src->byte;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->integer64 = src->ushort;
+			break;
+
+		case PW_TYPE_INTEGER:
+			dst->integer64 = src->integer;
+			break;
+
+		case PW_TYPE_DATE:
+			dst->integer64 = src->date;
 			break;
 
 		case PW_TYPE_OCTETS:
 			goto do_octets;
 
 		default:
-			goto invalid_cast;
+		invalid_cast:
+			fr_strerror_printf("Invalid cast from %s to %s",
+					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+			return -1;
+
 		}
 		goto fixed_length;
 	}
