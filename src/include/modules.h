@@ -185,16 +185,58 @@ rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 
 int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
 
-/*
- *	Manipulate the stack, adding conditions for resumption
+/** A callback when the the timeout occurs.
+ *
+ *  Used when a module needs wait for an event.  Typically the
+ *  callback is set, and then the module returns unlang_yield().
+ *
+ *  The callback is automatically removed on unlang_resumable().
+ *
+ * param[in] request the request
+ * param[in] module_instance the module instance
+ * param[in] ctx a local context for the callback
+ * param[in] timeout when to call the timeout.
  */
-typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *, void *, void *, struct timeval *);
+typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_instance, void *ctx, struct timeval *timeout);
 
-typedef void (*fr_unlang_fd_callback_t)(REQUEST *, void *, void *, int);
+/** A callback when the FD is ready for reading.
+ *
+ *  Used when a module needs to read from an FD.  Typically the
+ *  callback is set, and then the module returns unlang_yield().
+ *
+ *  The callback is automatically removed on unlang_resumable().
+ *
+ * param[in] request the request
+ * param[in] module_instance the module instance
+ * param[in] ctx a local context for the callback
+ * param[in] fd the file descriptor
+ */
+typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *module_instance, void *ctx, int fd);
 
-typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *, void *, void *);
+/** A callback for when the request is resumed.
+ *
+ *  The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
+ *
+ * param[in] request the request
+ * param[in] module_instance the module instance
+ * param[in] ctx a local context for the callback
+ * param[in] fd the file descriptor
+ */
+typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instance, void *ctx);
 
-typedef void (*fr_unlang_action_t)(REQUEST *, void *, void *, fr_state_action_t );
+/** A callback when the request gets a fr_state_action_t.
+ *
+ *  A module may call unlang_yeild(), but still need to do something
+ *  on FR_ACTION_DUP.  If so, it's set here.
+ *
+ *  The callback is automatically removed on unlang_resumable().
+ *
+ * param[in] request the request
+ * param[in] module_instance the module instance
+ * param[in] ctx a local context for the callback
+ * param[in] action the action which is signalling the request.
+ */
+typedef void (*fr_unlang_action_t)(REQUEST *request, void *module_instance, void *ctx, fr_state_action_t action);
 
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void *inst, void *ctx, struct timeval *when);
