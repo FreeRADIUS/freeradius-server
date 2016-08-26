@@ -33,7 +33,7 @@ For a list of changes in version 4.0, please see `doc/changelog
 <https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog>`_
 
 See `raddb/README.rst
-<https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/raddb/README.rst>`_
+<https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.rst>`_
 for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
