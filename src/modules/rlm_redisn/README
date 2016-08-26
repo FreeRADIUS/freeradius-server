@@ -1,0 +1,22 @@
+FreeRADIUS REDISN Module (authorize, accounting Freeradius module against REDIS)
+Manuel Guesdon <mguesdon@oxymium.net> / Oxymium
+
+It's mostly a copy of rlm_sql adapted to REDIS (http://redis.io/) key-store database
+It need hiredis (https://github.com/antirez/hiredis)
+
+Sample configuration file is in redisn.example
+
+You can specify multiple redis servers.
+It handle authorize, accounting, checksimul and post-auth
+
+You can pass multiple queries, separated by \n in accounting part.
+
+Only authorize part has been deeply tested.
+
+You need to add:
+ATTRIBUTE       Redis-Group                     1112    string
+in dictionary.freeradius.internal
+
+Global behaviour is like rlm_sql: see 
+  http://wiki.freeradius.org/Rlm_sql
+  http://freeradius.org/radiusd/doc/rlm_sql

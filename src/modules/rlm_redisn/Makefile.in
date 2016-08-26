@@ -1,0 +1,9 @@
+TARGET      = @targetname@
+SRCS        = redisn.c rlm_redisn.c
+HEADERS     = rlm_redisn.h
+RLM_CFLAGS  = @redisn_cflags@
+RLM_LIBS    = @redisn_ldflags@
+
+include ../rules.mak
+
+$(LT_OBJS): $(HEADERS)

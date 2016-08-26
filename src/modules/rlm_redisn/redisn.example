@@ -1,0 +1,77 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Configuration file for the "redis" module.  This module does nothing
+#  Other than provide connections to a redis database, and a %{redis: ...}
+#  expansion.
+#
+redisn {
+	#  Format: [[DbId][:Password]@]ServerName_or_IP[/Port], ....
+	servers = 0:@127.0.0.1/6379
+
+	# The total number of connections to open to the database(s).
+	num_connections = 20
+
+	# If a connection fails, retry after this time.
+	connect_failure_retry_delay = 60
+
+	#  Set the maximum lifetime for one connection.
+	#  Use 0 for "lives forever"
+	lifetime = 86400
+
+	#  Set the maximum queries used for one connection.
+	#  Use 0 for "no limit"
+	max_queries = 0
+
+	# used to separate fields in values retrivedfrom redis.
+	# it's a character or ascii code in hexadecimal (0x09 for tab for example)
+	vp_separator = 0x09
+
+	read_groups = yes
+
+
+	#  Expiry time in seconds.  Any sessions which have not received
+	#  an update in this time will be automatically expired.
+	expire-time = 86400
+
+	redistrace = no
+	redistracefile = ${logdir}/trace.redis
+
+	# the result values should be of the form: AttributeName|Operator|AttributeValue if separator is |
+
+	authorize_check_query = "lrange radcheck|%{User-Name} 0 1000"
+	authorize_reply_query = "lrange radreply|%{User-Name} 0 1000"
+
+	authorize_group_check_query = "lrange radgroupcheck|%{Redis-Group} 0 1000"
+	authorize_group_reply_query = "lrange radgroupreply|%{Redis-Group} 0 1000"
+
+	group_membership_query = "lrange radusergroup|%{User-Name} 0 1000"
+
+accounting_on_query = "HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctStartTime %l\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctSessionTime %{Acct-Session-Time}\n\
+HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} NASIPAddress %{NAS-IP-Address}"
+
+accounting_off_query = "HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctStopTime %l\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctSessionTime %{Acct-Session-Time}\n\
+HSETNX |%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} NASIPAddress %{NAS-IP-Address}\n\
+HSETNX |%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctTerminateCause %{Acct-Terminate-Cause}"
+
+accounting_start_query = "HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctStartTime %l\n\
+HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} NASIPAddress %{NAS-IP-Address}"
+
+accounting_stop_query = "HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctStopTime %l\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctSessionTime %{Acct-Session-Time}\n\
+HSETNX radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} NASIPAddress %{NAS-IP-Address}\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctInputOctets %{Acct-Input-Gigawords}\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctOutputOctets %{Acct-Output-Gigawords}\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctTerminateCause %{Acct-Terminate-Cause}\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} ConnectInfo_stop %{Connect-Info}"
+
+accounting_update_query = "HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctSessionTime %{Acct-Session-Time}\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctInputOctets %{Acct-Input-Gigawords}\n\
+HSET radaccounting|%{User-Name}|%{Acct-Session-Id}|%{Acct-Unique-Session-Id} AcctOutputOctets %{Acct-Output-Gigawords}"
+
+postauth_query = "LPUSH postauth|%{User-Name} %l\t%{reply:Packet-Type}"
+}
