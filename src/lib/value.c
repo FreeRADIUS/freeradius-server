@@ -165,6 +165,13 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 		CHECK(integer64);
 		break;
 
+	case PW_TYPE_TIMEVAL:
+		if (a->timeval.tv_sec > b->timeval.tv_sec) compare = +1;
+		else if (a->timeval.tv_sec < b->timeval.tv_sec) compare = -1;
+		else if (a->timeval.tv_usec > b->timeval.tv_usec) compare = +1;
+		else if (a->timeval.tv_usec < b->timeval.tv_usec) compare = -1;
+		break;
+
 	case PW_TYPE_DECIMAL:
 		CHECK(decimal);
 		break;
@@ -206,7 +213,6 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 	/*
 	 *	These should be handled at some point
 	 */
-	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_COMBO_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_STRUCTURAL:
