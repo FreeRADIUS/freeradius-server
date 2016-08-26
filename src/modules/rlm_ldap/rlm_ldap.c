@@ -704,6 +704,8 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 	}
 
 	(*config)->cs = cs;
+	
+	WDEBUG("%s no longer sets Auth-Type (see raddb/mods-available/README.rst)", modname + 1);
 
 	return 0;
 }
