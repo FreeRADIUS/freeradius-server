@@ -1024,7 +1024,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		time_t date;
 
-		if (fr_get_time(in, &date) < 0) {
+		if (fr_time_from_str(&date, in) < 0) {
 			fr_strerror_printf("failed to parse time string \"%s\"", in);
 			return -1;
 		}

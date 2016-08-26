@@ -737,7 +737,7 @@ static char *mystrtok(char **ptr, char const *sep)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_get_time(char const *date_str, time_t *date)
+int fr_time_from_str(time_t *date, char const *date_str)
 {
 	int		i;
 	time_t		t;

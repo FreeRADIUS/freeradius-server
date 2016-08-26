@@ -79,6 +79,8 @@ struct value_data {
 
 		int32_t			sinteger;		//!< 32bit signed integer.
 		uint64_t		integer64;		//!< 64bit unsigned integer.
+
+		struct timeval		timeval;		//!< A time value with usec precision.
 		double			decimal;		//!< Double precision float.
 
 		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
