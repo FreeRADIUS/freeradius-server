@@ -141,6 +141,16 @@ authorize {
 	#  The ldap module reads passwords from the LDAP database.
 	-ldap
 
+        #  NOTE: In 3.x the ldap module no longer sets Auth-Type to LDAP!
+        #  you may replicate that functionality by uncommenting the following
+        #  (You also need to uncomment the LDAP part in authenticate section)
+
+        #if ((ok || updated) && User-Password) {
+        #       update {
+        #               control:Auth-Type := ldap
+        #       }
+        #}
+
 	#
 	#  Enforce daily limits on time spent logged in.
 #	daily
