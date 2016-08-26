@@ -1754,13 +1754,6 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 		break;
 	}
 
-	case PW_TYPE_INTEGER:
-		i = data->integer;
-		goto print_int;
-
-	case PW_TYPE_SHORT:
-		i = data->ushort;
-		goto print_int;
 
 	case PW_TYPE_BYTE:
 		i = data->byte;
@@ -1775,14 +1768,23 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 			p = talloc_typed_asprintf(ctx, "%u", i);
 		}
 	}
+
+	case PW_TYPE_SHORT:
+		i = data->ushort;
+		goto print_int;
+
+	case PW_TYPE_INTEGER:
+		i = data->integer;
+		goto print_int;
+
+	case PW_TYPE_INTEGER64:
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->integer64);
 		break;
 
 	case PW_TYPE_SIGNED:
 		p = talloc_typed_asprintf(ctx, "%d", data->sinteger);
 		break;
 
-	case PW_TYPE_INTEGER64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 , data->integer64);
 		break;
 
 	case PW_TYPE_ETHERNET:
@@ -1953,14 +1955,6 @@ size_t value_data_snprint(char *out, size_t outlen,
 
 		return fr_snprint(out, outlen, data->strvalue, data->length, quote);
 
-	case PW_TYPE_INTEGER:
-		i = data->integer;
-		goto print_int;
-
-	case PW_TYPE_SHORT:
-		i = data->ushort;
-		goto print_int;
-
 	case PW_TYPE_BYTE:
 		i = data->byte;
 
@@ -1976,8 +1970,21 @@ print_int:
 		}
 		break;
 
+	case PW_TYPE_SHORT:
+		i = data->ushort;
+		goto print_int;
+
+	case PW_TYPE_INTEGER:
+		i = data->integer;
+		goto print_int;
+
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, data->integer64);
+
+	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
+		len = snprintf(buf, sizeof(buf), "%d", data->sinteger);
+		a = buf;
+		break;
 
 	case PW_TYPE_DATE:
 		t = data->date;
@@ -1989,11 +1996,6 @@ print_int:
 		} else {
 			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z", localtime_r(&t, &s_tm));
 		}
-		a = buf;
-		break;
-
-	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
-		len = snprintf(buf, sizeof(buf), "%d", data->sinteger);
 		a = buf;
 		break;
 
