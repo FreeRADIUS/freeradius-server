@@ -44,6 +44,7 @@ size_t const value_data_field_sizes[] = {
 	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_data_t, integer),
 	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_data_t, integer64),
 	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_data_t, sinteger),
+	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_data_t, timeval),
 	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_data_t, decimal),
 	[PW_TYPE_ETHERNET]	= SIZEOF_MEMBER(value_data_t, ether),
 	[PW_TYPE_DATE]		= SIZEOF_MEMBER(value_data_t, date),
@@ -71,6 +72,7 @@ size_t const value_data_offsets[] = {
 	[PW_TYPE_INTEGER]	= offsetof(value_data_t, integer),
 	[PW_TYPE_INTEGER64]	= offsetof(value_data_t, integer64),
 	[PW_TYPE_SIGNED]	= offsetof(value_data_t, sinteger),
+	[PW_TYPE_TIMEVAL]	= offsetof(value_data_t, timeval),
 	[PW_TYPE_DECIMAL]	= offsetof(value_data_t, decimal),
 	[PW_TYPE_ETHERNET]	= offsetof(value_data_t, ether),
 	[PW_TYPE_DATE]		= offsetof(value_data_t, date),
@@ -1016,6 +1018,22 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 		break;
 
+	case PW_TYPE_TIMEVAL:
+		if (fr_timeval_from_str(&dst->timeval, in) < 0) return -1;
+		break;
+
+	case PW_TYPE_DECIMAL:
+	{
+		double d;
+
+		if (sscanf(in, "%lf", &d) != 1) {
+			fr_strerror_printf("Failed parsing \"%s\" as a decimal", in);
+			return -1;
+		}
+		dst->decimal = d;
+	}
+		break;
+
 	case PW_TYPE_DATE:
 	{
 		/*
@@ -1119,19 +1137,6 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_COMBO_IP_PREFIX:
-	case PW_TYPE_TIMEVAL:
-		break;
-
-	case PW_TYPE_DECIMAL:
-	{
-		double i;
-
-		if (sscanf(in, "%lf", &i) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as double", in);
-			return -1;
-		}
-		dst->decimal = i;
-	}
 		break;
 
 	case PW_TYPE_UNBOUNDED:		/* Should have been dealt with above */
