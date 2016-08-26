@@ -34,7 +34,7 @@ send-coa		send CoA-NAK
 
 Post-Auth-Type Reject	send Access-Reject
 Post-Auth-Type Challenge  send Access-Challenge
-======== ========
+========                ========
 
 i.e. instead of the section names being (mostly) randomly named, the
 names are now consistent.  `recv` receives packets from the network.
@@ -104,6 +104,19 @@ Changed Modules
 ---------------
 
 The following modules exhibit changed behaviour.
+
+rlm_cache
+~~~~~~~~~
+
+``&control:Cache-Merge`` has been renamed to ``&control:Cache-Merge-New`` and controls 
+whether new entries are merged into the current request.  It defaults to ``no``.
+The primary use case, is if you're using xlat expansions in the cache module itself
+to retrieve information for caching, and need the result of those expensions to be
+available immediately.
+
+Two new control attributes ``&control:Cache-Allow-Merge`` and ``&control:Cache-Allow-Insert``
+have been added.  These control whether existing entries are to be merged, and new entries
+created on the next call to a cache module instance. Both default to ``yes``.
 
 rlm_eap
 ~~~~~~~
