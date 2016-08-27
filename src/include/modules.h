@@ -190,7 +190,7 @@ int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
  * Used when a module needs wait for an event.
  * Typically the callback is set, and then the module returns unlang_yield().
  *
- * The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_resumable().
  *
  * @param[in] request		the request.
  * @param[in] module_instance	the module instance.
@@ -205,7 +205,7 @@ typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_inst
  * Used when a module needs to read from an FD.  Typically the callback is set, and then the
  * module returns unlang_yield().
  *
- * The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_resumable().
  *
  * @param[in] request		the current request.
  * @param[in] module_instance	the module instance.
@@ -230,7 +230,7 @@ typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instanc
  * A module may call unlang_yeild(), but still need to do something on FR_ACTION_DUP.  If so, it's
  * set here.
  *
- * The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_resumable().
  *
  * param[in] request		The current request.
  * param[in] module_instance	The module instance.
@@ -239,104 +239,22 @@ typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instanc
  */
 typedef void (*fr_unlang_action_t)(REQUEST *request, void *module_instance, void *ctx, fr_state_action_t action);
 
-/** Set a timeout for the request.
- *
- *  Used when a module needs wait for an event.  Typically the
- *  callback is set, and then the module returns unlang_yield().
- *
- *  The callback is automatically removed on unlang_resumable().
- *
- * param[in] request		the current request.
- * param[in] callback		to call.
- * param[in] module_instance	The module instance
- * param[in] ctx		for the callback.
- * param[in] timeout		when to call the timeout.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void *module_instance, void *ctx, struct timeval *timeout);
 
-/** Set a callback for the request.
- *
- * Used when a module needs to read from an FD.  Typically the callback is set, and then the
- * module returns unlang_yield().
- *
- * The callback is automatically removed on unlang_resumable().
- *
- * @param[in] request		The current request.
- * @param[in] callback		to call.
- * @param[in] module_instance	The module instance
- * @param[in] ctx		for the callback.
- * @param[in] fd		to watch.  When it becomes readable the request is marked as resumable,
- *				with the callback being called by the worker responsible for processing
- *				the request.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
 int		unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 				    void *module_instance, void *ctx, int fd);
 
-/** Delete a previously set timeout callback.
- *
- * param[in] request the request
- * param[in] ctx a local context for the callback
- */
 int		unlang_event_timeout_delete(REQUEST *request, void *ctx);
 
-/** Delete a previously set file descriptor callback.
- *
- * param[in] request the request
- * param[in] fd the file descriptor
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
 int		unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
 
-
-/** Mark a request as resumable.
- *
- * Note that this schedules the request for resumption.  It does not
- * immediately start running the request.
- *
- * @param[in] request		The current request.
- */
 void		unlang_resumable(REQUEST *request);
 
-/** Signal a request which an action.
- *
- * This is typically called via an "async" action, i.e. an action
- * outside of the normal processing of the request.
- *
- * If there is no #fr_unlang_action_t callback defined, the action is ignored.
- *
- * @param[in] request		The current request.
- * @param[in] action		to signal.
- */
 void		unlang_action(REQUEST *request, fr_state_action_t action);
 
-/** Yeild a request
- *
- * @param[in] request		The current request.
- * @param[in] callback		to call on unlang_resumable().
- * @param[in] action_callback	to call on unlang_action().
- * @param[in] ctx		to pass to the callbacks.
- * @return always returns RLM_MODULE_YIELD.
- */
 rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlang_action_t action_callback, void *ctx);
 
-/** Delay processing of a request for a time
- *
- * @param[in] request		The current request.
- * @param[in] delay 		processing by.
- * @param[in] process		The function to call when the delay expires.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
 int		unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
 
 #ifdef __cplusplus

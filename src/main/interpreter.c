@@ -1157,7 +1157,6 @@ done:
 	goto do_pop;
 }
 
-
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
@@ -1193,7 +1192,6 @@ rlm_rcode_t unlang_interpret_continue(REQUEST *request)
 	return unlang_run(request, request->stack);
 }
 
-
 /** Call a module, iteratively, with a local stack, rather than recursively
  *
  * What did Paul Graham say about Lisp...?
@@ -1223,19 +1221,18 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	return rcode;
 }
 
-/*
- *	Event handlers for unlang.
+/** Wrap an #fr_event_t providing data needed for unlang events
+ *
  */
 typedef struct unlang_event_t {
-	REQUEST		*request;
-	int		fd;
-	fr_unlang_timeout_callback_t	timeout_callback;
-	fr_unlang_fd_callback_t		fd_callback;
-	void		*inst;
-	void		*ctx;
-	fr_event_t	*ev;
+	REQUEST				*request;			//!< Request this event pertains to.
+	int				fd;				//!< File descriptor to wait on.
+	fr_unlang_timeout_callback_t	timeout_callback;		//!< Function to call on timeout.
+	fr_unlang_fd_callback_t		fd_callback;			//!< Function to call when FD is readable.
+	void				*inst;				//!< Module instance to pass to callbacks.
+	void				*ctx;				//!< ctx data to pass to callbacks.
+	fr_event_t			*ev;				//!< Event in this worker's event heap.
 } unlang_event_t;
-
 
 static int _unlang_event_free(unlang_event_t *ev)
 {
@@ -1268,8 +1265,21 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
 	ev->fd_callback(ev->request, ev->inst, ev->ctx, fd);
 }
 
-/** Add a timeout
+/** Set a timeout for the request.
  *
+ * Used when a module needs wait for an event.  Typically the callback is set, and then the
+ * module returns unlang_yield().
+ *
+ * @note The callback is automatically removed on unlang_resumable().
+ *
+ * param[in] request		the current request.
+ * param[in] callback		to call.
+ * param[in] module_instance	The module instance
+ * param[in] ctx		for the callback.
+ * param[in] timeout		when to call the timeout (i.e. now + timeout).
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
  */
 int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 			     void *inst, void *ctx, struct timeval *when)
@@ -1296,6 +1306,24 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	return 0;
 }
 
+/** Set a callback for the request.
+ *
+ * Used when a module needs to read from an FD.  Typically the callback is set, and then the
+ * module returns unlang_yield().
+ *
+ * @note The callback is automatically removed on unlang_resumable().
+ *
+ * @param[in] request		The current request.
+ * @param[in] callback		to call.
+ * @param[in] module_instance	The module instance
+ * @param[in] ctx		for the callback.
+ * @param[in] fd		to watch.  When it becomes readable the request is marked as resumable,
+ *				with the callback being called by the worker responsible for processing
+ *				the request.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
 int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 			void *inst, void *ctx, int fd)
 {
@@ -1321,6 +1349,11 @@ int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 	return 0;
 }
 
+/** Delete a previously set timeout callback.
+ *
+ * param[in] request the request
+ * param[in] ctx a local context for the callback
+ */
 int unlang_event_timeout_delete(REQUEST *request, void *ctx)
 {
 	unlang_event_t *ev;
@@ -1332,6 +1365,14 @@ int unlang_event_timeout_delete(REQUEST *request, void *ctx)
 	return 0;
 }
 
+/** Delete a previously set file descriptor callback.
+ *
+ * param[in] request the request
+ * param[in] fd the file descriptor
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
 int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
 {
 	unlang_event_t *ev;
@@ -1343,16 +1384,31 @@ int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
 	return 0;
 }
 
-/** Mark a request as resumption.
+/** Mark a request as resumable.
  *
- *  It's not called "unlang_resume", because it doesn't actually
- *  resume the request, it just schedules it for resumption.
+ * It's not called "unlang_resume", because it doesn't actually
+ * resume the request, it just schedules it for resumption.
+ *
+ * @note that this schedules the request for resumption.  It does not
+ * immediately start running the request.
+ *
+ * @param[in] request		The current request.
  */
 void unlang_resumable(REQUEST *request)
 {
 	fr_heap_insert(request->backlog, request);
 }
 
+/** Signal a request which an action.
+ *
+ * This is typically called via an "async" action, i.e. an action
+ * outside of the normal processing of the request.
+ *
+ * If there is no #fr_unlang_action_t callback defined, the action is ignored.
+ *
+ * @param[in] request		The current request.
+ * @param[in] action		to signal.
+ */
 void unlang_action(REQUEST *request, fr_state_action_t action)
 {
 	unlang_stack_frame_t		*frame;
@@ -1372,7 +1428,16 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
 	mr->action_callback(request, mr->module.modinst->data, mr->ctx, action);
 }
 
-rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlang_action_t action_callback, void *ctx)
+/** Yeild a request
+ *
+ * @param[in] request		The current request.
+ * @param[in] callback		to call on unlang_resumable().
+ * @param[in] action_callback	to call on unlang_action().
+ * @param[in] ctx		to pass to the callbacks.
+ * @return always returns RLM_MODULE_YIELD.
+ */
+rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
+			 fr_unlang_action_t action_callback, void *ctx)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
@@ -1411,7 +1476,15 @@ static void unlang_timer_hook(void *ctx, UNUSED struct timeval *now)
 	request->process(request, FR_ACTION_TIMER);
 }
 
-
+/** Delay processing of a request for a time
+ *
+ * @param[in] request		The current request.
+ * @param[in] delay 		processing by.
+ * @param[in] process		The function to call when the delay expires.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
 int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process)
 {
 	struct timeval when;
