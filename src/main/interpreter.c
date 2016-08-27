@@ -1325,7 +1325,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
  *	- <0 on error.
  */
 int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-			void *inst, void *ctx, int fd)
+			void *module_instance, void *ctx, int fd)
 {
 	unlang_event_t *ev;
 
@@ -1335,7 +1335,7 @@ int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 	ev->request = request;
 	ev->fd = fd;
 	ev->fd_callback = callback;
-	ev->inst = inst;
+	ev->inst = module_instance;
 	ev->ctx = ctx;
 
 	if (fr_event_fd_insert(request->el, 0, fd, unlang_event_fd_handler, ev) < 0) {
