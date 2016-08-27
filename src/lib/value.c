@@ -1958,7 +1958,7 @@ size_t value_data_snprint(char *out, size_t outlen,
 	case PW_TYPE_BYTE:
 		i = data->byte;
 
-print_int:
+	print_int:
 		/* Normal, non-tagged attribute */
 		if (enumv && (v = fr_dict_enum_by_da(NULL, enumv, i)) != NULL) {
 			a = v->name;
