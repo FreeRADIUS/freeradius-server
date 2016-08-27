@@ -1765,6 +1765,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 			p = talloc_typed_asprintf(ctx, "%u", i);
 		}
 	}
+		break;
 
 	case PW_TYPE_SHORT:
 		i = data->ushort;
