@@ -103,15 +103,15 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 					   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
 	uint32_t count = 0;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
-		*priority = program->actions[*presult];
+		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -205,7 +205,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			}
 		}
 
-		if (program->type == UNLANG_TYPE_LOAD_BALANCE) {
+		if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
 			unlang_push(stack, frame->redundant.found, frame->result, false);
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -216,7 +216,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		frame->redundant.child = frame->redundant.found;
 
 	} else {
-		rad_assert(program->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
+		rad_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
 
 		/*
 		 *	We were called again.  See if we're done.
@@ -246,10 +246,10 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 				    UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 
 	/*
 	 *	This should really have been caught in the
@@ -259,7 +259,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 	 *	UNLANG_TYPE_GROUP.
 	 */
 	if (!g->children) {
-		RDEBUG2("} # %s ... <ignoring empty subsection>", program->debug_name);
+		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
 		return UNLANG_ACTION_CONTINUE;
 	}
 
@@ -278,10 +278,10 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 				       UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 
 	if (!frame->resume) {
 		/*
@@ -302,10 +302,10 @@ static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
@@ -322,21 +322,21 @@ static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 	int			i;
 	VALUE_PAIR		**copy_p;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 
-	RDEBUG2("%s", unlang_ops[program->type].name);
+	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
 	for (i = 8; i >= 0; i--) {
 		copy_p = request_data_get(request, (void *)radius_get_vp, i);
 		if (copy_p) {
-			if (program->type == UNLANG_TYPE_BREAK) {
+			if (instruction->type == UNLANG_TYPE_BREAK) {
 				RDEBUG2("# break Foreach-Variable-%d", i);
 				break;
 			}
 		}
 	}
 
-	frame->unwind = program->type;
+	frame->unwind = instruction->type;
 
 	*presult = frame->result;
 	*priority = frame->priority;
@@ -349,10 +349,10 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 {
 	VALUE_PAIR		*vp;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 
 	if (!frame->resume) {
 		int i, foreach_depth = -1;
@@ -390,11 +390,11 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 		 */
 		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
 			*presult = RLM_MODULE_NOOP;
-			*priority = program->actions[RLM_MODULE_NOOP];
+			*priority = instruction->actions[RLM_MODULE_NOOP];
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		RDEBUG2("foreach %s ", program->name);
+		RDEBUG2("foreach %s ", instruction->name);
 
 		rad_assert(vps != NULL);
 		fr_cursor_init(&frame->foreach.cursor, &vps);
@@ -434,7 +434,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 			request_data_get(request, (void *)radius_get_vp, frame->foreach.depth);
 
 			*presult = frame->result;
-			*priority = program->actions[*presult];
+			*priority = instruction->actions[*presult];
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
@@ -467,8 +467,8 @@ static unlang_action_t unlang_xlat(REQUEST *request, unlang_stack_t *stack,
 				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
-	unlang_xlat_t	*mx = unlang_generic_to_xlat(program);
+	unlang_t		*instruction = frame->instruction;
+	unlang_xlat_t	*mx = unlang_generic_to_xlat(instruction);
 	char buffer[128];
 
 	if (!mx->exec) {
@@ -486,7 +486,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 				       UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_t		*this, *found, *null_case;
 	unlang_group_t	*g, *h;
 	fr_cond_t		cond;
@@ -494,7 +494,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	vp_map_t		map;
 	vp_tmpl_t		vpt;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
@@ -624,8 +624,8 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 {
 	int rcode;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
-	unlang_group_t	*g = unlang_group_to_module_call(program);
+	unlang_t		*instruction = frame->instruction;
+	unlang_group_t	*g = unlang_group_to_module_call(instruction);
 	vp_map_t *map;
 
 	RINDENT();
@@ -640,7 +640,7 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 	REXDENT();
 
 	*presult = RLM_MODULE_NOOP;
-	*priority = program->actions[RLM_MODULE_NOOP];
+	*priority = instruction->actions[RLM_MODULE_NOOP];
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -649,14 +649,14 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 				  rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t *frame = &stack->frame[stack->depth];
-	unlang_t *program = frame->instruction;
-	unlang_group_t *g = unlang_group_to_module_call(program);
+	unlang_t *instruction = frame->instruction;
+	unlang_group_t *g = unlang_group_to_module_call(instruction);
 
 	RINDENT();
 	*presult = map_proc(request, g->proc_inst);
 	REXDENT();
 
-	*priority = program->actions[*presult];
+	*priority = instruction->actions[*presult];
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -668,13 +668,13 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 #endif
 	unlang_module_call_t	*sp;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*program = frame->instruction;
+	unlang_t			*instruction = frame->instruction;
 
 	/*
 	 *	Process a stand-alone child, and fall through
 	 *	to dealing with it's parent.
 	 */
-	sp = unlang_generic_to_module_call(program);
+	sp = unlang_generic_to_module_call(instruction);
 
 	/*
 	 *	If the request should stop, refuse to do anything.
@@ -720,9 +720,9 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 
 fail:
 	*presult = request->rcode;
-	*priority = program->actions[*presult];
+	*priority = instruction->actions[*presult];
 
-	RDEBUG2("%s (%s)", program->name ? program->name : "",
+	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -733,10 +733,10 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 {
 	int condition;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(program);
+	g = unlang_group_to_module_call(instruction);
 	rad_assert(g->cond != NULL);
 
 	condition = radius_evaluate_cond(request, *presult, 0, g->cond);
@@ -763,7 +763,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 		frame->was_if = true;
 		frame->if_taken = false;
 
-		*priority = program->actions[*presult];
+		*priority = instruction->actions[*presult];
 
 		return UNLANG_ACTION_CONTINUE;
 	}
@@ -781,7 +781,7 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 				    rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	rad_assert(frame->was_if);
 
 	/*
@@ -789,7 +789,7 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (frame->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_ops[program->type].name, request->number);
+			unlang_ops[instruction->type].name, request->number);
 		frame->if_taken = true;
 		return UNLANG_ACTION_CONTINUE;
 	}
@@ -804,17 +804,17 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*program = frame->instruction;
+	unlang_t		*instruction = frame->instruction;
 	rad_assert(frame->was_if);
 
 	if (frame->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_ops[program->type].name, request->number);
+			unlang_ops[instruction->type].name, request->number);
 		frame->was_if = false;
 		frame->if_taken = false;
 
 		*presult = RLM_MODULE_NOOP;
-		*priority = program->actions[*presult];
+		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CONTINUE;
 	}
 
@@ -831,8 +831,8 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 				    	 rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*program = frame->instruction;
-	unlang_resumption_t	*mr = unlang_generic_to_resumption(program);
+	unlang_t			*instruction = frame->instruction;
+	unlang_resumption_t	*mr = unlang_generic_to_resumption(instruction);
 	unlang_module_call_t	*sp;
 
 	sp = &mr->module;
@@ -845,7 +845,7 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 	*presult = mr->callback(request, mr->module.modinst->data, mr->ctx);
 	safe_unlock(sp->modinst);
 
-	RDEBUG2("%s (%s)", program->name ? program->name : "",
+	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 
 	/*
@@ -963,7 +963,7 @@ unlang_op_t unlang_ops[] = {
  */
 static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 {
-	unlang_t		*program;
+	unlang_t		*instruction;
 	int			priority;
 	rlm_rcode_t		result;
 	unlang_stack_frame_t	*frame;
@@ -992,9 +992,9 @@ redo:
 	 *	Loop over all modules in this list.
 	 */
 	while (frame->instruction != NULL) {
-		program = frame->instruction;
+		instruction = frame->instruction;
 
-		rad_assert(program->debug_name != NULL); /* if this happens, all bets are off. */
+		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
 		/*
 		 *	We've been asked to stop.  Do so.
@@ -1009,8 +1009,8 @@ redo:
 			break;
 		}
 
-		if (unlang_ops[program->type].children) {
-			RDEBUG2("%s {", program->debug_name);
+		if (unlang_ops[instruction->type].children) {
+			RDEBUG2("%s {", instruction->debug_name);
 			RINDENT();
 		}
 
@@ -1018,9 +1018,9 @@ redo:
 		 *	Execute an operation
 		 */
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
-			unlang_ops[program->type].name);
+			unlang_ops[instruction->type].name);
 
-		action = unlang_ops[program->type].func(request, stack, &result, &priority);
+		action = unlang_ops[instruction->type].func(request, stack, &result, &priority);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_int2str(unlang_action_table, action, "<INVALID>"), priority);
@@ -1047,13 +1047,13 @@ redo:
 			 *	Done the top stack frame, return
 			 */
 			frame = &stack->frame[stack->depth];
-			program = frame->instruction;
-			rad_assert(program != NULL);
+			instruction = frame->instruction;
+			rad_assert(instruction != NULL);
 
 			if (frame->top_frame) {
-				if (unlang_ops[program->type].children) {
+				if (unlang_ops[instruction->type].children) {
 					REXDENT();
-					RDEBUG2("} # %s (%s)", program->debug_name,
+					RDEBUG2("} # %s (%s)", instruction->debug_name,
 						fr_int2str(mod_rcode_table, result, "<invalid>"));
 				}
 				RDEBUG4("** [%i] %s - exited (done)", stack->depth, __FUNCTION__);
@@ -1077,9 +1077,9 @@ redo:
 			}
 
 			frame->resume = false;
-			if (unlang_ops[program->type].children) {
+			if (unlang_ops[instruction->type].children) {
 				REXDENT();
-				RDEBUG2("} # %s (%s)", program->debug_name,
+				RDEBUG2("} # %s (%s)", instruction->debug_name,
 					fr_int2str(mod_rcode_table, result, "<invalid>"));
 			}
 			action = UNLANG_ACTION_CALCULATE_RESULT;
@@ -1096,7 +1096,7 @@ redo:
 			/*
 			 *	The child's action says return.  Do so.
 			 */
-			if (program->actions[result] == MOD_ACTION_RETURN) {
+			if (instruction->actions[result] == MOD_ACTION_RETURN) {
 				frame->result = result;
 				goto done;
 			}
@@ -1105,7 +1105,7 @@ redo:
 			 *	If "reject", break out of the loop and return
 			 *	reject.
 			 */
-			if (program->actions[result] == MOD_ACTION_REJECT) {
+			if (instruction->actions[result] == MOD_ACTION_REJECT) {
 				frame->result = RLM_MODULE_REJECT;
 				goto done;
 			}
@@ -1115,7 +1115,7 @@ redo:
 			 *	code.  Grab it in preference to any unset priority.
 			 */
 			if (priority < 0) {
-				priority = program->actions[result];
+				priority = instruction->actions[result];
 			}
 
 			/*
@@ -1136,7 +1136,7 @@ redo:
 			/* FALL-THROUGH */
 
 		case UNLANG_ACTION_CONTINUE:
-			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[program->type].children) {
+			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[instruction->type].children) {
 				REXDENT();
 				RDEBUG2("}");
 			}
@@ -1162,15 +1162,15 @@ done:
  */
 void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	unlang_t *program = NULL;
+	unlang_t *instruction = NULL;
 	unlang_stack_t *stack = request->stack;
 
 	/*
-	 *	Interpretable unlang programs are stored as CONF_DATA
+	 *	Interpretable unlang instructions are stored as CONF_DATA
 	 *	associated with sections.
 	 */
-	if (cs) program = cf_data_find(cs, "unlang");
-	unlang_push(stack, program, action, true);
+	if (cs) instruction = cf_data_find(cs, "unlang");
+	unlang_push(stack, instruction, action, true);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
