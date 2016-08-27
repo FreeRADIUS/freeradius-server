@@ -89,17 +89,17 @@ static char const *action2str(int action)
 /* If you suspect a bug in the parser, you'll want to use these dump
  * functions. dump_tree should reproduce a whole tree exactly as it was found
  * in radiusd.conf, but in long form (all actions explicitly defined) */
-static void dump_mc(unlang_node_t *c, int indent)
+static void dump_mc(unlang_t *c, int indent)
 {
 	int i;
 
-	if(c->type==UNLANG_NODE_TYPE_MODULE_CALL) {
-		unlang_node_module_call_t *single = unlang_node_to_module_call(c);
+	if(c->type==UNLANG_TYPE_MODULE_CALL) {
+		unlang_module_call_t *single = unlang_to_module_call(c);
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
-	} else if ((c->type > UNLANG_NODE_TYPE_MODULE_CALL) && (c->type <= UNLANG_NODE_TYPE_POLICY)) {
-		unlang_node_group_t *g = unlang_node_group_to_module_call(c);
-		unlang_node_t *p;
+	} else if ((c->type > UNLANG_TYPE_MODULE_CALL) && (c->type <= UNLANG_TYPE_POLICY)) {
+		unlang_group_t *g = unlang_group_to_module_call(c);
+		unlang_t *p;
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 		      unlang_ops[c->type].name);
 		for(p = g->children;p;p = p->next)
@@ -115,7 +115,7 @@ static void dump_mc(unlang_node_t *c, int indent)
 	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
-static void dump_tree(unlang_node_t *c, char const *name)
+static void dump_tree(unlang_t *c, char const *name)
 {
 	DEBUG("[%s]", name);
 	dump_mc(c, 0);
@@ -909,7 +909,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 /*
  *	Compile the RHS of update sections to xlat_exp_t
  */
-static bool pass2_fixup_update(unlang_node_group_t *g)
+static bool pass2_fixup_update(unlang_group_t *g)
 {
 	vp_map_t *map;
 
@@ -946,7 +946,7 @@ static bool pass2_fixup_update(unlang_node_group_t *g)
 /*
  *	Compile the RHS of map sections to xlat_exp_t
  */
-static bool pass2_fixup_map(unlang_node_group_t *g)
+static bool pass2_fixup_map(unlang_group_t *g)
 {
 	/*
 	 *	Compile the map
@@ -957,10 +957,10 @@ static bool pass2_fixup_map(unlang_node_group_t *g)
 }
 #endif
 
-static void unlang_dump(unlang_node_t *mc, int depth)
+static void unlang_dump(unlang_t *mc, int depth)
 {
-	unlang_node_t *this;
-	unlang_node_group_t *g;
+	unlang_t *this;
+	unlang_group_t *g;
 	vp_map_t *map;
 	char buffer[1024];
 
@@ -969,8 +969,8 @@ static void unlang_dump(unlang_node_t *mc, int depth)
 		default:
 			break;
 
-		case UNLANG_NODE_TYPE_MODULE_CALL: {
-			unlang_node_module_call_t *single = unlang_node_to_module_call(this);
+		case UNLANG_TYPE_MODULE_CALL: {
+			unlang_module_call_t *single = unlang_to_module_call(this);
 
 			DEBUG("%.*s%s", depth, modcall_spaces,
 				single->modinst->name);
@@ -978,15 +978,15 @@ static void unlang_dump(unlang_node_t *mc, int depth)
 			break;
 
 #ifdef WITH_UNLANG
-		case UNLANG_NODE_TYPE_MAP:
-			g = unlang_node_group_to_module_call(this); /* FIXMAP: print option 3, too */
+		case UNLANG_TYPE_MAP:
+			g = unlang_group_to_module_call(this); /* FIXMAP: print option 3, too */
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 			      unlang_ops[this->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
-		case UNLANG_NODE_TYPE_UPDATE:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_UPDATE:
+			g = unlang_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_ops[this->type].name);
 
@@ -999,17 +999,17 @@ static void unlang_dump(unlang_node_t *mc, int depth)
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_NODE_TYPE_ELSE:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_ELSE:
+			g = unlang_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_NODE_TYPE_IF:
-		case UNLANG_NODE_TYPE_ELSIF:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_IF:
+		case UNLANG_TYPE_ELSIF:
+			g = unlang_group_to_module_call(this);
 			fr_cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
 				unlang_ops[this->type].name, buffer);
@@ -1017,9 +1017,9 @@ static void unlang_dump(unlang_node_t *mc, int depth)
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_NODE_TYPE_SWITCH:
-		case UNLANG_NODE_TYPE_CASE:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_SWITCH:
+		case UNLANG_TYPE_CASE:
+			g = unlang_group_to_module_call(this);
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_ops[this->type].name, buffer);
@@ -1027,31 +1027,31 @@ static void unlang_dump(unlang_node_t *mc, int depth)
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_NODE_TYPE_POLICY:
-		case UNLANG_NODE_TYPE_FOREACH:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_POLICY:
+		case UNLANG_TYPE_FOREACH:
+			g = unlang_group_to_module_call(this);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_ops[this->type].name, this->name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_NODE_TYPE_BREAK:
+		case UNLANG_TYPE_BREAK:
 			DEBUG("%.*sbreak", depth, modcall_spaces);
 			break;
 
 #endif
-		case UNLANG_NODE_TYPE_GROUP:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_GROUP:
+			g = unlang_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 			      unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
 
-		case UNLANG_NODE_TYPE_LOAD_BALANCE:
-		case UNLANG_NODE_TYPE_REDUNDANT_LOAD_BALANCE:
-			g = unlang_node_group_to_module_call(this);
+		case UNLANG_TYPE_LOAD_BALANCE:
+		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+			g = unlang_group_to_module_call(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
@@ -1317,24 +1317,24 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 }
 
 
-static unlang_node_group_t *group_allocate(unlang_node_t *parent, CONF_SECTION *cs,
-				unlang_node_group_type_t group_type, unlang_node_type_t mod_type)
+static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs,
+				unlang_group_type_t group_type, unlang_type_t mod_type)
 {
-	unlang_node_group_t *g;
-	unlang_node_t *c;
+	unlang_group_t *g;
+	unlang_t *c;
 	TALLOC_CTX *ctx;
 
 	ctx = parent;
 	if (!ctx) ctx = cs;
 
-	g = talloc_zero(ctx, unlang_node_group_t);
+	g = talloc_zero(ctx, unlang_group_t);
 	if (!g) return NULL;
 
 	g->group_type = group_type;
 	g->children = NULL;
 	g->cs = cs;
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 	c->parent = parent;
 	c->type = mod_type;
 	c->next = NULL;
@@ -1344,7 +1344,7 @@ static unlang_node_group_t *group_allocate(unlang_node_t *parent, CONF_SECTION *
 }
 
 
-static unlang_node_t *compile_action_defaults(unlang_node_t *c, unlang_compile_t *unlang_ctx, unlang_node_group_type_t parentgroup_type)
+static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx, unlang_group_type_t parentgroup_type)
 {
 	int i;
 
@@ -1365,12 +1365,12 @@ static unlang_node_t *compile_action_defaults(unlang_node_t *c, unlang_compile_t
 }
 
 
-static unlang_node_t *compile_map(unlang_node_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, UNUSED unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, UNUSED unlang_node_type_t mod_type)
+static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
+				CONF_SECTION *cs, UNUSED unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
 {
 	int rcode;
-	unlang_node_group_t *g;
-	unlang_node_t *c;
+	unlang_group_t *g;
+	unlang_t *c;
 	CONF_SECTION *modules;
 	ssize_t slen;
 	char const *tmpl_str;
@@ -1444,7 +1444,7 @@ static unlang_node_t *compile_map(unlang_node_t *parent, unlang_compile_t *unlan
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_MAP);
+	g = group_allocate(parent, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP);
 	if (!g) return NULL;
 
 	proc_inst = map_proc_instantiate(g, proc, vpt, head);
@@ -1454,7 +1454,7 @@ static unlang_node_t *compile_map(unlang_node_t *parent, unlang_compile_t *unlan
 		return NULL;
 	}
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
@@ -1490,7 +1490,7 @@ static unlang_node_t *compile_map(unlang_node_t *parent, unlang_compile_t *unlan
 	g->proc_inst = proc_inst;
 
 	/*
-	 *	Cache the module in the unlang_node_group_t struct.
+	 *	Cache the module in the unlang_group_t struct.
 	 *
 	 *	Ensure that the module has a "map" entry in its module
 	 *	header?  Or ensure that the map is registered in the
@@ -1506,12 +1506,12 @@ static unlang_node_t *compile_map(unlang_node_t *parent, unlang_compile_t *unlan
 
 }
 
-static unlang_node_t *compile_update(unlang_node_t *parent, unlang_compile_t *unlang_ctx,
-				   CONF_SECTION *cs, unlang_node_group_type_t group_type, UNUSED unlang_node_group_type_t parentgroup_type, UNUSED unlang_node_type_t mod_type)
+static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
+				   CONF_SECTION *cs, unlang_group_type_t group_type, UNUSED unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
 {
 	int rcode;
-	unlang_node_group_t *g;
-	unlang_node_t *c;
+	unlang_group_t *g;
+	unlang_t *c;
 	char const *name2 = cf_section_name2(cs);
 
 	vp_map_t *head;
@@ -1526,10 +1526,10 @@ static unlang_node_t *compile_update(unlang_node_t *parent, unlang_compile_t *un
 		return NULL;
 	}
 
-	g = group_allocate(parent, cs, group_type, UNLANG_NODE_TYPE_UPDATE);
+	g = group_allocate(parent, cs, group_type, UNLANG_TYPE_UPDATE);
 	if (!g) return NULL;
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 
 	if (name2) {
 		c->name = name2;
@@ -1560,7 +1560,7 @@ static unlang_node_t *compile_update(unlang_node_t *parent, unlang_compile_t *un
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action_pair(unlang_node_t *c, CONF_PAIR *cp)
+static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
@@ -1615,7 +1615,7 @@ static int compile_action_pair(unlang_node_t *c, CONF_PAIR *cp)
 	return 1;
 }
 
-static bool compile_action_section(unlang_node_t *c, CONF_ITEM *ci)
+static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
@@ -1645,17 +1645,17 @@ static bool compile_action_section(unlang_node_t *c, CONF_ITEM *ci)
 	return true;
 }
 
-static unlang_node_t *compile_empty(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type,
+static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type,
 				  fr_cond_type_t cond_type)
 {
-	unlang_node_group_t *g;
-	unlang_node_t *c;
+	unlang_group_t *g;
+	unlang_t *c;
 
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 	if (!cs) {
 		c->name = unlang_ops[c->type].name;
 		c->debug_name = c->name;
@@ -1682,12 +1682,12 @@ static unlang_node_t *compile_empty(unlang_node_t *parent, unlang_compile_t *unl
 }
 
 
-static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				 unlang_node_group_type_t parent_group_type, char const **modname);
+static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+				 unlang_group_type_t parent_group_type, char const **modname);
 
 
-/* unlang_node_group_ts are grown by adding a unlang_node_t to the end */
-static void add_child(unlang_node_group_t *g, unlang_node_t *c)
+/* unlang_group_ts are grown by adding a unlang_t to the end */
+static void add_child(unlang_group_t *g, unlang_t *c)
 {
 	if (!c) return;
 
@@ -1702,13 +1702,13 @@ static void add_child(unlang_node_group_t *g, unlang_node_t *c)
 	}
 
 	g->num_children++;
-	c->parent = unlang_node_group_to_node(g);
+	c->parent = unlang_group_to_node(g);
 }
 
 /*
  *	compile 'actions { ... }' inside of another group.
  */
-static bool compile_action_subsection(unlang_node_t *c, CONF_SECTION *cs, CONF_SECTION *subcs)
+static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTION *subcs)
 {
 	CONF_ITEM *ci, *next;
 
@@ -1729,8 +1729,8 @@ static bool compile_action_subsection(unlang_node_t *c, CONF_SECTION *cs, CONF_S
 	 *	Over-riding actions makes no sense in some situations.
 	 *	They just don't make sense for many group types.
 	 */
-	if (!((c->type == UNLANG_NODE_TYPE_CASE) || (c->type == UNLANG_NODE_TYPE_IF) || (c->type == UNLANG_NODE_TYPE_ELSIF) ||
-	      (c->type == UNLANG_NODE_TYPE_ELSE))) {
+	if (!((c->type == UNLANG_TYPE_CASE) || (c->type == UNLANG_TYPE_IF) || (c->type == UNLANG_TYPE_ELSIF) ||
+	      (c->type == UNLANG_TYPE_ELSE))) {
 		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_ops[c->type].name);
 		return false;
 	}
@@ -1739,13 +1739,13 @@ static bool compile_action_subsection(unlang_node_t *c, CONF_SECTION *cs, CONF_S
 }
 
 
-static unlang_node_t *compile_children(unlang_node_group_t *g, UNUSED unlang_node_t *parent, unlang_compile_t *unlang_ctx,
-				     unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type)
+static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, unlang_compile_t *unlang_ctx,
+				     unlang_group_type_t group_type, unlang_group_type_t parentgroup_type)
 {
 	CONF_ITEM *ci;
-	unlang_node_t *c;
+	unlang_t *c;
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 
 	/*
 	 *	Loop over the children of this group.
@@ -1760,7 +1760,7 @@ static unlang_node_t *compile_children(unlang_node_group_t *g, UNUSED unlang_nod
 		 */
 		if (cf_item_is_section(ci)) {
 			char const *name1 = NULL;
-			unlang_node_t *single;
+			unlang_t *single;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
 			/*
@@ -1810,7 +1810,7 @@ static unlang_node_t *compile_children(unlang_node_group_t *g, UNUSED unlang_nod
 			 *	specified ...
 			 */
 			if (!value) {
-				unlang_node_t *single;
+				unlang_t *single;
 				char const *name = NULL;
 
 				single = compile_item(c, unlang_ctx, ci, group_type, &name);
@@ -1850,16 +1850,16 @@ static unlang_node_t *compile_children(unlang_node_group_t *g, UNUSED unlang_nod
 /*
  *	Generic "compile a section with more unlang inside of it".
  */
-static unlang_node_t *compile_group(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	unlang_node_group_t *g;
-	unlang_node_t *c;
+	unlang_group_t *g;
+	unlang_t *c;
 
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 
 	/*
 	 *	Remember the name for printing, etc.
@@ -1873,15 +1873,15 @@ static unlang_node_t *compile_group(unlang_node_t *parent, unlang_compile_t *unl
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
-static unlang_node_t *compile_switch(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				   unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				   unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
 	char const *name2;
 	bool had_seen_default = false;
-	unlang_node_t *c;
-	unlang_node_group_t *g;
+	unlang_t *c;
+	unlang_group_t *g;
 	ssize_t slen;
 
 	name2 = cf_section_name2(cs);
@@ -1955,7 +1955,7 @@ static unlang_node_t *compile_switch(unlang_node_t *parent, unlang_compile_t *un
 		}
 	}
 
-	c = unlang_node_group_to_node(g);
+	c = unlang_group_to_node(g);
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
@@ -1972,16 +1972,16 @@ static unlang_node_t *compile_switch(unlang_node_t *parent, unlang_compile_t *un
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
-static unlang_node_t *compile_case(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				 unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				 unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	int i;
 	char const *name2;
-	unlang_node_t *c;
-	unlang_node_group_t *g;
+	unlang_t *c;
+	unlang_group_t *g;
 	vp_tmpl_t *vpt = NULL;
 
-	if (!parent || (parent->type != UNLANG_NODE_TYPE_SWITCH)) {
+	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
 		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
 		return NULL;
 	}
@@ -1994,7 +1994,7 @@ static unlang_node_t *compile_case(unlang_node_t *parent, unlang_compile_t *unla
 	if (name2) {
 		ssize_t slen;
 		FR_TOKEN type;
-		unlang_node_group_t *f;
+		unlang_group_t *f;
 
 		type = cf_section_name2_type(cs);
 
@@ -2021,7 +2021,7 @@ static unlang_node_t *compile_case(unlang_node_t *parent, unlang_compile_t *unla
 			}
 		}
 
-		f = unlang_node_group_to_module_call(parent);
+		f = unlang_group_to_module_call(parent);
 		rad_assert(f->vpt != NULL);
 
 		/*
@@ -2083,7 +2083,7 @@ static unlang_node_t *compile_case(unlang_node_t *parent, unlang_compile_t *unla
 		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 	}
 
-	g = unlang_node_group_to_module_call(c);
+	g = unlang_group_to_module_call(c);
 	g->vpt = talloc_steal(g, vpt);
 
 	/*
@@ -2098,13 +2098,13 @@ static unlang_node_t *compile_case(unlang_node_t *parent, unlang_compile_t *unla
 	return c;
 }
 
-static unlang_node_t *compile_foreach(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				    unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	FR_TOKEN type;
 	char const *name2;
-	unlang_node_t *c;
-	unlang_node_group_t *g;
+	unlang_t *c;
+	unlang_group_t *g;
 	ssize_t slen;
 	vp_tmpl_t *vpt;
 
@@ -2172,7 +2172,7 @@ static unlang_node_t *compile_foreach(unlang_node_t *parent, unlang_compile_t *u
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 
-	g = unlang_node_group_to_module_call(c);
+	g = unlang_group_to_module_call(c);
 	g->vpt = vpt;
 
 	return c;
@@ -2180,12 +2180,12 @@ static unlang_node_t *compile_foreach(unlang_node_t *parent, unlang_compile_t *u
 
 
 
-static unlang_node_t *compile_break(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
+static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	unlang_node_t *foreach;
+	unlang_t *foreach;
 
 	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
-		if (foreach->type == UNLANG_NODE_TYPE_FOREACH) break;
+		if (foreach->type == UNLANG_TYPE_FOREACH) break;
 	}
 
 	if (!foreach) {
@@ -2194,24 +2194,24 @@ static unlang_node_t *compile_break(unlang_node_t *parent, unlang_compile_t *unl
 	}
 
 	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
-			     UNLANG_NODE_TYPE_BREAK, COND_TYPE_INVALID);
+			     UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
 }
 #endif
 
-static unlang_node_t *compile_xlat(unlang_node_t *parent,
+static unlang_t *compile_xlat(unlang_t *parent,
 				 unlang_compile_t *unlang_ctx, char const *fmt)
 {
-	unlang_node_t *c;
-	unlang_node_xlat_t *mx;
+	unlang_t *c;
+	unlang_xlat_t *mx;
 
-	mx = talloc_zero(parent, unlang_node_xlat_t);
+	mx = talloc_zero(parent, unlang_xlat_t);
 
-	c = unlang_node_xlat_to_node(mx);
+	c = unlang_xlat_to_node(mx);
 	c->parent = parent;
 	c->next = NULL;
 	c->name = "expand";
 	c->debug_name = c->name;
-	c->type = UNLANG_NODE_TYPE_XLAT;
+	c->type = UNLANG_TYPE_XLAT;
 
 	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
@@ -2228,11 +2228,11 @@ static unlang_node_t *compile_xlat(unlang_node_t *parent,
 	return c;
 }
 
-static unlang_node_t *compile_if(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+			       unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	unlang_node_t *c;
-	unlang_node_group_t *g;
+	unlang_t *c;
+	unlang_group_t *g;
 	fr_cond_t *cond;
 
 	if (!cf_section_name2(cs)) {
@@ -2266,21 +2266,21 @@ static unlang_node_t *compile_if(unlang_node_t *parent, unlang_compile_t *unlang
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
-	g = unlang_node_group_to_module_call(c);
+	g = unlang_group_to_module_call(c);
 	g->cond = cond;
 
 	return c;
 }
 
-static int previous_if(CONF_SECTION *cs, unlang_node_t *parent, unlang_node_type_t mod_type)
+static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_type)
 {
-	unlang_node_group_t *p, *f;
+	unlang_group_t *p, *f;
 
-	p = unlang_node_group_to_module_call(parent);
+	p = unlang_group_to_module_call(parent);
 	if (!p->tail) goto else_fail;
 
-	f = unlang_node_group_to_module_call(p->tail);
-	if ((f->node.type != UNLANG_NODE_TYPE_IF) && (f->node.type != UNLANG_NODE_TYPE_ELSIF)) {
+	f = unlang_group_to_module_call(p->tail);
+	if ((f->node.type != UNLANG_TYPE_IF) && (f->node.type != UNLANG_TYPE_ELSIF)) {
 	else_fail:
 		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
 			      unlang_ops[mod_type].name);
@@ -2298,8 +2298,8 @@ static int previous_if(CONF_SECTION *cs, unlang_node_t *parent, unlang_node_type
 	return 1;
 }
 
-static unlang_node_t *compile_elsif(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				  unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	int rcode;
 
@@ -2319,12 +2319,12 @@ static unlang_node_t *compile_elsif(unlang_node_t *parent, unlang_compile_t *unl
 	return compile_if(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 }
 
-static unlang_node_t *compile_else(unlang_node_t *parent,
+static unlang_t *compile_else(unlang_t *parent,
 			       unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-			       unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+			       unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	int rcode;
-	unlang_node_t *c;
+	unlang_t *c;
 
 	if (cf_section_name2(cs)) {
 		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_ops[mod_type].name);
@@ -2396,12 +2396,12 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 }
 
 
-static unlang_node_t *compile_redundant(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	char const *name2;
-	unlang_node_t *c;
-	unlang_node_group_t *g;
+	unlang_t *c;
+	unlang_group_t *g;
 
 	/*
 	 *	No children?  Die!
@@ -2418,7 +2418,7 @@ static unlang_node_t *compile_redundant(unlang_node_t *parent, unlang_compile_t 
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
 
-	g = unlang_node_group_to_module_call(c);
+	g = unlang_group_to_module_call(c);
 
 	/*
 	 *	Allow for keyed load-balance / redundant-load-balance sections.
@@ -2426,7 +2426,7 @@ static unlang_node_t *compile_redundant(unlang_node_t *parent, unlang_compile_t 
 	 *	"redundant" is just "group" with different default actions.
 	 */
 	name2 = cf_section_name2(cs);
-	if (mod_type == UNLANG_NODE_TYPE_GROUP) name2 = NULL;
+	if (mod_type == UNLANG_TYPE_GROUP) name2 = NULL;
 
 	/*
 	 *	But only outside of the "instantiate" section.
@@ -2497,12 +2497,12 @@ static unlang_node_t *compile_redundant(unlang_node_t *parent, unlang_compile_t 
 	return c;
 }
 
-static unlang_node_t *compile_parallel(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				      unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type)
+static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	unlang_node_t *c;
-	unlang_node_t *child;
-	unlang_node_group_t *g;
+	unlang_t *c;
+	unlang_t *child;
+	unlang_group_t *g;
 
 	/*
 	 *	No children?  Die!
@@ -2525,17 +2525,17 @@ static unlang_node_t *compile_parallel(unlang_node_t *parent, unlang_compile_t *
 	/*
 	 *	Check that all children are of the new type.
 	 */
-	g = unlang_node_group_to_module_call(c);
+	g = unlang_group_to_module_call(c);
 
 	for (child = g->children; child != NULL; child = child->next) {
-		unlang_node_module_call_t *single;
+		unlang_module_call_t *single;
 
-		if (child->type != UNLANG_NODE_TYPE_MODULE_CALL) {
+		if (child->type != UNLANG_TYPE_MODULE_CALL) {
 			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_ops[mod_type].name, child->debug_name);
 			return NULL;
 		}
 
-		single = unlang_node_to_module_call(child);
+		single = unlang_to_module_call(child);
 		if ((single->modinst->module->type & RLM_TYPE_RESUMABLE) == 0) {
 			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_ops[mod_type].name, child->debug_name);
 			return NULL;
@@ -2636,10 +2636,10 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 }
 
 
-static unlang_node_t *compile_module(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, unlang_node_group_type_t parentgroup_type, char const *realname)
+static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, unlang_group_type_t parentgroup_type, char const *realname)
 {
-	unlang_node_t *c;
-	unlang_node_module_call_t *single;
+	unlang_t *c;
+	unlang_module_call_t *single;
 
 	/*
 	 *	Check if the module in question has the necessary
@@ -2651,11 +2651,11 @@ static unlang_node_t *compile_module(unlang_node_t *parent, unlang_compile_t *un
 		return NULL;
 	}
 
-	single = talloc_zero(parent, unlang_node_module_call_t);
+	single = talloc_zero(parent, unlang_module_call_t);
 	single->modinst = this;
 	single->method = this->module->methods[unlang_ctx->component];
 
-	c = unlang_node_module_call_to_node(single);
+	c = unlang_module_call_to_node(single);
 	c->parent = parent;
 	c->next = NULL;
 
@@ -2663,7 +2663,7 @@ static unlang_node_t *compile_module(unlang_node_t *parent, unlang_compile_t *un
 
 	c->name = realname;
 	c->debug_name = realname;
-	c->type = UNLANG_NODE_TYPE_MODULE_CALL;
+	c->type = UNLANG_TYPE_MODULE_CALL;
 
 	if (!compile_action_section(c, ci)) {
 		talloc_free(c);
@@ -2673,32 +2673,32 @@ static unlang_node_t *compile_module(unlang_node_t *parent, unlang_compile_t *un
 	return c;
 }
 
-typedef unlang_node_t *(*modcall_compile_function_t)(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-					 unlang_node_group_type_t group_type, unlang_node_group_type_t parentgroup_type, unlang_node_type_t mod_type);
+typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+					 unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type);
 typedef struct modcall_compile_t {
 	char const			*name;
 	modcall_compile_function_t	compile;
-	unlang_node_group_type_t			group_type;
-	unlang_node_type_t			mod_type;
+	unlang_group_type_t			group_type;
+	unlang_type_t			mod_type;
 } modcall_compile_t;
 
 static modcall_compile_t compile_table[] = {
-	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_GROUP },
-	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_NODE_TYPE_GROUP },
-	{ "load-balance",	compile_redundant, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_LOAD_BALANCE },
-	{ "redundant-load-balance", compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_NODE_TYPE_REDUNDANT_LOAD_BALANCE },
+	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP },
+	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_GROUP },
+	{ "load-balance",	compile_redundant, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_LOAD_BALANCE },
+	{ "redundant-load-balance", compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE },
 
-	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_CASE },
-	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_FOREACH },
-	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_IF },
-	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_ELSIF },
-	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_ELSE },
-	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_UPDATE },
-	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_MAP },
-	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_SWITCH },
-	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_PARALLEL },
+	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CASE },
+	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FOREACH },
+	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_IF },
+	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSIF },
+	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSE },
+	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_UPDATE },
+	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP },
+	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH },
+	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL },
 
-	{ NULL, NULL, 0, UNLANG_NODE_TYPE_NULL }
+	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };
 
 
@@ -2714,11 +2714,11 @@ static modcall_compile_t compile_table[] = {
 /*
  *	Compile one entry of a module call.
  */
-static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				 unlang_node_group_type_t parent_group_type, char const **modname)
+static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+				 unlang_group_type_t parent_group_type, char const **modname)
 {
 	char const *modrefname, *p;
-	unlang_node_t *c;
+	unlang_t *c;
 	module_instance_t *this;
 	CONF_SECTION *cs, *subcs, *modules;
 	CONF_SECTION *loop;
@@ -2744,9 +2744,9 @@ static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unla
 				 *	to have contents.
 				 */
 				if (!cf_item_find_next(cs, NULL) &&
-				    !((compile_table[i].mod_type == UNLANG_NODE_TYPE_CASE) ||
-				      (compile_table[i].mod_type == UNLANG_NODE_TYPE_IF) ||
-				      (compile_table[i].mod_type == UNLANG_NODE_TYPE_ELSIF))) {
+				    !((compile_table[i].mod_type == UNLANG_TYPE_CASE) ||
+				      (compile_table[i].mod_type == UNLANG_TYPE_IF) ||
+				      (compile_table[i].mod_type == UNLANG_TYPE_ELSIF))) {
 					cf_log_err(ci, "'%s' sections cannot be empty", modrefname);
 					return NULL;
 				}
@@ -2809,7 +2809,7 @@ static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unla
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
-		return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_RETURN, COND_TYPE_INVALID);
+		return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_RETURN, COND_TYPE_INVALID);
 	}
 #endif
 
@@ -2914,7 +2914,7 @@ static unlang_node_t *compile_item(unlang_node_t *parent, unlang_compile_t *unla
 			 *
 			 *	group foo { ...
 			 */
-			c = compile_group(parent, &unlang_ctx2, subcs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type, UNLANG_NODE_TYPE_GROUP);
+			c = compile_group(parent, &unlang_ctx2, subcs, UNLANG_GROUP_TYPE_SIMPLE, parent_group_type, UNLANG_TYPE_GROUP);
 			if (!c) return NULL;
 
 			c->name = cf_section_name1(subcs);
@@ -2988,7 +2988,7 @@ fail:
 int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 {
 	char const *name1, *name2;
-	unlang_node_t *c;
+	unlang_t *c;
 	unlang_compile_t unlang_ctx;
 
 	unlang_ctx.component = component;
@@ -3000,7 +3000,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 		unlang_ctx.actions = &authtype_actions;
 	}
 
-	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_NODE_TYPE_GROUP);
+	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
 
 	/*

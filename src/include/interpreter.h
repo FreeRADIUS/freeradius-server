@@ -43,36 +43,36 @@ extern "C" {
 #define MOD_ACTION_REJECT  (-2)
 #define MOD_PRIORITY_MAX   (64)
 
-/** Types of unlang_node_t_t nodes
+/** Types of unlang_t_t nodes
  *
- * Here are our basic types: unlang_node_t, unlang_node_group_t, and unlang_node_module_call_t. For an
+ * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_call_t. For an
  * explanation of what they are all about, see doc/configurable_failover.rst
  */
 typedef enum {
-	UNLANG_NODE_TYPE_NULL = 0,		//!< Modcallable type not set.
-	UNLANG_NODE_TYPE_MODULE_CALL = 1,	//!< Module method.
-	UNLANG_NODE_TYPE_GROUP,			//!< Grouping section.
-	UNLANG_NODE_TYPE_LOAD_BALANCE,		//!< Load balance section.
-	UNLANG_NODE_TYPE_REDUNDANT_LOAD_BALANCE,//!< Redundant load balance section.
-	UNLANG_NODE_TYPE_PARALLEL,		//!< execute statements in parallel
+	UNLANG_TYPE_NULL = 0,		//!< Modcallable type not set.
+	UNLANG_TYPE_MODULE_CALL = 1,	//!< Module method.
+	UNLANG_TYPE_GROUP,			//!< Grouping section.
+	UNLANG_TYPE_LOAD_BALANCE,		//!< Load balance section.
+	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,//!< Redundant load balance section.
+	UNLANG_TYPE_PARALLEL,		//!< execute statements in parallel
 #ifdef WITH_UNLANG
-	UNLANG_NODE_TYPE_IF,			//!< Condition.
-	UNLANG_NODE_TYPE_ELSE,			//!< !Condition.
-	UNLANG_NODE_TYPE_ELSIF,			//!< !Condition && Condition.
-	UNLANG_NODE_TYPE_UPDATE,		//!< Update block.
-	UNLANG_NODE_TYPE_SWITCH,		//!< Switch section.
-	UNLANG_NODE_TYPE_CASE,			//!< Case section (within a #UNLANG_NODE_TYPE_SWITCH).
-	UNLANG_NODE_TYPE_FOREACH,		//!< Foreach section.
-	UNLANG_NODE_TYPE_BREAK,			//!< Break statement (within a #UNLANG_NODE_TYPE_FOREACH).
-	UNLANG_NODE_TYPE_RETURN,		//!< Return statement.
-	UNLANG_NODE_TYPE_MAP,			//!< Mapping section (like #UNLANG_NODE_TYPE_UPDATE, but uses
+	UNLANG_TYPE_IF,			//!< Condition.
+	UNLANG_TYPE_ELSE,			//!< !Condition.
+	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
+	UNLANG_TYPE_UPDATE,		//!< Update block.
+	UNLANG_TYPE_SWITCH,		//!< Switch section.
+	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).
+	UNLANG_TYPE_FOREACH,		//!< Foreach section.
+	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH).
+	UNLANG_TYPE_RETURN,		//!< Return statement.
+	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
 #endif
-	UNLANG_NODE_TYPE_POLICY,		//!< Policy section.
-	UNLANG_NODE_TYPE_XLAT,			//!< Bare xlat statement.
-	UNLANG_NODE_TYPE_RESUME,		//!< where to resume something.
-	UNLANG_NODE_TYPE_MAX
-} unlang_node_type_t;
+	UNLANG_TYPE_POLICY,		//!< Policy section.
+	UNLANG_TYPE_XLAT,			//!< Bare xlat statement.
+	UNLANG_TYPE_RESUME,		//!< where to resume something.
+	UNLANG_TYPE_MAX
+} unlang_type_t;
 
 /** Returned by #unlang_op_t calls, determine the next action of the interpreter
  *
@@ -80,8 +80,8 @@ typedef enum {
  */
 typedef enum {
 	UNLANG_ACTION_CALCULATE_RESULT = 1,	//!< Calculate a new section #rlm_rcode_t value.
-	UNLANG_ACTION_CONTINUE,			//!< Execute the next #unlang_node_t.
-	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_node_t pushed a new child onto the stack,
+	UNLANG_ACTION_CONTINUE,			//!< Execute the next #unlang_t.
+	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_t pushed a new child onto the stack,
 						//!< execute it instead of continuing.
 	UNLANG_ACTION_BREAK,			//!< Break out of the current group.
 	UNLANG_ACTION_STOP_PROCESSING		//!< Break out of processing the current request (unwind).
@@ -93,7 +93,7 @@ typedef enum {
 	UNLANG_GROUP_TYPE_REDUNDANT,		//!< Execute each of the children until one returns a 'good'
 						//!< result i.e. ok, updated, noop, then break out of the group.
 	UNLANG_GROUP_TYPE_MAX			//!< Number of group types.
-} unlang_node_group_type_t;
+} unlang_group_type_t;
 
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
@@ -101,49 +101,49 @@ typedef enum {
  * #unlang_action_t the instructions.
  *
  * This is the parent 'class' for multiple unlang node specialisations.
- * The #unlang_node_t struct is listed first in the specialisation so that we can cast between
+ * The #unlang_t struct is listed first in the specialisation so that we can cast between
  * parent/child classes without knowledge of the layout of the structures.
  *
  * The specialisations of the nodes describe additional details of the operation to be performed.
  */
-typedef struct unlang_node_t {
-	struct unlang_node_t	*parent;	//!< Previous node.
-	struct unlang_node_t	*next;		//!< Next node (executed on #UNLANG_ACTION_CONTINUE et al).
+typedef struct unlang_t {
+	struct unlang_t	*parent;	//!< Previous node.
+	struct unlang_t	*next;		//!< Next node (executed on #UNLANG_ACTION_CONTINUE et al).
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
-	unlang_node_type_t	type;		//!< The specialisation of this node.
+	unlang_type_t	type;		//!< The specialisation of this node.
 	int			actions[RLM_MODULE_NUMCODES];	//!< Priorities for the various return codes.
-} unlang_node_t;
+} unlang_t;
 
 /** Generic representation of a grouping
  *
  * Can represent IF statements, maps, update sections etc...
  */
 typedef struct {
-	unlang_node_t		node;		//!< Self.
-	unlang_node_group_type_t	group_type;
-	unlang_node_t		*children;	//!< Children beneath this group.  The body of an if
+	unlang_t		node;		//!< Self.
+	unlang_group_type_t	group_type;
+	unlang_t		*children;	//!< Children beneath this group.  The body of an if
 						//!< section for example.
-	unlang_node_t		*tail;		//!< of the children list.
+	unlang_t		*tail;		//!< of the children list.
 	CONF_SECTION		*cs;
 	int			num_children;
 
-	vp_map_t		*map;		//!< #UNLANG_NODE_TYPE_UPDATE, #UNLANG_NODE_TYPE_MAP.
-	vp_tmpl_t		*vpt;		//!< #UNLANG_NODE_TYPE_SWITCH, #UNLANG_NODE_TYPE_MAP.
-	fr_cond_t		*cond;		//!< #UNLANG_NODE_TYPE_IF, #UNLANG_NODE_TYPE_ELSIF.
+	vp_map_t		*map;		//!< #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP.
+	vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP.
+	fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
 
-	map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_NODE_TYPE_MAP.
+	map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
 	bool			done_pass2;
-} unlang_node_group_t;
+} unlang_group_t;
 
 /** A call to a module method
  *
  */
 typedef struct {
-	unlang_node_t		node;		//!< Self.
+	unlang_t		node;		//!< Self.
 	module_instance_t	*modinst;	//!< Instance of the module we're calling.
 	module_method_t		method;
-} unlang_node_module_call_t;
+} unlang_module_call_t;
 
 /** Pushed onto the interpreter stack by a yielding module, indicates the resumption point
  *
@@ -162,24 +162,24 @@ typedef struct {
  * without being straightjacketed.
  */
 typedef struct {
-	unlang_node_module_call_t module;	//!< Module call that returned #RLM_MODULE_YIELD.
+	unlang_module_call_t module;	//!< Module call that returned #RLM_MODULE_YIELD.
 	fr_unlang_resume_t	callback;	//!< Function the yielding module indicated should
 						//!< be called when the request could be resumed.
 	fr_unlang_action_t	action_callback;  //!< Function the yielding module indicated should
 						//!< be called when the request is poked via an action
 	void			*ctx;		//!< Context data for the callback.  Usually represents
 						//!< the module's internal state at the time of yielding.
-} unlang_node_resumption_t;
+} unlang_resumption_t;
 
 /** A naked xlat
  *
  * @note These are vestigial and may be removed in future.
  */
 typedef struct {
-	unlang_node_t		node;		//!< Self.
+	unlang_t		node;		//!< Self.
 	int			exec;
 	char			*xlat_name;
-} unlang_node_xlat_t;
+} unlang_xlat_t;
 
 /** State of a foreach loop
  *
@@ -195,13 +195,13 @@ typedef struct {
  *
  */
 typedef struct {
-	unlang_node_t 		*child;
-	unlang_node_t		*found;
+	unlang_t 		*child;
+	unlang_t		*found;
 } unlang_stack_entry_redundant_t;
 
 /** Our interpreter stack, as distinct from the C stack
  *
- * We don't call the modules recursively.  Instead we iterate over a list of unlang_node_t and
+ * We don't call the modules recursively.  Instead we iterate over a list of unlang_t and
  * and manage the call stack ourselves.
  *
  * After looking at various green thread implementations, it was decided that using the existing
@@ -214,13 +214,13 @@ typedef struct {
 typedef struct {
 	rlm_rcode_t		result;
 	int			priority;
-	unlang_node_type_t	unwind;		//!< Unwind to this one if it exists.
+	unlang_type_t		unwind;		//!< Unwind to this one if it exists.
 	bool			do_next_sibling;
 	bool			was_if;
 	bool			if_taken;
 	bool			resume;
 	bool			top_frame;
-	unlang_node_t		*node;
+	unlang_t		*unlang;
 
 	union {
 		unlang_stack_entry_foreach_t	foreach;
@@ -252,55 +252,55 @@ typedef struct {
 
 extern unlang_op_t unlang_ops[];
 
-#define MOD_NUM_TYPES (UNLANG_NODE_TYPE_XLAT + 1)
+#define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
 
 extern char const *const comp2str[];
 
-/* Simple conversions: unlang_node_module_call_t and unlang_node_group_t are subclasses of unlang_node_t,
+/* Simple conversions: unlang_module_call_t and unlang_group_t are subclasses of unlang_t,
  * so we often want to go back and forth between them. */
-static inline unlang_node_module_call_t *unlang_node_to_module_call(unlang_node_t *p)
+static inline unlang_module_call_t *unlang_to_module_call(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_NODE_TYPE_MODULE_CALL);
-	return (unlang_node_module_call_t *)p;
+	rad_assert(p->type == UNLANG_TYPE_MODULE_CALL);
+	return (unlang_module_call_t *)p;
 }
 
-static inline unlang_node_group_t *unlang_node_group_to_module_call(unlang_node_t *p)
+static inline unlang_group_t *unlang_group_to_module_call(unlang_t *p)
 {
-	rad_assert((p->type > UNLANG_NODE_TYPE_MODULE_CALL) && (p->type <= UNLANG_NODE_TYPE_POLICY));
+	rad_assert((p->type > UNLANG_TYPE_MODULE_CALL) && (p->type <= UNLANG_TYPE_POLICY));
 
-	return (unlang_node_group_t *)p;
+	return (unlang_group_t *)p;
 }
 
-static inline unlang_node_t *unlang_node_module_call_to_node(unlang_node_module_call_t *p)
+static inline unlang_t *unlang_module_call_to_node(unlang_module_call_t *p)
 {
-	return (unlang_node_t *)p;
+	return (unlang_t *)p;
 }
 
-static inline unlang_node_t *unlang_node_group_to_node(unlang_node_group_t *p)
+static inline unlang_t *unlang_group_to_node(unlang_group_t *p)
 {
-	return (unlang_node_t *)p;
+	return (unlang_t *)p;
 }
 
-static inline unlang_node_xlat_t *unlang_node_to_xlat(unlang_node_t *p)
+static inline unlang_xlat_t *unlang_to_xlat(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_NODE_TYPE_XLAT);
-	return (unlang_node_xlat_t *)p;
+	rad_assert(p->type == UNLANG_TYPE_XLAT);
+	return (unlang_xlat_t *)p;
 }
 
-static inline unlang_node_t *unlang_node_xlat_to_node(unlang_node_xlat_t *p)
+static inline unlang_t *unlang_xlat_to_node(unlang_xlat_t *p)
 {
-	return (unlang_node_t *)p;
+	return (unlang_t *)p;
 }
 
-static inline unlang_node_resumption_t *unlang_node_to_resumption(unlang_node_t *p)
+static inline unlang_resumption_t *unlang_to_resumption(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_NODE_TYPE_RESUME);
-	return (unlang_node_resumption_t *)p;
+	rad_assert(p->type == UNLANG_TYPE_RESUME);
+	return (unlang_resumption_t *)p;
 }
 
-static inline unlang_node_t *unlang_node_resumption_to_node(unlang_node_resumption_t *p)
+static inline unlang_t *unlang_from_resumption(unlang_resumption_t *p)
 {
-	return (unlang_node_t *)p;
+	return (unlang_t *)p;
 }
 
 #ifdef __cplusplus
