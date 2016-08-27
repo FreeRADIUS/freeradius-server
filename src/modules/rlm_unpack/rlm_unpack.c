@@ -190,7 +190,7 @@ static ssize_t unpack_xlat(char **out, size_t outlen,
 /*
  *	Register the xlats
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, UNUSED void *instance)
 {
 	if (cf_section_name2(conf)) return 0;
 
