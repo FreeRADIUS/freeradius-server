@@ -383,7 +383,7 @@ void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct
 void		fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b);
 void		fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor);
 
-int		fr_timeval_cmp(struct timeval *a, struct timeval *b);
+int		fr_timeval_cmp(struct timeval const *a, struct timeval const *b);
 void		fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start);
 int		fr_timeval_from_str(struct timeval *out, char const *in);
 int8_t		fr_pointer_cmp(void const *a, void const *b);

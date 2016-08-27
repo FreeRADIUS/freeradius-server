@@ -940,7 +940,7 @@ void fr_timeval_divide(struct timeval *out, struct timeval const *in, int diviso
  *	- -1 if a < b.
  *	- 0 if a == b.
  */
-int fr_timeval_cmp(struct timeval *a, struct timeval *b)
+int fr_timeval_cmp(struct timeval const *a, struct timeval const *b)
 {
 	if (a->tv_sec > b->tv_sec) return +1;
 	if (a->tv_sec < b->tv_sec) return -1;

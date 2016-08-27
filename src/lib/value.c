@@ -166,10 +166,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 		break;
 
 	case PW_TYPE_TIMEVAL:
-		if (a->timeval.tv_sec > b->timeval.tv_sec) compare = +1;
-		else if (a->timeval.tv_sec < b->timeval.tv_sec) compare = -1;
-		else if (a->timeval.tv_usec > b->timeval.tv_usec) compare = +1;
-		else if (a->timeval.tv_usec < b->timeval.tv_usec) compare = -1;
+		compare = fr_timeval_cmp(&a->timeval, &b->timeval);
 		break;
 
 	case PW_TYPE_DECIMAL:
