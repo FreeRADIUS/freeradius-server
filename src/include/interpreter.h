@@ -43,7 +43,7 @@ extern "C" {
 #define MOD_ACTION_REJECT  (-2)
 #define MOD_PRIORITY_MAX   (64)
 
-/** Types of unlang_t_t nodes
+/** Types of unlang_t nodes
  *
  * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_call_t. For an
  * explanation of what they are all about, see doc/configurable_failover.rst
@@ -120,7 +120,7 @@ typedef struct unlang_t {
  * Can represent IF statements, maps, update sections etc...
  */
 typedef struct {
-	unlang_t		node;		//!< Self.
+	unlang_t		self;
 	unlang_group_type_t	group_type;
 	unlang_t		*children;	//!< Children beneath this group.  The body of an if
 						//!< section for example.
@@ -140,7 +140,7 @@ typedef struct {
  *
  */
 typedef struct {
-	unlang_t		node;		//!< Self.
+	unlang_t		self;
 	module_instance_t	*modinst;	//!< Instance of the module we're calling.
 	module_method_t		method;
 } unlang_module_call_t;
@@ -176,7 +176,7 @@ typedef struct {
  * @note These are vestigial and may be removed in future.
  */
 typedef struct {
-	unlang_t		node;		//!< Self.
+	unlang_t		self;
 	int			exec;
 	char			*xlat_name;
 } unlang_xlat_t;
@@ -220,7 +220,7 @@ typedef struct {
 	bool			if_taken;
 	bool			resume;
 	bool			top_frame;
-	unlang_t		*unlang;
+	unlang_t		*instruction;
 
 	union {
 		unlang_stack_entry_foreach_t	foreach;
@@ -258,7 +258,7 @@ extern char const *const comp2str[];
 
 /* Simple conversions: unlang_module_call_t and unlang_group_t are subclasses of unlang_t,
  * so we often want to go back and forth between them. */
-static inline unlang_module_call_t *unlang_to_module_call(unlang_t *p)
+static inline unlang_module_call_t *unlang_generic_to_module_call(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_MODULE_CALL);
 	return (unlang_module_call_t *)p;
@@ -271,34 +271,34 @@ static inline unlang_group_t *unlang_group_to_module_call(unlang_t *p)
 	return (unlang_group_t *)p;
 }
 
-static inline unlang_t *unlang_module_call_to_node(unlang_module_call_t *p)
+static inline unlang_t *unlang_module_call_to_generic(unlang_module_call_t *p)
 {
 	return (unlang_t *)p;
 }
 
-static inline unlang_t *unlang_group_to_node(unlang_group_t *p)
+static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 {
 	return (unlang_t *)p;
 }
 
-static inline unlang_xlat_t *unlang_to_xlat(unlang_t *p)
+static inline unlang_xlat_t *unlang_generic_to_xlat(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_XLAT);
 	return (unlang_xlat_t *)p;
 }
 
-static inline unlang_t *unlang_xlat_to_node(unlang_xlat_t *p)
+static inline unlang_t *unlang_xlat_to_generic(unlang_xlat_t *p)
 {
 	return (unlang_t *)p;
 }
 
-static inline unlang_resumption_t *unlang_to_resumption(unlang_t *p)
+static inline unlang_resumption_t *unlang_generic_to_resumption(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_RESUME);
 	return (unlang_resumption_t *)p;
 }
 
-static inline unlang_t *unlang_from_resumption(unlang_resumption_t *p)
+static inline unlang_t *unlang_resumption_to_generic(unlang_resumption_t *p)
 {
 	return (unlang_t *)p;
 }

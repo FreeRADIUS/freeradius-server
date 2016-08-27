@@ -94,7 +94,7 @@ static void dump_mc(unlang_t *c, int indent)
 	int i;
 
 	if(c->type==UNLANG_TYPE_MODULE_CALL) {
-		unlang_module_call_t *single = unlang_to_module_call(c);
+		unlang_module_call_t *single = unlang_generic_to_module_call(c);
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
 	} else if ((c->type > UNLANG_TYPE_MODULE_CALL) && (c->type <= UNLANG_TYPE_POLICY)) {
@@ -970,7 +970,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 			break;
 
 		case UNLANG_TYPE_MODULE_CALL: {
-			unlang_module_call_t *single = unlang_to_module_call(this);
+			unlang_module_call_t *single = unlang_generic_to_module_call(this);
 
 			DEBUG("%.*s%s", depth, modcall_spaces,
 				single->modinst->name);
@@ -1334,7 +1334,7 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs,
 	g->children = NULL;
 	g->cs = cs;
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 	c->parent = parent;
 	c->type = mod_type;
 	c->next = NULL;
@@ -1454,7 +1454,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
@@ -1529,7 +1529,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	g = group_allocate(parent, cs, group_type, UNLANG_TYPE_UPDATE);
 	if (!g) return NULL;
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 
 	if (name2) {
 		c->name = name2;
@@ -1655,7 +1655,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 	if (!cs) {
 		c->name = unlang_ops[c->type].name;
 		c->debug_name = c->name;
@@ -1702,7 +1702,7 @@ static void add_child(unlang_group_t *g, unlang_t *c)
 	}
 
 	g->num_children++;
-	c->parent = unlang_group_to_node(g);
+	c->parent = unlang_group_to_generic(g);
 }
 
 /*
@@ -1745,7 +1745,7 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 	CONF_ITEM *ci;
 	unlang_t *c;
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 
 	/*
 	 *	Loop over the children of this group.
@@ -1859,7 +1859,7 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 
 	/*
 	 *	Remember the name for printing, etc.
@@ -1955,7 +1955,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		}
 	}
 
-	c = unlang_group_to_node(g);
+	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
@@ -2206,7 +2206,7 @@ static unlang_t *compile_xlat(unlang_t *parent,
 
 	mx = talloc_zero(parent, unlang_xlat_t);
 
-	c = unlang_xlat_to_node(mx);
+	c = unlang_xlat_to_generic(mx);
 	c->parent = parent;
 	c->next = NULL;
 	c->name = "expand";
@@ -2280,7 +2280,7 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 	if (!p->tail) goto else_fail;
 
 	f = unlang_group_to_module_call(p->tail);
-	if ((f->node.type != UNLANG_TYPE_IF) && (f->node.type != UNLANG_TYPE_ELSIF)) {
+	if ((f->self.type != UNLANG_TYPE_IF) && (f->self.type != UNLANG_TYPE_ELSIF)) {
 	else_fail:
 		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
 			      unlang_ops[mod_type].name);
@@ -2290,7 +2290,7 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 	if (f->cond->type == COND_TYPE_TRUE) {
 		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
 		     unlang_ops[mod_type].name,
-		     unlang_ops[f->node.type].name,
+		     unlang_ops[f->self.type].name,
 		     cf_section_filename(cs), cf_section_lineno(cs));
 		return 0;
 	}
@@ -2535,7 +2535,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 			return NULL;
 		}
 
-		single = unlang_to_module_call(child);
+		single = unlang_generic_to_module_call(child);
 		if ((single->modinst->module->type & RLM_TYPE_RESUMABLE) == 0) {
 			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_ops[mod_type].name, child->debug_name);
 			return NULL;
@@ -2655,7 +2655,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	single->modinst = this;
 	single->method = this->module->methods[unlang_ctx->component];
 
-	c = unlang_module_call_to_node(single);
+	c = unlang_module_call_to_generic(single);
 	c->parent = parent;
 	c->next = NULL;
 
