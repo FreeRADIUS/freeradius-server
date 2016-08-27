@@ -1170,6 +1170,13 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	associated with sections.
 	 */
 	if (cs) instruction = cf_data_find(cs, "unlang");
+	if (!instruction) {
+		static unlang_t empty_group = {
+			.type = UNLANG_TYPE_GROUP,
+			.debug_name = "empty-group"
+		};
+		instruction = &empty_group;
+	}
 	unlang_push(stack, instruction, action, true);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
