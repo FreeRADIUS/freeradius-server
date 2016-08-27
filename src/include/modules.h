@@ -221,7 +221,6 @@ typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *module_instance,
  * @param[in] request		the current request.
  * @param[in] module_instance	The module instance.
  * @param[in] ctx		a local context for the callback.
- * @param[in] fd		the file descriptor that became readable.
  * @return a normal rlm_rcode_t.
  */
 typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instance, void *ctx);
