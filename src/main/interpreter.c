@@ -1303,6 +1303,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->ctx = ctx;
 
 	if (fr_event_insert(request->el, unlang_event_timeout_handler, ev, when, &ev->ev) < 0) {
+		REDEBUG("Failed inserting event: %s", fr_strerror());
 		talloc_free(ev);
 		return -1;
 	}
