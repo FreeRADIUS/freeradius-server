@@ -26,7 +26,7 @@ authenticate		process <Auth-Type>
 post-auth		send Access-Accept
 
 preacct			recv Accounting-Request
-accounting		send Access-Accept
+accounting		send Accounting-Response
 
 recv-coa		recv CoA-Request
 send-coa		send CoA-ACK
