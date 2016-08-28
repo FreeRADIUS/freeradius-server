@@ -32,10 +32,7 @@ quick succession, the next public release will be from the v4.0.x branch.
 
 v4.0.x is almost entirely config compatible with v3.1.x.
 
-**No further bug fixes or development will be done on the v3.1.x branch.**
-
-**The v4.0.x branch is a direct descendent of the v3.1.x branch, this should
-be used for testing instead.**
+**No further bug fixes or development will be done on the v3.1.x branch.  Use v4.0.x instead.**
 
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
 .. _CoverityStatus: https://scan.coverity.com/projects/58
