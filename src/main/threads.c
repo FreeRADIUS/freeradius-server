@@ -406,11 +406,11 @@ static void max_request_time_hook(void *ctx, UNUSED struct timeval *now)
  */
 static void *thread_handler(void *arg)
 {
-	int rcode;
-	THREAD_HANDLE *thread = (THREAD_HANDLE *) arg;
-	TALLOC_CTX *ctx;
-	fr_event_list_t *el;
-	fr_heap_t *local_backlog;
+	int			rcode;
+	THREAD_HANDLE		*thread = (THREAD_HANDLE *) arg;
+	TALLOC_CTX		*ctx;
+	fr_event_list_t		*el;
+	fr_heap_t		*local_backlog;
 
 	ctx = talloc_init("thread_pool");
 
