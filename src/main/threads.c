@@ -412,6 +412,10 @@ static void *thread_handler(void *arg)
 	fr_event_list_t		*el;
 	fr_heap_t		*local_backlog;
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	ProfilerRegisterThread();
+#endif
+
 	ctx = talloc_init("thread_pool");
 
 	el = fr_event_list_create(ctx, NULL);
@@ -438,10 +442,6 @@ static void *thread_handler(void *arg)
 	while (true) {
 		bool		wait_for_event;
 		REQUEST		*request;
-
-#  ifdef HAVE_GPERFTOOLS_PROFILER_H
-		ProfilerRegisterThread();
-#  endif
 
 		/*
 		 *	Drain the backlog from the reader thread on
