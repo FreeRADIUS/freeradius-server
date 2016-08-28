@@ -407,7 +407,7 @@ static void max_request_time_hook(void *ctx, UNUSED struct timeval *now)
 static void *thread_handler(void *arg)
 {
 	int			rcode;
-	THREAD_HANDLE		*thread = (THREAD_HANDLE *) arg;
+	THREAD_HANDLE		*thread = talloc_get_type_abort(arg, THREAD_HANDLE);
 	TALLOC_CTX		*ctx;
 	fr_event_list_t		*el;
 	fr_heap_t		*local_backlog;
