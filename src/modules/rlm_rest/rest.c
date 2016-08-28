@@ -1063,7 +1063,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		RDEBUG2("Performing xlat expansion of response value");
 
-		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
+		if (radius_axlat(request, &expanded, request, value, NULL, NULL) < 0) {
 			goto skip;
 		}
 
@@ -1171,7 +1171,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		type = PW_TYPE_STRING;
 		value = json_object_get_string(leaf);
 		if (flags->do_xlat) {
-			if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) return NULL;
+			if (radius_axlat(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
 			src.strvalue = expanded;
 			src.length = talloc_array_length(src.strvalue) - 1;
 		} else {
@@ -2197,7 +2197,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 		rest_custom_data_t *data;
 		char *expanded = NULL;
 
-		if (radius_axlat(&expanded, request, section->data, NULL, NULL) < 0) return -1;
+		if (radius_axlat(request, &expanded, request, section->data, NULL, NULL) < 0) return -1;
 
 		data = talloc_zero(request, rest_custom_data_t);
 		data->p = expanded;
@@ -2563,7 +2563,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *inst, REQUEST *request, char cons
 
 	path = (uri + len);
 
-	len = radius_axlat(out, request, scheme, NULL, NULL);
+	len = radius_axlat(request, out, request, scheme, NULL, NULL);
 	talloc_free(scheme);
 	if (len < 0) {
 		TALLOC_FREE(*out);
@@ -2571,7 +2571,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *inst, REQUEST *request, char cons
 		return 0;
 	}
 
-	len = radius_axlat(&path_exp, request, path, rest_uri_escape, NULL);
+	len = radius_axlat(request, &path_exp, request, path, rest_uri_escape, NULL);
 	if (len < 0) {
 		TALLOC_FREE(*out);
 

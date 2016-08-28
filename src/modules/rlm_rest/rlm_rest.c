@@ -182,7 +182,7 @@ static void rlm_rest_cleanup(rlm_rest_t const *instance, rlm_rest_section_t *sec
 /*
  *	Simple xlat to read text data from a URL
  */
-static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
+static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {

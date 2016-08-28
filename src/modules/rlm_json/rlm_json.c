@@ -52,7 +52,7 @@ typedef struct rlm_json_jpath_to_eval {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
-static ssize_t jsonquote_xlat(char **out, size_t outlen,
+static ssize_t jsonquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
@@ -60,7 +60,7 @@ static ssize_t jsonquote_xlat(char **out, size_t outlen,
 	char *tmp;
 
 	tmp = fr_json_from_string(request, fmt, false);
-	
+
 	/* Indicate truncation */
 	if (!tmp) return outlen + 1;
 	len = strlen(tmp);
@@ -73,6 +73,7 @@ static ssize_t jsonquote_xlat(char **out, size_t outlen,
 
 /** Determine if a jpath expression is valid
  *
+ * @param ctx to allocate expansion buffer in.
  * @param mod_inst data.
  * @param xlat_inst data.
  * @param out Where to write the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
@@ -81,7 +82,7 @@ static ssize_t jsonquote_xlat(char **out, size_t outlen,
  * @param fmt jpath expression to parse.
  * @return number of bytes written to out.
  */
-static ssize_t jpath_validate_xlat(char **out, size_t outlen,
+static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			    	   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				   REQUEST *request, char const *fmt)
 {

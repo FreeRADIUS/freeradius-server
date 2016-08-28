@@ -251,7 +251,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	what the challenge value is.
 		 */
 
-		len = radius_axlat(&expanded, request, inst->chal_prompt, NULL, NULL);
+		len = radius_axlat(request, &expanded, request, inst->chal_prompt, NULL, NULL);
 		if (len < 0) {
 			return RLM_MODULE_FAIL;
 		}

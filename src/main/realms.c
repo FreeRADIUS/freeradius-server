@@ -218,10 +218,10 @@ static size_t CC_HINT(nonnull) xlat_cs(CONF_SECTION *cs, char const *fmt, char *
 /** xlat for %{home_server:foo}
  *
  */
-static ssize_t xlat_home_server(char **out, size_t outlen,
+static ssize_t xlat_home_server(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, char const *fmt) CC_HINT(nonnull);
-static ssize_t xlat_home_server(char **out, size_t outlen,
+static ssize_t xlat_home_server(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, char const *fmt)
 {
@@ -262,10 +262,10 @@ static ssize_t xlat_home_server(char **out, size_t outlen,
 /** xlat for %{home_server_pool:foo}
  *
  */
-static ssize_t xlat_server_pool(char **out, size_t outlen,
+static ssize_t xlat_server_pool(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, char const *fmt) CC_HINT(nonnull);
-static ssize_t xlat_server_pool(char **out, size_t outlen,
+static ssize_t xlat_server_pool(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, char const *fmt)
 {

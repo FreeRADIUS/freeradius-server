@@ -142,7 +142,7 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 	return 0;
 }
 
-static ssize_t redis_xlat(char **out, size_t outlen,
+static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
 {

@@ -780,10 +780,10 @@ finish:
 /** Allow single attribute values to be retrieved from the cache
  *
  */
-static ssize_t cache_xlat(char **out, UNUSED size_t freespace,
+static ssize_t cache_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt) CC_HINT(nonnull);
-static ssize_t cache_xlat(char **out, UNUSED size_t freespace,
+static ssize_t cache_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
 {

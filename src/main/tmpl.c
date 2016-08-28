@@ -1804,6 +1804,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	ssize_t			slen = -1;	/* quiet compiler */
 	int			ret;
 
+	TALLOC_CTX		*tmp_ctx = talloc_new(ctx);
+
 	VERIFY_TMPL(vpt);
 
 	memset(&vd, 0, sizeof(vd));
@@ -1820,14 +1822,14 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_EXEC:
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		MEM(vd.strvalue = talloc_array(ctx, char, 1024));
+		MEM(vd.strvalue = talloc_array(tmp_ctx, char, 1024));
 		if (radius_exec_program(request, (char *)vd.ptr, 1024, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) {
 			TALLOC_FREE(vd.ptr);
 			return -1;
 		}
 		vd.length = strlen(vd.strvalue);
-		MEM(vd.strvalue = talloc_realloc(ctx, vd.ptr, char, vd.length + 1));	/* Trim */
+		MEM(vd.strvalue = talloc_realloc(tmp_ctx, vd.ptr, char, vd.length + 1));	/* Trim */
 		rad_assert(vd.strvalue[vd.length] == '\0');
 		to_cast = &vd;
 		break;
@@ -1839,7 +1841,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL XLAT");
 
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat((char **)&vd.ptr, request, vpt->name, escape, escape_ctx);
+		slen = radius_axlat(tmp_ctx, (char **)&vd.ptr, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) return slen;
 		vd.length = slen;
 
@@ -1867,7 +1869,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat_struct((char **)&vd.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
+		slen = radius_axlat_struct(tmp_ctx, (char **)&vd.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) return slen;
 
 		vd.length = slen;
@@ -1878,7 +1880,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = value_data_from_str(ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
+		ret = value_data_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
 		talloc_free(vd.ptr);	/* free the old value */
 		if (ret < 0) return -1;
 
@@ -1943,7 +1945,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
 		rad_assert(0);
-		talloc_free(vd.ptr);
+		talloc_free(tmp_ctx);
 		return -1;
 	}
 
@@ -1956,7 +1958,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		switch (src_type) {
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
-			talloc_free(vd.ptr);
+			talloc_free(tmp_ctx);
 			break;
 
 		default:

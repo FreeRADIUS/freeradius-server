@@ -358,7 +358,7 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
 	}
 
 	/* Finally, xlat resulting SQL query */
-	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
+	if (radius_axlat(request, &expanded, request, query, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -440,7 +440,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/* Finally, xlat resulting SQL query */
-	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
+	if (radius_axlat(request, &expanded, request, query, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 	talloc_free(expanded);

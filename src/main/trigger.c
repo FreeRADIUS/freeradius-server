@@ -36,7 +36,7 @@ static CONF_SECTION *trigger_exec_main, *trigger_exec_subcs;
 /** Retrieve attributes from a special trigger list
  *
  */
-static ssize_t xlat_trigger(char **out, UNUSED size_t outlen,
+static ssize_t xlat_trigger(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, char const *fmt)
 {

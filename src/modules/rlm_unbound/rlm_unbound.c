@@ -212,7 +212,7 @@ static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *
 	return 0;
 }
 
-static ssize_t xlat_a(char **out, size_t outlen,
+static ssize_t xlat_a(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		      void const *mod_inst, UNUSED void const *xlat_inst,
 		      REQUEST *request, char const *fmt)
 {
@@ -259,7 +259,7 @@ static ssize_t xlat_a(char **out, size_t outlen,
 	return -1;
 }
 
-static ssize_t xlat_aaaa(char **out, size_t outlen,
+static ssize_t xlat_aaaa(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -304,7 +304,7 @@ error0:
 	return -1;
 }
 
-static ssize_t xlat_ptr(char **out, size_t outlen,
+static ssize_t xlat_ptr(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {

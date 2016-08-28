@@ -311,7 +311,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	Get the utmp filename, via xlat.
 	 */
 	filename = NULL;
-	if (radius_axlat(&filename, request, inst->filename, NULL, NULL) < 0) {
+	if (radius_axlat(request, &filename, request, inst->filename, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -348,7 +348,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	/*
 	 *	Translate the User-Name attribute, or whatever else they told us to use.
 	 */
-	if (radius_axlat(&expanded, request, inst->username, NULL, NULL) < 0) {
+	if (radius_axlat(request, &expanded, request, inst->username, NULL, NULL) < 0) {
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;
@@ -562,7 +562,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 	/*
 	 *	Get the filename, via xlat.
 	 */
-	if (radius_axlat(&expanded, request, inst->filename, NULL, NULL) < 0) {
+	if (radius_axlat(request, &expanded, request, inst->filename, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -588,7 +588,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 
 	TALLOC_FREE(expanded);
 
-	len = radius_axlat(&expanded, request, inst->username, NULL, NULL);
+	len = radius_axlat(request, &expanded, request, inst->username, NULL, NULL);
 	if (len < 0) {
 		rcode = RLM_MODULE_FAIL;
 

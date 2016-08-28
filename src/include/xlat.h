@@ -45,6 +45,7 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * If outlen is 0, then the function should allocate its own buffer, in the
  * context of the request.
  *
+ * @param[in] ctx to allocate any dynamic buffers in.
  * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
  * @param[in] outlen Length of pre-allocated buffer, or 0 if function should allocate its own buffer.
  * @param[in] mod_inst Instance data provided by the module that registered the xlat.
@@ -52,7 +53,7 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * @param[in] request The current request.
  * @param[in] fmt string to expand.
  */
-typedef ssize_t (*xlat_func_t)(char **out, size_t outlen,
+typedef ssize_t (*xlat_func_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
 			       void const *mod_inst, void const *xlat_inst,
 			       REQUEST *request, char const *fmt);
 
@@ -75,12 +76,13 @@ ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request, xlat_exp_
 			   xlat_escape_t escape, void *ctx)
 	CC_HINT(nonnull (1 ,3 ,4));
 
-ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, xlat_escape_t escape, void *escape_ctx)
-	CC_HINT(nonnull (1, 2, 3));
+ssize_t radius_axlat(TALLOC_CTX *ctx, char **out, REQUEST *request,
+		     char const *fmt, xlat_escape_t escape, void *escape_ctx)
+	CC_HINT(nonnull (2, 3, 4));
 
-ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, xlat_escape_t escape,
-			    void *ctx)
-	CC_HINT(nonnull (1, 2, 3));
+ssize_t radius_axlat_struct(TALLOC_CTX *ctx, char **out, REQUEST *request,
+			    xlat_exp_t const *xlat, xlat_escape_t escape, void *escape_ctx)
+	CC_HINT(nonnull (2, 3, 4));
 
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error);
 

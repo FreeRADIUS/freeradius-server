@@ -522,7 +522,7 @@ redo:
 /*
  *  Do xlat of strings!
  */
-static ssize_t expr_xlat(char **out, size_t outlen,
+static ssize_t expr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -547,7 +547,7 @@ static ssize_t expr_xlat(char **out, size_t outlen,
 /** Generate a random integer value
  *
  */
-static ssize_t rand_xlat(char **out, size_t outlen,
+static ssize_t rand_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 UNUSED REQUEST *request, char const *fmt)
 {
@@ -573,7 +573,7 @@ static ssize_t rand_xlat(char **out, size_t outlen,
  *  Build strings of random chars, useful for generating tokens and passcodes
  *  Format similar to String::Random.
  */
-static ssize_t randstr_xlat(char **out, size_t outlen,
+static ssize_t randstr_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, char const *fmt)
 {
@@ -721,7 +721,7 @@ static ssize_t randstr_xlat(char **out, size_t outlen,
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
-static ssize_t urlquote_xlat(char **out, size_t outlen,
+static ssize_t urlquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			     UNUSED REQUEST *request, char const *fmt)
 {
@@ -770,7 +770,7 @@ static ssize_t urlquote_xlat(char **out, size_t outlen,
  *
  * Remember to escape % with %% in strings, else xlat will try to parse it.
  */
-static ssize_t urlunquote_xlat(char **out, size_t outlen,
+static ssize_t urlunquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			       REQUEST *request, char const *fmt)
 {
@@ -808,7 +808,7 @@ static ssize_t urlunquote_xlat(char **out, size_t outlen,
  *
  * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
  */
-static ssize_t escape_xlat(char **out, size_t outlen,
+static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   void const *mod_inst, UNUSED void const *xlat_inst,
 			   UNUSED REQUEST *request, char const *fmt)
 {
@@ -875,7 +875,7 @@ static ssize_t escape_xlat(char **out, size_t outlen,
  *
  * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
  */
-static ssize_t unescape_xlat(char **out, size_t outlen,
+static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			     UNUSED REQUEST *request, char const *fmt)
 {
@@ -916,9 +916,9 @@ static ssize_t unescape_xlat(char **out, size_t outlen,
  *
  * Probably only works for ASCII
  */
-static ssize_t tolower_xlat(char **out, size_t outlen,
-		       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-		       UNUSED REQUEST *request, char const *fmt)
+static ssize_t tolower_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    UNUSED REQUEST *request, char const *fmt)
 {
 	char *q;
 	char const *p;
@@ -942,9 +942,9 @@ static ssize_t tolower_xlat(char **out, size_t outlen,
  *
  * Probably only works for ASCII
  */
-static ssize_t toupper_xlat(char **out, size_t outlen,
-		       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-		       UNUSED REQUEST *request, char const *fmt)
+static ssize_t toupper_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    UNUSED REQUEST *request, char const *fmt)
 {
 	char *q;
 	char const *p;
@@ -1035,20 +1035,20 @@ static int decode_xlat_ref(uint8_t **out, size_t *outlen, REQUEST *request, char
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
-static ssize_t md5_xlat(char **out, size_t outlen,
+static ssize_t md5_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {
 	uint8_t digest[16];
 	size_t i, len, inlen;
 	uint8_t *p;
-	FR_MD5_CTX ctx;
+	FR_MD5_CTX md5_ctx;
 
 	REF2DATA;
 
-	fr_md5_init(&ctx);
-	fr_md5_update(&ctx, p, inlen);
-	fr_md5_final(digest, &ctx);
+	fr_md5_init(&md5_ctx);
+	fr_md5_update(&md5_ctx, p, inlen);
+	fr_md5_final(digest, &md5_ctx);
 
 	/*
 	 *	Each digest octet takes two hex digits, plus one for
@@ -1066,20 +1066,20 @@ static ssize_t md5_xlat(char **out, size_t outlen,
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
-static ssize_t sha1_xlat(char **out, size_t outlen,
+static ssize_t sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
 	uint8_t digest[20];
 	size_t i, len, inlen;
 	uint8_t *p;
-	fr_sha1_ctx ctx;
+	fr_sha1_ctx sha1_ctx;
 
 	REF2DATA;
 
-	fr_sha1_init(&ctx);
-	fr_sha1_update(&ctx, p, inlen);
-	fr_sha1_final(digest, &ctx);
+	fr_sha1_init(&sha1_ctx);
+	fr_sha1_update(&sha1_ctx, p, inlen);
+	fr_sha1_final(digest, &sha1_ctx);
 
 	/*
 	 *      Each digest octet takes two hex digits, plus one for
@@ -1098,7 +1098,7 @@ static ssize_t sha1_xlat(char **out, size_t outlen,
  * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static ssize_t evp_md_xlat(char **out, size_t outlen,
+static ssize_t evp_md_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt, EVP_MD const *md)
 {
@@ -1106,15 +1106,15 @@ static ssize_t evp_md_xlat(char **out, size_t outlen,
 	unsigned int digestlen, i, len;
 	size_t inlen;
 	uint8_t *p;
-	EVP_MD_CTX *ctx;
+	EVP_MD_CTX *md_ctx;
 
 	REF2DATA;
 
-	ctx = EVP_MD_CTX_create();
-	EVP_DigestInit_ex(ctx, md, NULL);
-	EVP_DigestUpdate(ctx, p, inlen);
-	EVP_DigestFinal_ex(ctx, digest, &digestlen);
-	EVP_MD_CTX_destroy(ctx);
+	md_ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(md_ctx, md, NULL);
+	EVP_DigestUpdate(md_ctx, p, inlen);
+	EVP_DigestFinal_ex(md_ctx, digest, &digestlen);
+	EVP_MD_CTX_destroy(md_ctx);
 
 	/*
 	 *      Each digest octet takes two hex digits, plus one for
@@ -1129,11 +1129,11 @@ static ssize_t evp_md_xlat(char **out, size_t outlen,
 }
 
 #  define EVP_MD_XLAT(_md) \
-static ssize_t _md##_xlat(char **out, size_t outlen,\
+static ssize_t _md##_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,\
 			  void const *mod_inst, void const *xlat_inst,\
 			  REQUEST *request, char const *fmt)\
 {\
-	return evp_md_xlat(out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\
+	return evp_md_xlat(ctx, out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\
 }
 
 EVP_MD_XLAT(sha256)
@@ -1144,7 +1144,7 @@ EVP_MD_XLAT(sha512)
  *
  * Example: "%{hmacmd5:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_md5_xlat(char **out, size_t outlen,
+static ssize_t hmac_md5_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			     REQUEST *request, char const *fmt)
 {
@@ -1204,7 +1204,7 @@ static ssize_t hmac_md5_xlat(char **out, size_t outlen,
  *
  * Example: "%{hmacsha1:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_sha1_xlat(char **out, size_t outlen,
+static ssize_t hmac_sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
@@ -1266,7 +1266,7 @@ static ssize_t hmac_sha1_xlat(char **out, size_t outlen,
  *
  * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
  */
-static ssize_t pairs_xlat(char **out, size_t outlen,
+static ssize_t pairs_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
 {
@@ -1321,7 +1321,7 @@ static ssize_t pairs_xlat(char **out, size_t outlen,
  *
  * Example: "%{base64:foo}" == "Zm9v"
  */
-static ssize_t base64_xlat(char **out, size_t outlen,
+static ssize_t base64_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
@@ -1346,7 +1346,7 @@ static ssize_t base64_xlat(char **out, size_t outlen,
  *
  * Example: "%{base64tohex:Zm9v}" == "666f6f"
  */
-static ssize_t base64_to_hex_xlat(char **out, size_t outlen,
+static ssize_t base64_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 				  REQUEST *request, char const *fmt)
 {
@@ -1376,7 +1376,7 @@ static ssize_t base64_to_hex_xlat(char **out, size_t outlen,
  *
  * Example: "%{explode:&ref <delim>}"
  */
-static ssize_t explode_xlat(char **out, size_t outlen,
+static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, char const *fmt)
 {
@@ -1513,7 +1513,7 @@ static ssize_t explode_xlat(char **out, size_t outlen,
  * some jitter, unless the desired effect is every subscriber on the network
  * re-authenticating at the same time.
  */
-static ssize_t next_time_xlat(char **out, size_t outlen,
+static ssize_t next_time_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
@@ -1669,7 +1669,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
  *
  *  %{lpad:&Attribute-Name length 'x'}
  */
-static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
+static ssize_t lpad_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -1687,7 +1687,7 @@ static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
 	 *	Print the attribute (left justified).  If it's too
 	 *	big, we're done.
 	 */
-	len = tmpl_aexpand(request, &to_pad, request, vpt, NULL, NULL);
+	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
 	if (len <= 0) return -1;
 
 	/*
@@ -1701,7 +1701,7 @@ static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
 	/*
 	 *	Realloc is actually pretty cheap in most cases...
 	 */
-	MEM(to_pad = talloc_realloc(request, to_pad, char, pad + 1));
+	MEM(to_pad = talloc_realloc(ctx, to_pad, char, pad + 1));
 
 	/*
 	 *	We have to shift the string to the right, and pad with
@@ -1719,7 +1719,7 @@ static ssize_t lpad_xlat(char **out, UNUSED size_t outlen,
  *
  *  %{rpad:&Attribute-Name length 'x'}
  */
-static ssize_t rpad_xlat(char **out, UNUSED size_t outlen,
+static ssize_t rpad_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -1739,7 +1739,7 @@ static ssize_t rpad_xlat(char **out, UNUSED size_t outlen,
 	 *	Print the attribute (left justified).  If it's too
 	 *	big, we're done.
 	 */
-	len = tmpl_aexpand(request, &to_pad, request, vpt, NULL, NULL);
+	len = tmpl_aexpand(ctx, &to_pad, request, vpt, NULL, NULL);
 	if (len <= 0) return 0;
 
 	if ((size_t) len >= pad) {
@@ -1747,7 +1747,7 @@ static ssize_t rpad_xlat(char **out, UNUSED size_t outlen,
 		return pad;
 	}
 
-	MEM(to_pad = talloc_realloc(request, to_pad, char, pad + 1));
+	MEM(to_pad = talloc_realloc(ctx, to_pad, char, pad + 1));
 
 	/*
 	 *	We have to pad with "fill" characters.

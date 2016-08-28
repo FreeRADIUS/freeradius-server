@@ -310,7 +310,7 @@ static void xs_init(pTHX)
 /*
  *	The xlat function
  */
-static ssize_t perl_xlat(char **out, size_t outlen,
+static ssize_t perl_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {

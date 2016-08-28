@@ -149,7 +149,7 @@ static int pdb_decode_acct_ctrl(char const *p)
  *	Pulls NT-Response, LM-Response, or Challenge from MSCHAP
  *	attributes.
  */
-static ssize_t mschap_xlat(char **out, size_t outlen,
+static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {

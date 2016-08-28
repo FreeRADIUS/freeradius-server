@@ -36,7 +36,7 @@ RCSID("$Id$")
  *
  *  Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  */
-static ssize_t unpack_xlat(char **out, size_t outlen,
+static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {

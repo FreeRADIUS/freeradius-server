@@ -661,7 +661,7 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 
 	vp->type = VT_DATA;
 
-	slen = radius_axlat(&expanded, request, vp->xlat, NULL, NULL);
+	slen = radius_axlat(request, &expanded, request, vp->xlat, NULL, NULL);
 	talloc_const_free(vp->xlat);
 	vp->xlat = NULL;
 	if (slen < 0) {

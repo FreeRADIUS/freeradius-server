@@ -530,7 +530,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 		return;
 	}
 
-	if (radius_axlat(&expanded, request, filename, NULL, NULL) < 0) {
+	if (radius_axlat(request, &expanded, request, filename, NULL, NULL) < 0) {
 		return;
 	}
 

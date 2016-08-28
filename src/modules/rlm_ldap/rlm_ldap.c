@@ -257,14 +257,14 @@ static const CONF_PARSER module_config[] = {
 
 static LDAP *global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
-static ssize_t ldap_escape_xlat(char **out, size_t outlen,
+static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 	UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 	REQUEST *request, char const *fmt)
 {
 	return rlm_ldap_escape_func(request, *out, outlen, fmt, NULL);
 }
 
-static ssize_t ldap_unescape_xlat(char **out, size_t outlen,
+static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 	  REQUEST *request, char const *fmt)
 {
@@ -274,7 +274,7 @@ static ssize_t ldap_unescape_xlat(char **out, size_t outlen,
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  */
-static ssize_t ldap_xlat(char **out, size_t outlen,
+static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -1201,7 +1201,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t *inst, REQUEST *request, ldap_acct_sec
 		} else if (do_xlat) {
 			char *exp = NULL;
 
-			if (radius_axlat(&exp, request, value, NULL, NULL) <= 0) {
+			if (radius_axlat(request, &exp, request, value, NULL, NULL) <= 0) {
 				RDEBUG("Skipping attribute \"%s\"", attr);
 
 				talloc_free(exp);
@@ -1445,8 +1445,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst, inst->name, ldap_xlat, rlm_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldapquote", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);	/* Deprecated */
-
 	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);

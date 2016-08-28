@@ -341,7 +341,7 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static ssize_t xlat_config(char **out, size_t outlen,
+static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
@@ -383,7 +383,7 @@ static ssize_t xlat_config(char **out, size_t outlen,
 /*
  *	Xlat for %{client:foo}
  */
-static ssize_t xlat_client(char **out, size_t outlen,
+static ssize_t xlat_client(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
@@ -416,7 +416,7 @@ static ssize_t xlat_client(char **out, size_t outlen,
 /*
  *	Xlat for %{getclient:<ipaddr>.foo}
  */
-static ssize_t xlat_getclient(char **out, size_t outlen,
+static ssize_t xlat_getclient(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
@@ -466,7 +466,7 @@ error:
 /*
  *	Xlat for %{listen:foo}
  */
-static ssize_t xlat_listen(char **out, size_t outlen,
+static ssize_t xlat_listen(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
