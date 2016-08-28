@@ -1801,7 +1801,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	PW_TYPE			src_type = PW_TYPE_STRING;
 	bool			needs_dup = false;
 
-	ssize_t			slen = -1;	/* quiet compiler */
+	ssize_t			slen = -1;
 	int			ret;
 
 	TALLOC_CTX		*tmp_ctx = talloc_new(ctx);
@@ -1825,8 +1825,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		MEM(vd.strvalue = talloc_array(tmp_ctx, char, 1024));
 		if (radius_exec_program(request, (char *)vd.ptr, 1024, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) {
-			TALLOC_FREE(vd.ptr);
-			return -1;
+		error:
+			talloc_free(tmp_ctx);
+			return slen;
 		}
 		vd.length = strlen(vd.strvalue);
 		MEM(vd.strvalue = talloc_realloc(tmp_ctx, vd.ptr, char, vd.length + 1));	/* Trim */
@@ -1842,7 +1843,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		/* Error in expansion, this is distinct from zero length expansion */
 		slen = radius_axlat(tmp_ctx, (char **)&vd.ptr, request, vpt->name, escape, escape_ctx);
-		if (slen < 0) return slen;
+		if (slen < 0) goto error;
 		vd.length = slen;
 
 		/*
@@ -1851,9 +1852,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = value_data_from_str(ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
-		talloc_free(vd.ptr);	/* free the old value */
-		if (ret < 0) return -1;
+		ret = value_data_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
+		if (ret < 0) goto error;
 
 		vd.strvalue = tmp.strvalue;
 		vd.length = tmp.length;
@@ -1881,8 +1881,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		ret = value_data_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
-		talloc_free(vd.ptr);	/* free the old value */
-		if (ret < 0) return -1;
+		if (ret < 0) goto error;
 
 		vd.strvalue = tmp.strvalue;
 		vd.length = tmp.length;
@@ -1945,8 +1944,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
 		rad_assert(0);
-		talloc_free(tmp_ctx);
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -1954,19 +1952,23 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	if ((src_type != dst_type) || needs_dup) {
 		ret = value_data_cast(ctx, &from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
-
+		if (ret < 0) goto error;
+	} else {
 		switch (src_type) {
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
-			talloc_free(tmp_ctx);
+			/*
+			 *	Ensure we don't free the output buffer when the
+			 *	tmp_ctx is freed.
+			 */
+			if (vd.ptr && (talloc_parent(vd.ptr) == tmp_ctx)) {
+				vd.ptr = talloc_reparent(tmp_ctx, ctx, vd.ptr);
+			}
 			break;
 
 		default:
 			break;
 		}
-
-		if (ret < 0) return -1;
-	} else {
 		memcpy(&from_cast, to_cast, sizeof(from_cast));
 	}
 
@@ -1974,6 +1976,12 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		value_data_field_sizes[dst_type], *((void **)out), value_data_offsets[dst_type]);
 
 	memcpy(out, &from_cast + value_data_offsets[dst_type], value_data_field_sizes[dst_type]);
+
+	/*
+	 *	Frees any memory allocated for temporary buffers
+	 *	in this function.
+	 */
+	talloc_free(tmp_ctx);
 
 	return from_cast.length;
 }
