@@ -1309,7 +1309,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 		return -1;
 	}
 
-	(void) request_data_add(request, ctx, -1, ev, true, false, false);
+	(void) request_data_add(request, ctx, -1, ev, true, true, false);
 
 	talloc_set_destructor(ev, _unlang_event_free);
 	return 0;
@@ -1352,7 +1352,7 @@ int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 		return -1;
 	}
 
-	(void) request_data_add(request, ctx, fd, ev, true, false, false);
+	(void) request_data_add(request, ctx, fd, ev, true, true, false);
 
 	talloc_set_destructor(ev, _unlang_event_free);
 	return 0;
