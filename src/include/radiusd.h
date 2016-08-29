@@ -134,7 +134,6 @@ typedef struct main_config {
 	uint32_t	continuation_timeout;		//!< How long to wait before cleaning up state entries.
 	uint32_t	max_requests;
 
-	uint32_t	debug_level;
 	char const	*log_file;
 	int		syslog_facility;
 
@@ -145,20 +144,9 @@ typedef struct main_config {
 
 	rad_listen_t	*listen;			//!< Head of a linked list of listeners.
 
-
-	char const	*panic_action;			//!< Command to execute if the server receives a fatal
-							//!< signal.
-
 	struct timeval	init_delay;			//!< Initial request processing delay.
 
-	uint32_t       	talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
-
-	bool		memory_report;			//!< Print a memory report on what's left unfreed.
-							//!< Can only be used when the server is running in single
-							//!< threaded mode.
-
-	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
-							//!< receiving a fatal signal.
+	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
 
 	uint8_t       	state_server_id;		//!< Sets a specific byte in the state to allow the
 							//!< authenticating server to be identified in packet
@@ -175,6 +163,25 @@ typedef struct main_config {
 #endif
 
 	fr_dict_t	*dict;				//!< Main dictionary.
+
+
+	/*
+	 *	Debugging options
+	 */
+	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
+							//!< receiving a fatal signal.
+
+	char const	*panic_action;			//!< Command to execute if the server receives a fatal
+							//!< signal.
+
+	uint32_t	debug_level;			//!< The base log level for the server.
+
+	bool		talloc_memory_report;		//!< Print a memory report on what's left unfreed.
+							//!< Can only be used when the server is running in single
+							//!< threaded mode.
+
+	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
+							//!< Only applicable in single threaded mode.
 } main_config_t;
 
 #ifdef WITH_VERIFY_PTR

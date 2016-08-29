@@ -184,7 +184,9 @@ static const CONF_PARSER resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_POINTER("talloc_pool_size", PW_TYPE_INTEGER, &main_config.talloc_pool_size) },
+	{ FR_CONF_POINTER("talloc_pool_size", PW_TYPE_SIZE, &main_config.talloc_pool_size) },
+	{ FR_CONF_POINTER("talloc_memory_limit", PW_TYPE_SIZE, &main_config.talloc_memory_limit), .dflt = "0" },
+	{ FR_CONF_POINTER("talloc_memory_report", PW_TYPE_BOOLEAN, &main_config.talloc_memory_report), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1004,8 +1006,16 @@ do {\
 
 	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
 
-	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 2 * 1024);
-	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024 * 1024);
+	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, (size_t)(2 * 1024));
+	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, (size_t)(1024 * 1024));
+
+	if (main_config.talloc_memory_limit) {
+		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", main_config.talloc_memory_limit, >=,
+				    (size_t)1024 * 1024 * 10);
+
+		FR_SIZE_BOUND_CHECK("resources.talloc_memory_limit", main_config.talloc_memory_limit, <=,
+				    ((((size_t)1024) * 1024 * 1024) * 16));
+	}
 
 	/*
 	 *	Set default initial request processing delay to 1/3 of a second.

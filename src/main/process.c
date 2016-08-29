@@ -5446,7 +5446,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	request->in_request_hash = false;
 	fr_event_delete(el, &request->ev);
 
-	if (main_config.memory_report) {
+	if (main_config.talloc_memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
@@ -5488,7 +5488,7 @@ void radius_event_free(void)
 		 *	Walk the lists again, ensuring that all
 		 *	requests are done.
 		 */
-		if (main_config.memory_report) {
+		if (main_config.talloc_memory_report) {
 			int num;
 
 #ifdef WITH_PROXY

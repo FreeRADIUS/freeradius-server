@@ -93,6 +93,47 @@ static void sig_fatal (int);
 static void sig_hup (int);
 #endif
 
+/** Configure talloc debugging features
+ *
+ * @param[in] config	The main config.
+ * @return
+ *	- 1 on config conflict.
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+static int talloc_config_set(main_config_t *config)
+{
+	if (config->spawn_workers) {
+		if (config->talloc_memory_limit || config->talloc_memory_report) {
+			fr_strerror_printf("talloc_memory_limit and talloc_memory_report "
+					   "require single threaded mode (-s | -X)");
+			return 1;
+		}
+		return 0;
+	}
+
+	if (!config->talloc_memory_limit && !config->talloc_memory_report) {
+		talloc_disable_null_tracking();
+		return 0;
+	}
+
+	talloc_enable_null_tracking();
+
+	if (config->talloc_memory_limit) {
+		TALLOC_CTX *null_child = talloc_new(NULL);
+		TALLOC_CTX *null_ctx = talloc_parent(null_child);
+
+		talloc_free(null_child);
+
+		if (talloc_set_memlimit(null_ctx, config->talloc_memory_limit) < 0) {
+			fr_strerror_printf("Failed applying memory limit");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /*
  *	The main guy.
  */
@@ -174,8 +215,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstTvxX")) != EOF) {
-
+	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PstTvxX")) != EOF) {
 		switch (argval) {
 		case 'C':
 			check_config = true;
@@ -213,6 +253,25 @@ int main(int argc, char *argv[])
 			}
 			fr_log_fp = fdopen(default_log.fd, "a");
 			break;
+
+		case 'L':
+		{
+			size_t limit;
+
+			if (fr_size_from_str(&limit, optarg) < 0) {
+				fprintf(stderr, "%s: Invalid memory limit: %s\n", main_config.name, fr_strerror());
+				exit(EXIT_FAILURE);
+			}
+
+			if ((limit > (((size_t)((1024 * 1024) * 1024)) * 16) || (limit < ((1024 * 1024) * 10)))) {
+				fprintf(stderr, "%s: Memory limit must be between 10M-16G\n", main_config.name);
+				exit(EXIT_FAILURE);
+			}
+
+			main_config.talloc_memory_limit = limit;
+		}
+			break;
+
 		case 'n':
 			main_config.name = optarg;
 			break;
@@ -289,15 +348,9 @@ int main(int argc, char *argv[])
 	 *
 	 *  So we can't run with a null context and threads.
 	 */
-	if (main_config.memory_report) {
-		if (main_config.spawn_workers) {
-			fprintf(stderr, "%s: The server cannot produce memory reports (-M) in threaded mode\n",
-				main_config.name);
-			fr_exit(EXIT_FAILURE);
-		}
-		talloc_enable_null_tracking();
-	} else {
-		talloc_disable_null_tracking();
+	if (talloc_config_set(&main_config) != 0) {
+		fr_perror("%s", main_config.name);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -345,6 +398,14 @@ int main(int argc, char *argv[])
 	 *  This is very useful in figuring out why the panic_action didn't fire.
 	 */
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
+
+	/*
+	 *  Call this again now we've loaded the configuration. Yes I know...
+	 */
+	if (talloc_config_set(&main_config) < 0) {
+		fr_perror("%s", main_config.name);
+		fr_exit(EXIT_FAILURE);
+	}
 
 	/*
 	 *  Check for vulnerabilities in the version of libssl were linked against.
@@ -474,7 +535,8 @@ int main(int argc, char *argv[])
 	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	Load the modules before starting up any threads.
+	 *	Call the module's initialisation methods.  These create
+	 *	connection pools and open connections to external resources.
 	 */
 	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
@@ -705,7 +767,7 @@ cleanup:
 	 *  Anything not cleaned up by the above is allocated in the NULL
 	 *  top level context, and is likely leaked memory.
 	 */
-	if (main_config.memory_report) fr_log_talloc_report(NULL);
+	if (main_config.talloc_memory_report) fr_log_talloc_report(NULL);
 
 	return rcode;
 }
