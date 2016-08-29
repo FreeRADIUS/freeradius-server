@@ -39,8 +39,8 @@ typedef enum {
 	PW_TYPE_IPV6_ADDR,			//!< 128 Bit IPv6 Address.
 	PW_TYPE_IPV6_PREFIX,			//!< IPv6 Prefix.
 	PW_TYPE_IFID,				//!< Interface ID.
-	PW_TYPE_COMBO_IP_ADDR,			//!< WiMAX IPv4 or IPv6 address depending on length.
-	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
+	PW_TYPE_COMBO_IP_ADDR,			//!< IPv4 or IPv6 address depending on length.
+	PW_TYPE_COMBO_IP_PREFIX,		//!< IPv4 or IPv6 address prefix depending on length.
 	PW_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
 
 	PW_TYPE_BOOLEAN,			//!< A truth value.

@@ -453,7 +453,8 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	 *	xlat.c, xlat_foreach() can find it.
 	 */
 	frame->foreach.variable = vp;
-	request_data_add(request, (void *)radius_get_vp, frame->foreach.depth, &frame->foreach.variable, false, false, false);
+	request_data_add(request, (void *)radius_get_vp, frame->foreach.depth, &frame->foreach.variable,
+			 false, false, false);
 
 	/*
 	 *	Push the child, and yield for a later return.

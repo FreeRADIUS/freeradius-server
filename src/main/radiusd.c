@@ -177,93 +177,91 @@ int main(int argc, char *argv[])
 	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstTvxX")) != EOF) {
 
 		switch (argval) {
-			case 'C':
-				check_config = true;
-				main_config.spawn_workers = false;
-				main_config.daemonize = false;
-				break;
+		case 'C':
+			check_config = true;
+			main_config.spawn_workers = false;
+			main_config.daemonize = false;
+			break;
 
-			case 'd':
-				set_radius_dir(autofree, optarg);
-				break;
+		case 'd':
+			set_radius_dir(autofree, optarg);
+			break;
 
-			case 'D':
-				main_config.dictionary_dir = talloc_typed_strdup(autofree, optarg);
-				break;
+		case 'D':
+			main_config.dictionary_dir = talloc_typed_strdup(autofree, optarg);
+			break;
 
-			case 'f':
-				main_config.daemonize = false;
-				break;
+		case 'f':
+			main_config.daemonize = false;
+			break;
 
-			case 'h':
-				usage(0);
-				break;
+		case 'h':
+			usage(0);
+			break;
 
-			case 'l':
-				if (strcmp(optarg, "stdout") == 0) {
-					goto do_stdout;
-				}
-				main_config.log_file = talloc_typed_strdup(autofree, optarg);
-				default_log.dst = L_DST_FILES;
-				default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
-				if (default_log.fd < 0) {
-					fprintf(stderr, "%s: Failed to open log file %s: %s\n",
-						main_config.name, main_config.log_file, fr_syserror(errno));
-					exit(EXIT_FAILURE);
-				}
-				fr_log_fp = fdopen(default_log.fd, "a");
-				break;
+		case 'l':
+			if (strcmp(optarg, "stdout") == 0) {
+				goto do_stdout;
+			}
+			main_config.log_file = talloc_typed_strdup(autofree, optarg);
+			default_log.dst = L_DST_FILES;
+			default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
+			if (default_log.fd < 0) {
+				fprintf(stderr, "%s: Failed to open log file %s: %s\n",
+					main_config.name, main_config.log_file, fr_syserror(errno));
+				exit(EXIT_FAILURE);
+			}
+			fr_log_fp = fdopen(default_log.fd, "a");
+			break;
+		case 'n':
+			main_config.name = optarg;
+			break;
 
-			case 'n':
-				main_config.name = optarg;
-				break;
+		case 'M':
+			main_config.talloc_memory_report = true;
+			break;
 
-			case 'M':
-				main_config.memory_report = true;
-				break;
+		case 'P':	/* Force the PID to be written, even in -f mode */
+			main_config.write_pid = true;
+			break;
 
-			case 'P':
-				/* Force the PID to be written, even in -f mode */
-				main_config.write_pid = true;
-				break;
+		case 's':	/* Single process mode */
+			main_config.spawn_workers = false;
+			main_config.daemonize = false;
+			break;
 
-			case 's':	/* Single process mode */
-				main_config.spawn_workers = false;
-				main_config.daemonize = false;
-				break;
+		case 't':	/* no child threads */
+			main_config.spawn_workers = false;
+			break;
 
-			case 't':	/* no child threads */
-				main_config.spawn_workers = false;
-				break;
+		case 'T':	/* enable timestamps */
+			default_log.timestamp = L_TIMESTAMP_ON;
+			break;
 
-			case 'T':	/* enable timestamps */
-				default_log.timestamp = L_TIMESTAMP_ON;
-				break;
+		case 'v':
+			display_version = true;
+			break;
 
-			case 'v':
-				display_version = true;
-				break;
+		case 'X':
+			main_config.spawn_workers = false;
+			main_config.daemonize = false;
+			rad_debug_lvl += 2;
+			main_config.log_auth = true;
+			main_config.log_auth_badpass = true;
+			main_config.log_auth_goodpass = true;
+	do_stdout:
+			fr_log_fp = stdout;
+			default_log.dst = L_DST_STDOUT;
+			default_log.fd = STDOUT_FILENO;
+			break;
 
-			case 'X':
-				main_config.spawn_workers = false;
-				main_config.daemonize = false;
-				rad_debug_lvl += 2;
-				main_config.log_auth = true;
-				main_config.log_auth_badpass = true;
-				main_config.log_auth_goodpass = true;
-		do_stdout:
-				fr_log_fp = stdout;
-				default_log.dst = L_DST_STDOUT;
-				default_log.fd = STDOUT_FILENO;
-				break;
+		case 'x':
+			rad_debug_lvl++;
+			break;
 
-			case 'x':
-				rad_debug_lvl++;
-				break;
-
-			default:
-				usage(1);
-				break;
+		default:
+			usage(1);
+			break;
 		}
 	}
 
