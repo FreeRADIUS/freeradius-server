@@ -76,6 +76,7 @@ struct value_data {
 		uint16_t		ushort;			//!< 16bit unsigned integer.
 		uint32_t		integer;		//!< 32bit unsigned integer.
 		uint64_t		integer64;		//!< 64bit unsigned integer.
+		size_t			size;			//!< System specific file/memory size.
 		int32_t			sinteger;		//!< 32bit signed integer.
 
 		uint8_t			ether[6];		//!< Ethernet (MAC) address.
@@ -183,6 +184,7 @@ typedef struct value_pair_raw {
 #define vp_ether	data.ether
 #define vp_signed	data.sinteger
 #define vp_integer64	data.integer64
+#define vp_size		data.size
 #define vp_ipv4prefix	data.ipv4prefix
 #define vp_decimal	data.decimal
 
