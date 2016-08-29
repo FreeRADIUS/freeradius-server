@@ -5012,7 +5012,7 @@ static void sd_watchdog_event(void *ctx)
 	fr_event_now(el, &when);
 	tv_add(&when, sd_watchdog_interval / 2);
 	if (!fr_event_insert(el, (fr_event_callback_t) sd_watchdog_event, ctx, &when, ctx))
-		_rad_panic(__FILE__, __LINE__, "Failed to insert watchdog event");
+		rad_panic(__FILE__, __LINE__, "Failed to insert watchdog event");
 
 }
 #endif
