@@ -724,36 +724,39 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 {
 	char		*val;
 	VALUE_PAIR      *vp;
+	STRLEN		len;
 
-	if (SvOK(sv)) {
-		STRLEN len;
-		val = SvPV(sv, len);
-		vp = fr_pair_make(ctx, vps, key, NULL, op);
-		if (!vp) {
-		fail:
-			REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,
-				fr_int2str(fr_tokens_table, op, "<INVALID>"), val);
-			return -1;
-		}
+	if (!SvOK(sv)) return -1;
 
-		switch (vp->da->type) {
-		case PW_TYPE_STRING:
-			fr_pair_value_bstrncpy(vp, val, len);
-			break;
+	VERIFY_LIST(*vps);
 
-		case PW_TYPE_OCTETS:
-			fr_pair_value_memcpy(vp, (uint8_t const *)val, len);
-			break;
-
-		default:
-			if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
-		}
-
-		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens_table, op, "<INVALID>"),
-		       hash_name, key, val);
-		return 0;
+	val = SvPV(sv, len);
+	vp = fr_pair_make(ctx, vps, key, NULL, op);
+	if (!vp) {
+	fail:
+		REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,
+			fr_int2str(fr_tokens_table, op, "<INVALID>"), val);
+		return -1;
 	}
-	return -1;
+
+	switch (vp->da->type) {
+	case PW_TYPE_STRING:
+		fr_pair_value_bstrncpy(vp, val, len);
+		break;
+
+	case PW_TYPE_OCTETS:
+		fr_pair_value_memcpy(vp, (uint8_t const *)val, len);
+		break;
+
+	default:
+		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
+	}
+
+	VERIFY_VP(vp);
+
+	RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens_table, op, "<INVALID>"),
+	       hash_name, key, val);
+	return 0;
 }
 
 /*
