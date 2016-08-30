@@ -865,23 +865,11 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 					 RTLD_NOW | RTLD_GLOBAL);
 		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 
-#if PY_VERSION_HEX > 0x03050000
-		{
-			wchar_t *name;
+		wchar_t *name;
 
-			MEM(name = Py_DecodeLocale(main_config.name, NULL));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-			PyMem_RawFree(name);
-		}
-#else
-		{
-			char *name;
-
-			name = talloc_strdup(NULL, main_config.name);
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-			talloc_free(name);
-		}
-#endif
+		MEM(name = Py_DecodeLocale(main_config.name, NULL));
+		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+		PyMem_RawFree(name);
 
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
@@ -917,23 +905,11 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 *	Set the python search path
 		 */
 		if (inst->python_path) {
-#if PY_VERSION_HEX > 0x03050000
-			{
-				wchar_t *path;
+			wchar_t *path;
 
-				MEM(path = Py_DecodeLocale(inst->python_path, NULL));
-				PySys_SetPath(path);
-				PyMem_RawFree(path);
-			}
-#else
-			{
-				char *path;
-
-				path = talloc_strdup(NULL, inst->python_path);
-				PySys_SetPath(path);
-				talloc_free(path);
-			}
-#endif
+			MEM(path = Py_DecodeLocale(inst->python_path, NULL));
+			PySys_SetPath(path);
+			PyMem_RawFree(path);
 		}
 
 		/*
