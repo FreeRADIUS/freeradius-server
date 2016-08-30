@@ -59,7 +59,7 @@ typedef rlm_rcode_t (*eap_process_t)(void *instance, eap_session_t *eap_session)
 struct _eap_session {
 	eap_session_t	*prev, *next;			//!< Next/previous eap session in this doubly linked list.
 
-	eap_session_t	*child;				//!< Session for tunnelled EAP method.
+	eap_session_t	*child;				//!< Session for tunneled EAP method.
 
 	void		*inst;				//!< Instance of the eap module this session was created by.
 	eap_type_t	type;				//!< EAP method number.
