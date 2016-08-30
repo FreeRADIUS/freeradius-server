@@ -8,4 +8,4 @@
 redis_ippool_require_test_server := 1
 
 redis_ippool.test:
-	@echo OK: redis_ippool.test
+	${Q}echo OK: redis_ippool.test

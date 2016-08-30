@@ -8,4 +8,4 @@
 ldap_require_test_server := 1
 
 ldap.test:
-	@echo OK: ldap.test
+	${Q}echo OK: ldap.test

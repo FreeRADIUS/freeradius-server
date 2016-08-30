@@ -5,7 +5,7 @@ MAP_UNIT	:= ./build/make/jlibtool --silent --mode=execute $(MAP_UNIT_BIN)
 
 .PHONY: $(BUILD_DIR)/tests/map/
 $(BUILD_DIR)/tests/map/:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #	Re-run the tests if the test program changes
@@ -18,8 +18,8 @@ $(MAP_OUTPUT): $(MAP_UNIT_BIN) | $(BUILD_DIR)/tests/map/
 #	Re-run the tests if the input file changes
 #
 $(BUILD_DIR)/tests/map/%.out: $(top_srcdir)/src/tests/map/%
-	@echo MAP_TEST $(notdir $<)
-	@if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share $< > $@ 2>&1; then \
+	${Q}echo MAP_TEST $(notdir $<)
+	${Q}if ! $(MAP_UNIT) -d $(top_srcdir)/raddb -D $(top_srcdir)/share $< > $@ 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@; \
 			echo "# $@"; \

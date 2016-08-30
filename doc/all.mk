@@ -9,8 +9,8 @@ DOCINSTALL	:= $(patsubst doc/%,$(R)$(docdir)/%,$(DOCFILES))
 
 #  Create the directories
 $(DOCDIRS):
-	@echo INSTALL $(patsubst $(R)$(docdir)/%,doc/%,$@)
-	@$(INSTALL) -d -m 755 $@
+	${Q}echo INSTALL $(patsubst $(R)$(docdir)/%,doc/%,$@)
+	${Q}$(INSTALL) -d -m 755 $@
 
 #  Files depend on directories (order only).
 #  We don't care if the directories change.
@@ -18,21 +18,21 @@ $(DOCINSTALL): | $(DOCDIRS)
 
 #  Wildcard installation rule
 $(R)$(docdir)/%: doc/%
-	@echo INSTALL $<
-	@$(INSTALL) -m 644 $< $@
+	${Q}echo INSTALL $<
+	${Q}$(INSTALL) -m 644 $< $@
 
 install.doc: $(DOCINSTALL)
 
 .PHONY: clean.doc
 clean.doc:
-	@rm -f *~ rfc/*~ examples/*~
+	${Q}rm -f *~ rfc/*~ examples/*~
 
 #
 #  Deal with these later
 #
 DOCRST := $(wildcard *.rst)
 %.html: %.rst
-	@rst2html.py $^ > $@
+	${Q}rst2html.py $^ > $@
 
 .PHONY: html
 html: $(DOCRST:.rst=.html)

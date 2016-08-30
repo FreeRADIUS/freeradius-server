@@ -4,4 +4,4 @@
 
 #  MODULE.test is the main target for this module.
 linelog.test:
-	@echo OK: linelog.test
+	${Q}echo OK: linelog.test

@@ -15,19 +15,19 @@ FILES  := rfc.txt errors.txt extended.txt lucent.txt wimax.txt \
 #
 .PHONY: $(BUILD_DIR)/tests/unit
 $(BUILD_DIR)/tests/unit:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 .PHONY: $(BUILD_DIR)/share
 $(BUILD_DIR)/share:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #  We need $INCLUDE in the output file, so we pass 2 parameters to 'echo'
 #  No idea how portable that is...
 #
 $(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/share/dictionary.dhcp $(top_srcdir)/src/tests/unit/dictionary.unit | $(BUILD_DIR)/share
-	@rm -f $@
-	@for x in $^; do \
+	${Q}rm -f $@
+	${Q}for x in $^; do \
 		echo '$$INCLUDE ' "$$x" >> $@; \
 	done
 
@@ -35,12 +35,12 @@ $(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/shar
 #  Files in the output dir depend on the unit tests
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute $(BUILD_DIR)/share/dictionary | $(BUILD_DIR)/tests/unit
-	@echo UNIT-TEST $(notdir $@)
-	@if ! $(TESTBIN)/unit_test_attribute -D $(BUILD_DIR)/share $<; then \
+	${Q}echo UNIT-TEST $(notdir $@)
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $(BUILD_DIR)/share $<; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $(BUILD_DIR)/share $<"; \
 		exit 1; \
 	fi
-	@touch $@
+	${Q}touch $@
 
 #
 #  Get all of the unit test output files

@@ -14,7 +14,7 @@ AUTH_FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(
 #
 .PHONY: $(BUILD_DIR)/tests/auth
 $(BUILD_DIR)/tests/auth:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #  Find which input files are needed by the tests
@@ -35,8 +35,8 @@ AUTH_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/auth,$(AUTH_NEEDS))
 -include $(BUILD_DIR)/tests/auth/depends.mk
 
 $(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(AUTH_FILES)) | $(BUILD_DIR)/tests/auth
-	@rm -f $@
-	@for x in $^; do \
+	${Q}rm -f $@
+	${Q}for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/auth/,g'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
@@ -48,13 +48,13 @@ $(BUILD_DIR)/tests/auth/depends.mk: $(addprefix $(DIR)/,$(AUTH_FILES)) | $(BUILD
 #  These ones get copied over from the default input
 #
 $(AUTH): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/auth
-	@cp $< $@
+	${Q}cp $< $@
 
 #
 #  These ones get copied over from their original files
 #
 $(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/auth
-	@cp $< $@
+	${Q}cp $< $@
 
 #
 #  Don't auto-remove the files copied by the rule just above.
@@ -83,8 +83,8 @@ AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 #  ERROR line in the input.
 #
 $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/auth $(AUTH_RADDB) $(AUTH_LIBS) build.raddb
-	@echo UNIT-TEST $(notdir $@)
-	@if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	${Q}echo UNIT-TEST $(notdir $@)
+	${Q}if ! TESTDIR=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/auth/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
@@ -100,7 +100,7 @@ $(BUILD_DIR)/tests/auth/%: $(DIR)/% $(BUILD_DIR)/tests/auth/%.attrs $(TESTBINDIR
 			exit 1; \
 		fi \
 	fi
-	@touch $@
+	${Q}touch $@
 
 #
 #  Get all of the unit test output files
@@ -116,4 +116,4 @@ $(TESTS.AUTH_FILES): $(TESTS.KEYWORDS_FILES)
 
 .PHONY: clean.tests.auth
 clean.tests.auth:
-	@rm -rf $(BUILD_DIR)/tests/auth/
+	${Q}rm -rf $(BUILD_DIR)/tests/auth/

@@ -42,14 +42,14 @@ TMUX_PORT := $(shell expr 32768 + $$(printf "%d\n" 0x$$(echo $(TMUX_KEY) | grep 
 #
 .PHONY: $(BUILD_DIR)/tests/tmux.key
 $(BUILD_DIR)/tests/tmux.key:
-	@echo $(TMUX_KEY) > $@
+	${Q}echo $(TMUX_KEY) > $@
 
 #
 #  Stupid 'make' doesn' know how to create directories.
 #
 .PHONY: $(BUILD_DIR)/tests/daemon/
 $(BUILD_DIR)/tests/daemon/:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #  A place-holder to ensure we're running the correct version of radiusd.
@@ -58,17 +58,17 @@ $(BUILD_DIR)/tests/daemon/:
 #  If the tmux session isn't running, that's OK, too.
 #
 $(BUILD_DIR)/tests/daemon/radiusd.version: $(TESTBINDIR)/radiusd
-	@tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
-	@tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
-	@rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
-	@touch $@
+	${Q}tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
+	${Q}tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
+	${Q}rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
+	${Q}touch $@
 
 #
 #  The output log file is created by running the server.
 #
 $(BUILD_DIR)/tests/daemon/radiusd.log: $(BUILD_DIR)/tests/daemon/radiusd.version
-	@rm -f $@
-	@tmux -L $(TMUX_KEY) new-session -d './$(TESTBIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share -l $@'
+	${Q}rm -f $@
+	${Q}tmux -L $(TMUX_KEY) new-session -d './$(TESTBIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share -l $@'
 
 radiusd.start: $(BUILD_DIR)/tests/daemon/radiusd.log
 
@@ -82,8 +82,8 @@ radiusd.start: $(BUILD_DIR)/tests/daemon/radiusd.log
 #
 .PHONY: radiusd.stop
 radiusd.stop:
-	@tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
-	@tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
-	@rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
+	${Q}tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
+	${Q}tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
+	${Q}rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
 
 endif

@@ -51,23 +51,23 @@ install: install.raddb
 
 # Local build rules
 raddb/sites-enabled raddb/mods-enabled:
-	@echo INSTALL $@
-	@$(INSTALL) -d -m 750 $@
+	${Q}echo INSTALL $@
+	${Q}$(INSTALL) -d -m 750 $@
 
 # Set up the default modules for running in-source builds
 raddb/mods-enabled/%: raddb/mods-available/% | raddb/mods-enabled
-	@echo "LN-S $@"
-	@cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
+	${Q}echo "LN-S $@"
+	${Q}cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
 
 # Set up the default sites for running in-source builds
 raddb/sites-enabled/%: raddb/sites-available/% | raddb/sites-enabled
-	@echo "LN-S $@"
-	@cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
+	${Q}echo "LN-S $@"
+	${Q}cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
 
 # Installation rules for directories.  Note permissions are 750!
 $(INSTALL_RADDB_DIRS):
-	@echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
-	@$(INSTALL) -d -m 750 $@
+	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
+	${Q}$(INSTALL) -d -m 750 $@
 
 #  The installed files have ORDER dependencies.  This means that they
 #  will be installed if the target doesn't exist.  And they won't be
@@ -82,7 +82,7 @@ INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
 
 # Installation rules for mods-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/mods-enabled/%: | $(R)$(raddbdir)/mods-available/%
-	@cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
+	${Q}cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
 endif
 
 ifeq "$(wildcard $(R)$(raddbdir)/sites-available/)" ""
@@ -91,40 +91,40 @@ INSTALL_RADDB +=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
 
 # Installation rules for sites-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
-	@cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
+	${Q}cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
 endif
 
 # Installation rules for plain modules.
 $(R)$(raddbdir)/%: | raddb/%
-	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	@$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	${Q}$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 
 # Create symbolic links for legacy files
 $(R)$(raddbdir)/huntgroups: $(R)$(modconfdir)/preprocess/huntgroups
-	@[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
+	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 $(R)$(raddbdir)/hints: $(R)$(modconfdir)/preprocess/hints
-	@[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
+	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
-	@[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
+	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 ifeq ("$(PACKAGE)","")
 $(LOCAL_CERT_PRODUCTS):
-	@echo BOOTSTRAP raddb/certs/
-	@$(MAKE) -C $(R)$(raddbdir)/certs/
+	${Q}echo BOOTSTRAP raddb/certs/
+	${Q}$(MAKE) -C $(R)$(raddbdir)/certs/
 
 # Bootstrap is special
 $(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap $(LOCAL_CERT_PRODUCTS)
-	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	@$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	${Q}$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 else
 $(R)$(raddbdir)/certs/bootstrap:
-	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	@$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
+	${Q}$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 endif
 
 #  List directories before the file targets.
@@ -132,7 +132,7 @@ endif
 install.raddb: | $(INSTALL_RADDB_DIRS) $(INSTALL_RADDB) $(LEGACY_LINKS)
 
 clean.raddb:
-	@rm -f *~ $(addprefix raddb/sites-enabled/,$(DEFAULT_SITES)) \
+	${Q}rm -f *~ $(addprefix raddb/sites-enabled/,$(DEFAULT_SITES)) \
 		$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 #
@@ -140,4 +140,4 @@ clean.raddb:
 #  Should only be run by SNMP developers.
 #
 triggers:
-	@grep exec_trigger `find src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'
+	${Q}grep exec_trigger `find src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'

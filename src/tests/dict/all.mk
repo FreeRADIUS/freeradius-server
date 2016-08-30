@@ -3,7 +3,7 @@
 #
 .PHONY: $(BUILD_DIR)/tests/dict
 $(BUILD_DIR)/tests/dict:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 FILES := $(wildcard $(DIR)/*.dict)
 
@@ -14,14 +14,14 @@ FILES := $(wildcard $(DIR)/*.dict)
 #  "foo_dir" directory, and copy "foo" into "foo_dir/dictionary"
 #
 $(BUILD_DIR)/tests/dict/%: $(DIR)/% $(BUILD_DIR)/bin/unit_test_attribute $(TESTBINDIR)/unit_test_attribute | $(BUILD_DIR)/tests/dict
-	@echo UNIT-TEST $(notdir $@)
-	@mkdir -p $@_dir
-	@cp $< $@_dir/dictionary
-	@if ! $(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt; then \
+	${Q}echo UNIT-TEST $(notdir $@)
+	${Q}mkdir -p $@_dir
+	${Q}cp $< $@_dir/dictionary
+	${Q}if ! $(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt; then \
 		echo "$(TESTBIN)/unit_test_attribute -D $@_dir $(dir $<)/empty.txt"; \
 		exit 1; \
 	fi
-	@touch $@
+	${Q}touch $@
 
 TESTS.DICT_FILES := $(addprefix $(BUILD_DIR)/tests/dict/,$(notdir $(FILES)))
 

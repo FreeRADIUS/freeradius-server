@@ -38,14 +38,14 @@ EAPOL_METH_FILES := $(addprefix $(CONFIG_PATH)/methods-enabled/,$(EAP_TYPES))
 
 .PHONY: $(OUTPUT_DIR)
 $(OUTPUT_DIR):
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 .PHONY: $(CONFIG_PATH)/methods-enabled
 $(CONFIG_PATH)/methods-enabled:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
-	@ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
+	${Q}ln -sf $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
 .PHONY: eap dictionary clean clean.tests.eap
 clean: clean.tests.eap
@@ -62,7 +62,7 @@ endif
 # radiusd.pid when we make radiusd.kill, which we don't want.
 .PHONY: radiusd.kill
 radiusd.kill: | $(OUTPUT_DIR)
-	@if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
+	${Q}if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
 		ret=0; \
 		if ! ps `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f $(CONFIG_PATH)/radiusd.pid; \
@@ -81,46 +81,46 @@ radiusd.kill: | $(OUTPUT_DIR)
 	fi
 
 clean.tests.eap:
-	@rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
-	@rm -f "$(CONFIG_PATH)/test.conf"
-	@rm -f "$(CONFIG_PATH)/dictionary"
-	@rm -rf "$(CONFIG_PATH)/methods-enabled"
+	${Q}rm -f $(OUTPUT_DIR)/*.ok $(OUTPUT_DIR)/*.log $(OUTPUT_DIR)/eapol_test.skip
+	${Q}rm -f "$(CONFIG_PATH)/test.conf"
+	${Q}rm -f "$(CONFIG_PATH)/dictionary"
+	${Q}rm -rf "$(CONFIG_PATH)/methods-enabled"
 
 ifneq "$(EAPOL_TEST)" ""
 $(CONFIG_PATH)/dictionary:
-	@echo "# test dictionary not install.  Delete at any time." > $@
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> $@
-	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> $@
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> $@
+	${Q}echo "# test dictionary not install.  Delete at any time." > $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> $@
+	${Q}echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> $@
 
 $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary src/tests/eapol_test/all.mk
-	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
-	@echo 'testdir =' $(CONFIG_PATH) >> $@
-	@echo 'logdir =' $(OUTPUT_DIR) >> $@
-	@echo 'maindir = ${top_builddir}/raddb/' >> $@
-	@echo 'radacctdir = $${testdir}' >> $@
-	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
-	@echo 'panic_action = "gdb -batch -x ${top_srcdir}/src/tests/panic.gdb %e %p > $(GDB_LOG) 2>&1; cat $(GDB_LOG)"' >> $@
-	@echo 'security {' >> $@
-	@echo '        allow_vulnerable_openssl = yes' >> $@
-	@echo '}' >> $@
-	@echo >> $@
-	@echo 'modconfdir = $${maindir}mods-config' >> $@
-	@echo 'certdir = $${maindir}/certs' >> $@
-	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${testdir}/servers.conf' >> $@
+	${Q}echo "# test configuration file.  Do not install.  Delete at any time." > $@
+	${Q}echo 'testdir =' $(CONFIG_PATH) >> $@
+	${Q}echo 'logdir =' $(OUTPUT_DIR) >> $@
+	${Q}echo 'maindir = ${top_builddir}/raddb/' >> $@
+	${Q}echo 'radacctdir = $${testdir}' >> $@
+	${Q}echo 'pidfile = $${testdir}/radiusd.pid' >> $@
+	${Q}echo 'panic_action = "gdb -batch -x ${top_srcdir}/src/tests/panic.gdb %e %p > $(GDB_LOG) 2>&1; cat $(GDB_LOG)"' >> $@
+	${Q}echo 'security {' >> $@
+	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
+	${Q}echo '}' >> $@
+	${Q}echo >> $@
+	${Q}echo 'modconfdir = $${maindir}mods-config' >> $@
+	${Q}echo 'certdir = $${maindir}/certs' >> $@
+	${Q}echo 'cadir   = $${maindir}/certs' >> $@
+	${Q}echo '$$INCLUDE $${testdir}/servers.conf' >> $@
 
 #
 #  Build snakoil certs if they don't exist
 #
 $(RADDB_PATH)/certs/%:
-	@make -C $(dir $@)
+	${Q}make -C $(dir $@)
 
 $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT_DIR)
-	@rm -f $(GDB_LOG) $(RADIUS_LOG)
-	@printf "Starting EAP test server... "
-	@if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
+	${Q}rm -f $(GDB_LOG) $(RADIUS_LOG)
+	${Q}printf "Starting EAP test server... "
+	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
 		echo "FAILED STARTING RADIUSD"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
@@ -147,8 +147,8 @@ $(foreach x,$(EAPOL_TEST_FILES),$(eval \
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
 $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
-	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
-	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
+	${Q}echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
+	${Q}if ( grep 'key_mgmt=NONE' '$<' > /dev/null && $(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$@) 2>&1 ) || \
 		$(EAPOL_TEST) -t 2 -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$@) 2>&1; then\
 		touch $@; \
 	else \
@@ -165,10 +165,10 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	fi
 
 tests.eap: $(EAPOL_OK_FILES)
-	@$(MAKE) radiusd.kill
+	${Q}$(MAKE) radiusd.kill
 else
 tests.eap: $(OUTPUT_DIR)
-	@echo "Skipping EAP tests due to previous build error"
-	@echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
-	@touch "$(OUTPUT_DIR)/eapol_test.skip"
+	${Q}echo "Skipping EAP tests due to previous build error"
+	${Q}echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
+	${Q}touch "$(OUTPUT_DIR)/eapol_test.skip"
 endif

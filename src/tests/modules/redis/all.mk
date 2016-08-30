@@ -8,4 +8,4 @@
 redis_require_test_server := 1
 
 redis.test:
-	@echo OK: redis.test
+	${Q}echo OK: redis.test

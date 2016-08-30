@@ -14,7 +14,7 @@ XLAT_FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 #
 .PHONY: $(BUILD_DIR)/tests/xlat
 $(BUILD_DIR)/tests/xlat:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #  Files in the output dir depend on the unit tests
@@ -33,13 +33,13 @@ $(BUILD_DIR)/tests/xlat:
 #  ERROR line in the input.
 #
 $(BUILD_DIR)/tests/xlat/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/xlat build.raddb
-	@echo XLAT-TEST $(notdir $@)
-	@if ! $(TESTBIN)/unit_test_module -D share -d src/tests/xlat/ -i $< -xx -O xlat_only > $@.log 2>&1; then \
+	${Q}echo XLAT-TEST $(notdir $@)
+	${Q}if ! $(TESTBIN)/unit_test_module -D share -d src/tests/xlat/ -i $< -xx -O xlat_only > $@.log 2>&1; then \
 		cat $@.log; \
 		echo "./$(TESTBIN)/unit_test_module -D share -d src/tests/xlat/ -i $< -xx -O xlat_only"; \
 		exit 1; \
 	fi
-	@touch $@
+	${Q}touch $@
 
 #
 #  Get all of the unit test output files
@@ -55,4 +55,4 @@ $(TESTS.XLAT_FILES): $(TESTS.UNIT_FILES)
 
 .PHONY: clean.tests.xlat
 clean.tests.xlat:
-	@rm -rf $(BUILD_DIR)/tests/xlat/
+	${Q}rm -rf $(BUILD_DIR)/tests/xlat/

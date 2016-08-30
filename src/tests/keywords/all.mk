@@ -18,7 +18,7 @@ endif
 #
 .PHONY: $(BUILD_DIR)/tests/keywords
 $(BUILD_DIR)/tests/keywords:
-	@mkdir -p $@
+	${Q}mkdir -p $@
 
 #
 #  Find which input files are needed by the tests
@@ -38,8 +38,8 @@ BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 export OPENSSL_LIBS
 
 $(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(KEYWORD_FILES)) | $(BUILD_DIR)/tests/keywords
-	@rm -f $@
-	@for x in $^; do \
+	${Q}rm -f $@
+	${Q}for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
@@ -52,13 +52,13 @@ $(BUILD_DIR)/tests/keywords/depends.mk: $(addprefix $(DIR)/,$(KEYWORD_FILES)) | 
 #  These ones get copied over from the default input
 #
 $(BOOTSTRAP): $(DIR)/default-input.attrs | $(BUILD_DIR)/tests/keywords
-	@cp $< $@
+	${Q}cp $< $@
 
 #
 #  These ones get copied over from their original files
 #
 $(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keywords
-	@cp $< $@
+	${Q}cp $< $@
 
 #
 #  Don't auto-remove the files copied by the rule just above.
@@ -87,8 +87,8 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  ERROR line in the input.
 #
 $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unit_test_module | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
-	@echo UNIT-TEST $(notdir $@)
-	@if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
+	${Q}echo UNIT-TEST $(notdir $@)
+	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
@@ -104,7 +104,7 @@ $(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TE
 			exit 1; \
 		fi \
 	fi
-	@touch $@
+	${Q}touch $@
 
 #
 #  Get all of the unit test output files
@@ -120,4 +120,4 @@ $(TESTS.KEYWORDS_FILES): $(TESTS.XLAT_FILES) $(TESTS.MAP_FILES)
 
 .PHONY: clean.tests.keywords
 clean.tests.keywords:
-	@rm -rf $(BUILD_DIR)/tests/keywords/
+	${Q}rm -rf $(BUILD_DIR)/tests/keywords/
