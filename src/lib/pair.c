@@ -2699,6 +2699,15 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
+		/*
+		 *	Zero length octets attributes are not allowed
+		 */
+		if (vp->vp_length == 0) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length 0 is not allowed\n",
+				     file, line, vp->da->name);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
+
 		parent = talloc_parent(vp->data.ptr);
 		if (parent != vp) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
