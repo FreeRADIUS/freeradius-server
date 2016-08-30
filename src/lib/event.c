@@ -572,7 +572,7 @@ int fr_event_check(fr_event_list_t *el, bool wait)
 
 			gettimeofday(&el->now, NULL);
 
-			if (timercmp(&el->now, &ev->when, <)) {
+			if (fr_timeval_cmp(&el->now, &ev->when) < 0) {
 				when = ev->when;
 				when.tv_sec -= el->now.tv_sec;
 

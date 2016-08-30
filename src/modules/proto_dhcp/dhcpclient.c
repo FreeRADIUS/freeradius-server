@@ -311,7 +311,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 	memcpy(&tval, &tv_timeout, sizeof(struct timeval));
 
 	/* Loop waiting for DHCP replies until timer expires */
-	while (timerisset(&tval)) {
+	while (fr_timeval_isset(&tval)) {
 		if ((!reply_p) || (cur_reply_p)) { // only debug at start and each time we get a valid DHCP reply on raw socket
 			DEBUG("Waiting for %s DHCP replies for: %d.%06d",
 			      (nb_reply>0)?" additional ":" ", (int)tval.tv_sec, (int)tval.tv_usec);
@@ -340,7 +340,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 #endif
 		} else {
 			// Not all implementations of select clear the timer
-			timerclear(&tval);
+			memset(&tval, 0, sizeof(tval));
 		}
 
 		if (cur_reply_p) {

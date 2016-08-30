@@ -507,7 +507,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		rc = OCSP_sendreq_nbio(&resp, ctx);
 		if (conf->timeout) {
 			gettimeofday(&now, NULL);
-			if (!timercmp(&now, &when, <)) break;
+			if (fr_timeval_cmp(&now, &when) >= 0) break;
 		}
 	} while ((rc == -1) && BIO_should_retry(conn));
 

@@ -97,7 +97,7 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 		 *	the RTT.
 		 */
 		now.tv_sec -= 1;
-		if (timercmp(&data->last_packet, &now, <)) {
+		if (fr_timeval_cmp(&data->last_packet, &now) < 0) {
 			data->has_rtt = false;
 		}
 		now.tv_sec += 1;

@@ -1498,7 +1498,7 @@ int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t p
 {
 	struct timeval when;
 
-	timeradd(&request->reply->timestamp, delay, &when);
+	fr_timeval_add(&when, &request->reply->timestamp, delay);
 
 	RDEBUG2("Waiting for %d.%06d seconds",
 		(int) delay->tv_sec, (int) delay->tv_usec);

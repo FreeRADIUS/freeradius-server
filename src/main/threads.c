@@ -376,10 +376,7 @@ static int timestamp_cmp(void const *one, void const *two)
 		pb = b->packet;
 	}
 
-	if (timercmp(&pa->timestamp, &pb->timestamp, < )) return -1;
-	if (timercmp(&pa->timestamp, &pb->timestamp, > )) return +1;
-
-	return 0;
+	return fr_timeval_cmp(&pa->timestamp, &pb->timestamp);
 }
 
 

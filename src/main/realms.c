@@ -420,7 +420,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	 *	Track the minimum response window, so that we can
 	 *	correctly set the timers in process.c
 	 */
-	if (timercmp(&main_config.init_delay, &home->response_window, >)) {
+	if (fr_timeval_cmp(&main_config.init_delay, &home->response_window) > 0) {
 		main_config.init_delay = home->response_window;
 	}
 

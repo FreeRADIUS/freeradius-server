@@ -421,7 +421,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 
 	timeout = ccr->inst->home_server->response_window;
 	gettimeofday(&now, NULL);
-	timeradd(&now, &timeout, &timeout);
+	fr_timeval_add(&timeout, &now, &timeout);
 
 	unlang_event_timeout_add(request, mod_proxy_no_reply, inst, ccr, &timeout);
 

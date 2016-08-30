@@ -184,7 +184,7 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		when.tv_sec = request->root->cleanup_delay;
 		when.tv_usec = 0;
 
-		timeradd(&request->reply->timestamp, &when, &when);
+		fr_timeval_add(&when, &request->reply->timestamp, &when);
 		if (unlang_delay(request, &when, auth_cleanup_delay) < 0) goto done;
 		break;
 

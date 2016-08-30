@@ -951,31 +951,6 @@ int fr_timeval_cmp(struct timeval const *a, struct timeval const *b)
 	return 0;
 }
 
-#define NSEC 1000000000
-/** Subtract one timespec from another
- *
- * @param[out] out Where to write difference.
- * @param[in] end Time closest to the present.
- * @param[in] start Time furthest in the past.
- */
-void fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start)
-{
-	out->tv_sec = end->tv_sec - start->tv_sec;
-	if (out->tv_sec > 0) {
-		out->tv_sec--;
-		out->tv_nsec = NSEC;
-	} else {
-		out->tv_nsec = 0;
-	}
-	out->tv_nsec += end->tv_nsec;
-	out->tv_nsec -= start->tv_nsec;
-
-	if (out->tv_nsec >= NSEC) {
-		out->tv_nsec -= NSEC;
-		out->tv_sec++;
-	}
-}
-
 /** Create timeval from a string
  *
  * @param[out] out Where to write timeval.
@@ -1026,21 +1001,10 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 	return 0;
 }
 
-/** Multiple checking for overflow
- *
- * @param[out] result	of multiplication.
- * @param[in] lhs	First operand.
- * @param[in] rhs	Second operand.
- *
- * @return
- *	- true multiplication overflowed.
- *	- false multiplication did not overflow.
- */
-bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
+bool fr_timeval_isset(struct timeval const *tv)
 {
-        *result = lhs * rhs;
-
-        return rhs > 0 && (UINT64_MAX / rhs) < lhs;
+	if (tv->tv_sec || tv->tv_usec) return true;
+	return false;
 }
 
 int fr_size_from_str(size_t *out, char const *str)
@@ -1104,6 +1068,48 @@ int fr_size_from_str(size_t *out, char const *str)
 	*out = (size_t)size;
 
 	return 0;
+}
+
+#define NSEC 1000000000
+/** Subtract one timespec from another
+ *
+ * @param[out] out Where to write difference.
+ * @param[in] end Time closest to the present.
+ * @param[in] start Time furthest in the past.
+ */
+void fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start)
+{
+	out->tv_sec = end->tv_sec - start->tv_sec;
+	if (out->tv_sec > 0) {
+		out->tv_sec--;
+		out->tv_nsec = NSEC;
+	} else {
+		out->tv_nsec = 0;
+	}
+	out->tv_nsec += end->tv_nsec;
+	out->tv_nsec -= start->tv_nsec;
+
+	if (out->tv_nsec >= NSEC) {
+		out->tv_nsec -= NSEC;
+		out->tv_sec++;
+	}
+}
+
+/** Multiple checking for overflow
+ *
+ * @param[out] result	of multiplication.
+ * @param[in] lhs	First operand.
+ * @param[in] rhs	Second operand.
+ *
+ * @return
+ *	- true multiplication overflowed.
+ *	- false multiplication did not overflow.
+ */
+bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
+{
+        *result = lhs * rhs;
+
+        return rhs > 0 && (UINT64_MAX / rhs) < lhs;
 }
 
 /** Compares two pointers

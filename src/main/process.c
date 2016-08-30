@@ -417,12 +417,12 @@ static struct timeval *request_response_window(REQUEST *request)
 		 *	The client hasn't set the response window.  Return
 		 *	either the home server one, if set, or the global one.
 		 */
-		if (!timerisset(&request->client->response_window)) {
+		if (!fr_timeval_isset(&request->client->response_window)) {
 			return &request->proxy->home_server->response_window;
 		}
 
-		if (timercmp(&request->client->response_window,
-			     &request->proxy->home_server->response_window, <)) {
+		if (fr_timeval_cmp(&request->client->response_window,
+			     	   &request->proxy->home_server->response_window) < 0) {
 			return &request->client->response_window;
 		}
 	}
@@ -440,8 +440,8 @@ static int request_init_delay(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	/* Allow client response window to lower initial delay */
-	if (timerisset(&request->client->response_window) &&
-	    timercmp(&main_config.init_delay, &request->client->response_window, >)) {
+	if (fr_timeval_isset(&request->client->response_window) &&
+	    fr_timeval_cmp(&main_config.init_delay, &request->client->response_window) > 0) {
 		delay = request->client->response_window.tv_sec * USEC;
 		delay += request->client->response_window.tv_usec;
 
@@ -752,7 +752,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 	/*
 	 *	Set timer for when we need to clean it up.
 	 */
-	if (timercmp(&when, &now, >)) {
+	if (fr_timeval_cmp(&when, &now) > 0) {
 #ifdef DEBUG_STATE_MACHINE
 		if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
@@ -820,7 +820,7 @@ bool request_max_time(REQUEST *request)
 	/*
 	 *	Taking too long: tell it to die.
 	 */
-	if (timercmp(&now, &when, >=)) {
+	if (fr_timeval_cmp(&now, &when) >= 0) {
 		/*
 		 *	If there's a child thread processing it,
 		 *	complain.
@@ -959,7 +959,7 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		when = request->reply->timestamp;
 		when.tv_sec += request->root->cleanup_delay;
 
-		if (timercmp(&when, &now, >)) {
+		if (fr_timeval_cmp(&when, &now) > 0) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
@@ -1035,7 +1035,7 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 		tv_add(&when, request->response_delay.tv_sec * USEC);
 		tv_add(&when, request->response_delay.tv_usec);
 
-		if (timercmp(&when, &now, >)) {
+		if (fr_timeval_cmp(&when, &now) > 0) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tNEXT-STATE %s -> %s\n",
 						  request->number, __FUNCTION__, "request_response_delay");
@@ -1881,7 +1881,7 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 		end.tv_sec = sock->opened + limit->lifetime;
 		end.tv_usec = 0;
 
-		if (timercmp(&end, now, <=)) {
+		if (fr_timeval_cmp(&end, now) <= 0) {
 			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Reached maximum lifetime on socket %s", buffer);
 
@@ -1930,7 +1930,7 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 		idle.tv_sec = sock->last_packet + limit->idle_timeout;
 		idle.tv_usec = 0;
 
-		if (timercmp(&idle, now, <=)) {
+		if (fr_timeval_cmp(&idle, now) <= 0) {
 			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Reached idle timeout on socket %s", buffer);
 			goto do_close;
@@ -1939,7 +1939,7 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 		/*
 		 *	Enforce the minimum of idle timeout or lifetime.
 		 */
-		if (timercmp(&idle, &end, <)) {
+		if (fr_timeval_cmp(&idle, &end) < 0) {
 			end = idle;
 		}
 	}
@@ -2083,7 +2083,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 			when.tv_sec = request->proxy->home_server->last_packet_recv ;
 			when.tv_usec = 0;
 
-			timeradd(&when, request_response_window(request), &when);
+			fr_timeval_add(&when, request_response_window(request), &when);
 			gettimeofday(&now, NULL);
 
 			/*
@@ -2093,7 +2093,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 			 *	server as "unknown" state, because we
 			 *	haven't seen a packet for a while.
 			 */
-			if (timercmp(&now, &when, >)) {
+			if (fr_timeval_cmp(&now, &when) > 0) {
 				request->proxy->home_server->state = HOME_STATE_UNKNOWN;
 				request->proxy->home_server->last_packet_sent = 0;
 				request->proxy->home_server->last_packet_recv = 0;
@@ -2603,13 +2603,13 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 			when.tv_sec += request->proxy->home_server->coa_mrd;
 		} else
 #endif
-			timeradd(&when, request_response_window(request), &when);
+			fr_timeval_add(&when, request_response_window(request), &when);
 
 		/*
 		 *	We may need to keep waiting, if there's no reply, OR
 		 *	there are fewer replies than packets sent.
 		 */
-		if (timercmp(&now, &when, <) &&
+		if (fr_timeval_cmp(&now, &when) < 0 &&
 		    (!request->proxy->reply ||
 		     (request->proxy->packet->count > request->proxy->reply->count))) {
 			RDEBUG("Waiting for more responses from the home server");
@@ -3494,7 +3494,7 @@ static void ping_home_server(void *ctx, struct timeval *now)
 		when = home->zombie_period_start;
 		when.tv_sec += home->zombie_period;
 
-		if (timercmp(&when, now, <)) {
+		if (fr_timeval_cmp(&when, now) < 0) {
 			DEBUG("PING: Zombie period is over for home server %s", home->log_name);
 			mark_home_server_dead(home, now);
 		}
@@ -3814,7 +3814,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		when = request->packet->timestamp;
 		when.tv_sec += request->root->max_request_time;
 
-		if (timercmp(&when, now, >)) {
+		if (fr_timeval_cmp(&when, now) > 0) {
 			RDEBUG("Waiting for client retransmission in order to do a proxy retransmit");
 			STATE_MACHINE_TIMER;
 			return true;
@@ -3831,15 +3831,15 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		 *	responding to other (better looking) packets.
 		 */
 		when = request->proxy->packet->timestamp;
-		timeradd(&when, &request->proxy->response_delay, &when);
+		fr_timeval_add(&when, &request->proxy->response_delay, &when);
 
 		/*
 		 *	Not at the response window.  Set the timer for
 		 *	that.
 		 */
-		if (timercmp(&when, now, >)) {
+		if (fr_timeval_cmp(&when, now) > 0) {
 			struct timeval diff;
-			timersub(&when, now, &diff);
+			fr_timeval_subtract(&diff, &when, now);
 
 			RDEBUG("Expecting proxy response no later than %d.%06d seconds from now",
 			       (int) diff.tv_sec, (int) diff.tv_usec);
@@ -3947,7 +3947,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	when = request->proxy->packet->timestamp;
 	when.tv_sec++;
 
-	if (timercmp(now, &when, <)) {
+	if (fr_timeval_cmp(now, &when) < 0) {
 		DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d proto TCP - ID: %d",
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
 				 &request->proxy->packet->dst_ipaddr.ipaddr,
@@ -4368,7 +4368,7 @@ static bool coa_keep_waiting(REQUEST *request)
 		when = request->proxy->packet->timestamp;
 		tv_add(&when, delay);
 
-		if (timercmp(&when, &now, >)) {
+		if (fr_timeval_cmp(&when, &now) > 0) {
 			STATE_MACHINE_TIMER;
 			return true;
 		}
@@ -4434,7 +4434,7 @@ static bool coa_keep_waiting(REQUEST *request)
 	/*
 	 *	Cap duration at MRD.
 	 */
-	if (timercmp(&mrd, &when, <)) {
+	if (fr_timeval_cmp(&mrd, &when) < 0) {
 		when = mrd;
 	}
 	STATE_MACHINE_TIMER;

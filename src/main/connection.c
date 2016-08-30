@@ -757,7 +757,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 		for (this = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
 
-			if (!found || timercmp(&this->last_reserved, &found->last_reserved, <)) {
+			if (!found || (fr_timeval_cmp(&this->last_reserved, &found->last_reserved) < 0)) {
 				found = this;
 			}
 		}
