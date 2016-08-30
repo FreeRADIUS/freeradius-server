@@ -1853,7 +1853,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	 *	addresses, else the output might not match output of
 	 *	other functions, which makes testing difficult.
 	 *
-	 *	An example is tunnelled ipv4 in ipv6 addresses.
+	 *	An example is tunneled ipv4 in ipv6 addresses.
 	 */
 	case PW_TYPE_IPV4_ADDR:
 	case PW_TYPE_IPV4_PREFIX:

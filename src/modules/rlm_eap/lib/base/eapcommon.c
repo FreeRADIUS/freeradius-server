@@ -420,7 +420,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	if (fake->server) {
 		RDEBUG2("Proxying tunneled request to virtual server \"%s\"", fake->server);
 	} else {
-		RDEBUG2("Proxying tunnelled request");
+		RDEBUG2("Proxying tunneled request");
 	}
 
 	/*

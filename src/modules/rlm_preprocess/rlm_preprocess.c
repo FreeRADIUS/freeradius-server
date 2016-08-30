@@ -71,7 +71,7 @@ static int fall_through(VALUE_PAIR *vp)
 }
 
 /*
- *	This hack changes Ascend's wierd port numberings
+ *	This hack changes Ascend's weird port numberings
  *	to standard 0-??? port numbers so that the "+" works
  *	for IP address assignments.
  */
