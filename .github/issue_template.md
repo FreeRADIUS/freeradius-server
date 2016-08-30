@@ -12,7 +12,8 @@ See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/doc/bugs)
 ## How to reproduce issue
 *REMOVE SECTION IF FEATURE REQUEST*
  
-## Output of ``[radiusd|freeradius] -X`` showing issue ocurring
+## Output of ``[radiusd|freeradius] -X`` showing issue occurring
+(you may need to run ``[radiusd|freeradius] -fxx -l stdout`` if using eg RADIUS with TLS)
 *REMOVE SECTION IF FEATURE REQUEST*
 
 ```text
