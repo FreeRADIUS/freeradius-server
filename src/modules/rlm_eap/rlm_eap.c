@@ -609,7 +609,7 @@ finish:
 /*
  * EAP authorization DEPENDS on other rlm authorizations,
  * to check for user existence & get their configured values.
- * It Handles EAP-START Messages, User-Name initilization.
+ * It Handles EAP-START Messages, User-Name initialization.
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
