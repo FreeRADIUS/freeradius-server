@@ -275,7 +275,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
  * }
  * @endcode
  *
- * @param  json    The JSON object representation of the user documnent.
+ * @param  json    The JSON object representation of the user document.
  * @param  section The pair section ("config" or "reply").
  * @param  request The request to which the generated pairs should be added.
  */
