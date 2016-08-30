@@ -22,7 +22,7 @@
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */
-RCSID("$Id$")
+RCSID("$Id: 072e60cb2dc0904155aa239c05f7d6d894c69562 $")
 
 #define LOG_PREFIX "rlm_preprocess - "
 
@@ -71,7 +71,7 @@ static int fall_through(VALUE_PAIR *vp)
 }
 
 /*
- *	This hack changes Ascend's wierd port numberings
+ *	This hack changes Ascend's weird port numberings
  *	to standard 0-??? port numbers so that the "+" works
  *	for IP address assignments.
  */
