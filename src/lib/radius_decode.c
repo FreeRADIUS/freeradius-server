@@ -922,29 +922,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
-	data_len = attr_len;
-
 	/*
-	 *	Hacks for CUI.  The WiMAX spec says that it can be
-	 *	zero length, even though this is forbidden by the
-	 *	RADIUS specs.  So... we make a special case for it.
+	 *	Silently ignore zero-length attributes.
 	 */
-	if (attr_len == 0) {
-		if (!((parent->vendor == 0) && (parent->attr == PW_CHARGEABLE_USER_IDENTITY))) return 0;
+	if (attr_len == 0) return 0;
 
-#ifndef NDEBUG
-		/*
-		 *	Hacks for Coverity.  Editing the dictionary
-		 *	will break assumptions about CUI.  We know
-		 *	this, but Coverity doesn't.
-		 */
-		if (parent->type != PW_TYPE_OCTETS) return -1;
-#endif
-
-		p = NULL;
-		data_len = 0;
-		goto alloc_cui;	/* skip everything */
-	}
+	data_len = attr_len;
 
 	/*
 	 *	Hacks for tags.  If the attribute is capable of
@@ -1316,7 +1299,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual p.
 	 */
- alloc_cui:
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
@@ -1452,6 +1434,32 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 	}
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
+
+	/*
+	 *	Empty attributes are silently ignored, except for CUI.
+	 */
+	if (data_len == 2) {
+		VALUE_PAIR *vp;
+
+		if (!parent->flags.is_root) return 2;
+
+		if (data[0] != PW_CHARGEABLE_USER_IDENTITY) return 2;
+
+		/*
+		 *	Hacks for CUI.  The WiMAX spec says that it can be
+		 *	zero length, even though this is forbidden by the
+		 *	RADIUS specs.  So... we make a special case for it.
+		 *
+		 *	We can't create a zero length attribute,
+		 *	because the talloc API won't let us.  So, we
+		 *	just create a fake attribute.
+		 */
+		vp = fr_pair_afrom_da(ctx,da);
+		if (!vp) return -1;
+		fr_cursor_append(cursor, vp);
+
+		return 2;
+	}
 
 	/*
 	 *	Pass the entire thing to the decoding function
