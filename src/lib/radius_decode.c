@@ -336,6 +336,12 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		if (ptr[0] != attr) break;
 	}
 
+	/*
+	 *	If there's no data, just return that we skipped the
+	 *	attribute header.
+	 */
+	if (!total) return 2;
+
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
