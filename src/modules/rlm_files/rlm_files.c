@@ -433,8 +433,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			/*
 			 *	Fallthrough?
 			 */
-			if (!fall_through(pl->reply))
-				break;
+			if (!fall_through(pl->reply)) break;
 		}
 	}
 
