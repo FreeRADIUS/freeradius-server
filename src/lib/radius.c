@@ -1545,6 +1545,11 @@ int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 		}
 
 		/*
+		 *	This should really be an assertion.
+		 */
+		if (my_len == 0) break;
+
+		/*
 		 *	Count the ones which were just added
 		 */
 		while (fr_cursor_next(&cursor)) num_attributes++;
