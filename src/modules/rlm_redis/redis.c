@@ -522,8 +522,8 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 			}
 
 			out[0] = reply;
-			if (rcode) *rcode = status;
 
+			*rcode = status;
 			*pipelined = 0;		 /* all outstanding responses should be cleared */
 
 			return reply ? 1 : 0;
@@ -536,7 +536,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 		goto error;
 	}
 
-	if (rcode) *rcode = status;
+	*rcode = status;
 
 	*pipelined = 0;				/* all outstanding responses should be cleared */
 
