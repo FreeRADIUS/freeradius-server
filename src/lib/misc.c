@@ -1081,7 +1081,7 @@ int fr_size_from_str(size_t *out, char const *str)
 		break;
 
 	case 't':		/* terabyte */
-		if (fr_multiply(&size, size, (1024 * 1024 * 1024 * 1024))) goto overflow;
+		if (fr_multiply(&size, size, ((uint64_t)1024 * 1024 * 1024 * 1024))) goto overflow;
 		break;
 
 	default:
