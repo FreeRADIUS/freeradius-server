@@ -262,7 +262,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	char const		**argv_p;
 	size_t			*argv_len_p;
 
-	unsigned int		pipelined = 0;	/* How many commands pending in the pipeline */
+	int			pipelined = 0;	/* How many commands pending in the pipeline */
 	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
 	size_t			reply_num = 0, i;
 
@@ -396,9 +396,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			pipelined++;
 		}
 
-		reply_num = fr_redis_pipeline_result(&pipelined, &status,
-						     replies, sizeof(replies) / sizeof(*replies),
-						     conn);
+		reply_num = fr_redis_pipeline_result(&status, replies, sizeof(replies) / sizeof(*replies),
+						     conn, pipelined);
 		reply = replies[0];
 	}
 	talloc_free(pool);

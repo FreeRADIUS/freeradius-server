@@ -1771,24 +1771,12 @@ static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CON
 		break;
 
 	case PW_TYPE_INTEGER64:
-		*(uint64_t *)out = strtoull(cp->value, NULL, 10);
+		*(uint64_t *)out = strtoull(cp->value, 0, 0);
 		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
 		break;
 
-	case PW_TYPE_SIZE:
-	{
-		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s: %s", cp->value,
-				   cf_pair_attr(cp), fr_strerror());
-			rcode = -1;
-			goto error;
-		}
-		cf_log_info(cs, "%.*s\t%s = %zu", cs->depth, parse_spaces, cf_pair_attr(cp), *(size_t *)out);
-		break;
-	}
-
 	case PW_TYPE_SIGNED:
-		*(int32_t *)out = strtol(cp->value, NULL, 10);
+		*(int32_t *)out = strtol(cp->value, 0, 0);
 		cf_log_info(cs, "%.*s\t%s = %d", cs->depth, parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
 		break;
 

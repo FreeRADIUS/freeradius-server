@@ -56,7 +56,7 @@
 #define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/modpriv.h>
 
-RCSID("$Id$")
+RCSID("$Id: 07a8041797810140f12a14d49eb1117bbc84c959 $")
 
 #include "rlm_eap.h"
 #include <ctype.h>
@@ -909,7 +909,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *
 		 *
 		 *	We must pass a NULL pointer to associate the
 		 *	the EAP_SESSION data with, else we'll break
-		 *	tunelled EAP, where the inner EAP module is
+		 *	tunnelled EAP, where the inner EAP module is
 		 *	a different instance to the outer one.
 		 */
 		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true, true);

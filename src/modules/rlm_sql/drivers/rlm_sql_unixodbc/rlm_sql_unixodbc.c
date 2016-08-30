@@ -320,7 +320,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	return 1;
 }
 
-/** Checks the error code to determine if the connection needs to be re-esttablished
+/** Checks the error code to determine if the connection needs to be re-established
  *
  * @param error_handle Return code from a failed unixodbc call.
  * @param handle rlm_sql connection handle.

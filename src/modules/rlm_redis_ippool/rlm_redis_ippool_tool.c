@@ -461,8 +461,6 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 	REQUEST				*request = request_alloc(inst);
 	redisReply			**replies = NULL;
 
-	unsigned int			pipelined = 0;
-
 	while (more) {
 		size_t	reply_cnt = 0;
 
@@ -472,7 +470,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 							 op->pool, op->pool_len, false);
 		     s_ret == REDIS_RCODE_TRY_AGAIN;
 		     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &replies[0])) {
-
+		     	int	pipelined = 0;
 
 			status = REDIS_RCODE_SUCCESS;
 
@@ -494,8 +492,8 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			if (!replies) replies = talloc_zero_array(inst, redisReply *, pipelined);
 			if (!replies) return 0;
 
-			reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
-							     talloc_array_length(replies), conn);
+			reply_cnt = fr_redis_pipeline_result(&status, replies,
+							     talloc_array_length(replies), conn, pipelined);
 			for (i = 0; (size_t)i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3,
 										     replies[i], request, i);
 		}
@@ -1086,8 +1084,8 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		redisAppendCommand(conn->handle, "EXEC");
 		if (!replies) return -1;
 
-		reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
-						     talloc_array_length(replies), conn);
+		reply_cnt = fr_redis_pipeline_result(&status, replies,
+						     talloc_array_length(replies), conn, pipelined);
 		for (i = 0; (size_t)i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3,
 									     replies[i], request, i);
 	}

@@ -495,7 +495,6 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_TLV:
 	case PW_TYPE_STRUCT:
-	case PW_TYPE_SIZE:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_DECIMAL:
 	case PW_TYPE_MAX:

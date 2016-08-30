@@ -23,7 +23,7 @@
  * @copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * @copyright 2003  Alan DeKok <aland@freeradius.org>
  */
-RCSID("$Id$")
+RCSID("$Id: 2b2e9db5633bb2949195ae8e3ae4fc735181abca $")
 
 #define LOG_PREFIX "rlm_eap (%s) - "
 #define LOG_PREFIX_ARGS inst->name
@@ -609,7 +609,7 @@ finish:
 /*
  * EAP authorization DEPENDS on other rlm authorizations,
  * to check for user existence & get their configured values.
- * It Handles EAP-START Messages, User-Name initilization.
+ * It Handles EAP-START Messages, User-Name initialization.
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {

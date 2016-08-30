@@ -93,47 +93,6 @@ static void sig_fatal (int);
 static void sig_hup (int);
 #endif
 
-/** Configure talloc debugging features
- *
- * @param[in] config	The main config.
- * @return
- *	- 1 on config conflict.
- *	- 0 on success.
- *	- -1 on error.
- */
-static int talloc_config_set(main_config_t *config)
-{
-	if (config->spawn_workers) {
-		if (config->talloc_memory_limit || config->talloc_memory_report) {
-			fr_strerror_printf("talloc_memory_limit and talloc_memory_report "
-					   "require single threaded mode (-s | -X)");
-			return 1;
-		}
-		return 0;
-	}
-
-	if (!config->talloc_memory_limit && !config->talloc_memory_report) {
-		talloc_disable_null_tracking();
-		return 0;
-	}
-
-	talloc_enable_null_tracking();
-
-	if (config->talloc_memory_limit) {
-		TALLOC_CTX *null_child = talloc_new(NULL);
-		TALLOC_CTX *null_ctx = talloc_parent(null_child);
-
-		talloc_free(null_child);
-
-		if (talloc_set_memlimit(null_ctx, config->talloc_memory_limit) < 0) {
-			fr_strerror_printf("Failed applying memory limit");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 /*
  *	The main guy.
  */
@@ -215,112 +174,96 @@ int main(int argc, char *argv[])
 	}
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PstTvxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstTvxX")) != EOF) {
+
 		switch (argval) {
-		case 'C':
-			check_config = true;
-			main_config.spawn_workers = false;
-			main_config.daemonize = false;
-			break;
+			case 'C':
+				check_config = true;
+				main_config.spawn_workers = false;
+				main_config.daemonize = false;
+				break;
 
-		case 'd':
-			set_radius_dir(autofree, optarg);
-			break;
+			case 'd':
+				set_radius_dir(autofree, optarg);
+				break;
 
-		case 'D':
-			main_config.dictionary_dir = talloc_typed_strdup(autofree, optarg);
-			break;
+			case 'D':
+				main_config.dictionary_dir = talloc_typed_strdup(autofree, optarg);
+				break;
 
-		case 'f':
-			main_config.daemonize = false;
-			break;
+			case 'f':
+				main_config.daemonize = false;
+				break;
 
-		case 'h':
-			usage(0);
-			break;
+			case 'h':
+				usage(0);
+				break;
 
-		case 'l':
-			if (strcmp(optarg, "stdout") == 0) {
-				goto do_stdout;
-			}
-			main_config.log_file = talloc_typed_strdup(autofree, optarg);
-			default_log.dst = L_DST_FILES;
-			default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
-			if (default_log.fd < 0) {
-				fprintf(stderr, "%s: Failed to open log file %s: %s\n",
-					main_config.name, main_config.log_file, fr_syserror(errno));
-				exit(EXIT_FAILURE);
-			}
-			fr_log_fp = fdopen(default_log.fd, "a");
-			break;
+			case 'l':
+				if (strcmp(optarg, "stdout") == 0) {
+					goto do_stdout;
+				}
+				main_config.log_file = talloc_typed_strdup(autofree, optarg);
+				default_log.dst = L_DST_FILES;
+				default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
+				if (default_log.fd < 0) {
+					fprintf(stderr, "%s: Failed to open log file %s: %s\n",
+						main_config.name, main_config.log_file, fr_syserror(errno));
+					exit(EXIT_FAILURE);
+				}
+				fr_log_fp = fdopen(default_log.fd, "a");
+				break;
 
-		case 'L':
-		{
-			size_t limit;
+			case 'n':
+				main_config.name = optarg;
+				break;
 
-			if (fr_size_from_str(&limit, optarg) < 0) {
-				fprintf(stderr, "%s: Invalid memory limit: %s\n", main_config.name, fr_strerror());
-				exit(EXIT_FAILURE);
-			}
+			case 'M':
+				main_config.memory_report = true;
+				break;
 
-			if ((limit > (((size_t)((1024 * 1024) * 1024)) * 16) || (limit < ((1024 * 1024) * 10)))) {
-				fprintf(stderr, "%s: Memory limit must be between 10M-16G\n", main_config.name);
-				exit(EXIT_FAILURE);
-			}
+			case 'P':
+				/* Force the PID to be written, even in -f mode */
+				main_config.write_pid = true;
+				break;
 
-			main_config.talloc_memory_limit = limit;
-		}
-			break;
+			case 's':	/* Single process mode */
+				main_config.spawn_workers = false;
+				main_config.daemonize = false;
+				break;
 
-		case 'n':
-			main_config.name = optarg;
-			break;
+			case 't':	/* no child threads */
+				main_config.spawn_workers = false;
+				break;
 
-		case 'M':
-			main_config.talloc_memory_report = true;
-			break;
+			case 'T':	/* enable timestamps */
+				default_log.timestamp = L_TIMESTAMP_ON;
+				break;
 
-		case 'P':	/* Force the PID to be written, even in -f mode */
-			main_config.write_pid = true;
-			break;
+			case 'v':
+				display_version = true;
+				break;
 
-		case 's':	/* Single process mode */
-			main_config.spawn_workers = false;
-			main_config.daemonize = false;
-			break;
+			case 'X':
+				main_config.spawn_workers = false;
+				main_config.daemonize = false;
+				rad_debug_lvl += 2;
+				main_config.log_auth = true;
+				main_config.log_auth_badpass = true;
+				main_config.log_auth_goodpass = true;
+		do_stdout:
+				fr_log_fp = stdout;
+				default_log.dst = L_DST_STDOUT;
+				default_log.fd = STDOUT_FILENO;
+				break;
 
-		case 't':	/* no child threads */
-			main_config.spawn_workers = false;
-			break;
+			case 'x':
+				rad_debug_lvl++;
+				break;
 
-		case 'T':	/* enable timestamps */
-			default_log.timestamp = L_TIMESTAMP_ON;
-			break;
-
-		case 'v':
-			display_version = true;
-			break;
-
-		case 'X':
-			main_config.spawn_workers = false;
-			main_config.daemonize = false;
-			rad_debug_lvl += 2;
-			main_config.log_auth = true;
-			main_config.log_auth_badpass = true;
-			main_config.log_auth_goodpass = true;
-	do_stdout:
-			fr_log_fp = stdout;
-			default_log.dst = L_DST_STDOUT;
-			default_log.fd = STDOUT_FILENO;
-			break;
-
-		case 'x':
-			rad_debug_lvl++;
-			break;
-
-		default:
-			usage(1);
-			break;
+			default:
+				usage(1);
+				break;
 		}
 	}
 
@@ -348,9 +291,15 @@ int main(int argc, char *argv[])
 	 *
 	 *  So we can't run with a null context and threads.
 	 */
-	if (talloc_config_set(&main_config) != 0) {
-		fr_perror("%s", main_config.name);
-		fr_exit(EXIT_FAILURE);
+	if (main_config.memory_report) {
+		if (main_config.spawn_workers) {
+			fprintf(stderr, "%s: The server cannot produce memory reports (-M) in threaded mode\n",
+				main_config.name);
+			fr_exit(EXIT_FAILURE);
+		}
+		talloc_enable_null_tracking();
+	} else {
+		talloc_disable_null_tracking();
 	}
 
 	/*
@@ -398,14 +347,6 @@ int main(int argc, char *argv[])
 	 *  This is very useful in figuring out why the panic_action didn't fire.
 	 */
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
-
-	/*
-	 *  Call this again now we've loaded the configuration. Yes I know...
-	 */
-	if (talloc_config_set(&main_config) < 0) {
-		fr_perror("%s", main_config.name);
-		fr_exit(EXIT_FAILURE);
-	}
 
 	/*
 	 *  Check for vulnerabilities in the version of libssl were linked against.
@@ -535,8 +476,7 @@ int main(int argc, char *argv[])
 	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	Call the module's initialisation methods.  These create
-	 *	connection pools and open connections to external resources.
+	 *	Load the modules before starting up any threads.
 	 */
 	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
@@ -767,7 +707,7 @@ cleanup:
 	 *  Anything not cleaned up by the above is allocated in the NULL
 	 *  top level context, and is likely leaked memory.
 	 */
-	if (main_config.talloc_memory_report) fr_log_talloc_report(NULL);
+	if (main_config.memory_report) fr_log_talloc_report(NULL);
 
 	return rcode;
 }

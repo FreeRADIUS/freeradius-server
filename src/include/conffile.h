@@ -82,8 +82,6 @@ typedef void _mismatch_int32;		//!< Dummy type used to indicate PW_TYPE_*/C type
 typedef void _mismatch_int32_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_uint64;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_uint64_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_size;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_size_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_timeval;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_timeval_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void _mismatch_default;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
@@ -172,10 +170,6 @@ _Generic((_ct), \
 			_p, (_mismatch_uint64) 0), \
 	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_INTEGER64) && ((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	size_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && !((_t) & PW_TYPE_MULTI), \
-			_p, (_mismatch_size) 0), \
-	size_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && ((_t) & PW_TYPE_MULTI), \
-			_p, (_mismatch_size) 0), \
 	_timeval_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_timeval) 0), \
 	_timeval_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && ((_t) & PW_TYPE_MULTI), \
@@ -270,16 +264,6 @@ _Generic((_ct), \
 
 #define PW_BASE_TYPE(_t)		(0xff & (_t))
 /* @} **/
-
-#define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
-do {\
-	if (!(_cond)) {\
-		WARN("Ignoring \"" _name " = %zu\", forcing to \"" _name " = %zu\"", _var, _new);\
-		_var = _new;\
-	}\
-} while (0)
-
-#define FR_SIZE_BOUND_CHECK(_name, _var, _op, _bound) FR_SIZE_COND_CHECK(_name, _var, (_var _op _bound), _bound)
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\

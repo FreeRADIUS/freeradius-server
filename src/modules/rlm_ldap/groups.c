@@ -40,7 +40,7 @@
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] names to covert to DNs (NULL terminated).
+ * @param[in] names to convert to DNs (NULL terminated).
  * @param[out] out Where to write the DNs. DNs must be freed with ldap_memfree(). Will be NULL terminated.
  * @param[in] outlen Size of out.
  * @return One of the RLM_MODULE_* values.

@@ -439,28 +439,27 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
  * If the number of responses != pipelined, that's also an error, a very serious one,
  * in libhiredis or Redis.  We can't really do much here apart from error out.
  *
- * @param[out] pipelined Number of pipelined commands we sent to the server.
  * @param[out] rcode Status of the first errored response, or REDIS_RCODE_SUCCESS
  *	if all responses were processed.
  * @param[out] out Where to write the replies from pipelined commands.
  *	Will contain exactly 1 element on error, else the number passed in pipelined.
  * @param[in] out_len number of elements in out.
  * @param[in] conn the pipelined commands were issued on.
+ * @param[in] pipelined Number of pipelined commands we sent to the server.
  * @return
  *	- #REDIS_RCODE_SUCCESS on success.
  *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
  *	- REDIS_RCODE_* on other errors;
  */
-fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
-					  redisReply *out[], size_t out_len,
-					  fr_redis_conn_t *conn)
+fr_redis_rcode_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
+					  fr_redis_conn_t *conn, int pipelined)
 {
 	size_t			i;
 	redisReply		**out_p = out;
 	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 
-	rad_assert(out_len >= pipelined);
+	rad_assert(out_len >= (size_t)pipelined);
 
 #ifdef NDEBUG
 	if ((size_t) pipelined > out_len) {
@@ -468,8 +467,6 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
 			fr_redis_reply_free(reply);
 		}
-
-		*pipelined = 0;			/* all outstanding responses should be cleared */
 
 		fr_strerror_printf("Too many pipelined commands");
 		out[0] = NULL;
@@ -517,9 +514,6 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 
 			out[0] = reply;
 			if (rcode) *rcode = status;
-
-			*pipelined = 0;		 /* all outstanding responses should be cleared */
-
 			return reply ? 1 : 0;
 		}
 	}
@@ -531,9 +525,6 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	}
 
 	if (rcode) *rcode = status;
-
-	*pipelined = 0;				/* all outstanding responses should be cleared */
-
 	return i;
 }
 
