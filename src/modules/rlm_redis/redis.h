@@ -136,7 +136,7 @@ uint32_t		fr_redis_version_num(char const *version);
  */
 fr_redis_rcode_t	fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
 						 redisReply *out[], size_t out_len,
-						 fr_redis_conn_t *conn,);
+						 fr_redis_conn_t *conn);
 
 #define fr_redis_pipeline_free(_r, _n) \
 do {\

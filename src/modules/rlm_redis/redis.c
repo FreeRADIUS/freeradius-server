@@ -460,7 +460,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 
-	rad_assert(out_len >= pipelined);
+	rad_assert(out_len >= (size_t)pipelined);
 
 #ifdef NDEBUG
 	if ((size_t) pipelined > out_len) {
@@ -525,7 +525,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	}
 
 	if (i != (size_t)pipelined) {
-		fr_strerror_printf("Expected %i responses, got %zu", pipelined, i);
+		fr_strerror_printf("Expected %u responses, got %zu", *pipelined, i);
 		status = REDIS_RCODE_ERROR;
 		goto error;
 	}
