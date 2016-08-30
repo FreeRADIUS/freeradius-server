@@ -683,7 +683,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 *	Check the TLS configuration.
 	 */
 	tls = cf_section_sub_find(cs, "tls");
-	if (home->ipaddr.af == AF_UNSPEC) {
+	if (tls && home->ipaddr.af == AF_UNSPEC) {
 		cf_log_err_cs(cs, "TLS transport cannot be used for home servers with 'virtual_server' set");
 		goto error;
 	}
