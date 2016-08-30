@@ -91,6 +91,15 @@ typedef void _mismatch_default;		//!< Dummy type used to indicate PW_TYPE_*/C ty
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
 typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid PW_TYPE_*.
 
+/** Check if two types are compatible (the C11 way)
+ *
+ * Expands to 1 if types are compatible, else 0.
+ *
+ * @param _x pointer to check.
+ * @param _t type to check compatibility with.
+ */
+#define is_compatible(_x, _t) _Generic((_x), _t:1, default: 0)
+
 /** Check the type #_t matches the destination data type
  *
  * Validation macro to check the type of the pointer or offset #_p passed in
@@ -107,6 +116,10 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid PW_TYP
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
 __builtin_choose_expr((_t) & PW_TYPE_SUBSECTION, _p, \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && !((_t) & PW_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && ((_t) & PW_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), size_t **), _p, (_mismatch_size_m) 0), \
 _Generic((_ct), \
 	vp_tmpl_t **	: __builtin_choose_expr(((_t) & PW_TYPE_TMPL) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
@@ -172,15 +185,11 @@ _Generic((_ct), \
 			_p, (_mismatch_uint64) 0), \
 	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_INTEGER64) && ((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	size_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && !((_t) & PW_TYPE_MULTI), \
-			_p, (_mismatch_size) 0), \
-	size_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && ((_t) & PW_TYPE_MULTI), \
-			_p, (_mismatch_size) 0), \
 	_timeval_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_timeval) 0), \
 	_timeval_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && ((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
-	default: (conf_type_mismatch)0))
+	default: (conf_type_mismatch)0))))
 
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
