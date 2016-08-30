@@ -39,8 +39,8 @@ typedef enum {
 	PW_TYPE_IPV6_ADDR,			//!< 128 Bit IPv6 Address.
 	PW_TYPE_IPV6_PREFIX,			//!< IPv6 Prefix.
 	PW_TYPE_IFID,				//!< Interface ID.
-	PW_TYPE_COMBO_IP_ADDR,			//!< WiMAX IPv4 or IPv6 address depending on length.
-	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
+	PW_TYPE_COMBO_IP_ADDR,			//!< IPv4 or IPv6 address depending on length.
+	PW_TYPE_COMBO_IP_PREFIX,		//!< IPv4 or IPv6 address prefix depending on length.
 	PW_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
 
 	PW_TYPE_BOOLEAN,			//!< A truth value.
@@ -48,6 +48,8 @@ typedef enum {
 	PW_TYPE_SHORT,				//!< 16 Bit unsigned integer.
 	PW_TYPE_INTEGER,			//!< 32 Bit unsigned integer.
 	PW_TYPE_INTEGER64,			//!< 64 Bit unsigned integer.
+	PW_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
+						//!< address on the local system.
 	PW_TYPE_SIGNED,				//!< 32 Bit signed integer.
 
 	PW_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
@@ -104,6 +106,7 @@ typedef enum {
 	case PW_TYPE_SHORT: \
 	case PW_TYPE_INTEGER: \
 	case PW_TYPE_INTEGER64: \
+	case PW_TYPE_SIZE: \
 	case PW_TYPE_SIGNED: \
 	case PW_TYPE_DATE
 

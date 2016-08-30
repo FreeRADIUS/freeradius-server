@@ -434,7 +434,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 
 	fr_redis_cluster_state_t	state;
 	fr_redis_rcode_t		s_ret, status;
-	int				pipelined = 0;
+	unsigned int			pipelined = 0;
 
 	va_list				ap;
 
@@ -456,8 +456,9 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, wait_timeout);
 			pipelined++;
 		}
-		reply_cnt = fr_redis_pipeline_result(&status, replies, sizeof(replies) / sizeof(*replies),
-						     conn, pipelined);
+		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
+						     replies, sizeof(replies) / sizeof(*replies),
+						     conn);
 		if (status != REDIS_RCODE_NO_SCRIPT) continue;
 
 		/*
@@ -478,8 +479,9 @@ static fr_redis_rcode_t ippool_script(redisReply **out, REQUEST *request, fr_red
 			pipelined++;
 		}
 
-		reply_cnt = fr_redis_pipeline_result(&status, replies, sizeof(replies) / sizeof(*replies),
-						     conn, pipelined);
+		reply_cnt = fr_redis_pipeline_result(&pipelined, &status,
+						     replies, sizeof(replies) / sizeof(*replies),
+						     conn);
 		if (status == REDIS_RCODE_SUCCESS) {
 			if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) {
 				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);

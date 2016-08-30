@@ -4733,11 +4733,8 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));
-		ERROR("FATAL: Asked to read from closed socket: %s",
-		       buffer);
 
-		rad_panic("Socket was closed on us!");
-		fr_exit_now(1);
+		rad_panic("FATAL: Asked to read from closed socket (fd %i): %s", listener->fd, buffer);
 	}
 
 	listener->recv(listener);
@@ -5006,14 +5003,14 @@ static void sd_watchdog_event(void *ctx)
 {
 	struct timeval when;
 
-	DEBUG("Emitting systemd watchdog notification.");
+	DEBUG("Emitting systemd watchdog notification");
 	sd_notify(0, "WATCHDOG=1");
 
 	fr_event_now(el, &when);
 	tv_add(&when, sd_watchdog_interval / 2);
-	if (!fr_event_insert(el, (fr_event_callback_t) sd_watchdog_event, ctx, &when, ctx))
-		_rad_panic(__FILE__, __LINE__, "Failed to insert watchdog event");
-
+	if (!fr_event_insert(el, (fr_event_callback_t) sd_watchdog_event, ctx, &when, ctx)) {
+		rad_panic("Failed to insert watchdog event");
+	}
 }
 #endif
 
@@ -5446,7 +5443,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	request->in_request_hash = false;
 	fr_event_delete(el, &request->ev);
 
-	if (main_config.memory_report) {
+	if (main_config.talloc_memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
@@ -5488,7 +5485,7 @@ void radius_event_free(void)
 		 *	Walk the lists again, ensuring that all
 		 *	requests are done.
 		 */
-		if (main_config.memory_report) {
+		if (main_config.talloc_memory_report) {
 			int num;
 
 #ifdef WITH_PROXY

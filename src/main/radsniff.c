@@ -2238,9 +2238,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'e':
-			if (rs_build_event_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
-				usage(64);
-			}
+			if (rs_build_event_flags((int *) &conf->event_flags, rs_events, optarg) < 0) usage(64);
 			break;
 
 		case 'E':

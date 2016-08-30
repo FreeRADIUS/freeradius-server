@@ -356,6 +356,7 @@ do {\
 		 uint16_t *: PW_TYPE_SHORT, \
 		 uint32_t *: PW_TYPE_INTEGER, \
 		 uint64_t *: PW_TYPE_INTEGER64, \
+		 size_t *: PW_TYPE_SIZE, \
 		 struct timeval *: PW_TYPE_TIMEVAL)
 
 /** Expand a tmpl to a C type, using existing storage to hold variably sized types

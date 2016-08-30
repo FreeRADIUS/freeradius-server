@@ -43,6 +43,7 @@ size_t const value_data_field_sizes[] = {
 	[PW_TYPE_SHORT]		= SIZEOF_MEMBER(value_data_t, ushort),
 	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_data_t, integer),
 	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_data_t, integer64),
+	[PW_TYPE_SIZE]		= SIZEOF_MEMBER(value_data_t, size),
 	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_data_t, sinteger),
 	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_data_t, timeval),
 	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_data_t, decimal),
@@ -71,6 +72,7 @@ size_t const value_data_offsets[] = {
 	[PW_TYPE_SHORT]		= offsetof(value_data_t, ushort),
 	[PW_TYPE_INTEGER]	= offsetof(value_data_t, integer),
 	[PW_TYPE_INTEGER64]	= offsetof(value_data_t, integer64),
+	[PW_TYPE_SIZE]		= offsetof(value_data_t, size),
 	[PW_TYPE_SIGNED]	= offsetof(value_data_t, sinteger),
 	[PW_TYPE_TIMEVAL]	= offsetof(value_data_t, timeval),
 	[PW_TYPE_DECIMAL]	= offsetof(value_data_t, decimal),
@@ -144,7 +146,6 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 		CHECK(byte);
 		break;
 
-
 	case PW_TYPE_SHORT:
 		CHECK(ushort);
 		break;
@@ -163,6 +164,10 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 
 	case PW_TYPE_INTEGER64:
 		CHECK(integer64);
+		break;
+
+	case PW_TYPE_SIZE:
+		CHECK(size);
 		break;
 
 	case PW_TYPE_TIMEVAL:
@@ -469,6 +474,7 @@ int value_data_cmp_op(FR_TOKEN op,
 	case PW_TYPE_SHORT: \
 	case PW_TYPE_INTEGER: \
 	case PW_TYPE_INTEGER64: \
+	case PW_TYPE_SIZE: \
 	case PW_TYPE_DATE: \
 	case PW_TYPE_IFID: \
 	case PW_TYPE_ETHERNET: \
@@ -1020,6 +1026,17 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		dst->integer64 = i;
 	}
 		break;
+
+	case PW_TYPE_SIZE:
+	{
+		size_t i;
+
+		if (sscanf(in, "%zu", &i) != 1) {
+			fr_strerror_printf("Failed parsing \"%s\" as a file or memory size", in);
+			return -1;
+		}
+		dst->size = i;
+	}
 
 	case PW_TYPE_TIMEVAL:
 		if (fr_timeval_from_str(&dst->timeval, in) < 0) return -1;
@@ -1779,6 +1796,10 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->integer64);
 		break;
 
+	case PW_TYPE_SIZE:
+		p = talloc_typed_asprintf(ctx, "%zu", data->size);
+		break;
+
 	case PW_TYPE_SIGNED:
 		p = talloc_typed_asprintf(ctx, "%d", data->sinteger);
 		break;
@@ -1980,6 +2001,9 @@ size_t value_data_snprint(char *out, size_t outlen,
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, data->integer64);
+
+	case PW_TYPE_SIZE:
+		return snprintf(out, outlen, "%zu", data->size);
 
 	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
 		len = snprintf(buf, sizeof(buf), "%d", data->sinteger);
