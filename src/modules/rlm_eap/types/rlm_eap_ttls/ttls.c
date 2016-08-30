@@ -596,7 +596,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 
 
 	/*
-	 *	Pack any tunnelled VPs and send them back
+	 *	Pack any tunneled VPs and send them back
 	 *	to the supplicant.
 	 */
 	if (tunnel_vps) {
