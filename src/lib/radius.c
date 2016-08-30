@@ -1537,8 +1537,8 @@ int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 		/*
 		 *	This may return many VPs
 		 */
-		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal),
-					       ptr, packet_length, &decoder_ctx);
+		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal), ptr, packet_length,
+					       &decoder_ctx);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;

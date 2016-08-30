@@ -2294,7 +2294,6 @@ char *fr_pair_type_asprint(TALLOC_CTX *ctx, PW_TYPE type)
 		return talloc_typed_strdup(ctx, "_");
 
 	case PW_TYPE_INTEGER64:
-	case PW_TYPE_SIZE:
 	case PW_TYPE_SIGNED:
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:

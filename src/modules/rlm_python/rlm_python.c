@@ -383,10 +383,6 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
 		break;
 
-	case PW_TYPE_SIZE:
-		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
-		break;
-
 	case PW_TYPE_DECIMAL:
 		value = PyFloat_FromDouble(vp->vp_decimal);
 		break;

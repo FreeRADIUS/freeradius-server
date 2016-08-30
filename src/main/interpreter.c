@@ -453,8 +453,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	 *	xlat.c, xlat_foreach() can find it.
 	 */
 	frame->foreach.variable = vp;
-	request_data_add(request, (void *)radius_get_vp, frame->foreach.depth, &frame->foreach.variable,
-			 false, false, false);
+	request_data_add(request, (void *)radius_get_vp, frame->foreach.depth, &frame->foreach.variable, false, false, false);
 
 	/*
 	 *	Push the child, and yield for a later return.
@@ -1309,7 +1308,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 		return -1;
 	}
 
-	(void) request_data_add(request, ctx, -1, ev, true, true, false);
+	(void) request_data_add(request, ctx, -1, ev, true, false, false);
 
 	talloc_set_destructor(ev, _unlang_event_free);
 	return 0;
@@ -1352,7 +1351,7 @@ int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 		return -1;
 	}
 
-	(void) request_data_add(request, ctx, fd, ev, true, true, false);
+	(void) request_data_add(request, ctx, fd, ev, true, false, false);
 
 	talloc_set_destructor(ev, _unlang_event_free);
 	return 0;

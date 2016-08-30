@@ -109,7 +109,6 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "short",		PW_TYPE_SHORT },
 	{ "integer",		PW_TYPE_INTEGER },
 	{ "integer64",		PW_TYPE_INTEGER64 },
-	{ "size",		PW_TYPE_SIZE },
 	{ "signed",        	PW_TYPE_SIGNED },
 
 	{ "decimal",		PW_TYPE_DECIMAL },
@@ -162,7 +161,6 @@ const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
 	[PW_TYPE_SHORT]		= {2, 2},
 	[PW_TYPE_INTEGER]	= {4, 4},
 	[PW_TYPE_INTEGER64]	= {8, 8},
-	[PW_TYPE_SIZE]		= {sizeof(size_t), sizeof(size_t)},
 	[PW_TYPE_SIGNED]	= {4, 4},
 
 	[PW_TYPE_DATE]		= {4, 4},
@@ -1157,9 +1155,6 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case PW_TYPE_INTEGER64:
 		flags.length = 8;
 		break;
-
-	case PW_TYPE_SIZE:
-		flags.length = sizeof(size_t);
 
 	case PW_TYPE_ETHERNET:
 		flags.length = 6;

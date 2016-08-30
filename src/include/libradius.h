@@ -386,8 +386,6 @@ void		fr_timeval_divide(struct timeval *out, struct timeval const *in, int divis
 int		fr_timeval_cmp(struct timeval const *a, struct timeval const *b);
 void		fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start);
 int		fr_timeval_from_str(struct timeval *out, char const *in);
-bool		fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs);
-int		fr_size_from_str(size_t *out, char const *str);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 /*

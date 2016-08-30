@@ -466,8 +466,7 @@ static void *thread_handler(void *arg)
 
 				if (!request->listener->old_style) {
 					request->el = el;
-					if (fr_event_insert(request->el, max_request_time_hook,
-							    request, &when, &request->ev) < 0) {
+					if (fr_event_insert(request->el, max_request_time_hook, request, &when, &request->ev) < 0) {
 						REDEBUG("Failed inserting max_request_time");
 					}
 				}
