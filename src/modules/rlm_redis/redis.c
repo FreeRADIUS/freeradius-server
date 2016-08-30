@@ -460,11 +460,11 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 
-	rad_assert(out_len >= (size_t)pipelined);
+	rad_assert(out_len >= (size_t)*pipelined);
 
 #ifdef NDEBUG
-	if ((size_t) pipelined > out_len) {
-		for (i = 0; i < (size_t)pipelined; i++) {
+	if ((size_t) *pipelined > out_len) {
+		for (i = 0; i < (size_t)*pipelined; i++) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
 			fr_redis_reply_free(reply);
 		}
@@ -477,7 +477,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	}
 #endif
 
-	for (i = 0; i < (size_t)pipelined; i++) {
+	for (i = 0; i < (size_t)*pipelined; i++) {
 		bool maybe_more = false;
 
 		/*
@@ -508,7 +508,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 			/*
 			 *	...and drain the rest of the pipelined responses
 			 */
-			for (j = i + 1; j < (size_t)pipelined; j++) {
+			for (j = i + 1; j < (size_t)*pipelined; j++) {
 				redisReply *to_clear;
 
 				if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
@@ -524,7 +524,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 		}
 	}
 
-	if (i != (size_t)pipelined) {
+	if (i != (size_t)*pipelined) {
 		fr_strerror_printf("Expected %u responses, got %zu", *pipelined, i);
 		status = REDIS_RCODE_ERROR;
 		goto error;
