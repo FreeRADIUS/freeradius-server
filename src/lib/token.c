@@ -332,7 +332,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		} /* else there was a quotation character */
 
 		/*
-		 *	Un-escaped quotation character.  We're done.
+		 *	Un-escaped quote character.  We're done.
 		 */
 		if (*p == quote) {
 			end = true;
@@ -340,9 +340,20 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			break;
 		}
 
+		/*
+		 *	Everything but backslash gets copied over.
+		 */
 		if (*p != '\\') {
 			*s++ = *p++;
 			continue;
+		}
+
+		/*
+		 *	There's nothing after the backslash, it's an error.
+		 */
+		if (!p[1]) {
+			fr_strerror_printf("Unterminated string");
+			return T_INVALID;
 		}
 
 		if (unescape) {
@@ -358,10 +369,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 				case 't':
 					*s++ = '\t';
 					break;
-				case '\0':
-					*s++ = '\\';
-					p--; /* force EOS */
-					break;
+
 				default:
 					if (*p >= '0' && *p <= '9' &&
 					    sscanf(p, "%3o", &x) == 1) {
@@ -379,8 +387,6 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			 *	escaped characters into their non-escaped
 			 *	equivalent.
 			 */
-			if (!p[1]) continue; /* force end of string */
-
 			if (p[1] == quote) { /* convert '\'' --> ' */
 				p++;
 			} else {
