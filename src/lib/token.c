@@ -369,7 +369,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 		return gettoken(ptr, buf, buflen, unescape);
 	}
 
-	return getthing(ptr, buf, buflen, 0, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, false, fr_tokens, unescape);
 }
 
 /*
