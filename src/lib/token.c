@@ -340,7 +340,12 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			break;
 		}
 
-		if (unescape && (*p == '\\')) {
+		if (*p != '\\') {
+			*s++ = *p++;
+			continue;
+		}
+
+		if (unescape) {
 			p++;
 
 			switch (*p) {
@@ -367,15 +372,13 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 					break;
 			}
 			p++;
-			continue;
-		}
 
-		/*
-		 *	Deal with quotes and escapes, but don't mash
-		 *	escaped characters into their non-escaped
-		 *	equivalent.
-		 */
-		if (!unescape && (*p == '\\')) {
+		} else {
+			/*
+			 *	Deal with quotes and escapes, but don't mash
+			 *	escaped characters into their non-escaped
+			 *	equivalent.
+			 */
 			if (!p[1]) continue; /* force end of string */
 
 			if (p[1] == quote) { /* convert '\'' --> ' */
@@ -384,10 +387,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 				*(s++) = *(p++);
 			}
 			*(s++) = *(p++);
-			continue;
 		}
-
-		*s++ = *p++;
 	}
 
 	*s++ = 0;
