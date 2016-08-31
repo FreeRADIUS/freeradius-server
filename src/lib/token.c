@@ -383,13 +383,17 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 		} else {
 			/*
-			 *	Deal with quotes and escapes, but don't mash
-			 *	escaped characters into their non-escaped
-			 *	equivalent.
+			 *	Convert backslash-quote to quote, but
+			 *	leave everything else alone.
 			 */
 			if (p[1] == quote) { /* convert '\'' --> ' */
 				p++;
 			} else {
+				if (buflen < 2) {
+					fr_strerror_printf("Truncated input");
+					return T_INVALID;
+				}
+
 				*(s++) = *(p++);
 			}
 			*(s++) = *(p++);
