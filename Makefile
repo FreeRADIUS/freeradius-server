@@ -292,6 +292,7 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 #
 .PHONY: deb
 deb:
+	fakeroot debian/rules debian/control #clean
 	fakeroot dpkg-buildpackage -b -uc
 
 # Developer checks
