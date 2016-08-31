@@ -256,9 +256,18 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			 */
 			*s++ = *p++;
 			continue;
+		} /* else there was a quotation character */
+
+		/*
+		 *	Un-escaped quotation character.  We're done.
+		 */
+		if (*p == quote) {
+			end = true;
+			p++;
+			break;
 		}
 
-		if (unescape && quote && (*p == '\\')) {
+		if (unescape && (*p == '\\')) {
 			p++;
 
 			switch (*p) {
@@ -293,7 +302,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	escaped characters into their non-escaped
 		 *	equivalent.
 		 */
-		if (!unescape && quote && (*p == '\\')) {
+		if (!unescape && (*p == '\\')) {
 			if (!p[1]) continue; /* force end of string */
 
 			if (p[1] == quote) { /* convert '\'' --> ' */
@@ -305,11 +314,6 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			continue;
 		}
 
-		if (quote && (*p == quote)) {
-			end = true;
-			p++;
-			break;
-		}
 		*s++ = *p++;
 	}
 
