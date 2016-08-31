@@ -14,7 +14,7 @@ freeradius-redis
 freeradius-yubikey
 freeradius
 libfreeradius-dev
-libfreeradius3
+libfreeradius4
 stamp-patched
 tmp
 files
