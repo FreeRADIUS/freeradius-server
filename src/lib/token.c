@@ -182,10 +182,10 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 	/* Skip whitespace */
 	p = *ptr;
-	while (*p && isspace((int) *p))
-		p++;
 
-	if (*p == 0) {
+	while (*p && isspace((int) *p)) p++;
+
+	if (!*p) {
 		*ptr = p;
 		return T_EOL;
 	}
@@ -197,18 +197,33 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		if (TOKEN_MATCH(p, t->name)) {
 			strcpy(buf, t->name);
 			p += strlen(t->name);
-			while (isspace((int) *p))
-				p++;
-			*ptr = p;
-			return (FR_TOKEN) t->number;
+
+			rcode = t->number;
+			goto done;
 		}
 	}
 
 	/* Read word. */
 	quote = '\0';
-	if ((*p == '"') ||
-	    (*p == '\'') ||
-	    (*p == '`')) {
+	switch (*p) {
+	default:
+		rcode = T_BARE_WORD;
+		break;
+
+	case '\'':
+		rcode = T_SINGLE_QUOTED_STRING;
+		break;
+
+	case '"':
+		rcode = T_DOUBLE_QUOTED_STRING;
+		break;
+
+	case '`':
+		rcode = T_BACK_QUOTED_STRING;
+		break;
+	}
+
+	if (rcode != T_BARE_WORD) {
 		quote = *p;
 		end = false;
 		p++;
@@ -268,20 +283,30 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			p++;
 			break;
 		}
+
+		/*
+		 *	We're looking for strings.  Stop on spaces, or
+		 *	(if given a token list), on a token, or on a
+		 *	comma.
+		 */
 		if (!quote) {
-			if (isspace((int) *p))
+			if (isspace((int) *p)) {
 				break;
-			if (tok) {
-				for (t = tokenlist; t->name; t++)
-					if (TOKEN_MATCH(p, t->name))
-						break;
-				if (t->name != NULL)
-					break;
 			}
-			if (*p == ',') break; /* hack */
+
+			if (tok) {
+				for (t = tokenlist; t->name; t++) {
+					if (TOKEN_MATCH(p, t->name)) {
+						*s++ = 0;
+						goto done;
+					}
+				}
+			}
+			if (*p == ',') break;
 		}
 		*s++ = *p++;
 	}
+
 	*s++ = 0;
 
 	if (quote && !end) {
@@ -289,29 +314,11 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		return T_INVALID;
 	}
 
+done:
 	/* Skip whitespace again. */
-	while (*p && isspace((int) *p))
-		p++;
+	while (*p && isspace((int) *p)) p++;
+
 	*ptr = p;
-
-	/* we got SOME form of output string, even if it is empty */
-	switch (quote) {
-	default:
-		rcode = T_BARE_WORD;
-		break;
-
-	case '\'':
-		rcode = T_SINGLE_QUOTED_STRING;
-		break;
-
-	case '"':
-		rcode = T_DOUBLE_QUOTED_STRING;
-		break;
-
-	case '`':
-		rcode = T_BACK_QUOTED_STRING;
-		break;
-	}
 
 	return rcode;
 }
