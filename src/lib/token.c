@@ -246,7 +246,6 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	char			*s;
 	char const		*p;
 	char			quote;
-	bool			end = false;
 	unsigned int		x;
 	FR_NAME_NUMBER const	*t;
 	FR_TOKEN rcode;
@@ -298,7 +297,6 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 	if (rcode != T_BARE_WORD) {
 		quote = *p;
-		end = false;
 		p++;
 	}
 	s = buf;
@@ -335,9 +333,9 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	Un-escaped quote character.  We're done.
 		 */
 		if (*p == quote) {
-			end = true;
 			p++;
-			break;
+			*s++ = 0;
+			goto done;
 		}
 
 		/*
@@ -402,7 +400,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 	*s++ = 0;
 
-	if (quote && !end) {
+	if (quote) {
 		fr_strerror_printf("Unterminated string");
 		return T_INVALID;
 	}
