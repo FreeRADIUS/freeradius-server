@@ -231,6 +231,33 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	s = buf;
 
 	while (*p && buflen-- > 1) {
+		/*
+		 *	We're looking for strings.  Stop on spaces, or
+		 *	(if given a token list), on a token, or on a
+		 *	comma.
+		 */
+		if (!quote) {
+			if (isspace((int) *p)) {
+				break;
+			}
+
+			if (tok) {
+				for (t = tokenlist; t->name; t++) {
+					if (TOKEN_MATCH(p, t->name)) {
+						*s++ = 0;
+						goto done;
+					}
+				}
+			}
+			if (*p == ',') break;
+
+			/*
+			 *	Copy the character over.
+			 */
+			*s++ = *p++;
+			continue;
+		}
+
 		if (unescape && quote && (*p == '\\')) {
 			p++;
 
@@ -282,27 +309,6 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 			end = true;
 			p++;
 			break;
-		}
-
-		/*
-		 *	We're looking for strings.  Stop on spaces, or
-		 *	(if given a token list), on a token, or on a
-		 *	comma.
-		 */
-		if (!quote) {
-			if (isspace((int) *p)) {
-				break;
-			}
-
-			if (tok) {
-				for (t = tokenlist; t->name; t++) {
-					if (TOKEN_MATCH(p, t->name)) {
-						*s++ = 0;
-						goto done;
-					}
-				}
-			}
-			if (*p == ',') break;
 		}
 		*s++ = *p++;
 	}
