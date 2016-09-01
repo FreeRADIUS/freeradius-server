@@ -2195,7 +2195,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef HAVE_OPENSSL_OCSP_H
 		if (my_ok && conf->ocsp_enable){
 			RDEBUG2("Starting OCSP Request");
-			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
+			if ((X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) ||
+			    !issuer_cert) {
 				RERROR("Couldn't get issuer_cert for %s", common_name);
 			} else {
 				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
