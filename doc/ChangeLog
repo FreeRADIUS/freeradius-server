@@ -7,6 +7,12 @@ FreeRADIUS 2.2.10 Wednesday 30 Sep 2015 17:00:00 EDT, urgency=medium
 	  in TLS-based EAP methods.
 	* Revert RedHat contributed bug which removes run-time checks
 	  for OpenSSL consistency.
+	* Allow OCSP responder URL to be later in the packet.
+	  Fix by Ean Pasternak.
+	* Catch empty subject and non-existent issuer cert in OCSP.
+	  Fix by Ean Pasternak.
+	* Allow non-FIPS for MD5.
+	  Fix by Ean Pasternak.
 
 FreeRADIUS 2.2.9 Wednesday 30 Sep 2015 17:00:00 EDT, urgency=medium
 	Feature improvements
