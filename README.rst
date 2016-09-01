@@ -2,6 +2,19 @@ The FreeRADIUS server
 =====================
 |BuildStatus|_
 
+0. VERSION 2 IS END OF LIFE
+---------------------------
+
+The version 2 branch of FreeRADIUS is officially end of life (EOL).
+We may push security fixes for safety reasons, but no more.
+
+i.e. **THERE WILL BE NO MORE RELEASES OF VERSION 2**.
+
+Anyone using version 2 is *strongly recommended* to ugprade to
+version 3.  Questions on the freeradius-users mailing list about
+version 2 will be answered with a recommendation to upgrade to
+version 3.
+
 1. INTRODUCTION
 ---------------
 
