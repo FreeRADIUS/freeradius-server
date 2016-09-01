@@ -62,6 +62,8 @@ static void P_hash(const EVP_MD *evp_md,
 
 	HMAC_CTX_init(&ctx_a);
 	HMAC_CTX_init(&ctx_out);
+	HMAC_CTX_set_flags(&ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+	HMAC_CTX_set_flags(&ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 	HMAC_Init_ex(&ctx_a, secret, secret_len, evp_md, NULL);
 	HMAC_Init_ex(&ctx_out, secret, secret_len, evp_md, NULL);
 

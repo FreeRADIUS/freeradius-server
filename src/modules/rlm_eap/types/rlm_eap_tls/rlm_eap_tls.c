@@ -862,6 +862,8 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			RDEBUG2("--> Starting OCSP Request");
 			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
 				radlog(L_ERR, "Error: Couldn't get issuer_cert for %s", common_name);
+			} else if (!issuer_cert && !subject[0]) {
+				radlog(L_ERR, "Error: Missing issuer_cert and subject for %s", common_name);
 			} else {
 				my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
 			}
