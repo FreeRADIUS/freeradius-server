@@ -240,14 +240,27 @@ certs:
 ######################################################################
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | gzip > $@
+freeradius-server-$(RADIUSD_VERSION_STRING).tar: .git
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) > $@
+ifneq "$(EXT_MODULES)" ""
+	rm -rf build/freeradius-server-$(RADIUSD_VERSION_STRING)
+	cd $(BUILD_DIR) && tar -xf ../$@
+	for x in $(subst _ext,,$(EXT_MODULES)); do \
+		cd ${top_srcdir}/$${x}_ext; \
+		git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/$$x/ $(BRANCH) | (cd ${top_srcdir}/$(BUILD_DIR) && tar -xf -); \
+	done
+	cd $(BUILD_DIR) && tar -cf ../$@ freeradius-server-$(RADIUSD_VERSION_STRING)
+endif
+
+
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: freeradius-server-$(RADIUSD_VERSION_STRING).tar
+	gzip < $^ > %@
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz
 	gpg --default-key aland@freeradius.org -b $<
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | bzip2 > $@
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius-server-$(RADIUSD_VERSION_STRING).tar
+	bzip2 < $^ > %@
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 	gpg --default-key aland@freeradius.org -b $<
