@@ -956,9 +956,9 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 *  signal handlers are installed or not.
 		 */
 		env = getenv("DEBUG");
-		if (!env || (strcmp(env, "no") == 0)) {
+		if (!env || (strcmp(env, "yes") == 0)) {
 			debug_state = DEBUG_STATE_NOT_ATTACHED;
-		} else if (!strcmp(env, "auto") || !strcmp(env, "yes")) {
+		} else if (strcmp(env, "auto") == 0) {
 			/*
 			 *  Figure out if we were started under a debugger
 			 */
