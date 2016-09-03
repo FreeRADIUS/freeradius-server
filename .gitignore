@@ -47,6 +47,9 @@ icon.png
 *.csr
 *.key
 
+# Archives
+freeradius-server-*tar*
+
 # Autoconf and libtool output
 build
 config.status
