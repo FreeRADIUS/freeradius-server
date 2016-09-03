@@ -499,7 +499,7 @@ extern fr_debug_state_t fr_debug_state;
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
-void		fr_store_debug_state(void);
+void		fr_debug_state_store(void);
 char const	*fr_debug_state_to_msg(fr_debug_state_t state);
 void		fr_debug_break(bool always);
 void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
