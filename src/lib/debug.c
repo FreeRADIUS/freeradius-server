@@ -88,7 +88,7 @@ static bool dump_core;					//!< Whether we should drop a core on fatal signals.
 
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
-fr_debug_state_t fr_debug_state = DEBUG_STATE_UNKNOWN;	//!< Whether we're attached to by a debugger.
+fr_debug_state_t fr_debug_state = DEBUGGER_STATE_UNKNOWN;	//!< Whether we're attached to by a debugger.
 
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit init_core_limit;
@@ -134,21 +134,21 @@ static int fr_get_debug_state(void)
 	current = cap_get_proc();
 	if (!current) {
 		fr_strerror_printf("Failed getting process capabilities: %s", fr_syserror(errno));
-		return DEBUG_STATE_UNKNOWN;
+		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	if (cap_get_flag(current, CAP_SYS_PTRACE, CAP_PERMITTED, &value) < 0) {
 		fr_strerror_printf("Failed getting permitted ptrace capability state: %s",
 				   fr_syserror(errno));
 		cap_free(current);
-		return DEBUG_STATE_UNKNOWN;
+		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	if ((value == CAP_SET) && (cap_get_flag(current, CAP_SYS_PTRACE, CAP_EFFECTIVE, &value) < 0)) {
 		fr_strerror_printf("Failed getting effective ptrace capability state: %s",
 				   fr_syserror(errno));
 		cap_free(current);
-		return DEBUG_STATE_UNKNOWN;
+		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	/*
@@ -158,25 +158,25 @@ static int fr_get_debug_state(void)
 		fr_strerror_printf("ptrace capability not set.  If debugger detection is required run as root or: "
 				   "setcap cap_sys_ptrace+ep <path_to_radiusd>");
 		cap_free(current);
-		return DEBUG_STATE_UNKNOWN_NO_PTRACE_CAP;
+		return DEBUGGER_STATE_UNKNOWN_NO_PTRACE_CAP;
 	}
 	cap_free(current);
 #endif
 
 	if (pipe(from_child) < 0) {
 		fr_strerror_printf("Error opening internal pipe: %s", fr_syserror(errno));
-		return DEBUG_STATE_UNKNOWN;
+		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	pid = fork();
 	if (pid == -1) {
 		fr_strerror_printf("Error forking: %s", fr_syserror(errno));
-		return DEBUG_STATE_UNKNOWN;
+		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	/* Child */
 	if (pid == 0) {
-		int8_t	ret = DEBUG_STATE_NOT_ATTACHED;
+		int8_t	ret = DEBUGGER_STATE_NOT_ATTACHED;
 		int	ppid = getppid();
 
 		/* Close parent's side */
@@ -204,7 +204,7 @@ static int fr_get_debug_state(void)
 			exit(0);
 		}
 
-		ret = DEBUG_STATE_ATTACHED;
+		ret = DEBUGGER_STATE_ATTACHED;
 		/* Tell the parent what happened */
 		if (write(from_child[1], &ret, sizeof(ret)) < 0) {
 			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
@@ -213,7 +213,7 @@ static int fr_get_debug_state(void)
 		exit(0);
 	/* Parent */
 	} else {
-		int8_t ret = DEBUG_STATE_UNKNOWN;
+		int8_t ret = DEBUGGER_STATE_UNKNOWN;
 
 		/*
 		 *	The child writes errno (reason) if pattach failed else 0.
@@ -238,7 +238,7 @@ static int fr_get_debug_state(void)
 {
 	fr_strerror_printf("PTRACE not available");
 
-	return DEBUG_STATE_UNKNOWN_NO_PTRACE;
+	return DEBUGGER_STATE_UNKNOWN_NO_PTRACE;
 }
 #endif
 
@@ -269,19 +269,19 @@ void fr_store_debug_state(void)
 char const *fr_debug_state_to_msg(fr_debug_state_t state)
 {
 	switch (state) {
-	case DEBUG_STATE_UNKNOWN_NO_PTRACE:
+	case DEBUGGER_STATE_UNKNOWN_NO_PTRACE:
 		return "Debug state unknown (ptrace functionality not available)";
 
-	case DEBUG_STATE_UNKNOWN_NO_PTRACE_CAP:
+	case DEBUGGER_STATE_UNKNOWN_NO_PTRACE_CAP:
 		return "Debug state unknown (cap_sys_ptrace capability not set)";
 
-	case DEBUG_STATE_UNKNOWN:
+	case DEBUGGER_STATE_UNKNOWN:
 		return "Debug state unknown";
 
-	case DEBUG_STATE_ATTACHED:
+	case DEBUGGER_STATE_ATTACHED:
 		return "Found debugger attached";
 
-	case DEBUG_STATE_NOT_ATTACHED:
+	case DEBUGGER_STATE_NOT_ATTACHED:
 		return "Debugger not attached";
 	}
 
@@ -300,7 +300,7 @@ void fr_debug_break(bool always)
 	if (always) raise(SIGTRAP);
 
 	if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
-	if (fr_debug_state == DEBUG_STATE_ATTACHED) {
+	if (fr_debug_state == DEBUGGER_STATE_ATTACHED) {
 		fprintf(stderr, "Debugger detected, raising SIGTRAP\n");
 		fflush(stderr);
 
@@ -654,7 +654,7 @@ NEVER_RETURNS void fr_fault(int sig)
 	 *	If something calls us directly we just raise the signal and let
 	 *	the debugger handle it how it wants.
 	 */
-	if (fr_debug_state == DEBUG_STATE_ATTACHED) {
+	if (fr_debug_state == DEBUGGER_STATE_ATTACHED) {
 		FR_FAULT_LOG("RAISING SIGNAL: %s", strsignal(sig));
 		raise(sig);
 		goto finish;
@@ -956,16 +956,16 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 *  signal handlers are installed or not.
 		 */
 		env = getenv("DEBUG");
-		if (!env || (strcmp(env, "yes") == 0)) {
-			debug_state = DEBUG_STATE_NOT_ATTACHED;
-		} else if (strcmp(env, "auto") == 0) {
+		if (env && (strcmp(env, "yes") == 0)) {
+			debug_state = DEBUGGER_STATE_NOT_ATTACHED;		/* i.e. enable signal handlers */
+		} else if (env && (strcmp(env, "auto") == 0)) {
 			/*
 			 *  Figure out if we were started under a debugger
 			 */
 			if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
 			debug_state = fr_debug_state;
 		} else {
-			debug_state = DEBUG_STATE_ATTACHED;
+			debug_state = DEBUGGER_STATE_ATTACHED;			/* i.e. disable signal handlers */
 		}
 
 		talloc_set_log_fn(_fr_talloc_log);
@@ -982,7 +982,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 			/* FALL-THROUGH */
 
-		case DEBUG_STATE_NOT_ATTACHED:
+		case DEBUGGER_STATE_NOT_ATTACHED:
 #ifdef SIGABRT
 			if (fr_set_signal(SIGABRT, fr_fault) < 0) return -1;
 
@@ -1003,7 +1003,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 #endif
 			break;
 
-		case DEBUG_STATE_ATTACHED:
+		case DEBUGGER_STATE_ATTACHED:
 			break;
 		}
 
