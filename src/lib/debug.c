@@ -246,7 +246,7 @@ static int fr_get_debug_state(void)
  *
  * @note sets the fr_debug_state global.
  */
-void fr_store_debug_state(void)
+void fr_debug_state_store(void)
 {
 	fr_debug_state = fr_get_debug_state();
 

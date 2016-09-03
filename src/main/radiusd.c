@@ -372,7 +372,7 @@ int main(int argc, char *argv[])
 	 *  so we need to check whether we can attach before calling those functions
 	 *  (in main_config_init()).
 	 */
-	fr_store_debug_state();
+	fr_debug_state_store();
 
 	/*
 	 *  Write the PID always if we're running as a daemon.
