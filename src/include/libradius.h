@@ -474,11 +474,11 @@ void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
 
 /* debug.c */
 typedef enum {
-	DEBUG_STATE_UNKNOWN_NO_PTRACE		= -3,	//!< We don't have ptrace so can't check.
-	DEBUG_STATE_UNKNOWN_NO_PTRACE_CAP	= -2,	//!< CAP_SYS_PTRACE not set for the process.
-	DEBUG_STATE_UNKNOWN			= -1,	//!< Unknown, likely fr_get_debug_state() not called yet.
-	DEBUG_STATE_NOT_ATTACHED		= 0,	//!< We can attach, so a debugger must not be.
-	DEBUG_STATE_ATTACHED			= 1	//!< We can't attach, it's likely a debugger is already tracing.
+	DEBUGGER_STATE_UNKNOWN_NO_PTRACE		= -3,	//!< We don't have ptrace so can't check.
+	DEBUGGER_STATE_UNKNOWN_NO_PTRACE_CAP	= -2,	//!< CAP_SYS_PTRACE not set for the process.
+	DEBUGGER_STATE_UNKNOWN			= -1,	//!< Unknown, likely fr_get_debug_state() not called yet.
+	DEBUGGER_STATE_NOT_ATTACHED		= 0,	//!< We can attach, so a debugger must not be.
+	DEBUGGER_STATE_ATTACHED			= 1	//!< We can't attach, it's likely a debugger is already tracing.
 } fr_debug_state_t;
 
 #define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)

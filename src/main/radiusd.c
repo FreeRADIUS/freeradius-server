@@ -144,6 +144,11 @@ int main(int argc, char *argv[])
 	default_log.fd = -1;
 	main_config.log_file = NULL;
 
+	/*
+	 *  Set the panic action and enable other debugging facilities
+	 */
+	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:Mn:p:PstvxX")) != EOF) {
 
@@ -309,6 +314,16 @@ int main(int argc, char *argv[])
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init() < 0) exit(EXIT_FAILURE);
+
+	/*
+	 *  Set panic_action from the main config if one wasn't specified in the
+	 *  environment.
+	 */
+	if (main_config.panic_action && !getenv("PANIC_ACTION") &&
+	    (fr_fault_setup(main_config.panic_action, argv[0]) < 0)) {
+		fr_perror("Failed configuring panic action: %s", main_config.name);
+		fr_exit(EXIT_FAILURE);
+	}
 
 	/*
 	 *  This is very useful in figuring out why the panic_action didn't fire.
