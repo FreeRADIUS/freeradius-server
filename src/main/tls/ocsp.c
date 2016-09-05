@@ -274,7 +274,8 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		goto error;
 	}
 
-	if (X509_STORE_CTX_get1_issuer(&issuer_cert, server_store_ctx, cert) != 1) {
+	if ((X509_STORE_CTX_get1_issuer(&issuer_cert, server_store_ctx, cert) != 1) ||
+	    !issuer_cert) {
 		tls_log_error(request, "Can't get server certificate's issue");
 		goto error;
 	}
