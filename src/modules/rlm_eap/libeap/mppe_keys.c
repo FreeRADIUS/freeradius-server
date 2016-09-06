@@ -86,6 +86,49 @@ static void P_hash(EVP_MD const *evp_md,
 	memset(a, 0, sizeof(a));
 }
 
+/*  EAP-FAST Pseudo-Random Function (T-PRF): RFC 4851, Section 5.5 */
+void T_PRF(unsigned char const *secret, unsigned int secret_len,
+	   char const *prf_label,
+	   unsigned char const *seed,  unsigned int seed_len,
+	   unsigned char *out, unsigned int out_len)
+{
+	size_t prf_size = strlen(prf_label);
+	size_t pos;
+	uint8_t	*buf;
+
+	if (prf_size > 128) prf_size = 128;
+	prf_size++;	/* include trailing zero */
+
+	buf = talloc_size(NULL, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
+
+	memcpy(buf + SHA1_DIGEST_LENGTH, prf_label, prf_size);
+	if (seed) memcpy(buf + SHA1_DIGEST_LENGTH + prf_size, seed, seed_len);
+	*(uint16_t *)&buf[SHA1_DIGEST_LENGTH + prf_size + seed_len] = htons(out_len);
+	buf[SHA1_DIGEST_LENGTH + prf_size + seed_len + 2] = 1;
+
+	// T1 is just the seed
+	fr_hmac_sha1(buf, buf + SHA1_DIGEST_LENGTH, prf_size + seed_len + 2 + 1, secret, secret_len);
+
+#define MIN(a,b) (((a)>(b)) ? (b) : (a))
+	memcpy(out, buf, MIN(out_len, SHA1_DIGEST_LENGTH));
+
+	pos = SHA1_DIGEST_LENGTH;
+	while (pos < out_len) {
+		buf[SHA1_DIGEST_LENGTH + prf_size + seed_len + 2]++;
+
+		fr_hmac_sha1(buf, buf, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1, secret, secret_len);
+		memcpy(&out[pos], buf, MIN(out_len - pos, SHA1_DIGEST_LENGTH));
+
+		if (out_len - pos <= SHA1_DIGEST_LENGTH)
+			break;
+
+		pos += SHA1_DIGEST_LENGTH;
+	}
+
+	memset(buf, 0, SHA1_DIGEST_LENGTH + prf_size + seed_len + 2 + 1);
+	talloc_free(buf);
+}
+
 static void PRF(unsigned char const *secret, unsigned int secret_len,
 		unsigned char const *seed,   unsigned int seed_len,
 		unsigned char *out, unsigned char *buf, unsigned int out_len)
