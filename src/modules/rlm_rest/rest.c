@@ -2048,8 +2048,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 		break;
 
 	default:
-		rad_assert(0);
-		break;
+		RERROR("Using unknown HTTP method %d", method);
+		return -1;
 	};
 
 	/*
