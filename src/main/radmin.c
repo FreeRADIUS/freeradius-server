@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <pwd.h>
 #include <grp.h>
+#include <fcntl.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -130,6 +131,14 @@ main_config_t main_config;
 static bool echo = false;
 static char const *secret = "testing123";
 static bool unbuffered = false;
+static fr_log_t radmin_log = {
+	.dst = L_DST_NULL,
+	.colourise = false,
+	.timestamp = L_TIMESTAMP_ON,
+	.fd = -1,
+	.file = NULL,
+};
+
 
 static void NEVER_RETURNS usage(int status)
 {
@@ -142,6 +151,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -f socket_file  Open socket_file directly, without reading radius.conf\n");
 	fprintf(output, "  -h              Print usage help information.\n");
 	fprintf(output, "  -i input_file   Read commands from 'input_file'.\n");
+	fprintf(output, "  -l <log_file>   Commands which are executed will be written to this file.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	fprintf(output, "  -q              Reduce output verbosity\n");
 	fprintf(output, "  -x              Increase output verbosity\n");
@@ -468,6 +478,10 @@ int main(int argc, char **argv)
 			quiet = true;
 			break;
 
+		case 'l':
+			radmin_log.file = optarg;
+			break;
+
 		case 'n':
 			name = optarg;
 			break;
@@ -619,6 +633,34 @@ int main(int argc, char **argv)
 		if (!file) {
 			fprintf(stderr, "%s: Could not find control socket in %s\n", progname, buffer);
 			exit(1);
+		}
+
+		/*
+		 *	Log the commands we've run.
+		 */
+		if (!radmin_log.file) {
+			subcs = cf_section_sub_find(cs, "log");
+			if (subcs) {
+				CONF_PAIR *cp = cf_pair_find(subcs, "radmin");
+				if (cp) {
+					radmin_log.file = cf_pair_value(cp);
+
+					if (!radmin_log.file) {
+						fprintf(stderr, "%s: Invalid value for 'radmin' log destination", progname);
+						exit(1);
+					}
+				}
+			}
+		}
+
+		if (radmin_log.file) {
+			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT);
+			if (radmin_log.fd < 0) {
+				fprintf(stderr, "%s: Failed opening %s: %s\n", progname, radmin_log.file, fr_syserror(errno));
+				exit(1);
+			}
+
+			radmin_log.dst = L_DST_FILES;
 		}
 	}
 
@@ -792,6 +834,14 @@ int main(int argc, char **argv)
 		}
 
 		retries = 0;
+
+		/*
+		 *	If required, log commands to a radmin log file.
+		 */
+		if (radmin_log.dst == L_DST_FILES) {
+			radlog(&radmin_log, L_INFO, "%s", line);
+		}
+
 	retry:
 		len = run_command(sockfd, line, buffer, sizeof(buffer));
 		if (len < 0) {
@@ -818,6 +868,8 @@ int main(int argc, char **argv)
 	fprintf(stdout, "\n");
 
 	if (inputfp != stdin) fclose(inputfp);
+
+	if (radmin_log.dst == L_DST_FILES) close(radmin_log.fd);
 
 	talloc_free(dict);
 

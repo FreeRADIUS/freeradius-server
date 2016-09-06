@@ -13,6 +13,8 @@ radmin - FreeRADIUS Administration tool
 .RB [ \-h ]
 .RB [ \-i
 .IR input_file ]
+.RB [ \-l
+.IR log_file ]
 .RB [ \-n
 .IR name ]
 .RB [ \-q ]
@@ -45,6 +47,9 @@ Print usage help information.
 .IP "\-i \fIinput_file\fP"
 Reads input from the specified file.  If not specified, stdin is used.
 This also sets "-q".
+.IP "\-l \fIlog_file\fP"
+Writes the commands which are executed to this log file.  This
+functionality is off by default.
 .IP "\-n \fImname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
 .IP \-q
