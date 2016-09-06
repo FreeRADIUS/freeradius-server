@@ -271,13 +271,17 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
 		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 
-		if ((!PyUnicode_CheckExact(pStr1)) || (!PyUnicode_CheckExact(pStr2))) {
-			ERROR("%s - Tuple element %d of %s must be as (str, str)",
+		if (PyUnicode_CheckExact(pStr1)  && PyUnicode_CheckExact(pStr2)) {
+			s1 = PyUnicode_AsUTF8(pStr1);
+			s2 = PyUnicode_AsUTF8(pStr2);
+		}else if (PyUnicode_CheckExact(pStr1)  && PyBytes_CheckExact(pStr2)) {
+			s1 = PyUnicode_AsUTF8(pStr1);
+			s2 = PyBytes_AsString(pStr2);
+		}else{
+			ERROR("%s - Tuple element %d of %s must be as (str, str) or (str, bytes)",
 			      funcname, i, list_name);
 			continue;
 		}
-		s1 = PyUnicode_AsUTF8(pStr1);
-		s2 = PyUnicode_AsUTF8(pStr2);
 
 		if (pairsize == 3) {
 			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
@@ -317,12 +321,18 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		}
 
 		vp->op = op;
-		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
-			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens_table, op, "="), s2);
-		} else {
+		if(PyBytes_CheckExact(pStr2)){
+			fr_pair_value_memcpy(vp, (uint8_t*)s2, PyBytes_Size(pStr2));
 			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
 			      fr_int2str(fr_tokens_table, op, "="), s2);
+		}else{
+			if (fr_pair_value_from_str(vp, s2, -1) < 0) {
+				DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
+				      fr_int2str(fr_tokens_table, op, "="), s2);
+			} else {
+				DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
+				      fr_int2str(fr_tokens_table, op, "="), s2);
+			}
 		}
 
 		radius_pairmove(current, vps, vp, false);
@@ -353,72 +363,71 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	if (!attribute) return -1;
 
 	PyTuple_SET_ITEM(pp, 0, attribute);
-
 	switch (vp->da->type) {
-	case PW_TYPE_STRING:
-		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
-		break;
-
-	case PW_TYPE_OCTETS:
-		value = PyUnicode_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
-		break;
-
-	case PW_TYPE_INTEGER:
-		value = PyLong_FromUnsignedLong(vp->vp_integer);
-		break;
-
-	case PW_TYPE_BYTE:
-		value = PyLong_FromUnsignedLong(vp->vp_byte);
-		break;
-
-	case PW_TYPE_SHORT:
-		value =  PyLong_FromUnsignedLong(vp->vp_short);
-		break;
-
-	case PW_TYPE_SIGNED:
-		value = PyLong_FromLong(vp->vp_signed);
-		break;
-
-	case PW_TYPE_INTEGER64:
-		value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
-		break;
-
-	case PW_TYPE_SIZE:
-		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
-		break;
-
-	case PW_TYPE_DECIMAL:
-		value = PyFloat_FromDouble(vp->vp_decimal);
-		break;
-
-	case PW_TYPE_BOOLEAN:
-		value = PyBool_FromLong(vp->vp_bool);
-		break;
-
-	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_DATE:
-	case PW_TYPE_ABINARY:
-	case PW_TYPE_IFID:
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-	case PW_TYPE_ETHERNET:
-	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_COMBO_IP_PREFIX:
-	{
-		size_t len;
-		char buffer[256];
-
-		len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
-		value = PyUnicode_FromStringAndSize(buffer, len);
-	}
-		break;
-
-	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_BAD:
-		rad_assert(0);
-		return -1;
+		case PW_TYPE_STRING:
+			value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
+			break;
+	
+		case PW_TYPE_OCTETS:
+			value = PyBytes_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
+			break;
+	
+		case PW_TYPE_INTEGER:
+			value = PyLong_FromUnsignedLong(vp->vp_integer);
+			break;
+	
+		case PW_TYPE_BYTE:
+			value = PyLong_FromUnsignedLong(vp->vp_byte);
+			break;
+	
+		case PW_TYPE_SHORT:
+			value = PyLong_FromUnsignedLong(vp->vp_short);
+			break;
+	
+		case PW_TYPE_SIGNED:
+			value = PyLong_FromLong(vp->vp_signed);
+			break;
+	
+		case PW_TYPE_INTEGER64:
+			value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
+			break;
+	
+		case PW_TYPE_SIZE:
+			value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
+			break;
+	
+		case PW_TYPE_DECIMAL:
+			value = PyFloat_FromDouble(vp->vp_decimal);
+			break;
+	
+		case PW_TYPE_BOOLEAN:
+			value = PyBool_FromLong(vp->vp_bool);
+			break;
+	
+		case PW_TYPE_TIMEVAL:
+		case PW_TYPE_IPV4_ADDR:
+		case PW_TYPE_DATE:
+		case PW_TYPE_ABINARY:
+		case PW_TYPE_IFID:
+		case PW_TYPE_IPV6_ADDR:
+		case PW_TYPE_IPV6_PREFIX:
+		case PW_TYPE_ETHERNET:
+		case PW_TYPE_COMBO_IP_ADDR:
+		case PW_TYPE_IPV4_PREFIX:
+		case PW_TYPE_COMBO_IP_PREFIX:
+		{
+			size_t len;
+			char buffer[256];
+	
+			len = fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
+			value = PyUnicode_FromStringAndSize(buffer, len);
+		}
+			break;
+	
+		case PW_TYPE_STRUCTURAL:
+		case PW_TYPE_BAD:
+			rad_assert(0);
+			return -1;
 	}
 
 	if (value == NULL) return -1;
@@ -439,7 +448,6 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 
 	/* Default return value is "OK, continue" */
 	ret = RLM_MODULE_OK;
-WARN("set default ret to RLM_MODULE_OK");
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
@@ -457,7 +465,6 @@ WARN("set default ret to RLM_MODULE_OK");
                           
                      }   
 	}
-WARN("tuplelen is %i",tuplelen);
 
 	if (tuplelen == 0) {
 		Py_INCREF(Py_None);
@@ -466,7 +473,6 @@ WARN("tuplelen is %i",tuplelen);
 		int i = 0;
 		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
 			ret = RLM_MODULE_FAIL;
-WARN("Could not create outer tuple");
 			goto finish;
 		}
 
@@ -478,7 +484,6 @@ WARN("Could not create outer tuple");
 			/* The inside tuple has two only: */
 			if ((pp = PyTuple_New(2)) == NULL) {
 				ret = RLM_MODULE_FAIL;
-WARN("Could not create inner tuple");
 				goto finish;
 			}
 
@@ -493,14 +498,14 @@ WARN("Could not create inner tuple");
 		}
 	}
 
-	/* Call Python function. */
-WARN("Calling python function %s!",funcname);
-	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
-WARN("Returned from python function %s!",funcname);
-	if (!pRet) {
-WARN("PyObject_CallFunctionObjArgs failed");
 		if(PyErr_Occurred()){
-WARN("Error occured!");
+			PyErr_PrintEx(0);
+			python_error_log();
+		}
+	/* Call Python function. */
+	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	if (!pRet) {
+		if(PyErr_Occurred()){
 			PyErr_PrintEx(0);
 		python_error_log();
 			//TODO: Show actual error
@@ -510,9 +515,8 @@ WARN("Error occured!");
 	}
 
 	if (!request) {
-		// check return code at module instantiation time
+		/* check return code at module instantiation time */
 		if (PyLong_CheckExact(pRet)) ret = PyLong_AsLong(pRet);
-WARN("Python function returned integer %i, COULD be RLM_* code, but no tuple",ret);
 		goto finish;
 	}
 
@@ -577,8 +581,7 @@ finish:
 
 static void python_interpreter_free(PyThreadState *interp)
 {
-	PyEval_AcquireLock();
-	PyThreadState_Swap(interp);
+	PyEval_RestoreThread(interp);
 	Py_EndInterpreter(interp);
 	PyEval_ReleaseLock();
 }
@@ -701,7 +704,7 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObjec
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname);
-	PyEval_SaveThread();
+	this_thread->state = PyEval_SaveThread();
 
 	return ret;
 }
@@ -873,6 +876,14 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
 			PyMem_RawFree(name);
 		}
+#elif PY_VERSION_HEX > 0x0300000
+		{
+			wchar_t *name;
+
+			MEM(name = _Py_char2wchar(main_config.name, NULL));
+			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+			PyMem_RawFree(name);
+		}
 #else
 		{
 			char *name;
@@ -920,9 +931,21 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 #if PY_VERSION_HEX > 0x03050000
 			{
 				wchar_t *path;
+				PyObject* sys = PyImport_ImportModule("sys");
+				PyObject* sys_path = PyObject_GetAttrString(sys,"path");
 
 				MEM(path = Py_DecodeLocale(inst->python_path, NULL));
-				PySys_SetPath(path);
+				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
+				PyMem_RawFree(path);
+			}
+#elif PY_VERSION_HEX > 0x03000000
+			{
+				wchar_t *path;
+				PyObject* sys = PyImport_ImportModule("sys");
+				PyObject* sys_path = PyObject_GetAttrString(sys,"path");
+
+				MEM(path = _Py_char2wchar(inst->python_path, NULL));
+				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
 				PyMem_RawFree(path);
 			}
 #else
@@ -930,7 +953,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 				char *path;
 
 				path = talloc_strdup(NULL, inst->python_path);
-				PySys_SetPath(path);
+				Py_SetPath(path);
 				talloc_free(path);
 			}
 #endif
