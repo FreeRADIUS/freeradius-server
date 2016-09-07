@@ -195,7 +195,8 @@ static CONF_PARSER latency_aware_routing_config[] = {
 	{ FR_CONF_OFFSET("scale", PW_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_scale), .dflt = "0.1" },
 	{ FR_CONF_OFFSET("retry_period", PW_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_retry_period), .dflt = "10" },
 	{ FR_CONF_OFFSET("update_rate", PW_TYPE_TIMEVAL, rlm_sql_cassandra_t, lar_update_rate), .dflt = "0.1" },
-	{ FR_CONF_OFFSET("min_measured", PW_TYPE_INTEGER64, rlm_sql_cassandra_t, lar_min_measured), .dflt = "50" }
+	{ FR_CONF_OFFSET("min_measured", PW_TYPE_INTEGER64, rlm_sql_cassandra_t, lar_min_measured), .dflt = "50" },
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER tls_config[] = {
