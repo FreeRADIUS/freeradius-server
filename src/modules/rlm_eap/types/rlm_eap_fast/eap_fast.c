@@ -830,7 +830,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 * Call authentication recursively, which will
 	 * do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, fake, eap_session, t->virtual_server);
+	rad_virtual_server(fake);
 
 	/*
 	 * Decide what to do with the reply.
