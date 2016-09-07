@@ -4906,7 +4906,15 @@ static int event_new_fd(rad_listen_t *this)
 
 			/*
 			 *	EOL all requests using this socket.
+			 *
+			 *	Except for control sockets, which
+			 *	don't have any requests associated
+			 *	with them.
 			 */
+#ifdef WITH_COMMAND_SOCKET
+			if (this->type != RAD_LISTEN_COMMAND)
+#endif
+
 			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
 		}
 
