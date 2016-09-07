@@ -200,6 +200,7 @@ typedef struct eap_fast_keyblock_t {
 
 typedef struct eap_fast_tunnel_t {
 	VALUE_PAIR		*username;
+	VALUE_PAIR	*state;
 	VALUE_PAIR	*accept_vps;
 	bool		copy_request_to_tunnel;
 	bool		use_tunneled_reply;
