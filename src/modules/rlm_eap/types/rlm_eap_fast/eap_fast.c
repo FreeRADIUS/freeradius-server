@@ -603,23 +603,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 	switch (reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Got tunneled Access-Accept");
-		/*
-		 *	Always delete MPPE keys & encryption policy
-		 *	from the tunneled reply.  These never get sent
-		 *	back to the user.
-		 */
-		fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
-
 		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
-		/*
-		 * Copy what we need into the TTLS tunnel and leave
-		 * the rest to be cleaned up.
-		 */
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
 			switch (vp->da->vendor) {
 			case VENDORPEC_MICROSOFT:
@@ -636,10 +622,28 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
                 case PW_MSCHAP2_SUCCESS:
 					RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
 					rcode = RLM_MODULE_HANDLED;
-					t->authenticated = true;
-                    /* Look at copying the tunnel reply
-                    fr_pair_list_mcopy_by_num(t, &tunnel_vps, &reply->vps, 0, 0, TAG_ANY);
-                    */
+                    if (t->use_tunneled_reply) {
+                        t->authenticated = true;
+                        /*
+                         *	Clean up the tunneled reply.
+                         */
+                        fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
+                        fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+                        fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+
+                        /*
+                         *	Delete MPPE keys & encryption policy.  We don't
+                         *	want these here.
+                         */
+                        fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+                        fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+                        fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+                        fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+
+                        fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
+                        fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+                        rad_assert(!reply->vps);
+                    }
                     break;
 
                 default:
