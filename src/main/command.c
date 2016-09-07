@@ -593,17 +593,6 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 }
 #endif
 
-static void command_close_socket(rad_listen_t *this)
-{
-	this->status = RAD_LISTEN_STATUS_EOL;
-
-	/*
-	 *	This removes the socket from the event fd, so no one
-	 *	will be calling us any more.
-	 */
-	radius_update_listener(this);
-}
-
 /*
  *	Turn off all debugging.  But don't touch the debug condition.
  */
@@ -614,6 +603,23 @@ static void command_debug_off(void)
 	debug_log.cookie = NULL;
 	debug_log.cookie_write = NULL;
 }
+
+
+static void command_close_socket(rad_listen_t *this)
+{
+	this->status = RAD_LISTEN_STATUS_EOL;
+
+	if (debug_log.cookie == this) {
+		command_debug_off();
+	}
+
+	/*
+	 *	This removes the socket from the event fd, so no one
+	 *	will be calling us any more.
+	 */
+	radius_update_listener(this);
+}
+
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
 static pthread_mutex_t debug_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -642,7 +648,6 @@ static int command_socket_write(void *cookie, char const *buffer, int len)
 	pthread_mutex_unlock(&debug_mutex);
 
 	if (r <= 0) {
-		command_debug_off();
 		command_close_socket(listener);
 	}
 
