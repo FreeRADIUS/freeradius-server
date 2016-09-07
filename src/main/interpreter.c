@@ -1498,7 +1498,21 @@ static void unlang_timer_hook(void *ctx, UNUSED struct timeval *now)
 	request->process(request, FR_ACTION_TIMER);
 }
 
+static int _unlang_delay_free(fr_event_t *ev)
+{
+	REQUEST *request = (REQUEST *) (((char *)ev) - offsetof(REQUEST, ev));
+
+	(void) fr_event_delete(request->el, &request->ev);
+
+	return 0;
+}
+
+
 /** Delay processing of a request for a time
+ *
+ *  This function MUST NOT be called during normal processing.  It is
+ *  only for the final request cleanup, e.g. reject delay or cleanup
+ *  delay.
  *
  * @param[in] request		The current request.
  * @param[in] delay 		processing by.
@@ -1520,6 +1534,8 @@ int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t p
 		RDEBUG("Failed inserting event");
 		return -1;
 	}
+
+	talloc_set_destructor(request->ev, _unlang_delay_free);
 
 	request->process = process;
 	return 0;
