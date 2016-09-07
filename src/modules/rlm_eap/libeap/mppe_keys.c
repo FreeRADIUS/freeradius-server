@@ -29,7 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10001000L
 /*
  * TLS PRF from RFC 2246
  */
@@ -145,7 +144,6 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 		out[i] ^= buf[i];
 	}
 }
-#endif
 
 #define EAPTLS_MPPE_KEY_LEN     32
 
@@ -256,3 +254,28 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	vp->vp_octets = p;
 	fr_pair_add(&packet->vps, vp);
 }
+
+/*
+ *	Same as before, but for EAP-FAST the order of {server,client}_random is flipped
+ */
+void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
+{
+	uint8_t seed[128 + 2*SSL3_RANDOM_SIZE];
+	uint8_t *p = seed;
+	size_t len;
+
+	len = strlen(prf_label);
+	if (len > 128) len = 128;
+
+	memcpy(p, prf_label, len);
+	p += len;
+	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+
+	PRF(s->session->master_key, s->session->master_key_length,
+	    seed, p - seed, buffer, scratch, size);
+}
+
+
