@@ -205,7 +205,7 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 *	Section gets modified, so we need our own copy.
 	 */
 	MEM(section = talloc(request, rlm_rest_section_t));
-	memcpy(&section, &inst->xlat, sizeof(section));
+	memcpy(section, &inst->xlat, sizeof(*section));
 
 	rad_assert(fmt);
 
