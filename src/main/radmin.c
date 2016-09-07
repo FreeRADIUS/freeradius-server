@@ -654,7 +654,7 @@ int main(int argc, char **argv)
 		}
 
 		if (radmin_log.file) {
-			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT);
+			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
 			if (radmin_log.fd < 0) {
 				fprintf(stderr, "%s: Failed opening %s: %s\n", progname, radmin_log.file, fr_syserror(errno));
 				exit(1);
