@@ -671,32 +671,34 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
+		/*
+		 *	Keep the State attribute, if necessary.
+		 *
+		 *	Get rid of the old State, too.
+		 */
+		fr_pair_list_free(&t->state);
+		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
-		 * Copy what we need into the TTLS tunnel and leave
-		 * the rest to be cleaned up.
+		 *	We should really be a bit smarter about this,
+		 *	and move over only those attributes which
+		 *	are relevant to the authentication request,
+		 *	but that's a lot more work, and this "dumb"
+		 *	method works in 99.9% of the situations.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			switch (vp->da->vendor) {
-			case 0:
-				switch (vp->da->attr) {
-				case PW_EAP_MESSAGE:
-				case PW_REPLY_MESSAGE:
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-					break;
+		vp = NULL;
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
-				default:
-					break;
+		/*
+		 *	There MUST be a Reply-Message in the challenge,
+		 *	which we tunnel back to the client.
+		 *
+		 *	If there isn't one in the reply VP's, then
+		 *	we MUST create one, with an empty string as
+		 *	it's value.
+		 */
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
 
-				}
-
-			default:
-				continue;
-			}
-		}
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -1090,7 +1092,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 	/*
 	 * See if the tunneled data is well formed.
 	 */
-	if (!eap_fast_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
+	if (!eap_fast_verify(request, tls_session, data, data_len)) return RLM_MODULE_REJECT;
 
 	if (t->stage == TLS_SESSION_HANDSHAKE) {
 		rad_assert(t->mode == EAP_FAST_UNKNOWN);
@@ -1132,7 +1134,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	fr_pair_list_free(&fast_vps);
 
-	if (code == PW_CODE_ACCESS_REJECT) return PW_CODE_ACCESS_REJECT;
+	if (code == RLM_MODULE_REJECT) return RLM_MODULE_REJECT;
 
 	switch (t->stage) {
 	case AUTHENTICATION:
@@ -1156,7 +1158,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		eap_fast_append_result(tls_session, code);
 
-		if (code == PW_CODE_ACCESS_REJECT)
+		if (code == RLM_MODULE_REJECT)
 			break;
 
 		if (t->pac.send) {
@@ -1174,7 +1176,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		 */
 		if ((t->pac.type && t->pac.expired) || t->mode == EAP_FAST_PROVISIONING_ANON) {
 			RDEBUG("Rejecting expired PAC or unauthenticated provisioning");
-			code = PW_CODE_ACCESS_REJECT;
+			code = RLM_MODULE_REJECT;
 			break;
 		}
 
@@ -1191,7 +1193,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		break;
 	default:
 		RERROR("no idea! %d", t->stage);
-		code = PW_CODE_ACCESS_REJECT;
+		code = RLM_MODULE_REJECT;
 	}
 
 	return code;
