@@ -2994,7 +2994,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	unlang_ctx.component = component;
 	unlang_ctx.name = comp2str[component];
 
-	if (component == MOD_AUTHENTICATE) {
+	if (component != MOD_AUTHENTICATE) {
 		unlang_ctx.actions = &defaultactions[component];
 	} else {
 		unlang_ctx.actions = &authtype_actions;
