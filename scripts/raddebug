@@ -77,7 +77,7 @@ do
 done
 shift $(($OPTIND - 1))
 
-radmin="./build/bin/local/radmin $extra"
+radmin="radmin $extra"
 
 #
 #  Print the output, and wait for "timeout".  Then, stop printing.
