@@ -3057,6 +3057,14 @@ do_home:
 
 		request->server = old_server;
 	} else {
+		char buffer[128];
+
+		RDEBUG2("Starting proxy to home server %s port %d",
+			inet_ntop(request->proxy->dst_ipaddr.af,
+				  &request->proxy->dst_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)),
+			request->proxy->dst_port);
+
 		rcode = process_pre_proxy(pre_proxy_type, request);
 	}
 
