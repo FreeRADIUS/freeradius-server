@@ -199,33 +199,51 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	rad_assert(*out == NULL);
 
 	/* There are no configurable parameters other than the URI */
-	rlm_rest_section_t	section;
+	rlm_rest_section_t	*section;
 
 	/*
 	 *	Section gets modified, so we need our own copy.
 	 */
+	MEM(section = talloc(request, rlm_rest_section_t));
 	memcpy(&section, &inst->xlat, sizeof(section));
 
 	rad_assert(fmt);
 
 	RDEBUG("Expanding URI components");
 
-	handle = fr_connection_get(inst->pool, request);
-	if (!handle) return -1;
-
 	/*
 	 *  Extract the method from the start of the format string (if there is one)
 	 */
 	method = fr_substr2int(http_method_table, p, HTTP_METHOD_UNKNOWN, -1);
 	if (method != HTTP_METHOD_UNKNOWN) {
-		section.method = method;
+		section->method = method;
 		p += strlen(http_method_table[method].name);
+	/*
+	 *  If the method is unknown, it's either a URL or a verb
+	 */
+	} else {
+		for (q = p; (*q != ' ') && (*q != '\0') && isalpha(*q); q++);
+
+		/*
+		 *	If the first non-alpha char was a space,
+		 *	then assume this is a verb.
+		 */
+		if ((*q == ' ') && (q != p)) {
+			section->method = HTTP_METHOD_CUSTOM;
+			MEM(section->method_str = talloc_bstrndup(section, p, q - p));
+			p = q;
+		} else {
+			section->method = HTTP_METHOD_GET;
+		}
 	}
 
 	/*
 	 *  Trim whitespace
 	 */
 	while (isspace(*p) && p++);
+
+	handle = fr_connection_get(inst->pool, request);
+	if (!handle) return -1;
 
 	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
@@ -242,11 +260,14 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 */
 	q = strchr(p, ' ');
 	if (q && (*++q != '\0')) {
-		section.body = HTTP_BODY_CUSTOM_LITERAL;
-		section.data = q;
+		section->body = HTTP_BODY_CUSTOM_LITERAL;
+		section->data = q;
 	}
 
-	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section.method, NULL), uri);
+	RDEBUG("Sending HTTP %s to \"%s\"",
+	       (section->method == HTTP_METHOD_CUSTOM) ?
+	       	section->method_str : fr_int2str(http_method_table, section->method, NULL),
+	       uri);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -254,8 +275,7 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, &section, request, handle, section.method, section.body,
-				  uri, NULL, NULL);
+	ret = rest_request_config(mod_inst, section, request, handle, section->method, section->body, uri, NULL, NULL);
 	talloc_free(uri);
 	if (ret < 0) {
 		slen = -1;
@@ -266,13 +286,13 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
-	ret = rest_request_perform(mod_inst, &section, request, handle);
+	ret = rest_request_perform(mod_inst, section, request, handle);
 	if (ret < 0) {
 		slen = -1;
 		goto finish;
 	}
 
-	if (section.tls_extract_cert_attrs) rest_response_certinfo(mod_inst, &section, request, handle);
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) return -1;
 
@@ -313,9 +333,11 @@ error:
 	}
 
 finish:
-	rlm_rest_cleanup(mod_inst, &section, handle);
+	rlm_rest_cleanup(mod_inst, section, handle);
 
 	fr_connection_release(inst->pool, request, handle);
+
+	talloc_free(section);
 
 	return slen;
 }
