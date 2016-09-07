@@ -240,6 +240,7 @@ certs:
 ######################################################################
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
+.PHONY: freeradius-server-$(RADIUSD_VERSION_STRING).tar
 freeradius-server-$(RADIUSD_VERSION_STRING).tar: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) > $@
 ifneq "$(EXT_MODULES)" ""
@@ -251,7 +252,6 @@ ifneq "$(EXT_MODULES)" ""
 	done
 	cd $(BUILD_DIR) && tar -cf ../$@ freeradius-server-$(RADIUSD_VERSION_STRING)
 endif
-
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: freeradius-server-$(RADIUSD_VERSION_STRING).tar
 	gzip < $^ > $@
