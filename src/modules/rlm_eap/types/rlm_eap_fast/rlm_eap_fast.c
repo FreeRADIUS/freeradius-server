@@ -436,25 +436,32 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	rcode = eap_fast_process(handler, tls_session);
 
 	switch (rcode) {
-	case PW_CODE_ACCESS_REJECT:
+	case RLM_MODULE_REJECT:
 		eaptls_fail(handler, 0);
 		return 0;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
-	case PW_CODE_ACCESS_CHALLENGE:
-		tls_handshake_send(request, tls_session);
+	case RLM_MODULE_HANDLED:
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-	case PW_CODE_ACCESS_ACCEPT:
+	case RLM_MODULE_OK:
 		RDEBUG("Note the missing PRF label warning below is harmless, ignore it");
-		if (eaptls_success(handler, 0) < 0) return 0;
-		return 1;
+		if (t->accept_vps) {
+			RDEBUG2("Using saved attributes from the original Access-Accept");
+			rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
+			fr_pair_list_mcopy_by_num(handler->request->reply,
+				  &handler->request->reply->vps,
+				  &t->accept_vps, 0, 0, TAG_ANY);
+		} else if (t->use_tunneled_reply) {
+			RDEBUG2("No saved attributes in the original Access-Accept");
+		}
+		return eaptls_success(handler, 0);
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -462,7 +469,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	that the request now has a "proxy" packet, and
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
-	case PW_CODE_STATUS_CLIENT:
+	case RLM_MODULE_UPDATED:
 #ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
 #endif
