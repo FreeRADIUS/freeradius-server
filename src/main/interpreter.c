@@ -85,7 +85,7 @@ static void unlang_pop(unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame, *next;
 
-	rad_assert(stack->depth > 0);
+	rad_assert(stack->depth > 1);
 
 	stack->depth -= 1;
 
@@ -292,7 +292,6 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 		 *	Find a resumption child and run it.
 		 */
 	}
-
 
 	unlang_push(stack, g->children, frame->result, true);
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -1045,7 +1044,8 @@ redo:
 			unlang_pop(stack);
 
 			/*
-			 *	Done the top stack frame, return
+			 *	Reset the local variables, and check
+			 *	for a (local) top frame.
 			 */
 			frame = &stack->frame[stack->depth];
 			instruction = frame->instruction;
@@ -1143,8 +1143,7 @@ redo:
 			}
 
 			if (!frame->do_next_sibling) goto done;
-
-		} /* switch over return code from the interpretor function */
+		} /* switch over return code from the interpreter function */
 
 		frame->instruction = frame->instruction->next;
 	}
@@ -1153,10 +1152,25 @@ redo:
 	 *	And we're done!
 	 */
 done:
-
 	result = frame->result;
+
+
+	if (stack->depth == 1) {
+		RDEBUG4("** [%i] %s - exited (done)", stack->depth, __FUNCTION__);
+		return result;
+	}
+
 	goto do_pop;
 }
+
+static unlang_t empty_group = {
+	.type = UNLANG_TYPE_GROUP,
+	.debug_name = "empty-group",
+	.actions = { MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
+		     MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
+		     MOD_ACTION_RETURN
+	},
+};
 
 /** Push a configuration section onto the request stack for later interpretation.
  *
@@ -1170,12 +1184,10 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	Interpretable unlang instructions are stored as CONF_DATA
 	 *	associated with sections.
 	 */
-	if (cs) instruction = cf_data_find(cs, "unlang");
-	if (!instruction) {
-		static unlang_t empty_group = {
-			.type = UNLANG_TYPE_GROUP,
-			.debug_name = "empty-group"
-		};
+	if (cs) {
+		instruction = cf_data_find(cs, "unlang");
+		rad_assert(instruction != NULL);
+	} else {
 		instruction = &empty_group;
 	}
 	unlang_push(stack, instruction, action, true);
@@ -1218,7 +1230,8 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	rcode = unlang_run(request, stack);
 	if (rcode != RLM_MODULE_YIELD) {
 		rad_assert(stack->frame[stack->depth].top_frame);
-		rad_assert(stack->frame[stack->depth].instruction->type == UNLANG_TYPE_GROUP); /* sections are groups */
+		rad_assert(!stack->frame[stack->depth].instruction || /* processed the whole section */
+			    stack->frame[stack->depth].instruction->type == UNLANG_TYPE_GROUP); /* sections are groups */
 		rad_assert(stack->depth > 0);
 		/*
 		 *	...and must now be popped if we're not yielding.
