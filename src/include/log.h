@@ -39,10 +39,11 @@ typedef enum log_type {
 	L_ACCT = 7,			//!< Accounting messages
 
 	L_DBG = 16,			//!< Only displayed when debugging is enabled.
-	L_DBG_WARN = 17,		//!< Warning only displayed when debugging is enabled.
-	L_DBG_ERR = 18,			//!< Error only displayed when debugging is enabled.
-	L_DBG_WARN_REQ = 19,		//!< Less severe warning only displayed when debugging is enabled.
-	L_DBG_ERR_REQ = 20		//!< Less severe error only displayed when debugging is enabled.
+	L_DBG_INFO = 17,		//!< Info only displayed when debugging is enabled.
+	L_DBG_WARN = 18,		//!< Warning only displayed when debugging is enabled.
+	L_DBG_ERR = 19,			//!< Error only displayed when debugging is enabled.
+	L_DBG_WARN_REQ = 20,		//!< Less severe warning only displayed when debugging is enabled.
+	L_DBG_ERR_REQ = 21		//!< Less severe error only displayed when debugging is enabled.
 } log_type_t;
 
 typedef enum log_lvl {
@@ -273,17 +274,21 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #define RDEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, request)	//!< True if request debug level 1-3 messages are enabled
 #define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)	//!< True if request debug level 1-4 messages are enabled
 
-#define RDEBUGX(_l, fmt, ...)	radlog_request(L_DBG, _l, request, fmt, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG3(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
+#define RDEBUGX(_l, fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, _l, request, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__); } while(0)
+#define RDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__); } while(0)
 
-#define RIDEBUG(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RIDEBUG2(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RIDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_INFO, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_INFO, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_INFO, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__); } while(0)
+#define RIDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_INFO, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__); } while(0)
 
-#define RWDEBUG(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RWDEBUG2(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG2(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG3(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__); } while(0)
+#define RWDEBUG4(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__); } while(0)
 
 #define REDEBUG(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
 #define REDEBUG2(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
