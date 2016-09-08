@@ -867,7 +867,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			request->proxy->src_port = 0;
 			request->proxy->dst_port = 0;
 			fake->packet = NULL;
-			fr_radius_free(&fake->reply);
+			rad_free(&fake->reply);
 			fake->reply = NULL;
 
 			/*
@@ -880,8 +880,8 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			 * Associate the callback with the request.
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					       tunnel, false, false, false);
-			rad_cond_assert(ret == 0);
+					       tunnel, false);
+			rad_assert(ret == 0);
 
 			/*
 			 * rlm_eap.c has taken care of associating
@@ -891,8 +891,8 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			 * this request.
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-					       fake, true, false, false);
-			rad_cond_assert(ret == 0);
+					       fake, true);
+			rad_assert(ret == 0);
 
 			fake = NULL;
 
@@ -986,7 +986,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->stage = PROVISIONING;
 				break;
 			default:
-				value = fr_pair_asprint(request->packet, vp, '"');
+				value = vp_aprints_value(request->packet, vp, '"');
 				RDEBUG2("ignoring unknown %s", value);
 				talloc_free(value);
 				continue;
@@ -1040,14 +1040,14 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->pac.send = true;
 				continue;
 			default:
-				value = fr_pair_asprint(request->packet, vp, '"');
+				value = vp_aprints_value(request->packet, vp, '"');
 				RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %s", value);
 				talloc_free(value);
 				continue;
 			}
 			break;
 		default:
-			value = fr_pair_asprint(request->packet, vp, '"');
+			value = vp_aprints_value(request->packet, vp, '"');
 			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
 			talloc_free(value);
 			continue;
