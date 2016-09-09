@@ -520,6 +520,7 @@ int vradlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
 	case L_DST_SYSLOG:
 		switch (type) {
 		case L_DBG:
+		case L_DBG_INFO:
 		case L_DBG_WARN:
 		case L_DBG_ERR:
 		case L_DBG_ERR_REQ:
