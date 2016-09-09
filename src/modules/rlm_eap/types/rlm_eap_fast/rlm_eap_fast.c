@@ -543,6 +543,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		return 0;
 	}
 
+	handler->stage = PROCESS;
+
 	return 1;
 }
 
