@@ -70,3 +70,6 @@ appendonly*.aof
 
 # Analyzer output
 *.plist
+
+# Release products
+freeradius-server-*.tar
