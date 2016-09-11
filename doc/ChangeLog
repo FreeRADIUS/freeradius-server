@@ -9,7 +9,7 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	* The "load-balance" and "redundant-load-balance"
 	  sections accept a key.  See "man unlang".
 	* The EAP module tracks certificates in a different
-	  attribute list.  See the upgrade instructions.a
+	  attribute list.  See the upgrade instructions.
 	* The EAP module produces much better messages
 	  when using TLS.
 	* The MySQL and Postgresql modules now call the
