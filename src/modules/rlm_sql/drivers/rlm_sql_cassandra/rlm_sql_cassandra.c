@@ -188,6 +188,7 @@ static CONF_PARSER load_balance_dc_aware_config[] = {
 	{ FR_CONF_OFFSET("local_dc", PW_TYPE_STRING, rlm_sql_cassandra_t, lbdc_local_dc) },
 	{ FR_CONF_OFFSET("hosts_per_remote_dc", PW_TYPE_INTEGER, rlm_sql_cassandra_t, lbdc_hosts_per_remote_dc), .dflt = "0" },
 	{ FR_CONF_OFFSET("allow_remote_dcs_for_local_cl", PW_TYPE_BOOLEAN, rlm_sql_cassandra_t, lbdc_allow_remote_dcs_for_local_cl), .dflt = "no" }
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER latency_aware_routing_config[] = {
