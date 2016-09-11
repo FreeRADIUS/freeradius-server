@@ -190,6 +190,7 @@ static CONF_PARSER load_balance_dc_aware_config[] = {
 	{ FR_CONF_OFFSET("local_dc", PW_TYPE_STRING, rlm_sql_cassandra_config_t, lbdc_local_dc) },
 	{ FR_CONF_OFFSET("hosts_per_remote_dc", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, lbdc_hosts_per_remote_dc), .dflt = "0" },
 	{ FR_CONF_OFFSET("allow_remote_dcs_for_local_cl", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, lbdc_allow_remote_dcs_for_local_cl), .dflt = "no" }
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER latency_aware_routing_config[] = {
@@ -198,6 +199,7 @@ static CONF_PARSER latency_aware_routing_config[] = {
 	{ FR_CONF_OFFSET("retry_period", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_retry_period), .dflt = "10" },
 	{ FR_CONF_OFFSET("update_rate", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_update_rate), .dflt = "0.1" },
 	{ FR_CONF_OFFSET("min_measured", PW_TYPE_INTEGER64, rlm_sql_cassandra_config_t, lar_min_measured), .dflt = "50" }
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER tls_config[] = {
