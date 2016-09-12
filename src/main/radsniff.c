@@ -2076,7 +2076,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -a                    List all interfaces available for capture.\n");
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
 	fprintf(output, "  -C                    Enable UDP checksum validation.\n");
-	fprintf(output, "  -d <directory>        Set dictionary directory.\n");
 	fprintf(output, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
 	fprintf(output, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
@@ -2090,7 +2089,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -f <filter>           PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
 	fprintf(output, "  -h                    This help message.\n");
 	fprintf(output, "  -i <interface>        Capture packets from interface (defaults to all if supported).\n");
-	fprintf(output, "  -I <file>             Read packets from file (overrides input of -F).\n");
+	fprintf(output, "  -I <file>             Read packets from <file>\n");
 	fprintf(output, "  -l <attr>[,<attr>]    Output packet sig and a list of attributes.\n");
 	fprintf(output, "  -L <attr>[,<attr>]    Detect retransmissions using these attributes to link requests.\n");
 	fprintf(output, "  -m                    Don't put interface(s) into promiscuous mode.\n");
@@ -2185,7 +2184,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:EFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		case 'a':
 		{
