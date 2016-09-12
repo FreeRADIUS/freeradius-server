@@ -1771,6 +1771,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 
 	int i;
 	int ret;
+	int total = 0;
 	const uint8_t *data;
 	struct pcap_pkthdr *header;
 
@@ -1780,7 +1781,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 	if ((event->in->type == PCAP_FILE_IN) || (event->in->type == PCAP_STDIO_IN)) {
 		bool stats_started = false;
 
-		while (!fr_event_loop_exiting(el)) {
+		while ((total < 5) && !fr_event_loop_exiting(el)) {
 			struct timeval now;
 
 			ret = pcap_next_ex(handle, &header, &data);
@@ -1818,6 +1819,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 			count++;
 
 			rs_packet_process(count, event, header, data);
+			total++;
 		}
 		return;
 	}
@@ -2067,6 +2069,8 @@ fr_event_list_t *list, int fd, UNUSED void *ctx)
 		rs_collectd_reopen(list, &now);
 	}
 		break;
+#else
+	case SIGPIPE:
 #endif
 
 	case SIGINT:
