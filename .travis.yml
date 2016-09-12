@@ -90,6 +90,7 @@ addons:
 services:
   - mysql
   - postgresql
+  - redis
 before_install:
   - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60; fi
   - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --config gcc; fi
