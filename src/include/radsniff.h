@@ -260,6 +260,7 @@ struct rs {
 	bool			decode_attrs;		//!< Whether we should decode attributes in the request
 							//!< and response.
 	bool			verify_udp_checksum;	//!< Check UDP checksum in packets.
+	bool			verify_radius_authenticator;	//!< Check RADIUS authenticator in packets.
 
 	char			*radius_secret;		//!< Secret to decode encrypted attributes.
 

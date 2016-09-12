@@ -1374,6 +1374,20 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			return;
 		}
 
+		if (conf->verify_radius_authenticator && original) {
+			int ret;
+			FILE *log_fp = fr_log_fp;
+
+			fr_log_fp = NULL;
+			ret = fr_radius_verify(current, original->expect, conf->radius_secret);
+			fr_log_fp = log_fp;
+			if (ret != 0) {
+				REDEBUG("Failed verifying packet ID %d", current->id);
+				fr_radius_free(&current);
+				return;
+			}
+		}
+
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
 		 *	fr_radius_ok( does checks to verify the packet is actually valid.
@@ -2184,7 +2198,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		case 'a':
 		{
@@ -2225,7 +2239,16 @@ int main(int argc, char *argv[])
 
 		/* udp checksum */
 		case 'C':
-			conf->verify_udp_checksum = true;
+			if (strcmp(optarg, "udp") == 0) {
+				conf->verify_udp_checksum = true;
+
+			} else if (strcmp(optarg, "radius") == 0) {
+				conf->verify_radius_authenticator = true;
+
+			} else {
+				ERROR("Must specify 'udp' or 'radius' for -C, not %s", optarg);
+				usage(1);
+			}
 			break;
 
 		case 'd':
