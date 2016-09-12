@@ -285,6 +285,16 @@ static void json_array_add_vp(TALLOC_CTX *ctx, json_object *arr, VALUE_PAIR *vp)
 	json_object_array_add(arr, to_add);
 }
 
+/** Returns a JSON string of a list of value pairs
+ *
+ *  The result is a talloc-ed string, freeing the string is the responsibility
+ *  of the caller.
+ *
+ * @param ctx Talloc context
+ * @param vps The list of value pairs
+ * @param prefix The prefix to use, can be NULL to skip the prefix
+ * @return JSON string representation of the value pairs
+ */
 const char *fr_json_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix) {
 	TALLOC_CTX *local_ctx;
 	vp_cursor_t cursor;
