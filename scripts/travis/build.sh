@@ -51,5 +51,4 @@ echo "Setting up fixtures"
 ./scripts/travis/postgresql-setup.sh
 ./scripts/travis/mysql-setup.sh
 ./scripts/travis/ldap-setup.sh
-# Travis doesn't have Redis 3.0 available yet
-# ./scripts/travis/redis-setup.sh
+./scripts/travis/redis-setup.sh
