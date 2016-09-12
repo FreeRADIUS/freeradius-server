@@ -724,24 +724,15 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  *
  * @param[in] request Current request.
  * @param[in] ctx to initialise.
- * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
-static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool sort)
+static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
 {
 	/*
 	 * 	Setup stream read data
 	 */
 	ctx->request = request;
 	ctx->state = READ_STATE_INIT;
-
-	/*
-	 *	Sorts pairs in place, oh well...
-	 */
-	if (sort) {
-		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	}
-	fr_cursor_init(&ctx->cursor, &request->packet->vps);
 }
 
 /** Converts plain response into a single VALUE_PAIR
@@ -2081,7 +2072,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
-		rest_request_init(request, &ctx->request, true);
+		rest_request_init(request, &ctx->request);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_json) < 0) {
@@ -2092,7 +2083,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &ctx->request, false);
+		rest_request_init(request, &ctx->request);
+		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_post) < 0) {
