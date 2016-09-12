@@ -2493,7 +2493,24 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 		arg_used = 1;
 
 		if (cmd->mode == MODE_EXECUTE) {
-			push_count_chars(cmd->arglist, arg);
+			if (strchr(arg, ' ') == NULL) {
+				push_count_chars(cmd->arglist, arg);
+
+			} else {
+				size_t len;
+				char *sp;
+
+				len = strlen(arg);
+
+				sp = malloc(len + 3);
+				sp[0] = '\'';
+				memcpy(sp + 1, arg, len);
+				sp[len + 1] = '\'';
+				sp[len + 2] = '\0';
+
+				push_count_chars(cmd->arglist, sp);
+			}
+
 			continue;
 		}
 
