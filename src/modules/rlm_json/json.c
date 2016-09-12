@@ -285,22 +285,22 @@ static void json_array_add_vp(TALLOC_CTX *ctx, json_object *arr, VALUE_PAIR *vp)
 	json_object_array_add(arr, to_add);
 }
 
-const char *fr_json_from_pair_list(VALUE_PAIR **vps, const char *prefix) {
-	TALLOC_CTX *ctx;
+const char *fr_json_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix) {
+	TALLOC_CTX *local_ctx;
 	vp_cursor_t cursor;
 	struct json_object *obj, *vp_object, *values, *type_name;
 	VALUE_PAIR *vp;
 	const char *name_with_prefix;
 	const char *res = NULL;
 
-	MEM(ctx = talloc_pool(NULL, 1024));
+	MEM(local_ctx = talloc_pool(ctx, 1024));
 	MEM(obj = json_object_new_object());
 
 	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
 		if (prefix) {
-			MEM(name_with_prefix = talloc_asprintf(ctx, "%s:%s", prefix, vp->da->name));
+			MEM(name_with_prefix = talloc_asprintf(local_ctx, "%s:%s", prefix, vp->da->name));
 		} else {
 			name_with_prefix = vp->da->name;
 		}
@@ -321,12 +321,12 @@ const char *fr_json_from_pair_list(VALUE_PAIR **vps, const char *prefix) {
 			json_object_object_add(vp_object, "value", values);
 		}
 
-		json_array_add_vp(ctx, values, vp);
+		json_array_add_vp(local_ctx, values, vp);
 	}
-	res = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN);
+	MEM(res = talloc_strdup(ctx, json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN)));
 
 error:
-	talloc_free(ctx);
+	talloc_free(local_ctx);
 	json_object_put(obj);
 
 	return res;
