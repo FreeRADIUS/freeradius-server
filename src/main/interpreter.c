@@ -996,6 +996,10 @@ redo:
 
 		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
+		if (fr_debug_lvl >= 3) {
+			VERIFY_REQUEST(request);
+		}
+
 		/*
 		 *	We've been asked to stop.  Do so.
 		 */
