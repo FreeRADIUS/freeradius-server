@@ -425,7 +425,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG("pwd unable to create fake request!");
 			return 0;
 		}
-		fake->username = fr_pair_afrom_num(fake, PW_USER_NAME, 0);
+		fake->username = fr_pair_afrom_num(fake->packet, PW_USER_NAME, 0);
 		if (!fake->username) {
 			RDEBUG("Failed creating pair for peer id");
 			talloc_free(fake);
