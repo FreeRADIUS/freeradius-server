@@ -700,6 +700,8 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		}
 
 	send_reply:
+		gettimeofday(&request->reply->timestamp, NULL);
+
 		/*
 		 *	Save session-state list for Access-Challenge,
 		 *	discard it for everything else.
@@ -786,8 +788,6 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 */
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
-
-		gettimeofday(&request->reply->timestamp, NULL);
 
 		/*
 		 *	If we delay rejects, then calculate the
