@@ -284,7 +284,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		 */
 		MEM(fake = request_alloc_fake(eap_session->request));
 
-		fake->username = fr_pair_afrom_num(fake, 0, PW_USER_NAME);
+		fake->username = fr_pair_afrom_num(fake->packet, 0, PW_USER_NAME);
 		if (!fake->username) {
 			RDEBUG("Failed creating pair for peer id");
 			talloc_free(fake);
