@@ -1,2 +1,5 @@
 *	text=auto
 *	ident
+*.h	linguist-language=c
+*.c	linguist-language=c
+doc/*	linguist-documentation
