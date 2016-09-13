@@ -469,6 +469,140 @@ unexpected:
 	return 1;
 }
 
+static ssize_t eap_fast_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
+				    uint8_t const *data, size_t const attr_len, VALUE_PAIR **out)
+{
+	int8_t			tag = TAG_NONE;
+	VALUE_PAIR		*vp;
+	uint8_t const		*p = data;
+
+	/*
+	 *	FIXME: Attrlen can be larger than 253 for extended attrs!
+	 */
+	if (!parent || !out ) {
+		RERROR("eap_fast_decode_vp: Invalid arguments");
+		return -1;
+	}
+
+	/*
+	 *	Silently ignore zero-length attributes.
+	 */
+	if (attr_len == 0) return 0;
+
+	/*
+	 *	And now that we've verified the basic type
+	 *	information, decode the actual p.
+	 */
+	vp = fr_pair_afrom_da(request, parent);
+	if (!vp) return -1;
+
+	vp->vp_length = attr_len;
+	vp->tag = tag;
+
+	switch (parent->type) {
+	case PW_TYPE_STRING:
+		fr_pair_value_bstrncpy(vp, p, attr_len);
+		break;
+
+	case PW_TYPE_OCTETS:
+		fr_pair_value_memcpy(vp, p, attr_len);
+		break;
+
+	case PW_TYPE_ABINARY:
+		if (vp->vp_length > sizeof(vp->vp_filter)) {
+			vp->vp_length = sizeof(vp->vp_filter);
+		}
+		memcpy(vp->vp_filter, p, vp->vp_length);
+		break;
+
+	case PW_TYPE_BYTE:
+		vp->vp_byte = p[0];
+		break;
+
+	case PW_TYPE_SHORT:
+		vp->vp_short = (p[0] << 8) | p[1];
+		break;
+
+	case PW_TYPE_INTEGER:
+		memcpy(&vp->vp_integer, p, 4);
+		vp->vp_integer = ntohl(vp->vp_integer);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		memcpy(&vp->vp_integer64, p, 8);
+		vp->vp_integer64 = ntohll(vp->vp_integer64);
+		break;
+
+	case PW_TYPE_DATE:
+		memcpy(&vp->vp_date, p, 4);
+		vp->vp_date = ntohl(vp->vp_date);
+		break;
+
+	case PW_TYPE_ETHERNET:
+		memcpy(vp->vp_ether, p, 6);
+		break;
+
+	case PW_TYPE_IPV4_ADDR:
+		memcpy(&vp->vp_ipaddr, p, 4);
+		break;
+
+	case PW_TYPE_IFID:
+		memcpy(vp->vp_ifid, p, 8);
+		break;
+
+	case PW_TYPE_IPV6_ADDR:
+		memcpy(&vp->vp_ipv6addr, p, 16);
+		break;
+
+	case PW_TYPE_IPV6_PREFIX:
+		/*
+		 *	FIXME: double-check that
+		 *	(vp->vp_octets[1] >> 3) matches vp->vp_length + 2
+		 */
+		memcpy(vp->vp_ipv6prefix, p, vp->vp_length);
+		if (vp->vp_length < 18) {
+			memset(((uint8_t *)vp->vp_ipv6prefix) + vp->vp_length, 0,
+			       18 - vp->vp_length);
+		}
+		break;
+
+	case PW_TYPE_IPV4_PREFIX:
+		/* FIXME: do the same double-check as for IPv6Prefix */
+		memcpy(vp->vp_ipv4prefix, p, vp->vp_length);
+
+		/*
+		 *	/32 means "keep all bits".  Otherwise, mask
+		 *	them out.
+		 */
+		if ((p[1] & 0x3f) > 32) {
+			uint32_t addr, mask;
+
+			memcpy(&addr, vp->vp_octets + 2, sizeof(addr));
+			mask = 1;
+			mask <<= (32 - (p[1] & 0x3f));
+			mask--;
+			mask = ~mask;
+			mask = htonl(mask);
+			addr &= mask;
+			memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
+		}
+		break;
+
+	case PW_TYPE_SIGNED:	/* overloaded with vp_integer */
+		memcpy(&vp->vp_integer, p, 4);
+		vp->vp_integer = ntohl(vp->vp_integer);
+		break;
+
+	default:
+		RERROR("eap_fast_decode_vp: type %d Internal sanity check  %d ", parent->type, __LINE__);
+		fr_pair_list_free(&vp);
+		return -1;
+	}
+	vp->type = VT_DATA;
+    *out = vp;
+	return attr_len;
+}
+
 
 VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, size_t data_len,
                              DICT_ATTR const *fast_da, vp_cursor_t *out)
