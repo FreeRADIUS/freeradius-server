@@ -1508,7 +1508,7 @@ keep_parsing:
 				return -1;
 			}
 
-			if ((dv->type < 3) && (attr > (1 << (8 * dv->type)))) {
+			if ((dv->type < 3) && (attr > (unsigned int) (1 << (8 * dv->type)))) {
 				fr_strerror_printf("Number '%s' out of allowed range in attribute identifier", ptr);
 				return -1;
 			}
