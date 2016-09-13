@@ -615,7 +615,7 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	DICT_ATTR const *da;
 
 	if (!fast_da)
-		fast_da = dict_attrbyvalue(PW_EAP_FAST_TLV, 0);
+		fast_da = dict_attrbyvalue(PW_FREERADIUS_EAP_FAST_TLV, VENDORPEC_FREERADIUS);
 	rad_assert(fast_da != NULL);
 
 	if (!out) {
@@ -1170,9 +1170,9 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	return PW_CODE_ACCESS_ACCEPT;
 }
 
-#define EAP_FAST_TLV_VENDOR_ID 0xa7000000
-#define EAP_FAST_TLV_SUB_ID(_id)    (EAP_FAST_TLV_VENDOR_ID | _id)
-#define EAP_FAST_PAC_SUB_ID(_id)    ( (_id << 0 ) | 0x0b)
+
+#define PW_EAP_FAST_TLV_PAC (PW_FREERADIUS_EAP_FAST_TLV | (EAP_FAST_TLV_PAC << 8))
+
 
 
 static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_session,
@@ -1186,20 +1186,19 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	for (vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		PW_CODE code = PW_CODE_ACCESS_REJECT;
 		char *value;
-        unsigned int parent = vp->da->vendor;
-        if (parent != EAP_FAST_TLV_VENDOR_ID) {
+		DICT_ATTR const *parent_da = NULL;
+		parent_da = dict_parent(vp->da->attr, vp->da->vendor);
+		if (parent_da == NULL || vp->da->vendor != VENDORPEC_FREERADIUS ||
+			((vp->da->attr & 0xff) != PW_FREERADIUS_EAP_FAST_TLV)) {
 			value = vp_aprints(request->packet, vp, '"');
 			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
 			talloc_free(value);
 			continue;
-        }
-        if (vp->da->attr & 0xff00) {
-            parent |= (vp->da->attr & 0xff);
-        }
+		}
 
-		switch (parent) {
-		case EAP_FAST_TLV_VENDOR_ID:
-			switch (vp->da->attr) {
+		switch (parent_da->attr) {
+		case PW_FREERADIUS_EAP_FAST_TLV:
+			switch (vp->da->attr >> 8) {
 			case EAP_FAST_TLV_EAP_PAYLOAD:
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
 				if (code == PW_CODE_ACCESS_ACCEPT)
@@ -1210,13 +1209,13 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				code = PW_CODE_ACCESS_ACCEPT;
 				t->stage = PROVISIONING;
 				break;
-            case EAP_FAST_TLV_CRYPTO_BINDING:
-                if (!binding) {
-                    binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
-                    memcpy(binding, vp->vp_octets, sizeof(*binding));
-                    binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
-                    binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
-                }
+			case EAP_FAST_TLV_CRYPTO_BINDING:
+				if (!binding) {
+					binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
+					memcpy(binding, vp->vp_octets, sizeof(*binding));
+					binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
+					binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
+				}
 				continue;
 			default:
 				value = vp_aprints_value(request->packet, vp, '"');
@@ -1225,8 +1224,8 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				continue;
 			}
 			break;
-		case EAP_FAST_TLV_SUB_ID(EAP_FAST_TLV_PAC):
-			switch ( ( vp->da->attr >> 8 )) {
+		case PW_EAP_FAST_TLV_PAC:
+			switch ( ( vp->da->attr >> 16 )) {
 			case PAC_INFO_PAC_ACK:
 				if (vp->vp_integer == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = PW_CODE_ACCESS_ACCEPT;
