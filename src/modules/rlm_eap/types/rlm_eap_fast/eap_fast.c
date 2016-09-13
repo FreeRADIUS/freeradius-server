@@ -693,6 +693,66 @@ static void eap_vp2fast(tls_session_t *tls_session, VALUE_PAIR *first)
 	}
 }
 
+static void eapfast_copy_request_to_tunnel(REQUEST *request, REQUEST *fake) {
+    VALUE_PAIR *copy, *vp;
+    vp_cursor_t cursor;
+
+    for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+         vp;
+         vp = fr_cursor_next(&cursor)) {
+        /*
+         *	The attribute is a server-side thingy,
+         *	don't copy it.
+         */
+        if ((vp->da->attr > 255) && (((vp->da->attr >> 16) & 0xffff) == 0)) {
+            continue;
+        }
+
+        /*
+         *	The outside attribute is already in the
+         *	tunnel, don't copy it.
+         *
+         *	This works for BOTH attributes which
+         *	are originally in the tunneled request,
+         *	AND attributes which are copied there
+         *	from below.
+         */
+        if (fr_pair_find_by_da(fake->packet->vps, vp->da, TAG_ANY)) continue;
+
+        /*
+         *	Some attributes are handled specially.
+         */
+        if (!vp->da->vendor) switch (vp->da->attr) {
+            /*
+             *	NEVER copy Message-Authenticator,
+             *	EAP-Message, or State.  They're
+             *	only for outside of the tunnel.
+             */
+        case PW_USER_NAME:
+        case PW_USER_PASSWORD:
+        case PW_CHAP_PASSWORD:
+        case PW_CHAP_CHALLENGE:
+        case PW_PROXY_STATE:
+        case PW_MESSAGE_AUTHENTICATOR:
+        case PW_EAP_MESSAGE:
+        case PW_STATE:
+            continue;
+
+            /*
+             *	By default, copy it over.
+             */
+        default:
+            break;
+        }
+
+        /*
+         *	Don't copy from the head, we've already
+         *	checked it.
+         */
+        copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->attr, vp->da->vendor, TAG_ANY);
+        fr_pair_add(&fake->packet->vps, copy);
+    }
+}
 
 /*
  * Use a reply packet to determine what to do.
@@ -830,6 +890,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 		 */
 		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
 
+        if (vp) {
+            RDEBUG("Sending tunneled reply attributes");
+            eap_vp2fast(tls_session, vp);
+            fr_pair_list_free(&vp);
+        }
+
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -932,26 +998,36 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		if (t->username) {
 			vp = fr_pair_list_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+			fake->username = vp;
 		}
 	} /* else the request ALREADY had a User-Name */
+
+	/*
+	 *	Add the State attribute, too, if it exists.
+	 */
+	if (t->state) {
+		vp = fr_pair_list_copy(fake->packet, t->state);
+		if (vp) fr_pair_add(&fake->packet->vps, vp);
+	}
+
 
 	if (t->stage == AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
-		tvp = fr_pair_afrom_num(fake->packet, 0, PW_EAP_TYPE);
-		tvp->vp_integer = t->default_provisioning_method;
-		fr_pair_add(&fake->config, tvp);
+        RWDEBUG2("AUTHENTICATION");
+        vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
+        vp->vp_integer = t->default_method;
+        RWDEBUG2("AUTHENTICATION");
 
 		/*
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			tvp = fr_pair_afrom_num(fake->packet, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE);
+			tvp = fr_pair_afrom_num(fake->packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->config, tvp);
 
-			tvp = fr_pair_afrom_num(fake->packet, 0, PW_MS_CHAP_PEER_CHALLENGE);
+			tvp = fr_pair_afrom_num(fake->packet, PW_MS_CHAP_PEER_CHALLENGE, 0);
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->config, tvp);
 		}
@@ -1090,6 +1166,11 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	return PW_CODE_ACCESS_ACCEPT;
 }
 
+#define EAP_FAST_TLV_VENDOR_ID 0xa7000000
+#define EAP_FAST_TLV_SUB_ID(_id)    (EAP_FAST_TLV_VENDOR_ID | _id)
+#define EAP_FAST_PAC_SUB_ID(_id)    ( (_id << 0 ) | 0x0b)
+
+
 static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_session,
 				     tls_session_t *tls_session, VALUE_PAIR *fast_vps)
 {
@@ -1101,10 +1182,20 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	for (vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		PW_CODE code = PW_CODE_ACCESS_REJECT;
 		char *value;
-        DICT_ATTR * parent = dict_parent(vp->da->attr, vp->da->vendor);
+        unsigned int parent = vp->da->vendor;
+        if (parent != EAP_FAST_TLV_VENDOR_ID) {
+			value = vp_aprints_value(request->packet, vp, '"');
+			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
+			talloc_free(value);
+			continue;
+        }
+        if (vp->da->attr & 0xff00) {
+            parent |= (vp->da->attr & 0xff);
+        }
+        RDEBUG("vp->da->vendor 0x%08x, vp->da->attr 0x%08x", vp->da->vendor, vp->da->attr);
 
-		switch (parent->attr) {
-		case PW_EAP_FAST_TLV:
+		switch (parent) {
+		case EAP_FAST_TLV_VENDOR_ID:
 			switch (vp->da->attr) {
 			case EAP_FAST_TLV_EAP_PAYLOAD:
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
@@ -1116,6 +1207,14 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				code = PW_CODE_ACCESS_ACCEPT;
 				t->stage = PROVISIONING;
 				break;
+            case EAP_FAST_TLV_CRYPTO_BINDING:
+                if (!binding) {
+                    binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
+                    memcpy(binding, vp->vp_octets, sizeof(*binding));
+                    binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
+                    binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
+                }
+				continue;
 			default:
 				value = vp_aprints_value(request->packet, vp, '"');
 				RDEBUG2("ignoring unknown %s", value);
@@ -1123,38 +1222,8 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				continue;
 			}
 			break;
-		case EAP_FAST_TLV_CRYPTO_BINDING:
-			if (!binding) {
-				binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
-				binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
-				binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
-			}
-			/*
-			 * fr_radius_encode_pair() does not work for structures
-			 */
-			switch (vp->da->attr) {
-			case 1:	/* PW_EAP_FAST_CRYPTO_BINDING_RESERVED */
-				binding->reserved = vp->vp_integer;
-				break;
-			case 2:	/* PW_EAP_FAST_CRYPTO_BINDING_VERSION */
-				binding->version = vp->vp_integer;
-				break;
-			case 3:	/* PW_EAP_FAST_CRYPTO_BINDING_RECV_VERSION */
-				binding->received_version = vp->vp_integer;
-				break;
-			case 4:	/* PW_EAP_FAST_CRYPTO_BINDING_SUB_TYPE */
-				binding->subtype = vp->vp_integer;
-				break;
-			case 5:	/* PW_EAP_FAST_CRYPTO_BINDING_NONCE */
-				memcpy(binding->nonce, vp->vp_octets, vp->vp_length);
-				break;
-			case 6:	/* PW_EAP_FAST_CRYPTO_BINDING_COMPOUND_MAC */
-				memcpy(binding->compound_mac, vp->vp_octets, vp->vp_length);
-				break;
-			}
-			continue;
-		case EAP_FAST_TLV_PAC:
-			switch (vp->da->attr) {
+		case EAP_FAST_TLV_SUB_ID(EAP_FAST_TLV_PAC):
+			switch ( ( vp->da->attr >> 8 )) {
 			case PAC_INFO_PAC_ACK:
 				if (vp->vp_integer == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = PW_CODE_ACCESS_ACCEPT;
@@ -1223,7 +1292,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 	/*
 	 * See if the tunneled data is well formed.
 	 */
-	if (!eap_fast_verify(request, tls_session, data, data_len)) return RLM_MODULE_REJECT;
+	if (!eap_fast_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
 
 	if (t->stage == TLS_SESSION_HANDSHAKE) {
 		rad_assert(t->mode == EAP_FAST_UNKNOWN);
@@ -1265,7 +1334,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	fr_pair_list_free(&fast_vps);
 
-	if (code == RLM_MODULE_REJECT) return RLM_MODULE_REJECT;
+	if (code == PW_CODE_ACCESS_REJECT) return PW_CODE_ACCESS_REJECT;
 
 	switch (t->stage) {
 	case AUTHENTICATION:
@@ -1289,7 +1358,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		eap_fast_append_result(tls_session, code);
 
-		if (code == RLM_MODULE_REJECT)
+		if (code == PW_CODE_ACCESS_REJECT)
 			break;
 
 		if (t->pac.send) {
@@ -1307,7 +1376,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		 */
 		if ((t->pac.type && t->pac.expired) || t->mode == EAP_FAST_PROVISIONING_ANON) {
 			RDEBUG("Rejecting expired PAC or unauthenticated provisioning");
-			code = RLM_MODULE_REJECT;
+			code = PW_CODE_ACCESS_REJECT;
 			break;
 		}
 
@@ -1324,7 +1393,7 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		break;
 	default:
 		RERROR("no idea! %d", t->stage);
-		code = RLM_MODULE_REJECT;
+		code = PW_CODE_ACCESS_REJECT;
 	}
 
 	return code;
