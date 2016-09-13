@@ -711,6 +711,18 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			fr_state_discard(global_state, request, request->packet);
 		}
 
+		if (!request->reply->code) {
+			vp = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
+			if (vp) {
+				if (vp->vp_integer == PW_AUTH_TYPE_ACCEPT) {
+					request->reply->code = PW_CODE_ACCESS_ACCEPT;
+
+				} else if (vp->vp_integer == PW_AUTH_TYPE_REJECT) {
+					request->reply->code = PW_CODE_ACCESS_REJECT;
+				}
+			}
+		}
+
 		/*
 		 *	Check for "do not respond".
 		 */
