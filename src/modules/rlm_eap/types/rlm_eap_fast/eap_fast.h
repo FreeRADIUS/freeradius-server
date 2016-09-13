@@ -221,7 +221,6 @@ typedef struct eap_fast_tunnel_t {
 	uint8_t			*emsk;
 
 	int			default_method;
-	int			default_provisioning_method;
 
 	uint32_t		pac_lifetime;
 	char const		*authority_identity;
