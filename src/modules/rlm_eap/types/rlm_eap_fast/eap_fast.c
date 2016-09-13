@@ -615,7 +615,7 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	DICT_ATTR const *da;
 
 	if (!fast_da)
-		fast_da = dict_attrbyvalue(0, PW_EAP_FAST_TLV);
+		fast_da = dict_attrbyvalue(PW_EAP_FAST_TLV, 0);
 	rad_assert(fast_da != NULL);
 
 	if (!out) {
@@ -881,7 +881,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 * Add the tunneled attributes to the fake request.
 	 */
 
-	fake->packet->vps = fr_pair_afrom_num(fake->packet, 0, PW_EAP_MESSAGE);
+	fake->packet->vps = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0);
 	fr_pair_value_memcpy(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length);
 
 	RDEBUG("Got tunneled request");
@@ -895,8 +895,8 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	/*
 	 * Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+	fake->username = fr_pair_find_by_num(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	fake->password = fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
 	/*
 	 * No User-Name, try to create one from stored data.
@@ -907,7 +907,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		 * an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+			vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
@@ -972,7 +972,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -983,8 +983,8 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			 * Tell the original request that it's going
 			 * to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->config, &fake->config, 0,
-						  PW_PROXY_TO_REALM, TAG_ANY);
+			fr_pair_list_mcopy_by_num(request, &request->config, &fake->config, PW_PROXY_TO_REALM, 0,
+						   TAG_ANY);
 
 			/*
 			 * Seed the proxy packet with the
