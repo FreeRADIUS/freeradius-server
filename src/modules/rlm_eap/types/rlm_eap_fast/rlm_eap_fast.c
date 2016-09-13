@@ -38,8 +38,8 @@ typedef struct rlm_eap_fast_t {
 	char const		*tls_conf_name;				//!< Name of shared TLS config.
 	fr_tls_server_conf_t *tls_conf;
 
-	char const		*default_provisioning_method_name;
-	int			default_provisioning_method;
+	char const		*default_method_name;
+	int			default_method;
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
 									//!< inner EAP method.
@@ -62,7 +62,7 @@ typedef struct rlm_eap_fast_t {
 static CONF_PARSER module_config[] = {
 	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, tls_conf_name), NULL },
 
-	{ "default_provisioning_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), "mschapv2" },
+	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, default_method_name), "mschapv2" },
 
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) , NULL},
 
@@ -100,11 +100,11 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	inst->default_provisioning_method = eap_name2type(inst->default_provisioning_method_name);
-	if (!inst->default_provisioning_method) {
+	inst->default_method = eap_name2type(inst->default_method_name);
+	if (!inst->default_method) {
 		ERROR("rlm_eap_fast.default_provisioning_eap_type: "
 			  "Unknown EAP type %s",
-				   inst->default_provisioning_method_name);
+				   inst->default_method_name);
 		return -1;
 	}
 
@@ -154,7 +154,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	t->mode = EAP_FAST_UNKNOWN;
 	t->stage = TLS_SESSION_HANDSHAKE;
 
-	t->default_method = inst->default_provisioning_method;
+	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 
