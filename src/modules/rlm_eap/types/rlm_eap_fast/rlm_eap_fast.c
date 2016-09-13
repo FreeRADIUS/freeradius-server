@@ -96,14 +96,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
-        ERROR("rlm_eap_fast.virtual_server: Unknown virtual server '%s'", inst->virtual_server);
+		ERROR("rlm_eap_fast.virtual_server: Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 
 	inst->default_provisioning_method = eap_name2type(inst->default_provisioning_method_name);
 	if (!inst->default_provisioning_method) {
-        ERROR("rlm_eap_fast.default_provisioning_eap_type: "
-              "Unknown EAP type %s",
+		ERROR("rlm_eap_fast.default_provisioning_eap_type: "
+			  "Unknown EAP type %s",
 				   inst->default_provisioning_method_name);
 		return -1;
 	}
@@ -115,23 +115,23 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	inst->tls_conf = eaptls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-        ERROR("rlm_eap_fast.tls: Failed initializing SSL context");
+		ERROR("rlm_eap_fast.tls: Failed initializing SSL context");
 		return -1;
 	}
 
 	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
-        ERROR("rlm_eap_fast.pac_opaque_key: Must be 32 bytes long");
+		ERROR("rlm_eap_fast.pac_opaque_key: Must be 32 bytes long");
 		return -1;
 	}
 
 	// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
 	if (!inst->tls_conf->disable_tlsv1_2) {
-        ERROR("rlm_eap_fast.disable_tlsv1_2: require disable_tlsv1_2=yes");
+		ERROR("rlm_eap_fast.disable_tlsv1_2: require disable_tlsv1_2=yes");
 		return -1;
 	}
 
 	if (!inst->pac_lifetime) {
-        ERROR("rlm_eap_fast.pac_lifetime: must be non-zero");
+		ERROR("rlm_eap_fast.pac_lifetime: must be non-zero");
 		return -1;
 	}
 
@@ -154,7 +154,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	t->mode = EAP_FAST_UNKNOWN;
 	t->stage = TLS_SESSION_HANDSHAKE;
 
-	t->default_provisioning_method = inst->default_provisioning_method;
+	t->default_method = inst->default_provisioning_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 
@@ -169,7 +169,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 }
 
 static void eap_fast_session_ticket(tls_session_t *tls_session, uint8_t *client_random,
-				    uint8_t *server_random, uint8_t *secret, int *secret_len)
+					uint8_t *server_random, uint8_t *secret, int *secret_len)
 {
 	eap_fast_tunnel_t	*t = (eap_fast_tunnel_t *) tls_session->opaque;
 	uint8_t			seed[2 * SSL3_RANDOM_SIZE];
@@ -180,7 +180,7 @@ static void eap_fast_session_ticket(tls_session_t *tls_session, uint8_t *client_
 	memcpy(&seed[SSL3_RANDOM_SIZE], client_random, SSL3_RANDOM_SIZE);
 
 	T_PRF(t->pac.key, PAC_KEY_LENGTH, "PAC to master secret label hash",
-	      seed, sizeof(seed), secret, SSL_MAX_MASTER_KEY_LENGTH);
+		  seed, sizeof(seed), secret, SSL_MAX_MASTER_KEY_LENGTH);
 	*secret_len = SSL_MAX_MASTER_KEY_LENGTH;
 }
 
@@ -253,12 +253,12 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 		errmsg = "PAC is not of type Opaque";
 error:
 		RERROR("%s, sending alert to client", errmsg);
-        /*
+		/*
 		if (tls_session_handshake_alert(request, tls_session, SSL3_AL_FATAL, SSL_AD_BAD_CERTIFICATE)) {
 			RERROR("too many alerts");
 			return 0;
 		}
-        */
+		*/
 		if (t->pac.key) talloc_free(t->pac.key);
 
 		memset(&t->pac, 0, sizeof(t->pac));
@@ -288,8 +288,8 @@ error:
 
 	dlen = length - sizeof(opaque->aad) - sizeof(opaque->iv) - sizeof(opaque->tag);
 	plen = eap_fast_decrypt(opaque->data, dlen, opaque->aad, PAC_A_ID_LENGTH,
-			        (uint8_t const *) opaque->tag, t->pac_opaque_key, opaque->iv,
-			        (uint8_t *)&opaque_plaintext);
+					(uint8_t const *) opaque->tag, t->pac_opaque_key, opaque->iv,
+					(uint8_t *)&opaque_plaintext);
 	if (plen == -1) {
 		errmsg = "PAC failed to decrypt";
 		goto error;
@@ -436,21 +436,24 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	rcode = eap_fast_process(handler, tls_session);
 
 	switch (rcode) {
-	case RLM_MODULE_REJECT:
+	case PW_CODE_ACCESS_REJECT:
+		RDEBUG("Reject");
 		eaptls_fail(handler, 0);
 		return 0;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
-	case RLM_MODULE_HANDLED:
+	case PW_CODE_ACCESS_CHALLENGE:
+		RDEBUG("Challenge");
+		tls_handshake_send(request, tls_session);
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-	case RLM_MODULE_OK:
+	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Note the missing PRF label warning below is harmless, ignore it");
 		if (t->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
@@ -469,7 +472,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	that the request now has a "proxy" packet, and
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
-	case RLM_MODULE_UPDATED:
+	case PW_CODE_STATUS_CLIENT:
 #ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
 #endif
@@ -485,6 +488,25 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	eaptls_fail(handler, 0);
 	return 0;
 }
+
+static int eap_fast_tls_start(EAP_DS * eap_ds,tls_session_t *tls_session)
+{
+	EAPTLS_PACKET	reply;
+
+	reply.code = FR_TLS_START;
+	reply.length = TLS_HEADER_LEN + 1 + tls_session->clean_in.used;/*flags*/
+
+	reply.flags = tls_session->peap_flag;
+	reply.flags = SET_START(reply.flags);
+
+	reply.data = tls_session->clean_in.data;
+	reply.dlen = tls_session->clean_in.used;
+
+	eaptls_compose(eap_ds, &reply);
+
+	return 1;
+}
+
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
@@ -506,7 +528,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(handler->request->config, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_integer ? true : false;
 	} else {
@@ -524,13 +546,10 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	N.B. mandatory/reserved flags are not applicable here
 	 */
 	eap_fast_tlv_append(tls_session, PAC_INFO_A_ID, false, PAC_A_ID_LENGTH, inst->a_id);
-    tls_session->peap_flag = EAP_FAST_VERSION;
+	tls_session->peap_flag = EAP_FAST_VERSION;
+	tls_session->length_flag = false;
+	rcode = eap_fast_tls_start(handler->eap_ds, tls_session);
 
-	/*
-	 *	TLS session initialization is over.  Now handle TLS
-	 *	related handshaking or application data.
-	 */
-	rcode = eaptls_start(handler->eap_ds, tls_session->peap_flag);
 	if (rcode < 0) {
 		talloc_free(tls_session);
 		return 0;
