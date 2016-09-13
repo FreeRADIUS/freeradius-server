@@ -295,7 +295,7 @@ error:
 		goto error;
 	}
 
-	fast_da = dict_attrbyname("EAP-FAST-PAC-Opaque-TLV");
+	fast_da = dict_attrbyname("FreeRADIUS-EAP-FAST-PAC-Opaque-TLV");
 	rad_assert(fast_da != NULL);
 
 	fast_vps = eap_fast_fast2vp((REQUEST *)tls_session, s, (uint8_t *)&opaque_plaintext, plen, fast_da, NULL);
