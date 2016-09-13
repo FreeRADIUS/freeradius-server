@@ -1033,6 +1033,10 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		}
 	}
 
+	if (t->copy_request_to_tunnel) {
+        eapfast_copy_request_to_tunnel(request, fake);
+    }
+
 	/*
 	 * Call authentication recursively, which will
 	 * do PAP, CHAP, MS-CHAP, etc.
