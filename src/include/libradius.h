@@ -487,6 +487,7 @@ DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
 DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
 					   unsigned int vendor);
+DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor);
 int		dict_attr_child(DICT_ATTR const *parent,
 				unsigned int *pattr, unsigned int *pvendor);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);

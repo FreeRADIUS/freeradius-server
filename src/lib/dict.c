@@ -643,7 +643,7 @@ int dict_valid_name(char const *name)
 /*
  *	Find the parent of the attr/vendor.
  */
-static DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor)
+DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor)
 {
 	int i;
 	unsigned int base_vendor;
