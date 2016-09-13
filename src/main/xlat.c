@@ -2650,11 +2650,13 @@ ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request,
 ssize_t radius_axlat(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
 		     xlat_escape_t escape, void *escape_ctx)
 {
+	*out = NULL;
 	return xlat_expand(ctx, out, 0, request, fmt, escape, escape_ctx);
 }
 
 ssize_t radius_axlat_struct(TALLOC_CTX *ctx, char **out, REQUEST *request,
 			    xlat_exp_t const *xlat, xlat_escape_t escape, void *escape_ctx)
 {
+	*out = NULL;
 	return xlat_expand_struct(ctx, out, 0, request, xlat, escape, escape_ctx);
 }
