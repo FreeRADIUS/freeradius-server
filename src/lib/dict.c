@@ -1376,8 +1376,7 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 {
 	char const *p;
 	unsigned int attr;
-	DICT_ATTR const *da = NULL;
-
+	
 #ifdef WITH_DICT_OID_DEBUG
 	fprintf(stderr, "PARSING %s tlv_depth %d pvalue %08x pvendor %08x\n", ptr,
 		tlv_depth, *pvalue, *pvendor);
@@ -1418,6 +1417,8 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 		 *	We have an OID, look up the attribute to see what it is.
 		 */
 		if (attr != PW_VENDOR_SPECIFIC) {
+			DICT_ATTR const *da;
+
 			da = dict_attrbyvalue(attr, 0);
 			if (!da) {
 				*pvalue = attr;
@@ -1545,6 +1546,22 @@ keep_parsing:
 		}
 
 		attr <<= fr_attr_shift[tlv_depth];
+
+#ifdef WITH_DICT_OID_DEBUG
+		if (*pvendor) {
+			DICT_ATTR const *da;
+
+			da = dict_parent(*pvalue | attr, *pvendor);
+			if (!da) {
+				fprintf(stderr, "STR2OID FAILED PARENT %08x | %08x, %08x\n",
+					*pvalue, attr, *pvendor);
+			} else if ((da->attr != *pvalue) || (da->vendor != *pvendor)) {
+				fprintf(stderr, "STR2OID DISAGREEMENT WITH PARENT %08x, %08x\t%08x, %08x\n",
+					*pvalue, *pvendor, da->attr, da->vendor);
+			}
+		}
+#endif
+
 		*pvalue |= attr;
 
 #ifdef WITH_DHCP
