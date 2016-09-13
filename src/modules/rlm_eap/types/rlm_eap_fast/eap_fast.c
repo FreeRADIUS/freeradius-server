@@ -1184,7 +1184,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		char *value;
         unsigned int parent = vp->da->vendor;
         if (parent != EAP_FAST_TLV_VENDOR_ID) {
-			value = vp_aprints_value(request->packet, vp, '"');
+			value = vp_aprints(request->packet, vp, '"');
 			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
 			talloc_free(value);
 			continue;
@@ -1192,7 +1192,6 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
         if (vp->da->attr & 0xff00) {
             parent |= (vp->da->attr & 0xff);
         }
-        RDEBUG("vp->da->vendor 0x%08x, vp->da->attr 0x%08x", vp->da->vendor, vp->da->attr);
 
 		switch (parent) {
 		case EAP_FAST_TLV_VENDOR_ID:
@@ -1240,15 +1239,15 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->pac.send = true;
 				continue;
 			default:
-				value = vp_aprints_value(request->packet, vp, '"');
+				value = vp_aprints(request->packet, vp, '"');
 				RDEBUG2("ignoring unknown EAP-FAST-PAC-TLV %s", value);
 				talloc_free(value);
 				continue;
 			}
 			break;
 		default:
-			value = vp_aprints_value(request->packet, vp, '"');
-			RDEBUG2("ignoring non-EAP-FAST TLV %s", value);
+			value = vp_aprints(request->packet, vp, '"');
+			RDEBUG2("ignoring EAP-FAST TLV %s", value);
 			talloc_free(value);
 			continue;
 		}
