@@ -646,26 +646,23 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 		 *
 		 * For now, if it doesn't exist, ignore it.
 		 */
-        da = dict_attrbyparent(fast_da, attr, 0);
-		if (!da) goto next_attr;
-
+		da = dict_attrbyparent(fast_da, attr, fast_da->vendor);
+		if (!da) {
+			RDEBUG("eap_fast_fast2vp: no sub attribute found %s attr: %u vendor: %u",
+					fast_da->name, attr, fast_da->vendor);
+			goto next_attr;
+		}
 		if (da->type == PW_TYPE_TLV) {
 			eap_fast_fast2vp(request, ssl, data, length, da, out);
 			goto next_attr;
 		}
-/*
-ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
-				    uint8_t const *data, size_t const attr_len, size_t const packet_len,
-				    void *decoder_ctx)
-
-        vp = NULL;
-        decoded = rad_attr2vp(request->packet, NULL, NULL, NULL,
-                      data, size + 2, &vp);
+		decoded = eap_fast_decode_vp(request, da, data, length, &vp);
 		if (decoded < 0) {
 			RERROR("Failed decoding %s: %s", da->name, fr_strerror());
 			goto next_attr;
 		}
-*/
+
+		fr_cursor_merge(out, vp);
 
 	next_attr:
 		while (fr_cursor_next(out)) {
