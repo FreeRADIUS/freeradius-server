@@ -437,10 +437,6 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 		char *out, size_t outlen, char const *in,
 		UNUSED void *arg)
 {
-	const char *p = in;
-	char *q = out;
-	size_t freespace = outlen;
-
 	if (outlen == 0) return 0;
 
 	if (outlen == 1) {
@@ -448,63 +444,8 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 		return 0;
 	}
 
-	while (*p) {
-		int sp;
-		size_t len;
 
-		if (freespace < 2) break;
-
-		switch (*p) {
-		case '\r':
-			sp = 'r';
-			break;
-
-		case '\n':
-			sp = 'n';
-			break;
-
-		case '\t':
-			sp = 't';
-			break;
-
-		case '\\':
-			sp = '\\';
-			break;
-
-		default:
-			sp = 0;
-			break;
-		}
-
-		if (sp) {
-			if (freespace < 3) break;
-
-			*q++ = '\\';
-			*q++ = sp;
-			freespace -= 2;
-			p++;
-			continue;
-		}
-
-		if (*p >= ' ') {
-			*(q++) = *(p++);
-			freespace--;
-			continue;
-		}
-
-		if (freespace < 5) break;
-
-		snprintf(q, freespace, "\\%03o", (uint8_t) *p);
-
-		len = strlen(q);
-		freespace -= len;
-		p++;
-		q += len;
-	}
-
-	*q = '\0';
-
-	return q - out;
+	return fr_snprint(out, outlen, in, -1, 0);
 }
 
 /** Write a linelog message
