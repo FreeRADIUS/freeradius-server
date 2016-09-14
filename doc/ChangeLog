@@ -14,6 +14,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Herwin Weststrate.
 	* Allow extended attributes to have "encrypt=2"
 	* Update dictionary.aruba.
+	* Add support for EAP-FAST.  This is an isolated
+	  feature which does not affect anything else.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
