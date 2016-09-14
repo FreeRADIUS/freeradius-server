@@ -1128,6 +1128,8 @@ static int auth_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (common_socket_parse(cs, this) < 0) return -1;
 
+	if (!sock->my_port) sock->my_port = PW_AUTH_UDP_PORT;
+
 	sock->dup_tree = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
 
 	return 0;

@@ -446,6 +446,17 @@ static int coa_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 	return 0;
 }
 
+static int coa_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+
+	if (common_socket_parse(cs, this) < 0) return -1;
+
+	if (!sock->my_port) sock->my_port = PW_COA_UDP_PORT;
+
+	return 0;
+}
+
 extern rad_protocol_t proto_radius_coa;
 rad_protocol_t proto_radius_coa = {
 	.magic		= RLM_MODULE_INIT,
@@ -455,7 +466,7 @@ rad_protocol_t proto_radius_coa = {
 	.tls		= false,
 	.bootstrap	= NULL,
 	.compile	= coa_listen_compile,
-	.parse		= common_socket_parse,
+	.parse		= coa_socket_parse,
 	.open		= common_socket_open,
 	.recv		= coa_socket_recv,
 	.send		= NULL,

@@ -380,6 +380,18 @@ static int acct_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	return 0;
 }
 
+static int acct_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+
+	if (common_socket_parse(cs, this) < 0) return -1;
+
+	if (!sock->my_port) sock->my_port = PW_ACCT_UDP_PORT;
+
+	return 0;
+}
+
+
 extern rad_protocol_t proto_radius_acct;
 rad_protocol_t proto_radius_acct = {
 	.magic		= RLM_MODULE_INIT,
@@ -389,7 +401,7 @@ rad_protocol_t proto_radius_acct = {
 	.tls		= false,
 	.bootstrap	= NULL,	/* don't do Acct-Type any more */
 	.compile	= acct_listen_compile,
-	.parse		= common_socket_parse,
+	.parse		= acct_socket_parse,
 	.open		= common_socket_open,
 	.recv		= acct_socket_recv,
 	.send		= NULL,
