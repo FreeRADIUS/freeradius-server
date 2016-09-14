@@ -235,7 +235,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	t = (eap_fast_tunnel_t *) tls_session->opaque;
 
 	RDEBUG("PAC provided via ClientHello SessionTicket extension");
-	RHEXDUMP(4, "PAC-Opaque", data, len);
+	RHEXDUMP(L_DBG_LVL_MAX, data, len, "PAC-Opaque");
 
 	if ((ntohs(opaque->hdr.type) & EAP_FAST_TLV_TYPE) != PAC_INFO_PAC_OPAQUE) {
 		errmsg = "PAC is not of type Opaque";
@@ -281,7 +281,7 @@ error:
 		goto error;
 	}
 
-	RHEXDUMP(4, "PAC-Opaque plaintext data section", (uint8_t const *)&opaque_plaintext, plen);
+	RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *)&opaque_plaintext, plen, "PAC-Opaque plaintext data section");
 
 	fast_da = fr_dict_attr_by_name(NULL, "EAP-FAST-PAC-Opaque-TLV");
 	rad_assert(fast_da != NULL);
