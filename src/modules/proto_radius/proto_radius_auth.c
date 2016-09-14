@@ -311,7 +311,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 *	DUP: go poke the request, but don't do anything else.
 		 */
 	case FR_ACTION_DUP:
+#if 0
 		unlang_action(request, FR_ACTION_DUP);
+#endif
 		return;
 
 		/*
