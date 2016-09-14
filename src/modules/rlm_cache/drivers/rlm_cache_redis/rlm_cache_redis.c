@@ -432,6 +432,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	fr_redis_rcode_t			status;
 	redisReply			*reply = NULL;
 	int				s_ret;
+	cache_status_t			cache_status;
 
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
@@ -449,9 +450,10 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	if (!rad_cond_assert(reply)) goto error;
 
 	if (reply->type == REDIS_REPLY_INTEGER) {
+		cache_status = CACHE_MISS;
+		if (reply->integer) cache_status = CACHE_OK;    /* Affected */
 		fr_redis_reply_free(reply);
-		if (reply->integer) return CACHE_OK;	/* Affected */
-		return CACHE_MISS;
+		return cache_status;
 	}
 
 	REDEBUG("Bad result type, expected integer, got %s",
