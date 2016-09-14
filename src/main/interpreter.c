@@ -1521,7 +1521,7 @@ int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t p
 		(int) delay->tv_sec, (int) delay->tv_usec);
 
 	if (fr_event_insert(request->el, unlang_timer_hook, request, &when, &request->ev) < 0) {
-		RDEBUG("Failed inserting delay event");
+		RDEBUG("Failed inserting delay event: %s", fr_strerror());
 		return -1;
 	}
 

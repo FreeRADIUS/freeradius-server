@@ -274,6 +274,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 	ev->parent = parent;
 
 	if (!fr_heap_insert(el->times, ev)) {
+		fr_strerror_printf("failed inserting event into heap");
 		talloc_free(ev);
 		return -1;
 	}
