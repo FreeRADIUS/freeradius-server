@@ -350,7 +350,7 @@ static int _module_dl_free(module_dl_t *module_dl)
 	DEBUG3("Unloading module \"%s\" (%p/%p)", module_dl->name, module_dl->handle, module_dl->module);
 
 	if (module_dl->handle) {
-		dlclose(module_dl->handle);        /* ignore any errors */
+		if (main_config.modules_stay_linked) dlclose(module_dl->handle);        /* ignore any errors */
 		module_dl->handle = NULL;
 	}
 

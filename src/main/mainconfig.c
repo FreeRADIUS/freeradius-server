@@ -180,6 +180,9 @@ static const CONF_PARSER resources[] = {
 	 *	it exists.
 	 */
 	{ FR_CONF_POINTER("talloc_pool_size", PW_TYPE_INTEGER, &main_config.talloc_pool_size) },
+
+	{ FR_CONF_POINTER("modules_stay_linked", PW_TYPE_BOOLEAN, &main_config.modules_stay_linked), },
+
 	CONF_PARSER_TERMINATOR
 };
 
