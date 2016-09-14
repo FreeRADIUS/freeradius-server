@@ -164,9 +164,8 @@ $ openssl speed rsa2048
 
   to test 2048 bit keys.
 
-  A 1GHz system will likely do 30 calculations/s.  A 2GHz system may
-  do 50 calculations/s, or more.  That number is also the number of
-  authentications/s that can be done for EAP-TLS (or TTLS, or PEAP).
+  That number is also the number of authentications/s that can be done
+  for EAP-TLS (or TTLS, or PEAP).
 
 
 		COMPATIBILITY
