@@ -824,10 +824,11 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			RDEBUG2("Delaying response for %d.%06d seconds",
 				(int) when.tv_sec, (int) when.tv_usec);
 
-			if (unlang_delay(request, &when, auth_reject_delay) < 0) {
-				goto done;
+			if (unlang_delay(request, &when, auth_reject_delay) == 0) {
+				return;
 			}
-			return;
+
+			/* else fall through to sending the response immediately. */
 		}
 
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
