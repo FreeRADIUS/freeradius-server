@@ -52,7 +52,7 @@ typedef struct rlm_eap_fast_t {
 } rlm_eap_fast_t;
 
 
-static CONF_PARSER module_config[] = {
+static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_fast_t, tls_conf_name) },
 
 	{ FR_CONF_OFFSET("default_provisioning_eap_type", PW_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
@@ -71,19 +71,9 @@ static CONF_PARSER module_config[] = {
 /*
  *	Attach the module.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
 {
-	rlm_eap_fast_t *inst;
-
-	*instance = inst = talloc_zero(cs, rlm_eap_fast_t);
-	if (!inst) return -1;
-
-	/*
-	 *	Parse the configuration attributes.
-	 */
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 
 	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
 		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
@@ -350,7 +340,7 @@ error:
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int mod_process(void *arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode;
 	eap_tls_status_t	status;
@@ -397,7 +387,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		return 1;
+		return RLM_MODULE_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -410,7 +400,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	Anything else: fail.
 	 */
 	default:
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -427,7 +417,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	switch (rcode) {
 	case PW_CODE_ACCESS_REJECT:
 		eap_tls_fail(eap_session);
-		return 0;
+		return RLM_MODULE_FAIL;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
@@ -435,15 +425,15 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	case PW_CODE_ACCESS_CHALLENGE:
 		tls_session_send(request, tls_session);
 		eap_tls_request(eap_session);
-		return 1;
+		return RLM_MODULE_HANDLED;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Note the missing PRF label warning below is harmless, ignore it");
-		if (eap_tls_success(eap_session) < 0) return 0;
-		return 1;
+		if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
+		return RLM_MODULE_OK;
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -455,7 +445,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 #ifdef WITH_PROXY
 		rad_assert(eap_session->request->proxy != NULL);
 #endif
-		return 1;
+		return RLM_MODULE_OK;
 
 	default:
 		break;
@@ -465,13 +455,13 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	Something we don't understand: Reject it.
 	 */
 	eap_tls_fail(eap_session);
-	return 0;
+	return RLM_MODULE_FAIL;
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int mod_session_init(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
 	int			rcode;
 	eap_tls_session_t 	*eap_tls_session;
@@ -497,7 +487,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
-	if (!eap_tls_session) return 0;
+	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	eap_session->opaque = ((void *)eap_tls_session);
 
@@ -522,7 +512,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 				tls_session->clean_in.used);
 	if (rcode < 0) {
 		talloc_free(tls_session);
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	tls_session->record_init(&tls_session->clean_in);
@@ -530,10 +520,10 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 
 	if (!SSL_set_session_ticket_ext_cb(tls_session->ssl, _session_ticket, tls_session)) {
 		RERROR("Failed setting SSL session ticket callback");
-		return 0;
+		return RLM_MODULE_FAIL;
 	}
 
-	return 1;
+	return RLM_MODULE_OK;
 }
 
 
@@ -541,10 +531,15 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rlm_eap_module_t rlm_eap_fast;
-rlm_eap_module_t rlm_eap_fast = {
+extern rlm_eap_submodule_t rlm_eap_fast;
+rlm_eap_submodule_t rlm_eap_fast = {
 	.name		= "eap_fast",
+	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_fast_t),
+	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };
