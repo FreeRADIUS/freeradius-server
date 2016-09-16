@@ -1037,6 +1037,14 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
         eapfast_copy_request_to_tunnel(request, fake);
     }
 
+	if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+		fake->server = vp->vp_strvalue;
+
+	} else if (t->virtual_server) {
+		fake->server = t->virtual_server;
+
+	} /* else fake->server == request->server */
+
 	/*
 	 * Call authentication recursively, which will
 	 * do PAP, CHAP, MS-CHAP, etc.
