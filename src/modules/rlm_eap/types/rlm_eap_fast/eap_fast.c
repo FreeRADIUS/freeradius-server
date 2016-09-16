@@ -1034,8 +1034,8 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	}
 
 	if (t->copy_request_to_tunnel) {
-        eapfast_copy_request_to_tunnel(request, fake);
-    }
+		eapfast_copy_request_to_tunnel(request, fake);
+	}
 
 	if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		fake->server = vp->vp_strvalue;
