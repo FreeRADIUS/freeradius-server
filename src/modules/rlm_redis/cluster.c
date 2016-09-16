@@ -285,8 +285,8 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
 		return fr_crc16_xmodem(key, key_len) & (KEY_SLOTS - 1);
 	}
 
-	q = memchr(key, '}', key_len);
-	if (!q || (q < p) || (q == p + 1)) goto all; /* no }, or } before {, or {}, hash everything */
+	q = memchr(p, '}', key_len - (p - key)); /* look for } after { */
+	if (!q || (q == p + 1)) goto all; /* no } or {}, hash everything */
 
 	p++;	/* skip '{' */
 
@@ -1051,10 +1051,12 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
 	pthread_mutex_lock(&cluster->mutex);
 	if (cluster->remapping) {
 		pthread_mutex_unlock(&cluster->mutex);
+		fr_redis_reply_free(map);	/* Free the map */
 		goto in_progress;
 	}
 	if (now == cluster->last_updated) {
 		pthread_mutex_unlock(&cluster->mutex);
+		fr_redis_reply_free(map);	/* Free the map */
 		goto too_soon;
 	}
 	ret = cluster_map_apply(cluster, map);
