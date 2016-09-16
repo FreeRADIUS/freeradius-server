@@ -253,13 +253,10 @@ BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | gzip > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz
-	gpg --default-key packages@freeradius.org -b $<
-
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | bzip2 > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
+%.sig: %
 	gpg --default-key packages@freeradius.org -b $<
 
 # high-level targets
