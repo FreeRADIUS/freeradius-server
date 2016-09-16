@@ -256,13 +256,10 @@ endif
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: freeradius-server-$(RADIUSD_VERSION_STRING).tar
 	gzip < $^ > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz
-	gpg --default-key packages@freeradius.org -b $<
-
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius-server-$(RADIUSD_VERSION_STRING).tar
 	bzip2 < $^ > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
+%.sig: %
 	gpg --default-key packages@freeradius.org -b $<
 
 # high-level targets
