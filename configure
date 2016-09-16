@@ -4543,7 +4543,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4589,7 +4589,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4613,7 +4613,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4658,7 +4658,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4682,7 +4682,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
+#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -13215,12 +13215,81 @@ SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
     if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
-      REGEX=yes
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking libpcre library and header version consistency" >&5
+$as_echo_n "checking libpcre library and header version consistency... " >&6; }
+      if test "$cross_compiling" = yes; then :
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: cross-compiling (assuming yes)" >&5
+$as_echo "cross-compiling (assuming yes)" >&6; }
+
+
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+            #include <stdio.h>
+            #include <pcre.h>
+            #include <stdlib.h>
+            #define XSTRINGIFY(x) #x
+            #define STRINGIFY(x) XSTRINGIFY(x)
+
+int
+main ()
+{
+
+            char const *p = pcre_version();
+            char *q;
+            unsigned long ver;
+
+            printf("library: %s header: %u.%u %s... ", p, PCRE_MAJOR, PCRE_MINOR, STRINGIFY(PCRE_DATE));
+
+            ver = strtoul(p, &q, 10);
+            if (*q != '.') {
+              printf("missing version component (major)...");
+              return 1;
+            }
+            if (ver != PCRE_MAJOR) {
+              printf("major version mismatch...");
+              return 65;
+            }
+            p = ++q;
+
+            ver = strtoul(p, &q, 10);
+            if (ver != PCRE_MINOR) {
+              printf("minor version mismatch...");
+              return 1;
+            }
+
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+          REGEX=yes
 
 $as_echo "#define HAVE_PCRE 1" >>confdefs.h
 
 
 $as_echo "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
+
+
+else
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+          { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "libpcre library version does not match header version
+See \`config.log' for more details" "$LINENO" 5; }
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
 
     fi
   fi

@@ -2012,9 +2012,55 @@ if test "x$REGEX" != "xno" && test "x$PCRE" != "xno"; then
     smart_try_dir=$pcre_lib_dir
     FR_SMART_CHECK_LIB(pcre, pcre_compile)
     if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
-      REGEX=yes
-      AC_DEFINE(HAVE_PCRE, [1], [define this if we have libpcre])
-      AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
+    AC_MSG_CHECKING([libpcre library and header version consistency])
+      AC_RUN_IFELSE(
+        [AC_LANG_PROGRAM(
+          [[
+            #include <stdio.h>
+            #include <pcre.h>
+            #include <stdlib.h>
+            #define XSTRINGIFY(x) #x
+            #define STRINGIFY(x) XSTRINGIFY(x)
+          ]],
+          [[
+            char const *p = pcre_version();
+            char *q;
+            unsigned long ver;
+
+            printf("library: %s header: %u.%u %s... ", p, PCRE_MAJOR, PCRE_MINOR, STRINGIFY(PCRE_DATE));
+
+            ver = strtoul(p, &q, 10);
+            if (*q != '.') {
+              printf("missing version component (major)...");
+              return 1;
+            }
+            if (ver != PCRE_MAJOR) {
+              printf("major version mismatch...");
+              return 65;
+            }
+            p = ++q;
+
+            ver = strtoul(p, &q, 10);
+            if (ver != PCRE_MINOR) {
+              printf("minor version mismatch...");
+              return 1;
+            }
+          ]]
+        )],
+        [
+          AC_MSG_RESULT(yes)
+          REGEX=yes
+          AC_DEFINE(HAVE_PCRE, [1], [define this if we have libpcre])
+          AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
+        ],
+        [
+          AC_MSG_RESULT(no)
+          AC_MSG_FAILURE([libpcre library version does not match header version])
+        ],
+        [
+          AC_MSG_RESULT([cross-compiling (assuming yes)])
+        ]
+      )
     fi
   fi
 fi
