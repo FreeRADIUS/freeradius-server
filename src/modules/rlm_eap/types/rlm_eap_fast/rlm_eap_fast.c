@@ -304,7 +304,7 @@ error:
 	for (VALUE_PAIR *vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
 
-		switch (vp->da->attr) {
+		switch (vp->da->attr >> 24) {
 		case PAC_INFO_PAC_TYPE:
 			rad_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_integer;
@@ -322,7 +322,7 @@ error:
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 			break;
 		default:
-			value = vp_aprints_value(tls_session, vp, '"');
+			value = vp_aprints(tls_session, vp, '"');
 			RERROR("unknown TLV: %s", value);
 			talloc_free(value);
 			errmsg = "unknown TLV";
