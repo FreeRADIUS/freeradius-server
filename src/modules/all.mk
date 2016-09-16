@@ -18,6 +18,6 @@ EXT_MODULES := $(subst ${top_srcdir}/,,$(wildcard ${top_srcdir}/src/modules/*_ex
 #
 ifeq "$(CONFIGURE_ARGS)" ""
 NEEDS_CONFIG := $(patsubst %.in,%,$(foreach file,$(SUBMAKEFILES),$(wildcard $(file).in)))
-SUBMAKEFILES := $(sort $(SUBMAKEFILES) $(NEED_CONFIG))
+SUBMAKEFILES := $(sort $(SUBMAKEFILES) $(NEEDS_CONFIG))
 endif
 
