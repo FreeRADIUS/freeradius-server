@@ -46,7 +46,7 @@ define ADD_INSTALL_RULE.exe
     install: $${${1}_INSTALLDIR}/$(notdir ${1})
 
     # Install executable ${1}
-    $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1} | $${${1}_INSTALLDIR}
+    $${${1}_INSTALLDIR}/$(notdir ${1}): ${JLIBTOOL} $${${1}_BUILD}/${1} | $${${1}_INSTALLDIR}
 	@$(ECHO) INSTALL ${1}
 	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/${1} $${${1}_INSTALLDIR}/
 	$(Q)$${${1}_POSTINSTALL}
@@ -65,7 +65,7 @@ define ADD_INSTALL_RULE.a
     install: $${${1}_INSTALLDIR}/$(notdir ${1})
 
     # Install static library ${1}
-    $${${1}_INSTALLDIR}/$(notdir ${1}): ${1} | $${${1}_INSTALLDIR}
+    $${${1}_INSTALLDIR}/$(notdir ${1}): ${JLIBTOOL} ${1} | $${${1}_INSTALLDIR}
 	@$(ECHO) INSTALL ${1}
 	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
 	$(Q)$${${1}_POSTINSTALL}
@@ -87,7 +87,7 @@ define ADD_INSTALL_RULE.la
     install: $${${1}_INSTALLDIR}/$(notdir ${1})
 
     # Install libtool library ${1}
-    $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1} | $${${1}_INSTALLDIR}
+    $${${1}_INSTALLDIR}/$(notdir ${1}): ${JLIBTOOL} $${${1}_BUILD}/${1} | $${${1}_INSTALLDIR}
 	@$(ECHO) INSTALL ${1}
 	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${LOCAL_FLAGS_MIN} $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
 	$(Q)$${${1}_POSTINSTALL}
@@ -107,7 +107,7 @@ define ADD_INSTALL_RULE.man
     install: ${2}/$(notdir ${1})
 
     # Install manual page ${1}
-    ${2}/$(notdir ${1}): ${1} | ${2}
+    ${2}/$(notdir ${1}): ${JLIBTOOL} ${1} | ${2}
 	@$(ECHO) INSTALL $(notdir ${1})
 	$(Q)$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}/
 
@@ -122,7 +122,7 @@ endef
 define ADD_INSTALL_RULE.dir
     # Install directory
     .PHONY: ${1}
-    ${1}:
+    ${1}: ${JLIBTOOL}
 	@$(ECHO) INSTALL -d -m 755 ${1}
 	$(Q)$${PROGRAM_INSTALL} -d -m 755 ${1}
 endef
