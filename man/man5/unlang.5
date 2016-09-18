@@ -420,7 +420,7 @@ conditions
 	(foo)
 .DE
 
-Evalutes to true if 'foo' is a non-empty string (single quotes, double
+Evaluates to true if 'foo' is a non-empty string (single quotes, double
 quotes, or back-quoted).  Also evaluates to true if 'foo' is a
 non-zero number.  Note that the language is poorly typed, so the
 string "0000" can be interpreted as a numerical zero.  This issue can
@@ -442,7 +442,7 @@ codes are given in MODULE RETURN CODES, below.
 	(!foo)
 .DE
 
-Evalutes to true if 'foo' evaluates to false, and vice-versa.
+Evaluates to true if 'foo' evaluates to false, and vice-versa.
 .PP
 Short-circuit operators
 .RS
@@ -622,7 +622,7 @@ The trailing 'm' is also optional, and indicates that carrot '^'
 and dollar '$' anchors should match on new lines as well as at the
 start and end of the subject string.
 
-If the comparison operator is "=~", then parantheses in the regular
+If the comparison operator is "=~", then parentheses in the regular
 expression will define variables containing the matching text, as
 described below in the VARIABLES section.
 .SH EXPANSIONS
@@ -700,19 +700,19 @@ The integer value of the Attribute-Name, instead of the enumerated
 name.
 
 e.g. If a request contains "Service-Type = Login-User", the expansion
-of %{integer:Service-Type} will yeild "1".
+of %{integer:Service-Type} will yield "1".
 
 .IP %{hex:Attribute-Name}
 The hex value of the Attribute-Name, as a series of hex digits.
 
 e.g. If a request contains "Framed-IP-Address = 127.0.0.1", the expansion
-of %{hex:Framed-IP-Address} will yeild "0x7f000001".
+of %{hex:Framed-IP-Address} will yield "0x7f000001".
 
 .IP %{Attribute-Name[#]}
 The number of instances of Attribute-Name.
 
 e.g. If a request contains "User-Name = bob", the expansion
-of %{User-Name[#]} will yeild "1".
+of %{User-Name[#]} will yield "1".
 
 .IP %{Attribute-Name[*]}
 All values of Attribute-Name, concatenated together with ',' as the
