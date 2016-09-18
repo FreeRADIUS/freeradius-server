@@ -172,7 +172,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options)); /* For some reason the 'init' version
 										    of this function is deprecated */
 	if (ret) {
-		ERROR("Couldn't allocat initial credential options: %s", rlm_krb5_error(inst, inst->context, ret));
+		ERROR("Couldn't allocate initial credential options: %s", rlm_krb5_error(inst, inst->context, ret));
 
 		return -1;
 	}
