@@ -172,9 +172,11 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	/*
 	 *	Try querying for the dynamic realm.
 	 */
-	if (!realm && inst->trust_router)
-		realm = tr_query_realm(request, realm_name, inst->default_community,
-				       inst->rp_realm, inst->trust_router, inst->tr_port);
+	if (!realm && inst->trust_router) {
+		realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
+	} else {
+		RDEBUG2("No trust router configured, skipping dynamic realm lookup");
+	}	
 #endif
 
 	if (!realm) {
@@ -383,6 +385,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (!tr_init()) return -1;
 	} else {
 		talloc_const_free(inst->trust_router);
+		inst->trust_router = NULL;
 	}
 #endif
 
