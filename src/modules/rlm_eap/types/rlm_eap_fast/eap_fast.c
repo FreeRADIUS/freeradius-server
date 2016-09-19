@@ -788,7 +788,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	if (t->stage == AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
-		tvp = fr_pair_afrom_num(fake->packet, 0, PW_EAP_TYPE);
+		tvp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
 		tvp->vp_integer = t->default_provisioning_method;
 		fr_pair_add(&fake->control, tvp);
 
