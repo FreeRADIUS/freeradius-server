@@ -797,50 +797,45 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 		rcode = RLM_MODULE_OK;
 
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
-			switch (vp->da->vendor) {
-			case VENDORPEC_MICROSOFT:
-				/* FIXME must be a better way to capture/re-derive this later for ISK */
-                switch(vp->da->attr) {
-                case PW_MSCHAP_MPPE_SEND_KEY:
-					memcpy(t->isk.mppe_send, vp->vp_octets, CHAP_VALUE_LENGTH);
-                    break;
+			if (vp->da->vendor != VENDORPEC_MICROSOFT) continue;
 
-                case PW_MSCHAP_MPPE_RECV_KEY:
-					memcpy(t->isk.mppe_recv, vp->vp_octets, CHAP_VALUE_LENGTH);
-                    break;
-
-                case PW_MSCHAP2_SUCCESS:
-					RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
-					rcode = RLM_MODULE_HANDLED;
-                    if (t->use_tunneled_reply) {
-                        t->authenticated = true;
-                        /*
-                         *	Clean up the tunneled reply.
-                         */
-                        fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-                        fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-                        fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
-
-                        /*
-                         *	Delete MPPE keys & encryption policy.  We don't
-                         *	want these here.
-                         */
-                        fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-                        fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-                        fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-                        fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
-
-                        fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
-                        fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-                        rad_assert(!reply->vps);
-                    }
-                    break;
-
-                default:
-                    break;
-				}
+			/* FIXME must be a better way to capture/re-derive this later for ISK */
+			switch (vp->da->attr) {
+			case PW_MSCHAP_MPPE_SEND_KEY:
+				memcpy(t->isk.mppe_send, vp->vp_octets, CHAP_VALUE_LENGTH);
 				break;
 
+			case PW_MSCHAP_MPPE_RECV_KEY:
+				memcpy(t->isk.mppe_recv, vp->vp_octets, CHAP_VALUE_LENGTH);
+				break;
+
+			case PW_MSCHAP2_SUCCESS:
+				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
+				rcode = RLM_MODULE_HANDLED;
+				if (t->use_tunneled_reply) {
+					t->authenticated = true;
+					/*
+					 *	Clean up the tunneled reply.
+					 */
+					fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
+					fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+					fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+
+					/*
+					 *	Delete MPPE keys & encryption policy.  We don't
+					 *	want these here.
+					 */
+					fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+					fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+					fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+					fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+
+					fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
+					fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+					rad_assert(!reply->vps);
+				}
+				break;
+				
 			default:
 				break;
 			}
@@ -889,11 +884,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 		 */
 		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
 
-        if (vp) {
-            RDEBUG("Sending tunneled reply attributes");
-            eap_vp2fast(tls_session, vp);
-            fr_pair_list_free(&vp);
-        }
+		if (vp) {
+			RDEBUG("Sending tunneled reply attributes");
+			eap_vp2fast(tls_session, vp);
+			fr_pair_list_free(&vp);
+		}
 
 		rcode = RLM_MODULE_HANDLED;
 		break;
