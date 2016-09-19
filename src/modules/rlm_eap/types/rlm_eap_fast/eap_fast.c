@@ -1384,8 +1384,14 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		/*
 		 * RFC 5422 section 3.5 - Network Access after EAP-FAST Provisioning
 		 */
-		if ((t->pac.type && t->pac.expired) || t->mode == EAP_FAST_PROVISIONING_ANON) {
-			RDEBUG("Rejecting expired PAC or unauthenticated provisioning");
+		if (t->pac.type && t->pac.expired) {
+			REDEBUG("Rejecting expired PAC.");
+			code = PW_CODE_ACCESS_REJECT;
+			break;
+		}
+
+		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
+			REDEBUG("Rejecting unauthenticated provisioning");
 			code = PW_CODE_ACCESS_REJECT;
 			break;
 		}
@@ -1401,8 +1407,9 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		eap_add_reply(request, "EAP-EMSK", t->emsk, EAP_EMSK_LEN);
 
 		break;
+
 	default:
-		RERROR("no idea! %d", t->stage);
+		RERROR("Internal sanity check failed in EAP-FAST at %d", t->stage);
 		code = PW_CODE_ACCESS_REJECT;
 	}
 
