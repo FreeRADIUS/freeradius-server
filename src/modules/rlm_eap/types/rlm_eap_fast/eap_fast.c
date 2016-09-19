@@ -615,20 +615,23 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 * the rest to be cleaned up.
 		 */
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
-			switch (vp->da->vendor) {
-			case VENDORPEC_MICROSOFT:
-				/* FIXME must be a better way to capture/re-derive this later for ISK */
-				if (vp->da->attr == PW_MSCHAP_MPPE_SEND_KEY)
-					memcpy(t->isk.mppe_send, vp->vp_octets, CHAP_VALUE_LENGTH);
-				if (vp->da->attr == PW_MSCHAP_MPPE_RECV_KEY)
-					memcpy(t->isk.mppe_recv, vp->vp_octets, CHAP_VALUE_LENGTH);
+			if (vp->da->vendor != VENDORPEC_MICROSOFT) continue;
 
-				if (vp->da->attr == PW_MSCHAP2_SUCCESS) {
-					RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
-					rcode = RLM_MODULE_HANDLED;
-					t->authenticated = true;
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-				}
+			/* FIXME must be a better way to capture/re-derive this later for ISK */
+			switch (vp->da->attr) {
+			case PW_MSCHAP_MPPE_SEND_KEY:
+				memcpy(t->isk.mppe_send, vp->vp_octets, CHAP_VALUE_LENGTH);
+				break;
+
+			case PW_MSCHAP_MPPE_RECV_KEY:
+				memcpy(t->isk.mppe_recv, vp->vp_octets, CHAP_VALUE_LENGTH);
+				break;
+
+			case PW_MSCHAP2_SUCCESS:
+				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
+				rcode = RLM_MODULE_HANDLED;
+				t->authenticated = true;
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				break;
 
 			default:
@@ -661,21 +664,16 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			switch (vp->da->vendor) {
-			case 0:
-				switch (vp->da->attr) {
-				case PW_EAP_MESSAGE:
-				case PW_REPLY_MESSAGE:
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
-					break;
+			if (vp->da->vendor != 0) continue;
 
-				default:
-					break;
-
-				}
+			switch (vp->da->attr) {
+			case PW_EAP_MESSAGE:
+			case PW_REPLY_MESSAGE:
+				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				break;
 
 			default:
-				continue;
+				break;
 			}
 		}
 		rcode = RLM_MODULE_HANDLED;
