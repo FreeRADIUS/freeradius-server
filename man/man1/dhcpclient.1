@@ -1,8 +1,8 @@
 .TH DHCPCLIENT 1 "19 September 2016" "" "FreeRADIUS Daemon"
 .SH NAME
-dhcpclient - Send a DHCP request with provided RADIUS attrs and output response.
+dhcpclient - Send a DHCP request with provided RADIUS attrs and get the output response.
 .SH SYNOPSIS
-.B radclient
+.B dhcpclient
 .RB [ \-d
 .IR raddb_directory ]
 .RB [ \-D
@@ -23,7 +23,7 @@ packets to the FreeRADIUS server running as DHCP server, then shows the reply.
 It can be used to test changes you made in the configuration of the radius server,
 or it can be used to monitor if a radius server is up.
 .PP
-\fBradclient\fP reads radius attribute/value pairs from its standard
+\fBdhcpclient\fP reads radius attribute/value pairs from its standard
 input, or from a file specified on the command line. It then encodes
 these attribute/value pairs using the dictionary, and sends them
 to the local/remote server.
