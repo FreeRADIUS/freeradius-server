@@ -441,7 +441,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	switch (rcode) {
 	case PW_CODE_ACCESS_REJECT:
 		RDEBUG("Reject");
-		eaptls_fail(handler, 0);
+		eaptls_fail(handler, EAP_FAST_VERSION);
 		return 0;
 
 		/*
@@ -467,7 +467,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (t->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
-		return eaptls_success(handler, 0);
+		return eaptls_success(handler, EAP_FAST_VERSION);
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -488,7 +488,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	/*
 	 *	Something we don't understand: Reject it.
 	 */
-	eaptls_fail(handler, 0);
+	eaptls_fail(handler, EAP_FAST_VERSION);
 	return 0;
 }
 
