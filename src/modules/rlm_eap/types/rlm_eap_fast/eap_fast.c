@@ -685,10 +685,9 @@ static void eap_vp2fast(tls_session_t *tls_session, VALUE_PAIR *first)
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;
 
-	for (vp = fr_cursor_init(&cursor, &first); vp; vp = fr_cursor_next(&cursor))
-	{
-		if (vp->da->vendor != 0 && vp->da->attr != PW_EAP_MESSAGE) continue;
+	(void) fr_cursor_init(&cursor, &first);
 
+	while ((vp = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY)) != NULL) {
 		eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 	}
 }
