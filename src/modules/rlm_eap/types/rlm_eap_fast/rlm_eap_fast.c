@@ -221,7 +221,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	tls_session_t		*tls_session = arg;
 	REQUEST			*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 	eap_fast_tunnel_t	*t;
-	VALUE_PAIR		*fast_vps;
+	VALUE_PAIR		*fast_vps = NULL;
 	vp_cursor_t		cursor;
 	fr_dict_attr_t const	*fast_da;
 	char const		*errmsg;
@@ -248,6 +248,7 @@ error:
 		if (t->pac.key) talloc_free(t->pac.key);
 
 		memset(&t->pac, 0, sizeof(t->pac));
+		if (fast_vps) fr_pair_list_free(&fast_vps);
 		return 1;
 	}
 
@@ -317,6 +318,8 @@ error:
 			goto error;
 		}
 	}
+
+	fr_pair_list_free(&fast_vps);
 
 	if (!t->pac.type) {
 		errmsg = "PAC missing type TLV";
