@@ -504,3 +504,7 @@ CONFIG_TLSV12=y
 
 # OS X builds. This is only for building eapol_test.
 CONFIG_OSX=y
+
+#  EAP-FAST used to require OpenSSL patches, so it's not on by default.
+#  enable it.
+CONFIG_EAP_FAST=y
