@@ -74,6 +74,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Free rad_perlconf_hv in correct perl context.
 	  Fixes #1675.
 	* Set OpenSSL FIPS compatibility flag when necessary.
+	* Pulled fixes for the build system over from other
+	  branches.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
