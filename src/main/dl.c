@@ -356,6 +356,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, char const *name, char const *p
 	} else {
 		dl_module = rbtree_finddata(dl_handle_tree, &to_find);
 		if (dl_module) {
+			talloc_free(module_name);
 			talloc_increase_ref_count(dl_module);
 			return dl_module;
 		}
