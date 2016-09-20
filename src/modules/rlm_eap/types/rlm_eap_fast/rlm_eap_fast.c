@@ -444,8 +444,8 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
-		RDEBUG("Note the missing PRF label warning below is harmless, ignore it");
-		if (eap_tls_success(eap_session) < 0) return 0;
+		RDEBUG("Note that the 'missing PRF label' message below is harmless. Please ignore it.");
+		if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
 		return 1;
 
 		/*
