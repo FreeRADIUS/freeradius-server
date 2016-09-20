@@ -680,18 +680,6 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 }
 
 
-static void eap_vp2fast(tls_session_t *tls_session, VALUE_PAIR *first)
-{
-	VALUE_PAIR	*vp;
-	vp_cursor_t	cursor;
-
-	(void) fr_cursor_init(&cursor, &first);
-
-	while ((vp = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY)) != NULL) {
-		eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
-	}
-}
-
 static void eapfast_copy_request_to_tunnel(REQUEST *request, REQUEST *fake) {
     VALUE_PAIR *copy, *vp;
     vp_cursor_t cursor;
@@ -849,29 +837,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
-		 *	We should really be a bit smarter about this,
-		 *	and move over only those attributes which
-		 *	are relevant to the authentication request,
-		 *	but that's a lot more work, and this "dumb"
-		 *	method works in 99.9% of the situations.
+		 *	Copy the EAP-Message back to the tunnel.
 		 */
-		vp = NULL;
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		(void) fr_cursor_init(&cursor, &reply->vps);
 
-		/*
-		 *	There MUST be a Reply-Message in the challenge,
-		 *	which we tunnel back to the client.
-		 *
-		 *	If there isn't one in the reply VP's, then
-		 *	we MUST create one, with an empty string as
-		 *	it's value.
-		 */
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
-
-		if (vp) {
-			RDEBUG("Sending tunneled reply attributes");
-			eap_vp2fast(tls_session, vp);
-			fr_pair_list_free(&vp);
+		while ((vp = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY)) != NULL) {
+			eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 		}
 
 		rcode = RLM_MODULE_HANDLED;
