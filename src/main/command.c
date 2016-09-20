@@ -134,6 +134,130 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 #endif /* HAVE_GETPEEREID */
 
+#if 0
+/*
+ *	Enable this function if you're running on OSX and want to use
+ *	valgrind.  Valgrind doesn't implement openat() etc., so this
+ *	old / shorter function works.
+ */
+static int fr_server_domain_socket(char const *path, UNUSED gid_t gid)
+{
+        int sockfd;
+	size_t len;
+	socklen_t socklen;
+        struct sockaddr_un salocal;
+	struct stat buf;
+
+	len = strlen(path);
+	if (len >= sizeof(salocal.sun_path)) {
+		fr_strerror_printf("Path too long in socket filename.");
+		return -1;
+	}
+
+        if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+		fr_strerror_printf("Failed creating socket: %s",
+			fr_syserror(errno));
+		return -1;
+        }
+
+	memset(&salocal, 0, sizeof(salocal));
+        salocal.sun_family = AF_UNIX;
+	memcpy(salocal.sun_path, path, len + 1); /* SUN_LEN does strlen */
+
+	socklen = SUN_LEN(&salocal);
+
+	/*
+	 *	Check the path.
+	 */
+	if (stat(path, &buf) < 0) {
+		if (errno != ENOENT) {
+			fr_strerror_printf("Failed to stat %s: %s",
+			       path, fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+
+		/*
+		 *	FIXME: Check the enclosing directory?
+		 */
+	} else {		/* it exists */
+		if (!S_ISREG(buf.st_mode)
+#ifdef S_ISSOCK
+		    && !S_ISSOCK(buf.st_mode)
+#endif
+			) {
+			fr_strerror_printf("Cannot turn %s into socket", path);
+			close(sockfd);
+			return -1;
+		}
+
+		/*
+		 *	Refuse to open sockets not owned by us.
+		 */
+		if (buf.st_uid != geteuid()) {
+			fr_strerror_printf("We do not own %s", path);
+			close(sockfd);
+			return -1;
+		}
+
+		if (unlink(path) < 0) {
+			fr_strerror_printf("Failed to delete %s: %s",
+			       path, fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+	}
+
+        if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
+		fr_strerror_printf("Failed binding to %s: %s",
+			path, fr_syserror(errno));
+		close(sockfd);
+		return -1;
+        }
+
+	/*
+	 *	FIXME: There's a race condition here.  But Linux
+	 *	doesn't seem to permit fchmod on domain sockets.
+	 */
+	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
+		fr_strerror_printf("Failed setting permissions on %s: %s",
+		       path, fr_syserror(errno));
+		close(sockfd);
+		return -1;
+	}
+
+	if (listen(sockfd, 8) < 0) {
+		fr_strerror_printf("Failed listening to %s: %s",
+			path, fr_syserror(errno));
+		close(sockfd);
+		return -1;
+        }
+
+#ifdef O_NONBLOCK
+	{
+		int flags;
+
+		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
+			fr_strerror_printf("Failure getting socket flags: %s",
+				fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+
+		flags |= O_NONBLOCK;
+		if( fcntl(sockfd, F_SETFL, flags) < 0) {
+			fr_strerror_printf("Failure setting socket flags: %s",
+				fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+	}
+#endif
+
+	return sockfd;
+}
+#else  /* OSX VALGRIND */
+
 #if !defined(HAVE_OPENAT) || !defined(HAVE_MKDIRAT) || !defined(HAVE_UNLINKAT) || !defined(HAVE_FCHMODAT) || !defined(HAVE_FCHOWNAT)
 static int fr_server_domain_socket(UNUSED char const *path, UNUSED gid_t gid)
 {
@@ -591,7 +715,8 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 
 	return sock_fd;
 }
-#endif
+#endif	/* HAVE_OPENAT, etc. */
+#endif	/* OSX VALGRIND */
 
 /*
  *	Turn off all debugging.  But don't touch the debug condition.
