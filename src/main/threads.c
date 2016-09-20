@@ -458,6 +458,7 @@ static void *thread_handler(void *arg)
 				if (!request) break;
 				(void) fr_heap_extract(thread->backlog, request);
 
+				VERIFY_REQUEST(request);
 				request->backlog = local_backlog;
 				fr_heap_insert(local_backlog, request);
 
@@ -529,6 +530,7 @@ static void *thread_handler(void *arg)
 		request = fr_heap_peek(local_backlog);
 		rad_assert(request != NULL);
 		(void) fr_heap_extract(local_backlog, request);
+		VERIFY_REQUEST(request);
 
 		thread->request_count++;
 
