@@ -234,7 +234,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	tls_session_t		*tls_session = arg;
 	REQUEST			*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 	eap_fast_tunnel_t	*t;
-	VALUE_PAIR		*fast_vps;
+	VALUE_PAIR		*fast_vps = NULL;
 	vp_cursor_t		cursor;
 	DICT_ATTR const	*fast_da;
 	char const		*errmsg;
@@ -262,6 +262,7 @@ error:
 		if (t->pac.key) talloc_free(t->pac.key);
 
 		memset(&t->pac, 0, sizeof(t->pac));
+		if (fast_vps) fr_pair_list_free(&fast_vps);
 		return 1;
 	}
 
@@ -304,7 +305,7 @@ error:
 	for (VALUE_PAIR *vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
 
-		switch (vp->da->attr) {
+		switch (vp->da->attr >> 24) {
 		case PAC_INFO_PAC_TYPE:
 			rad_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_integer;
@@ -322,13 +323,15 @@ error:
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 			break;
 		default:
-			value = vp_aprints_value(tls_session, vp, '"');
+			value = vp_aprints(tls_session, vp, '"');
 			RERROR("unknown TLV: %s", value);
 			talloc_free(value);
 			errmsg = "unknown TLV";
 			goto error;
 		}
 	}
+
+	fr_pair_list_free(&fast_vps);
 
 	if (!t->pac.type) {
 		errmsg = "PAC missing type TLV";
@@ -438,7 +441,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	switch (rcode) {
 	case PW_CODE_ACCESS_REJECT:
 		RDEBUG("Reject");
-		eaptls_fail(handler, 0);
+		eaptls_fail(handler, EAP_FAST_VERSION);
 		return 0;
 
 		/*
@@ -464,7 +467,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (t->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
-		return eaptls_success(handler, 0);
+		return eaptls_success(handler, EAP_FAST_VERSION);
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -485,7 +488,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	/*
 	 *	Something we don't understand: Reject it.
 	 */
-	eaptls_fail(handler, 0);
+	eaptls_fail(handler, EAP_FAST_VERSION);
 	return 0;
 }
 

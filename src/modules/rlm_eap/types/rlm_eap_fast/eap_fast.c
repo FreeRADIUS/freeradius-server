@@ -761,9 +761,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
-	VALUE_PAIR			*vp, *tunnel_vps = NULL;
+	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
-	vp_cursor_t			to_tunnel;
 
 	eap_fast_tunnel_t	*t = tls_session->opaque;
 
@@ -793,7 +792,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 	switch (reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Got tunneled Access-Accept");
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
@@ -899,18 +897,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 		break;
 	}
 
-
-	/*
-	 * Pack any tunnelled VPs and send them back
-	 * to the supplicant.
-	 */
-	if (tunnel_vps) {
-		RDEBUG("Sending tunneled reply attributes");
-		rdebug_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
-
-		eap_vp2fast(tls_session, tunnel_vps);
-		fr_pair_list_free(&tunnel_vps);
-	}
 
 	return rcode;
 }
