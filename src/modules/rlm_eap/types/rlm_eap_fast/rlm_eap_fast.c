@@ -305,7 +305,7 @@ error:
 	for (VALUE_PAIR *vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
 
-		switch (vp->da->attr >> 24) {
+		switch ((vp->da->attr >> fr_attr_shift[3]) & fr_attr_mask[3]) {
 		case PAC_INFO_PAC_TYPE:
 			rad_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_integer;
