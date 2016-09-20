@@ -772,20 +772,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 	 * If the response packet was Access-Accept, then
 	 * we're OK.  If not, die horribly.
 	 *
-	 * FIXME: Take MS-CHAP2-Success attribute, and
-	 * tunnel it back to the client, to authenticate
-	 * ourselves to the client.
-	 *
-	 * FIXME: If we have an Access-Challenge, then
-	 * the Reply-Message is tunneled back to the client.
-	 *
-	 * FIXME: If we have an EAP-Message, then that message
-	 * must be tunneled back to the client.
-	 *
-	 * FIXME: If we have an Access-Challenge with a State
-	 * attribute, then do we tunnel that to the client, or
-	 * keep track of it ourselves?
-	 *
 	 * FIXME: EAP-Messages can only start with 'identity',
 	 * NOT 'eap start', so we should check for that....
 	 */
