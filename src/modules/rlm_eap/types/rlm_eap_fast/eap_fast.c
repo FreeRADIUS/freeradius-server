@@ -553,19 +553,6 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 }
 
 
-static void eap_vp2fast(tls_session_t *tls_session, VALUE_PAIR *first)
-{
-	VALUE_PAIR	*vp;
-	vp_cursor_t	cursor;
-
-	(void) fr_cursor_init(&cursor, &first);
-
-	while ((vp = fr_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY)) != NULL) {
-		eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
-	}
-}
-
-
 /*
  * Use a reply packet to determine what to do.
  */
@@ -574,9 +561,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
-	VALUE_PAIR			*vp, *tunnel_vps = NULL;
+	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
-	vp_cursor_t			to_tunnel;
 
 	eap_fast_tunnel_t	*t = tls_session->opaque;
 
@@ -586,20 +572,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 * If the response packet was Access-Accept, then
 	 * we're OK.  If not, die horribly.
 	 *
-	 * FIXME: Take MS-CHAP2-Success attribute, and
-	 * tunnel it back to the client, to authenticate
-	 * ourselves to the client.
-	 *
-	 * FIXME: If we have an Access-Challenge, then
-	 * the Reply-Message is tunneled back to the client.
-	 *
-	 * FIXME: If we have an EAP-Message, then that message
-	 * must be tunneled back to the client.
-	 *
-	 * FIXME: If we have an Access-Challenge with a State
-	 * attribute, then do we tunnel that to the client, or
-	 * keep track of it ourselves?
-	 *
 	 * FIXME: EAP-Messages can only start with 'identity',
 	 * NOT 'eap start', so we should check for that....
 	 */
@@ -607,7 +579,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Got tunneled Access-Accept");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		/*
@@ -631,7 +602,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
 				rcode = RLM_MODULE_HANDLED;
 				t->authenticated = true;
-				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				break;
 
 			default:
@@ -655,8 +625,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
-
 		/*
 		 * Copy what we need into the TTLS tunnel and leave
 		 * the rest to be cleaned up.
@@ -669,13 +637,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 			switch (vp->da->attr) {
 			case PW_EAP_MESSAGE:
 			case PW_REPLY_MESSAGE:
-				fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+				eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 				break;
 
 			default:
 				break;
 			}
 		}
+
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -683,19 +652,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		RDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
-	}
-
-
-	/*
-	 * Pack any tunnelled VPs and send them back
-	 * to the supplicant.
-	 */
-	if (tunnel_vps) {
-		RDEBUG("Sending tunneled reply attributes");
-		rdebug_pair_list(L_DBG_LVL_2, request, tunnel_vps, NULL);
-
-		eap_vp2fast(tls_session, tunnel_vps);
-		fr_pair_list_free(&tunnel_vps);
 	}
 
 	return rcode;
