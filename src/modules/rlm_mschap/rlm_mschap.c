@@ -241,7 +241,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				if (inst->with_ntdomain_hack) {
 					username_string++;
 				} else {
-					RWDEBUG2("NT Domain delimiter found, should we have enabled with_ntdomain_hack?");
+					RWDEBUG2("NT Domain delimiter found, should 'with_ntdomain_hack' be enabled?");
 					username_string = name_attr->vp_strvalue;
 				}
 			} else {
@@ -1999,7 +1999,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			if (inst->with_ntdomain_hack) {
 				username_string++;
 			} else {
-				RWDEBUG2("NT Domain delimiter found, should with_ntdomain_hack of been enabled?");
+				RWDEBUG2("NT Domain delimiter found, should 'with_ntdomain_hack' be enabled?");
 				username_string = name_attr->vp_strvalue;
 			}
 		} else {
