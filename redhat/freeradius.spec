@@ -304,8 +304,8 @@ find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \
 
 
 %build
-%ifarch s390 s390x
-export CFLAGS="$RPM_OPT_FLAGS -fPIC"
+%if %{?_with_developer:1}%{!?_with_developer:0}
+export CFLAGS="$CFLAGS -fpic"
 %else
 export CFLAGS="$RPM_OPT_FLAGS -fpic"
 %endif
