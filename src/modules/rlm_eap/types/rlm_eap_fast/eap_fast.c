@@ -616,12 +616,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	/*
-	 * Handle Access-Challenge, but only if we
-	 * send tunneled reply data.  This is because
-	 * an Access-Challenge means that we MUST tunnel
-	 * a Reply-Message to the client.
-	 */
 	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
@@ -633,16 +627,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->vendor != 0) continue;
+			if (vp->da->attr != PW_EAP_MESSAGE) continue;
 
-			switch (vp->da->attr) {
-			case PW_EAP_MESSAGE:
-			case PW_REPLY_MESSAGE:
-				eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
-				break;
-
-			default:
-				break;
-			}
+			eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 		}
 
 		rcode = RLM_MODULE_HANDLED;
