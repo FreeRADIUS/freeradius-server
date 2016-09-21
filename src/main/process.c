@@ -4753,9 +4753,9 @@ static void event_status(struct timeval *wake)
 		return;
 	}
 
-	if (!wake && !main_config.drop_requests) {
+	if (!wake) {
+		if (main_config.drop_requests) return;
 		INFO("Ready to process requests");
-
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
 		DEBUG("Waking up in %d.%01u seconds.",
