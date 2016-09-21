@@ -2214,9 +2214,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 *	If OCSP returns skipped (2), we run the verify command, unless
 		 *	conf->verify_skip_if_ocsp_ok is true.
 		 */
-		if ((my_ok != 0)
+		if ((my_ok != OCSP_STATUS_FAILED)
 #ifdef HAVE_OPENSSL_OCSP_H
-		    && conf->ocsp_enable && (my_ok != OCSP_STATUS_OK) && conf->verify_skip_if_ocsp_ok
+		    && conf->ocsp_enable &&
+		    (((my_ok == OCSP_STATUS_OK) && !conf->verify_skip_if_ocsp_ok) ||
+		     ((my_ok == OCSP_STATUS_SKIPPED) && conf->verify_skip_if_ocsp_ok))
+
 #endif
 			) while (conf->verify_client_cert_cmd) {
 			char filename[256];
