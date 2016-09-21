@@ -368,9 +368,7 @@ find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \
 # Retain CFLAGS from the environment...
 %if %{?_with_developer:1}%{!?_with_developer:0}
 export CFLAGS="$CFLAGS -fpic"
-# or add the standard RPM optimisation flags.
-%else
-export CFLAGS="$RPM_OPT_FLAGS -fpic"
+export CXXFLAGS="$CFLAGS"
 %endif
 
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
