@@ -2409,7 +2409,7 @@ static fr_command_table_t command_table_show[] = {
 #endif
 	{ "listener", FR_READ,
 	  "show listener <command> - do sub-command of listener",
-	  NULL, command_table_show_listener },
+	  NULL, command_table_show_listeners },
 
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
