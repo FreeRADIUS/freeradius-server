@@ -850,7 +850,7 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 
 	if (!ctx) {
 		fprintf(log, "Current state of talloced memory:\n");
-		talloc_report_full(talloc_null_ctx, log);
+		talloc_report_full(talloc_null_ctx(), log);
 	} else {
 		int i;
 
