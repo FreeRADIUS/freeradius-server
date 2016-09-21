@@ -150,7 +150,8 @@ static int fr_server_domain_socket(char const *path, UNUSED gid_t gid)
 
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename.");
+		fr_strerror_printf("Path length (%zu) exceeds system limit for unix socket paths (%zu)",
+				   len, sizeof(salocal.sun_path));
 		return -1;
 	}
 
@@ -611,7 +612,8 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 	len = strlen(path);
 #endif
 	if (len >= sizeof(salocal.sun_path)) {
-		fr_strerror_printf("Path too long in socket filename");
+		fr_strerror_printf("Path length (%zu) exceeds system limit for unix socket paths (%zu)",
+				   len, sizeof(salocal.sun_path));
 		goto sock_error;
 	}
 
