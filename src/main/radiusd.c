@@ -788,7 +788,13 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h            Print this help message.\n");
 	fprintf(output, "  -l <log_file> Logging output will be written to this file.\n");
+#ifndef NDEBUG
+	fprintf(output, "  -L <size>     When running in memory debug mode, set a hard limit on talloced memory\n");
+#endif
 	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
+#ifndef NDEBUG
+	fprintf(output, "  -M            Enable talloc memory debugging, and issue a memory report when the server terminates\n");
+#endif
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
 	fprintf(output, "  -t            Disable threads.\n");
