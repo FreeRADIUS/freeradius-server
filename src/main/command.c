@@ -1909,6 +1909,17 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 }
 #endif
 
+static int command_show_listener_enabled(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	if (main_config.drop_requests) {
+		cprintf(listener, "no\n");
+	} else {
+		cprintf(listener, "yes\n");
+	}
+
+	return CMD_OK;
+}
+
 /*
  *	For encode/decode stuff
  */
@@ -2335,6 +2346,22 @@ static fr_command_table_t command_table_show_home[] = {
 };
 #endif
 
+static fr_command_table_t command_table_show_listener[] = {
+	{ "enabled", FR_READ,
+	  "show listener all enabled - shows whether the server is configured to accept packets",
+	  command_show_listener_enabled, NULL},
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+static fr_command_table_t command_table_show_listeners[] = {
+	{ "all", FR_READ,
+	  "show listener all - shows global listener state",
+	  NULL, command_table_show_listener },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
 static fr_command_table_t command_table_show_profiler_cpu[] = {
 	{ "file", FR_WRITE,
@@ -2380,6 +2407,10 @@ static fr_command_table_t command_table_show[] = {
 	  "show home_server <command> - do sub-command of home_server",
 	  NULL, command_table_show_home },
 #endif
+	{ "listener", FR_READ,
+	  "show listener <command> - do sub-command of listener",
+	  NULL, command_table_show_listener },
+
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
@@ -2524,6 +2555,24 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 
 		instance->code = rcode;
 		instance->force = true;
+	}
+
+	return CMD_OK;
+}
+
+static int command_set_listener_enabled(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 1) {
+		cprintf_error(listener, "No value was provided\n");
+		return 0;
+	}
+
+	if ((strcmp(argv[0], "yes") == 0) || (strcmp(argv[0], "true") == 0)) {
+		INFO("Server has resumed accepting requests");
+		main_config.drop_requests = false;
+	} else if ((strcmp(argv[0], "no") == 0) || (strcmp(argv[0], "false") == 0)) {
+		INFO("Server is no longer accepting new requests");
+		main_config.drop_requests = true;
 	}
 
 	return CMD_OK;
@@ -2964,6 +3013,21 @@ static fr_command_table_t command_table_set_module[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_set_listener[] = {
+	{ "enabled", FR_WRITE,
+	  "set listener all enabled <bool> - enable or disable all listeners",
+	  command_set_listener_enabled, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+static fr_command_table_t command_table_set_listeners[] = {
+	{ "all", FR_WRITE,
+	  "set listener all - change state of all listeners",
+	  NULL, command_table_set_listener },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_set[] = {
 	{ "module", FR_WRITE,
@@ -2974,6 +3038,9 @@ static fr_command_table_t command_table_set[] = {
 	  "set home_server <command> - set home server commands",
 	  NULL, command_table_set_home },
 #endif
+	{ "listener", FR_WRITE,
+	  "set listener <command> - set listener commands",
+	  NULL, command_table_set_listeners },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };

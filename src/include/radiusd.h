@@ -133,6 +133,7 @@ typedef struct main_config {
 	uint32_t	cleanup_delay;			//!< How long before cleaning up cached responses.
 	uint32_t	continuation_timeout;		//!< How long to wait before cleaning up state entries.
 	uint32_t	max_requests;
+	bool		drop_requests;			//!< Administratively disable request processing.
 
 	char const	*log_file;
 	int		syslog_facility;

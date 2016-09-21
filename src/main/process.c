@@ -1600,8 +1600,10 @@ bool request_dup_received(rad_listen_t *listener, rbtree_t *dup_tree, RADCLIENT 
 
 bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet)
 {
-	uint32_t count;
-	listen_socket_t *sock = NULL;
+	uint32_t	count;
+	listen_socket_t	*sock = NULL;
+
+	if (main_config.drop_requests) return true;
 
 	/*
 	 *	Quench maximum number of outstanding requests.
