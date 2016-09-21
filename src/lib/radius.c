@@ -303,6 +303,11 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 	}
 
 	/*
+	 *	Socket is closing, don't complain.
+	 */
+	if (data_len == 0) return 0;
+
+	/*
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
