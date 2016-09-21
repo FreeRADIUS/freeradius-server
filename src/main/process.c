@@ -4753,7 +4753,7 @@ static void event_status(struct timeval *wake)
 		return;
 	}
 
-	if (!wake) {
+	if (!wake && !main_config.drop_requests) {
 		INFO("Ready to process requests");
 
 	} else if ((wake->tv_sec != 0) ||
