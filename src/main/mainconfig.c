@@ -184,9 +184,9 @@ static const CONF_PARSER resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_POINTER("talloc_pool_size", PW_TYPE_SIZE, &main_config.talloc_pool_size) },
-	{ FR_CONF_POINTER("talloc_memory_limit", PW_TYPE_SIZE, &main_config.talloc_memory_limit), .dflt = "0" },
-	{ FR_CONF_POINTER("talloc_memory_report", PW_TYPE_BOOLEAN, &main_config.talloc_memory_report), .dflt = "no" },
+	{ FR_CONF_POINTER("talloc_pool_size", PW_TYPE_SIZE, &main_config.talloc_pool_size) },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_POINTER("talloc_memory_limit", PW_TYPE_SIZE, &main_config.talloc_memory_limit) },		/* DO NOT SET DEFAULT */
+	{ FR_CONF_POINTER("talloc_memory_report", PW_TYPE_BOOLEAN, &main_config.talloc_memory_report) },	/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
