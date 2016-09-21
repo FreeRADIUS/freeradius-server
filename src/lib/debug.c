@@ -94,7 +94,6 @@ fr_debug_state_t fr_debug_state = DEBUGGER_STATE_UNKNOWN;	//!< Whether we're att
 static struct rlimit init_core_limit;
 #endif
 
-static TALLOC_CTX *talloc_null_ctx;
 static TALLOC_CTX *talloc_autofree_ctx;
 
 #ifdef HAVE_SYS_PTRACE_H
@@ -872,7 +871,7 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 		} while ((ctx = talloc_parent(ctx)) &&
 			 (i < TALLOC_REPORT_MAX_DEPTH) &&
 			 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
-			 (talloc_parent(ctx) != talloc_null_ctx));  	/* Stop before we hit NULL ctx */
+			 (talloc_parent(ctx) != talloc_null_ctx()));  	/* Stop before we hit NULL ctx */
 	}
 
 	fclose(log);
@@ -1007,12 +1006,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 *  Needed for memory reports
 		 */
 		{
-			TALLOC_CTX *tmp;
 			bool *marker;
-
-			tmp = talloc(NULL, bool);
-			talloc_null_ctx = talloc_parent(tmp);
-			talloc_free(tmp);
 
 			/*
 			 *  Disable null tracking on exit, else valgrind complains
