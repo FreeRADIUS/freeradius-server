@@ -1935,6 +1935,8 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	CONF_PAIR	*cp;
 	char		buffer[8192];
 
+	rad_assert(dflt);
+
 	type = PW_BASE_TYPE(type);
 
 	/*
