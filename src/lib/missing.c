@@ -567,6 +567,25 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 }
 #endif
 
+/** Retrieve the current talloc NULL ctx
+ *
+ * Talloc doesn't provide a function to retrieve the top level memory tracking context.
+ * This function does that...
+ *
+ * @return the current talloc NULL context or NULL if memory tracking is not enabled.
+ */
+TALLOC_CTX *talloc_null_ctx(void)
+{
+	TALLOC_CTX *null_ctx;
+	bool *tmp;
+
+	tmp = talloc(NULL, bool);
+	null_ctx = talloc_parent(tmp);
+	talloc_free(tmp);
+
+	return null_ctx;
+}
+
 /** Call talloc_strdup, setting the type on the new chunk correctly
  *
  * For some bizarre reason the talloc string functions don't set the
