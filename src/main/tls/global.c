@@ -69,7 +69,7 @@ static libssl_defect_t libssl_defects[] =
 	},
 	{
 		.low		= 0x01000200f,		/* 1.0.2  */
-		.high		= 0x01000108f,		/* 1.0.2h */
+		.high		= 0x01000208f,		/* 1.0.2h */
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
