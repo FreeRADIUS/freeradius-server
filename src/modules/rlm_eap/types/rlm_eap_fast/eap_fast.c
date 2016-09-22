@@ -993,7 +993,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 */
 	switch (fake->reply->code) {
 	case 0:
-		RDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user.");
+		RDEBUG("No tunneled reply was found, rejecting the user.");
 		code = PW_CODE_ACCESS_REJECT;
 		break;
 
