@@ -59,7 +59,28 @@ static libssl_defect_t libssl_defects[] =
 		.id		= "CVE-2014-0160",
 		.name		= "Heartbleed",
 		.comment	= "For more information see http://heartbleed.com"
-	}
+	},
+	{
+		.low		= 0x01000100f,		/* 1.0.1  */
+		.high		= 0x01000114f,		/* 1.0.1t */
+		.id		= "CVE-2016-6304",
+		.name		= "OCSP status request extension",
+		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
+	},
+	{
+		.low		= 0x01000200f,		/* 1.0.2  */
+		.high		= 0x01000108f,		/* 1.0.2h */
+		.id		= "CVE-2016-6304",
+		.name		= "OCSP status request extension",
+		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
+	},
+	{
+		.low		= 0x01010100f,		/* 1.1.0  */
+		.high		= 0x01010100f,		/* 1.1.0 */
+		.id		= "CVE-2016-6304",
+		.name		= "OCSP status request extension",
+		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
+	},
 };
 #endif /* ENABLE_OPENSSL_VERSION_CHECK */
 
