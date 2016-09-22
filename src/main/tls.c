@@ -2456,15 +2456,14 @@ int tls_global_version_check(char const *acknowledged)
 			ERROR("Security advisory %s (%s)", defect->id, defect->name);
 			ERROR("%s", defect->comment);
 
+			INFO("Once you have verified libssl has been correctly patched, "
+			     "set security.allow_vulnerable_openssl = '%s'", defect->id);
+
 			bad = true;
 		}
 	}
 
-	if (bad) {
-		INFO("Once you have verified libssl has been correctly patched, "
-		     "set security.allow_vulnerable_openssl = '%s'", libssl_defects[0].id);
-		return -1;
-	}
+	if (bad) return -1;
 
 	return 0;
 }
