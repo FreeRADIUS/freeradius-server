@@ -239,33 +239,31 @@ static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
 int tls_global_version_check(char const *acknowledged)
 {
 	uint64_t v;
+	bool bad = false;
+	size_t i;
 
-	if ((strcmp(acknowledged, libssl_defects[0].id) != 0) && (strcmp(acknowledged, "yes") != 0)) {
-		bool bad = false;
-		size_t i;
+	if (strcmp(acknowledged, "yes") == 0) return 0;
 
-		/* Check for bad versions */
-		v = (uint64_t) SSLeay();
+	/* Check for bad versions */
+	v = (uint64_t) SSLeay();
 
-		for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
-			libssl_defect_t *defect = &libssl_defects[i];
+	for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
+		libssl_defect_t *defect = &libssl_defects[i];
 
-			if ((v >= defect->low) && (v <= defect->high)) {
-				ERROR("Refusing to start with libssl version %s (in range %s)",
-				      ssl_version(), ssl_version_range(defect->low, defect->high));
-				ERROR("Security advisory %s (%s)", defect->id, defect->name);
-				ERROR("%s", defect->comment);
+		if ((v >= defect->low) && (v <= defect->high)) {
+			ERROR("Refusing to start with libssl version %s (in range %s)",
+			      ssl_version(), ssl_version_range(defect->low, defect->high));
+			ERROR("Security advisory %s (%s)", defect->id, defect->name);
+			ERROR("%s", defect->comment);
 
-				bad = true;
-			}
-		}
-
-		if (bad) {
 			INFO("Once you have verified libssl has been correctly patched, "
-			     "set security.allow_vulnerable_openssl = '%s'", libssl_defects[0].id);
-			return -1;
+			     "set security.allow_vulnerable_openssl = '%s'", defect->id);
+
+			bad = true;
 		}
 	}
+
+	if (bad) return -1;
 
 	return 0;
 }
