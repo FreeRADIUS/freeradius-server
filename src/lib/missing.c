@@ -574,7 +574,7 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
  *
  * @return the current talloc NULL context or NULL if memory tracking is not enabled.
  */
-TALLOC_CTX *talloc_null_ctx(void)
+void *talloc_null_ctx(void)
 {
 	TALLOC_CTX *null_ctx;
 	bool *tmp;
