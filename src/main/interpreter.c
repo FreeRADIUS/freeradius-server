@@ -1167,13 +1167,16 @@ done:
 	goto do_pop;
 }
 
-static unlang_t empty_group = {
-	.type = UNLANG_TYPE_GROUP,
-	.debug_name = "empty-group",
-	.actions = { MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
-		     MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
-		     MOD_ACTION_RETURN
+static unlang_group_t empty_group = {
+	.self = {
+		.type = UNLANG_TYPE_GROUP,
+		.debug_name = "empty-group",
+		.actions = { MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
+			     MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN, MOD_ACTION_RETURN,
+			     MOD_ACTION_RETURN
+		},
 	},
+	.group_type = UNLANG_GROUP_TYPE_SIMPLE,
 };
 
 /** Push a configuration section onto the request stack for later interpretation.
@@ -1188,12 +1191,10 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	Interpretable unlang instructions are stored as CONF_DATA
 	 *	associated with sections.
 	 */
-	if (cs) {
-		instruction = cf_data_find(cs, "unlang");
-		rad_assert(instruction != NULL);
-	} else {
-		instruction = &empty_group;
-	}
+	if (cs) instruction = cf_data_find(cs, "unlang");
+
+	if (!instruction) instruction = unlang_group_to_generic(&empty_group);
+
 	unlang_push(stack, instruction, action, true);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
