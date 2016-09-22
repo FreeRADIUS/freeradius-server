@@ -16,6 +16,8 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	* Update dictionary.aruba.
 	* Add support for EAP-FAST.  This is an isolated
 	  feature which does not affect anything else.
+	* Update OpenSSL vulnerability list.  Use a version
+	  of OpenSSL released after September 20, 2016.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
