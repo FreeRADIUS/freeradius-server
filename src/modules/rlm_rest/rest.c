@@ -638,28 +638,38 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 {
 	rlm_rest_request_t	*ctx = userdata;
 	REQUEST *request = ctx->request;
+	rest_custom_data_t *data = ctx->encoder;
+
 	size_t freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
 	size_t len;
+	size_t to_copy;
 	const char *encoded;
 
 	rad_assert(freespace > 0);
 
-	if (ctx->state == READ_STATE_END) return 0;
+	if (ctx->state == READ_STATE_INIT) {
+		encoded = fr_json_from_pair_list(data, &request->packet->vps, NULL);
+		if (!encoded) return -1;
 
-	encoded = fr_json_from_pair_list(request, &request->packet->vps, NULL);
-	if (!encoded) return -1;
+		data->start = data->p = encoded;
+		data->len = strlen(encoded);
 
-	len = strlen(encoded);
-	if (len < freespace) {
-		strcpy(out, encoded);
-		ctx->state = READ_STATE_END;
-		RDEBUG3("JSON Data: %s", (char *)out);
-		RDEBUG3("Returning %zd bytes of JSON data", len);
-		return len;
+		RDEBUG3("JSON Data: %s", encoded);
+		RDEBUG3("Returning %zd bytes of JSON data", data->len);
 
+		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
+
+	to_copy = data->len - (data->p - data->start);
+	len = to_copy > freespace ? freespace : to_copy;
 	
-	return freespace - len;
+	if (len == 0) {
+		return 0;
+	} else {
+		memcpy(out, data->p, len);
+		data->p += len;
+		return len;
+	}
 }
 #endif
 
@@ -2072,12 +2082,19 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
+	{
+		rest_custom_data_t *data;
+
+		data = talloc_zero(request, rest_custom_data_t);
+		ctx->request.encoder = data;
+
 		rest_request_init(request, &ctx->request);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_json) < 0) {
 			return -1;
 		}
+	}
 
 		break;
 #endif
