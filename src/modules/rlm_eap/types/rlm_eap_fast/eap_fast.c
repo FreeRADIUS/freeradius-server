@@ -992,78 +992,9 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 * Decide what to do with the reply.
 	 */
 	switch (fake->reply->code) {
-	case 0:			/* No reply code, must be proxied... */
-#ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
-		if (vp) {
-			int			ret;
-			eap_tunnel_data_t	*tunnel;
-
-			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
-
-			/*
-			 * Tell the original request that it's going
-			 * to be proxied.
-			 */
-			fr_pair_list_mcopy_by_num(request, &request->config, &fake->config, PW_PROXY_TO_REALM, 0,
-						   TAG_ANY);
-
-			/*
-			 * Seed the proxy packet with the
-			 * tunneled request.
-			 */
-			rad_assert(!request->proxy);
-
-			request->proxy = talloc_steal(request, fake->packet);
-
-			memset(&request->proxy->src_ipaddr, 0,
-			       sizeof(request->proxy->src_ipaddr));
-			memset(&request->proxy->src_ipaddr, 0,
-			       sizeof(request->proxy->src_ipaddr));
-			request->proxy->src_port = 0;
-			request->proxy->dst_port = 0;
-			fake->packet = NULL;
-			rad_free(&fake->reply);
-			fake->reply = NULL;
-
-			/*
-			 * Set up the callbacks for the tunnel
-			 */
-			tunnel = talloc_zero(request, eap_tunnel_data_t);
-			tunnel->tls_session = tls_session;
-
-			/*
-			 * Associate the callback with the request.
-			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					       tunnel, false);
-			rad_assert(ret == 0);
-
-			/*
-			 * rlm_eap.c has taken care of associating
-			 * the eap_session with the fake request.
-			 *
-			 * So we associate the fake request with
-			 * this request.
-			 */
-			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-					       fake, true);
-			rad_assert(ret == 0);
-
-			fake = NULL;
-
-			/*
-			 * Didn't authenticate the packet, but
-			 * we're proxying it.
-			 */
-			code = PW_CODE_STATUS_CLIENT;
-
-		} else
-#endif	/* WITH_PROXY */
-		  {
-			  RDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user.");
-			  code = PW_CODE_ACCESS_REJECT;
-		  }
+	case 0:
+		RDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user.");
+		code = PW_CODE_ACCESS_REJECT;
 		break;
 
 	default:
