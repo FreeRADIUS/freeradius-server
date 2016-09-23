@@ -960,11 +960,11 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			tvp = fr_pair_afrom_num(fake->packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
+			tvp = fr_pair_afrom_num(fake, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->config, tvp);
 
-			tvp = fr_pair_afrom_num(fake->packet, PW_MS_CHAP_PEER_CHALLENGE, 0);
+			tvp = fr_pair_afrom_num(fake, PW_MS_CHAP_PEER_CHALLENGE, 0);
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->config, tvp);
 		}
