@@ -420,7 +420,7 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
 	len = to_copy > freespace ? freespace : to_copy;
 	if (len == 0) return 0;
 
-	memcpy(out, data->p, to_copy);
+	memcpy(out, data->p, len);
 	data->p += len;
 
 	return len;
