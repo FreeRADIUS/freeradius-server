@@ -437,7 +437,10 @@ eap {
 		#  the correct paths below to enable it.
 		#
 		#  If OCSP checking is enabled, and the OCSP checks fail,
-		#  the verify section is skipped.
+		#  the verify section is not run.
+		#
+		#  If OCSP checking is disabled, the verify section is
+		#  run on successful certificate validation.
 		#
 		verify {
 			#  If the OCSP checks succeed, the verify section

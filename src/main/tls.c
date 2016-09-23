@@ -1910,6 +1910,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef HAVE_OPENSSL_OCSP_H
 	X509_STORE	*ocsp_store = NULL;
 	X509		*issuer_cert;
+	bool		do_verify = false;
 #endif
 	VALUE_PAIR	*vp;
 	TALLOC_CTX	*talloc_ctx;
@@ -2214,33 +2215,47 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		} /* check_cert_cn */
 
 #ifdef HAVE_OPENSSL_OCSP_H
-		if (my_ok && conf->ocsp_enable){
-			RDEBUG2("Starting OCSP Request");
-			if ((X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) ||
-			    !issuer_cert) {
-				RERROR("Couldn't get issuer_cert for %s", common_name);
+		if (my_ok) {
+			/*
+			 *	No OCSP, allow external verification.
+			 */
+			if (!conf->ocsp_enable) {
+				do_verify = true;
+
 			} else {
-				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
+				RDEBUG2("Starting OCSP Request");
+				if ((X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) ||
+				    !issuer_cert) {
+					/*
+					 *	Allow for external verify.
+					 */
+					RERROR("Couldn't get issuer_cert for %s", common_name);
+					do_verify = true;
+
+				} else {
+					/*
+					 *	Do the full OCSP checks.
+					 *
+					 *	If they fail, don't run the external verify.  We don't want
+					 *	to allow admins to force authentication success for bad
+					 *	certificates.
+					 *
+					 *	If the OCSP checks succeed, check whether we still want to
+					 *	run the external verification routine.  If it's marked as
+					 *	"skip verify on OK", then we don't do verify.
+					 */
+					my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
+					if (my_ok != OCSP_STATUS_FAILED) {
+						do_verify = !conf->verify_skip_if_ocsp_ok;
+					}
+				}
 			}
 		}
 #endif
 
-		/*
-		 *	If OCSP returns fail (0), the certificate has expired.
-		 *	Don't run the verify routines/
-		 *
-		 *	If OCSP returns success (1), we MAY want to run the verify section.
-		 *	but only if verify_skip_if_ocsp_ok is false.
-		 *
-		 *	If OCSP returns skipped (2), we run the verify command, unless
-		 *	conf->verify_skip_if_ocsp_ok is true.
-		 */
 		if ((my_ok != OCSP_STATUS_FAILED)
 #ifdef HAVE_OPENSSL_OCSP_H
-		    && conf->ocsp_enable &&
-		    (((my_ok == OCSP_STATUS_OK) && !conf->verify_skip_if_ocsp_ok) ||
-		     ((my_ok == OCSP_STATUS_SKIPPED) && conf->verify_skip_if_ocsp_ok))
-
+		    && do_verify
 #endif
 			) while (conf->verify_client_cert_cmd) {
 			char filename[256];
