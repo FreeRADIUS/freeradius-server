@@ -462,6 +462,8 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 
 	rad_assert(out_len >= (size_t)*pipelined);
 
+	fr_strerror();	/* Clear any outstanding errors */
+
 #ifdef NDEBUG
 	if ((size_t) *pipelined > out_len) {
 		for (i = 0; i < (size_t)*pipelined; i++) {
@@ -497,6 +499,11 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 		if (maybe_more && (status != REDIS_RCODE_SUCCESS)) {
 			size_t j;
 		error:
+			/*
+			 *	Append the hiredis error
+			 */
+			if (conn->handle->errstr[0]) fr_strerror_printf("%s: %s", fr_strerror(), conn->handle->errstr);
+
 			/*
 			 *	Free everything that came before the bad reply
 			 */
