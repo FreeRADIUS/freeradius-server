@@ -732,12 +732,12 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			tvp = fr_pair_afrom_num(fake->packet, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE);
+			tvp = fr_pair_afrom_num(fake, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE);
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->server_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 auth_challenge");
 
-			tvp = fr_pair_afrom_num(fake->packet, 0, PW_MS_CHAP_PEER_CHALLENGE);
+			tvp = fr_pair_afrom_num(fake, 0, PW_MS_CHAP_PEER_CHALLENGE);
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->client_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 peer_challenge");
