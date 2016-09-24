@@ -658,6 +658,7 @@ ATTRIBUTE	SoH-MS-Health-Other			2129	string
 #		Utilities bundled with the server
 #
 ATTRIBUTE	Radclient-Test-Name			2200	string
+ATTRIBUTE	Request-Authenticator			2201	octets
 
 #
 #       Range:  2220-2260

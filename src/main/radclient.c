@@ -494,6 +494,20 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				request->packet->src_ipaddr.prefix = 128;
 				break;
 
+#ifndef NDEBUG
+			case PW_REQUEST_AUTHENTICATOR:
+				if (vp->vp_length > sizeof(request->packet->vector)) {
+					memcpy(request->packet->vector, vp->vp_octets,
+					       sizeof(request->packet->vector));
+				} else {
+					memset(request->packet->vector, 0,
+					       sizeof(request->packet->vector));
+					memcpy(request->packet->vector, vp->vp_octets,
+					       vp->vp_length);
+				}
+				break;
+#endif
+
 			case PW_DIGEST_REALM:
 			case PW_DIGEST_NONCE:
 			case PW_DIGEST_METHOD:
@@ -822,7 +836,6 @@ static int send_one_packet(rc_request_t *request)
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
 	if (request->packet->id == -1) {
-		int i;
 		bool rcode;
 
 		assert(request->reply == NULL);
@@ -861,10 +874,6 @@ static int send_one_packet(rc_request_t *request)
 
 		assert(request->packet->id != -1);
 		assert(request->packet->data == NULL);
-
-		for (i = 0; i < 4; i++) {
-			((uint32_t *) request->packet->vector)[i] = fr_rand();
-		}
 
 		/*
 		 *	Update the password, so it can be encrypted with the
@@ -1572,8 +1581,14 @@ int main(int argc, char **argv)
 				 *	and we shouldn't sleep.
 				 */
 				if (this->resend < resend_count) {
+					int i;
+
 					done = false;
 					sleep_time = 0;
+
+					for (i = 0; i < 4; i++) {
+						((uint32_t *) this->packet->vector)[i] = fr_rand();
+					}
 				}
 			} else { /* haven't sent this packet, we're not done */
 				assert(this->done == false);
