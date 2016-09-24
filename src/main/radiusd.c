@@ -578,6 +578,21 @@ int main(int argc, char *argv[])
 
 	event_loop_started = true;
 
+#ifndef NDEBUG
+	{
+		size_t size;
+
+		size = talloc_total_size(main_config.config);
+
+		if (talloc_set_memlimit(main_config.config, size)) {
+			ERROR("Failed setting memory limit for global configuration");
+		} else {
+			DEBUG3("Memory limit for global configuration is set to %zd bytes", size);
+		}
+	}
+#endif
+
+
 	/*
 	 *  Start the event loop.
 	 */
