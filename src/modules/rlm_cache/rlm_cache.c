@@ -950,6 +950,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->driver->instantiate &&
 	    (inst->driver->instantiate(&inst->config, inst->driver_inst, driver_cs) < 0)) return -1;
 
+#ifndef NDEBUG
+	if (inst->driver_inst) module_set_memlimit(inst->driver_inst, inst->driver->name);
+#endif
+
 	if (inst->config.ttl == 0) {
 		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");
 		return -1;

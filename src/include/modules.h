@@ -150,6 +150,7 @@ int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_init(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_free(void);
 int		modules_hup(CONF_SECTION *modules);
+int		module_set_memlimit(TALLOC_CTX *ctx, char const *name);
 
 /*
  *	Call various module sections

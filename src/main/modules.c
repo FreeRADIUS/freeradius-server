@@ -57,6 +57,26 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 };
 
+
+int module_set_memlimit(TALLOC_CTX *ctx, char const *name)
+{
+	int rcode;
+	size_t size;
+
+	size = talloc_total_size(ctx);
+
+	rcode = talloc_set_memlimit(ctx, size);
+
+	if (rcode < 0) {
+		ERROR("Failed setting memory limit for module %s", name);
+	} else {
+		DEBUG3("Memory limit for module %s is set to %zd bytes", name, size);
+	}
+
+	return rcode;
+}
+
+
 /** Free old instances from HUPs
  *
  */
@@ -351,6 +371,10 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_n
 		 */
 		pthread_mutex_init(instance->mutex, NULL);
 	}
+
+#ifndef NDEBUG
+	if (instance->data) module_set_memlimit(instance->data, instance->name);
+#endif
 
 	instance->instantiated = true;
 	instance->last_hup = time(NULL); /* don't let us load it, then immediately hup it */

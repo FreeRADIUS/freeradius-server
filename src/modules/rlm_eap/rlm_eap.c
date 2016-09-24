@@ -118,6 +118,10 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	    	return -1;
 	}
 
+#ifndef NDEBUG
+	if (method->submodule_inst) module_set_memlimit(method->submodule_inst, method->submodule->name);
+#endif
+
 	*out = method;
 
 	return 0;

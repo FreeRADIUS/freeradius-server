@@ -1070,6 +1070,10 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (inst->driver->mod_instantiate && (inst->driver->mod_instantiate(inst->config,
 									    inst->driver_inst,
 									    driver_cs)) < 0) return -1;
+#ifndef NDEBUG
+	if (inst->driver_inst) module_set_memlimit(inst->driver_inst, inst->driver->name);
+#endif
+
 	/*
 	 *	@fixme Inst should be passed to all driver callbacks
 	 *	instead of being stored here.
