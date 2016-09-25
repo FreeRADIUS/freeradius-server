@@ -5164,6 +5164,10 @@ static void handle_signal_self(int flag)
 #ifndef HAVE_PTHREAD_H
 void radius_signal_self(int flag)
 {
+	if (flag == RADIUS_SIGNAL_SELF_TERM) {
+		main_config.exiting = true;
+	}
+
 	return handle_signal_self(flag);
 }
 
@@ -5177,6 +5181,10 @@ void radius_signal_self(int flag)
 {
 	ssize_t rcode;
 	uint8_t buffer[16];
+
+	if (flag == RADIUS_SIGNAL_SELF_TERM) {
+		main_config.exiting = true;
+	}
 
 	/*
 	 *	The read MUST be non-blocking for this to work.

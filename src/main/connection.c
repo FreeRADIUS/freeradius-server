@@ -784,6 +784,11 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 	if (!pool) return NULL;
 
+	/*
+	 *	Allow CTRL-C to kill the server in debugging mode.
+	 */
+	if (main_config.exiting) return NULL;
+
 #ifdef HAVE_PTHREAD_H
 	if (spawn) pthread_mutex_lock(&pool->mutex);
 #endif
@@ -1403,6 +1408,15 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	fr_connection_t	*this;
 
 	if (!pool || !conn) return NULL;
+
+	/*
+	 *	Don't allow opening of new connections if we're trying
+	 *	to exit.
+	 */
+	if (main_config.exiting) {
+		fr_connection_release(pool, conn);
+		return NULL;
+	}
 
 	/*
 	 *	If fr_connection_find is successful the pool is now locked
