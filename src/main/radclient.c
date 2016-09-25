@@ -494,7 +494,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				request->packet->src_ipaddr.prefix = 128;
 				break;
 
-#ifndef NDEBUG
 			case PW_REQUEST_AUTHENTICATOR:
 				if (vp->vp_length > sizeof(request->packet->vector)) {
 					memcpy(request->packet->vector, vp->vp_octets,
@@ -506,7 +505,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					       vp->vp_length);
 				}
 				break;
-#endif
 
 			case PW_DIGEST_REALM:
 			case PW_DIGEST_NONCE:
