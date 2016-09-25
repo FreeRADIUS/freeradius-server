@@ -796,6 +796,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	session->info.origin = write_p;
 	session->info.content_type = content_type;
 	session->info.record_len = len;
+	session->info.version = msg_version;
 	session->info.initialized = true;
 
 	switch (content_type) {
