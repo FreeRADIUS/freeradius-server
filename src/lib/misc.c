@@ -459,7 +459,7 @@ int closefrom(int fd)
 			my_fd = strtol(dp->d_name, &endp, 10);
 			if (my_fd <= 0) continue;
 
-			if ((endp > dp->d_name) && *endp) continue;
+			if (*endp) continue;
 
 			if (my_fd == dirfd(dir)) continue;
 
