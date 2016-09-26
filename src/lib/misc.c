@@ -1360,6 +1360,12 @@ int closefrom(int fd)
 	int i;
 	int maxfd = 256;
 
+#ifdef F_CLOSEM
+	if (fcntl(fd, F_CLOSEM) == 0) {
+		return 0;
+	}
+#endif
+
 #ifdef _SC_OPEN_MAX
 	maxfd = sysconf(_SC_OPEN_MAX);
 	if (maxfd < 0) {
@@ -1371,8 +1377,6 @@ int closefrom(int fd)
 
 	/*
 	 *	FIXME: return EINTR?
-	 *
-	 *	Use F_CLOSEM?
 	 */
 	for (i = fd; i < maxfd; i++) {
 		close(i);
