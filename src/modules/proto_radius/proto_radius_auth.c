@@ -193,7 +193,7 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		/* FALL-THROUGH */
 	done:
 	case FR_ACTION_DONE:
-		if (request->ev) fr_event_delete(request->el, &request->ev);
+		fr_event_delete(request->el, &request->ev);
 
 		request_thread_done(request);
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
@@ -268,7 +268,7 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 
 	done:
 	case FR_ACTION_DONE:
-		if (request->ev) fr_event_delete(request->el, &request->ev);
+		fr_event_delete(request->el, &request->ev);
 
 		request_thread_done(request);
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
@@ -852,6 +852,8 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 	done:
 	default:
+		fr_event_delete(request->el, &request->ev);
+
 		request_thread_done(request);
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
@@ -888,6 +890,8 @@ static void auth_queued(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
+		fr_event_delete(request->el, &request->ev);
+
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
@@ -929,7 +933,12 @@ static int auth_socket_recv(rad_listen_t *listener)
 	}
 
 	if (packet->code != PW_CODE_ACCESS_REQUEST) {
-		DEBUG2("Invalid packet code %d", packet->code);
+		if (packet->code < FR_MAX_PACKET_CODE) {
+			DEBUG2("Invalid packet code %s sent to authentication port", fr_packet_codes[packet->code]);
+		} else {
+			DEBUG2("Invalid packet code %d sent to authentication port", packet->code);
+		}
+
 		talloc_free(ctx);
 		return 0;
 	}
