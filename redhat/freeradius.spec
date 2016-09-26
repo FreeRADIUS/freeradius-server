@@ -712,7 +712,9 @@ fi
 %defattr(-,root,root)
 /usr/bin/*
 # man-pages
+%doc %{_mandir}/man1/dhcpclient.1.gz
 %doc %{_mandir}/man1/radclient.1.gz
+%doc %{_mandir}/man1/radcounter.1.gz
 %doc %{_mandir}/man1/radeapclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
