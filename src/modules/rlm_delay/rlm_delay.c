@@ -145,6 +145,7 @@ rad_module_t rlm_delay = {
 	.inst_size	= sizeof(rlm_delay_t),
 	.config		= module_config,
 	.methods = {
+		[MOD_PREACCT]		= mod_delay,
 		[MOD_AUTHORIZE]		= mod_delay,
 		[MOD_POST_AUTH]		= mod_delay,
 	},
