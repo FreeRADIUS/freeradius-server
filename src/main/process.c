@@ -3360,6 +3360,7 @@ static void request_ping(REQUEST *request, int action)
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->dst_port);
+		remove_from_proxy_hash(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
@@ -3407,6 +3408,7 @@ static void request_ping(REQUEST *request, int action)
 	}
 
 	rad_assert(!request->in_request_hash);
+	rad_assert(!request->in_proxy_hash);
 	rad_assert(request->ev == NULL);
 	NO_CHILD_THREAD;
 	request_done(request, FR_ACTION_DONE);
