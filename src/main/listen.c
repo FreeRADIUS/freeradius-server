@@ -1313,13 +1313,13 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 					      FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 	/*
-	 *	Default to IPv4 INADDR_ANY
+	 *	Default to all IPv6 interfaces (it's the future)
 	 */
 	if (rcode != 0) {
 		memset(&ipaddr, 0, sizeof(ipaddr));
-		ipaddr.af = AF_INET;
-		ipaddr.prefix = 32;
-		ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+		ipaddr.af = AF_INET6;
+		ipaddr.prefix = 128;
+		ipaddr.ipaddr.ip6addr = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
 	rcode = cf_pair_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
