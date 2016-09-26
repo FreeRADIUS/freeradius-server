@@ -392,6 +392,14 @@ static void max_request_time_hook(void *ctx, UNUSED struct timeval *now)
 
 	TRACE_STATE_MACHINE;
 
+	/*
+	 *	If necessary, extract the request from the local
+	 *	backlog.
+	 */
+	if (request->heap_id >= 0) {
+		(void) fr_heap_extract(thread->backlog, request);
+	}
+
 	request->process(request, FR_ACTION_DONE);
 }
 
