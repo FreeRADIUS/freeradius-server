@@ -720,7 +720,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 
 fail:
 	*presult = request->rcode;
-	*priority = instruction->actions[*presult];
+	if (*presult != RLM_MODULE_YIELD) *priority = instruction->actions[*presult];
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
