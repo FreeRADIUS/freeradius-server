@@ -1076,7 +1076,7 @@ redo:
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			if (result == RLM_MODULE_YIELD) {
 				rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-				rad_assert(frame->resume == false);
+				frame->resume = true;
 				RDEBUG4("** [%i] %s - exited (yield)", stack->depth, __FUNCTION__);
 				return RLM_MODULE_YIELD;
 			}
