@@ -193,6 +193,7 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		/* FALL-THROUGH */
 	done:
 	case FR_ACTION_DONE:
+		(void) fr_heap_extract(request->backlog, request);
 		fr_event_delete(request->el, &request->ev);
 
 		request_thread_done(request);
@@ -268,6 +269,7 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 
 	done:
 	case FR_ACTION_DONE:
+		(void) fr_heap_extract(request->backlog, request);
 		fr_event_delete(request->el, &request->ev);
 
 		request_thread_done(request);
@@ -852,6 +854,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 	done:
 	default:
+		(void) fr_heap_extract(request->backlog, request);
 		fr_event_delete(request->el, &request->ev);
 
 		request_thread_done(request);
@@ -890,6 +893,7 @@ static void auth_queued(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
+		(void) fr_heap_extract(request->backlog, request);
 		fr_event_delete(request->el, &request->ev);
 
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
