@@ -1366,11 +1366,20 @@ int closefrom(int fd)
 	}
 #endif
 
+#ifdef F_MAXFD
+	maxfd = fcntl(fd, F_F_MAXFD);
+	if (maxfd >= 0) goto do_close;
+#endif
+
 #ifdef _SC_OPEN_MAX
 	maxfd = sysconf(_SC_OPEN_MAX);
 	if (maxfd < 0) {
-	  maxfd = 256;
+		maxfd = 256;
 	}
+#endif
+
+#ifdef F_MAXFD
+do_close:
 #endif
 
 	if (fd > maxfd) return 0;
