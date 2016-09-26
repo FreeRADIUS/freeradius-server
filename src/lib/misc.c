@@ -31,6 +31,24 @@ RCSID("$Id$")
 #include <pwd.h>
 #include <sys/uio.h>
 
+/*
+ *	Some versions of Linux don't have closefrom(), but they will
+ *	have /proc.
+ *
+ *	BSD systems will generally have closefrom(), but not proc.
+ *
+ *	If a system doesn't have closefrom() and isn't Linux, it
+ *	doesn't have /proc, either.  So don't waste time trying
+ *	to open /proc.
+ */
+#ifdef HAVE_DIRENT_H
+#ifdef __linux__
+#include <dirent.h>
+#else
+#undef HAVE_DIRENT_H
+#endif
+#endif
+
 #define FR_PUT_LE16(a, val)\
 	do {\
 		a[1] = ((uint16_t) (val)) >> 8;\
@@ -401,6 +419,9 @@ int closefrom(int fd)
 {
 	int i;
 	int maxfd = 256;
+#ifdef HAVE_DIRENT_H
+	DIR *dir;
+#endif
 
 #ifdef F_CLOSEM
 	if (fcntl(fd, F_CLOSEM) == 0) {
@@ -417,6 +438,31 @@ int closefrom(int fd)
 	maxfd = sysconf(_SC_OPEN_MAX);
 	if (maxfd < 0) {
 		maxfd = 256;
+	}
+#endif
+
+#ifdef HAVE_DIRENT_H
+	/*
+	 *	Use /proc/self/fd directory if it exists.
+	 */
+	dir = opendir("/proc/self/fd");
+	if (dir != NULL) {
+		long my_fd;
+		char *endp;
+		struct dirent *dp;
+
+		while ((dp = readdir(dir)) != NULL) {
+			my_fd = strtol(dp->d_name, &endp, 10);
+			if (my_fd <= 0) continue;
+			if ((dp->d_name != endp) && !*endp) continue;
+
+			if (my_fd == dirfd(dir)) continue;
+			if ((my_fd >= fd) && (my_fd <= maxfd)) {
+				(void) close((int) fd);
+			}
+		}
+		(void) closedir(dir);
+		return 0;
 	}
 #endif
 
