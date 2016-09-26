@@ -2483,17 +2483,22 @@ int tls_global_version_check(char const *acknowledged)
 			/*
 			 *	If the CVE is acknowledged, allow it.
 			 */
-			if (strcmp(acknowledged, defect->id) == 0) return 0;
+			if (!bad && (strcmp(acknowledged, defect->id) == 0)) return 0;
 
 			ERROR("Refusing to start with libssl version %s (in range %s)",
 			      ssl_version(), ssl_version_range(defect->low, defect->high));
 			ERROR("Security advisory %s (%s)", defect->id, defect->name);
 			ERROR("%s", defect->comment);
 
-			INFO("Once you have verified libssl has been correctly patched, "
-			     "set security.allow_vulnerable_openssl = '%s'", defect->id);
+			/*
+			 *	Only warn about the first one...
+			 */
+			if (!bad) {
+				INFO("Once you have verified libssl has been correctly patched, "
+				     "set security.allow_vulnerable_openssl = '%s'", defect->id);
 
-			bad = true;
+				bad = true;
+			}
 		}
 	}
 
