@@ -454,11 +454,13 @@ int closefrom(int fd)
 		while ((dp = readdir(dir)) != NULL) {
 			my_fd = strtol(dp->d_name, &endp, 10);
 			if (my_fd <= 0) continue;
-			if ((dp->d_name != endp) && !*endp) continue;
+
+			if ((endp > dp->d_name) && *endp) continue;
 
 			if (my_fd == dirfd(dir)) continue;
+
 			if ((my_fd >= fd) && (my_fd <= maxfd)) {
-				(void) close((int) fd);
+				(void) close((int) my_fd);
 			}
 		}
 		(void) closedir(dir);
