@@ -75,11 +75,25 @@ static libssl_defect_t libssl_defects[] =
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
 	},
 	{
+		.low		= 0x01000209f,		/* 1.0.2i */
+		.high		= 0x01000209f,		/* 1.0.2i */
+		.id		= "CVE-2016-7052",
+		.name		= "OCSP status request extension",
+		.comment	= "For more information see https://www.openssl.org/news/secadv/20160926.txt"
+	},
+	{
 		.low		= 0x01010100f,		/* 1.1.0  */
 		.high		= 0x01010100f,		/* 1.1.0 */
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
+	},
+	{
+		.low		= 0x01010101f,		/* 1.1.0a */
+		.high		= 0x01010101f,		/* 1.1.0a */
+		.id		= "CVE-2016-6309",
+		.name		= "OCSP status request extension",
+		.comment	= "For more information see https://www.openssl.org/news/secadv/20160926.txt"
 	},
 };
 #endif /* ENABLE_OPENSSL_VERSION_CHECK */
