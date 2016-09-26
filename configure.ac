@@ -2031,18 +2031,15 @@ if test "x$REGEX" != "xno" && test "x$PCRE" != "xno"; then
 
             ver = strtoul(p, &q, 10);
             if (*q != '.') {
-              printf("missing version component (major)...");
               return 1;
             }
             if (ver != PCRE_MAJOR) {
-              printf("major version mismatch...");
               return 65;
             }
             p = ++q;
 
             ver = strtoul(p, &q, 10);
             if (ver != PCRE_MINOR) {
-              printf("minor version mismatch...");
               return 1;
             }
           ]]
