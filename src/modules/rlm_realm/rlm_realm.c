@@ -333,6 +333,8 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	send it there again.
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
+			if (realm->acct_pool->servers[i]->ipaddr.af == AF_UNSPEC) continue;
+
 			if ((fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
 					     &request->packet->src_ipaddr) == 0) &&
 			    (realm->acct_pool->servers[i]->port == request->packet->src_port)) {
