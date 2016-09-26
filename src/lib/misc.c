@@ -31,22 +31,26 @@ RCSID("$Id$")
 #include <pwd.h>
 #include <sys/uio.h>
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+
 /*
  *	Some versions of Linux don't have closefrom(), but they will
  *	have /proc.
  *
  *	BSD systems will generally have closefrom(), but not proc.
  *
- *	If a system doesn't have closefrom() and isn't Linux, it
- *	doesn't have /proc, either.  So don't waste time trying
- *	to open /proc.
+ *	OSX doesn't have closefrom() or /proc/self/fd, but it does
+ *	have /dev/fd
  */
-#ifdef HAVE_DIRENT_H
 #ifdef __linux__
-#include <dirent.h>
+#define CLOSEFROM_DIR "/proc/self/fd"
+#elif defined(__APPLE__)
+#define CLOSEFROM_DIR "/dev/fd"
 #else
 #undef HAVE_DIRENT_H
 #endif
+
 #endif
 
 #define FR_PUT_LE16(a, val)\
@@ -445,7 +449,7 @@ int closefrom(int fd)
 	/*
 	 *	Use /proc/self/fd directory if it exists.
 	 */
-	dir = opendir("/proc/self/fd");
+	dir = opendir(CLOSEFROM_DIR);
 	if (dir != NULL) {
 		long my_fd;
 		char *endp;
