@@ -149,8 +149,8 @@ char const *ssl_version_num(void)
  */
 char const *ssl_version_range(uint32_t low, uint32_t high)
 {
-	/* 12 (version) + 3 ( - ) + 12 (version) */
-	static char buffer[28];
+	/* 18 (version) + 3 ( - ) + 18 (version) */
+	static char buffer[40];
 	char *p = buffer;
 
 	p += strlcpy(p, ssl_version_by_num(low), sizeof(buffer));
