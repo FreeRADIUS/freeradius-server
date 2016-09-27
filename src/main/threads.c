@@ -264,7 +264,7 @@ static void link_list_tail(THREAD_HANDLE **head_p, THREAD_HANDLE **tail_p, THREA
 void request_enqueue(REQUEST *request)
 {
 	THREAD_HANDLE *thread;
-	static THREAD_HANDLE *last = NULL;
+	THREAD_HANDLE *found = NULL;
 	char data = 0;
 
 	request->component = "<core>";
@@ -292,11 +292,20 @@ void request_enqueue(REQUEST *request)
 	request->child_state = REQUEST_QUEUED;
 	request->module = "<queue>";
 
-	if (!last) last = thread_pool.thread_head;
+	for (thread = thread_pool.thread_head;
+	     thread != NULL;
+	     thread = thread->next) {
+		if (!found) {
+			found = thread;
+			continue;
+		}
 
-	thread = last;
-	last = thread->next;
+		if (fr_heap_num_elements(found->backlog) > fr_heap_num_elements(thread->backlog)) {
+			found = thread;
+		}
+	}
 
+	thread = found;
 	DEBUG3("Thread %d being signalled",thread->thread_num);
 
 	pthread_mutex_lock(&thread->backlog_mutex);
