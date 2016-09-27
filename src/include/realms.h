@@ -72,6 +72,9 @@ typedef struct home_server {
 							//!< stats or when specifying home servers for a pool.
 
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
+
+	bool			is_ourself;		//!< if we're proxying to one of our own ports.
+
 	char const		*server;		//!< For internal proxying
 	char const		*parent_server;
 
