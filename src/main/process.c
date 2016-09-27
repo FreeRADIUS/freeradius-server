@@ -557,6 +557,7 @@ void request_delete(REQUEST *request)
 {
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 	rad_assert(!request->in_request_hash);
+	rad_assert(request->heap_id == -1);
 #ifdef WITH_PROXY
 	rad_assert(!request->in_proxy_hash);
 #endif

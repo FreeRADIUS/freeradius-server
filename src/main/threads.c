@@ -328,6 +328,7 @@ void request_queue_extract(REQUEST *request)
 	pthread_mutex_lock(&thread->backlog_mutex);
 	if (request->backlog == thread->backlog) {
 		(void) fr_heap_extract(request->backlog, request);
+		rad_assert(request->heap_id == -1);
 		pthread_mutex_unlock(&thread->backlog_mutex);
 		return;
 	}
@@ -337,6 +338,7 @@ void request_queue_extract(REQUEST *request)
 	 *	It's in the local backlog, just remove it.
 	 */
 	(void) fr_heap_extract(request->backlog, request);
+	rad_assert(request->heap_id == -1);
 }
 
 /*
@@ -457,6 +459,7 @@ static void *thread_handler(void *arg)
 				request = fr_heap_peek(thread->backlog);
 				if (!request) break;
 				(void) fr_heap_extract(thread->backlog, request);
+				rad_assert(request->heap_id == -1);
 
 				VERIFY_REQUEST(request);
 				request->backlog = local_backlog;
@@ -530,6 +533,7 @@ static void *thread_handler(void *arg)
 		request = fr_heap_peek(local_backlog);
 		rad_assert(request != NULL);
 		(void) fr_heap_extract(local_backlog, request);
+		rad_assert(request->heap_id == -1);
 		VERIFY_REQUEST(request);
 
 		thread->request_count++;
