@@ -463,6 +463,7 @@ static void *thread_handler(void *arg)
 				fr_heap_insert(local_backlog, request);
 
 				if (!request->listener->old_style) {
+					request->in_request_hash = true;
 					request->el = el;
 					if (fr_event_insert(request->el, max_request_time_hook,
 							    request, &when, &request->ev) < 0) {
@@ -530,6 +531,7 @@ static void *thread_handler(void *arg)
 		request = fr_heap_peek(local_backlog);
 		rad_assert(request != NULL);
 		(void) fr_heap_extract(local_backlog, request);
+		request->in_request_hash = false;
 		VERIFY_REQUEST(request);
 
 		thread->request_count++;

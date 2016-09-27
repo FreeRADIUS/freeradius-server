@@ -1424,6 +1424,7 @@ int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
 void unlang_resumable(REQUEST *request)
 {
 	fr_heap_insert(request->backlog, request);
+	request->in_request_hash = true;
 }
 
 /** Signal a request which an action.
