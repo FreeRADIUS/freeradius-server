@@ -305,8 +305,8 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	/*
 	 *	Request must have a state ctx
 	 */
-	rad_assert(!persist || request->state_ctx);
 	rad_assert(request);
+	rad_assert(!persist || request->state_ctx);
 	rad_assert(!persist ||
 		   (talloc_parent(opaque) == request->state_ctx) ||
 		   (talloc_parent(opaque) == talloc_null_ctx()));
