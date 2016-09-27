@@ -302,6 +302,7 @@ void request_enqueue(REQUEST *request)
 	pthread_mutex_lock(&thread->backlog_mutex);
 	fr_heap_insert(thread->backlog, request);
 	request->backlog = thread->backlog;
+	request->thread_ctx = thread;
 	pthread_mutex_unlock(&thread->backlog_mutex);
 
 	/*
@@ -311,34 +312,29 @@ void request_enqueue(REQUEST *request)
 	(void) write(thread->pipe_fd[1], &data, 1);
 }
 
-
+/*
+ *	Remove the request from a worker threads queue.
+ *
+ *	This function is only called from the request_queue() and
+ *	friends functions, by the listener thread.
+ */
 void request_queue_extract(REQUEST *request)
 {
 	THREAD_HANDLE *thread;
 
-	if (!request->backlog) return;
-
-	thread = pthread_getspecific(thread_pool.thread_handle_key);
-	if (!thread) return;
-
-	/*
-	 *	If it's in the public backlog, lock the mutex and
-	 *	remove it.
-	 */
-	pthread_mutex_lock(&thread->backlog_mutex);
-	if (request->backlog == thread->backlog) {
-		(void) fr_heap_extract(request->backlog, request);
+	if (!request->backlog || !request->thread_ctx) {
 		rad_assert(request->heap_id == -1);
-		pthread_mutex_unlock(&thread->backlog_mutex);
 		return;
 	}
-	pthread_mutex_unlock(&thread->backlog_mutex);
 
-	/*
-	 *	It's in the local backlog, just remove it.
-	 */
+	thread = request->thread_ctx;
+
+	rad_assert(request->backlog == thread->backlog);
+
+	pthread_mutex_lock(&thread->backlog_mutex);
 	(void) fr_heap_extract(request->backlog, request);
 	rad_assert(request->heap_id == -1);
+	pthread_mutex_unlock(&thread->backlog_mutex);
 }
 
 /*
@@ -474,6 +470,7 @@ static void *thread_handler(void *arg)
 				VERIFY_REQUEST(request);
 				request->backlog = local_backlog;
 				fr_heap_insert(local_backlog, request);
+				request->thread_ctx = NULL;
 
 				if (!request->listener->old_style) {
 					request->el = el;

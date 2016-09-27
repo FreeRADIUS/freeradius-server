@@ -263,6 +263,7 @@ struct rad_request {
 	rad_child_state_t	child_state;
 
 	pthread_t    		child_pid;	//!< Current thread handling the request.
+	void			*thread_ctx;	//!< for request_queue_extract()
 
 	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
 
