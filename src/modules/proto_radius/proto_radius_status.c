@@ -226,13 +226,8 @@ static void status_running(REQUEST *request, fr_state_action_t action)
 	default:
 	done:
 		(void) fr_heap_extract(request->backlog, request);
-		fr_event_delete(request->el, &request->ev);
-
 		request_thread_done(request);
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
-			request->packet->id,
-			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
-		request_free(request);
+		request_delete(request);
 		break;
 	}
 }
