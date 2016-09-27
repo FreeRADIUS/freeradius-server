@@ -387,6 +387,9 @@ static CONF_PARSER home_server_config[] = {
 #ifdef WITH_COA
 	{ FR_CONF_POINTER("coa", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) home_server_coa },
 #endif
+
+	{ FR_CONF_OFFSET("self", PW_TYPE_BOOLEAN, home_server_t, is_ourself), },
+
 	CONF_PARSER_TERMINATOR
 };
 
