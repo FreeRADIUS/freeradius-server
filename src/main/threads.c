@@ -330,7 +330,10 @@ void request_queue_extract(REQUEST *request)
 {
 	THREAD_HANDLE *thread;
 
-	if (!request->backlog || !request->thread_ctx) {
+	if (!request->backlog) return;
+
+	if (!request->thread_ctx) {
+		rad_assert(request->heap_id == -1);
 		return;
 	}
 
