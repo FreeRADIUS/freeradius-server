@@ -292,18 +292,17 @@ void request_enqueue(REQUEST *request)
 	request->child_state = REQUEST_QUEUED;
 	request->module = "<queue>";
 
+	found = thread_pool.thread_head;
+
 	for (thread = thread_pool.thread_head;
 	     thread != NULL;
 	     thread = thread->next) {
-		if (!found) {
-			found = thread;
-			continue;
-		}
-
 		if (fr_heap_num_elements(found->backlog) > fr_heap_num_elements(thread->backlog)) {
 			found = thread;
 		}
 	}
+
+	rad_assert(found != NULL);
 
 	thread = found;
 	DEBUG3("Thread %d being signalled",thread->thread_num);
