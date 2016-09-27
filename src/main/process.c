@@ -555,7 +555,6 @@ void request_thread_done(REQUEST *request)
  */
 void request_delete(REQUEST *request)
 {
-	ASSERT_MASTER;
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 	rad_assert(!request->in_request_hash);
 #ifdef WITH_PROXY
