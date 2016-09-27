@@ -1,6 +1,6 @@
 .TH DHCPCLIENT 1 "19 September 2016" "" "FreeRADIUS Daemon"
 .SH NAME
-dhcpclient - Send a DHCP request with provided RADIUS attrs and get the output response.
+dhcpclient - Send a DHCP request with provided RADIUS attributes and get the output response.
 .SH SYNOPSIS
 .B dhcpclient
 .RB [ \-d
@@ -46,10 +46,11 @@ logical packets within a file.
 .IP \-h
 Print usage help information.
 .IP \-i\ \fIinterface\fP
-Select which interface to send/receive at packet level on a raw socket
+Select which interface to send/receive at packet level on a raw socket.
 .IP \-t\ \fItimeout\fP
 Wait \fItimeout\fP seconds before deciding that the NAS has not
-responded to a request, and re-sending the packet.  This may be a floating point number e.g 2.2
+responded to a request, and re-sending the packet. This may be a floating
+point number, e.g. 2.2.
 .IP \-v
 Print out program version information.
 .IP \-x
