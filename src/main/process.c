@@ -562,6 +562,12 @@ void request_delete(REQUEST *request)
 	rad_assert(!request->in_proxy_hash);
 #endif
 
+	if (request->el) {
+		fr_event_delete(request->el, &request->ev);
+	} else {
+		fr_event_delete(el, &request->ev);
+	}
+
 	/*
 	 *	@todo: do final states for TCP sockets, too?
 	 */
@@ -586,7 +592,6 @@ void request_delete(REQUEST *request)
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
 	} /* else don't print anything */
 
-	fr_event_delete(el, &request->ev);
 	request_free(request);
 }
 
