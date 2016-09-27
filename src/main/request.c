@@ -371,12 +371,6 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	this->free_on_parent = free_on_parent;
 	this->persist = persist;
 
-	/*
-	 *	Some basic protection against what might be a
-	 *	common pitfall.
-	 */
-	rad_assert(!free_on_parent || (talloc_parent(this) != talloc_parent(opaque)));
-
 	*last = this;
 
 	RDEBUG4("Added request data %p at %p:%i", this->opaque, this->unique_ptr, this->unique_int);
