@@ -154,6 +154,10 @@ ldap {
 
 		#  Filter for user objects, should be specific enough
 		#  to identify a single user object.
+		#
+		#  For Active Directory, you should use
+		#  "samaccountname=" instead of "uid="
+		#
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
 
 		#  SASL parameters to use for user binds
