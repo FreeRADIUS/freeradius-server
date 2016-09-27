@@ -110,18 +110,18 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	buf = talloc_size(request, ksize + sizeof(*t->keyblock));
 	scratch = talloc_size(request, ksize + sizeof(*t->keyblock));
 
-	t->keyblock = talloc(request, eap_fast_keyblock_t);
+	t->keyblock = talloc(t, eap_fast_keyblock_t);
 
 	eap_fast_tls_gen_challenge(tls_session->ssl, buf, scratch, ksize + sizeof(*t->keyblock), "key expansion");
 	memcpy(t->keyblock, &buf[ksize], sizeof(*t->keyblock));
 	memset(buf, 0, ksize + sizeof(*t->keyblock));
 
-	t->simck = talloc_size(request, EAP_FAST_SIMCK_LEN);
+	t->simck = talloc_size(t, EAP_FAST_SIMCK_LEN);
 	memcpy(t->simck, t->keyblock, EAP_FAST_SKS_LEN);	/* S-IMCK[0] = session_key_seed */
 
 	RHEXDUMP(4, "S-IMCK[0]", t->simck, EAP_FAST_SIMCK_LEN);
 
-	t->cmk = talloc_size(request, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
+	t->cmk = talloc_size(t, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
 	t->imckc = 0;
 
 	talloc_free(buf);
