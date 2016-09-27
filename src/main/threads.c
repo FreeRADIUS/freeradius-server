@@ -360,6 +360,16 @@ static int timestamp_cmp(void const *one, void const *two)
 	REQUEST const *b = two;
 	RADIUS_PACKET *pa, *pb;
 
+#ifdef WITH_VERIFY_PTR
+	REQUEST *x, *y;
+
+	memcpy(&x, &a, sizeof(a));
+	memcpy(&y, &b, sizeof(b));
+
+	VERIFY_REQUEST(x);
+	VERIFY_REQUEST(y);
+#endif
+
 	if (!a->packet) {
 		rad_assert(a->proxy != NULL);
 		rad_assert(a->proxy->packet != NULL);
