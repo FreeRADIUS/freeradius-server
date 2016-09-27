@@ -310,6 +310,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	rad_assert(!persist ||
 		   (talloc_parent(opaque) == request->state_ctx) ||
 		   (talloc_parent(opaque) == talloc_null_ctx()));
+	rad_assert(!free_on_parent || (talloc_parent(opaque) != request));
 
 	this = next = NULL;
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
