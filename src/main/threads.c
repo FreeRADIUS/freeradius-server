@@ -302,10 +302,10 @@ void request_enqueue(REQUEST *request)
 		}
 	}
 
-	rad_assert(found != NULL);
+	if (!found) return;	/* should never happen */
 
 	thread = found;
-	DEBUG3("Thread %d being signalled",thread->thread_num);
+	DEBUG3("Thread %d being signalled", thread->thread_num);
 
 	pthread_mutex_lock(&thread->backlog_mutex);
 	fr_heap_insert(thread->backlog, request);
