@@ -111,6 +111,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->module = NULL;
 	request->component = "<core>";
 	request->stack = talloc_zero(request, unlang_stack_t);
+	request->heap_id = -1;
 
 	request->state_ctx = talloc_init("session-state");
 
