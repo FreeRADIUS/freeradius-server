@@ -586,6 +586,9 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		return -1;
 
 	/* raw octets: 0x01020304... */
+#ifndef WITH_ASCEND_BINARY
+	do_octets:
+#endif
 	case PW_TYPE_OCTETS:
 	{
 		uint8_t	*p;
