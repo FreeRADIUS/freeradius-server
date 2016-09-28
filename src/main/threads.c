@@ -330,16 +330,9 @@ void request_queue_extract(REQUEST *request)
 {
 	THREAD_HANDLE *thread;
 
-	if (!request->backlog) return;
-
-	if (!request->thread_ctx) {
-		rad_assert(request->heap_id == -1);
-		return;
-	}
+	if (!request->backlog || !request->thread_ctx) return;
 
 	thread = request->thread_ctx;
-
-	rad_assert(request->backlog == thread->backlog);
 
 	pthread_mutex_lock(&thread->backlog_mutex);
 	(void) fr_heap_extract(request->backlog, request);
@@ -414,6 +407,35 @@ static void max_request_time_hook(void *ctx, UNUSED struct timeval *now)
 }
 
 
+static void thread_process_request(THREAD_HANDLE *thread, REQUEST *request)
+{
+	thread->request_count++;
+
+	RDEBUG2("Thread %d handling request %" PRIu64 ", (%d handled so far)",
+		thread->thread_num, request->number,
+		thread->request_count);
+
+	request->child_pid = thread->pthread_id;
+	request->component = "<core>";
+	request->module = NULL;
+	request->child_state = REQUEST_RUNNING;
+	request->log.unlang_indent = 0;
+
+	request->process(request, FR_ACTION_RUN);
+
+	/*
+	 *	Clean up any children we exec'd.
+	 */
+	reap_children();
+
+#ifdef HAVE_OPENSSL_ERR_H
+	/*
+	 *	Clear the error queue for the current thread.
+	 */
+	ERR_clear_error();
+#endif
+}
+
 /*
  *	The main thread handler for requests.
  *
@@ -474,20 +496,33 @@ static void *thread_handler(void *arg)
 			do {
 				request = fr_heap_peek(thread->backlog);
 				if (!request) break;
+
 				(void) fr_heap_extract(thread->backlog, request);
 				rad_assert(request->heap_id == -1);
-
 				VERIFY_REQUEST(request);
+
+				/*
+				 *	Old-style requests get
+				 *	processed in-place, and starve
+				 *	the async requests. This is a
+				 *	hack until we get rid of the
+				 *	old-style requests.
+				 */
+				if (request->listener->old_style) {
+					pthread_mutex_unlock(&thread->backlog_mutex);
+					thread_process_request(thread, request);
+					pthread_mutex_lock(&thread->backlog_mutex);
+					continue;
+				}
+
 				request->backlog = local_backlog;
 				fr_heap_insert(local_backlog, request);
 				request->thread_ctx = NULL;
 
-				if (!request->listener->old_style) {
-					request->el = el;
-					if (fr_event_insert(request->el, max_request_time_hook,
-							    request, &when, &request->ev) < 0) {
-						REDEBUG("Failed inserting max_request_time");
-					}
+				request->el = el;
+				if (fr_event_insert(request->el, max_request_time_hook,
+						    request, &when, &request->ev) < 0) {
+					REDEBUG("Failed inserting max_request_time");
 				}
 			} while (request != NULL);
 
@@ -553,31 +588,7 @@ static void *thread_handler(void *arg)
 		rad_assert(request->heap_id == -1);
 		VERIFY_REQUEST(request);
 
-		thread->request_count++;
-
-		RDEBUG2("Thread %d handling request %" PRIu64 ", (%d handled so far)",
-		       thread->thread_num, request->number,
-		       thread->request_count);
-
-		request->child_pid = thread->pthread_id;
-		request->component = "<core>";
-		request->module = NULL;
-		request->child_state = REQUEST_RUNNING;
-		request->log.unlang_indent = 0;
-
-		request->process(request, FR_ACTION_RUN);
-
-		/*
-		 *	Clean up any children we exec'd.
-		 */
-		reap_children();
-
-#  ifdef HAVE_OPENSSL_ERR_H
-		/*
-		 *	Clear the error queue for the current thread.
-		 */
-		ERR_clear_error();
-#  endif
+		thread_process_request(thread, request);
 	}
 
 done:
