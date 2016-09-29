@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
+FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Add support for =~ and !~ in update sections.
 	  See "man unlang"
@@ -20,6 +20,11 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  of OpenSSL released after September 20, 2016.
 	* EAP certificate verification is now done when
 	  "verify" is enabled and "ocsp" is disabled.
+	* New dhcpclient and rlm_rad_counter man pages.
+	* Minor abfab and moonshot additions.
+	* Pass CFLAGS through from environment in RPM builds.
+	  Allows more custom builds.
+	* Build with Heimdal in addtion to libkrb5.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
@@ -77,13 +82,19 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Fixes #1684.
 	* Free rad_perlconf_hv in correct perl context.
 	  Fixes #1675.
+	* Multiple fixes for Debian builds.  #1510, among
+	  others.
 	* Set OpenSSL FIPS compatibility flag when necessary.
 	* Pulled fixes for the build system over from other
 	  branches.
 	* Fix OCSP for RADIUS over TLS.
 	* Fix skip_if_ocsp_ok behavior.
+	  in debug mode after CTRL-C.  Address #1604.
 	* Better fixes for systems without closefrom() but
 	  which have /proc.  Fixes #1757.
+	* Minor build fixes back-ported from v4.0.x.
+	* build --whout-ascend-binary.  Fixes #1761.
+	* Be more aggressive about not opening new connections
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
