@@ -474,6 +474,11 @@ authenticate {
 	}
 
 	#
+	#  For old names, too.
+	#
+	mschap
+
+	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, uncomment the following line, and the 'digest'
 	#  line in the 'authorize' section.

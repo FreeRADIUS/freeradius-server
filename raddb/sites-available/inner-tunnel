@@ -222,6 +222,11 @@ authenticate {
 	}
 
 	#
+	#  For old names, too.
+	#
+	mschap
+
+	#
 	#  Pluggable Authentication Modules.
 #	pam
 
