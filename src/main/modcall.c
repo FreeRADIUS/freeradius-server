@@ -283,9 +283,9 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) return RLM_MODULE_NOOP;
 
-	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
+	RDEBUG3("modsingle[%s]: calling %s (%s)",
 		comp2str[component], sp->modinst->name,
-		sp->modinst->entry->name, request->number);
+		sp->modinst->entry->name);
 	request->log.indent = 0;
 
 	if (sp->modinst->force) {
@@ -309,14 +309,14 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	 */
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) {
-		RWARN("Module %s became unblocked for request %u", sp->modinst->entry->name, request->number);
+		RWARN("Module %s became unblocked", sp->modinst->entry->name);
 	}
 
  fail:
 	request->log.indent = indent;
-	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
+	RDEBUG3("modsingle[%s]: returned from %s (%s)",
 	       comp2str[component], sp->modinst->name,
-	       sp->modinst->entry->name, request->number);
+	       sp->modinst->entry->name);
 
 	return request->rcode;
 }
@@ -518,8 +518,8 @@ redo:
 		 *	Like MOD_ELSE, but allow for a later "else"
 		 */
 		if (if_taken) {
-			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
-				unlang_keyword[c->type], request->number);
+			RDEBUG2("... skipping %s: Preceding \"if\" was taken",
+				unlang_keyword[c->type]);
 			was_if = true;
 			if_taken = true;
 			goto next_sibling;
@@ -537,14 +537,14 @@ redo:
 	if (c->type == MOD_ELSE) {
 		if (!was_if) { /* error */
 		elsif_error:
-			RDEBUG2("... skipping %s for request %d: No preceding \"if\"",
-				unlang_keyword[c->type], request->number);
+			RDEBUG2("... skipping %s: No preceding \"if\"",
+				unlang_keyword[c->type]);
 			goto next_sibling;
 		}
 
 		if (if_taken) {
-			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
-				unlang_keyword[c->type], request->number);
+			RDEBUG2("... skipping %s: Preceding \"if\" was taken",
+				unlang_keyword[c->type]);
 			was_if = false;
 			if_taken = false;
 			goto next_sibling;
