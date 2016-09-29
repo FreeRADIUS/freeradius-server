@@ -89,12 +89,12 @@ FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  branches.
 	* Fix OCSP for RADIUS over TLS.
 	* Fix skip_if_ocsp_ok behavior.
-	  in debug mode after CTRL-C.  Address #1604.
 	* Better fixes for systems without closefrom() but
 	  which have /proc.  Fixes #1757.
 	* Minor build fixes back-ported from v4.0.x.
 	* build --whout-ascend-binary.  Fixes #1761.
 	* Be more aggressive about not opening new connections
+	  in debug mode after CTRL-C.  Address #1604.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
