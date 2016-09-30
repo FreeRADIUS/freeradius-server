@@ -2454,18 +2454,6 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 		return 0;
 	}
 
-	gettimeofday(&now, NULL);
-
-	/*
-	 *	Status-Server packets don't count as real packets.
-	 */
-	if (proxy->packet->code != PW_CODE_STATUS_SERVER) {
-		listen_socket_t *sock = proxy->listener->data;
-
-		proxy->home_server->last_packet_recv = now.tv_sec;
-		sock->last_packet = now.tv_sec;
-	}
-
 	/*
 	 *	If we have previously seen a reply, ignore the
 	 *	duplicate.
@@ -2477,6 +2465,18 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->src_port, reply->id);
 		return 0;
+	}
+
+	gettimeofday(&now, NULL);
+
+	/*
+	 *	Status-Server packets don't count as real packets.
+	 */
+	if (proxy->packet->code != PW_CODE_STATUS_SERVER) {
+		listen_socket_t *sock = proxy->listener->data;
+
+		proxy->home_server->last_packet_recv = now.tv_sec;
+		sock->last_packet = now.tv_sec;
 	}
 
 	/*
