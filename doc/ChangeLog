@@ -24,13 +24,13 @@ FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* Minor abfab and moonshot additions.
 	* Pass CFLAGS through from environment in RPM builds.
 	  Allows more custom builds.
-	* Build with Heimdal in addtion to libkrb5.
+	* Build with Heimdal in addition to libkrb5.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
 	* Update mssql schema to add priority
-	* don't complain on /dev/urandom in ldap
-	* fix == operator in update sections
+	* Don't complain on /dev/urandom in ldap
+	* Fix == operator in update sections
 	* Don't create DHCP strings with many trailing zeros.
 	  Patch from Nicolas C.  Fixes #1526.
 	* Allow MS-CHAP change passwords instead of complaining
