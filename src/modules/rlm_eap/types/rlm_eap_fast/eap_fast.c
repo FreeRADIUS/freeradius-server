@@ -153,11 +153,11 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
          *
          * RFC 4851 section 5.4 - EAP Master Session Key Generation
          */
-	t->msk = talloc_size(request, EAP_FAST_KEY_LEN);
+	t->msk = talloc_size(t, EAP_FAST_KEY_LEN);
 	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
 	RHEXDUMP(4, "MSK", t->msk, EAP_FAST_KEY_LEN);
 
-	t->emsk = talloc_size(request, EAP_EMSK_LEN);
+	t->emsk = talloc_size(t, EAP_EMSK_LEN);
 	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
 	RHEXDUMP(4, "EMSK", t->emsk, EAP_EMSK_LEN);
 }
