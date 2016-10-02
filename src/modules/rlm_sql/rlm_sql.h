@@ -108,6 +108,13 @@ typedef struct sql_config {
 	char const 		*groupmemb_query;		//!< Query to determine group membership.
 
 	bool			do_clients;			//!< Read clients from SQL database.
+	char const 		*client_id;			//!< Client ID from SQL database.
+	char const 		*client_ipaddr;			//!< Client 'ipaddr' from SQL database.
+	char const 		*client_shortname;		//!< Client 'shortname' from SQL database.
+	char const 		*client_nas_type;		//!< Client 'nas_type'  from SQL database.
+	char const 		*client_secret;			//!< Client 'secret' from SQL database.
+	char const 		*client_virtual_server;		//!< Client 'virtual_server' from SQL database.
+
 	bool			read_groups;			//!< Read user groups by default.
 								//!< If false, Fall-Through = yes is required
 								//!< in the previous reply list to process

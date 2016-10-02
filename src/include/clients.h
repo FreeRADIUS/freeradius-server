@@ -150,10 +150,6 @@ int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value
 
 RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa);
 
-RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
-				    char const *type, char const *server, bool require_ma)
-		CC_HINT(nonnull(2, 3));
-
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
 RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
