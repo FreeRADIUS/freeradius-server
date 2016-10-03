@@ -1,3 +1,10 @@
+FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* Minor typos.  Fixes #1763
+	* Fix typo in RPM build.  Closes #1767.
+
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Add support for =~ and !~ in update sections.
