@@ -206,6 +206,11 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 
 		/* Get the group name from the (fake winbind) gid */
 		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
+		if (err != WBC_ERR_SUCCESS) {
+			RDEBUG("Failed getting winbind group.  Error %d", (int) err);
+			continue;
+		}
+
 		RDEBUG3("Got group id: %i, name: %s", wb_groups[i], group->gr_name);
 
 		/* Find the backslash in the returned group name */
