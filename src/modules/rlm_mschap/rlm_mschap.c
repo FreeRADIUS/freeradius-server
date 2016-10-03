@@ -1405,7 +1405,8 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	char		*p;
 
 	if ((mschap_result == -648) ||
-	    (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0))) {
+	    ((mschap_result == 0) &&
+	     (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0)))) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
 
