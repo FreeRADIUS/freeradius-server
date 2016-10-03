@@ -153,7 +153,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 {
 	rlm_sql_mysql_conn_t *conn;
 	rlm_sql_mysql_t *inst = config->driver;
-	unsigned int connect_timeout = timeout->tv_usec;
+	unsigned int connect_timeout = timeout->tv_sec;
 	unsigned long sql_flags;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_mysql_conn_t));
