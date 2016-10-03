@@ -283,8 +283,16 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
 
 	while ((rlm_sql_fetch_row(inst, NULL, &handle) == 0) && (row = handle->row)) {
+		int num_rows;
 		char *server = NULL;
+
 		i++;
+
+		num_rows = (inst->module->sql_num_fields)(handle, inst->config);
+		if (num_rows < 5) {
+			WARN("SELECT returned too few rows.  Please do not edit 'client_query'");
+			continue;
+		}
 
 		/*
 		 *  The return data for each row MUST be in the following order:
@@ -313,7 +321,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			continue;
 		}
 
-		if (((inst->module->sql_num_fields)(handle, inst->config) > 5) && (row[5] != NULL) && *row[5]) {
+		if ((num_rows > 5) && (row[5] != NULL) && *row[5]) {
 			server = row[5];
 		}
 
@@ -1591,9 +1599,19 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 	}
 
 	while (rlm_sql_fetch_row(inst, request, &handle) == 0) {
+		int num_rows;
+
 		row = handle->row;
 		if (!row) {
 			break;
+		}
+
+		num_rows = (inst->module->sql_num_fields)(handle, inst->config);
+		if (num_rows < 8) {
+			RDEBUG("Too few rows returned.  Please do not edit 'simul_verify_query'");
+			rcode = RLM_MODULE_FAIL;
+
+			goto finish;
 		}
 
 		if (!row[2]){
@@ -1636,7 +1654,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 					else if (strcmp(row[7], "SLIP") == 0)
 						proto = 'S';
 				}
-				if (row[8])
+				if ((num_rows > 8) && row[8])
 					sess_time = atoi(row[8]);
 				session_zap(request, nas_addr, nas_port,
 					    row[2], row[1], framed_addr,
