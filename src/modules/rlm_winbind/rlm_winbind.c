@@ -98,14 +98,16 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 
 	/*
 	 *	Include the domain in the username?
+	 *
+	 *	Nasty hack alert: temporary fix for code in v3.1.x to get
+	 *	rlm_winbind working. This has been fixed correctly in v4.0.x.
+	 *	It means that in v3.1.x the domain template will not be
+	 *	expanded, which is unlikely to be much of an issue really
+	 *	anyway for most setups.
 	 */
 	if (inst->group_add_domain && inst->wb_domain) {
-		slen = tmpl_aexpand(request, &domain, request, inst->wb_domain, NULL, NULL);
-		if (slen < 0) {
-			REDEBUG("Unable to expand group_search_username");
-			goto error;
-		}
-		domain_len = (size_t)slen;
+		domain = talloc_strdup(request, inst->wb_domain->name);
+		domain_len = strlen(domain);
 	}
 
 	/*
