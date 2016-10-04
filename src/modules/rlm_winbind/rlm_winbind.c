@@ -77,7 +77,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	size_t			domain_len = 0;
 	char const		*user = NULL;
 	char			*user_buff = NULL;
-	char const		*username,
+	char const		*username;
 	char			*username_buff = NULL;
 
 	ssize_t			slen;
