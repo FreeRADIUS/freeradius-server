@@ -76,7 +76,9 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	char const		*domain = NULL;
 	size_t			domain_len = 0;
 	char const		*user = NULL;
-	char const		*username;
+	char			*user_buff = NULL;
+	char const		*username,
+	char			*username_buff = NULL;
 
 	ssize_t			slen;
 	size_t			backslash = 0;
@@ -110,11 +112,12 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	 *	Sort out what User-Name we are going to use.
 	 */
 	if (inst->group_username) {
-		slen = tmpl_aexpand(request, &user, request, inst->group_username, NULL, NULL);
+		slen = tmpl_aexpand(request, &user_buff, request, inst->group_username, NULL, NULL);
 		if (slen < 0) {
 			REDEBUG("Unable to expand group_search_username");
 			goto error;
 		}
+		user = user_buff;
 	} else {
 		/*
 		 *	This is quite unlikely to work without a domain, but
@@ -128,7 +131,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	}
 
 	if (domain) {
-		username = talloc_asprintf(user, "%s\\%s", domain, user);
+		username = username_buff = talloc_asprintf(request, "%s\\%s", domain, user);
 	} else {
 		username = user;
 	}
@@ -235,7 +238,8 @@ finish:
 	fr_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
-	talloc_const_free(user);
+	talloc_free(user_buff);
+	talloc_free(username_buff);
 	talloc_const_free(domain);
 	REXDENT();
 
