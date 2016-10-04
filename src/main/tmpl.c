@@ -1693,6 +1693,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		vd.length = vpt->len;
 		vd.strvalue = vpt->name;
 		to_cast = &vd;
+		needs_dup = true;
 		break;
 
 	case TMPL_TYPE_EXEC:
