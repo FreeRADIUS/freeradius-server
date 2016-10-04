@@ -164,7 +164,7 @@ int fr_pcap_mac_addr(uint8_t *macaddr, char *ifname)
 	}
 
 	ifr.ifr_addr.sa_family = AF_INET;
-	strncpy(ifr.ifr_name, ifname , IFNAMSIZ-1);
+	strlcpy(ifr.ifr_name, ifname , IFNAMSIZ-1);
 
 	ret = ioctl(fd, SIOCGIFHWADDR, &ifr);
 
