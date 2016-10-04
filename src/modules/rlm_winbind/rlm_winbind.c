@@ -155,16 +155,20 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		rcode = 0;
 		RDEBUG2("Successfully retrieved user's groups");
 		break;
+
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
 		RERROR("Failed retrieving groups: Unable to contact winbindd");	/* Global error */
 		break;
+
 	case WBC_ERR_DOMAIN_NOT_FOUND:
 		/* Yeah, weird. libwbclient returns this if the username is unknown */
 		REDEBUG("Failed retrieving groups: User or Domain not found");
 		break;
+
 	case WBC_ERR_UNKNOWN_USER:
 		REDEBUG("Failed retrieving groups: User cannot be found");
 		break;
+
 	default:
 		REDEBUG("Failed retrieving groups: %s", wbcErrorString(err));
 		break;
@@ -200,7 +204,9 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
 		if (err != WBC_ERR_SUCCESS) {
 			REDEBUG("Failed resolving GID %i: %s", wb_groups[i], wbcErrorString(err));
-			if (wb_groups[i] == UINT32_MAX) REDEBUG("GID appears to be winbind placeholder value - idmap failed?");
+			if (wb_groups[i] == UINT32_MAX) {
+				REDEBUG("GID appears to be winbind placeholder value, idmap likely failed");
+			}
 			continue;
 		}
 
