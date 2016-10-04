@@ -637,184 +637,39 @@ no_space:
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_request_t	*ctx = userdata;
-	REQUEST			*request = ctx->request; /* Used by RDEBUG */
-	VALUE_PAIR		*vp, *next;
+	REQUEST *request = ctx->request;
+	rest_custom_data_t *data = ctx->encoder;
 
-	char *p = out;		/* Position in buffer */
-	char *encoded = p;	/* Position in buffer of last fully encoded attribute or value */
-
-	char const *type;
-
-	size_t len = 0;
 	size_t freespace = (size * nmemb) - 1;		/* account for the \0 byte here */
+	size_t len;
+	size_t to_copy;
+	const char *encoded;
 
 	rad_assert(freespace > 0);
 
-	/* Allow manual chunking */
-	if ((ctx->chunk) && (ctx->chunk <= freespace)) {
-		freespace = (ctx->chunk - 1);
-	}
-
-	if (ctx->state == READ_STATE_END) return 0;
-
 	if (ctx->state == READ_STATE_INIT) {
+		encoded = fr_json_from_pair_list(data, &request->packet->vps, NULL);
+		if (!encoded) return -1;
+
+		data->start = data->p = encoded;
+		data->len = strlen(encoded);
+
+		RDEBUG3("JSON Data: %s", encoded);
+		RDEBUG3("Returning %zd bytes of JSON data", data->len);
+
 		ctx->state = READ_STATE_ATTR_BEGIN;
-
-		if (freespace < 1) goto no_space;
-		*p++ = '{';
-		freespace--;
 	}
 
-	for (;;) {
-		vp = fr_cursor_current(&ctx->cursor);
-
-		/*
-		 *  We've encoded all the VPs
-		 *
-		 *  The check for READ_STATE_ATTR_BEGIN is needed as we might be in
-		 *  READ_STATE_ATTR_END, and need to close out the current attribute
-		 *  array.
-		 */
-		if (!vp && (ctx->state == READ_STATE_ATTR_BEGIN)) {
-			if (freespace < 1) goto no_space;
-			*p++ = '}';
-			freespace--;
-
-			ctx->state = READ_STATE_END;
-
-			break;
-		}
-
-		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			/*
-			 *  New attribute, write name, type, and beginning of value array.
-			 */
-			RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
-
-			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
-
-			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
-			if (len >= freespace) goto no_space;
-			p += len;
-			freespace -= len;
-
-			RINDENT();
-			RDEBUG3("Type   : %s", type);
-			REXDENT();
-			/*
-			 *  We wrote the attribute header, record progress
-			 */
-			encoded = p;
-			ctx->state = READ_STATE_ATTR_CONT;
-		}
-
-		if (ctx->state == READ_STATE_ATTR_CONT) {
-			for (;;) {
-				size_t attr_space;
-
-				rad_assert(vp);	/* coverity */
-
-				/*
-				 *  We need at least a single byte to write out the
-				 *  shortest attribute value.
-				 */
-				if (freespace < 1) goto no_space;
-
-				/*
-				 *  Code below expects length of the buffer, so we
-				 *  add +1 to freespace.
-				 *
-				 *  If we know we need a comma after the value, we
-				 *  need to -1 to make sure we have enough room to
-				 *  write that out.
-				 */
-				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
-				len = fr_json_from_pair(p, attr_space + 1, vp);
-				if (is_truncated(len, attr_space + 1)) goto no_space;
-
-				/*
-				 *  Show actual value length minus quotes
-				 */
-				RINDENT();
-				RDEBUG3("Length : %zu", (size_t) (*p == '"') ? (len - 2) : len);
-				RDEBUG3("Value  : %s", p);
-				REXDENT();
-
-				p += len;
-				freespace -= len;
-				encoded = p;
-
-				/*
-				 *  Multivalued attribute, we sorted all the attributes earlier, so multiple
-				 *  instances should occur in a contiguous block.
-				 */
-				if ((next = fr_cursor_next(&ctx->cursor)) && (vp->da == next->da)) {
-					rad_assert(freespace >= 1);
-					*p++ = ',';
-					freespace--;
-
-					/*
-					 *  We wrote one attribute value, record progress.
-					 */
-					encoded = p;
-					vp = next;
-					continue;
-				}
-				break;
-			}
-			ctx->state = READ_STATE_ATTR_END;
-		}
-
-		if (ctx->state == READ_STATE_ATTR_END) {
-			next = fr_cursor_current(&ctx->cursor);
-			if (freespace < 2) goto no_space;
-			*p++ = ']';
-			*p++ = '}';
-			freespace -= 2;
-
-			if (next) {
-				if (freespace < 1) goto no_space;
-				*p++ = ',';
-				freespace--;
-			}
-
-			/*
-			 *  We wrote one full attribute value pair, record progress.
-			 */
-			encoded = p;
-			ctx->state = READ_STATE_ATTR_BEGIN;
-		}
-	}
-
-	*p = '\0';
-
-	len = p - (char *)out;
-
-	RDEBUG3("JSON Data: %s", (char *)out);
-	RDEBUG3("Returning %zd bytes of JSON data", len);
-
-	return len;
-
-	/*
-	 *  Were out of buffer space
-	 */
-no_space:
-	*encoded = '\0';
-
-	len = encoded - (char *)out;
-
-	RDEBUG3("JSON Data: %s", (char *)out);
-
-	/*
-	 *  The buffer wasn't big enough to encode a single attribute chunk.
-	 */
+	to_copy = data->len - (data->p - data->start);
+	len = to_copy > freespace ? freespace : to_copy;
+	
 	if (len == 0) {
-		REDEBUG("AVP exceeds buffer length or chunk");
+		return 0;
 	} else {
-		RDEBUG2("Returning %zd bytes of JSON data (buffer full or chunk exceeded)", len);
+		memcpy(out, data->p, len);
+		data->p += len;
+		return len;
 	}
-
-	return len;
 }
 #endif
 
@@ -879,24 +734,15 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
  *
  * @param[in] request Current request.
  * @param[in] ctx to initialise.
- * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
-static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool sort)
+static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
 {
 	/*
 	 * 	Setup stream read data
 	 */
 	ctx->request = request;
 	ctx->state = READ_STATE_INIT;
-
-	/*
-	 *	Sorts pairs in place, oh well...
-	 */
-	if (sort) {
-		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	}
-	fr_cursor_init(&ctx->cursor, &request->packet->vps);
 }
 
 /** Converts plain response into a single VALUE_PAIR
@@ -2236,18 +2082,26 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
-		rest_request_init(request, &ctx->request, true);
+	{
+		rest_custom_data_t *data;
+
+		data = talloc_zero(request, rest_custom_data_t);
+		ctx->request.encoder = data;
+
+		rest_request_init(request, &ctx->request);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_json) < 0) {
 			return -1;
 		}
+	}
 
 		break;
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &ctx->request, false);
+		rest_request_init(request, &ctx->request);
+		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_post) < 0) {
