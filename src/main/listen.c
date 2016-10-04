@@ -1705,16 +1705,30 @@ static int proxy_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *requ
 	rad_assert(request->proxy->listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 
-	if (fr_radius_send(request->proxy->packet, NULL,
-			   request->proxy->home_server->secret) < 0) {
-		RERROR("Failed sending proxied request: %s",
-			       fr_strerror());
+	if (fr_radius_encode(request->proxy->packet, NULL,
+			     request->proxy->home_server->secret) < 0) {
+		RERROR("Failed encoding proxied request: %s",
+		       fr_strerror());
 		return -1;
 	}
 
 	if (request->proxy->packet->data_len > (MAX_PACKET_LEN - 100)) {
 		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
 		      request->proxy->packet->data_len, MAX_PACKET_LEN);
+	}
+
+	if (fr_radius_sign(request->proxy->packet, NULL,
+			     request->proxy->home_server->secret) < 0) {
+		RERROR("Failed signing proxied request: %s",
+		       fr_strerror());
+		return -1;
+	}
+
+	if (fr_radius_send(request->proxy->packet, NULL,
+			   request->proxy->home_server->secret) < 0) {
+		RERROR("Failed sending proxied request: %s",
+			       fr_strerror());
+		return -1;
 	}
 
 	return 0;
