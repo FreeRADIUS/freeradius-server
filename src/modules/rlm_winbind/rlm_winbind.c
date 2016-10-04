@@ -151,34 +151,28 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	switch (err) {
 	case WBC_ERR_SUCCESS:
 		rcode = 0;
-		RDEBUG2("Successfully retrieved list of user's groups");
-		break;
-
-	case WBC_ERR_NO_MEMORY:
-		REDEBUG("Not enough memory");
+		RDEBUG2("Successfully retrieved user's groups");
 		break;
 
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
-		REDEBUG("Unable to contact winbind");
+		RERROR("Failed retrieving groups: Unable to contact winbindd");	/* Global error */
 		break;
 
 	case WBC_ERR_DOMAIN_NOT_FOUND:
 		/* Yeah, weird. libwbclient returns this if the username is unknown */
-		REDEBUG2("User or Domain not found");
+		REDEBUG("Failed retrieving groups: User or Domain not found");
 		break;
 
 	case WBC_ERR_UNKNOWN_USER:
-		REDEBUG2("User not found");
+		REDEBUG("Failed retrieving groups: User cannot be found");
 		break;
 
 	default:
-		REDEBUG2("Error finding groups (wbcErr = %d)", err);
+		REDEBUG("Failed retrieving groups: %s", wbcErrorString(err));
 		break;
 	}
 
-	if (!num_groups) {
-		RDEBUG("No groups returned");
-	}
+	if (!num_groups) RDEBUG("No groups returned");
 
 	if (rcode) goto finish;
 	rcode = 1;
@@ -207,11 +201,11 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		/* Get the group name from the (fake winbind) gid */
 		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
 		if (err != WBC_ERR_SUCCESS) {
-			RDEBUG("Failed getting winbind group.  Error %d", (int) err);
+			REDEBUG("Failed resolving GID %i: %s", wb_groups[i], wbcErrorString(err));
 			continue;
 		}
 
-		RDEBUG3("Got group id: %i, name: %s", wb_groups[i], group->gr_name);
+		RDEBUG3("Resolved GID %i to name \"%s\"", wb_groups[i], group->gr_name);
 
 		/* Find the backslash in the returned group name */
 		if ((backslash < strlen(group->gr_name)) && (group->gr_name[backslash] == '\\')) {
@@ -224,9 +218,9 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		}
 
 		/* See if the group matches */
-		RDEBUG3("Checking plain group name: '%s'", group_name);
+		RDEBUG3("Checking plain group name \"%s\"", group_name);
 		if (!strcasecmp(group_name, check->vp_strvalue)) {
-			RDEBUG("Found matching group: '%s'", group_name);
+			RDEBUG("Found matching group: %s", group_name);
 			found = true;
 			rcode = 0;
 		}
