@@ -2445,6 +2445,8 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	request->priority = RAD_LISTEN_PROXY;
 
 #ifdef WITH_STATS
+	if (!proxy->listener) goto global_stats;
+
 	/*
 	 *	Update the proxy listener stats here, because only one
 	 *	thread accesses that at a time.  The home_server and
@@ -2453,13 +2455,10 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 */
 	proxy->listener->stats.total_responses++;
 
-	proxy->home_server->stats.last_packet = reply->timestamp.tv_sec;
 	proxy->listener->stats.last_packet = reply->timestamp.tv_sec;
 
 	switch (proxy->packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
-		proxy_auth_stats.last_packet = reply->timestamp.tv_sec;
-
 		if (proxy->reply->code == PW_CODE_ACCESS_ACCEPT) {
 			proxy->listener->stats.total_access_accepts++;
 
@@ -2473,10 +2472,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
-
 		proxy->listener->stats.total_responses++;
-		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 #endif
@@ -2484,11 +2480,38 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
 		proxy->listener->stats.total_responses++;
-		proxy_coa_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
 		proxy->listener->stats.total_responses++;
+		break;
+
+#endif
+	default:
+		break;
+	}
+
+global_stats:
+	proxy->home_server->stats.last_packet = reply->timestamp.tv_sec;
+
+	switch (proxy->packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		proxy_auth_stats.last_packet = reply->timestamp.tv_sec;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_REQUEST:
+		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
+		break;
+
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+		proxy_coa_stats.last_packet = reply->timestamp.tv_sec;
+		break;
+
+	case PW_CODE_DISCONNECT_REQUEST:
 		proxy_dsc_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
