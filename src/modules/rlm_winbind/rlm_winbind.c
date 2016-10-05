@@ -202,7 +202,9 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 		err = wbcCtxGetgrgid(wb_ctx, wb_groups[i], &group);
 		if (err != WBC_ERR_SUCCESS) {
 			REDEBUG("Failed resolving GID %i: %s", wb_groups[i], wbcErrorString(err));
-			if (wb_groups[i] == UINT32_MAX) REDEBUG("GID appears to be winbind placeholder value - idmap failed?");
+			if (wb_groups[i] == UINT32_MAX) {
+				REDEBUG("GID appears to be winbind placeholder value, idmap likely failed");
+			}
 			continue;
 		}
 
