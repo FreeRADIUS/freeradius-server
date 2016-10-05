@@ -951,10 +951,9 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	if (t->stage == AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
-        RWDEBUG2("AUTHENTICATION");
-        vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
-        vp->vp_integer = t->default_method;
-        RWDEBUG2("AUTHENTICATION");
+		RDEBUG2("AUTHENTICATION");
+		vp = fr_pair_make(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
+		vp->vp_integer = t->default_method;
 
 		/*
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
