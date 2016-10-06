@@ -46,6 +46,9 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Called when the delay is complete, and we're running from the interpreter
+ *
+ */
 static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *module_instance, UNUSED void *ctx)
 {
 	return RLM_MODULE_OK;
@@ -54,9 +57,14 @@ static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *module_ins
 /** Called when the timeout has expired
  *
  * Marks the request as resumable, and prints the actual delay time.
+ *
+ * @param[in] request		The current request.
+ * @param[in] module_instance	This instance of the delay module.
+ * @param[in] ctx		Scheduled end of the delay.
+ * @param[in] fired		When request processing was resumed.
  */
 static void delay_done(REQUEST *request, UNUSED void *module_instance,
-		       void *ctx, struct timeval *timeout)
+		       void *ctx, struct timeval *fired)
 {
 	struct timeval *when = talloc_get_type_abort(ctx, struct timeval);
 
@@ -66,7 +74,13 @@ static void delay_done(REQUEST *request, UNUSED void *module_instance,
 	if (RDEBUG_ENABLED3) {
 		struct timeval actual;
 
-		fr_timeval_subtract(&actual, timeout, when);
+		/*
+		 *	timeout should never be *before* the scheduled time,
+		 *	if it is, something is very broken.
+		 */
+		rad_assert(fr_timeval_cmp(fired, when) <= 0);
+
+		fr_timeval_subtract(&actual, fired, when);
 
 		RDEBUG3("Request delayed by %"PRIu64".%06"PRIu64"s",
 			(uint64_t)actual.tv_sec, (uint64_t)actual.tv_usec);
@@ -131,9 +145,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, REQUEST *request)
 	rlm_delay_t	*inst = instance;
 	rlm_rcode_t	rcode;
 
+	/*
+	 *	Setup the delay for this request
+	 */
 	rcode = delay_add(inst, request);
 	if (rcode != RLM_MODULE_YIELD) return rcode;
 
+	/*
+	 *	Yield, setting delay_return as the next state
+	 */
 	return unlang_yield(request, delay_return, NULL, NULL);
 }
 

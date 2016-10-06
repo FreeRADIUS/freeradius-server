@@ -22,7 +22,8 @@ delay {
 		
 		#
 		#  Whether delay should be calculated relative to when the request was
-		#  received.  This can be useful for rate limiting.
+		#  received.  This can be useful for rate limiting, as most NAS will only
+		#  allow a limited number of request to be in flight.
 		#
 #		relative = no
 }

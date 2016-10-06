@@ -1274,17 +1274,36 @@ static int _unlang_event_free(unlang_event_t *ev)
 	return 0;
 }
 
+/** Call the callback registered for a timeout event
+ *
+ * @param[in] ctx	unlang_event_t structure holding callbacks.
+ * @param[in] now	The current time, as held by the event_list.
+ */
 static void unlang_event_timeout_handler(void *ctx, struct timeval *now)
 {
+#ifndef NDEBUG
+	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
+#else
 	unlang_event_t *ev = ctx;
+#endif
 
 	ev->timeout_callback(ev->request, ev->inst, ev->ctx, now);
 	talloc_free(ev);
 }
 
+/** Call the callback registered for an I/O event
+ *
+ * @param[in] el	containing the event (not passed to the callback).
+ * @param[in] fd	the I/O event occurred on.
+ * @param[in] ctx	unlang_event_t structure holding callbacks.
+ */
 static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
 {
+#ifndef NDEBUG
+	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
+#else
 	unlang_event_t *ev = ctx;
+#endif
 
 	rad_assert(ev->fd == fd);
 
@@ -1351,8 +1370,8 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-			void *module_instance, void *ctx, int fd)
+int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
+				 void *module_instance, void *ctx, int fd)
 {
 	unlang_event_t *ev;
 

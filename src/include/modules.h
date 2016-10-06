@@ -191,22 +191,23 @@ int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
  * Used when a module needs wait for an event.
  * Typically the callback is set, and then the module returns unlang_yield().
  *
- * @note The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_resumable(), i.e. if an event
+ *	on a registered FD occurs before the timeout event fires.
  *
  * @param[in] request		the request.
  * @param[in] module_instance	the module instance.
  * @param[in] ctx		a local context for the callback.
- * @param[in] timeout		when to call the timeout.
+ * @param[in] fired		the time the timeout event actually fired.
  */
 typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_instance,
-					     void *ctx, struct timeval *timeout);
+					     void *ctx, struct timeval *fired);
 
 /** A callback when the FD is ready for reading
  *
  * Used when a module needs to read from an FD.  Typically the callback is set, and then the
  * module returns unlang_yield().
  *
- * @note The callback is automatically removed on unlang_resumable().
+ * @note The callback is automatically removed on unlang_resumable(), so
  *
  * @param[in] request		the current request.
  * @param[in] module_instance	the module instance.
@@ -243,7 +244,7 @@ typedef void (*fr_unlang_action_t)(REQUEST *request, void *module_instance, void
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void *module_instance, void *ctx, struct timeval *timeout);
 
-int		unlang_event_fd_add(REQUEST *request, fr_unlang_fd_callback_t callback,
+int		unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 				    void *module_instance, void *ctx, int fd);
 
 int		unlang_event_timeout_delete(REQUEST *request, void *ctx);
