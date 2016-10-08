@@ -34,7 +34,7 @@
 --- a/scripts/monit/freeradius.monitrc
 +++ b/scripts/monit/freeradius.monitrc
 @@ -8,9 +8,9 @@
- #  Totalmem limit should be lowered to 200.0 if none of the 
+ #  Totalmem limit should be lowered to 200.0 if none of the
  #  interpreted language modules or rlm_cache are being used.
  #
 -check process radiusd with pidfile /var/run/radiusd/radiusd.pid
@@ -68,17 +68,17 @@ index 1ae66ec..ee1a711 100644
 --- a/src/main/radiusd.c
 +++ b/src/main/radiusd.c
 @@ -93,7 +93,6 @@ int main(int argc, char *argv[])
-	bool display_version = false;
-	int flag = 0;
-	int from_child[2] = {-1, -1};
+ 	bool display_version = false;
+ 	int flag = 0;
+ 	int from_child[2] = {-1, -1};
 -	char *p;
-	fr_state_t *state = NULL;
-
-	/*
+ 	fr_state_t *state = NULL;
+ 
+ 	/*
 @@ -128,13 +127,7 @@ int main(int argc, char *argv[])
-	main_config.myip.af = AF_UNSPEC;
-	main_config.port = 0;
-	main_config.daemonize = true;
+ 	main_config.myip.af = AF_UNSPEC;
+ 	main_config.port = 0;
+ 	main_config.daemonize = true;
 -
 -	p = strrchr(argv[0], FR_DIR_SEP);
 -	if (!p) {
@@ -87,6 +87,6 @@ index 1ae66ec..ee1a711 100644
 -		main_config.name = p + 1;
 -	}
 +	main_config.name = "radiusd";
-
-	/*
-	 *	Don't put output anywhere until we get told a little
+ 
+ 	/*
+ 	 *	Don't put output anywhere until we get told a little
