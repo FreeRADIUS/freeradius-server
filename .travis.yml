@@ -66,6 +66,7 @@ addons:
       - libjson0
       - libjson0-dev
       - libkrb5-dev
+      - libkqueue-dev
       - libldap2-dev
       - libmemcached-dev
       - libmysqlclient-dev

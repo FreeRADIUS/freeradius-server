@@ -77,6 +77,7 @@ BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
 BuildRequires: libcurl-devel
+BuildRequires: libkqueue-devel
 
 Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig
@@ -90,6 +91,7 @@ Requires: openssl
 Requires: libpcap
 Requires: readline
 Requires: libtalloc
+Requires: libkqueue
 Requires: net-snmp
 Requires: zlib
 Requires: pam
