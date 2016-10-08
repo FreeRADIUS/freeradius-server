@@ -520,6 +520,7 @@ AX_WITH_LIB_ARGS_OPT([collectdclient],[yes])
 AX_WITH_LIB_ARGS_OPT([execinfo],[yes])
 AX_WITH_LIB_ARGS_OPT([gperftools],[yes])
 AX_WITH_LIB_ARGS_OPT([openssl],[yes])
+AX_WITH_LIB_ARGS([kqueue])
 AX_WITH_LIB_ARGS_OPT([pcap],[yes])
 AX_WITH_LIB_ARGS_OPT([pcre],[yes])
 AX_WITH_LIB_ARGS_OPT([systemd],[yes])
@@ -740,6 +741,7 @@ AC_CHECK_HEADERS( \
   stdio.h \
   sys/event.h \
   sys/fcntl.h \
+  sys/event.h \
   sys/prctl.h \
   sys/ptrace.h \
   sys/resource.h \
@@ -803,6 +805,25 @@ TALLOC_LIBS="${smart_lib}"
 TALLOC_LDFLAGS="${smart_ldflags}"
 AC_SUBST(TALLOC_LIBS)
 AC_SUBST(TALLOC_LDFLAGS)
+LIBS="$old_LIBS"
+
+dnl #
+dnl #  Check for libkqueue (or system kqueue present on OSX and the BSDs)
+dnl #
+AC_CHECK_FUNC([kqueue])
+if test "x$ac_cv_func_kqueue" != "xyes"; then
+  smart_try_dir="$kqueue_lib_dir"
+  FR_SMART_CHECK_LIB(kqueue, kqueue)
+  if test "x$ac_cv_lib_kqueue_kqueue" != "xyes"; then
+    AC_MSG_WARN([kqueue library not found. Use --with-kqueue-lib-dir=<path>.])
+    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
+  fi
+fi
+
+KQUEUE_LIBS="${smart_lib}"
+KQUEUE_LDFLAGS="${smart_ldflags}"
+AC_SUBST(KQUEUE_LIBS)
+AC_SUBST(KQUEUE_LDFLAGS)
 LIBS="$old_LIBS"
 
 dnl #
@@ -933,6 +954,18 @@ if test "x$ac_cv_header_talloc_h" != "xyes"; then
 fi
 
 dnl #
+dnl # Check for kqueue header files
+dnl #
+if test "x$ac_cv_header_sys_event_h" != "xyes"; then
+  smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
+  FR_SMART_CHECK_INCLUDE([sys/event.h])
+  if test "x$ac_cv_header_sys_event_h" != "xyes"; then
+    AC_MSG_WARN([kqueue headers not found. Use --with-kqueue-include-dir=<path>.])
+    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
+  fi
+fi
+
+dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl #  getopt will be #included, but won't link.  <sigh>
 dnl #
@@ -946,7 +979,6 @@ case "$host" in
     AC_DEFINE([__APPLE_USE_RFC_3542], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
     ;;
 esac
-
 
 dnl #
 dnl #  Were we told to use OpenSSL, if we were and we find an error, call AC_MSG_FAILURE and exit

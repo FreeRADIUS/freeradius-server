@@ -646,6 +646,8 @@ OPENSSL_CPPFLAGS
 OPENSSL_LDFLAGS
 OPENSSL_LIBS
 LIBREADLINE
+KQUEUE_LDFLAGS
+KQUEUE_LIBS
 TALLOC_LDFLAGS
 TALLOC_LIBS
 DIRNAME
@@ -714,6 +716,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -772,6 +775,8 @@ with_gperftools_include_dir
 with_openssl
 with_openssl_lib_dir
 with_openssl_include_dir
+with_kqueue_lib_dir
+with_kqueue_include_dir
 with_pcap
 with_pcap_lib_dir
 with_pcap_include_dir
@@ -835,6 +840,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1087,6 +1093,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1224,7 +1239,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1377,6 +1392,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1475,6 +1491,10 @@ Optional Packages:
                           directory in which to look for openssl library files
   --with-openssl-include-dir=DIR
                           directory in which to look for openssl include files
+  --with-kqueue-lib-dir=DIR
+                          directory in which to look for kqueue library files
+  --with-kqueue-include-dir=DIR
+                          directory in which to look for kqueue include files
   --with-pcap             build with pcap if available (default=yes)
   --with-pcap-lib-dir=DIR directory in which to look for pcap library files
   --with-pcap-include-dir=DIR
@@ -2470,6 +2490,7 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 #
 #   Adds boilerplate arguments for controlling whether a feature is built
 #
+
 
 
 
@@ -4575,7 +4596,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4621,7 +4642,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4645,7 +4666,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4690,7 +4711,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -4714,7 +4735,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -5459,15 +5480,9 @@ fi
 # Check whether --with-tcp was given.
 if test "${with_tcp+set}" = set; then :
   withval=$with_tcp; case "$withval" in
-            yes)
-
-$as_echo "#define WITH_TCP 1" >>confdefs.h
-
+            yes|no|'')
                 ;;
             no|'')
-
-$as_echo "#define WITH_TCP /**/" >>confdefs.h
-
                 ;;
             *)
                 as_fn_error $? "--with[out]-tcp expects yes|no" "$LINENO" 5
@@ -5476,6 +5491,16 @@ $as_echo "#define WITH_TCP /**/" >>confdefs.h
 fi
 
 
+    if test x"$withval" == x"yes"; then
+
+$as_echo "#define WITH_TCP 1" >>confdefs.h
+
+    else
+
+$as_echo "#define WITH_TCP /**/" >>confdefs.h
+
+    fi
+
 
     WITH_VMPS=yes
 
@@ -5483,15 +5508,9 @@ fi
 # Check whether --with-vmps was given.
 if test "${with_vmps+set}" = set; then :
   withval=$with_vmps; case "$withval" in
-            yes)
-
-$as_echo "#define WITH_VMPS 1" >>confdefs.h
-
+            yes|no|'')
                 ;;
             no|'')
-
-$as_echo "#define WITH_VMPS /**/" >>confdefs.h
-
                 ;;
             *)
                 as_fn_error $? "--with[out]-vmps expects yes|no" "$LINENO" 5
@@ -5500,6 +5519,16 @@ $as_echo "#define WITH_VMPS /**/" >>confdefs.h
 fi
 
 
+    if test x"$withval" == x"yes"; then
+
+$as_echo "#define WITH_VMPS 1" >>confdefs.h
+
+    else
+
+$as_echo "#define WITH_VMPS /**/" >>confdefs.h
+
+    fi
+
 
     WITH_DHCP=yes
 
@@ -5507,15 +5536,9 @@ fi
 # Check whether --with-dhcp was given.
 if test "${with_dhcp+set}" = set; then :
   withval=$with_dhcp; case "$withval" in
-            yes)
-
-$as_echo "#define WITH_DHCP 1" >>confdefs.h
-
+            yes|no|'')
                 ;;
             no|'')
-
-$as_echo "#define WITH_DHCP /**/" >>confdefs.h
-
                 ;;
             *)
                 as_fn_error $? "--with[out]-dhcp expects yes|no" "$LINENO" 5
@@ -5524,6 +5547,16 @@ $as_echo "#define WITH_DHCP /**/" >>confdefs.h
 fi
 
 
+    if test x"$withval" == x"yes"; then
+
+$as_echo "#define WITH_DHCP 1" >>confdefs.h
+
+    else
+
+$as_echo "#define WITH_DHCP /**/" >>confdefs.h
+
+    fi
+
 
     WITH_UDPFROMTO=yes
 
@@ -5531,15 +5564,9 @@ fi
 # Check whether --with-udpfromto was given.
 if test "${with_udpfromto+set}" = set; then :
   withval=$with_udpfromto; case "$withval" in
-            yes)
-
-$as_echo "#define WITH_UDPFROMTO 1" >>confdefs.h
-
+            yes|no|'')
                 ;;
             no|'')
-
-$as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
-
                 ;;
             *)
                 as_fn_error $? "--with[out]-udpfromto expects yes|no" "$LINENO" 5
@@ -5547,6 +5574,16 @@ $as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
         esac
 fi
 
+
+    if test x"$withval" == x"yes"; then
+
+$as_echo "#define WITH_UDPFROMTO 1" >>confdefs.h
+
+    else
+
+$as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
+
+    fi
 
 
 STATIC_MODULES=
@@ -5814,6 +5851,36 @@ if test "${with_openssl_include_dir+set}" = set; then :
     esac
 fi
 
+
+
+
+
+# Check whether --with-kqueue-lib-dir was given.
+if test "${with_kqueue_lib_dir+set}" = set; then :
+  withval=$with_kqueue_lib_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-kqueue-lib=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+            *)
+                kqueue_lib_dir="$withval"
+                ;;
+        esac
+fi
+
+
+
+# Check whether --with-kqueue-include-dir was given.
+if test "${with_kqueue_include_dir+set}" = set; then :
+  withval=$with_kqueue_include_dir; case "$withval" in
+            yes|no|'')
+                as_fn_error $? "--with[out]-kqueue-include=PATH expects a valid PATH" "$LINENO" 5
+                ;;
+
+            *)
+                kqueue_include_dir="$withval"
+                ;;
+    esac
+fi
 
 
 
@@ -7281,6 +7348,7 @@ for ac_header in \
   stdio.h \
   sys/event.h \
   sys/fcntl.h \
+  sys/event.h \
   sys/prctl.h \
   sys/ptrace.h \
   sys/resource.h \
@@ -7529,6 +7597,200 @@ fi
 
 TALLOC_LIBS="${smart_lib}"
 TALLOC_LDFLAGS="${smart_ldflags}"
+
+
+LIBS="$old_LIBS"
+
+ac_fn_c_check_func "$LINENO" "kqueue" "ac_cv_func_kqueue"
+if test "x$ac_cv_func_kqueue" = xyes; then :
+
+fi
+
+if test "x$ac_cv_func_kqueue" != "xyes"; then
+  smart_try_dir="$kqueue_lib_dir"
+
+
+sm_lib_safe=`echo "kqueue" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "kqueue" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
+smart_lib=
+smart_ldflags=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+for try in $smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for kqueue in -lkqueue in $try" >&5
+$as_echo_n "checking for kqueue in -lkqueue in $try... " >&6; }
+  LIBS="-lkqueue $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char kqueue();
+int
+main ()
+{
+kqueue()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		 smart_lib="-lkqueue"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" = "x"; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for kqueue in -lkqueue" >&5
+$as_echo_n "checking for kqueue in -lkqueue... " >&6; }
+LIBS="-lkqueue $old_LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char kqueue();
+int
+main ()
+{
+kqueue()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-lkqueue"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file=libkqueue${libltdl_cv_shlibext}
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file=libkqueue.a
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for kqueue in -lkqueue in $try" >&5
+$as_echo_n "checking for kqueue in -lkqueue in $try... " >&6; }
+  LIBS="-lkqueue $old_LIBS"
+  CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char kqueue();
+int
+main ()
+{
+kqueue()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-lkqueue"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+done
+LIBS="$old_LIBS"
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" != "x"; then
+eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+LIBS="$smart_ldflags $smart_lib $old_LIBS"
+SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+fi
+
+  if test "x$ac_cv_lib_kqueue_kqueue" != "xyes"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: kqueue library not found. Use --with-kqueue-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: kqueue library not found. Use --with-kqueue-lib-dir=<path>." >&2;}
+    as_fn_error $? "FreeRADIUS requires libkqueue (or system kqueue)" "$LINENO" 5
+  fi
+fi
+
+KQUEUE_LIBS="${smart_lib}"
+KQUEUE_LDFLAGS="${smart_ldflags}"
 
 
 LIBS="$old_LIBS"
@@ -9038,6 +9300,241 @@ $as_echo "$as_me: WARNING: talloc headers not found. Use --with-talloc-include-d
   as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
 fi
 
+if test "x$ac_cv_header_sys_event_h" != "xyes"; then
+  smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
+
+
+ac_safe=`echo "sys/event.h" | sed 'y%./+-%__pm%'`
+old_CPPFLAGS="$CPPFLAGS"
+smart_include=
+smart_include_dir="/usr/local/include /opt/include"
+
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+for _dir in $smart_try_dir; do
+  _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+done
+
+for _dir in $smart_include_dir; do
+  _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+for try in $_smart_try_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sys/event.h in $try" >&5
+$as_echo_n "checking for sys/event.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <sys/event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+for _prefix in $smart_prefix; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/sys/event.h" >&5
+$as_echo_n "checking for ${_prefix}/sys/event.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <sys/event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+fi
+
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sys/event.h" >&5
+$as_echo_n "checking for sys/event.h... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <sys/event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file="${_prefix}/${1}"
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+done
+
+
+if test "x$LOCATE" != "x"; then
+DIRS=
+file=sys/event.h
+
+for x in `${LOCATE} $file 2>/dev/null`; do
+                    base=`echo $x | sed "s%/${file}%%"`
+  if test "x$x" = "x$base"; then
+    continue;
+  fi
+
+  dir=`${DIRNAME} $x 2>/dev/null`
+        exclude=`echo ${dir} | ${GREP} /home`
+  if test "x$exclude" != "x"; then
+    continue
+  fi
+
+          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+  if test "x$already" = "x"; then
+    DIRS="$DIRS $dir"
+  fi
+done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+
+for try in $_smart_include_dir; do
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sys/event.h in $try" >&5
+$as_echo_n "checking for sys/event.h in $try... " >&6; }
+  CPPFLAGS="-isystem $try $old_CPPFLAGS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <sys/event.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+eval "ac_cv_header_$ac_safe=yes"
+CPPFLAGS="$smart_include $old_CPPFLAGS"
+SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+fi
+
+smart_prefix=
+
+  if test "x$ac_cv_header_sys_event_h" != "xyes"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: kqueue headers not found. Use --with-kqueue-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: kqueue headers not found. Use --with-kqueue-include-dir=<path>." >&2;}
+    as_fn_error $? "FreeRADIUS requires libkqueue (or system kqueue)" "$LINENO" 5
+  fi
+fi
+
 case "$host" in
   *-interix*)
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
@@ -9050,7 +9547,6 @@ $as_echo "#define __APPLE_USE_RFC_3542 1" >>confdefs.h
 
     ;;
 esac
-
 
 if test "x$WITH_OPENSSL" = xyes; then
   OLD_LIBS="$LIBS"
