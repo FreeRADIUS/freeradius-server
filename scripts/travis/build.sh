@@ -14,6 +14,9 @@ fi
 #
 #  Configure the server as per the build matrix
 #
+#  We specify -with-rlm-python-bin because Otherwise travis picks up 
+#  /opt/python, which doesn't have .so available
+#
 echo "Performing full configuration"
 CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --enable-werror \
@@ -23,7 +26,8 @@ CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --with-udpfromto=$LIBS_OPTIONAL \
     --with-openssl=$LIBS_OPTIONAL \
     --with-pcre=$LIBS_OPTIONAL \
-    --with-rlm-python-bin=/usr/bin/python2.7   # Otherwise travis picks up /opt/python, which doesn't have .so available
+    --with-rlm-python-bin=/usr/bin/python2.7 \
+|| cat ./config.log
 
 echo "Contents of src/include/autoconf.h"
 cat "./src/include/autoconf.h"
