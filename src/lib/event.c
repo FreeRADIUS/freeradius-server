@@ -27,14 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 
-#ifdef HAVE_KQUEUE
-#ifndef HAVE_SYS_EVENT_H
-#error kqueue requires <sys/event.h>
-
-#else
 #include <sys/event.h>
-#endif
-#endif	/* HAVE_KQUEUE */
 
 typedef struct fr_event_fd_t {
 	int			fd;
@@ -60,18 +53,9 @@ struct fr_event_list_t {
 	int		num_readers;
 	int		num_events;
 
-#ifndef HAVE_KQUEUE
-	int		max_readers;
-
-	int		max_fd;
-	fd_set		master_fds;
-
-	fd_set		read_fds;
-
-#else
 	int		kq;
 	struct kevent	events[FR_EV_MAX_FDS]; /* so it doesn't go on the stack every time */
-#endif
+
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
@@ -113,9 +97,7 @@ static int _event_list_free(fr_event_list_t *list)
 
 	fr_heap_delete(el->times);
 
-#ifdef HAVE_KQUEUE
 	close(el->kq);
-#endif
 
 	return 0;
 }
@@ -142,21 +124,11 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 		el->readers[i].fd = -1;
 	}
 
-#ifndef HAVE_KQUEUE
-	el->max_fd = -1;
-#ifdef __clang_analyzer__
-	memset(&el->master_fds, 0, sizeof(el->master_fds));
-#else
-	FD_ZERO(&el->master_fds);
-#endif
-
-#else
 	el->kq = kqueue();
 	if (el->kq < 0) {
 		talloc_free(el);
 		return NULL;
 	}
-#endif
 
 	el->status = status;
 
@@ -381,7 +353,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	}
 	ef = NULL;
 
-#ifdef HAVE_KQUEUE
 	/*
 	 *	We need to store TWO fields with the event.  kqueue
 	 *	only lets us store one.  If we put the two fields into
@@ -419,35 +390,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		break;
 	}
 
-#else  /* HAVE_KQUEUE */
-
-	for (i = 0; i <= el->max_readers; i++) {
-		/*
-		 *	Be fail-safe on multiple inserts.
-		 */
-		if (el->readers[i].fd == fd) {
-			if ((el->readers[i].handler != handler) ||
-			    (el->readers[i].ctx != ctx)) {
-				fr_strerror_printf("Multiple handlers for same FD");
-				return -1;
-			}
-
-			/*
-			 *	No change.
-			 */
-			return 0;
-		}
-
-		if (el->readers[i].fd < 0) {
-			ef = &el->readers[i];
-			el->num_readers++;
-
-			if (i == el->max_readers) el->max_readers = i + 1;
-			break;
-		}
-	}
-#endif
-
 	if (!ef) {
 		fr_strerror_printf("Failed assigning FD");
 		return -1;
@@ -457,26 +399,17 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	ef->handler = handler;
 	ef->ctx = ctx;
 
-#ifndef HAVE_KQUEUE
-	if (fd >= el->max_fd) el->max_fd = fd;
-	FD_SET(fd, &el->master_fds);
-#endif
-
 	return 0;
 }
 
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 {
 	int i;
-#ifndef HAVE_KQUEUE
-	int max_fd;
-#endif
 
 	if (!el || (fd < 0)) return -1;
 
 	if (type != 0) return -1;
 
-#ifdef HAVE_KQUEUE
 	for (i = 0; i < FR_EV_MAX_FDS; i++) {
 		int j;
 		struct kevent evset;
@@ -503,36 +436,6 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 
 
 	return -1;
-#else
-
-	max_fd = -1;
-
-	for (i = 0; i < el->max_readers; i++) {
-		if (el->readers[i].fd == fd) {
-			el->readers[i].fd = -1;
-			el->num_readers--;
-
-			if ((i + 1) == el->max_readers) el->max_readers = i;
-			FD_CLR(fd, &el->master_fds);
-			max_fd = fd;
-		}
-	}
-
-	if (max_fd < 0) return -1;
-
-	/*
-	 *	Reset max_fd
-	 */
-	max_fd = -1;
-	for (i = 0; i < el->max_readers; i++) {
-		if (el->readers[i].fd < 0) continue;
-
-		if (el->readers[i].fd >= max_fd) max_fd = el->readers[i].fd;
-	}
-	el->max_fd = max_fd;
-
-	return 0;
-#endif	/* HAVE_KQUEUE */
 }
 
 
@@ -551,9 +454,7 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
 int fr_event_check(fr_event_list_t *el, bool wait)
 {
 	struct timeval when, *wake;
-#ifdef HAVE_KQUEUE
 	struct timespec ts_when, *ts_wake;
-#endif
 
 	/*
 	 *	Find the first event.  If there's none, we wait
@@ -607,18 +508,6 @@ int fr_event_check(fr_event_list_t *el, bool wait)
 	 */
 	if (el->status) el->status(wake);
 
-#ifndef HAVE_KQUEUE
-	memcpy(&el->read_fds, &el->master_fds, sizeof(el->master_fds));
-
-	el->num_events = select(el->max_fd + 1, &el->read_fds, NULL, NULL, wake);
-	if ((el->num_events < 0) && (errno != EINTR)) {
-		fr_strerror_printf("Failed in select: %s", fr_syserror(errno));
-		el->dispatch = false;
-		return -1;
-	}
-
-#else  /* HAVE_KQUEUE */
-
 	if (wake) {
 		ts_wake = &ts_when;
 		ts_when.tv_sec = when.tv_sec;
@@ -628,7 +517,6 @@ int fr_event_check(fr_event_list_t *el, bool wait)
 	}
 
 	el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
-#endif	/* HAVE_KQUEUE */
 
 	/*
 	 *	Interrupt is different from timeout / FD events.
@@ -644,23 +532,6 @@ int fr_event_check(fr_event_list_t *el, bool wait)
 int fr_event_service(fr_event_list_t *el)
 {
 	int i;
-
-#ifndef HAVE_KQUEUE
-	/*
-	 *	Loop over all of the sockets to see if there's
-	 *	an event for that socket.
-	 */
-	for (i = 0; i < el->max_readers; i++) {
-		fr_event_fd_t *ef = &el->readers[i];
-
-		if (ef->fd < 0) continue;
-
-		if (!FD_ISSET(ef->fd, &el->read_fds)) continue;
-
-		ef->handler(el, ef->fd, ef->ctx);
-	}
-
-#else  /* HAVE_KQUEUE */
 
 	/*
 	 *	Loop over all of the events, servicing them.
@@ -689,7 +560,6 @@ int fr_event_service(fr_event_list_t *el)
 		 */
 		ef->handler(el, ef->fd, ef->ctx);
 	}
-#endif	/* HAVE_KQUEUE */
 
 	if (fr_heap_num_elements(el->times) > 0) {
 		struct timeval when;
