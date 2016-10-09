@@ -617,7 +617,7 @@ if test "x$HAVE_THREADS" != "xno"; then
       dnl #  only support it on certain platforms.
       dnl #
       AX_CC_PTHREAD_FLAG
-      if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
     ]

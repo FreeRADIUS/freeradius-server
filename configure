@@ -6452,7 +6452,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
-      if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
 
