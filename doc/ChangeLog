@@ -4,6 +4,11 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Bug fixes
 	* Minor typos.  Fixes #1763
 	* Fix typo in RPM build.  Closes #1767.
+	* rlm_mschap check for password expiry only
+	  if password was correct.  Fixes #1762.
+	* Update debian build.
+	* update rlm_counter "man" page.  Fixes #1775.
+	* Remove erroneous assert.  Fixes #1778.
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
