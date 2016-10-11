@@ -728,8 +728,6 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 	if (!SvOK(sv)) return -1;
 
-	VERIFY_LIST(*vps);
-
 	val = SvPV(sv, len);
 	vp = fr_pair_make(ctx, vps, key, NULL, op);
 	if (!vp) {
@@ -783,6 +781,8 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 			}
 		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name) + ret;
 	}
+
+	if (*vps) VERIFY_LIST(*vps);
 
 	return ret;
 }
