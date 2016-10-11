@@ -700,8 +700,6 @@ static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char
 	VALUE_PAIR      *vp;
 	STRLEN len;
 
-	VERIFY_LIST(*vps);
-
 	if (!SvOK(sv)) {
 	fail:
 		REDEBUG("Failed to create pair &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
@@ -752,6 +750,8 @@ static void get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_P
 			pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name);
 		}
 	}
+
+	if (*vps) VERIFY_LIST(*vps);
 }
 
 /*
