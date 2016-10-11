@@ -1053,7 +1053,11 @@ redo:
 			 */
 			frame = &stack->frame[stack->depth];
 			instruction = frame->instruction;
-			rad_assert(instruction != NULL);
+			if (!instruction) {
+				RERROR("Empty instruction.  Hard-coding to reject.");
+				frame->result = result = RLM_MODULE_REJECT;
+				goto done;
+			}
 
 			if (frame->top_frame) {
 				if (unlang_ops[instruction->type].children) {
