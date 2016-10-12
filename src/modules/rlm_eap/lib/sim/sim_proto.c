@@ -191,7 +191,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 *
 	 *	We'll shrink this later to the real length.
 	 */
-	MEM(buff = talloc_array(evp_ctx, uint8_t, attr_len + block_size));
+	MEM(buff = talloc_array(ctx, uint8_t, attr_len + block_size));
 
 	if (!EVP_DecryptUpdate(evp_ctx, buff, (int *)&len, data, data_len)) {
 		tls_strerror_printf(true, "%s: Failed decrypting attribute");
