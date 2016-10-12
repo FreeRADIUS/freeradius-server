@@ -798,7 +798,7 @@ smart_try_dir="$talloc_lib_dir"
 FR_SMART_CHECK_LIB(talloc, _talloc)
 if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc.  Please read doc/developer/dependencies.rst for further instructions.])
 fi
 
 TALLOC_LIBS="${smart_lib}"
@@ -816,7 +816,7 @@ if test "x$ac_cv_func_kqueue" != "xyes"; then
   FR_SMART_CHECK_LIB(kqueue, kqueue)
   if test "x$ac_cv_lib_kqueue_kqueue" != "xyes"; then
     AC_MSG_WARN([kqueue library not found. Use --with-kqueue-lib-dir=<path>.])
-    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
+    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue).  Please read doc/developer/dependencies.rst for further instructions.])
   fi
 fi
 
