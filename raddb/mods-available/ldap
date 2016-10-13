@@ -268,7 +268,9 @@ ldap {
 		#  For group comparisons these attributes will be checked
 		#  instead of querying the LDAP directory directly.
 		#
-		#  This feature is intended to be used with rlm_cache.
+		#  This feature is intended to be used with rlm_cache, but
+		#  may also be useful if all group values need to be processed
+		#  using unlang policies.
 		#
 		#  If you wish to use this feature, you should enable
 		#  the type that matches the format of your check items
