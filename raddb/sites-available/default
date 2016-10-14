@@ -312,8 +312,9 @@ authorize {
 
 	#
 	#  If you have a Cisco SIP server authenticating against
-	#  FreeRADIUS, uncomment the following line, and the 'digest'
-	#  line in the 'authenticate' section.
+	#  FreeRADIUS, the digest module will set 'Auth-Type := Digest'
+	#  if we are handling an HTTP Digest request and the Auth-Type
+	#  has not already been set.
 	digest
 
 	#
@@ -475,8 +476,8 @@ authenticate {
 
 	#
 	#  If you have a Cisco SIP server authenticating against
-	#  FreeRADIUS, uncomment the following line, and the 'digest'
-	#  line in the 'authorize' section.
+	#  FreeRADIUS, the following line, and the 'digest' line in
+	#  the 'authorize' section will be required.
 	digest
 
 	#
