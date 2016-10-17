@@ -1,7 +1,7 @@
 Modules in Version 3
 ====================
 
-As of Version 3, all of the modules have been places in the
+As of Version 3, all of the modules have been placed in the
 "mods-available/" directory.  This practice follows that used by other
 servers such as Nginx, Apache, etc.  The "modules" directory should
 not be used.
@@ -58,7 +58,7 @@ If you see this message::
   Ignoring module (see raddb/mods-available/README.rst)
 
 Then you are in the right place.  Most of the time this message can be
-ignored.  The message can be fixed by find the references to "-module"
+ignored.  The message can be fixed by finding the references to "-module"
 in the virtual server, and deleting them.
 
 Another way to fix it is to configure the module, as described above.
