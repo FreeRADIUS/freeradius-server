@@ -155,8 +155,8 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		/*
 		 * The password needs to be changed, so set rcode appropriately.
 		 */
-		if (error->nt_status & NT_STATUS_PASSWORD_EXPIRED ||
-		    error->nt_status & NT_STATUS_PASSWORD_MUST_CHANGE) {
+		if (error->nt_status == NT_STATUS_PASSWORD_EXPIRED ||
+		    error->nt_status == NT_STATUS_PASSWORD_MUST_CHANGE) {
 			rcode = -648;
 		}
 
