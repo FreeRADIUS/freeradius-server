@@ -4095,6 +4095,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 {
 	CONF_DATA mycd;
 	CONF_DATA *cd;
+	CONF_ITEM *ci, *it;
 	void *data;
 
 	if (!cs || !name) return NULL;
@@ -4107,6 +4108,20 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 
 	cd = rbtree_finddata(cs->data_tree, &mycd);
 	if (!cd) return NULL;
+
+	ci = cf_data_to_item(cd);
+	if (cs->children == ci) {
+		cs->children = ci->next;
+		if (cs->tail == ci) cs->tail = NULL;
+	} else {
+		for (it = cs->children; it; it = it->next) {
+			if (it->next == ci) {
+				it->next = ci->next;
+				if (cs->tail == ci) cs->tail = it;
+				break;
+			}
+		}
+	}
 
 	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */
 	rbtree_deletebydata(cs->data_tree, &mycd);
