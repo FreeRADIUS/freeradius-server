@@ -311,19 +311,19 @@ eap {
 #		check_cert_cn = %{User-Name}
 
 		#
-		# Set this option to specify the allowed TLS cipher suites.
-		# The format is listed in "man 1 ciphers".
+		#  Set this option to specify the allowed TLS cipher suites.
+		#  The format is listed in "man 1 ciphers".
 		#
 		# For EAP-FAST, use "ALL:!EXPORT:!eNULL:!SSLv2"
 		#
 		cipher_list = "DEFAULT"
 
-		# If enabled, OpenSSL will use server cipher list
-		# (possibly defined by cipher_list option above)
-		# for choosing right cipher suite rather than
-		# using client-specified list which is OpenSSl default
-		# behavior. Having it set to yes is a current best practice
-		# for TLS
+		#  If enabled, OpenSSL will use server cipher list
+		#  (possibly defined by cipher_list option above)
+		#  for choosing right cipher suite rather than
+		#  using client-specified list which is OpenSSl default
+		#  behavior. Having it set to 'yes' is best practice
+		#  for TLS.
 		cipher_server_preference = yes
 
 		#
