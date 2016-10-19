@@ -1,5 +1,9 @@
 FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
+	* Add dictionary.rfc7930.  Note that we do not implement
+	  the RFC.
+	* Added 'cipher_server_preference' to mods-available/eap
+	  Patch from #1797.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
@@ -9,6 +13,8 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* Update debian build.
 	* update rlm_counter "man" page.  Fixes #1775.
 	* Remove erroneous assert.  Fixes #1778.
+	* fix mschap password change test.  Fixes #1792.
+	* passwd module returns "notfound" if not found.
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
