@@ -296,7 +296,7 @@ error:
 		case PAC_INFO_PAC_KEY:
 			rad_assert(t->pac.key == NULL);
 			rad_assert(vp->vp_length == PAC_KEY_LENGTH);
-			t->pac.key = talloc_size(t, PAC_KEY_LENGTH);
+			t->pac.key = talloc_array(t, uint8_t, PAC_KEY_LENGTH);
 			rad_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 			break;

@@ -107,8 +107,8 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 
 	ksize = openssl_get_keyblock_size(request, tls_session->ssl);
 	rad_assert(ksize > 0);
-	buf = talloc_size(request, ksize + sizeof(*t->keyblock));
-	scratch = talloc_size(request, ksize + sizeof(*t->keyblock));
+	buf = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
+	scratch = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
 
 	t->keyblock = talloc(t, eap_fast_keyblock_t);
 
@@ -116,10 +116,10 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	memcpy(t->keyblock, &buf[ksize], sizeof(*t->keyblock));
 	memset(buf, 0, ksize + sizeof(*t->keyblock));
 
-	t->simck = talloc_size(t, EAP_FAST_SIMCK_LEN);
+	t->simck = talloc_array(t, uint8_t, EAP_FAST_SIMCK_LEN);
 	memcpy(t->simck, t->keyblock, EAP_FAST_SKS_LEN);	/* S-IMCK[0] = session_key_seed */
 
-	t->cmk = talloc_size(t, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
+	t->cmk = talloc_array(t, uint8_t, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
 	t->imckc = 0;
 
 	talloc_free(buf);
@@ -151,11 +151,11 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
          *
          * RFC 4851 section 5.4 - EAP Master Session Key Generation
          */
-	t->msk = talloc_size(t, EAP_FAST_KEY_LEN);
+	t->msk = talloc_array(t, uint8_t, EAP_FAST_KEY_LEN);
 	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->msk, EAP_FAST_KEY_LEN, "MSK");
 
-	t->emsk = talloc_size(t, EAP_EMSK_LEN);
+	t->emsk = talloc_array(t, uint8_t, EAP_EMSK_LEN);
 	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->emsk, EAP_EMSK_LEN, "EMSK");
 }
