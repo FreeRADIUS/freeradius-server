@@ -26,7 +26,7 @@ a "libkqueue" package is available.
 
 OSX: nothing to do.  kqueue is available
 
-Debian: apt-get install libkueue-dev
+Debian: apt-get install libkqueue-dev
 
 RedHat: subscription-manager repos --enable rhel-7-server-optional-rpms
         yum install libkqueue-dev
