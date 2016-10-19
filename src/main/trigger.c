@@ -239,13 +239,13 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 			rbtree_insert(trigger_last_fired_tree, found);
 		}
 
+		pthread_mutex_unlock(trigger_mutex);
+
 		/*
 		 *	Send the rate_limited traps at most once per second.
 		 */
 		if (found->last_fired == now) return -1;
 		found->last_fired = now;
-
-		pthread_mutex_unlock(trigger_mutex);
 	}
 
 	/*
