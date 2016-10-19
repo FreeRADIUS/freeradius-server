@@ -542,6 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 	VALUE_PAIR *key, *i;
 	struct mypasswd * pw, *last_found;
 	vp_cursor_t cursor;
+	int found = 0;
 
 	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) {
@@ -564,10 +565,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 			addresult(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 
+		found++;
+
 		if (!inst->allow_multiple) {
 			break;
 		}
 	}
+
+	if (!found) return RLM_MODULE_NOTFOUND;
 
 	return RLM_MODULE_OK;
 
