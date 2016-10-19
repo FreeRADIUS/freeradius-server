@@ -364,6 +364,7 @@ struct fr_tls_server_conf_t {
 	bool		allow_expired_crl;
 	char const	*check_cert_cn;
 	char const	*cipher_list;
+	bool		cipher_server_preference;
 	char const	*check_cert_issuer;
 
 	bool     	session_cache_enable;

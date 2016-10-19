@@ -1189,6 +1189,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "allow_expired_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl), NULL },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
+	{ "cipher_server_preference", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, cipher_server_preference), NULL },
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, require_client_cert), NULL },
 
@@ -2804,6 +2805,15 @@ post_ca:
 	 *	http://www.nabble.com/(RADIATOR)-Radiator-Version-3.16-released-t2600070.html
 	 */
 	ctx_options |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+
+	if (conf->cipher_server_preference) {
+		/*
+		 *      SSL_OP_CIPHER_SERVER_PREFERENCE to follow best practice
+		 *      of nowday's TLS: do not allow poorly-selected ciphers from
+		 *      client to take preference
+		 */
+		ctx_options |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+	}
 
 	SSL_CTX_set_options(ctx, ctx_options);
 
