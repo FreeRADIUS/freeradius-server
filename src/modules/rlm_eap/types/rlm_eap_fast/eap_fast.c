@@ -96,7 +96,7 @@ static int openssl_get_keyblock_size(REQUEST *request, SSL *ssl)
  */
 static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 {
-	eap_fast_tunnel_t *t = tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t *buf;
 	uint8_t *scratch;
 	size_t ksize;
@@ -131,7 +131,7 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
  */
 static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, uint8_t *msk)
 {
-	eap_fast_tunnel_t *t = tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t imck[EAP_FAST_SIMCK_LEN + EAP_FAST_CMK_LEN];
 
 	RDEBUG2("Updating ICMK");
@@ -181,7 +181,7 @@ static void eap_fast_send_error(tls_session_t *tls_session, int error)
 
 static void eap_fast_append_result(tls_session_t *tls_session, PW_CODE code)
 {
-	eap_fast_tunnel_t *t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	int type = (t->result_final)
 			? EAP_FAST_TLV_RESULT
@@ -212,7 +212,7 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 
 static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_session)
 {
-	eap_fast_tunnel_t			*t = tls_session->opaque;
+	eap_fast_tunnel_t			*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_fast_pac_t				pac;
 	eap_fast_attr_pac_opaque_plaintext_t	opaque_plaintext;
 	int					alen, dlen;
@@ -274,7 +274,7 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 
 static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_session)
 {
-	eap_fast_tunnel_t		*t = tls_session->opaque;
+	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_tlv_crypto_binding_tlv_t	binding = {0};
 	const int			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
 
@@ -306,7 +306,7 @@ static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 	unsigned int remaining = data_len;
 	int	total = 0;
 	int	num[EAP_FAST_TLV_MAX] = {0};
-	eap_fast_tunnel_t *t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint32_t present = 0;
 
 	rad_assert(sizeof(present) * 8 > EAP_FAST_TLV_MAX);
@@ -562,7 +562,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 
-	eap_fast_tunnel_t	*t = tls_session->opaque;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	rad_assert(eap_session->request == request);
 
@@ -655,7 +655,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	fake = request_alloc_fake(request);
 	rad_assert(!fake->packet->vps);
 
-	t = (eap_fast_tunnel_t *) tls_session->opaque;
+	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	/*
 	 * Add the tunneled attributes to the fake request.
@@ -861,7 +861,7 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 				       tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
-	eap_fast_tunnel_t	*t = tls_session->opaque;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	memcpy(cmac, binding->compound_mac, sizeof(cmac));
 	memset(binding->compound_mac, 0, sizeof(binding->compound_mac));
@@ -883,7 +883,7 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
 				     tls_session_t *tls_session, VALUE_PAIR *fast_vps)
 {
-	eap_fast_tunnel_t		*t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
@@ -996,7 +996,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	VALUE_PAIR		*fast_vps;
 	uint8_t			const *data;
 	size_t			data_len;
-	eap_fast_tunnel_t		*t;
+	eap_fast_tunnel_t	*t;
 	REQUEST			*request = eap_session->request;
 
 	/*
@@ -1007,7 +1007,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	tls_session->clean_out.used = 0;
 	data = tls_session->clean_out.data;
 
-	t = (eap_fast_tunnel_t *) tls_session->opaque;
+	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	/*
 	 * See if the tunneled data is well formed.
