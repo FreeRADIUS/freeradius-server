@@ -330,7 +330,7 @@ eap {
 		# using client-specified list which is OpenSSl default
 		# behavior. Having it set to yes is a current best practice
 		# for TLS
-		cipher_server_preference = no
+		cipher_server_preference = yes
 
 		#
 		#  Work-arounds for OpenSSL nonsense OpenSSL 1.0.1f and 1.0.1g do
