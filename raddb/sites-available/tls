@@ -205,7 +205,7 @@ listen {
 		# using client-specified list which is OpenSSl default
 		# behavior. Having it set to yes is a current best practice
 		# for TLS
-		cipher_server_preference = no
+		cipher_server_preference = yes
 
 		#
 		#  Session resumption / fast reauthentication
