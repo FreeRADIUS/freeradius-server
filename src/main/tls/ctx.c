@@ -350,6 +350,15 @@ post_ca:
 	 */
 	ctx_options |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 
+	if (conf->cipher_server_preference) {
+	/*
+	 *	SSL_OP_CIPHER_SERVER_PREFERENCE to follow best practice
+	 *	of nowday's TLS: do not allow poorly-selected ciphers from
+	 *	client to take preference
+	 */
+		ctx_options |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+	}
+
 	SSL_CTX_set_options(ctx, ctx_options);
 
 	/*
