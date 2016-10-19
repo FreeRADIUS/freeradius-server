@@ -1034,7 +1034,7 @@ do {\
 	 */
 	rad_assert(main_config.config == NULL);
 	main_config.config = cs;
-	trigger_exec_init(cs);
+	trigger_exec_init(talloc_autofree_context(), cs);
 
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", main_config.name);
 	if (!realms_init(cs)) {

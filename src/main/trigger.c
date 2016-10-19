@@ -28,10 +28,20 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-static CONF_SECTION *trigger_exec_main, *trigger_exec_subcs;
+static CONF_SECTION	*trigger_exec_main, *trigger_exec_subcs;
+static rbtree_t		*trigger_last_fired_tree;
+static pthread_mutex_t	*trigger_mutex;
 
 #define REQUEST_INDEX_TRIGGER_NAME	1
 #define REQUEST_INDEX_TRIGGER_ARGS	2
+
+/** Describes a rate limiting entry for a trigger
+ *
+ */
+typedef struct {
+	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
+	time_t		last_fired;	//!< When this trigger last fired.
+} trigger_last_fired_t;
 
 /** Retrieve attributes from a special trigger list
  *
@@ -71,27 +81,57 @@ static ssize_t xlat_trigger(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t ou
 	return talloc_array_length(*out) - 1;
 }
 
+static int _mutex_free(pthread_mutex_t *mutex)
+{
+	pthread_mutex_destroy(mutex);
+	return 0;
+}
+
+static void _trigger_last_fired_free(void *data)
+{
+	talloc_free(data);
+}
+
+/** Compares two last fired structures
+ *
+ * @param a first pointer to compare.
+ * @param b second pointer to compare.
+ * @return
+ *	- -1 if a < b.
+ *	- +1 if b > a.
+ *	- 0 if both equal.
+ */
+static int _trigger_last_fired_cmp(void const *a, void const *b)
+{
+	trigger_last_fired_t const *lf_a = a, *lf_b = b;
+
+	if (lf_a->ci < lf_b->ci) return -1;
+	if (lf_a->ci == lf_b->ci) return 0;
+
+	return 1;
+}
+
 /** Set the global trigger section trigger_exec will search in, and register xlats
  *
  * @note Triggers are used by the connection pool, which is used in the server library
  *	which may not have the mainconfig available.  Additionally, utilities may want
  *	to set their own root config sections.
  *
- * @param cs to use as global trigger section
+ * @param ctx	to bind lifetime of resources to (will not be used at runtime).
+ * @param cs	to use as global trigger section.
  */
-void trigger_exec_init(CONF_SECTION *cs)
+void trigger_exec_init(TALLOC_CTX *ctx, CONF_SECTION *cs)
 {
 	trigger_exec_main = cs;
 	trigger_exec_subcs = cf_section_sub_find(cs, "trigger");
 
+	MEM(trigger_last_fired_tree = rbtree_create(ctx, _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
+
+	trigger_mutex = talloc(ctx, pthread_mutex_t);
+	pthread_mutex_init(trigger_mutex, 0);
+	talloc_set_destructor(trigger_mutex, _mutex_free);
+
 	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0);
-}
-
-static void time_free(void *data)
-{
-	time_t *to_free = talloc_get_type_abort(data, time_t);
-
-	talloc_free(to_free);
 }
 
 /** Execute a trigger - call an executable to process an event
@@ -183,32 +223,29 @@ int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate
 	 *	Perform periodic rate_limiting.
 	 */
 	if (rate_limit) {
-		time_t *last_time;
+		trigger_last_fired_t	find, *found;
+		time_t			now = time(NULL);
 
-		last_time = cf_data_find(cs, value);
-		if (!last_time) {
-			/*
-			 *	Can't be parented off config due to threading
-			 *	issues.
-			 */
-			last_time = talloc_zero(NULL, time_t);
-			*last_time = 0;
+		find.ci = ci;
 
-			if (cf_data_add(cs, value, last_time, time_free) < 0) {
-				talloc_free(last_time);
-				last_time = NULL;
-			}
+		pthread_mutex_lock(trigger_mutex);
+
+		found = rbtree_finddata(trigger_last_fired_tree, &find);
+		if (!found) {
+			MEM(found = talloc(NULL, trigger_last_fired_t));
+			found->ci = ci;
+			found->last_fired = 0;
+
+			rbtree_insert(trigger_last_fired_tree, found);
 		}
 
 		/*
 		 *	Send the rate_limited traps at most once per second.
 		 */
-		if (last_time) {
-			time_t now = time(NULL);
-			if (*last_time == now) return -1;
+		if (found->last_fired == now) return -1;
+		found->last_fired = now;
 
-			*last_time = now;
-		}
+		pthread_mutex_unlock(trigger_mutex);
 	}
 
 	/*
