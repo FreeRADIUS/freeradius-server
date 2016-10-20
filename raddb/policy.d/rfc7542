@@ -24,23 +24,20 @@ rfc7542.authorize {
 	if (&request:User-Name =~ /([a-zA-Z0-9\.-]+)!([a-zA-Z0-9\.-]*)\@(.+)/) {
 		#  Store the three parts of the User-Name, store the original User-Name too
 		update control {
-			Tmp-String-1 := "%{1}"
-			Tmp-String-2 := "%{2}"
-			Tmp-String-3 := "%{3}"
-			Tmp-String-4 := &User-Name
+			Tmp-String-0 := &User-Name
 		}
 
 		#  Format: not_local_realm!...@local_realm: Rewrite User-Name for suffix
-		if ((&control:Tmp-String-3 == "${policy.rfc7542_suffix}") && (&control:Tmp-String-1 != "${policy.rfc7542_suffix}")) {
+		if (("%{1}" != "${policy.rfc7542_suffix}") && ("%{3}" == "${policy.rfc7542_suffix}")) {
 			update request {
-				User-Name := "%{control:Tmp-String-2}@%{control:Tmp-String-1}"
+				User-Name := "%{2}@%{1}"
 			}
 		}
 
 		#  Format: local_realm!...@not_local_realm: Rewrite User-Name for suffix
-		if ((&control:Tmp-String-3 != "${policy.rfc7542_suffix}") && (&control:Tmp-String-1 == "${policy.rfc7542_suffix}")) {
+		if (("%{1}" == "${policy.rfc7542_suffix}") && ("%{3}" != "${policy.rfc7542_suffix}")) {
 			update request {
-				User-Name := "%{control:Tmp-String-2}@%{control:Tmp-String-1}"
+				User-Name := "%{2}@%{1}"
 			}
 		}
 	}
@@ -49,15 +46,13 @@ rfc7542.authorize {
 		noop = reject
 	}
 
-	if (&control:Tmp-String-4) {
+	#  Restore the User-Name to its original glory.
+	if (&control:Tmp-String-0 && (&request:User-Name != &control:Tmp-String-0)) {
 		update request {
-			User-Name := &control:Tmp-String-4
+			User-Name := &control:Tmp-String-0
 		}
 		update control {
-			Tmp-String-1 !* ANY
-			Tmp-String-2 !* ANY
-			Tmp-String-3 !* ANY
-			Tmp-String-4 !* ANY
+			Tmp-String-0 !* ANY
 		}
 	}
 }
