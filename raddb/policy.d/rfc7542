@@ -1,0 +1,64 @@
+#
+#  The following policy is for Do RFC7542-style suffix 
+#  management.
+#  
+#  It partially replaces the standard 'suffix' use by 
+#  enhancing the logic short of rewriting suffix entirely.
+#
+#	$Id$
+#
+
+#  This is your local proxy domain. Sadly we can't read this 
+#  from the proxy.conf file. 
+#
+rfc7542_suffix = ${changeme}
+
+#  This policy checks the User-Name attribute whether it is in
+#  RFC7542 format. If it is, it temporarily rewrites it for use 
+#  by the 'suffix' module, then restores the original afterwards
+# 
+rfc7542.authorize {
+	#
+	#  Check whether the User-Name is in the RFC7542 format. If so, we'll need to do some special stuff
+	#
+	if (&request:User-Name =~ /([a-zA-Z0-9\.-]+)!([a-zA-Z0-9\.-]*)\@(.+)/) {
+		#  Store the three parts of the User-Name, store the original User-Name too
+		update control {
+			Tmp-String-1 := "%{1}"
+			Tmp-String-2 := "%{2}"
+			Tmp-String-3 := "%{3}"
+			Tmp-String-4 := &User-Name
+		}
+
+		#  Format: not_local_realm!...@local_realm: Rewrite User-Name for suffix
+		if ((&control:Tmp-String-3 == "${policy.rfc7542_suffix}") && (&control:Tmp-String-1 != "${policy.rfc7542_suffix}")) {
+			update request {
+				User-Name := "%{control:Tmp-String-2}@%{control:Tmp-String-1}"
+			}
+		}
+
+		#  Format: local_realm!...@not_local_realm: Rewrite User-Name for suffix
+		if ((&control:Tmp-String-3 != "${policy.rfc7542_suffix}") && (&control:Tmp-String-1 == "${policy.rfc7542_suffix}")) {
+			update request {
+				User-Name := "%{control:Tmp-String-2}@%{control:Tmp-String-1}"
+			}
+		}
+	}
+	suffix {
+		updated = 1
+		noop = reject
+	}
+
+	if (&control:Tmp-String-4) {
+		update request {
+			User-Name := &control:Tmp-String-4
+		}
+		update control {
+			Tmp-String-1 !* ANY
+			Tmp-String-2 !* ANY
+			Tmp-String-3 !* ANY
+			Tmp-String-4 !* ANY
+		}
+	}
+}
+
