@@ -29,6 +29,11 @@ authorize {
 	#  cui below and set "add_cui = yes" for these clients in clients.conf
 #	cui
 
+	#  If you want to allow this ABFAB service to support RFC7542-style 
+	#  realms, uncomment the following line, and comment out the
+	#  following suffix block.
+#	rfc7542
+
 	suffix {
 	        updated = 1
 		noop = reject
