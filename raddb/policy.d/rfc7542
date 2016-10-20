@@ -22,9 +22,9 @@ rfc7542.authorize {
 	#  Check whether the User-Name is in the RFC7542 format. If so, we'll need to do some special stuff
 	#
 	if (&request:User-Name =~ /([a-zA-Z0-9\.-]+)!([a-zA-Z0-9\.-]*)\@(.+)/) {
-		#  Store the three parts of the User-Name, store the original User-Name too
+		#  Store the original User-Name in the control list
 		update control {
-			Tmp-String-0 := &User-Name
+			User-Name := &request:User-Name
 		}
 
 		#  Format: not_local_realm!...@local_realm: Rewrite User-Name for suffix
@@ -47,13 +47,12 @@ rfc7542.authorize {
 	}
 
 	#  Restore the User-Name to its original glory.
-	if (&control:Tmp-String-0 && (&request:User-Name != &control:Tmp-String-0)) {
+	if (&control:User-Name && (&request:User-Name != &control:User-Name)) {
 		update request {
-			User-Name := &control:Tmp-String-0
+			User-Name := &control:User-Name
 		}
 		update control {
-			Tmp-String-0 !* ANY
+			User-Name !* ANY
 		}
 	}
 }
-
