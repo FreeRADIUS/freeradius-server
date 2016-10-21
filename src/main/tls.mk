@@ -5,4 +5,5 @@ SOURCES	+= ${top_srcdir}/src/main/tls/cache.c \
     ${top_srcdir}/src/main/tls/log.c \
     ${top_srcdir}/src/main/tls/ocsp.c \
     ${top_srcdir}/src/main/tls/session.c \
+    ${top_srcdir}/src/main/tls/utils.c \
     ${top_srcdir}/src/main/tls/validate.c
