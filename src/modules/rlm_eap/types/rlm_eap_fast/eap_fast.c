@@ -103,7 +103,7 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 
 	RDEBUG2("Deriving EAP-FAST keys");
 
-	rad_assert(t->simck == NULL);
+	rad_assert(t->s_imck == NULL);
 
 	ksize = openssl_get_keyblock_size(request, tls_session->ssl);
 	rad_assert(ksize > 0);
@@ -116,11 +116,11 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	memcpy(t->keyblock, &buf[ksize], sizeof(*t->keyblock));
 	memset(buf, 0, ksize + sizeof(*t->keyblock));
 
-	t->simck = talloc_array(t, uint8_t, EAP_FAST_SIMCK_LEN);
-	memcpy(t->simck, t->keyblock, EAP_FAST_SKS_LEN);	/* S-IMCK[0] = session_key_seed */
+	t->s_imck = talloc_array(t, uint8_t, EAP_FAST_SIMCK_LEN);
+	memcpy(t->s_imck, t->keyblock, EAP_FAST_SKS_LEN);	/* S-IMCK[0] = session_key_seed */
 
 	t->cmk = talloc_array(t, uint8_t, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
-	t->imckc = 0;
+	t->imck_count = 0;
 
 	talloc_free(buf);
 	talloc_free(scratch);
@@ -136,15 +136,15 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
 
 	RDEBUG2("Updating ICMK");
 
-	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));
 
-	memcpy(t->simck, imck, EAP_FAST_SIMCK_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, t->simck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
+	memcpy(t->s_imck, imck, EAP_FAST_SIMCK_LEN);
+	RHEXDUMP(L_DBG_LVL_MAX, t->s_imck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
 
 	memcpy(t->cmk, &imck[EAP_FAST_SIMCK_LEN], EAP_FAST_CMK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->cmk, EAP_FAST_CMK_LEN, "CMK[j]");
 
-	t->imckc++;
+	t->imck_count++;
 
 	/*
          * Calculate MSK/EMSK at the same time as they are coupled to ICMK
@@ -152,11 +152,11 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
          * RFC 4851 section 5.4 - EAP Master Session Key Generation
          */
 	t->msk = talloc_array(t, uint8_t, EAP_FAST_KEY_LEN);
-	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->msk, EAP_FAST_KEY_LEN, "MSK");
 
 	t->emsk = talloc_array(t, uint8_t, EAP_EMSK_LEN);
-	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 

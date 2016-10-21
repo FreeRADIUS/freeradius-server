@@ -206,9 +206,9 @@ typedef struct eap_fast_tunnel_t {
 	int			mode;
 	eap_fast_stage_t	stage;
 	eap_fast_keyblock_t	*keyblock;
-	uint8_t			*simck;
+	uint8_t			*s_imck;
 	uint8_t			*cmk;
-	int			imckc;
+	int			imck_count;
 	struct {
 		uint8_t		mppe_send[CHAP_VALUE_LENGTH];
 		uint8_t		mppe_recv[CHAP_VALUE_LENGTH];
