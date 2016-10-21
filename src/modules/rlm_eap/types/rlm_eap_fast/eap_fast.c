@@ -100,7 +100,7 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
 	RHEXDUMP(L_DBG_LVL_MAX, t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 
-void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory, int length, const void *data)
+void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory, int length, void const *data)
 {
 	uint16_t hdr[2];
 
@@ -216,7 +216,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_tlv_crypto_binding_tlv_t	binding = {0};
-	const int			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
+	int const			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
 
 	RDEBUG("Sending Cryptobinding");
 
@@ -934,7 +934,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE			code;
 	VALUE_PAIR		*fast_vps;
-	uint8_t			const *data;
+	uint8_t const		*data;
 	size_t			data_len;
 	eap_fast_tunnel_t	*t;
 	REQUEST			*request = eap_session->request;

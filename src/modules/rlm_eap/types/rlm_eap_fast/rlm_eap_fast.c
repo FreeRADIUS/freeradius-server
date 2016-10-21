@@ -138,7 +138,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	t->pac_lifetime = inst->pac_lifetime;
 	t->authority_identity = inst->authority_identity;
 	t->a_id = inst->a_id;
-	t->pac_opaque_key = (const uint8_t *)inst->pac_opaque_key;
+	t->pac_opaque_key = (uint8_t const *)inst->pac_opaque_key;
 
 	t->virtual_server = inst->virtual_server;
 
