@@ -1195,7 +1195,13 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	Interpretable unlang instructions are stored as CONF_DATA
 	 *	associated with sections.
 	 */
-	if (cs) instruction = cf_data_find(cs, "unlang");
+	if (cs) {
+		instruction = cf_data_find(cs, "unlang");
+		if (!instruction) {
+			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
+				cf_section_name1(cs), cf_section_name2(cs));
+		}
+	}
 
 	if (!instruction) instruction = unlang_group_to_generic(&empty_group);
 
