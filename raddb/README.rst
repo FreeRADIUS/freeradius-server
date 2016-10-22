@@ -12,6 +12,10 @@ Upgrading to Version 4.0
    of this file.  It describes changed from v2 to v3.0.  This file
    describes only the changes from v3.0 to v4.0
 
+PLEASE DO NOT USE VERSION 4.  IT IS INTENDED ONLY FOR DEVELOPERS.
+THE CONFIGURATION MAY CHANGE.  THE BEHAVIOR MAY CHANGE.
+THE DOCUMENTATION MAY CHANGE.
+
 Processing Sections
 -------------------
 
