@@ -615,9 +615,18 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	rlm_components_t comp;
 	bool found;
 	char const *name = cf_section_name2(cs);
+	CONF_PAIR *cp;
 
 	cf_log_info(cs, "server %s { # from file %s",
 		    name, cf_section_filename(cs));
+
+	cp = cf_pair_find(cs, "namespace");
+	if (cp) {
+		WARN("Virtual server %s uses new namespace.  Skipping old-stype configuration",
+		     cf_section_name2(cs));
+		found = false;
+		goto check_listeners;
+	}
 
 	/*
 	 *	Loop over all of the known components, finding their
@@ -664,6 +673,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 		found = true;
 	} /* loop over components */
 
+check_listeners:
 	/*
 	 *	We haven't loaded any of the RADIUS sections.  Maybe we're
 	 *	supposed to load a non-RADIUS section.
