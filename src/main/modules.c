@@ -624,8 +624,6 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	if (cp) {
 		WARN("Virtual server %s uses new namespace.  Skipping old-stype configuration",
 		     cf_section_name2(cs));
-		found = false;
-		goto check_listeners;
 	}
 
 	/*
@@ -639,6 +637,12 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
 		if (!subcs) continue;
+
+		if (cp) {
+			ERROR("Old-style configuration section '%s' found in new namespace.",
+			      section_type_value[comp].section);
+			return -1;
+		}
 
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 
@@ -673,7 +677,6 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 		found = true;
 	} /* loop over components */
 
-check_listeners:
 	/*
 	 *	We haven't loaded any of the RADIUS sections.  Maybe we're
 	 *	supposed to load a non-RADIUS section.
