@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <string.h>
+#include <stdint.h>
 
 /*
  *	Debugging, mainly for message_set_test
