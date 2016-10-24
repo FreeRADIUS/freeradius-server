@@ -35,6 +35,12 @@ RCSID("$Id$")
 #define MPRINT(...)
 #endif
 
+#ifndef NDEBUG
+#define DBG_UNUSED UNUSED
+#else
+#define DBG_UNUSED
+#endif
+
 /** An array of messages
  *
  *  We wish to occasionally increase the size of the message array,
@@ -198,7 +204,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
  *     <0 on error
  *	0 on success
  */
-int fr_message_done(UNUSED fr_message_set_t *ms, fr_message_t *m)
+int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
 {
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
@@ -253,7 +259,7 @@ int fr_message_done(UNUSED fr_message_set_t *ms, fr_message_t *m)
  *      NULL on allocation errror
  *	a newly localized message
  */
-fr_message_t *fr_message_localize(UNUSED fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
+fr_message_t *fr_message_localize(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
 {
 	fr_message_t *l;
 
@@ -997,7 +1003,7 @@ cleanup:
  *      NULL on error
  *	fr_message_t* on success
  */
-fr_message_t *fr_message_alloc(UNUSED fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
+fr_message_t *fr_message_alloc(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
 	uint8_t *p;
 
