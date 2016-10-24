@@ -46,11 +46,11 @@ RCSIDH(eap_fast_h, "$Id$")
 #define EAP_FAST_TLV_RESULT_FAILURE		2
 
 typedef enum eap_fast_stage_t {
-	TLS_SESSION_HANDSHAKE = 0,
-	AUTHENTICATION,
-	CRYPTOBIND_CHECK,
-	PROVISIONING,
-	COMPLETE
+	EAP_FAST_TLS_SESSION_HANDSHAKE = 0,
+	EAP_FAST_AUTHENTICATION,
+	EAP_FAST_CRYPTOBIND_CHECK,
+	EAP_FAST_PROVISIONING,
+	EAP_FAST_COMPLETE
 } eap_fast_stage_t;
 
 typedef enum eap_fast_auth_type {
@@ -206,9 +206,9 @@ typedef struct eap_fast_tunnel_t {
 	int			mode;
 	eap_fast_stage_t	stage;
 	eap_fast_keyblock_t	*keyblock;
-	uint8_t			*simck;
+	uint8_t			*s_imck;
 	uint8_t			*cmk;
-	int			imckc;
+	int			imck_count;
 	struct {
 		uint8_t		mppe_send[CHAP_VALUE_LENGTH];
 		uint8_t		mppe_recv[CHAP_VALUE_LENGTH];

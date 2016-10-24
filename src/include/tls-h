@@ -486,5 +486,10 @@ int		tls_validate_client_cert_chain(SSL *ssl);
 }
 #endif
 
+/*
+ *	tls/utils.c
+ */
+int		tls_keyblock_size_get(REQUEST *request, SSL *ssl);
+
 #endif /* WITH_TLS */
 #endif /* _FR_TLS_H */

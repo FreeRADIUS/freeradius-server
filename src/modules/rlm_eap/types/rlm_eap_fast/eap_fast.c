@@ -31,84 +31,24 @@ RCSID("$Id$")
 
 #define RANDFILL(x) do { rad_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
 
-/*
- * Copyright (c) 2002-2016, Jouni Malinen <j@w1.fi> and contributors
- * All Rights Reserved.
- *
- * These programs are licensed under the BSD license (the one with
- * advertisement clause removed).
- *
- * this function shamelessly stolen from from hostap:src/crypto/tls_openssl.c
- */
-static int openssl_get_keyblock_size(REQUEST *request, SSL *ssl)
-{
-	const EVP_CIPHER *c;
-	const EVP_MD *h;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-	int md_size;
-
-	if (ssl->enc_read_ctx == NULL || ssl->enc_read_ctx->cipher == NULL ||
-	    ssl->read_hash == NULL)
-		return -1;
-
-	c = ssl->enc_read_ctx->cipher;
-	h = EVP_MD_CTX_md(ssl->read_hash);
-	if (h)
-		md_size = EVP_MD_size(h);
-	else if (ssl->s3)
-		md_size = ssl->s3->tmp.new_mac_secret_size;
-	else
-		return -1;
-
-	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d "
-		   "IV_len=%d", EVP_CIPHER_key_length(c), md_size,
-		   EVP_CIPHER_iv_length(c));
-	return 2 * (EVP_CIPHER_key_length(c) +
-		    md_size +
-		    EVP_CIPHER_iv_length(c));
-#else
-	const SSL_CIPHER *ssl_cipher;
-	int cipher, digest;
-
-	ssl_cipher = SSL_get_current_cipher(ssl);
-	if (!ssl_cipher)
-		return -1;
-	cipher = SSL_CIPHER_get_cipher_nid(ssl_cipher);
-	digest = SSL_CIPHER_get_digest_nid(ssl_cipher);
-	RDEBUG2("OpenSSL: cipher nid %d digest nid %d", cipher, digest);
-	if (cipher < 0 || digest < 0)
-		return -1;
-	c = EVP_get_cipherbynid(cipher);
-	h = EVP_get_digestbynid(digest);
-	if (!c || !h)
-		return -1;
-
-	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d IV_len=%d",
-		   EVP_CIPHER_key_length(c), EVP_MD_size(h),
-		   EVP_CIPHER_iv_length(c));
-	return 2 * (EVP_CIPHER_key_length(c) + EVP_MD_size(h) +
-		    EVP_CIPHER_iv_length(c));
-#endif
-}
-
 /**
  * RFC 4851 section 5.1 - EAP-FAST Authentication Phase 1: Key Derivations
  */
 static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 {
-	eap_fast_tunnel_t *t = tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t *buf;
 	uint8_t *scratch;
 	size_t ksize;
 
 	RDEBUG2("Deriving EAP-FAST keys");
 
-	rad_assert(t->simck == NULL);
+	rad_assert(t->s_imck == NULL);
 
-	ksize = openssl_get_keyblock_size(request, tls_session->ssl);
+	ksize = tls_keyblock_size_get(request, tls_session->ssl);
 	rad_assert(ksize > 0);
-	buf = talloc_size(request, ksize + sizeof(*t->keyblock));
-	scratch = talloc_size(request, ksize + sizeof(*t->keyblock));
+	buf = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
+	scratch = talloc_array(request, uint8_t, ksize + sizeof(*t->keyblock));
 
 	t->keyblock = talloc(t, eap_fast_keyblock_t);
 
@@ -116,11 +56,11 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
 	memcpy(t->keyblock, &buf[ksize], sizeof(*t->keyblock));
 	memset(buf, 0, ksize + sizeof(*t->keyblock));
 
-	t->simck = talloc_size(t, EAP_FAST_SIMCK_LEN);
-	memcpy(t->simck, t->keyblock, EAP_FAST_SKS_LEN);	/* S-IMCK[0] = session_key_seed */
+	t->s_imck = talloc_array(t, uint8_t, EAP_FAST_SIMCK_LEN);
+	memcpy(t->s_imck, t->keyblock, EAP_FAST_SKS_LEN);	/* S-IMCK[0] = session_key_seed */
 
-	t->cmk = talloc_size(t, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
-	t->imckc = 0;
+	t->cmk = talloc_array(t, uint8_t, EAP_FAST_CMK_LEN);	/* note that CMK[0] is not defined */
+	t->imck_count = 0;
 
 	talloc_free(buf);
 	talloc_free(scratch);
@@ -131,36 +71,36 @@ static void eap_fast_init_keys(REQUEST *request, tls_session_t *tls_session)
  */
 static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, uint8_t *msk)
 {
-	eap_fast_tunnel_t *t = tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t imck[EAP_FAST_SIMCK_LEN + EAP_FAST_CMK_LEN];
 
 	RDEBUG2("Updating ICMK");
 
-	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));
 
-	memcpy(t->simck, imck, EAP_FAST_SIMCK_LEN);
-	RHEXDUMP(L_DBG_LVL_MAX, t->simck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
+	memcpy(t->s_imck, imck, EAP_FAST_SIMCK_LEN);
+	RHEXDUMP(L_DBG_LVL_MAX, t->s_imck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
 
 	memcpy(t->cmk, &imck[EAP_FAST_SIMCK_LEN], EAP_FAST_CMK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->cmk, EAP_FAST_CMK_LEN, "CMK[j]");
 
-	t->imckc++;
+	t->imck_count++;
 
 	/*
          * Calculate MSK/EMSK at the same time as they are coupled to ICMK
          *
          * RFC 4851 section 5.4 - EAP Master Session Key Generation
          */
-	t->msk = talloc_size(t, EAP_FAST_KEY_LEN);
-	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
+	t->msk = talloc_array(t, uint8_t, EAP_FAST_KEY_LEN);
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Session Key Generating Function", NULL, 0, t->msk, EAP_FAST_KEY_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->msk, EAP_FAST_KEY_LEN, "MSK");
 
-	t->emsk = talloc_size(t, EAP_EMSK_LEN);
-	T_PRF(t->simck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
+	t->emsk = talloc_array(t, uint8_t, EAP_EMSK_LEN);
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Extended Session Key Generating Function", NULL, 0, t->emsk, EAP_EMSK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->emsk, EAP_EMSK_LEN, "EMSK");
 }
 
-void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory, int length, const void *data)
+void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory, int length, void const *data)
 {
 	uint16_t hdr[2];
 
@@ -181,7 +121,7 @@ static void eap_fast_send_error(tls_session_t *tls_session, int error)
 
 static void eap_fast_append_result(tls_session_t *tls_session, PW_CODE code)
 {
-	eap_fast_tunnel_t *t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	int type = (t->result_final)
 			? EAP_FAST_TLV_RESULT
@@ -212,7 +152,7 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 
 static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_session)
 {
-	eap_fast_tunnel_t			*t = tls_session->opaque;
+	eap_fast_tunnel_t			*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_fast_pac_t				pac;
 	eap_fast_attr_pac_opaque_plaintext_t	opaque_plaintext;
 	int					alen, dlen;
@@ -274,9 +214,9 @@ static void eap_fast_send_pac_tunnel(REQUEST *request, tls_session_t *tls_sessio
 
 static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_session)
 {
-	eap_fast_tunnel_t		*t = tls_session->opaque;
+	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	eap_tlv_crypto_binding_tlv_t	binding = {0};
-	const int			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
+	int const			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
 
 	RDEBUG("Sending Cryptobinding");
 
@@ -306,7 +246,7 @@ static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 	unsigned int remaining = data_len;
 	int	total = 0;
 	int	num[EAP_FAST_TLV_MAX] = {0};
-	eap_fast_tunnel_t *t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint32_t present = 0;
 
 	rad_assert(sizeof(present) * 8 > EAP_FAST_TLV_MAX);
@@ -433,19 +373,19 @@ unexpected:
 	 * Check mandatory or not mandatory TLVs.
 	 */
 	switch (t->stage) {
-	case TLS_SESSION_HANDSHAKE:
+	case EAP_FAST_TLS_SESSION_HANDSHAKE:
 		if (present) {
 			RDEBUG("Unexpected TLVs in TLS Session Handshake stage");
 			goto unexpected;
 		}
 		break;
-	case AUTHENTICATION:
+	case EAP_FAST_AUTHENTICATION:
 		if (present != 1 << EAP_FAST_TLV_EAP_PAYLOAD) {
 			RDEBUG("Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
 		break;
-	case CRYPTOBIND_CHECK:
+	case EAP_FAST_CRYPTOBIND_CHECK:
 	{
 		uint32_t bits = (t->result_final)
 				? 1 << EAP_FAST_TLV_RESULT
@@ -456,13 +396,13 @@ unexpected:
 		}
 		break;
 	}
-	case PROVISIONING:
+	case EAP_FAST_PROVISIONING:
 		if (present & ~((1 << EAP_FAST_TLV_PAC) | (1 << EAP_FAST_TLV_RESULT))) {
 			RDEBUG("Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
 		break;
-	case COMPLETE:
+	case EAP_FAST_COMPLETE:
 		if (present) {
 			RDEBUG("Unexpected TLVs in complete stage");
 			goto unexpected;
@@ -562,7 +502,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 
-	eap_fast_tunnel_t	*t = tls_session->opaque;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	rad_assert(eap_session->request == request);
 
@@ -655,7 +595,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	fake = request_alloc_fake(request);
 	rad_assert(!fake->packet->vps);
 
-	t = (eap_fast_tunnel_t *) tls_session->opaque;
+	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	/*
 	 * Add the tunneled attributes to the fake request.
@@ -719,7 +659,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		}
 	} /* else the request ALREADY had a User-Name */
 
-	if (t->stage == AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
+	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
 		tvp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
@@ -861,7 +801,7 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 				       tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
-	eap_fast_tunnel_t	*t = tls_session->opaque;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	memcpy(cmac, binding->compound_mac, sizeof(cmac));
 	memset(binding->compound_mac, 0, sizeof(binding->compound_mac));
@@ -883,7 +823,7 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
 				     tls_session_t *tls_session, VALUE_PAIR *fast_vps)
 {
-	eap_fast_tunnel_t		*t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
@@ -898,12 +838,12 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			case EAP_FAST_TLV_EAP_PAYLOAD:
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
 				if (code == PW_CODE_ACCESS_ACCEPT)
-					t->stage = CRYPTOBIND_CHECK;
+					t->stage = EAP_FAST_CRYPTOBIND_CHECK;
 				break;
 			case EAP_FAST_TLV_RESULT:
 			case EAP_FAST_TLV_INTERMED_RESULT:
 				code = PW_CODE_ACCESS_ACCEPT;
-				t->stage = PROVISIONING;
+				t->stage = EAP_FAST_PROVISIONING;
 				break;
 			default:
 				value = fr_pair_asprint(request->packet, vp, '"');
@@ -949,7 +889,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 					code = PW_CODE_ACCESS_ACCEPT;
 					t->pac.expires = UINT32_MAX;
 					t->pac.expired = false;
-					t->stage = COMPLETE;
+					t->stage = EAP_FAST_COMPLETE;
 				}
 				break;
 			case PAC_INFO_PAC_TYPE:
@@ -980,7 +920,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	if (binding) {
 		PW_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
 		if (code == PW_CODE_ACCESS_ACCEPT)
-			t->stage = PROVISIONING;
+			t->stage = EAP_FAST_PROVISIONING;
 	}
 
 	return PW_CODE_ACCESS_ACCEPT;
@@ -994,9 +934,9 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE			code;
 	VALUE_PAIR		*fast_vps;
-	uint8_t			const *data;
+	uint8_t const		*data;
 	size_t			data_len;
-	eap_fast_tunnel_t		*t;
+	eap_fast_tunnel_t	*t;
 	REQUEST			*request = eap_session->request;
 
 	/*
@@ -1007,14 +947,14 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	tls_session->clean_out.used = 0;
 	data = tls_session->clean_out.data;
 
-	t = (eap_fast_tunnel_t *) tls_session->opaque;
+	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	/*
 	 * See if the tunneled data is well formed.
 	 */
 	if (!eap_fast_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
 
-	if (t->stage == TLS_SESSION_HANDSHAKE) {
+	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
 		rad_assert(t->mode == EAP_FAST_UNKNOWN);
 
 		char buf[256];
@@ -1041,7 +981,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 		eap_fast_send_identity_request(request, tls_session, eap_session);
 
-		t->stage = AUTHENTICATION;
+		t->stage = EAP_FAST_AUTHENTICATION;
 		return PW_CODE_ACCESS_CHALLENGE;
 	}
 
@@ -1057,10 +997,10 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	if (code == PW_CODE_ACCESS_REJECT) return PW_CODE_ACCESS_REJECT;
 
 	switch (t->stage) {
-	case AUTHENTICATION:
+	case EAP_FAST_AUTHENTICATION:
 		code = PW_CODE_ACCESS_CHALLENGE;
 		break;
-	case CRYPTOBIND_CHECK:
+	case EAP_FAST_CRYPTOBIND_CHECK:
 	{
 		if (t->mode != EAP_FAST_PROVISIONING_ANON && !t->pac.send)
 			t->result_final = true;
@@ -1073,7 +1013,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		code = PW_CODE_ACCESS_CHALLENGE;
 		break;
 	}
-	case PROVISIONING:
+	case EAP_FAST_PROVISIONING:
 		t->result_final = true;
 
 		eap_fast_append_result(tls_session, code);
@@ -1088,9 +1028,9 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			break;
 		}
 
-		t->stage = COMPLETE;
+		t->stage = EAP_FAST_COMPLETE;
 		/* fallthrough */
-	case COMPLETE:
+	case EAP_FAST_COMPLETE:
 		/*
 		 * RFC 5422 section 3.5 - Network Access after EAP-FAST Provisioning
 		 */

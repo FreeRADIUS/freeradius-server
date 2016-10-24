@@ -131,14 +131,14 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	eap_fast_tunnel_t *t = talloc_zero(ctx, eap_fast_tunnel_t);
 
 	t->mode = EAP_FAST_UNKNOWN;
-	t->stage = TLS_SESSION_HANDSHAKE;
+	t->stage = EAP_FAST_TLS_SESSION_HANDSHAKE;
 
 	t->default_provisioning_method = inst->default_provisioning_method;
 
 	t->pac_lifetime = inst->pac_lifetime;
 	t->authority_identity = inst->authority_identity;
 	t->a_id = inst->a_id;
-	t->pac_opaque_key = (const uint8_t *)inst->pac_opaque_key;
+	t->pac_opaque_key = (uint8_t const *)inst->pac_opaque_key;
 
 	t->virtual_server = inst->virtual_server;
 
@@ -148,7 +148,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 static void eap_fast_session_ticket(tls_session_t *tls_session, uint8_t *client_random,
 				    uint8_t *server_random, uint8_t *secret, int *secret_len)
 {
-	eap_fast_tunnel_t	*t = (eap_fast_tunnel_t *) tls_session->opaque;
+	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t			seed[2 * SSL3_RANDOM_SIZE];
 
 	rad_assert(t->pac.key);
@@ -174,7 +174,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 
 	if (!tls_session) return 0;
 
-	t = (eap_fast_tunnel_t *) tls_session->opaque;
+	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	if (!t->pac.key) return 0;
 
@@ -222,7 +222,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 
 	if (!tls_session) return 0;
 
-	t = (eap_fast_tunnel_t *) tls_session->opaque;
+	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
 	RDEBUG("PAC provided via ClientHello SessionTicket extension");
 	RHEXDUMP(L_DBG_LVL_MAX, data, len, "PAC-Opaque");
@@ -296,7 +296,7 @@ error:
 		case PAC_INFO_PAC_KEY:
 			rad_assert(t->pac.key == NULL);
 			rad_assert(vp->vp_length == PAC_KEY_LENGTH);
-			t->pac.key = talloc_size(t, PAC_KEY_LENGTH);
+			t->pac.key = talloc_array(t, uint8_t, PAC_KEY_LENGTH);
 			rad_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 			break;
@@ -346,12 +346,12 @@ error:
 static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode;
-	eap_tls_status_t	status;
-	rlm_eap_fast_t *inst = (rlm_eap_fast_t *) arg;
-	eap_tls_session_t *eap_tls_session = (eap_tls_session_t *) eap_session->opaque;
-	tls_session_t *tls_session = eap_tls_session->tls_session;
-	eap_fast_tunnel_t *t = (eap_fast_tunnel_t *) tls_session->opaque;
-	REQUEST *request = eap_session->request;
+	eap_tls_status_t status;
+	rlm_eap_fast_t *inst			= (rlm_eap_fast_t *) arg;
+	eap_tls_session_t *eap_tls_session	= talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	tls_session_t *tls_session		= eap_tls_session->tls_session;
+	eap_fast_tunnel_t *t			= (eap_fast_tunnel_t *) tls_session->opaque;
+	REQUEST *request			= eap_session->request;
 
 	RDEBUG2("Authenticate");
 
@@ -491,8 +491,6 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
 	if (!eap_tls_session) return RLM_MODULE_FAIL;
-
-	eap_session->opaque = ((void *)eap_tls_session);
 
 	tls_session = eap_tls_session->tls_session;
 
