@@ -85,7 +85,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 		messages[index] = fr_message_alloc(ms, m, hash);
 		rad_assert(messages[index] == m);
 
-		if (debug_lvl > 1) printf("%zd\t", hash);
+		if (debug_lvl > 1) printf("%08x\t", hash);
 
 		rad_assert(messages[index]->type == FR_MESSAGE_USED);
 

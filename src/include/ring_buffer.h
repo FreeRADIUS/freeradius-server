@@ -28,6 +28,7 @@ RCSIDH(ring_buffer_h, "$Id$")
 
 #include <talloc.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

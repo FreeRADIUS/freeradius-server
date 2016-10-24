@@ -25,7 +25,6 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <string.h>
-#include <stdint.h>
 
 /*
  *	Debugging, mainly for message_set_test
@@ -429,12 +428,10 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 	empty_slot = -1;
 
 	for (i = 0; i <= ms->m_max; i++) {
-		int num_cleaned;
 
 		fr_message_ring_t *mr = ms->m_array[i];
 
-		num_cleaned = fr_message_ring_cleanup(ms, mr, max_to_clean);
-//		max_to_clean -= num_cleaned;
+		(void) fr_message_ring_cleanup(ms, mr, max_to_clean);
 
 		/*
 		 *	If the message ring buffer is empty, check if
