@@ -246,7 +246,7 @@ int rad_check_lib_magic(uint64_t magic)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int version_add_feature(CONF_SECTION *cs, char const *name, bool enabled)
+int version_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
 {
 	if (!cs) return -1;
 
@@ -281,7 +281,7 @@ int version_add_feature(CONF_SECTION *cs, char const *name, bool enabled)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int version_add_number(CONF_SECTION *cs, char const *name, char const *version)
+int version_number_add(CONF_SECTION *cs, char const *name, char const *version)
 {
 	CONF_PAIR *old;
 
@@ -312,7 +312,7 @@ int version_add_number(CONF_SECTION *cs, char const *name, char const *version)
  */
 void version_init_features(CONF_SECTION *cs)
 {
-	version_add_feature(cs, "accounting",
+	version_feature_add(cs, "accounting",
 #ifdef WITH_ACCOUNTING
 				true
 #else
@@ -320,9 +320,9 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "authentication", true);
+	version_feature_add(cs, "authentication", true);
 
-	version_add_feature(cs, "ascend-binary-attributes",
+	version_feature_add(cs, "ascend-binary-attributes",
 #ifdef WITH_ASCEND_BINARY
 				true
 #else
@@ -330,7 +330,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "coa",
+	version_feature_add(cs, "coa",
 #ifdef WITH_COA
 				true
 #else
@@ -339,7 +339,7 @@ void version_init_features(CONF_SECTION *cs)
 				);
 
 
-	version_add_feature(cs, "control-socket",
+	version_feature_add(cs, "control-socket",
 #ifdef WITH_COMMAND_SOCKET
 				true
 #else
@@ -348,7 +348,7 @@ void version_init_features(CONF_SECTION *cs)
 				);
 
 
-	version_add_feature(cs, "detail",
+	version_feature_add(cs, "detail",
 #ifdef WITH_DETAIL
 				true
 #else
@@ -356,7 +356,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "dhcp",
+	version_feature_add(cs, "dhcp",
 #ifdef WITH_DHCP
 				true
 #else
@@ -364,7 +364,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "dynamic-clients",
+	version_feature_add(cs, "dynamic-clients",
 #ifdef WITH_DYNAMIC_CLIENTS
 				true
 #else
@@ -372,7 +372,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "osfc2",
+	version_feature_add(cs, "osfc2",
 #ifdef OSFC2
 				true
 #else
@@ -380,7 +380,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "proxy",
+	version_feature_add(cs, "proxy",
 #ifdef WITH_PROXY
 				true
 #else
@@ -388,7 +388,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "regex-pcre",
+	version_feature_add(cs, "regex-pcre",
 #ifdef HAVE_PCRE
 				true
 #else
@@ -397,8 +397,8 @@ void version_init_features(CONF_SECTION *cs)
 				);
 
 #if !defined(HAVE_PCRE) && defined(HAVE_REGEX)
-	version_add_feature(cs, "regex-posix", true);
-	version_add_feature(cs, "regex-posix-extended",
+	version_feature_add(cs, "regex-posix", true);
+	version_feature_add(cs, "regex-posix-extended",
 #  ifdef HAVE_REG_EXTENDED
 				true
 #  else
@@ -406,11 +406,11 @@ void version_init_features(CONF_SECTION *cs)
 #  endif
 				);
 #else
-	version_add_feature(cs, "regex-posix", false);
-	version_add_feature(cs, "regex-posix-extended", false);
+	version_feature_add(cs, "regex-posix", false);
+	version_feature_add(cs, "regex-posix-extended", false);
 #endif
 
-	version_add_feature(cs, "session-management",
+	version_feature_add(cs, "session-management",
 #ifdef WITH_SESSION_MGMT
 				true
 #else
@@ -418,7 +418,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "stats",
+	version_feature_add(cs, "stats",
 #ifdef WITH_STATS
 				true
 #else
@@ -426,7 +426,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "tcp",
+	version_feature_add(cs, "tcp",
 #ifdef WITH_TCP
 				true
 #else
@@ -434,7 +434,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "threads",
+	version_feature_add(cs, "threads",
 #ifdef WITH_THREADS
 				true
 #else
@@ -442,7 +442,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "tls",
+	version_feature_add(cs, "tls",
 #ifdef WITH_TLS
 				true
 #else
@@ -450,7 +450,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "unlang",
+	version_feature_add(cs, "unlang",
 #ifdef WITH_UNLANG
 				true
 #else
@@ -458,7 +458,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "vmps",
+	version_feature_add(cs, "vmps",
 #ifdef WITH_VMPS
 				true
 #else
@@ -466,7 +466,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "developer",
+	version_feature_add(cs, "developer",
 #ifndef NDEBUG
 				true
 #else
@@ -474,7 +474,7 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_add_feature(cs, "socket-timestamps",
+	version_feature_add(cs, "socket-timestamps",
 #ifdef SO_TIMESTAMP
 				true
 #else
@@ -488,19 +488,19 @@ void version_init_features(CONF_SECTION *cs)
  * @param cs Where to add the CONF_PAIRS, if null pairs will be added
  *	to the 'version' section of the main config.
  */
-void version_init_numbers(CONF_SECTION *cs)
+void version_numbers_init(CONF_SECTION *cs)
 {
 	char buffer[128];
 
-	version_add_number(cs, "freeradius-server", radiusd_version_short);
+	version_number_add(cs, "freeradius-server", radiusd_version_short);
 
 	snprintf(buffer, sizeof(buffer), "%i.%i.*", talloc_version_major(), talloc_version_minor());
-	version_add_number(cs, "talloc", buffer);
+	version_number_add(cs, "talloc", buffer);
 
-	version_add_number(cs, "ssl", ssl_version_num());
+	version_number_add(cs, "ssl", ssl_version_num());
 
 #if defined(HAVE_REGEX) && defined(HAVE_PCRE)
-	version_add_number(cs, "pcre", pcre_version());
+	version_number_add(cs, "pcre", pcre_version());
 #endif
 }
 
@@ -526,7 +526,7 @@ void version_print(void)
 		version_init_features(features);
 
 		MEM(versions = cf_section_alloc(NULL, "version", NULL));
-		version_init_numbers(versions);
+		version_numbers_init(versions);
 
 		DEBUG2("Server was built with: ");
 
