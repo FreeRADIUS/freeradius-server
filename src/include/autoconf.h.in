@@ -197,9 +197,6 @@
 /* define if you have IP_PKTINFO (Linux) */
 #undef HAVE_IP_PKTINFO
 
-/* Define to 1 if you have the `kqueue' function. */
-#undef HAVE_KQUEUE
-
 /* Define to 1 if you have the `cap' library (-lcap). */
 #undef HAVE_LIBCAP
 
