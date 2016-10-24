@@ -112,7 +112,11 @@ static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start
 		rad_assert(messages[index]->type == FR_MESSAGE_USED);
 
 		rcode = fr_message_done(ms, messages[index]);
-		if (!fr_cond_assert(rcode == 0)) fr_exit(1);
+#ifndef NDEBUG
+		rad_assert(rcode == 0);
+#else
+		if (rcode != 0) exit(1);
+#endif
 
 		used -= array[index];
 
