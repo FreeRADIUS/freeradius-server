@@ -198,6 +198,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 
 	MPRINT1("TEST 1 used %d (%zd)\n", fr_message_set_messages_used(ms), used);
 
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
+
 	/*
 	 *	Double the size of the allocations
 	 */
@@ -218,6 +220,7 @@ int main(UNUSED int argc, UNUSED char *argv[])
 
 	MPRINT1("TEST 2 used %d\n", fr_message_set_messages_used(ms));
 
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
 	/*
 	 *	Double the size of the allocations
 	 */
@@ -246,6 +249,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 
 	MPRINT1("TEST 3 used %d\n", fr_message_set_messages_used(ms));
 
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
+
 	/*
 	 *	Do another 1000 rounds of alloc / free.
 	 */
@@ -257,6 +262,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 	}
 
 	MPRINT1("TEST 4 used %d\n", fr_message_set_messages_used(ms));
+
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
 
 	/*
 	 *	Double the number of the allocations again,
@@ -276,6 +283,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 
 	MPRINT1("TEST 5 used %d\n", fr_message_set_messages_used(ms));
 
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
+
 	/*
 	 *	Double the number of the allocations again,
 	 *	leaving the allocation size alone.
@@ -294,6 +303,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 
 	MPRINT1("TEST 6 used %d\n", fr_message_set_messages_used(ms));
 
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
+
 	my_alloc_size = end - start;
 	free_blocks(ms, &seed, &start, &end);
 
@@ -308,6 +319,8 @@ int main(UNUSED int argc, UNUSED char *argv[])
 	 */
 	MPRINT1("GC\n");
 	fr_message_set_gc(ms);
+
+	if (debug_lvl) fr_message_set_debug(ms, stdout);
 
 	/*
 	 *	After the garbage collection, all messages marked "done" MUST also be marked "free".

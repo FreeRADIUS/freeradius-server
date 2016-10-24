@@ -28,6 +28,10 @@ RCSIDH(message_h, "$Id$")
 
 #include <freeradius-devel/ring_buffer.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct fr_message_set_t fr_message_set_t;
 
 typedef enum fr_message_type_t {
@@ -56,5 +60,11 @@ fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_
 
 int fr_message_set_messages_used(fr_message_set_t *ms);
 void fr_message_set_gc(fr_message_set_t *ms);
+
+void fr_message_set_debug(fr_message_set_t *ms, FILE *fp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _FR_MESSAGE_H */

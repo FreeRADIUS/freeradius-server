@@ -1090,3 +1090,32 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	 */
 	fr_message_cleanup(ms, 1 << 24);
 }
+
+/** Print debug information about the message set.
+ *
+ * @param[in] ms the message set
+ * @param[in] fp the FILE where the messages are printed.
+ */
+void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
+{
+	int i;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(ms, fr_message_set_t);
+#endif
+
+	fprintf(fp, "message arrays = %d\t(current %d)\n", ms->m_max + 1, ms->m_current);
+	fprintf(fp, "ring buffers   = %d\t(current %d)\n", ms->rb_max + 1, ms->rb_current);
+
+	for (i = 0; i <= ms->m_max; i++) {
+		fr_message_ring_t *mr = ms->m_array[i];
+
+		fprintf(fp, "messages[%d] =\tsize %d, write_offset %d, data_start %d, data_end %d\n",
+			i, mr->size, mr->write_offset, mr->data_start, mr->data_end);
+	}
+
+	for (i = 0; i <= ms->rb_max; i++) {
+		fprintf(fp, "ring buffer[%d] =\tsize %zd, used %zd\n",
+			i, fr_ring_buffer_size(ms->rb_array[i]), fr_ring_buffer_used(ms->rb_array[i]));
+	}
+}
