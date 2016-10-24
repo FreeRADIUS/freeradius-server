@@ -1331,6 +1331,54 @@ static int command_debug_level_request(rad_listen_t *listener, int argc, char *a
 	return CMD_OK;
 }
 
+#ifndef NDEBUG
+static void _command_talloc_report(const void *ptr, int depth, int max_depth, int is_ref, void *_f)
+{
+	const char *name = talloc_get_name(ptr);
+	rad_listen_t *listener = talloc_get_type_abort(_f, rad_listen_t);
+
+	if (is_ref) {
+		cprintf(listener, "%*sreference to: %s\n", depth * 4, "", name);
+		return;
+	}
+
+	if (depth == 0) {
+		cprintf(listener,
+			"%stalloc report on '%s' (total %6lu bytes in %3lu blocks)\n",
+			(max_depth < 0 ? "full " :""), name,
+			(unsigned long)talloc_total_size(ptr),
+			(unsigned long)talloc_total_blocks(ptr));
+		return;
+	}
+
+	cprintf(listener,
+		"%*s%-30s contains %6lu bytes in %3lu blocks (ref %d) %p\n",
+		depth * 4, "",
+		name,
+		(unsigned long)talloc_total_size(ptr),
+		(unsigned long)talloc_total_blocks(ptr),
+		(int)talloc_reference_count(ptr), ptr);
+}
+
+static int command_show_memory_report(rad_listen_t *listener, int argc, UNUSED char *argv[])
+{
+	if (argc != 0) {
+		cprintf_error(listener, "Command takes no arguments");
+	}
+
+	if (!main_config.talloc_memory_report) {
+		cprintf(listener, "Memory debugging not enabled.  To enable, pass -Ms when starting the server\n");
+		return CMD_OK;
+	}
+
+	INFO("Writing talloc memory report to command socket");
+
+	talloc_report_depth_cb(talloc_null_ctx(), 0, -1, _command_talloc_report, listener);
+
+	return CMD_OK;
+}
+#endif
+
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
 static int command_debug_socket(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -2411,6 +2459,12 @@ static fr_command_table_t command_table_show[] = {
 	  "show listener <command> - do sub-command of listener",
 	  NULL, command_table_show_listeners },
 
+#ifndef NDEBUG
+	{ "memory-report", FR_READ,
+	  "show memory-report - show currently talloced memory",
+	  command_show_memory_report, NULL },
+#endif
+
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
@@ -2647,9 +2701,8 @@ static int command_stats_state(rad_listen_t *listener, UNUSED int argc, UNUSED c
 #ifndef NDEBUG
 static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
 {
-
 	if (!main_config.talloc_memory_report) {
-		cprintf(listener, "No memory debugging was enabled.\n");
+		cprintf(listener, "Memory debugging not enabled.  To enable, pass -Ms when starting the server\n");
 		return CMD_OK;
 	}
 
@@ -2665,14 +2718,8 @@ static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_OK;
 	}
 
-	if (strcmp(argv[0], "full") == 0) {
-		cprintf(listener, "see stdout of the server for the full report.\n");
-		fr_log_talloc_report(NULL);
-		return CMD_OK;
-	}
-
 fail:
-	cprintf_error(listener, "Must use 'stats memory [blocks|full|total]'\n");
+	cprintf_error(listener, "Must use 'stats memory [blocks|total]'\n");
 	return CMD_FAIL;
 }
 #endif
@@ -3076,7 +3123,7 @@ static fr_command_table_t command_table_stats[] = {
 
 #ifndef NDEBUG
 	{ "memory", FR_READ,
-	  "stats memory [blocks|full|total] - show statistics on used memory",
+	  "stats memory [blocks|total] - show statistics on used memory",
 	  command_stats_memory, NULL },
 #endif
 
