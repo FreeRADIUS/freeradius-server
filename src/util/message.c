@@ -198,7 +198,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
  *     <0 on error
  *	0 on success
  */
-int fr_message_done(fr_message_set_t *ms, fr_message_t *m)
+int fr_message_done(UNUSED fr_message_set_t *ms, fr_message_t *m)
 {
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
@@ -253,7 +253,7 @@ int fr_message_done(fr_message_set_t *ms, fr_message_t *m)
  *      NULL on allocation errror
  *	a newly localized message
  */
-fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
+fr_message_t *fr_message_localize(UNUSED fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
 {
 	fr_message_t *l;
 
@@ -300,11 +300,12 @@ fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_
  *  Find the oldest messages which are marked FR_MESSAGE_DONE,
  *  and mark them FR_MESSAGE_FREE.
  *
- *  @fixme: If we care, track which ring buffer is in use, and how
+ *  FIXME: If we care, track which ring buffer is in use, and how
  *  many contiguous chunks we can free.  Then, free the chunks at
  *  once, instead of piecemeal.  Realistically tho... this will
  *  probably make little difference.
  *
+ * @param[in] ms the message set
  * @param[in] mr the message ring
  * @param[in] max_to_clean maximum number of messages to clean at a time.
  */
@@ -622,8 +623,10 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
  *
  * The newly allocated message is zeroed.
  *
- * @param[in] mr the message ring to allocate from
- * @return
+ * @param[in] ms the message set
+ * @param[in] mr the message ring to allocate from 
+ * @param[in] clean whether to clean the message ring
+* @return
  *      NULL on failed allocation
  *      fr_message_t* on successful allocation.
  */
@@ -988,12 +991,13 @@ cleanup:
  *  The caller MUST do a fr_message_reserve() before this one.
  *
  * @param[in] ms the message set
+ * @param[in] m the message message to allocate packet data for
  * @param[in] actual_packet_size to reserve
  * @return
  *      NULL on error
  *	fr_message_t* on success
  */
-fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
+fr_message_t *fr_message_alloc(UNUSED fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
 	uint8_t *p;
 
