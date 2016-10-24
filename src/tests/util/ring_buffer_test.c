@@ -62,12 +62,13 @@ static void  alloc_blocks(fr_ring_buffer_t *rb, uint32_t *seed, UNUSED int *star
 
 		array[index] = hash;
 		p = fr_ring_buffer_reserve(rb, 2048);
-		rad_assert(p != NULL);
+
+		if (rad_cond_assert(!p)) exit(1);
 
 		data[index] = fr_ring_buffer_alloc(rb, hash);
-		rad_assert(data[index] == p);
+		if (rad_cond_assert(data[index] != p)) exit(1);
 
-		if (debug_lvl > 1) printf("%zd\t", hash);
+		if (debug_lvl > 1) printf("%08x\t", hash);
 
 		used += hash;
 		rad_assert(fr_ring_buffer_used(rb) == used);
@@ -87,7 +88,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 		index = (*start + i) & (ARRAY_SIZE - 1);
 
 		rcode = fr_ring_buffer_free(rb, array[index]);
-		rad_assert(rcode == 0);
+		if (!rad_cond_assert(rcode == 0)) exit(1);
 
 		used -= array[index];
 		rad_assert(fr_ring_buffer_used(rb) == used);
