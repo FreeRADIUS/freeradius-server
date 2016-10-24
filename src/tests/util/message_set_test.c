@@ -165,8 +165,10 @@ int main(int argc, char *argv[])
 		default:
 			usage();
 	}
+#if 0
 	argc -= (optind - 1);
 	argv += (optind - 1);
+#endif
 
 	ms = fr_message_set_create(autofree, ARRAY_SIZE, ARRAY_SIZE * 1024);
 	if (!ms) {

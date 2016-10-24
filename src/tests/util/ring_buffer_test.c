@@ -136,8 +136,10 @@ int main(int argc, char *argv[])
 		default:
 			usage();
 	}
+#if 0
 	argc -= (optind - 1);
 	argv += (optind - 1);
+#endif
 
 	rb = fr_ring_buffer_create(autofree, ARRAY_SIZE * 1024);
 	if (!rb) {
