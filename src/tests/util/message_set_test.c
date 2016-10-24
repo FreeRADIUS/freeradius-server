@@ -112,7 +112,7 @@ static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start
 		rad_assert(messages[index]->type == FR_MESSAGE_USED);
 
 		rcode = fr_message_done(ms, messages[index]);
-		rad_assert(rcode == 0);
+		if (!fr_cond_assert(rcode == 0)) fr_exit(1);
 
 		used -= array[index];
 
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 	 *	Allocate the first set of blocks.
 	 */
 	alloc_blocks(ms, &seed, &start, &end);
-	
+
 	/*
 	 *	Do 1000 rounds of alloc / free.
 	 */
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 
 		free_blocks(ms, &seed, &start, &end);
 	}
-	
+
 	/*
 	 *	Double the number of the allocations,
 	 *	but decrease the allocation size back to 1K
