@@ -61,7 +61,6 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 	 *	over-fill the array.
 	 */
 	rad_assert((size_t) my_alloc_size < MY_ARRAY_SIZE);
-	rad_assert((size_t) (my_alloc_size + (*end - *start)) < MY_ARRAY_SIZE);
 
 	MPRINT2("BLOCK ALLOC %d\n", my_alloc_size);
 
