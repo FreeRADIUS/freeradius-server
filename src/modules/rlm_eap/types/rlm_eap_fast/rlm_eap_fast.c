@@ -131,7 +131,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	eap_fast_tunnel_t *t = talloc_zero(ctx, eap_fast_tunnel_t);
 
 	t->mode = EAP_FAST_UNKNOWN;
-	t->stage = TLS_SESSION_HANDSHAKE;
+	t->stage = EAP_FAST_TLS_SESSION_HANDSHAKE;
 
 	t->default_provisioning_method = inst->default_provisioning_method;
 

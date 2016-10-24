@@ -373,19 +373,19 @@ unexpected:
 	 * Check mandatory or not mandatory TLVs.
 	 */
 	switch (t->stage) {
-	case TLS_SESSION_HANDSHAKE:
+	case EAP_FAST_TLS_SESSION_HANDSHAKE:
 		if (present) {
 			RDEBUG("Unexpected TLVs in TLS Session Handshake stage");
 			goto unexpected;
 		}
 		break;
-	case AUTHENTICATION:
+	case EAP_FAST_AUTHENTICATION:
 		if (present != 1 << EAP_FAST_TLV_EAP_PAYLOAD) {
 			RDEBUG("Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
 		break;
-	case CRYPTOBIND_CHECK:
+	case EAP_FAST_CRYPTOBIND_CHECK:
 	{
 		uint32_t bits = (t->result_final)
 				? 1 << EAP_FAST_TLV_RESULT
@@ -396,13 +396,13 @@ unexpected:
 		}
 		break;
 	}
-	case PROVISIONING:
+	case EAP_FAST_PROVISIONING:
 		if (present & ~((1 << EAP_FAST_TLV_PAC) | (1 << EAP_FAST_TLV_RESULT))) {
 			RDEBUG("Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
 		break;
-	case COMPLETE:
+	case EAP_FAST_COMPLETE:
 		if (present) {
 			RDEBUG("Unexpected TLVs in complete stage");
 			goto unexpected;
@@ -659,7 +659,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		}
 	} /* else the request ALREADY had a User-Name */
 
-	if (t->stage == AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
+	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
 		tvp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
@@ -838,12 +838,12 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			case EAP_FAST_TLV_EAP_PAYLOAD:
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
 				if (code == PW_CODE_ACCESS_ACCEPT)
-					t->stage = CRYPTOBIND_CHECK;
+					t->stage = EAP_FAST_CRYPTOBIND_CHECK;
 				break;
 			case EAP_FAST_TLV_RESULT:
 			case EAP_FAST_TLV_INTERMED_RESULT:
 				code = PW_CODE_ACCESS_ACCEPT;
-				t->stage = PROVISIONING;
+				t->stage = EAP_FAST_PROVISIONING;
 				break;
 			default:
 				value = fr_pair_asprint(request->packet, vp, '"');
@@ -889,7 +889,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 					code = PW_CODE_ACCESS_ACCEPT;
 					t->pac.expires = UINT32_MAX;
 					t->pac.expired = false;
-					t->stage = COMPLETE;
+					t->stage = EAP_FAST_COMPLETE;
 				}
 				break;
 			case PAC_INFO_PAC_TYPE:
@@ -920,7 +920,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	if (binding) {
 		PW_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
 		if (code == PW_CODE_ACCESS_ACCEPT)
-			t->stage = PROVISIONING;
+			t->stage = EAP_FAST_PROVISIONING;
 	}
 
 	return PW_CODE_ACCESS_ACCEPT;
@@ -954,7 +954,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 */
 	if (!eap_fast_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
 
-	if (t->stage == TLS_SESSION_HANDSHAKE) {
+	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
 		rad_assert(t->mode == EAP_FAST_UNKNOWN);
 
 		char buf[256];
@@ -981,7 +981,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 		eap_fast_send_identity_request(request, tls_session, eap_session);
 
-		t->stage = AUTHENTICATION;
+		t->stage = EAP_FAST_AUTHENTICATION;
 		return PW_CODE_ACCESS_CHALLENGE;
 	}
 
@@ -997,10 +997,10 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	if (code == PW_CODE_ACCESS_REJECT) return PW_CODE_ACCESS_REJECT;
 
 	switch (t->stage) {
-	case AUTHENTICATION:
+	case EAP_FAST_AUTHENTICATION:
 		code = PW_CODE_ACCESS_CHALLENGE;
 		break;
-	case CRYPTOBIND_CHECK:
+	case EAP_FAST_CRYPTOBIND_CHECK:
 	{
 		if (t->mode != EAP_FAST_PROVISIONING_ANON && !t->pac.send)
 			t->result_final = true;
@@ -1013,7 +1013,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		code = PW_CODE_ACCESS_CHALLENGE;
 		break;
 	}
-	case PROVISIONING:
+	case EAP_FAST_PROVISIONING:
 		t->result_final = true;
 
 		eap_fast_append_result(tls_session, code);
@@ -1028,9 +1028,9 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			break;
 		}
 
-		t->stage = COMPLETE;
+		t->stage = EAP_FAST_COMPLETE;
 		/* fallthrough */
-	case COMPLETE:
+	case EAP_FAST_COMPLETE:
 		/*
 		 * RFC 5422 section 3.5 - Network Access after EAP-FAST Provisioning
 		 */
