@@ -506,10 +506,10 @@ char const	*ssl_version_by_num(uint32_t version);
 char const	*ssl_version_num(void);
 char const	*ssl_version_range(uint32_t low, uint32_t high);
 char const	*ssl_version(void);
-int		version_add_feature(CONF_SECTION *cs, char const *name, bool enabled);
-int		version_add_number(CONF_SECTION *cs, char const *name, char const *version);
+int		version_feature_add(CONF_SECTION *cs, char const *name, bool enabled);
+int		version_number_add(CONF_SECTION *cs, char const *name, char const *version);
 void		version_init_features(CONF_SECTION *cs);
-void		version_init_numbers(CONF_SECTION *cs);
+void		version_numbers_init(CONF_SECTION *cs);
 void		version_print(void);
 
 /* auth.c */

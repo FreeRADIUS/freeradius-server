@@ -76,11 +76,7 @@ static bool reply_expected = true;
 #define DHCP_SNAME_LEN	(64)
 #define DHCP_FILE_LEN	(128)
 
-static char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", built on " __DATE__ " at " __TIME__;
+static char const *dhcpclient_version = RADIUSD_VERSION_STRING_BUILD("dhcpclient");
 
 /* structure to keep track of offered IP addresses */
 typedef struct dc_offer {

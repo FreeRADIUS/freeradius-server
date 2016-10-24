@@ -548,6 +548,9 @@
 /* compiler specific 128 bit unsigned integer */
 #undef HAVE___UINT128_T
 
+/* Architecture information for the target platform */
+#undef HOSTINFO
+
 /* define if you have OSFC2 authentication */
 #undef OSFC2
 
@@ -627,19 +630,19 @@
 /* include support for Ascend binary filter attributes */
 #undef WITH_ASCEND_BINARY
 
-/* define if you want DHCP support */
+/* define if you want dhcp */
 #undef WITH_DHCP
 
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
 
-/* define if you want TCP support (For RADSec et al) */
+/* define if you want tcp */
 #undef WITH_TCP
 
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO
 
-/* define if you want VMPS support */
+/* define if you want vmps */
 #undef WITH_VMPS
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most

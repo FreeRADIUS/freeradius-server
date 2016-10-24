@@ -40,11 +40,7 @@ RCSID("$Id$")
 
 #include <assert.h>
 
-static char const *radsnmp_version = "radsnmp version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", built on " __DATE__ " at " __TIME__;
+static char const *radsnmp_version = RADIUSD_VERSION_STRING_BUILD("radsnmp");
 
 static bool stop;
 

@@ -71,11 +71,7 @@ RCSID("$Id$")
  *	For configuration file stuff.
  */
 static char const *progname = "radmin";
-static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", built on " __DATE__ " at " __TIME__;
+static char const *radmin_version = RADIUSD_VERSION_STRING_BUILD("radmin");
 
 typedef enum {
 	RADMIN_CONN_NONE = 0,				//!< Don't know, never connected.

@@ -66,12 +66,7 @@ char const	*radlog_dir = NULL;
 
 bool		log_stripped_names;
 
-char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
-
+char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG

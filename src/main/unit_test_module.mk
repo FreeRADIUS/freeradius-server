@@ -20,7 +20,6 @@ ifneq ($(OPENSSL_LIBS),)
 include ${top_srcdir}/src/main/tls.mk
 endif
 
-SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
 TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a

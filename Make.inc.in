@@ -128,7 +128,6 @@ RADIUSD_VERSION_STRING = @RADIUSD_VERSION_STRING@
 #  actually loading.
 #
 MODULES		= @MODULES@
-HOSTINFO	= @HOSTINFO@
 
 #
 #  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of

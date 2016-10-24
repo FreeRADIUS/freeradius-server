@@ -2056,7 +2056,7 @@ else
     AC_MSG_RESULT([${ctimerstyle}-style])
 fi
 
-AC_SUBST(HOSTINFO, $host)
+AC_DEFINE_UNQUOTED(HOSTINFO, ["${host}"], [Architecture information for the target platform])
 
 dnl #############################################################
 dnl #

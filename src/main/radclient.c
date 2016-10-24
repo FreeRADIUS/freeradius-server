@@ -72,11 +72,7 @@ static int sleep_time = -1;
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
 
-static char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", built on " __DATE__ " at " __TIME__;
+static char const *radclient_version = RADIUSD_VERSION_STRING_BUILD("radclient");
 
 static void NEVER_RETURNS usage(void)
 {

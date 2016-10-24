@@ -25,7 +25,7 @@ include ${top_srcdir}/src/main/tls.mk
 SOURCES += tls_listen.c
 endif
 
-SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
+SRC_CFLAGS	:= 
 
 TGT_INSTALLDIR  := ${sbindir}
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(SYSTEMD_LIBS)

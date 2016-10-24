@@ -45,11 +45,7 @@ bool log_stripped_names = false;
 static bool talloc_memory_report = false;
 static bool filedone = false;
 
-char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
+char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
 
 /*
  *	Static functions.

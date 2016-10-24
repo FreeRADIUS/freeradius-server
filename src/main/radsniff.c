@@ -56,11 +56,7 @@ static int self_pipe[2] = {-1, -1};		//!< Signals from sig handlers
 
 typedef int (*rbcmp)(void const *, void const *);
 
-static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
-#ifdef RADIUSD_VERSION_COMMIT
-" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
-#endif
-", built on " __DATE__ " at " __TIME__;
+static char const *radsniff_version = RADIUSD_VERSION_STRING_BUILD("radsniff");
 
 static int rs_useful_codes[] = {
 	PW_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request
