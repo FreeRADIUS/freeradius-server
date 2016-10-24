@@ -36,9 +36,9 @@ RCSID("$Id$")
 #endif
 
 #ifndef NDEBUG
-#define DBG_UNUSED UNUSED
-#else
 #define DBG_UNUSED
+#else
+#define DBG_UNUSED UNUSED
 #endif
 
 /** An array of messages
