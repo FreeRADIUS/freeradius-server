@@ -94,7 +94,6 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 	}
 
 	*end += my_alloc_size;
-	rad_assert(*start < *end);
 }
 
 static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start, int *end)
@@ -140,7 +139,7 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-int main(UNUSED int argc, UNUSED char *argv[])
+int main(int argc, char *argv[])
 {
 	int c;
 

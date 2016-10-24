@@ -112,7 +112,7 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-int main(UNUSED int argc, UNUSED char *argv[])
+int main(int argc, char *argv[])
 {
 	int c;
 
