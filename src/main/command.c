@@ -78,6 +78,7 @@ typedef struct fr_command_socket_t {
 	char const	*gid_name;	//!< Name of additional group (resolved to gid later).
 	char const	*mode_name;
 	bool		peercred;
+	bool		blocking;
 	char		user[256];
 
 	/*
@@ -99,6 +100,7 @@ static const CONF_PARSER command_config[] = {
 	{ FR_CONF_OFFSET("gid", PW_TYPE_STRING, fr_command_socket_t, gid_name) },
 	{ FR_CONF_OFFSET("mode", PW_TYPE_STRING, fr_command_socket_t, mode_name) },
 	{ FR_CONF_OFFSET("peercred", PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), .dflt = "yes" },
+	{ FR_CONF_OFFSET("blocking", PW_TYPE_BOOLEAN, fr_command_socket_t, blocking),  },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -288,7 +290,7 @@ static int fr_server_domain_socket(UNUSED char const *path, UNUSED gid_t gid)
  *	- A file descriptor for the bound socket on success.
  *	- -1 on failure.
  */
-static int fr_server_domain_socket(char const *path, gid_t gid)
+static int fr_server_domain_socket(char const *path, gid_t gid, bool blocking)
 {
 	int			dir_fd = -1, path_fd = -1, sock_fd = -1, parent_fd = -1;
 	char const		*name;
@@ -698,7 +700,7 @@ static int fr_server_domain_socket(char const *path, gid_t gid)
 		goto sock_error;
 	}
 
-	if (fr_nonblock(sock_fd) < 0) {
+	if (!blocking && (fr_nonblock(sock_fd) < 0)) {
 		fr_strerror_printf("Failed setting nonblock on socket: %s", fr_strerror());
 		goto sock_error;
 	}
@@ -3240,7 +3242,7 @@ static int command_socket_open_unix(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 
-	this->fd = fr_server_domain_socket(sock->path, sock->gid);
+	this->fd = fr_server_domain_socket(sock->path, sock->gid, sock->blocking);
 	if (this->fd < 0) {
 		ERROR("%s", fr_strerror());
 		if (sock->copy) TALLOC_FREE(sock->copy);
@@ -3731,7 +3733,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	 *	Is likely redundant as newfd should inherit blocking
 	 *	from listener->fd.  But better to be safe.
 	 */
-	fr_nonblock(newfd);
+	if (!sock->blocking) fr_nonblock(newfd);
 
 #ifdef HAVE_GETPEEREID
 	/*
