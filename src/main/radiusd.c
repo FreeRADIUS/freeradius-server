@@ -395,6 +395,11 @@ int main(int argc, char *argv[])
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
 
 	/*
+	 *  Initialise trigger rate limiting
+	 */
+	trigger_exec_init(main_config.config);
+
+	/*
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
 	if (talloc_config_set(&main_config) < 0) {
@@ -771,7 +776,10 @@ cleanup:
 #if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
 	tls_global_cleanup();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
+
 	talloc_free(autofree);		/* Cleanup everything else */
+
+	trigger_exec_free();		/* Now we're sure no more triggers can fire, free the trigger tree */
 
 	/*
 	 *  Anything not cleaned up by the above is allocated in the NULL

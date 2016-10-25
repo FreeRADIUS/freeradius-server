@@ -117,21 +117,30 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
  *	which may not have the mainconfig available.  Additionally, utilities may want
  *	to set their own root config sections.
  *
- * @param ctx	to bind lifetime of resources to (will not be used at runtime).
  * @param cs	to use as global trigger section.
  */
-void trigger_exec_init(TALLOC_CTX *ctx, CONF_SECTION *cs)
+void trigger_exec_init(CONF_SECTION *cs)
 {
 	trigger_exec_main = cs;
 	trigger_exec_subcs = cf_section_sub_find(cs, "trigger");
 
-	MEM(trigger_last_fired_tree = rbtree_create(ctx, _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
+	MEM(trigger_last_fired_tree = rbtree_create(talloc_null_ctx(),
+						    _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
 
-	trigger_mutex = talloc(ctx, pthread_mutex_t);
+	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
 	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0);
+}
+
+/** Free trigger resources
+ *
+ */
+void trigger_exec_free(void)
+{
+	TALLOC_FREE(trigger_last_fired_tree);
+	TALLOC_FREE(trigger_mutex);
 }
 
 /** Execute a trigger - call an executable to process an event
