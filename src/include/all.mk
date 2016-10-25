@@ -12,8 +12,8 @@
 #  The rest of the headers are static.
 #
 
-HEADERS_DY = attributes.h features.h missing.h radpaths.h tls.h
-
+HEADERS_DY	:= attributes.h features.h missing.h radpaths.h tls.h
+SUBDIRS		:= util
 
 HEADERS	= \
 	build.h \
@@ -77,8 +77,9 @@ RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*)) \
 
 HEADERS_RFC := $(patsubst share/dictionary.%,src/include/%.h,$(RFC_DICTS))
 HEADERS	+= $(notdir ${HEADERS_RFC})
+INCLUDE_SUBDIRS := $(addprefix src/include/, $(SUBDIRS))
 
-.PRECIOUS: $(HEADERS_RFC)
+.PRECIOUS: $(HEADERS_RFC) $(INCLUDE_SUBDIRS)
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	${Q}$(ECHO) HEADER $@
@@ -130,9 +131,16 @@ src/freeradius-devel:
 	${Q}[ -e $@ ] || ln -s include $@
 
 #
+#  Create subdirectories
+#
+.PHONY: $(INCLUDE_SUBDIRS)
+$(INCLUDE_SUBDIRS):
+	@ln -sf ${top_srcdir}/src/$(notdir $@) $@
+
+#
 #  Ensure we set up the build environment
 #
-BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
+BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC) $(INCLUDE_SUBDIRS)
 scan: $(BOOTSTRAP_BUILD)
 
 ######################################################################

@@ -22,7 +22,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/message.h>
+#include <freeradius-devel/util/message.h>
 #include <string.h>
 #include <freeradius-devel/hash.h>
 #include <freeradius-devel/rad_assert.h>

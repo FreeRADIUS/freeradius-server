@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/message.h
+ * @file util/message.h
  * @brief Inter-thread messaging
  *
  * @copyright 2016 The FreeRADIUS Server Project
@@ -26,7 +26,7 @@
  */
 RCSIDH(message_h, "$Id$")
 
-#include <freeradius-devel/ring_buffer.h>
+#include <freeradius-devel/util/ring_buffer.h>
 
 #ifdef __cplusplus
 extern "C" {

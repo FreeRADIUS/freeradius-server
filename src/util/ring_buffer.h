@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/ring_buffer.h
+ * @file util/ring_buffer.h
  * @brief Ring buffers
  *
  * @copyright 2016 The FreeRADIUS Server Project
