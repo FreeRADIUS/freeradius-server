@@ -1273,7 +1273,7 @@ typedef struct unlang_event_t {
 static int _unlang_event_free(unlang_event_t *ev)
 {
 	if (ev->ev) {
-		(void) fr_event_delete(ev->request->el, &ev->ev);
+		(void) fr_event_delete(ev->request->el, &(ev->ev));
 		return 0;
 	}
 
@@ -1350,7 +1350,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->inst = inst;
 	ev->ctx = ctx;
 
-	if (fr_event_insert(request->el, unlang_event_timeout_handler, ev, when, &ev->ev) < 0) {
+	if (fr_event_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
 		REDEBUG("Failed inserting event: %s", fr_strerror());
 		talloc_free(ev);
 		return -1;
@@ -1359,6 +1359,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	(void) request_data_add(request, ctx, -1, ev, true, false, false);
 
 	talloc_set_destructor(ev, _unlang_event_free);
+
 	return 0;
 }
 
