@@ -1031,6 +1031,7 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
 	rad_assert(p != NULL);
 	if (!p) {
+		// allocation failure, fix M.
 		return NULL;
 	}
 
@@ -1042,6 +1043,93 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	 */
 	m->data_size = actual_packet_size;
 	m->rb_size = actual_packet_size;
+	return m;
+}
+
+#define MS_ALIGN_SIZE (16)
+#define MS_ALIGN(_x) (((_x) + (MS_ALIGN_SIZE-1) ) & ~(MS_ALIGN_SIZE-1))
+
+/** Allocate an aligned pointer for packet (or struct data).
+ *
+ *  This function is similar to fr_message_alloc() except that the
+ *  return value is aligned to CPU boundaries.  The amount of data
+ *  allocated is also rounded up to the nearest alignment size.
+ *
+ * @param[in] ms the message set
+ * @param[in] m the message message to allocate packet data for
+ * @param[in] actual_packet_size to reserve
+ * @return
+ *      NULL on error
+ *	fr_message_t* on success
+ */
+fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
+{
+	uint8_t *p, *aligned_p;
+	intptr_t addr;
+	size_t aligned_size;
+	
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(ms, fr_message_set_t);
+
+	/* m is NOT talloc'd */
+#endif
+
+	/*
+	 *	No existing message, try allocate enough room to align
+	 *	both the start of the packet, and it's total size.
+	 */
+	if (!m) {
+		m = fr_message_reserve(ms, actual_packet_size + 2 * MS_ALIGN_SIZE);
+		if (!m) return NULL;
+	}
+
+	rad_assert(m->type == FR_MESSAGE_USED);
+	rad_assert(m->rb != NULL);
+	rad_assert(m->data != NULL);
+	rad_assert(m->data_size == 0);
+	rad_assert(m->rb_size >= actual_packet_size);
+
+	/*
+	 *	Align the address and the actual packet size.
+	 */
+	addr = (intptr_t) m->data;
+	addr = MS_ALIGN(addr);
+	aligned_p = (uint8_t *) addr;
+
+	aligned_size = MS_ALIGN(actual_packet_size);
+
+	if ((aligned_p + aligned_size) > (m->data + m->rb_size)) {
+		// allocation failure, fix M.
+		return NULL;
+	}
+
+	/*
+	 *	The ring buffer has already allocated a possibly
+	 *	un-aligned pointer.  We wish to allocate enough room
+	 *	to align both the pointer, and the structure size.
+	 */
+	aligned_size = (aligned_p - m->data) + actual_packet_size;
+	MS_ALIGN(aligned_size);
+
+	p = fr_ring_buffer_alloc(m->rb, aligned_size);
+	rad_assert(p != NULL);
+	if (!p) {
+		// allocation failure, fix M.
+		return NULL;
+	}
+
+	rad_assert(p == m->data);
+	rad_assert((aligned_p + aligned_size) <= (m->data + m->rb_size));
+
+	/*
+	 *	Set the aligned pointer, the total aligned size, and
+	 *	the structure size.
+	 */
+	m->data = aligned_p;
+	m->rb_size = aligned_size;
+	m->data_size = actual_packet_size;
+
 	return m;
 }
 
