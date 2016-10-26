@@ -1047,7 +1047,7 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 }
 
 #define MS_ALIGN_SIZE (16)
-#define MS_ALIGN(_x) (((_x) + (MS_ALIGN_SIZE-1) ) & ~(MS_ALIGN_SIZE-1))
+#define MS_ALIGN(_x) (((_x) + (MS_ALIGN_SIZE-1)) & ~(MS_ALIGN_SIZE-1))
 
 /** Allocate an aligned pointer for packet (or struct data).
  *
@@ -1080,7 +1080,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	 *	both the start of the packet, and it's total size.
 	 */
 	if (!m) {
-		m = fr_message_reserve(ms, actual_packet_size + 2 * MS_ALIGN_SIZE);
+		m = fr_message_reserve(ms, actual_packet_size + (2 * MS_ALIGN_SIZE) - 1);
 		if (!m) return NULL;
 	}
 
@@ -1110,7 +1110,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	 *	to align both the pointer, and the structure size.
 	 */
 	aligned_size = (aligned_p - m->data) + actual_packet_size;
-	MS_ALIGN(aligned_size);
+	aligned_size = MS_ALIGN(aligned_size);
 
 	p = fr_ring_buffer_alloc(m->rb, aligned_size);
 	rad_assert(p != NULL);
