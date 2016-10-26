@@ -994,7 +994,11 @@ cleanup:
 
 /** Allocate packet data for a message
  *
- *  The caller MUST do a fr_message_reserve() before this one.
+ *  The caller will normally call fr_message_reserve() before calling
+ *  this function, and pass the resulting message 'm' here.  If 'm' is
+ *  NULL, however, this function will call fr_message_reserve() of
+ *  'actual_packet_size'.  This capability is there for callers who
+ *  know the size of the message in advance.
  *
  * @param[in] ms the message set
  * @param[in] m the message message to allocate packet data for
@@ -1003,7 +1007,7 @@ cleanup:
  *      NULL on error
  *	fr_message_t* on success
  */
-fr_message_t *fr_message_alloc(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
+fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
 	uint8_t *p;
 
@@ -1012,6 +1016,11 @@ fr_message_t *fr_message_alloc(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m,
 
 	/* m is NOT talloc'd */
 #endif
+
+	if (!m) {
+		m = fr_message_reserve(ms, actual_packet_size);
+		if (!m) return NULL;
+	}
 
 	rad_assert(m->type == FR_MESSAGE_USED);
 	rad_assert(m->rb != NULL);
