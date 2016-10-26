@@ -347,17 +347,22 @@ authorize {
 	#  It also sets the EAP-Type attribute in the request
 	#  attribute list to the EAP type from the packet.
 	#
-	#  The EAP module returns "ok" if it is not yet ready to
-	#  authenticate the user.  The configuration below checks for
-	#  that code, and stops processing the "authorize" section if
-	#  so.
+	#  The EAP module returns "ok" or "updated" if it is not yet ready
+	#  to authenticate the user.  The configuration below checks for
+	#  "ok", and stops processing the "authorize" section if so.
 	#
 	#  Any LDAP and/or SQL servers will not be queried for the
 	#  initial set of packets that go back and forth to set up
 	#  TTLS or PEAP.
 	#
+	#  The "updated" check is commented out for compatibility with
+	#  previous versions of this configuration, but you may wish to
+	#  uncomment it as well; this will further reduce the number of
+	#  LDAP and/or SQL queries for TTLS or PEAP.
+	#
 	eap {
 		ok = return
+#		updated = return
 	}
 
 	#
