@@ -508,6 +508,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 				sizeof(ms->m_array[i]) * (ms->m_max - i + 1));
 
 			if (empty_slot > i) empty_slot--;
+			if (ms->m_current > i) ms->m_current--;
 		}
 
 		/*
@@ -515,6 +516,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 		 *	array entry.
 		 */
 		ms->m_max -= arrays_freed;
+		rad_assert(ms->m_current <= ms->m_max);
 
 #ifndef NDEBUG
 		for (i = 0; i <= ms->m_max; i++) {
@@ -580,6 +582,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 				sizeof(ms->rb_array[i]) * (ms->rb_max - i + 1));
 
 			if (empty_slot > i) empty_slot--;
+			if (ms->rb_current > i) ms->rb_current--;
 		}
 
 		/*
@@ -587,6 +590,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 		 *	array entry.
 		 */
 		ms->rb_max -= arrays_freed;
+		rad_assert(ms->rb_current <= ms->rb_max);
 
 #ifndef NDEBUG
 		MPRINT("NUM ARRAYS NOW %d\n", ms->rb_max + 1);
@@ -640,6 +644,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 {
 	fr_message_t *m;
 
+	rad_assert(mr != NULL);
 	rad_assert(mr->write_offset <= mr->size);
 	rad_assert(mr->data_start <= mr->size);
 	rad_assert(mr->data_start <= mr->data_end);
