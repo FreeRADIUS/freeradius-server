@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/message.h>
 #include <string.h>
+#include <sys/time.h>
 #include <freeradius-devel/hash.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -316,6 +317,42 @@ int main(int argc, char *argv[])
 
 	for (i = 0; i < MY_ARRAY_SIZE; i++) {
 		rad_assert(messages[i] == NULL);
+	}
+
+	if (debug_lvl) {
+		struct timeval start_t, end_t;
+
+		gettimeofday(&start_t, NULL);
+
+		/*
+		 *	Do another 10000 rounds of alloc / free.
+		 */
+		my_alloc_size = 100;
+
+		for (i = 0; i < 10000; i++) {
+			alloc_blocks(ms, &seed, &start, &end);
+
+			free_blocks(ms, &seed, &start, &end);
+		}
+
+		gettimeofday(&end_t, NULL);
+
+		end_t.tv_sec -= start_t.tv_sec;
+		if (end_t.tv_sec > 0) {
+			end_t.tv_usec += 1000000;
+			end_t.tv_sec--;
+
+			end_t.tv_usec -= start_t.tv_usec;
+			if (end_t.tv_usec > 1000000) {
+				end_t.tv_usec -= 1000000;
+				end_t.tv_sec++;
+			}
+		} else {
+			end_t.tv_usec -= start_t.tv_usec;
+		}
+
+		printf("\nELAPSED %d.%06d seconds, %d allocation / free cycles\n\n", (int) end_t.tv_sec, (int) end_t.tv_usec,
+		       my_alloc_size * 10000);
 	}
 
 	/*
