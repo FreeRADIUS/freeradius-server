@@ -80,6 +80,17 @@ int main(int argc, char *argv[])
 
 	aq = fr_atomic_queue_create(autofree, size);
 
+#ifndef NDEBUG
+	if (debug_lvl) {
+		printf("Start\n");
+		fr_atomic_queue_debug(aq, stdout);
+
+		if (debug_lvl > 1) printf("Filling with %d\n", size);
+	}
+
+#endif
+
+
 	for (i = 0; i < size; i++) {
 		val = i + OFFSET;
 		data = (void *) val;
@@ -88,6 +99,13 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed pushing at %d\n", i);
 			exit(1);
 		}
+
+#ifndef NDEBUG
+		if (debug_lvl > 1) {
+			printf("iteration %d\n", i);
+			fr_atomic_queue_debug(aq, stdout);
+		}
+#endif
 	}
 
 	val = size + OFFSET;
@@ -102,7 +120,12 @@ int main(int argc, char *argv[])
 	}
 
 #ifndef NDEBUG
-	if (debug_lvl) fr_atomic_queue_debug(aq, stdout);
+	if (debug_lvl) {
+		printf("Full\n");
+		fr_atomic_queue_debug(aq, stdout);
+
+		if (debug_lvl > 1) printf("Emptying\n");
+	}
 #endif
 
 	/*
@@ -120,6 +143,13 @@ int main(int argc, char *argv[])
 				i + OFFSET, (int) val);
 			exit(1);
 		}
+
+#ifndef NDEBUG
+		if (debug_lvl > 1) {
+			printf("iteration %d\n", i);
+			fr_atomic_queue_debug(aq, stdout);
+		}
+#endif
 	}
 
 	/*
@@ -129,6 +159,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Popped an entry past the end of the queue.");
 		exit(1);
 	}
+
+#ifndef NDEBUG
+	if (debug_lvl) {
+		printf("Empty\n");
+		fr_atomic_queue_debug(aq, stdout);
+	}
+#endif
 
 	talloc_free(autofree);
 
