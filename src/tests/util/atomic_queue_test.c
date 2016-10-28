@@ -23,17 +23,16 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/atomic_queue.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/time.h>
-#include <freeradius-devel/hash.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
 #endif
 
-#define MPRINT1 if (debug_lvl) printf
-#define MPRINT2 if (debug_lvl > 1) printf
+#define MPRINT1 if (debug_lvl) printfa
 
 #define OFFSET	(1024)
 
