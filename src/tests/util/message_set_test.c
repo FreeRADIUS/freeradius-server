@@ -45,6 +45,7 @@ static fr_message_t	*messages[MY_ARRAY_SIZE];
 static int		my_alloc_size = ALLOC_SIZE;
 
 static int		debug_lvl = 0;
+static bool		touch_memory = false;
 
 static char const      	*seed_string = "foo";
 static size_t		seed_string_len = 3;
@@ -84,6 +85,17 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		messages[index] = fr_message_alloc(ms, m, hash);
 		rad_assert(messages[index] == m);
+
+		if (touch_memory) {
+			size_t j;
+			size_t k = 0;
+
+			for (j = 0; j < m->data_size; j++) {
+				k += m->data[j];
+			}
+
+			m->data[0] = k;
+		}
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
@@ -156,10 +168,14 @@ int main(int argc, char *argv[])
 	memset(array, 0, sizeof(array));
 	memset(messages, 0, sizeof(messages));
 
-	while ((c = getopt(argc, argv, "hs:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "hs:tx")) != EOF) switch (c) {
 		case 's':
 			seed_string = optarg;
 			seed_string_len = strlen(optarg);
+			break;
+
+		case 't':
+			touch_memory = true;
 			break;
 
 		case 'x':
