@@ -1213,7 +1213,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 			return -1;
 		}
 		break;
-		}
+	}
 
 #ifdef WITH_AUTH_WINBIND
 		/*
