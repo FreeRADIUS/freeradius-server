@@ -317,7 +317,8 @@ the same request.
 
 Redundant-load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
+or update an attribute list. Please see raddb/radiusd.conf 
+"instantiate" section for more configuration examples.
 
 Redundant-load-balance sections can optionally take a key.  The key is expanded
 at run time, hashed, and the hash used to select a module.  If no
