@@ -148,9 +148,9 @@ static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start
 
 static void NEVER_RETURNS usage(void)
 {
-	MPRINT1("usage: message_set_test [OPTS]\n");
-	MPRINT1("  -x                     Debugging mode.\n");
-	MPRINT1("  -s <string>            Set random seed to <string>.\n");
+	fprintf(stderr, "usage: message_set_test [OPTS]\n");
+	fprintf(stderr, "  -x                     Debugging mode.\n");
+	fprintf(stderr, "  -s <string>            Set random seed to <string>.\n");
 
 	exit(1);
 }
