@@ -56,7 +56,7 @@ struct fr_atomic_queue_t {
 
 	int	size;
 
-	fr_atomic_queue_entry_t entry[0];
+	fr_atomic_queue_entry_t entry[1];
 };
 
 /** Create fixed-size atomic queue.
@@ -73,6 +73,8 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	int64_t seq;
 	fr_atomic_queue_t *aq;
 
+	if (!size) return NULL;
+
 	/*
 	 *	Allocate a contiguous blob for the header and queue.
 	 *	This helps with memory locality.
@@ -80,7 +82,7 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	 *	Since we're allocating a blob, we should also set the
 	 *	name of the data, too.
 	 */
-	aq = talloc_size(ctx, sizeof(*aq) + size * sizeof(aq->entry[0]));
+	aq = talloc_size(ctx, sizeof(*aq) + (size - 1) * sizeof(aq->entry[0]));
 	if (!aq) return NULL;
 
 	talloc_set_name(aq, "fr_atomic_queue_t");
