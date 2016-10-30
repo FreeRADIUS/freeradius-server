@@ -33,7 +33,7 @@ acct_unique {
 	#  wireless environment).
 	#
 	update request {
-	       Tmp-String-9 := "${policy.class_value_prefix}"
+	       &Tmp-String-9 := "${policy.class_value_prefix}"
 	}
 
 	if (("%{hex:&Class}" =~ /^%{hex:&Tmp-String-9}/) && \
