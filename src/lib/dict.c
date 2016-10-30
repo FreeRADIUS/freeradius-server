@@ -1774,6 +1774,53 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	return 0;
 }
 
+
+/*
+ *	Process the ATTRIBUTE command, where it only has a name.
+ */
+static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
+					     char **argv, int argc,
+					     fr_dict_attr_flags_t *base_flags)
+{
+	int type;
+	unsigned int attr;
+	uint32_t hash;
+	char *p, normalized[512];
+
+	if (argc != 2) {
+		fr_strerror_printf("Invalid ATTRIBUTE syntax");
+		return -1;
+	}
+
+	/*
+	 *	find the type of the attribute.
+	 */
+	type = fr_str2int(dict_attr_types, argv[1], -1);
+	if (type < 0) {
+		fr_strerror_printf("Unknown data type '%s'", argv[1]);
+		return -1;
+	}
+
+	strlcpy(normalized, argv[0], sizeof(normalized));
+	for (p = normalized; *p != '\0'; p++) {
+		if (isupper((int) *p)) {
+			*p = tolower((int) *p);
+		}
+	}
+
+	hash = fr_hash_string(normalized);
+	attr = hash;
+
+	/*
+	 *	Add it in.
+	 */
+	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, *base_flags) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  *	Process the VALUE command
  */
@@ -2139,8 +2186,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (dict_read_process_attribute(ctx->dict, ctx->parent, ctx->block_vendor,
-							argv + 1, argc - 1, &base_flags) == -1) goto error;
+			if (!base_flags.named) {
+				if (dict_read_process_attribute(ctx->dict, ctx->parent, ctx->block_vendor,
+								argv + 1, argc - 1, &base_flags) == -1) goto error;
+			} else {
+				if (dict_read_process_named_attribute(ctx->dict, ctx->parent,
+								      argv + 1, argc - 1, &base_flags) == -1) goto error;
+			}
 			continue;
 		}
 

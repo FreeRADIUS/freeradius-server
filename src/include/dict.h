@@ -54,6 +54,8 @@ typedef struct attr_flags {
 
 	unsigned int		compare : 1;			//!< has a paircompare registered
 
+	unsigned int		named : 1;			//!< compare attributes by name.
+
 	enum {
 		FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
 		FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
