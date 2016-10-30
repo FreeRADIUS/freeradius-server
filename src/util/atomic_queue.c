@@ -231,7 +231,7 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 	head = load(aq->head);
 	tail = load(aq->head);
 
-	fprintf(fp, "AQ %p size %zd, head %zd, tail %zd\n",
+	fprintf(fp, "AQ %p size %d, head %zd, tail %zd\n",
 		aq, aq->size, head, tail);
 
 	for (i = 0; i < aq->size; i++) {
