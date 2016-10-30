@@ -32,8 +32,6 @@ RCSID("$Id$")
 #	include <getopt.h>
 #endif
 
-#define MPRINT1 if (debug_lvl) printfa
-
 #define OFFSET	(1024)
 
 static int		debug_lvl = 0;
