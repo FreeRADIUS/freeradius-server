@@ -131,7 +131,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		diff = (seq - head);
 
 		/*
-		 *	head is smaller than the current entry, the queue is full.
+		 *	head is larger than the current entry, the queue is full.
 		 */
 		if (diff < 0) {
 			return false;
