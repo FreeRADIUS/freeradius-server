@@ -167,6 +167,11 @@ int			eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8
 		    			tls_record_t *record, size_t record_len, size_t frag_len);
 
 /* MPPE key generation */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+size_t SSL_get_client_random(const SSL *ssl, unsigned char *out, size_t outlen);
+size_t SSL_get_server_random(const SSL *ssl, unsigned char *out, size_t outlen);
+#endif
+
 void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
 
 void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label) CC_HINT(nonnull);

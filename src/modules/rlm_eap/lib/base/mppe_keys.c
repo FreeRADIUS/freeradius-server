@@ -29,6 +29,30 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 #include <freeradius-devel/sha1.h>
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+/*
+ *	OpenSSL compatibility, to avoid ifdef's through the rest of the code.
+ */
+size_t SSL_get_client_random(const SSL *s, unsigned char *out, size_t outlen)
+{
+	if (!outlen) return sizeof(s->s3->client_random);
+
+	if (outlen > sizeof(s->s3->client_random)) outlen = sizeof(s->s3->client_random);
+
+	memcpy(out, s->s3->client_random, outlen);
+	return outlen;
+}
+
+size_t SSL_get_server_random(const SSL *s, unsigned char *out, size_t outlen)
+{
+	if (!outlen) return sizeof(s->s3->server_random);
+
+	if (outlen > sizeof(s->s3->server_random)) outlen = sizeof(s->s3->server_random);
+
+	memcpy(out, s->s3->server_random, outlen);
+	return outlen;
+}
+#endif
 
 /*
  * TLS PRF from RFC 2246
@@ -172,11 +196,11 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 		memcpy(p, prf_label, prf_size);
 		p += prf_size;
 
-		memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+		(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 		p += SSL3_RANDOM_SIZE;
 		prf_size += SSL3_RANDOM_SIZE;
 
-		memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+		(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 		prf_size += SSL3_RANDOM_SIZE;
 
 		PRF(s->session->master_key, s->session->master_key_length,
@@ -217,9 +241,10 @@ void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t siz
 
 	memcpy(p, prf_label, len);
 	p += len;
-	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+
+	(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
-	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+	(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
 	PRF(s->session->master_key, s->session->master_key_length,
@@ -241,9 +266,9 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
 
 	memcpy(p, prf_label, len);
 	p += len;
-	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+	(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
-	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+	(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
 	PRF(s->session->master_key, s->session->master_key_length,
@@ -265,14 +290,9 @@ void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	p = talloc_array(vp, uint8_t, 1 + 2 * SSL3_RANDOM_SIZE);
 	p[0] = header & 0xff;
 
-#ifdef HAVE_SSL_GET_CLIENT_RANDOM
 	SSL_get_client_random(s, p + 1, SSL3_RANDOM_SIZE);
 	SSL_get_server_random(s, p + 1 + SSL3_RANDOM_SIZE, SSL3_RANDOM_SIZE);
-#else
-	memcpy(p + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
-	memcpy(p + 1 + SSL3_RANDOM_SIZE,
-	       s->s3->server_random, SSL3_RANDOM_SIZE);
-#endif
+
 	fr_pair_value_memsteal(vp, p);
 	fr_pair_add(&packet->vps, vp);
 }

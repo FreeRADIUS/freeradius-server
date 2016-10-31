@@ -145,16 +145,16 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t *inst)
 	return t;
 }
 
-static void eap_fast_session_ticket(tls_session_t *tls_session, uint8_t *client_random,
-				    uint8_t *server_random, uint8_t *secret, int *secret_len)
+static void eap_fast_session_ticket(tls_session_t *tls_session, const SSL *s,
+				    uint8_t *secret, int *secret_len)
 {
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint8_t			seed[2 * SSL3_RANDOM_SIZE];
 
 	rad_assert(t->pac.key);
 
-	memcpy(seed, server_random, SSL3_RANDOM_SIZE);
-	memcpy(&seed[SSL3_RANDOM_SIZE], client_random, SSL3_RANDOM_SIZE);
+	SSL_get_server_random(s, seed, SSL3_RANDOM_SIZE);
+	SSL_get_client_random(s, &seed[SSL3_RANDOM_SIZE], SSL3_RANDOM_SIZE);
 
 	T_PRF(t->pac.key, PAC_KEY_LENGTH, "PAC to master secret label hash",
 	      seed, sizeof(seed), secret, SSL_MAX_MASTER_KEY_LENGTH);
@@ -180,17 +180,7 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 
 	RDEBUG("processing PAC-Opaque");
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-	eap_fast_session_ticket(tls_session, s->s3->client_random, s->s3->server_random, secret, secret_len);
-#else
-	uint8_t const client_random[SSL3_RANDOM_SIZE];
-	uint8_t const server_random[SSL3_RANDOM_SIZE];
-
-	SSL_get_client_random(s, client_random, sizeof(client_random));
-	SSL_get_server_random(s, server_random, sizeof(server_random));
-
-	eap_fast_session_ticket(tls_session, client_random, server_random, secret, secret_len);
-#endif
+	eap_fast_session_ticket(tls_session, s, secret, secret_len);
 
 	memset(t->pac.key, 0, PAC_KEY_LENGTH);
 	talloc_free(t->pac.key);
