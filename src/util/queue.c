@@ -35,26 +35,18 @@ struct fr_queue_t {
 	int		size;		//!< size of the queue
 	int		num;		//!< number of elements pushed into the queue
 
-	fr_queue_t	*next;		//!< next queue entry.  Only exists if 'fixed == false'
-
-	bool		fixed;		//!< whether or not the queue is fixed size
-
 	void		*entry[1];	//!< Array of queue data.
 };
 
 /** Create a non-thread-safe queue.
  *
- *  It can optionally be fixed size.  If it is not fixed size, it can
- *  grow without limit.
- *
  * @param[in] ctx the talloc ctx
  * @param[in] size the number of entries in the queue
- * @param[in] fixed whether or not the queue is fixed in size.
  * @return
  *     NULL on error
  *     fr_queue_t *, a pointer to the allocated and initialized queue
  */
-fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size, bool fixed)
+fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size)
 {
 	fr_queue_t *fq;
 
@@ -75,7 +67,6 @@ fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size, bool fixed)
 	memset(fq, 0, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
 
 	fq->size = size;
-	fq->fixed = fixed;
 
 	return fq;
 }
@@ -144,6 +135,69 @@ int fr_queue_size(fr_queue_t *fq)
 int fr_queue_num_elements(fr_queue_t *fq)
 {
 	return fq->num;
+}
+
+
+
+/** Resize a queue, and copy the entries over.
+ *
+ * @param[in] fq the queue
+ * @param[in] size the new size of the queue
+ * @return
+ *	NULL on error
+ *	fr_queue_t * the new queue, which MAY BE fq.
+ */
+fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
+{
+	fr_queue_t *nq;
+	TALLOC_CTX *ctx;
+
+	if (!fq) return NULL;
+
+	if (size <= 0) return NULL;
+
+	if (size <= fq->size) return fq;
+
+	ctx = talloc_parent(fq);
+
+	/*
+	 *	If we can't create the new queue, return the old one.
+	 */
+	nq = fr_queue_create(ctx, size);
+	if (!nq) return fq;
+
+	/*
+	 *	Empty: we're done.
+	 */
+	if (!fq->num) {
+		goto done;
+	}
+
+	/*
+	 *	Simple block of used elements, copy it.
+	 */
+	if (fq->head > fq->tail) {
+		memcpy(&nq->entry[0], &fq->entry[fq->tail], &fq->entry[fq->head] - &fq->entry[fq->tail]);
+		nq->head = fq->num;
+		nq->num = fq->num;
+		goto done;
+	}
+
+	/*
+	 *	The block of elements is split in two.  Copy the tail
+	 *	to the bottom of our array, and then then head.
+	 */
+	memcpy(&nq->entry[0], &fq->entry[fq->tail], &fq->entry[fq->size] - &fq->entry[fq->tail]);
+	nq->head = fq->size - fq->tail;
+
+	memcpy(&nq->entry[nq->head], &fq->entry[0], &fq->entry[fq->head] - &fq->entry[0]);
+	nq->head = fq->num;
+	nq->num = fq->num;
+
+done:
+	talloc_free(fq);
+
+	return nq;
 }
 
 

@@ -34,7 +34,9 @@ extern "C" {
 
 typedef struct fr_queue_t fr_queue_t;
 
-fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size, bool fixed);
+fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size);
+fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size);
+
 bool fr_queue_push(fr_queue_t *fq, void *data);
 bool fr_queue_pop(fr_queue_t *fq, void **p_data);
 
