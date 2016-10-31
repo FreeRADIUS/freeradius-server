@@ -274,7 +274,7 @@ static int event_link_down(sigtran_conn_t *conn)
  */
 static int event_request_respond(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 {
-	uint8_t buff[sizeof(void *))];
+	uint8_t buff[sizeof(void *)];
 	uint8_t *p = buff, *end = buff + sizeof(buff);
 
 	memcpy(&buff, &txn, sizeof(buff));
@@ -314,7 +314,7 @@ static int event_request_respond(struct osmo_fd *ofd, sigtran_transaction_t *txn
 			if ((ret > 0) && !FD_ISSET(ofd->fd, &error_set)) continue;
 		}
 
-		ERROR("Failed writing to pipe (%i): %s", odf->fd, fr_syserror(errno));
+		ERROR("Failed writing to pipe (%i): %s", ofd->fd, fr_syserror(errno));
 		return -1;
 	}
 
