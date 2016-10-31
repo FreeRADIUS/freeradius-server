@@ -104,7 +104,7 @@ static void m3ua_send_beat(void *data);
  */
 static int m3ua_shutdown(struct mtp_link *mtp_link);
 static void m3ua_start(void *data);
-static void aspac_ack_timeout(void *data);
+static void ack_timeout(void *data);
 
 static void schedule_restart(struct mtp_m3ua_client_link *link)
 {
