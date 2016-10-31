@@ -12,6 +12,8 @@
 struct mtp_m3ua_client_link {
 	struct mtp_link *base;
 
+	struct osmo_fd	connect;
+
 	struct osmo_wqueue queue;
 	struct osmo_timer_list connect_timer;
 

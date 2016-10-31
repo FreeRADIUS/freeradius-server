@@ -106,6 +106,46 @@ static int m3ua_shutdown(struct mtp_link *mtp_link);
 static void m3ua_start(void *data);
 static void ack_timeout(void *data);
 
+static int m3ua_setnonblocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		LOGP(DINP, LOGL_ERROR, "Failed getting socket flags whilst setting O_NONBLOCK.\n");
+		return -1;
+	}
+
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed setting O_NONBLOCK\n");
+		return -1;
+	}
+
+	return flags;
+}
+
+static int m3ua_setblocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		LOGP(DINP, LOGL_ERROR, "Failed getting socket flags whilst clearing O_NONBLOCK.\n");
+		return -1;
+	}
+
+	if (!(flags & O_NONBLOCK)) return flags;
+
+	flags ^= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed clearing O_NONBLOCK\n");
+		return -1;
+	}
+
+	return flags;
+}
+
 static void schedule_restart(struct mtp_m3ua_client_link *link)
 {
 	link->connect_timer.data = link;
@@ -270,6 +310,48 @@ static int m3ua_conn_read(struct osmo_fd *fd)
 	return 0;
 }
 
+static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
+{
+	struct mtp_m3ua_client_link *link = ofd->data;
+
+	osmo_fd_unregister(ofd);	/* Remove our connect callback */
+
+	if (what & BSC_FD_EXCEPT) {
+		LOGP(DINP, LOGL_ERROR, "SCTP association failed errno: %d\n", errno);
+		fail_link(link);
+		return -1;
+	}
+
+	LOGP(DINP, LOGL_NOTICE, "SCTP association established\n");
+
+	if (m3ua_setblocking(sctp) < 0) {
+		close(sctp);
+		return fail_link(link);
+	}
+
+	link->queue.bfd.fd = ofd->fd;
+	link->queue.bfd.data = link;
+	link->queue.bfd.when = BSC_FD_READ;
+	link->queue.read_cb = m3ua_conn_read;
+	link->queue.write_cb = m3ua_conn_write;
+
+	if (osmo_fd_register(&link->queue.bfd) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to register fd\n");
+		close(sctp);
+		return fail_link(link);
+	}
+
+	/* reset route state */
+	llist_splice_init(&link->routes_active, &link->routes);
+	llist_splice_init(&link->routes_failed, &link->routes);
+
+	LOGP(DINP, LOGL_NOTICE, "Sending ASPUP\n");
+	m3ua_send_aspup(link);
+	schedule_t_ack(link);
+
+	return 0;
+}
+
 static void m3ua_start(void *data)
 {
 	int sctp, ret;
@@ -297,7 +379,13 @@ static void m3ua_start(void *data)
 		return fail_link(link);
 	}
 
-	if (connect(sctp, (struct sockaddr *) &link->remote, sizeof(link->remote)) != 0) {
+	if (m3ua_setnonblocking(sctp) < 0) {
+		close(sctp);
+		return fail_link(link);
+	}
+
+	ret = connect(sctp, (struct sockaddr *) &link->remote, sizeof(link->remote));
+	if ((ret != 0) && (ret != EINPROGRESS)) {
 		LOGP(DINP, LOGL_ERROR, "Failed to connect\n");
 		close(sctp);
 		return fail_link(link);
@@ -305,23 +393,14 @@ static void m3ua_start(void *data)
 
 	link->queue.bfd.fd = sctp;
 	link->queue.bfd.data = link;
-	link->queue.bfd.when = BSC_FD_READ;
-	link->queue.read_cb = m3ua_conn_read;
-	link->queue.write_cb = m3ua_conn_write;
+	link->queue.bfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
+	link->queue.read_cb = m3ua_sctp_assoc_complete;
 
 	if (osmo_fd_register(&link->queue.bfd) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to register fd\n");
 		close(sctp);
 		return fail_link(link);
 	}
-
-	/* reset route state */
-	llist_splice_init(&link->routes_active, &link->routes);
-	llist_splice_init(&link->routes_failed, &link->routes);
-
-	LOGP(DINP, LOGL_NOTICE, "Sending ASPUP\n");
-	m3ua_send_aspup(link);
-	schedule_t_ack(link);
 }
 
 static int m3ua_write(struct mtp_link *mtp_link, struct msgb *msg)
