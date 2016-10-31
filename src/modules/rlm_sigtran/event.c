@@ -363,10 +363,10 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		DEBUG3("Processing map send auth info");
 		if (sigtran_tcap_outgoing(NULL, req->conn, txn, ofd) < 0) {
 			txn->response.type = SIGTRAN_RESPONSE_FAIL;
-			return 0;
+		} else {
+			return 0;	/* Keep caller blocked until we get a response */
 		}
 	}
-		return 0;	/* Keep caller blocked until we get a response */
 
 	case SIGTRAN_REQUEST_EXIT:
 		DEBUG3("Event loop will exit");
