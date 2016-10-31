@@ -367,6 +367,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 			return 0;	/* Keep caller blocked until we get a response */
 		}
 	}
+		break;
 
 	case SIGTRAN_REQUEST_EXIT:
 		DEBUG3("Event loop will exit");
