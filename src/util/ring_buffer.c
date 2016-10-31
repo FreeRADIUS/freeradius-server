@@ -78,8 +78,8 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
  * @param[in] rb a ring buffer
  * @param[in] size to see if we can reserve
  * @return
- *	NULL on error.  Which can only be "ring buffer is full".
- *      pointer to data on success
+ *	- NULL on error.  Which can only be "ring buffer is full".
+ *      - pointer to data on success
  */
 uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 {
@@ -144,8 +144,8 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
  * @param[in] rb a ring buffer
  * @param[in] size to mark as "used" at the tail end of the buffer.
  * @return
- *	NULL on error.  Which can only be "ring buffer is full".
- *      pointer to data on success
+ *	- NULL on error.  Which can only be "ring buffer is full".
+ *      - pointer to data on success
  */
 uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 {
@@ -241,8 +241,8 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
  * @param[in] move_size of data to move from the tail of the buffer to the start.
  * @param[in] reserve_size size of the data to reserve at the start of the buffer.
  * @return
- *	NULL on error.
- *      pointer to data on success
+ *	- NULL on error.
+ *      - pointer to data on success
  */
 uint8_t *fr_ring_buffer_move(fr_ring_buffer_t *rb, size_t move_size, size_t reserve_size)
 {
@@ -298,8 +298,8 @@ uint8_t *fr_ring_buffer_move(fr_ring_buffer_t *rb, size_t move_size, size_t rese
  * @param[in] data pointer to the data to free
  * @param[in] size of data to discard from the end of the buffer.
  * @return
- *	<0 on error
- *      0 on success
+ *	- <0 on error
+ *      - 0 on success
  */
 int fr_ring_buffer_shrink(fr_ring_buffer_t *rb, uint8_t *data, size_t size)
 {
@@ -359,8 +359,8 @@ int fr_ring_buffer_shrink(fr_ring_buffer_t *rb, uint8_t *data, size_t size)
  * @param[in] rb a ring buffer
  * @param[in] size to mark as "unused" in the buffer.
  * @return
- *	<0 on error.  Which can only be "ring buffer is full".
- *      0 on success
+ *	- <0 on error.  Which can only be "ring buffer is full".
+ *      - 0 on success
  */
 int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 {
@@ -457,8 +457,8 @@ empty_buffer:
  *
  * @param[in] rb a ring buffer
  * @return
- *	<0 on error.
- *      0 on success
+ *	- <0 on error.
+ *      - 0 on success
  */
 int fr_ring_buffer_close(fr_ring_buffer_t *rb)
 {
@@ -475,8 +475,8 @@ int fr_ring_buffer_close(fr_ring_buffer_t *rb)
  *
  * @param[in] rb a ring buffer
  * @return size of the ring buffer.
- *	<0 on error.
- *      0 on success
+ *	- <0 on error.
+ *      - 0 on success
  */
 size_t fr_ring_buffer_size(fr_ring_buffer_t *rb)
 {
@@ -491,8 +491,8 @@ size_t fr_ring_buffer_size(fr_ring_buffer_t *rb)
  *
  * @param[in] rb a ring buffer
  * @return size of the used data in the ring buffer.
- *	<0 on error.
- *      0 on success
+ *	- <0 on error.
+ *      - 0 on success
  */
 size_t fr_ring_buffer_used(fr_ring_buffer_t *rb)
 {

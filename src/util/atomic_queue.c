@@ -64,8 +64,8 @@ struct fr_atomic_queue_t {
  * @param[in] ctx the talloc ctx
  * @param[in] size the number of entries in the queue
  * @return
- *     NULL on error
- *     fr_atomic_queue_t *, a pointer to the allocated and initialized queue
+ *     - NULL on error
+ *     - fr_atomic_queue_t *, a pointer to the allocated and initialized queue
  */
 fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 {
@@ -117,8 +117,8 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
  * @param[in] aq the queue
  * @param[in] data the data to push
  * @return
- *	true on successful push
- *	false on queue full
+ *	- true on successful push
+ *	- false on queue full
  */
 bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 {
@@ -181,8 +181,8 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
  * @param[in] aq the queue
  * @param[in] p_data where to write the data
  * @return
- *	true on successful pop
- *	false on queue empty
+ *	- true on successful pop
+ *	- false on queue empty
  */
 bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 {

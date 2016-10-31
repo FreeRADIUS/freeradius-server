@@ -153,8 +153,8 @@ static fr_message_ring_t *fr_message_ring_create(TALLOC_CTX *ctx, int num_messag
  * @param[in] num_messages size of the initial message array.  MUST be a power of 2.
  * @param[in] ring_buffer_size of the ring buffer.  MUST be a power of 2.
  * @return
- *    NULL on error
- *    newly allocated fr_message_set_t on success
+ *	- NULL on error
+ *	- newly allocated fr_message_set_t on success
  */
 fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_t ring_buffer_size)
 {
@@ -201,8 +201,8 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
  * @param[in] ms the message set
  * @param[in] m the message to make as done.
  * @return
- *     <0 on error
- *	0 on success
+ *	- <0 on error
+ *	- 0 on success
  */
 int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
 {
@@ -256,8 +256,8 @@ int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
  * @param[in] m the message to be localized
  * @param[in] ctx the talloc context to use for localization
  * @return
- *      NULL on allocation errror
- *	a newly localized message
+ *	- NULL on allocation errror
+ *	- a newly localized message
  */
 fr_message_t *fr_message_localize(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
 {
@@ -636,9 +636,9 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
  * @param[in] ms the message set
  * @param[in] mr the message ring to allocate from 
  * @param[in] clean whether to clean the message ring
-* @return
- *      NULL on failed allocation
- *      fr_message_t* on successful allocation.
+ * @return
+ *	- NULL on failed allocation
+ *      - fr_message_t* on successful allocation.
  */
 static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring_t *mr, bool clean)
 {
@@ -757,8 +757,8 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
  * @param[in] ms the message set
  * @param[in] reserve_size to reserve
  * @return
- *      NULL on error
- *	fr_message_t* on success
+ *      - NULL on error
+ *	- fr_message_t* on success
  */
 fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 {
@@ -1009,8 +1009,8 @@ cleanup:
  * @param[in] m the message message to allocate packet data for
  * @param[in] actual_packet_size to reserve
  * @return
- *      NULL on error
- *	fr_message_t* on success
+ *      - NULL on error
+ *	- fr_message_t* on success
  */
 fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
@@ -1064,8 +1064,8 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
  * @param[in] m the message message to allocate packet data for
  * @param[in] actual_packet_size to reserve
  * @return
- *      NULL on error
- *	fr_message_t* on success
+ *      - NULL on error
+ *	- fr_message_t* on success
  */
 fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
@@ -1143,7 +1143,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
  *
  * @param[in] ms the message set
  * @return
- *      number of used messages
+ *      - number of used messages
  */
 int fr_message_set_messages_used(fr_message_set_t *ms)
 {

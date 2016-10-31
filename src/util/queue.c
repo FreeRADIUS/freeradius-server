@@ -43,8 +43,8 @@ struct fr_queue_t {
  * @param[in] ctx the talloc ctx
  * @param[in] size the number of entries in the queue
  * @return
- *     NULL on error
- *     fr_queue_t *, a pointer to the allocated and initialized queue
+ *     - NULL on error
+ *     - fr_queue_t *, a pointer to the allocated and initialized queue
  */
 fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size)
 {
@@ -77,11 +77,15 @@ fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size)
  * @param[in] fq the queue
  * @param[in] data the data to push
  * @return
- *	true on successful push
- *	false on queue full
+ *	- true on successful push
+ *	- false on queue full
  */
 bool fr_queue_push(fr_queue_t *fq, void *data)
 {
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(fq, fr_queue_t);
+#endif
+
 	if (!data) return false;
 
 	fq->entry[fq->head++] = data;
@@ -97,11 +101,15 @@ bool fr_queue_push(fr_queue_t *fq, void *data)
  * @param[in] fq the queue
  * @param[in] p_data where to write the data
  * @return
- *	true on successful pop
- *	false on queue empty
+ *	- true on successful pop
+ *	- false on queue empty
  */
 bool fr_queue_pop(fr_queue_t *fq, void **p_data)
 {
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(fq, fr_queue_t);
+#endif
+
 	if (!p_data) return false;
 
 	if (fq->num == 0) return false;
@@ -118,10 +126,14 @@ bool fr_queue_pop(fr_queue_t *fq, void **p_data)
  *
  * @param[in] fq the queue
  * @return
- *	The size of the queue.
+ *	- The size of the queue.
  */
 int fr_queue_size(fr_queue_t *fq)
 {
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(fq, fr_queue_t);
+#endif
+
 	return fq->size;
 }
 
@@ -130,10 +142,14 @@ int fr_queue_size(fr_queue_t *fq)
  *
  * @param[in] fq the queue
  * @return
- *	The number of elements in the queue.
+ *	- The number of elements in the queue.
  */
 int fr_queue_num_elements(fr_queue_t *fq)
 {
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(fq, fr_queue_t);
+#endif
+
 	return fq->num;
 }
 
@@ -144,13 +160,17 @@ int fr_queue_num_elements(fr_queue_t *fq)
  * @param[in] fq the queue
  * @param[in] size the new size of the queue
  * @return
- *	NULL on error
- *	fr_queue_t * the new queue, which MAY BE fq.
+ *	- NULL on error
+ *	- fr_queue_t * the new queue, which MAY BE fq.
  */
 fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 {
 	fr_queue_t *nq;
 	TALLOC_CTX *ctx;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(fq, fr_queue_t);
+#endif
 
 	if (!fq) return NULL;
 
@@ -200,6 +220,44 @@ done:
 	return nq;
 }
 
+
+/** Pull all entries from an atomic queue into our local queue.
+ *
+ * @param[in] fq the local queue
+ * @param[in] aq the atomic queue
+ * @return
+ *	- number of entries successfully moved over
+ */
+int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq)
+{
+	void *data;
+	int i, room;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(fq, fr_queue_t);
+#endif
+
+	/*
+	 *	No room to push anything, return an error.
+	 */
+	room = fq->size - fq->num;
+	if (!room) return 0;
+
+	/*
+	 *	Pop as many entries as we have room for.
+	 */
+	for (i = 0; i < room; i++) {
+		if (!fr_atomic_queue_pop(aq, &data)) {
+			return i;
+		}
+
+		fq->entry[fq->head++] = data;
+		if (fq->head > fq->size) fq->head = 0;
+		fq->num++;
+	}
+
+	return room;
+}
 
 #ifndef NDEBUG
 /**  Dump a queue.

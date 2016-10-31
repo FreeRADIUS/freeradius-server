@@ -27,6 +27,7 @@ RCSIDH(queue_h, "$Id$")
 
 #include <talloc.h>
 #include <stdbool.h>
+#include <freeradius-devel/util/atomic_queue.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,8 @@ bool fr_queue_pop(fr_queue_t *fq, void **p_data);
 
 int fr_queue_size(fr_queue_t *fq);
 int fr_queue_num_elements(fr_queue_t *fq);
+
+int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq);
 
 #ifndef NDEBUG
 void fr_queue_debug(fr_queue_t *fq, FILE *fp);
