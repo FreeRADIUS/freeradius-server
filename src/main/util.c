@@ -906,7 +906,13 @@ void verify_request(char const *file, int line, REQUEST *request)
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 #endif
 
-	if (request->packet) verify_packet(file, line, request, request->packet, "request");
+	if (request->packet) {
+		verify_packet(file, line, request, request->packet, "request");
+		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+		    !request->reply->code) {
+			rad_assert(request->state_ctx != NULL);
+		}
+	}
 	if (request->reply) verify_packet(file, line, request, request->reply, "reply");
 #ifdef WITH_PROXY
 	if (request->proxy) {
