@@ -314,23 +314,29 @@ static int m3ua_conn_read(struct osmo_fd *fd)
 static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 {
 	struct mtp_m3ua_client_link *link = ofd->data;
+	int ret, err;
+	socklen_t len = sizeof(err);
 
 	osmo_fd_unregister(ofd);	/* Remove our connect callback */
 
-	if (what & BSC_FD_EXCEPT) {
-		LOGP(DINP, LOGL_ERROR, "SCTP association failed: %s.\n", strerror(errno));
+	ret = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &err, &len);
+	if (ret < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed getting socket error: %s (%i).\n", strerror(errno), errno);
+	error:
+		close(ofd->fd);
+		fail_link(link);
+		return -1;
+	}
+
+	if (err != 0) {
+		LOGP(DINP, LOGL_ERROR, "SCTP association failed: %s (%i).\n", strerror(err), errno);
 		fail_link(link);
 		return -1;
 	}
 
 	LOGP(DINP, LOGL_NOTICE, "SCTP association established\n");
 
-	if (m3ua_setblocking(ofd->fd) < 0) {
-	error:
-		close(ofd->fd);
-		fail_link(link);
-		return -1;
-	}
+	if (m3ua_setblocking(ofd->fd) < 0) goto error;
 
 	link->queue.bfd.fd = ofd->fd;
 	link->queue.bfd.data = link;
@@ -376,7 +382,7 @@ static void m3ua_start(void *data)
 	}
 
 	if (bind(sctp, (struct sockaddr *) &link->local, sizeof(link->local)) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to bind: %s.\n", strerror(errno));
+		LOGP(DINP, LOGL_ERROR, "Failed binding local side of SCTP association: %s (%i).\n", strerror(errno), errno);
 		close(sctp);
 		return fail_link(link);
 	}
@@ -388,7 +394,7 @@ static void m3ua_start(void *data)
 
 	ret = connect(sctp, (struct sockaddr *) &link->remote, sizeof(link->remote));
 	if ((ret != 0) && (ret != EINPROGRESS)) {
-		LOGP(DINP, LOGL_ERROR, "Failed to connect: %s.\n", strerror(errno));
+		LOGP(DINP, LOGL_ERROR, "Failed creating SCTP association: %s (%i).\n", strerror(errno), errno);
 		close(sctp);
 		return fail_link(link);
 	}
