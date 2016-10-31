@@ -1,0 +1,168 @@
+/*
+ * queue.c	Thread-unsafe queues.
+ *
+ * Version:	$Id$
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *
+ * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ */
+RCSID("$Id$")
+
+#include <stdint.h>
+#include <string.h>
+
+#include <freeradius-devel/autoconf.h>
+
+#include <freeradius-devel/util/queue.h>
+
+struct fr_queue_t {
+	int		head;		//!< head of the queue
+	int		tail;		//!< tail of the queue
+
+	int		size;		//!< size of the queue
+	int		num;		//!< number of elements pushed into the queue
+
+	fr_queue_t	*next;		//!< next queue entry.  Only exists if 'fixed == false'
+
+	bool		fixed;		//!< whether or not the queue is fixed size
+
+	void		*entry[1];	//!< Array of queue data.
+};
+
+/** Create a non-thread-safe queue.
+ *
+ *  It can optionally be fixed size.  If it is not fixed size, it can
+ *  grow without limit.
+ *
+ * @param[in] ctx the talloc ctx
+ * @param[in] size the number of entries in the queue
+ * @param[in] fixed whether or not the queue is fixed in size.
+ * @return
+ *     NULL on error
+ *     fr_queue_t *, a pointer to the allocated and initialized queue
+ */
+fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size, bool fixed)
+{
+	fr_queue_t *fq;
+
+	if (size <= 0) return NULL;
+
+	/*
+	 *	Allocate a contiguous blob for the header and queue.
+	 *	This helps with memory locality.
+	 *
+	 *	Since we're allocating a blob, we should also set the
+	 *	name of the data, too.
+	 */
+	fq = talloc_size(ctx, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
+	if (!fq) return NULL;
+
+	talloc_set_name(fq, "fr_queue_t");
+
+	memset(fq, 0, sizeof(*fq) + (size - 1) * sizeof(fq->entry[0]));
+
+	fq->size = size;
+	fq->fixed = fixed;
+
+	return fq;
+}
+
+
+/** Push a pointer into the queue
+ *
+ * @param[in] fq the queue
+ * @param[in] data the data to push
+ * @return
+ *	true on successful push
+ *	false on queue full
+ */
+bool fr_queue_push(fr_queue_t *fq, void *data)
+{
+	if (!data) return false;
+
+	fq->entry[fq->head++] = data;
+	if (fq->head > fq->size) fq->head = 0;
+	fq->num++;
+
+	return true;
+}
+
+
+/** Pop a pointer from the queue
+ *
+ * @param[in] fq the queue
+ * @param[in] p_data where to write the data
+ * @return
+ *	true on successful pop
+ *	false on queue empty
+ */
+bool fr_queue_pop(fr_queue_t *fq, void **p_data)
+{
+	if (!p_data) return false;
+
+	if (fq->num == 0) return false;
+
+	*p_data = fq->entry[fq->tail++];
+	if (fq->tail >= fq->size) fq->head = 0;
+	fq->num++;
+
+	return true;
+}
+
+
+/** get the size of a queue
+ *
+ * @param[in] fq the queue
+ * @return
+ *	The size of the queue.
+ */
+int fr_queue_size(fr_queue_t *fq)
+{
+	return fq->size;
+}
+
+
+/** get the number of elements in a queue.
+ *
+ * @param[in] fq the queue
+ * @return
+ *	The number of elements in the queue.
+ */
+int fr_queue_num_elements(fr_queue_t *fq)
+{
+	return fq->num;
+}
+
+
+#ifndef NDEBUG
+/**  Dump a queue.
+ *
+ * @param[in] fq the queue
+ * @param[in] fp where the debugging information will be printed.
+ */
+void fr_queue_debug(fr_queue_t *fq, FILE *fp)
+{
+	int i;
+
+	fprintf(fp, "FQ %p size %d, head %d, tail %d\n",
+		fq, fq->size, fq->head, fq->tail);
+
+	for (i = 0; i < fq->size; i++) {
+		fprintf(fp, "\t[%d] = { %p }\n",
+			i, fq->entry[i]);
+	}
+}
+#endif
