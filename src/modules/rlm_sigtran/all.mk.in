@@ -1,0 +1,39 @@
+TARGETNAME	:= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
+SOURCES		:= $(TARGETNAME).c \
+    libosmo-m3ua/bsc_ussd.c \
+    libosmo-m3ua/bsc_sccp.c \
+    libosmo-m3ua/bss_patch.c \
+    libosmo-m3ua/sccp_state.c \
+    libosmo-m3ua/bssap_sccp.c \
+    libosmo-m3ua/debug.c \
+    libosmo-m3ua/counter.c \
+    libosmo-m3ua/sctp_m3ua_client.c \
+    libosmo-m3ua/sctp_m3ua_misc.c \
+    libosmo-m3ua/msc_conn.c \
+    libosmo-m3ua/mtp_layer3.c \
+    libosmo-m3ua/mtp_link.c \
+    libosmo-m3ua/link_udp.c \
+    libosmo-m3ua/links.c \
+    libosmo-m3ua/snmp_mtp.c \
+    libosmo-m3ua/bsc.c \
+    libosmo-m3ua/ss7_application.c \
+    libosmo-m3ua/thread.c \
+    libosmo-m3ua/isup.c \
+    libosmo-m3ua/isup_filter.c \
+    libosmo-m3ua/ipaccess.c \
+    map.c \
+    event.c \
+    client.c \
+    sccp.c \
+    sigtran.c \
+    log.c
+
+SRC_INCDIRS	:= $(top_srcdir)/src/modules/rlm_sigtran/libosmo-m3ua/include/ $(top_srcdir)/src/modules/rlm_sigtran_ext/libosmo-m3ua/include/
+SRC_CFLAGS	:= -std=gnu11 @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
+NAME	:= @targetname@
