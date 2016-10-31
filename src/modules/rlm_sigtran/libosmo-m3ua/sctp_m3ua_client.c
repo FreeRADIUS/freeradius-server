@@ -327,7 +327,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	if (m3ua_setblocking(ofd->fd) < 0) {
 	error:
-		close(sctp);
+		close(ofd->fd);
 		fail_link(link);
 		return -1;
 	}
