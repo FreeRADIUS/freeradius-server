@@ -354,7 +354,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		      ofd->fd, sizeof(ptr), len);
 		ptr = NULL;
 
-		if (event_request_respond(ofd, txn) < 0) {
+		if (event_request_respond(ofd, NULL) < 0) {
 		fatal_error:
 			DEBUG3("Event loop will exit");
 			do_exit = true;
