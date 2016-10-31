@@ -94,8 +94,12 @@ static void sigtran_tcap_timeout(void *data)
 /** Send a request with static MAP data in it
  *
  * SCCP will add its headers and call sigtran_sccp_outgoing
+ *
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
  */
-void sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transaction_t *txn, UNUSED struct osmo_fd *ofd)
+int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transaction_t *txn, UNUSED struct osmo_fd *ofd)
 {
 	static uint8_t tcap_map_raw_v2[] = {
 		0x62, 0x43, 0x48, 0x01, 0x01, 0x6b, 0x80, 0x28, /* 0x00 */
@@ -124,11 +128,19 @@ void sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transa
 	sigtran_map_send_auth_info_req_t *req =
 		talloc_get_type_abort(txn->request.data, sigtran_map_send_auth_info_req_t);
 
-	struct msgb *msg;
+	struct msgb			*msg;
+
+	sigtran_conn_t			*conn = talloc_get_type_abort(ctx, sigtran_conn_t);
+	struct mtp_m3ua_client_link 	*m3ua_client = talloc_get_type_abort(conn->mtp3_link->data,
+									     struct mtp_m3ua_client_link);
 
 	rad_assert(req->imsi);
 
-	sigtran_conn_t *conn = talloc_get_type_abort(ctx, sigtran_conn_t);
+	if (!m3ua_client->asptm_active) {
+		REDEBUG("Link not yet active, dropping the request");
+
+		return -1;
+	}
 
 	switch (req->version) {
 	case 2:
@@ -156,7 +168,7 @@ void sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transa
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return;
+		if (!fr_cond_assert(0)) return -1;
 	}
 
 	/*
@@ -175,9 +187,9 @@ void sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transa
 
 		if (write(txn->ctx.ofd->fd, &txn, sizeof(txn)) < 0) {
 			ERROR("Failed informing event client of result: %s", fr_syserror(errno));
-			return;
+			return -1;
 		}
-		return;
+		return -1;
 	}
 
 	/*
@@ -193,6 +205,8 @@ void sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transa
 	txn->ctx.timer.cb = sigtran_tcap_timeout;
 
 	osmo_timer_schedule(&txn->ctx.timer, 1, 0);
+
+	return 0;
 }
 
 /** Incoming data

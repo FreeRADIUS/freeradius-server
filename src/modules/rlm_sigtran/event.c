@@ -361,7 +361,10 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		sigtran_map_send_auth_info_req_t *req = talloc_get_type_abort(txn->request.data,
 									      sigtran_map_send_auth_info_req_t);
 		DEBUG3("Processing map send auth info");
-		sigtran_tcap_outgoing(NULL, req->conn, txn, ofd);
+		if (sigtran_tcap_outgoing(NULL, req->conn, txn, ofd) < 0) {
+			txn->response.type = SIGTRAN_RESPONSE_FAIL;
+			return 0;
+		}
 	}
 		return 0;	/* Keep caller blocked until we get a response */
 
