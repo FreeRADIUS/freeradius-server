@@ -44,7 +44,7 @@ struct mtp_m3ua_client_link {
 
 	/* reliability handling */
 	struct osmo_timer_list t_ack;
-	struct osmo_timer_list beat_ack_timer;
+	struct osmo_timer_list t_beat;
 	int ack_timeout;
 };
 
