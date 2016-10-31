@@ -265,6 +265,62 @@ static int event_link_down(sigtran_conn_t *conn)
 	return 0;
 }
 
+/** Send response
+ *
+ * @note Works for both blocking and non-blocking sockets
+ *
+ * @param[in] ofd to write response notification to.
+ * @param[in] txn we're confirming.
+ */
+static int event_request_respond(struct osmo_fd *ofd, sigtran_transaction_t *txn)
+{
+	uint8_t buff[sizeof(void *))];
+	uint8_t *p = buff, *end = buff + sizeof(buff);
+
+	memcpy(&buff, &txn, sizeof(buff));
+
+	for (p = buff; p < end; p++) {
+		ssize_t slen;
+
+		slen = write(ofd->fd, p, end - p);
+		if (slen > 0) {
+			p += slen;
+			continue;
+		}
+
+		if (errno == EAGAIN) {
+			int	ret;
+			fd_set	error_set;
+			fd_set	write_set;
+
+			DEBUG3("Got EAGAIN (no buffer space left), waiting for pipe to become writable");
+
+			FD_ZERO(&error_set);
+			FD_ZERO(&write_set);
+
+			FD_SET(ofd->fd, &error_set);
+			FD_SET(ofd->fd, &write_set);
+
+			/*
+			 *	Don't let signals mess up the select
+			 */
+			do {
+				ret = select(ofd->fd + 1, NULL, &write_set, &error_set, NULL);
+			} while ((ret == -1) && (errno == EINTR));
+
+			/*
+			 *	If there wasn't an error try again...
+			 */
+			if ((ret > 0) && !FD_ISSET(ofd->fd, &error_set)) continue;
+		}
+
+		ERROR("Failed writing to pipe (%i): %s", odf->fd, fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Processes a request for a new pipe from a worker thread
  *
  * @param ofd	for the main ctrl_pipe.
@@ -296,12 +352,15 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 	if (len != sizeof(ptr)) {
 		ERROR("Data from pipe (%i) too short, expected %zu bytes, got %zu bytes",
 		      ofd->fd, sizeof(ptr), len);
-
 		ptr = NULL;
-		if (write(ofd->fd, &ptr, sizeof(ptr)) < 0) {
-			ERROR("Failed registering thread: %s", fr_syserror(errno));
+
+		if (event_request_respond(ofd, txn) < 0) {
+		fatal_error:
+			DEBUG3("Event loop will exit");
+			do_exit = true;
 			return -1;
 		}
+
 		return -1;
 	}
 
@@ -325,16 +384,14 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		} else {
 			txn->response.type = SIGTRAN_RESPONSE_OK;
 		}
-		break;
 	}
+		break;
 
 	case SIGTRAN_REQUEST_THREAD_UNREGISTER:
 		DEBUG3("Deregistering req_pipe (%i).  Signalled by worker", ofd->fd);
 		txn->response.type = SIGTRAN_RESPONSE_OK;
-		if (write(ofd->fd, &ptr, sizeof(ptr)) < 0) {
-			ERROR("Failed informing event client of result: %s", fr_syserror(errno));
-			return -1;
-		}
+
+		if (event_request_respond(ofd, txn) < 0) goto fatal_error;
 		talloc_free(ofd);	/* Ordering is important */
 		return 0;
 
@@ -383,13 +440,11 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 
 	default:
 		rad_assert(0);
-		return -1;
+		goto fatal_error;
 	}
 
-	if (write(ofd->fd, &ptr, sizeof(ptr)) < 0) {
-		ERROR("Failed informing event client of result: %s", fr_syserror(errno));
-		return -1;
-	}
+	if (event_request_respond(ofd, txn) < 0) goto fatal_error;
+
 	return 0;
 }
 
