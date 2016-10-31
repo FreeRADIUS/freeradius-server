@@ -112,7 +112,14 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 }
 
 
-
+/** Push a pointer into the atomic queue
+ *
+ * @param[in] aq the queue
+ * @param[in] data the data to push
+ * @return
+ *	true on successful push
+ *	false on queue full
+ */
 bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 {
 	int64_t head;
@@ -168,6 +175,15 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 	return true;
 }
 
+
+/** Pop a pointer from the atomic queue
+ *
+ * @param[in] aq the queue
+ * @param[in] p_data where to write the data
+ * @return
+ *	true on successful pop
+ *	false on queue empty
+ */
 bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 {
 	int64_t tail, seq;
@@ -222,6 +238,9 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 /**  Dump an atomic queue.
  *
  *  Absolutely NOT thread-safe.
+ *
+ * @param[in] aq the queue
+ * @param[in] fp where the debugging information will be printed.
  */
 void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 {
