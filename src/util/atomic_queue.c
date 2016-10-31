@@ -73,7 +73,7 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	int64_t seq;
 	fr_atomic_queue_t *aq;
 
-	if (!size) return NULL;
+	if (size <= 0) return NULL;
 
 	/*
 	 *	Allocate a contiguous blob for the header and queue.
