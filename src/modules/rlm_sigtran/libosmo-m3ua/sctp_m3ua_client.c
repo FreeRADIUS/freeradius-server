@@ -33,6 +33,7 @@
 
 #include <inttypes.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 
 #define SCTP_PPID_M3UA 3
@@ -324,9 +325,11 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	LOGP(DINP, LOGL_NOTICE, "SCTP association established\n");
 
-	if (m3ua_setblocking(sctp) < 0) {
+	if (m3ua_setblocking(ofd->fd) < 0) {
+	error:
 		close(sctp);
-		return fail_link(link);
+		fail_link(link);
+		return -1;
 	}
 
 	link->queue.bfd.fd = ofd->fd;
@@ -337,8 +340,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	if (osmo_fd_register(&link->queue.bfd) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to register fd\n");
-		close(sctp);
-		return fail_link(link);
+		goto error;
 	}
 
 	/* reset route state */
