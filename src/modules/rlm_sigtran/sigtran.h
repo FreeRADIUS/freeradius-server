@@ -262,7 +262,7 @@ int	sigtran_event_exit(void);
 /*
  *	sccp.c
  */
-void	sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transaction_t *txn, struct osmo_fd *ofd);
+int	sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transaction_t *txn, struct osmo_fd *ofd);
 
 void	sigtran_sccp_incoming(struct mtp_link_set *set, struct msgb *msg, int sls);
 

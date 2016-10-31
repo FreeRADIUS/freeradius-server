@@ -87,6 +87,7 @@ struct mtp_m3ua_reg_req {
 	struct mtp_m3ua_client_link *link;	//!< Pointer back to the part link.
 };
 
+int mtp_m3ua_link_is_up(struct mtp_m3ua_client_link *link);
 struct mtp_m3ua_reg_req *mtp_m3ua_reg_req_add(struct mtp_m3ua_client_link *link);
 struct mtp_m3ua_client_link *mtp_m3ua_client_link_init(struct mtp_link *link);
 

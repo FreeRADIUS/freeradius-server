@@ -480,6 +480,11 @@ struct mtp_m3ua_client_link *mtp_m3ua_client_link_init(struct mtp_link *blnk)
 	return lnk;
 }
 
+int mtp_m3ua_link_is_up(struct mtp_m3ua_client_link *link)
+{
+	return link->asptm_active;
+}
+
 struct mtp_m3ua_reg_req *mtp_m3ua_reg_req_add(struct mtp_m3ua_client_link *link)
 {
 	struct mtp_m3ua_reg_req *route;

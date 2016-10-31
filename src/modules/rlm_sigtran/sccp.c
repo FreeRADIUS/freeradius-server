@@ -136,7 +136,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 
 	rad_assert(req->imsi);
 
-	if (!m3ua_client->asptm_active) {
+	if (mtp_m3ua_link_is_up(m3ua_client)) {
 		REDEBUG("Link not yet active, dropping the request");
 
 		return -1;
