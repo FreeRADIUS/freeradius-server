@@ -324,6 +324,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 		LOGP(DINP, LOGL_ERROR, "Failed getting socket error: %s (%i).\n", strerror(errno), errno);
 	error:
 		close(ofd->fd);
+		ofd->fd = -1;
 		fail_link(link);
 		return -1;
 	}
@@ -362,7 +363,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 static void m3ua_start(void *data)
 {
-	int sctp, ret;
+	int sctp, ret, on = 1;
 	struct mtp_m3ua_client_link *link = data;
 	struct sctp_event_subscribe events;
 
@@ -372,31 +373,36 @@ static void m3ua_start(void *data)
 		return fail_link(link);
 	}
 
+	if (setsockopt(sctp, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed setting reuseaddr: %s (%i).\n", strerror(errno), errno);
+	error:
+		close(sctp);
+		return fail_link(link);
+	}
+
 	memset(&events, 0, sizeof(events));
 	events.sctp_data_io_event = 1;
 	ret = setsockopt(sctp, SOL_SCTP, SCTP_EVENTS, &events, sizeof(events));
 	if (ret != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enable SCTP Events. Closing socket.\n");
-		close(sctp);
-		return fail_link(link);
+		goto error;
 	}
 
 	if (bind(sctp, (struct sockaddr *) &link->local, sizeof(link->local)) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed binding local side of SCTP association: %s (%i).\n", strerror(errno), errno);
-		close(sctp);
-		return fail_link(link);
+		goto error;
 	}
 
 	if (m3ua_setnonblocking(sctp) < 0) {
-		close(sctp);
-		return fail_link(link);
+		goto error;
 	}
+
+	LOGP(DINP, LOGL_NOTICE, "Initialising SCTP association\n");
 
 	ret = connect(sctp, (struct sockaddr *) &link->remote, sizeof(link->remote));
 	if ((ret != 0) && (errno != EINPROGRESS)) {
 		LOGP(DINP, LOGL_ERROR, "Failed creating SCTP association: %s (%i).\n", strerror(errno), errno);
-		close(sctp);
-		return fail_link(link);
+		goto error;
 	}
 
 	link->connect.fd = sctp;
@@ -406,8 +412,7 @@ static void m3ua_start(void *data)
 
 	if (osmo_fd_register(&link->connect) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to register fd\n");
-		close(sctp);
-		return fail_link(link);
+		goto error;
 	}
 }
 
