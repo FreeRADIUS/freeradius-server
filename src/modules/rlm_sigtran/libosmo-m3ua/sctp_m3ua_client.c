@@ -393,9 +393,7 @@ static void m3ua_start(void *data)
 		goto error;
 	}
 
-	if (m3ua_setnonblocking(sctp) < 0) {
-		goto error;
-	}
+	if (m3ua_setnonblocking(sctp) < 0) goto error;
 
 	LOGP(DINP, LOGL_NOTICE, "Initialising SCTP association\n");
 
@@ -407,7 +405,7 @@ static void m3ua_start(void *data)
 
 	link->connect.fd = sctp;
 	link->connect.data = link;
-	link->connect.when = BSC_FD_READ | BSC_FD_EXCEPT;
+	link->connect.when = BSC_FD_WRITE | BSC_FD_EXCEPT;
 	link->connect.cb = m3ua_sctp_assoc_complete;
 
 	if (osmo_fd_register(&link->connect) != 0) {
