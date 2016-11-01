@@ -331,8 +331,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	if (err != 0) {
 		LOGP(DINP, LOGL_ERROR, "SCTP association failed: %s (%i).\n", strerror(err), errno);
-		fail_link(link);
-		return -1;
+		goto error;
 	}
 
 	LOGP(DINP, LOGL_NOTICE, "SCTP association established\n");
