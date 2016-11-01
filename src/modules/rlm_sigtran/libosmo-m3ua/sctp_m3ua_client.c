@@ -393,7 +393,7 @@ static void m3ua_start(void *data)
 	}
 
 	ret = connect(sctp, (struct sockaddr *) &link->remote, sizeof(link->remote));
-	if ((ret != 0) && (ret != EINPROGRESS)) {
+	if ((ret != 0) && (errno != EINPROGRESS)) {
 		LOGP(DINP, LOGL_ERROR, "Failed creating SCTP association: %s (%i).\n", strerror(errno), errno);
 		close(sctp);
 		return fail_link(link);
