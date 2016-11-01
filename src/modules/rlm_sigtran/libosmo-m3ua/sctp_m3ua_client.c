@@ -319,7 +319,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	osmo_fd_unregister(ofd);	/* Remove our connect callback */
 
-	ret = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &err, &len);
+	ret = getsockopt(ofd->fd, SOL_SOCKET, SO_ERROR, &err, &len);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed getting socket error: %s (%i).\n", strerror(errno), errno);
 	error:
@@ -399,12 +399,12 @@ static void m3ua_start(void *data)
 		return fail_link(link);
 	}
 
-	link->queue.bfd.fd = sctp;
-	link->queue.bfd.data = link;
-	link->queue.bfd.when = BSC_FD_READ | BSC_FD_EXCEPT;
-	link->queue.read_cb = m3ua_sctp_assoc_complete;
+	link->connect.fd = sctp;
+	link->connect.data = link;
+	link->connect.when = BSC_FD_READ | BSC_FD_EXCEPT;
+	link->connect.cb = m3ua_sctp_assoc_complete;
 
-	if (osmo_fd_register(&link->queue.bfd) != 0) {
+	if (osmo_fd_register(&link->connect) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to register fd\n");
 		close(sctp);
 		return fail_link(link);
