@@ -693,10 +693,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			INFO("rlm_ldap: libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
 
-			for ( i = 0; info.ldapai_extensions[i] != NULL; i++) {
-				ldap_memfree(info.ldapai_extensions[i]);
+			if (info.ldapai_extensions != NULL ) {
+				for ( i = 0; info.ldapai_extensions[i] != NULL; i++) {
+					ldap_memfree(info.ldapai_extensions[i]);
+				}
+				ldap_memfree(info.ldapai_extensions);
 			}
-			ldap_memfree(info.ldapai_extensions);
 			ldap_memfree(info.ldapai_vendor_name);
 		} else {
 			DEBUG("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
