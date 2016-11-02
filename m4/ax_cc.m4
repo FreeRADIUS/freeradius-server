@@ -58,6 +58,31 @@ AC_DEFUN([AX_CC_STD_C11],[
   ])
 ])
 
+dnl #
+dnl #  Check if we have the choose expr builtin
+dnl #
+AC_DEFUN([AX_CC_HAVE_C11_GENERIC],
+[
+AC_CACHE_CHECK([for _Generic support in compiler], [ax_cv_cc_c11_generic],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE(
+      [
+        int main(int argc, char **argv) {
+          int foo = 1;
+          return _Generic(foo, int: 0, char: 1);
+        }
+      ])
+    ],
+    [ax_cv_cc_c11_generic=yes],
+    [ax_cv_cc_c11_generic=no]
+  )
+])
+if test "x$ax_cv_cc_c11_generic" = "xyes"; then
+  AC_DEFINE([HAVE_C11_GENERIC],1,[Define if the compiler supports the C11 _Generic construct])
+fi
+])
+
 AC_DEFUN([AX_CC_QUNUSED_ARGUMENTS_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Qunused-arguments"], [ax_cv_cc_qunused_arguments_flag],[
 
@@ -128,6 +153,107 @@ AC_DEFUN([AX_CC_PTHREAD_FLAG],[
 
     CFLAGS="$CFLAGS_SAVED"
   ])
+])
+
+dnl #
+dnl #  Check if we have the choose expr builtin
+dnl #
+AC_DEFUN([AX_CC_BUILTIN_CHOOSE_EXPR],
+[
+AC_CACHE_CHECK([for __builtin_choose_expr support in compiler], [ax_cv_cc_builtin_choose_expr],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE(
+      [
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return __builtin_choose_expr(0, 1, 0);
+        }
+      ])
+    ],
+    [ax_cv_cc_builtin_choose_expr=yes],
+    [ax_cv_cc_builtin_choose_expr=no]
+  )
+])
+if test "x$ax_cv_cc_builtin_choose_expr" = "xyes"; then
+  AC_DEFINE([HAVE_BUILTIN_CHOOSE_EXPR],1,[Define if the compiler supports __builtin_choose_expr])
+fi
+])
+
+dnl #
+dnl #  Check if we have the types compatible p builtin
+dnl #
+AC_DEFUN([AX_CC_BUILTIN_TYPES_COMPATIBLE_P],
+[
+AC_CACHE_CHECK([for __builtin_types_compatible_p support in compiler], [ax_cv_cc_builtin_types_compatible_p],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE(
+      [
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return !(__builtin_types_compatible_p(char *, char *));
+        }
+      ])
+    ],
+    [ax_cv_cc_builtin_types_compatible_p=yes],
+    [ax_cv_cc_builtin_types_compatible_p=no]
+  )
+])
+if test "x$ax_cv_cc_builtin_types_compatible_p" = "xyes"; then
+  AC_DEFINE([HAVE_BUILTIN_TYPES_COMPATIBLE_P],1,[Define if the compiler supports __builtin_types_compatible_p])
+fi
+])
+
+dnl #
+dnl #  Check if we have the bwsap64 builtin
+dnl #
+AC_DEFUN([AX_CC_HAVE_BUILTIN_BSWAP64],
+[
+AC_CACHE_CHECK([for __builtin_bswap64 support in compiler], [ax_cv_cc_builtin_bswap64],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE([
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return (__builtin_bswap64(0));
+        }
+      ])
+    ],
+    [ax_cv_cc_builtin_bswap64=yes],
+    [ax_cv_cc_builtin_bswap64=no]
+  )
+])
+if test "x$ax_cv_cc_builtin_bswap64" = "xyes"; then
+  AC_DEFINE([HAVE_BUILTIN_BSWAP_64],1,[Define if the compiler supports __builtin_bswap64])
+fi
+])
+
+dnl #
+dnl #  Check if we have __attribute__((__bounded__)) (usually only OpenBSD with GCC)
+dnl #
+AC_DEFUN([AX_CC_HAVE_BOUNDED_ATTRIBUTE],[
+AC_CACHE_CHECK([for __attribute__((__bounded__)) support in compiler], [ax_cv_cc_bounded_attribute],[
+  CFLAGS_SAVED=$CFLAGS
+  CFLAGS="$CFLAGS -Werror"
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE([
+        void test(char *buff) __attribute__ ((__bounded__ (__string__, 1, 1)));
+        int main(int argc, char **argv) {
+          if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+          return 0;
+        }
+      ])
+    ],
+    [ax_cv_cc_bounded_attribute=yes],
+    [ax_cv_cc_bounded_attribute=no]
+  )
+  CFLAGS="$CFLAGS_SAVED"
+])
+if test "x$ax_cv_cc_bounded_attribute" = "xyes"; then
+  AC_DEFINE(HAVE_ATTRIBUTE_BOUNDED, 1, [Define if your compiler supports the __bounded__ attribute (usually OpenBSD gcc).])
+fi
 ])
 
 dnl #
