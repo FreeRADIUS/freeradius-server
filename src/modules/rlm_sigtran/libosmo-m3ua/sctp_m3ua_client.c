@@ -382,7 +382,7 @@ static void m3ua_start(void *data)
 	memset(&events, 0, sizeof(events));
 	events.sctp_data_io_event = 1;
 	events.sctp_association_event = 1;
-	ret = setsockopt(sctp, SOL_SCTP, SCTP_EVENTS, &events, sizeof(events));
+	ret = setsockopt(sctp, IPPROTO_SCTP, SCTP_EVENTS, &events, sizeof(events));
 	if (ret != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enable SCTP Events. Closing socket.\n");
 		goto error;

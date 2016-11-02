@@ -26,7 +26,7 @@
 
 struct bsc_data;
 struct mtp_link;
-struct mtp_level_3_mng *mng;
+struct mtp_level_3_mng;
 struct rate_ctr_group;
 struct ss7_application;
 

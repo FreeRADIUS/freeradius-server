@@ -22,7 +22,15 @@
 #define isup_types_h
 
 #include <stdint.h>
+
+#ifdef __APPLE__
+#include <machine/endian.h>
+#define __BYTE_ORDER BYTE_ORDER
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#else
 #include <endian.h>
+#endif
 
 struct msgb;
 struct mtp_link_set;

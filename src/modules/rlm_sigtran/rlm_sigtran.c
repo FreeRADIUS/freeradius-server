@@ -48,8 +48,15 @@ RCSID("$Id$")
 
 #include "sigtran.h"
 #include <assert.h>
+#include <limits.h>
 
-static_assert(sizeof(void *) < PIPE_BUF, "PIPE_BUFF must be large enough to accommodate a pointer");
+#if !defined(PIPE_BUF) && defined(_POSIX_PIPE_BUF)
+#  define PIPE_BUF _POSIX_PIPE_BUF
+#endif
+
+#ifdef PIPE_BUF
+static_assert(sizeof(void *) < PIPE_BUF, "PIPE_BUF must be large enough to accommodate a pointer");
+#endif
 
 static uint32_t	sigtran_instances = 0;
 

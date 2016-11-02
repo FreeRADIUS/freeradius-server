@@ -26,8 +26,6 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
 
-#include <endian.h>
-
 static struct msgb *isup_status_alloc(int cic, int msg_type, uint8_t *extra, int range, int val)
 {
 	struct isup_msg_hdr *hdr;
@@ -100,7 +98,7 @@ int isup_parse_status(const uint8_t *data, uint8_t in_length)
 
 	if (in_length < 3) {
 		LOGP(DISUP, LOGL_ERROR, "This needs three bytes.\n");
-		return -1;	
+		return -1;
 	}
 
 	ptr = data[0];
