@@ -637,7 +637,6 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_sigtran_include_dir
-with_sigtran_lib_dir
 with_sigtran_dir
 '
       ac_precious_vars='build_alias
@@ -1256,8 +1255,6 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-sigtran-include-dir=DIR
                           Directory where osmocore and osmosccp may be found
-  --with-sigtran-lib-dir=DIR
-                          Directory where osmocore and osmosccp may be found
   --with-sigtran-dir=DIR  Base directory where osmocore and osmosccp are
                           installed
 
@@ -1798,23 +1795,6 @@ if test x$with_rlm_sigtran != xno; then
 # Check whether --with-sigtran-include-dir was given.
 if test "${with_sigtran_include_dir+set}" = set; then :
   withval=$with_sigtran_include_dir; case "$withval" in
-	    no)
-		as_fn_error $? "Need sigtran-include-dir" "$LINENO" 5
-		;;
-	    yes)
-		;;
-	    *)
-		sigtran_include_dir="$withval"
-		;;
-	esac
-fi
-
-
-        sigtran_lib_dir=
-
-# Check whether --with-sigtran-lib-dir was given.
-if test "${with_sigtran_lib_dir+set}" = set; then :
-  withval=$with_sigtran_lib_dir; case "$withval" in
 	    no)
 		as_fn_error $? "Need sigtran-lib-dir" "$LINENO" 5
 		;;
@@ -2636,7 +2616,20 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-    smart_try_dir="${sigtran_include_dir}"
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmocore include paths" >&5
+$as_echo_n "checking for pkg-config libosmocore include paths... " >&6; }
+if pkg-config --exists "libosmocore"; then
+	_pkgconfig_include_path=$(pkg-config --cflags-only-I libosmocore | sed -e 's/-I//g')
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${_pkgconfig_include_path}" >&5
+$as_echo "${_pkgconfig_include_path}" >&6; }
+	smart_try_dir="${_pkgconfig_include_path} "${sigtran_include_dir}""
+else
+	smart_try_dir=""${sigtran_include_dir}""
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
 
 
 
@@ -2869,6 +2862,20 @@ smart_prefix=
 $as_echo "$as_me: WARNING: libosmocomcore headers not found. Use --with-sigtran-include-dir=<path>." >&2;}
       fail="$fail osmocom/core/msgb.h"
     fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-sccp include paths" >&5
+$as_echo_n "checking for pkg-config libosmo-sccp include paths... " >&6; }
+if pkg-config --exists "libosmo-sccp"; then
+	_pkgconfig_include_path=$(pkg-config --cflags-only-I libosmo-sccp | sed -e 's/-I//g')
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${_pkgconfig_include_path}" >&5
+$as_echo "${_pkgconfig_include_path}" >&6; }
+	smart_try_dir="${_pkgconfig_include_path} "${sigtran_include_dir}""
+else
+	smart_try_dir=""${sigtran_include_dir}""
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
 
     old_cflags="$CFLAGS"
     CFLAGS="${CFLAGS} -include stdint.h -include osmocom/core/linuxlist.h"
@@ -3106,7 +3113,20 @@ $as_echo "$as_me: WARNING: libosmocom-sccp headers not found. Use --with-sigtran
     CFLAGS="$old_cflags"
 
 
-    smart_try_dir="$sigtran_lib_dir"
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmocore linker paths" >&5
+$as_echo_n "checking for pkg-config libosmocore linker paths... " >&6; }
+if pkg-config --exists "libosmocore"; then
+	_pkgconfig_lib_path="$(pkg-config --libs-only-L libosmocore | sed -e 's/-L//g')"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${_pkgconfig_lib_path}" >&5
+$as_echo "${_pkgconfig_lib_path}" >&6; }
+	smart_try_dir="${_pkgconfig_lib_path} "${sigtran_lib_dir}""
+else
+	smart_try_dir=""${sigtran_lib_dir}""
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
 
 
 sm_lib_safe=`echo "osmocore" | sed 'y%./+-%__p_%'`
@@ -3288,12 +3308,23 @@ $as_echo "$as_me: WARNING: libosmocore libraries not found. Use --with-sigtran-l
       fail="$fail libosmocore"
     fi
 
-    old_cflags="$CFLAGS"
-    CFLAGS="${CFLAGS} $(pkg-config --libs libosmo-sccp) $(pkg-config --libs talloc)"
-    NAMESCCP=$(pkg-config --libs-only-l libosmo-sccp | tr ' ' '\n' | sed -n '/sccp/ s/-l\([a-z]*\)/\1/ p')
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-sccp linker paths" >&5
+$as_echo_n "checking for pkg-config libosmo-sccp linker paths... " >&6; }
+if pkg-config --exists "libosmo-sccp"; then
+	_pkgconfig_lib_path="$(pkg-config --libs-only-L libosmo-sccp | sed -e 's/-L//g')"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${_pkgconfig_lib_path}" >&5
+$as_echo "${_pkgconfig_lib_path}" >&6; }
+	smart_try_dir="${_pkgconfig_lib_path} "${sigtran_lib_dir}""
+else
+	smart_try_dir=""${sigtran_lib_dir}""
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
 
 
-sm_lib_safe=`echo "$NAMESCCP" | sed 'y%./+-%__p_%'`
+
+sm_lib_safe=`echo "osmo-sccp" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "sccp_connection_connect" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
@@ -3304,9 +3335,9 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -l$NAMESCCP in $try" >&5
-$as_echo_n "checking for sccp_connection_connect in -l$NAMESCCP in $try... " >&6; }
-  LIBS="-l$NAMESCCP $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -losmo-sccp in $try" >&5
+$as_echo_n "checking for sccp_connection_connect in -losmo-sccp in $try... " >&6; }
+  LIBS="-losmo-sccp $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3321,7 +3352,7 @@ sccp_connection_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-l$NAMESCCP"
+		 smart_lib="-losmo-sccp"
 		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3339,9 +3370,9 @@ CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -l$NAMESCCP" >&5
-$as_echo_n "checking for sccp_connection_connect in -l$NAMESCCP... " >&6; }
-LIBS="-l$NAMESCCP $old_LIBS"
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -losmo-sccp" >&5
+$as_echo_n "checking for sccp_connection_connect in -losmo-sccp... " >&6; }
+LIBS="-losmo-sccp $old_LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char sccp_connection_connect();
@@ -3355,7 +3386,7 @@ sccp_connection_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-l$NAMESCCP"
+	        smart_lib="-losmo-sccp"
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -3373,7 +3404,7 @@ if test "x$smart_lib" = "x"; then
 
 if test "x$LOCATE" != "x"; then
 DIRS=
-file=lib$NAMESCCP${libltdl_cv_shlibext}
+file=libosmo-sccp${libltdl_cv_shlibext}
 
 for x in `${LOCATE} $file 2>/dev/null`; do
                     base=`echo $x | sed "s%/${file}%%"`
@@ -3400,7 +3431,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
 DIRS=
-file=lib$NAMESCCP.a
+file=libosmo-sccp.a
 
 for x in `${LOCATE} $file 2>/dev/null`; do
                     base=`echo $x | sed "s%/${file}%%"`
@@ -3425,9 +3456,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -l$NAMESCCP in $try" >&5
-$as_echo_n "checking for sccp_connection_connect in -l$NAMESCCP in $try... " >&6; }
-  LIBS="-l$NAMESCCP $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sccp_connection_connect in -losmo-sccp in $try" >&5
+$as_echo_n "checking for sccp_connection_connect in -losmo-sccp in $try... " >&6; }
+  LIBS="-losmo-sccp $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3442,7 +3473,7 @@ sccp_connection_connect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-l$NAMESCCP"
+		  smart_lib="-losmo-sccp"
 		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3471,15 +3502,24 @@ fi
 $as_echo "$as_me: WARNING: libsccp libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
       fail="$fail lib$NAMESCCP"
     fi
-    CFLAGS="$old_cflags"
-
-    old_cflags="$CFLAGS"
-    CFLAGS="${CFLAGS} $(pkg-config --libs libosmo-xua) $(pkg-config --libs talloc)"
-    NAMEXUA=$(pkg-config --libs-only-l libosmo-xua | tr ' ' '\n' | sed -n '/xua/ s/-l\([a-z]*\)/\1/ p')
-    NAMEXUA=${NAMEXUA:-xua}
 
 
-sm_lib_safe=`echo "$NAMEXUA" | sed 'y%./+-%__p_%'`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-xua linker paths" >&5
+$as_echo_n "checking for pkg-config libosmo-xua linker paths... " >&6; }
+if pkg-config --exists "libosmo-xua"; then
+	_pkgconfig_lib_path="$(pkg-config --libs-only-L libosmo-xua | sed -e 's/-L//g')"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${_pkgconfig_lib_path}" >&5
+$as_echo "${_pkgconfig_lib_path}" >&6; }
+	smart_try_dir="${_pkgconfig_lib_path} "${sigtran_lib_dir}""
+else
+	smart_try_dir=""${sigtran_lib_dir}""
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+sm_lib_safe=`echo "osmo-xua" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "xua_msg_alloc" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
@@ -3490,9 +3530,9 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -l$NAMEXUA in $try" >&5
-$as_echo_n "checking for xua_msg_alloc in -l$NAMEXUA in $try... " >&6; }
-  LIBS="-l$NAMEXUA $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -losmo-xua in $try" >&5
+$as_echo_n "checking for xua_msg_alloc in -losmo-xua in $try... " >&6; }
+  LIBS="-losmo-xua $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3507,7 +3547,7 @@ xua_msg_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-l$NAMEXUA"
+		 smart_lib="-losmo-xua"
 		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3525,9 +3565,9 @@ CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -l$NAMEXUA" >&5
-$as_echo_n "checking for xua_msg_alloc in -l$NAMEXUA... " >&6; }
-LIBS="-l$NAMEXUA $old_LIBS"
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -losmo-xua" >&5
+$as_echo_n "checking for xua_msg_alloc in -losmo-xua... " >&6; }
+LIBS="-losmo-xua $old_LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char xua_msg_alloc();
@@ -3541,7 +3581,7 @@ xua_msg_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-l$NAMEXUA"
+	        smart_lib="-losmo-xua"
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -3559,7 +3599,7 @@ if test "x$smart_lib" = "x"; then
 
 if test "x$LOCATE" != "x"; then
 DIRS=
-file=lib$NAMEXUA${libltdl_cv_shlibext}
+file=libosmo-xua${libltdl_cv_shlibext}
 
 for x in `${LOCATE} $file 2>/dev/null`; do
                     base=`echo $x | sed "s%/${file}%%"`
@@ -3586,7 +3626,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
 DIRS=
-file=lib$NAMEXUA.a
+file=libosmo-xua.a
 
 for x in `${LOCATE} $file 2>/dev/null`; do
                     base=`echo $x | sed "s%/${file}%%"`
@@ -3611,9 +3651,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -l$NAMEXUA in $try" >&5
-$as_echo_n "checking for xua_msg_alloc in -l$NAMEXUA in $try... " >&6; }
-  LIBS="-l$NAMEXUA $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for xua_msg_alloc in -losmo-xua in $try" >&5
+$as_echo_n "checking for xua_msg_alloc in -losmo-xua in $try... " >&6; }
+  LIBS="-losmo-xua $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3628,7 +3668,7 @@ xua_msg_alloc()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-l$NAMEXUA"
+		  smart_lib="-losmo-xua"
 		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3657,14 +3697,24 @@ fi
 $as_echo "$as_me: WARNING: libxua libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
       fail="$fail lib$NAMEXUA"
     fi
-    CFLAGS="$old_cflags"
-
-    old_cflags="$CFLAGS"
-    CFLAGS="${CFLAGS} $(pkg-config --libs libosmo-mtp) $(pkg-config --libs talloc)"
-    NAMEMTP=$(pkg-config --libs-only-l libosmo-mtp | tr ' ' '\n' | sed -n '/mtp/ s/-l\([a-z]*\)/\1/ p')
 
 
-sm_lib_safe=`echo "$NAMEMTP" | sed 'y%./+-%__p_%'`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for pkg-config libosmo-mtp linker paths" >&5
+$as_echo_n "checking for pkg-config libosmo-mtp linker paths... " >&6; }
+if pkg-config --exists "libosmo-mtp"; then
+	_pkgconfig_lib_path="$(pkg-config --libs-only-L libosmo-mtp | sed -e 's/-L//g')"
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${_pkgconfig_lib_path}" >&5
+$as_echo "${_pkgconfig_lib_path}" >&6; }
+	smart_try_dir="${_pkgconfig_lib_path} "${sigtran_lib_dir}""
+else
+	smart_try_dir=""${sigtran_lib_dir}""
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+sm_lib_safe=`echo "osmo-mtp" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "mtp_pcap_write_header" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
@@ -3675,9 +3725,9 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -l$NAMEMTP in $try" >&5
-$as_echo_n "checking for mtp_pcap_write_header in -l$NAMEMTP in $try... " >&6; }
-  LIBS="-l$NAMEMTP $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -losmo-mtp in $try" >&5
+$as_echo_n "checking for mtp_pcap_write_header in -losmo-mtp in $try... " >&6; }
+  LIBS="-losmo-mtp $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3692,7 +3742,7 @@ mtp_pcap_write_header()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-l$NAMEMTP"
+		 smart_lib="-losmo-mtp"
 		 smart_ldflags="-L$try -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3710,9 +3760,9 @@ CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -l$NAMEMTP" >&5
-$as_echo_n "checking for mtp_pcap_write_header in -l$NAMEMTP... " >&6; }
-LIBS="-l$NAMEMTP $old_LIBS"
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -losmo-mtp" >&5
+$as_echo_n "checking for mtp_pcap_write_header in -losmo-mtp... " >&6; }
+LIBS="-losmo-mtp $old_LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char mtp_pcap_write_header();
@@ -3726,7 +3776,7 @@ mtp_pcap_write_header()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-l$NAMEMTP"
+	        smart_lib="-losmo-mtp"
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -3744,7 +3794,7 @@ if test "x$smart_lib" = "x"; then
 
 if test "x$LOCATE" != "x"; then
 DIRS=
-file=lib$NAMEMTP${libltdl_cv_shlibext}
+file=libosmo-mtp${libltdl_cv_shlibext}
 
 for x in `${LOCATE} $file 2>/dev/null`; do
                     base=`echo $x | sed "s%/${file}%%"`
@@ -3771,7 +3821,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
 DIRS=
-file=lib$NAMEMTP.a
+file=libosmo-mtp.a
 
 for x in `${LOCATE} $file 2>/dev/null`; do
                     base=`echo $x | sed "s%/${file}%%"`
@@ -3796,9 +3846,9 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -l$NAMEMTP in $try" >&5
-$as_echo_n "checking for mtp_pcap_write_header in -l$NAMEMTP in $try... " >&6; }
-  LIBS="-l$NAMEMTP $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mtp_pcap_write_header in -losmo-mtp in $try" >&5
+$as_echo_n "checking for mtp_pcap_write_header in -losmo-mtp in $try... " >&6; }
+  LIBS="-losmo-mtp $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3813,7 +3863,7 @@ mtp_pcap_write_header()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-l$NAMEMTP"
+		  smart_lib="-losmo-mtp"
 		  smart_ldflags="-L$try -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -3842,7 +3892,6 @@ fi
 $as_echo "$as_me: WARNING: libmtp libraries not found. Use --with-sigtran-lib-dir=<path>." >&2;}
       fail="$fail lib$NAMEMTP"
     fi
-    CFLAGS="$old_cflags"
     targetname=rlm_sigtran
 else
     targetname=

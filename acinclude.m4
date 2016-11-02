@@ -104,6 +104,36 @@ eval "$1=\"\$$1 $DIRS\""
 ])
 
 
+dnl #
+dnl #  Auto-populate smart_try_dir for includes
+dnl #
+AC_DEFUN([FR_SMART_PKGCONFIG_INCLUDE], [
+AC_MSG_CHECKING([for pkg-config $1 include paths])
+if pkg-config --exists "$1"; then
+	_pkgconfig_include_path=$(pkg-config --cflags-only-I $1 | sed -e 's/-I//g')
+	AC_MSG_RESULT(${_pkgconfig_include_path})
+	smart_try_dir="${_pkgconfig_include_path} $2"
+else
+	smart_try_dir="$2"
+	AC_MSG_RESULT(no)
+fi
+])
+
+dnl #
+dnl #  Auto-populate smart_try_dir for libs
+dnl #
+AC_DEFUN([FR_SMART_PKGCONFIG_LIB], [
+AC_MSG_CHECKING([for pkg-config $1 linker paths])
+if pkg-config --exists "$1"; then
+	_pkgconfig_lib_path="$(pkg-config --libs-only-L $1 | sed -e 's/-L//g')"
+	AC_MSG_RESULT(${_pkgconfig_lib_path})
+	smart_try_dir="${_pkgconfig_lib_path} $2"
+else
+	smart_try_dir="$2"
+	AC_MSG_RESULT(no)
+fi
+])
+
 dnl #######################################################################
 dnl #
 dnl #  Look for a library in a number of places.
