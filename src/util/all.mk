@@ -1,16 +1,19 @@
 TARGET	:= libfreeradius-util.a
 
-SOURCES	:=	ring_buffer.c message.c atomic_queue.c queue.c
+SOURCES	:=	ring_buffer.c message.c atomic_queue.c queue.c time.c
 
 TGT_PREREQS	:= libfreeradius-radius.la
 
-${SRC_INCLUDE_DIR}/util/ring_buffer.h: src/include/util/ring_buffer.h
+#
+#  Install all of the headers, too.
+#  Each source file has it's own headers.
+#
+HEADERS :=	$(SOURCES:.c=.h)
 
-${SRC_INCLUDE_DIR}/util/message.h: src/include/util/message.h
+define ADD_UTIL_HEADER
+${SRC_INCLUDE_DIR}/util/${1}: src/include/util/${1}
 
-${SRC_INCLUDE_DIR}/util/atomic_queue.h: src/include/util/atomic_queue.h
+install.src.include: ${SRC_INCLUDE_DIR}/util/${1}
+endef
 
-${SRC_INCLUDE_DIR}/util/queue.h: src/include/util/queue.h
-
-install.src.include: ${SRC_INCLUDE_DIR}/util/ring_buffer.h ${SRC_INCLUDE_DIR}/util/message.h ${SRC_INCLUDE_DIR}/util/atomic_queue.h \
-		     ${SRC_INCLUDE_DIR}/util/queue.h
+$(foreach x,$(HEADERS),$(eval $(call ADD_UTIL_HEADER,$x)))
