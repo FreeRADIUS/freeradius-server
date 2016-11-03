@@ -142,6 +142,12 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 		return -1;
 	}
 
+	if (rbtree_num_elements(txn_tree) > UINT8_MAX) {
+		REDEBUG("Too many outstanding requests, dropping the request");
+
+		return -1;
+	}
+
 	switch (req->version) {
 	case 2:
 		RDEBUG4("Allocating buffer for MAP v2, %zu bytes", sizeof(tcap_map_raw_v2));
