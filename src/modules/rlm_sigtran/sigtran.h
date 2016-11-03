@@ -259,6 +259,8 @@ int 	sigtran_event_start(void);
 
 int	sigtran_event_exit(void);
 
+int	sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn);
+
 /*
  *	sccp.c
  */

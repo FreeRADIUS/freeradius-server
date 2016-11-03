@@ -272,7 +272,7 @@ static int event_link_down(sigtran_conn_t *conn)
  * @param[in] ofd to write response notification to.
  * @param[in] txn we're confirming.
  */
-static int event_request_respond(struct osmo_fd *ofd, sigtran_transaction_t *txn)
+int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 {
 	uint8_t buff[sizeof(void *)];
 	uint8_t *p = buff, *end = buff + sizeof(buff);
@@ -354,7 +354,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		      ofd->fd, sizeof(ptr), len);
 		ptr = NULL;
 
-		if (event_request_respond(ofd, NULL) < 0) {
+		if (sigtran_event_submit(ofd, NULL) < 0) {
 		fatal_error:
 			DEBUG3("Event loop will exit");
 			do_exit = true;
@@ -391,7 +391,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		DEBUG3("Deregistering req_pipe (%i).  Signalled by worker", ofd->fd);
 		txn->response.type = SIGTRAN_RESPONSE_OK;
 
-		if (event_request_respond(ofd, txn) < 0) goto fatal_error;
+		if (sigtran_event_submit(ofd, txn) < 0) goto fatal_error;
 		talloc_free(ofd);	/* Ordering is important */
 		return 0;
 
@@ -443,7 +443,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		goto fatal_error;
 	}
 
-	if (event_request_respond(ofd, txn) < 0) goto fatal_error;
+	if (sigtran_event_submit(ofd, txn) < 0) goto fatal_error;
 
 	return 0;
 }

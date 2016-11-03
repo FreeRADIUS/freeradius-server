@@ -85,7 +85,7 @@ static void sigtran_tcap_timeout(void *data)
 
 	txn->response.type = SIGTRAN_RESPONSE_FAIL;
 
-	if (write(txn->ctx.ofd->fd, &txn, sizeof(txn)) < 0) {
+	if (sigtran_event_submit(txn->ctx.ofd, txn) < 0) {
 		ERROR("Failed informing event client of result: %s", fr_syserror(errno));
 		return;
 	}
@@ -325,7 +325,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 		*last = vec;
 	}
 
-	if (write(ofd->fd, &txn, sizeof(txn)) < 0) {
+	if (sigtran_event_submit(ofd, txn) < 0) {
 		ERROR("Failed informing event client of result: %s", fr_syserror(errno));
 		return -1;
 	}
