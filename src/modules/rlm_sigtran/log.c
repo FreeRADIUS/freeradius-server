@@ -44,11 +44,8 @@ static void do_log(UNUSED struct log_target *target, unsigned int level, const c
 		break;
 
 	case LOGL_INFO:
-		INFO("%s", log);
-		break;
-
 	case LOGL_NOTICE:
-		WARN("%s", log);
+		INFO("%s", log);
 		break;
 
 	case LOGL_ERROR:
