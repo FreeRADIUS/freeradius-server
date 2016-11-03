@@ -49,6 +49,8 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	struct tm tminfo;
 	VALUE_PAIR *vp;
 
+	memset(&tminfo, 0, sizeof(tminfo));
+
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->da->type) {
