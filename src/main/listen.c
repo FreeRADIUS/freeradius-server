@@ -2920,7 +2920,7 @@ static const FR_NAME_NUMBER listen_compare[] = {
 	{ NULL, 0 },
 };
 
-static int _free_proto_handle(lt_dlhandle *handle)
+static int _free_proto_handle(fr_dlhandle *handle)
 {
 	dlclose(*handle);
 	return 0;
@@ -2933,7 +2933,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	rad_listen_t	*this;
 	CONF_PAIR	*cp;
 	char const	*value;
-	lt_dlhandle	handle;
+	fr_dlhandle	handle;
 	CONF_SECTION	*server_cs;
 	char		buffer[32];
 
@@ -2952,10 +2952,10 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	}
 
 	snprintf(buffer, sizeof(buffer), "proto_%s", value);
-	handle = lt_dlopenext(buffer);
+	handle = fr_dlopenext(buffer);
 	if (handle) {
 		fr_protocol_t	*proto;
-		lt_dlhandle	*marker;
+		fr_dlhandle	*marker;
 
 		proto = dlsym(handle, buffer);
 		if (!proto) {
@@ -2974,7 +2974,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		/*
 		 *	Ensure handle gets closed if config section gets freed
 		 */
-		marker = talloc(cs, lt_dlhandle);
+		marker = talloc(cs, fr_dlhandle);
 		*marker = handle;
 		talloc_set_destructor(marker, _free_proto_handle);
 

@@ -14,7 +14,15 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* update rlm_counter "man" page.  Fixes #1775.
 	* Remove erroneous assert.  Fixes #1778.
 	* fix mschap password change test.  Fixes #1792.
+	* Cleanup config file on data remove.  Fixes #1795.
 	* passwd module returns "notfound" if not found.
+	* Check for old OpenSSL, and don't build rlm_eap_fast
+	  if it necessary.  Fixes #1803
+	* Cleanup memory better after ldap version query.
+	  Patch from Aleksey Katargin.
+	* Rename lt_* functions to avoid linker issues with
+	  libtool.  Fixes #1277
+	* Many miscellaneous fixes and typos.
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
