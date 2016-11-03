@@ -178,14 +178,14 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 
 	txn->ctx.invoke_id++;						/* Needs to be two operations */
 	txn->ctx.invoke_id &= 0x7f;					/* Invoke ID is 7bits */
-	RDEBUG2("OTID %u Invoke ID %u", txn->ctx.otid, txn->ctx.invoke_id);
+	RDEBUG2("Sending request with OTID %u Invoke ID %u", txn->ctx.otid, txn->ctx.invoke_id);
 
 	if (!rbtree_insert(txn_tree, txn)) {
 		RERROR("Failed inserting transaction, maybe at txn limit?");
 
 		txn->response.type = SIGTRAN_RESPONSE_FAIL;
 
-		if (write(txn->ctx.ofd->fd, &txn, sizeof(txn)) < 0) {
+		if (sigtran_event_submit(ofd, txn) < 0) {
 			ERROR("Failed informing event client of result: %s", fr_syserror(errno));
 			return -1;
 		}
@@ -243,7 +243,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 
 	// find.ctx.invoke_id = *(msg->l3h + 0x34);
 	find.ctx.invoke_id = 1;				/* Always 1 for now... */
-	DEBUG2("DTID %u Invoke ID %u", find.ctx.otid, find.ctx.invoke_id);
+	DEBUG2("Received response with DTID %u Invoke ID %u", find.ctx.otid, find.ctx.invoke_id);
 
 	/*
 	 *	Lookup the transaction in our tree of outstanding transactions
