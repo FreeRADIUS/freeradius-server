@@ -189,6 +189,8 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	if (!rbtree_insert(txn_tree, txn)) {
 		RERROR("Failed inserting transaction, maybe at txn limit?");
 
+		msgb_free(msg);
+
 		txn->response.type = SIGTRAN_RESPONSE_FAIL;
 
 		if (sigtran_event_submit(ofd, txn) < 0) {
