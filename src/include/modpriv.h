@@ -18,12 +18,12 @@
 extern "C" {
 #endif
 
-typedef void *lt_dlhandle;
+typedef void *fr_dlhandle;
 
-lt_dlhandle lt_dlopenext(char const *name);
-void *lt_dlsym(lt_dlhandle handle, char const *symbol);
-int lt_dlclose(lt_dlhandle handle);
-char const *lt_dlerror(void);
+fr_dlhandle fr_dlopenext(char const *name);
+void *fr_dlsym(fr_dlhandle handle, char const *symbol);
+int fr_dlclose(fr_dlhandle handle);
+char const *fr_dlerror(void);
 
 /*
  *	Keep track of which modules we've loaded.
@@ -31,7 +31,7 @@ char const *lt_dlerror(void);
 typedef struct module_entry_t {
 	char			name[MAX_STRING_LEN];
 	module_t const		*module;
-	lt_dlhandle		handle;
+	fr_dlhandle		handle;
 } module_entry_t;
 
 typedef struct fr_module_hup_t fr_module_hup_t;

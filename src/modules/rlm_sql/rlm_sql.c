@@ -851,7 +851,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *
 	 *	We need this to check if the sql_fields callback is provided.
 	 */
-	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
+	inst->handle = fr_dlopenext(inst->config->sql_driver_name);
 	if (!inst->handle) {
 		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, fr_strerror());
 		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
