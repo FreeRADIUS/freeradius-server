@@ -201,6 +201,8 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	sccp_write(msg, &conn->conf->sccp_calling_sockaddr, &conn->conf->sccp_called_sockaddr,
 		   SCCP_PROTOCOL_RETURN_MESSAGE << 4 | SCCP_PROTOCOL_CLASS_0, ctx);	/* Class is connectionless (ish) */
 
+	msgb_free(msg);
+
 	txn->ctx.timer.data = txn;
 	txn->ctx.timer.cb = sigtran_tcap_timeout;
 
