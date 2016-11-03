@@ -43,7 +43,7 @@ typedef uint64_t fr_time_t;
 
 int fr_time_start(void);
 fr_time_t fr_time(void);
-void fr_time_to_timeval(struct timeval *tv, fr_time_t when);
+void fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);
 
 
 #ifdef __cplusplus

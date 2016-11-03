@@ -36,18 +36,18 @@ extern "C" {
 typedef struct fr_queue_t fr_queue_t;
 
 fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size);
-fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size);
+fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size) CC_HINT(nonnull);
 
-bool fr_queue_push(fr_queue_t *fq, void *data);
-bool fr_queue_pop(fr_queue_t *fq, void **p_data);
+bool fr_queue_push(fr_queue_t *fq, void *data) CC_HINT(nonnull);
+bool fr_queue_pop(fr_queue_t *fq, void **p_data) CC_HINT(nonnull);
 
-int fr_queue_size(fr_queue_t *fq);
-int fr_queue_num_elements(fr_queue_t *fq);
+int fr_queue_size(fr_queue_t *fq) CC_HINT(nonnull);
+int fr_queue_num_elements(fr_queue_t *fq) CC_HINT(nonnull);
 
-int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq);
+int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq) CC_HINT(nonnull);
 
 #ifndef NDEBUG
-void fr_queue_debug(fr_queue_t *fq, FILE *fp);
+void fr_queue_debug(fr_queue_t *fq, FILE *fp) CC_HINT(nonnull);
 #endif
 
 

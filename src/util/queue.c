@@ -85,8 +85,6 @@ bool fr_queue_push(fr_queue_t *fq, void *data)
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 
-	if (!data) return false;
-
 	if (fq->num >= fq->size) return false;
 
 	fq->entry[fq->head++] = data;
@@ -110,8 +108,6 @@ bool fr_queue_pop(fr_queue_t *fq, void **p_data)
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
-
-	if (!p_data) return false;
 
 	if (fq->num == 0) return false;
 
@@ -172,8 +168,6 @@ fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
-
-	if (!fq) return NULL;
 
 	if (size <= 0) return NULL;
 

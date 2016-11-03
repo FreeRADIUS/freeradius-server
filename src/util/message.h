@@ -59,10 +59,10 @@ int fr_message_done(fr_message_set_t *ms, fr_message_t *m) CC_HINT(nonnull);
 
 fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx) CC_HINT(nonnull);
 
-int fr_message_set_messages_used(fr_message_set_t *ms);
-void fr_message_set_gc(fr_message_set_t *ms);
+int fr_message_set_messages_used(fr_message_set_t *ms) CC_HINT(nonnull);
+void fr_message_set_gc(fr_message_set_t *ms) CC_HINT(nonnull);
 
-void fr_message_set_debug(fr_message_set_t *ms, FILE *fp);
+void fr_message_set_debug(fr_message_set_t *ms, FILE *fp) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
