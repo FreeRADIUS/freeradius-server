@@ -47,6 +47,8 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 	struct tm tminfo;
 	VALUE_PAIR *vp;
 
+	memset(&tminfo, 0, sizeof(tminfo));
+
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
 		return 0;
