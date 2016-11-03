@@ -7,11 +7,13 @@ attributes.h
 features.h
 freeradius.h
 freeradius.snmp.h
+
 missing.h
 radpaths.h
 rfc*.h
 tls.h
 vqp.h
+util
 
 # Build scripts
 build-radpaths-h
