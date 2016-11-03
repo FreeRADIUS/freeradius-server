@@ -16,6 +16,9 @@ tls.h
 vqp.h
 protocol/*
 
+# Symlinks
+util
+
 # Build scripts
 build-radpaths-h
 stamp-h
