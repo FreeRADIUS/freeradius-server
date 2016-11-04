@@ -61,7 +61,7 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	}
 
 	if (ptr != txn) {
-		ERROR("pipe (%i) response ptr (%p) does not match request ptr (%p)", fd, ptr, tx);
+		ERROR("pipe (%i) response ptr (%p) does not match request ptr (%p)", fd, ptr, txn);
 		return -1;
 	}
 
