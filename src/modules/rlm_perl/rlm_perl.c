@@ -701,14 +701,20 @@ static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char
 	STRLEN len;
 
 	if (!SvOK(sv)) {
-	fail:
-		REDEBUG("Failed to create pair &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
+		REDEBUG("Internal failure creating pair &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
 			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (val ? val : "undef"));
 		return;
 	}
+
 	val = SvPV(sv, len);
 	vp = fr_pair_make(ctx, vps, key, NULL, op);
-	if (!vp) goto fail;
+	if (!vp) {
+	fail:
+		REDEBUG("Failed to create pair - %s", fr_strerror());
+		REDEBUG("    &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
+			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (val ? val : "undef"));
+		return;
+	}
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
