@@ -85,6 +85,7 @@ struct fr_connection_pool_t {
 	uint32_t	start;			//!< Number of initial connections.
 	uint32_t	min;			//!< Minimum number of concurrent connections to keep open.
 	uint32_t	max;			//!< Maximum number of concurrent connections to allow.
+	uint32_t	max_pending;		//!< Max number of pending connections to allow.
 	uint32_t	spare;			//!< Number of spare connections to try.
 	uint32_t	retry_delay;		//!< seconds to delay re-open after a failed open.
 	uint32_t	cleanup_interval; 	//!< Initial timer for how often we sweep the pool
@@ -94,7 +95,7 @@ struct fr_connection_pool_t {
 						//!< on the delay.
 	uint64_t	max_uses;		//!< Maximum number of times a connection can be used
 						//!< before being closed.
-	uint32_t	max_pending;		//!< Max number of connections to open.
+	uint32_t	pending_window;		//!< Sliding window of pending connections.
 	uint32_t	lifetime;		//!< How long a connection can be open before being
 						//!< closed (irrespective of whether it's idle or not).
 	uint32_t	idle_timeout;		//!< How long a connection can be idle before
@@ -144,6 +145,7 @@ static const CONF_PARSER connection_config[] = {
 	{ FR_CONF_OFFSET("start", PW_TYPE_INTEGER, fr_connection_pool_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", PW_TYPE_INTEGER, fr_connection_pool_t, min), .dflt = "5" },
 	{ FR_CONF_OFFSET("max", PW_TYPE_INTEGER, fr_connection_pool_t, max), .dflt = "10" },
+	{ FR_CONF_OFFSET("max_pending", PW_TYPE_INTEGER, fr_connection_pool_t, max_pending), .dflt = "0" },
 	{ FR_CONF_OFFSET("spare", PW_TYPE_INTEGER, fr_connection_pool_t, spare), .dflt = "3" },
 	{ FR_CONF_OFFSET("uses", PW_TYPE_INTEGER64, fr_connection_pool_t, max_uses), .dflt = "0" },
 	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_connection_pool_t, lifetime), .dflt = "0" },
@@ -331,7 +333,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST *request, time_t now, bool in_use, bool unlock)
 {
 	uint64_t	number;
-	uint32_t	max_pending;
+	uint32_t	pending_window;
 	TALLOC_CTX	*ctx;
 
 	fr_connection_t	*this;
@@ -385,7 +387,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	/*
 	 *	We limit the rate of new connections after a failed attempt.
 	 */
-	if (pool->state.pending > pool->max_pending) {
+	if (pool->state.pending > pool->pending_window) {
 		pthread_mutex_unlock(&pool->mutex);
 		RATE_LIMIT(ROPTIONAL(RWARN, WARN, "Cannot open a new connection due to rate limit after failure"));
 
@@ -411,13 +413,13 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	pthread_mutex_unlock(&pool->mutex);
 
 	/*
-	 *	The true value for max_pending is the smaller of
-	 *	free connection slots, or pool->max_pending.
+	 *	The true value for pending_window is the smaller of
+	 *	free connection slots, or pool->pending_window.
 	 */
-	max_pending = (pool->max - pool->state.num);
-	if (pool->max_pending < max_pending) max_pending = pool->max_pending;
+	pending_window = (pool->max - pool->state.num);
+	if (pool->pending_window < pending_window) pending_window = pool->pending_window;
 	ROPTIONAL(RDEBUG, DEBUG, "Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
-		  number, pool->state.pending, max_pending);
+		  number, pool->state.pending, pending_window);
 
 	/*
 	 *	Allocate a new top level ctx for the create callback
@@ -438,7 +440,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 
 		pool->state.last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
-		pool->max_pending = 1;
+		pool->pending_window = 1;
 		pool->state.pending--;
 
 		/*
@@ -501,7 +503,10 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 *	We've successfully opened one more connection.  Allow
 	 *	more connections to open in parallel.
 	 */
-	if (pool->max_pending < pool->max) pool->max_pending++;
+	if ((pool->pending_window < pool->max) &&
+	    ((pool->max_pending == 0) || (pool->pending_window < pool->max_pending))) {
+		pool->pending_window++;
+	}
 
 	pool->state.last_spawned = time(NULL);
 	pool->delay_interval = pool->cleanup_interval;
@@ -1041,7 +1046,8 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 		cf_log_err_cs(cs, "Cannot set 'max' to zero");
 		goto error;
 	}
-	pool->max_pending = pool->max; /* can open all connections now */
+
+	pool->pending_window = (pool->max_pending > 0) ? pool->max_pending : pool->max;
 
 	if (pool->min > pool->max) {
 		cf_log_err_cs(cs, "Cannot set 'min' to more than 'max'");
