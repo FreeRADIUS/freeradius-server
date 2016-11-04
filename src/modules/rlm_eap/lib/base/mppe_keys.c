@@ -52,6 +52,17 @@ size_t SSL_get_server_random(const SSL *s, unsigned char *out, size_t outlen)
 	memcpy(out, s->s3->server_random, outlen);
 	return outlen;
 }
+
+static size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned char *out, size_t outlen);
+static size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned char *out, size_t outlen)
+{
+	if (!outlen) return s->master_key_length;
+
+	if (outlen > (size_t)s->master_key_length) outlen = (size_t)s->master_key_length;
+
+	memcpy(out, s->master_key, outlen);
+	return outlen;
+}
 #endif
 
 /*
@@ -271,8 +282,12 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
 	(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
-	PRF(s->session->master_key, s->session->master_key_length,
-	    seed, p - seed, buffer, scratch, size);
+	const SSL_SESSION *session = SSL_get_session(s);
+	const size_t master_key_len = SSL_SESSION_get_master_key(session, NULL, 0);
+	uint8_t *master_key = talloc_zero_size(NULL, master_key_len);
+	SSL_SESSION_get_master_key(session, master_key, master_key_len);
+	PRF(master_key, master_key_len, seed, p - seed, buffer, scratch, size);
+	talloc_free(master_key);
 }
 
 /*
