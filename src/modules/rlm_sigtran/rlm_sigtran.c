@@ -386,7 +386,7 @@ extern rad_module_t rlm_sigtran;
 rad_module_t rlm_sigtran = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sigtran",
-	.type		= RLM_TYPE_THREAD_UNSAFE,
+	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sigtran_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
