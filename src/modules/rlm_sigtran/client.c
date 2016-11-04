@@ -75,7 +75,7 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	return 0;
 }
 
-int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
+static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
 {
 	int ret;
 
@@ -114,7 +114,7 @@ int sigtran_client_thread_register(void)
 	txn->request.type = SIGTRAN_REQUEST_THREAD_REGISTER;
 	txn->request.data = &req_pipe[1];
 
-	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed registering thread");
 
 		close(req_pipe[0]);
@@ -138,7 +138,7 @@ int sigtran_client_thread_unregister(int req_pipe_fd)
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_THREAD_UNREGISTER;
 
-	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed unregistering thread");
 		talloc_free(txn);
 		return -1;
@@ -163,7 +163,7 @@ int sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const
 	txn->request.type = SIGTRAN_REQUEST_LINK_UP;
 	memcpy(&txn->request.data, &conn_conf, sizeof(txn->request.data));
 
-	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed bringing up link");
 		talloc_free(txn);
 		return -1;
@@ -187,7 +187,7 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	txn->request.type = SIGTRAN_REQUEST_LINK_DOWN;
 	memcpy(&txn->request.data, conn, sizeof(txn->request.data));
 
-	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed bringing up link");
 		talloc_free(txn);
 		return -1;
