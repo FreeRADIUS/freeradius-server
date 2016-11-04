@@ -53,7 +53,6 @@ size_t SSL_get_server_random(const SSL *s, unsigned char *out, size_t outlen)
 	return outlen;
 }
 
-static size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned char *out, size_t outlen);
 static size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned char *out, size_t outlen)
 {
 	if (!outlen) return s->master_key_length;
