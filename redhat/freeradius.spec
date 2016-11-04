@@ -719,6 +719,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/attr_filter/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/files
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/files/*
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/lua
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/lua/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/perl
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/perl/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/preprocess
