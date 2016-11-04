@@ -37,13 +37,6 @@
  */
 int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 {
-/**
- * $Id$
- * @file rlm_sigtran/client.c
- * @brief Talk to the event loop.
- */
-int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
-{
 	ssize_t		len;
 	void		*ptr;
 
