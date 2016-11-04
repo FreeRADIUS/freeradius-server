@@ -1530,6 +1530,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		p[1] = 'x';
 
 		fr_bin2hex(p + 2, data->octets, inlen);
+		p[2 + (inlen * 2)] = '\0';
 		break;
 
 	case PW_TYPE_DATE:
