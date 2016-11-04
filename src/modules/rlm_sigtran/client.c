@@ -203,6 +203,7 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
  * @param inst		of rlm_sigtran.
  * @param request	The current request.
  * @param conn		current connection.
+ * @param fd		file descriptor on which the transaction is done
  * @return
  *	- 0 on success.
  *	- -1 on failure.
