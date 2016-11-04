@@ -374,7 +374,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		struct osmo_fd	*req_ofd;
 		int		fd;
 
-		fd = *talloc_get_type_abort(txn->request.data, int);
+		fd = *((int *)txn->request.data);	/* Not talloced */
 
 		DEBUG3("Registering req_pipe (%i)", fd);
 
