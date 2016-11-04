@@ -1,0 +1,16 @@
+lua {
+	filename = ${modconfdir}/${.:instance}/example.lua
+
+	func_authenticate = authenticate
+	func_authorize = authorize
+	#func_preacct = preacct
+	#func_accounting = accounting
+	#func_checksimul = checksimul
+	#func_pre_proxy = pre_proxy
+	#func_post_proxy = post_proxy
+	#func_post_auth = post_auth
+	#func_recv_coa = recv_coa
+	#func_send_coa = send_coa
+	#func_xlat = xlat
+	#func_detach = detach
+}

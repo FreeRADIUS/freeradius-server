@@ -117,8 +117,8 @@ dnl #
 dnl #  Get system information
 dnl #
 AC_CANONICAL_SYSTEM
+AC_SUBST(TARGET_SYSTEM, "$target")
 
-dnl #
 dnl #  Check for GNU cc
 dnl #
 AC_PROG_CC
@@ -969,7 +969,7 @@ dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl #  getopt will be #included, but won't link.  <sigh>
 dnl #
-case "$host" in
+case "$target" in
   *-interix*)
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
     ;;
@@ -1836,7 +1836,7 @@ dnl #  We need #stdio.h to define NULL on FreeBSD (at least)
 dnl #
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
-case "$host" in
+case "$target" in
   *-freebsd*)
     dnl #
     dnl #  With FreeBSD, check if there's a prototype for gethostbyaddr_r.

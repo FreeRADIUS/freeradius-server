@@ -45,6 +45,7 @@ MAKE		= @MAKE@
 # flags set on the command line and the environmental variables
 MAKEFLAGS	= @FR_MAKEFLAGS@
 
+TARGET_SYSTEM	= @TARGET_SYSTEM@
 CC		= @CC@
 RANLIB		= @RANLIB@
 INCLUDE		= -I. -Isrc \
