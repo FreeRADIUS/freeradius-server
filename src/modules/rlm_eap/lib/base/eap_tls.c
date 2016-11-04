@@ -1080,8 +1080,6 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 	CONF_SECTION		*tls_cs;
 	fr_tls_conf_t		*tls_conf;
 
-	rad_assert(attr != NULL);
-
 	parent = cf_item_parent(cf_section_to_item(cs));
 
 	cp = cf_pair_find(cs, attr);
