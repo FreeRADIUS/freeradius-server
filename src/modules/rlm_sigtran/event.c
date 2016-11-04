@@ -364,7 +364,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		return -1;
 	}
 
-	DEBUG3("Read %zu bytes from pipe %i (%p)", ofd->fd, len, ptr);
+	DEBUG3("Read %zu bytes from pipe %i (%p)", len, ofd->fd, ptr);
 
 	txn = talloc_get_type_abort(ptr, sigtran_transaction_t);
 	txn->ctx.ofd = ofd;
