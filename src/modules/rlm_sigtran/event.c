@@ -277,7 +277,7 @@ int sigtran_event_submit(struct osmo_fd *ofd, sigtran_transaction_t *txn)
 	uint8_t buff[sizeof(void *)];
 	uint8_t *p = buff, *end = buff + sizeof(buff);
 
-	memcpy(&buff, &txn, sizeof(buff));
+	memcpy(buff, &txn, sizeof(buff));
 
 	for (p = buff; p < end; p++) {
 		ssize_t slen;

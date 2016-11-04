@@ -37,11 +37,18 @@
  */
 int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 {
+/**
+ * $Id$
+ * @file rlm_sigtran/client.c
+ * @brief Talk to the event loop.
+ */
+int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
+{
 	ssize_t		len;
 	void		*ptr;
 
 	if (write(fd, &txn, sizeof(txn)) < 0) {
-		ERROR("Failed writing to ctrl_pipe (%i): %s", fd, fr_syserror(errno));
+		ERROR("pipe (%i) write failed: %s", fd, fr_syserror(errno));
 		return -1;
 	}
 
@@ -50,18 +57,18 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	 */
 	len = read(fd, &ptr, sizeof(ptr));
 	if (len < 0) {
-		ERROR("Failed reading from ctrl_pipe (%i): %s", fd, fr_syserror(errno));
+		ERROR("pipe (%i) read failed : %s", fd, fr_syserror(errno));
 		return -1;
 	}
 
 	if (len != sizeof(ptr)) {
-		ERROR("Data from ctrl_pipe too short, expected %zu bytes, got %zu bytes",
-		      sizeof(ptr), len);
+		ERROR("pipe (%i) data too short, expected %zu bytes, got %zi bytes",
+		      fd, sizeof(ptr), len);
 		return -1;
 	}
 
 	if (ptr != txn) {
-		ERROR("ctrl_pipe response ptr does not match request");
+		ERROR("pipe (%i) response ptr (%p) does not match request ptr (%p)", fd, ptr, tx);
 		return -1;
 	}
 
@@ -81,7 +88,7 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
  */
 int sigtran_client_thread_register(void)
 {
-	int			req_pipe[2];
+	int			req_pipe[2] = { -1, -1 };
 	sigtran_transaction_t	*txn;
 
 	rad_assert(ctrl_pipe[0] >= 0);
@@ -95,12 +102,14 @@ int sigtran_client_thread_register(void)
 		return -1;
 	}
 
+	rad_assert((req_pipe[0] >= 0) && (req_pipe[1] >= 0));
+
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_THREAD_REGISTER;
 	txn->request.data = &req_pipe[1];
 
 	if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed registering thread");
+		ERROR("Failed registering thread's req_pipe (%i/%i)", req_pipe[0], req_pipe[1]);
 		close(req_pipe[0]);
 		close(req_pipe[1]);
 		talloc_free(txn);
@@ -123,7 +132,7 @@ int sigtran_client_thread_unregister(int req_pipe_fd)
 	txn->request.type = SIGTRAN_REQUEST_THREAD_UNREGISTER;
 
 	if ((sigtran_client_do_transaction(req_pipe_fd, txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed unregistering thread");
+		ERROR("Failed unregistering thread with req_pipe %i", req_pipe_fd);
 		talloc_free(txn);
 		return -1;
 	}
