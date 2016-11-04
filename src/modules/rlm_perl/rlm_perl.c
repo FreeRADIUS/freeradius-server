@@ -297,6 +297,44 @@ static XS(XS_radiusd_radlog)
 	XSRETURN_NO;
 }
 
+/*
+ *	This is a wraper for radius_axlat
+ *	Now users are able to get data that is accessible only via xlat
+ *	e.g. %{client:...}
+ *	Call syntax is radiusd::xlat(string), string will be handled the
+ *	same way it is described in EXPANSIONS section of man unlang
+ */
+static XS(XS_radiusd_xlat)
+{
+	dXSARGS;
+	char *in_str;
+	char *expanded;
+	ssize_t slen;
+	SV *rad_requestp_sv;
+	REQUEST *request;
+
+	if (items != 1) croak("Usage: radiusd::xlat(string)");
+
+	rad_requestp_sv = get_sv("RAD___REQUESTP", 0);
+	if (rad_requestp_sv == NULL) croak("Can not evalue xlat, RAD___REQUESTP is not set!");
+
+	request = INT2PTR(REQUEST *, SvIV(rad_requestp_sv));
+
+	in_str = (char *) SvPV(ST(0), PL_na);
+	expanded = NULL;
+	slen = radius_axlat(&expanded, request, in_str, NULL, NULL);
+
+	if (slen < 0) {
+		REDEBUG("Error parsing xlat '%s'", in_str);
+		XSRETURN_UNDEF;
+	}
+
+
+	XST_mPV(0, expanded);
+	talloc_free(expanded);
+	XSRETURN(1);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -305,6 +343,7 @@ static void xs_init(pTHX)
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 
 	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
+	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 }
 
 /*
@@ -782,6 +821,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
 #endif
+	SV		*rad_requestp_sv;
 
 	/*
 	 *	Radius has told us to call this function, but none
@@ -816,6 +856,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_config_hv = get_hv("RAD_CONFIG", 1);
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
+		rad_requestp_sv = get_sv("RAD___REQUESTP", 1);
 
 		perl_store_vps(request->packet, request, &request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
 		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
@@ -841,6 +882,15 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			hv_undef(rad_request_proxy_reply_hv);
 		}
 #endif
+
+		/*
+		 * Store pointer to request structure globally so xlat works
+		 * We mark it read-only for interpreter so end users will not be
+		 * in posession to change it and crash radiusd with bogus pointer
+		 */
+		SvREADONLY_off(rad_requestp_sv);
+		sv_setiv(rad_requestp_sv, PTR2IV(request));
+		SvREADONLY_on(rad_requestp_sv);
 
 		PUSHMARK(SP);
 		/*
