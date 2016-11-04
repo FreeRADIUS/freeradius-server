@@ -364,7 +364,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		return -1;
 	}
 
-	DEBUG3("Read %zu bytes from pipe (%p)", len, ptr);
+	DEBUG3("Read %zu bytes from pipe %i (%p)", ofd->fd, len, ptr);
 
 	txn = talloc_get_type_abort(ptr, sigtran_transaction_t);
 	txn->ctx.ofd = ofd;
@@ -374,7 +374,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 		struct osmo_fd	*req_ofd;
 		int		fd;
 
-		fd = *((int *)txn->request.data);
+		fd = *talloc_get_type_abort(txn->request.data, int);
 
 		DEBUG3("Registering req_pipe (%i)", fd);
 

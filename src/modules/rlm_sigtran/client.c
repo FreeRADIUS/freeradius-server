@@ -30,6 +30,8 @@
 #include <freeradius-devel/eap.sim.h>
 #include "sigtran.h"
 
+static pthread_mutex_t ctrl_pipe_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /**
  * $Id$
  * @file rlm_sigtran/client.c
@@ -41,7 +43,7 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	void		*ptr;
 
 	if (write(fd, &txn, sizeof(txn)) < 0) {
-		ERROR("pipe (%i) write failed: %s", fd, fr_syserror(errno));
+		ERROR("ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
 		return -1;
 	}
 
@@ -50,18 +52,18 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	 */
 	len = read(fd, &ptr, sizeof(ptr));
 	if (len < 0) {
-		ERROR("pipe (%i) read failed : %s", fd, fr_syserror(errno));
+		ERROR("ctrl_pipe (%i) read failed : %s", fd, fr_syserror(errno));
 		return -1;
 	}
 
 	if (len != sizeof(ptr)) {
-		ERROR("pipe (%i) data too short, expected %zu bytes, got %zi bytes",
+		ERROR("ctrl_pipe (%i) data too short, expected %zu bytes, got %zi bytes",
 		      fd, sizeof(ptr), len);
 		return -1;
 	}
 
 	if (ptr != txn) {
-		ERROR("pipe (%i) response ptr (%p) does not match request ptr (%p)", fd, ptr, txn);
+		ERROR("ctrl_pipe (%i) response ptr (%p) does not match request (%p)", fd, ptr, tx);
 		return -1;
 	}
 
@@ -71,6 +73,19 @@ int sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn)
 	talloc_get_type_abort(ptr, sigtran_transaction_t);
 
 	return 0;
+}
+
+int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
+{
+	int ret;
+
+	rad_assert(ctrl_pipe[0] >= 0);
+
+	pthread_mutex_lock(&ctrl_pipe_mutex);
+	ret = sigtran_client_do_transaction(ctrl_pipe[0], txn);
+	pthread_mutex_unlock(&ctrl_pipe_mutex);
+
+	return ret;
 }
 
 /** Called by a new thread to register a new req_pipe
@@ -83,8 +98,6 @@ int sigtran_client_thread_register(void)
 {
 	int			req_pipe[2] = { -1, -1 };
 	sigtran_transaction_t	*txn;
-
-	rad_assert(ctrl_pipe[0] >= 0);
 
 	/*
 	 *	Create the pipe on our side, and pass over
@@ -101,8 +114,9 @@ int sigtran_client_thread_register(void)
 	txn->request.type = SIGTRAN_REQUEST_THREAD_REGISTER;
 	txn->request.data = &req_pipe[1];
 
-	if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed registering thread's req_pipe (%i/%i)", req_pipe[0], req_pipe[1]);
+	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+		ERROR("Failed registering thread");
+
 		close(req_pipe[0]);
 		close(req_pipe[1]);
 		talloc_free(txn);
@@ -124,8 +138,8 @@ int sigtran_client_thread_unregister(int req_pipe_fd)
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_THREAD_UNREGISTER;
 
-	if ((sigtran_client_do_transaction(req_pipe_fd, txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
-		ERROR("Failed unregistering thread with req_pipe %i", req_pipe_fd);
+	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+		ERROR("Failed unregistering thread");
 		talloc_free(txn);
 		return -1;
 	}
@@ -149,7 +163,7 @@ int sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const
 	txn->request.type = SIGTRAN_REQUEST_LINK_UP;
 	memcpy(&txn->request.data, &conn_conf, sizeof(txn->request.data));
 
-	if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed bringing up link");
 		talloc_free(txn);
 		return -1;
@@ -173,7 +187,7 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	txn->request.type = SIGTRAN_REQUEST_LINK_DOWN;
 	memcpy(&txn->request.data, conn, sizeof(txn->request.data));
 
-	if ((sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
+	if ((sigtran_client_do_cntrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed bringing up link");
 		talloc_free(txn);
 		return -1;
