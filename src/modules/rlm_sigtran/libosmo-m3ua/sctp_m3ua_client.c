@@ -228,17 +228,21 @@ static int m3ua_conn_handle(struct mtp_m3ua_client_link *link,
 	return 0;
 }
 
-static int m3ua_conn_write(struct osmo_fd *fd, struct msgb *msg)
+static int m3ua_conn_write(struct osmo_fd *ofd, struct msgb *msg)
 {
 	size_t ret;
 	struct sctp_sndrcvinfo info;
 	memcpy(&info, msg->data, sizeof(info));
 
-	ret = sctp_send(fd->fd, msg->l2h, msgb_l2len(msg),
-			&info, 0);
+	LOGP(DINP, LOGL_DEBUG, "Writing %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
+	ret = sctp_send(ofd->fd, msg->l2h, msgb_l2len(msg), &info, 0);
 
-	if (ret != msgb_l2len(msg))
-		LOGP(DINP, LOGL_ERROR, "Failed to send %zu.\n", ret);
+	if (ret != msgb_l2len(msg)) {
+		LOGP(DINP, LOGL_ERROR, "Failed writing to fd %i (only wrote %zu bytes): %s.\n",
+		     ofd->fd, strerror(errno));
+	} else {
+		LOGP(DINP, LOGL_DEBUG, "Wrote %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
+	}
 
 	return 0;
 }
