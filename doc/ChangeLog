@@ -22,6 +22,8 @@ FreeRADIUS 3.1.0 Thu 26 Nov 2015 15:48:14 EDT urgency=medium
 	* TLV Attributes can now be nested to nearly any depth.
 	* radsnmp client which can listen on Net-SNMP "pass persist"
 	  and translate that into queries to the server.
+	* rlm_perl: radiusd::xlat to evaluate xlat string within
+	  perl script
 
 	Bug fixes
 	* Attribute names in unlang MUST be prefixed with &
