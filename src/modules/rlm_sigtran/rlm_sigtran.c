@@ -190,7 +190,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		fd = *fd_ptr;
 	}
 
-	return sigtran_client_map_send_auth_info(inst, request, inst->conn);
+	return sigtran_client_map_send_auth_info(inst, request, inst->conn, fd);
 }
 
 

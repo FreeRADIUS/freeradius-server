@@ -250,7 +250,8 @@ int	sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const
 
 int	sigtran_client_link_down(sigtran_conn_t const **conn);
 
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *request, sigtran_conn_t const *conn);
+rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *request,
+					      sigtran_conn_t const *conn, int fd);
 
 /*
  *	event.c

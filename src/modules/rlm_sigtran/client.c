@@ -207,13 +207,16 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
  *	- 0 on success.
  *	- -1 on failure.
  */
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *request, sigtran_conn_t const *conn)
+rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *request,
+					      sigtran_conn_t const *conn, int fd)
 {
 	rlm_rcode_t				rcode;
 	sigtran_transaction_t			*txn;
 	sigtran_map_send_auth_info_req_t	*req;
 	char					*imsi;
 	size_t					len;
+
+	rad_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
 
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_MAP_SEND_AUTH_INFO;
@@ -257,7 +260,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *requ
 		goto error;
 	}
 
-	if (sigtran_client_do_transaction(ctrl_pipe[0], txn) < 0) {
+	if (sigtran_client_do_transaction(fd, txn) < 0) {
 		ERROR("Failed sending MAP_SEND_AUTH_INFO request");
 		goto error;
 	}
