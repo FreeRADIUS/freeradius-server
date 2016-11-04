@@ -340,7 +340,7 @@ static int m3ua_sctp_assoc_complete(struct osmo_fd *ofd, unsigned int what)
 
 	LOGP(DINP, LOGL_NOTICE, "SCTP association established\n");
 
-	if (m3ua_setblocking(ofd->fd) < 0) goto error;
+//	if (m3ua_setblocking(ofd->fd) < 0) goto error;
 
 	link->queue.bfd.fd = ofd->fd;
 	link->queue.bfd.data = link;
