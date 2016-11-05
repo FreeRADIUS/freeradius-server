@@ -299,6 +299,7 @@ const char *fr_json_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char
 	TALLOC_CTX *local_ctx;
 	vp_cursor_t cursor;
 	struct json_object *obj, *vp_object, *values, *type_name;
+	fr_dict_enum_t const *dv;
 	VALUE_PAIR *vp;
 	const char *name_with_prefix;
 	const char *res = NULL;
@@ -332,6 +333,36 @@ const char *fr_json_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char
 		}
 
 		json_array_add_vp(local_ctx, values, vp);
+
+		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		if (dv) {
+			struct json_object *mapping, *mapped_value;
+
+			// Fetch mapping array
+			if (!json_object_object_get_ex(vp_object, "mapping", &mapping)) {
+				int i;
+
+				// Create if not found
+				MEM(mapping = json_object_new_array());
+				json_object_object_add(vp_object, "mapping", mapping);
+
+				// Add NULL values for every entry in values
+				for (i=0; i<json_object_array_length(values)-1; i++) {
+					json_object_array_add(mapping, NULL);
+				}
+			}
+
+			// Add to mapping array
+			MEM(mapped_value = json_object_new_string(dv->name));
+			json_object_array_add(mapping, mapped_value);
+		} else {
+			struct json_object *mapping;
+
+			// Add NULL value to mapping array, if exists
+			if (json_object_object_get_ex(vp_object, "mapping", &mapping)) {
+				json_object_array_add(mapping, NULL);
+			}
+		}
 	}
 	MEM(res = talloc_strdup(ctx, json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN)));
 
