@@ -169,7 +169,8 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		if (((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) && result) {
 			struct berval *srv_cred;
 
-			if (ldap_parse_sasl_bind_result(conn->handle, result, &srv_cred, 0) == 0) {
+			if ((ldap_parse_sasl_bind_result(conn->handle, result, &srv_cred, 0) == LDAP_SUCCESS) &&
+			    (srv_cred != NULL)) {
 				char *escaped;
 
 				escaped = fr_aprints(request, srv_cred->bv_val, srv_cred->bv_len, '\0');
