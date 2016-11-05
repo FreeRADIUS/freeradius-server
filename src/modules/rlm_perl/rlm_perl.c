@@ -126,7 +126,7 @@ static const CONF_PARSER module_config[] = {
  */
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
-_Thread_local REQUEST *rlm_perl_request;
+static _Thread_local REQUEST *rlm_perl_request;
 
 #ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
