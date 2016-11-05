@@ -556,6 +556,7 @@ char const *rlm_lua_version(lua_State *L)
  * Also check what was loaded there is a function and that it accepts the correct arguments.
  *
  * @param inst Current instance of rlm_lua
+ * @param L the lua state
  * @param name of function to check.
  * @returns 0 on success (function is present and correct), or -1 on failure.
  */
