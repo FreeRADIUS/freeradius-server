@@ -246,10 +246,10 @@ static int _lua_pair_get(lua_State *L)
 	int index;
 	REQUEST *request = rlm_lua_request;
 
-#ifndef NDEBUG
 	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
-#endif
-	rad_assert(da = lua_touserdata(L, lua_upvalueindex(1)));
+
+	da = lua_touserdata(L, lua_upvalueindex(1));
+	rad_assert(da);
 
 	/*
 	 *	@fixme Packet list should be light user data too at some point
@@ -293,10 +293,11 @@ static int _lua_pair_set(lua_State *L)
 	 *	This function should only be called as a closure.
 	 *	As we control the upvalues, we should assert on errors.
 	 */
-#ifndef NDEBUG
+
 	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
-#endif
-	rad_assert(da = lua_touserdata(L, lua_upvalueindex(1)));
+
+	da = lua_touserdata(L, lua_upvalueindex(1));
+	rad_assert(da);
 
 	delete = lua_isnil(L, -1);
 
@@ -348,14 +349,16 @@ static int _lua_pair_iterator(lua_State *L)
 	 *	This function should only be called as a closure.
 	 *	As we control the upvalues, we should assert on errors.
 	 */
-#ifndef NDEBUG
+
 	rad_assert(lua_isuserdata(L, lua_upvalueindex(1)));
-#endif
-	rad_assert(cursor = lua_touserdata(L, lua_upvalueindex(1)));
-#ifndef NDEBUG
+
+	cursor = lua_touserdata(L, lua_upvalueindex(1));
+	rad_assert(cursor);
+
 	rad_assert(lua_isuserdata(L, lua_upvalueindex(2)));
-#endif
-	rad_assert(da = lua_touserdata(L, lua_upvalueindex(2)));
+
+	da = lua_touserdata(L, lua_upvalueindex(2));
+	rad_assert(da);
 
 	/* Packet list should be light user data too at some point... */
 	vp = fr_cursor_next_by_da(cursor, da, TAG_ANY);
@@ -382,10 +385,11 @@ static int _lua_pair_iterator_init(lua_State *L)
 	 *	This function should only be called as a closure.
 	 *	As we control the upvalues, we should assert on errors.
 	 */
-#ifndef NDEBUG
 	rad_assert(lua_isuserdata(L, lua_upvalueindex(2)));
-#endif
-	rad_assert(da = lua_touserdata(L, lua_upvalueindex(2)));
+
+	da = lua_touserdata(L, lua_upvalueindex(2));
+	rad_assert(da);
+
 	memcpy(&up, &da, sizeof(up));
 
 	cursor = (vp_cursor_t*) lua_newuserdata(L, sizeof(vp_cursor_t));
@@ -406,10 +410,10 @@ static int _lua_list_iterator(lua_State *L)
 	vp_cursor_t *cursor;
 	VALUE_PAIR *vp;
 
-#ifndef NDEBUG
 	rad_assert(lua_isuserdata(L, lua_upvalueindex(1)));
-#endif
-	rad_assert(cursor = lua_touserdata(L, lua_upvalueindex(1)));
+
+	cursor = lua_touserdata(L, lua_upvalueindex(1));
+	rad_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
 	vp = fr_cursor_current(cursor);
