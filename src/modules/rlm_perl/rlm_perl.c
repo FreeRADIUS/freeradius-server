@@ -319,7 +319,7 @@ static XS(XS_radiusd_xlat)
 
 	in_str = (char *) SvPV(ST(0), PL_na);
 	expanded = NULL;
-	slen = radius_axlat(&expanded, request, in_str, NULL, NULL);
+	slen = radius_axlat(request, &expanded, request, in_str, NULL, NULL);
 
 	if (slen < 0) {
 		REDEBUG("Error parsing xlat '%s'", in_str);
