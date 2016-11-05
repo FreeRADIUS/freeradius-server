@@ -460,7 +460,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 	char const *attr;
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t *up;
-	REQUEST *request = fr_thread_local_get(rlm_lua_request);
+	REQUEST *request = rlm_lua_request;
 
 	attr = lua_tostring(L, -1);
 	if (!attr) {
@@ -767,7 +767,7 @@ int do_lua(rlm_lua_t *inst, REQUEST *request, char const *funcname)
 	vp_cursor_t cursor;
 	lua_State *L;
 
-	fr_thread_local_set(rlm_lua_request, request);
+	rlm_lua_request = request;
 
 	L = rlm_lua_get_interp(inst);
 	if (!L) {
