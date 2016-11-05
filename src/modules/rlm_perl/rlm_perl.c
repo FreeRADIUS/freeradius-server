@@ -126,6 +126,8 @@ static const CONF_PARSER module_config[] = {
  */
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
+static _Thread_local REQUEST *rlm_perl_request;
+
 #ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
 #  define dl_modules "DynaLoader::dl_modules"
@@ -296,6 +298,39 @@ static XS(XS_radiusd_radlog)
 	XSRETURN_NO;
 }
 
+/*
+ *	This is a wraper for radius_axlat
+ *	Now users are able to get data that is accessible only via xlat
+ *	e.g. %{client:...}
+ *	Call syntax is radiusd::xlat(string), string will be handled the
+ *	same way it is described in EXPANSIONS section of man unlang
+ */
+static XS(XS_radiusd_xlat)
+{
+	dXSARGS;
+	char *in_str;
+	char *expanded;
+	ssize_t slen;
+	REQUEST *request;
+
+	if (items != 1) croak("Usage: radiusd::xlat(string)");
+
+	request = rlm_perl_request;
+
+	in_str = (char *) SvPV(ST(0), PL_na);
+	expanded = NULL;
+	slen = radius_axlat(&expanded, request, in_str, NULL, NULL);
+
+	if (slen < 0) {
+		REDEBUG("Error parsing xlat '%s'", in_str);
+		XSRETURN_UNDEF;
+	}
+
+	XST_mPV(0, expanded);
+	talloc_free(expanded);
+	XSRETURN(1);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -304,6 +339,7 @@ static void xs_init(pTHX)
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 
 	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
+	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 }
 
 /*
@@ -858,6 +894,11 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			hv_undef(rad_request_proxy_reply_hv);
 		}
 #endif
+
+		/*
+		 * Store pointer to request structure globally so radiusd::xlat works
+		 */
+		rlm_perl_request = request;
 
 		PUSHMARK(SP);
 		/*
