@@ -673,7 +673,7 @@ error:
 
 /** Resolve a path string to a field value in Lua
  *
- * Parses a string in the format <field>[.<field>], adding all tables
+ * Parses a string in the format FIELD1 or FIELD1.FIELD2, adding all tables
  * it traverses to the stack.
  *
  * All paths are assumed to start at a global, so the first field
