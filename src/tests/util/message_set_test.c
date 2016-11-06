@@ -39,9 +39,15 @@ RCSID("$Id$")
 #define ARRAY_SIZE (4 * ALLOC_SIZE)
 #define MY_ARRAY_SIZE (16 * ARRAY_SIZE)
 
+typedef struct fr_test_t {
+	fr_message_t	m;
+	int		foo;
+	int		bar;
+} fr_test_t;
+
 static size_t		used = 0;
 static size_t		array[MY_ARRAY_SIZE];
-static fr_message_t	*messages[MY_ARRAY_SIZE];
+static fr_test_t	*messages[MY_ARRAY_SIZE];
 static int		my_alloc_size = ALLOC_SIZE;
 
 static int		debug_lvl = 0;
@@ -83,8 +89,8 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 		m = fr_message_reserve(ms, reserve_size);
 		rad_assert(m != NULL);
 
-		messages[index] = fr_message_alloc(ms, m, hash);
-		rad_assert(messages[index] == m);
+		messages[index] = (fr_test_t *) fr_message_alloc(ms, m, hash);
+		rad_assert(messages[index] == (void *) m);
 
 		if (touch_memory) {
 			size_t j;
@@ -99,7 +105,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
-		rad_assert(messages[index]->status == FR_MESSAGE_USED);
+		rad_assert(m->status == FR_MESSAGE_USED);
 
 		used += hash;
 //		rad_assert(fr_ring_buffer_used(rb) == used);
@@ -119,12 +125,15 @@ static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start
 	for (i = 0; i < my_alloc_size; i++) {
 		int index;
 		int rcode;
+		fr_message_t *m;
 
 		index = (*start + i) & (MY_ARRAY_SIZE - 1);
 
-		rad_assert(messages[index]->status == FR_MESSAGE_USED);
+		m = &messages[index]->m;
 
-		rcode = fr_message_done(ms, messages[index]);
+		rad_assert(m->status == FR_MESSAGE_USED);
+
+		rcode = fr_message_done(ms, m);
 #ifndef NDEBUG
 		rad_assert(rcode == 0);
 #else
