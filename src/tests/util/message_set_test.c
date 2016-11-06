@@ -99,7 +99,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
-		rad_assert(messages[index]->type == FR_MESSAGE_USED);
+		rad_assert(messages[index]->status == FR_MESSAGE_USED);
 
 		used += hash;
 //		rad_assert(fr_ring_buffer_used(rb) == used);
@@ -122,7 +122,7 @@ static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start
 
 		index = (*start + i) & (MY_ARRAY_SIZE - 1);
 
-		rad_assert(messages[index]->type == FR_MESSAGE_USED);
+		rad_assert(messages[index]->status == FR_MESSAGE_USED);
 
 		rcode = fr_message_done(ms, messages[index]);
 #ifndef NDEBUG

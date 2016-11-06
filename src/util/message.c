@@ -210,15 +210,15 @@ int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
-	rad_assert(m->type != FR_MESSAGE_FREE);
-	rad_assert(m->type != FR_MESSAGE_DONE);
+	rad_assert(m->status != FR_MESSAGE_FREE);
+	rad_assert(m->status != FR_MESSAGE_DONE);
 
 	/*
 	 *	Mark a message as freed.  The originator will take
 	 *	care of cleaning it up.
 	 */
-	if (m->type == FR_MESSAGE_USED) {
-		m->type = FR_MESSAGE_DONE;
+	if (m->status == FR_MESSAGE_USED) {
+		m->status = FR_MESSAGE_DONE;
 		return 0;
 	}
 
@@ -226,7 +226,7 @@ int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
 	 *	This message was localized, so we can free it via
 	 *	talloc.
 	 */
-	if (m->type == FR_MESSAGE_LOCALIZED) {
+	if (m->status == FR_MESSAGE_LOCALIZED) {
 		talloc_free(m);
 		return 0;
 	}
@@ -267,7 +267,7 @@ fr_message_t *fr_message_localize(DBG_UNUSED fr_message_set_t *ms, fr_message_t 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
-	if (m->type != FR_MESSAGE_USED) {
+	if (m->status != FR_MESSAGE_USED) {
 		return NULL;
 	}
 
@@ -282,13 +282,13 @@ fr_message_t *fr_message_localize(DBG_UNUSED fr_message_set_t *ms, fr_message_t 
 		}
 	}
 
-	l->type = FR_MESSAGE_LOCALIZED;
+	l->status = FR_MESSAGE_LOCALIZED;
 
 	/*
 	 *	After this change, "m" should not be used for
 	 *	anything.
 	 */
-	m->type = FR_MESSAGE_DONE;
+	m->status = FR_MESSAGE_DONE;
 
 	/*
 	 *	Now clean up the other fields of the newly localized
@@ -348,16 +348,16 @@ recheck:
 	 *	need to delete them.
 	 */
 	for (i = mr->data_start; i < mr->data_end; i++) {
-		rad_assert(mr->messages[i].type != FR_MESSAGE_FREE);
+		rad_assert(mr->messages[i].status != FR_MESSAGE_FREE);
 
-		if (mr->messages[i].type != FR_MESSAGE_DONE) {
+		if (mr->messages[i].status != FR_MESSAGE_DONE) {
 			max_to_clean = messages_cleaned;
 			break;
 		}
 
 		mr->data_start++;
 		messages_cleaned++;
-		mr->messages[i].type = FR_MESSAGE_FREE;
+		mr->messages[i].status = FR_MESSAGE_FREE;
 		ms->freed++;
 
 		if (mr->messages[i].rb) {
@@ -693,7 +693,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 		mr->write_offset++;
 
 		memset(m, 0, sizeof(*m));
-		m->type = FR_MESSAGE_USED;
+		m->status = FR_MESSAGE_USED;
 		return m;
 	}
 
@@ -732,7 +732,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 	}
 
 	memset(m, 0, sizeof(*m));
-	m->type = FR_MESSAGE_USED;
+	m->status = FR_MESSAGE_USED;
 	return m;
 }
 
@@ -989,7 +989,7 @@ cleanup:
 	 *	allocated the message.
 	 */
 	m->rb = NULL;
-	m->type = FR_MESSAGE_FREE;
+	m->status = FR_MESSAGE_FREE;
 
 	mr->write_offset--;
 	ms->allocated--;
@@ -1027,7 +1027,7 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 		if (!m) return NULL;
 	}
 
-	rad_assert(m->type == FR_MESSAGE_USED);
+	rad_assert(m->status == FR_MESSAGE_USED);
 	rad_assert(m->rb != NULL);
 	rad_assert(m->data != NULL);
 	rad_assert(m->data_size == 0);
@@ -1089,7 +1089,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 		if (!m) return NULL;
 	}
 
-	rad_assert(m->type == FR_MESSAGE_USED);
+	rad_assert(m->status == FR_MESSAGE_USED);
 	rad_assert(m->rb != NULL);
 	rad_assert(m->data != NULL);
 	rad_assert(m->data_size == 0);

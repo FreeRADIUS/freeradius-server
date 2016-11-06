@@ -34,15 +34,15 @@ extern "C" {
 
 typedef struct fr_message_set_t fr_message_set_t;
 
-typedef enum fr_message_type_t {
+typedef enum fr_message_status_t {
 	FR_MESSAGE_FREE = 0,
 	FR_MESSAGE_USED,
 	FR_MESSAGE_LOCALIZED,
 	FR_MESSAGE_DONE
-} fr_message_type_t;
+} fr_message_status_t;
 
 typedef struct fr_message_t {
-	int	type;
+	fr_message_status_t	status;		//!< free, used, done, etc.
 
 	fr_ring_buffer_t	*rb;		//!< pointer to the ring buffer
 	uint8_t			*data;		//!< pointer to the data in the ring buffer
