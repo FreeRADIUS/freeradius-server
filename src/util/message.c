@@ -48,8 +48,9 @@ RCSID("$Id$")
  *  messages.
  */
 typedef struct fr_message_ring_t {
-	fr_message_t		*messages;	//!< array of messages
+	uint8_t			*messages;	//!< array of messages
 	int			size;		//!< size of the array
+	size_t			message_size;	//!< size of each message, including fr_message_t
 
 	int			data_start;	//!< start of used portion of the array
 	int			data_end;	//!< end of the used portion of the array
@@ -59,6 +60,11 @@ typedef struct fr_message_ring_t {
 } fr_message_ring_t;
 
 #define M_ARRAY_SIZE (16)
+
+/**
+ *  Get a fr_message_t pointer from an array index.
+ */
+#define MR_ARRAY(_x) (fr_message_t *)(mr->messages + (_x * mr->message_size))
 
 /** A Message set, composed of message headers and ring buffer data.
  *
@@ -111,6 +117,8 @@ struct fr_message_set_t {
 	int			m_current;	//!< current used message array entry
 	int			m_max;		//!< max used message array entry
 
+	size_t			message_size;	//!< size of the callers message, including fr_message_t
+
 	int			m_cleaned;	//!< where we last cleaned
 
 	int			rb_current;	//!< current used ring buffer entry
@@ -126,21 +134,43 @@ struct fr_message_set_t {
 	fr_ring_buffer_t	*rb_array[M_ARRAY_SIZE]; //!< array of ring buffers
 };
 
-static fr_message_ring_t *fr_message_ring_create(TALLOC_CTX *ctx, int num_messages)
+
+/** Create a new message ring.
+ *
+ * @param[in] ctx the talloc ctx
+ * @param[in] num_messages to allow in the ring
+ * @param[in] message_size of each message, including fr_message_t
+ * @return
+ *	- NULL on error
+ *	- fr_message_ring_t * on success
+ */
+static fr_message_ring_t *fr_message_ring_create(TALLOC_CTX *ctx, int num_messages, size_t message_size)
 {
+	int i;
 	fr_message_ring_t *mr;
 
 	mr = talloc_zero(ctx, fr_message_ring_t);
 	if (!mr) return NULL;
 
 	MPRINT("MEMORY RING ALLOC %d\n", num_messages);
-	mr->messages = talloc_zero_array(mr, fr_message_t, num_messages);
+
+	mr->messages = talloc_size(mr, num_messages * message_size);
 	if (!mr->messages) {
 		talloc_free(mr);
 		return NULL;
 	}
 
+	talloc_set_type(mr->messages, fr_message_t);
+
 	mr->size = num_messages;
+	mr->message_size = message_size;
+	for (i = 0; i < num_messages; i++) {
+		fr_message_t *m;
+
+		m = MR_ARRAY(i);
+
+		m->status = FR_MESSAGE_FREE;
+	}
 
 	return mr;
 }
@@ -151,12 +181,13 @@ static fr_message_ring_t *fr_message_ring_create(TALLOC_CTX *ctx, int num_messag
  *
  * @param[in] ctx the context for talloc
  * @param[in] num_messages size of the initial message array.  MUST be a power of 2.
+ * @param[in] message_size the size of each message, INCLUDING fr_message_t, which MUST be at the start of the struct
  * @param[in] ring_buffer_size of the ring buffer.  MUST be a power of 2.
  * @return
  *	- NULL on error
  *	- newly allocated fr_message_set_t on success
  */
-fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_t ring_buffer_size)
+fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_t message_size, size_t ring_buffer_size)
 {
 	fr_message_set_t *ms;
 
@@ -167,6 +198,10 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 
 	if ((num_messages & (num_messages - 1)) != 0) return NULL;
 
+	if (message_size < sizeof(fr_message_t)) return NULL;
+
+	if (message_size > 1024) return NULL;
+
 	if (ring_buffer_size < 1024) return NULL;
 
 	if ((ring_buffer_size & (ring_buffer_size - 1)) != 0) return NULL;
@@ -174,7 +209,9 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	ms = talloc_zero(ctx, fr_message_set_t);
 	if (!ms) return NULL;
 
-	ms->m_array[0] = fr_message_ring_create(ms, num_messages);
+	ms->message_size = message_size;
+
+	ms->m_array[0] = fr_message_ring_create(ms, num_messages, message_size);
 	if (!ms->m_array[0]) {
 		talloc_free(ms);
 		return NULL;
@@ -259,7 +296,7 @@ int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
  *	- NULL on allocation errror
  *	- a newly localized message
  */
-fr_message_t *fr_message_localize(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
+fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
 {
 	fr_message_t *l;
 
@@ -271,7 +308,7 @@ fr_message_t *fr_message_localize(DBG_UNUSED fr_message_set_t *ms, fr_message_t 
 		return NULL;
 	}
 
-	l = talloc_memdup(ctx, m, sizeof(*m));
+	l = talloc_memdup(ctx, m, ms->message_size);
 	if (!l) return NULL;
 
 	if (l->data_size) {
@@ -348,23 +385,26 @@ recheck:
 	 *	need to delete them.
 	 */
 	for (i = mr->data_start; i < mr->data_end; i++) {
-		rad_assert(mr->messages[i].status != FR_MESSAGE_FREE);
+		fr_message_t *m;
 
-		if (mr->messages[i].status != FR_MESSAGE_DONE) {
+		m = MR_ARRAY(i);
+
+		rad_assert(m->status != FR_MESSAGE_FREE);
+
+		if (m->status != FR_MESSAGE_DONE) {
 			max_to_clean = messages_cleaned;
 			break;
 		}
 
 		mr->data_start++;
 		messages_cleaned++;
-		mr->messages[i].status = FR_MESSAGE_FREE;
+		m->status = FR_MESSAGE_FREE;
 		ms->freed++;
 
-		if (mr->messages[i].rb) {
-			(void) fr_ring_buffer_free(mr->messages[i].rb,
-						   mr->messages[i].rb_size);
+		if (m->rb) {
+			(void) fr_ring_buffer_free(m->rb, m->rb_size);
 #ifndef NDEBUG
-			memset(&mr->messages[i], 0, sizeof(mr->messages[i]));
+			memset(m, 0, ms->message_size);
 #endif
 		}
 		if (messages_cleaned >= max_to_clean) break;
@@ -689,7 +729,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 	 *	Grab an entry and continue.
 	 */
 	if (mr->write_offset < mr->data_start) {
-		m = &mr->messages[mr->write_offset];
+		m = MR_ARRAY(mr->write_offset);
 		mr->write_offset++;
 
 		memset(m, 0, sizeof(*m));
@@ -715,7 +755,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 	rad_assert(mr->write_offset == mr->data_end);
 	rad_assert(mr->data_end < mr->size);
 
-	m = &mr->messages[mr->write_offset];
+	m = MR_ARRAY(mr->write_offset);
 	mr->write_offset++;
 	mr->data_end++;
 
@@ -845,7 +885,7 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	 *	Allocate another message ring, double the size
 	 *	of the previous maximum.
 	 */
-	mr = fr_message_ring_create(ms, ms->m_array[ms->m_max]->size * 2);
+	mr = fr_message_ring_create(ms, ms->m_array[ms->m_max]->size * 2, ms->message_size);
 	if (!mr) return NULL;
 
 	/*

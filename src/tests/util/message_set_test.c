@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	ms = fr_message_set_create(autofree, ARRAY_SIZE, ARRAY_SIZE * 1024);
+	ms = fr_message_set_create(autofree, ARRAY_SIZE, sizeof(fr_message_t), ARRAY_SIZE * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
 		exit(1);
