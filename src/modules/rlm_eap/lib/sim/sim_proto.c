@@ -194,13 +194,13 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	MEM(buff = talloc_array(ctx, uint8_t, attr_len + block_size));
 
 	if (!EVP_DecryptUpdate(evp_ctx, buff, (int *)&len, data, data_len)) {
-		tls_strerror_printf(true, "%s: Failed decrypting attribute");
+		tls_strerror_printf(true, "%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	used = len;
 
 	if (!EVP_DecryptFinal_ex(evp_ctx, buff + used, (int *)&len)) {
-		tls_strerror_printf(true, "%s: Failed decrypting attribute");
+		tls_strerror_printf(true, "%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	used += len;
