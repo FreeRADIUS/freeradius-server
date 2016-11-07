@@ -41,10 +41,36 @@ extern "C" {
  */
 typedef uint64_t fr_time_t;
 
+/**
+ *  A structure to track the time spent processing a request.
+ *
+ *  The same structure is used by threads to track when they are
+ *  running / waiting.  The functions modifying fr_time_tracking_t all
+ *  take an explicit "when" parameter.  This parameter allows the
+ *  thread to update a requests tracking structure, and then use that
+ *  same fr_time_t to update the threads tracking structure.
+ *
+ *  While fr_time() is fast, it is also called very often.  We should
+ *  therefore be careful to call it only when necessary.
+ */
+typedef struct fr_time_tracking_t {
+	fr_time_t	when;			//!< last time we changed a field
+	fr_time_t	start;			//!< time this request started being processed
+	fr_time_t	end;			//!< when we stopped processing this request
+	fr_time_t	yielded;		//!< time this request yielded
+	fr_time_t	resumed;		//!< time this request last resumed;
+	fr_time_t	running;		//!< total time spent running
+	fr_time_t	waiting;		//!< total time spent waiting
+} fr_time_tracking_t;
+
 int fr_time_start(void);
 fr_time_t fr_time(void);
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);
 
+void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

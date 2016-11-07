@@ -148,3 +148,56 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
 	tv->tv_sec += tv->tv_usec / USEC;
 	tv->tv_usec = tv->tv_usec % USEC;
 }
+
+
+/** Start time tracking for a request.
+ *
+ * @param[in] tt the time tracking structure.
+ * @param[in] when the event happened
+ */
+void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when)
+{
+	tt->when = when;
+	tt->start = when;
+	tt->resumed = when;
+}
+
+/** End time tracking for this request.
+ *
+ * After this call, all request processing should be finished.
+ *
+ * @param[in] tt the time tracking structure.
+ * @param[in] when the event happened
+ */
+void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when)
+{
+	tt->when = when;
+	tt->end = when;
+	tt->running += (tt->end - tt->resumed);
+}
+
+/** Track that a request yielded.
+ *
+ * @param[in] tt the time tracking structure.
+ * @param[in] when the event happened
+ */
+void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when)
+{
+	tt->when = when;
+	tt->yielded = when;
+
+	tt->running += (tt->yielded - tt->resumed);
+}
+
+/** Track that a request resumed.
+ *
+ * @param[in] tt the time tracking structure.
+ * @param[in] when the event happened
+ */
+void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
+{
+	tt->when = when;
+	tt->resumed = when;
+
+	tt->waiting += (tt->resumed - tt->yielded);
+}
