@@ -4,6 +4,7 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  the RFC.
 	* Added 'cipher_server_preference' to mods-available/eap
 	  Patch from #1797.
+	* OpenSSL 1.1.0 compatibility fixes.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
