@@ -224,6 +224,20 @@ void *fr_heap_peek(fr_heap_t *hp)
 	return hp->p[0];
 }
 
+void *fr_heap_pop(fr_heap_t *hp)
+{
+	void *data;
+
+	if (hp->num_elements == 0) return NULL;
+
+	data = hp->p[0];
+
+	(void) fr_heap_extract(hp, data);
+
+	return data;
+}
+
+
 void *fr_heap_peek_tail(fr_heap_t *hp)
 {
 	if (!hp || (hp->num_elements == 0)) return NULL;
