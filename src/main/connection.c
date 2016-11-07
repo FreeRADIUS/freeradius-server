@@ -680,6 +680,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 		spawn = pool->min - (pool->state.num + pool->state.pending);
 		extra = 0;
 
+		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach min connections (%i)", spawn, pool->min);
+
 	/*
 	 *	If we're about to create more than "max",
 	 *	don't create more.
@@ -710,6 +712,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 		if ((pool->state.num + pool->state.pending + spawn) > pool->max) {
 			spawn = pool->max - (pool->state.num + pool->state.pending);
 		}
+
+		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach %i spares", spawn, pool->spare);
 
 	/*
 	 *	min < num < max
@@ -745,7 +749,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	 *	a connection. Avoids spurious log messages.
 	 */
 	if (spawn) {
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach %i spares", spawn, pool->spare);
 		pthread_mutex_unlock(&pool->mutex);
 		(void) fr_connection_spawn(pool, request, now, false, true);
 		pthread_mutex_lock(&pool->mutex);
