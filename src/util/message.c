@@ -64,7 +64,7 @@ typedef struct fr_message_ring_t {
 /**
  *  Get a fr_message_t pointer from an array index.
  */
-#define MR_ARRAY(_x) (fr_message_t *)(mr->messages + (_x * mr->message_size))
+#define MR_ARRAY(_x) (fr_message_t *)(mr->messages + ((_x) * mr->message_size))
 
 /** A Message set, composed of message headers and ring buffer data.
  *
@@ -209,6 +209,8 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	ms = talloc_zero(ctx, fr_message_set_t);
 	if (!ms) return NULL;
 
+	message_size += 15;
+	message_size &= ~(size_t) 15;
 	ms->message_size = message_size;
 
 	ms->m_array[0] = fr_message_ring_create(ms, num_messages, message_size);
