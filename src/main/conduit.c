@@ -1,5 +1,5 @@
 /*
- * radmin.c	RADIUS Administration tool.
+ * conduit.c	channels for communicating with radmin
  *
  * Version:	$Id$
  *
@@ -24,12 +24,12 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/channel.h>
+#include <freeradius-devel/conduit.h>
 
-typedef struct rchannel_t {
-	uint32_t	channel;
+typedef struct rconduit_t {
+	uint32_t	conduit;
 	uint32_t	length;
-} rchannel_t;
+} rconduit_t;
 
 
 static ssize_t lo_read(int fd, void *inbuf, size_t buflen)
@@ -56,14 +56,14 @@ static ssize_t lo_read(int fd, void *inbuf, size_t buflen)
 
 
 /*
- *	A non-blocking copy of fr_channel_read().
+ *	A non-blocking copy of fr_conduit_read().
  */
-ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read)
+ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read)
 {
 	ssize_t r;
 	size_t data_len;
 	uint8_t *buffer = inbuf;
-	rchannel_t hdr;
+	rconduit_t hdr;
 	size_t offset = *have_read;
 
 	/*
@@ -78,7 +78,7 @@ ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_
 	 *	Ensure that we read the header first.
 	 */
 	if (offset < sizeof(hdr)) {
-		*pchannel = FR_CHANNEL_WANT_MORE;
+		*pconduit = FR_CONDUIT_WANT_MORE;
 
 		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
 		if (r <= 0) return r;
@@ -115,22 +115,22 @@ ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_
 	offset += r;
 
 	if (offset == buflen) {
-		*pchannel = ntohl(hdr.channel);
+		*pconduit = ntohl(hdr.conduit);
 		*outbuf = buffer + sizeof(hdr);
 		return data_len;
 	}
 
-	*pchannel = FR_CHANNEL_WANT_MORE;
+	*pconduit = FR_CONDUIT_WANT_MORE;
 	*have_read = offset;
 	return offset;
 }
 
-ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen)
+ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen)
 {
 	ssize_t r;
 	size_t data_len;
 	uint8_t *buffer = inbuf;
-	rchannel_t hdr;
+	rconduit_t hdr;
 
 	/*
 	 *	Read the header
@@ -141,11 +141,11 @@ ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t
 	/*
 	 *	Read the data into the buffer.
 	 */
-	*pchannel = ntohl(hdr.channel);
+	*pconduit = ntohl(hdr.conduit);
 	data_len = ntohl(hdr.length);
 
 #if 0
-	fprintf(stderr, "CHANNEL R %zu length %zu\n", *pchannel, data_len);
+	fprintf(stderr, "CONDUIT R %zu length %zu\n", *pconduit, data_len);
 #endif
 
 	/*
@@ -205,17 +205,17 @@ static ssize_t lo_write(int fd, void const *inbuf, size_t buflen)
 	return buflen;
 }
 
-ssize_t fr_channel_write(int fd, fr_channel_type_t channel, void const *inbuf, size_t buflen)
+ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *inbuf, size_t buflen)
 {
 	ssize_t r;
-	rchannel_t hdr;
+	rconduit_t hdr;
 	uint8_t const *buffer = inbuf;
 
-	hdr.channel = htonl(channel);
+	hdr.conduit = htonl(conduit);
 	hdr.length = htonl(buflen);
 
 #if 0
-	fprintf(stderr, "CHANNEL W %zu length %zu\n", channel, buflen);
+	fprintf(stderr, "CONDUIT W %zu length %zu\n", conduit, buflen);
 #endif
 
 	/*

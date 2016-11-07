@@ -13,44 +13,44 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_CHANNEL_H
-#define _FR_CHANNEL_H
+#ifndef _FR_CONDUIT_H
+#define _FR_CONDUIT_H
 /**
  * $Id$
  *
- * @file include/channel.h
- * @brief API to provide distinct communication channels for the radmin protocol.
+ * @file include/conduit.h
+ * @brief API to provide distinct communication conduits for the radmin protocol.
  *
  * @copyright 2015 Alan DeKok <aland@deployingradius.com>
  */
-RCSIDH(channel_h, "$Id$")
+RCSIDH(conduit_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum fr_channel_type_t {
-	FR_CHANNEL_STDIN = 0,
-	FR_CHANNEL_STDOUT,
-	FR_CHANNEL_STDERR,
-	FR_CHANNEL_CMD_STATUS,
-	FR_CHANNEL_INIT_ACK,
-	FR_CHANNEL_AUTH_CHALLENGE,
-	FR_CHANNEL_AUTH_RESPONSE,
-	FR_CHANNEL_WANT_MORE,
-	FR_CHANNEL_NOTIFY
-} fr_channel_type_t;
+typedef enum fr_conduit_type_t {
+	FR_CONDUIT_STDIN = 0,
+	FR_CONDUIT_STDOUT,
+	FR_CONDUIT_STDERR,
+	FR_CONDUIT_CMD_STATUS,
+	FR_CONDUIT_INIT_ACK,
+	FR_CONDUIT_AUTH_CHALLENGE,
+	FR_CONDUIT_AUTH_RESPONSE,
+	FR_CONDUIT_WANT_MORE,
+	FR_CONDUIT_NOTIFY
+} fr_conduit_type_t;
 
-typedef enum fr_channel_result_t {
-	FR_CHANNEL_FAIL = 0,
-	FR_CHANNEL_SUCCESS
-} fr_channel_result_t;
+typedef enum fr_conduit_result_t {
+	FR_CONDUIT_FAIL = 0,
+	FR_CONDUIT_SUCCESS
+} fr_conduit_result_t;
 
-typedef enum fr_channel_notify_t {
+typedef enum fr_conduit_notify_t {
 	FR_NOTIFY_NONE = 0,
 	FR_NOTIFY_BUFFERED,
 	FR_NOTIFY_UNBUFFERED
-} fr_channel_notify_t;
+} fr_conduit_notify_t;
 
 #define COMMAND_BUFFER_SIZE (1024)
 
@@ -62,11 +62,11 @@ typedef struct fr_cs_buffer_t {
 	char		buffer[COMMAND_BUFFER_SIZE];
 } fr_cs_buffer_t;
 
-ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read);
-ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *buffer, size_t buflen);
-ssize_t fr_channel_write(int fd, fr_channel_type_t channel, void const *buffer, size_t buflen);
+ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read);
+ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *buffer, size_t buflen);
+ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *buffer, size_t buflen);
 
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_CHANNEL_H */
+#endif /* _FR_CONDUIT_H */

@@ -1,7 +1,7 @@
 TARGET	:= radiusd
 SOURCES := acct.c \
     auth.c \
-    channel.c \
+    conduit.c \
     client.c \
     crypt.c \
     files.c \

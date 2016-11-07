@@ -25,7 +25,7 @@
 
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/md5.h>
-#include <freeradius-devel/channel.h>
+#include <freeradius-devel/conduit.h>
 #include <freeradius-devel/state.h>
 
 #include <libgen.h>
@@ -58,8 +58,8 @@ typedef int (*fr_command_func_t)(rad_listen_t *, int, char *argv[]);
 #define FR_READ  (1)
 #define FR_WRITE (2)
 
-#define CMD_FAIL FR_CHANNEL_FAIL
-#define CMD_OK   FR_CHANNEL_SUCCESS
+#define CMD_FAIL FR_CONDUIT_FAIL
+#define CMD_OK   FR_CONDUIT_SUCCESS
 
 struct fr_command_table_t {
 	char const *command;
@@ -772,7 +772,7 @@ static int command_socket_write(void *cookie, char const *buffer, int len)
 
 	pthread_mutex_lock(&debug_mutex);
 
-	r = fr_channel_write(listener->fd, FR_CHANNEL_STDOUT, buffer, len);
+	r = fr_conduit_write(listener->fd, FR_CONDUIT_STDOUT, buffer, len);
 
 	pthread_mutex_unlock(&debug_mutex);
 
@@ -796,7 +796,7 @@ static ssize_t CC_HINT(format (printf, 2, 3)) cprintf(rad_listen_t *listener, ch
 
 	if (listener->status == RAD_LISTEN_STATUS_EOL) return 0;
 
-	r = fr_channel_write(listener->fd, FR_CHANNEL_STDOUT, buffer, len);
+	r = fr_conduit_write(listener->fd, FR_CONDUIT_STDOUT, buffer, len);
 	if (r <= 0) command_close_socket(listener);
 
 	/*
@@ -817,7 +817,7 @@ static ssize_t CC_HINT(format (printf, 2, 3)) cprintf_error(rad_listen_t *listen
 
 	if (listener->status == RAD_LISTEN_STATUS_EOL) return 0;
 
-	r = fr_channel_write(listener->fd, FR_CHANNEL_STDERR, buffer, len);
+	r = fr_conduit_write(listener->fd, FR_CONDUIT_STDERR, buffer, len);
 	if (r <= 0) command_close_socket(listener);
 
 	/*
@@ -1397,7 +1397,7 @@ static int command_debug_socket(rad_listen_t *listener, int argc, char *argv[])
 		/*
 		 *	Tell radmin to go into buffered mode.
 		 */
-		(void) fr_channel_write(listener->fd, FR_CHANNEL_NOTIFY, &notify, sizeof(notify));
+		(void) fr_conduit_write(listener->fd, FR_CONDUIT_NOTIFY, &notify, sizeof(notify));
 
 		command_debug_off();
 		return CMD_OK;
@@ -1431,7 +1431,7 @@ static int command_debug_socket(rad_listen_t *listener, int argc, char *argv[])
 	/*
 	 *	Tell radmin to go into unbuffered mode.
 	 */
-	(void) fr_channel_write(listener->fd, FR_CHANNEL_NOTIFY, &notify, sizeof(notify));
+	(void) fr_conduit_write(listener->fd, FR_CONDUIT_NOTIFY, &notify, sizeof(notify));
 
 	return CMD_OK;
 }
@@ -3419,12 +3419,12 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	uint32_t status;
 	ssize_t r, len;
 	int argc;
-	fr_channel_type_t channel;
+	fr_conduit_type_t conduit;
 	char *my_argv[MAX_ARGV], **argv;
 	fr_command_table_t *table;
 	uint8_t *command;
 
-	r = fr_channel_drain(listener->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &command, &co->offset);
+	r = fr_conduit_drain(listener->fd, &conduit, co->buffer, sizeof(co->buffer) - 1, &command, &co->offset);
 	if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 	if (r <= 0) {
@@ -3436,7 +3436,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	/*
 	 *	We need more data.  Go read it.
 	 */
-	if (channel == FR_CHANNEL_WANT_MORE) {
+	if (conduit == FR_CONDUIT_WANT_MORE) {
 		return 0;
 	}
 
@@ -3542,7 +3542,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	 */
 	co->offset = 0;
 
-	r = fr_channel_write(listener->fd, FR_CHANNEL_CMD_STATUS, &status, sizeof(status));
+	r = fr_conduit_write(listener->fd, FR_CONDUIT_CMD_STATUS, &status, sizeof(status));
 	if (r <= 0) goto do_close;
 
 	return 0;
@@ -3554,7 +3554,7 @@ static int command_tcp_recv(rad_listen_t *this)
 	ssize_t r;
 	listen_socket_t *sock = this->data;
 	fr_cs_buffer_t *co = (void *) sock->packet;
-	fr_channel_type_t channel;
+	fr_conduit_type_t conduit;
 
 	if (!co) {
 	do_close:
@@ -3566,7 +3566,7 @@ static int command_tcp_recv(rad_listen_t *this)
 		uint8_t *data;
 		uint8_t expected[16];
 
-		r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, &co->offset);
+		r = fr_conduit_drain(this->fd, &conduit, co->buffer, sizeof(co->buffer) - 1, &data, &co->offset);
 		if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 		if (r <= 0) goto do_close;
@@ -3574,11 +3574,11 @@ static int command_tcp_recv(rad_listen_t *this)
 		/*
 		 *	We need more data.  Go read it.
 		 */
-		if (channel == FR_CHANNEL_WANT_MORE) {
+		if (conduit == FR_CONDUIT_WANT_MORE) {
 			return 0;
 		}
 
-		if ((r != sizeof(expected)) || (channel != FR_CHANNEL_AUTH_RESPONSE)) goto do_close;
+		if ((r != sizeof(expected)) || (conduit != FR_CONDUIT_AUTH_RESPONSE)) goto do_close;
 
 		fr_hmac_md5(expected, (void const *) sock->client->secret,
 			    strlen(sock->client->secret),
@@ -3619,13 +3619,13 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 	int i;
 	ssize_t r;
 	uint32_t magic;
-	fr_channel_type_t channel;
+	fr_conduit_type_t conduit;
 	uint8_t *data;
 
 	/*
 	 *	Start off by reading 4 bytes of magic, followed by 4 bytes of zero.
 	 */
-	r = fr_channel_drain(this->fd, &channel, co->buffer, sizeof(co->buffer) - 1, &data, &co->offset);
+	r = fr_conduit_drain(this->fd, &conduit, co->buffer, sizeof(co->buffer) - 1, &data, &co->offset);
 	if ((r < 0) && ((errno == EINTR) || (errno == EAGAIN))) return 0;
 
 	if (r <= 0) {
@@ -3639,11 +3639,11 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 	/*
 	 *	We need more data.  Go read it.
 	 */
-	if (channel == FR_CHANNEL_WANT_MORE) {
+	if (conduit == FR_CONDUIT_WANT_MORE) {
 		return 0;
 	}
 
-	if ((r != 8) || (channel != FR_CHANNEL_INIT_ACK)) goto do_close;
+	if ((r != 8) || (conduit != FR_CONDUIT_INIT_ACK)) goto do_close;
 
 	magic = htonl(0xf7eead16);
 	if (memcmp(&magic, data, sizeof(magic)) != 0) {
@@ -3654,7 +3654,7 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 	/*
 	 *	Ack the magic + 4 bytes of zero back.
 	 */
-	r = fr_channel_write(this->fd, FR_CHANNEL_INIT_ACK, data, 8);
+	r = fr_conduit_write(this->fd, FR_CONDUIT_INIT_ACK, data, 8);
 	if (r <= 0) {
 		ERROR("Failed writing magic: %s", fr_syserror(errno));
 		goto do_close;
@@ -3665,7 +3665,7 @@ static int command_magic_recv(rad_listen_t *this, fr_cs_buffer_t *co, bool chall
 			co->buffer[i] = fr_rand();
 		}
 
-		r = fr_channel_write(this->fd, FR_CHANNEL_AUTH_CHALLENGE, co->buffer, 16);
+		r = fr_conduit_write(this->fd, FR_CONDUIT_AUTH_CHALLENGE, co->buffer, 16);
 		if (r <= 0) {
 			ERROR("Failed writing auth challenge: %s", fr_syserror(errno));
 			goto do_close;

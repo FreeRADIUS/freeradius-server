@@ -65,7 +65,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
-#include <freeradius-devel/channel.h>
+#include <freeradius-devel/conduit.h>
 
 /*
  *	For configuration file stuff.
@@ -190,7 +190,7 @@ static int client_socket(char const *server)
 static ssize_t do_challenge(int sockfd)
 {
 	ssize_t r;
-	fr_channel_type_t channel;
+	fr_conduit_type_t conduit;
 	uint8_t challenge[16];
 
 	challenge[0] = 0x00;
@@ -198,10 +198,10 @@ static ssize_t do_challenge(int sockfd)
 	/*
 	 *	When connecting over a socket, the server challenges us.
 	 */
-	r = fr_channel_read(sockfd, &channel, challenge, sizeof(challenge));
+	r = fr_conduit_read(sockfd, &conduit, challenge, sizeof(challenge));
 	if (r <= 0) return r;
 
-	if ((r != 16) || (channel != FR_CHANNEL_AUTH_CHALLENGE)) {
+	if ((r != 16) || (conduit != FR_CONDUIT_AUTH_CHALLENGE)) {
 		fprintf(stderr, "%s: Failed to read challenge.\n",
 			progname);
 		exit(1);
@@ -210,7 +210,7 @@ static ssize_t do_challenge(int sockfd)
 	fr_hmac_md5(challenge, (uint8_t const *) secret, strlen(secret),
 		    challenge, sizeof(challenge));
 
-	r = fr_channel_write(sockfd, FR_CHANNEL_AUTH_RESPONSE, challenge, sizeof(challenge));
+	r = fr_conduit_write(sockfd, FR_CONDUIT_AUTH_RESPONSE, challenge, sizeof(challenge));
 	if (r <= 0) return r;
 
 	/*
@@ -225,37 +225,37 @@ static ssize_t do_challenge(int sockfd)
 /*
  *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
  */
-static ssize_t flush_channels(int sockfd, char *buffer, size_t bufsize)
+static ssize_t flush_conduits(int sockfd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
 	uint32_t status;
-	fr_channel_type_t channel;
+	fr_conduit_type_t conduit;
 
 	while (true) {
 		uint32_t notify;
 
-		r = fr_channel_read(sockfd, &channel, buffer, bufsize - 1);
+		r = fr_conduit_read(sockfd, &conduit, buffer, bufsize - 1);
 		if (r <= 0) return r;
 
 		buffer[r] = '\0';	/* for C strings */
 
-		switch (channel) {
-		case FR_CHANNEL_STDOUT:
+		switch (conduit) {
+		case FR_CONDUIT_STDOUT:
 			fprintf(stdout, "%s", buffer);
 			break;
 
-		case FR_CHANNEL_STDERR:
+		case FR_CONDUIT_STDERR:
 			fprintf(stderr, "ERROR: %s", buffer);
 			break;
 
-		case FR_CHANNEL_CMD_STATUS:
+		case FR_CONDUIT_CMD_STATUS:
 			if (r < 4) return 1;
 
 			memcpy(&status, buffer, sizeof(status));
 			status = ntohl(status);
 			return status;
 
-		case FR_CHANNEL_NOTIFY:
+		case FR_CONDUIT_NOTIFY:
 			if (r < 4) return -1;
 
 			memcpy(&notify, buffer, sizeof(notify));
@@ -267,7 +267,7 @@ static ssize_t flush_channels(int sockfd, char *buffer, size_t bufsize)
 			break;
 
 		default:
-			fprintf(stderr, "Unexpected response %02x\n", channel);
+			fprintf(stderr, "Unexpected response %02x\n", conduit);
 			return -1;
 		}
 	}
@@ -291,17 +291,17 @@ static ssize_t run_command(int sockfd, char const *command,
 	/*
 	 *	Write the text to the socket.
 	 */
-	r = fr_channel_write(sockfd, FR_CHANNEL_STDIN, command, strlen(command));
+	r = fr_conduit_write(sockfd, FR_CONDUIT_STDIN, command, strlen(command));
 	if (r <= 0) return r;
 
-	return flush_channels(sockfd, buffer, bufsize);
+	return flush_conduits(sockfd, buffer, bufsize);
 }
 
 static int do_connect(int *out, char const *file, char const *server)
 {
 	int sockfd;
 	ssize_t r;
-	fr_channel_type_t channel;
+	fr_conduit_type_t conduit;
 	char buffer[65536];
 
 	uint32_t magic;
@@ -354,7 +354,7 @@ static int do_connect(int *out, char const *file, char const *server)
 	memcpy(buffer, &magic, sizeof(magic));
 	memset(buffer + sizeof(magic), 0, sizeof(magic));
 
-	r = fr_channel_write(sockfd, FR_CHANNEL_INIT_ACK, buffer, 8);
+	r = fr_conduit_write(sockfd, FR_CONDUIT_INIT_ACK, buffer, 8);
 	if (r <= 0) {
 	do_close:
 		fprintf(stderr, "%s: Error in socket: %s\n",
@@ -363,10 +363,10 @@ static int do_connect(int *out, char const *file, char const *server)
 			return -1;
 	}
 
-	r = fr_channel_read(sockfd, &channel, buffer + 8, 8);
+	r = fr_conduit_read(sockfd, &conduit, buffer + 8, 8);
 	if (r <= 0) goto do_close;
 
-	if ((r != 8) || (channel != FR_CHANNEL_INIT_ACK) ||
+	if ((r != 8) || (conduit != FR_CONDUIT_INIT_ACK) ||
 	    (memcmp(buffer, buffer + 8, 8) != 0)) {
 		fprintf(stderr, "%s: Incompatible versions\n", progname);
 		close(sockfd);
@@ -705,11 +705,11 @@ int main(int argc, char **argv)
 			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
 			if (len < 0) exit(1);
 
-			if (len == FR_CHANNEL_FAIL) exit_status = EXIT_FAILURE;
+			if (len == FR_CONDUIT_FAIL) exit_status = EXIT_FAILURE;
 		}
 
 		if (unbuffered) {
-			while (true) flush_channels(sockfd, buffer, sizeof(buffer));
+			while (true) flush_conduits(sockfd, buffer, sizeof(buffer));
 		}
 
 		exit(exit_status);
@@ -853,10 +853,10 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Failed to connect to server\n");
 			exit(1);
 
-		} else if (len == FR_CHANNEL_SUCCESS) {
+		} else if (len == FR_CONDUIT_SUCCESS) {
 			break;
 
-		} else if (len == FR_CHANNEL_FAIL) {
+		} else if (len == FR_CONDUIT_FAIL) {
 			exit_status = EXIT_FAILURE;
 		}
 	}
