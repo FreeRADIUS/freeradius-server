@@ -198,11 +198,12 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 #endif
 
 	{
+		size_t master_key_len;
 		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE)];
 		uint8_t buf[4 * EAP_TLS_MPPE_KEY_LEN];
+		uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
 		p = seed;
-
 		memcpy(p, prf_label, prf_size);
 		p += prf_size;
 
@@ -213,8 +214,8 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 		(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 		prf_size += SSL3_RANDOM_SIZE;
 
-		PRF(s->session->master_key, s->session->master_key_length,
-		    seed, prf_size, out, buf, sizeof(out));
+		master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
+		PRF(master_key, master_key_len, seed, prf_size, out, buf, sizeof(out));
 	}
 
 	RDEBUG2("Adding session keys");
@@ -236,9 +237,10 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
  */
 void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
 {
+	uint8_t *p;
+	size_t len, master_key_len;
+	uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
 	uint8_t seed[128 + 2*SSL3_RANDOM_SIZE];
-	uint8_t *p = seed;
-	size_t len;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	if (SSL_export_keying_material(s, buffer, size, prf_label,
@@ -249,6 +251,7 @@ void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t siz
 	len = strlen(prf_label);
 	if (len > 128) len = 128;
 
+	p = seed;
 	memcpy(p, prf_label, len);
 	p += len;
 
@@ -257,8 +260,8 @@ void eap_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t siz
 	(void) SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
-	PRF(s->session->master_key, s->session->master_key_length,
-	    seed, p - seed, buffer, scratch, size);
+	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
+	PRF(master_key, master_key_len, seed, p - seed, buffer, scratch, size);
 }
 
 
@@ -269,7 +272,6 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
 {
 	uint8_t *p;
 	size_t len, master_key_len;
-	const SSL_SESSION *session;
 	uint8_t seed[128 + 2*SSL3_RANDOM_SIZE];
 	uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
@@ -284,8 +286,7 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
 	(void) SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
-	SSL_get_session(s);
-	master_key_len = SSL_SESSION_get_master_key(session, master_key, sizeof(master_key));
+	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
 	PRF(master_key, master_key_len, seed, p - seed, buffer, scratch, size);
 }
 
