@@ -85,16 +85,30 @@ struct fr_event_list_t {
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
-static int fr_event_list_time_cmp(void const *one, void const *two)
+/** Compare two timer events to see which one should occur first
+ *
+ * @param[in] a the first timer event.
+ * @param[in] b the second timer event.
+ * @return
+ *	- +1 if a should occur later than b.
+ *	- -1 if a should occur earlier than b.
+ *	- 0 if both events occur at the same time.
+ */
+static int fr_event_cmp_time_t(void const *a, void const *b)
 {
-	fr_event_t const *a = one;
-	fr_event_t const *b = two;
+#ifndef NDEBUG
+	fr_event_t const *ev_a = talloc_get_type_abort(a, fr_event_t);
+	fr_event_t const *ev_b = talloc_get_type_abort(b, fr_event_t);
+#else
+	fr_event_t const *ev_a = a;
+	fr_event_t const *ev_b = b;
+#endif
 
-	if (a->when.tv_sec < b->when.tv_sec) return -1;
-	if (a->when.tv_sec > b->when.tv_sec) return +1;
+	if (ev_a->when.tv_sec < ev_b->when.tv_sec) return -1;
+	if (ev_a->when.tv_sec > ev_b->when.tv_sec) return +1;
 
-	if (a->when.tv_usec < b->when.tv_usec) return -1;
-	if (a->when.tv_usec > b->when.tv_usec) return +1;
+	if (ev_a->when.tv_usec < ev_b->when.tv_usec) return -1;
+	if (ev_a->when.tv_usec > ev_b->when.tv_usec) return +1;
 
 	return 0;
 }
@@ -134,7 +148,7 @@ fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
 	}
 	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_heap_create(fr_event_list_time_cmp, offsetof(fr_event_t, heap));
+	el->times = fr_heap_create(fr_event_cmp_time_t, offsetof(fr_event_t, heap));
 	if (!el->times) {
 		talloc_free(el);
 		return NULL;
