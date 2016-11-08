@@ -85,6 +85,16 @@ static int fr_event_list_time_cmp(void const *one, void const *two)
 	return 0;
 }
 
+static int fr_event_fd_cmp(void const *a, void const *b)
+{
+	fr_event_fd_t const *efd_a = a;
+	fr_event_fd_t const *efd_b = b;
+
+	if (efd_a->fd > efd_b->fd) return +1;
+	if (efd_a->fd < efd_b->fd) return -1;
+
+	return 0;
+}
 
 static int _event_list_free(fr_event_list_t *list)
 {
@@ -103,7 +113,7 @@ static int _event_list_free(fr_event_list_t *list)
 }
 
 
-fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
+fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
 {
 	int i;
 	fr_event_list_t *el;
@@ -633,7 +643,7 @@ int main(int argc, char **argv)
 	struct timeval now, when;
 	fr_event_list_t *el;
 
-	el = fr_event_list_create(NULL, NULL);
+	el = fr_event_list_init(NULL, NULL);
 	if (!el) exit(1);
 
 	memset(&rand_pool, 0, sizeof(rand_pool));

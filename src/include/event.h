@@ -37,7 +37,7 @@ typedef	void (*fr_event_callback_t)(void *, struct timeval *now);
 typedef	void (*fr_event_status_t)(struct timeval *);
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 
-fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status);
+fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status);
 
 int fr_event_list_num_fds(fr_event_list_t *el);
 int fr_event_list_num_elements(fr_event_list_t *el);

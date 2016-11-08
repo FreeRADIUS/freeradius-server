@@ -317,7 +317,7 @@ static int bfd_pthread_create(bfd_state_t *session)
 		return 0;
 	}
 
-	session->el = fr_event_list_create(session, NULL);
+	session->el = fr_event_list_init(session, NULL);
 	if (!session->el) {
 		ERROR("Failed creating event list");
 	close_pipes:
