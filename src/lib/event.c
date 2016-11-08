@@ -29,47 +29,61 @@ RCSID("$Id$")
 
 #include <sys/event.h>
 
-typedef struct fr_event_fd_t {
-	int			fd;
-	fr_event_fd_handler_t	handler;
-	void			*ctx;
-} fr_event_fd_t;
-
 #define FR_EV_MAX_FDS (256)
 
 #undef USEC
 #define USEC (1000000)
 
+/** A timer event
+ *
+ */
+struct fr_event_t {
+	int			heap;		//!< Where to store opaque heap data.
+
+	fr_event_callback_t	callback;	//!< Callback to execute when the timer fires.
+	void			*ctx;		//!< Context pointer to pass to the callback.
+	struct timeval		when;		//!< When this timer should fire.
+
+	fr_event_t		**parent;	//!< Prev in linked list.
+};
+
+/** A file descriptor event
+ *
+ */
+typedef struct fr_event_fd_t {
+	int			fd;		//!< File descriptor we're listening for events on.
+
+	fr_event_fd_handler_t	read;		//!< callback for when data is available.
+	fr_event_fd_handler_t	write;		//!< callback for when we can write data.
+	fr_event_fd_handler_t	error;		//!< callback for when an error occurs on the FD.
+
+	void			*ctx;		//!< Context pointer to pass to each callback.
+} fr_event_fd_t;
+
+/** Stores all information relating to an event list
+ *
+ */
 struct fr_event_list_t {
-	fr_heap_t	*times;
+	fr_heap_t	*times;			//!< of events to be executed.
+	rbtree_t	*fds;			//!< Tree used to track FDs with filters in kqueue.
 
 	int		exit;
 
-	fr_event_status_t status;
+	fr_event_status_t status;		//!< Function to call on each iteration of the event loop.
 
-	struct timeval  now;
-	bool		dispatch;
+	struct timeval  now;			//!< The last time the event list was serviced.
+	bool		dispatch;		//!< Whether the event list is currently dispatching events.
 
-	int		num_readers;
-	int		num_events;
+	int		num_readers;		//!< Number of FDs listened to by this event list.
+	int		num_events;		//!< Number of events in this event list
 
-	int		kq;
+	int		kq;			//!< instance association with this event list.
+
+
 	struct kevent	events[FR_EV_MAX_FDS]; /* so it doesn't go on the stack every time */
 
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
-
-/*
- *	Internal structure for managing events.
- */
-struct fr_event_t {
-	fr_event_callback_t	callback;
-	void			*ctx;
-	struct timeval		when;
-	fr_event_t		**parent;
-	int			heap;
-};
-
 
 static int fr_event_list_time_cmp(void const *one, void const *two)
 {
@@ -81,17 +95,6 @@ static int fr_event_list_time_cmp(void const *one, void const *two)
 
 	if (a->when.tv_usec < b->when.tv_usec) return -1;
 	if (a->when.tv_usec > b->when.tv_usec) return +1;
-
-	return 0;
-}
-
-static int fr_event_fd_cmp(void const *a, void const *b)
-{
-	fr_event_fd_t const *efd_a = a;
-	fr_event_fd_t const *efd_b = b;
-
-	if (efd_a->fd > efd_b->fd) return +1;
-	if (efd_a->fd < efd_b->fd) return -1;
 
 	return 0;
 }
@@ -112,7 +115,14 @@ static int _event_list_free(fr_event_list_t *list)
 	return 0;
 }
 
-
+/** Initialise a new event list
+ *
+ * @param[in] ctx	to allocate memory in.
+ * @param[in] status	callback, called on each iteration of the event list.
+ * @return
+ *	- A pointer to a new event list on success (free with talloc_free).
+ *	- NULL on error.
+ */
 fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
 {
 	int i;
@@ -403,7 +413,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	}
 
 	ef->fd = fd;
-	ef->handler = read;
+	ef->read = read;
 	ef->ctx = ctx;
 
 	return 0;
@@ -554,7 +564,7 @@ int fr_event_service(fr_event_list_t *el)
 			 *	Call the handler, which SHOULD
 			 *	delete the connection.
 			 */
-			ef->handler(el, ef->fd, ef->ctx);
+			ef->read(el, ef->fd, ef->ctx);
 			continue;
 		}
 
@@ -563,7 +573,7 @@ int fr_event_service(fr_event_list_t *el)
 		 *	EVFILT_READ, so it must be a read
 		 *	event.
 		 */
-		ef->handler(el, ef->fd, ef->ctx);
+		ef->read(el, ef->fd, ef->ctx);
 	}
 
 	if (fr_heap_num_elements(el->times) > 0) {
