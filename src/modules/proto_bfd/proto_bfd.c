@@ -88,8 +88,8 @@ typedef struct bfd_state_t {
 	struct sockaddr_storage remote_sockaddr;
 	socklen_t	salen;
 
-	fr_event_t	*ev_timeout;
-	fr_event_t	*ev_packet;
+	fr_event_timer_t	*ev_timeout;
+	fr_event_timer_t	*ev_packet;
 	struct timeval	last_recv;
 	struct timeval	next_recv;
 	struct timeval	last_sent;
@@ -884,7 +884,7 @@ static int bfd_start_packets(bfd_state_t *session)
 	/*
 	 *	Reset the timers.
 	 */
-	fr_event_delete(session->el, &session->ev_packet);
+	fr_event_timer_delete(session->el, &session->ev_packet);
 
 	gettimeofday(&session->last_sent, NULL);
 	now = session->last_sent;
@@ -919,7 +919,7 @@ static int bfd_start_packets(bfd_state_t *session)
 		now.tv_usec -= USEC;
 	}
 
-	if (fr_event_insert(session->el, bfd_send_packet, session, &now,
+	if (fr_event_timer_insert(session->el, bfd_send_packet, session, &now,
 			    &session->ev_packet) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
@@ -932,7 +932,7 @@ static void bfd_set_timeout(bfd_state_t *session, struct timeval *when)
 {
 	struct timeval now = *when;
 
-	fr_event_delete(session->el, &session->ev_timeout);
+	fr_event_timer_delete(session->el, &session->ev_timeout);
 
 	if (session->detection_time >= USEC) {
 		now.tv_sec += session->detection_time / USEC;
@@ -960,7 +960,7 @@ static void bfd_set_timeout(bfd_state_t *session, struct timeval *when)
 		}
 	}
 
-	if (fr_event_insert(session->el, bfd_detection_timeout, session, &now,
+	if (fr_event_timer_insert(session->el, bfd_detection_timeout, session, &now,
 			     &session->ev_timeout) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
@@ -993,8 +993,8 @@ static int bfd_start_control(bfd_state_t *session)
 
 static int bfd_stop_control(bfd_state_t *session)
 {
-	fr_event_delete(session->el, &session->ev_timeout);
-	fr_event_delete(session->el, &session->ev_packet);
+	fr_event_timer_delete(session->el, &session->ev_timeout);
+	fr_event_timer_delete(session->el, &session->ev_packet);
 	return 1;
 }
 

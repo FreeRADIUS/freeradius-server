@@ -18,8 +18,12 @@
  * @file lib/event.c
  * @brief Non-thread-safe event handling, specific to a RADIUS server.
  *
- * @copyright 2007  The FreeRADIUS server project
- * @copyright 2007  Alan DeKok <aland@ox.org>
+ * @note By non-thread-safe we mean multiple threads can't insert/delete events concurrently
+ *	without synchronization.
+ *
+ * @copyright 2007-2016 The FreeRADIUS server project
+ * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2007 Alan DeKok <aland@ox.org>
  */
 RCSID("$Id$")
 
@@ -37,14 +41,13 @@ RCSID("$Id$")
 /** A timer event
  *
  */
-struct fr_event_t {
-	int			heap;		//!< Where to store opaque heap data.
-
+struct fr_event_timer_t {
 	fr_event_callback_t	callback;	//!< Callback to execute when the timer fires.
 	void			*ctx;		//!< Context pointer to pass to the callback.
 	struct timeval		when;		//!< When this timer should fire.
 
-	fr_event_t		**parent;	//!< Prev in linked list.
+	fr_event_timer_t	**parent;	//!< Previous timer.
+	int			heap;		//!< Where to store opaque heap data.
 };
 
 /** A file descriptor event
@@ -97,11 +100,11 @@ struct fr_event_list_t {
 static int fr_event_cmp_time_t(void const *a, void const *b)
 {
 #ifndef NDEBUG
-	fr_event_t const *ev_a = talloc_get_type_abort(a, fr_event_t);
-	fr_event_t const *ev_b = talloc_get_type_abort(b, fr_event_t);
+	fr_event_timer_t const *ev_a = talloc_get_type_abort(a, fr_event_timer_t);
+	fr_event_timer_t const *ev_b = talloc_get_type_abort(b, fr_event_timer_t);
 #else
-	fr_event_t const *ev_a = a;
-	fr_event_t const *ev_b = b;
+	fr_event_timer_t const *ev_a = a;
+	fr_event_timer_t const *ev_b = b;
 #endif
 
 	if (ev_a->when.tv_sec < ev_b->when.tv_sec) return -1;
@@ -113,62 +116,9 @@ static int fr_event_cmp_time_t(void const *a, void const *b)
 	return 0;
 }
 
-static int _event_list_free(fr_event_list_t *list)
-{
-	fr_event_list_t *el = list;
-	fr_event_t *ev;
-
-	while ((ev = fr_heap_peek(el->times)) != NULL) {
-		fr_event_delete(el, &ev);
-	}
-
-	fr_heap_delete(el->times);
-
-	close(el->kq);
-
-	return 0;
-}
-
-/** Initialise a new event list
+/** Return the number of file descriptors registered with this event loop
  *
- * @param[in] ctx	to allocate memory in.
- * @param[in] status	callback, called on each iteration of the event list.
- * @return
- *	- A pointer to a new event list on success (free with talloc_free).
- *	- NULL on error.
  */
-fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
-{
-	int i;
-	fr_event_list_t *el;
-
-	el = talloc_zero(ctx, fr_event_list_t);
-	if (!fr_cond_assert(el)) {
-		return NULL;
-	}
-	talloc_set_destructor(el, _event_list_free);
-
-	el->times = fr_heap_create(fr_event_cmp_time_t, offsetof(fr_event_t, heap));
-	if (!el->times) {
-		talloc_free(el);
-		return NULL;
-	}
-
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
-		el->readers[i].fd = -1;
-	}
-
-	el->kq = kqueue();
-	if (el->kq < 0) {
-		talloc_free(el);
-		return NULL;
-	}
-
-	el->status = status;
-
-	return el;
-}
-
 int fr_event_list_num_fds(fr_event_list_t *el)
 {
 	if (!el) return -1;
@@ -176,6 +126,11 @@ int fr_event_list_num_fds(fr_event_list_t *el)
 	return el->num_readers;
 }
 
+/** Return the number of timer events currently scheduled
+ *
+ * @param[in] el to return timer events for.
+ * @return number of timer events.
+ */
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
 	if (!el) return -1;
@@ -183,12 +138,16 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 	return fr_heap_num_elements(el->times);
 }
 
-
-int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
+/** Delete a timer event from the event list
+ *
+ * @param[in] el	to delete event from.
+ * @param[in] parent	of the event being deleted.
+ */
+int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
 {
 	int ret;
 
-	fr_event_t *ev;
+	fr_event_timer_t *ev;
 
 	if (!el || !parent || !*parent) return -1;
 
@@ -196,7 +155,7 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
 	/*
 	 *  Validate the event_t struct to detect memory issues early.
 	 */
-	ev = talloc_get_type_abort(*parent, fr_event_t);
+	ev = talloc_get_type_abort(*parent, fr_event_timer_t);
 
 #else
 	ev = *parent;
@@ -227,28 +186,28 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **parent)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx, struct timeval *when,
-		    fr_event_t **parent)
+int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx,
+			  struct timeval *when, fr_event_timer_t **parent)
 {
-	fr_event_t *ev;
+	fr_event_timer_t *ev;
 
 	if (!el) {
-		fr_strerror_printf("Invalid arguments (NULL event list)");
+		fr_strerror_printf("Invalid arguments: NULL event list");
 		return -1;
 	}
 
 	if (!callback) {
-		fr_strerror_printf("Invalid arguments (NULL callback)");
+		fr_strerror_printf("Invalid arguments: NULL callback");
 		return -1;
 	}
 
 	if (!when || (when->tv_usec >= USEC)) {
-		fr_strerror_printf("Invalid arguments (time)");
+		fr_strerror_printf("Invalid arguments: time");
 		return -1;
 	}
 
 	if (!parent) {
-		fr_strerror_printf("Invalid arguments (NULL parent)");
+		fr_strerror_printf("Invalid arguments: NULL parent");
 		return -1;
 	}
 
@@ -260,7 +219,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 		int ret;
 
 #ifndef NDEBUG
-		ev = talloc_get_type_abort(*parent, fr_event_t);
+		ev = talloc_get_type_abort(*parent, fr_event_timer_t);
 #else
 		ev = *parent;
 #endif
@@ -270,7 +229,7 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 
 		memset(ev, 0, sizeof(*ev));
 	} else {
-		ev = talloc_zero(el, fr_event_t);
+		ev = talloc_zero(el, fr_event_timer_t);
 		if (!ev) return -1;
 	}
 
@@ -286,65 +245,50 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 	}
 
 	*parent = ev;
+
 	return 0;
 }
 
-
-int fr_event_run(fr_event_list_t *el, struct timeval *when)
+/** Remove a file descriptor from the event loop
+ *
+ * @param[in] el	to remove file descriptor from.
+ * @param[in] fd	to remove.
+ * @return
+ *	- 0 if file descriptor was removed.
+ *	- <0 on error.
+ */
+int fr_event_fd_delete(fr_event_list_t *el, int fd)
 {
-	fr_event_callback_t callback;
-	void *ctx;
-	fr_event_t *ev;
+	int i;
 
-	if (!el) return 0;
+	if (!el || (fd < 0)) return -1;
 
-	if (fr_heap_num_elements(el->times) == 0) {
-		when->tv_sec = 0;
-		when->tv_usec = 0;
+	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+		int j;
+		struct kevent evset;
+
+		j = (i + fd) & (FR_EV_MAX_FDS - 1);
+
+		if (el->readers[j].fd != fd) continue;
+
+		/*
+		 *	Tell the kernel to delete it from the list.
+		 *
+		 *	The caller MAY have closed it, in which case
+		 *	the kernel has removed it from the list.  So
+		 *	we ignore the return code from kevent().
+		 */
+		EV_SET(&evset, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+		(void) kevent(el->kq, &evset, 1, NULL, 0, NULL);
+
+		el->readers[j].fd = -1;
+		el->num_readers--;
+
 		return 0;
 	}
 
-	ev = fr_heap_peek(el->times);
-	if (!ev) {
-		when->tv_sec = 0;
-		when->tv_usec = 0;
-		return 0;
-	}
 
-	/*
-	 *	See if it's time to do this one.
-	 */
-	if ((ev->when.tv_sec > when->tv_sec) ||
-	    ((ev->when.tv_sec == when->tv_sec) &&
-	     (ev->when.tv_usec > when->tv_usec))) {
-		*when = ev->when;
-		return 0;
-	}
-
-	callback = ev->callback;
-	ctx = ev->ctx;
-
-	/*
-	 *	Delete the event before calling it.
-	 */
-	fr_event_delete(el, ev->parent);
-
-	callback(ctx, when);
-	return 1;
-}
-
-
-int fr_event_now(fr_event_list_t *el, struct timeval *when)
-{
-	if (!when) return 0;
-
-	if (el && el->dispatch) {
-		*when = el->now;
-	} else {
-		gettimeofday(when, NULL);
-	}
-
-	return 1;
+	return -1;
 }
 
 /** Associate a callback with an FD
@@ -433,54 +377,92 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	return 0;
 }
 
-int fr_event_fd_delete(fr_event_list_t *el, int fd)
+/** Run a single scheduled timer event
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] when	Process events scheduled to run before or at this time.
+ * @return
+ *	- 0 no timer events fired.
+ *	- 1 a timer event fired.
+ */
+int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 {
-	int i;
+	fr_event_callback_t callback;
+	void *ctx;
+	fr_event_timer_t *ev;
 
-	if (!el || (fd < 0)) return -1;
+	if (!el) return 0;
 
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
-		int j;
-		struct kevent evset;
-
-		j = (i + fd) & (FR_EV_MAX_FDS - 1);
-
-		if (el->readers[j].fd != fd) continue;
-
-		/*
-		 *	Tell the kernel to delete it from the list.
-		 *
-		 *	The caller MAY have closed it, in which case
-		 *	the kernel has removed it from the list.  So
-		 *	we ignore the return code from kevent().
-		 */
-		EV_SET(&evset, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-		(void) kevent(el->kq, &evset, 1, NULL, 0, NULL);
-
-		el->readers[j].fd = -1;
-		el->num_readers--;
-
+	if (fr_heap_num_elements(el->times) == 0) {
+		when->tv_sec = 0;
+		when->tv_usec = 0;
 		return 0;
 	}
 
+	ev = fr_heap_peek(el->times);
+	if (!ev) {
+		when->tv_sec = 0;
+		when->tv_usec = 0;
+		return 0;
+	}
 
-	return -1;
+	/*
+	 *	See if it's time to do this one.
+	 */
+	if ((ev->when.tv_sec > when->tv_sec) ||
+	    ((ev->when.tv_sec == when->tv_sec) &&
+	     (ev->when.tv_usec > when->tv_usec))) {
+		*when = ev->when;
+		return 0;
+	}
+
+	callback = ev->callback;
+	ctx = ev->ctx;
+
+	/*
+	 *	Delete the event before calling it.
+	 */
+	fr_event_timer_delete(el, ev->parent);
+
+	callback(ctx, when);
+
+	return 1;
 }
 
-
-void fr_event_loop_exit(fr_event_list_t *el, int code)
+/** Get the current time according to the event list
+ *
+ * If the event list is currently dispatching events, we return the time
+ * this iteration of the event list started.
+ *
+ * If the event list is not currently dispatching events, we return the
+ * current system time.
+ *
+ * @param[out]	when Where to write the time we extracted/acquired.
+ * @param[in]	el to get time from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
 {
-	if (!el) return;
+	if (!when) return -1;
 
-	el->exit = code;
+	if (el && el->dispatch) {
+		*when = el->now;
+	} else {
+		gettimeofday(when, NULL);
+	}
+
+	return 1;
 }
 
-bool fr_event_loop_exiting(fr_event_list_t *el)
-{
-	return (el->exit != 0);
-}
-
-int fr_event_check(fr_event_list_t *el, bool wait)
+/** Gather outstanding timer and file descriptor events
+ *
+ * @param[in] el	to process events for.
+ * @param[in] wait	if true, block on the kevent() call until a timer or file descriptor event occurs.
+ * @return the number of outstanding events.
+ */
+int fr_event_corral(fr_event_list_t *el, bool wait)
 {
 	struct timeval when, *wake;
 	struct timespec ts_when, *ts_wake;
@@ -491,49 +473,29 @@ int fr_event_check(fr_event_list_t *el, bool wait)
 	 */
 	when.tv_sec = 0;
 	when.tv_usec = 0;
+	wake = &when;
 
 	if (wait) {
 		if (fr_heap_num_elements(el->times) > 0) {
-			fr_event_t *ev;
+			fr_event_timer_t *ev;
 
 			ev = fr_heap_peek(el->times);
-			if (!ev) {
-				fr_exit_now(42);
-			}
+			if (!fr_cond_assert(ev)) return -1;
 
 			gettimeofday(&el->now, NULL);
 
-			if (fr_timeval_cmp(&el->now, &ev->when) < 0) {
-				when = ev->when;
-				when.tv_sec -= el->now.tv_sec;
-
-				if (when.tv_sec > 0) {
-					when.tv_sec--;
-					when.tv_usec += USEC;
-				} else {
-					when.tv_sec = 0;
-				}
-				when.tv_usec -= el->now.tv_usec;
-				if (when.tv_usec >= USEC) {
-					when.tv_usec -= USEC;
-					when.tv_sec++;
-				}
-			} else { /* we've passed the event time */
-				when.tv_sec = 0;
-				when.tv_usec = 0;
-			}
-
-			wake = &when;
+			/*
+			 *	Next event is in the future, get the time
+			 *	between now and that event.
+			 */
+			if (fr_timeval_cmp(&ev->when, &el->now) > 0) fr_timeval_subtract(&when, &ev->when, &el->now);
 		} else {
 			wake = NULL;
 		}
-
-	} else {		/* not waiting, use timeout of zero */
-		wake = &when;
 	}
 
 	/*
-	 *	Tell someone what the status is.
+	 *	Run the status callback
 	 */
 	if (el->status) el->status(wake);
 
@@ -545,20 +507,26 @@ int fr_event_check(fr_event_list_t *el, bool wait)
 		ts_wake = NULL;
 	}
 
+	/*
+	 *	Populate el->events with the list of I/O events
+	 *	that occurred since this function was last occurred
+	 *	or wait for the next timer event.
+	 */
 	el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
 
 	/*
 	 *	Interrupt is different from timeout / FD events.
 	 */
-	if ((el->num_events < 0) && (errno == EINTR)) {
-		el->num_events = 0;
-		return 0;
-	}
+	if ((el->num_events < 0) && (errno == EINTR)) el->num_events = 0;
 
-	return 1;
+	return el->num_events;
 }
 
-int fr_event_service(fr_event_list_t *el)
+/** Service any outstanding timer or file descriptor events
+ *
+ * @param[in] el containing events to service.
+ */
+void fr_event_service(fr_event_list_t *el)
 {
 	int i;
 
@@ -596,27 +564,114 @@ int fr_event_service(fr_event_list_t *el)
 		do {
 			gettimeofday(&el->now, NULL);
 			when = el->now;
-		} while (fr_event_run(el, &when) == 1);
+		} while (fr_event_timer_run(el, &when) == 1);
 	}
-
-	return 0;
 }
 
+/** Signal an event loop exit with the specified code
+ *
+ * The event loop will complete its current iteration, and then exit with the specified code.
+ *
+ * @param[in] el	to signal to exit.
+ * @param[in] code	for #fr_event_loop to return.
+ */
+void fr_event_loop_exit(fr_event_list_t *el, int code)
+{
+	if (!el) return;
+
+	el->exit = code;
+}
+
+/** Check to see whether the event loop is in the process of exiting
+ *
+ * @param[in] el	to check.
+ */
+bool fr_event_loop_exiting(fr_event_list_t *el)
+{
+	return (el->exit != 0);
+}
+
+/** Run an event loop
+ *
+ * @note Will not return until #fr_event_loop_exit is called.
+ *
+ * @param[in] el to start processing.
+ */
 int fr_event_loop(fr_event_list_t *el)
 {
 	el->exit = 0;
 	el->dispatch = true;
 
 	while (!el->exit) {
-		if (fr_event_check(el, true) < 0) break;
+		if (fr_event_corral(el, true) < 0) break;
 
-		(void) fr_event_service(el);
+		fr_event_service(el);
 	}
 
 	el->dispatch = false;
 	return el->exit;
 }
 
+/** Cleanup an event list
+ *
+ * Frees/destroys any resources associated with an event list
+ *
+ * @param[in] el to free resources for.
+ */
+static int _event_list_free(fr_event_list_t *el)
+{
+	fr_event_timer_t *ev;
+
+	while ((ev = fr_heap_peek(el->times)) != NULL) {
+		fr_event_timer_delete(el, &ev);
+	}
+
+	fr_heap_delete(el->times);
+
+	close(el->kq);
+
+	return 0;
+}
+
+/** Initialise a new event list
+ *
+ * @param[in] ctx	to allocate memory in.
+ * @param[in] status	callback, called on each iteration of the event list.
+ * @return
+ *	- A pointer to a new event list on success (free with talloc_free).
+ *	- NULL on error.
+ */
+fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
+{
+	int i;
+	fr_event_list_t *el;
+
+	el = talloc_zero(ctx, fr_event_list_t);
+	if (!fr_cond_assert(el)) {
+		return NULL;
+	}
+	talloc_set_destructor(el, _event_list_free);
+
+	el->times = fr_heap_create(fr_event_cmp_time_t, offsetof(fr_event_timer_t, heap));
+	if (!el->times) {
+		talloc_free(el);
+		return NULL;
+	}
+
+	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+		el->readers[i].fd = -1;
+	}
+
+	el->kq = kqueue();
+	if (el->kq < 0) {
+		talloc_free(el);
+		return NULL;
+	}
+
+	el->status = status;
+
+	return el;
+}
 
 #ifdef TESTING
 
@@ -685,13 +740,13 @@ int main(int argc, char **argv)
 			array[i].tv_usec -= 1000000;
 			array[i].tv_sec++;
 		}
-		fr_event_insert(el, print_time, &array[i], &array[i]);
+		fr_event_timer_insert(el, print_time, &array[i], &array[i]);
 	}
 
 	while (fr_event_list_num_elements(el)) {
 		gettimeofday(&now, NULL);
 		when = now;
-		if (!fr_event_run(el, &when)) {
+		if (!fr_event_timer_run(el, &when)) {
 			int delay = (when.tv_sec - now.tv_sec) * 1000000;
 			delay += when.tv_usec;
 			delay -= now.tv_usec;

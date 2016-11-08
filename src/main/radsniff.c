@@ -845,12 +845,12 @@ clear:
 	}
 
 	{
-		static fr_event_t *event;
+		static fr_event_timer_t *event;
 
 		now->tv_sec += conf->stats.interval;
 		now->tv_usec = 0;
 
-		if (fr_event_insert(this->list, rs_stats_process, ctx, now, &event) < 0) {
+		if (fr_event_timer_insert(this->list, rs_stats_process, ctx, now, &event) < 0) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -880,7 +880,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 				      fr_pcap_t *in, struct timeval *now, bool live)
 {
-	static fr_event_t	*event;
+	static fr_event_timer_t	*event;
 	static rs_update_t	update;
 
 	memset(&update, 0, sizeof(update));
@@ -919,7 +919,7 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
 	}
 
-	if (fr_event_insert(events, rs_stats_process, (void *) &update, now, &event) < 0) {
+	if (fr_event_timer_insert(events, rs_stats_process, (void *) &update, now, &event) < 0) {
 		ERROR("Failed inserting stats event");
 		return -1;
 	}
@@ -984,7 +984,7 @@ static int _request_free(rs_request_t *request)
 	}
 
 	if (request->event) {
-		ret = fr_event_delete(events, &request->event);
+		ret = fr_event_timer_delete(events, &request->event);
 		RS_ASSERT(ret);
 	}
 
@@ -1424,7 +1424,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->rt_rsp++;
 
 				fr_radius_free(&original->linked);
-				fr_event_delete(event->list, &original->event);
+				fr_event_timer_delete(event->list, &original->event);
 			/*
 			 *	...nope it's the first response to a request.
 			 */
@@ -1439,7 +1439,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			original->linked = talloc_steal(original, current);
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (fr_event_insert(event->list, _rs_event, original, &original->when, &original->event) < 0) {
+			if (fr_event_timer_insert(event->list, _rs_event, original, &original->when, &original->event) < 0) {
 				REDEBUG("Failed inserting new event");
 				/*
 				 *	Delete the original request/event, it's no longer valid
@@ -1608,7 +1608,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->expect = talloc_steal(original, search.expect);
 
 			/* Disarm the timer for the cleanup event for the original request */
-			fr_event_delete(event->list, &original->event);
+			fr_event_timer_delete(event->list, &original->event);
 		/*
 		 *	...nope it's a new request.
 		 */
@@ -1669,7 +1669,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		original->packet->timestamp = header->ts;
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-		if (fr_event_insert(event->list, _rs_event, original,
+		if (fr_event_timer_insert(event->list, _rs_event, original,
 				    &original->when, &original->event) < 0) {
 			REDEBUG("Failed inserting new event");
 
@@ -1811,7 +1811,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 
 			do {
 				now = header->ts;
-			} while (fr_event_run(el, &now) == 1);
+			} while (fr_event_timer_run(el, &now) == 1);
 			count++;
 
 			rs_packet_process(count, event, header, data);
@@ -2001,7 +2001,7 @@ static void _unmark_link(void *request)
 static void rs_collectd_reopen(void *ctx, struct timeval *now)
 {
 	fr_event_list_t *list = ctx;
-	static fr_event_t *event;
+	static fr_event_timer_t *event;
 	struct timeval when;
 
 	if (rs_stats_collectd_open(conf) == 0) {
@@ -2012,7 +2012,7 @@ static void rs_collectd_reopen(void *ctx, struct timeval *now)
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
 	rs_tv_add_ms(now, RS_SOCKET_REOPEN_DELAY, &when);
-	if (fr_event_insert(list, rs_collectd_reopen, list, &when, &event) < 0) {
+	if (fr_event_timer_insert(list, rs_collectd_reopen, list, &when, &event) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}

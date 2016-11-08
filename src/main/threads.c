@@ -520,7 +520,7 @@ static void *thread_handler(void *arg)
 				request->thread_ctx = NULL;
 
 				request->el = el;
-				if (fr_event_insert(request->el, max_request_time_hook,
+				if (fr_event_timer_insert(request->el, max_request_time_hook,
 						    request, &when, &request->ev) < 0) {
 					REDEBUG("Failed inserting max_request_time");
 				}
@@ -551,7 +551,7 @@ static void *thread_handler(void *arg)
 		 *	timer events or FD events will also be
 		 *	serviced here.
 		 */
-		rcode = fr_event_check(el, wait_for_event);
+		rcode = fr_event_corral(el, wait_for_event);
 		if (rcode < 0) {
 			ERROR("Thread %d failed waiting for request: %s: Exiting",
 			      thread->thread_num, fr_syserror(errno));
@@ -568,7 +568,7 @@ static void *thread_handler(void *arg)
 		/*
 		 *	Timer and/or FD events.  Go service them.
 		 */
-		(void) fr_event_service(el);
+		fr_event_service(el);
 
 		/*
 		 *	The server is exiting.  Don't dequeue any

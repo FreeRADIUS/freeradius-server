@@ -134,7 +134,7 @@ static void request_timer(void *ctx, struct timeval *now);
 static inline void state_machine_timer(char const *file, int line, REQUEST *request,
 				       struct timeval *when)
 {
-	if (fr_event_insert(el, request_timer, request, when, &request->ev) < 0) {
+	if (fr_event_timer_insert(el, request_timer, request, when, &request->ev) < 0) {
 		radlog_fatal("%s[%u]: Failed to insert event: %s", file, line, fr_strerror());
 	}
 }
@@ -382,7 +382,7 @@ static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #define USEC (1000000)
 
 #define INSERT_EVENT(_function, _ctx) \
-	if (fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev)) < 0) { \
+	if (fr_event_timer_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev)) < 0) { \
 		radlog_fatal("%s[%u]: %s", __FILE__, __LINE__, fr_strerror()); \
 	}
 
@@ -563,9 +563,9 @@ void request_delete(REQUEST *request)
 #endif
 
 	if (request->el) {
-		fr_event_delete(request->el, &request->ev);
+		fr_event_timer_delete(request->el, &request->ev);
 	} else {
-		fr_event_delete(el, &request->ev);
+		fr_event_timer_delete(el, &request->ev);
 	}
 
 	/*
@@ -818,7 +818,7 @@ bool request_max_time(REQUEST *request)
 	/*
 	 *	The request is still running.  Enforce max_request_time.
 	 */
-	fr_event_now(el, &now);
+	fr_event_list_time(&now, el);
 	when = request->packet->timestamp;
 	when.tv_sec += request->root->max_request_time;
 
@@ -957,7 +957,7 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 #endif
 
 	case FR_ACTION_TIMER:
-		fr_event_now(el, &now);
+		fr_event_list_time(&now, el);
 
 		rad_assert(request->root->cleanup_delay > 0);
 
@@ -1029,7 +1029,7 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 #endif
 
 	case FR_ACTION_TIMER:
-		fr_event_now(el, &now);
+		fr_event_list_time(&now, el);
 
 		/*
 		 *	See if it's time to send the reply.  If not,
@@ -1861,7 +1861,7 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return;
 
-	fr_event_now(el, now);
+	fr_event_list_time(now, el);
 
 	switch (listener->type) {
 #ifdef WITH_PROXY
@@ -2623,7 +2623,7 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 		}
 #endif
 
-		fr_event_now(el, &now);
+		fr_event_list_time(&now, el);
 		when = request->proxy->packet->timestamp;
 
 #ifdef WITH_COA
@@ -3457,7 +3457,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		/*
 		 *	Remove the request from any hashes
 		 */
-		fr_event_delete(el, &request->ev);
+		fr_event_timer_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 
 		/*
@@ -3706,7 +3706,7 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 	home->num_received_pings = 0;
 	gettimeofday(&home->revive_time, NULL);
 
-	fr_event_delete(el, &home->ev);
+	fr_event_timer_delete(el, &home->ev);
 
 	RPROXY("Marking home server %s port %d alive",
 	       inet_ntop(request->proxy->packet->dst_ipaddr.af,
@@ -3752,7 +3752,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	home->zombie_period_start.tv_sec = start;
 	home->zombie_period_start.tv_usec = USEC / 2;
 
-	fr_event_delete(el, &home->ev);
+	fr_event_timer_delete(el, &home->ev);
 
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
@@ -3824,7 +3824,7 @@ void revive_home_server(void *ctx, UNUSED struct timeval *now)
 	 *	Delete any outstanding events.
 	 */
 	ASSERT_MASTER;
-	fr_event_delete(el, &home->ev);
+	fr_event_timer_delete(el, &home->ev);
 
 	PROXY("Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
 	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer)),
@@ -4049,7 +4049,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 	rad_assert(request->packet->code != PW_CODE_STATUS_SERVER);
 	rad_assert(request->proxy->home_server != NULL);
 
-	fr_event_now(el, &now);
+	fr_event_list_time(&now, el);
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -4377,7 +4377,7 @@ static bool coa_keep_waiting(REQUEST *request)
 		return false;
 	}
 
-	fr_event_now(el, &now);
+	fr_event_list_time(&now, el);
 
 	if (request->delay == 0) {
 		/*
@@ -5022,7 +5022,7 @@ static int event_new_fd(rad_listen_t *this)
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		if (this->count > 0) goto keep_waiting;
 
-		fr_event_delete(el, &this->ev);
+		fr_event_timer_delete(el, &this->ev);
 
 		this->print(this, buffer, sizeof(buffer));
 		DEBUG("... cleaning up socket %s", buffer);
@@ -5046,9 +5046,9 @@ static void sd_watchdog_event(void *ctx)
 	DEBUG("Emitting systemd watchdog notification");
 	sd_notify(0, "WATCHDOG=1");
 
-	fr_event_now(el, &when);
+	fr_event_list_time(&when, el);
 	tv_add(&when, sd_watchdog_interval / 2);
-	if (!fr_event_insert(el, (fr_event_callback_t) sd_watchdog_event, ctx, &when, ctx)) {
+	if (!fr_event_timer_insert(el, (fr_event_callback_t) sd_watchdog_event, ctx, &when, ctx)) {
 		rad_panic("Failed to insert watchdog event");
 	}
 }
@@ -5481,7 +5481,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 #endif
 
 	request->in_request_hash = false;
-	fr_event_delete(el, &request->ev);
+	fr_event_timer_delete(el, &request->ev);
 
 	if (main_config.talloc_memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",

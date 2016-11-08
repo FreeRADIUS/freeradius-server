@@ -31,36 +31,36 @@ extern "C" {
 #endif
 
 typedef struct fr_event_list_t fr_event_list_t;
-typedef struct fr_event_t fr_event_t;
+typedef struct fr_event_timer_t fr_event_timer_t;
 
 typedef	void (*fr_event_callback_t)(void *, struct timeval *now);
 typedef	void (*fr_event_status_t)(struct timeval *);
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 
-fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status);
+int		fr_event_list_num_fds(fr_event_list_t *el);
+int		fr_event_list_num_elements(fr_event_list_t *el);
 
-int fr_event_list_num_fds(fr_event_list_t *el);
-int fr_event_list_num_elements(fr_event_list_t *el);
+int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);
+int		fr_event_timer_insert(fr_event_list_t *el,
+				fr_event_callback_t callback,
+				void *ctx, struct timeval *when, fr_event_timer_t **parent);
 
-int fr_event_insert(fr_event_list_t *el,
-		    fr_event_callback_t callback,
-		    void *ctx, struct timeval *when, fr_event_t **parent);
-int fr_event_delete(fr_event_list_t *el, fr_event_t **parent);
+int		fr_event_fd_insert(fr_event_list_t *el, int fd,
+				   fr_event_fd_handler_t read, fr_event_fd_handler_t write, fr_event_fd_handler_t error,
+				   void *ctx);
+int		fr_event_fd_delete(fr_event_list_t *el, int fd);
 
-int fr_event_run(fr_event_list_t *el, struct timeval *when);
+int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 
-int fr_event_now(fr_event_list_t *el, struct timeval *when);
+int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
+int		fr_event_corral(fr_event_list_t *el, bool wait);
+void		fr_event_service(fr_event_list_t *el);
 
-int fr_event_fd_insert(fr_event_list_t *el, int fd, fr_event_fd_handler_t handler, fr_event_fd_handler_t write,
-		       fr_event_fd_handler_t error, void *ctx);
+void		fr_event_loop_exit(fr_event_list_t *el, int code);
+bool		fr_event_loop_exiting(fr_event_list_t *el);
+int		fr_event_loop(fr_event_list_t *el);
 
-int fr_event_fd_delete(fr_event_list_t *el, int fd);
-
-int fr_event_check(fr_event_list_t *el, bool wait);
-int fr_event_service(fr_event_list_t *el);
-int fr_event_loop(fr_event_list_t *el);
-void fr_event_loop_exit(fr_event_list_t *el, int code);
-bool fr_event_loop_exiting(fr_event_list_t *el);
+fr_event_list_t	*fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status);
 
 #ifdef __cplusplus
 }

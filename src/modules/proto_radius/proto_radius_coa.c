@@ -298,7 +298,7 @@ static void coa_queued(REQUEST *request, fr_state_action_t action)
 
 	case FR_ACTION_DONE:
 		(void) fr_heap_extract(request->backlog, request);
-		fr_event_delete(request->el, &request->ev);
+		fr_event_timer_delete(request->el, &request->ev);
 
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,

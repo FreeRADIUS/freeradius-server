@@ -1257,7 +1257,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	return rcode;
 }
 
-/** Wrap an #fr_event_t providing data needed for unlang events
+/** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
  */
 typedef struct unlang_event_t {
@@ -1267,13 +1267,13 @@ typedef struct unlang_event_t {
 	fr_unlang_fd_callback_t		fd_callback;			//!< Function to call when FD is readable.
 	void				*inst;				//!< Module instance to pass to callbacks.
 	void				*ctx;				//!< ctx data to pass to callbacks.
-	fr_event_t			*ev;				//!< Event in this worker's event heap.
+	fr_event_timer_t			*ev;				//!< Event in this worker's event heap.
 } unlang_event_t;
 
 static int _unlang_event_free(unlang_event_t *ev)
 {
 	if (ev->ev) {
-		(void) fr_event_delete(ev->request->el, &(ev->ev));
+		(void) fr_event_timer_delete(ev->request->el, &(ev->ev));
 		return 0;
 	}
 
@@ -1350,7 +1350,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->inst = inst;
 	ev->ctx = ctx;
 
-	if (fr_event_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
+	if (fr_event_timer_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
 		REDEBUG("Failed inserting event: %s", fr_strerror());
 		talloc_free(ev);
 		return -1;
@@ -1551,7 +1551,7 @@ int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t p
 	RDEBUG2("Waiting for %d.%06d seconds",
 		(int) delay->tv_sec, (int) delay->tv_usec);
 
-	if (fr_event_insert(request->el, unlang_timer_hook, request, &when, &request->ev) < 0) {
+	if (fr_event_timer_insert(request->el, unlang_timer_hook, request, &when, &request->ev) < 0) {
 		RDEBUG("Failed inserting delay event: %s", fr_strerror());
 		return -1;
 	}
