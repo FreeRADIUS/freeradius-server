@@ -42,48 +42,48 @@ RCSID("$Id$")
  *
  */
 struct fr_event_timer_t {
-	fr_event_callback_t	callback;	//!< Callback to execute when the timer fires.
-	void			*ctx;		//!< Context pointer to pass to the callback.
-	struct timeval		when;		//!< When this timer should fire.
+	fr_event_callback_t	callback;		//!< Callback to execute when the timer fires.
+	void			*ctx;			//!< Context pointer to pass to the callback.
+	struct timeval		when;			//!< When this timer should fire.
 
-	fr_event_timer_t	**parent;	//!< Previous timer.
-	int			heap;		//!< Where to store opaque heap data.
+	fr_event_timer_t	**parent;		//!< Previous timer.
+	int			heap;			//!< Where to store opaque heap data.
 };
 
 /** A file descriptor event
  *
  */
 typedef struct fr_event_fd_t {
-	int			fd;		//!< File descriptor we're listening for events on.
+	int			fd;			//!< File descriptor we're listening for events on.
 
-	fr_event_fd_handler_t	read;		//!< callback for when data is available.
-	fr_event_fd_handler_t	write;		//!< callback for when we can write data.
-	fr_event_fd_handler_t	error;		//!< callback for when an error occurs on the FD.
+	fr_event_fd_handler_t	read;			//!< callback for when data is available.
+	fr_event_fd_handler_t	write;			//!< callback for when we can write data.
+	fr_event_fd_handler_t	error;			//!< callback for when an error occurs on the FD.
 
-	void			*ctx;		//!< Context pointer to pass to each callback.
+	void			*ctx;			//!< Context pointer to pass to each callback.
 } fr_event_fd_t;
 
 /** Stores all information relating to an event list
  *
  */
 struct fr_event_list_t {
-	fr_heap_t	*times;			//!< of events to be executed.
-	rbtree_t	*fds;			//!< Tree used to track FDs with filters in kqueue.
+	fr_heap_t		*times;			//!< of events to be executed.
+	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
-	int		exit;
+	int			exit;
 
-	fr_event_status_t status;		//!< Function to call on each iteration of the event loop.
+	fr_event_status_t	status;			//!< Function to call on each iteration of the event loop.
 
-	struct timeval  now;			//!< The last time the event list was serviced.
-	bool		dispatch;		//!< Whether the event list is currently dispatching events.
+	struct timeval  	now;			//!< The last time the event list was serviced.
+	bool			dispatch;		//!< Whether the event list is currently dispatching events.
 
-	int		num_readers;		//!< Number of FDs listened to by this event list.
-	int		num_events;		//!< Number of events in this event list
+	int			num_fds;		//!< Number of FDs listened to by this event list.
+	int			num_fd_events;		//!< Number of events in this event list
 
-	int		kq;			//!< instance association with this event list.
+	int			kq;			//!< instance association with this event list.
 
 
-	struct kevent	events[FR_EV_MAX_FDS]; /* so it doesn't go on the stack every time */
+	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
