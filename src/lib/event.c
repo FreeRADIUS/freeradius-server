@@ -97,15 +97,10 @@ struct fr_event_list_t {
  *	- -1 if a should occur earlier than b.
  *	- 0 if both events occur at the same time.
  */
-static int fr_event_cmp_time_t(void const *a, void const *b)
+static int fr_event_timer_cmp(void const *a, void const *b)
 {
-#ifndef NDEBUG
-	fr_event_timer_t const *ev_a = talloc_get_type_abort(a, fr_event_timer_t);
-	fr_event_timer_t const *ev_b = talloc_get_type_abort(b, fr_event_timer_t);
-#else
 	fr_event_timer_t const *ev_a = a;
 	fr_event_timer_t const *ev_b = b;
-#endif
 
 	if (ev_a->when.tv_sec < ev_b->when.tv_sec) return -1;
 	if (ev_a->when.tv_sec > ev_b->when.tv_sec) return +1;
@@ -653,7 +648,7 @@ fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
 	}
 	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_heap_create(fr_event_cmp_time_t, offsetof(fr_event_timer_t, heap));
+	el->times = fr_heap_create(fr_event_timer_cmp, offsetof(fr_event_timer_t, heap));
 	if (!el->times) {
 		talloc_free(el);
 		return NULL;
