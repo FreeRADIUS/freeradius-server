@@ -647,7 +647,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		spawn = pool->min - (pool->num + pool->pending);
 		extra = 0;
 
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach min connections (%i)", spawn, pool->min);
+		INFO("Need %i more connections to reach min connections (%i)", spawn, pool->min);
 
 	/*
 	 *	If we're about to create more than "max",
@@ -680,7 +680,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 			spawn = pool->max - (pool->num + pool->pending);
 		}
 
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach %i spares", spawn, pool->spare);
+		INFO("Need %i more connections to reach %i spares", spawn, pool->spare);
 
 	/*
 	 *	min < num < max
