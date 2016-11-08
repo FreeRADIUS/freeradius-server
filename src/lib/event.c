@@ -138,115 +138,31 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 	return fr_heap_num_elements(el->times);
 }
 
-/** Delete a timer event from the event list
+/** Get the current time according to the event list
  *
- * @param[in] el	to delete event from.
- * @param[in] parent	of the event being deleted.
- */
-int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
-{
-	int ret;
-
-	fr_event_timer_t *ev;
-
-	if (!el || !parent || !*parent) return -1;
-
-#ifndef NDEBUG
-	/*
-	 *  Validate the event_t struct to detect memory issues early.
-	 */
-	ev = talloc_get_type_abort(*parent, fr_event_timer_t);
-
-#else
-	ev = *parent;
-#endif
-
-	if (ev->parent) {
-		(void)fr_cond_assert(*(ev->parent) == ev);
-		*ev->parent = NULL;
-	}
-	*parent = NULL;
-
-	ret = fr_heap_extract(el->times, ev);
-	(void)fr_cond_assert(ret == 1);	/* events MUST be in the heap */
-	talloc_free(ev);
-
-	return ret;
-}
-
-/** Insert a timer event into an event list
+ * If the event list is currently dispatching events, we return the time
+ * this iteration of the event list started.
  *
- * @param[in] el	to insert event into.
- * @param[in] callback	function to execute if the event fires.
- * @param[in] ctx	for callback function.
- * @param[in] when	we should run the event.
- * @param[in] parent	If not NULL modify this event instead of creating a new one.  This is a parent
- *			in a temporal sense, not in a memory structure or dependency sense.
+ * If the event list is not currently dispatching events, we return the
+ * current system time.
+ *
+ * @param[out]	when Where to write the time we extracted/acquired.
+ * @param[in]	el to get time from.
  * @return
  *	- 0 on success.
- *	- -1 on failure.
+ *	- -1 on error.
  */
-int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx,
-			  struct timeval *when, fr_event_timer_t **parent)
+int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
 {
-	fr_event_timer_t *ev;
+	if (!when) return -1;
 
-	if (!el) {
-		fr_strerror_printf("Invalid arguments: NULL event list");
-		return -1;
-	}
-
-	if (!callback) {
-		fr_strerror_printf("Invalid arguments: NULL callback");
-		return -1;
-	}
-
-	if (!when || (when->tv_usec >= USEC)) {
-		fr_strerror_printf("Invalid arguments: time");
-		return -1;
-	}
-
-	if (!parent) {
-		fr_strerror_printf("Invalid arguments: NULL parent");
-		return -1;
-	}
-
-	/*
-	 *	If there is an event, re-use it instead of freeing it
-	 *	and allocating a new one.
-	 */
-	if (*parent) {
-		int ret;
-
-#ifndef NDEBUG
-		ev = talloc_get_type_abort(*parent, fr_event_timer_t);
-#else
-		ev = *parent;
-#endif
-
-		ret = fr_heap_extract(el->times, ev);
-		if (!fr_cond_assert(ret == 1)) return -1;	/* events MUST be in the heap */
-
-		memset(ev, 0, sizeof(*ev));
+	if (el && el->dispatch) {
+		*when = el->now;
 	} else {
-		ev = talloc_zero(el, fr_event_timer_t);
-		if (!ev) return -1;
+		gettimeofday(when, NULL);
 	}
 
-	ev->callback = callback;
-	ev->ctx = ctx;
-	ev->when = *when;
-	ev->parent = parent;
-
-	if (!fr_heap_insert(el->times, ev)) {
-		fr_strerror_printf("Failed inserting event into heap");
-		talloc_free(ev);
-		return -1;
-	}
-
-	*parent = ev;
-
-	return 0;
+	return 1;
 }
 
 /** Remove a file descriptor from the event loop
@@ -377,6 +293,118 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	return 0;
 }
 
+
+/** Delete a timer event from the event list
+ *
+ * @param[in] el	to delete event from.
+ * @param[in] parent	of the event being deleted.
+ */
+int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
+{
+	int ret;
+
+	fr_event_timer_t *ev;
+
+	if (!el || !parent || !*parent) return -1;
+
+#ifndef NDEBUG
+	/*
+	 *  Validate the event_t struct to detect memory issues early.
+	 */
+	ev = talloc_get_type_abort(*parent, fr_event_timer_t);
+
+#else
+	ev = *parent;
+#endif
+
+	if (ev->parent) {
+		(void)fr_cond_assert(*(ev->parent) == ev);
+		*ev->parent = NULL;
+	}
+	*parent = NULL;
+
+	ret = fr_heap_extract(el->times, ev);
+	(void)fr_cond_assert(ret == 1);	/* events MUST be in the heap */
+	talloc_free(ev);
+
+	return ret;
+}
+
+/** Insert a timer event into an event list
+ *
+ * @param[in] el	to insert event into.
+ * @param[in] callback	function to execute if the event fires.
+ * @param[in] ctx	for callback function.
+ * @param[in] when	we should run the event.
+ * @param[in] parent	If not NULL modify this event instead of creating a new one.  This is a parent
+ *			in a temporal sense, not in a memory structure or dependency sense.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx,
+			  struct timeval *when, fr_event_timer_t **parent)
+{
+	fr_event_timer_t *ev;
+
+	if (!el) {
+		fr_strerror_printf("Invalid arguments: NULL event list");
+		return -1;
+	}
+
+	if (!callback) {
+		fr_strerror_printf("Invalid arguments: NULL callback");
+		return -1;
+	}
+
+	if (!when || (when->tv_usec >= USEC)) {
+		fr_strerror_printf("Invalid arguments: time");
+		return -1;
+	}
+
+	if (!parent) {
+		fr_strerror_printf("Invalid arguments: NULL parent");
+		return -1;
+	}
+
+	/*
+	 *	If there is an event, re-use it instead of freeing it
+	 *	and allocating a new one.
+	 */
+	if (*parent) {
+		int ret;
+
+#ifndef NDEBUG
+		ev = talloc_get_type_abort(*parent, fr_event_timer_t);
+#else
+		ev = *parent;
+#endif
+
+		ret = fr_heap_extract(el->times, ev);
+		if (!fr_cond_assert(ret == 1)) return -1;	/* events MUST be in the heap */
+
+		memset(ev, 0, sizeof(*ev));
+	} else {
+		ev = talloc_zero(el, fr_event_timer_t);
+		if (!ev) return -1;
+	}
+
+	ev->callback = callback;
+	ev->ctx = ctx;
+	ev->when = *when;
+	ev->parent = parent;
+
+	if (!fr_heap_insert(el->times, ev)) {
+		fr_strerror_printf("Failed inserting event into heap");
+		talloc_free(ev);
+		return -1;
+	}
+
+	*parent = ev;
+
+	return 0;
+}
+
 /** Run a single scheduled timer event
  *
  * @param[in] el	containing the timer events.
@@ -425,33 +453,6 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 	fr_event_timer_delete(el, ev->parent);
 
 	callback(ctx, when);
-
-	return 1;
-}
-
-/** Get the current time according to the event list
- *
- * If the event list is currently dispatching events, we return the time
- * this iteration of the event list started.
- *
- * If the event list is not currently dispatching events, we return the
- * current system time.
- *
- * @param[out]	when Where to write the time we extracted/acquired.
- * @param[in]	el to get time from.
- * @return
- *	- 0 on success.
- *	- -1 on error.
- */
-int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
-{
-	if (!when) return -1;
-
-	if (el && el->dispatch) {
-		*when = el->now;
-	} else {
-		gettimeofday(when, NULL);
-	}
 
 	return 1;
 }

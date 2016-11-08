@@ -39,20 +39,19 @@ typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
 int		fr_event_list_num_elements(fr_event_list_t *el);
-
-int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);
-int		fr_event_timer_insert(fr_event_list_t *el,
-				fr_event_callback_t callback,
-				void *ctx, struct timeval *when, fr_event_timer_t **parent);
+int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
 
 int		fr_event_fd_insert(fr_event_list_t *el, int fd,
 				   fr_event_fd_handler_t read, fr_event_fd_handler_t write, fr_event_fd_handler_t error,
 				   void *ctx);
 int		fr_event_fd_delete(fr_event_list_t *el, int fd);
 
+int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);
+int		fr_event_timer_insert(fr_event_list_t *el,
+				      fr_event_callback_t callback,
+				      void *ctx, struct timeval *when, fr_event_timer_t **parent);
 int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 
-int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
 int		fr_event_corral(fr_event_list_t *el, bool wait);
 void		fr_event_service(fr_event_list_t *el);
 
