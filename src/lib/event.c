@@ -239,7 +239,7 @@ int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, voi
 	ev->parent = parent;
 
 	if (!fr_heap_insert(el->times, ev)) {
-		fr_strerror_printf("failed inserting event into heap");
+		fr_strerror_printf("Failed inserting event into heap");
 		talloc_free(ev);
 		return -1;
 	}
@@ -308,17 +308,17 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	fr_event_fd_t *ef;
 
 	if (!el) {
-		fr_strerror_printf("Invalid arguments (NULL event list)");
+		fr_strerror_printf("Invalid argument: NULL event list");
 		return -1;
 	}
 
 	if (!read) {
-		fr_strerror_printf("Invalid arguments (NULL handler)");
+		fr_strerror_printf("Invalid arguments: NULL handler");
 		return -1;
 	}
 
 	if (fd < 0) {
-		fr_strerror_printf("Invalid arguments (bad FD %i)", fd);
+		fr_strerror_printf("Invalid arguments: Bad FD %i", fd);
 		return -1;
 	}
 
