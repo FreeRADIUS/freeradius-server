@@ -30,6 +30,7 @@ RCSIDH(event_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct fr_event_fd_t fr_event_fd_t;
 typedef struct fr_event_list_t fr_event_list_t;
 typedef struct fr_event_timer_t fr_event_timer_t;
 
@@ -42,9 +43,11 @@ int		fr_event_list_num_elements(fr_event_list_t *el);
 int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
 
 int		fr_event_fd_delete(fr_event_list_t *el, int fd);
-int		fr_event_fd_insert(fr_event_list_t *el, int fd,
-				   fr_event_fd_handler_t read, fr_event_fd_handler_t write, fr_event_fd_handler_t error,
-				   void *ctx);
+fr_event_fd_t	*fr_event_fd_insert(fr_event_list_t *el, int fd,
+				    fr_event_fd_handler_t read,
+				    fr_event_fd_handler_t write,
+				    fr_event_fd_handler_t error,
+				    void *ctx);
 
 int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);
 int		fr_event_timer_insert(fr_event_list_t *el,

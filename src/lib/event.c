@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 #include <sys/event.h>
 
-#define FR_EV_MAX_FDS (256)
+#define FR_EV_BATCH_FDS (256)
 
 #undef USEC
 #define USEC (1000000)
@@ -84,8 +84,6 @@ struct fr_event_list_t {
 
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
-
-	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
 /** Compare two timer events to see which one should occur first
@@ -111,6 +109,25 @@ static int fr_event_timer_cmp(void const *a, void const *b)
 	return 0;
 }
 
+/** Compare two file descriptor handles
+ *
+ * @param[in] a the first file descriptor handle.
+ * @param[in] b the second file descriptor handle.
+ * @return
+ *	- +1 if a is more than b.
+ *	- -1 if a is less than b.
+ *	- 0 if both handles refer to the same file descriptor.
+ */
+static int fr_event_fd_cmp(void const *a, void const *b)
+{
+	fr_event_fd_t const *ev_a = a;
+	fr_event_fd_t const *ev_b = b;
+	if (ev_a->fd < ev_b->fd) return -1;
+	if (ev_a->fd > ev_b->fd) return +1;
+
+	return 0;
+}
+
 /** Return the number of file descriptors registered with this event loop
  *
  */
@@ -118,7 +135,7 @@ int fr_event_list_num_fds(fr_event_list_t *el)
 {
 	if (!el) return -1;
 
-	return el->num_readers;
+	return el->num_fds;
 }
 
 /** Return the number of timer events currently scheduled
@@ -170,122 +187,125 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
  */
 int fr_event_fd_delete(fr_event_list_t *el, int fd)
 {
-	int i;
+	fr_event_fd_t *ef, find;
 
-	if (!el || (fd < 0)) return -1;
+	memset(&find, 0, sizeof(find));
+	find.fd = fd;
 
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
-		int j;
-		struct kevent evset;
-
-		j = (i + fd) & (FR_EV_MAX_FDS - 1);
-
-		if (el->readers[j].fd != fd) continue;
-
-		/*
-		 *	Tell the kernel to delete it from the list.
-		 *
-		 *	The caller MAY have closed it, in which case
-		 *	the kernel has removed it from the list.  So
-		 *	we ignore the return code from kevent().
-		 */
-		EV_SET(&evset, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-		(void) kevent(el->kq, &evset, 1, NULL, 0, NULL);
-
-		el->readers[j].fd = -1;
-		el->num_readers--;
-
-		return 0;
+	ef = rbtree_finddata(el->fds, &find);
+	if (!ef) {
+		fr_strerror_printf("No events registered for fd %i", fd);
+		return -1;
 	}
+	talloc_free(ef);
 
-
-	return -1;
+	return 0;
 }
 
-/** Associate a callback with an FD
+/** Remove a file descriptor from the event loop
  *
- * @param[in] el	to insert FD callback into.
+ * @param[in] ef	to remove.
+ * @return 0;
+ */
+static int _fr_event_fd_free(fr_event_fd_t *ef)
+{
+	int		filter = 0;
+	struct kevent	evset;
+
+	fr_event_list_t	*el = talloc_parent(ef);
+
+	rbtree_deletebydata(el->fds, ef);
+
+	if (ef->read) filter |= EVFILT_READ;
+	if (ef->write) filter |= EVFILT_WRITE;
+
+	EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, NULL);
+	(void) kevent(el->kq, &evset, 1, NULL, 0, NULL);
+
+	el->num_fds++;
+
+	return 0;
+}
+
+/** Associate a callback with an file descriptor
+ *
+ * @param[in] el	to insert fd callback into.
  * @param[in] fd	to read from.
  * @param[in] read	function to call when fd is readable.
  * @param[in] write	function to call when fd is writable.
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] ctx	to pass to handler.
+ * @return a handle to use for future deletion of the file descriptor event.
  */
-int fr_event_fd_insert(fr_event_list_t *el, int fd,
-		       fr_event_fd_handler_t read, UNUSED fr_event_fd_handler_t write, UNUSED fr_event_fd_handler_t error,
-		       void *ctx)
+fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
+				  fr_event_fd_handler_t read,
+				  fr_event_fd_handler_t write,
+				  fr_event_fd_handler_t error,
+				  void *ctx)
 {
-	int i;
-	fr_event_fd_t *ef;
+	int		filter = 0;
+	struct kevent	evset;
+	fr_event_fd_t	*ef, find;
 
 	if (!el) {
 		fr_strerror_printf("Invalid argument: NULL event list");
-		return -1;
+		return NULL;
 	}
 
-	if (!read) {
-		fr_strerror_printf("Invalid arguments: NULL handler");
-		return -1;
+	if (!read && !write) {
+		fr_strerror_printf("Invalid arguments: NULL read and write callbacks");
+		return NULL;
 	}
 
 	if (fd < 0) {
 		fr_strerror_printf("Invalid arguments: Bad FD %i", fd);
-		return -1;
+		return NULL;
 	}
 
-	if (el->num_readers >= FR_EV_MAX_FDS) {
-		fr_strerror_printf("Too many readers");
-		return -1;
-	}
-	ef = NULL;
+	memset(&find, 0, sizeof(find));
 
 	/*
-	 *	We need to store TWO fields with the event.  kqueue
-	 *	only lets us store one.  If we put the two fields into
-	 *	a heap allocated structure, that would help.  Except that
-	 *	kqueue can silently delete the event when the socket
-	 *	is closed, and not give us the opportunity to free it.
-	 *	<sigh>
+	 *	Get the existing fr_event_fd_t if it exists.
 	 *
-	 *	The solution is to put the fields into an array, and
-	 *	do a linear search on addition/deletion of the FDs.
-	 *	However, to avoid MOST linear issues, we start off the
-	 *	search at "FD" offset.  Since FDs are unique, AND
-	 *	usually less than 256, we do "FD & 0xff", which is a
-	 *	good guess, and makes the lookups mostly O(1).
+	 *	We don't need to do anything special for kqueue if
+	 *	there are new callbacks, as the old filters get
+	 *	replaced with the new ones automatically.
 	 */
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
-		int j;
-		struct kevent evset;
-
-		j = (i + fd) & (FR_EV_MAX_FDS - 1);
-
-		if (el->readers[j].fd >= 0) continue;
-
-		/*
-		 *	We want to read from the FD.
-		 */
-		EV_SET(&evset, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &el->readers[j]);
-		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
-			fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
-			return -1;
-		}
-
-		ef = &el->readers[j];
-		el->num_readers++;
-		break;
-	}
-
+	find.fd = fd;
+	ef = rbtree_finddata(el->fds, &find);
 	if (!ef) {
-		fr_strerror_printf("Failed assigning FD");
-		return -1;
+		ef = talloc_zero(el, fr_event_fd_t);
+		if (!ef) {
+			fr_strerror_printf("Failed allocating memory for FD");
+			return NULL;
+		}
+		talloc_set_destructor(ef, _fr_event_fd_free);
+		el->num_fds++;
+		rbtree_insert(el->fds, ef);
 	}
 
 	ef->fd = fd;
-	ef->read = read;
 	ef->ctx = ctx;
 
-	return 0;
+	if (read) {
+		ef->read = read;
+		filter |= EVFILT_READ;
+	}
+
+	if (write) {
+		ef->write = write;
+		filter |= EVFILT_WRITE;
+	}
+	ef->error = error;
+
+	EV_SET(&evset, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
+	if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+		fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
+		talloc_free(ef);
+		return NULL;
+	}
+
+	return ef;
 }
 
 
@@ -505,17 +525,17 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 
 	/*
 	 *	Populate el->events with the list of I/O events
-	 *	that occurred since this function was last occurred
+	 *	that occurred since this function was last called
 	 *	or wait for the next timer event.
 	 */
-	el->num_events = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
+	el->num_fd_events = kevent(el->kq, NULL, 0, el->events, FR_EV_BATCH_FDS, ts_wake);
 
 	/*
 	 *	Interrupt is different from timeout / FD events.
 	 */
-	if ((el->num_events < 0) && (errno == EINTR)) el->num_events = 0;
+	if ((el->num_fd_events < 0) && (errno == EINTR)) el->num_fd_events = 0;
 
-	return el->num_events;
+	return el->num_fd_events;
 }
 
 /** Service any outstanding timer or file descriptor events
@@ -529,29 +549,25 @@ void fr_event_service(fr_event_list_t *el)
 	/*
 	 *	Loop over all of the events, servicing them.
 	 */
-	for (i = 0; i < el->num_events; i++) {
-		fr_event_fd_t *ef = el->events[i].udata;
+	for (i = 0; i < el->num_fd_events; i++) {
+		fr_event_fd_t *ev = el->events[i].udata;
 
-		if (el->events[i].flags & EV_EOF) {
+		if ((el->events[i].flags & EV_EOF) || (el->events[i].flags & EV_ERROR)) {
 			/*
 			 *	FIXME: delete the handler
 			 *	here, and fix process.c to not
 			 *	call fr_event_fd_delete().
 			 *	It's cleaner.
 			 *
-			 *	Call the handler, which SHOULD
-			 *	delete the connection.
+			 *	Call the error handler which should
+			 *	tear down the connection.
 			 */
-			ef->read(el, ef->fd, ef->ctx);
+			if (ev->error) ev->error(el, ev->fd, ev->ctx);
 			continue;
 		}
 
-		/*
-		 *	Else it's our event.  We only set
-		 *	EVFILT_READ, so it must be a read
-		 *	event.
-		 */
-		ef->read(el, ef->fd, ef->ctx);
+		if (ev->read && (el->events[i].flags & EVFILT_READ)) ev->read(el, ev->fd, ev->ctx);
+		if (ev->write && (el->events[i].flags & EVFILT_WRITE)) ev->write(el, ev->fd, ev->ctx);
 	}
 
 	if (fr_heap_num_elements(el->times) > 0) {
@@ -596,15 +612,15 @@ bool fr_event_loop_exiting(fr_event_list_t *el)
 int fr_event_loop(fr_event_list_t *el)
 {
 	el->exit = 0;
-	el->dispatch = true;
 
+	el->dispatch = true;
 	while (!el->exit) {
 		if (fr_event_corral(el, true) < 0) break;
 
 		fr_event_service(el);
 	}
-
 	el->dispatch = false;
+
 	return el->exit;
 }
 
@@ -639,7 +655,6 @@ static int _event_list_free(fr_event_list_t *el)
  */
 fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
 {
-	int i;
 	fr_event_list_t *el;
 
 	el = talloc_zero(ctx, fr_event_list_t);
@@ -653,10 +668,7 @@ fr_event_list_t *fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status)
 		talloc_free(el);
 		return NULL;
 	}
-
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
-		el->readers[i].fd = -1;
-	}
+	el->fds = rbtree_create(el, fr_event_fd_cmp, NULL, 0);
 
 	el->kq = kqueue();
 	if (el->kq < 0) {
