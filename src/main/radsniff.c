@@ -1788,7 +1788,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 			if (ret == -2) {
 				DEBUG("Done reading packets (%s)", event->in->name);
 			done_file:
-				fr_event_fd_delete(events, 0, fd);
+				fr_event_fd_delete(events, fd);
 
 				/* Signal pipe takes one slot which is why this is == 1 */
 				if (fr_event_list_num_fds(events) == 1) fr_event_loop_exit(events, 1);
@@ -2800,7 +2800,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		if (fr_event_fd_insert(events, 0, self_pipe[0], rs_signal_action, events) < 0) {
+		if (fr_event_fd_insert(events, self_pipe[0], rs_signal_action, events) < 0) {
 			ERROR("Failed inserting signal pipe descriptor: %s", fr_strerror());
 			goto finish;
 		}
@@ -2819,7 +2819,7 @@ int main(int argc, char *argv[])
 			event->out = out;
 			event->stats = stats;
 
-			if (fr_event_fd_insert(events, 0, in_p->fd, rs_got_packet, event) < 0) {
+			if (fr_event_fd_insert(events, in_p->fd, rs_got_packet, event) < 0) {
 				ERROR("Failed inserting file descriptor");
 				goto finish;
 			}

@@ -1278,7 +1278,7 @@ static int _unlang_event_free(unlang_event_t *ev)
 	}
 
 	if (ev->fd >= 0) {
-		(void) fr_event_fd_delete(ev->request->el, 0, ev->fd);
+		(void) fr_event_fd_delete(ev->request->el, ev->fd);
 	}
 
 	return 0;
@@ -1395,7 +1395,7 @@ int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callb
 	ev->inst = module_instance;
 	ev->ctx = ctx;
 
-	if (fr_event_fd_insert(request->el, 0, fd, unlang_event_fd_handler, ev) < 0) {
+	if (fr_event_fd_insert(request->el, fd, unlang_event_fd_handler, ev) < 0) {
 		talloc_free(ev);
 		return -1;
 	}

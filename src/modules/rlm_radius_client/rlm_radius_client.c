@@ -300,7 +300,7 @@ static void mod_conn_free(void *ctx)
 		if (!FD_ISSET(i, &fds)) continue;
 
 		if (close(i) < 0) DEBUG3("Closing socket failed: %s", fr_syserror(errno));
-		fr_event_fd_delete(conn->el, 0, i);
+		fr_event_fd_delete(conn->el, i);
 	}
 	fr_packet_list_free(conn->pl);
 
@@ -367,7 +367,7 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 		return -1;
 	}
 
-	if (fr_event_fd_insert(el, 0, sockfd, mod_event_fd, conn) < 0) {
+	if (fr_event_fd_insert(el, sockfd, mod_event_fd, conn) < 0) {
 		DEBUG("Failed adding event for socket: %s", fr_strerror());
 		close(sockfd);
 		return -1;

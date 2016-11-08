@@ -316,13 +316,11 @@ int fr_event_now(fr_event_list_t *el, struct timeval *when)
 /** Associate a callback with an FD
  *
  * @param[in] el	to insert FD callback into.
- * @param[in] type	UNUSED.
  * @param[in] fd	to read from.
- * @param[in] handler	to call when fd is readable.
+ * @param[in] read	to call when fd is readable.
  * @param[in] ctx	to pass to handler.
  */
-int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
-		       fr_event_fd_handler_t handler, void *ctx)
+int fr_event_fd_insert(fr_event_list_t *el, int fd, fr_event_fd_handler_t read, void *ctx)
 {
 	int i;
 	fr_event_fd_t *ef;
@@ -332,18 +330,13 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		return -1;
 	}
 
-	if (!handler) {
+	if (!read) {
 		fr_strerror_printf("Invalid arguments (NULL handler)");
 		return -1;
 	}
 
 	if (fd < 0) {
 		fr_strerror_printf("Invalid arguments (bad FD %i)", fd);
-		return -1;
-	}
-
-	if (type != 0) {
-		fr_strerror_printf("Invalid type %i", type);
 		return -1;
 	}
 
@@ -396,19 +389,17 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	}
 
 	ef->fd = fd;
-	ef->handler = handler;
+	ef->handler = read;
 	ef->ctx = ctx;
 
 	return 0;
 }
 
-int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
+int fr_event_fd_delete(fr_event_list_t *el, int fd)
 {
 	int i;
 
 	if (!el || (fd < 0)) return -1;
-
-	if (type != 0) return -1;
 
 	for (i = 0; i < FR_EV_MAX_FDS; i++) {
 		int j;

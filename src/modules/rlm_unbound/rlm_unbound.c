@@ -625,7 +625,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->log_fd = ub_fd(inst->ub);
 	if (inst->log_fd >= 0) {
-		if (fr_event_fd_insert(inst->el, 0, inst->log_fd, ub_fd_handler, inst) < 0) {
+		if (fr_event_fd_insert(inst->el, inst->log_fd, ub_fd_handler, inst) < 0) {
 			cf_log_err_cs(conf, "could not insert async fd");
 			inst->log_fd = -1;
 			goto error_nores;
@@ -649,7 +649,7 @@ static int mod_detach(void *instance)
 	rlm_unbound_t *inst = instance;
 
 	if (inst->log_fd >= 0) {
-		fr_event_fd_delete(inst->el, 0, inst->log_fd);
+		fr_event_fd_delete(inst->el, inst->log_fd);
 		if (inst->ub) {
 			ub_process(inst->ub);
 			/* This can hang/leave zombies currently
@@ -668,7 +668,7 @@ static int mod_detach(void *instance)
 
 	if (inst->log_pipe_stream[0]) {
 		if (inst->log_pipe_in_use) {
-			fr_event_fd_delete(inst->el, 0, inst->log_pipe[0]);
+			fr_event_fd_delete(inst->el, inst->log_pipe[0]);
 		}
 		fclose(inst->log_pipe_stream[0]);
 	}

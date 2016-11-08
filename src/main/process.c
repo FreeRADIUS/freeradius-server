@@ -1918,7 +1918,7 @@ static void tcp_socket_timer(void *ctx, struct timeval *now)
 			 *	FDs.
 			 */
 			listener->status = RAD_LISTEN_STATUS_FROZEN;
-			fr_event_fd_delete(el, 0, listener->fd);
+			fr_event_fd_delete(el, listener->fd);
 			event_new_fd(listener); /* mainly set a new timer */
 			return;
 		}
@@ -4886,7 +4886,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
-		if (fr_event_fd_insert(el, 0, this->fd, event_socket_handler, this) < 0) {
+		if (fr_event_fd_insert(el, this->fd, event_socket_handler, this) < 0) {
 			ERROR("Failed adding event handler for socket: %s", fr_strerror());
 			fr_exit(1);
 		}
@@ -4929,7 +4929,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	Remove it from the list of live FD's.
 		 */
-		fr_event_fd_delete(el, 0, this->fd);
+		fr_event_fd_delete(el, this->fd);
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -5391,7 +5391,7 @@ int radius_event_start(bool have_children)
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (fr_event_fd_insert(el, 0, self_pipe[0], event_signal_handler, el) < 0) {
+	if (fr_event_fd_insert(el, self_pipe[0], event_signal_handler, el) < 0) {
 		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
 		return -1;
 	}
