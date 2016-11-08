@@ -317,10 +317,14 @@ int fr_event_now(fr_event_list_t *el, struct timeval *when)
  *
  * @param[in] el	to insert FD callback into.
  * @param[in] fd	to read from.
- * @param[in] read	to call when fd is readable.
+ * @param[in] read	function to call when fd is readable.
+ * @param[in] write	function to call when fd is writable.
+ * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] ctx	to pass to handler.
  */
-int fr_event_fd_insert(fr_event_list_t *el, int fd, fr_event_fd_handler_t read, void *ctx)
+int fr_event_fd_insert(fr_event_list_t *el, int fd,
+		       fr_event_fd_handler_t read, UNUSED fr_event_fd_handler_t write, UNUSED fr_event_fd_handler_t error,
+		       void *ctx)
 {
 	int i;
 	fr_event_fd_t *ef;

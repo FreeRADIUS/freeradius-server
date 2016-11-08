@@ -51,7 +51,8 @@ int fr_event_run(fr_event_list_t *el, struct timeval *when);
 
 int fr_event_now(fr_event_list_t *el, struct timeval *when);
 
-int fr_event_fd_insert(fr_event_list_t *el, int fd, fr_event_fd_handler_t handler, void *ctx);
+int fr_event_fd_insert(fr_event_list_t *el, int fd, fr_event_fd_handler_t handler, fr_event_fd_handler_t write,
+		       fr_event_fd_handler_t error, void *ctx);
 
 int fr_event_fd_delete(fr_event_list_t *el, int fd);
 
