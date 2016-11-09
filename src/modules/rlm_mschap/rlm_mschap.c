@@ -560,6 +560,7 @@ static const CONF_PARSER module_config[] = {
 	{ "retry_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, retry_msg), NULL },
 	{ "winbind_username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_username), NULL },
 	{ "winbind_domain", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_domain), NULL },
+	{ "winbind_retry_with_normalised_username", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, wb_retry_with_normalised_username), "no" },
 #ifdef __APPLE__
 	{ "use_open_directory", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), "yes" },
 #endif
@@ -1970,6 +1971,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		rcode = mschap_error(inst, request, *response->vp_octets,
 				     mschap_result, mschap_version, smb_ctrl);
 		if (rcode != RLM_MODULE_OK) return rcode;
+
+#ifdef WITH_AUTH_WINBIND
+		if (inst->wb_retry_with_normalised_username) {
+			if ((response_name = fr_pair_find_by_num(request->packet->vps, PW_MS_CHAP_USER_NAME, 0, TAG_ANY))) {
+				if (strcmp(username_string, response_name->vp_strvalue)) {
+					RDEBUG2("Changing username %s to %s", username_string, response_name->vp_strvalue);
+					username_string = response_name->vp_strvalue;
+				}
+			}
+		}
+#endif
 
 		mschap_auth_response(username_string,		/* without the domain */
 				     nthashhash,		/* nt-hash-hash */
