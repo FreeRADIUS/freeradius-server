@@ -21,9 +21,9 @@
  *
  * @author Arran Cudbard-Bell
  *
- * @copyright 2015  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright 2015  Network RADIUS SARL <info@networkradius.com>
- * @copyright 2015  The FreeRADIUS Server Project
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2015 The FreeRADIUS Server Project
  */
 #include <freeradius-devel/rad_assert.h>
 #include "json.h"
@@ -135,6 +135,53 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
 	return 0;
 }
 
+/** Convert boxed value_data to a JSON object
+ *
+ * @param[in] ctx	to allocate temporary buffers in
+ * @param[in] type	of value data.
+ * @param[in] enumv	of value data.
+ * @param[in] data	to convert.
+ */
+json_object *json_object_from_value_data(TALLOC_CTX *ctx,
+					 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data)
+{
+	switch (type) {
+	default:
+	do_string:
+	{
+		char		*p;
+		json_object	*obj;
+
+		p = value_data_asprint(ctx, type, enumv, data, '\0');
+		if (!p) return NULL;
+
+		obj = json_object_new_string(p);
+		talloc_free(p);
+
+		return obj;
+	}
+
+	case PW_TYPE_BOOLEAN:
+		return json_object_new_boolean(data->byte);
+
+	case PW_TYPE_BYTE:
+		return json_object_new_int(data->byte);
+
+	case PW_TYPE_SHORT:
+		return json_object_new_int(data->ushort);
+
+	case PW_TYPE_INTEGER:
+		return json_object_new_int64((int64_t)data->integer64);	/* uint32_t (max) > int32_t (max) */
+
+	case PW_TYPE_INTEGER64:
+		if (data->integer64 > INT64_MAX) goto do_string;
+		return json_object_new_int64(data->integer64);
+
+	case PW_TYPE_SIGNED:
+		return json_object_new_int(data->sinteger);
+	}
+}
+
 /** Escapes string for use as a JSON string
  *
  * @param ctx Talloc context to allocate this string
@@ -180,7 +227,7 @@ char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
  */
 size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	size_t		len, freespace = outlen;
+	size_t len, freespace = outlen;
 
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
@@ -252,76 +299,62 @@ void fr_json_version_print(void)
 #endif
 }
 
-static void json_array_add_vp(TALLOC_CTX *ctx, json_object *arr, VALUE_PAIR *vp) {
-	json_object *to_add = NULL;
-	char *stringified_value;
-
-	switch (vp->da->type) {
-		case PW_TYPE_INTEGER:
-			to_add = json_object_new_int(vp->vp_integer);
-			break;
-		case PW_TYPE_SHORT:
-			to_add = json_object_new_int(vp->vp_short);
-			break;
-		case PW_TYPE_BYTE:
-			to_add = json_object_new_int(vp->vp_byte);
-			break;
-		case PW_TYPE_SIGNED:
-			to_add = json_object_new_int(vp->vp_signed);
-			break;
-		case PW_TYPE_INTEGER64:
-			to_add = json_object_new_int64(vp->vp_integer64);
-			break;
-		case PW_TYPE_BOOLEAN:
-			to_add = json_object_new_boolean(vp->vp_byte);
-			break;
-		default:
-			MEM(stringified_value = fr_pair_value_asprint(ctx, vp, '\0'));
-			to_add = json_object_new_string(stringified_value);
-			talloc_free(stringified_value);
-			break;
-	}
-	MEM(to_add);
-	json_object_array_add(arr, to_add);
-}
-
 /** Returns a JSON string of a list of value pairs
  *
  *  The result is a talloc-ed string, freeing the string is the responsibility
  *  of the caller.
  *
- * @param ctx Talloc context
- * @param vps The list of value pairs
- * @param prefix The prefix to use, can be NULL to skip the prefix
+ * Output format is:
+@verbatim
+{
+	"<attribute0>":{
+		"type":"<type0>",
+		"value":[<value0>,<value1>,<valueN>],
+		"mapping":[<enumv0>,<enumv1>,<enumvN>]
+	},
+	"<attribute1>":{
+		"type":"<type1>",
+		"value":[...]
+	},
+	"<attributeN>":{
+		"type":"<typeN>",
+		"value":[...]
+	},
+}
+@endverbatim
+ *
+ * @note Mapping element is only present for attributes with enumerated values.
+ *
+ * @param[in] ctx	Talloc context.
+ * @param[in] vps	a list of value pairs.
+ * @param[in] prefix	The prefix to use, can be NULL to skip the prefix.
  * @return JSON string representation of the value pairs
  */
-const char *fr_json_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix) {
-	TALLOC_CTX *local_ctx;
-	vp_cursor_t cursor;
-	struct json_object *obj, *vp_object, *values, *type_name;
-	fr_dict_enum_t const *dv;
-	VALUE_PAIR *vp;
-	const char *name_with_prefix;
-	const char *res = NULL;
+const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
+{
+	vp_cursor_t		cursor;
+	VALUE_PAIR 		*vp;
+	struct json_object	*obj;
+	const char		*p;
 
-	MEM(local_ctx = talloc_pool(ctx, 1024));
 	MEM(obj = json_object_new_object());
 
 	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
+		char const		*name_with_prefix;
+		fr_dict_enum_t const	*dv;
+		struct json_object	*vp_object, *values, *value, *type_name;
 
 		if (prefix) {
-			MEM(name_with_prefix = talloc_asprintf(local_ctx, "%s:%s", prefix, vp->da->name));
+			MEM(name_with_prefix = talloc_asprintf(ctx, "%s:%s", prefix, vp->da->name));
 		} else {
 			name_with_prefix = vp->da->name;
 		}
 
-		if (json_object_object_get_ex(obj, name_with_prefix, &vp_object)) {
-			if (!json_object_object_get_ex(vp_object, "value", &values)) {
-				ERROR("Something is broken in the rlm_json encoder");
-				goto error;
-			}
-		} else {
+		/*
+		 *	See if we already have a key in the table we're working on,
+		 *	if we don't, create a new one...
+		 */
+		if (!json_object_object_get_ex(obj, name_with_prefix, &vp_object)) {
 			MEM(vp_object = json_object_new_object());
 			json_object_object_add(obj, name_with_prefix, vp_object);
 
@@ -330,46 +363,55 @@ const char *fr_json_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char
 
 			MEM(values = json_object_new_array());
 			json_object_object_add(vp_object, "value", values);
+		/*
+		 *	If we do, get its value array...
+		 */
+		} else if (!rad_cond_assert(json_object_object_get_ex(vp_object, "value", &values))) {
+			fr_strerror_printf("Inconsistent JSON tree");
+			json_object_put(obj);
+
+			return NULL;
 		}
 
-		json_array_add_vp(local_ctx, values, vp);
+		if (prefix) talloc_const_free(name_with_prefix);
 
-		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
-		if (dv) {
-			struct json_object *mapping, *mapped_value;
+		MEM(value = json_object_from_value_data(ctx, vp->da->type, vp->da, &vp->data));
+		json_object_array_add(values, value);
 
-			// Fetch mapping array
+		/*
+		 *	Add a mapping array
+		 */
+		if (vp->da->flags.has_value) {
+			struct json_object *mapping;
+
 			if (!json_object_object_get_ex(vp_object, "mapping", &mapping)) {
-				int i;
-
-				// Create if not found
 				MEM(mapping = json_object_new_array());
 				json_object_object_add(vp_object, "mapping", mapping);
+			}
 
-				// Add NULL values for every entry in values
-				for (i=0; i<json_object_array_length(values)-1; i++) {
+			dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+			if (dv) {
+				struct json_object *mapped_value;
+
+				/* Add to mapping array */
+				MEM(mapped_value = json_object_new_string(dv->name));
+				json_object_array_add(mapping, mapped_value);
+			/*
+			 *	Add NULL value to mapping array
+			 */
+			} else {
+				if (json_object_object_get_ex(vp_object, "mapping", &mapping)) {
 					json_object_array_add(mapping, NULL);
 				}
 			}
-
-			// Add to mapping array
-			MEM(mapped_value = json_object_new_string(dv->name));
-			json_object_array_add(mapping, mapped_value);
-		} else {
-			struct json_object *mapping;
-
-			// Add NULL value to mapping array, if exists
-			if (json_object_object_get_ex(vp_object, "mapping", &mapping)) {
-				json_object_array_add(mapping, NULL);
-			}
 		}
 	}
-	MEM(res = talloc_strdup(ctx, json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN)));
 
-error:
-	talloc_free(local_ctx);
-	json_object_put(obj);
+	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
+	MEM(p = talloc_strdup(ctx, p));
 
-	return res;
+	json_object_put(obj);	/* Should also free string buff from above */
+
+	return p;
 }
 
