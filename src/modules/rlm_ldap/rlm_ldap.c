@@ -842,9 +842,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			INFO("libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
-
+			
+			/*	free LDAP extension info if it exists (we could print out all the extensions
+			 *	present in DEBUG output if we wanted
+			 */
+			if (info.ldapai_extensions != NULL ) {
+				for ( i = 0; info.ldapai_extensions[i] != NULL; i++) {
+					ldap_memfree(info.ldapai_extensions[i]);
+				}
+				ldap_memfree(info.ldapai_extensions);
+			}
 			ldap_memfree(info.ldapai_vendor_name);
-			ldap_memfree(info.ldapai_extensions);
 		} else {
 			DEBUG("Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
 			      "returned: %i", ldap_errno);
