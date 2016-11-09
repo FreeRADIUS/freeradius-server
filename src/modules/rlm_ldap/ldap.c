@@ -1174,7 +1174,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 				ldap_memfree(dn);
 			}
 			REXDENT();
-			*rcode = RLM_MODULE_FAIL;
+			*rcode = RLM_MODULE_INVALID;
 			goto finish;
 		}
 	}
