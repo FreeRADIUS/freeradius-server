@@ -648,7 +648,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	rad_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
-		encoded = fr_json_from_pair_list(data, &request->packet->vps, NULL);
+		encoded = fr_json_afrom_pair_list(data, &request->packet->vps, NULL);
 		if (!encoded) return -1;
 
 		data->start = data->p = encoded;
@@ -662,7 +662,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 
 	to_copy = data->len - (data->p - data->start);
 	len = to_copy > freespace ? freespace : to_copy;
-	
+
 	if (len == 0) {
 		return 0;
 	} else {
