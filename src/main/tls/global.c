@@ -376,6 +376,8 @@ int tls_global_init(void)
 		ERROR("FATAL: Failed to set up SSL mutexes");
 		return -1;
 	}
+
+	OPENSSL_config(NULL);
 #else
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_ENGINE_ALL_BUILTIN, NULL);
 #endif
@@ -390,7 +392,6 @@ int tls_global_init(void)
 	ENGINE_register_all_complete();
 
 	tls_done_init = true;
-	OPENSSL_config(NULL);
 
 	return 0;
 }
