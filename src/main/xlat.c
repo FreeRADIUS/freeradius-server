@@ -2613,10 +2613,12 @@ ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request, xlat_exp_
 
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, xlat_escape_t escape, void *ctx)
 {
+	*out = NULL;
 	return xlat_expand(out, 0, request, fmt, escape, ctx);
 }
 
 ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, xlat_escape_t escape, void *ctx)
 {
+	*out = NULL;
 	return xlat_expand_struct(out, 0, request, xlat, escape, ctx);
 }
