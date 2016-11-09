@@ -1920,7 +1920,7 @@ void fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **fr
  *
  * @param vp to assign value to.
  * @param value string to convert. Binary safe for variable length values if len is provided.
- * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inline
+ * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inlen
  *	  should be the length of the string or sub string to parse.
  * @return
  *	- 0 on success.
