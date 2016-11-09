@@ -165,7 +165,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 
-	X509_NAME_oneline(X509_get_issuer_name(x509_ctx->current_cert), issuer, sizeof(issuer));
+	X509_NAME_oneline(X509_get_issuer_name(cert), issuer, sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 
 	/*
@@ -189,7 +189,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		return my_ok;
 	}
 
-	switch (x509_ctx->error) {
+	switch (X509_STORE_CTX_get_error(x509_ctx)) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
 		RERROR("issuer=%s", issuer);
 		break;
