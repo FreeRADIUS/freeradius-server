@@ -2917,7 +2917,7 @@ smart_prefix=
 
 
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "EVP_cleanup" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "EVP_CIPHER_CTX_new" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
@@ -2927,17 +2927,17 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
-$as_echo_n "checking for EVP_cleanup in -lcrypto in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_CIPHER_CTX_new in -lcrypto in $try" >&5
+$as_echo_n "checking for EVP_CIPHER_CTX_new in -lcrypto in $try... " >&6; }
     LIBS="-lcrypto $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char EVP_cleanup();
+extern char EVP_CIPHER_CTX_new();
 int
 main ()
 {
-EVP_cleanup()
+EVP_CIPHER_CTX_new()
   ;
   return 0;
 }
@@ -2962,16 +2962,16 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto" >&5
-$as_echo_n "checking for EVP_cleanup in -lcrypto... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_CIPHER_CTX_new in -lcrypto" >&5
+$as_echo_n "checking for EVP_CIPHER_CTX_new in -lcrypto... " >&6; }
   LIBS="-lcrypto $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char EVP_cleanup();
+extern char EVP_CIPHER_CTX_new();
 int
 main ()
 {
-EVP_cleanup()
+EVP_CIPHER_CTX_new()
   ;
   return 0;
 }
@@ -3048,17 +3048,17 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_cleanup in -lcrypto in $try" >&5
-$as_echo_n "checking for EVP_cleanup in -lcrypto in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for EVP_CIPHER_CTX_new in -lcrypto in $try" >&5
+$as_echo_n "checking for EVP_CIPHER_CTX_new in -lcrypto in $try... " >&6; }
     LIBS="-lcrypto $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char EVP_cleanup();
+extern char EVP_CIPHER_CTX_new();
 int
 main ()
 {
-EVP_cleanup()
+EVP_CIPHER_CTX_new()
   ;
   return 0;
 }
@@ -3088,7 +3088,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-        if test "x$ac_cv_lib_crypto_EVP_cleanup" != "xyes"; then
+        if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_new" != "xyes"; then
 	  fail="libssl"
         else
           for ac_func in EVP_sha256

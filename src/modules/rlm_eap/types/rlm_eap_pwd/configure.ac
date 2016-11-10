@@ -60,8 +60,8 @@ if test x$with_[]modname != xno; then
 	fi
 
 	smart_try_dir=$openssl_lib_dir
-        FR_SMART_CHECK_LIB(crypto, EVP_cleanup)
-        if test "x$ac_cv_lib_crypto_EVP_cleanup" != "xyes"; then
+        FR_SMART_CHECK_LIB(crypto, EVP_CIPHER_CTX_new)
+        if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_new" != "xyes"; then
 	  fail="libssl"
         else
           AC_CHECK_FUNCS(EVP_sha256)
