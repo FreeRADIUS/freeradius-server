@@ -855,7 +855,11 @@ int tls_session_pairs_from_x509_cert(vp_cursor_t *cursor, TALLOC_CTX *ctx,
 
 	int		attr_index, loc;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	STACK_OF(X509_EXTENSION) const *ext_list = NULL;
+#else
 	STACK_OF(X509_EXTENSION) *ext_list = NULL;
+#endif
 
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
@@ -954,16 +958,27 @@ do { \
 
 				switch (name->type) {
 #ifdef GEN_EMAIL
-				case GEN_EMAIL:
-					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_EMAIL][attr_index],
-						      (char *)ASN1_STRING_data(name->d.rfc822Name));
+				case GEN_EMAIL: {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+					char const *rfc822Name = (char const *)ASN1_STRING_get0_data(name->d.rfc822Name);
+#else
+					char *rfc822Name = (char *)ASN1_STRING_data(name->d.rfc822Name);
+#endif
+
+					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_EMAIL][attr_index], rfc822Name);
 					break;
+				}
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
-				case GEN_DNS:
-					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_DNS][attr_index],
-						      (char *)ASN1_STRING_data(name->d.dNSName));
+				case GEN_DNS: {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+					char const *dNSName = (char const *)ASN1_STRING_get0_data(name->d.dNSName);
+#else
+					char *dNSName = (char *)ASN1_STRING_data(name->d.dNSName);
+#endif
+					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_DNS][attr_index], dNSName);
 					break;
+				}
 #endif	/* GEN_DNS */
 #ifdef GEN_OTHERNAME
 				case GEN_OTHERNAME:
