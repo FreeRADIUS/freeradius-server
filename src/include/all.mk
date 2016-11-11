@@ -130,12 +130,9 @@ src/include/radpaths.h: src/include/build-radpaths-h
 src/freeradius-devel:
 	${Q}[ -e $@ ] || ln -s include $@
 
-#
-#  Create subdirectories
-#
-.PHONY: $(INCLUDE_SUBDIRS)
-$(INCLUDE_SUBDIRS):
-	@ln -sf ${top_srcdir}/src/$(notdir $@) $@
+.PHONY: src/include/util
+src/include/util:
+	@ln -sf ${top_srcdir}/src/util ${top_srcdir}/src/include/util
 
 #
 #  Ensure we set up the build environment
