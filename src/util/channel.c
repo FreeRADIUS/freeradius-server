@@ -28,7 +28,7 @@ RCSID("$Id$")
 #define FROM_WORKER (1)
 
 #define WHICH_TO_FLAGS(_x)	(((_x) + 1) & 0x03)
-#define FLAGS_TO_WHICH(_x)	(((_x) & 0x03) - 1)
+//#define FLAGS_TO_WHICH(_x)	(((_x) & 0x03) - 1)
 
 /**
  *  One end of a channel, which consists of a kqueue descriptor, and
