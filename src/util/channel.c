@@ -462,5 +462,9 @@ int fr_channel_service_kevent(int kq, struct kevent *kev, fr_time_t when)
 
 	rad_assert(ack < end->sequence);
 
+	/*
+	 *	The worker hasn't seen our last few packets.  Signal
+	 *	that there is data ready.
+	 */
 	return fr_channel_data_ready(ch, when, end, FROM_WORKER);
 }
