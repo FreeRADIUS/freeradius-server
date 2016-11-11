@@ -44,10 +44,6 @@ USES_APPLE_DEPRECATED_API
 #  include <mach/mach_time.h>
 #endif
 
-#define NANOSEC (1000000000)
-#define USEC	(1000000)
-
-
 static struct timeval tm_started = { 0, 0};
 
 #ifdef HAVE_CLOCK_GETTIME

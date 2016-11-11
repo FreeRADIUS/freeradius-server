@@ -57,11 +57,15 @@ typedef struct fr_time_tracking_t {
 	fr_time_t	when;			//!< last time we changed a field
 	fr_time_t	start;			//!< time this request started being processed
 	fr_time_t	end;			//!< when we stopped processing this request
+	fr_time_t	predicted;		//!< predicted processing time for this request
 	fr_time_t	yielded;		//!< time this request yielded
 	fr_time_t	resumed;		//!< time this request last resumed;
 	fr_time_t	running;		//!< total time spent running
 	fr_time_t	waiting;		//!< total time spent waiting
 } fr_time_tracking_t;
+
+#define NANOSEC (1000000000)
+#define USEC	(1000000)
 
 int fr_time_start(void);
 fr_time_t fr_time(void);

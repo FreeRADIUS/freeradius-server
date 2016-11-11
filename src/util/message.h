@@ -26,6 +26,7 @@
  */
 RCSIDH(message_h, "$Id$")
 
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/ring_buffer.h>
 
 #ifdef __cplusplus
@@ -44,6 +45,7 @@ typedef enum fr_message_status_t {
 typedef struct fr_message_t {
 	fr_message_status_t	status;		//!< free, used, done, etc.
 
+	fr_time_t		when;		//!< when this message was sent
 	fr_ring_buffer_t	*rb;		//!< pointer to the ring buffer
 	uint8_t			*data;		//!< pointer to the data in the ring buffer
 	size_t			data_size;	//!< size of the data in the ring buffer
