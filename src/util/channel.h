@@ -69,19 +69,13 @@ typedef struct fr_channel_data_t {
 
 } fr_channel_data_t;
 
-typedef struct fr_channel_control_t {
-	fr_message_t		m;		//!< the message header
-
-	
-} fr_channel_control_t;
-
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker);
 
-int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm) CC_HINT(nonnull);
-fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch, fr_time_t when) CC_HINT(nonnull);
+int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_reply) CC_HINT(nonnull);
+fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm) CC_HINT(nonnull);
-fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch, fr_time_t when) CC_HINT(nonnull);
+int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_request) CC_HINT(nonnull);
+fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

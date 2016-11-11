@@ -48,7 +48,7 @@ typedef struct fr_channel_end_t {
 	uint64_t		ack;		//!< sequence number of the other end
 
 	fr_time_t		last_write;	//!< last write to the channel
-	fr_time_t		last_read_other; //!< last read from the other the channel
+	fr_time_t		last_read_other; //!< last time we successfully read a message from the other the channel
 	fr_time_t		message_interval; //!< interval between messages
 
 	fr_time_t		last_signal;	//!< the last time when we signaled the other end
@@ -144,13 +144,19 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_channel_data_t *cd, fr_cha
  *
  *  The message should be initialized, other than "sequence" and "ack".
  *
+ *  No matter what the function returns, the caller should check the
+ *  reply pointer.  If the reply pointer is not NULL, the caller
+ *  should call fr_channel_recv_reply() until that function returns
+ *  NULL.
+ *
  * @param[in] ch the channel to signal
  * @param[in] cd the message to signal
+ * @param[out] p_reply a pointer to a reply message
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
+int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_data_t **p_reply)
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
@@ -168,12 +174,15 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(end->aq, cd)) {
+		*p_reply = fr_channel_recv_reply(ch);
 		return -1;
 	}
 
 	end->sequence = sequence;
 	message_interval = when - end->last_write;
 	end->message_interval = RTT(end->message_interval, message_interval);
+
+	rad_assert(end->last_write <= when);
 	end->last_write = when;
 	
 	/*
@@ -184,8 +193,15 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	 */
 	end->num_outstanding++;
 	if (end->num_outstanding > 1) {
+		*p_reply = fr_channel_recv_reply(ch);
 		return 0;
 	}
+
+	/*
+	 *	We just sent the first request, so there can't
+	 *	possibly be a reply yet.
+	 */
+	*p_reply = NULL;
 
 	/*
 	 *	Tell the other end that there is new data ready.
@@ -196,12 +212,11 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 /** Receive a reply message from the channel
  *
  * @param[in] ch the channel to signal
- * @param[in] when the time when we're polling this channel
  * @return
  *	- NULL on no data to receive
  *	- the message on success
  */
-fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch, fr_time_t when)
+fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
 	fr_channel_end_t *end;
@@ -210,10 +225,7 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch, fr_time_t when)
 	aq = ch->end[FROM_WORKER].aq;
 	end = &(ch->end[FROM_WORKER]);
 
-	if (!fr_atomic_queue_pop(aq, (void **) &cd)) {
-		end->last_read_other = when;
-		return NULL;
-	}
+	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
 	/*
 	 *	We want an exponential moving average for round trip
@@ -240,6 +252,8 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch, fr_time_t when)
 
 	end->num_outstanding--;
 	end->ack = cd->sequence;
+
+	rad_assert(end->last_read_other <= cd->m.when);
 	end->last_read_other = cd->m.when;
 
 	return cd;
@@ -249,12 +263,11 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch, fr_time_t when)
 /** Receive a request message from the channel
  *
  * @param[in] ch the channel to signal
- * @param[in] when the time when we're polling this channel
  * @return
  *	- NULL on no data to receive
  *	- the message on success
  */
-fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch, fr_time_t when)
+fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
 	fr_channel_end_t *end;
@@ -263,16 +276,15 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch, fr_time_t when)
 	aq = ch->end[TO_WORKER].aq;
 	end = &(ch->end[FROM_WORKER]);
 
-	if (!fr_atomic_queue_pop(aq, (void **) &cd)) {
-		end->last_read_other = when;
-		return NULL;
-	}
+	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
 	rad_assert(cd->sequence > end->ack);
 	rad_assert(cd->sequence >= end->sequence); /* must have more requests than replies */
 
 	end->num_outstanding++;
 	end->ack = cd->sequence;
+
+	rad_assert(end->last_read_other <= cd->m.when);
 	end->last_read_other = cd->m.when;
 
 	return cd;
@@ -282,13 +294,19 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch, fr_time_t when)
  *
  *  The message should be initialized, other than "sequence" and "ack".
  *
+ *  No matter what the function returns, the caller should check the
+ *  request pointer.  If the reply pointer is not NULL, the caller
+ *  should call fr_channel_recv_request() until that function returns
+ *  NULL.
+ *
  * @param[in] ch the channel to signal
  * @param[in] cd the message to signal
+ * @param[out] p_request a pointer to a request message
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
+int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_data_t **p_request)
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
@@ -303,6 +321,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	cd->ack = end->ack;
 
 	if (!fr_atomic_queue_push(end->aq, cd)) {
+		*p_request = fr_channel_recv_request(ch);
 		return -1;
 	}
 	
@@ -312,7 +331,16 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	end->sequence = sequence;
 	message_interval = when - end->last_write;
 	end->message_interval = RTT(end->message_interval, message_interval);
+
+	rad_assert(end->last_write <= when);
 	end->last_write = when;
+
+	/*
+	 *	Even if we think we have no more packets to process,
+	 *	the caller may have sent us one.  Go check the input
+	 *	channel.
+	 */
+	*p_request = fr_channel_recv_request(ch);
 
 	/*
 	 *	No packets outstanding, we HAVE to signal the network
@@ -330,8 +358,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	 *
 	 *	FIXME: make these limits configurable...
 	 */
-	if (((end->last_read_other - when) < (NANOSEC / 1000)) ||
-	    ((end->last_signal - when) < (NANOSEC / 1000)) ||
+	if (((end->last_read_other - when) < 1000) ||
+	    ((end->last_signal - when) < 1000) ||
 	    ((end->sequence - end->ack) <= 3)) {
 		return 0;
 	}
