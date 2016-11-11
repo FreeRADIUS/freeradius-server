@@ -49,28 +49,28 @@ extern "C" {
  * explanation of what they are all about, see doc/configurable_failover.rst
  */
 typedef enum {
-	UNLANG_TYPE_NULL = 0,		//!< Modcallable type not set.
-	UNLANG_TYPE_MODULE_CALL = 1,	//!< Module method.
+	UNLANG_TYPE_NULL = 0,			//!< Modcallable type not set.
+	UNLANG_TYPE_MODULE_CALL = 1,		//!< Module method.
 	UNLANG_TYPE_GROUP,			//!< Grouping section.
 	UNLANG_TYPE_LOAD_BALANCE,		//!< Load balance section.
-	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,//!< Redundant load balance section.
-	UNLANG_TYPE_PARALLEL,		//!< execute statements in parallel
+	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
+	UNLANG_TYPE_PARALLEL,			//!< execute statements in parallel
 #ifdef WITH_UNLANG
-	UNLANG_TYPE_IF,			//!< Condition.
+	UNLANG_TYPE_IF,				//!< Condition.
 	UNLANG_TYPE_ELSE,			//!< !Condition.
 	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
-	UNLANG_TYPE_UPDATE,		//!< Update block.
-	UNLANG_TYPE_SWITCH,		//!< Switch section.
+	UNLANG_TYPE_UPDATE,			//!< Update block.
+	UNLANG_TYPE_SWITCH,			//!< Switch section.
 	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).
-	UNLANG_TYPE_FOREACH,		//!< Foreach section.
+	UNLANG_TYPE_FOREACH,			//!< Foreach section.
 	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH).
-	UNLANG_TYPE_RETURN,		//!< Return statement.
+	UNLANG_TYPE_RETURN,			//!< Return statement.
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
 #endif
-	UNLANG_TYPE_POLICY,		//!< Policy section.
+	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Bare xlat statement.
-	UNLANG_TYPE_RESUME,		//!< where to resume something.
+	UNLANG_TYPE_RESUME,			//!< where to resume something.
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
