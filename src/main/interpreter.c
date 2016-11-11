@@ -463,12 +463,12 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_xlat(REQUEST *request, unlang_stack_t *stack,
-				     UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_xlat_inline(REQUEST *request, unlang_stack_t *stack,
+					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_xlat_t	*mx = unlang_generic_to_xlat(instruction);
+	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
 	char buffer[128];
 
 	if (!mx->exec) {
@@ -945,9 +945,9 @@ unlang_op_t unlang_ops[] = {
 		.children = true
 	},
 #endif
-	[UNLANG_TYPE_XLAT] = {
-		.name = "xlat",
-		.func = unlang_xlat,
+	[UNLANG_TYPE_XLAT_INLINE] = {
+		.name = "xlat_inline",
+		.func = unlang_xlat_inline,
 		.children = false
 	},
 	[UNLANG_TYPE_RESUME] = {

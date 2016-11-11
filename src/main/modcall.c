@@ -2200,20 +2200,20 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 }
 #endif
 
-static unlang_t *compile_xlat(unlang_t *parent,
-				 unlang_compile_t *unlang_ctx, char const *fmt)
+static unlang_t *compile_xlat_inline(unlang_t *parent,
+				     unlang_compile_t *unlang_ctx, char const *fmt)
 {
 	unlang_t *c;
-	unlang_xlat_t *mx;
+	unlang_xlat_inline_t *mx;
 
-	mx = talloc_zero(parent, unlang_xlat_t);
+	mx = talloc_zero(parent, unlang_xlat_inline_t);
 
-	c = unlang_xlat_to_generic(mx);
+	c = unlang_xlat_inline_to_generic(mx);
 	c->parent = parent;
 	c->next = NULL;
 	c->name = "expand";
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_XLAT;
+	c->type = UNLANG_TYPE_XLAT_INLINE;
 
 	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
@@ -2806,7 +2806,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (modrefname[0] == '`')) {
-			return compile_xlat(parent, unlang_ctx, modrefname);
+			return compile_xlat_inline(parent, unlang_ctx, modrefname);
 		}
 	}
 

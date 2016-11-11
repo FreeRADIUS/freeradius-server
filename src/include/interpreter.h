@@ -69,7 +69,7 @@ typedef enum {
 						//!< values from a #map_proc_t call).
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
-	UNLANG_TYPE_XLAT,			//!< Bare xlat statement.
+	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
 	UNLANG_TYPE_RESUME,			//!< where to resume something.
 	UNLANG_TYPE_MAX
 } unlang_type_t;
@@ -179,7 +179,7 @@ typedef struct {
 	unlang_t		self;
 	int			exec;
 	char			*xlat_name;
-} unlang_xlat_t;
+} unlang_xlat_inline_t;
 
 /** State of a foreach loop
  *
@@ -281,13 +281,13 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_xlat_t *unlang_generic_to_xlat(unlang_t *p)
+static inline unlang_xlat_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_XLAT);
-	return (unlang_xlat_t *)p;
+	rad_assert(p->type == UNLANG_TYPE_XLAT_INLINE);
+	return (unlang_xlat_inline_t *)p;
 }
 
-static inline unlang_t *unlang_xlat_to_generic(unlang_xlat_t *p)
+static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 {
 	return (unlang_t *)p;
 }
