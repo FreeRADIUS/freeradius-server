@@ -21,7 +21,6 @@
  * @file util/message.h
  * @brief Inter-thread messaging
  *
- * @copyright 2016 The FreeRADIUS Server Project
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
 RCSIDH(message_h, "$Id$")
