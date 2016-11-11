@@ -24,9 +24,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/channel.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include <sys/types.h>
-#include <sys/event.h>
-
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
@@ -105,7 +102,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
  *
  *  Note that the caller doesn't care about data in the event, that is
  *  sent via the atomic queue.  The kevent code takes care of
- *  delivering the signal once, even if it's sent by multiple network
+ *  delivering the signal once, even if it's sent by multiple master
  *  threads.
  *
  *  The thread watching the KQ knows which end it is.  So when it gets
@@ -113,26 +110,26 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
  *  end[1].  We also send which end in 'which' (0, 1) to further help
  *  the recipient.
  *
- * @param[in] ch the channel to signal
- * @param[in] cd the message to signal
+ * @param[in] ch the channel
+ * @param[in] when the time when the data is ready.  Typically taken from the message.
  * @param[in] end the end of the channel that the message was written to
  * @param[in] which end of the channel (0/1)
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_channel_data_ready(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_end_t *end, int which)
+static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_end_t *end, int which)
 {
 	struct kevent kev;
 
-	end->last_signal = cd->m.when;
+	end->last_signal = when;
 
 	/*
 	 *	The ident is the pointer to the channel.  This is so
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, (uintptr_t) cd, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
+	EV_SET(&kev, (uintptr_t) ch, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -149,8 +146,8 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_channel_data_t *cd, fr_cha
  *  should call fr_channel_recv_reply() until that function returns
  *  NULL.
  *
- * @param[in] ch the channel to signal
- * @param[in] cd the message to signal
+ * @param[in] ch the channel
+ * @param[in] cd the message to send
  * @param[out] p_reply a pointer to a reply message
  * @return
  *	- <0 on error
@@ -206,12 +203,12 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	/*
 	 *	Tell the other end that there is new data ready.
 	 */
-	return fr_channel_data_ready(ch, cd, end, TO_WORKER);
+	return fr_channel_data_ready(ch, when, end, TO_WORKER);
 }
 
 /** Receive a reply message from the channel
  *
- * @param[in] ch the channel to signal
+ * @param[in] ch the channel
  * @return
  *	- NULL on no data to receive
  *	- the message on success
@@ -262,7 +259,7 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 
 /** Receive a request message from the channel
  *
- * @param[in] ch the channel to signal
+ * @param[in] ch the channel
  * @return
  *	- NULL on no data to receive
  *	- the message on success
@@ -299,8 +296,8 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
  *  should call fr_channel_recv_request() until that function returns
  *  NULL.
  *
- * @param[in] ch the channel to signal
- * @param[in] cd the message to signal
+ * @param[in] ch the channel
+ * @param[in] cd the message to send
  * @param[out] p_request a pointer to a request message
  * @return
  *	- <0 on error
@@ -343,11 +340,11 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	*p_request = fr_channel_recv_request(ch);
 
 	/*
-	 *	No packets outstanding, we HAVE to signal the network
+	 *	No packets outstanding, we HAVE to signal the master
 	 *	thread.
 	 */
 	if (end->num_outstanding == 0) {
-		return fr_channel_data_ready(ch, cd, end, FROM_WORKER);
+		return fr_channel_data_ready(ch, when, end, FROM_WORKER);
 	}
 
 	/*
@@ -364,5 +361,106 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 		return 0;
 	}
 
-	return fr_channel_data_ready(ch, cd, end, FROM_WORKER);
+	return fr_channel_data_ready(ch, when, end, FROM_WORKER);
+}
+
+
+/** Signal a channel that the worker is sleeping.
+ *
+ *  This function should be called from the workers idle loop.
+ *  i.e. only when it has nothing else to do.
+ *
+ * @param[in] ch the channel
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_worker_sleeping(fr_channel_t *ch)
+{
+	int which;
+	struct kevent kev;
+	fr_channel_end_t *end;
+
+	which = FROM_WORKER;
+	end = &(ch->end[FROM_WORKER]);
+
+	/*
+	 *	We don't have any outstanding requests to process for
+	 *	this channel, don't signal the network thread that
+	 *	we're sleeping.  It already knows.
+	 */
+	if (end->num_outstanding == 0) return 0;
+
+	/*
+	 *	The ident is the pointer to the channel.  This is so
+	 *	that a thread listening on multiple channels can
+	 *	receive events unique to each one.
+	 */
+	EV_SET(&kev, 0, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), end->ack, ch);
+
+	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
+}
+
+
+/** Service an EVFILT_USER event.
+ *
+ *  The channels use EVFILT_USER events for internal signaling.  A
+ *  master / worker should call this function for every EVFILT_USER
+ *  event.  Note that the caller does NOT pass the channel into this
+ *  function.  Instead, the channel is taken from the kevent.
+ *
+ * @param[in] kq the kqueue on which the event was received
+ * @param[in] when the current time
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_service_kevent(int kq, struct kevent *kev, fr_time_t when)
+{
+	uint64_t ack;
+	fr_channel_end_t *end;
+	fr_channel_t *ch;
+
+	rad_assert(kev->filter == EVFILT_USER);
+
+	ch = kev->udata;
+
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
+	/*
+	 *	Data is ready on one or both channels.  Non-zero
+	 *	idents are just signals that data is ready.  We just
+	 *	return to the caller, and rely on it to service it's
+	 *	channel.
+	 */
+	if (kev->ident != 0) return 0;
+
+	/*
+	 *	Zero idents are only allowed for signals from the
+	 *	worker to the master thread.
+	 */
+	rad_assert(kq == ch->end[FROM_WORKER].kq);
+
+	/*
+	 *	Run-time sanity check.
+	 */
+	end = &ch->end[FROM_WORKER];
+	if (end->kq != kq) return -1;
+
+	end = &ch->end[TO_WORKER];
+
+	/*
+	 *	If the signal is ACKing the last packet we sent, we
+	 *	don't do anything else.
+	 */
+	ack = (uint64_t) kev->data;
+	if (ack == end->sequence) {
+		return 0;
+	}
+
+	rad_assert(ack < end->sequence);
+
+	return fr_channel_data_ready(ch, when, end, FROM_WORKER);
 }

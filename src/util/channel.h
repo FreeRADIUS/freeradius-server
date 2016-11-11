@@ -28,6 +28,8 @@ RCSIDH(channel_h, "$Id$")
 #include <freeradius-devel/util/message.h>
 #include <freeradius-devel/util/atomic_queue.h>
 
+#include <sys/types.h>
+#include <sys/event.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,6 +78,9 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_request) CC_HINT(nonnull);
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
+
+int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
+int fr_channel_service_kevent(int kq, struct kevent *kev, fr_time_t when) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
