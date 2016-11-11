@@ -62,7 +62,7 @@ void		fr_event_loop_exit(fr_event_list_t *el, int code);
 bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
-fr_event_list_t	*fr_event_list_init(TALLOC_CTX *ctx, fr_event_status_t status);
+fr_event_list_t	*fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status);
 
 #ifdef __cplusplus
 }
