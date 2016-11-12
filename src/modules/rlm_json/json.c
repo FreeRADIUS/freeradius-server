@@ -333,6 +333,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 	VALUE_PAIR 		*vp;
 	struct json_object	*obj;
 	const char		*p;
+	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	MEM(obj = json_object_new_object());
 
@@ -341,10 +342,12 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 		fr_dict_enum_t const	*dv;
 		struct json_object	*vp_object, *values, *value, *type_name;
 
+		name_with_prefix = vp->da->name;
 		if (prefix) {
-			MEM(name_with_prefix = talloc_asprintf(ctx, "%s:%s", prefix, vp->da->name));
-		} else {
-			name_with_prefix = vp->da->name;
+			int len = snprintf(buf, sizeof(buf), "%s:%s", prefix, vp->da->name);
+			if (len == (int)strlen(buf)) {
+				name_with_prefix = buf;
+			}
 		}
 
 		/*
@@ -369,8 +372,6 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 
 			return NULL;
 		}
-
-		if (prefix) talloc_const_free(name_with_prefix);
 
 		MEM(value = json_object_from_value_data(ctx, vp->da->type, vp->da, &vp->data));
 		json_object_array_add(values, value);
