@@ -411,6 +411,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *  function.  Instead, the channel is taken from the kevent.
  *
  * @param[in] kq the kqueue on which the event was received
+ * @param[in] kev the event of type EVFILT_USER
  * @param[in] when the current time
  * @return
  *	- <0 on error
