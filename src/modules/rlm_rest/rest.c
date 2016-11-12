@@ -528,17 +528,21 @@ no_space:
  * JSON request format is:
 @verbatim
 {
-	"<attribute0>":{
-		"type":"<type0>",
-		"value":[<value0>,<value1>,<valueN>]
+	"request":{
+		"<attribute0>":{
+			"type":"<type0>",
+			"value":[<value0>,<value1>,<valueN>]
+		},
+		"<attribute1>":{
+			"type":"<type1>",
+			"value":[...]
+		},
+		"<attributeN>":{
+			"type":"<typeN>",
+			"value":[...]
+		},
 	},
-	"<attribute1>":{
-		"type":"<type1>",
-		"value":[...]
-	},
-	"<attributeN>":{
-		"type":"<typeN>",
-		"value":[...]
+	"reply":{
 	},
 }
 @endverbatim
@@ -565,7 +569,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	rad_assert(freespace > 0);
 
 	if (ctx->state == READ_STATE_INIT) {
-		encoded = fr_json_afrom_pair_list(data, &request->packet->vps, NULL);
+		encoded = fr_json_afrom_request(data, request);
 		if (!encoded) return -1;
 
 		data->start = data->p = encoded;
