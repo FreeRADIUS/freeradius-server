@@ -282,43 +282,11 @@ void fr_json_version_print(void)
 #endif
 }
 
-/** Returns a JSON string of a list of value pairs
- *
- *  The result is a talloc-ed string, freeing the string is the responsibility
- *  of the caller.
- *
- * Output format is:
-@verbatim
-{
-	"<attribute0>":{
-		"type":"<type0>",
-		"value":[<value0>,<value1>,<valueN>],
-		"mapping":[<enumv0>,<enumv1>,<enumvN>]
-	},
-	"<attribute1>":{
-		"type":"<type1>",
-		"value":[...]
-	},
-	"<attributeN>":{
-		"type":"<typeN>",
-		"value":[...]
-	},
-}
-@endverbatim
- *
- * @note Mapping element is only present for attributes with enumerated values.
- *
- * @param[in] ctx	Talloc context.
- * @param[in] vps	a list of value pairs.
- * @param[in] prefix	The prefix to use, can be NULL to skip the prefix.
- * @return JSON string representation of the value pairs
- */
-const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
+static struct json_object *fr_json_obj_from_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
 {
 	vp_cursor_t		cursor;
 	VALUE_PAIR 		*vp;
 	struct json_object	*obj;
-	const char		*p;
 	char			buf[FR_DICT_ATTR_MAX_NAME_LEN + 32];
 
 	MEM(obj = json_object_new_object());
@@ -390,6 +358,47 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 			}
 		}
 	}
+
+	return obj;
+}
+
+/** Returns a JSON string of a list of value pairs
+ *
+ *  The result is a talloc-ed string, freeing the string is the responsibility
+ *  of the caller.
+ *
+ * Output format is:
+@verbatim
+{
+	"<attribute0>":{
+		"type":"<type0>",
+		"value":[<value0>,<value1>,<valueN>],
+		"mapping":[<enumv0>,<enumv1>,<enumvN>]
+	},
+	"<attribute1>":{
+		"type":"<type1>",
+		"value":[...]
+	},
+	"<attributeN>":{
+		"type":"<typeN>",
+		"value":[...]
+	},
+}
+@endverbatim
+ *
+ * @note Mapping element is only present for attributes with enumerated values.
+ *
+ * @param[in] ctx	Talloc context.
+ * @param[in] vps	a list of value pairs.
+ * @param[in] prefix	The prefix to use, can be NULL to skip the prefix.
+ * @return JSON string representation of the value pairs
+ */
+const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
+{
+	struct json_object	*obj;
+	const char		*p;
+
+	obj = fr_json_obj_from_pair_list(ctx, vps, prefix);
 
 	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
 	MEM(p = talloc_strdup(ctx, p));
