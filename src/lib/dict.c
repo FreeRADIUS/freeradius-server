@@ -470,7 +470,7 @@ static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 	size_t			len;
 	fr_dict_attr_t const	*p;
 
-	printf("%p - %s (%i) %s\n", da, da->name, da->attr, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
+	printf("%p - %s (%u) %s\n", da, da->name, da->attr, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 
 	len = talloc_array_length(da->children);
 	for (i = 0; i < len; i++) {

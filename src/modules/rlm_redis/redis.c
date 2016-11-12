@@ -230,12 +230,10 @@ int fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply 
 			in.ushort = (uint16_t) reply->integer;
 			in.length = sizeof(in.ushort);
 		}
-		else if (reply->integer >= 0) {		/* 8bit unsigned (supported) */
+		else {		/* 8bit unsigned (supported) */
 			src_type = PW_TYPE_BYTE;
 			in.byte = (uint8_t) reply->integer;
 			in.length = sizeof(in.byte);
-		} else {
-			rad_assert(0);
 		}
 		break;
 

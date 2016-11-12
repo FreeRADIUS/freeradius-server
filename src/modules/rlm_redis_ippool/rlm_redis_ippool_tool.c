@@ -863,7 +863,8 @@ static int8_t pool_cmp(void const *a, void const *b)
 static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance)
 {
 	fr_socket_addr_t	*master;
-	size_t			ret, i, k, used = 0;
+	size_t			k;
+	ssize_t			ret, i, used = 0;
 	fr_redis_conn_t		*conn = NULL;
 	redis_driver_conf_t	*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
 	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
