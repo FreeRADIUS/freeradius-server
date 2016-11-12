@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
 	 *	Call the module's initialisation methods.  These create
 	 *	connection pools and open connections to external resources.
 	 */
-	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	And then load the virtual servers.

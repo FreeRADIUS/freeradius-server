@@ -951,7 +951,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	    (inst->driver->instantiate(&inst->config, inst->driver_inst, driver_cs) < 0)) return -1;
 
 #ifndef NDEBUG
-	if (inst->driver_inst) module_set_memlimit(inst->driver_inst, inst->driver->name);
+	if (inst->driver_inst) module_instance_read_only(inst->driver_inst, inst->driver->name);
 #endif
 
 	if (inst->config.ttl == 0) {

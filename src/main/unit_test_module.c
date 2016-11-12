@@ -814,7 +814,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Load the modules
 	 */
-	if (modules_init(main_config.config) < 0) goto exit_failure;
+	if (modules_instantiate(main_config.config) < 0) goto exit_failure;
 
 	/*
 	 *	And then load the virtual servers.

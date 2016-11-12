@@ -167,10 +167,10 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
  *	Create free and destroy module instances
  */
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
-int		modules_init(CONF_SECTION *root) CC_HINT(nonnull);
+int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_free(void);
 int		modules_hup(CONF_SECTION *modules);
-int		module_set_memlimit(TALLOC_CTX *ctx, char const *name);
+int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
 /*
  *	Call various module sections

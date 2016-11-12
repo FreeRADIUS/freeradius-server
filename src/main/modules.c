@@ -1,8 +1,4 @@
 /*
- * modules.c	Radius module support.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,10 +12,17 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
  *
- * Copyright 2003,2006  The FreeRADIUS server project
- * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2000  Alan Curry <pacman@world.std.com>
+ * @file modules.c
+ * @brief Defines functions for module (re-)initialisation.
+ *
+ * @copyright 2003,2006  The FreeRADIUS server project
+ * @copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2000  Alan Curry <pacman@world.std.com>
  */
 
 RCSID("$Id$")
@@ -57,8 +60,289 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 };
 
+static module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_name);
 
-int module_set_memlimit(TALLOC_CTX *ctx, char const *name)
+static bool is_reserved_word(const char *name)
+{
+	int i;
+
+	if (!name || !*name) return false;
+
+	for (i = 1; unlang_ops[i].name != NULL; i++) {
+		if (strcmp(name, unlang_ops[i].name) == 0) return true;
+	}
+
+	return false;
+}
+
+/** Initialise a module specific exfile handle
+ *
+ * @see exfile_init
+ *
+ * @param[in] ctx		to bind the lifetime of the exfile handle to.
+ * @param[in] module		section.
+ * @param[in] max_entries	Max file descriptors to cache, and manage locks for.
+ * @param[in] max_idle		Maximum time a file descriptor can be idle before it's closed.
+ * @param[in] locking		Whether	or not to lock the files.
+ * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
+ * @return
+ *	- New connection pool.
+ *	- NULL on error.
+ */
+exfile_t *module_exfile_init(TALLOC_CTX *ctx,
+			     CONF_SECTION *module,
+			     uint32_t max_entries,
+			     uint32_t max_idle,
+			     bool locking,
+			     char const *trigger_prefix,
+			     VALUE_PAIR *trigger_args)
+{
+	char		trigger_prefix_buff[128];
+	exfile_t	*handle;
+
+	if (!trigger_prefix) {
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.file", cf_section_name1(module));
+		trigger_prefix = trigger_prefix_buff;
+	}
+
+	handle = exfile_init(ctx, max_entries, max_idle, locking);
+	if (!handle) return NULL;
+
+	exfile_enable_triggers(handle, cf_section_sub_find(module, "file"), trigger_prefix, trigger_args);
+
+	return handle;
+}
+
+/** Resolve polymorphic item's from a module's #CONF_SECTION to a subsection in another module
+ *
+ * This allows certain module sections to reference module sections in other instances
+ * of the same module and share #CONF_DATA associated with them.
+ *
+ * @verbatim
+   example {
+   	data {
+   		...
+   	}
+   }
+
+   example inst {
+   	data = example
+   }
+ * @endverbatim
+ *
+ * @param out where to write the pointer to a module's config section.  May be NULL on success,
+ *	indicating the config item was not found within the module #CONF_SECTION
+ *	or the chain of module references was followed and the module at the end of the chain
+ *	did not a subsection.
+ * @param module #CONF_SECTION.
+ * @param name of the polymorphic sub-section.
+ * @return
+ *	- 0 on success with referenced section.
+ *	- 1 on success with local section.
+ *	- -1 on failure.
+ */
+int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name)
+{
+	static bool loop = true;        /* not used, we just need a valid pointer to quiet static analysis */
+
+	CONF_PAIR *cp;
+	CONF_SECTION *cs;
+
+	module_instance_t *inst;
+	char const *inst_name;
+
+#define FIND_SIBLING_CF_KEY "find_sibling"
+
+	*out = NULL;
+
+	/*
+	 *	Is a real section (not referencing sibling module).
+	 */
+	cs = cf_section_sub_find(module, name);
+	if (cs) {
+		*out = cs;
+
+		return 0;
+	}
+
+	/*
+	 *	Item omitted completely from module config.
+	 */
+	cp = cf_pair_find(module, name);
+	if (!cp) return 0;
+
+	if (cf_data_find(module, FIND_SIBLING_CF_KEY)) {
+		cf_log_err_cp(cp, "Module reference loop found");
+
+		return -1;
+	}
+	cf_data_add(module, FIND_SIBLING_CF_KEY, &loop, NULL);
+
+	/*
+	 *	Item found, resolve it to a module instance.
+	 *	This triggers module loading, so we don't have
+	 *	instantiation order issues.
+	 */
+	inst_name = cf_pair_value(cp);
+	inst = module_instantiate(cf_item_parent(cf_section_to_item(module)), inst_name);
+
+	/*
+	 *	Remove the config data we added for loop
+	 *	detection.
+	 */
+	cf_data_remove(module, FIND_SIBLING_CF_KEY);
+	if (!inst) {
+		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
+
+		return -1;
+	}
+
+	/*
+	 *	Check the module instances are of the same type.
+	 */
+	if (strcmp(cf_section_name1(inst->cs), cf_section_name1(module)) != 0) {
+		cf_log_err_cp(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
+			      cf_section_name1(inst->cs), cf_section_name1(module));
+
+		return -1;
+	}
+
+	*out = cf_section_sub_find(inst->cs, name);
+
+	return 1;
+}
+
+/** Initialise a module specific connection pool
+ *
+ * @see fr_connection_pool_init
+ *
+ * @param[in] module		section.
+ * @param[in] opaque		data pointer to pass to callbacks.
+ * @param[in] c			Callback to create new connections.
+ * @param[in] a			Callback to check the status of connections.
+ * @param[in] log_prefix	override, if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
+ * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
+ * @return
+ *	- New connection pool.
+ *	- NULL on error.
+ */
+fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
+						  void *opaque,
+						  fr_connection_create_t c,
+						  fr_connection_alive_t a,
+						  char const *log_prefix,
+						  char const *trigger_prefix,
+						  VALUE_PAIR *trigger_args)
+{
+	CONF_SECTION *cs, *mycs;
+	char log_prefix_buff[128];
+	char trigger_prefix_buff[128];
+
+	fr_connection_pool_t *pool;
+	char const *cs_name1, *cs_name2;
+
+	int ret;
+
+#define CONNECTION_POOL_CF_KEY "connection_pool"
+#define parent_name(_x) cf_section_name(cf_item_parent(cf_section_to_item(_x)))
+
+	cs_name1 = cf_section_name1(module);
+	cs_name2 = cf_section_name2(module);
+	if (!cs_name2) cs_name2 = cs_name1;
+
+	if (!trigger_prefix) {
+		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", cs_name1);
+		trigger_prefix = trigger_prefix_buff;
+	}
+
+	if (!log_prefix) {
+		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", cs_name1, cs_name2);
+		log_prefix = log_prefix_buff;
+	}
+
+	/*
+	 *	Get sibling's pool config section
+	 */
+	ret = module_sibling_section_find(&cs, module, "pool");
+	switch (ret) {
+	case -1:
+		return NULL;
+
+	case 1:
+		DEBUG4("%s: Using pool section from \"%s\"", log_prefix, parent_name(cs));
+		break;
+
+	case 0:
+		DEBUG4("%s: Using local pool section", log_prefix);
+		break;
+	}
+
+	/*
+	 *	Get our pool config section
+	 */
+	mycs = cf_section_sub_find(module, "pool");
+	if (!mycs) {
+		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
+		       cf_section_name(module));
+
+		mycs = cf_section_alloc(module, "pool", NULL);
+		cf_section_add(module, mycs);
+	}
+
+	/*
+	 *	Sibling didn't have a pool config section
+	 *	Use our own local pool.
+	 */
+	if (!cs) {
+		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", log_prefix,
+		       parent_name(cs), parent_name(mycs));
+		cs = mycs;
+	}
+
+	/*
+	 *	If fr_connection_pool_init has already been called
+	 *	for this config section, reuse the previous instance.
+	 *
+	 *	This allows modules to pass in the config sections
+	 *	they would like to use the connection pool from.
+	 */
+	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
+	if (!pool) {
+		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
+		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
+		if (!pool) return NULL;
+
+		fr_connection_pool_enable_triggers(pool, trigger_prefix, trigger_args);
+
+		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
+		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
+		return pool;
+	}
+	fr_connection_pool_ref(pool);
+
+	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
+
+	/*
+	 *	We're reusing pool data add it to our local config
+	 *	section. This allows other modules to transitively
+	 *	re-use a pool through this module.
+	 */
+	if (mycs != cs) {
+		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
+		       log_prefix, pool, parent_name(cs), parent_name(mycs));
+		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
+	}
+
+	return pool;
+}
+
+/** Mark module instance data as being read only
+ *
+ * This still allows memory to be modified, but not allocated
+ */
+int module_instance_read_only(TALLOC_CTX *ctx, char const *name)
 {
 	int rcode;
 	size_t size;
@@ -66,7 +350,6 @@ int module_set_memlimit(TALLOC_CTX *ctx, char const *name)
 	size = talloc_total_size(ctx);
 
 	rcode = talloc_set_memlimit(ctx, size);
-
 	if (rcode < 0) {
 		ERROR("Failed setting memory limit for module %s", name);
 	} else {
@@ -76,6 +359,88 @@ int module_set_memlimit(TALLOC_CTX *ctx, char const *name)
 	return rcode;
 }
 
+/** Find an existing module instance
+ *
+ * @param[in] modules		section in the main config.
+ * @param[in] asked_name 	The name of the module we're attempting to find.
+ *				May include '-' which indicates that it's ok for
+ *				the module not to be loaded.
+ * @return
+ *	- Module instance matching name.
+ *	- NULL if not such module exists.
+ */
+module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
+{
+	char const *instance_name;
+
+	if (!modules) return NULL;
+
+	/*
+	 *	Look for the real name.  Ignore the first character,
+	 *	which tells the server "it's OK for this module to not
+	 *	exist."
+	 */
+	instance_name = asked_name;
+	if (instance_name[0] == '-') instance_name++;
+
+	return (module_instance_t *)cf_data_find(modules, instance_name);
+}
+
+/** Find an existing module instance and verify it implements the specified method
+ *
+ * Extracts the method from the module name where the format is @verbatim <module>.<method> @endverbatim
+ * and ensures that the module is instantiated, and implements the specified method.
+ *
+ * @param[in] modules		section in the main config.
+ * @param[in] name 		The name of the module we're attempting to find, concatenated with
+ *				the method.
+ */
+module_instance_t *module_find_with_method(CONF_SECTION *modules, char const *name, rlm_components_t *method)
+{
+	char			*p;
+	rlm_components_t	i;
+	module_instance_t	*instance;
+
+	/*
+	 *	If the module exists, ensure it's instantiated.
+	 *
+	 *	Doing it this way avoids complaints from
+	 *	module_instantiate()
+	 */
+	instance = module_find(modules, name);
+	if (instance) return module_instantiate(modules, name);
+
+	/*
+	 *	Find out which method is being used.
+	 */
+	p = strrchr(name, '.');
+	if (!p) return NULL;
+
+	p++;
+
+	/*
+	 *	Find the component.
+	 */
+	for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
+		if (strcmp(p, section_type_value[i].section) == 0) {
+			char buffer[256];
+
+			strlcpy(buffer, name, sizeof(buffer));
+			buffer[p - name - 1] = '\0';
+
+			instance = module_find(modules, buffer);
+			if (instance) {
+				if (method) *method = i;
+				return module_instantiate(modules, buffer);
+			}
+		}
+	}
+
+	/*
+	 *	Not found.
+	 */
+	return NULL;
+}
 
 /** Free old instances from HUPs
  *
@@ -106,6 +471,116 @@ static void module_hup_free(module_instance_t *instance, time_t when)
 	}
 }
 
+int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
+{
+	void *insthandle;
+	fr_module_hup_t *mh;
+
+	if (!instance ||
+	    instance->module->bootstrap ||
+	    !instance->module->instantiate ||
+	    ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
+		return 1;
+	}
+
+	/*
+	 *	Silently ignore multiple HUPs within a short time period.
+	 */
+	if ((instance->last_hup + 2) >= when) return 1;
+	instance->last_hup = when;
+
+	cf_log_module(cs, "Trying to reload module \"%s\"", instance->name);
+
+	/*
+	 *	Parse the module configuration, and setup destructors so the
+	 *	module's detach method is called when it's instance data is
+	 *	about to be freed.
+	 */
+	if (dl_module_instance_data_alloc(&insthandle, instance, instance->handle, cs) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
+			"Using old configuration", instance->name);
+
+		return 0;
+	}
+
+	if ((instance->module->instantiate)(cs, insthandle) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
+		talloc_free(insthandle);
+
+		return 0;
+	}
+
+	INFO("Module: Reloaded module \"%s\"", instance->name);
+
+	module_hup_free(instance, when);
+
+	/*
+	 *	Save the old instance handle for later deletion.
+	 */
+	mh = talloc_zero(instance_ctx, fr_module_hup_t);
+	mh->mi = instance;
+	mh->when = when;
+	mh->insthandle = instance->data;
+	mh->next = instance->hup;
+	instance->hup = mh;
+
+	/*
+	 *	Replace the instance handle while the module is running.
+	 */
+	instance->data = insthandle;
+
+	/*
+	 *	FIXME: Set a timeout to come back in 60s, so that
+	 *	we can pro-actively clean up the old instances.
+	 */
+
+	return 1;
+}
+
+/** Reload the configurations of modules that support it
+ *
+ * @param modules CONF_SECTION.
+ * @return
+ *	- 0 on failure.
+ *	- 1 on success.
+ */
+int modules_hup(CONF_SECTION *modules)
+{
+	time_t when;
+	CONF_ITEM *ci;
+	CONF_SECTION *cs;
+	module_instance_t *instance;
+
+	if (!modules) return 0;
+
+	when = time(NULL);
+
+	/*
+	 *	Loop over the modules
+	 */
+	for (ci = cf_item_find_next(modules, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(modules, ci)) {
+		char const *instance_name;
+
+		/*
+		 *	If it's not a section, ignore it.
+		 */
+		if (!cf_item_is_section(ci)) continue;
+
+		cs = cf_item_to_section(ci);
+
+		instance_name = cf_section_name2(cs);
+		if (!instance_name) instance_name = cf_section_name1(cs);
+
+		instance = module_find(modules, instance_name);
+		if (!instance) continue;
+
+		module_hup(cs, instance, when);
+	}
+
+	return 1;
+}
 
 /** Free all modules loaded by the server
  *
@@ -121,8 +596,143 @@ int modules_free(void)
 	return 0;
 }
 
+/** Complete module setup by calling its instantiate function
+ *
+ * @param modules section in the main config.
+ * @param asked_name The name of the module we're attempting to find.  May include '-'
+ *	which indicates that it's ok for the module not to be loaded.
+ * @return
+ *	- Module instance matching name if module can be found, and its instantiate
+ *	  method returns successfully.
+ *	- NULL if instantiation fails or module can't be found.
+ */
+static module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_name)
+{
+	module_instance_t *instance;
+
+	/*
+	 *	Find the module.  If it's not there, do nothing.
+	 */
+	instance = module_find(modules, asked_name);
+	if (!instance) {
+		ERROR("Cannot find module \"%s\"", asked_name);
+		return NULL;
+	}
+
+	/*
+	 *	The module is already instantiated.  Return it.
+	 */
+	if (instance->instantiated) return instance;
+
+	/*
+	 *	Now that ALL modules are instantiated, and ALL xlats
+	 *	are defined, go compile the config items marked as XLAT.
+	 */
+	if (instance->module->config &&
+	    (cf_section_parse_pass2(instance->cs, instance->data,
+				    instance->module->config) < 0)) {
+		return NULL;
+	}
+
+	/*
+	 *	Call the instantiate method, if any.
+	 */
+	if (instance->module->instantiate) {
+		cf_log_module(instance->cs, "Instantiating module \"%s\" from file %s", instance->name,
+			      cf_section_filename(instance->cs));
+
+		/*
+		 *	Call the module's instantiation routine.
+		 */
+		if ((instance->module->instantiate)(instance->cs, instance->data) < 0) {
+			cf_log_err_cs(instance->cs, "Instantiation failed for module \"%s\"", instance->name);
+
+			return NULL;
+		}
+	}
+
+	/*
+	 *	If we're threaded, check if the module is thread-safe.
+	 *
+	 *	If it isn't, we create a mutex.
+	 */
+	if ((instance->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		instance->mutex = talloc_zero(instance, pthread_mutex_t);
+
+		/*
+		 *	Initialize the mutex.
+		 */
+		pthread_mutex_init(instance->mutex, NULL);
+	}
+
+#ifndef NDEBUG
+	if (instance->data) module_instance_read_only(instance->data, instance->name);
+#endif
+
+	instance->instantiated = true;
+	instance->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
+
+	return instance;
+}
+
+/** Completes instantiation of modules
+ *
+ * Allows the module to initialise connection pools, and complete any registrations that depend on
+ * attributes created during the bootstrap phase.
+ *
+ * @param[in] root	Configuration root.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int modules_instantiate(CONF_SECTION *root)
+{
+	CONF_ITEM	*ci, *next;
+	CONF_SECTION	*modules;
+
+	modules = cf_section_sub_find(root, "modules");
+	if (!modules) return 0;
+
+	for (ci = cf_item_find_next(modules, NULL);
+	     ci != NULL;
+	     ci = next) {
+		char const *name;
+		module_instance_t *instance;
+		CONF_SECTION *subcs;
+
+		next = cf_item_find_next(modules, ci);
+
+		if (!cf_item_is_section(ci)) continue;
+
+		subcs = cf_item_to_section(ci);
+		name = cf_section_name2(subcs);
+		if (!name) name = cf_section_name1(subcs);
+
+		instance = module_instantiate(modules, name);
+		if (!instance) return -1;
+	}
+
+#ifndef NDEBUG
+	{
+		size_t size;
+
+		size = talloc_total_size(instance_ctx);
+
+		if (talloc_set_memlimit(instance_ctx, size)) {
+			ERROR("Failed setting memory limit for all modules");
+		} else {
+			DEBUG3("Memory limit for all modules is set to %zd bytes", size);
+		}
+	}
+#endif
+
+	return 0;
+}
+
 /** Free module's instance data, and any xlats or paircompares
  *
+ * @param[in] instance to free.
+ * @return 0
  */
 static int _module_instance_free(module_instance_t *instance)
 {
@@ -277,938 +887,9 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	return instance;
 }
 
-/** Find an existing module instance.
+/** Bootstrap modules and virtual modules
  *
- * @param modules section in the main config.
- * @param asked_name The name of the module we're attempting to find.  May include '-'
- *	which indicates that it's ok for the module not to be loaded.
- * @return
- *	- Module instance matching name.
- *	- NULL if not such module exists.
- */
-module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
-{
-	char const *instance_name;
-
-	if (!modules) return NULL;
-
-	/*
-	 *	Look for the real name.  Ignore the first character,
-	 *	which tells the server "it's OK for this module to not
-	 *	exist."
-	 */
-	instance_name = asked_name;
-	if (instance_name[0] == '-') instance_name++;
-
-	return (module_instance_t *)cf_data_find(modules, instance_name);
-}
-
-/** Complete module setup by calling its instantiate function
- *
- * @param modules section in the main config.
- * @param asked_name The name of the module we're attempting to find.  May include '-'
- *	which indicates that it's ok for the module not to be loaded.
- * @return
- *	- Module instance matching name if module can be found, and its instantiate
- *	  method returns successfully.
- *	- NULL if instantiation fails or module can't be found.
- */
-module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_name)
-{
-	module_instance_t *instance;
-
-	/*
-	 *	Find the module.  If it's not there, do nothing.
-	 */
-	instance = module_find(modules, asked_name);
-	if (!instance) {
-		ERROR("Cannot find module \"%s\"", asked_name);
-		return NULL;
-	}
-
-	/*
-	 *	The module is already instantiated.  Return it.
-	 */
-	if (instance->instantiated) return instance;
-
-	/*
-	 *	Now that ALL modules are instantiated, and ALL xlats
-	 *	are defined, go compile the config items marked as XLAT.
-	 */
-	if (instance->module->config &&
-	    (cf_section_parse_pass2(instance->cs, instance->data,
-				    instance->module->config) < 0)) {
-		return NULL;
-	}
-
-	/*
-	 *	Call the instantiate method, if any.
-	 */
-	if (instance->module->instantiate) {
-		cf_log_module(instance->cs, "Instantiating module \"%s\" from file %s", instance->name,
-			      cf_section_filename(instance->cs));
-
-		/*
-		 *	Call the module's instantiation routine.
-		 */
-		if ((instance->module->instantiate)(instance->cs, instance->data) < 0) {
-			cf_log_err_cs(instance->cs, "Instantiation failed for module \"%s\"", instance->name);
-
-			return NULL;
-		}
-	}
-
-	/*
-	 *	If we're threaded, check if the module is thread-safe.
-	 *
-	 *	If it isn't, we create a mutex.
-	 */
-	if ((instance->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		instance->mutex = talloc_zero(instance, pthread_mutex_t);
-
-		/*
-		 *	Initialize the mutex.
-		 */
-		pthread_mutex_init(instance->mutex, NULL);
-	}
-
-#ifndef NDEBUG
-	if (instance->data) module_set_memlimit(instance->data, instance->name);
-#endif
-
-	instance->instantiated = true;
-	instance->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
-
-	return instance;
-}
-
-module_instance_t *module_instantiate_method(CONF_SECTION *modules, char const *name, rlm_components_t *method)
-{
-	char			*p;
-	rlm_components_t	i;
-	module_instance_t	*instance;
-
-	/*
-	 *	If the module exists, ensure it's instantiated.
-	 *
-	 *	Doing it this way avoids complaints from
-	 *	module_instantiate()
-	 */
-	instance = module_find(modules, name);
-	if (instance) return module_instantiate(modules, name);
-
-	/*
-	 *	Find out which method is being used.
-	 */
-	p = strrchr(name, '.');
-	if (!p) return NULL;
-
-	p++;
-
-	/*
-	 *	Find the component.
-	 */
-	for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-		if (strcmp(p, section_type_value[i].section) == 0) {
-			char buffer[256];
-
-			strlcpy(buffer, name, sizeof(buffer));
-			buffer[p - name - 1] = '\0';
-
-			instance = module_find(modules, buffer);
-			if (instance) {
-				if (method) *method = i;
-				return module_instantiate(modules, buffer);
-			}
-		}
-	}
-
-	/*
-	 *	Not found.
-	 */
-	return NULL;
-}
-
-/** Resolve polymorphic item's from a module's #CONF_SECTION to a subsection in another module
- *
- * This allows certain module sections to reference module sections in other instances
- * of the same module and share #CONF_DATA associated with them.
- *
- * @verbatim
-   example {
-   	data {
-   		...
-   	}
-   }
-
-   example inst {
-   	data = example
-   }
- * @endverbatim
- *
- * @param out where to write the pointer to a module's config section.  May be NULL on success,
- *	indicating the config item was not found within the module #CONF_SECTION
- *	or the chain of module references was followed and the module at the end of the chain
- *	did not a subsection.
- * @param module #CONF_SECTION.
- * @param name of the polymorphic sub-section.
- * @return
- *	- 0 on success with referenced section.
- *	- 1 on success with local section.
- *	- -1 on failure.
- */
-int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name)
-{
-	static bool loop = true;        /* not used, we just need a valid pointer to quiet static analysis */
-
-	CONF_PAIR *cp;
-	CONF_SECTION *cs;
-
-	module_instance_t *inst;
-	char const *inst_name;
-
-#define FIND_SIBLING_CF_KEY "find_sibling"
-
-	*out = NULL;
-
-	/*
-	 *	Is a real section (not referencing sibling module).
-	 */
-	cs = cf_section_sub_find(module, name);
-	if (cs) {
-		*out = cs;
-
-		return 0;
-	}
-
-	/*
-	 *	Item omitted completely from module config.
-	 */
-	cp = cf_pair_find(module, name);
-	if (!cp) return 0;
-
-	if (cf_data_find(module, FIND_SIBLING_CF_KEY)) {
-		cf_log_err_cp(cp, "Module reference loop found");
-
-		return -1;
-	}
-	cf_data_add(module, FIND_SIBLING_CF_KEY, &loop, NULL);
-
-	/*
-	 *	Item found, resolve it to a module instance.
-	 *	This triggers module loading, so we don't have
-	 *	instantiation order issues.
-	 */
-	inst_name = cf_pair_value(cp);
-	inst = module_instantiate(cf_item_parent(cf_section_to_item(module)), inst_name);
-
-	/*
-	 *	Remove the config data we added for loop
-	 *	detection.
-	 */
-	cf_data_remove(module, FIND_SIBLING_CF_KEY);
-	if (!inst) {
-		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
-
-		return -1;
-	}
-
-	/*
-	 *	Check the module instances are of the same type.
-	 */
-	if (strcmp(cf_section_name1(inst->cs), cf_section_name1(module)) != 0) {
-		cf_log_err_cp(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
-			      cf_section_name1(inst->cs), cf_section_name1(module));
-
-		return -1;
-	}
-
-	*out = cf_section_sub_find(inst->cs, name);
-
-	return 1;
-}
-
-
-/*
- *	Load a sub-module list, as found inside an Auth-Type foo {}
- *	block
- */
-static bool load_subcomponent_section(CONF_SECTION *cs,
-				     fr_dict_attr_t const *da, rlm_components_t comp)
-{
-	fr_dict_enum_t *dval;
-	char const *name2 = cf_section_name2(cs);
-
-	/*
-	 *	Sanity check.
-	 */
-	if (!name2) return false;
-
-	/*
-	 *	We must assign a numeric index to this subcomponent.
-	 *	It is generated and placed in the dictionary
-	 *	automatically.  If it isn't found, it's a serious
-	 *	error.
-	 */
-	dval = fr_dict_enum_by_name(NULL, da, name2);
-	if (!dval) {
-		cf_log_err_cs(cs,
-			      "The %s attribute has no VALUE defined for %s",
-			      section_type_value[comp].typename, name2);
-		return false;
-	}
-
-	/*
-	 *	Compile the group.
-	 */
-	if (unlang_compile(cs, comp) < 0) {
-		return false;
-	}
-
-	return true;
-}
-
-static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
-{
-	CONF_SECTION *subcs;
-	fr_dict_attr_t const *da;
-
-	/*
-	 *	Find the attribute used to store VALUEs for this section.
-	 */
-	da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-	if (!da) {
-		cf_log_err_cs(cs,
-			      "No such attribute %s",
-			      section_type_value[comp].typename);
-		return -1;
-	}
-
-	/*
-	 *	Compile the Autz-Type, Auth-Type, etc. first.
-	 *
-	 *	The results will be cached, so that the next
-	 *	compilation will skip these sections.
-	 */
-	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
-		if (!load_subcomponent_section(subcs, da, comp)) {
-			return -1; /* FIXME: memleak? */
-		}
-	}
-
-	/*
-	 *	Compile the section.
-	 */
-	if (unlang_compile(cs, comp) < 0) {
-		cf_log_err_cs(cs, "Errors parsing %s section.\n",
-			      cf_section_name1(cs));
-		return -1;
-	}
-
-	return 0;
-}
-
-static int virtual_servers_compile(CONF_SECTION *cs)
-{
-	rlm_components_t comp;
-	bool found;
-	char const *name = cf_section_name2(cs);
-	CONF_PAIR *cp;
-
-	cf_log_info(cs, "server %s { # from file %s",
-		    name, cf_section_filename(cs));
-
-	cp = cf_pair_find(cs, "namespace");
-	if (cp) {
-		WARN("Virtual server %s uses new namespace.  Skipping old-stype configuration",
-		     cf_section_name2(cs));
-	}
-
-	/*
-	 *	Loop over all of the known components, finding their
-	 *	configuration section, and loading it.
-	 */
-	found = false;
-	for (comp = 0; comp < MOD_COUNT; ++comp) {
-		CONF_SECTION *subcs;
-
-		subcs = cf_section_sub_find(cs,
-					    section_type_value[comp].section);
-		if (!subcs) continue;
-
-		if (cp) {
-			ERROR("Old-style configuration section '%s' found in new namespace.",
-			      section_type_value[comp].section);
-			return -1;
-		}
-
-		if (cf_item_find_next(subcs, NULL) == NULL) continue;
-
-		/*
-		 *	Skip pre/post-proxy sections if we're not
-		 *	proxying.
-		 */
-		if (
-#ifdef WITH_PROXY
-!main_config.proxy_requests &&
-#endif
-((comp == MOD_PRE_PROXY) ||
- (comp == MOD_POST_PROXY))) {
-			continue;
-		}
-
-#ifndef WITH_ACCOUNTING
-		if (comp == MOD_ACCOUNTING) continue;
-#endif
-
-#ifndef WITH_SESSION_MGMT
-		if (comp == MOD_SESSION) continue;
-#endif
-
-		if (load_component_section(subcs, comp) < 0) {
-			if (rad_debug_lvl == 0) {
-				ERROR("Failed to load virtual server \"%s\"", name);
-			}
-			return -1;
-		}
-
-		found = true;
-	} /* loop over components */
-
-	/*
-	 *	We haven't loaded any of the RADIUS sections.  Maybe we're
-	 *	supposed to load a non-RADIUS section.
-	 */
-	if (!found)
-		do {
-			CONF_SECTION *subcs;
-
-			/*
-			 *	Compile the listeners.
-			 */
-			for (subcs = cf_subsection_find_next(cs, NULL, "listen");
-			     subcs != NULL;
-			     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
-				if (listen_compile(cs, subcs) < 0) return -1;
-			}
-
-		} while (0);
-
-	cf_log_info(cs, "} # server %s", name);
-
-	if (rad_debug_lvl == 0) {
-		INFO("Loaded virtual server %s", name);
-	}
-
-	return 0;
-}
-
-static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
-{
-	uint32_t value;
-	fr_dict_enum_t *dval;
-
-	/*
-	 *	If the value already exists, don't
-	 *	create it again.
-	 */
-	dval = fr_dict_enum_by_name(NULL, da, name);
-	if (dval) {
-		if (dval->value == 0) {
-			ERROR("The dictionaries must not define VALUE %s %s 0",
-			      da->name, name);
-			return false;
-		}
-		return true;
-	}
-
-	/*
-	 *	Create a new unique value with a
-	 *	meaningless number.  You can't look at
-	 *	it from outside of this code, so it
-	 *	doesn't matter.  The only requirement
-	 *	is that it's unique.
-	 */
-	do {
-		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_enum_by_da(NULL, da, value));
-
-	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (fr_dict_enum_add(NULL, da->name, name, value) < 0) {
-		ERROR("%s", fr_strerror());
-		return false;
-	}
-
-	return true;
-}
-
-static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
-{
-	fr_dict_attr_t const *da;
-	CONF_SECTION *subcs;
-	CONF_ITEM *ci;
-
-	/*
-	 *	Find the attribute used to store VALUEs for this section.
-	 */
-	da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-	if (!da) {
-		cf_log_err_cs(cs,
-			      "No such attribute %s",
-			      section_type_value[comp].typename);
-		return false;
-	}
-
-	/*
-	 *	Compatibility hacks: "authenticate" sections can have
-	 *	bare words in them.  Fix those up to be sections.
-	 */
-	if (comp == MOD_AUTHENTICATE) {
-		for (ci = cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
-			CONF_PAIR *cp;
-
-			if (!cf_item_is_pair(ci)) continue;
-
-			cp = cf_item_to_pair(ci);
-
-			subcs = cf_section_alloc(cs, section_type_value[comp].typename, cf_pair_attr(cp));
-			rad_assert(subcs != NULL);
-			cf_section_add(cs, subcs);
-			cf_pair_add(subcs, cf_pair_dup(subcs, cp));
-		}
-	}
-
-	/*
-	 *	Define the Autz-Type, etc. based on the subsections.
-	 */
-	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
-		char const *name2;
-		CONF_SECTION *cs2;
-
-		name2 = cf_section_name2(subcs);
-		cs2 = cf_section_sub_find_name2(cs, section_type_value[comp].typename, name2);
-		if (cs2 != subcs) {
-			cf_log_err_cs(cs2, "Duplicate configuration section %s %s",
-				      section_type_value[comp].typename, name2);
-			return false;
-		}
-
-		if (!define_type(cs, da, name2)) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-
-/*
- *	Bootstrap Auth-Type, etc.
- */
-int virtual_servers_bootstrap(CONF_SECTION *config)
-{
-	CONF_SECTION *cs;
-	char const *server_name;
-
-	if (!cf_subsection_find_next(config, NULL, "server")) {
-		ERROR("No virtual servers found");
-		return -1;
-	}
-
-	/*
-	 *	Bootstrap global listeners.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "listen");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "listen")) {
-		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
-	}
-
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
-		CONF_ITEM *ci;
-		CONF_SECTION *subcs;
-
-		server_name = cf_section_name2(cs);
-		if (!server_name) {
-			cf_log_err_cs(cs, "server sections must have a name");
-			return -1;
-		}
-
-		/*
-		 *	Check for duplicates.
-		 */
-		subcs = cf_section_sub_find_name2(config, "server", server_name);
-		if (subcs && (subcs != cs)) {
-			ERROR("Duplicate virtual server \"%s\", in file %s:%d and file %s:%d",
-			      server_name,
-			      cf_section_filename(cs),
-			      cf_section_lineno(cs),
-			      cf_section_filename(subcs),
-			      cf_section_lineno(subcs));
-			return -1;
-		}
-
-		for (ci = cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
-			rlm_components_t comp;
-			char const *name1;
-
-			if (cf_item_is_pair(ci)) {
-				CONF_PAIR *cp;
-
-				cp = cf_item_to_pair(ci);
-				name1 = cf_pair_attr(cp);
-				if (strcmp(name1, "namespace") != 0) {
-					cf_log_err(ci, "Cannot set variables inside of a virtual server.");
-					return -1;
-				}
-
-				if (!cf_pair_value(cp)) {
-					cf_log_err(ci, "'namespace' cannot be empty");
-					return -1;
-				}
-			}
-
-			if (!cf_item_is_section(ci)) continue;
-
-			subcs = cf_item_to_section(ci);
-			name1 = cf_section_name1(subcs);
-
-			if (strcmp(name1, "listen") == 0) {
-				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
-				continue;
-			}
-
-			/*
-			 *	See if it's a RADIUS section.
-			 */
-			for (comp = 0; comp < MOD_COUNT; ++comp) {
-				if (strcmp(name1, section_type_value[comp].section) == 0) {
-					if (!virtual_server_define_types(subcs, comp)) return -1;
-				}
-			}
-		} /* loop over things inside of a virtual server */
-	} /* loop over virtual servers */
-
-	return 0;
-}
-
-/*
- *	Load all of the virtual servers.
- */
-int virtual_servers_init(CONF_SECTION *config)
-{
-	CONF_SECTION *cs;
-
-	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
-
-	/*
-	 *	Load all of the virtual servers.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
-		if (virtual_servers_compile(cs) < 0) {
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-static bool is_reserved_word(const char *name)
-{
-	int i;
-
-	if (!name || !*name) return false;
-
-	for (i = 1; unlang_ops[i].name != NULL; i++) {
-		if (strcmp(name, unlang_ops[i].name) == 0) return true;
-	}
-
-	return false;
-}
-
-/** Initialise a module specific connection pool
- *
- * @see fr_connection_pool_init
- *
- * @param[in] module		section.
- * @param[in] opaque		data pointer to pass to callbacks.
- * @param[in] c			Callback to create new connections.
- * @param[in] a			Callback to check the status of connections.
- * @param[in] log_prefix	override, if NULL will be set automatically from the module CONF_SECTION.
- * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
- * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
- * @return
- *	- New connection pool.
- *	- NULL on error.
- */
-fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
-						  void *opaque,
-						  fr_connection_create_t c,
-						  fr_connection_alive_t a,
-						  char const *log_prefix,
-						  char const *trigger_prefix,
-						  VALUE_PAIR *trigger_args)
-{
-	CONF_SECTION *cs, *mycs;
-	char log_prefix_buff[128];
-	char trigger_prefix_buff[128];
-
-	fr_connection_pool_t *pool;
-	char const *cs_name1, *cs_name2;
-
-	int ret;
-
-#define CONNECTION_POOL_CF_KEY "connection_pool"
-#define parent_name(_x) cf_section_name(cf_item_parent(cf_section_to_item(_x)))
-
-	cs_name1 = cf_section_name1(module);
-	cs_name2 = cf_section_name2(module);
-	if (!cs_name2) cs_name2 = cs_name1;
-
-	if (!trigger_prefix) {
-		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.pool", cs_name1);
-		trigger_prefix = trigger_prefix_buff;
-	}
-
-	if (!log_prefix) {
-		snprintf(log_prefix_buff, sizeof(log_prefix_buff), "rlm_%s (%s)", cs_name1, cs_name2);
-		log_prefix = log_prefix_buff;
-	}
-
-	/*
-	 *	Get sibling's pool config section
-	 */
-	ret = module_sibling_section_find(&cs, module, "pool");
-	switch (ret) {
-	case -1:
-		return NULL;
-
-	case 1:
-		DEBUG4("%s: Using pool section from \"%s\"", log_prefix, parent_name(cs));
-		break;
-
-	case 0:
-		DEBUG4("%s: Using local pool section", log_prefix);
-		break;
-	}
-
-	/*
-	 *	Get our pool config section
-	 */
-	mycs = cf_section_sub_find(module, "pool");
-	if (!mycs) {
-		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
-		       cf_section_name(module));
-
-		mycs = cf_section_alloc(module, "pool", NULL);
-		cf_section_add(module, mycs);
-	}
-
-	/*
-	 *	Sibling didn't have a pool config section
-	 *	Use our own local pool.
-	 */
-	if (!cs) {
-		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", log_prefix,
-		       parent_name(cs), parent_name(mycs));
-		cs = mycs;
-	}
-
-	/*
-	 *	If fr_connection_pool_init has already been called
-	 *	for this config section, reuse the previous instance.
-	 *
-	 *	This allows modules to pass in the config sections
-	 *	they would like to use the connection pool from.
-	 */
-	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
-	if (!pool) {
-		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
-		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
-		if (!pool) return NULL;
-
-		fr_connection_pool_enable_triggers(pool, trigger_prefix, trigger_args);
-
-		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
-		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
-		return pool;
-	}
-	fr_connection_pool_ref(pool);
-
-	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
-
-	/*
-	 *	We're reusing pool data add it to our local config
-	 *	section. This allows other modules to transitively
-	 *	re-use a pool through this module.
-	 */
-	if (mycs != cs) {
-		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
-		       log_prefix, pool, parent_name(cs), parent_name(mycs));
-		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
-	}
-
-	return pool;
-}
-
-/** Initialise a module specific exfile handle
- *
- * @see exfile_init
- *
- * @param[in] ctx		to bind the lifetime of the exfile handle to.
- * @param[in] module		section.
- * @param[in] max_entries	Max file descriptors to cache, and manage locks for.
- * @param[in] max_idle		Maximum time a file descriptor can be idle before it's closed.
- * @param[in] locking		Whether	or not to lock the files.
- * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
- * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
- * @return
- *	- New connection pool.
- *	- NULL on error.
- */
-exfile_t *module_exfile_init(TALLOC_CTX *ctx,
-			     CONF_SECTION *module,
-			     uint32_t max_entries,
-			     uint32_t max_idle,
-			     bool locking,
-			     char const *trigger_prefix,
-			     VALUE_PAIR *trigger_args)
-{
-	char		trigger_prefix_buff[128];
-	exfile_t	*handle;
-
-	if (!trigger_prefix) {
-		snprintf(trigger_prefix_buff, sizeof(trigger_prefix_buff), "modules.%s.file", cf_section_name1(module));
-		trigger_prefix = trigger_prefix_buff;
-	}
-
-	handle = exfile_init(ctx, max_entries, max_idle, locking);
-	if (!handle) return NULL;
-
-	exfile_enable_triggers(handle, cf_section_sub_find(module, "file"), trigger_prefix, trigger_args);
-
-	return handle;
-}
-
-int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
-{
-	void *insthandle;
-	fr_module_hup_t *mh;
-
-	if (!instance ||
-	    instance->module->bootstrap ||
-	    !instance->module->instantiate ||
-	    ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
-		return 1;
-	}
-
-	/*
-	 *	Silently ignore multiple HUPs within a short time period.
-	 */
-	if ((instance->last_hup + 2) >= when) return 1;
-	instance->last_hup = when;
-
-	cf_log_module(cs, "Trying to reload module \"%s\"", instance->name);
-
-	/*
-	 *	Parse the module configuration, and setup destructors so the
-	 *	module's detach method is called when it's instance data is
-	 *	about to be freed.
-	 */
-	if (dl_module_instance_data_alloc(&insthandle, instance, instance->handle, cs) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
-			"Using old configuration", instance->name);
-
-		return 0;
-	}
-
-	if ((instance->module->instantiate)(cs, insthandle) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
-		talloc_free(insthandle);
-
-		return 0;
-	}
-
-	INFO("Module: Reloaded module \"%s\"", instance->name);
-
-	module_hup_free(instance, when);
-
-	/*
-	 *	Save the old instance handle for later deletion.
-	 */
-	mh = talloc_zero(instance_ctx, fr_module_hup_t);
-	mh->mi = instance;
-	mh->when = when;
-	mh->insthandle = instance->data;
-	mh->next = instance->hup;
-	instance->hup = mh;
-
-	/*
-	 *	Replace the instance handle while the module is running.
-	 */
-	instance->data = insthandle;
-
-	/*
-	 *	FIXME: Set a timeout to come back in 60s, so that
-	 *	we can pro-actively clean up the old instances.
-	 */
-
-	return 1;
-}
-
-int modules_hup(CONF_SECTION *modules)
-{
-	time_t when;
-	CONF_ITEM *ci;
-	CONF_SECTION *cs;
-	module_instance_t *instance;
-
-	if (!modules) return 0;
-
-	when = time(NULL);
-
-	/*
-	 *	Loop over the modules
-	 */
-	for (ci = cf_item_find_next(modules, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(modules, ci)) {
-		char const *instance_name;
-
-		/*
-		 *	If it's not a section, ignore it.
-		 */
-		if (!cf_item_is_section(ci)) continue;
-
-		cs = cf_item_to_section(ci);
-
-		instance_name = cf_section_name2(cs);
-		if (!instance_name) instance_name = cf_section_name1(cs);
-
-		instance = module_find(modules, instance_name);
-		if (!instance) continue;
-
-		module_hup(cs, instance, when);
-	}
-
-	return 1;
-}
-
-/*
- *	Parse the module config sections, and load
- *	and call each module's init() function.
+ * Parse the module config sections, and load and call each module's init() function.
  */
 int modules_bootstrap(CONF_SECTION *root)
 {
@@ -1221,9 +902,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	 *	Remember where the modules were stored.
 	 */
 	modules = cf_section_sub_find(root, "modules");
-	if (!modules) {
-		WARN("Cannot find a \"modules\" section in the rooturation file!");
-	}
+	if (!modules) WARN("Cannot find a \"modules\" section in the rooturation file!");
 
 	DEBUG2("%s: #### Loading modules ####", main_config.name);
 
@@ -1355,7 +1034,7 @@ int modules_bootstrap(CONF_SECTION *root)
 						/*
 						 *	Allow "foo.authorize" in subsections.
 						 */
-						instance = module_instantiate_method(modules, cf_pair_attr(cp), NULL);
+						instance = module_find_with_method(modules, cf_pair_attr(cp), NULL);
 						if (!instance) {
 							cf_log_err(subci, "Module instance \"%s\" referenced in "
 									   "%s block, does not exist",
@@ -1401,261 +1080,3 @@ int modules_bootstrap(CONF_SECTION *root)
 
 	return 0;
 }
-
-/** Instantiate the modules.
- *
- */
-int modules_init(CONF_SECTION *root)
-{
-	CONF_ITEM	*ci, *next;
-	CONF_SECTION	*modules;
-
-	modules = cf_section_sub_find(root, "modules");
-	if (!modules) return 0;
-
-	for (ci = cf_item_find_next(modules, NULL);
-	     ci != NULL;
-	     ci = next) {
-		char const *name;
-		module_instance_t *instance;
-		CONF_SECTION *subcs;
-
-		next = cf_item_find_next(modules, ci);
-
-		if (!cf_item_is_section(ci)) continue;
-
-		subcs = cf_item_to_section(ci);
-		name = cf_section_name2(subcs);
-		if (!name) name = cf_section_name1(subcs);
-
-		instance = module_instantiate(modules, name);
-		if (!instance) return -1;
-	}
-
-#ifndef NDEBUG
-	{
-		size_t size;
-
-		size = talloc_total_size(instance_ctx);
-
-		if (talloc_set_memlimit(instance_ctx, size)) {
-			ERROR("Failed setting memory limit for all modules");
-		} else {
-			DEBUG3("Memory limit for all modules is set to %zd bytes", size);
-		}
-	}
-#endif
-
-	return 0;
-}
-
-
-static int default_component_results[MOD_COUNT] = {
-	RLM_MODULE_REJECT,	/* AUTH */
-	RLM_MODULE_NOTFOUND,	/* AUTZ */
-	RLM_MODULE_NOOP,	/* PREACCT */
-	RLM_MODULE_NOOP,	/* ACCT */
-	RLM_MODULE_FAIL,	/* SESS */
-	RLM_MODULE_NOOP,	/* PRE_PROXY */
-	RLM_MODULE_NOOP,	/* POST_PROXY */
-	RLM_MODULE_NOOP       	/* POST_AUTH */
-#ifdef WITH_COA
-	,
-	RLM_MODULE_NOOP,       	/* RECV_COA_TYPE */
-	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
-#endif
-};
-
-
-static rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
-{
-	rlm_rcode_t rcode;
-	CONF_SECTION *cs, *server_cs;
-	char const *module;
-	char const *component;
-
-	rad_assert(request->server != NULL);
-
-	/*
-	 *	Cache the old server_cs in case it was changed.
-	 *
-	 *	FIXME: request->server should NOT be changed.
-	 *	Instead, we should always create a child REQUEST when
-	 *	we need to use a different virtual server.
-	 *
-	 *	This is mainly for things like proxying
-	 */
-	server_cs = request->server_cs;
-	if (!server_cs || (strcmp(request->server, cf_section_name2(server_cs)) != 0)) {
-		request->server_cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
-	}
-
-	cs = cf_section_sub_find(request->server_cs, section_type_value[comp].section);
-	if (!cs) {
-		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value %s.",
-			section_type_value[comp].section, request->server,
-			fr_int2str(mod_rcode_table, default_component_results[comp], "<invalid>"));
-		return default_component_results[comp];
-	}
-
-	/*
-	 *	Figure out which section to run.
-	 */
-	if (!idx) {
-		RDEBUG("Running section %s from file %s",
-		       section_type_value[comp].section, cf_section_filename(cs));
-
-	} else {
-		fr_dict_attr_t const *da;
-		fr_dict_enum_t const *dv;
-		CONF_SECTION *subcs;
-
-		da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-		if (!da) return RLM_MODULE_FAIL;
-
-		dv = fr_dict_enum_by_da(NULL, da, idx);
-		if (!dv) return RLM_MODULE_FAIL;
-
-		subcs = cf_section_sub_find_name2(cs, da->name, dv->name);
-		if (!subcs) {
-			RDEBUG2("%s %s sub-section not found.  Using default return values.",
-				da->name, dv->name);
-			return default_component_results[comp];
-		}
-
-		RDEBUG("Running %s %s from file %s",
-		       da->name, dv->name, cf_section_filename(subcs));
-		cs = subcs;
-	}
-
-	/*
-	 *	Cache and restore these, as they're re-set when
-	 *	looping back from inside a module like eap-gtc.
-	 */
-	module = request->module;
-	component = request->component;
-
-	request->module = NULL;
-	request->component = section_type_value[comp].section;
-
-	rcode = unlang_interpret(request, cs, default_component_results[comp]);
-
-	request->component = component;
-	request->module = module;
-	request->server_cs = server_cs;
-
-	return rcode;
-}
-
-/*
- *	Call all authorization modules until one returns
- *	somethings else than RLM_MODULE_OK
- */
-rlm_rcode_t process_authorize(int autz_type, REQUEST *request)
-{
-	return indexed_modcall(MOD_AUTHORIZE, autz_type, request);
-}
-
-/*
- *	Authenticate a user/password with various methods.
- */
-rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
-{
-	return indexed_modcall(MOD_AUTHENTICATE, auth_type, request);
-}
-
-#ifdef WITH_ACCOUNTING
-
-/*
- *	Do pre-accounting for ALL configured sessions
- */
-rlm_rcode_t process_preacct(REQUEST *request)
-{
-	return indexed_modcall(MOD_PREACCT, 0, request);
-}
-
-/*
- *	Do accounting for ALL configured sessions
- */
-rlm_rcode_t process_accounting(int acct_type, REQUEST *request)
-{
-	return indexed_modcall(MOD_ACCOUNTING, acct_type, request);
-}
-
-#endif
-
-#ifdef WITH_SESSION_MGMT
-
-/*
- *	See if a user is already logged in.
- *
- *	Returns: 0 == OK, 1 == double logins, 2 == multilink attempt
- */
-int process_checksimul(int sess_type, REQUEST *request, int maxsimul)
-{
-	rlm_rcode_t rcode;
-
-	if (!request->username)
-		return 0;
-
-	request->simul_count = 0;
-	request->simul_max = maxsimul;
-	request->simul_mpp = 1;
-
-	rcode = indexed_modcall(MOD_SESSION, sess_type, request);
-
-	if (rcode != RLM_MODULE_OK) {
-		/* FIXME: Good spot for a *rate-limited* warning to the log */
-		return 0;
-	}
-
-	return (request->simul_count < maxsimul) ? 0 : request->simul_mpp;
-}
-
-#endif
-
-#ifdef WITH_PROXY
-
-/*
- *	Do pre-proxying for ALL configured sessions
- */
-rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
-{
-	rad_assert(request->proxy != NULL);
-
-	return indexed_modcall(MOD_PRE_PROXY, type, request);
-}
-
-/*
- *	Do post-proxying for ALL configured sessions
- */
-rlm_rcode_t process_post_proxy(int type, REQUEST *request)
-{
-	rad_assert(request->proxy != NULL);
-
-	return indexed_modcall(MOD_POST_PROXY, type, request);
-}
-
-#endif
-
-/*
- *	Do post-authentication for ALL configured sessions
- */
-rlm_rcode_t process_post_auth(int postauth_type, REQUEST *request)
-{
-	return indexed_modcall(MOD_POST_AUTH, postauth_type, request);
-}
-
-#ifdef WITH_COA
-
-rlm_rcode_t process_recv_coa(int recv_coa_type, REQUEST *request)
-{
-	return indexed_modcall(MOD_RECV_COA, recv_coa_type, request);
-}
-
-rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
-{
-	return indexed_modcall(MOD_SEND_COA, send_coa_type, request);
-}
-
-#endif

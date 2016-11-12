@@ -18,6 +18,7 @@ SOURCES := acct.c \
     session.c \
     snmp.c \
     threads.c \
+    virtual_servers.c \
     process.c
 
 ifneq ($(OPENSSL_LIBS),)

@@ -1071,7 +1071,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 									    inst->driver_inst,
 									    driver_cs)) < 0) return -1;
 #ifndef NDEBUG
-	if (inst->driver_inst) module_set_memlimit(inst->driver_inst, inst->driver->name);
+	if (inst->driver_inst) module_instance_read_only(inst->driver_inst, inst->driver->name);
 #endif
 
 	/*

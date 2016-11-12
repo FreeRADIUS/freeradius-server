@@ -14,6 +14,7 @@ SOURCES := \
 	state.c \
 	session.c \
 	version.c  \
+	virtual_servers.c \
 	realms.c
 
 ifneq ($(OPENSSL_LIBS),)

@@ -66,8 +66,7 @@ typedef struct module_instance {
 							//!< instance data.
 } module_instance_t;
 
-module_instance_t	*module_instantiate(CONF_SECTION *modules, char const *asked_name);
-module_instance_t	*module_instantiate_method(CONF_SECTION *modules, char const *asked_name,
+module_instance_t	*module_find_with_method(CONF_SECTION *modules, char const *asked_name,
 						   rlm_components_t *method);
 module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
