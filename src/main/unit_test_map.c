@@ -44,7 +44,8 @@ char const *get_radius_dir(void)
 	return NULL;
 }
 
-module_instance_t *module_find_with_method(UNUSED CONF_SECTION *modules, UNUSED char const *name, UNUSED rlm_components_t *method)
+module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
+					   UNUSED CONF_SECTION *modules, UNUSED char const *name)
 {
 	return NULL;
 }

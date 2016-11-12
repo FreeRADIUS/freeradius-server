@@ -391,11 +391,15 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
  * Extracts the method from the module name where the format is @verbatim <module>.<method> @endverbatim
  * and ensures that the module is instantiated, and implements the specified method.
  *
+ * @param[out] method		the method component we found associated with the module. May be NULL.
  * @param[in] modules		section in the main config.
  * @param[in] name 		The name of the module we're attempting to find, concatenated with
  *				the method.
+ * @return
+ *	- The module instance on success.
+ *	- NULL on error.
  */
-module_instance_t *module_find_with_method(CONF_SECTION *modules, char const *name, rlm_components_t *method)
+module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTION *modules, char const *name)
 {
 	char			*p;
 	rlm_components_t	i;
@@ -1034,7 +1038,7 @@ int modules_bootstrap(CONF_SECTION *root)
 						/*
 						 *	Allow "foo.authorize" in subsections.
 						 */
-						instance = module_find_with_method(modules, cf_pair_attr(cp), NULL);
+						instance = module_find_with_method(NULL, modules, cf_pair_attr(cp));
 						if (!instance) {
 							cf_log_err(subci, "Module instance \"%s\" referenced in "
 									   "%s block, does not exist",
