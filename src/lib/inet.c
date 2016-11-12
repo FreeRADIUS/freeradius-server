@@ -738,7 +738,7 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr)
 	}
 #endif
 
-	len = snprintf(p, outlen - (p - out), "%%%i",  addr->zone_id);
+	len = snprintf(p, outlen - (p - out), "%%%u",  addr->zone_id);
 	if (is_truncated(len + (p - out), outlen)) {
 		fr_strerror_printf("Address buffer too small, needed %zu bytes, have %zu bytes",
 				   (p - out) + len, outlen);
