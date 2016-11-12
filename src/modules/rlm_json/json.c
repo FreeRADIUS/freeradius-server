@@ -408,3 +408,56 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 	return p;
 }
 
+/** Returns a JSON string of all available lists of value pairs
+ *
+ *  The result is a talloc-ed string, freeing the string is the responsibility
+ *  of the caller.
+ *
+ * Output format is:
+@verbatim
+{
+	"request":{
+		"<attribute0>":{
+			"type":"<type0>",
+			"value":[<value0>,<value1>,<valueN>],
+		},
+	},
+	"reply":{
+		...
+	},
+}
+@endverbatim
+ *
+ * @note See fr_json_afrom_pair_list for a more thorough description of the output format
+ *
+ * @param[in] ctx	Talloc context.
+ * @param[in] request The request
+ * @return JSON string representation of the request value pairs
+ */
+const char *fr_json_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
+{
+	struct json_object	*obj;
+	const char		*p;
+
+	MEM(obj = json_object_new_object());
+	json_object_object_add(obj, "request", fr_json_obj_from_pair_list(ctx, &request->packet->vps, NULL));
+	json_object_object_add(obj, "reply", fr_json_obj_from_pair_list(ctx, &request->reply->vps, NULL));
+	json_object_object_add(obj, "control", fr_json_obj_from_pair_list(ctx, &request->control, NULL));
+	json_object_object_add(obj, "session-state", fr_json_obj_from_pair_list(ctx, &request->state, NULL));
+#ifdef WITH_PROXY
+	if (request->proxy) {
+		json_object_object_add(obj, "proxy-request", fr_json_obj_from_pair_list(ctx, &request->proxy->packet->vps, NULL));
+		if (request->proxy->reply) {
+			json_object_object_add(obj, "proxy-reply", fr_json_obj_from_pair_list(ctx, &request->proxy->reply->vps, NULL));
+		}
+	}
+#endif
+
+	MEM(p = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
+	MEM(p = talloc_strdup(ctx, p));
+
+	json_object_put(obj);	/* Should also free string buff from above */
+
+	return p;
+}
+
