@@ -560,7 +560,7 @@ char const *rlm_lua_version(lua_State *L)
  * @param name of function to check.
  * @returns 0 on success (function is present and correct), or -1 on failure.
  */
-static int rlm_lua_check_func(rlm_lua_t *inst, lua_State *L, char const *name)
+static int rlm_lua_check_func(rlm_lua_t const *inst, lua_State *L, char const *name)
 {
 	int ret;
 	int type;
@@ -604,9 +604,9 @@ done:
  *	to ensure the interpreter is freed when instance data is freed.
  * @return 0 on success else -1.
  */
-int rlm_lua_init(lua_State **out, rlm_lua_t *instance)
+int rlm_lua_init(lua_State **out, rlm_lua_t const *instance)
 {
-	rlm_lua_t *inst = instance;
+	rlm_lua_t const *inst = instance;
 	lua_State *L;
 
 	L = luaL_newstate();
@@ -775,9 +775,7 @@ int do_lua(rlm_lua_t *inst, REQUEST *request, char const *funcname)
 	rlm_lua_request = request;
 
 	L = rlm_lua_get_interp(inst);
-	if (!L) {
-		return -1;
-	}
+	if (!L) return -1;
 
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 

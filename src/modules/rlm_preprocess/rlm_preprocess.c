@@ -239,7 +239,7 @@ typedef struct cl_em_hdr_t {
 /*
  *	Mangle username if needed, IN PLACE.
  */
-static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
+static void rad_mangle(rlm_preprocess_t const *inst, REQUEST *request)
 {
 	int		num_proxy_state;
 	VALUE_PAIR	*namepair;
@@ -533,10 +533,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Preprocess a request.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int r;
-	rlm_preprocess_t *inst = instance;
+	rlm_preprocess_t const *inst = instance;
 
 	VALUE_PAIR *vp;
 
@@ -620,11 +620,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 /*
  *	Preprocess a request before accounting
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int r;
 	VALUE_PAIR *vp;
-	rlm_preprocess_t *inst = instance;
+	rlm_preprocess_t const *inst = instance;
 
 	/*
 	 *  Ensure that we have the SAME user name for both

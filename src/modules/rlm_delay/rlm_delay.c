@@ -63,8 +63,7 @@ static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *module_ins
  * @param[in] ctx		Scheduled end of the delay.
  * @param[in] fired		When request processing was resumed.
  */
-static void delay_done(REQUEST *request, UNUSED void *module_instance,
-		       void *ctx, struct timeval *fired)
+static void delay_done(REQUEST *request, UNUSED void *module_instance, void *ctx, struct timeval *fired)
 {
 	struct timeval *when = talloc_get_type_abort(ctx, struct timeval);
 
@@ -90,7 +89,7 @@ static void delay_done(REQUEST *request, UNUSED void *module_instance,
 	unlang_resumable(request);
 }
 
-static rlm_rcode_t delay_add(rlm_delay_t *inst, REQUEST *request)
+static rlm_rcode_t delay_add(rlm_delay_t const *inst, REQUEST *request)
 {
 	struct timeval	delay;
 	struct timeval	*now;
@@ -140,10 +139,10 @@ static rlm_rcode_t delay_add(rlm_delay_t *inst, REQUEST *request)
 	return RLM_MODULE_YIELD;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_delay_t	*inst = instance;
-	rlm_rcode_t	rcode;
+	rlm_delay_t const	*inst = instance;
+	rlm_rcode_t		rcode;
 
 	/*
 	 *	Setup the delay for this request

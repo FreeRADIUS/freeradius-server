@@ -822,9 +822,9 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			   ldap_handle_t **pconn,
 			   char const *dn, char const *password,
 #ifdef WITH_SASL
-			   ldap_sasl *sasl,
+			   ldap_sasl const *sasl,
 #else
-			   NDEBUG_UNUSED ldap_sasl *sasl,
+			   NDEBUG_UNUSED ldap_sasl const *sasl,
 #endif
 			   bool retry,
 			   struct timeval const *timeout,
@@ -1565,14 +1565,14 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t request, UNUSED ber_int_t msgid,
 			   void *ctx)
 {
-	ldap_rcode_t	status;
-	ldap_handle_t	*conn = talloc_get_type_abort(ctx, ldap_handle_t);
-	rlm_ldap_t	*inst = conn->inst;
+	ldap_rcode_t		status;
+	ldap_handle_t		*conn = talloc_get_type_abort(ctx, ldap_handle_t);
+	rlm_ldap_t const	*inst = conn->inst;
 
-	char const	*admin_identity = NULL;
-	char const	*admin_password = NULL;
+	char const		*admin_identity = NULL;
+	char const		*admin_password = NULL;
 
-	int		ldap_errno;
+	int			ldap_errno;
 
 	conn->referred = true;
 	conn->rebound = true;	/* not really, but oh well... */
@@ -1710,7 +1710,7 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
  */
 static int _mod_conn_free(ldap_handle_t *conn)
 {
-	rlm_ldap_t *inst = conn->inst;
+	rlm_ldap_t const *inst = conn->inst;
 
 	rad_assert(conn->handle);
 

@@ -235,7 +235,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
  * Radius criteria, EAP-Message is invalid without Message-Authenticator
  * For EAP_START, send Access-Challenge with EAP Identity request.
  */
-int eap_start(rlm_eap_t *inst, REQUEST *request)
+int eap_start(rlm_eap_t const *inst, REQUEST *request)
 {
 	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
@@ -820,7 +820,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
  *	  continue when a future request is received.
  *	- NULL on error.
  */
-eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t *inst, REQUEST *request)
+eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t const *inst, REQUEST *request)
 {
 	eap_session_t	*eap_session = NULL;
 	eap_packet_raw_t *eap_packet;

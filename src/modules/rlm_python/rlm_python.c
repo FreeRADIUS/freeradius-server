@@ -92,7 +92,7 @@ typedef struct rlm_python_t {
  */
 typedef struct python_thread_state {
 	PyThreadState		*state;		//!< Module instance/thread specific state.
-	rlm_python_t		*inst;		//!< Module instance that created this thread state.
+	rlm_python_t const	*inst;		//!< Module instance that created this thread state.
 } python_thread_state_t;
 
 /*
@@ -621,7 +621,7 @@ static int _python_inst_cmp(const void *a, const void *b)
  *
  * Will swap in thread state specific to module/thread.
  */
-static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
+static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	int			ret;
 	rbtree_t		*thread_tree;
@@ -691,8 +691,8 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
-	return do_python((rlm_python_t *) instance, request, ((rlm_python_t *)instance)->x.function, #x);\
+static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, UNUSED void *thread, REQUEST *request) { \
+	return do_python((rlm_python_t const *) instance, request, ((rlm_python_t const *)instance)->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)

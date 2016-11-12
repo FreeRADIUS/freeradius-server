@@ -572,8 +572,8 @@ static const CONF_PARSER module_config[] = {
 
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	char const *name;
-	rlm_mschap_t *inst = instance;
+	char const		*name;
+	rlm_mschap_t		*inst = instance;
 
 	/*
 	 *	Create the dynamic translation.
@@ -741,7 +741,7 @@ static int write_all(int fd, char const *buf, int len) {
  * Perform an MS-CHAP2 password change
  */
 
-static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
+static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 						       REQUEST *request,
 #ifdef HAVE_OPENSSL_CRYPTO_H
 						       VALUE_PAIR *nt_password,
@@ -1104,7 +1104,7 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
+static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t const *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
 						      uint8_t nthashhash[NT_DIGEST_LENGTH], MSCHAP_AUTH_METHOD method)
 {
@@ -1361,9 +1361,9 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash,uint8_t const *res
  *	it later. Add Auth-Type attribute if present in module
  *	configuration (usually Auth-Type must be "MS-CHAP")
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t *inst = instance;
+	rlm_mschap_t const *inst = instance;
 	VALUE_PAIR *challenge = NULL;
 
 	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
@@ -1397,7 +1397,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned char ident,
+static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsigned char ident,
 				int mschap_result, int mschap_version, VALUE_PAIR *smb_ctrl)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -1487,7 +1487,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
  *	find_nt_password() - try and find a correct NT-Password
  *	attribute, or calculate one if possible.
  */
-static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t *inst,
+static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst,
 							REQUEST *request,
 							VALUE_PAIR *password,
 							VALUE_PAIR **ntpw)
@@ -1556,7 +1556,7 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t *inst,
  *	find_lm_password() - try and find a correct LM-Password
  *	attribute.
  */
-static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t *inst,
+static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst,
 							REQUEST *request,
 							VALUE_PAIR *password,
 							VALUE_PAIR *nt_password,
@@ -1623,7 +1623,7 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t *inst,
  *	process_cpw_request() - do the work to handle an MS-CHAP password
  *	change request.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t *inst,
+static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst,
 							REQUEST *request,
 							VALUE_PAIR *cpw,
 							VALUE_PAIR *nt_password)
@@ -1765,9 +1765,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t *inst,
  *	If MS-CHAP2 succeeds we MUST return
  *	PW_MSCHAP2_SUCCESS
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t *inst = instance;
+	rlm_mschap_t const *inst = instance;
 	VALUE_PAIR *challenge = NULL;
 	VALUE_PAIR *response = NULL;
 	VALUE_PAIR *cpw = NULL;

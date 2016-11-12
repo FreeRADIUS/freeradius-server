@@ -59,8 +59,10 @@ static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, VALUE_PAIR *reply) CC_HINT(nonnull);
-static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, VALUE_PAIR *reply)
+static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *eap_session,
+			       VALUE_PAIR *reply) CC_HINT(nonnull);
+static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *eap_session,
+			       VALUE_PAIR *reply)
 {
 	uint8_t			*ptr;
 	int16_t			length;

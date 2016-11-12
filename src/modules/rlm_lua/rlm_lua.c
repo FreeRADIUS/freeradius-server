@@ -139,8 +139,8 @@ static int mod_detach(void *instance)
 }
 
 #define DO_LUA(_s)\
-static rlm_rcode_t mod_##_s(void *instance, REQUEST *request) {\
-	rlm_lua_t *inst = instance;\
+static rlm_rcode_t mod_##_s(void const *instance, UNUSED void *thread, REQUEST *request) {\
+	rlm_lua_t const *inst = instance;\
 	if (!inst->func_##_s) {\
 		return RLM_MODULE_NOOP;\
 	}\
@@ -154,26 +154,12 @@ DO_LUA(authorize)
 DO_LUA(authenticate)
 DO_LUA(preacct)
 DO_LUA(accounting)
+DO_LUA(checksimul)
 DO_LUA(pre_proxy)
 DO_LUA(post_proxy)
 DO_LUA(post_auth)
 DO_LUA(recv_coa)
 DO_LUA(send_coa)
-
-/*
- *	See if a user is already logged in. Sets request->simul_count to the
- *	current session count for this user and sets request->simul_mpp to 2
- *	if it looks like a multilink attempt based on the requested IP
- *	address, otherwise leaves request->simul_mpp alone.
- *
- *	Check twice. If on the first pass the user exceeds his
- *	max. number of logins, do a second pass and validate all
- *	logins by querying the terminal server (using eg. SNMP).
- */
-static rlm_rcode_t mod_checksimul(UNUSED void *instance, UNUSED REQUEST *request)
-{
-	return 0;
-}
 
 /*
  *	The module name should be the only globally exported symbol.

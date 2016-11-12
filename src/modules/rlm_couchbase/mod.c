@@ -68,7 +68,7 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	rlm_couchbase_t *inst = instance;           /* module instance pointer */
+	rlm_couchbase_t const *inst = instance;           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
 	cookie_t *cookie = NULL;                    /* couchbase cookie */
 	lcb_t cb_inst;                              /* couchbase connection instance */

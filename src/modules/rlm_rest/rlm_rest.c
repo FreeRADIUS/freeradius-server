@@ -133,7 +133,7 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	return 0;
 }
 
-static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle,
+static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_section_t const *section, void *handle,
 			    REQUEST *request, char const *username, char const *password)
 {
 	ssize_t		uri_len;
@@ -174,7 +174,7 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 	return 0;
 }
 
-static void rlm_rest_cleanup(rlm_rest_t const *instance, rlm_rest_section_t *section, void *handle)
+static void rlm_rest_cleanup(rlm_rest_t const *instance, rlm_rest_section_t const *section, void *handle)
 {
 	rest_request_cleanup(instance, section, handle);
 }
@@ -348,15 +348,15 @@ finish:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->authorize;
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_section_t const	*section = &inst->authorize;
 
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
+	void	*handle;
+	int	hcode;
+	int	rcode = RLM_MODULE_OK;
+	int	ret;
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
@@ -436,10 +436,10 @@ finish:
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->authenticate;
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_section_t const	*section = &inst->authenticate;
 
 	void *handle;
 	int hcode;
@@ -541,10 +541,10 @@ finish:
 /*
  *	Send accounting info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->accounting;
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_section_t const	*section = &inst->accounting;
 
 	void *handle;
 	int hcode;
@@ -597,10 +597,10 @@ finish:
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rest_t *inst = instance;
-	rlm_rest_section_t *section = &inst->post_auth;
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_section_t const	*section = &inst->post_auth;
 
 	void *handle;
 	int hcode;

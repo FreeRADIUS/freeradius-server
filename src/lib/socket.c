@@ -164,11 +164,11 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *	- FD on success
  *	- -1 on failure.
  */
-int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
-	int sockfd;
-	struct sockaddr_storage salocal;
-	socklen_t	salen;
+	int			sockfd;
+	struct sockaddr_storage	salocal;
+	socklen_t		salen;
 
 	if (!dst_ipaddr) return -1;
 
@@ -270,7 +270,7 @@ int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
  *	- FD on success.
  *	- -1 on failure.
  */
-int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
 	struct sockaddr_storage salocal;

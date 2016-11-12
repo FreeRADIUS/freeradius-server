@@ -708,7 +708,7 @@ do_port:
  *	- NULL on error (use fr_syserror(errno)).
  *	- a pointer to out on success.
  */
-char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr)
+char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const *addr)
 {
 	char	*p;
 	size_t	len;
@@ -758,7 +758,7 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr)
  *	- NULL on error (use fr_syserror(errno)).
  *	- a pointer to out on success.
  */
-char *fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t *addr)
+char *fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t const *addr)
 {
 	char	*p;
 	size_t	len;

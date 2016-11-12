@@ -342,7 +342,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *filename, rbtree_t *tree,
+static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
 	char const	*name, *match;
@@ -459,9 +459,9 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t const *inst = instance;
 
 	return file_common(inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
@@ -474,9 +474,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t const *inst = instance;
 
 	return file_common(inst, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
@@ -484,18 +484,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
 }
 
 #ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t const *inst = instance;
 
 	return file_common(inst, request, inst->preproxy_usersfile,
 			   inst->preproxy_users ? inst->preproxy_users : inst->common,
 			   request->packet, request->proxy->packet);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t const *inst = instance;
 
 	return file_common(inst, request, inst->postproxy_usersfile,
 			   inst->postproxy_users ? inst->postproxy_users : inst->common,
@@ -503,18 +503,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 }
 #endif
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t const *inst = instance;
 
 	return file_common(inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
 			   request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t const *inst = instance;
 
 	return file_common(inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,

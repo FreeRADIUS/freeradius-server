@@ -186,7 +186,7 @@ typedef enum {
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
 typedef struct rlm_rest_request_t {
-	rlm_rest_t		*instance;	//!< This instance of rlm_rest.
+	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	REQUEST			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
@@ -202,7 +202,7 @@ typedef struct rlm_rest_request_t {
  *	CURLOPT_HEADERFUNCTION as CURLOPT_WRITEDATA and CURLOPT_HEADERDATA)
  */
 typedef struct rlm_rest_response_t {
-	rlm_rest_t		*instance;	//!< This instance of rlm_rest.
+	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	REQUEST			*request;	//!< Current request.
 	write_state_t		state;		//!< Decoder state.
 
@@ -254,25 +254,25 @@ int mod_conn_alive(void *instance, void *handle);
  *	Request processing API
  */
 int rest_request_config(rlm_rest_t const *instance,
-			rlm_rest_section_t *section, REQUEST *request,
+			rlm_rest_section_t const *section, REQUEST *request,
 			void *handle, http_method_t method,
 			http_body_type_t type, char const *uri,
 			char const *username, char const *password) CC_HINT(nonnull (1,2,3,4,7));
 
 int rest_request_perform(rlm_rest_t const *instance,
-			 rlm_rest_section_t *section, REQUEST *request,
+			 rlm_rest_section_t const *section, REQUEST *request,
 			 void *handle);
 
-int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t *section,
+int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle);
 
 int rest_response_decode(rlm_rest_t const *instance,
-			UNUSED rlm_rest_section_t *section, REQUEST *request,
+			UNUSED rlm_rest_section_t const *section, REQUEST *request,
 			void *handle);
 
 void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
 
-void rest_request_cleanup(rlm_rest_t const *instance, rlm_rest_section_t *section,
+void rest_request_cleanup(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			  void *handle);
 
 #define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.code)
@@ -285,6 +285,6 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
  *	Helper functions
  */
 size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
-ssize_t rest_uri_build(char **out, rlm_rest_t *instance, REQUEST *request, char const *uri);
+ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, REQUEST *request, char const *uri);
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, REQUEST *request,
 			       void *handle, char const *uri);

@@ -98,7 +98,7 @@ static void dump_mc(unlang_t *c, int indent)
 	if(c->type==UNLANG_TYPE_MODULE_CALL) {
 		unlang_module_call_t *single = unlang_generic_to_module_call(c);
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
-			single->modinst->name);
+			single->module_instance->name);
 	} else if ((c->type > UNLANG_TYPE_MODULE_CALL) && (c->type <= UNLANG_TYPE_POLICY)) {
 		unlang_group_t *g = unlang_group_to_module_call(c);
 		unlang_t *p;
@@ -975,7 +975,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 			unlang_module_call_t *single = unlang_generic_to_module_call(this);
 
 			DEBUG("%.*s%s", depth, modcall_spaces,
-				single->modinst->name);
+				single->module_instance->name);
 			}
 			break;
 
@@ -2538,7 +2538,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 		}
 
 		single = unlang_generic_to_module_call(child);
-		if ((single->modinst->module->type & RLM_TYPE_RESUMABLE) == 0) {
+		if ((single->module_instance->module->type & RLM_TYPE_RESUMABLE) == 0) {
 			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_ops[mod_type].name, child->debug_name);
 			return NULL;
 		}
@@ -2660,7 +2660,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	}
 
 	single = talloc_zero(parent, unlang_module_call_t);
-	single->modinst = this;
+	single->module_instance = this;
 	single->method = this->module->methods[unlang_ctx->component];
 
 	c = unlang_module_call_to_generic(single);

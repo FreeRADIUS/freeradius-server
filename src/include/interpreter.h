@@ -141,7 +141,7 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	module_instance_t	*modinst;	//!< Instance of the module we're calling.
+	module_instance_t	*module_instance;	//!< Instance of the module we're calling.
 	module_method_t		method;
 } unlang_module_call_t;
 
@@ -162,12 +162,12 @@ typedef struct {
  * without being straightjacketed.
  */
 typedef struct {
-	unlang_module_call_t module;	//!< Module call that returned #RLM_MODULE_YIELD.
+	unlang_module_call_t	module;		//!< Module call that returned #RLM_MODULE_YIELD.
 	fr_unlang_resume_t	callback;	//!< Function the yielding module indicated should
 						//!< be called when the request could be resumed.
 	fr_unlang_action_t	action_callback;  //!< Function the yielding module indicated should
 						//!< be called when the request is poked via an action
-	void			*ctx;		//!< Context data for the callback.  Usually represents
+	void const		*ctx;		//!< Context data for the callback.  Usually represents
 						//!< the module's internal state at the time of yielding.
 } unlang_resumption_t;
 

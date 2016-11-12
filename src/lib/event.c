@@ -43,7 +43,7 @@ RCSID("$Id$")
  */
 struct fr_event_timer_t {
 	fr_event_callback_t	callback;		//!< Callback to execute when the timer fires.
-	void			*ctx;			//!< Context pointer to pass to the callback.
+	void const		*ctx;			//!< Context pointer to pass to the callback.
 	struct timeval		when;			//!< When this timer should fire.
 
 	fr_event_timer_t	**parent;		//!< Previous timer.
@@ -357,7 +357,7 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx,
+int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, void const *ctx,
 			  struct timeval *when, fr_event_timer_t **parent)
 {
 	fr_event_timer_t *ev;
@@ -460,7 +460,7 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 	}
 
 	callback = ev->callback;
-	ctx = ev->ctx;
+	memcpy(&ctx, &ev->ctx, sizeof(ctx));
 
 	/*
 	 *	Delete the event before calling it.

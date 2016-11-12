@@ -276,16 +276,16 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 /*
  *  Dispatch an exec method
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_exec_t	*inst = (rlm_exec_t *)instance;
-	rlm_rcode_t	rcode;
-	int		status;
+	rlm_exec_t const	*inst = instance;
+	rlm_rcode_t		rcode;
+	int			status;
 
-	VALUE_PAIR	**input_pairs = NULL, **output_pairs = NULL;
-	VALUE_PAIR	*answer = NULL;
-	TALLOC_CTX	*ctx = NULL;
-	char		out[1024];
+	VALUE_PAIR		**input_pairs = NULL, **output_pairs = NULL;
+	VALUE_PAIR		*answer = NULL;
+	TALLOC_CTX		*ctx = NULL;
+	char			out[1024];
 
 	/*
 	 *	We need a program to execute.
@@ -358,15 +358,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
  *
  *	Then, call exec_dispatch.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
 {
-	rlm_exec_t	*inst = (rlm_exec_t *) instance;
-	rlm_rcode_t 	rcode;
-	int		status;
+	rlm_exec_t const	*inst = instance;
+	rlm_rcode_t 		rcode;
+	int			status;
 
-	char		out[1024];
-	bool		we_wait = false;
-	VALUE_PAIR	*vp, *tmp;
+	char			out[1024];
+	bool			we_wait = false;
+	VALUE_PAIR		*vp, *tmp;
 
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_EXEC_PROGRAM, TAG_ANY);
 	if (vp) {
@@ -379,7 +379,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			return RLM_MODULE_NOOP;
 		}
 
-		rcode = mod_exec_dispatch(instance, request);
+		rcode = mod_exec_dispatch(instance, thread, request);
 		goto finish;
 	}
 
@@ -414,21 +414,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  *
  *	Then, call exec_dispatch.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
 {
-	rlm_exec_t	*inst = (rlm_exec_t *) instance;
-	int		status;
+	rlm_exec_t const	*inst = instance;
+	int			status;
 
-	char		out[1024];
-	bool 		we_wait = false;
-	VALUE_PAIR	*vp;
+	char			out[1024];
+	bool 			we_wait = false;
+	VALUE_PAIR		*vp;
 
 	/*
 	 *	The "bare" exec module takes care of handling
 	 *	Exec-Program and Exec-Program-Wait.
 	 */
 	if (!inst->bare) {
-		return mod_exec_dispatch(instance, request);
+		return mod_exec_dispatch(instance, thread, request);
 	}
 
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_EXEC_PROGRAM, TAG_ANY);

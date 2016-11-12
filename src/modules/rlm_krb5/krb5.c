@@ -44,7 +44,7 @@ static void _krb5_logging_free(void *arg)
 	talloc_free(arg);
 }
 
-char const *rlm_krb5_error(rlm_krb5_t *inst, krb5_context context, krb5_error_code code)
+char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_error_code code)
 {
 	char const *msg;
 	char *buffer;
@@ -119,7 +119,7 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
-	rlm_krb5_t *inst = instance;
+	rlm_krb5_t const *inst = instance;
 	rlm_krb5_handle_t *conn;
 	krb5_error_code ret;
 

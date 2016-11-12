@@ -67,16 +67,16 @@ static CONF_PARSER module_config[] = {
  *	Returns -1 on failure, 0 on no failure.  returnrealm
  *	is NULL on don't proxy, realm otherwise.
  */
-static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm)
+static int check_for_realm(void const *instance, REQUEST *request, REALM **returnrealm)
 {
-	char *namebuf;
-	char *username;
-	char const *realm_name = NULL;
-	char *ptr;
-	VALUE_PAIR *vp;
-	REALM *realm;
+	char			*namebuf;
+	char			*username;
+	char const		*realm_name = NULL;
+	char			*ptr;
+	VALUE_PAIR		*vp;
+	REALM			*realm;
 
-	struct rlm_realm_t *inst = instance;
+	rlm_realm_t const	*inst = instance;
 
 	/* initiate returnrealm */
 	*returnrealm = NULL;
@@ -176,7 +176,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
 	} else {
 		RDEBUG2("No trust router configured, skipping dynamic realm lookup");
-	}	
+	}
 #endif
 
 	if (!realm) {
@@ -404,7 +404,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *
  *  This should very nearly duplicate the old proxy_send() code
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	REALM *realm;
@@ -432,7 +432,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  * This does the exact same thing as the mod_authorize, it's just called
  * differently.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int rcode;
 	REALM *realm;
@@ -465,7 +465,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
  *	CoA realms via Operator-Name.  Because the realm isn't in a
  *	User-Name, concepts like "prefix" and "suffix' don't matter.
  */
-static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	REALM *realm;

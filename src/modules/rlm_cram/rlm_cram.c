@@ -123,7 +123,7 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	uint8_t buffer[64];

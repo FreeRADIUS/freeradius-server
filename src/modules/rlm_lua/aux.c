@@ -128,7 +128,7 @@ static int _aux_log_error(lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int aux_jit_funcs_register(rlm_lua_t *inst, lua_State *L)
+int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 {
 	if (luaL_dostring(L,"\
 		ffi = require(\"ffi\")\
@@ -177,7 +177,7 @@ int aux_jit_funcs_register(rlm_lua_t *inst, lua_State *L)
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int aux_funcs_register(UNUSED rlm_lua_t *inst, lua_State *L)
+int aux_funcs_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 {
 	lua_newtable(L);
 	lua_pushcfunction(L, _aux_log_debug);

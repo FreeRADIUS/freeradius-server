@@ -380,13 +380,13 @@ static const CONF_PARSER module_config[] = {
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	int nfields=0, keyfield=-1, listable=0;
-	char const *s;
-	char *lf=NULL; /* destination list flags temporary */
-	size_t len;
-	int i;
-	fr_dict_attr_t const * da;
-	rlm_passwd_t *inst = instance;
+	int			nfields = 0, keyfield = -1, listable = 0;
+	char const		*s;
+	char			*lf = NULL; /* destination list flags temporary */
+	size_t			len;
+	int			i;
+	fr_dict_attr_t const	*da;
+	rlm_passwd_t		*inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->format && *inst->format);
@@ -494,7 +494,7 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (TALLOC_CTX *ctx, rlm_passwd_t *inst, REQUEST *request,
+static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, REQUEST *request,
 		       VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
@@ -513,14 +513,15 @@ static void addresult (TALLOC_CTX *ctx, rlm_passwd_t *inst, REQUEST *request,
 	}
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *thread, REQUEST *request)
 {
-#define inst ((rlm_passwd_t *)instance)
-	char buffer[1024];
-	VALUE_PAIR *key, *i;
-	struct mypasswd * pw, *last_found;
-	vp_cursor_t cursor;
-	int found = 0;
+	rlm_passwd_t const	*inst = instance;
+
+	char			buffer[1024];
+	VALUE_PAIR		*key, *i;
+	struct mypasswd		*pw, *last_found;
+	vp_cursor_t		cursor;
+	int			found = 0;
 
 	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) {
@@ -538,9 +539,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 			continue;
 		}
 		do {
-			addresult(request, inst, request, &request->control, pw, 0, "config");
-			addresult(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
-			addresult(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
+			result_add(request, inst, request, &request->control, pw, 0, "config");
+			result_add(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
+			result_add(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 
 		found++;

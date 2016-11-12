@@ -52,9 +52,9 @@ static int _mod_conn_free(int *fdp)
 
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	int fd;
-	rlm_smsotp_t *inst = instance;
-	int *fdp;
+	int			fd;
+	rlm_smsotp_t const	*inst = instance;
+	int			*fdp;
 
 	fd = fr_socket_client_unix(inst->socket, false);
 	if (fd < 0) {
@@ -159,6 +159,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_smsotp_t *inst = instance;
 	struct sockaddr_un sa;
+
 	if (strlen(inst->socket) > (sizeof(sa.sun_path) - 1)) {
 		cf_log_err_cs(conf, "Socket filename is too long");
 		return -1;
@@ -178,9 +179,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_smsotp_t *inst = instance;
+	rlm_smsotp_t const *inst = instance;
 	VALUE_PAIR *state;
 	int bufsize;
 	int *fdp;
@@ -290,10 +291,10 @@ fr_connection_release(inst->pool, request, fdp);
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *state;
-	rlm_smsotp_t *inst = instance;
+	rlm_smsotp_t const *inst = instance;
 
 	/*
 	 *  Look for the 'state' attribute.

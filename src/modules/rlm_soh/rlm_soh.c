@@ -108,8 +108,8 @@ static const CONF_PARSER module_config[] = {
 
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	char const *name;
-	rlm_soh_t *inst = instance;
+	char const	*name;
+	rlm_soh_t	*inst = instance;
 
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
@@ -121,12 +121,12 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
 #ifdef WITH_DHCP
-	int rcode;
-	VALUE_PAIR *vp;
-	rlm_soh_t *inst = instance;
+	int			rcode;
+	VALUE_PAIR		*vp;
+	rlm_soh_t const		*inst = instance;
 
 	if (!inst->dhcp) return RLM_MODULE_NOOP;
 
@@ -186,7 +186,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int rv;

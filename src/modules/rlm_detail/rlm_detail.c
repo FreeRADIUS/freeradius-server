@@ -92,6 +92,7 @@ static const CONF_PARSER module_config[] = {
 static int mod_detach(void *instance)
 {
 	rlm_detail_t *inst = instance;
+
 	if (inst->ht) fr_hash_table_free(inst->ht);
 	return 0;
 }
@@ -217,7 +218,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *
  * @param[in] packet associated with the request (request, reply, proxy-request, proxy-reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
 {
 	VALUE_PAIR *vp;
 	char timestamp[256];
@@ -339,7 +340,8 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 /*
  *	Do detail, compatible with old accounting
  */
-static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *request,
+					      RADIUS_PACKET *packet, bool compat)
 {
 	int		outfd;
 	char		buffer[DIRLEN];
@@ -351,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	char		*endptr;
 #endif
 
-	rlm_detail_t *inst = instance;
+	rlm_detail_t const *inst = instance;
 
 	/*
 	 *	Generate the path for the detail file.  Use the same
@@ -430,11 +432,11 @@ skip_group:
 /*
  *	Accounting - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
-	    strcmp(((rlm_detail_t *)instance)->filename,
+	    strcmp(((rlm_detail_t const *)instance)->filename,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
 		return RLM_MODULE_NOOP;
@@ -447,7 +449,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 /*
  *	Incoming Access Request - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return detail_do(instance, request, request->packet, false);
 }
@@ -455,7 +457,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return detail_do(instance, request, request->reply, false);
 }
@@ -464,7 +466,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 /*
  *	Incoming CoA - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return detail_do(instance, request, request->packet, false);
 }
@@ -472,7 +474,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *reques
 /*
  *	Outgoing CoA - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return detail_do(instance, request, request->reply, false);
 }
@@ -482,7 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_send_coa(void *instance, REQUEST *reques
  *	Outgoing Access-Request to home server - write the detail files.
  */
 #ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return detail_do(instance, request, request->proxy->packet, false);
 }
@@ -491,7 +493,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, void *thread, REQUEST *request)
 {
 	/*
 	 *	No reply: we must be doing Post-Proxy-Type = Fail.
@@ -503,7 +505,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	if (!request->proxy->reply) {
 		rlm_rcode_t rcode;
 
-		rcode = mod_accounting(instance, request);
+		rcode = mod_accounting(instance, thread, request);
 		if (rcode == RLM_MODULE_OK) {
 			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
 		}

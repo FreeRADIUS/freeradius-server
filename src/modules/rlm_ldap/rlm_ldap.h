@@ -176,7 +176,7 @@ typedef struct ldap_handle {
 	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
 	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
 
-	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
+	rlm_ldap_t const *inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
 typedef enum {
@@ -469,7 +469,7 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in);
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, ldap_sasl *sasl, bool retry, struct timeval const *timeout,
+			   char const *password, ldap_sasl const *sasl, bool retry, struct timeval const *timeout,
 			   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
@@ -577,7 +577,7 @@ char const *edir_errstr(int code);
  */
 ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *pconn, char const *dn,
-				       char const *password, ldap_sasl *sasl,
+				       char const *password, ldap_sasl const *sasl,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls,
 				       struct timeval const *timeout,
 				       char const **error, char **error_extra);

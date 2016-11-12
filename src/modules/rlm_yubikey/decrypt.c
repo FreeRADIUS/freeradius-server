@@ -17,7 +17,7 @@
  * @param passcode string to decrypt.
  * @return one of the RLM_RCODE_* constants.
  */
-rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char const *passcode)
+rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, char const *passcode)
 {
 	uint32_t counter, timestamp;
 	yubikey_token_st token;

@@ -61,7 +61,7 @@ struct _eap_session {
 
 	eap_session_t	*child;				//!< Session for tunneled EAP method.
 
-	void		*inst;				//!< Instance of the eap module this session was created by.
+	void const	*inst;				//!< Instance of the eap module this session was created by.
 	eap_type_t	type;				//!< EAP method number.
 
 	REQUEST		*request;			//!< Current request.  Only used by OpenSSL callbacks to

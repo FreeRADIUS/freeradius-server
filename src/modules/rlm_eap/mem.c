@@ -99,7 +99,7 @@ static int _eap_session_free(eap_session_t *eap_session)
  *	- A new #eap_session_t on success.
  *	- NULL on failure.
  */
-eap_session_t *eap_session_alloc(rlm_eap_t *inst, REQUEST *request)
+eap_session_t *eap_session_alloc(rlm_eap_t const *inst, REQUEST *request)
 {
 	eap_session_t	*eap_session;
 

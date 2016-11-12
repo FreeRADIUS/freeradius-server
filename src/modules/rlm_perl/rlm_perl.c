@@ -992,10 +992,10 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	return exitstatus;
 }
 
-#define RLM_PERL_FUNC(_x) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, REQUEST *request) \
+#define RLM_PERL_FUNC(_x) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, UNUSED void *thread, REQUEST *request) \
 	{								\
 		return do_perl(instance, request,			\
-			       ((rlm_perl_t *)instance)->func_##_x); \
+			       ((rlm_perl_t const *)instance)->func_##_x); \
 	}
 
 RLM_PERL_FUNC(authorize)
@@ -1019,7 +1019,7 @@ RLM_PERL_FUNC(preacct)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR	*pair;
 	int 		acctstatustype = 0;
@@ -1033,26 +1033,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 	switch (acctstatustype) {
 	case PW_STATUS_START:
-		if (((rlm_perl_t *)instance)->func_start_accounting) {
+		if (((rlm_perl_t const *)instance)->func_start_accounting) {
 			return do_perl(instance, request,
-				       ((rlm_perl_t *)instance)->func_start_accounting);
+				       ((rlm_perl_t const *)instance)->func_start_accounting);
 		} else {
 			return do_perl(instance, request,
-				       ((rlm_perl_t *)instance)->func_accounting);
+				       ((rlm_perl_t const *)instance)->func_accounting);
 		}
 
 	case PW_STATUS_STOP:
-		if (((rlm_perl_t *)instance)->func_stop_accounting) {
+		if (((rlm_perl_t const *)instance)->func_stop_accounting) {
 			return do_perl(instance, request,
-				       ((rlm_perl_t *)instance)->func_stop_accounting);
+				       ((rlm_perl_t const *)instance)->func_stop_accounting);
 		} else {
 			return do_perl(instance, request,
-				       ((rlm_perl_t *)instance)->func_accounting);
+				       ((rlm_perl_t const *)instance)->func_accounting);
 		}
 
 	default:
 		return do_perl(instance, request,
-			       ((rlm_perl_t *)instance)->func_accounting);
+			       ((rlm_perl_t const *)instance)->func_accounting);
 	}
 }
 

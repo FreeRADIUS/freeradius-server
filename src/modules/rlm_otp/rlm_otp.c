@@ -123,9 +123,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Generate a challenge to be presented to the user.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_otp_t *inst = (rlm_otp_t *) instance;
+	rlm_otp_t const *inst = instance;
 
 	char challenge[OTP_MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
 	int auth_type_found;
@@ -285,9 +285,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 /*
  *	Verify the response entered by the user.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_otp_t *inst = instance;
+	rlm_otp_t const *inst = instance;
 
 	char const *username;
 	int rc;

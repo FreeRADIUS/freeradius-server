@@ -223,7 +223,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  * @param[in] request Current request.
  * @param[in] context Kerberos context.
  */
-static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t *inst, REQUEST *request, krb5_context context)
+static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t const *inst, REQUEST *request,
+				   krb5_context context)
 {
 	krb5_error_code ret;
 	char *princ_name;
@@ -286,7 +287,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t *inst, REQ
  * @param ret code from kerberos.
  * @param conn used in the last operation.
  */
-static rlm_rcode_t krb5_process_error(rlm_krb5_t *inst, REQUEST *request, rlm_krb5_handle_t *conn, int ret)
+static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, rlm_krb5_handle_t *conn, int ret)
 {
 	rad_assert(ret != 0);
 
@@ -320,9 +321,9 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t *inst, REQUEST *request, rlm_kr
 /*
  *	Validate user/pass (Heimdal)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_krb5_t *inst = instance;
+	rlm_krb5_t const *inst = instance;
 	rlm_rcode_t rcode;
 	krb5_error_code ret;
 
@@ -393,9 +394,9 @@ cleanup:
 /*
  *  Validate userid/passwd (MIT)
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_krb5_t *inst = instance;
+	rlm_krb5_t const *inst = instance;
 	rlm_rcode_t rcode;
 	krb5_error_code ret;
 

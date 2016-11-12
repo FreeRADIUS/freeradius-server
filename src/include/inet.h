@@ -107,9 +107,9 @@ int	fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 int	fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 			  ssize_t inlen, int af, bool resolve, bool mask);
 
-char	*fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr);
+char	*fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
 
-char	*fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t *addr);
+char	*fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t const *addr);
 
 char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 

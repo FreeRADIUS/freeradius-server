@@ -274,7 +274,7 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	rlm_rest_t *inst = instance;
+	rlm_rest_t const *inst = instance;
 
 	rlm_rest_handle_t	*randle = NULL;
 	rlm_rest_curl_context_t	*curl_ctx = NULL;
@@ -365,7 +365,7 @@ connection_error:
  */
 int mod_conn_alive(void *instance, void *handle)
 {
-	rlm_rest_t		*inst = instance;
+	rlm_rest_t const	*inst = instance;
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
 
@@ -757,7 +757,7 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx)
  *	- Number of VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
+static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
 {
 	VALUE_PAIR *vp;
@@ -801,7 +801,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_
  *	- Number of VALUE_PAIRs processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
+static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -972,7 +972,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- #VALUE_PAIR just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
+static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 				      TALLOC_CTX *ctx, REQUEST *request,
 				      fr_dict_attr_t const *da, json_flags_t *flags, json_object *leaf)
 {
@@ -1110,7 +1110,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
  *	- Number of attributes created.
  *	- < 0 on error.
  */
-static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t *section,
+static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
@@ -1300,7 +1300,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t *sectio
  *	- The number of #VALUE_PAIR processed.
  *	- -1 on unrecoverable error.
  */
-static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t *section,
+static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			    REQUEST *request, UNUSED void *handle, char *raw, UNUSED size_t rawlen)
 {
 	char const *p = raw;
@@ -1694,7 +1694,7 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t *section,
+static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 				    REQUEST *request, rlm_rest_handle_t *handle, rest_read_t func)
 {
 	rlm_rest_curl_context_t *ctx = handle->ctx;
@@ -1773,7 +1773,7 @@ error:
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
  */
-int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
+int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			REQUEST *request, void *handle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
@@ -2143,7 +2143,7 @@ error_header:
  *	- 0 on success.
  *	- -1 on failure.
  */
-int rest_request_perform(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
+int rest_request_perform(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			 REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -2160,7 +2160,7 @@ int rest_request_perform(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_sect
 	return 0;
 }
 
-int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
+int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
@@ -2258,7 +2258,8 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
  *	- 0 on success.
  *	- -1 on failure.
  */
-int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t *section, REQUEST *request, void *handle)
+int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *section,
+			 REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
@@ -2312,7 +2313,7 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t *section
  * @param[in] section configuration data.
  * @param[in] handle to cleanup.
  */
-void rest_request_cleanup(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section, void *handle)
+void rest_request_cleanup(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
@@ -2381,7 +2382,7 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  *	- Length of data written to buffer (excluding NULL).
  *	- < 0 if an error occurred.
  */
-ssize_t rest_uri_build(char **out, rlm_rest_t *inst, REQUEST *request, char const *uri)
+ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, char const *uri)
 {
 	char const	*p;
 	char		*path_exp = NULL;

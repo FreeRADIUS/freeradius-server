@@ -186,7 +186,7 @@ static int mod_detach(void *instance)
 }
 #endif
 
-static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t *inst, char const *otp, size_t len)
+static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char const *otp, size_t len)
 {
 	size_t i;
 
@@ -204,9 +204,9 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t *inst, char const *ot
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_yubikey_t *inst = instance;
+	rlm_yubikey_t const *inst = instance;
 
 	fr_dict_enum_t *dval;
 	char const *passcode;
@@ -328,10 +328,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
-	rlm_yubikey_t *inst = instance;
+	rlm_yubikey_t const *inst = instance;
 	char const *passcode = NULL;
 	fr_dict_attr_t const *da;
 	VALUE_PAIR const *vp;

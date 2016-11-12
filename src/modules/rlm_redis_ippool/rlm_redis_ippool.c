@@ -550,7 +550,7 @@ finish:
 /** Allocate a new IP address from a pool
  *
  */
-static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQUEST *request,
 					    uint8_t const *key_prefix, size_t key_prefix_len,
 					    uint8_t const *device_id, size_t device_id_len,
 					    uint8_t const *gateway_id, size_t gateway_id_len,
@@ -760,7 +760,7 @@ finish:
 /** Update an existing IP address in a pool
  *
  */
-static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUEST *request,
 					  uint8_t const *key_prefix, size_t key_prefix_len,
 					  fr_ipaddr_t *ip,
 					  uint8_t const *device_id, size_t device_id_len,
@@ -905,7 +905,7 @@ finish:
 /** Release an existing IP address in a pool
  *
  */
-static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *request,
+static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUEST *request,
 					   uint8_t const *key_prefix, size_t key_prefix_len,
 					   fr_ipaddr_t *ip,
 					   uint8_t const *device_id, size_t device_id_len)
@@ -998,7 +998,7 @@ finish:
  *	- > 0 on success (length of data written to out).
  */
 static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size_t bufflen,
-				       rlm_redis_ippool_t *inst, REQUEST *request)
+				       rlm_redis_ippool_t const *inst, REQUEST *request)
 {
 	ssize_t slen;
 
@@ -1024,7 +1024,7 @@ static inline ssize_t ippool_pool_name(uint8_t const **out, uint8_t buff[], size
 	return slen;
 }
 
-static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool_action_t action)
+static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, ippool_action_t action)
 {
 	uint8_t		key_prefix_buff[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
 	uint8_t const	*key_prefix, *device_id = NULL, *gateway_id = NULL;
@@ -1226,11 +1226,11 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 	}
 }
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_redis_ippool_t	*inst = instance;
-	VALUE_PAIR		*vp;
+	rlm_redis_ippool_t const	*inst = instance;
+	VALUE_PAIR			*vp;
 
 	/*
 	 *	Pool-Action override
@@ -1264,11 +1264,11 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	}
 }
 
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_redis_ippool_t	*inst = instance;
-	VALUE_PAIR		*vp;
+	rlm_redis_ippool_t const	*inst = instance;
+	VALUE_PAIR			*vp;
 
 	/*
 	 *	Unless it's overridden the default action is to allocate
@@ -1278,11 +1278,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_redis_ippool_t	*inst = instance;
-	VALUE_PAIR		*vp;
+	rlm_redis_ippool_t const	*inst = instance;
+	VALUE_PAIR			*vp;
 
 	/*
 	 *	Unless it's overridden the default action is to allocate
@@ -1294,10 +1294,10 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	static bool	done_hash = false;
-	CONF_SECTION	*subcs = cf_subsection_find_next(conf, NULL, "redis");
+	static bool			done_hash = false;
+	CONF_SECTION			*subcs = cf_subsection_find_next(conf, NULL, "redis");
 
-	rlm_redis_ippool_t *inst = instance;
+	rlm_redis_ippool_t		*inst = instance;
 
 	rad_assert(inst->allocated_address_attr->type == TMPL_TYPE_ATTR);
 	rad_assert(subcs);

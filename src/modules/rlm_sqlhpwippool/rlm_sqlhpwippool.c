@@ -257,8 +257,8 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 /* standard foobar code */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_sqlhpwippool_t *inst = instance;
-	module_instance_t *sql_inst;
+	rlm_sqlhpwippool_t	*inst = instance;
+	module_instance_t	*sql_inst;
 
 	/* save my name */
 	inst->myname = cf_section_name2(conf);
@@ -290,7 +290,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 /* assign new IP address, if required */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	char const *pname;       /* name of requested IP pool */
@@ -587,7 +587,7 @@ fr_connection_release(inst->sql_inst->pool, request, sqlsock);
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *sqlsock;

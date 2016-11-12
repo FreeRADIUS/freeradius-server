@@ -42,7 +42,7 @@ typedef struct rlm_ldap_sasl_ctx {
 	char const		*identity;	//!< User's DN or identity.
 	char const		*password;	//!< Bind password.
 
-	ldap_sasl		*extra;		//!< Extra fields (realm and proxy id).
+	ldap_sasl const		*extra;		//!< Extra fields (realm and proxy id).
 } rlm_ldap_sasl_ctx_t;
 
 /** Callback for ldap_sasl_interactive_bind
@@ -108,7 +108,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  */
 ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *conn, char const *identity,
-				       char const *password, ldap_sasl *sasl,
+				       char const *password, ldap_sasl const *sasl,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls,
 				       struct timeval const *timeout,
 				       char const **error, char **extra)

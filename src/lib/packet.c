@@ -130,11 +130,11 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 /*
  *	Open a socket on the given IP and port.
  */
-int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port)
+int fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port)
 {
-	int sockfd;
-	struct sockaddr_storage salocal;
-	socklen_t	salen;
+	int			sockfd;
+	struct sockaddr_storage	salocal;
+	socklen_t		salen;
 
 	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {

@@ -44,9 +44,9 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 
 /** Frees the memory allocated to hold method submodule handles and interfaces
  *
@@ -485,7 +485,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	return rcode;
 }
 
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
 	eap_session_t		*eap_session;
@@ -615,13 +615,11 @@ finish:
  * to check for user existence & get their configured values.
  * It Handles EAP-START Messages, User-Name initialization.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_eap_t	*inst;
-	int		status;
-	VALUE_PAIR	*vp;
-
-	inst = (rlm_eap_t *)instance;
+	rlm_eap_t const		*inst = instance;
+	int			status;
+	VALUE_PAIR		*vp;
 
 #ifdef WITH_PROXY
 	/*
@@ -683,7 +681,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
@@ -692,7 +690,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 	VALUE_PAIR	*vp;
 	eap_session_t	*eap_session;
 	vp_cursor_t	cursor;
-	rlm_eap_t	*inst = instance;
+	rlm_eap_t const	*inst = instance;
 
 	/*
 	 *	If there was a eap_session associated with this request,
@@ -863,9 +861,9 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_eap_t		*inst = instance;
+	rlm_eap_t const		*inst = instance;
 	VALUE_PAIR		*vp;
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;

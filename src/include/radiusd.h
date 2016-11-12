@@ -426,10 +426,10 @@ REQUEST		*request_alloc(TALLOC_CTX *ctx);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
 REQUEST		*request_alloc_coa(REQUEST *request);
 REQUEST		*request_alloc_proxy(REQUEST *request);
-int		request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque,
+int		request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, void *opaque,
 				 bool free_on_replace, bool free_on_parent, bool persist);
-void		*request_data_get(REQUEST *request, void *unique_ptr, int unique_int);
-void		*request_data_reference(REQUEST *request, void *unique_ptr, int unique_int);
+void		*request_data_get(REQUEST *request, void const *unique_ptr, int unique_int);
+void		*request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int);
 
 int		request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist);
 void		request_data_restore(REQUEST *request, request_data_t *entry);

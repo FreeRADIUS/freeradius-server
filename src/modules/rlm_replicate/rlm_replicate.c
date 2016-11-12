@@ -34,9 +34,9 @@ RCSID("$Id$")
  */
 static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
-	RADIUS_PACKET *packet = NULL;
-	VALUE_PAIR *vp, **vps;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
+	RADIUS_PACKET		*packet = NULL;
+	VALUE_PAIR		*vp, **vps;
 
 	*out = NULL;
 
@@ -107,7 +107,7 @@ error:
  *	- #RLM_MODULE_NOOP if no replications succeeded.
  *	- #RLM_MODULE_OK if successful.
  */
-static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
+static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
 	int rcode;
 	bool pass1 = true;
@@ -235,7 +235,7 @@ done:
 	return rcode;
 }
 #else
-static rlm_rcode_t replicate_packet(UNUSED void *instance,
+static rlm_rcode_t replicate_packet(UNUSED void const *instance,
 				    UNUSED REQUEST *request,
 				    UNUSED pair_lists_t list,
 				    UNUSED unsigned int code)
@@ -245,30 +245,30 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance,
 }
 #endif
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
 #ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST, request->proxy->packet->code);
 }
 #endif
 
 #ifdef WITH_COA
-static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }

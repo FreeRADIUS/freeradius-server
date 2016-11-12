@@ -34,7 +34,7 @@ RCSID("$Id$")
 struct request_data_t {
 	request_data_t	*next;			//!< Next opaque request data struct linked to this request.
 
-	void		*unique_ptr;		//!< Key to lookup request data.
+	void const	*unique_ptr;		//!< Key to lookup request data.
 	int		unique_int;		//!< Alternative key to lookup request data.
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
@@ -298,7 +298,7 @@ static int _request_data_free(request_data_t *this)
  *	- -1 on memory allocation error.
  *	- 0 on success.
  */
-int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque,
+int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, void *opaque,
 		     bool free_on_replace, bool free_on_parent, bool persist)
 {
 	request_data_t *this, **last, *next;
@@ -391,7 +391,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
  *	- NULL if no opaque data could be found.
  *	- the opaque data. The entry holding the opaque data is removed from the request.
  */
-void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
+void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
 {
 	request_data_t **last;
 
@@ -501,7 +501,7 @@ void request_data_restore(REQUEST *request, request_data_t *entry)
  *	- NULL if no opaque data could be found.
  *	- the opaque data.
  */
-void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
+void *request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int)
 {
 	request_data_t **last;
 

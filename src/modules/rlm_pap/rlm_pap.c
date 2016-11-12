@@ -316,13 +316,13 @@ unknown_header:
  *	This isn't strictly necessary, but it does make the
  *	server simpler to configure.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_pap_t *inst = instance;
-	bool auth_type = false;
-	bool found_pw = false;
-	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	rlm_pap_t const 	*inst = instance;
+	bool			auth_type = false;
+	bool			found_pw = false;
+	VALUE_PAIR		*vp;
+	vp_cursor_t		cursor;
 
 	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
@@ -518,7 +518,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  *	PAP authentication functions
  */
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\" (%zd)", vp->vp_strvalue, vp->vp_length);
@@ -537,7 +537,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t *inst, REQUE
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Comparing with \"known good\" Crypt-Password \"%s\"", vp->vp_strvalue);
@@ -553,7 +553,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_crypt(UNUSED rlm_pap_t *inst, REQUE
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
@@ -582,7 +582,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t *inst, REQUEST *reque
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
@@ -614,7 +614,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	fr_sha1_ctx sha1_context;
 	uint8_t digest[128];
@@ -642,7 +642,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *reque
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	fr_sha1_ctx sha1_context;
 	uint8_t digest[128];
@@ -672,7 +672,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *requ
 }
 
 #ifdef HAVE_OPENSSL_EVP_H
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	EVP_MD_CTX *ctx;
 	EVP_MD const *md;
@@ -735,7 +735,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	EVP_MD_CTX *ctx;
 	EVP_MD const *md = NULL;
@@ -808,7 +808,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *req
 }
 #endif
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	ssize_t len;
 	uint8_t digest[16];
@@ -845,7 +845,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *reques
 }
 
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	uint8_t digest[16];
 	char charbuf[32 + 1];
@@ -875,7 +875,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t *inst, REQUEST *reques
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
@@ -939,13 +939,13 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, 
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_pap_t *inst = instance;
-	VALUE_PAIR *vp;
-	rlm_rcode_t rc = RLM_MODULE_INVALID;
-	vp_cursor_t cursor;
-	rlm_rcode_t (*auth_func)(rlm_pap_t *, REQUEST *, VALUE_PAIR *) = NULL;
+	rlm_pap_t const *inst = instance;
+	VALUE_PAIR	*vp;
+	rlm_rcode_t	rc = RLM_MODULE_INVALID;
+	vp_cursor_t	cursor;
+	rlm_rcode_t	(*auth_func)(rlm_pap_t const *, REQUEST *, VALUE_PAIR *) = NULL;
 
 	if (!request->password ||
 	    (request->password->da->vendor != 0) ||

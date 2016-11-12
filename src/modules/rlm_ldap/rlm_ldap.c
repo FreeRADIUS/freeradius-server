@@ -529,14 +529,14 @@ free_urldesc:
 static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rlm_ldap_t	*inst = instance;
-	rlm_rcode_t	rcode;
+	rlm_ldap_t const	*inst = instance;
+	rlm_rcode_t		rcode;
 
-	bool		found = false;
-	bool		check_is_dn;
+	bool			found = false;
+	bool			check_is_dn;
 
-	ldap_handle_t	*conn = NULL;
-	char const	*user_dn;
+	ldap_handle_t		*conn = NULL;
+	char const		*user_dn;
 
 	rad_assert(inst->groupobj_base_dn);
 
@@ -639,19 +639,19 @@ finish:
 	return 0;
 }
 
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rcode_t	rcode;
-	ldap_rcode_t	status;
-	char const	*dn;
-	rlm_ldap_t	*inst = instance;
-	ldap_handle_t	*conn;
+	rlm_rcode_t		rcode;
+	ldap_rcode_t		status;
+	char const		*dn;
+	rlm_ldap_t const	*inst = instance;
+	ldap_handle_t		*conn;
 
-	char		sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
-	char		sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
-	char		sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
-	ldap_sasl	sasl;
+	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
+	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
+	char			sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
+	ldap_sasl		sasl;
 
 	/*
 	 * Ensure that we're being passed a plain-text password, and not
@@ -839,14 +839,14 @@ free_result:
 	return rcode;
 }
 
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	ldap_rcode_t		status;
 	int			ldap_errno;
 	int			i;
-	rlm_ldap_t		*inst = instance;
+	rlm_ldap_t const	*inst = instance;
 	struct berval		**values;
 	VALUE_PAIR		*vp;
 	ldap_handle_t		*conn;
@@ -1086,7 +1086,7 @@ finish:
  * @param section that holds the map to process.
  * @return one of the RLM_MODULE_* values.
  */
-static rlm_rcode_t user_modify(rlm_ldap_t *inst, REQUEST *request, ldap_acct_section_t *section)
+static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
@@ -1307,20 +1307,20 @@ error:
 	return rcode;
 }
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_ldap_t *inst = instance;
+	rlm_ldap_t const *inst = instance;
 
 	if (inst->accounting) return user_modify(inst, request, inst->accounting);
 
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_ldap_t *inst = instance;
+	rlm_ldap_t const *inst = instance;
 
 	if (inst->postauth) {
 		return user_modify(inst, request, inst->postauth);
@@ -1466,8 +1466,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	size_t		i;
 
-	CONF_SECTION *options, *update;
-	rlm_ldap_t *inst = instance;
+	CONF_SECTION	*options, *update;
+	rlm_ldap_t	*inst = instance;
 
 	inst->cs = conf;
 

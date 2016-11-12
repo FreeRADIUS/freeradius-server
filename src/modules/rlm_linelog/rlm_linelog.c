@@ -196,9 +196,9 @@ static int _mod_conn_free(linelog_conn_t *conn)
 
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	linelog_instance_t	*inst = instance;
-	linelog_conn_t		*conn;
-	int			sockfd = -1;
+	linelog_instance_t const	*inst = instance;
+	linelog_conn_t			*conn;
+	int				sockfd = -1;
 
 	switch (inst->log_dst) {
 	case LINELOG_DST_UNIX:
@@ -452,15 +452,16 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
  *
  * Write a log message to syslog or a flat file.
  *
- * @param instance of rlm_linelog.
- * @param request The current request.
+ * @param[in] instance	of rlm_linelog.
+ * @param[in] thread	Thread specific data.
+ * @param[in] request	The current request.
  * @return
  *	- #RLM_MODULE_NOOP if no message to log.
  *	- #RLM_MODULE_FAIL if we failed writing the message.
  *	- #RLM_MODULE_OK on success.
  */
-static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
+static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int			fd = -1;
 	linelog_conn_t		*conn;

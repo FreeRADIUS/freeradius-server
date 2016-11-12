@@ -79,7 +79,7 @@ static CONF_PARSER module_config[] = {
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(rlm_rediswho_t *inst, REQUEST *request, char const *fmt)
+static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char const *fmt)
 {
 	fr_redis_conn_t		*conn;
 
@@ -146,7 +146,7 @@ static int rediswho_command(rlm_rediswho_t *inst, REQUEST *request, char const *
 	return ret;
 }
 
-static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request,
+static rlm_rcode_t mod_accounting_all(rlm_rediswho_t const *inst, REQUEST *request,
 				      char const *insert,
 				      char const *trim,
 				      char const *expire)
@@ -165,14 +165,14 @@ static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request,
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_rediswho_t 	*inst = instance;
-	rlm_rcode_t	rcode;
-	VALUE_PAIR	*vp;
-	fr_dict_enum_t	*dv;
-	CONF_SECTION	*cs;
-	char const	*insert, *trim, *expire;
+	rlm_rediswho_t const	*inst = instance;
+	rlm_rcode_t		rcode;
+	VALUE_PAIR		*vp;
+	fr_dict_enum_t		*dv;
+	CONF_SECTION		*cs;
+	char const		*insert, *trim, *expire;
 
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY);
 	if (!vp) {

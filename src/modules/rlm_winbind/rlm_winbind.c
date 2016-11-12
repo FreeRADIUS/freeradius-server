@@ -427,14 +427,15 @@ static int mod_detach(UNUSED void *instance)
  * Checks there is a password available so we can authenticate
  * against winbind and, if so, sets Auth-Type to ourself.
  *
- * @param[in] instance Module instance
- * @param[in] request The current request
+ * @param[in] instance	Module instance.
+ * @param[in] thread	Thread specific data.
+ * @param[in] request	The current request.
  *
  * @return
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
 		RDEBUG("No User-Password found in the request; not doing winbind authentication.");
@@ -455,14 +456,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 
 /** Authenticate the user via libwbclient and winbind
  *
- * @param[in] instance Module instance
- * @param[in] request The current request
+ * @param[in] instance	Module instance
+ * @param[in] thread	Thread specific data.
+ * @param[in] request	The current request
  *
  * @return One of the RLM_MODULE_* values
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_winbind_t *inst = instance;
+	rlm_winbind_t const *inst = instance;
 
 	/*
 	 *	Check the admin hasn't been silly

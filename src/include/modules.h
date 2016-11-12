@@ -89,28 +89,46 @@ extern const section_type_value_t section_type_value[];
  * Is called when the module is listed in a particular section of a virtual
  * server, and the request has reached the module call.
  *
- * @param[in] instance created in instantiated, holds module config.
- * @param[in,out] request being processed.
+ * @param[in] instance		data, specific to an instantiated module.
+ *				Pre-allocated, and populated during the
+ *				bootstrap and instantiate calls.
+ * @param[in] thread		data specific to this module instance.
+ * @param[in] request		to process.
  * @return the appropriate rcode.
  */
-typedef rlm_rcode_t (*module_method_t)(void *instance, REQUEST *request);
+typedef rlm_rcode_t (*module_method_t)(void *instance, void *thread, REQUEST *request);
 
 /** Module instantiation callback
  *
  * Is called once per module instance. Is not called when new threads are
- * spawned. Modules that require separate thread contexts should use the
- * connection pool API.
+ * spawned. See module_thread_instantiate_t for that.
  *
- * @param[in] mod_cs Module instance's configuration section.
- * @param[out] instance Module instance's configuration structure, should be
- *	alloced by by callback and freed by detach.
+ * @param[in] mod_cs		Module instance's configuration section.
+ * @param[in] instance		data, specific to an instantiated module.
+ *				Pre-allocated, and populated during the
+ *				bootstrap and instantiate calls.
  * @return
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
 typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
 
-/** Struct export by a rlm_* module
+/** Module thread creation callback
+ *
+ * Called whenever a new thread is created.
+ *
+ * @param[in] mod_cs		Module instance's configuration section.
+ * @param[in] instance		data, specific to an instantiated module.
+ *				Pre-allocated, and populated during the
+ *				bootstrap and instantiate calls.
+ * @param[in] thread		data specific to this module instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 if instantiation failed.
+ */
+typedef int (*module_thread_t)(CONF_SECTION *mod_cs, void *instance, void *thread);
+
+/** Struct exported by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
  * within the module to different sections.
@@ -122,6 +140,8 @@ typedef struct rad_module_t {
 
 	module_instantiate_t	bootstrap;		//!< Callback to register dynamic attrs, xlats, etc.
 	module_instantiate_t	instantiate;		//!< Callback to configure a new module instance.
+	module_thread_t		thread;			//!< Callback to configure a module's instance for
+							//!< a new worker thread.
 
 	module_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 } rad_module_t;
@@ -199,8 +219,7 @@ int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
  * @param[in] ctx		a local context for the callback.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_instance,
-					     void *ctx, struct timeval *fired);
+typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_instance, void *ctx, struct timeval *fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -242,20 +261,21 @@ typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instanc
 typedef void (*fr_unlang_action_t)(REQUEST *request, void *module_instance, void *ctx, fr_state_action_t action);
 
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
-					 void *module_instance, void *ctx, struct timeval *timeout);
+					 void const *module_instance, void const *ctx, struct timeval *timeout);
 
 int		unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-				    void *module_instance, void *ctx, int fd);
+					     void const *module_instance, void const *ctx, int fd);
 
-int		unlang_event_timeout_delete(REQUEST *request, void *ctx);
+int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
 
-int		unlang_event_fd_delete(REQUEST *request, void *ctx, int fd);
+int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
 
 void		unlang_resumable(REQUEST *request);
 
 void		unlang_action(REQUEST *request, fr_state_action_t action);
 
-rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlang_action_t action_callback, void *ctx);
+rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlang_action_t action_callback,
+			     void const *ctx);
 
 int		unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
 

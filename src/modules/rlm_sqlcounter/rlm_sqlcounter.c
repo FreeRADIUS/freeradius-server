@@ -234,7 +234,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *	%S	sqlmod_inst
  *
  */
-static size_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t *inst, REQUEST *request, char const *fmt)
+static size_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, REQUEST *request, char const *fmt)
 {
 	int freespace;
 	char const *p;
@@ -333,9 +333,9 @@ static size_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t *inst, R
  *	See if the counter matches.
  */
 static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
-			  UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rlm_sqlcounter_t *inst = instance;
+	rlm_sqlcounter_t const *inst = instance;
 	uint64_t counter;
 
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
@@ -378,7 +378,7 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_sqlcounter_t	*inst = instance;
 	uint64_t		counter, res;
@@ -565,7 +565,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	rlm_sqlcounter_t	*inst = instance;
+	rlm_sqlcounter_t		*inst = instance;
 	fr_dict_attr_flags_t		flags;
 
 	/*

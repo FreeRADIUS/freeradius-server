@@ -78,13 +78,14 @@ static const CONF_PARSER module_config[] = {
  * document is found it will be parsed and the containing value pairs will be
  * injected into the request.
  *
- * @param  instance The module instance.
- * @param  request  The authorization request.
+ * @param instance	The module instance.
+ * @param thread	specific data.
+ * @param request	The authorization request.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_couchbase_t *inst = instance;       /* our module instance */
+	rlm_couchbase_t const *inst = instance;       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	char buffer[MAX_KEY_SIZE];
 	char const *dockey;            		/* our document key */
@@ -164,13 +165,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  * will be merged with the currently existing data.  When conflicts arrise the new attribute
  * value will replace or be added to the existing value.
  *
- * @param instance The module instance.
- * @param request  The accounting request object.
+ * @param instance	The module instance.
+ * @param thread	specific data.
+ * @param request	The accounting request object.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_couchbase_t *inst = instance;       /* our module instance */
+	rlm_couchbase_t const *inst = instance;       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
 	VALUE_PAIR *vp;                         /* radius value pair linked list */
@@ -355,12 +357,13 @@ finish:
  * Check twice. If on the first pass the user exceeds his maximum number of logins, do a second
  * pass and validate all logins by querying the terminal server.
  *
- * @param instance The module instance.
- * @param request  The checksimul request object.
+ * @param instance	The module instance.
+ * @param thread	Thread specific data.
+ * @param request	The checksimul request object.
  * @return Operation status (#rlm_rcode_t).
  */
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
-	rlm_couchbase_t *inst = instance;      /* our module instance */
+static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *request) {
+	rlm_couchbase_t const *inst = instance;      /* our module instance */
 	rlm_rcode_t rcode = RLM_MODULE_OK;     /* return code */
 	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
 	char vpath[256];

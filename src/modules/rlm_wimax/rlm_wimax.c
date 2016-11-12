@@ -52,7 +52,7 @@ static const CONF_PARSER module_config[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -88,37 +88,28 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	return RLM_MODULE_NOOP;
 }
 
-
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, void *thread, REQUEST *request)
 {
-	return mod_authorize(instance, request);
-}
-
-/*
- *	Write accounting information to this modules database.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED REQUEST *request)
-{
-	return RLM_MODULE_OK;
+	return mod_authorize(instance, thread, request);
 }
 
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_wimax_t *inst = instance;
-	VALUE_PAIR *msk, *emsk, *vp;
-	VALUE_PAIR *mn_nai, *ip, *fa_rk;
-	HMAC_CTX *hmac;
-	unsigned int rk1_len, rk2_len, rk_len;
-	uint32_t mip_spi;
-	uint8_t usage_data[24];
-	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
-	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
+	rlm_wimax_t const	*inst = instance;
+	VALUE_PAIR		*msk, *emsk, *vp;
+	VALUE_PAIR		*mn_nai, *ip, *fa_rk;
+	HMAC_CTX		*hmac;
+	unsigned int		rk1_len, rk2_len, rk_len;
+	uint32_t		mip_spi;
+	uint8_t			usage_data[24];
+	uint8_t			mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
+	uint8_t			mip_rk[2 * EVP_MAX_MD_SIZE];
 
 	msk = fr_pair_find_by_num(request->reply->vps, 0, PW_EAP_MSK, TAG_ANY);
 	emsk = fr_pair_find_by_num(request->reply->vps, 0, PW_EAP_EMSK, TAG_ANY);
@@ -467,7 +458,6 @@ rad_module_t rlm_wimax = {
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
-		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

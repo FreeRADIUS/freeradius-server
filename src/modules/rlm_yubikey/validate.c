@@ -39,7 +39,7 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
-	rlm_yubikey_t *inst = instance;
+	rlm_yubikey_t const *inst = instance;
 	ykclient_rc status;
 	ykclient_handle_t *yandle, **marker;
 
@@ -147,7 +147,7 @@ int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 	return 0;
 }
 
-rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char const *passcode)
+rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t const *inst, REQUEST *request,  char const *passcode)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ykclient_rc status;

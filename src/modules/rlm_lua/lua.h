@@ -82,11 +82,11 @@ typedef struct rlm_lua {
 } rlm_lua_t;
 
 /* lua.c */
-int rlm_lua_init(lua_State **out, rlm_lua_t *instance);
-int do_lua(rlm_lua_t *inst, REQUEST *request, char const *funcname);
+int rlm_lua_init(lua_State **out, rlm_lua_t const *instance);
+int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname);
 bool rlm_lua_isjit(lua_State *L);
 char const *rlm_lua_version(lua_State *L);
 
 /* aux.c */
-int aux_jit_funcs_register(rlm_lua_t *inst, lua_State *L);
-int aux_funcs_register(rlm_lua_t *inst, lua_State *L);
+int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L);
+int aux_funcs_register(rlm_lua_t const *inst, lua_State *L);

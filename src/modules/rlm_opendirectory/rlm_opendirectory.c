@@ -281,7 +281,7 @@ static long od_check_passwd(REQUEST *request, char const *uname, char const *pas
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int		ret;
 	long odResult = eDSAuthFailed;
@@ -340,7 +340,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 /*
  *	member of the radius group?
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	struct passwd *userdata = NULL;
 	int ismember = 0;

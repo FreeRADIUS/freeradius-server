@@ -52,7 +52,7 @@ fr_event_fd_t	*fr_event_fd_insert(fr_event_list_t *el, int fd,
 int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);
 int		fr_event_timer_insert(fr_event_list_t *el,
 				      fr_event_callback_t callback,
-				      void *ctx, struct timeval *when, fr_event_timer_t **parent);
+				      void const *ctx, struct timeval *when, fr_event_timer_t **parent);
 int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 
 int		fr_event_corral(fr_event_list_t *el, bool wait);

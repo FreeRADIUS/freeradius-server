@@ -97,7 +97,7 @@ static void reparse_rcode(rlm_always_t *inst)
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
 	rlm_always_t *inst = instance;
 
@@ -110,7 +110,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQ
 /*
  *	checksimul fakes some other variables besides the rcode...
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	struct rlm_always_t *inst = instance;
 

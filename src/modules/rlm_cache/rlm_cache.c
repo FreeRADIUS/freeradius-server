@@ -533,11 +533,11 @@ static int cache_verify(vp_map_t *map, void *ctx)
  * If you want to cache something different in different sections, configure
  * another cache module.
  */
-static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
+static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_cache_entry_t	*c = NULL;
-	rlm_cache_t		*inst = instance;
+	rlm_cache_t const	*inst = instance;
 
 	rlm_cache_handle_t	*handle;
 

@@ -147,9 +147,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
+static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance, REQUEST *request,
+							    RADIUS_PACKET *packet)
 {
-	rlm_attr_filter_t *inst = instance;
+	rlm_attr_filter_t const *inst = instance;
 	VALUE_PAIR	*vp;
 	vp_cursor_t	input, check, out;
 	VALUE_PAIR	*input_item, *check_item, *output;
@@ -310,10 +311,10 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	return RLM_MODULE_FAIL;
 }
 
-#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, REQUEST *request) \
-			{ \
-				return attr_filter_common(instance, request, request->_y); \
-			}
+#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t CC_HINT(nonnull) mod_##_x(void *instance, UNUSED void *thread, REQUEST *request) \
+	{ \
+		return attr_filter_common(instance, request, request->_y); \
+	}
 
 RLM_AF_FUNC(authorize, packet)
 RLM_AF_FUNC(post_auth, reply)

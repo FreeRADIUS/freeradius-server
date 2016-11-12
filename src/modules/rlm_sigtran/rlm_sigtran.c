@@ -166,9 +166,9 @@ static void _req_pipe_unregister(void *fd_ptr)
 	sigtran_client_thread_unregister(fd);	/* Also closes our side */
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_sigtran_t 		*inst = instance;
+	rlm_sigtran_t const	*inst = instance;
 	int			*fd_ptr, fd;
 
 	/*
@@ -302,7 +302,7 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_sigtran_t 		*inst = instance;
+	rlm_sigtran_t *inst = instance;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);

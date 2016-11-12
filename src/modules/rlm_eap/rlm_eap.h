@@ -64,7 +64,7 @@ int      	eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_ty
 /*
  *	EAP Method composition
  */
-int  		eap_start(rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
+int  		eap_start(rlm_eap_t const *inst, REQUEST *request) CC_HINT(nonnull);
 void 		eap_fail(eap_session_t *eap_session) CC_HINT(nonnull);
 void 		eap_success(eap_session_t *eap_session) CC_HINT(nonnull);
 rlm_rcode_t 	eap_compose(eap_session_t *eap_session) CC_HINT(nonnull);
@@ -75,12 +75,13 @@ rlm_rcode_t 	eap_compose(eap_session_t *eap_session) CC_HINT(nonnull);
 void		eap_session_destroy(eap_session_t **eap_session);
 void		eap_session_freeze(eap_session_t **eap_session);
 eap_session_t	*eap_session_thaw(REQUEST *request);
-eap_session_t 	*eap_session_continue(eap_packet_raw_t **eap_packet, rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
+eap_session_t 	*eap_session_continue(eap_packet_raw_t **eap_packet, rlm_eap_t const *inst,
+				      REQUEST *request) CC_HINT(nonnull);
 
 /*
  *	Memory management
  */
 eap_round_t	*eap_round_alloc(eap_session_t *eap_session) CC_HINT(nonnull);
-eap_session_t	*eap_session_alloc(rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
+eap_session_t	*eap_session_alloc(rlm_eap_t const *inst, REQUEST *request) CC_HINT(nonnull);
 
 #endif /*_RLM_EAP_H*/

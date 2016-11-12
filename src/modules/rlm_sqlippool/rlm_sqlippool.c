@@ -44,7 +44,7 @@ typedef struct rlm_sqlippool_t {
 
 	uint32_t	lease_duration;
 
-	rlm_sql_t	*sql_inst;
+	rlm_sql_t const	*sql_inst;
 
 	char const	*pool_name;
 	bool		ipv6;			//!< Whether or not we do IPv6 pools.
@@ -374,9 +374,9 @@ finish:
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	module_instance_t *sql_inst;
-	rlm_sqlippool_t *inst = instance;
-	char const *pool_name = NULL;
+	module_instance_t	*sql_inst;
+	rlm_sqlippool_t		*inst = instance;
+	char const		*pool_name = NULL;
 
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL) {
@@ -435,9 +435,9 @@ static int do_logging(REQUEST *request, char const *str, int rcode)
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
+	rlm_sqlippool_t *inst = instance;
 	char allocation[FR_MAX_STRING_LEN];
 	int allocation_len;
 	VALUE_PAIR *vp;
@@ -627,7 +627,7 @@ static int mod_accounting_off(rlm_sql_handle_t **handle,
  *	If we find one and we have allocated an IP to this nas/port
  *	combination, then deallocate it.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	int			rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR		*vp;

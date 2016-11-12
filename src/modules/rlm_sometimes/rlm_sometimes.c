@@ -66,12 +66,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	A lie!  It always returns!
  */
-static rlm_rcode_t sometimes_return(void *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
-	uint32_t	hash;
-	uint32_t	value;
-	rlm_sometimes_t *inst = instance;
-	VALUE_PAIR	*vp;
+	uint32_t		hash;
+	uint32_t		value;
+	rlm_sometimes_t const	*inst = instance;
+	VALUE_PAIR		*vp;
 
 	/*
 	 *	Set it to NOOP and the module will always do nothing
@@ -126,25 +126,25 @@ static rlm_rcode_t sometimes_return(void *instance, REQUEST *request, RADIUS_PAC
 	return inst->rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return sometimes_return(instance, request, request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	return sometimes_return(instance, request, request->reply, NULL);
 }
 
 #ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
 
 	return sometimes_return(instance, request, request->proxy->packet, request->proxy->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	if (!request->proxy || !request->proxy->reply) return RLM_MODULE_NOOP;
 

@@ -1131,7 +1131,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 				     bool brace, char const **error);
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
-			   xlat_escape_t escape, void *escape_ctx);
+			   xlat_escape_t escape, void  const *escape_ctx);
 
 static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 					 char const **error)
@@ -2110,7 +2110,7 @@ static const char xlat_spaces[] = "                                             
 #endif
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
-			 xlat_escape_t escape, void *escape_ctx, int lvl)
+			 xlat_escape_t escape, void const *escape_ctx, int lvl)
 {
 	ssize_t rcode;
 	char *str = NULL, *child;
@@ -2387,11 +2387,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	if (str && escape) {
 		size_t len;
 		char *escaped;
+		void *mutable;
 
 		len = talloc_array_length(str) * 3;
 
 		escaped = talloc_array(ctx, char, len);
-		escape(request, escaped, len, str, escape_ctx);
+
+		memcpy(&mutable, &escape_ctx, sizeof(mutable));
+		escape(request, escaped, len, str, mutable);
 		talloc_free(str);
 		str = escaped;
 	}
@@ -2401,7 +2404,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
-			   xlat_escape_t escape, void *escape_ctx)
+			   xlat_escape_t escape, void const *escape_ctx)
 {
 	int i, list;
 	size_t total;
@@ -2496,7 +2499,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t xlat_expand_struct(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request,
-				  xlat_exp_t const *node, xlat_escape_t escape, void *escape_ctx)
+				  xlat_exp_t const *node, xlat_escape_t escape, void const *escape_ctx)
 {
 	char *buff;
 	ssize_t len;
@@ -2530,7 +2533,7 @@ static ssize_t xlat_expand_struct(TALLOC_CTX *ctx, char **out, size_t outlen, RE
 }
 
 static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
-			   xlat_escape_t escape, void *escape_ctx) CC_HINT(nonnull (2, 4, 5));
+			   xlat_escape_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
 
 /** Replace %whatever in a string.
  *
@@ -2546,7 +2549,7 @@ static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
-			   xlat_escape_t escape, void *escape_ctx)
+			   xlat_escape_t escape, void const *escape_ctx)
 {
 	ssize_t len;
 	xlat_exp_t *node;
@@ -2636,26 +2639,26 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 }
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request,
-		    char const *fmt, xlat_escape_t escape, void *escape_ctx)
+		    char const *fmt, xlat_escape_t escape, void const *escape_ctx)
 {
 	return xlat_expand(request, &out, outlen, request, fmt, escape, escape_ctx);
 }
 
 ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request,
-			   xlat_exp_t const *xlat, xlat_escape_t escape, void *escape_ctx)
+			   xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
 	return xlat_expand_struct(request, &out, outlen, request, xlat, escape, escape_ctx);
 }
 
 ssize_t radius_axlat(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
-		     xlat_escape_t escape, void *escape_ctx)
+		     xlat_escape_t escape, void const *escape_ctx)
 {
 	*out = NULL;
 	return xlat_expand(ctx, out, 0, request, fmt, escape, escape_ctx);
 }
 
 ssize_t radius_axlat_struct(TALLOC_CTX *ctx, char **out, REQUEST *request,
-			    xlat_exp_t const *xlat, xlat_escape_t escape, void *escape_ctx)
+			    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
 	*out = NULL;
 	return xlat_expand_struct(ctx, out, 0, request, xlat, escape, escape_ctx);

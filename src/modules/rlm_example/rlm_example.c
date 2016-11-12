@@ -94,7 +94,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *state;
 
@@ -127,7 +127,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
 }
@@ -136,7 +136,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
 }
@@ -144,7 +144,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED RE
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
 }
@@ -159,9 +159,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	request->simul_count=0;
+	request->simul_count = 0;
 
 	return RLM_MODULE_OK;
 }

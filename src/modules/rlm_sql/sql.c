@@ -514,8 +514,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 /*
  *	Log the query to a file.
  */
-void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
-		       sql_acct_section_t *section, char const *query)
+void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query)
 {
 	int fd;
 	char const *filename = NULL;

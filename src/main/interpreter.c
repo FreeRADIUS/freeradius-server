@@ -681,21 +681,21 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__, sp->modinst->name, sp->modinst->module->name);
+	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__, sp->module_instance->name, sp->module_instance->module->name);
 
-	if (sp->modinst->force) {
-		request->rcode = sp->modinst->code;
+	if (sp->module_instance->force) {
+		request->rcode = sp->module_instance->code;
 		goto fail;
 	}
 
 	/*
 	 *	For logging unresponsive children.
 	 */
-	request->module = sp->modinst->name;
+	request->module = sp->module_instance->name;
 
-	safe_lock(sp->modinst);
-	request->rcode = sp->method(sp->modinst->data, request);
-	safe_unlock(sp->modinst);
+	safe_lock(sp->module_instance);
+	request->rcode = sp->method(sp->module_instance->data, NULL, request);
+	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
 
@@ -703,7 +703,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->modinst->module->name, request->number);
+		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->module_instance->module->name, request->number);
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -830,20 +830,23 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack,
 				    	 rlm_rcode_t *presult, UNUSED int *priority)
 {
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
 	unlang_resumption_t	*mr = unlang_generic_to_resumption(instruction);
 	unlang_module_call_t	*sp;
+	void 			*mutable;
 
 	sp = &mr->module;
 
 	RDEBUG3("Resuming %s (%s) for request %" PRIu64,
-		sp->modinst->name,
-		sp->modinst->module->name, request->number);
+		sp->module_instance->name,
+		sp->module_instance->module->name, request->number);
 
-	safe_lock(sp->modinst);
-	*presult = mr->callback(request, mr->module.modinst->data, mr->ctx);
-	safe_unlock(sp->modinst);
+	memcpy(&mutable, &mr->ctx, sizeof(mutable));
+
+	safe_lock(sp->module_instance);
+	*presult = mr->callback(request, mr->module.module_instance->data, mutable);
+	safe_unlock(sp->module_instance);
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
@@ -1265,9 +1268,9 @@ typedef struct unlang_event_t {
 	int				fd;				//!< File descriptor to wait on.
 	fr_unlang_timeout_callback_t	timeout_callback;		//!< Function to call on timeout.
 	fr_unlang_fd_callback_t		fd_callback;			//!< Function to call when FD is readable.
-	void				*inst;				//!< Module instance to pass to callbacks.
-	void				*ctx;				//!< ctx data to pass to callbacks.
-	fr_event_timer_t			*ev;				//!< Event in this worker's event heap.
+	void const			*inst;				//!< Module instance to pass to callbacks.
+	void const			*ctx;				//!< ctx data to pass to callbacks.
+	fr_event_timer_t		*ev;				//!< Event in this worker's event heap.
 } unlang_event_t;
 
 static int _unlang_event_free(unlang_event_t *ev)
@@ -1296,8 +1299,13 @@ static void unlang_event_timeout_handler(void *ctx, struct timeval *now)
 #else
 	unlang_event_t *ev = ctx;
 #endif
+	void *mutable_ctx;
+	void *mutable_inst;
 
-	ev->timeout_callback(ev->request, ev->inst, ev->ctx, now);
+	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
+	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
+
+	ev->timeout_callback(ev->request, mutable_inst, mutable_ctx, now);
 	talloc_free(ev);
 }
 
@@ -1314,10 +1322,15 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
 #else
 	unlang_event_t *ev = ctx;
 #endif
+	void *mutable_ctx;
+	void *mutable_inst;
 
 	rad_assert(ev->fd == fd);
 
-	ev->fd_callback(ev->request, ev->inst, ev->ctx, fd);
+	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
+	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
+
+	ev->fd_callback(ev->request, mutable_inst, mutable_ctx, fd);
 }
 
 /** Set a timeout for the request.
@@ -1329,7 +1342,7 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
  *
  * param[in] request		the current request.
  * param[in] callback		to call.
- * param[in] module_instance	The module instance
+ * param[in] inst		The module instance
  * param[in] ctx		for the callback.
  * param[in] timeout		when to call the timeout (i.e. now + timeout).
  * @return
@@ -1337,7 +1350,7 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
  *	- <0 on error.
  */
 int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
-			     void *inst, void *ctx, struct timeval *when)
+			     void const *inst, void const *ctx, struct timeval *when)
 {
 	unlang_event_t *ev;
 
@@ -1372,7 +1385,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
  *
  * @param[in] request		The current request.
  * @param[in] callback		to call.
- * @param[in] module_instance	The module instance
+ * @param[in] inst		The module instance
  * @param[in] ctx		for the callback.
  * @param[in] fd		to watch.  When it becomes readable the request is marked as resumable,
  *				with the callback being called by the worker responsible for processing
@@ -1382,7 +1395,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
  *	- <0 on error.
  */
 int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-				 void *module_instance, void *ctx, int fd)
+				 void const *inst, void const *ctx, int fd)
 {
 	unlang_event_t *ev;
 
@@ -1392,7 +1405,7 @@ int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callb
 	ev->request = request;
 	ev->fd = fd;
 	ev->fd_callback = callback;
-	ev->inst = module_instance;
+	ev->inst = inst;
 	ev->ctx = ctx;
 
 	if (!fr_event_fd_insert(request->el, fd, unlang_event_fd_handler, NULL, NULL, ev)) {
@@ -1411,7 +1424,7 @@ int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callb
  * param[in] request the request
  * param[in] ctx a local context for the callback
  */
-int unlang_event_timeout_delete(REQUEST *request, void *ctx)
+int unlang_event_timeout_delete(REQUEST *request, void const *ctx)
 {
 	unlang_event_t *ev;
 
@@ -1430,7 +1443,7 @@ int unlang_event_timeout_delete(REQUEST *request, void *ctx)
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_event_fd_delete(REQUEST *request, void *ctx, int fd)
+int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
 {
 	unlang_event_t *ev;
 
@@ -1468,9 +1481,10 @@ void unlang_resumable(REQUEST *request)
  */
 void unlang_action(REQUEST *request, fr_state_action_t action)
 {
-	unlang_stack_frame_t		*frame;
-	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
 	unlang_resumption_t	*mr;
+	void			*mutable;
 
 	rad_assert(stack->depth > 0);
 
@@ -1479,10 +1493,11 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
 	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 	mr = unlang_generic_to_resumption(frame->instruction);
-
 	if (!mr->action_callback) return;
 
-	mr->action_callback(request, mr->module.modinst->data, mr->ctx, action);
+	memcpy(&mutable, &mr->ctx, sizeof(mutable));
+
+	mr->action_callback(request, mr->module.module_instance->data, mutable, action);
 }
 
 /** Yeild a request
@@ -1494,10 +1509,10 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
  * @return always returns RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
-			 fr_unlang_action_t action_callback, void *ctx)
+			 fr_unlang_action_t action_callback, void const *ctx)
 {
-	unlang_stack_frame_t		*frame;
-	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
 	unlang_resumption_t	*mr;
 
 	rad_assert(stack->depth > 0);

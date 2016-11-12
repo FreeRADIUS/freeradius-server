@@ -189,11 +189,11 @@ static int do_pam(REQUEST *request, char const *username, char const *passwd, ch
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int ret;
-	VALUE_PAIR *pair;
-	rlm_pam_t *data = (rlm_pam_t *) instance;
+	int		ret;
+	VALUE_PAIR	*pair;
+	rlm_pam_t const	*data = instance;
 
 	char const *pam_auth_string = data->pam_auth_name;
 
