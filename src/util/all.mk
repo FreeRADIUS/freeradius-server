@@ -3,6 +3,8 @@ TARGET	:= libfreeradius-util.a
 SOURCES	:=	ring_buffer.c message.c atomic_queue.c queue.c time.c channel.c
 
 TGT_PREREQS	:= libfreeradius-radius.la
+TGT_LDLIBS	:= $(LIBS)
+TGT_LDFLAGS	:= $(LDFLAGS)
 
 #
 #  Install all of the headers, too.
