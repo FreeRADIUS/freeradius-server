@@ -497,8 +497,8 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	rad_assert(kev->ident == FR_CHANNEL_SIGNAL_WORKER_SLEEPING);
 
 	/*
-	 *	"worker sleeping" signals are only allowed for signals
-	 *	from the worker to the master thread.
+	 *	"worker sleeping" signals are only allowed from the
+	 *	worker to the master thread.
 	 */
 	rad_assert(kq == ch->end[FROM_WORKER].kq);
 
@@ -506,7 +506,7 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	 *	Run-time sanity check.
 	 */
 	end = &ch->end[FROM_WORKER];
-	if (end->kq != kq) return -1;
+	if (end->kq != kq) return FR_CHANNEL_ERROR;
 
 	end = &ch->end[TO_WORKER];
 
