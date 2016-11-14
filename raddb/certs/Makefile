@@ -53,7 +53,7 @@ passwords.mk: server.cnf ca.cnf client.cnf ocsp.cnf
 #
 ######################################################################
 dh:
-	openssl gendh -out dh -2 $(DH_KEY_SIZE)
+	openssl dhparam -outform PEM -out dh -2 $(DH_KEY_SIZE)
 
 ######################################################################
 #
