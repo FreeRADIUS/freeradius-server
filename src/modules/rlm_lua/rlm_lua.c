@@ -106,11 +106,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	pthread_mutex_init(inst->mutex, NULL);	/* Used in both threaded and non-threaded modes */
 
 	if (inst->threads) {
-		int errno;
+		int rcode;
 
-		errno = pthread_key_create(&inst->key, _tls_interp_destroy);
-		if (errno != 0) {
-			ERROR("Error creating pthread key for lua interpreter: %s", fr_syserror(errno));
+		rcode = pthread_key_create(&inst->key, _tls_interp_destroy);
+		if (rcode != 0) {
+			ERROR("Error creating pthread key for lua interpreter: %s", fr_syserror(rcode));
 			return -1;
 		}
 	}
