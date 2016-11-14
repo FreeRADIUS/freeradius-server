@@ -71,6 +71,14 @@ typedef struct fr_channel_data_t {
 
 } fr_channel_data_t;
 
+typedef enum fr_channel_event_t {
+	FR_CHANNEL_ERROR = 0,
+	FR_CHANNEL_NOOP,
+	FR_CHANNEL_DATA_READY,
+	FR_CHANNEL_OPEN,
+	FR_CHANNEL_CLOSE,
+} fr_channel_event_t;
+
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker);
 
 int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_reply) CC_HINT(nonnull);
@@ -80,7 +88,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_da
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
-int fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel) CC_HINT(nonnull);
+fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

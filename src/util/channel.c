@@ -31,8 +31,10 @@ RCSID("$Id$")
 //#define FLAGS_TO_WHICH(_x)	(((_x) & 0x03) - 1)
 
 typedef enum fr_channel_signal_t {
-	FR_CHANNEL_DATA_READY = 0,
-	FR_CHANNEL_WORKER_SLEEPING,
+	FR_CHANNEL_SIGNAL_DATA_READY = 0,
+	FR_CHANNEL_SIGNAL_WORKER_SLEEPING,
+	FR_CHANNEL_SIGNAL_OPEN,
+	FR_CHANNEL_SIGNAL_CLOSE,
 } fr_channel_signal_t;
 
 /**
@@ -80,6 +82,7 @@ typedef struct fr_channel_t {
  */
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 {
+	fr_time_t when;
 	fr_channel_t *ch;
 
 	ch = talloc_zero(ctx, fr_channel_t);
@@ -100,8 +103,22 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 	ch->end[TO_WORKER].kq = kq_worker;
 	ch->end[FROM_WORKER].kq = kq_master;
 
+	/*
+	 *	Initialize all of the timers to now.
+	 */
+	when = fr_time();
+
+	ch->end[TO_WORKER].last_write = when;
+	ch->end[TO_WORKER].last_read_other = when;
+	ch->end[TO_WORKER].last_signal = when;
+
+	ch->end[FROM_WORKER].last_write = when;
+	ch->end[FROM_WORKER].last_read_other = when;
+	ch->end[FROM_WORKER].last_signal = when;
+
 	return ch;
 }
+
 
 /** Send a message via a kq user signal
  *
@@ -134,7 +151,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, FR_CHANNEL_DATA_READY, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
+	EV_SET(&kev, FR_CHANNEL_SIGNAL_DATA_READY, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -403,7 +420,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, FR_CHANNEL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), end->ack, ch);
+	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), end->ack, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -421,12 +438,15 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  * @param[in] when the current time
  * @param[out] p_channel the channel which should be serviced.
  * @return
- *	- <0 on error
- *	- 0 on success
-*	- 1 on new channel
+ *	- FR_CHANNEL_ERROR on error
+ *	- FR_CHANNEL_NOOP, on do nothing
+ *	- FR_CHANNEL_DATA_READY on data ready
+ *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
+ *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-int fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
+fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
 {
+	int rcode;
 	uint64_t ack;
 	fr_channel_end_t *end;
 	fr_channel_t *ch;
@@ -447,15 +467,37 @@ int fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, 
 	 *	return the channel to the caller, and rely on it to
 	 *	service the channel.
 	 */
-	if (kev->ident == FR_CHANNEL_DATA_READY) {
+	if (kev->ident == FR_CHANNEL_SIGNAL_DATA_READY) {
 		*p_channel = ch;
-		return 0;
+		return FR_CHANNEL_DATA_READY;
 	}
 
-	rad_assert(kev->ident == FR_CHANNEL_WORKER_SLEEPING);
+	/*
+	 *	Someone is sending us a new channel.  We MUST be the
+	 *	worker.  Return the channel to the worker.
+	 */
+	if (kev->ident == FR_CHANNEL_SIGNAL_OPEN) {
+		rad_assert(kq == ch->end[TO_WORKER].kq);
+
+		*p_channel = ch;
+		return FR_CHANNEL_OPEN;
+	}
 
 	/*
-	 *	Control-plane signals are only allowed for signals
+	 *	Only the master can signal that a channel should be
+	 *	closed.
+	 */
+	if (kev->ident == FR_CHANNEL_SIGNAL_CLOSE) {
+		rad_assert(kq == ch->end[TO_WORKER].kq);
+
+		*p_channel = ch;
+		return FR_CHANNEL_CLOSE;
+	}
+
+	rad_assert(kev->ident == FR_CHANNEL_SIGNAL_WORKER_SLEEPING);
+
+	/*
+	 *	"worker sleeping" signals are only allowed for signals
 	 *	from the worker to the master thread.
 	 */
 	rad_assert(kq == ch->end[FROM_WORKER].kq);
@@ -474,7 +516,7 @@ int fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, 
 	 */
 	ack = (uint64_t) kev->data;
 	if (ack == end->sequence) {
-		return 0;
+		return FR_CHANNEL_NOOP;
 	}
 
 	rad_assert(ack < end->sequence);
@@ -483,5 +525,8 @@ int fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, 
 	 *	The worker hasn't seen our last few packets.  Signal
 	 *	that there is data ready.
 	 */
-	return fr_channel_data_ready(ch, when, end, FROM_WORKER);
+	rcode = fr_channel_data_ready(ch, when, end, FROM_WORKER);
+	if (rcode < 0) return FR_CHANNEL_ERROR;
+
+	return FR_CHANNEL_NOOP;
 }
