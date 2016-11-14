@@ -30,6 +30,11 @@ RCSID("$Id$")
 #define WHICH_TO_FLAGS(_x)	(((_x) + 1) & 0x03)
 //#define FLAGS_TO_WHICH(_x)	(((_x) & 0x03) - 1)
 
+typedef enum fr_channel_signal_t {
+	FR_CHANNEL_DATA_READY = 0,
+	FR_CHANNEL_WORKER_SLEEPING,
+} fr_channel_signal_t;
+
 /**
  *  One end of a channel, which consists of a kqueue descriptor, and
  *  an atomic queue.  The atomic queue is there to get bulk data
@@ -129,7 +134,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, (uintptr_t) ch, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
+	EV_SET(&kev, FR_CHANNEL_DATA_READY, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -398,7 +403,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, 0, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), end->ack, ch);
+	EV_SET(&kev, FR_CHANNEL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), end->ack, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -438,11 +443,13 @@ int fr_channel_service_kevent(int kq, struct kevent *kev, fr_time_t when)
 	 *	return to the caller, and rely on it to service it's
 	 *	channel.
 	 */
-	if (kev->ident != 0) return 0;
+	if (kev->ident == FR_CHANNEL_DATA_READY) return 0;
+
+	rad_assert(kev->ident == FR_CHANNEL_WORKER_SLEEPING);
 
 	/*
-	 *	Zero idents are only allowed for signals from the
-	 *	worker to the master thread.
+	 *	Control-plane signals are only allowed for signals
+	 *	from the worker to the master thread.
 	 */
 	rad_assert(kq == ch->end[FROM_WORKER].kq);
 
