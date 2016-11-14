@@ -53,9 +53,9 @@ typedef enum {
 } sql_rcode_t;
 
 typedef enum {
-	FALL_THROUGH_DEFAULT = 0,
+	FALL_THROUGH_NO = 0,
 	FALL_THROUGH_YES,
-	FALL_THROUGH_NO
+	FALL_THROUGH_DEFAULT,
 } sql_fall_through_t;
 
 
