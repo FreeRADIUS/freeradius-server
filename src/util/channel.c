@@ -350,15 +350,16 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	/*
 	 *	If we've received a new packet in the last
 	 *	millisecond, OR we've sent a signal in the last
-	 *	millisecond, OR we've sent 3 or fewer replies without
-	 *	an ACK, we don't need to send a new signal.
+	 *	millisecond, then we don't need to send a new signal.
+	 *	But we DO send a signal if we haven't seen an ACK for
+	 *	a few packets.
 	 *
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	if (((end->last_read_other - when) < 1000) ||
-	    ((end->last_signal - when) < 1000) ||
-	    ((end->sequence - end->ack) <= 3)) {
+	if ((((end->last_read_other - when) < 1000) ||
+	     ((end->last_signal - when) < 1000)) &&
+	    (end->sequence - end->ack) <= 3) {
 		return 0;
 	}
 
