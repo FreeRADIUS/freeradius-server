@@ -68,6 +68,7 @@ addons:
       - libkrb5-dev
       - libkqueue-dev
       - libldap2-dev
+      - libluajit-5.1-dev
       - libmemcached-dev
       - libmysqlclient-dev
       - libnl-genl-3-dev
