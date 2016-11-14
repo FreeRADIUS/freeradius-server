@@ -85,7 +85,8 @@ static void _tls_interp_destroy(void *ctx)
 	 *	we free this context, which should in turn call a destructor which will
 	 *	call lua_close and free the actual interpreter.
 	 */
-	rad_assert(inst = talloc_find_parent_bytype(marker, rlm_lua_t));
+	inst = talloc_find_parent_bytype(marker, rlm_lua_t);
+	rad_assert(inst != NULL);
 	pthread_mutex_lock(inst->mutex);
 	talloc_free(marker);
 	pthread_mutex_unlock(inst->mutex);
