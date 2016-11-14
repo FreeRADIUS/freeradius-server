@@ -53,8 +53,25 @@ typedef struct fr_channel_t fr_channel_t;
 typedef struct fr_channel_data_t {
 	fr_message_t		m;		//!< the message header
 
-	uint64_t		sequence;	//!< sequence number
-	uint64_t		ack;		//!< ACK of the sequence number from the other end
+	union {
+		/*
+		 *	Messages have a sequence number / ack while
+		 *	they're in a channel.
+		 */
+		struct {
+			uint64_t		sequence;	//!< sequence number
+			uint64_t		ack;		//!< ACK of the sequence number from the other end
+		} live;
+
+		/*
+		 *	Once messages are pulled out of a channel by
+		 *	the scheduler, we need to cache the channel
+		 *	somewhere.  So we cache it in fields which are now unused.
+		 */
+		struct {
+			fr_channel_t *ch;			//!< channel where this messages was received
+		} channel;
+	};
 
 	void			*ctx;		//!< packet context.  Usually socket information
 

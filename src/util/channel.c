@@ -185,8 +185,8 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	when = cd->m.when;
 
 	sequence = end->sequence + 1;
-	cd->sequence = sequence;
-	cd->ack = end->ack;
+	cd->live.sequence = sequence;
+	cd->live.ack = end->ack;
 
 	/*
 	 *	Push the message onto the queue for the other end.  If
@@ -266,11 +266,11 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 	 *	ACK.
 	 */
 	rad_assert(end->num_outstanding > 0);
-	rad_assert(cd->sequence > end->ack);
-	rad_assert(cd->sequence <= end->sequence); /* must have fewer replies than requests */
+	rad_assert(cd->live.sequence > end->ack);
+	rad_assert(cd->live.sequence <= end->sequence); /* must have fewer replies than requests */
 
 	end->num_outstanding--;
-	end->ack = cd->sequence;
+	end->ack = cd->live.sequence;
 
 	rad_assert(end->last_read_other <= cd->m.when);
 	end->last_read_other = cd->m.when;
@@ -297,11 +297,11 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
-	rad_assert(cd->sequence > end->ack);
-	rad_assert(cd->sequence >= end->sequence); /* must have more requests than replies */
+	rad_assert(cd->live.sequence > end->ack);
+	rad_assert(cd->live.sequence >= end->sequence); /* must have more requests than replies */
 
 	end->num_outstanding++;
-	end->ack = cd->sequence;
+	end->ack = cd->live.sequence;
 
 	rad_assert(end->last_read_other <= cd->m.when);
 	end->last_read_other = cd->m.when;
@@ -336,8 +336,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	when = cd->m.when;
 
 	sequence = end->sequence + 1;
-	cd->sequence = sequence;
-	cd->ack = end->ack;
+	cd->live.sequence = sequence;
+	cd->live.ack = end->ack;
 
 	if (!fr_atomic_queue_push(end->aq, cd)) {
 		*p_request = fr_channel_recv_request(ch);
