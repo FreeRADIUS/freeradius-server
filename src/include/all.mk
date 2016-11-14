@@ -127,17 +127,18 @@ src/include/radpaths.h: src/include/build-radpaths-h
 #
 #  Create the soft link for the fake include file path.
 #
-src/freeradius-devel:
+src/freeradius-devel: | $(INCLUDE_SUBDIRS)
 	${Q}[ -e $@ ] || ln -s include $@
 
 .PHONY: src/include/util
 src/include/util:
-	@ln -sf ${top_srcdir}/src/util ${top_srcdir}/src/include/util
+	@echo @LN -SF src/util src/include
+	@ln -sf ${top_srcdir}/src/util ${top_srcdir}/src/include/
 
 #
 #  Ensure we set up the build environment
 #
-BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC) $(INCLUDE_SUBDIRS)
+BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
 scan: $(BOOTSTRAP_BUILD)
 
 ######################################################################
