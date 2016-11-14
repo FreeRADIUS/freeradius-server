@@ -86,9 +86,9 @@ static void _tls_interp_destroy(void *ctx)
 	 *	call lua_close and free the actual interpreter.
 	 */
 	rad_assert(inst = talloc_find_parent_bytype(marker, rlm_lua_t));
-	pthread_mutex_lock(&inst->mutex);
+	pthread_mutex_lock(inst->mutex);
 	talloc_free(marker);
-	pthread_mutex_unlock(&inst->mutex);
+	pthread_mutex_unlock(inst->mutex);
 }
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -101,7 +101,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_init(&inst->mutex, NULL);	/* Used in both threaded and non-threaded modes */
+	inst->mutex = talloc(inst, pthread_mutex_t);
+	pthread_mutex_init(inst->mutex, NULL);	/* Used in both threaded and non-threaded modes */
 
 	if (inst->threads) {
 		int errno;
@@ -139,7 +140,7 @@ static int mod_detach(void *instance)
 }
 
 #define DO_LUA(_s)\
-static rlm_rcode_t mod_##_s(void const *instance, UNUSED void *thread, REQUEST *request) {\
+static rlm_rcode_t mod_##_s(void *instance, UNUSED void *thread, REQUEST *request) {\
 	rlm_lua_t const *inst = instance;\
 	if (!inst->func_##_s) {\
 		return RLM_MODULE_NOOP;\

@@ -52,7 +52,7 @@ typedef struct rlm_lua {
 
 #ifdef HAVE_PTHREAD_H
 	pthread_key_t	key;			//!< Key to access the thread local and instance specific interpreter.
-	pthread_mutex_t	mutex;			//!< Mutex used to protect interpreter, when running with a single
+	pthread_mutex_t	*mutex;			//!< Mutex used to protect interpreter, when running with a single
 						//!< interpreter (threads = no).
 #endif
 	bool 		jit;			//!< Whether the linked interpreter is Lua 5.1 or LuaJIT.

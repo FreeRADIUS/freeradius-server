@@ -720,7 +720,7 @@ static int _lua_state_free(lua_State **marker)
 /** Get a lua interpreter to use
  *
  */
-static lua_State *rlm_lua_get_interp(rlm_lua_t *inst) {
+static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
 	lua_State **marker;
 	lua_State *L;
 
@@ -730,7 +730,7 @@ static lua_State *rlm_lua_get_interp(rlm_lua_t *inst) {
 	 *	and return the instance specific interpreter.
 	 */
 	if (!inst->threads) {
-		pthread_mutex_lock(&inst->mutex);
+		pthread_mutex_lock(inst->mutex);
 		return inst->interpreter;
 	}
 
@@ -762,12 +762,12 @@ static lua_State *rlm_lua_get_interp(rlm_lua_t *inst) {
 }
 
 #ifdef HAVE_PTHREAD_H
-#define rlm_lua_release_interp(_x)  if (!_x->threads) pthread_mutex_unlock(&_x->mutex)
+#define rlm_lua_release_interp(_x)  if (!_x->threads) pthread_mutex_unlock(_x->mutex)
 #else
 #define rlm_lua_release_interp(_x)
 #endif
 
-int do_lua(rlm_lua_t *inst, REQUEST *request, char const *funcname)
+int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname)
 {
 	vp_cursor_t cursor;
 	lua_State *L;
