@@ -419,17 +419,21 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  * @param[in] kq the kqueue on which the event was received
  * @param[in] kev the event of type EVFILT_USER
  * @param[in] when the current time
+ * @param[out] p_channel the channel which should be serviced.
  * @return
  *	- <0 on error
  *	- 0 on success
+*	- 1 on new channel
  */
-int fr_channel_service_kevent(int kq, struct kevent *kev, fr_time_t when)
+int fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
 {
 	uint64_t ack;
 	fr_channel_end_t *end;
 	fr_channel_t *ch;
 
 	rad_assert(kev->filter == EVFILT_USER);
+
+	*p_channel = NULL;
 
 	ch = kev->udata;
 
@@ -440,10 +444,13 @@ int fr_channel_service_kevent(int kq, struct kevent *kev, fr_time_t when)
 	/*
 	 *	Data is ready on one or both channels.  Non-zero
 	 *	idents are just signals that data is ready.  We just
-	 *	return to the caller, and rely on it to service it's
-	 *	channel.
+	 *	return the channel to the caller, and rely on it to
+	 *	service the channel.
 	 */
-	if (kev->ident == FR_CHANNEL_DATA_READY) return 0;
+	if (kev->ident == FR_CHANNEL_DATA_READY) {
+		*p_channel = ch;
+		return 0;
+	}
 
 	rad_assert(kev->ident == FR_CHANNEL_WORKER_SLEEPING);
 
