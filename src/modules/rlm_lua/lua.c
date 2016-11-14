@@ -37,7 +37,7 @@ RCSID("$Id$")
 #define RLM_LUA_STACK_SET()	int _rlm_lua_stack_state = lua_gettop(L)
 #define RLM_LUA_STACK_RESET()	lua_settop(L, _rlm_lua_stack_state)
 
-_Thread_local REQUEST *rlm_lua_request;
+static _Thread_local REQUEST *rlm_lua_request;
 
 /** Convert VALUE_PAIRs to Lua values
  *
