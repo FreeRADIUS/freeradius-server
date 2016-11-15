@@ -258,6 +258,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		return -1;
 	}
 	vp->vp_integer = packet->data[1];
+	vp->vp_tainted = true;
 	debug_pair(vp);
 	fr_cursor_append(&cursor, vp);
 
@@ -267,6 +268,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		return -1;
 	}
 	vp->vp_integer = packet->data[2];
+	vp->vp_tainted = true;
 	debug_pair(vp);
 	fr_cursor_append(&cursor, vp);
 
@@ -276,6 +278,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		return -1;
 	}
 	vp->vp_integer = packet->id; /* already set by vqp_recv */
+	vp->vp_tainted = true;
 	debug_pair(vp);
 	fr_cursor_append(&cursor, vp);
 
@@ -339,6 +342,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			break;
 		}
 		ptr += attr_len;
+		vp->vp_tainted = true;
 		debug_pair(vp);
 		fr_cursor_append(&cursor, vp);
 	}
