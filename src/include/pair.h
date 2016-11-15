@@ -72,8 +72,7 @@ struct value_data {
 
 		struct in_addr		ipaddr;			//!< IPv4 Address.
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
-		size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
-									//!< structure.
+		uint8_t			filter[32];		//!< Ascend binary format a packed data structure.
 
 		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
 		struct in6_addr		ipv6addr;		//!< IPv6 Address.
