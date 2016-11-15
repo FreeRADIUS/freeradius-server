@@ -734,7 +734,9 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 		m = MR_ARRAY(mr->write_offset);
 		mr->write_offset++;
 
-		memset(m, 0, sizeof(*m));
+#ifndef NDEBUG
+		memset(m, 0, mr->message_size);
+#endif
 		m->status = FR_MESSAGE_USED;
 		return m;
 	}
@@ -773,7 +775,9 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 		mr->write_offset = 0;
 	}
 
-	memset(m, 0, sizeof(*m));
+#ifndef NDEBUG
+	memset(m, 0, mr->message_size);
+#endif
 	m->status = FR_MESSAGE_USED;
 	return m;
 }
@@ -1085,11 +1089,12 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	rad_assert(p == m->data);
 
 	/*
-	 *	The caller can change m->data size to soemthing a bit
+	 *	The caller can change m->data size to something a bit
 	 *	smaller, e.g. for cache alignment issues.
 	 */
 	m->data_size = actual_packet_size;
 	m->rb_size = actual_packet_size;
+
 	return m;
 }
 
