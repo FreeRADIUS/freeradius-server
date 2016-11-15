@@ -688,12 +688,11 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
 	{
+		char *p = NULL;
 		ssize_t ret;
 		value_data_t data;
 
 		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
-			char *p;
-
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
@@ -708,7 +707,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		rad_assert(data.strvalue);
 
 		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data);
-		if (map->lhs->type != TMPL_TYPE_UNPARSED) talloc_free(data.ptr);
+		if (p) talloc_free(p);
 	}
 		break;
 
