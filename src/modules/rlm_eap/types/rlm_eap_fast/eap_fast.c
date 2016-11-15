@@ -638,6 +638,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 				 */
 				t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 				rad_assert(t->username != NULL);
+				t->username->vp_tainted = true;
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 

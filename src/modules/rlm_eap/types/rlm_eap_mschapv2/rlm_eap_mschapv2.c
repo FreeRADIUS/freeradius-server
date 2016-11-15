@@ -490,6 +490,7 @@ failure:
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
+	name->vp_tainted = true;
 	name->vp_length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
 	memcpy(q, &eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);

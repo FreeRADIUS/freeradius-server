@@ -835,6 +835,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 				 */
 				t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 				rad_assert(t->username != NULL);
+				t->username->vp_tainted = true;
 
 				fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 

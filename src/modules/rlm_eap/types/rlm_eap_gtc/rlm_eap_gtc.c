@@ -118,6 +118,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 	MEM(vp = pair_make_request("User-Password", NULL, T_OP_EQ));
 	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
+	vp->vp_tainted = true;
 
 	/*
 	 *	Add the password to the request, and allow

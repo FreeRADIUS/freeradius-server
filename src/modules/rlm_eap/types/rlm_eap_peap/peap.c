@@ -682,6 +682,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		 */
 		t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 		rad_assert(t->username != NULL);
+		t->username->vp_tainted = true;
 
 		fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
 
@@ -862,6 +863,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		if ((data[0] == PW_EAP_IDENTITY) && (data_len > 1)) {
 			t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 			rad_assert(t->username != NULL);
+			t->username->vp_tainted = true;
 
 			fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
 
