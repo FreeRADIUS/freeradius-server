@@ -78,6 +78,7 @@ typedef struct fr_channel_data_t {
 	union {
 		struct {
 			uint64_t		*start_time;	//!< time original request started (network -> worker)
+			uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
 		} request;
 
 		struct {
