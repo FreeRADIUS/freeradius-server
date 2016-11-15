@@ -938,7 +938,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		{
 			value_data_t data;
 
-			value_data_hton(&data, vp->da->type, &vp->data.data, vp->vp_length);
+			value_data_hton(&data, vp->da->type, &vp->data.datum, vp->vp_length);
 			memcpy(&p[2], &data, vp->vp_length);
 		}
 
@@ -948,7 +948,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *	to limit to the types of the IANA registered attributes.
 		 */
 		default:
-			memcpy(&p[2], &vp->data.data, vp->vp_length);
+			memcpy(&p[2], &vp->data.datum, vp->vp_length);
 			break;
 		}
 

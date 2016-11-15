@@ -67,7 +67,7 @@ struct value_data {
 	value_data_t			*next;			//!< Next in a series of value_data.
 
 	union {
-		uint8_t			data;			//!< so we can refer to a FIELD and not to a UNION
+		uint8_t			datum;			//!< so we can refer to a FIELD and not to a UNION
 
 		char const	        *strvalue;		//!< Pointer to UTF-8 string.
 		uint8_t const		*octets;		//!< Pointer to binary string.

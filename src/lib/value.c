@@ -1200,7 +1200,8 @@ void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t sr
 		return;		/* shouldn't happen */
 
 	default:
-		memcpy(dst, src, src_len);
+		memcpy(&dst->datum, src, src_len);
+		break;
 	}
 }
 
@@ -1240,8 +1241,8 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, &src->data, src->length);
-		dst->octets = talloc_memdup(ctx, dst, src->length);
+		value_data_hton(dst, src_type, &src->datum, src->length);
+		dst->octets = talloc_memdup(ctx, &dst->datum, src->length);
 		dst->length = src->length;
 		talloc_set_type(dst->octets, uint8_t);
 		return 0;
@@ -1656,7 +1657,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		dst->integer = htonl(src->ipaddr.s_addr);
 
 	} else {		/* they're of the same byte order */
-		memcpy(&dst, &src, src->length);
+		memcpy(&dst->datum, &src->datum, src->length);
 	}
 	dst->length = src->length;
 
