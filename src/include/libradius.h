@@ -328,7 +328,7 @@ int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				    PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 				    char const *src, ssize_t src_len, char quote);
 
-void		value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len);
+void		value_data_hton(value_data_t *dst, PW_TYPE type, value_data_t const *src);
 
 int		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,

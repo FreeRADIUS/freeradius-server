@@ -938,7 +938,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		{
 			value_data_t data;
 
-			value_data_hton(&data, vp->da->type, &vp->data.datum, vp->vp_length);
+			value_data_hton(&data, vp->da->type, &vp->data);
 			memcpy(&p[2], &data, vp->vp_length);
 		}
 

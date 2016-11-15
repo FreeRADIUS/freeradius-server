@@ -1174,7 +1174,7 @@ finish:
 /** Performs byte order reversal for types that need it
  *
  */
-void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len)
+void value_data_hton(value_data_t *dst, PW_TYPE type, value_data_t const *src)
 {
 	/* 8 byte integers */
 	switch (type) {
@@ -1200,7 +1200,7 @@ void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t sr
 		return;		/* shouldn't happen */
 
 	default:
-		memcpy(&dst->datum, src, src_len);
+		value_data_copy(NULL, dst, type, src);
 		break;
 	}
 }
@@ -1241,7 +1241,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, &src->datum, src->length);
+		value_data_hton(dst, src_type, src);
 		dst->octets = talloc_memdup(ctx, &dst->datum, src->length);
 		dst->length = src->length;
 		talloc_set_type(dst->octets, uint8_t);
@@ -1635,9 +1635,22 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 
 	if (src_type == PW_TYPE_OCTETS) {
+		value_data_t tmp;
+
 	do_octets:
-		value_data_hton(dst, dst_type, src->octets, src->length);
-		dst->length = src->length;
+		if (src->length < value_data_field_sizes[dst_type]) {
+			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than destination type size %zd",
+					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
+					   src->length,
+					   value_data_field_sizes[dst_type]);
+			return -1;
+		}
+
+		memcpy(&tmp.datum, src->octets, value_data_field_sizes[dst_type]);
+
+		value_data_hton(dst, dst_type, &tmp);
+		dst->length = value_data_field_sizes[dst_type];
 		return 0;
 	}
 
