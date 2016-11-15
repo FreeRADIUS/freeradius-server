@@ -1405,6 +1405,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		return -1;
 	}
 	vp->type = VT_DATA;
+	vp->vp_tainted = true;
 	fr_cursor_append(cursor, vp);
 
 	return attr_len;
@@ -1457,6 +1458,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 		vp = fr_pair_afrom_da(ctx,da);
 		if (!vp) return -1;
 		fr_cursor_append(cursor, vp);
+		vp->vp_tainted = true;		/* not REALLY necessary, but what the heck */
 
 		return 2;
 	}
