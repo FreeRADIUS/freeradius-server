@@ -1682,11 +1682,13 @@ int value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const 
 
 	case PW_TYPE_STRING:
 		dst->strvalue = talloc_bstrndup(ctx, src->strvalue, src->length);
+		dst->tainted = src->tainted;
 		if (!dst->strvalue) return -1;
 		break;
 
 	case PW_TYPE_OCTETS:
 		dst->octets = talloc_memdup(ctx, src->octets, src->length);
+		dst->tainted = src->tainted;
 		talloc_set_type(dst->strvalue, uint8_t);
 		if (!dst->octets) return -1;
 		break;
@@ -1715,6 +1717,7 @@ int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const
 
 	case PW_TYPE_STRING:
 		dst->strvalue = talloc_steal(ctx, src->strvalue);
+		dst->tainted = src->tainted;
 		if (!dst->strvalue) {
 			fr_strerror_printf("Failed stealing string buffer");
 			return -1;
@@ -1723,6 +1726,7 @@ int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const
 
 	case PW_TYPE_OCTETS:
 		dst->octets = talloc_steal(ctx, src->octets);
+		dst->tainted = src->tainted;
 		if (!dst->octets) {
 			fr_strerror_printf("Failed stealing octets buffer");
 			return -1;
