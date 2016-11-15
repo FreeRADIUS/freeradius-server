@@ -4773,7 +4773,7 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 }
 
 
-static void event_status(struct timeval *wake)
+static void event_status(UNUSED void *ctx, struct timeval *wake)
 {
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
@@ -5182,7 +5182,7 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
  *	Externally-visibly functions.
  */
 int radius_event_init(TALLOC_CTX *ctx) {
-	el = fr_event_list_create(ctx, event_status);
+	el = fr_event_list_create(ctx, event_status, NULL);
 	if (!el) return 0;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG

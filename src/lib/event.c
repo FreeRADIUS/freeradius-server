@@ -72,6 +72,7 @@ struct fr_event_list_t {
 
 	int			exit;
 
+	void			*status_ctx;		//!< context for status function
 	fr_event_status_t	status;			//!< Function to call on each iteration of the event loop.
 
 	struct timeval  	now;			//!< The last time the event list was serviced.
@@ -513,7 +514,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	/*
 	 *	Run the status callback
 	 */
-	if (el->status) el->status(wake);
+	if (el->status) el->status(el->status_ctx, wake);
 
 	if (wake) {
 		ts_wake = &ts_when;
@@ -653,7 +654,7 @@ static int _event_list_free(fr_event_list_t *el)
  *	- A pointer to a new event list on success (free with talloc_free).
  *	- NULL on error.
  */
-fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
+fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status, void *status_ctx)
 {
 	fr_event_list_t *el;
 
@@ -677,6 +678,7 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	}
 
 	el->status = status;
+	el->status_ctx = status_ctx;
 
 	return el;
 }

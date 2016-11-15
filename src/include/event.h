@@ -35,7 +35,7 @@ typedef struct fr_event_list_t fr_event_list_t;
 typedef struct fr_event_timer_t fr_event_timer_t;
 
 typedef	void (*fr_event_callback_t)(void *, struct timeval *now);
-typedef	void (*fr_event_status_t)(struct timeval *);
+typedef	void (*fr_event_status_t)(void *status_ctx, struct timeval *);
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
@@ -62,7 +62,7 @@ void		fr_event_loop_exit(fr_event_list_t *el, int code);
 bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
-fr_event_list_t	*fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status);
+fr_event_list_t	*fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status, void *status_ctx);
 
 #ifdef __cplusplus
 }
