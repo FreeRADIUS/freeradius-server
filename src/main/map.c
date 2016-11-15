@@ -142,7 +142,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 			map->rhs->quote = T_BARE_WORD;
 		}
 	} else {
-		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
+		memcpy(&map->rhs->tmpl_data_value, &vp->data.data, sizeof(map->rhs->tmpl_data_value));
 		map->rhs->quote = T_BARE_WORD;
 	}
 	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);

@@ -448,7 +448,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_COMBO_IP_ADDR:
-		memcpy(out, &vp->data.ipaddr, outlen);
+		memcpy(out, &vp->data.data, outlen);
 		break;
 
 	case PW_TYPE_BOOLEAN:

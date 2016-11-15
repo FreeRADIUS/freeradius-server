@@ -84,7 +84,7 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 	tmpl_find_vp(&vp, request, inst->key);
 	if (!vp) return RLM_MODULE_NOOP;
 
-	hash = fr_hash(&vp->data, vp->vp_length);
+	hash = fr_hash(&vp->data.data, vp->vp_length);
 	hash &= 0xff;		/* ensure it's 0..255 */
 	value = hash;
 
