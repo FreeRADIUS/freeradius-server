@@ -50,14 +50,14 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 	switch (fr_json_object_get_type(object)) {
 	case json_type_string:
 		src_type = PW_TYPE_STRING;
-		in.strvalue = json_object_get_string(object);
+		in.datum.strvalue = json_object_get_string(object);
 		in.length = json_object_get_string_len(object);
 		break;
 
 	case json_type_double:
 		src_type = PW_TYPE_DECIMAL;
-		in.decimal = json_object_get_double(object);
-		in.length = sizeof(in.decimal);
+		in.datum.decimal = json_object_get_double(object);
+		in.length = sizeof(in.datum.decimal);
 		break;
 
 	case json_type_int:
@@ -85,42 +85,42 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 		}
 		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER64;
-			in.integer64 = (uint64_t) num;
-			in.length = sizeof(in.integer64);
+			in.datum.integer64 = (uint64_t) num;
+			in.length = sizeof(in.datum.integer64);
 		} else
 #endif
 		if (num < 0) {			/* 32bit signed (supported) */
 			src_type = PW_TYPE_SIGNED;
-			in.sinteger = num;
-			in.length = sizeof(in.sinteger);
+			in.datum.sinteger = num;
+			in.length = sizeof(in.datum.sinteger);
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER;
-			in.integer = (uint32_t) num;
-			in.length = sizeof(in.integer);
+			in.datum.integer = (uint32_t) num;
+			in.length = sizeof(in.datum.integer);
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			src_type = PW_TYPE_SHORT;
-			in.ushort = (uint16_t) num;
-			in.length = sizeof(in.ushort);
+			in.datum.ushort = (uint16_t) num;
+			in.length = sizeof(in.datum.ushort);
 		} else {		/* 8bit unsigned (supported) */
 			src_type = PW_TYPE_BYTE;
-			in.byte = (uint8_t) num;
-			in.length = sizeof(in.byte);
+			in.datum.byte = (uint8_t) num;
+			in.length = sizeof(in.datum.byte);
 		}
 	}
 		break;
 
 	case json_type_boolean:
 		src_type = PW_TYPE_BOOLEAN;
-		in.boolean = json_object_get_boolean(object);
-		in.length = sizeof(in.boolean);
+		in.datum.boolean = json_object_get_boolean(object);
+		in.length = sizeof(in.datum.boolean);
 		break;
 
 	case json_type_null:
 	case json_type_array:
 	case json_type_object:
 		src_type = PW_TYPE_STRING;
-		in.strvalue = json_object_to_json_string(object);
-		in.length = strlen(in.strvalue);
+		in.datum.strvalue = json_object_to_json_string(object);
+		in.length = strlen(in.datum.strvalue);
 		break;
 	}
 
@@ -159,23 +159,23 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx,
 	}
 
 	case PW_TYPE_BOOLEAN:
-		return json_object_new_boolean(data->byte);
+		return json_object_new_boolean(data->datum.byte);
 
 	case PW_TYPE_BYTE:
-		return json_object_new_int(data->byte);
+		return json_object_new_int(data->datum.byte);
 
 	case PW_TYPE_SHORT:
-		return json_object_new_int(data->ushort);
+		return json_object_new_int(data->datum.ushort);
 
 	case PW_TYPE_INTEGER:
-		return json_object_new_int64((int64_t)data->integer64);	/* uint32_t (max) > int32_t (max) */
+		return json_object_new_int64((int64_t)data->datum.integer64);	/* uint32_t (max) > int32_t (max) */
 
 	case PW_TYPE_INTEGER64:
-		if (data->integer64 > INT64_MAX) goto do_string;
-		return json_object_new_int64(data->integer64);
+		if (data->datum.integer64 > INT64_MAX) goto do_string;
+		return json_object_new_int64(data->datum.integer64);
 
 	case PW_TYPE_SIGNED:
-		return json_object_new_int(data->sinteger);
+		return json_object_new_int(data->datum.sinteger);
 	}
 }
 

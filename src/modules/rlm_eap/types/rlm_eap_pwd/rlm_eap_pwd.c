@@ -329,7 +329,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		}
 
 		if (compute_password_element(session, session->group_num,
-					     pw->data.strvalue, strlen(pw->data.strvalue),
+					     pw->vp_strvalue, pw->vp_length,
 					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
 					     &session->token)) {

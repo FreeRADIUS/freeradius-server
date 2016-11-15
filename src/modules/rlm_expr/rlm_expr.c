@@ -265,13 +265,13 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 						vpt.name, fr_strerror());
 					return false;
 				}
-				if (value.integer64 > INT64_MAX) {
+				if (value.datum.integer64 > INT64_MAX) {
 				overflow:
 					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-						"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.integer64);
+						"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.datum.integer64);
 					return false;
 				}
-				y = (int64_t)value.integer64;
+				y = (int64_t)value.datum.integer64;
 
 				RINDENT();
 				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt.len, vpt.name, y);
@@ -1006,7 +1006,7 @@ static int decode_xlat_ref(uint8_t **out, size_t *outlen, REQUEST *request, char
 	 */
 	if ((vp->da->type == PW_TYPE_STRING) ||
 	    (vp->da->type == PW_TYPE_OCTETS)) {
-		*out = vp->data.ptr;
+		*out = vp->vp_ptr;
 		*outlen = vp->vp_length;
 		return 0;
 	}
@@ -1433,13 +1433,13 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			continue;
 		}
 
-		p = vp->data.ptr;
+		p = vp->vp_ptr;
 		end = p + vp->vp_length;
 		while (p < end) {
 			q = memchr(p, delim, end - p);
 			if (!q) {
 				/* Delimiter not present in attribute */
-				if (p == vp->data.ptr) goto next;
+				if (p == vp->vp_ptr) goto next;
 				q = end;
 			}
 

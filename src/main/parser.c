@@ -194,8 +194,8 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 			}
 
 			talloc_free(*out);
-			*out = talloc_steal(ctx, data.ptr);
-			data.strvalue = NULL;
+			*out = talloc_steal(ctx, data.datum.ptr);
+			data.datum.strvalue = NULL;
 
 			p++;
 			return (p - start);

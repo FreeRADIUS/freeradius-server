@@ -587,7 +587,7 @@ build_vector:
 			switch (vp->da->type) {
 			case PW_TYPE_OCTETS:
 			case PW_TYPE_STRING:
-				vector[i].iov_base = vp->data.ptr;
+				vector[i].iov_base = vp->vp_ptr;
 				vector[i].iov_len = vp->vp_length;
 				break;
 

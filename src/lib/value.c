@@ -31,24 +31,24 @@ RCSID("$Id$")
  * location passed as a void *.
  */
 size_t const value_box_field_sizes[] = {
-	[PW_TYPE_STRING]	= SIZEOF_MEMBER(value_box_t, strvalue),
-	[PW_TYPE_OCTETS]	= SIZEOF_MEMBER(value_box_t, octets),
-	[PW_TYPE_IFID]		= SIZEOF_MEMBER(value_box_t, ifid),
-	[PW_TYPE_IPV4_ADDR]	= SIZEOF_MEMBER(value_box_t, ipaddr),
-	[PW_TYPE_IPV4_PREFIX]	= SIZEOF_MEMBER(value_box_t, ipv4prefix),
-	[PW_TYPE_IPV6_ADDR]	= SIZEOF_MEMBER(value_box_t, ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]	= SIZEOF_MEMBER(value_box_t, ipv6prefix),
-	[PW_TYPE_BOOLEAN]	= SIZEOF_MEMBER(value_box_t, boolean),
-	[PW_TYPE_BYTE]		= SIZEOF_MEMBER(value_box_t, byte),
-	[PW_TYPE_SHORT]		= SIZEOF_MEMBER(value_box_t, ushort),
-	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_box_t, integer),
-	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_box_t, integer64),
-	[PW_TYPE_SIZE]		= SIZEOF_MEMBER(value_box_t, size),
-	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_box_t, sinteger),
-	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_box_t, timeval),
-	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_box_t, decimal),
-	[PW_TYPE_ETHERNET]	= SIZEOF_MEMBER(value_box_t, ether),
-	[PW_TYPE_DATE]		= SIZEOF_MEMBER(value_box_t, date),
+	[PW_TYPE_STRING]	= SIZEOF_MEMBER(value_box_t, datum.strvalue),
+	[PW_TYPE_OCTETS]	= SIZEOF_MEMBER(value_box_t, datum.octets),
+	[PW_TYPE_IFID]		= SIZEOF_MEMBER(value_box_t, datum.ifid),
+	[PW_TYPE_IPV4_ADDR]	= SIZEOF_MEMBER(value_box_t, datum.ipaddr),
+	[PW_TYPE_IPV4_PREFIX]	= SIZEOF_MEMBER(value_box_t, datum.ipv4prefix),
+	[PW_TYPE_IPV6_ADDR]	= SIZEOF_MEMBER(value_box_t, datum.ipv6addr),
+	[PW_TYPE_IPV6_PREFIX]	= SIZEOF_MEMBER(value_box_t, datum.ipv6prefix),
+	[PW_TYPE_BOOLEAN]	= SIZEOF_MEMBER(value_box_t, datum.boolean),
+	[PW_TYPE_BYTE]		= SIZEOF_MEMBER(value_box_t, datum.byte),
+	[PW_TYPE_SHORT]		= SIZEOF_MEMBER(value_box_t, datum.ushort),
+	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_box_t, datum.integer),
+	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_box_t, datum.integer64),
+	[PW_TYPE_SIZE]		= SIZEOF_MEMBER(value_box_t, datum.size),
+	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_box_t, datum.sinteger),
+	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_box_t, datum.timeval),
+	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_box_t, datum.decimal),
+	[PW_TYPE_ETHERNET]	= SIZEOF_MEMBER(value_box_t, datum.ether),
+	[PW_TYPE_DATE]		= SIZEOF_MEMBER(value_box_t, datum.date),
 	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
 };
 
@@ -60,24 +60,24 @@ size_t const value_box_field_sizes[] = {
  *
  */
 size_t const value_box_offsets[] = {
-	[PW_TYPE_STRING]	= offsetof(value_box_t, strvalue),
-	[PW_TYPE_OCTETS]	= offsetof(value_box_t, octets),
-	[PW_TYPE_IFID]		= offsetof(value_box_t, ifid),
-	[PW_TYPE_IPV4_ADDR]	= offsetof(value_box_t, ipaddr),
-	[PW_TYPE_IPV4_PREFIX]	= offsetof(value_box_t, ipv4prefix),
-	[PW_TYPE_IPV6_ADDR]	= offsetof(value_box_t, ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]	= offsetof(value_box_t, ipv6prefix),
-	[PW_TYPE_BOOLEAN]	= offsetof(value_box_t, boolean),
-	[PW_TYPE_BYTE]		= offsetof(value_box_t, byte),
-	[PW_TYPE_SHORT]		= offsetof(value_box_t, ushort),
-	[PW_TYPE_INTEGER]	= offsetof(value_box_t, integer),
-	[PW_TYPE_INTEGER64]	= offsetof(value_box_t, integer64),
-	[PW_TYPE_SIZE]		= offsetof(value_box_t, size),
-	[PW_TYPE_SIGNED]	= offsetof(value_box_t, sinteger),
-	[PW_TYPE_TIMEVAL]	= offsetof(value_box_t, timeval),
-	[PW_TYPE_DECIMAL]	= offsetof(value_box_t, decimal),
-	[PW_TYPE_ETHERNET]	= offsetof(value_box_t, ether),
-	[PW_TYPE_DATE]		= offsetof(value_box_t, date),
+	[PW_TYPE_STRING]	= offsetof(value_box_t, datum.strvalue),
+	[PW_TYPE_OCTETS]	= offsetof(value_box_t, datum.octets),
+	[PW_TYPE_IFID]		= offsetof(value_box_t, datum.ifid),
+	[PW_TYPE_IPV4_ADDR]	= offsetof(value_box_t, datum.ipaddr),
+	[PW_TYPE_IPV4_PREFIX]	= offsetof(value_box_t, datum.ipv4prefix),
+	[PW_TYPE_IPV6_ADDR]	= offsetof(value_box_t, datum.ipv6addr),
+	[PW_TYPE_IPV6_PREFIX]	= offsetof(value_box_t, datum.ipv6prefix),
+	[PW_TYPE_BOOLEAN]	= offsetof(value_box_t, datum.boolean),
+	[PW_TYPE_BYTE]		= offsetof(value_box_t, datum.byte),
+	[PW_TYPE_SHORT]		= offsetof(value_box_t, datum.ushort),
+	[PW_TYPE_INTEGER]	= offsetof(value_box_t, datum.integer),
+	[PW_TYPE_INTEGER64]	= offsetof(value_box_t, datum.integer64),
+	[PW_TYPE_SIZE]		= offsetof(value_box_t, datum.size),
+	[PW_TYPE_SIGNED]	= offsetof(value_box_t, datum.sinteger),
+	[PW_TYPE_TIMEVAL]	= offsetof(value_box_t, datum.timeval),
+	[PW_TYPE_DECIMAL]	= offsetof(value_box_t, datum.decimal),
+	[PW_TYPE_ETHERNET]	= offsetof(value_box_t, datum.ether),
+	[PW_TYPE_DATE]		= offsetof(value_box_t, datum.date),
 	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
 };
 
@@ -121,7 +121,7 @@ int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
 		}
 
 		if (length) {
-			compare = memcmp(a->octets, b->octets, length);
+			compare = memcmp(a->datum.octets, b->datum.octets, length);
 			if (compare != 0) break;
 		}
 
@@ -138,8 +138,8 @@ int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
 		/*
 		 *	Short-hand for simplicity.
 		 */
-#define CHECK(_type) if (a->_type < b->_type)   { compare = -1; \
-		} else if (a->_type > b->_type) { compare = +1; }
+#define CHECK(_type) if (a->datum._type < b->datum._type)   { compare = -1; \
+		} else if (a->datum._type > b->datum._type) { compare = +1; }
 
 	case PW_TYPE_BOOLEAN:	/* this isn't a RADIUS type, and shouldn't really ever be used */
 	case PW_TYPE_BYTE:
@@ -171,7 +171,7 @@ int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
 		break;
 
 	case PW_TYPE_TIMEVAL:
-		compare = fr_timeval_cmp(&a->timeval, &b->timeval);
+		compare = fr_timeval_cmp(&a->datum.timeval, &b->datum.timeval);
 		break;
 
 	case PW_TYPE_DECIMAL:
@@ -179,15 +179,15 @@ int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
 		break;
 
 	case PW_TYPE_ETHERNET:
-		compare = memcmp(a->ether, b->ether, sizeof(a->ether));
+		compare = memcmp(a->datum.ether, b->datum.ether, sizeof(a->datum.ether));
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
 	{
 		uint32_t a_int, b_int;
 
-		a_int = ntohl(a->ipaddr.s_addr);
-		b_int = ntohl(b->ipaddr.s_addr);
+		a_int = ntohl(a->datum.ipaddr.s_addr);
+		b_int = ntohl(b->datum.ipaddr.s_addr);
 		if (a_int < b_int) {
 			compare = -1;
 		} else if (a_int > b_int) {
@@ -197,19 +197,19 @@ int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
-		compare = memcmp(&a->ipv6addr, &b->ipv6addr, sizeof(a->ipv6addr));
+		compare = memcmp(&a->datum.ipv6addr, &b->datum.ipv6addr, sizeof(a->datum.ipv6addr));
 		break;
 
 	case PW_TYPE_IPV6_PREFIX:
-		compare = memcmp(a->ipv6prefix, b->ipv6prefix, sizeof(a->ipv6prefix));
+		compare = memcmp(a->datum.ipv6prefix, b->datum.ipv6prefix, sizeof(a->datum.ipv6prefix));
 		break;
 
 	case PW_TYPE_IPV4_PREFIX:
-		compare = memcmp(a->ipv4prefix, b->ipv4prefix, sizeof(a->ipv4prefix));
+		compare = memcmp(a->datum.ipv4prefix, b->datum.ipv4prefix, sizeof(a->datum.ipv4prefix));
 		break;
 
 	case PW_TYPE_IFID:
-		compare = memcmp(a->ifid, b->ifid, sizeof(a->ifid));
+		compare = memcmp(a->datum.ifid, b->datum.ifid, sizeof(a->datum.ifid));
 		break;
 
 	/*
@@ -373,8 +373,8 @@ int value_box_cmp_op(FR_TOKEN op,
 			goto cmp;
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
-			return value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->ipaddr,
-						      b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
+			return value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->datum.ipaddr,
+						      b->datum.ipv4prefix[1], (uint8_t const *) &b->datum.ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -384,14 +384,14 @@ int value_box_cmp_op(FR_TOKEN op,
 	case PW_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
 		switch (b_type) {
 		case PW_TYPE_IPV4_ADDR:
-			return value_box_cidr_cmp_op(op, 4, a->ipv4prefix[1],
-						      (uint8_t const *) &a->ipv4prefix[2],
-						      32, (uint8_t const *) &b->ipaddr);
+			return value_box_cidr_cmp_op(op, 4, a->datum.ipv4prefix[1],
+						      (uint8_t const *) &a->datum.ipv4prefix[2],
+						      32, (uint8_t const *) &b->datum.ipaddr);
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
-			return value_box_cidr_cmp_op(op, 4, a->ipv4prefix[1],
-						      (uint8_t const *) &a->ipv4prefix[2],
-						      b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
+			return value_box_cidr_cmp_op(op, 4, a->datum.ipv4prefix[1],
+						      (uint8_t const *) &a->datum.ipv4prefix[2],
+						      b->datum.ipv4prefix[1], (uint8_t const *) &b->datum.ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -404,8 +404,8 @@ int value_box_cmp_op(FR_TOKEN op,
 			goto cmp;
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
-			return value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->ipv6addr,
-						      b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
+			return value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->datum.ipv6addr,
+						      b->datum.ipv6prefix[1], (uint8_t const *) &b->datum.ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -415,14 +415,14 @@ int value_box_cmp_op(FR_TOKEN op,
 	case PW_TYPE_IPV6_PREFIX:
 		switch (b_type) {
 		case PW_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
-			return value_box_cidr_cmp_op(op, 16, a->ipv6prefix[1],
-						      (uint8_t const *) &a->ipv6prefix[2],
-						      128, (uint8_t const *) &b->ipv6addr);
+			return value_box_cidr_cmp_op(op, 16, a->datum.ipv6prefix[1],
+						      (uint8_t const *) &a->datum.ipv6prefix[2],
+						      128, (uint8_t const *) &b->datum.ipv6addr);
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
-			return value_box_cidr_cmp_op(op, 16, a->ipv6prefix[1],
-						      (uint8_t const *) &a->ipv6prefix[2],
-						      b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
+			return value_box_cidr_cmp_op(op, 16, a->datum.ipv6prefix[1],
+						      (uint8_t const *) &a->datum.ipv6prefix[2],
+						      b->datum.ipv6prefix[1], (uint8_t const *) &b->datum.ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -730,7 +730,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		 */
 		if (!quote) {
 			ret = len;
-			dst->strvalue = buff;
+			dst->datum.strvalue = buff;
 			goto finish;
 		}
 
@@ -745,7 +745,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		 *	It's better for the server to print partial
 		 *	strings, instead of SEGV.
 		 */
-		dst->strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
+		dst->datum.strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
 		p[len] = '\0';
 		ret = len;
 	}
@@ -764,8 +764,8 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		 *	No 0x prefix, just copy verbatim.
 		 */
 		if ((len < 2) || (strncasecmp(in, "0x", 2) != 0)) {
-			dst->octets = talloc_memdup(ctx, (uint8_t const *)in, len);
-			talloc_set_type(dst->octets, uint8_t);
+			dst->datum.octets = talloc_memdup(ctx, (uint8_t const *)in, len);
+			talloc_set_type(dst->datum.octets, uint8_t);
 			ret = len;
 			goto finish;
 		}
@@ -788,7 +788,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		dst->octets = p;
+		dst->datum.octets = p;
 	}
 		goto finish;
 
@@ -797,14 +797,14 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		if ((len > 1) && (strncasecmp(in, "0x", 2) == 0)) {
 			ssize_t bin;
 
-			if (len > ((sizeof(dst->filter) + 1) * 2)) {
+			if (len > ((sizeof(dst->datum.filter) + 1) * 2)) {
 				fr_strerror_printf("Hex data is too large for ascend filter");
 				return -1;
 			}
 
-			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, in + 2, len - 2);
+			bin = fr_hex2bin((uint8_t *) &dst->datum.filter, ret, in + 2, len - 2);
 			if (bin < ret) {
-				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
+				memset(((uint8_t *) &dst->datum.filter) + bin, 0, ret - bin);
 			}
 		} else {
 			if (ascend_parse_filter(dst, in, len) < 0 ) {
@@ -813,7 +813,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			}
 		}
 
-		ret = sizeof(dst->filter);
+		ret = sizeof(dst->datum.filter);
 		goto finish;
 #else
 		/*
@@ -840,7 +840,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		dst->ipaddr.s_addr = addr.ipaddr.ip4addr.s_addr;
+		dst->datum.ipaddr.s_addr = addr.ipaddr.ip4addr.s_addr;
 	}
 		goto finish;
 
@@ -850,8 +850,8 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 
 		if (fr_inet_pton4(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
-		dst->ipv4prefix[1] = addr.prefix;
-		memcpy(&dst->ipv4prefix[2], &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
+		dst->datum.ipv4prefix[1] = addr.prefix;
+		memcpy(&dst->datum.ipv4prefix[2], &addr.ipaddr.ip4addr.s_addr, sizeof(dst->datum.ipv4prefix) - 2);
 	}
 		goto finish;
 
@@ -871,7 +871,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		memcpy(&dst->ipv6addr, addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6addr));
+		memcpy(&dst->datum.ipv6addr, addr.ipaddr.ip6addr.s6_addr, sizeof(dst->datum.ipv6addr));
 	}
 		goto finish;
 
@@ -881,8 +881,8 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 
 		if (fr_inet_pton6(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
-		dst->ipv6prefix[1] = addr.prefix;
-		memcpy(&dst->ipv6prefix[2], addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);
+		dst->datum.ipv6prefix[1] = addr.prefix;
+		memcpy(&dst->datum.ipv6prefix[2], addr.ipaddr.ip6addr.s6_addr, sizeof(dst->datum.ipv6prefix) - 2);
 	}
 		goto finish;
 
@@ -936,14 +936,14 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 				return -1;
 			}
 
-			dst->byte = dval->value;
+			dst->datum.byte = dval->value;
 		} else {
 			if (i > 255) {
 				fr_strerror_printf("Byte value \"%s\" is larger than 255", in);
 				return -1;
 			}
 
-			dst->byte = i;
+			dst->datum.byte = i;
 		}
 		break;
 	}
@@ -969,14 +969,14 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 				return -1;
 			}
 
-			dst->ushort = dval->value;
+			dst->datum.ushort = dval->value;
 		} else {
 			if (i > 65535) {
 				fr_strerror_printf("Short value \"%s\" is larger than 65535", in);
 				return -1;
 			}
 
-			dst->ushort = i;
+			dst->datum.ushort = i;
 		}
 		break;
 	}
@@ -1002,12 +1002,12 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 				return -1;
 			}
 
-			dst->integer = dval->value;
+			dst->datum.integer = dval->value;
 		} else {
 			/*
 			 *	Value is always within the limits
 			 */
-			dst->integer = i;
+			dst->datum.integer = i;
 		}
 	}
 		break;
@@ -1023,7 +1023,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", in);
 			return -1;
 		}
-		dst->integer64 = i;
+		dst->datum.integer64 = i;
 	}
 		break;
 
@@ -1035,11 +1035,11 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			fr_strerror_printf("Failed parsing \"%s\" as a file or memory size", in);
 			return -1;
 		}
-		dst->size = i;
+		dst->datum.size = i;
 	}
 
 	case PW_TYPE_TIMEVAL:
-		if (fr_timeval_from_str(&dst->timeval, in) < 0) return -1;
+		if (fr_timeval_from_str(&dst->datum.timeval, in) < 0) return -1;
 		break;
 
 	case PW_TYPE_DECIMAL:
@@ -1050,7 +1050,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			fr_strerror_printf("Failed parsing \"%s\" as a decimal", in);
 			return -1;
 		}
-		dst->decimal = d;
+		dst->datum.decimal = d;
 	}
 		break;
 
@@ -1067,13 +1067,13 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		dst->date = date;
+		dst->datum.date = date;
 	}
 
 		break;
 
 	case PW_TYPE_IFID:
-		if (fr_inet_ifid_pton((void *) dst->ifid, in) == NULL) {
+		if (fr_inet_ifid_pton((void *) dst->datum.ifid, in) == NULL) {
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", in);
 			return -1;
 		}
@@ -1093,7 +1093,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		if (is_integer(in)) {
 			uint64_t integer = htonll(atoll(in));
 
-			memcpy(dst->ether, &integer, sizeof(dst->ether));
+			memcpy(dst->datum.ether, &integer, sizeof(dst->datum.ether));
 			break;
 		}
 
@@ -1111,11 +1111,11 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			} else {
 				c1 = c2 = NULL;
 			}
-			if (!c1 || !c2 || (p_len >= sizeof(dst->ether))) {
+			if (!c1 || !c2 || (p_len >= sizeof(dst->datum.ether))) {
 				fr_strerror_printf("failed to parse Ethernet address \"%s\"", in);
 				return -1;
 			}
-			dst->ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
+			dst->datum.ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
 			p_len++;
 		}
 	}
@@ -1132,7 +1132,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	 */
 	case PW_TYPE_COMBO_IP_ADDR:
 	{
-		if (inet_pton(AF_INET6, in, &dst->ipv6addr) > 0) {
+		if (inet_pton(AF_INET6, in, &dst->datum.ipv6addr) > 0) {
 			*src_type = PW_TYPE_IPV6_ADDR;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
 		} else {
@@ -1144,7 +1144,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			}
 
 			*src_type = PW_TYPE_IPV4_ADDR;
-			dst->ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
+			dst->datum.ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 		}
 	}
@@ -1152,7 +1152,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 
 	case PW_TYPE_SIGNED:
 		/* Damned code for 1 WiMAX attribute */
-		dst->sinteger = (int32_t)strtol(in, NULL, 10);
+		dst->datum.sinteger = (int32_t)strtol(in, NULL, 10);
 		break;
 
 	case PW_TYPE_BOOLEAN:
@@ -1179,19 +1179,19 @@ void value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src)
 	/* 8 byte integers */
 	switch (type) {
 	case PW_TYPE_INTEGER64:
-		dst->integer64 = htonll(*(uint64_t const *)src);
+		dst->datum.integer64 = htonll(*(uint64_t const *)src);
 		break;
 
 	/* 4 byte integers */
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
-		dst->integer = htonl(*(uint32_t const *)src);
+		dst->datum.integer = htonl(*(uint32_t const *)src);
 		break;
 
 	/* 2 byte integers */
 	case PW_TYPE_SHORT:
-		dst->ushort = htons(*(uint16_t const *)src);
+		dst->datum.ushort = htons(*(uint16_t const *)src);
 		break;
 
 	case PW_TYPE_OCTETS:
@@ -1234,7 +1234,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	Deserialise a value_box_t
 	 */
 	if (src_type == PW_TYPE_STRING) {
-		return value_box_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src->length, '\0');
+		return value_box_from_str(ctx, dst, &dst_type, dst_enumv, src->datum.strvalue, src->length, '\0');
 	}
 
 	/*
@@ -1242,9 +1242,9 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
 		value_box_hton(dst, src_type, src);
-		dst->octets = talloc_memdup(ctx, &dst->datum, src->length);
+		dst->datum.octets = talloc_memdup(ctx, &dst->datum, src->length);
 		dst->length = src->length;
-		talloc_set_type(dst->octets, uint8_t);
+		talloc_set_type(dst->datum.octets, uint8_t);
 		return 0;
 	}
 
@@ -1252,15 +1252,15 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	Serialise a value_box_t
 	 */
 	if (dst_type == PW_TYPE_STRING) {
-		dst->strvalue = value_box_asprint(ctx, src_type, src_enumv, src, '\0');
-		dst->length = talloc_array_length(dst->strvalue) - 1;
+		dst->datum.strvalue = value_box_asprint(ctx, src_type, src_enumv, src, '\0');
+		dst->length = talloc_array_length(dst->datum.strvalue) - 1;
 		return 0;
 	}
 
 	if ((src_type == PW_TYPE_IFID) &&
 	    (dst_type == PW_TYPE_INTEGER64)) {
-		memcpy(&dst->integer64, src->ifid, sizeof(src->ifid));
-		dst->integer64 = htonll(dst->integer64);
+		memcpy(&dst->datum.integer64, src->datum.ifid, sizeof(src->datum.ifid));
+		dst->datum.integer64 = htonll(dst->datum.integer64);
 	fixed_length:
 		dst->length = dict_attr_sizes[dst_type][0];
 		return 0;
@@ -1271,7 +1271,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		uint8_t array[8];
 		uint64_t i;
 
-		i = htonll(src->integer64);
+		i = htonll(src->datum.integer64);
 		memcpy(array, &i, 8);
 
 		/*
@@ -1279,14 +1279,14 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		 */
 		if ((array[0] != 0) || (array[1] != 0)) return -1;
 
-		memcpy(dst->ether, &array[2], 6);
+		memcpy(dst->datum.ether, &array[2], 6);
 		goto fixed_length;
 	}
 
 	if (dst_type == PW_TYPE_SHORT) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->ushort = src->byte;
+			dst->datum.ushort = src->datum.byte;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -1305,20 +1305,20 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	if (dst_type == PW_TYPE_INTEGER) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->integer = src->byte;
+			dst->datum.integer = src->datum.byte;
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->integer = src->ushort;
+			dst->datum.integer = src->datum.ushort;
 			break;
 
 		case PW_TYPE_SIGNED:
-			if (src->sinteger < 0 ) {
+			if (src->datum.sinteger < 0 ) {
 				fr_strerror_printf("Invalid cast: From signed to integer.  signed value %d is negative ",
-						    src->sinteger);
+						    src->datum.sinteger);
 				return -1;
 			}
-			dst->integer = (uint32_t)src->sinteger;
+			dst->datum.integer = (uint32_t)src->datum.sinteger;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -1337,19 +1337,19 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	if (dst_type == PW_TYPE_INTEGER64) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->integer64 = src->byte;
+			dst->datum.integer64 = src->datum.byte;
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->integer64 = src->ushort;
+			dst->datum.integer64 = src->datum.ushort;
 			break;
 
 		case PW_TYPE_INTEGER:
-			dst->integer64 = src->integer;
+			dst->datum.integer64 = src->datum.integer;
 			break;
 
 		case PW_TYPE_DATE:
-			dst->integer64 = src->date;
+			dst->datum.integer64 = src->datum.date;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -1372,29 +1372,29 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	if (dst_type == PW_TYPE_SIGNED) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->sinteger = src->byte;
+			dst->datum.sinteger = src->datum.byte;
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->sinteger = src->ushort;
+			dst->datum.sinteger = src->datum.ushort;
 			break;
 
 		case PW_TYPE_INTEGER:
-			if (src->integer > INT_MAX) {
+			if (src->datum.integer > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From integer to signed.  integer value %u is larger "
-						   "than max signed int and would overflow", src->integer);
+						   "than max signed int and would overflow", src->datum.integer);
 				return -1;
 			}
-			dst->sinteger = (int)src->integer;
+			dst->datum.sinteger = (int)src->datum.integer;
 			break;
 
 		case PW_TYPE_INTEGER64:
-			if (src->integer > INT_MAX) {
+			if (src->datum.integer > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From integer64 to signed.  integer64 value %" PRIu64
-						   " is larger than max signed int and would overflow", src->integer64);
+						   " is larger than max signed int and would overflow", src->datum.integer64);
 				return -1;
 			}
-			dst->sinteger = (int)src->integer64;
+			dst->datum.sinteger = (int)src->datum.integer64;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -1409,18 +1409,18 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	if (dst_type == PW_TYPE_TIMEVAL) {
 		switch (src_type) {
 		case PW_TYPE_BYTE:
-			dst->timeval.tv_sec = src->byte;
-			dst->timeval.tv_usec = 0;
+			dst->datum.timeval.tv_sec = src->datum.byte;
+			dst->datum.timeval.tv_usec = 0;
 			break;
 
 		case PW_TYPE_SHORT:
-			dst->timeval.tv_sec = src->ushort;
-			dst->timeval.tv_usec = 0;
+			dst->datum.timeval.tv_sec = src->datum.ushort;
+			dst->datum.timeval.tv_usec = 0;
 			break;
 
 		case PW_TYPE_INTEGER:
-			dst->timeval.tv_sec = src->integer;
-			dst->timeval.tv_usec = 0;
+			dst->datum.timeval.tv_sec = src->datum.integer;
+			dst->datum.timeval.tv_usec = 0;
 			break;
 
 		case PW_TYPE_INTEGER64:
@@ -1432,8 +1432,8 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			 *	but you never know...
 			 */
 			if (sizeof(uint64_t) > SIZEOF_MEMBER(struct timeval, tv_sec)) goto invalid_cast;
-			dst->timeval.tv_sec = src->integer64;
-			dst->timeval.tv_usec = 0;
+			dst->datum.timeval.tv_sec = src->datum.integer64;
+			dst->datum.timeval.tv_usec = 0;
 			break;
 
 		default:
@@ -1463,7 +1463,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		case PW_TYPE_IPV4_ADDR:
 			switch (src_type) {
 			case PW_TYPE_IPV6_ADDR:
-				if (memcmp(src->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+				if (memcmp(src->datum.ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 				bad_v6_prefix_map:
 					fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
 							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
@@ -1471,12 +1471,12 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 					return -1;
 				}
 
-				memcpy(&dst->ipaddr, &src->ipv6addr.s6_addr[sizeof(v4_v6_map)],
-				       sizeof(dst->ipaddr));
+				memcpy(&dst->datum.ipaddr, &src->datum.ipv6addr.s6_addr[sizeof(v4_v6_map)],
+				       sizeof(dst->datum.ipaddr));
 				goto fixed_length;
 
 			case PW_TYPE_IPV4_PREFIX:
-				if (src->ipv4prefix[1] != 32) {
+				if (src->datum.ipv4prefix[1] != 32) {
 				bad_v4_prefix_len:
 					fr_strerror_printf("Invalid cast from %s to %s.  Only /32 prefixes may be "
 							   "cast to IP address types",
@@ -1485,11 +1485,11 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 					return -1;
 				}
 
-				memcpy(&dst->ipaddr, &src->ipv4prefix[2], sizeof(dst->ipaddr));
+				memcpy(&dst->datum.ipaddr, &src->datum.ipv4prefix[2], sizeof(dst->datum.ipaddr));
 				goto fixed_length;
 
 			case PW_TYPE_IPV6_PREFIX:
-				if (src->ipv6prefix[1] != 128) {
+				if (src->datum.ipv6prefix[1] != 128) {
 				bad_v6_prefix_len:
 					fr_strerror_printf("Invalid cast from %s to %s.  Only /128 prefixes may be "
 							   "cast to IP address types",
@@ -1497,11 +1497,11 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 					return -1;
 				}
-				if (memcmp(&src->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map)) != 0) {
+				if (memcmp(&src->datum.ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map)) != 0) {
 					goto bad_v6_prefix_map;
 				}
-				memcpy(&dst->ipaddr, &src->ipv6prefix[2 + sizeof(v4_v6_map)],
-				       sizeof(dst->ipaddr));
+				memcpy(&dst->datum.ipaddr, &src->datum.ipv6prefix[2 + sizeof(v4_v6_map)],
+				       sizeof(dst->datum.ipaddr));
 				goto fixed_length;
 
 			default:
@@ -1513,25 +1513,25 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			switch (src_type) {
 			case PW_TYPE_IPV4_ADDR:
 				/* Add the v4/v6 mapping prefix */
-				memcpy(dst->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
-				memcpy(&dst->ipv6addr.s6_addr[sizeof(v4_v6_map)], &src->ipaddr,
-				       sizeof(dst->ipv6addr.s6_addr) - sizeof(v4_v6_map));
+				memcpy(dst->datum.ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->datum.ipv6addr.s6_addr[sizeof(v4_v6_map)], &src->datum.ipaddr,
+				       sizeof(dst->datum.ipv6addr.s6_addr) - sizeof(v4_v6_map));
 
 				goto fixed_length;
 
 			case PW_TYPE_IPV4_PREFIX:
-				if (src->ipv4prefix[1] != 32) goto bad_v4_prefix_len;
+				if (src->datum.ipv4prefix[1] != 32) goto bad_v4_prefix_len;
 
 				/* Add the v4/v6 mapping prefix */
-				memcpy(dst->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
-				memcpy(&dst->ipv6addr.s6_addr[sizeof(v4_v6_map)], &src->ipv4prefix[2],
-				       sizeof(dst->ipv6addr.s6_addr) - sizeof(v4_v6_map));
+				memcpy(dst->datum.ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->datum.ipv6addr.s6_addr[sizeof(v4_v6_map)], &src->datum.ipv4prefix[2],
+				       sizeof(dst->datum.ipv6addr.s6_addr) - sizeof(v4_v6_map));
 				goto fixed_length;
 
 			case PW_TYPE_IPV6_PREFIX:
-				if (src->ipv4prefix[1] != 128) goto bad_v6_prefix_len;
+				if (src->datum.ipv4prefix[1] != 128) goto bad_v6_prefix_len;
 
-				memcpy(dst->ipv6addr.s6_addr, &src->ipv6prefix[2], sizeof(dst->ipv6addr.s6_addr));
+				memcpy(dst->datum.ipv6addr.s6_addr, &src->datum.ipv6prefix[2], sizeof(dst->datum.ipv6addr.s6_addr));
 				goto fixed_length;
 
 			default:
@@ -1542,23 +1542,23 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		case PW_TYPE_IPV4_PREFIX:
 			switch (src_type) {
 			case PW_TYPE_IPV4_ADDR:
-				memcpy(&dst->ipv4prefix[2], &src->ipaddr, sizeof(dst->ipv4prefix) - 2);
-				dst->ipv4prefix[0] = 0;
-				dst->ipv4prefix[1] = 32;
+				memcpy(&dst->datum.ipv4prefix[2], &src->datum.ipaddr, sizeof(dst->datum.ipv4prefix) - 2);
+				dst->datum.ipv4prefix[0] = 0;
+				dst->datum.ipv4prefix[1] = 32;
 				goto fixed_length;
 
 			case PW_TYPE_IPV6_ADDR:
-				if (memcmp(src->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+				if (memcmp(src->datum.ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 					goto bad_v6_prefix_map;
 				}
-				memcpy(&dst->ipv4prefix[2], &src->ipv6addr.s6_addr[sizeof(v4_v6_map)],
-				       sizeof(dst->ipv4prefix) - 2);
-				dst->ipv4prefix[0] = 0;
-				dst->ipv4prefix[1] = 32;
+				memcpy(&dst->datum.ipv4prefix[2], &src->datum.ipv6addr.s6_addr[sizeof(v4_v6_map)],
+				       sizeof(dst->datum.ipv4prefix) - 2);
+				dst->datum.ipv4prefix[0] = 0;
+				dst->datum.ipv4prefix[1] = 32;
 				goto fixed_length;
 
 			case PW_TYPE_IPV6_PREFIX:
-				if (memcmp(&src->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map)) != 0) {
+				if (memcmp(&src->datum.ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map)) != 0) {
 					goto bad_v6_prefix_map;
 				}
 
@@ -1567,12 +1567,12 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 				 *	above check passed, the v6 address wasn't masked
 				 *	correctly when it was packet into a value_box_t.
 				 */
-				if (!fr_cond_assert(src->ipv6prefix[1] >= (sizeof(v4_v6_map) * 8))) return -1;
+				if (!fr_cond_assert(src->datum.ipv6prefix[1] >= (sizeof(v4_v6_map) * 8))) return -1;
 
-				memcpy(&dst->ipv4prefix[2], &src->ipv6prefix[2 + sizeof(v4_v6_map)],
-				       sizeof(dst->ipv4prefix) - 2);
-				dst->ipv4prefix[0] = 0;
-				dst->ipv4prefix[1] = src->ipv6prefix[1] - (sizeof(v4_v6_map) * 8);
+				memcpy(&dst->datum.ipv4prefix[2], &src->datum.ipv6prefix[2 + sizeof(v4_v6_map)],
+				       sizeof(dst->datum.ipv4prefix) - 2);
+				dst->datum.ipv4prefix[0] = 0;
+				dst->datum.ipv4prefix[1] = src->datum.ipv6prefix[1] - (sizeof(v4_v6_map) * 8);
 				goto fixed_length;
 
 			default:
@@ -1584,26 +1584,26 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			switch (src_type) {
 			case PW_TYPE_IPV4_ADDR:
 				/* Add the v4/v6 mapping prefix */
-				memcpy(&dst->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
-				memcpy(&dst->ipv6prefix[2 + sizeof(v4_v6_map)], &src->ipaddr,
-				       (sizeof(dst->ipv6prefix) - 2) - sizeof(v4_v6_map));
-				dst->ipv6prefix[0] = 0;
-				dst->ipv6prefix[1] = 128;
+				memcpy(&dst->datum.ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->datum.ipv6prefix[2 + sizeof(v4_v6_map)], &src->datum.ipaddr,
+				       (sizeof(dst->datum.ipv6prefix) - 2) - sizeof(v4_v6_map));
+				dst->datum.ipv6prefix[0] = 0;
+				dst->datum.ipv6prefix[1] = 128;
 				goto fixed_length;
 
 			case PW_TYPE_IPV4_PREFIX:
 				/* Add the v4/v6 mapping prefix */
-				memcpy(&dst->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
-				memcpy(&dst->ipv6prefix[2 + sizeof(v4_v6_map)], &src->ipv4prefix[2],
-				       (sizeof(dst->ipv6prefix) - 2) - sizeof(v4_v6_map));
-				dst->ipv6prefix[0] = 0;
-				dst->ipv6prefix[1] = (sizeof(v4_v6_map) * 8) + src->ipv4prefix[1];
+				memcpy(&dst->datum.ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->datum.ipv6prefix[2 + sizeof(v4_v6_map)], &src->datum.ipv4prefix[2],
+				       (sizeof(dst->datum.ipv6prefix) - 2) - sizeof(v4_v6_map));
+				dst->datum.ipv6prefix[0] = 0;
+				dst->datum.ipv6prefix[1] = (sizeof(v4_v6_map) * 8) + src->datum.ipv4prefix[1];
 				goto fixed_length;
 
 			case PW_TYPE_IPV6_ADDR:
-				memcpy(&dst->ipv6prefix[2], &src->ipv6addr, sizeof(dst->ipv6prefix) - 2);
-				dst->ipv6prefix[0] = 0;
-				dst->ipv6prefix[1] = 128;
+				memcpy(&dst->datum.ipv6prefix[2], &src->datum.ipv6addr, sizeof(dst->datum.ipv6prefix) - 2);
+				dst->datum.ipv6prefix[0] = 0;
+				dst->datum.ipv6prefix[1] = 128;
 				goto fixed_length;
 
 			default:
@@ -1647,7 +1647,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		memcpy(&tmp.datum, src->octets, value_box_field_sizes[dst_type]);
+		memcpy(&tmp.datum, src->datum.octets, value_box_field_sizes[dst_type]);
 
 		value_box_hton(dst, dst_type, &tmp);
 		dst->length = value_box_field_sizes[dst_type];
@@ -1661,13 +1661,13 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	    ((src_type == PW_TYPE_INTEGER) ||
 	     (src_type == PW_TYPE_DATE) ||
 	     (src_type == PW_TYPE_SIGNED))) {
-		dst->ipaddr.s_addr = htonl(src->integer);
+		dst->datum.ipaddr.s_addr = htonl(src->datum.integer);
 
 	} else if ((src_type == PW_TYPE_IPV4_ADDR) &&
 		   ((dst_type == PW_TYPE_INTEGER) ||
 		    (dst_type == PW_TYPE_DATE) ||
 		    (dst_type == PW_TYPE_SIGNED))) {
-		dst->integer = htonl(src->ipaddr.s_addr);
+		dst->datum.integer = htonl(src->datum.ipaddr.s_addr);
 
 	} else {		/* they're of the same byte order */
 		memcpy(&dst->datum, &src->datum, src->length);
@@ -1695,16 +1695,16 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const va
 		break;
 
 	case PW_TYPE_STRING:
-		dst->strvalue = talloc_bstrndup(ctx, src->strvalue, src->length);
+		dst->datum.strvalue = talloc_bstrndup(ctx, src->datum.strvalue, src->length);
 		dst->tainted = src->tainted;
-		if (!dst->strvalue) return -1;
+		if (!dst->datum.strvalue) return -1;
 		break;
 
 	case PW_TYPE_OCTETS:
-		dst->octets = talloc_memdup(ctx, src->octets, src->length);
+		dst->datum.octets = talloc_memdup(ctx, src->datum.octets, src->length);
 		dst->tainted = src->tainted;
-		talloc_set_type(dst->strvalue, uint8_t);
-		if (!dst->octets) return -1;
+		talloc_set_type(dst->datum.strvalue, uint8_t);
+		if (!dst->datum.octets) return -1;
 		break;
 	}
 	dst->length = src->length;
@@ -1730,18 +1730,18 @@ int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const v
 		break;
 
 	case PW_TYPE_STRING:
-		dst->strvalue = talloc_steal(ctx, src->strvalue);
+		dst->datum.strvalue = talloc_steal(ctx, src->datum.strvalue);
 		dst->tainted = src->tainted;
-		if (!dst->strvalue) {
+		if (!dst->datum.strvalue) {
 			fr_strerror_printf("Failed stealing string buffer");
 			return -1;
 		}
 		break;
 
 	case PW_TYPE_OCTETS:
-		dst->octets = talloc_steal(ctx, src->octets);
+		dst->datum.octets = talloc_steal(ctx, src->datum.octets);
 		dst->tainted = src->tainted;
-		if (!dst->octets) {
+		if (!dst->datum.octets) {
 			fr_strerror_printf("Failed stealing octets buffer");
 			return -1;
 		}
@@ -1767,18 +1767,18 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		size_t len, ret;
 
 		if (!quote) {
-			p = talloc_bstrndup(ctx, data->strvalue, data->length);
+			p = talloc_bstrndup(ctx, data->datum.strvalue, data->length);
 			if (!p) return NULL;
 			talloc_set_type(p, char);
 			return p;
 		}
 
 		/* Gets us the size of the buffer we need to alloc */
-		len = fr_snprint_len(data->strvalue, data->length, quote);
+		len = fr_snprint_len(data->datum.strvalue, data->length, quote);
 		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_snprint(p, len, data->strvalue, data->length, quote);
+		ret = fr_snprint(p, len, data->datum.strvalue, data->length, quote);
 		if (!fr_cond_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
@@ -1788,7 +1788,7 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 
 
 	case PW_TYPE_BYTE:
-		i = data->byte;
+		i = data->datum.byte;
 
 	print_int:
 	{
@@ -1803,42 +1803,42 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_SHORT:
-		i = data->ushort;
+		i = data->datum.ushort;
 		goto print_int;
 
 	case PW_TYPE_INTEGER:
-		i = data->integer;
+		i = data->datum.integer;
 		goto print_int;
 
 	case PW_TYPE_INTEGER64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->integer64);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.integer64);
 		break;
 
 	case PW_TYPE_SIZE:
-		p = talloc_typed_asprintf(ctx, "%zu", data->size);
+		p = talloc_typed_asprintf(ctx, "%zu", data->datum.size);
 		break;
 
 	case PW_TYPE_SIGNED:
-		p = talloc_typed_asprintf(ctx, "%d", data->sinteger);
+		p = talloc_typed_asprintf(ctx, "%d", data->datum.sinteger);
 		break;
 
 	case PW_TYPE_TIMEVAL:
 		p = talloc_typed_asprintf(ctx, "%" PRIu64 ".%06" PRIu64,
-					  (uint64_t)data->timeval.tv_sec, (uint64_t)data->timeval.tv_usec);
+					  (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
 		break;
 
 	case PW_TYPE_ETHERNET:
 		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
-					  data->ether[0], data->ether[1],
-					  data->ether[2], data->ether[3],
-					  data->ether[4], data->ether[5]);
+					  data->datum.ether[0], data->datum.ether[1],
+					  data->datum.ether[2], data->datum.ether[3],
+					  data->datum.ether[4], data->datum.ether[5]);
 		break;
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t const *) &data->filter, data->length, 0);
+		print_abinary(p, 128, (uint8_t const *) &data->datum.filter, data->length, 0);
 		break;
 #else
 		  /* FALL THROUGH */
@@ -1850,7 +1850,7 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		p[0] = '0';
 		p[1] = 'x';
 
-		fr_bin2hex(p + 2, data->octets, data->length);
+		fr_bin2hex(p + 2, data->datum.octets, data->length);
 		p[2 + (data->length * 2)] = '\0';
 		break;
 
@@ -1859,7 +1859,7 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		time_t t;
 		struct tm s_tm;
 
-		t = data->date;
+		t = data->datum.date;
 
 		p = talloc_array(ctx, char, 64);
 		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
@@ -1900,18 +1900,18 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 
 	case PW_TYPE_IFID:
 		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
-					  (data->ifid[0] << 8) | data->ifid[1],
-					  (data->ifid[2] << 8) | data->ifid[3],
-					  (data->ifid[4] << 8) | data->ifid[5],
-					  (data->ifid[6] << 8) | data->ifid[7]);
+					  (data->datum.ifid[0] << 8) | data->datum.ifid[1],
+					  (data->datum.ifid[2] << 8) | data->datum.ifid[3],
+					  (data->datum.ifid[4] << 8) | data->datum.ifid[5],
+					  (data->datum.ifid[6] << 8) | data->datum.ifid[7]);
 		break;
 
 	case PW_TYPE_BOOLEAN:
-		p = talloc_typed_strdup(ctx, data->byte ? "yes" : "no");
+		p = talloc_typed_strdup(ctx, data->datum.byte ? "yes" : "no");
 		break;
 
 	case PW_TYPE_DECIMAL:
-		p = talloc_typed_asprintf(ctx, "%g", data->decimal);
+		p = talloc_typed_asprintf(ctx, "%g", data->datum.decimal);
 		break;
 
 	/*
@@ -1975,7 +1975,7 @@ size_t value_box_snprint(char *out, size_t outlen,
 			*p++ = quote;
 			freespace--;
 
-			len = fr_snprint(p, freespace, data->strvalue, data->length, quote);
+			len = fr_snprint(p, freespace, data->datum.strvalue, data->length, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				/* Use out not p as we're operating on the entire buffer */
@@ -1993,10 +1993,10 @@ size_t value_box_snprint(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		return fr_snprint(out, outlen, data->strvalue, data->length, quote);
+		return fr_snprint(out, outlen, data->datum.strvalue, data->length, quote);
 
 	case PW_TYPE_BYTE:
-		i = data->byte;
+		i = data->datum.byte;
 
 	print_int:
 		/* Normal, non-tagged attribute */
@@ -2011,32 +2011,32 @@ size_t value_box_snprint(char *out, size_t outlen,
 		break;
 
 	case PW_TYPE_SHORT:
-		i = data->ushort;
+		i = data->datum.ushort;
 		goto print_int;
 
 	case PW_TYPE_INTEGER:
-		i = data->integer;
+		i = data->datum.integer;
 		goto print_int;
 
 	case PW_TYPE_INTEGER64:
-		return snprintf(out, outlen, "%" PRIu64, data->integer64);
+		return snprintf(out, outlen, "%" PRIu64, data->datum.integer64);
 
 	case PW_TYPE_SIZE:
-		return snprintf(out, outlen, "%zu", data->size);
+		return snprintf(out, outlen, "%zu", data->datum.size);
 
 	case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
-		len = snprintf(buf, sizeof(buf), "%d", data->sinteger);
+		len = snprintf(buf, sizeof(buf), "%d", data->datum.sinteger);
 		a = buf;
 		break;
 
 	case PW_TYPE_TIMEVAL:
 		len = snprintf(buf, sizeof(buf),  "%" PRIu64 ".%06" PRIu64,
-			       (uint64_t)data->timeval.tv_sec, (uint64_t)data->timeval.tv_usec);
+			       (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
 		a = buf;
 		break;
 
 	case PW_TYPE_DATE:
-		t = data->date;
+		t = data->datum.date;
 		if (quote > 0) {
 			len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
 			buf[0] = (char) quote;
@@ -2049,13 +2049,13 @@ size_t value_box_snprint(char *out, size_t outlen,
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
-		a = inet_ntop(AF_INET, &(data->ipaddr), buf, sizeof(buf));
+		a = inet_ntop(AF_INET, &(data->datum.ipaddr), buf, sizeof(buf));
 		len = strlen(buf);
 		break;
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		print_abinary(buf, sizeof(buf), (uint8_t const *) data->filter, data->length, quote);
+		print_abinary(buf, sizeof(buf), (uint8_t const *) data->datum.filter, data->length, quote);
 		a = buf;
 		len = strlen(buf);
 		break;
@@ -2090,17 +2090,17 @@ size_t value_box_snprint(char *out, size_t outlen,
 
 		/* Get maximum number of bytes we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, ((size_t)data->length > max) ? max : (size_t)data->length);
+		fr_bin2hex(out, data->datum.octets, ((size_t)data->length > max) ? max : (size_t)data->length);
 	}
 		return len;
 
 	case PW_TYPE_IFID:
-		a = fr_inet_ifid_ntop(buf, sizeof(buf), data->ifid);
+		a = fr_inet_ifid_ntop(buf, sizeof(buf), data->datum.ifid);
 		len = strlen(buf);
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
-		a = inet_ntop(AF_INET6, &data->ipv6addr, buf, sizeof(buf));
+		a = inet_ntop(AF_INET6, &data->datum.ipv6addr, buf, sizeof(buf));
 		len = strlen(buf);
 		break;
 
@@ -2111,7 +2111,7 @@ size_t value_box_snprint(char *out, size_t outlen,
 		/*
 		 *	Alignment issues.
 		 */
-		memcpy(&addr, &(data->ipv6prefix[2]), sizeof(addr));
+		memcpy(&addr, &(data->datum.ipv6prefix[2]), sizeof(addr));
 
 		a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
 		if (a) {
@@ -2119,7 +2119,7 @@ size_t value_box_snprint(char *out, size_t outlen,
 
 			len = strlen(buf);
 			p += len;
-			len += snprintf(p, sizeof(buf) - len, "/%u", (unsigned int) data->ipv6prefix[1]);
+			len += snprintf(p, sizeof(buf) - len, "/%u", (unsigned int) data->datum.ipv6prefix[1]);
 		}
 	}
 		break;
@@ -2131,7 +2131,7 @@ size_t value_box_snprint(char *out, size_t outlen,
 		/*
 		 *	Alignment issues.
 		 */
-		memcpy(&addr, &(data->ipv4prefix[2]), sizeof(addr));
+		memcpy(&addr, &(data->datum.ipv4prefix[2]), sizeof(addr));
 
 		a = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
 		if (a) {
@@ -2139,19 +2139,19 @@ size_t value_box_snprint(char *out, size_t outlen,
 
 			len = strlen(buf);
 			p += len;
-			len += snprintf(p, sizeof(buf) - len, "/%u", (unsigned int) (data->ipv4prefix[1] & 0x3f));
+			len += snprintf(p, sizeof(buf) - len, "/%u", (unsigned int) (data->datum.ipv4prefix[1] & 0x3f));
 		}
 	}
 		break;
 
 	case PW_TYPE_ETHERNET:
 		return snprintf(out, outlen, "%02x:%02x:%02x:%02x:%02x:%02x",
-				data->ether[0], data->ether[1],
-				data->ether[2], data->ether[3],
-				data->ether[4], data->ether[5]);
+				data->datum.ether[0], data->datum.ether[1],
+				data->datum.ether[2], data->datum.ether[3],
+				data->datum.ether[4], data->datum.ether[5]);
 
 	case PW_TYPE_DECIMAL:
-		return snprintf(out, outlen, "%g", data->decimal);
+		return snprintf(out, outlen, "%g", data->datum.decimal);
 
 	/*
 	 *	Don't add default here

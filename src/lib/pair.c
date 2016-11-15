@@ -1974,15 +1974,15 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
  */
 inline static void fr_pair_value_set_type(VALUE_PAIR *vp)
 {
-	if (!vp->data.ptr) return;
+	if (!vp->vp_ptr) return;
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		talloc_set_type(vp->data.ptr, uint8_t);
+		talloc_set_type(vp->vp_ptr, uint8_t);
 		return;
 
 	case PW_TYPE_STRING:
-		talloc_set_type(vp->data.ptr, char);
+		talloc_set_type(vp->vp_ptr, char);
 		return;
 
 	default:
@@ -2680,16 +2680,16 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 
 	fr_dict_verify(file, line, vp->da);
 
-	if (vp->data.ptr) switch (vp->da->type) {
+	if (vp->vp_ptr) switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
 	{
 		size_t len;
 		TALLOC_CTX *parent;
 
-		if (!talloc_get_type(vp->data.ptr, uint8_t)) {
+		if (!talloc_get_type(vp->vp_ptr, uint8_t)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
-				     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
-			(void) talloc_get_type_abort(vp->data.ptr, uint8_t);
+				     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
+			(void) talloc_get_type_abort(vp->vp_ptr, uint8_t);
 		}
 
 		len = talloc_array_length(vp->vp_octets);
@@ -2699,7 +2699,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		parent = talloc_parent(vp->data.ptr);
+		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
 				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",
@@ -2715,10 +2715,10 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		size_t len;
 		TALLOC_CTX *parent;
 
-		if (!talloc_get_type(vp->data.ptr, char)) {
+		if (!talloc_get_type(vp->vp_ptr, char)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
-				     "char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->data.ptr));
-			(void) talloc_get_type_abort(vp->data.ptr, char);
+				     "char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
+			(void) talloc_get_type_abort(vp->vp_ptr, char);
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
@@ -2734,7 +2734,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		parent = talloc_parent(vp->data.ptr);
+		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer is not "
 				     "parented by VALUE_PAIR %p, instead parented by %p (%s)\n",

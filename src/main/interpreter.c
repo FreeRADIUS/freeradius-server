@@ -508,7 +508,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	rad_assert(g->vpt != NULL);
 
 	null_case = found = NULL;
-	data.ptr = NULL;
+	data.datum.ptr = NULL;
 
 	/*
 	 *	The attribute doesn't exist.  We can skip
@@ -542,8 +542,8 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 
 		len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
 		if (len < 0) goto find_null_case;
-		data.strvalue = p;
-		tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.strvalue, len, T_SINGLE_QUOTED_STRING);
+		data.datum.strvalue = p;
+		tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.datum.strvalue, len, T_SINGLE_QUOTED_STRING);
 	}
 
 	/*
@@ -612,7 +612,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	if (!found) found = null_case;
 
 do_null_case:
-	talloc_free(data.ptr);
+	talloc_free(data.datum.ptr);
 
 	unlang_push(stack, found, frame->result, false);
 	return UNLANG_ACTION_PUSHED_CHILD;

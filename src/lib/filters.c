@@ -1062,7 +1062,7 @@ int ascend_parse_filter(value_box_t *out, char const *value, size_t len)
 	/*
 	 *	Touch the VP only if everything was OK.
 	 */
-	if (rcode == 0) memcpy(out->filter, &filter, sizeof(filter));
+	if (rcode == 0) memcpy(out->datum.filter, &filter, sizeof(filter));
 	talloc_free(p);
 
 	return rcode;

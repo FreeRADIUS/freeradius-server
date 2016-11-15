@@ -641,8 +641,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 				memset(&tmp, 0, sizeof(tmp));
 
-				tmp.integer = ntohl((uint32_t)reply->element[1]->integer);
-				tmp.length = sizeof(ip_map.rhs->tmpl_data_value.integer);
+				tmp.datum.integer = ntohl((uint32_t)reply->element[1]->integer);
+				tmp.length = sizeof(ip_map.rhs->tmpl_data_value.datum.integer);
 
 				if (value_box_cast(NULL, &ip_map.rhs->tmpl_data_value, PW_TYPE_IPV4_ADDR,
 						    NULL, PW_TYPE_INTEGER, NULL, &tmp)) {
@@ -651,15 +651,15 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 					goto finish;
 				}
 			} else {
-				ip_map.rhs->tmpl_data_value.integer = ntohl((uint32_t)reply->element[1]->integer);
-				ip_map.rhs->tmpl_data_length = sizeof(ip_map.rhs->tmpl_data_value.integer);
+				ip_map.rhs->tmpl_data_value.datum.integer = ntohl((uint32_t)reply->element[1]->integer);
+				ip_map.rhs->tmpl_data_length = sizeof(ip_map.rhs->tmpl_data_value.datum.integer);
 				ip_map.rhs->tmpl_data_type = PW_TYPE_INTEGER;
 			}
 		}
 			goto do_ip_map;
 
 		case REDIS_REPLY_STRING:
-			ip_map.rhs->tmpl_data_value.strvalue = reply->element[1]->str;
+			ip_map.rhs->tmpl_data_value.datum.strvalue = reply->element[1]->str;
 			ip_map.rhs->tmpl_data_length = reply->element[1]->len;
 			ip_map.rhs->tmpl_data_type = PW_TYPE_STRING;
 
@@ -700,7 +700,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				.rhs = &range_rhs
 			};
 
-			range_map.rhs->tmpl_data_value.strvalue = reply->element[2]->str;
+			range_map.rhs->tmpl_data_value.datum.strvalue = reply->element[2]->str;
 			range_map.rhs->tmpl_data_length = reply->element[2]->len;
 			range_map.rhs->tmpl_data_type = PW_TYPE_STRING;
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
@@ -744,8 +744,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			goto finish;
 		}
 
-		expiry_map.rhs->tmpl_data_value.integer = reply->element[3]->integer;
-		expiry_map.rhs->tmpl_data_length = sizeof(expiry_map.rhs->tmpl_data_value.integer);
+		expiry_map.rhs->tmpl_data_value.datum.integer = reply->element[3]->integer;
+		expiry_map.rhs->tmpl_data_length = sizeof(expiry_map.rhs->tmpl_data_value.datum.integer);
 		expiry_map.rhs->tmpl_data_type = PW_TYPE_INTEGER;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -851,7 +851,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		 *	Add range ID to request
 		 */
 		case REDIS_REPLY_STRING:
-			range_map.rhs->tmpl_data_value.strvalue = reply->element[1]->str;
+			range_map.rhs->tmpl_data_value.datum.strvalue = reply->element[1]->str;
 			range_map.rhs->tmpl_data_length = reply->element[1]->len;
 			range_map.rhs->tmpl_data_type = PW_TYPE_STRING;
 			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
@@ -887,8 +887,8 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 			.rhs = &expiry_rhs
 		};
 
-		expiry_map.rhs->tmpl_data_value.integer = expires;
-		expiry_map.rhs->tmpl_data_length = sizeof(expiry_map.rhs->tmpl_data_value.integer);
+		expiry_map.rhs->tmpl_data_value.datum.integer = expires;
+		expiry_map.rhs->tmpl_data_length = sizeof(expiry_map.rhs->tmpl_data_value.datum.integer);
 		expiry_map.rhs->tmpl_data_type = PW_TYPE_INTEGER;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -1146,7 +1146,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 				};
 
 				ip_rhs.tmpl_data_length = strlen(ip_str);
-				ip_rhs.tmpl_data_value.strvalue = ip_str;
+				ip_rhs.tmpl_data_value.datum.strvalue = ip_str;
 				ip_rhs.tmpl_data_type = PW_TYPE_STRING;
 
 				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) return RLM_MODULE_FAIL;

@@ -135,14 +135,14 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	map->rhs->tmpl_data_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
 		if (vp->da->type == PW_TYPE_STRING) {
-			map->rhs->tmpl_data_value.ptr = talloc_bstrndup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->tmpl_data_value.datum.ptr = talloc_bstrndup(map->rhs, vp->vp_ptr, vp->vp_length);
 			map->rhs->quote = T_SINGLE_QUOTED_STRING;
 		} else {
-			map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->tmpl_data_value.datum.ptr = talloc_memdup(map->rhs, vp->vp_ptr, vp->vp_length);
 			map->rhs->quote = T_BARE_WORD;
 		}
 	} else {
-		memcpy(&map->rhs->tmpl_data_value, &vp->data.datum, sizeof(map->rhs->tmpl_data_value));
+		value_box_copy(map->rhs, &map->rhs->tmpl_data_value, vp->da->type, &vp->data);
 		map->rhs->quote = T_BARE_WORD;
 	}
 	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);

@@ -212,34 +212,34 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 		}
 		if (reply->integer < 0) {		/* 32bit signed (supported) */
 			src_type = PW_TYPE_SIGNED;
-			in.sinteger = (int32_t) reply->integer;
-			in.length = sizeof(in.sinteger);
+			in.datum.sinteger = (int32_t) reply->integer;
+			in.length = sizeof(in.datum.sinteger);
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER64;
-			in.integer64 = (uint64_t) reply->integer;
-			in.length = sizeof(in.integer64);
+			in.datum.integer64 = (uint64_t) reply->integer;
+			in.length = sizeof(in.datum.integer64);
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER;
-			in.integer = (uint32_t) reply->integer;
-			in.length = sizeof(in.integer);
+			in.datum.integer = (uint32_t) reply->integer;
+			in.length = sizeof(in.datum.integer);
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			src_type = PW_TYPE_SHORT;
-			in.ushort = (uint16_t) reply->integer;
-			in.length = sizeof(in.ushort);
+			in.datum.ushort = (uint16_t) reply->integer;
+			in.length = sizeof(in.datum.ushort);
 		}
 		else {		/* 8bit unsigned (supported) */
 			src_type = PW_TYPE_BYTE;
-			in.byte = (uint8_t) reply->integer;
-			in.length = sizeof(in.byte);
+			in.datum.byte = (uint8_t) reply->integer;
+			in.length = sizeof(in.datum.byte);
 		}
 		break;
 
 	case REDIS_REPLY_STRING:
 		src_type = PW_TYPE_STRING;
-		in.ptr = reply->str;
+		in.datum.ptr = reply->str;
 		in.length = reply->len;
 		break;
 
@@ -393,7 +393,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	switch (map->rhs->tmpl_data_type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_data_value.ptr;
+		out[2] = map->rhs->tmpl_data_value.datum.ptr;
 		out_len[2] = map->rhs->tmpl_data_length;
 		break;
 

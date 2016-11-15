@@ -60,8 +60,6 @@ extern "C" {
 typedef struct value_box value_box_t;
 struct value_box {
 	union {
-		uint8_t			datum;			//!< so we can refer to a FIELD and not to a UNION
-
 		char const	        *strvalue;		//!< Pointer to UTF-8 string.
 		uint8_t const		*octets;		//!< Pointer to binary string.
 
@@ -90,7 +88,7 @@ struct value_box {
 		bool			boolean;		//!< A truth value.
 
 		void			*ptr;			//!< generic pointer.
-	};
+	} datum;
 
 	PW_TYPE				type;			//!< type of this value-data
 	size_t				length;			//!< Length of value data.
@@ -174,24 +172,25 @@ typedef struct value_pair_raw {
 	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
-#define vp_strvalue	data.strvalue
-#define vp_integer	data.integer
-#define vp_ipaddr	data.ipaddr.s_addr
-#define vp_date		data.date
-#define vp_filter	data.filter
-#define vp_octets	data.octets
-#define vp_ifid		data.ifid
-#define vp_ipv6addr	data.ipv6addr
-#define vp_ipv6prefix	data.ipv6prefix
-#define vp_bool		data.boolean
-#define vp_byte		data.byte
-#define vp_short	data.ushort
-#define vp_ether	data.ether
-#define vp_signed	data.sinteger
-#define vp_integer64	data.integer64
-#define vp_size		data.size
-#define vp_ipv4prefix	data.ipv4prefix
-#define vp_decimal	data.decimal
+#define vp_strvalue	data.datum.strvalue
+#define vp_integer	data.datum.integer
+#define vp_ipaddr	data.datum.ipaddr.s_addr
+#define vp_date		data.datum.date
+#define vp_filter	data.datum.filter
+#define vp_octets	data.datum.octets
+#define vp_ifid		data.datum.ifid
+#define vp_ipv6addr	data.datum.ipv6addr
+#define vp_ipv6prefix	data.datum.ipv6prefix
+#define vp_bool		data.datum.boolean
+#define vp_byte		data.datum.byte
+#define vp_short	data.datum.ushort
+#define vp_ether	data.datum.ether
+#define vp_signed	data.datum.sinteger
+#define vp_integer64	data.datum.integer64
+#define vp_size		data.datum.size
+#define vp_ipv4prefix	data.datum.ipv4prefix
+#define vp_decimal	data.datum.decimal
+#define vp_ptr		data.datum.ptr				//!< Either octets or strvalue
 
 #define vp_length	data.length
 #define vp_tainted	data.tainted

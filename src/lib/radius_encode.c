@@ -434,7 +434,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-		memcpy(out, vp->data.ptr, outlen);
+		memcpy(out, vp->vp_ptr, outlen);
 		return outlen;
 
 		/*
@@ -764,7 +764,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		/* FALL-THROUGH */
 
 	case PW_TYPE_STRING:
-		data = vp->data.ptr;
+		data = vp->vp_ptr;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL data");
 			return -1;

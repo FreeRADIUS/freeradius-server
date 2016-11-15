@@ -243,7 +243,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			goto error;
 		}
 		len = (size_t)dst.length;
-		p = buff = dst.octets;
+		p = buff = dst.datum.octets;
 	}
 
 	rad_assert(p);
@@ -2307,7 +2307,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			}
 
 			talloc_free(child);
-			child = data.ptr;
+			child = data.datum.ptr;
 
 		} else {
 			char *q;

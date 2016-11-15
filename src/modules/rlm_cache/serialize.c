@@ -150,12 +150,12 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 */
 		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
 		case PW_CACHE_CREATED:
-			c->created = map->rhs->tmpl_data_value.date;
+			c->created = map->rhs->tmpl_data_value.datum.date;
 			talloc_free(map);
 			goto next;
 
 		case PW_CACHE_EXPIRES:
-			c->expires = map->rhs->tmpl_data_value.date;
+			c->expires = map->rhs->tmpl_data_value.datum.date;
 			talloc_free(map);
 			goto next;
 

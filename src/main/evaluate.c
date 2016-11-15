@@ -126,9 +126,9 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
-		data.strvalue = p;
-		rcode = (data.strvalue && (*data.strvalue != '\0'));
-		talloc_free(data.ptr);
+		data.datum.strvalue = p;
+		rcode = (data.datum.strvalue && (*data.datum.strvalue != '\0'));
+		talloc_free(data.datum.ptr);
 	}
 		break;
 
@@ -184,11 +184,11 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	default:
 		if (!rad_cond_assert(rhs_type == PW_TYPE_STRING)) return -1;
-		if (!rad_cond_assert(rhs && rhs->strvalue)) return -1;
-		slen = regex_compile(request, &rreg, rhs->strvalue, rhs->length,
+		if (!rad_cond_assert(rhs && rhs->datum.strvalue)) return -1;
+		slen = regex_compile(request, &rreg, rhs->datum.strvalue, rhs->length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
-			REMARKER(rhs->strvalue, -slen, fr_strerror());
+			REMARKER(rhs->datum.strvalue, -slen, fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);
 
 			return -1;
@@ -197,7 +197,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	ret = regex_exec(preg, lhs->strvalue, lhs->length, rxmatch, &nmatch);
+	ret = regex_exec(preg, lhs->datum.strvalue, lhs->length, rxmatch, &nmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -206,7 +206,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, lhs->strvalue, lhs->length, rxmatch, nmatch);
+		regex_sub_to_request(request, &preg, lhs->datum.strvalue, lhs->length, rxmatch, nmatch);
 		break;
 
 	case -1:
@@ -231,16 +231,16 @@ static void cond_print_operands(REQUEST *request,
 {
 	if (lhs) {
 		if (lhs_type == PW_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs->length);
+			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->datum.strvalue, lhs->length);
 		} else {
 			char *lhs_hex;
 
 			lhs_hex = talloc_array(request, char, (lhs->length * 2) + 1);
 
 			if (lhs_type == PW_TYPE_OCTETS) {
-				fr_bin2hex(lhs_hex, lhs->octets, lhs->length);
+				fr_bin2hex(lhs_hex, lhs->datum.octets, lhs->length);
 			} else {
-				fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs->length);
+				fr_bin2hex(lhs_hex, (uint8_t const *)&lhs->datum, lhs->length);
 			}
 
 			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs->length);
@@ -253,16 +253,16 @@ static void cond_print_operands(REQUEST *request,
 
 	if (rhs) {
 		if (rhs_type == PW_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->strvalue, rhs->length);
+			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->datum.strvalue, rhs->length);
 		} else {
 			char *rhs_hex;
 
 			rhs_hex = talloc_array(request, char, (rhs->length * 2) + 1);
 
 			if (rhs_type == PW_TYPE_OCTETS) {
-				fr_bin2hex(rhs_hex, rhs->octets, rhs->length);
+				fr_bin2hex(rhs_hex, rhs->datum.octets, rhs->length);
 			} else {
-				fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs->length);
+				fr_bin2hex(rhs_hex, (uint8_t const *)&rhs->datum, rhs->length);
 			}
 
 			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs->length);
@@ -438,7 +438,7 @@ do {\
 			rcode = -1;\
 			goto finish;\
 		}\
-		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.ptr;\
+		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.datum.ptr;\
 		_s ## _type = cast_type;\
 		_s = &_s ## _cast;\
 	}\
@@ -449,7 +449,7 @@ do {\
 	if ((cast_type == PW_TYPE_INVALID) &&\
 	    _l && (_l ## _type == PW_TYPE_STRING) &&\
 	    _r && (_r ## _type == PW_TYPE_STRING) &&\
-	    all_digits(lhs->strvalue) && all_digits(rhs->strvalue)) {\
+	    all_digits(lhs->datum.strvalue) && all_digits(rhs->datum.strvalue)) {\
 	    	cast_type = PW_TYPE_INTEGER64;\
 	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO integer64");\
 	}\
@@ -571,14 +571,14 @@ do {\
 				rcode = -1;
 				goto finish;
 			}
-			data.strvalue = p;
+			data.datum.strvalue = p;
 			data.length = ret;
 
 		} else {
-			data.strvalue = map->rhs->name;
+			data.datum.strvalue = map->rhs->name;
 			data.length = map->rhs->len;
 		}
-		rad_assert(data.strvalue);
+		rad_assert(data.datum.strvalue);
 
 		rhs_type = PW_TYPE_STRING;
 		rhs = &data;
@@ -588,7 +588,7 @@ do {\
 		CAST(rhs);
 
 		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
-		if (map->rhs->type != TMPL_TYPE_UNPARSED)talloc_free(data.ptr);
+		if (map->rhs->type != TMPL_TYPE_UNPARSED)talloc_free(data.datum.ptr);
 
 		break;
 	}
@@ -698,13 +698,13 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				return ret;
 			}
-			data.strvalue = p;
+			data.datum.strvalue = p;
 			data.length = (size_t)ret;
 		} else {
-			data.strvalue = map->lhs->name;
+			data.datum.strvalue = map->lhs->name;
 			data.length = map->lhs->len;
 		}
-		rad_assert(data.strvalue);
+		rad_assert(data.datum.strvalue);
 
 		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data);
 		if (p) talloc_free(p);
