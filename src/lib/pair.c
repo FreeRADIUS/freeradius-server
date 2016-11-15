@@ -2833,3 +2833,23 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE
 	}
 }
 #endif
+
+/** Mark up a list of VPs as tainted.
+ *
+ */
+void fr_pair_list_tainted(VALUE_PAIR *vps)
+{
+	VALUE_PAIR	*vp;
+	vp_cursor_t	cursor;
+
+	if (!vps) {
+		return;
+	}
+
+	for (vp = fr_cursor_init(&cursor, &vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+		vp->vp_tainted = true;
+	}
+}
