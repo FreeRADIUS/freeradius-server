@@ -77,9 +77,8 @@ RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*)) \
 
 HEADERS_RFC := $(patsubst share/dictionary.%,src/include/%.h,$(RFC_DICTS))
 HEADERS	+= $(notdir ${HEADERS_RFC})
-INCLUDE_SUBDIRS := $(addprefix src/include/, $(SUBDIRS))
 
-.PRECIOUS: $(HEADERS_RFC) $(INCLUDE_SUBDIRS)
+.PRECIOUS: $(HEADERS_RFC)
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	${Q}$(ECHO) HEADER $@
@@ -125,14 +124,11 @@ src/include/radpaths.h: src/include/build-radpaths-h
 	${Q}cd src/include && /bin/sh build-radpaths-h
 
 #
-#  Create the soft link for the fake include file path.
+#  Create the soft link for the fake include file paths.
 #
-src/freeradius-devel: | $(INCLUDE_SUBDIRS)
+src/freeradius-devel:
 	${Q}[ -e $@ ] || ln -s include $@
-
-.PHONY: src/include/util
-src/include/util:
-	@echo @LN -SF src/util src/include
+	@echo LN-SF src/util src/include
 	@ln -sf ${top_srcdir}/src/util ${top_srcdir}/src/include/
 
 #
