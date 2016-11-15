@@ -59,13 +59,6 @@ extern "C" {
  */
 typedef struct value_data value_data_t;
 struct value_data {
-	PW_TYPE				type;			//!< type of this value-data
-	size_t				length;			//!< Length of value data.
-
-	bool				tainted;		//!< i.e. did it come from an untrusted source
-
-	value_data_t			*next;			//!< Next in a series of value_data.
-
 	union {
 		uint8_t			datum;			//!< so we can refer to a FIELD and not to a UNION
 
@@ -98,6 +91,13 @@ struct value_data {
 
 		void			*ptr;			//!< generic pointer.
 	};
+
+	PW_TYPE				type;			//!< type of this value-data
+	size_t				length;			//!< Length of value data.
+
+	bool				tainted;		//!< i.e. did it come from an untrusted source
+
+	value_data_t			*next;			//!< Next in a series of value_data.
 };
 
 /** The type of value a VALUE_PAIR contains
