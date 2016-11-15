@@ -59,6 +59,13 @@ extern "C" {
  */
 typedef struct value_data value_data_t;
 struct value_data {
+	PW_TYPE				type;			//!< type of this value-data
+	size_t				length;			//!< Length of value data.
+
+	bool				tainted;		//!< i.e. did it come from an untrusted source
+
+	value_data_t			*next;			//!< Next in a series of value_data.
+
 	union {
 		char const	        *strvalue;		//!< Pointer to UTF-8 string.
 		uint8_t const		*octets;		//!< Pointer to binary string.
@@ -90,9 +97,6 @@ struct value_data {
 
 		void			*ptr;			//!< generic pointer.
 	};
-
-	size_t		length;					//!< Length of value data.
-	value_data_t	*next;					//!< Next in a series of value_data.
 };
 
 /** The type of value a VALUE_PAIR contains
@@ -189,6 +193,7 @@ typedef struct value_pair_raw {
 #define vp_decimal	data.decimal
 
 #define vp_length	data.length
+#define vp_tainted	data.tainted
 
 #  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
 					fr_pair_fprint(fr_log_fp, vp); \
