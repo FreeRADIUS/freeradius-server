@@ -650,6 +650,7 @@ static int _event_list_free(fr_event_list_t *el)
  *
  * @param[in] ctx	to allocate memory in.
  * @param[in] status	callback, called on each iteration of the event list.
+ * @param[in] status_ctx context for the status callback
  * @return
  *	- A pointer to a new event list on success (free with talloc_free).
  *	- NULL on error.
