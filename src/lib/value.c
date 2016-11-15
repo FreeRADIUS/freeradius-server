@@ -1240,7 +1240,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, src, src->length);
+		value_data_hton(dst, src_type, &src->data, src->length);
 		dst->octets = talloc_memdup(ctx, dst, src->length);
 		dst->length = src->length;
 		talloc_set_type(dst->octets, uint8_t);
