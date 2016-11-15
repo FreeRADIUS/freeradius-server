@@ -853,6 +853,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	} /* switch over type */
 
 	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
+	vp->vp_tainted = true;
 	fr_cursor_append(cursor, vp);
 
 	return p - data;
