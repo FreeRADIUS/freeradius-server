@@ -168,7 +168,7 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
 	}
 }
 
-/** Convert a string or integer type to #value_data_t of specified type
+/** Convert a string or integer type to #value_box_t of specified type
  *
  * Will work with REDIS_REPLY_STRING (which is converted to #PW_TYPE_STRING
  * then cast to dst_type), or REDIS_REPLY_INTEGER (which is converted to
@@ -188,10 +188,10 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
  *	- 0 on success.
  *	- -1 on cast or parse failure.
  */
-int fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply *reply,
+int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *reply,
 				 PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
 {
-	value_data_t	in;
+	value_box_t	in;
 	PW_TYPE		src_type = 0;
 
 	memset(&in, 0, sizeof(in));
@@ -250,9 +250,9 @@ int fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply 
 	}
 
 	if (src_type == dst_type) {
-		if (value_data_copy(ctx, out, src_type, &in) < 0) return -1;
+		if (value_box_copy(ctx, out, src_type, &in) < 0) return -1;
 	} else {
-		if (value_data_cast(ctx, out, dst_type, dst_enumv, src_type, NULL, &in) < 0) return -1;
+		if (value_box_cast(ctx, out, dst_type, dst_enumv, src_type, NULL, &in) < 0) return -1;
 	}
 	return 0;
 }
@@ -321,17 +321,17 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_INTEGER:
 	{
-		value_data_t vpt;
+		value_box_t vpt;
 
 		/* Logs own errors */
-		if (fr_redis_reply_to_value_data(map, &vpt, value,
+		if (fr_redis_reply_to_value_box(map, &vpt, value,
 						 map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			REDEBUG("Failed converting Redis data: %s", fr_strerror());
 			goto error;
 		}
 
 		/* This will only fail only memory allocation errors */
-		if (tmpl_afrom_value_data(map, &map->rhs, &vpt,
+		if (tmpl_afrom_value_box(map, &map->rhs, &vpt,
 					  map->lhs->tmpl_da->type, map->lhs->tmpl_da, true) < 0) {
 			goto error;
 		}
@@ -405,7 +405,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		char	value[256];
 		size_t	len;
 
-		len = value_data_snprint(value, sizeof(value), map->rhs->tmpl_data_type, map->lhs->tmpl_da,
+		len = value_box_snprint(value, sizeof(value), map->rhs->tmpl_data_type, map->lhs->tmpl_da,
 					&map->rhs->tmpl_data_value, '\0');
 		new = talloc_bstrndup(pool, value, len);
 		if (!new) {

@@ -936,9 +936,9 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		case PW_TYPE_INTEGER64:			//!< 64 Bit unsigned integer.
 		case PW_TYPE_SIGNED:			//!< 32 Bit signed integer.
 		{
-			value_data_t data;
+			value_box_t data;
 
-			value_data_hton(&data, vp->da->type, &vp->data);
+			value_box_hton(&data, vp->da->type, &vp->data);
 			memcpy(&p[2], &data, vp->vp_length);
 		}
 

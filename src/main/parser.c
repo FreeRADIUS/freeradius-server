@@ -179,7 +179,7 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 			/*
 			 *	Call the STANDARD parse function to figure out what the string is.
 			 */
-			value_data_t data;
+			value_box_t data;
 			char quote = *start;
 			PW_TYPE src_type = PW_TYPE_STRING;
 
@@ -188,7 +188,7 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 			 */
 			if (quote == '/') quote = '\0';
 
-			if (value_data_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), quote) < 0) {
+			if (value_box_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), quote) < 0) {
 				*error = "error parsing string";
 				return -1;
 			}

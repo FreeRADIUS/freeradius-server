@@ -566,7 +566,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			return NULL;
 		}
 
-		if (value_data_from_str(vp, &vp->data, &type, NULL, value, -1, '\0') < 0) {
+		if (value_box_from_str(vp, &vp->data, &type, NULL, value, -1, '\0') < 0) {
 			talloc_free(vp);
 			return NULL;
 		}
@@ -851,7 +851,7 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
  */
 int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 			  unsigned int vendor, unsigned int attr, int8_t tag,
-			  PW_TYPE type, value_data_t *value)
+			  PW_TYPE type, value_box_t *value)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -860,14 +860,14 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 	vp = fr_cursor_next_by_num(&cursor, vendor, attr, tag);
 	if (vp) {
 		VERIFY_VP(vp);
-		if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
+		if (value_box_steal(vp, &vp->data, type, value) < 0) return -1;
 		return 0;
 	}
 
 	vp = fr_pair_afrom_num(ctx, vendor, attr);
 	if (!vp) return -1;
 	vp->tag = tag;
-	if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
+	if (value_box_steal(vp, &vp->data, type, value) < 0) return -1;
 
 	fr_cursor_append(&cursor, vp);
 
@@ -1043,7 +1043,7 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			return 1;
 		}
 
-		ret = value_data_cmp(a_p->da->type, &a_p->data,
+		ret = value_box_cmp(a_p->da->type, &a_p->data,
 				     b_p->da->type, &b_p->data);
 		if (ret != 0) {
 			(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
@@ -1939,7 +1939,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
-	if (value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
+	if (value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
 
 	/*
 	 *	If we parsed to a different type than the DA associated with
@@ -2204,7 +2204,7 @@ size_t fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, cha
 
 	if (vp->type == VT_XLAT) return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
 
-	return value_data_snprint(out, outlen, vp->da->type, vp->da, &vp->data, quote);
+	return value_box_snprint(out, outlen, vp->da->type, vp->da, &vp->data, quote);
 }
 
 /** Print one attribute value to a string
@@ -2222,7 +2222,7 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 		return fr_asprint(ctx, vp->xlat, talloc_array_length(vp->xlat) - 1, quote);
 	}
 
-	return value_data_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
+	return value_box_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
 }
 
 /** Return a const buffer for an enum type attribute

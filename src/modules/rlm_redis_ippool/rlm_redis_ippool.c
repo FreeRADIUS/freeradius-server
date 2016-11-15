@@ -637,14 +637,14 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		case REDIS_REPLY_INTEGER:
 		{
 			if (ip_map.lhs->tmpl_da->type != PW_TYPE_IPV4_ADDR) {
-				value_data_t tmp;
+				value_box_t tmp;
 
 				memset(&tmp, 0, sizeof(tmp));
 
 				tmp.integer = ntohl((uint32_t)reply->element[1]->integer);
 				tmp.length = sizeof(ip_map.rhs->tmpl_data_value.integer);
 
-				if (value_data_cast(NULL, &ip_map.rhs->tmpl_data_value, PW_TYPE_IPV4_ADDR,
+				if (value_box_cast(NULL, &ip_map.rhs->tmpl_data_value, PW_TYPE_IPV4_ADDR,
 						    NULL, PW_TYPE_INTEGER, NULL, &tmp)) {
 					REDEBUG("Failed converting integer to IPv4 address: %s", fr_strerror());
 					ret = IPPOOL_RCODE_FAIL;

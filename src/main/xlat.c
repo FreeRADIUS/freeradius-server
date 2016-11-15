@@ -217,7 +217,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	VALUE_PAIR *vp;
 	uint8_t const *p;
 	size_t	len;
-	value_data_t dst;
+	value_box_t dst;
 	uint8_t const *buff = NULL;
 
 	while (isspace((int) *fmt)) fmt++;
@@ -234,11 +234,11 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		p = vp->vp_octets;
 		len = vp->vp_length;
 	/*
-	 *	Cast the value_data_t of the VP to an octets string and
+	 *	Cast the value_box_t of the VP to an octets string and
 	 *	print that as hex.
 	 */
 	} else {
-		if (value_data_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type, NULL, &vp->data) < 0) {
+		if (value_box_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type, NULL, &vp->data) < 0) {
 			REDEBUG("%s", fr_strerror());
 			goto error;
 		}
@@ -423,7 +423,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 		while (type->name) {
 			int pad;
 
-			value_data_t *dst = NULL;
+			value_box_t *dst = NULL;
 
 			if ((PW_TYPE) type->number == vp->da->type) {
 				goto next_type;
@@ -442,13 +442,13 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 				break;
 			}
 
-			dst = talloc_zero(vp, value_data_t);
+			dst = talloc_zero(vp, value_box_t);
 			/* We expect some to fail */
-			if (value_data_cast(dst, dst, type->number, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+			if (value_box_cast(dst, dst, type->number, NULL, vp->da->type, vp->da, &vp->data) < 0) {
 				goto next_type;
 			}
 
-			value = value_data_asprint(dst, type->number, NULL, dst, '\'');
+			value = value_box_asprint(dst, type->number, NULL, dst, '\'');
 			if (!value) goto next_type;
 
 			if ((pad = (11 - strlen(type->name))) < 0) {
@@ -2297,10 +2297,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 		if (*child) {
 			PW_TYPE type;
-			value_data_t data;
+			value_box_t data;
 
 			type = PW_TYPE_STRING;
-			if (value_data_from_str(ctx, &data, &type, NULL, child,
+			if (value_box_from_str(ctx, &data, &type, NULL, child,
 						talloc_array_length(child) - 1, '"') < 0) {
 				talloc_free(child);
 				return NULL;

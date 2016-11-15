@@ -258,9 +258,9 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 			int64_t y;
 
 			if (vp->da->type != PW_TYPE_INTEGER64) {
-				value_data_t	value;
+				value_box_t	value;
 
-				if (value_data_cast(vp, &value, PW_TYPE_INTEGER64, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+				if (value_box_cast(vp, &value, PW_TYPE_INTEGER64, NULL, vp->da->type, vp->da, &vp->data) < 0) {
 					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt.len,
 						vpt.name, fr_strerror());
 					return false;

@@ -490,7 +490,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	unlang_t		*this, *found, *null_case;
 	unlang_group_t	*g, *h;
 	fr_cond_t		cond;
-	value_data_t		data;
+	value_box_t		data;
 	vp_map_t		map;
 	vp_tmpl_t		vpt;
 

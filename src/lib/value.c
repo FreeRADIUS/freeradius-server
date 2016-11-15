@@ -1,5 +1,5 @@
 /*
- * value.c	Functions to handle value_data_t
+ * value.c	Functions to handle value_box_t
  *
  * Version:	$Id$
  *
@@ -27,28 +27,28 @@ RCSID("$Id$")
 
 /** How many bytes wide each of the value data fields are
  *
- * This is useful when copying a value from a value_data_t to a memory
+ * This is useful when copying a value from a value_box_t to a memory
  * location passed as a void *.
  */
-size_t const value_data_field_sizes[] = {
-	[PW_TYPE_STRING]	= SIZEOF_MEMBER(value_data_t, strvalue),
-	[PW_TYPE_OCTETS]	= SIZEOF_MEMBER(value_data_t, octets),
-	[PW_TYPE_IFID]		= SIZEOF_MEMBER(value_data_t, ifid),
-	[PW_TYPE_IPV4_ADDR]	= SIZEOF_MEMBER(value_data_t, ipaddr),
-	[PW_TYPE_IPV4_PREFIX]	= SIZEOF_MEMBER(value_data_t, ipv4prefix),
-	[PW_TYPE_IPV6_ADDR]	= SIZEOF_MEMBER(value_data_t, ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]	= SIZEOF_MEMBER(value_data_t, ipv6prefix),
-	[PW_TYPE_BOOLEAN]	= SIZEOF_MEMBER(value_data_t, boolean),
-	[PW_TYPE_BYTE]		= SIZEOF_MEMBER(value_data_t, byte),
-	[PW_TYPE_SHORT]		= SIZEOF_MEMBER(value_data_t, ushort),
-	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_data_t, integer),
-	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_data_t, integer64),
-	[PW_TYPE_SIZE]		= SIZEOF_MEMBER(value_data_t, size),
-	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_data_t, sinteger),
-	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_data_t, timeval),
-	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_data_t, decimal),
-	[PW_TYPE_ETHERNET]	= SIZEOF_MEMBER(value_data_t, ether),
-	[PW_TYPE_DATE]		= SIZEOF_MEMBER(value_data_t, date),
+size_t const value_box_field_sizes[] = {
+	[PW_TYPE_STRING]	= SIZEOF_MEMBER(value_box_t, strvalue),
+	[PW_TYPE_OCTETS]	= SIZEOF_MEMBER(value_box_t, octets),
+	[PW_TYPE_IFID]		= SIZEOF_MEMBER(value_box_t, ifid),
+	[PW_TYPE_IPV4_ADDR]	= SIZEOF_MEMBER(value_box_t, ipaddr),
+	[PW_TYPE_IPV4_PREFIX]	= SIZEOF_MEMBER(value_box_t, ipv4prefix),
+	[PW_TYPE_IPV6_ADDR]	= SIZEOF_MEMBER(value_box_t, ipv6addr),
+	[PW_TYPE_IPV6_PREFIX]	= SIZEOF_MEMBER(value_box_t, ipv6prefix),
+	[PW_TYPE_BOOLEAN]	= SIZEOF_MEMBER(value_box_t, boolean),
+	[PW_TYPE_BYTE]		= SIZEOF_MEMBER(value_box_t, byte),
+	[PW_TYPE_SHORT]		= SIZEOF_MEMBER(value_box_t, ushort),
+	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_box_t, integer),
+	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_box_t, integer64),
+	[PW_TYPE_SIZE]		= SIZEOF_MEMBER(value_box_t, size),
+	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_box_t, sinteger),
+	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_box_t, timeval),
+	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_box_t, decimal),
+	[PW_TYPE_ETHERNET]	= SIZEOF_MEMBER(value_box_t, ether),
+	[PW_TYPE_DATE]		= SIZEOF_MEMBER(value_box_t, date),
 	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
 };
 
@@ -56,28 +56,28 @@ size_t const value_data_field_sizes[] = {
  *
  * @note Not even sure if this is required though it does make the code
  * 	more robust in the case where someone changes the order of the
- *	fields in the #value_data_t struct.
+ *	fields in the #value_box_t struct.
  *
  */
-size_t const value_data_offsets[] = {
-	[PW_TYPE_STRING]	= offsetof(value_data_t, strvalue),
-	[PW_TYPE_OCTETS]	= offsetof(value_data_t, octets),
-	[PW_TYPE_IFID]		= offsetof(value_data_t, ifid),
-	[PW_TYPE_IPV4_ADDR]	= offsetof(value_data_t, ipaddr),
-	[PW_TYPE_IPV4_PREFIX]	= offsetof(value_data_t, ipv4prefix),
-	[PW_TYPE_IPV6_ADDR]	= offsetof(value_data_t, ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]	= offsetof(value_data_t, ipv6prefix),
-	[PW_TYPE_BOOLEAN]	= offsetof(value_data_t, boolean),
-	[PW_TYPE_BYTE]		= offsetof(value_data_t, byte),
-	[PW_TYPE_SHORT]		= offsetof(value_data_t, ushort),
-	[PW_TYPE_INTEGER]	= offsetof(value_data_t, integer),
-	[PW_TYPE_INTEGER64]	= offsetof(value_data_t, integer64),
-	[PW_TYPE_SIZE]		= offsetof(value_data_t, size),
-	[PW_TYPE_SIGNED]	= offsetof(value_data_t, sinteger),
-	[PW_TYPE_TIMEVAL]	= offsetof(value_data_t, timeval),
-	[PW_TYPE_DECIMAL]	= offsetof(value_data_t, decimal),
-	[PW_TYPE_ETHERNET]	= offsetof(value_data_t, ether),
-	[PW_TYPE_DATE]		= offsetof(value_data_t, date),
+size_t const value_box_offsets[] = {
+	[PW_TYPE_STRING]	= offsetof(value_box_t, strvalue),
+	[PW_TYPE_OCTETS]	= offsetof(value_box_t, octets),
+	[PW_TYPE_IFID]		= offsetof(value_box_t, ifid),
+	[PW_TYPE_IPV4_ADDR]	= offsetof(value_box_t, ipaddr),
+	[PW_TYPE_IPV4_PREFIX]	= offsetof(value_box_t, ipv4prefix),
+	[PW_TYPE_IPV6_ADDR]	= offsetof(value_box_t, ipv6addr),
+	[PW_TYPE_IPV6_PREFIX]	= offsetof(value_box_t, ipv6prefix),
+	[PW_TYPE_BOOLEAN]	= offsetof(value_box_t, boolean),
+	[PW_TYPE_BYTE]		= offsetof(value_box_t, byte),
+	[PW_TYPE_SHORT]		= offsetof(value_box_t, ushort),
+	[PW_TYPE_INTEGER]	= offsetof(value_box_t, integer),
+	[PW_TYPE_INTEGER64]	= offsetof(value_box_t, integer64),
+	[PW_TYPE_SIZE]		= offsetof(value_box_t, size),
+	[PW_TYPE_SIGNED]	= offsetof(value_box_t, sinteger),
+	[PW_TYPE_TIMEVAL]	= offsetof(value_box_t, timeval),
+	[PW_TYPE_DECIMAL]	= offsetof(value_box_t, decimal),
+	[PW_TYPE_ETHERNET]	= offsetof(value_box_t, ether),
+	[PW_TYPE_DATE]		= offsetof(value_box_t, date),
 	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
 };
 
@@ -93,8 +93,8 @@ size_t const value_data_offsets[] = {
  *	- 1 if a is more than b.
  *	- < -1 on failure.
  */
-int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
-		   PW_TYPE b_type, value_data_t const *b)
+int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
+		   PW_TYPE b_type, value_box_t const *b)
 {
 	int compare = 0;
 
@@ -239,7 +239,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
  *
  *	reserved, prefix-len, data...
  */
-static int value_data_cidr_cmp_op(FR_TOKEN op, int bytes,
+static int value_box_cidr_cmp_op(FR_TOKEN op, int bytes,
 				  uint8_t a_net, uint8_t const *a,
 				  uint8_t b_net, uint8_t const *b)
 {
@@ -358,9 +358,9 @@ static int value_data_cidr_cmp_op(FR_TOKEN op, int bytes,
  *	- 0 if false
  *	- -1 on failure.
  */
-int value_data_cmp_op(FR_TOKEN op,
-		      PW_TYPE a_type, value_data_t const *a,
-		      PW_TYPE b_type, value_data_t const *b)
+int value_box_cmp_op(FR_TOKEN op,
+		      PW_TYPE a_type, value_box_t const *a,
+		      PW_TYPE b_type, value_box_t const *b)
 {
 	int compare = 0;
 
@@ -373,7 +373,7 @@ int value_data_cmp_op(FR_TOKEN op,
 			goto cmp;
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
-			return value_data_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->ipaddr,
+			return value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->ipaddr,
 						      b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
 
 		default:
@@ -384,12 +384,12 @@ int value_data_cmp_op(FR_TOKEN op,
 	case PW_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
 		switch (b_type) {
 		case PW_TYPE_IPV4_ADDR:
-			return value_data_cidr_cmp_op(op, 4, a->ipv4prefix[1],
+			return value_box_cidr_cmp_op(op, 4, a->ipv4prefix[1],
 						      (uint8_t const *) &a->ipv4prefix[2],
 						      32, (uint8_t const *) &b->ipaddr);
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
-			return value_data_cidr_cmp_op(op, 4, a->ipv4prefix[1],
+			return value_box_cidr_cmp_op(op, 4, a->ipv4prefix[1],
 						      (uint8_t const *) &a->ipv4prefix[2],
 						      b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
 
@@ -404,7 +404,7 @@ int value_data_cmp_op(FR_TOKEN op,
 			goto cmp;
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
-			return value_data_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->ipv6addr,
+			return value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->ipv6addr,
 						      b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
 
 		default:
@@ -415,12 +415,12 @@ int value_data_cmp_op(FR_TOKEN op,
 	case PW_TYPE_IPV6_PREFIX:
 		switch (b_type) {
 		case PW_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
-			return value_data_cidr_cmp_op(op, 16, a->ipv6prefix[1],
+			return value_box_cidr_cmp_op(op, 16, a->ipv6prefix[1],
 						      (uint8_t const *) &a->ipv6prefix[2],
 						      128, (uint8_t const *) &b->ipv6addr);
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
-			return value_data_cidr_cmp_op(op, 16, a->ipv6prefix[1],
+			return value_box_cidr_cmp_op(op, 16, a->ipv6prefix[1],
 						      (uint8_t const *) &a->ipv6prefix[2],
 						      b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
 
@@ -431,7 +431,7 @@ int value_data_cmp_op(FR_TOKEN op,
 
 	default:
 	cmp:
-		compare = value_data_cmp(a_type, a, b_type, b);
+		compare = value_box_cmp(a_type, a, b_type, b);
 		if (compare < -1) {	/* comparison error */
 			return -1;
 		}
@@ -680,7 +680,7 @@ size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char qu
 	return out_p - out;
 }
 
-/** Convert string value to a value_data_t type
+/** Convert string value to a value_box_t type
  *
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
@@ -696,7 +696,7 @@ size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char qu
  *	- 0 on success.
  *	- -1 on parse error.
  */
-int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 			char const *in, ssize_t inlen, char quote)
 {
@@ -1174,7 +1174,7 @@ finish:
 /** Performs byte order reversal for types that need it
  *
  */
-void value_data_hton(value_data_t *dst, PW_TYPE type, value_data_t const *src)
+void value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src)
 {
 	/* 8 byte integers */
 	switch (type) {
@@ -1200,12 +1200,12 @@ void value_data_hton(value_data_t *dst, PW_TYPE type, value_data_t const *src)
 		return;		/* shouldn't happen */
 
 	default:
-		value_data_copy(NULL, dst, type, src);
+		value_box_copy(NULL, dst, type, src);
 		break;
 	}
 }
 
-/** Convert one type of value_data_t to another
+/** Convert one type of value_box_t to another
  *
  * @note This should be the canonical function used to convert between data types.
  *
@@ -1220,28 +1220,28 @@ void value_data_hton(value_data_t *dst, PW_TYPE type, value_data_t const *src)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
+int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		    PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
 		    PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
-		    value_data_t const *src)
+		    value_box_t const *src)
 {
 	/*
 	 *	If it's the same type, copy.
 	 */
-	if (dst_type == src_type) return value_data_copy(ctx, dst, src_type, src);
+	if (dst_type == src_type) return value_box_copy(ctx, dst, src_type, src);
 
 	/*
-	 *	Deserialise a value_data_t
+	 *	Deserialise a value_box_t
 	 */
 	if (src_type == PW_TYPE_STRING) {
-		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src->length, '\0');
+		return value_box_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src->length, '\0');
 	}
 
 	/*
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, src);
+		value_box_hton(dst, src_type, src);
 		dst->octets = talloc_memdup(ctx, &dst->datum, src->length);
 		dst->length = src->length;
 		talloc_set_type(dst->octets, uint8_t);
@@ -1249,10 +1249,10 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 
 	/*
-	 *	Serialise a value_data_t
+	 *	Serialise a value_box_t
 	 */
 	if (dst_type == PW_TYPE_STRING) {
-		dst->strvalue = value_data_asprint(ctx, src_type, src_enumv, src, '\0');
+		dst->strvalue = value_box_asprint(ctx, src_type, src_enumv, src, '\0');
 		dst->length = talloc_array_length(dst->strvalue) - 1;
 		return 0;
 	}
@@ -1565,7 +1565,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				/*
 				 *	Prefix must be >= 96 bits. If it's < 96 bytes and the
 				 *	above check passed, the v6 address wasn't masked
-				 *	correctly when it was packet into a value_data_t.
+				 *	correctly when it was packet into a value_box_t.
 				 */
 				if (!fr_cond_assert(src->ipv6prefix[1] >= (sizeof(v4_v6_map) * 8))) return -1;
 
@@ -1635,22 +1635,22 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 
 	if (src_type == PW_TYPE_OCTETS) {
-		value_data_t tmp;
+		value_box_t tmp;
 
 	do_octets:
-		if (src->length < value_data_field_sizes[dst_type]) {
+		if (src->length < value_box_field_sizes[dst_type]) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than destination type size %zd",
 					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
 					   src->length,
-					   value_data_field_sizes[dst_type]);
+					   value_box_field_sizes[dst_type]);
 			return -1;
 		}
 
-		memcpy(&tmp.datum, src->octets, value_data_field_sizes[dst_type]);
+		memcpy(&tmp.datum, src->octets, value_box_field_sizes[dst_type]);
 
-		value_data_hton(dst, dst_type, &tmp);
-		dst->length = value_data_field_sizes[dst_type];
+		value_box_hton(dst, dst_type, &tmp);
+		dst->length = value_box_field_sizes[dst_type];
 		return 0;
 	}
 
@@ -1680,14 +1680,14 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 /** Copy value data verbatim duplicating any buffers
  *
  * @param ctx To allocate buffers in.
- * @param dst Where to copy value_data to.
+ * @param dst Where to copy value_box to.
  * @param src_type Type of src.
- * @param src Where to copy value_data from.
+ * @param src Where to copy value_box from.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const value_data_t *src)
+int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const value_box_t *src)
 {
 	switch (src_type) {
 	default:
@@ -1715,14 +1715,14 @@ int value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const 
 /** Copy value data verbatim moving any buffers to the specified context
  *
  * @param ctx To allocate buffers in.
- * @param dst Where to copy value_data to.
+ * @param dst Where to copy value_box to.
  * @param src_type Type of src.
- * @param src Where to copy value_data from.
+ * @param src Where to copy value_box from.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const value_data_t *src)
+int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const value_box_t *src)
 {
 	switch (src_type) {
 	default:
@@ -1755,8 +1755,8 @@ int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const
 /** Print one attribute value to a string
  *
  */
-char *value_data_asprint(TALLOC_CTX *ctx,
-			 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data, char quote)
+char *value_box_asprint(TALLOC_CTX *ctx,
+			 PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data, char quote)
 {
 	char *p = NULL;
 	unsigned int i;
@@ -1880,7 +1880,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_data_snprint(buff, sizeof(buff), type, enumv, data, '\0');
+		value_box_snprint(buff, sizeof(buff), type, enumv, data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1892,7 +1892,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_data_snprint(buff, sizeof(buff), type, enumv, data, '\0');
+		value_box_snprint(buff, sizeof(buff), type, enumv, data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1943,8 +1943,8 @@ char *value_data_asprint(TALLOC_CTX *ctx,
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t value_data_snprint(char *out, size_t outlen,
-			 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data, char quote)
+size_t value_box_snprint(char *out, size_t outlen,
+			 PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data, char quote)
 {
 	fr_dict_enum_t	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */

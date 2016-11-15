@@ -211,7 +211,7 @@ typedef struct vp_tmpl_t {
 		 */
 		struct {
 			PW_TYPE			type;			 //!< Type of data.
-			value_data_t		data;			 //!< Value data.
+			value_box_t		data;			 //!< Value data.
 		} literal;
 
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
@@ -314,7 +314,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
  @code{.c}
    TALLOC_CTX *ctx;
    VALUE_PAIR **head;
-   value_data_t value;
+   value_box_t value;
 
    RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
    if (!list) return -1; // error
@@ -399,7 +399,7 @@ vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 				     request_refs_t request, pair_lists_t list);
 
-int			tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
+int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data,
 					      PW_TYPE type, fr_dict_attr_t const *enumv, bool steal);
 
 ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,

@@ -28,10 +28,10 @@
 #include <freeradius-devel/rad_assert.h>
 #include "json.h"
 
-/** Convert json object to value_data_t
+/** Convert json object to value_box_t
  *
  * @param ctx to allocate any value buffers in (should usually be the same as out).
- * @param out Where to write value_data.
+ * @param out Where to write value_box.
  * @param object to convert.
  * @param dst_type FreeRADIUS type to convert to.
  * @param dst_enumv Enumeration values to allow string to integer conversions.
@@ -39,11 +39,11 @@
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object *object,
+int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *object,
 				 PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	PW_TYPE src_type = PW_TYPE_INVALID;
-	value_data_t in;
+	value_box_t in;
 
 	memset(&in, 0, sizeof(in));
 
@@ -125,22 +125,22 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
 	}
 
 	if (src_type == dst_type) {
-		if (value_data_copy(ctx, out, src_type, &in) < 0) return -1;
+		if (value_box_copy(ctx, out, src_type, &in) < 0) return -1;
 	} else {
-		if (value_data_cast(ctx, out, dst_type, dst_enumv, src_type, NULL, &in) < 0) return -1;
+		if (value_box_cast(ctx, out, dst_type, dst_enumv, src_type, NULL, &in) < 0) return -1;
 	}
 	return 0;
 }
 
-/** Convert boxed value_data to a JSON object
+/** Convert boxed value_box to a JSON object
  *
  * @param[in] ctx	to allocate temporary buffers in
  * @param[in] type	of value data.
  * @param[in] enumv	of value data.
  * @param[in] data	to convert.
  */
-json_object *json_object_from_value_data(TALLOC_CTX *ctx,
-					 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data)
+json_object *json_object_from_value_box(TALLOC_CTX *ctx,
+					 PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data)
 {
 	switch (type) {
 	default:
@@ -149,7 +149,7 @@ json_object *json_object_from_value_data(TALLOC_CTX *ctx,
 		char		*p;
 		json_object	*obj;
 
-		p = value_data_asprint(ctx, type, enumv, data, '\0');
+		p = value_box_asprint(ctx, type, enumv, data, '\0');
 		if (!p) return NULL;
 
 		obj = json_object_new_string(p);
@@ -373,7 +373,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 			return NULL;
 		}
 
-		MEM(value = json_object_from_value_data(ctx, vp->da->type, vp->da, &vp->data));
+		MEM(value = json_object_from_value_box(ctx, vp->da->type, vp->da, &vp->data));
 		json_object_array_add(values, value);
 
 		/*

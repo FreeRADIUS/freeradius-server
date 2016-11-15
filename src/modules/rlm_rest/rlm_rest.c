@@ -108,7 +108,7 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	TALLOC_CTX	*ctx;
 	VALUE_PAIR	**list;
 	int		code;
-	value_data_t	value;
+	value_box_t	value;
 
 	code = rest_get_handle_code(handle);
 

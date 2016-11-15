@@ -912,7 +912,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!new) return -1;
 
-				if (value_data_cast(new, &new->data, new->da->type, new->da,
+				if (value_box_cast(new, &new->data, new->da->type, new->da,
 						    vp->da->type, vp->da, &vp->data) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					fr_pair_list_free(&found);
@@ -954,12 +954,12 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		if (!new) return -1;
 
 		if (map->lhs->tmpl_da->type == map->rhs->tmpl_data_type) {
-			if (value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) {
+			if (value_box_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
-			if (value_data_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_data_type,
+			if (value_box_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_data_type,
 					    NULL, &map->rhs->tmpl_data_value) < 0) {
 				REDEBUG("Implicit cast failed: %s", fr_strerror());
 				rcode = -1;
@@ -1402,7 +1402,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				if (cmp > 0) break;
 				else if (cmp < 0) continue;
 
-				cmp = (value_data_cmp_op(map->op, a->da->type, &a->data, b->da->type, &b->data) == 0);
+				cmp = (value_box_cmp_op(map->op, a->da->type, &a->data, b->da->type, &b->data) == 0);
 				if (cmp != 0) {
 					a = fr_cursor_remove(&dst_list);
 					talloc_free(a);

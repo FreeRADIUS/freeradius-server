@@ -312,39 +312,39 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_cursor_free(vp_cursor_t *cursor);
 
 /* value.c */
-extern size_t const value_data_field_sizes[];
-extern size_t const value_data_offsets[];
+extern size_t const value_box_field_sizes[];
+extern size_t const value_box_offsets[];
 
-int		value_data_cmp(PW_TYPE a_type, value_data_t const *a,
-			       PW_TYPE b_type, value_data_t const *b);
+int		value_box_cmp(PW_TYPE a_type, value_box_t const *a,
+			       PW_TYPE b_type, value_box_t const *b);
 
-int		value_data_cmp_op(FR_TOKEN op,
-				  PW_TYPE a_type, value_data_t const *a,
-				  PW_TYPE b_type, value_data_t const *b);
+int		value_box_cmp_op(FR_TOKEN op,
+				  PW_TYPE a_type, value_box_t const *a,
+				  PW_TYPE b_type, value_box_t const *b);
 
 size_t		fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
 
-int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 				    PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 				    char const *src, ssize_t src_len, char quote);
 
-void		value_data_hton(value_data_t *dst, PW_TYPE type, value_data_t const *src);
+void		value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src);
 
-int		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
+int		value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 				PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
 				PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
-				value_data_t const *src);
+				value_box_t const *src);
 
-int		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, const value_data_t *src);
+int		value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE type, const value_box_t *src);
 
-size_t		value_data_snprint(char *out, size_t outlen,
+size_t		value_box_snprint(char *out, size_t outlen,
 				  PW_TYPE type, fr_dict_attr_t const *enumv,
-				  value_data_t const *data, char quote);
+				  value_box_t const *data, char quote);
 
-int		value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, value_data_t const *src);
+int		value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE type, value_box_t const *src);
 
-char		*value_data_asprint(TALLOC_CTX *ctx,
-				    PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data,
+char		*value_box_asprint(TALLOC_CTX *ctx,
+				    PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data,
 				    char quote);
 
 extern uint32_t	fr_max_attributes; /* per incoming packet */
@@ -409,7 +409,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(value_data_t *out, char const *value, size_t len);
+int		ascend_parse_filter(value_box_t *out, char const *value, size_t len);
 void		print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 

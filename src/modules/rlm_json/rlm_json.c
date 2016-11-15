@@ -200,7 +200,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
-	value_data_t			*head, *value;
+	value_box_t			*head, *value;
 	int				ret;
 
 	*out = NULL;
@@ -225,7 +225,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 		}
 		vp->op = map->op;
 
-		if (value_data_steal(vp, &vp->data, vp->da->type, value) < 0) {
+		if (value_box_steal(vp, &vp->data, vp->da->type, value) < 0) {
 			REDEBUG("Copying data to attribute failed: %s", fr_strerror());
 			talloc_free(vp);
 			goto error;

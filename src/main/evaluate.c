@@ -83,7 +83,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 {
 	int rcode;
 	int modcode;
-	value_data_t data;
+	value_box_t data;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
@@ -158,8 +158,8 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
  *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         PW_TYPE lhs_type, value_data_t const *lhs,
-		         PW_TYPE rhs_type, value_data_t const *rhs)
+		         PW_TYPE lhs_type, value_box_t const *lhs,
+		         PW_TYPE rhs_type, value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 
@@ -226,8 +226,8 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 #ifdef WITH_EVAL_DEBUG
 static void cond_print_operands(REQUEST *request,
-			   	PW_TYPE lhs_type, value_data_t const *lhs,
-			   	PW_TYPE rhs_type, value_data_t const *rhs)
+			   	PW_TYPE lhs_type, value_box_t const *lhs,
+			   	PW_TYPE rhs_type, value_box_t const *rhs)
 {
 	if (lhs) {
 		if (lhs_type == PW_TYPE_STRING) {
@@ -286,8 +286,8 @@ static void cond_print_operands(REQUEST *request,
  *	- 1 for "match".
  */
 static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
-			   PW_TYPE lhs_type, value_data_t const *lhs,
-			   PW_TYPE rhs_type, value_data_t const *rhs)
+			   PW_TYPE lhs_type, value_box_t const *lhs,
+			   PW_TYPE rhs_type, value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 	int rcode;
@@ -318,7 +318,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 		vp = fr_pair_afrom_da(request, map->lhs->tmpl_da);
 		vp->op = c->data.map->op;
 
-		value_data_copy(vp, &vp->data, rhs_type, rhs);
+		value_box_copy(vp, &vp->data, rhs_type, rhs);
 
 		rcode = paircompare(request, request->packet->vps, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
@@ -334,7 +334,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 	rad_assert(lhs_type == rhs_type);
 
 	EVAL_DEBUG("CMP WITH VALUE DATA");
-	rcode = value_data_cmp_op(map->op, lhs_type, lhs, rhs_type, rhs);
+	rcode = value_box_cmp_op(map->op, lhs_type, lhs, rhs_type, rhs);
 finish:
 	switch (rcode) {
 	case 0:
@@ -401,7 +401,7 @@ done:
  */
 static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 				  PW_TYPE lhs_type, fr_dict_attr_t const *lhs_enumv,
-				  value_data_t const *lhs)
+				  value_box_t const *lhs)
 {
 	vp_map_t const *map = c->data.map;
 
@@ -412,9 +412,9 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 
 	PW_TYPE rhs_type = PW_TYPE_INVALID;
 	fr_dict_attr_t const *rhs_enumv = NULL;
-	value_data_t *rhs = NULL;
+	value_box_t *rhs = NULL;
 
-	value_data_t lhs_cast, rhs_cast;
+	value_box_t lhs_cast, rhs_cast;
 	void *lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
 
 	xlat_escape_t escape = NULL;
@@ -433,7 +433,7 @@ do {\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_int2str(dict_attr_types, _s ## _type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
-		if (value_data_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s) < 0) {\
+		if (value_box_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s) < 0) {\
 			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
 			rcode = -1;\
 			goto finish;\
@@ -560,7 +560,7 @@ do {\
 	case TMPL_TYPE_XLAT_STRUCT:
 	{
 		ssize_t ret;
-		value_data_t data;
+		value_box_t data;
 
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
@@ -690,7 +690,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	{
 		char *p = NULL;
 		ssize_t ret;
-		value_data_t data;
+		value_box_t data;
 
 		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);

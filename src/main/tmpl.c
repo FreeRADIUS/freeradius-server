@@ -594,7 +594,7 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 	vpt->tmpl_num = num;
 }
 
-/** Create a #vp_tmpl_t from a #value_data_t
+/** Create a #vp_tmpl_t from a #value_box_t
  *
  * @param[in,out] ctx to allocate #vp_tmpl_t in.
  * @param[out] out Where to write pointer to new #vp_tmpl_t.
@@ -606,25 +606,25 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
+int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data,
 			  PW_TYPE type, fr_dict_attr_t const *enumv, bool steal)
 {
 	char const *name;
 	vp_tmpl_t *vpt;
 
 	vpt = talloc(ctx, vp_tmpl_t);
-	name = value_data_asprint(vpt, type, enumv, data, '\0');
+	name = value_box_asprint(vpt, type, enumv, data, '\0');
 	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name),
 		  (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
-		if (value_data_steal(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+		if (value_box_steal(vpt, &vpt->tmpl_data_value, type, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
 		vpt->tmpl_data_type = type;
 	} else {
-		if (value_data_copy(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+		if (value_box_copy(vpt, &vpt->tmpl_data_value, type, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
@@ -1040,7 +1040,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 	ssize_t slen;
 	PW_TYPE data_type = PW_TYPE_STRING;
 	vp_tmpl_t *vpt = NULL;
-	value_data_t data;
+	value_box_t data;
 
 	switch (type) {
 	case T_BARE_WORD:
@@ -1097,7 +1097,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	parse:
 		if (do_unescape) {
-			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote) < 0) return 0;
+			if (value_box_from_str(ctx, &data, &data_type, NULL, in, inlen, quote) < 0) return 0;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.strvalue, talloc_array_length(data.strvalue) - 1, type);
 			talloc_free(data.ptr);
@@ -1135,7 +1135,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		 *	literal.
 		 */
 		if (do_unescape) {
-			if (value_data_from_str(ctx, &data, &data_type, NULL, in,
+			if (value_box_from_str(ctx, &data, &data_type, NULL, in,
 						inlen, fr_token_quote[type]) < 0) return -1;
 			if (do_xlat) {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue,
@@ -1159,7 +1159,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	case T_BACK_QUOTED_STRING:
 		if (do_unescape) {
-			if (value_data_from_str(ctx, &data, &data_type, NULL, in,
+			if (value_box_from_str(ctx, &data, &data_type, NULL, in,
 						inlen, fr_token_quote[type]) < 0) return -1;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.strvalue, talloc_array_length(data.strvalue) - 1, type);
@@ -1237,18 +1237,18 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		if (value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
+		if (value_box_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
 					enumv, vpt->name, vpt->len, '\0') < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
 
 	case TMPL_TYPE_DATA:
 	{
-		value_data_t new;
+		value_box_t new;
 
 		if (type == vpt->tmpl_data_type) return 0;	/* noop */
 
-		if (value_data_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
+		if (value_box_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
 				    NULL, &vpt->tmpl_data_value) < 0) return -1;
 
 		/*
@@ -1320,7 +1320,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 {
 	int rcode;
 	VALUE_PAIR *vp;
-	value_data_t data;
+	value_box_t data;
 	char *p;
 
 	VERIFY_TMPL(vpt);
@@ -1334,7 +1334,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		VERIFY_VP(vp);
 		rad_assert(vp->da->type == vpt->tmpl_data_type);
 
-		value_data_copy(vp, &vp->data, vpt->tmpl_data_type, &vpt->tmpl_data_value);
+		value_box_copy(vp, &vp->data, vpt->tmpl_data_type, &vpt->tmpl_data_value);
 		*out = vp;
 		return 0;
 	}
@@ -1472,7 +1472,7 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_flags_
  *
  * @param[out] out		Where to write a pointer to the string buffer. On return may
  *				point to buff if buff was used to store the value. Otherwise will
- *				point to a #value_data_t buffer, or the name of the template.
+ *				point to a #value_box_t buffer, or the name of the template.
  *				Must not be NULL.
  * @param[out] buff		Expansion buffer, may be NULL except for the following types:
  *				- #TMPL_TYPE_EXEC
@@ -1501,10 +1501,10 @@ ssize_t _tmpl_to_type(void *out,
 		      xlat_escape_t escape, void const *escape_ctx,
 		      PW_TYPE dst_type)
 {
-	value_data_t		vd_to_cast;
-	value_data_t		vd_from_cast;
-	value_data_t const	*to_cast = &vd_to_cast;
-	value_data_t const	*from_cast = &vd_from_cast;
+	value_box_t		vd_to_cast;
+	value_box_t		vd_from_cast;
+	value_box_t const	*to_cast = &vd_to_cast;
+	value_box_t const	*from_cast = &vd_from_cast;
 
 	VALUE_PAIR		*vp = NULL;
 
@@ -1695,13 +1695,13 @@ ssize_t _tmpl_to_type(void *out,
 		/*
 		 *	Data type conversion...
 		 */
-		ret = value_data_cast(ctx, &vd_from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
+		ret = value_box_cast(ctx, &vd_from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
 		if (ret < 0) return -1;
 
 
 		/*
 		 *	For the dynamic types we need to copy the output
-		 *	to the buffer.  Really we need a version of value_data_cast
+		 *	to the buffer.  Really we need a version of value_box_cast
 		 *	that works with buffers, but its not a high priority...
 		 */
 		switch (dst_type) {
@@ -1745,9 +1745,9 @@ ssize_t _tmpl_to_type(void *out,
 	}
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
-		value_data_field_sizes[dst_type], *((void **)out), value_data_offsets[dst_type]);
+		value_box_field_sizes[dst_type], *((void **)out), value_box_offsets[dst_type]);
 
-	memcpy(out, from_cast + value_data_offsets[dst_type], value_data_field_sizes[dst_type]);
+	memcpy(out, from_cast + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
 
 	return from_cast->length;
 }
@@ -1793,11 +1793,11 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       xlat_escape_t escape, void const *escape_ctx,
 		       PW_TYPE dst_type)
 {
-	value_data_t const	*to_cast = NULL;
-	value_data_t		from_cast;
+	value_box_t const	*to_cast = NULL;
+	value_box_t		from_cast;
 
 	VALUE_PAIR		*vp = NULL;
-	value_data_t		vd;
+	value_box_t		vd;
 	PW_TYPE			src_type = PW_TYPE_STRING;
 	bool			needs_dup = false;
 
@@ -1838,7 +1838,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 	case TMPL_TYPE_XLAT:
 	{
-		value_data_t	tmp;
+		value_box_t	tmp;
 
 		RDEBUG4("EXPAND TMPL XLAT");
 
@@ -1853,7 +1853,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = value_data_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
+		ret = value_box_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
 		if (ret < 0) goto error;
 
 		vd.strvalue = tmp.strvalue;
@@ -1864,7 +1864,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 	case TMPL_TYPE_XLAT_STRUCT:
 	{
-		value_data_t	tmp;
+		value_box_t	tmp;
 
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
@@ -1881,7 +1881,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = value_data_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
+		ret = value_box_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.strvalue, vd.length, '"');
 		if (ret < 0) goto error;
 
 		vd.strvalue = tmp.strvalue;
@@ -1952,7 +1952,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 *	Don't dup the buffers unless we need to.
 	 */
 	if ((src_type != dst_type) || needs_dup) {
-		ret = value_data_cast(ctx, &from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
+		ret = value_box_cast(ctx, &from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
 		if (ret < 0) goto error;
 	} else {
 		switch (src_type) {
@@ -1974,9 +1974,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	}
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
-		value_data_field_sizes[dst_type], *((void **)out), value_data_offsets[dst_type]);
+		value_box_field_sizes[dst_type], *((void **)out), value_box_offsets[dst_type]);
 
-	memcpy(out, &from_cast + value_data_offsets[dst_type], value_data_field_sizes[dst_type]);
+	memcpy(out, &from_cast + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
 
 	/*
 	 *	Frees any memory allocated for temporary buffers
@@ -2135,7 +2135,7 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return value_data_snprint(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
+		return value_box_snprint(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
 					 fr_token_quote[vpt->quote]);
 
 	default:

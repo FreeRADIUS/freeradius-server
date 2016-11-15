@@ -57,8 +57,8 @@ extern "C" {
  *
  * PW_TYPE should be an enumeration of the values in this union.
  */
-typedef struct value_data value_data_t;
-struct value_data {
+typedef struct value_box value_box_t;
+struct value_box {
 	union {
 		uint8_t			datum;			//!< so we can refer to a FIELD and not to a UNION
 
@@ -97,7 +97,7 @@ struct value_data {
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 
-	value_data_t			*next;			//!< Next in a series of value_data.
+	value_box_t			*next;			//!< Next in a series of value_box.
 };
 
 /** The type of value a VALUE_PAIR contains
@@ -136,13 +136,13 @@ typedef struct value_pair {
 	//	VALUE_SET	*set;				//!< Set of child attributes.
 	//	VALUE_LIST	*list;				//!< List of values for
 								//!< multivalued attribute.
-	//	value_data_t	*data;				//!< Value data for this attribute.
+	//	value_box_t	*data;				//!< Value data for this attribute.
 
 		char const 	*xlat;				//!< Source string for xlat expansion.
 	};
 
 	value_type_t		type;				//!< Type of pointer in value union.
-	value_data_t		data;
+	value_box_t		data;
 } VALUE_PAIR;
 
 /** Abstraction to allow iterating over different configurations of VALUE_PAIRs
@@ -243,7 +243,7 @@ void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
 
 int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 				      unsigned int vendor, unsigned int attr, int8_t tag, PW_TYPE type,
-				      value_data_t *value);
+				      value_box_t *value);
 
 void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
 
@@ -257,7 +257,7 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
  *	- 0 if not equal.
  *	- -1 on failure.
  */
-#define		fr_pair_cmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _b->da->type, &_b->data)
+#define		fr_pair_cmp_op(_op, _a, _b)	value_box_cmp_op(_op, _a->da->type, &_a->data, _b->da->type, &_b->data)
 int8_t		fr_pair_cmp_by_da_tag(void const *a, void const *b);
 int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int		fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
