@@ -570,6 +570,8 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 	 *	Parse the output, if any.
 	 */
 	if (output_pairs) {
+		VALUE_PAIR *vps = NULL;
+
 		/*
 		 *	HACK: Replace '\n' with ',' so that
 		 *	fr_pair_list_afrom_str() can parse the buffer in
@@ -594,18 +596,25 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 			answer[--len] = '\0';
 		}
 
-		if (fr_pair_list_afrom_str(ctx, answer, output_pairs) == T_INVALID) {
+		if (fr_pair_list_afrom_str(ctx, answer, &vps) == T_INVALID) {
 			RERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
 			strlcpy(out, answer, len);
 			ret = -1;
 		}
-	/*
-	 *	We've not been told to extract output pairs,
-	 *	just copy the programs output to the out
-	 *	buffer.
-	 */
+
+		/*
+		 *	We want to mark the new attributes as tainted,
+		 *	but not the existing ones.
+		 */
+		fr_pair_list_tainted(vps);
+		fr_pair_add(output_pairs, vps);
 
 	} else if (out) {
+		/*
+		 *	We've not been told to extract output pairs,
+		 *	just copy the programs output to the out
+		 *	buffer.
+		 */
 		strlcpy(out, answer, outlen);
 	}
 
