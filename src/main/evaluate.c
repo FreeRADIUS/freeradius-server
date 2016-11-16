@@ -503,11 +503,11 @@ do {\
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
 			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
 	} else if (map->lhs->type == TMPL_TYPE_DATA) {
-		cast_type = map->lhs->tmpl_data_type;
+		cast_type = map->lhs->tmpl_value_box_type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
 	} else if (map->rhs->type == TMPL_TYPE_DATA) {
-		cast_type = map->rhs->tmpl_data_type;
+		cast_type = map->rhs->tmpl_value_box_type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
 	}
@@ -540,8 +540,8 @@ do {\
 		break;
 
 	case TMPL_TYPE_DATA:
-		rhs_type = map->rhs->tmpl_data_type;
-		rhs = &map->rhs->tmpl_data_value;
+		rhs_type = map->rhs->tmpl_value_box_type;
+		rhs = &map->rhs->tmpl_value_box_datum;
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
@@ -680,7 +680,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 	case TMPL_TYPE_DATA:
 		rcode = cond_normalise_and_cmp(request, c,
-					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value);
+					      map->lhs->tmpl_value_box_type, NULL, &map->lhs->tmpl_value_box_datum);
 		break;
 
 	case TMPL_TYPE_UNPARSED:

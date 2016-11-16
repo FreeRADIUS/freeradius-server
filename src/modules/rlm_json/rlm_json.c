@@ -156,12 +156,12 @@ static int mod_map_proc_instantiate(void *proc_inst, UNUSED void *mod_inst,
 			break;
 
 		case TMPL_TYPE_DATA:
-			if (map->rhs->tmpl_data_type != PW_TYPE_STRING) {
+			if (map->rhs->tmpl_value_box_type != PW_TYPE_STRING) {
 				cf_log_err_cp(cp, "Right side of map must be a string");
 				return -1;
 			}
-			p = map->rhs->tmpl_data_value.datum.strvalue;
-			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_data_length);
+			p = map->rhs->tmpl_value_box_datum.datum.strvalue;
+			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_value_box_length);
 			if (slen <= 0) goto error;
 			break;
 

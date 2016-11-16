@@ -74,8 +74,8 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 			goto error;
 		}
 
-		value = value_box_asprint(value_pool, map->rhs->tmpl_data_type,
-					   map->lhs->tmpl_da, &map->rhs->tmpl_data_value, '\'');
+		value = value_box_asprint(value_pool, map->rhs->tmpl_value_box_type,
+					   map->lhs->tmpl_da, &map->rhs->tmpl_value_box_datum, '\'');
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
@@ -150,12 +150,12 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 */
 		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
 		case PW_CACHE_CREATED:
-			c->created = map->rhs->tmpl_data_value.datum.date;
+			c->created = map->rhs->tmpl_value_box_datum.datum.date;
 			talloc_free(map);
 			goto next;
 
 		case PW_CACHE_EXPIRES:
-			c->expires = map->rhs->tmpl_data_value.datum.date;
+			c->expires = map->rhs->tmpl_value_box_datum.datum.date;
 			talloc_free(map);
 			goto next;
 

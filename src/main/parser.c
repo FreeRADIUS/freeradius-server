@@ -1123,7 +1123,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 						da = fr_dict_attr_by_type(NULL, c->data.map->lhs->tmpl_da->vendor,
 									  c->data.map->lhs->tmpl_da->attr,
-									  c->data.map->rhs->tmpl_data_type);
+									  c->data.map->rhs->tmpl_value_box_type);
 						if (!da) {
 							return_rhs("Cannot find type for attribute");
 						}

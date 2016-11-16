@@ -390,11 +390,11 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	key = talloc_bstrndup(pool, key_buf, key_len);
 	if (!key) return -1;
 
-	switch (map->rhs->tmpl_data_type) {
+	switch (map->rhs->tmpl_value_box_type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_data_value.datum.ptr;
-		out_len[2] = map->rhs->tmpl_data_length;
+		out[2] = map->rhs->tmpl_value_box_datum.datum.ptr;
+		out_len[2] = map->rhs->tmpl_value_box_length;
 		break;
 
 	/*
@@ -405,8 +405,8 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		char	value[256];
 		size_t	len;
 
-		len = value_box_snprint(value, sizeof(value), map->rhs->tmpl_data_type, map->lhs->tmpl_da,
-					&map->rhs->tmpl_data_value, '\0');
+		len = value_box_snprint(value, sizeof(value), map->rhs->tmpl_value_box_type, map->lhs->tmpl_da,
+					&map->rhs->tmpl_value_box_datum, '\0');
 		new = talloc_bstrndup(pool, value, len);
 		if (!new) {
 			talloc_free(key);

@@ -618,17 +618,17 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data,
 		  (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
-		if (value_box_steal(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+		if (value_box_steal(vpt, &vpt->tmpl_value_box_datum, type, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
-		vpt->tmpl_data_type = type;
+		vpt->tmpl_value_box_type = type;
 	} else {
-		if (value_box_copy(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+		if (value_box_copy(vpt, &vpt->tmpl_value_box_datum, type, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
-		vpt->tmpl_data_type = type;
+		vpt->tmpl_value_box_type = type;
 	}
 	*out = vpt;
 
@@ -1067,11 +1067,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			vpt->tmpl_data_value.datum.ptr = talloc_array(vpt, uint8_t, binlen);
-			vpt->tmpl_data_length = binlen;
-			vpt->tmpl_data_type = PW_TYPE_OCTETS;
+			vpt->tmpl_value_box_datum.datum.ptr = talloc_array(vpt, uint8_t, binlen);
+			vpt->tmpl_value_box_length = binlen;
+			vpt->tmpl_value_box_type = PW_TYPE_OCTETS;
 
-			len = fr_hex2bin(vpt->tmpl_data_value.datum.ptr, binlen, in + 2, inlen - 2);
+			len = fr_hex2bin(vpt->tmpl_value_box_datum.datum.ptr, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains none hex char");
 				talloc_free(vpt);
@@ -1232,12 +1232,12 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
-		vpt->tmpl_data_type = type;
+		vpt->tmpl_value_box_type = type;
 
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		if (value_box_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
+		if (value_box_from_str(vpt, &vpt->tmpl_value_box_datum, &vpt->tmpl_value_box_type,
 					enumv, vpt->name, vpt->len, '\0') < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
@@ -1246,26 +1246,26 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 	{
 		value_box_t new;
 
-		if (type == vpt->tmpl_data_type) return 0;	/* noop */
+		if (type == vpt->tmpl_value_box_type) return 0;	/* noop */
 
-		if (value_box_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
-				    NULL, &vpt->tmpl_data_value) < 0) return -1;
+		if (value_box_cast(vpt, &new, type, enumv, vpt->tmpl_value_box_type,
+				    NULL, &vpt->tmpl_value_box_datum) < 0) return -1;
 
 		/*
 		 *	Free old value buffers
 		 */
-		switch (vpt->tmpl_data_type) {
+		switch (vpt->tmpl_value_box_type) {
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
-			talloc_free(vpt->tmpl_data_value.datum.ptr);
+			talloc_free(vpt->tmpl_value_box_datum.datum.ptr);
 			break;
 
 		default:
 			break;
 		}
 
-		value_box_copy(vpt, &vpt->tmpl_data_value, type, &new);
-		vpt->tmpl_data_type = type;
+		value_box_copy(vpt, &vpt->tmpl_value_box_datum, type, &new);
+		vpt->tmpl_value_box_type = type;
 	}
 		break;
 
@@ -1289,12 +1289,12 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 	rad_assert(vpt != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_UNPARSED);
 
-	vpt->tmpl_data.vp_strvalue = talloc_typed_strdup(vpt, vpt->name);
-	rad_assert(vpt->tmpl_data.vp_strvalue != NULL);
+	vpt->tmpl_value_box.vp_strvalue = talloc_typed_strdup(vpt, vpt->name);
+	rad_assert(vpt->tmpl_value_box.vp_strvalue != NULL);
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_data_type = PW_TYPE_STRING;
-	vpt->tmpl_data_length = talloc_array_length(vpt->tmpl_data.vp_strvalue) - 1;
+	vpt->tmpl_value_box_type = PW_TYPE_STRING;
+	vpt->tmpl_value_box_length = talloc_array_length(vpt->tmpl_value_box.vp_strvalue) - 1;
 }
 
 /** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
@@ -1332,9 +1332,9 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
-		rad_assert(vp->da->type == vpt->tmpl_data_type);
+		rad_assert(vp->da->type == vpt->tmpl_value_box_type);
 
-		value_box_copy(vp, &vp->data, vpt->tmpl_data_type, &vpt->tmpl_data_value);
+		value_box_copy(vp, &vp->data, vpt->tmpl_value_box_type, &vpt->tmpl_value_box_datum);
 		*out = vp;
 		return 0;
 	}
@@ -1607,8 +1607,8 @@ ssize_t _tmpl_to_type(void *out,
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		to_cast = &vpt->tmpl_data_value;
-		src_type = vpt->tmpl_data_type;
+		to_cast = &vpt->tmpl_value_box_datum;
+		src_type = vpt->tmpl_value_box_type;
 	}
 		break;
 
@@ -1919,8 +1919,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = &vpt->tmpl_data_value;
-		src_type = vpt->tmpl_data_type;
+		to_cast = &vpt->tmpl_value_box_datum;
+		src_type = vpt->tmpl_value_box_type;
 
 		switch (src_type) {
 		case PW_TYPE_STRING:
@@ -2135,7 +2135,7 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return value_box_snprint(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
+		return value_box_snprint(out, outlen, vpt->tmpl_value_box_type, values, &vpt->tmpl_value_box_datum,
 					 fr_token_quote[vpt->quote]);
 
 	default:
@@ -2662,24 +2662,24 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		if (vpt->tmpl_data_type == PW_TYPE_INVALID) {
+		if (vpt->tmpl_value_box_type == PW_TYPE_INVALID) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
 				     "PW_TYPE_INVALID (uninitialised)", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		if (vpt->tmpl_data_type >= PW_TYPE_MAX) {
+		if (vpt->tmpl_value_box_type >= PW_TYPE_MAX) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
-				     "%i (outside the range of PW_TYPEs)", file, line, vpt->tmpl_data_type);
+				     "%i (outside the range of PW_TYPEs)", file, line, vpt->tmpl_value_box_type);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 		/*
 		 *	Unlike VALUE_PAIRs we can't guarantee that VALUE_PAIR_TMPL buffers will
 		 *	be talloced. They may be allocated on the stack or in global variables.
 		 */
-		switch (vpt->tmpl_data_type) {
+		switch (vpt->tmpl_value_box_type) {
 		case PW_TYPE_STRING:
-			if (vpt->tmpl_data.vp_strvalue[vpt->tmpl_data_length] != '\0') {
+			if (vpt->tmpl_value_box.vp_strvalue[vpt->tmpl_value_box_length] != '\0') {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
 					     "terminated", file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
@@ -2695,7 +2695,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			break;
 
 		default:
-			if (vpt->tmpl_data_length == 0) {
+			if (vpt->tmpl_value_box_length == 0) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA data pointer not NULL "
 				             "but len field is zero", file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);

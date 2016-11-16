@@ -131,18 +131,18 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0, T_INVALID);
 	if (!map->rhs) goto free_vp;
 
-	map->rhs->tmpl_data_type = da->type;
-	map->rhs->tmpl_data_length = vp->vp_length;
+	map->rhs->tmpl_value_box_type = da->type;
+	map->rhs->tmpl_value_box_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
 		if (vp->da->type == PW_TYPE_STRING) {
-			map->rhs->tmpl_data_value.datum.ptr = talloc_bstrndup(map->rhs, vp->vp_ptr, vp->vp_length);
+			map->rhs->tmpl_value_box_datum.datum.ptr = talloc_bstrndup(map->rhs, vp->vp_ptr, vp->vp_length);
 			map->rhs->quote = T_SINGLE_QUOTED_STRING;
 		} else {
-			map->rhs->tmpl_data_value.datum.ptr = talloc_memdup(map->rhs, vp->vp_ptr, vp->vp_length);
+			map->rhs->tmpl_value_box_datum.datum.ptr = talloc_memdup(map->rhs, vp->vp_ptr, vp->vp_length);
 			map->rhs->quote = T_BARE_WORD;
 		}
 	} else {
-		value_box_copy(map->rhs, &map->rhs->tmpl_data_value, vp->da->type, &vp->data);
+		value_box_copy(map->rhs, &map->rhs->tmpl_value_box_datum, vp->da->type, &vp->data);
 		map->rhs->quote = T_BARE_WORD;
 	}
 	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);
@@ -953,14 +953,14 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (map->lhs->tmpl_da->type == map->rhs->tmpl_data_type) {
-			if (value_box_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) {
+		if (map->lhs->tmpl_da->type == map->rhs->tmpl_value_box_type) {
+			if (value_box_copy(new, &new->data, new->da->type, &map->rhs->tmpl_value_box_datum) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
-			if (value_box_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_data_type,
-					    NULL, &map->rhs->tmpl_data_value) < 0) {
+			if (value_box_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_value_box_type,
+					    NULL, &map->rhs->tmpl_value_box_datum) < 0) {
 				REDEBUG("Implicit cast failed: %s", fr_strerror());
 				rcode = -1;
 				goto error;
