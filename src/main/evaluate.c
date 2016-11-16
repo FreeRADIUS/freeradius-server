@@ -541,7 +541,7 @@ do {\
 
 	case TMPL_TYPE_DATA:
 		rhs_type = map->rhs->tmpl_data_type;
-		rhs = &map->rhs->tmpl_data_value;
+		rhs = &map->rhs->tmpl_data_box;
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
@@ -680,7 +680,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 	case TMPL_TYPE_DATA:
 		rcode = cond_normalise_and_cmp(request, c,
-					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value);
+					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_box);
 		break;
 
 	case TMPL_TYPE_UNPARSED:

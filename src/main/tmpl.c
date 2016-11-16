@@ -618,13 +618,13 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data,
 		  (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
-		if (value_box_steal(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+		if (value_box_steal(vpt, &vpt->tmpl_data_box, type, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
 		vpt->tmpl_data_type = type;
 	} else {
-		if (value_box_copy(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+		if (value_box_copy(vpt, &vpt->tmpl_data_box, type, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
@@ -1067,11 +1067,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			vpt->tmpl_data_value.ptr = talloc_array(vpt, uint8_t, binlen);
+			vpt->tmpl_data_box.ptr = talloc_array(vpt, uint8_t, binlen);
 			vpt->tmpl_data_length = binlen;
 			vpt->tmpl_data_type = PW_TYPE_OCTETS;
 
-			len = fr_hex2bin(vpt->tmpl_data_value.ptr, binlen, in + 2, inlen - 2);
+			len = fr_hex2bin(vpt->tmpl_data_box.ptr, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains none hex char");
 				talloc_free(vpt);
@@ -1237,34 +1237,22 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		if (value_box_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
+		if (value_box_from_str(vpt, &vpt->tmpl_data_box, &vpt->tmpl_data_type,
 					enumv, vpt->name, vpt->len, '\0') < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
 
 	case TMPL_TYPE_DATA:
 	{
-		value_box_t new;
+		value_box_t tmp;
 
 		if (type == vpt->tmpl_data_type) return 0;	/* noop */
 
-		if (value_box_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
-				    NULL, &vpt->tmpl_data_value) < 0) return -1;
+		if (value_box_cast(vpt, &tmp, type, enumv, vpt->tmpl_data_type,
+				    NULL, &vpt->tmpl_data_box) < 0) return -1;
 
-		/*
-		 *	Free old value buffers
-		 */
-		switch (vpt->tmpl_data_type) {
-		case PW_TYPE_STRING:
-		case PW_TYPE_OCTETS:
-			talloc_free(vpt->tmpl_data_value.ptr);
-			break;
+		if (value_box_copy(vpt, &vpt->tmpl_data_box, type, &tmp) < 0) return -1;
 
-		default:
-			break;
-		}
-
-		memcpy(&vpt->tmpl_data_value, &new, sizeof(vpt->tmpl_data_value));
 		vpt->tmpl_data_type = type;
 	}
 		break;
@@ -1334,7 +1322,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		VERIFY_VP(vp);
 		rad_assert(vp->da->type == vpt->tmpl_data_type);
 
-		value_box_copy(vp, &vp->data, vpt->tmpl_data_type, &vpt->tmpl_data_value);
+		value_box_copy(vp, &vp->data, vpt->tmpl_data_type, &vpt->tmpl_data_box);
 		*out = vp;
 		return 0;
 	}
@@ -1607,7 +1595,7 @@ ssize_t _tmpl_to_type(void *out,
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		to_cast = &vpt->tmpl_data_value;
+		to_cast = &vpt->tmpl_data_box;
 		src_type = vpt->tmpl_data_type;
 	}
 		break;
@@ -1919,7 +1907,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = &vpt->tmpl_data_value;
+		to_cast = &vpt->tmpl_data_box;
 		src_type = vpt->tmpl_data_type;
 
 		switch (src_type) {
@@ -2135,7 +2123,7 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return value_box_snprint(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
+		return value_box_snprint(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_box,
 					 fr_token_quote[vpt->quote]);
 
 	default:

@@ -249,7 +249,7 @@ typedef struct vp_tmpl_t {
 #define tmpl_data		data.literal
 #define tmpl_data_type		data.literal.type
 #define tmpl_data_length	data.literal.data.length
-#define tmpl_data_value		data.literal.data
+#define tmpl_data_box		data.literal.data
 /* @} **/
 
 /** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX
