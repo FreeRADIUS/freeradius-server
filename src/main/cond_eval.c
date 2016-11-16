@@ -588,7 +588,7 @@ do {\
 		CAST(rhs);
 
 		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
-		if (map->rhs->type != TMPL_TYPE_UNPARSED)talloc_free(data.datum.ptr);
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) talloc_free(data.datum.ptr);
 
 		break;
 	}
