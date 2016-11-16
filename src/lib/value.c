@@ -1179,19 +1179,19 @@ void value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src)
 	/* 8 byte integers */
 	switch (type) {
 	case PW_TYPE_INTEGER64:
-		dst->datum.integer64 = htonll(*(uint64_t const *)src);
+		dst->datum.integer64 = htonll(src->datum.integer64);
 		break;
 
 	/* 4 byte integers */
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
-		dst->datum.integer = htonl(*(uint32_t const *)src);
+		dst->datum.integer = htonl(src->datum.integer);
 		break;
 
 	/* 2 byte integers */
 	case PW_TYPE_SHORT:
-		dst->datum.ushort = htons(*(uint16_t const *)src);
+		dst->datum.ushort = htons(src->datum.ushort);
 		break;
 
 	case PW_TYPE_OCTETS:
