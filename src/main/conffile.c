@@ -2984,7 +2984,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Skip (...) to find the {
 			 */
-			slen = fr_condition_tokenize(this, cf_section_to_item(this), ptr, &cond,
+			slen = fr_cond_tokenize(this, cf_section_to_item(this), ptr, &cond,
 						     &error, FR_COND_TWO_PASS);
 			memcpy(&p, &ptr, sizeof(p));
 
@@ -3043,7 +3043,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.filename = filename;
 			css->item.lineno = *lineno;
 
-			slen = fr_condition_tokenize(css, cf_section_to_item(css), ptr, &cond,
+			slen = fr_cond_tokenize(css, cf_section_to_item(css), ptr, &cond,
 						     &error, FR_COND_TWO_PASS);
 			*p = '{'; /* put it back */
 
@@ -4370,7 +4370,7 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 			if (c) {
 				char buffer[1024];
 
-				fr_cond_snprint(buffer, sizeof(buffer), c);
+				cond_snprint(buffer, sizeof(buffer), c);
 				fprintf(fp, "(%s)", buffer);
 
 			} else {	/* dump the string as-is */

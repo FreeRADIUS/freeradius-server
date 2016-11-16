@@ -536,7 +536,7 @@ static bool pass2_fixup_regex(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	 *	case, we convert it to a pre-compiled XLAT.
 	 *
 	 *	This is a little more complicated than it needs to be
-	 *	because radius_evaluate_map() keys off of the src
+	 *	because cond_eval_map() keys off of the src
 	 *	template type, instead of the operators.  And, the
 	 *	pass2_fixup_xlat() function expects to get passed an
 	 *	XLAT instead of a REGEX.
@@ -1012,7 +1012,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_IF:
 		case UNLANG_TYPE_ELSIF:
 			g = unlang_group_to_module_call(this);
-			fr_cond_snprint(buffer, sizeof(buffer), g->cond);
+			cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
 				unlang_ops[this->type].name, buffer);
 			unlang_dump(g->children, depth + 1);
@@ -2258,7 +2258,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	 *	parsed.  Now that they are all defined, we need to fix
 	 *	them up.
 	 */
-	if (!fr_condition_walk(cond, pass2_cond_callback, NULL)) {
+	if (!fr_cond_walk(cond, pass2_cond_callback, NULL)) {
 		return NULL;
 	}
 

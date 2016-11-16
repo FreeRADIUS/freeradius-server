@@ -602,7 +602,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 			cond.cast = NULL;
 		}
 
-		if (radius_evaluate_map(request, RLM_MODULE_UNKNOWN, 0,
+		if (cond_eval_map(request, RLM_MODULE_UNKNOWN, 0,
 					&cond) == 1) {
 			found = this;
 			break;
@@ -739,7 +739,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	g = unlang_group_to_module_call(instruction);
 	rad_assert(g->cond != NULL);
 
-	condition = radius_evaluate_cond(request, *presult, 0, g->cond);
+	condition = cond_eval(request, *presult, 0, g->cond);
 	if (condition < 0) {
 		switch (condition) {
 		case -2:

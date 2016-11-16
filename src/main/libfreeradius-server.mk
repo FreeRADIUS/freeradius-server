@@ -1,13 +1,13 @@
 TARGET	:= libfreeradius-server.a
 
-SOURCES	:=	conffile.c \
+SOURCES	:=	cond_eval.c \
+		cond_tokenize.c \
+		conffile.c \
 		connection.c \
 		dl.c \
-		evaluate.c \
 		exec.c \
 		exfile.c \
 		log.c \
-		parser.c \
 		map_proc.c \
 		map.c \
 		regex.c \

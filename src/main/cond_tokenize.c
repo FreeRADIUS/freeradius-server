@@ -46,7 +46,7 @@ static const FR_NAME_NUMBER allowed_return_codes[] = {
  *	This file shouldn't use any functions from the server core.
  */
 
-size_t fr_cond_snprint(char *out, size_t outlen, fr_cond_t const *in)
+size_t cond_snprint(char *out, size_t outlen, fr_cond_t const *in)
 {
 	size_t		len;
 	char		*p = out;
@@ -98,7 +98,7 @@ next:
 	case COND_TYPE_CHILD:
 		rad_assert(c->data.child != NULL);
 		*(p++) = '(';
-		len = fr_cond_snprint(p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
+		len = cond_snprint(p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
 		RETURN_IF_TRUNCATED(p, len, end - p);
 		*(p++) = ')';
 		break;
@@ -141,8 +141,7 @@ next:
 }
 
 
-static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **error, char const *start,
-					 FR_TOKEN *op)
+static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **error, char const *start, FR_TOKEN *op)
 {
 	char const *p = start;
 	char *q;
@@ -221,14 +220,13 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 	return -1;
 }
 
-static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out,
-				       FR_TOKEN *op, char const **error)
+static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out, FR_TOKEN *op, char const **error)
 {
 	size_t len;
 	char const *p = start;
 
 	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
-		return condition_tokenize_string(ctx, out, error, start, op);
+		return cond_tokenize_string(ctx, out, error, start, op);
 	}
 
 	*op = T_BARE_WORD;
@@ -280,7 +278,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 }
 
 
-static ssize_t condition_tokenize_cast(char const *start, fr_dict_attr_t const **pda, char const **error)
+static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda, char const **error)
 {
 	char const *p = start;
 	char const *q;
@@ -334,7 +332,7 @@ static ssize_t condition_tokenize_cast(char const *start, fr_dict_attr_t const *
 	return q - start;
 }
 
-static bool condition_check_types(fr_cond_t *c, PW_TYPE lhs_type)
+static bool cond_type_check(fr_cond_t *c, PW_TYPE lhs_type)
 {
 	/*
 	 *	SOME integer mismatch is OK.  If the LHS has a large type,
@@ -440,8 +438,8 @@ static bool condition_check_types(fr_cond_t *c, PW_TYPE lhs_type)
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
-				  fr_cond_t **pcond, char const **error, int flags)
+static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
+			     fr_cond_t **pcond, char const **error, int flags)
 {
 	ssize_t slen, tlen;
 	char const *p = start;
@@ -490,7 +488,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		 */
 		c->type = COND_TYPE_CHILD;
 		c->ci = ci;
-		slen = condition_tokenize(c, ci, p, true, &c->data.child, error, flags);
+		slen = cond_tokenize(c, ci, p, true, &c->data.child, error, flags);
 		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
@@ -515,14 +513,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			return_P("Conditional check cannot begin with a regular expression");
 		}
 
-		slen = condition_tokenize_cast(p, &c->cast, error);
+		slen = cond_tokenize_cast(p, &c->cast, error);
 		if (slen < 0) {
 			return_SLEN;
 		}
 		p += slen;
 
 		lhs_p = p;
-		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
+		slen = cond_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			return_SLEN;
 		}
@@ -702,7 +700,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			if (*p == '<') {
 				fr_dict_attr_t const *cast_da;
 
-				slen = condition_tokenize_cast(p, &cast_da, error);
+				slen = cond_tokenize_cast(p, &cast_da, error);
 				if (slen < 0) {
 					return_SLEN;
 				}
@@ -722,7 +720,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 *	Grab the RHS
 			 */
 			rhs_p = p;
-			slen = condition_tokenize_word(c, p, &rhs, &rhs_type, error);
+			slen = cond_tokenize_word(c, p, &rhs, &rhs_type, error);
 			if (slen <= 0) {
 				return_SLEN;
 			}
@@ -866,7 +864,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			if (c->cast) {
 				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
 				    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
-					if (condition_check_types(c, c->cast->type)) {
+					if (cond_type_check(c, c->cast->type)) {
 						goto keep_going;
 					}
 
@@ -989,7 +987,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->lhs->tmpl_da->type != c->data.map->rhs->tmpl_da->type)) {
-					if (condition_check_types(c, c->data.map->lhs->tmpl_da->type)) {
+					if (cond_type_check(c, c->data.map->lhs->tmpl_da->type)) {
 						goto keep_going;
 					}
 
@@ -1252,7 +1250,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	slen = condition_tokenize(c, ci, p, brace, &c->next, error, flags);
+	slen = cond_tokenize(c, ci, p, brace, &c->next, error, flags);
 	if (slen <= 0) {
 	return_slen:
 		if (lhs) talloc_free(lhs);
@@ -1407,7 +1405,7 @@ done:
 
 			rad_assert(c->cast != NULL);
 
-			rcode = radius_evaluate_map(NULL, 0, 0, c);
+			rcode = cond_eval_map(NULL, 0, 0, c);
 			TALLOC_FREE(c->data.map);
 			c->cast = NULL;
 			if (rcode) {
@@ -1434,7 +1432,7 @@ done:
 
 			rad_assert(c->cast == NULL);
 
-			rcode = radius_evaluate_map(NULL, 0, 0, c);
+			rcode = cond_eval_map(NULL, 0, 0, c);
 			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
@@ -1707,16 +1705,16 @@ done:
  *	- Length of the string skipped.
  *	- < 0 (the offset to the offending error) on error.
  */
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start,
-			      fr_cond_t **head, char const **error, int flags)
+ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start,
+			 fr_cond_t **head, char const **error, int flags)
 {
-	return condition_tokenize(ctx, ci, start, false, head, error, flags);
+	return cond_tokenize(ctx, ci, start, false, head, error, flags);
 }
 
 /*
  *	Walk in order.
  */
-bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void *ctx)
+bool fr_cond_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void *ctx)
 {
 	while (c) {
 		/*
@@ -1738,7 +1736,7 @@ bool fr_condition_walk(fr_cond_t *c, bool (*callback)(void *, fr_cond_t *), void
 			/*
 			 *	Walk over the child.
 			 */
-			if (!fr_condition_walk(c->data.child, callback, ctx)) {
+			if (!fr_cond_walk(c->data.child, callback, ctx)) {
 				return false;
 			}
 		}

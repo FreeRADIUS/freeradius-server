@@ -96,10 +96,10 @@ struct fr_cond_t {
 #define FR_COND_ONE_PASS (0)
 #define FR_COND_TWO_PASS (1)
 
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flag);
-size_t fr_cond_snprint(char *buffer, size_t bufsize, fr_cond_t const *c);
+ssize_t fr_cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flag);
+size_t cond_snprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
-bool fr_condition_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);
+bool fr_cond_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);
 
 #ifdef __cplusplus
 }

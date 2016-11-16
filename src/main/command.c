@@ -1554,7 +1554,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 
 	p = buffer;
 
-	slen = fr_condition_tokenize(NULL, NULL, p, &new_condition, &error, FR_COND_ONE_PASS);
+	slen = fr_cond_tokenize(NULL, NULL, p, &new_condition, &error, FR_COND_ONE_PASS);
 	if (slen <= 0) {
 		char *spaces, *text;
 
@@ -1729,7 +1729,7 @@ static int command_show_debug_condition(rad_listen_t *listener,
 		return CMD_OK;
 	}
 
-	fr_cond_snprint(buffer, sizeof(buffer), debug_condition);
+	cond_snprint(buffer, sizeof(buffer), debug_condition);
 
 	cprintf(listener, "%s\n", buffer);
 	return CMD_OK;

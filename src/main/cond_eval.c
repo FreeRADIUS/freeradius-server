@@ -79,7 +79,7 @@ static bool all_digits(char const *string)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
+int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
 {
 	int rcode;
 	int modcode;
@@ -632,7 +632,7 @@ finish:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
+int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
 
@@ -741,30 +741,30 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
+int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 {
 	int rcode = -1;
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
-	fr_cond_snprint(buffer, sizeof(buffer), c);
+	cond_snprint(buffer, sizeof(buffer), c);
 	EVAL_DEBUG("%s", buffer);
 #endif
 
 	while (c) {
 		switch (c->type) {
 		case COND_TYPE_EXISTS:
-			rcode = radius_evaluate_tmpl(request, modreturn, depth, c->data.vpt);
+			rcode = cond_eval_tmpl(request, modreturn, depth, c->data.vpt);
 			/* Existence checks are special, because we expect them to fail */
 			if (rcode < 0) rcode = 0;
 			break;
 
 		case COND_TYPE_MAP:
-			rcode = radius_evaluate_map(request, modreturn, depth, c);
+			rcode = cond_eval_map(request, modreturn, depth, c);
 			break;
 
 		case COND_TYPE_CHILD:
-			rcode = radius_evaluate_cond(request, modreturn, depth + 1, c->data.child);
+			rcode = cond_eval(request, modreturn, depth + 1, c->data.child);
 			break;
 
 		case COND_TYPE_TRUE:

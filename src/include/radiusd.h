@@ -627,11 +627,11 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 /* evaluate.c */
 typedef struct fr_cond_t fr_cond_t;
-int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
+int cond_eval_tmpl(REQUEST *request, int modreturn, int depth,
 			 vp_tmpl_t const *vpt);
-int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
+int cond_eval_map(REQUEST *request, int modreturn, int depth,
 			fr_cond_t const *c);
-int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
+int cond_eval(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat) CC_HINT(nonnull);
 
