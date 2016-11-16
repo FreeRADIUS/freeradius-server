@@ -135,14 +135,14 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	map->rhs->tmpl_data_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
 		if (vp->da->type == PW_TYPE_STRING) {
-			map->rhs->tmpl_data_box.ptr = talloc_bstrndup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->tmpl_data_value.ptr = talloc_bstrndup(map->rhs, vp->data.ptr, vp->vp_length);
 			map->rhs->quote = T_SINGLE_QUOTED_STRING;
 		} else {
-			map->rhs->tmpl_data_box.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
 			map->rhs->quote = T_BARE_WORD;
 		}
 	} else {
-		memcpy(&map->rhs->tmpl_data_box, &vp->data.datum, sizeof(map->rhs->tmpl_data_box));
+		memcpy(&map->rhs->tmpl_data_value, &vp->data.datum, sizeof(map->rhs->tmpl_data_value));
 		map->rhs->quote = T_BARE_WORD;
 	}
 	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);
@@ -954,13 +954,13 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		if (!new) return -1;
 
 		if (map->lhs->tmpl_da->type == map->rhs->tmpl_data_type) {
-			if (value_box_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_box) < 0) {
+			if (value_box_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
 			if (value_box_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_data_type,
-					    NULL, &map->rhs->tmpl_data_box) < 0) {
+					    NULL, &map->rhs->tmpl_data_value) < 0) {
 				REDEBUG("Implicit cast failed: %s", fr_strerror());
 				rcode = -1;
 				goto error;
