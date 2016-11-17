@@ -1976,7 +1976,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
 		value_box_field_sizes[dst_type], *((void **)out), value_box_offsets[dst_type]);
 
-	memcpy(out, &from_cast + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
+	memcpy(out, ((uint8_t *)&from_cast) + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
 
 	/*
 	 *	Frees any memory allocated for temporary buffers
