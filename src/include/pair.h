@@ -62,35 +62,34 @@ struct value_box {
 	union {
 		char const	        *strvalue;		//!< Pointer to UTF-8 string.
 		uint8_t const		*octets;		//!< Pointer to binary string.
+		void			*ptr;			//!< generic pointer.
 
 		struct in_addr		ipaddr;			//!< IPv4 Address.
-		uint32_t		date;			//!< Date (32bit Unix timestamp).
-		uint8_t			filter[32];		//!< Ascend binary format a packed data structure.
-
-		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
+		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
 		struct in6_addr		ipv6addr;		//!< IPv6 Address.
 		uint8_t			ipv6prefix[18];		//!< IPv6 prefix (should be struct?).
+		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
+		uint8_t			ether[6];		//!< Ethernet (MAC) address.
 
+		bool			boolean;		//!< A truth value.
 		uint8_t			byte;			//!< 8bit unsigned integer.
 		uint16_t		ushort;			//!< 16bit unsigned integer.
 		uint32_t		integer;		//!< 32bit unsigned integer.
 		uint64_t		integer64;		//!< 64bit unsigned integer.
 		size_t			size;			//!< System specific file/memory size.
-		int32_t			sinteger;		//!< 32bit signed integer.
 
-		uint8_t			ether[6];		//!< Ethernet (MAC) address.
+		int32_t			sinteger;		//!< 32bit signed integer.
 
 		struct timeval		timeval;		//!< A time value with usec precision.
 		double			decimal;		//!< Double precision float.
+		uint32_t		date;			//!< Date (32bit Unix timestamp).
 
-		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
+		uint8_t			filter[32];		//!< Ascend binary format a packed data structure.
 
-		bool			boolean;		//!< A truth value.
-
-		void			*ptr;			//!< generic pointer.
 	} datum;
 
-	PW_TYPE				type;			//!< type of this value-data
+	PW_TYPE				type;			//!< Type of this value-box.
+
 	size_t				length;			//!< Length of value data.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
