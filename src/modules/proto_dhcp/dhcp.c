@@ -1317,21 +1317,39 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
+	int attr_a = my_a->da->attr;
+	int attr_b = my_b->da->attr;
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
 
 	/*
+	 *	For TLVs, use parent attribute number for sorting.
+	 */
+	if (my_a->da->parent && my_a->da->parent->type == PW_TYPE_TLV) attr_a = my_a->da->parent->attr;
+	if (my_b->da->parent && my_b->da->parent->type == PW_TYPE_TLV) attr_b = my_b->da->parent->attr;
+
+	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if ((my_a->da->attr == PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr != PW_DHCP_MESSAGE_TYPE)) return -1;
+	if ((attr_a == PW_DHCP_MESSAGE_TYPE) && (attr_b != PW_DHCP_MESSAGE_TYPE)) return -1;
 
 	/*
 	 *	Relay-Agent is last
 	 */
-	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return 1;
-	if (my_a->da->attr < my_b->da->attr) return -1;
-	if (my_a->da->attr > my_b->da->attr) return 1;
+	if ((attr_a == PW_DHCP_OPTION_82) && (attr_b != PW_DHCP_OPTION_82)) return 1;
+	if ((attr_a != PW_DHCP_OPTION_82) && (attr_b == PW_DHCP_OPTION_82)) return -1;
+
+	/*
+	 *	Order options within TLV
+	 */
+	if (attr_a == attr_b && attr_a != my_a->da->attr) {
+		if (my_a->da->attr < my_b->da->attr) return -1;
+		if (my_a->da->attr > my_b->da->attr) return 1;
+	} else {
+		if (attr_a < attr_b) return -1;
+		if (attr_a > attr_b) return 1;
+	}
 
 	return 0;
 }
