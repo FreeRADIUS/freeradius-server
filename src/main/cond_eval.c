@@ -680,7 +680,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 
 	case TMPL_TYPE_DATA:
 		rcode = cond_normalise_and_cmp(request, c,
-					      map->lhs->tmpl_value_box_type, NULL, &map->lhs->tmpl_value_box_datum);
+					       map->lhs->tmpl_value_box_type, NULL, &map->lhs->tmpl_value_box_datum);
 		break;
 
 	case TMPL_TYPE_UNPARSED:
