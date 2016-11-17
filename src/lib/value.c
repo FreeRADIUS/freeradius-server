@@ -35,9 +35,9 @@ size_t const value_box_field_sizes[] = {
 	[PW_TYPE_OCTETS]			= SIZEOF_MEMBER(value_box_t, datum.octets),
 
 	[PW_TYPE_IPV4_ADDR]			= SIZEOF_MEMBER(value_box_t, datum.ipaddr),
-	[PW_TYPE_IPV4_PREFIX]		= SIZEOF_MEMBER(value_box_t, datum.ipv4prefix),
+	[PW_TYPE_IPV4_PREFIX]			= SIZEOF_MEMBER(value_box_t, datum.ipv4prefix),
 	[PW_TYPE_IPV6_ADDR]			= SIZEOF_MEMBER(value_box_t, datum.ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]		= SIZEOF_MEMBER(value_box_t, datum.ipv6prefix),
+	[PW_TYPE_IPV6_PREFIX]			= SIZEOF_MEMBER(value_box_t, datum.ipv6prefix),
 	[PW_TYPE_IFID]				= SIZEOF_MEMBER(value_box_t, datum.ifid),
 	[PW_TYPE_ETHERNET]			= SIZEOF_MEMBER(value_box_t, datum.ether),
 
@@ -69,9 +69,9 @@ size_t const value_box_offsets[] = {
 	[PW_TYPE_OCTETS]			= offsetof(value_box_t, datum.octets),
 
 	[PW_TYPE_IPV4_ADDR]			= offsetof(value_box_t, datum.ipaddr),
-	[PW_TYPE_IPV4_PREFIX]		= offsetof(value_box_t, datum.ipv4prefix),
+	[PW_TYPE_IPV4_PREFIX]			= offsetof(value_box_t, datum.ipv4prefix),
 	[PW_TYPE_IPV6_ADDR]			= offsetof(value_box_t, datum.ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]		= offsetof(value_box_t, datum.ipv6prefix),
+	[PW_TYPE_IPV6_PREFIX]			= offsetof(value_box_t, datum.ipv6prefix),
 	[PW_TYPE_IFID]				= offsetof(value_box_t, datum.ifid),
 	[PW_TYPE_ETHERNET]			= offsetof(value_box_t, datum.ether),
 
@@ -89,7 +89,7 @@ size_t const value_box_offsets[] = {
 	[PW_TYPE_DATE]				= offsetof(value_box_t, datum.date),
 
 	[PW_TYPE_ABINARY]			= offsetof(value_box_t, datum.filter),
-	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
+	[PW_TYPE_MAX]				= 0	/* Force compiler to allocate memory for all types */
 };
 
 /** Compare two values
