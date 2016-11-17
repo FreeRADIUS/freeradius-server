@@ -608,10 +608,10 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	}
 
 	RINDENT();
-	RDEBUG3("merge : %s", merge ? "yes" : "no");
-	RDEBUG3("insert: %s", insert ? "yes" : "no");
-	RDEBUG3("expire: %s", expire ? "yes" : "no");
-	RDEBUG3("ttl   : %i", ttl);
+	RDEBUG3("merge  : %s", merge ? "yes" : "no");
+	RDEBUG3("insert : %s", insert ? "yes" : "no");
+	RDEBUG3("expire : %s", expire ? "yes" : "no");
+	RDEBUG3("ttl    : %i", ttl);
 	REXDENT();
 	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
 
