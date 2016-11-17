@@ -1702,7 +1702,9 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const va
 {
 	switch (src_type) {
 	default:
-		memcpy(&dst->datum, &src->datum, value_box_field_sizes[src_type]);
+		memcpy(((uint8_t *)dst) + value_box_offsets[src_type],
+		       ((uint8_t const *)src) + value_box_offsets[src_type],
+		       value_box_field_sizes[src_type]);
 		break;
 
 	case PW_TYPE_STRING:
