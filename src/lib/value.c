@@ -31,53 +31,64 @@ RCSID("$Id$")
  * location passed as a void *.
  */
 size_t const value_box_field_sizes[] = {
-	[PW_TYPE_STRING]	= SIZEOF_MEMBER(value_box_t, datum.strvalue),
-	[PW_TYPE_OCTETS]	= SIZEOF_MEMBER(value_box_t, datum.octets),
-	[PW_TYPE_IFID]		= SIZEOF_MEMBER(value_box_t, datum.ifid),
-	[PW_TYPE_IPV4_ADDR]	= SIZEOF_MEMBER(value_box_t, datum.ipaddr),
-	[PW_TYPE_IPV4_PREFIX]	= SIZEOF_MEMBER(value_box_t, datum.ipv4prefix),
-	[PW_TYPE_IPV6_ADDR]	= SIZEOF_MEMBER(value_box_t, datum.ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]	= SIZEOF_MEMBER(value_box_t, datum.ipv6prefix),
-	[PW_TYPE_BOOLEAN]	= SIZEOF_MEMBER(value_box_t, datum.boolean),
-	[PW_TYPE_BYTE]		= SIZEOF_MEMBER(value_box_t, datum.byte),
-	[PW_TYPE_SHORT]		= SIZEOF_MEMBER(value_box_t, datum.ushort),
-	[PW_TYPE_INTEGER]	= SIZEOF_MEMBER(value_box_t, datum.integer),
-	[PW_TYPE_INTEGER64]	= SIZEOF_MEMBER(value_box_t, datum.integer64),
-	[PW_TYPE_SIZE]		= SIZEOF_MEMBER(value_box_t, datum.size),
-	[PW_TYPE_SIGNED]	= SIZEOF_MEMBER(value_box_t, datum.sinteger),
-	[PW_TYPE_TIMEVAL]	= SIZEOF_MEMBER(value_box_t, datum.timeval),
-	[PW_TYPE_DECIMAL]	= SIZEOF_MEMBER(value_box_t, datum.decimal),
-	[PW_TYPE_ETHERNET]	= SIZEOF_MEMBER(value_box_t, datum.ether),
-	[PW_TYPE_DATE]		= SIZEOF_MEMBER(value_box_t, datum.date),
-	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
+	[PW_TYPE_STRING]			= SIZEOF_MEMBER(value_box_t, datum.strvalue),
+	[PW_TYPE_OCTETS]			= SIZEOF_MEMBER(value_box_t, datum.octets),
+
+	[PW_TYPE_IPV4_ADDR]			= SIZEOF_MEMBER(value_box_t, datum.ipaddr),
+	[PW_TYPE_IPV4_PREFIX]		= SIZEOF_MEMBER(value_box_t, datum.ipv4prefix),
+	[PW_TYPE_IPV6_ADDR]			= SIZEOF_MEMBER(value_box_t, datum.ipv6addr),
+	[PW_TYPE_IPV6_PREFIX]		= SIZEOF_MEMBER(value_box_t, datum.ipv6prefix),
+	[PW_TYPE_IFID]				= SIZEOF_MEMBER(value_box_t, datum.ifid),
+	[PW_TYPE_ETHERNET]			= SIZEOF_MEMBER(value_box_t, datum.ether),
+
+	[PW_TYPE_BOOLEAN]			= SIZEOF_MEMBER(value_box_t, datum.boolean),
+	[PW_TYPE_BYTE]				= SIZEOF_MEMBER(value_box_t, datum.byte),
+	[PW_TYPE_SHORT]				= SIZEOF_MEMBER(value_box_t, datum.ushort),
+	[PW_TYPE_INTEGER]			= SIZEOF_MEMBER(value_box_t, datum.integer),
+	[PW_TYPE_INTEGER64]			= SIZEOF_MEMBER(value_box_t, datum.integer64),
+	[PW_TYPE_SIZE]				= SIZEOF_MEMBER(value_box_t, datum.size),
+
+	[PW_TYPE_SIGNED]			= SIZEOF_MEMBER(value_box_t, datum.sinteger),
+
+	[PW_TYPE_TIMEVAL]			= SIZEOF_MEMBER(value_box_t, datum.timeval),
+	[PW_TYPE_DECIMAL]			= SIZEOF_MEMBER(value_box_t, datum.decimal),
+	[PW_TYPE_DATE]				= SIZEOF_MEMBER(value_box_t, datum.date),
+
+	[PW_TYPE_ABINARY]			= SIZEOF_MEMBER(value_box_t, datum.filter),
+	[PW_TYPE_MAX]				= 0	/* Force compiler to allocate memory for all types */
 };
 
 /** Just in case we have a particularly rebellious compiler
  *
  * @note Not even sure if this is required though it does make the code
  * 	more robust in the case where someone changes the order of the
- *	fields in the #value_box_t struct.
- *
+ *	fields in the #value_box_t struct (and we add fields outside of the union).
  */
 size_t const value_box_offsets[] = {
-	[PW_TYPE_STRING]	= offsetof(value_box_t, datum.strvalue),
-	[PW_TYPE_OCTETS]	= offsetof(value_box_t, datum.octets),
-	[PW_TYPE_IFID]		= offsetof(value_box_t, datum.ifid),
-	[PW_TYPE_IPV4_ADDR]	= offsetof(value_box_t, datum.ipaddr),
-	[PW_TYPE_IPV4_PREFIX]	= offsetof(value_box_t, datum.ipv4prefix),
-	[PW_TYPE_IPV6_ADDR]	= offsetof(value_box_t, datum.ipv6addr),
-	[PW_TYPE_IPV6_PREFIX]	= offsetof(value_box_t, datum.ipv6prefix),
-	[PW_TYPE_BOOLEAN]	= offsetof(value_box_t, datum.boolean),
-	[PW_TYPE_BYTE]		= offsetof(value_box_t, datum.byte),
-	[PW_TYPE_SHORT]		= offsetof(value_box_t, datum.ushort),
-	[PW_TYPE_INTEGER]	= offsetof(value_box_t, datum.integer),
-	[PW_TYPE_INTEGER64]	= offsetof(value_box_t, datum.integer64),
-	[PW_TYPE_SIZE]		= offsetof(value_box_t, datum.size),
-	[PW_TYPE_SIGNED]	= offsetof(value_box_t, datum.sinteger),
-	[PW_TYPE_TIMEVAL]	= offsetof(value_box_t, datum.timeval),
-	[PW_TYPE_DECIMAL]	= offsetof(value_box_t, datum.decimal),
-	[PW_TYPE_ETHERNET]	= offsetof(value_box_t, datum.ether),
-	[PW_TYPE_DATE]		= offsetof(value_box_t, datum.date),
+	[PW_TYPE_STRING]			= offsetof(value_box_t, datum.strvalue),
+	[PW_TYPE_OCTETS]			= offsetof(value_box_t, datum.octets),
+
+	[PW_TYPE_IPV4_ADDR]			= offsetof(value_box_t, datum.ipaddr),
+	[PW_TYPE_IPV4_PREFIX]		= offsetof(value_box_t, datum.ipv4prefix),
+	[PW_TYPE_IPV6_ADDR]			= offsetof(value_box_t, datum.ipv6addr),
+	[PW_TYPE_IPV6_PREFIX]		= offsetof(value_box_t, datum.ipv6prefix),
+	[PW_TYPE_IFID]				= offsetof(value_box_t, datum.ifid),
+	[PW_TYPE_ETHERNET]			= offsetof(value_box_t, datum.ether),
+
+	[PW_TYPE_BOOLEAN]			= offsetof(value_box_t, datum.boolean),
+	[PW_TYPE_BYTE]				= offsetof(value_box_t, datum.byte),
+	[PW_TYPE_SHORT]				= offsetof(value_box_t, datum.ushort),
+	[PW_TYPE_INTEGER]			= offsetof(value_box_t, datum.integer),
+	[PW_TYPE_INTEGER64]			= offsetof(value_box_t, datum.integer64),
+	[PW_TYPE_SIZE]				= offsetof(value_box_t, datum.size),
+
+	[PW_TYPE_SIGNED]			= offsetof(value_box_t, datum.sinteger),
+
+	[PW_TYPE_TIMEVAL]			= offsetof(value_box_t, datum.timeval),
+	[PW_TYPE_DECIMAL]			= offsetof(value_box_t, datum.decimal),
+	[PW_TYPE_DATE]				= offsetof(value_box_t, datum.date),
+
+	[PW_TYPE_ABINARY]			= offsetof(value_box_t, datum.filter),
 	[PW_TYPE_MAX]		= 0	/* Force compiler to allocate memory for all types */
 };
 
@@ -1691,23 +1702,24 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const va
 {
 	switch (src_type) {
 	default:
-		memcpy(dst, src, sizeof(*dst));
+		memcpy(&dst->datum, &src->datum, value_box_field_sizes[src_type]);
 		break;
 
 	case PW_TYPE_STRING:
 		dst->datum.strvalue = talloc_bstrndup(ctx, src->datum.strvalue, src->length);
-		dst->tainted = src->tainted;
 		if (!dst->datum.strvalue) return -1;
 		break;
 
 	case PW_TYPE_OCTETS:
 		dst->datum.octets = talloc_memdup(ctx, src->datum.octets, src->length);
-		dst->tainted = src->tainted;
 		talloc_set_type(dst->datum.strvalue, uint8_t);
 		if (!dst->datum.octets) return -1;
 		break;
 	}
+
+	dst->type = src->type;
 	dst->length = src->length;
+	dst->tainted = src->tainted;
 
 	return 0;
 }
