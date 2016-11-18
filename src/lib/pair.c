@@ -1001,8 +1001,8 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	 *	hierarchy than b, it should come
 	 *	before b.
 	 */
-	if (!da_a && da_b) return +1;
-	if (da_a && !da_b) return -1;
+	if (da_a && !da_b) return +1;
+	if (!da_a && da_b) return -1;
 
 	if (vp_a->tag > vp_b->tag) return +1;
 	if (vp_b->tag < vp_b->tag) return -1;
