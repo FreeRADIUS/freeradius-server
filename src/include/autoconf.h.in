@@ -32,6 +32,9 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define to 1 if you have the `ASN1_STRING_get0_data' function. */
+#undef HAVE_ASN1_STRING_GET0_DATA
+
 /* Define if your compiler supports the __bounded__ attribute (usually OpenBSD
    gcc). */
 #undef HAVE_ATTRIBUTE_BOUNDED
@@ -62,6 +65,9 @@
 
 /* Define to 1 if you have the `collectdclient' library (-lcollectdclient). */
 #undef HAVE_COLLECTDC_H
+
+/* Define to 1 if you have the `CONF_modules_load_file' function. */
+#undef HAVE_CONF_MODULES_LOAD_FILE
 
 /* Do we have the crypt function */
 #undef HAVE_CRYPT
@@ -151,6 +157,12 @@
 
 /* Define to 1 if you have the <history.h> header file. */
 #undef HAVE_HISTORY_H
+
+/* Define to 1 if you have the `HMAC_CTX_free' function. */
+#undef HAVE_HMAC_CTX_FREE
+
+/* Define to 1 if you have the `HMAC_CTX_new' function. */
+#undef HAVE_HMAC_CTX_NEW
 
 /* Define if the function (or macro) htonll exists. */
 #undef HAVE_HTONLL
