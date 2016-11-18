@@ -1107,6 +1107,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \
+      openssl/hmac.h \
       openssl/md5.h \
       openssl/md4.h \
       openssl/sha.h \
