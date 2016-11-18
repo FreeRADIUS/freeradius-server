@@ -72,13 +72,19 @@ struct value_box {
 		uint8_t			ether[6];		//!< Ethernet (MAC) address.
 
 		bool			boolean;		//!< A truth value.
-		uint8_t			byte;			//!< 8bit unsigned integer.
-		uint16_t		ushort;			//!< 16bit unsigned integer.
-		uint32_t		integer;		//!< 32bit unsigned integer.
-		uint64_t		integer64;		//!< 64bit unsigned integer.
-		size_t			size;			//!< System specific file/memory size.
 
-		int32_t			sinteger;		//!< 32bit signed integer.
+		struct {
+			union {
+				uint8_t			byte;		//!< 8bit unsigned integer.
+				uint16_t		ushort;		//!< 16bit unsigned integer.
+				uint32_t		integer;	//!< 32bit unsigned integer.
+				uint64_t		integer64;	//!< 64bit unsigned integer.
+				size_t			size;		//!< System specific file/memory size.
+
+				int32_t			sinteger;	//!< 32bit signed integer.
+			};
+			fr_dict_attr_t const		*enumv;		//!< Enumeration values for integer type.
+		};
 
 		struct timeval		timeval;		//!< A time value with usec precision.
 		double			decimal;		//!< Double precision float.

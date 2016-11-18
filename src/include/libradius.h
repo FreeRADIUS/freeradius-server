@@ -177,6 +177,7 @@ char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
 size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
 size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
 char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
+char		*fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)

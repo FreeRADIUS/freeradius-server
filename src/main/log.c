@@ -822,7 +822,7 @@ print_msg:
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	msg_exp = talloc_vasprintf(request, msg, aq);
+	msg_exp = fr_vasprintf(request, msg, aq);
 	va_end(aq);
 
 	/*
