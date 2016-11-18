@@ -443,11 +443,13 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 */
 		if (auth_type->vp_integer == PW_AUTH_TYPE_ACCEPT) {
 			RDEBUG2("Auth-Type = Accept, allowing user");
+			request->reply->code = PW_CODE_ACCESS_ACCEPT;
 			goto setup_send;
 		}
 
 		if (auth_type->vp_integer == PW_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
+			request->reply->code = PW_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
