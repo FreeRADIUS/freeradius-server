@@ -1329,19 +1329,22 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *	but the DHCP attributes are hacked into the server under a vendor
 	 *	dictionary, so we can't.
 	 */
-	if ((my_a->da->parent->type != PW_TYPE_TLV) && (my_b->da->parent->type != PW_TYPE_TLV)) {
-		/*
-		 *	DHCP-Message-Type is first, for simplicity.
-		 */
-		if ((my_a->da->attr == PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr != PW_DHCP_MESSAGE_TYPE)) return -1;
-		if ((my_a->da->attr != PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE)) return +1;
 
-		/*
-		 *	Relay-Agent is last
-		 */
-		if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return +1;
-		if ((my_a->da->attr != PW_DHCP_OPTION_82) && (my_b->da->attr == PW_DHCP_OPTION_82)) return -1;
-	}
+	/*
+	 *	DHCP-Message-Type is first, for simplicity.
+	 */
+	if (((my_a->da->parent->type != PW_TYPE_TLV) && (my_a->da->attr == PW_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type == PW_TYPE_TLV) || (my_b->da->attr != PW_DHCP_MESSAGE_TYPE))) return -1;
+	if (((my_a->da->parent->type == PW_TYPE_TLV) || (my_a->da->attr != PW_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type != PW_TYPE_TLV) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE))) return +1;
+
+	/*
+	 *	Relay-Agent is last
+	 */
+	if (((my_a->da->parent->type != PW_TYPE_TLV) && (my_a->da->attr == PW_DHCP_OPTION_82)) &&
+	    ((my_b->da->parent->type == PW_TYPE_TLV) || (my_b->da->attr != PW_DHCP_OPTION_82))) return +1;
+	if (((my_a->da->parent->type == PW_TYPE_TLV) || (my_a->da->attr != PW_DHCP_OPTION_82)) &&
+	    ((my_b->da->parent->type != PW_TYPE_TLV) && (my_b->da->attr == PW_DHCP_OPTION_82))) return -1;
 
 	return fr_pair_cmp_by_parent_num_tag(my_a->da, my_b->da);
 }
