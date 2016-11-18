@@ -834,15 +834,27 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 	}
 }
 
+/** Order attributes by their da, and tag
+ *
+ * Useful where attributes need to be aggregated, but not necessarily
+ * ordered by attribute number.
+ *
+ * @param[in] a		first dict_attr_t.
+ * @param[in] b		second dict_attr_t.
+ * @return
+ *	- +1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
 int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
 
+	uint8_t cmp;
+
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
-
-	uint8_t cmp;
 
 	cmp = fr_pointer_cmp(my_a->da, my_b->da);
 	if (cmp != 0) return cmp;
@@ -850,6 +862,81 @@ int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
 	if (my_a->tag < my_b->tag) return -1;
 
 	if (my_a->tag > my_b->tag) return 1;
+
+	return 0;
+}
+
+/** Order attributes by their attribute number, and tag
+ *
+ * @param[in] a		first dict_attr_t.
+ * @param[in] b		second dict_attr_t.
+ * @return
+ *	- +1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
+static inline int8_t pair_cmp_by_num_tag(void const *a, void const *b)
+{
+	VALUE_PAIR const *my_a = a;
+	VALUE_PAIR const *my_b = b;
+
+	VERIFY_VP(my_a);
+	VERIFY_VP(my_b);
+
+	if (my_a->da->attr < my_b->da->attr) return -1;
+	if (my_a->da->attr > my_b->da->attr) return +1;
+
+	if (my_a->tag < my_b->tag) return -1;
+	if (my_a->tag > my_b->tag) return +1;
+
+	return 0;
+}
+
+/** Order attributes by their parent(s), attribute number, and tag
+ *
+ * Useful for some protocols where attributes of the same number should by aggregated
+ * within a packet or container TLV.
+ *
+ * @param[in] a		first dict_attr_t.
+ * @param[in] b		second dict_attr_t.
+ * @return
+ *	- +1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
+int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
+{
+	VALUE_PAIR const	*vp_a = a;
+	VALUE_PAIR const	*vp_b = b;
+	fr_dict_attr_t const	*da_a = vp_a->da;
+	fr_dict_attr_t const	*da_b = vp_b->da;
+	fr_dict_attr_t const	*tlv_stack_a[FR_DICT_MAX_TLV_STACK + 1];
+	fr_dict_attr_t const	*tlv_stack_b[FR_DICT_MAX_TLV_STACK + 1];
+
+	/*
+	 *	Fast path (assuming attributes
+	 *	are in the same dictionary).
+	 */
+	if ((da_b->parent->flags.is_root) && (da_b->parent->flags.is_root)) return pair_cmp_by_num_tag(vp_a, vp_b);
+
+	fr_proto_tlv_stack_build(tlv_stack_a, da_a);
+	fr_proto_tlv_stack_build(tlv_stack_b, da_b);
+
+	for (da_a = tlv_stack_a[0], da_b = tlv_stack_b[0]; da_a && da_b; da_a++, da_b++) {
+		if (da_a->attr > da_b->attr) return +1;
+		if (da_b->attr < da_b->attr) return -1;
+	}
+
+	/*
+	 *	If a has a shallower attribute
+	 *	hierarchy than b, it should come
+	 *	before b.
+	 */
+	if (!da_a && da_b) return +1;
+	if (da_a && !da_b) return -1;
+
+	if (vp_a->tag > vp_b->tag) return +1;
+	if (vp_b->tag < vp_b->tag) return -1;
 
 	return 0;
 }

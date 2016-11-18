@@ -240,6 +240,7 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
  */
 #define		fr_pair_cmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _b->da->type, &_b->data)
 int8_t		fr_pair_cmp_by_da_tag(void const *a, void const *b);
+int8_t		fr_pair_cmp_by_parent_num_tag(void const *a, void const *b);
 int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
 int		fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
 void		fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp);
