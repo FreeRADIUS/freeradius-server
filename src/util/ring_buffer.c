@@ -36,6 +36,7 @@ struct fr_ring_buffer_t {
 	size_t		data_end;	//!< end of used portion of the buffer
 
 	size_t		write_offset;	//!< where writes are done
+	size_t		reserved;	//!< amount of reserved data at write_offset
 
 	bool		closed;		//!< whether allocations are closed
 };
@@ -44,6 +45,11 @@ struct fr_ring_buffer_t {
 /** Create a ring buffer.
  *
  *  The ring buffer should be a power of two in size.
+ *
+ *  The ring buffer manages how much room is reserved (i.e. available
+ *  to write to), and used.  The application is responsible for
+ *  tracking the start of the reservation, *and* it's write offset
+ *  within that reservation.
  *
  * @param[in] ctx a talloc context
  * @param[in] size of the raw ring buffer array to allocate.
@@ -67,12 +73,12 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 }
 
 
-/** Check if we can reserve bytes in the ring buffer.
+/** Reserve room in the ring buffer.
  *
- *  The size does not need to be a power of two.  The caller is
+ *  The size does not need to be a power of two.  The application is
  *  responsible for doing cache alignment, if required.
  *
- *  If the reservation fails, the caller should create a new ring
+ *  If the reservation fails, the application should create a new ring
  *  buffer, and start reserving data there.
  *
  * @param[in] rb a ring buffer
@@ -109,6 +115,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	 *	|....S****WE....|
 	 */
 	if ((rb->write_offset + size) <= rb->size) {
+		rb->reserved = size;
 		return rb->buffer + rb->write_offset;
 	}
 
@@ -120,6 +127,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	 *	|W....S****E....|
 	 */
 	if (size < rb->data_start) {
+		rb->reserved = size;
 		rb->write_offset = 0;
 		return rb->buffer;
 	}
@@ -135,10 +143,13 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 
 /** Mark data as allocated.
  *
- *  The size does not need to be a power of two.  The caller is
- *  responsible for doing cache alignment, if required.
+ *  The size does not need to be a power of two.  The application is
+ *  responsible for doing cache-line alignment, if required.
  *
- *  If the allocation fails, the caller should create a new ring
+ *  The application does NOT need to call fr_ring_buffer_reserve() before
+ *  calling this function.
+ *
+ *  If the allocation fails, the application should create a new ring
  *  buffer, and start allocating data there.
  *
  * @param[in] rb a ring buffer
@@ -156,6 +167,16 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 #endif
 
 	if (rb->closed) return NULL;
+
+	/*
+	 *	Shrink the "reserved" portion of the buffer by the
+	 *	allocated size.
+	 */
+	if (rb->reserved >= size) {
+		rb->reserved -= size;
+	} else {
+		rb->reserved = 0;
+	}
 
 	/*
 	 *	We're writing to the start of the buffer, and there is
@@ -219,139 +240,88 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 }
 
 
-/** Move data from the end of the buffer to the start.
+/** Split an existing reservation into two.
  *
  *  For protocols like TCP, there may sometimes be a partial packet at
  *  the end of the ring buffer.  We would like to pass a *complete*
  *  packet around instead of a partial one.  In that case, the partial
- *  packet at the end of the buffer should be copied to the start of
- *  the buffer, and the various pointers adjusted.
+ *  packet at the end of the buffer should be copied to a reservation
+ *  in a new ring buffer.
  *
- *  Note that the currently allocated data MUST exactly reach the end
- *  of the ring buffer, and the start of the ring buffer MUST NOT have
- *  any data in it.  If either condition fails, or if there isn't
- *  enough room for the data, the allocation fails.
+ *  i.e. the application uses fr_ring_buffer_reserve() to reserve 32K
+ *  of room.  He then reads 32K of data into that buffer.  This data
+ *  comprises 3 full packets of 10K, and one partial packet of 10K.
+ *  The application then calls fr_ring_buffer_alloc() three times, to
+ *  consume those packets.  (Note that the caller doesn't really need
+ *  to do 3 calls to fr_ring_buffer_alloc().  The ring buffer does not
+ *  keep track of individual allocations).
  *
- *  The caller could arguable do this themselves via calls to
- *  fr_ring_buffer_reserve() and fr_ring_buffer_shrink(), and a
- *  memcpy().  But having an API means less code duplication, and more
- *  assertions.
+ *  The application then calls fr_ring_buffer_reserve() to reserve
+ *  another 32K of room, while leaving 2K of data in the ring buffer.
+ *  If that reservation succeeds, great.  Everything proceeds as
+ *  before.  (Note that the application has to remember how much data
+ *  was in the ring buffer, and do it's reading there, instead of to
+ *  the pointer returned from fr_ring_buffer_reserve()).
  *
- * @param[in] rb a ring buffer
+ *  If that call fails, there is 2K of partial data in the buffer
+ *  which needs to be moved.  The application should allocate a new
+ *  ring buffer, and then call this function to move the data to the
+ *  new ring buffer.  The application then uses the new reservation to
+ *  read data.
+ *
+ * @param[in] dst ring buffer where the reservation will be made
+ * @param[in] reserve_size size of the new reservation
+ * @param[in] src ring buffer where the data is sitting.
  * @param[in] move_size of data to move from the tail of the buffer to the start.
- * @param[in] reserve_size size of the data to reserve at the start of the buffer.
  * @return
  *	- NULL on error.
  *      - pointer to data on success
  */
-uint8_t *fr_ring_buffer_move(fr_ring_buffer_t *rb, size_t move_size, size_t reserve_size)
+uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size,
+				      fr_ring_buffer_t *src, size_t move_size)
 {
 	uint8_t *p;
 
 #ifndef NDEBUG
-	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
+	(void) talloc_get_type_abort(src, fr_ring_buffer_t);
+	(void) talloc_get_type_abort(dst, fr_ring_buffer_t);
 #endif
 
-	if (rb->closed) return NULL;
+	if (dst->closed) return NULL;
 
 	/*
-	 *	Not at the end of the buffer.
+	 *	The application hasn't reserved enough space, so we can't
+	 *	split the reservation.
 	 */
-	if (rb->write_offset != rb->size) return NULL;
+	if (src->reserved < move_size) return NULL;
 
 	/*
-	 *	Asked to move more data than is in the buffer.
+	 *	Create a new reservation.
 	 */
-	if (rb->data_start + move_size > rb->size) return NULL;
-
-	/*
-	 *	Allocate the new memory.  If it exists, it must be at
-	 *	the start of the buffer.
-	 */
-	p = fr_ring_buffer_reserve(rb, reserve_size);
+	p = fr_ring_buffer_reserve(dst, reserve_size);
 	if (!p) return NULL;
 
-	rad_assert(p = rb->buffer);
-	rad_assert(rb->data_end == rb->write_offset);
+	/*
+	 *	Copy the data from the old buffer to the new one.
+	 */
+	memcpy(p, src->buffer + src->write_offset, move_size);
 
 	/*
-	 *	Copy the data to the start of the buffer, and shift
-	 *	the "data end" pointer down to compensate.
+	 *	We now have no data reserved here.  All bets are
+	 *	off...
 	 */
-	memcpy(p, rb->buffer + rb->size - move_size, move_size);
-	rb->data_end -= move_size;
+	src->reserved = 0;
 
 	return p;
 }
 
 
-/** Shrink the data in the ring buffer.
- *
- *  The partner to fr_ring_buffer_move().  If calling
- *  fr_ring_buffer_move() fails, then the caller needs to move the
- *  partial packet to a *new* ring buffer.  In that case, the caller
- *  allocates a new ring buffer, reserves memory there, manually
- *  memcpy()'s the data over, and then calls fr_ring_buffer_shrink()
- *  to inform the buffer that the trailing data is no longer relevant.
- *
- * @param[in] rb a ring buffer
- * @param[in] data pointer to the data to free
- * @param[in] size of data to discard from the end of the buffer.
- * @return
- *	- <0 on error
- *      - 0 on success
- */
-int fr_ring_buffer_shrink(fr_ring_buffer_t *rb, uint8_t *data, size_t size)
-{
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
-
-	/*
-	 *	Callers can shrink a closed ring buffer.
-	 */
-
-	/*
-	 *	Free data from the start of the buffer.
-	 */
-	if (rb->write_offset < rb->data_start) {
-		if (rb->write_offset < size) return -1;
-
-		if ((data + size) != (rb->buffer + rb->write_offset)) return -1;
-
-		rb->write_offset -= size;
-
-		/*
-		 *	If the write_offset is at the start of the
-		 *	buffer, back it up to the end of the buffer.
-		 */
-		if ((rb->write_offset == 0) &&
-		    (rb->data_end < rb->size)) {
-			rb->write_offset = rb->data_end;
-		}
-
-		return 0;
-	}
-
-	/*
-	 *	Free data from the middle of the buffer.
-	 */
-	if ((rb->data_end - rb->data_start) > size) return -1;
-
-	if ((data + size) != (rb->buffer + rb->data_end)) return -1;
-
-	rb->data_end -= size;
-	rb->write_offset = rb->data_end;
-
-	return 0;
-}
-
-
 /** Mark data as free,
  *
- *  The size does not need to be a power of two.  The caller is
- *  responsible for doing cache alignment, if required.  The caller is
- *  responsible for tracking sizes of packets in the ring buffer.
+ *  The size does not need to be a power of two.  The application is
+ *  responsible for doing cache alignment, if required.  The
+ *  application is responsible for tracking sizes of packets in the
+ *  ring buffer.
  *
  *  If "unused" bytes are more than what's in the buffer, the used
  *  bytes are reset to zero.
