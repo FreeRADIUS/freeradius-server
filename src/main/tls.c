@@ -2456,7 +2456,7 @@ void tls_global_init(void)
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
-	OPENSSL_config(NULL);
+	CONF_modules_load_file(NULL, NULL, 0);
 
 	/*
 	 *	Initialize the index for the certificates.
