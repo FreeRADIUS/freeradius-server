@@ -74,6 +74,7 @@ typedef struct fr_channel_data_t {
 	};
 
 	void			*ctx;		//!< packet context.  Usually socket information
+	uint32_t		protocol;	//!< protocol ID for this packet
 
 	union {
 		struct {
