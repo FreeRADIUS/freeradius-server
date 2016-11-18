@@ -1412,7 +1412,11 @@ error:
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, int *copy)
+#else
+static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int len, int *copy)
+#endif
 {
 	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
@@ -1911,7 +1915,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		cn_str[1024];
 	char		buf[64];
 	X509		*client_cert;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	const STACK_OF(X509_EXTENSION) *ext_list;
+#else
 	STACK_OF(X509_EXTENSION) *ext_list;
+#endif
 	SSL		*ssl;
 	int		err, depth, lookup, loc;
 	fr_tls_server_conf_t *conf;
