@@ -111,7 +111,10 @@ typedef struct fr_message_ring_t {
  *  With an initial message array size of 64, this gives us room for
  *  2M packets, if *all* of the m_array entries have packets stuck in
  *  them that aren't cleaned up for extended periods of time.
- *  
+ *
+ *  @todo Add a flag for UDP-style protocols, where we can put the
+ *  message into the ring buffer.  This helps with locality of
+ *  reference, and removes the need to track two separate things.
  */
 struct fr_message_set_t {
 	int			m_current;	//!< current used message array entry
