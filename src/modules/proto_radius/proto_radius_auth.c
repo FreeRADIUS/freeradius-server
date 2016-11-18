@@ -430,29 +430,36 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		}
 
 		/*
+		 *	No Auth-Type, force it to reject.
+		 */
+		if (!auth_type) {
+			REDEBUG2("No Auth-Type available: rejecting the user.");
+			request->reply->code = PW_CODE_ACCESS_REJECT;
+			goto setup_send;
+		}
+
+		/*
 		 *	Handle hard-coded Accept and Reject.
 		 */
-		if (auth_type) {
-			if (auth_type->vp_integer == PW_AUTH_TYPE_ACCEPT) {
-				RDEBUG2("Auth-Type = Accept, allowing user");
-				goto setup_send;
-			}
+		if (auth_type->vp_integer == PW_AUTH_TYPE_ACCEPT) {
+			RDEBUG2("Auth-Type = Accept, allowing user");
+			goto setup_send;
+		}
 
-			if (auth_type->vp_integer == PW_AUTH_TYPE_REJECT) {
-				RDEBUG2("Auth-Type = Reject, rejecting user");
-				goto setup_send;
-			}
+		if (auth_type->vp_integer == PW_AUTH_TYPE_REJECT) {
+			RDEBUG2("Auth-Type = Reject, rejecting user");
+			goto setup_send;
+		}
 
-			/*
-			 *	Find the appropriate Auth-Type by name.
-			 */
-			vp = auth_type;
-			dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
-			if (!dv) {
-				REDEBUG2("Unknown Auth-Type %d found: rejecting the user.", vp->vp_integer);
-				request->reply->code = PW_CODE_ACCESS_REJECT;
-				goto setup_send;
-			}
+		/*
+		 *	Find the appropriate Auth-Type by name.
+		 */
+		vp = auth_type;
+		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		if (!dv) {
+			REDEBUG2("Unknown Auth-Type %d found: rejecting the user.", vp->vp_integer);
+			request->reply->code = PW_CODE_ACCESS_REJECT;
+			goto setup_send;
 		}
 
 		unlang = cf_section_sub_find_name2(request->server_cs, "process", dv->name);
