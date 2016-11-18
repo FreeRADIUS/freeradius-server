@@ -1911,7 +1911,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		cn_str[1024];
 	char		buf[64];
 	X509		*client_cert;
-	X509_CINF	*client_inf;
 	STACK_OF(X509_EXTENSION) *ext_list;
 	SSL		*ssl;
 	int		err, depth, lookup, loc;
@@ -2017,7 +2016,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
+	X509_NAME_oneline(X509_get_issuer_name(client_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && issuer[0]) {
@@ -2110,8 +2109,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (lookup == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		ext_list = X509_get0_extensions(client_cert);
+#else
+		X509_CINF	*client_inf;
 		client_inf = client_cert->cert_info;
 		ext_list = client_inf->extensions;
+#endif
 	} else {
 		ext_list = NULL;
 	}
@@ -2171,7 +2175,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	REXDENT();
 
-	switch (ctx->error) {
+	switch (X509_STORE_CTX_get_error(ctx)) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
 		RERROR("issuer=%s", issuer);
 		break;
