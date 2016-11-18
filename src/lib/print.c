@@ -399,13 +399,27 @@ char *fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
 }
 
 DIAG_OFF(format-nonliteral)
-/** Special version of printf which supports %b and %v
+/** Special version of vasprintf which implements custom format specifiers
  *
  * @todo Do something sensible with 'n$', though it's probably not actually used
- *	anywhere in the server.
+ *	anywhere in our code base.
  *
- * - %b takes a talloced binary buffer and prints it as hex.
- *	The length of the buffer is determined with a cal
+ * - %pH takes a talloced binary buffer and prints it as hex. The length of the
+ *	 buffer is determined with a call to talloc_array_length()
+ *
+ * - %pV prints a value box as a string.
+ *
+ * This breaks strict compatibility with printf but allows us to continue using
+ * the static format string and argument type validation.
+ *
+ * This same idea is used in Linux for the printk function.
+ *
+ * @param[in] ctx	to allocate buffer in.
+ * @param[in] fmt	string.
+ * @param[in] ap	variadic argument list.
+ * @return
+ *	- The result of string interpolation.
+ *	- NULL if OOM.
  */
 char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 {
@@ -586,84 +600,92 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			break;
 
 		case 'p':
-			(void) va_arg(ap_q, void *);					/* void * */
+			/*
+			 *	Custom types
+			 */
+			switch (*(p + 1)) {
+
+			case 'H':
+			{
+				value_box_t const *value = va_arg(ap_q, value_box_t const *);
+
+				p++;
+
+				/*
+				 *	Allocations that are not part of the output
+				 *	string need to occur in the NULL ctx so we don't fragment
+				 *	any pool associated with it.
+				 */
+				custom = value_box_asprint(NULL, value->type, value->datum.enumv, value, '"');
+				if (!custom) {
+					talloc_free(out);
+					return NULL;
+				}
+
+			do_splice:
+				/*
+				 *	Pass part of a format string to printf
+				 */
+				if (fmt_q != fmt_p) {
+					char *sub_fmt;
+
+					sub_fmt = talloc_strndup(NULL, fmt_p, fmt_q - fmt_p);
+					out_tmp = talloc_vasprintf_append_buffer(out, sub_fmt, ap_p);
+					talloc_free(sub_fmt);
+					if (!out_tmp) {
+					oom:
+						fr_strerror_printf("Out of memory");
+						talloc_free(out);
+						talloc_free(custom);
+						va_end(ap_p);
+						va_end(ap_q);
+						return NULL;
+					}
+					out = out_tmp;
+
+					out_tmp = talloc_strdup_append_buffer(out, custom);
+					TALLOC_FREE(custom);
+					if (!out_tmp) goto oom;
+					out = out_tmp;
+
+					va_end(ap_p);		/* one time use only */
+					va_copy(ap_p, ap_q);	/* already advanced to the next argument */
+				}
+
+				fmt_p = p + 1;
+			}
+				break;
+
+			case 'B':
+			{
+				uint8_t const *bin = va_arg(ap_q, uint8_t *);
+
+				p++;
+
+				/*
+				 *	Only automagically figure out the length
+				 *	if it's not specified.
+				 *
+				 *	This allows %b to be used with stack buffers,
+				 *	so long as the length is specified in the format string.
+				 */
+				if (precision == 0) precision = talloc_array_length(bin);
+
+				custom = talloc_array(NULL, char, (precision * 2) + 1);
+				if (!custom) goto oom;
+				fr_bin2hex(custom, bin, precision);
+
+				goto do_splice;
+			}
+
+			default:
+				(void) va_arg(ap_q, void *);					/* void * */
+			}
 			break;
 
 		case 'n':
 			(void) va_arg(ap_q, int *);					/* int * */
 			break;
-
-		/*
-		 *	Custom types
-		 */
-		case 'v':
-		{
-			value_box_t const *value = va_arg(ap_q, value_box_t const *);
-
-			/*
-			 *	Allocations that are not part of the output
-			 *	string need to occur in the NULL ctx so we don't fragment
-			 *	any pool associated with it.
-			 */
-			custom = value_box_asprint(NULL, value->type, value->datum.enumv, value, '"');
-			if (!custom) {
-				talloc_free(out);
-				return NULL;
-			}
-
-		do_splice:
-			/*
-			 *	Pass part of a format string to printf
-			 */
-			if (fmt_q != fmt_p) {
-				char *sub_fmt;
-
-				sub_fmt = talloc_strndup(NULL, fmt_p, fmt_q - fmt_p);
-				out_tmp = talloc_vasprintf_append_buffer(out, sub_fmt, ap_p);
-				talloc_free(sub_fmt);
-				if (!out_tmp) {
-				oom:
-					fr_strerror_printf("Out of memory");
-					talloc_free(out);
-					talloc_free(custom);
-					va_end(ap_p);
-					va_end(ap_q);
-					return NULL;
-				}
-				out = out_tmp;
-
-				out_tmp = talloc_strdup_append_buffer(out, custom);
-				TALLOC_FREE(custom);
-				if (!out_tmp) goto oom;
-				out = out_tmp;
-
-				va_end(ap_p);		/* one time use only */
-				va_copy(ap_p, ap_q);	/* already advanced to the next argument */
-			}
-
-			fmt_p = p + 1;
-		}
-			break;
-
-		case 'b':
-		{
-			uint8_t const *bin = va_arg(ap_q, uint8_t *);
-
-			/*
-			 *	Only automagically figure out the length
-			 *	if it's not specified.
-			 *
-			 *	This allows %b to be used with stack buffers,
-			 *	so long as the length is specified in the format string.
-			 */
-			if (precision == 0) precision = talloc_array_length(bin);
-
-			custom = talloc_array(NULL, char, (precision * 2) + 1);
-			if (!custom) goto oom;
-			fr_bin2hex(custom, bin, precision);
-
-			goto do_splice;
-		}
 
 		default:
 			break;
