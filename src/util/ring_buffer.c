@@ -103,6 +103,7 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	 */
 	if (rb->write_offset < rb->data_start) {
 		if ((rb->write_offset + size) < rb->data_start) {
+			rb->reserved = size;
 			return rb->buffer + rb->write_offset;
 		}
 
@@ -127,8 +128,8 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 	 *	|W....S****E....|
 	 */
 	if (size < rb->data_start) {
-		rb->reserved = size;
 		rb->write_offset = 0;
+		rb->reserved = size;
 		return rb->buffer;
 	}
 
