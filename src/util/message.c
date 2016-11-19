@@ -1056,7 +1056,7 @@ alloc_rb:
 	 */
 	m->rb = rb;
 	m->data = fr_ring_buffer_reserve(m->rb, m->rb_size);
-	if (m) return m;
+	if (m->data) return m;
 
 cleanup:
 	MPRINT("OUT OF MEMORY\n");
