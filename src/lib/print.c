@@ -436,7 +436,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		char		*q;
 		char		*custom = NULL;
 		char		len[2] = { '\0', '\0' };
-		long		width = 0, group = 0, precision = 0, tmp;
+		long		precision = 0, tmp;
 
 		if ((*p != '%') || (*++p == '%')) {
 			fmt_q = p + 1;
@@ -448,7 +448,6 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		 */
 		tmp = strtoul(p, &q, 10);
 		if ((q != p) && (*q == '$')) {
-			group = tmp;
 			p = q + 1;
 		}
 
@@ -482,10 +481,10 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		 *	Check for width field
 		 */
 		if (*p == '*') {
-			width = va_arg(ap_q, int);
+			(void) va_arg(ap_q, int);
 			p++;
 		} else {
-			width = strtoul(p, &q, 10);
+			(void) strtoul(p, &q, 10);
 			p = q;
 		}
 
