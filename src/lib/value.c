@@ -1719,7 +1719,7 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const va
 		break;
 	}
 
-	dst->type = src->type;
+	dst->type = src_type;
 	dst->length = src->length;
 	dst->tainted = src->tainted;
 
