@@ -435,7 +435,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 		char		*q;
 		char		len[2] = { '\0', '\0' };
-		long		precision = 0, tmp;
+		long		precision = 0;
 
 		if ((*p != '%') || (*++p == '%')) {
 			fmt_q = p + 1;
@@ -445,7 +445,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		/*
 		 *	Check for parameter field
 		 */
-		tmp = strtoul(p, &q, 10);
+		strtoul(p, &q, 10);
 		if ((q != p) && (*q == '$')) {
 			p = q + 1;
 		}
