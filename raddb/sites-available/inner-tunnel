@@ -313,30 +313,34 @@ post-auth {
 
 
 	#
-	#  Instead of "use_tunneled_reply", uncomment the
-	#  next two "update" blocks.
+	#  Instead of "use_tunneled_reply", change this "if (0)" to an
+	#  "if (1)".
 	#
-#	update {
-#		&outer.session-state: += &reply:
-#	}
+	if (0) {
+		#
+		#  These attributes are for the inner-tunnel only,
+		#  and MUST NOT be copied to the outer reply.
+		#
+		update reply {
+			User-Name !* ANY
+			Message-Authenticator !* ANY
+			EAP-Message !* ANY
+			Proxy-State !* ANY
+			MS-MPPE-Encryption-Types !* ANY
+			MS-MPPE-Send-Key !* ANY
+			MS-MPPE-Recv-Key !* ANY
+		}
 
-	#
-	#  These attributes are for the inner session only.
-	#  They MUST NOT be sent in the outer reply.
-	#
-	#  If you uncomment the previous block and leave
-	#  this one commented out, WiFi WILL NOT WORK,
-	#  because the client will get two MS-MPPE-keys
-	#
-#	update outer.session-state {
-#		MS-MPPE-Encryption-Policy !* ANY
-#		MS-MPPE-Encryption-Types !* ANY
-#		MS-MPPE-Send-Key !* ANY
-#		MS-MPPE-Recv-Key !* ANY
-#		Message-Authenticator !* ANY
-#		EAP-Message !* ANY
-#		Proxy-State !* ANY
-#	}
+		#
+		#  Copy the inner reply attributes to the outer
+		#  session-state list.  The post-auth policy will take
+		#  care of copying the outer session-state list to the
+		#  outer reply.
+		#
+		update {
+			&outer.session-state: += &reply:
+		}
+	}
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
