@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 	 *	Do 1000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 1000; i++) {
-		if (debug_lvl) printf("Loop %d (used %zd) \n", i, used);
+		if (debug_lvl) printf("Loop %d (used %zu) \n", i, used);
 		alloc_blocks(rb, &seed, &start, &end);
 
 		free_blocks(rb, &seed, &start, &end);

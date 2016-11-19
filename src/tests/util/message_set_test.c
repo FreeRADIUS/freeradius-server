@@ -220,13 +220,13 @@ int main(int argc, char *argv[])
 	 *	Do 1000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 4; i++) {
-		MPRINT2("Loop %d (used %zd) \n", i, used);
+		MPRINT2("Loop %d (used %zu) \n", i, used);
 		alloc_blocks(ms, &seed, &start, &end);
 
 		free_blocks(ms, &seed, &start, &end);
 	}
 
-	MPRINT1("TEST 1 used %d (%zd)\n", fr_message_set_messages_used(ms), used);
+	MPRINT1("TEST 1 used %d (%zu)\n", fr_message_set_messages_used(ms), used);
 
 	if (debug_lvl) fr_message_set_debug(ms, stdout);
 
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 	 *	Do another 1000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 1000; i++) {
-		MPRINT2("Second loop %d (used %zd) \n", i, used);
+		MPRINT2("Second loop %d (used %zu) \n", i, used);
 		alloc_blocks(ms, &seed, &start, &end);
 
 		free_blocks(ms, &seed, &start, &end);
@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
 	 *	Do another 1000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 1000; i++) {
-		MPRINT2("Third loop %d (used %zd) \n", i, used);
+		MPRINT2("Third loop %d (used %zu) \n", i, used);
 		alloc_blocks(ms, &seed, &start, &end);
 
 		free_blocks(ms, &seed, &start, &end);
@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
 	 *	Do another 1000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 1000; i++) {
-		MPRINT2("Fourth loop %d (used %zd) \n", i, used);
+		MPRINT2("Fourth loop %d (used %zu) \n", i, used);
 		alloc_blocks(ms, &seed, &start, &end);
 
 		free_blocks(ms, &seed, &start, &end);
@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
 	 *	Do another 10000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 10000; i++) {
-		MPRINT2("fifth loop %d (used %zd) \n", i, used);
+		MPRINT2("fifth loop %d (used %zu) \n", i, used);
 		alloc_blocks(ms, &seed, &start, &end);
 
 		free_blocks(ms, &seed, &start, &end);
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
 	 *	Do another 10000 rounds of alloc / free.
 	 */
 	for (i = 0; i < 10000; i++) {
-		MPRINT2("sixth loop %d (used %zd) \n", i, used);
+		MPRINT2("sixth loop %d (used %zu) \n", i, used);
 		alloc_blocks(ms, &seed, &start, &end);
 
 		free_blocks(ms, &seed, &start, &end);
