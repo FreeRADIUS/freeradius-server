@@ -432,10 +432,10 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	va_copy(ap_q, ap_p);
 
 	do {
-
-		char		*q;
-		char		len[2] = { '\0', '\0' };
-		long		precision = 0;
+		char *q;
+		char len[2] = { '\0', '\0' };
+		long precision = 0;
+		char *custom = NULL;
 
 		if ((*p != '%') || (*++p == '%')) {
 			fmt_q = p + 1;
@@ -445,7 +445,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		/*
 		 *	Check for parameter field
 		 */
-		strtoul(p, &q, 10);
+		(void) strtoul(p, &q, 10);
 		if ((q != p) && (*q == '$')) {
 			p = q + 1;
 		}
@@ -598,9 +598,6 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			break;
 
 		case 'p':
-		{
-			char *custom = NULL;
-
 			/*
 			 *	Custom types
 			 */
@@ -682,7 +679,6 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				(void) va_arg(ap_q, void *);					/* void * */
 			}
 			break;
-		}
 
 		case 'n':
 			(void) va_arg(ap_q, int *);					/* int * */
