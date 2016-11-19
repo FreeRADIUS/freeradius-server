@@ -794,7 +794,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
  *      - NULL on error
  *	- fr_message_t* on success
  */
-static fr_message_t *fr_message_alloc_internal(fr_message_set_t *ms, fr_message_ring_t **p_mr, bool *p_cleaned)
+static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_ring_t **p_mr, bool *p_cleaned)
 {
 	int i;
 	fr_message_t *m;
@@ -901,66 +901,48 @@ static fr_message_t *fr_message_alloc_internal(fr_message_set_t *ms, fr_message_
 	return m;
 }
 
-
-/** Reserve a message
- *
- *  A later call to fr_message_alloc() will allocate the correct
- *  packet ring buffer size.  This call just allocates a message
- *  header, and reserves space for the packet.
- *
- *  If the caller later decides that the message is not needed, he
- *  should call fr_message_free() to free the message.
- *
- *  We assume that the caller will call fr_message_reserve(), and then
- *  almost immediately fr_message_alloc().  Multiple calls in series
- *  to fr_message_reserve() MUST NOT be done.  The caller could also
- *  just call fr_ring_buffer_alloc(m->rb, size) if they wanted, and
- *  then udpate m->data_size by hand...
- *
- *  The message is returned 
+/** Deallocate a message
  *
  * @param[in] ms the message set
- * @param[in] reserve_size to reserve
- * @return
- *      - NULL on error
- *	- fr_message_t* on success
+ * @param[in] mr the message ring
+ * @param[in] m the message
+ * @return NULL, always
  */
-fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
+static fr_message_t *fr_message_unalloc(fr_message_set_t *ms, fr_message_ring_t *mr, fr_message_t *m)
+{
+	/*
+	 *	Undo the allocation we did here.  Which requires us to
+	 *	remember that "mr" was the message ring from which we
+	 *	allocated the message.
+	 */
+	m->rb = NULL;
+	m->status = FR_MESSAGE_FREE;
+
+	mr->write_offset--;
+	ms->allocated--;
+
+	return NULL;
+}
+
+
+/** Get a ring buffer for a message
+ *
+ * @param[in] ms the message set
+ * @param[in] mr the message ring
+ * @param[in] m the message
+ * @param[in] cleaned_up whether the message set was partially garbage collected
+ * @return
+ *	- NULL on error, and m is deallocated
+ *	- m on success
+ */
+static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message_ring_t *mr, fr_message_t *m,
+						bool cleaned_up)
 {
 	int i;
-	bool cleaned_up = false;
-	fr_message_t *m;
-	fr_message_ring_t *mr;
 	fr_ring_buffer_t *rb;
 
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
-
-	if (reserve_size > ms->max_allocation) return NULL;
-
 	/*
-	 *	Get a bare message.
-	 */
-	m = fr_message_alloc_internal(ms, &mr, &cleaned_up);
-	if (!m) return NULL;
-
-	/*
-	 *	If the caller is not allocating any packet data, just
-	 *	return the empty message.
-	 */
-	if (!reserve_size) return m;
-
-	/*
-	 *	We leave m->data_size as zero, and m->rb_size as the
-	 *	reserved size.  This indicates that the message has
-	 *	reserved room for the packet data, but nothing has
-	 *	been allocated.
-	 */
-	m->rb_size = reserve_size;
-
-	/*
-	 *	And... we go through all of the above hoops, all over again.
+	 *	And... we go through a bunch of hoops, all over again.
 	 */
 	m->rb = ms->rb_array[ms->rb_current];
 	rad_assert(m->rb != NULL);
@@ -1061,18 +1043,66 @@ alloc_rb:
 cleanup:
 	MPRINT("OUT OF MEMORY\n");
 
+	return fr_message_unalloc(ms, mr, m);
+}
+
+
+/** Reserve a message
+ *
+ *  A later call to fr_message_alloc() will allocate the correct
+ *  packet ring buffer size.  This call just allocates a message
+ *  header, and reserves space for the packet.
+ *
+ *  If the caller later decides that the message is not needed, he
+ *  should call fr_message_free() to free the message.
+ *
+ *  We assume that the caller will call fr_message_reserve(), and then
+ *  almost immediately fr_message_alloc().  Multiple calls in series
+ *  to fr_message_reserve() MUST NOT be done.  The caller could also
+ *  just call fr_ring_buffer_alloc(m->rb, size) if they wanted, and
+ *  then udpate m->data_size by hand...
+ *
+ *  The message is returned
+ *
+ * @param[in] ms the message set
+ * @param[in] reserve_size to reserve
+ * @return
+ *      - NULL on error
+ *	- fr_message_t* on success
+ */
+fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
+{
+	bool cleaned_up;
+	fr_message_t *m;
+	fr_message_ring_t *mr;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(ms, fr_message_set_t);
+#endif
+
+	if (reserve_size > ms->max_allocation) return NULL;
+
 	/*
-	 *	Undo the allocation we did here.  Which requires us to
-	 *	remember that "mr" was the message ring from which we
-	 *	allocated the message.
+	 *	Allocate a bare message.
 	 */
-	m->rb = NULL;
-	m->status = FR_MESSAGE_FREE;
+	m = fr_message_get_message(ms, &mr, &cleaned_up);
+	if (!m) return NULL;
 
-	mr->write_offset--;
-	ms->allocated--;
+	/*
+	 *	If the caller is not allocating any packet data, just
+	 *	return the empty message.
+	 */
+	if (!reserve_size) return m;
 
-	return NULL;
+	/*
+	 *	We leave m->data_size as zero, and m->rb_size as the
+	 *	reserved size.  This indicates that the message has
+	 *	reserved room for the packet data, but nothing has
+	 *	been allocated.
+	 */
+	m->rb_size = reserve_size;
+
+	return fr_message_get_ring_buffer(ms, mr, m, cleaned_up);
 }
 
 /** Allocate packet data for a message
@@ -1085,10 +1115,10 @@ cleanup:
  *
  * @param[in] ms the message set
  * @param[in] m the message message to allocate packet data for
- * @param[in] actual_packet_size to reserve
+ * @param[in] actual_packet_size to use
  * @return
- *      - NULL on error
- *	- fr_message_t* on success
+ *      - NULL on error, and input message m is left alone
+ *	- fr_message_t* on success.  Will always be input message m.
  */
 fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
@@ -1114,7 +1144,6 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
 	rad_assert(p != NULL);
 	if (!p) {
-		// allocation failure, fix M.
 		return NULL;
 	}
 
@@ -1128,6 +1157,143 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	m->rb_size = actual_packet_size;
 
 	return m;
+}
+
+/** Allocate packet data for a message, and reserve a new message
+ *
+ *  This function allocates a previously reserved message, and then
+ *  reserves a new message.
+ *
+ *  The application should call fr_message_reserve() with a large
+ *  buffer, and then read data into the buffer.  If the buffer
+ *  contains multiple packets, the application should call
+ *  fr_message_alloc_reserve() repeatedly to allocate the full
+ *  packets, while reserving room for the partial packet.
+ *
+ *  When the application is determines that there is only one full
+ *  packet, and one partial packet in the buffer, it should call this
+ *  function with actual_packet_size, and a large reserve_size.  The
+ *  partial packet will be reserved.  If the ring buffer is full, the
+ *  partial packet will be copied to a new ring buffer.
+ *
+ *  When the application determines that there are multiple full
+ *  packets in the buffer, it should call this function with
+ *  actual_packet_size for each buffer, and reserve_size which
+ *  reserves all of the data in the buffer.  i.e. the full packets +
+ *  partial packets, which should start off as the original
+ *  reserve_size.
+ *
+ *  The application should call this function to allocate each packet,
+ *  while decreasing reserve_size by each actual_packet_size that was
+ *  allocated.  Once there is only one full and a partial packet in
+ *  the buffer, it should use a large reserve_size, as above.
+ *
+ *  The application could just always ecall this function with a large
+ *  reserve_size, at the cost of substantially more memcpy()s.
+ *
+ * @param[in] ms the message set
+ * @param[in] m the message message to allocate packet data for
+ * @param[in] actual_packet_size to use
+ * @param[in] reserve_size to reserve for new message
+ * @return
+ *      - NULL on error, and input message m is left alone
+ *	- fr_message_t* on success.  Will always be a new message.
+ */
+fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size,
+				       size_t reserve_size)
+{
+	bool cleaned_up;
+	size_t room;
+	uint8_t *p;
+	fr_message_t *m2;
+	fr_message_ring_t *mr;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(ms, fr_message_set_t);
+
+	/* m is NOT talloc'd */
+#endif
+
+	rad_assert(m->status == FR_MESSAGE_USED);
+	rad_assert(m->rb != NULL);
+	rad_assert(m->data != NULL);
+	rad_assert(m->data_size == 0);
+	rad_assert(m->rb_size >= actual_packet_size);
+
+	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
+	rad_assert(p != NULL);
+	if (!p) {
+		return NULL;
+	}
+
+	rad_assert(p == m->data);
+
+	room = m->rb_size - actual_packet_size;
+
+	/*
+	 *	The caller can change m->data size to something a bit
+	 *	smaller, e.g. for cache alignment issues.
+	 */
+	m->data_size = actual_packet_size;
+	m->rb_size = actual_packet_size;
+
+	/*
+	 *	If we've allocated all of the reserved ring buffer
+	 *	data, then just reserve a brand new reservation.
+	 */
+	if (!room) return fr_message_reserve(ms, reserve_size);
+
+	/*
+	 *	Allocate a new message.
+	 */
+	m2 = fr_message_get_message(ms, &mr, &cleaned_up);
+	if (!m2) {
+		return NULL;
+	}
+
+	/*
+	 *	Mark how much room there is in this message.
+	 */
+	m2->rb = m->rb;
+	m2->data_size = room;
+	m2->rb_size = room;
+
+	/*
+	 *	There is more room than the asked reservation.  The
+	 *	reservation MUST succeed.
+	 */
+	if (room >= reserve_size) {
+		m2->data = fr_ring_buffer_reserve(m2->rb, m2->rb_size);
+		rad_assert(m2->data != NULL);
+		if (!m2->data) {
+			return fr_message_unalloc(ms, mr, m2);
+		}
+	}
+
+	/*
+	 *	The caller is asking for more reserve than we have
+	 *	room for.  Find a new ring buffer, and call
+	 *	fr_ring_buffer_reserve_split() on it, and on the old
+	 *	one.
+	 */
+	if (!fr_message_get_ring_buffer(ms, mr, m2, false)) {
+		return NULL;
+	}
+
+	/*
+	 *	This shouldn't happen, but it's possible if the caller
+	 *	takes shortcuts, and doesn't check the things they
+	 *	need to check.
+	 */
+	if (m2->rb == m->rb) {
+		return m2;
+	}
+
+	/*
+	 *	Copy the remaining data from the old buffer to the new one.
+	 */
+	memcpy(m2->data, m->data + actual_packet_size, room);
+	return m2;
 }
 
 #define MS_ALIGN_SIZE (16)
