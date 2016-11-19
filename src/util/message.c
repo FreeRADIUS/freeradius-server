@@ -785,6 +785,122 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 	return m;
 }
 
+/**  Allocate a fr_message_t, WITHOUT a ring buffer.
+ *
+ * @param[in] ms the message set
+ * @param[out] p_mr the message ring we allocated the message from
+ * @param[out] p_cleaned a flag to indicate if we cleaned the message array
+ * @return
+ *      - NULL on error
+ *	- fr_message_t* on success
+ */
+static fr_message_t *fr_message_alloc_internal(fr_message_set_t *ms, fr_message_ring_t **p_mr, bool *p_cleaned)
+{
+	int i;
+	fr_message_t *m;
+	fr_message_ring_t *mr;
+
+	ms->allocated++;
+	*p_cleaned = false;
+	*p_mr = NULL;
+
+	/*
+	 *	Grab the current message array.  In the general case,
+	 *	there's room, so we grab a message and go find a ring
+	 *	buffer.
+	 */
+	mr = ms->m_array[ms->m_current];
+	m = fr_message_ring_alloc(ms, mr, true);
+	if (m) {
+		MPRINT("ALLOC normal\n");
+		*p_mr = mr;
+		return m;
+	}
+
+	MPRINT("CLEANING UP (%zd - %zd = %zd)\n", ms->allocated, ms->freed,
+		ms->allocated - ms->freed);
+
+	/*
+	 *	Else the buffer is full.  Do a global cleanup.
+	 */
+	fr_message_cleanup(ms, 128);
+	*p_cleaned = true;
+
+	/*
+	 *	If we're lucky, the cleanup has given us a new
+	 *	"current" buffer, which is empty.  If so, use it.
+	 */
+	mr = ms->m_array[ms->m_current];
+	m = fr_message_ring_alloc(ms, mr, true);
+	if (m) {
+		MPRINT("ALLOC after cleanup\n");
+		*p_mr = mr;
+		return m;
+	}
+
+	/*
+	 *	We've tried two allocations, and both failed.  Brute
+	 *	force over all arrays, trying to allocate one
+	 *	somewhere... anywhere.  We start from the largest
+	 *	array, because that is the one we want to use the
+	 *	most.
+	 *
+	 *	We want to avoid allocations in the smallest array,
+	 *	because that array will quickly wrap, and will cause
+	 *	us to do cleanups more often.  That also lets old
+	 *	entries in the smallest array age out, so that we can
+	 *	free the smallest arrays.
+	 */
+	for (i = ms->m_max; i >= 0; i--) {
+		mr = ms->m_array[i];
+
+		m = fr_message_ring_alloc(ms, mr, true);
+		if (m) {
+			ms->m_current = i;
+			MPRINT("ALLOC from changed ring buffer\n");
+			MPRINT("SET MR to changed %d\n", ms->m_current);
+			*p_mr = mr;
+			return m;
+		}
+	}
+
+	/*
+	 *	All of the arrays are full.  If we don't have
+	 *	room to allocate another array, we're dead.
+	 */
+	if ((ms->m_max + 1) >= M_ARRAY_SIZE) {
+		return NULL;
+	}
+
+	/*
+	 *	Allocate another message ring, double the size
+	 *	of the previous maximum.
+	 */
+	mr = fr_message_ring_create(ms, ms->m_array[ms->m_max]->size * 2, ms->message_size);
+	if (!mr) return NULL;
+
+	/*
+	 *	Set the new one as current for all new
+	 *	allocations, allocate a message, and go try to
+	 *	reserve room for the raw packet data.
+	 */
+	ms->m_max++;
+	ms->m_current = ms->m_max;
+	ms->m_array[ms->m_max] = mr;
+
+	MPRINT("SET MR to doubled %d\n", ms->m_current);
+
+	/*
+	 *	And we should now have an entirely empty message ring.
+	 */
+	m = fr_message_ring_alloc(ms, mr, false);
+	if (!m) return NULL;
+	MPRINT("ALLOC after doubled message ring\n");
+
+	*p_mr = mr;
+	return m;
+}
+
 
 /** Reserve a message
  *
@@ -823,99 +939,12 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 
 	if (reserve_size > ms->max_allocation) return NULL;
 
-	ms->allocated++;
-
 	/*
-	 *	Grab the current message array.  In the general case,
-	 *	there's room, so we grab a message and go find a ring
-	 *	buffer.
+	 *	Get a bare message.
 	 */
-	mr = ms->m_array[ms->m_current];
-	m = fr_message_ring_alloc(ms, mr, true);
-	if (m) {
-		MPRINT("ALLOC normal\n");
-		goto get_rb;
-	}
-
-	MPRINT("CLEANING UP (%zd - %zd = %zd)\n", ms->allocated, ms->freed,
-		ms->allocated - ms->freed);
-
-	/*
-	 *	Else the buffer is full.  Do a global cleanup.
-	 */
-	fr_message_cleanup(ms, 128);
-	cleaned_up = true;
-
-	/*
-	 *	If we're lucky, the cleanup has given us a new
-	 *	"current" buffer, which is empty.  If so, use it.
-	 */
-	mr = ms->m_array[ms->m_current];
-	m = fr_message_ring_alloc(ms, mr, true);
-	if (m) {
-		MPRINT("ALLOC after cleanup\n");
-		goto get_rb;
-	}
-
-	/*
-	 *	We've tried two allocations, and both failed.  Brute
-	 *	force over all arrays, trying to allocate one
-	 *	somewhere... anywhere.  We start from the largest
-	 *	array, because that is the one we want to use the
-	 *	most.
-	 *
-	 *	We want to avoid allocations in the smallest array,
-	 *	because that array will quickly wrap, and will cause
-	 *	us to do cleanups more often.  That also lets old
-	 *	entries in the smallest array age out, so that we can
-	 *	free the smallest arrays.
-	 */
-	for (i = ms->m_max; i >= 0; i--) {
-		mr = ms->m_array[i];
-
-		m = fr_message_ring_alloc(ms, mr, true);
-		if (m) {
-			ms->m_current = i;
-			MPRINT("ALLOC from changed ring buffer\n");
-			MPRINT("SET MR to changed %d\n", ms->m_current);
-			goto get_rb;
-		}
-	}
-
-	/*
-	 *	All of the arrays are full.  If we don't have
-	 *	room to allocate another array, we're dead.
-	 */
-	if ((ms->m_max + 1) >= M_ARRAY_SIZE) {
-		return NULL;
-	}
-
-	/*
-	 *	Allocate another message ring, double the size
-	 *	of the previous maximum.
-	 */
-	mr = fr_message_ring_create(ms, ms->m_array[ms->m_max]->size * 2, ms->message_size);
-	if (!mr) return NULL;
-
-	/*
-	 *	Set the new one as current for all new
-	 *	allocations, allocate a message, and go try to
-	 *	reserve room for the raw packet data.
-	 */
-	ms->m_max++;
-	ms->m_current = ms->m_max;
-	ms->m_array[ms->m_max] = mr;
-
-	MPRINT("SET MR to doubled %d\n", ms->m_current);
-
-	/*
-	 *	And we should now have an entirely empty message ring.
-	 */
-	m = fr_message_ring_alloc(ms, mr, false);
+	m = fr_message_alloc_internal(ms, &mr, &cleaned_up);
 	if (!m) return NULL;
-	MPRINT("ALLOC after doubled message ring\n");
-	
-get_rb:
+
 	/*
 	 *	If the caller is not allocating any packet data, just
 	 *	return the empty message.
