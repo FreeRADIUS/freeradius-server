@@ -434,7 +434,6 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	do {
 
 		char		*q;
-		char		*custom = NULL;
 		char		len[2] = { '\0', '\0' };
 		long		precision = 0, tmp;
 
@@ -599,11 +598,13 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			break;
 
 		case 'p':
+		{
+			char *custom = NULL;
+
 			/*
 			 *	Custom types
 			 */
 			switch (*(p + 1)) {
-
 			case 'H':
 			{
 				value_box_t const *value = va_arg(ap_q, value_box_t const *);
@@ -635,7 +636,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					oom:
 						fr_strerror_printf("Out of memory");
 						talloc_free(out);
-						if (custom) talloc_free(custom);
+						talloc_free(custom);
 						va_end(ap_p);
 						va_end(ap_q);
 						return NULL;
@@ -681,6 +682,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				(void) va_arg(ap_q, void *);					/* void * */
 			}
 			break;
+		}
 
 		case 'n':
 			(void) va_arg(ap_q, int *);					/* int * */
