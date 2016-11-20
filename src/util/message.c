@@ -35,12 +35,6 @@ RCSID("$Id$")
 #define MPRINT(...)
 #endif
 
-#ifndef NDEBUG
-#define DBG_UNUSED
-#else
-#define DBG_UNUSED UNUSED
-#endif
-
 /** An array of messages
  *
  *  We wish to occasionally increase the size of the message array,
