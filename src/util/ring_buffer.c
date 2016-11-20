@@ -483,3 +483,23 @@ size_t fr_ring_buffer_used(fr_ring_buffer_t *rb)
 
 	return size;
 }
+
+/** Get a pointer to the data at the start of the ring buffer.
+ *
+ * @param[in] rb a ring buffer
+ * @param[out] p_start pointer to data at the start of the ring buffer
+ * @param[in] p_size size of the allocated block at the start of the ring buffer.
+ * @return size of the used data in the ring buffer.
+ *	- <0 on error.
+ *      - 0 on success
+ */
+int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size)
+{
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
+#endif
+
+	*p_start = rb->buffer + rb->data_start;
+	*p_size = (rb->data_end - rb->data_start);
+	return 0;
+}

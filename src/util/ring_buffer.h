@@ -43,6 +43,8 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size) CC_HINT(nonnull
 uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size,
 				      fr_ring_buffer_t *src, size_t move_size) CC_HINT(nonnull);
 
+int fr_ring_buffer_start(fr_ring_buffer_t *dst, uint8_t **p_start, size_t *p_size);
+
 int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size) CC_HINT(nonnull);
 
 int fr_ring_buffer_close(fr_ring_buffer_t *rb) CC_HINT(nonnull);
