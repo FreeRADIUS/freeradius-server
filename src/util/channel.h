@@ -78,13 +78,14 @@ typedef struct fr_channel_data_t {
 
 	union {
 		struct {
-			uint64_t		*start_time;	//!< time original request started (network -> worker)
+			fr_time_t		*start_time;	//!< time original request started (network -> worker)
 			uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
 		} request;
 
 		struct {
 			fr_time_t		cpu_time;	//!<  total CPU time, including predicted work, (only worker -> network)
 			fr_time_t		processing_time;  //!< actual processing time for this packet (only worker -> network)
+			fr_time_t		request_time;	//!< timestamp of the request packet
 	        } reply;
 	};
 

@@ -22,6 +22,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/track.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	RADIUS-specific tracking table.
@@ -73,11 +74,20 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id)
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 #endif
+
 	entry = &ft->packet[id];
 	if (entry->timestamp == 0) return -1;
 
 	entry->timestamp = 0;
 	ft->num_entries--;
+
+	/*
+	 *	Mark the reply (if any) as done.
+	 */
+	if (entry->reply) {
+		fr_message_done(&entry->reply->m);
+		entry->reply = NULL;
+	}
 
 	return 0;
 }
@@ -85,7 +95,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id)
 /** Insert a (possibly new) packet and a timestamp
  *
  * @param[in] ft the tracking table
- * @param[in] packet the RADIUS packet to insert
+ * @param[in] packet the packet to insert
  * @param[in] timestamp when this packet was received
  * @param[out] p_entry pointer to newly inserted entry.
  * @return
@@ -139,4 +149,36 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 	*p_entry = entry;
 
 	return FR_TRACKING_DIFFERENT;
+}
+
+/** Insert a (possibly new) packet and a timestamp
+ *
+ * @param[in] ft the tracking table
+ * @param[in] id the ID of the entry which this reply is for
+ * @param[in] cd the reply message
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_radius_tracking_entry_reply(fr_tracking_t *ft, uint8_t id,
+				   fr_channel_data_t *cd)
+{
+	fr_tracking_entry_t *entry;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(ft, fr_tracking_t);
+#endif
+
+	entry = &ft->packet[id];
+
+	if (entry->timestamp != cd->reply.request_time) {
+		fr_message_done(&cd->m);
+		return 0;
+	}
+
+	rad_assert(entry->reply == NULL);
+
+	entry->reply = cd;
+
+	return 0;
 }

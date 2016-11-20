@@ -25,8 +25,7 @@
  */
 RCSIDH(track_h, "$Id$")
 
-#include <freeradius-devel/util/time.h>
-#include <talloc.h>
+#include <freeradius-devel/util/channel.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,8 +38,9 @@ typedef struct fr_tracking_t fr_tracking_t;
  *  information required to track RADIUS packets.
  */
 typedef struct fr_tracking_entry_t {
-	fr_time_t	timestamp;	//!< when received
-	uint8_t		data[18];	//!< 2 byte length + authentication vector
+	fr_time_t		timestamp;	//!< when received
+	fr_channel_data_t	*reply;		//!< the reply (if any)
+	uint8_t			data[18];	//!< 2 byte length + authentication vector
 } fr_tracking_entry_t;
 
 /**
@@ -57,6 +57,8 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx);
 int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id) CC_HINT(nonnull);
 fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
 						     fr_tracking_entry_t **p_entry) CC_HINT(nonnull);
+int fr_radius_tracking_entry_reply(fr_tracking_t *ft, uint8_t id,
+				   fr_channel_data_t *cd) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
