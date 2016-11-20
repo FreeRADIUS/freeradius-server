@@ -216,14 +216,14 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	message_size &= ~(size_t) 15;
 	ms->message_size = message_size;
 
-	ms->mr_array[0] = fr_message_ring_create(ms, num_messages, message_size);
-	if (!ms->mr_array[0]) {
+	ms->rb_array[0] = fr_ring_buffer_create(ms, ring_buffer_size);
+	if (!ms->rb_array[0]) {
 		talloc_free(ms);
 		return NULL;
 	}
 
-	ms->rb_array[0] = fr_ring_buffer_create(ms, ring_buffer_size);
-	if (!ms->rb_array[0]) {
+	ms->mr_array[0] = fr_message_ring_create(ms, num_messages, message_size);
+	if (!ms->mr_array[0]) {
 		talloc_free(ms);
 		return NULL;
 	}
@@ -240,18 +240,13 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
  *  originator of the message.  As such, the message is NOT actually
  *  freed.  Instead, it is just marked as freed.
  *
- * @param[in] ms the message set
  * @param[in] m the message to make as done.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_message_done(DBG_UNUSED fr_message_set_t *ms, fr_message_t *m)
+int fr_message_done(fr_message_t *m)
 {
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
-
 	rad_assert(m->status != FR_MESSAGE_FREE);
 	rad_assert(m->status != FR_MESSAGE_DONE);
 
@@ -1443,7 +1438,7 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	MPRINT("GC cleaned %d\n", num_cleaned);
 
 	/*
-	 *	And then do omne last pass to clean up the arrays.
+	 *	And then do one last pass to clean up the arrays.
 	 */
 	fr_message_cleanup(ms, 1 << 24);
 }

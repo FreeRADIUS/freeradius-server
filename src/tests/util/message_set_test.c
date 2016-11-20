@@ -114,7 +114,7 @@ static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *star
 	*end += my_alloc_size;
 }
 
-static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start, int *end)
+static void  free_blocks(UNUSED fr_message_set_t *ms, UNUSED uint32_t *seed, int *start, int *end)
 {
 	int i;
 
@@ -133,7 +133,7 @@ static void  free_blocks(fr_message_set_t *ms, UNUSED uint32_t *seed, int *start
 
 		rad_assert(m->status == FR_MESSAGE_USED);
 
-		rcode = fr_message_done(ms, m);
+		rcode = fr_message_done(m);
 #ifndef NDEBUG
 		rad_assert(rcode == 0);
 #else
