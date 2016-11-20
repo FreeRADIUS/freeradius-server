@@ -36,6 +36,9 @@ typedef struct fr_tracking_t fr_tracking_t;
 /**
  *  An entry for the tracking table.  It contains the minimum
  *  information required to track RADIUS packets.
+ *
+ *  @todo include event information, so that this tracking entry can
+ *  be cleaned up at an appropriate time.
  */
 typedef struct fr_tracking_entry_t {
 	fr_time_t		timestamp;	//!< when received

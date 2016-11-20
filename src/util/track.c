@@ -24,15 +24,22 @@ RCSID("$Id$")
 #include <freeradius-devel/util/track.h>
 #include <freeradius-devel/rad_assert.h>
 
-/*
- *	RADIUS-specific tracking table.
+/**
+ *  RADIUS-specific tracking table.
  *
- *	It's a fixed-size array of 256 entries, indexed by ID.  Which
- *	means we don't need to store ID in the table.  We also don't
- *	need to store the packet type, as we assume that we have a
- *	unique tracking table per packet type.
+ *  It's a fixed-size array of 256 entries, indexed by ID.  Which
+ *  means we don't need to store ID in the table.  We also don't
+ *  need to store the packet type, as we assume that we have a
+ *  unique tracking table per packet type.
+ *
+ *  @todo add a "reply" heap / list, ordered by when we need to
+ *  clean up the replies.  The heap should contain nothing more than
+ *  the time and the ID of the packet which needs cleaning up.
+ *
+ *  @todo add an "allocation" heap, ordered by when the entry was
+ *  freed.  This is so that new allocations are O(1), and use the
+ *  oldest unused ID.
  */
-
 struct fr_tracking_t {
 	int		num_entries;	//!< number of used entries.
 
