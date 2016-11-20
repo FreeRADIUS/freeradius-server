@@ -59,7 +59,7 @@ typedef struct fr_message_ring_t {
 	//  6 7 8 for alignment ?
 } fr_message_ring_t;
 
-#define M_ARRAY_SIZE (16)
+#define MSG_ARRAY_SIZE (16)
 
 /**
  *  Get a fr_message_t pointer from an array index.
@@ -78,7 +78,7 @@ typedef struct fr_message_ring_t {
  *  is allocated at double the size of the previous one.
  *
  * The array / buffers are themselves kept in fixed-size arrays, of
- *  M_ARRAY_SIZE.  The reason is that the memory for fr_message_set_t
+ *  MSG_ARRAY_SIZE.  The reason is that the memory for fr_message_set_t
  *  should be contiguous, and not in a linked list scattered in
  *  memory.
  *
@@ -105,11 +105,11 @@ typedef struct fr_message_ring_t {
  *  progress.  It is better to have a few large buffers than many
  *  small ones.
  *
- *  M_ARRAY_SIZE is defined to be large (16 doublings) to allow for
+ *  MSG_ARRAY_SIZE is defined to be large (16 doublings) to allow for
  *  the edge case where messages are stuck for long periods of time.
  *
  *  With an initial message array size of 64, this gives us room for
- *  2M packets, if *all* of the m_array entries have packets stuck in
+ *  2M packets, if *all* of the mr_array entries have packets stuck in
  *  them that aren't cleaned up for extended periods of time.
  *
  *  @todo Add a flag for UDP-style protocols, where we can put the
@@ -117,12 +117,12 @@ typedef struct fr_message_ring_t {
  *  reference, and removes the need to track two separate things.
  */
 struct fr_message_set_t {
-	int			m_current;	//!< current used message array entry
-	int			m_max;		//!< max used message array entry
+	int			mr_current;	//!< current used message ring entry
+	int			mr_max;		//!< max used message ring entry
 
 	size_t			message_size;	//!< size of the callers message, including fr_message_t
 
-	int			m_cleaned;	//!< where we last cleaned
+	int			mr_cleaned;	//!< where we last cleaned
 
 	int			rb_current;	//!< current used ring buffer entry
 	int			rb_max;		//!< max used ring buffer entry
@@ -132,9 +132,9 @@ struct fr_message_set_t {
 	int			allocated;
 	int			freed;
 
-	fr_message_ring_t	*m_array[M_ARRAY_SIZE]; //!< array of message arrays
+	fr_message_ring_t	*mr_array[MSG_ARRAY_SIZE]; //!< array of message arrays
 
-	fr_ring_buffer_t	*rb_array[M_ARRAY_SIZE]; //!< array of ring buffers
+	fr_ring_buffer_t	*rb_array[MSG_ARRAY_SIZE]; //!< array of ring buffers
 };
 
 
@@ -216,8 +216,8 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	message_size &= ~(size_t) 15;
 	ms->message_size = message_size;
 
-	ms->m_array[0] = fr_message_ring_create(ms, num_messages, message_size);
-	if (!ms->m_array[0]) {
+	ms->mr_array[0] = fr_message_ring_create(ms, num_messages, message_size);
+	if (!ms->mr_array[0]) {
 		talloc_free(ms);
 		return NULL;
 	}
@@ -479,9 +479,9 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 	arrays_freed = 0;
 	empty_slot = -1;
 
-	for (i = 0; i <= ms->m_max; i++) {
+	for (i = 0; i <= ms->mr_max; i++) {
 
-		fr_message_ring_t *mr = ms->m_array[i];
+		fr_message_ring_t *mr = ms->mr_array[i];
 
 		(void) fr_message_ring_cleanup(ms, mr, max_to_clean);
 
@@ -503,7 +503,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 			 *	Don't ever free the largest array, but
 			 *	do set the empty slot here.
 			 */
-			if (i == ms->m_max) {
+			if (i == ms->mr_max) {
 				empty_slot = i;
 				continue;
 			}
@@ -513,7 +513,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 			 *	are free.  Free the old one, and keep
 			 *	the new one.
 			 */
-			TALLOC_FREE(ms->m_array[empty_slot]);
+			TALLOC_FREE(ms->mr_array[empty_slot]);
 			arrays_freed++;
 			empty_slot = i;
 		}
@@ -524,7 +524,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 		 *	arrays to be cleaned up and freed, so that we
 		 *	can keep using large arrays.
 		 */
-		if ((i + 2) < ms->m_max) {
+		if ((i + 2) < ms->mr_max) {
 			continue;
 		}
 
@@ -545,27 +545,27 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 	 *	remaining entries.
 	 */
 	if (arrays_freed) {
-		for (i = 0; i < ms->m_max; i++) {
-			if (ms->m_array[i] != NULL) continue;
+		for (i = 0; i < ms->mr_max; i++) {
+			if (ms->mr_array[i] != NULL) continue;
 
 
-			memmove(&ms->m_array[i], &ms->m_array[i + 1],
-				sizeof(ms->m_array[i]) * (ms->m_max - i + 1));
+			memmove(&ms->mr_array[i], &ms->mr_array[i + 1],
+				sizeof(ms->mr_array[i]) * (ms->mr_max - i + 1));
 
 			if (empty_slot > i) empty_slot--;
-			if (ms->m_current > i) ms->m_current--;
+			if (ms->mr_current > i) ms->mr_current--;
 		}
 
 		/*
 		 *	Reset the max, and current to the lowest
 		 *	array entry.
 		 */
-		ms->m_max -= arrays_freed;
-		rad_assert(ms->m_current <= ms->m_max);
+		ms->mr_max -= arrays_freed;
+		rad_assert(ms->mr_current <= ms->mr_max);
 
 #ifndef NDEBUG
-		for (i = 0; i <= ms->m_max; i++) {
-			rad_assert(ms->m_array[i] != NULL);
+		for (i = 0; i <= ms->mr_max; i++) {
+			rad_assert(ms->mr_array[i] != NULL);
 		}
 #endif
 	}
@@ -579,8 +579,8 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 	 *	smaller arrays.
 	 */
 	if (empty_slot < 0) {
-		ms->m_current = ms->m_max;
-		MPRINT("SET MR to %d\n", ms->m_current);
+		ms->mr_current = ms->mr_max;
+		MPRINT("SET MR to %d\n", ms->mr_current);
 	}
 
 	/*
@@ -809,7 +809,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	there's room, so we grab a message and go find a ring
 	 *	buffer.
 	 */
-	mr = ms->m_array[ms->m_current];
+	mr = ms->mr_array[ms->mr_current];
 	m = fr_message_ring_alloc(ms, mr, true);
 	if (m) {
 		MPRINT("ALLOC normal\n");
@@ -830,7 +830,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	If we're lucky, the cleanup has given us a new
 	 *	"current" buffer, which is empty.  If so, use it.
 	 */
-	mr = ms->m_array[ms->m_current];
+	mr = ms->mr_array[ms->mr_current];
 	m = fr_message_ring_alloc(ms, mr, true);
 	if (m) {
 		MPRINT("ALLOC after cleanup\n");
@@ -851,14 +851,14 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	entries in the smallest array age out, so that we can
 	 *	free the smallest arrays.
 	 */
-	for (i = ms->m_max; i >= 0; i--) {
-		mr = ms->m_array[i];
+	for (i = ms->mr_max; i >= 0; i--) {
+		mr = ms->mr_array[i];
 
 		m = fr_message_ring_alloc(ms, mr, true);
 		if (m) {
-			ms->m_current = i;
+			ms->mr_current = i;
 			MPRINT("ALLOC from changed ring buffer\n");
-			MPRINT("SET MR to changed %d\n", ms->m_current);
+			MPRINT("SET MR to changed %d\n", ms->mr_current);
 			*p_mr = mr;
 			return m;
 		}
@@ -868,7 +868,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	All of the arrays are full.  If we don't have
 	 *	room to allocate another array, we're dead.
 	 */
-	if ((ms->m_max + 1) >= M_ARRAY_SIZE) {
+	if ((ms->mr_max + 1) >= MSG_ARRAY_SIZE) {
 		return NULL;
 	}
 
@@ -876,7 +876,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	Allocate another message ring, double the size
 	 *	of the previous maximum.
 	 */
-	mr = fr_message_ring_create(ms, ms->m_array[ms->m_max]->size * 2, ms->message_size);
+	mr = fr_message_ring_create(ms, ms->mr_array[ms->mr_max]->size * 2, ms->message_size);
 	if (!mr) return NULL;
 
 	/*
@@ -884,11 +884,11 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	allocations, allocate a message, and go try to
 	 *	reserve room for the raw packet data.
 	 */
-	ms->m_max++;
-	ms->m_current = ms->m_max;
-	ms->m_array[ms->m_max] = mr;
+	ms->mr_max++;
+	ms->mr_current = ms->mr_max;
+	ms->mr_array[ms->mr_max] = mr;
 
-	MPRINT("SET MR to doubled %d\n", ms->m_current);
+	MPRINT("SET MR to doubled %d\n", ms->mr_current);
 
 	/*
 	 *	And we should now have an entirely empty message ring.
@@ -1010,7 +1010,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 	 *	All of the arrays are full.  If we don't have
 	 *	room to allocate another array, we're dead.
 	 */
-	if ((ms->rb_max + 1) >= M_ARRAY_SIZE) {
+	if ((ms->rb_max + 1) >= MSG_ARRAY_SIZE) {
 		goto cleanup;
 	}
 
@@ -1399,10 +1399,10 @@ int fr_message_set_messages_used(fr_message_set_t *ms)
 #endif
 
 	used = 0;
-	for (i = 0; i <= ms->m_max; i++) {
+	for (i = 0; i <= ms->mr_max; i++) {
 		fr_message_ring_t *mr;
 
-		mr = ms->m_array[i];
+		mr = ms->mr_array[i];
 
 		if (mr->write_offset < mr->data_start) {
 			used += mr->write_offset;
@@ -1435,9 +1435,9 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	 *	Manually clean up each message ring.
 	 */
 	num_cleaned = 0;
-	for (i = 0; i <= ms->m_max; i++) {
-		num_cleaned += fr_message_ring_cleanup(ms, ms->m_array[i],
-						       ms->m_array[i]->size);
+	for (i = 0; i <= ms->mr_max; i++) {
+		num_cleaned += fr_message_ring_cleanup(ms, ms->mr_array[i],
+						       ms->mr_array[i]->size);
 	}
 
 	MPRINT("GC cleaned %d\n", num_cleaned);
@@ -1461,11 +1461,11 @@ void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
-	fprintf(fp, "message arrays = %d\t(current %d)\n", ms->m_max + 1, ms->m_current);
+	fprintf(fp, "message arrays = %d\t(current %d)\n", ms->mr_max + 1, ms->mr_current);
 	fprintf(fp, "ring buffers   = %d\t(current %d)\n", ms->rb_max + 1, ms->rb_current);
 
-	for (i = 0; i <= ms->m_max; i++) {
-		fr_message_ring_t *mr = ms->m_array[i];
+	for (i = 0; i <= ms->mr_max; i++) {
+		fr_message_ring_t *mr = ms->mr_array[i];
 
 		fprintf(fp, "messages[%d] =\tsize %d, write_offset %d, data_start %d, data_end %d\n",
 			i, mr->size, mr->write_offset, mr->data_start, mr->data_end);
