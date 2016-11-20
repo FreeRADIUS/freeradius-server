@@ -289,26 +289,24 @@ int fr_message_done(fr_message_t *m)
  *  the recipient can call the normal fr_message_done() function to
  *  free it.
  *
- * @param[in] ms the message set
- * @param[in] m the message to be localized
  * @param[in] ctx the talloc context to use for localization
+ * @param[in] m the message to be localized
+ * @param[in] message_size the size of the message, including the fr_message_t
  * @return
  *	- NULL on allocation errror
  *	- a newly localized message
  */
-fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_CTX *ctx)
+fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t message_size)
 {
 	fr_message_t *l;
-
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
 
 	if (m->status != FR_MESSAGE_USED) {
 		return NULL;
 	}
 
-	l = talloc_memdup(ctx, m, ms->message_size);
+	if (message_size <= sizeof(fr_message_t)) return NULL;
+
+	l = talloc_memdup(ctx, m, message_size);
 	if (!l) return NULL;
 
 	if (l->data_size) {
@@ -352,7 +350,7 @@ fr_message_t *fr_message_localize(fr_message_set_t *ms, fr_message_t *m, TALLOC_
  * @param[in] mr the message ring
  * @param[in] max_to_clean maximum number of messages to clean at a time.
  */
-static int fr_message_ring_cleanup(fr_message_set_t *ms, fr_message_ring_t *mr, int max_to_clean)
+static int fr_message_ring_gc(fr_message_set_t *ms, fr_message_ring_t *mr, int max_to_clean)
 {
 	int i;
 	int messages_cleaned = 0;
@@ -452,7 +450,7 @@ recheck:
 }
 
 
-/** Clean up "done" messages.
+/** Garbage collect "done" messages.
  *
  *  Called only from the originating thread.  We also clean a limited
  *  number of messages at a time, so that we don't have sudden latency
@@ -461,7 +459,7 @@ recheck:
  * @param[in] ms the message set
  * @param[in] max_to_clean the maximum number of messages to clean
  */
-static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
+static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 {
 	int i;
 	int arrays_freed, empty_slot;
@@ -478,7 +476,7 @@ static void fr_message_cleanup(fr_message_set_t *ms, int max_to_clean)
 
 		fr_message_ring_t *mr = ms->mr_array[i];
 
-		(void) fr_message_ring_cleanup(ms, mr, max_to_clean);
+		(void) fr_message_ring_gc(ms, mr, max_to_clean);
 
 		/*
 		 *	If the message ring buffer is empty, check if
@@ -713,7 +711,7 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 		used += (mr->data_end - mr->data_start);
 
 		if (used >= mr->size) {
-			if (fr_message_ring_cleanup(ms, mr, 4) == 0) {
+			if (fr_message_ring_gc(ms, mr, 4) == 0) {
 				return NULL;
 			}
 
@@ -818,7 +816,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	/*
 	 *	Else the buffer is full.  Do a global cleanup.
 	 */
-	fr_message_cleanup(ms, 128);
+	fr_message_gc(ms, 128);
 	*p_cleaned = true;
 
 	/*
@@ -964,7 +962,7 @@ static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message
 		MPRINT("CLEANED UP BECAUSE OF RING BUFFER (%zd - %zd = %zd)\n", ms->allocated, ms->freed,
 			ms->allocated - ms->freed);
 
-		fr_message_cleanup(ms, 128);
+		fr_message_gc(ms, 128);
 
 		/*
 		 *	Try to allocate the packet from the newly current ring buffer.
@@ -1431,8 +1429,8 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	 */
 	num_cleaned = 0;
 	for (i = 0; i <= ms->mr_max; i++) {
-		num_cleaned += fr_message_ring_cleanup(ms, ms->mr_array[i],
-						       ms->mr_array[i]->size);
+		num_cleaned += fr_message_ring_gc(ms, ms->mr_array[i],
+						  ms->mr_array[i]->size);
 	}
 
 	MPRINT("GC cleaned %d\n", num_cleaned);
@@ -1440,7 +1438,7 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	/*
 	 *	And then do one last pass to clean up the arrays.
 	 */
-	fr_message_cleanup(ms, 1 << 24);
+	fr_message_gc(ms, 1 << 24);
 }
 
 /** Print debug information about the message set.
