@@ -1342,12 +1342,12 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	/*
 	 *	Relay-Agent is last
 	 */
-	if (((my_a->da->parent->type != PW_TYPE_TLV) && (my_a->da->attr == PW_DHCP_OPTION_82)) &&
-	    ((my_b->da->parent->type == PW_TYPE_TLV) || (my_b->da->attr != PW_DHCP_OPTION_82))) return +1;
-	if (((my_a->da->parent->type == PW_TYPE_TLV) || (my_a->da->attr != PW_DHCP_OPTION_82)) &&
-	    ((my_b->da->parent->type != PW_TYPE_TLV) && (my_b->da->attr == PW_DHCP_OPTION_82))) return -1;
+	if ((my_a->da->parent->attr == PW_DHCP_OPTION_82) &&
+	    (my_b->da->parent->attr != PW_DHCP_OPTION_82)) return +1;
+	if ((my_a->da->parent->attr != PW_DHCP_OPTION_82) &&
+	    (my_b->da->parent->attr == PW_DHCP_OPTION_82)) return -1;
 
-	return fr_pair_cmp_by_parent_num_tag(my_a->da, my_b->da);
+	return fr_pair_cmp_by_parent_num_tag(my_a, my_b);
 }
 
 /** Write DHCP option value into buffer
