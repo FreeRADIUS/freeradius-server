@@ -69,12 +69,13 @@ typedef struct fr_channel_data_t {
 		 *	somewhere.  So we cache it in fields which are now unused.
 		 */
 		struct {
-			fr_channel_t *ch;			//!< channel where this messages was received
+			fr_channel_t		*ch;		//!< channel where this messages was received
+			int			heap_id;	//!< for the various queues
 		} channel;
 	};
 
 	void			*ctx;		//!< packet context.  Usually socket information
-	uint32_t		protocol;	//!< protocol ID for this packet
+	uint32_t		transport;	//!< transport ID for this packet
 
 	union {
 		struct {
