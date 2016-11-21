@@ -1056,9 +1056,11 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	int				s_ret = REDIS_RCODE_SUCCESS;
 	REQUEST				*request = request_alloc(inst);
 	redisReply			**replies = NULL, *reply;
-	unsigned int			pipelined = 8;		/* Update if additional commands added */
+	unsigned int			pipelined = 0;		/* Update if additional commands added */
 
 	size_t				reply_cnt = 0, i = 0;
+
+#define STATS_COMMANDS_TOTAL 8
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 
@@ -1086,6 +1088,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		redisAppendCommand(conn->handle, "EXEC");
 		if (!replies) return -1;
 
+		pipelined = STATS_COMMANDS_TOTAL;
 		reply_cnt = fr_redis_pipeline_result(&pipelined, &status, replies,
 						     talloc_array_length(replies), conn);
 		for (i = 0; (size_t)i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3,
@@ -1099,7 +1102,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		return -1;
 	}
 
-	if (reply_cnt != pipelined) {
+	if (reply_cnt != STATS_COMMANDS_TOTAL) {
 		ERROR("Failed retrieving pool stats: Expected %i replies, got %zu", pipelined, reply_cnt);
 		goto error;
 	}
