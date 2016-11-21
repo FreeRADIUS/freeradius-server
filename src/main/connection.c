@@ -676,7 +676,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	 *	have fewer than "min".  When that happens, open more
 	 *	connections to enforce "min".
 	 */
-	if ((pool->state.num + pool->state.pending) <= pool->min) {
+	if ((pool->state.num + pool->state.pending) < pool->min) {
 		spawn = pool->min - (pool->state.num + pool->state.pending);
 		extra = 0;
 
@@ -701,7 +701,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	 *	AND we don't have enough idle connections.
 	 *	Open some more.
 	 */
-	} else if (idle <= pool->spare) {
+	} else if (idle < pool->spare) {
 		/*
 		 *	Not enough spare connections.  Spawn a few.
 		 *	But cap the pool size at "max"
