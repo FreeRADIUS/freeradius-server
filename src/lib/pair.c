@@ -912,6 +912,7 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	fr_dict_attr_t const	*da_b = vp_b->da;
 	fr_dict_attr_t const	*tlv_stack_a[FR_DICT_MAX_TLV_STACK + 1];
 	fr_dict_attr_t const	*tlv_stack_b[FR_DICT_MAX_TLV_STACK + 1];
+	int i;
 
 	/*
 	 *	Fast path (assuming attributes
@@ -922,7 +923,7 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	fr_proto_tlv_stack_build(tlv_stack_a, da_a);
 	fr_proto_tlv_stack_build(tlv_stack_b, da_b);
 
-	for (da_a = tlv_stack_a[0], da_b = tlv_stack_b[0]; da_a && da_b; da_a++, da_b++) {
+	for (i = 0; (da_a = tlv_stack_a[i]) && (da_b = tlv_stack_b[i]); i++) {
 		if (da_a->attr > da_b->attr) return +1;
 		if (da_b->attr < da_b->attr) return -1;
 	}
