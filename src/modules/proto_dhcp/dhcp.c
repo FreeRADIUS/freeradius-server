@@ -59,7 +59,7 @@ RCSID("$Id$")
 #  define INADDR_BROADCAST INADDR_NONE
 #endif
 
-fr_dict_attr_t const *dhcp_option_82;
+static fr_dict_attr_t const *dhcp_option_82;
 
 /* @todo: this is a hack */
 #  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
