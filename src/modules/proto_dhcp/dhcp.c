@@ -59,6 +59,8 @@ RCSID("$Id$")
 #  define INADDR_BROADCAST INADDR_NONE
 #endif
 
+fr_dict_attr_t const *dhcp_option_82;
+
 /* @todo: this is a hack */
 #  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 
@@ -1317,6 +1319,7 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
+	fr_dict_attr_t const *a_82, *b_82;
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
@@ -1339,12 +1342,14 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	    ((my_b->da->parent->type != PW_TYPE_TLV) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE))) return +1;
 
 	/*
-	 *	Relay-Agent is last
+	 *	Relay-Agent is last.
+	 *
+	 *	Check if either of the options are descended from option 82.
 	 */
-	if ((my_a->da->parent->attr == PW_DHCP_OPTION_82) &&
-	    (my_b->da->parent->attr != PW_DHCP_OPTION_82)) return +1;
-	if ((my_a->da->parent->attr != PW_DHCP_OPTION_82) &&
-	    (my_b->da->parent->attr == PW_DHCP_OPTION_82)) return -1;
+	a_82 = fr_dict_parent_common(dhcp_option_82, my_a->da, true);
+	b_82 = fr_dict_parent_common(dhcp_option_82, my_b->da, true);
+	if (a_82 && !b_82) return +1;
+	if (!a_82 && !b_82) return -1;
 
 	return fr_pair_cmp_by_parent_num_tag(my_a, my_b);
 }
@@ -2225,3 +2230,20 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	return packet;
 }
 #endif
+
+/** Resolve/cache attributes in the DHCP dictionary
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dhcp_init(void)
+{
+	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, PW_DHCP_OPTION_82);
+	if (!dhcp_option_82) {
+		fr_strerror_printf("Missing dictionary attribute for DHCP-Option-82");
+		return -1;
+	}
+
+	return 0;
+}

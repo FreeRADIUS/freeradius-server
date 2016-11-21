@@ -987,13 +987,28 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return fr_dhcp_decode(request->packet);
 }
 
-extern fr_protocol_t proto_dhcp;
-fr_protocol_t proto_dhcp = {
+static int dhcp_load(void)
+{
+	int ret;
+
+	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
+	if (dhcp_init() < 0) {
+		ERROR("%s", fr_strerror());
+		return -1;
+	}
+
+	return ret;
+}
+
+
+extern rad_protocol_t proto_dhcp;
+rad_protocol_t proto_dhcp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcp",
 	.inst_size	= sizeof(dhcp_socket_t),
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
+	.load		= dhcp_load,
 	.parse		= dhcp_socket_parse,
 	.open		= common_socket_open,
 	.recv		= dhcp_socket_recv,
