@@ -477,12 +477,16 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
  *
  * @param[in] el	to process events for.
  * @param[in] wait	if true, block on the kevent() call until a timer or file descriptor event occurs.
- * @return the number of outstanding events.
+ * @return
+ *	- <0 error, or the event loop is exiting
+ *	- the number of outstanding events.
  */
 int fr_event_corral(fr_event_list_t *el, bool wait)
 {
 	struct timeval when, *wake;
 	struct timespec ts_when, *ts_wake;
+
+	if (el->exit) return -1;
 
 	/*
 	 *	Find the first event.  If there's none, we wait
