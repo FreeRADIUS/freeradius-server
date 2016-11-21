@@ -1,6 +1,6 @@
 TARGET	:= libfreeradius-util.a
 
-SOURCES	:=	ring_buffer.c message.c atomic_queue.c queue.c time.c channel.c track.c
+SOURCES	:=	ring_buffer.c message.c atomic_queue.c queue.c time.c channel.c track.c worker.c
 
 TGT_PREREQS	:= libfreeradius-radius.la
 TGT_LDLIBS	:= $(LIBS)
