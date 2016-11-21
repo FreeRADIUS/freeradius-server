@@ -462,7 +462,6 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 
 	fr_strerror();	/* Clear any outstanding errors */
 
-#ifdef NDEBUG
 	if ((size_t) *pipelined > out_len) {
 		for (i = 0; i < (size_t)*pipelined; i++) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
@@ -475,7 +474,6 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 		out[0] = NULL;
 		return REDIS_RCODE_ERROR;
 	}
-#endif
 
 	for (i = 0; i < (size_t)*pipelined; i++) {
 		bool maybe_more = false;
