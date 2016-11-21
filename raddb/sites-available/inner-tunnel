@@ -338,6 +338,7 @@ post-auth {
 			EAP-Message !* ANY
 			Proxy-State !* ANY
 			MS-MPPE-Encryption-Types !* ANY
+			MS-MPPE-Encryption-Policy !* ANY
 			MS-MPPE-Send-Key !* ANY
 			MS-MPPE-Recv-Key !* ANY
 		}
