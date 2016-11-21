@@ -4773,24 +4773,26 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 }
 
 
-static void event_status(UNUSED void *ctx, struct timeval *wake)
+static int event_status(UNUSED void *ctx, struct timeval *wake)
 {
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
 			INFO("Ready to process requests");
 			just_started = false;
 		}
-		return;
+		return 0;
 	}
 
 	if (!wake) {
-		if (main_config.drop_requests) return;
+		if (main_config.drop_requests) return 0;
 		INFO("Ready to process requests");
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
 		DEBUG("Waking up in %d.%01u seconds.",
 		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
 	}
+
+	return 0;
 }
 
 static int event_new_fd(rad_listen_t *this)

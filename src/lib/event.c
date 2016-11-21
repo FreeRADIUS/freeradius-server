@@ -516,9 +516,17 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	}
 
 	/*
-	 *	Run the status callback
+	 *	Run the status callback.  It may tell us that the
+	 *	application has more work to do, in which case we
+	 *	re-set the timeout to be instant.
 	 */
-	if (el->status) el->status(el->status_ctx, wake);
+	if (el->status) {
+		if (el->status(el->status_ctx, wake) > 0) {
+			wake = &when;
+			when.tv_sec = 0;
+			when.tv_usec = 0;
+		}
+	}
 
 	if (wake) {
 		ts_wake = &ts_when;
