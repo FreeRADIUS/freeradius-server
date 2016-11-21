@@ -1064,7 +1064,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 
-	replies = talloc_zero_array(inst, redisReply *, pipelined);
+	MEM(replies = talloc_zero_array(inst, redisReply *, STATS_COMMANDS_TOTAL));
 
 	gettimeofday(&now, NULL);
 
