@@ -1108,7 +1108,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		goto error;
 	}
 
-	reply = replies[pipelined - 1];
+	reply = replies[reply_cnt - 1];
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		ERROR("Failed retrieving pool stats: Expected array got %s",
@@ -1116,8 +1116,8 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 		goto error;
 	}
 
-	if (reply->elements != (pipelined - 2)) {
-		ERROR("Failed retrieving pool stats: Expected %i results, got %zu", pipelined - 2, reply->elements);
+	if (reply->elements != (reply_cnt - 2)) {
+		ERROR("Failed retrieving pool stats: Expected %i results, got %zu", reply_cnt - 2, reply->elements);
 		goto error;
 	}
 
