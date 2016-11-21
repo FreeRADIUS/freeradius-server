@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 
-#include <sys/event.h>
-
 #define FR_EV_BATCH_FDS (256)
 
 #undef USEC
@@ -60,7 +58,7 @@ typedef struct fr_event_fd_t {
 	fr_event_fd_handler_t	write;			//!< callback for when we can write data.
 	fr_event_fd_handler_t	error;			//!< callback for when an error occurs on the FD.
 
-	void			*ctx;			//!< Context pointer to pass to each callback.
+	void			*ctx;			//!< context pointer to pass to each file descriptor callback.
 } fr_event_fd_t;
 
 /** Stores all information relating to an event list
@@ -83,6 +81,8 @@ struct fr_event_list_t {
 
 	int			kq;			//!< instance association with this event list.
 
+	fr_event_user_handler_t user;			//!< callback for EVFILT_USER events
+	void			*user_ctx;		//!< context pointer to pass to the user callback
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 };
@@ -421,6 +421,45 @@ int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, voi
 	return 0;
 }
 
+
+/** Add a user callback to the event list.
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] user	the callback for EVFILT_USER
+ * @param[in] ctx	user context for the callback
+ * @return
+ *	- < 0 on error
+ *	- 0 on success
+ */
+int fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx)
+{
+	el->user = user;
+	el->user_ctx = ctx;
+
+	return 0;
+}
+
+
+/** Delete a user callback to the event list.
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] user	the callback for EVFILT_USER
+ * @param[in] ctx	user context for the callback
+ * @return
+ *	- < 0 on error
+ *	- 0 on success
+ */
+int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx)
+{
+	if ((el->user != user) || (el->user_ctx != ctx)) return -1;
+
+	el->user = NULL;
+	el->user_ctx = NULL;
+
+	return 0;
+}
+
+
 /** Run a single scheduled timer event
  *
  * @param[in] el	containing the timer events.
@@ -581,6 +620,7 @@ void fr_event_service(fr_event_list_t *el)
 
 		if (ev->read && (el->events[i].flags & EVFILT_READ)) ev->read(el, ev->fd, ev->ctx);
 		if (ev->write && (el->events[i].flags & EVFILT_WRITE)) ev->write(el, ev->fd, ev->ctx);
+		if (el->user && (el->events[i].flags & EVFILT_USER)) el->user(el->kq, &el->events[i], el->user_ctx);
 	}
 
 	if (fr_heap_num_elements(el->times) > 0) {
