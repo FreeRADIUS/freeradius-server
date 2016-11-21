@@ -67,6 +67,8 @@ int		fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET
 RADIUS_PACKET	*fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request);
 #endif
 
+int		dhcp_init(void);
+
 /*
  *	This is a horrible hack.
  */

@@ -1045,7 +1045,15 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 
 static int dhcp_load(void)
 {
-	return fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
+	int ret;
+
+	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
+	if (dhcp_init() < 0) {
+		ERROR("%s", fr_strerror());
+		return -1;
+	}
+
+	return ret;
 }
 
 
