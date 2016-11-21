@@ -530,3 +530,32 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 
 	return FR_CHANNEL_NOOP;
 }
+
+
+/** Check if a channel is active.
+ *
+ *  A channel may be closed by either end.  If so, it stays alive (but
+ *  inactive) until both ends acknowledge the close.
+ *
+ * @param[in] ch the channel
+ * @return
+ *	- false the channel is closing.
+ *	- true the channel is active
+ */
+bool fr_channel_active(UNUSED fr_channel_t *ch)
+{
+	return true;
+
+}
+
+/** Signal a channel that it is closing.
+ *
+ * @param[in] ch the channel
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_signal_close(UNUSED fr_channel_t *ch)
+{
+	return 0;
+}
