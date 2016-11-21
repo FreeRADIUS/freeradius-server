@@ -1324,6 +1324,8 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
 
+	if (!dhcp_option_82) dhcp_init();	/* hack as we don't have .load in v3.1.x */
+
 	/*
 	 *	We can only use attribute numbers if we know they're
 	 *	not nested attributes.

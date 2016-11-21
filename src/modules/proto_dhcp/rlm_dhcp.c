@@ -193,19 +193,6 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static int dhcp_load(void)
-{
-	int ret;
-
-	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
-	if (dhcp_init() < 0) {
-		ERROR("%s", fr_strerror());
-		return -1;
-	}
-
-	return ret;
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -221,6 +208,5 @@ module_t rlm_dhcp = {
 	.name		= "dhcp",
 	.inst_size	= sizeof(rlm_dhcp_t),
 
-	.load		= dhcp_load,
 	.bootstrap	= mod_bootstrap,
 };
