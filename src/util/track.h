@@ -41,7 +41,7 @@ typedef struct fr_tracking_t fr_tracking_t;
  *  be cleaned up at an appropriate time.
  */
 typedef struct fr_tracking_entry_t {
-	fr_time_t		timestamp;	//!< when received
+	fr_time_t		timestamp;	//!< when the request was received
 	fr_channel_data_t	*reply;		//!< the reply (if any)
 	uint8_t			data[18];	//!< 2 byte length + authentication vector
 } fr_tracking_entry_t;
