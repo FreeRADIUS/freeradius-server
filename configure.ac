@@ -1105,6 +1105,7 @@ if test "x$WITH_OPENSSL" = xyes; then
 
     AC_CHECK_HEADERS( \
       openssl/asn1.h \
+      openssl/conf.h \
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \

@@ -251,6 +251,9 @@
 /* Define to 1 if you have the <openssl/asn1.h> header file. */
 #undef HAVE_OPENSSL_ASN1_H
 
+/* Define to 1 if you have the <openssl/conf.h> header file. */
+#undef HAVE_OPENSSL_CONF_H
+
 /* Define to 1 if you have the <openssl/crypto.h> header file. */
 #undef HAVE_OPENSSL_CRYPTO_H
 
