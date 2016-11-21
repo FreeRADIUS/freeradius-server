@@ -1104,6 +1104,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_DEFINE(HAVE_OPENSSL_SSL_H, 1, [Define to 1 if you have the <openssl/ssl.h> header file.])
 
     AC_CHECK_HEADERS( \
+      openssl/asn1.h \
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \

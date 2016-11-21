@@ -8665,6 +8665,7 @@ $as_echo "#define HAVE_OPENSSL_SSL_H 1" >>confdefs.h
 
 
     for ac_header in \
+      openssl/asn1.h \
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \
