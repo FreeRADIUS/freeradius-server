@@ -217,14 +217,14 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
 	tt->running += (tt->yielded - tt->resumed);
 
 	/*
-	 *	Insert this request into the workers list of waiting
-	 *	requests.
+	 *	Insert this request into the TAIL of the workers list
+	 *	of waiting requests.
 	 */
-	l->next = head->next;
-	l->prev = head;
+	l->prev = head->prev;
+	l->next = head;
 
-	head->next->prev = l;
-	head->next = l;
+	head->prev->next = l;
+	head->prev = l;
 }
 
 
