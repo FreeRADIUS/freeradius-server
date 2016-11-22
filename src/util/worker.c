@@ -406,6 +406,35 @@ static int fr_worker_idle(void *ctx, struct timeval *wake)
 	return 1;
 }
 
+static int worker_message_cmp(void const *one, void const *two)
+{
+	fr_channel_data_t const *a = one;
+	fr_channel_data_t const *b = two;
+
+	if (a->request.priority < b->request.priority) return -1;
+	if (a->request.priority > b->request.priority) return +1;
+
+	if (a->m.when < b->m.when) return -1;
+	if (a->m.when > b->m.when) return +1;
+
+	return 0;
+}
+
+
+static int worker_request_cmp(void const *one, void const *two)
+{
+	REQUEST const *a = one;
+	REQUEST const *b = two;
+
+	if (a->priority < b->priority) return -1;
+	if (a->priority > b->priority) return +1;
+
+	if (a->recv_time < b->recv_time) return -1;
+	if (a->recv_time > b->recv_time) return +1;
+
+	return 0;
+}
+
 
 /** Create a worker
  *
@@ -431,7 +460,29 @@ static fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 		return NULL;
 	}
 
-	// @todo create all of the heaps
+	worker->to_decode = fr_heap_create(worker_message_cmp, offsetof(fr_channel_data_t, channel.heap_id));
+	if (!worker->to_decode) {
+		talloc_free(worker);
+		return NULL;
+	}
+
+	worker->localized = fr_heap_create(worker_message_cmp, offsetof(fr_channel_data_t, channel.heap_id));
+	if (!worker->localized) {
+		talloc_free(worker);
+		return NULL;
+	}
+
+	worker->decoded = fr_heap_create(worker_request_cmp, offsetof(REQUEST, heap_id));
+	if (!worker->decoded) {
+		talloc_free(worker);
+		return NULL;
+	}
+
+	worker->runnable = fr_heap_create(worker_request_cmp, offsetof(REQUEST, heap_id));
+	if (!worker->decoded) {
+		talloc_free(worker);
+		return NULL;
+	}
 
 	// @todo register our event loop / KQ with the global KQ system
 

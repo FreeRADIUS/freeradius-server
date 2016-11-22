@@ -96,6 +96,7 @@ typedef struct fr_transport_t {
  *	Minimal data structure to use the new code.
  */
 struct rad_request {
+	int			heap_id;
 	uint32_t		priority;
 	fr_time_t		recv_time;
 	fr_time_t		*original_recv_time;
