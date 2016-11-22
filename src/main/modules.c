@@ -172,12 +172,12 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	cp = cf_pair_find(module, name);
 	if (!cp) return 0;
 
-	if (cf_data_find(module, FIND_SIBLING_CF_KEY)) {
+	if (cf_data_find(module, 0, FIND_SIBLING_CF_KEY)) {
 		cf_log_err_cp(cp, "Module reference loop found");
 
 		return -1;
 	}
-	cf_data_add(module, FIND_SIBLING_CF_KEY, &loop, NULL);
+	cf_data_add(module, 0, FIND_SIBLING_CF_KEY, &loop, NULL);
 
 	/*
 	 *	Item found, resolve it to a module instance.
@@ -191,7 +191,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	Remove the config data we added for loop
 	 *	detection.
 	 */
-	cf_data_remove(module, FIND_SIBLING_CF_KEY);
+	cf_data_remove(module, 0, FIND_SIBLING_CF_KEY);
 	if (!inst) {
 		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
 
@@ -308,7 +308,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	 *	This allows modules to pass in the config sections
 	 *	they would like to use the connection pool from.
 	 */
-	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
+	pool = cf_data_find(cs, 0, CONNECTION_POOL_CF_KEY);
 	if (!pool) {
 		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
 		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
@@ -317,7 +317,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 		fr_connection_pool_enable_triggers(pool, trigger_prefix, trigger_args);
 
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
-		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
+		cf_data_add(cs, 0, CONNECTION_POOL_CF_KEY, pool, NULL);
 		return pool;
 	}
 	fr_connection_pool_ref(pool);
@@ -332,7 +332,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	if (mycs != cs) {
 		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
 		       log_prefix, pool, parent_name(cs), parent_name(mycs));
-		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
+		cf_data_add(mycs, 0, CONNECTION_POOL_CF_KEY, pool, NULL);
 	}
 
 	return pool;
@@ -383,7 +383,7 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	instance_name = asked_name;
 	if (instance_name[0] == '-') instance_name++;
 
-	return (module_instance_t *)cf_data_find(modules, instance_name);
+	return (module_instance_t *)cf_data_find(modules, 0, instance_name);
 }
 
 /** Find an existing module instance and verify it implements the specified method
@@ -886,7 +886,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, instance->name, instance, NULL);
+	cf_data_add(modules, 0, instance->name, instance, NULL);
 
 	return instance;
 }

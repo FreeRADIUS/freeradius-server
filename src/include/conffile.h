@@ -412,9 +412,9 @@ CONF_SECTION	*cf_section_sub_find_name2(CONF_SECTION const *, char const *name1,
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 
-void *cf_data_find(CONF_SECTION const *, char const *);
-int cf_data_add(CONF_SECTION *, char const *, void const *, void (*)(void *));
-void *cf_data_remove(CONF_SECTION *cs, char const *name);
+void *cf_data_find(CONF_SECTION const *, int type, char const *);
+int cf_data_add(CONF_SECTION *, int type, char const *, void const *, void (*)(void *));
+void *cf_data_remove(CONF_SECTION *cs, int type, char const *name);
 
 char const *cf_pair_attr(CONF_PAIR const *pair);
 char const *cf_pair_value(CONF_PAIR const *pair);

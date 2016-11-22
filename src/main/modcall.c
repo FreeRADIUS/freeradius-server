@@ -1546,7 +1546,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	g->map = talloc_steal(g, head);
 
 #ifdef WITH_CONF_WRITE
-//	cf_data_add(cs, "update", g->map, NULL); /* for output normalization */
+//	cf_data_add(cs, 0, "update", g->map, NULL); /* for output normalization */
 #endif
 
 	if (!pass2_fixup_update(g)) {
@@ -1768,7 +1768,7 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 			/*
 			 *	Skip precompiled blocks.
 			 */
-			if (cf_data_find(subcs, "unlang")) continue;
+			if (cf_data_find(subcs, 0, "unlang")) continue;
 
 			/*
 			 *	"actions" apply to the current group.
@@ -2242,7 +2242,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 		return NULL;
 	}
 
-	cond = cf_data_find(cs, "if");
+	cond = cf_data_find(cs, 0, "if");
 	rad_assert(cond != NULL);
 
 	if (cond->type == COND_TYPE_FALSE) {
@@ -3036,7 +3036,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	/*
 	 *	Associate the unlang with the configuration section.
 	 */
-	cf_data_add(cs, "unlang", c, NULL);
+	cf_data_add(cs, 0, "unlang", c, NULL);
 
 	dump_tree(c, c->debug_name);
 	return 0;

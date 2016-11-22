@@ -102,9 +102,10 @@ struct conf_pair {
  */
 struct conf_data {
 	CONF_ITEM  	item;
-	char const 	*name;
-	void const   	*data;		//!< User data
-	void       	(*free)(void *);	//!< Free user data function
+	int		type;			//!< Qualifier for name.
+	char const 	*name;			//!< Name used to retrieve conf_data.
+	void const   	*data;			//!< User data.
+	void       	(*free)(void *);	//!< Free user data function.
 };
 
 struct conf_part {
@@ -304,6 +305,9 @@ static int data_cmp(void const *a, void const *b)
 	CONF_DATA const *one = a;
 	CONF_DATA const *two = b;
 
+	if (one->type > two->type) return +1;
+	if (one->type < two->type) return -1;
+
 	return strcmp(one->name, two->name);
 }
 
@@ -333,7 +337,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	FILE *fp;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, "filename");
+	tree = cf_data_find(top, 0, "filename");
 	if (!tree) return NULL;
 
 	fp = fopen(filename, "r");
@@ -416,7 +420,7 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	int		fd;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, "filename");
+	tree = cf_data_find(top, 0, "filename");
 	if (!tree) return false;
 
 	file = talloc(tree, cf_file_t);
@@ -550,7 +554,7 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 	rbtree_t *tree;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, "filename");
+	tree = cf_data_find(top, 0, "filename");
 	if (!tree) return true;
 
 	cb.rcode = CF_FILE_NONE;
@@ -3097,7 +3101,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			talloc_free(p);
 			css->name2 = talloc_typed_strdup(css, buff[2]);
 
-			cf_data_add(css, "if", cond, NULL);
+			cf_data_add(css, 0, "if", cond, NULL);
 
 		add_section:
 			cf_item_add(this, &(css->item));
@@ -3545,7 +3549,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	tree = rbtree_create(cs, filename_cmp, NULL, 0);
 	if (!tree) return -1;
 
-	cf_data_add(cs, "filename", tree, NULL);
+	cf_data_add(cs, 0, "filename", tree, NULL);
 
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
@@ -4022,7 +4026,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 /*
  *	Find data from a particular section.
  */
-void *cf_data_find(CONF_SECTION const *cs, char const *name)
+void *cf_data_find(CONF_SECTION const *cs, int type, char const *name)
 {
 	if (!cs || !name) return NULL;
 
@@ -4032,6 +4036,7 @@ void *cf_data_find(CONF_SECTION const *cs, char const *name)
 	if (cs->data_tree) {
 		CONF_DATA mycd, *cd;
 
+		mycd.type = type;
 		mycd.name = name;
 		cd = rbtree_finddata(cs->data_tree, &mycd);
 		if (cd) {
@@ -4049,8 +4054,7 @@ void *cf_data_find(CONF_SECTION const *cs, char const *name)
 /*
  *	Add named data to a configuration section.
  */
-int cf_data_add(CONF_SECTION *cs, char const *name,
-		void const *data, void (*data_free)(void *))
+int cf_data_add(CONF_SECTION *cs, int type, char const *name, void const *data, void (*data_free)(void *))
 {
 	CONF_DATA *cd;
 
@@ -4059,7 +4063,7 @@ int cf_data_add(CONF_SECTION *cs, char const *name,
 	/*
 	 *	Already exists.  Can't add it.
 	 */
-	if (cf_data_find(cs, name) != NULL) return -1;
+	if (cf_data_find(cs, type, name) != NULL) return -1;
 
 	cd = cf_data_alloc(cs, name, data, data_free);
 	if (!cd) return -1;
@@ -4072,7 +4076,7 @@ int cf_data_add(CONF_SECTION *cs, char const *name,
 /** Remove named data from a configuration section
  *
  */
-void *cf_data_remove(CONF_SECTION *cs, char const *name)
+void *cf_data_remove(CONF_SECTION *cs, int type, char const *name)
 {
 	CONF_DATA mycd;
 	CONF_DATA *cd;
@@ -4085,6 +4089,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 	/*
 	 *	Find the name in the tree, for speed.
 	 */
+	mycd.type = type;
 	mycd.name = name;
 
 	cd = rbtree_finddata(cs->data_tree, &mycd);
@@ -4358,7 +4363,7 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 		 *	FIXME: check for "if" or "elsif".  And if so, print
 		 *	out the parsed condition, instead of the input text
 		 *
-		 *	cf_data_find(cs, "if");
+		 *	cf_data_find(cs, 0, "if");
 		 */
 
 		if (cs->name2) {
@@ -4366,7 +4371,7 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 
 			fputs(" ", fp);
 
-			c = cf_data_find(cs, "if");
+			c = cf_data_find(cs, 0, "if");
 			if (c) {
 				char buffer[1024];
 
