@@ -1116,7 +1116,7 @@ static int driver_get_stats(ippool_tool_stats_t *out, void *instance, uint8_t co
 	}
 
 	if (reply->elements != (reply_cnt - 2)) {
-		ERROR("Failed retrieving pool stats: Expected %i results, got %zu", reply_cnt - 2, reply->elements);
+		ERROR("Failed retrieving pool stats: Expected %zu results, got %zu", reply_cnt - 2, reply->elements);
 		goto error;
 	}
 
