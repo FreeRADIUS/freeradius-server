@@ -280,6 +280,17 @@ _Generic((_ct), \
 #define PW_BASE_TYPE(_t)		(0xff & (_t))
 /* @} **/
 
+typedef enum {
+	CF_DATA_TYPE_DEFAULT = 0,
+	CF_DATA_TYPE_CLIENT,
+	CF_DATA_TYPE_HOME_SERVER_POOL,
+	CF_DATA_TYPE_UNLANG,
+	CF_DATA_TYPE_PROTOCOL,
+	CF_DATA_TYPE_MODULE_INSTANCE,
+	CF_DATA_TYPE_CONNECTION_POOL,
+	CF_DATA_TYPE_TLS
+} cf_data_type_t;
+
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
 do {\
 	if (!(_cond)) {\

@@ -106,7 +106,7 @@ int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
 {
 	rad_protocol_t const *proto;
 
-	proto = cf_data_find(cs, 0, "proto");
+	proto = cf_data_find(cs, CF_DATA_TYPE_PROTOCOL, "proto");
 	if (!proto || !proto->compile) return 0;
 
 	if (proto->compile(server, cs) < 0) {
@@ -223,13 +223,13 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			return -1;
 		}
 
-		if (cf_data_find(cs, 0, "proto") != NULL) {
+		if (cf_data_find(cs, CF_DATA_TYPE_PROTOCOL, "proto") != NULL) {
 			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
 			talloc_const_free(module);
 			return -1;
 		}
 
-		cf_data_add(cs, 0, "proto", proto, NULL);
+		cf_data_add(cs, CF_DATA_TYPE_PROTOCOL, "proto", proto, NULL);
 	}
 
 	/*

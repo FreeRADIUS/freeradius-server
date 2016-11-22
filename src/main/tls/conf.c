@@ -310,7 +310,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	 *	If cs has already been parsed there should be a cached copy
 	 *	of conf already stored, so just return that.
 	 */
-	conf = cf_data_find(cs, 0, "tls-conf");
+	conf = cf_data_find(cs, CF_DATA_TYPE_TLS, "tls-conf");
 	if (conf) {
 		DEBUG("Using cached TLS configuration from previous invocation");
 		return conf;
@@ -432,7 +432,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
 	 */
-	cf_data_add(cs, 0, "tls-conf", conf, NULL);
+	cf_data_add(cs, CF_DATA_TYPE_TLS, "tls-conf", conf, NULL);
 
 	return conf;
 }
@@ -442,7 +442,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 	fr_tls_conf_t *conf;
 	uint32_t i;
 
-	conf = cf_data_find(cs, 0, "tls-conf");
+	conf = cf_data_find(cs, CF_DATA_TYPE_TLS, "tls-conf");
 	if (conf) {
 		DEBUG2("Using cached TLS configuration from previous invocation");
 		return conf;

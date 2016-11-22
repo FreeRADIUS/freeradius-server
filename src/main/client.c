@@ -264,7 +264,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	If the client list already exists, use that.
 			 *	Otherwise, create a new client list.
 			 */
-			clients = cf_data_find(cs, 0, "clients");
+			clients = cf_data_find(cs, CF_DATA_TYPE_CLIENT, "clients");
 			if (!clients) {
 				clients = client_list_init(cs);
 				if (!clients) {
@@ -272,7 +272,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 					return false;
 				}
 
-				if (cf_data_add(cs, 0, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
+				if (cf_data_add(cs, CF_DATA_TYPE_CLIENT,
+						"clients", clients, (void (*)(void *)) client_list_free) < 0) {
 					ERROR("Failed to associate clients with virtual server %s", client->server);
 					client_list_free(clients);
 					return false;
@@ -692,7 +693,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	/*
 	 *	Associate the clients structure with the section.
 	 */
-	if (cf_data_add(section, 0, "clients", clients, NULL) < 0) {
+	if (cf_data_add(section, CF_DATA_TYPE_CLIENT, "clients", clients, NULL) < 0) {
 		cf_log_err_cs(section, "Failed to associate clients with section %s", cf_section_name1(section));
 		client_list_free(clients);
 		return NULL;

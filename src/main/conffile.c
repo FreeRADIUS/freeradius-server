@@ -337,7 +337,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	FILE *fp;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, 0, "filename");
+	tree = cf_data_find(top, CF_DATA_TYPE_DEFAULT, "filename");
 	if (!tree) return NULL;
 
 	fp = fopen(filename, "r");
@@ -420,7 +420,7 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	int		fd;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, 0, "filename");
+	tree = cf_data_find(top, CF_DATA_TYPE_DEFAULT, "filename");
 	if (!tree) return false;
 
 	file = talloc(tree, cf_file_t);
@@ -554,7 +554,7 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 	rbtree_t *tree;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, 0, "filename");
+	tree = cf_data_find(top, CF_DATA_TYPE_DEFAULT, "filename");
 	if (!tree) return true;
 
 	cb.rcode = CF_FILE_NONE;
@@ -3101,7 +3101,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			talloc_free(p);
 			css->name2 = talloc_typed_strdup(css, buff[2]);
 
-			cf_data_add(css, 0, "if", cond, NULL);
+			cf_data_add(css, CF_DATA_TYPE_UNLANG, "if", cond, NULL);
 
 		add_section:
 			cf_item_add(this, &(css->item));
@@ -3549,7 +3549,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	tree = rbtree_create(cs, filename_cmp, NULL, 0);
 	if (!tree) return -1;
 
-	cf_data_add(cs, 0, "filename", tree, NULL);
+	cf_data_add(cs, CF_DATA_TYPE_DEFAULT, "filename", tree, NULL);
 
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
@@ -4363,7 +4363,7 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 		 *	FIXME: check for "if" or "elsif".  And if so, print
 		 *	out the parsed condition, instead of the input text
 		 *
-		 *	cf_data_find(cs, 0, "if");
+		 *	cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
 		 */
 
 		if (cs->name2) {
@@ -4371,7 +4371,7 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 
 			fputs(" ", fp);
 
-			c = cf_data_find(cs, 0, "if");
+			c = cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
 			if (c) {
 				char buffer[1024];
 

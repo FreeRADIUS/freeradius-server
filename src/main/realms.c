@@ -596,7 +596,7 @@ bool realm_home_server_add(home_server_t *home)
 	/*
 	 *	Mark it as already processed
 	 */
-	cf_data_add(home->cs, 0, "home_server", (void *)null_free, null_free);
+	cf_data_add(home->cs, CF_DATA_TYPE_HOME_SERVER_POOL, "home_server", (void *)null_free, null_free);
 
 	return true;
 }
@@ -1356,7 +1356,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	if (do_print) cf_log_info(cs, " }");
 
-	cf_data_add(cs, 0, "home_server_pool", pool, NULL);
+	cf_data_add(cs, CF_DATA_TYPE_HOME_SERVER_POOL, "home_server_pool", pool, NULL);
 	(void) talloc_steal(cs, pool);
 
 	rad_assert(pool->server_type != 0);
@@ -2232,7 +2232,7 @@ int realms_init(CONF_SECTION *config)
 		/*
 		 *	Pool was already loaded.
 		 */
-		if (cf_data_find(cs, 0, "home_server_pool")) continue;
+		if (cf_data_find(cs, CF_DATA_TYPE_HOME_SERVER_POOL, "home_server_pool")) continue;
 
 		type = pool_peek_type(config, cs);
 		if (type == HOME_TYPE_INVALID) goto error;
