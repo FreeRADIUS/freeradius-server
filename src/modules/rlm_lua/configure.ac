@@ -11,7 +11,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-lua-include-dir=DIR
 	AC_ARG_WITH(lua-include-dir,
 		[AS_HELP_STRING([--with-lua-include-dir=DIR],
-		[Directory where the json-c includes may be found])],
+		[Directory where the lua includes may be found])],
 		[case "$withval" in
 		    no)
 			AC_MSG_ERROR(Need lua-include-dir)
