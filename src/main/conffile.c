@@ -4152,6 +4152,53 @@ void *cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name)
 	return data;
 }
 
+/** ctx data for a _cf_data_walk_call
+ *
+ */
+typedef struct cf_data_walk_ctx {
+	cf_data_type_t	type;		//!< of CONF_DATA we're iterating over.
+	cf_walker_t	cb;		//!< cb to process CONF_DATA.
+	void		*ctx;		//!< to pass to cb.
+} cf_data_walk_ctx_t;
+
+/** Wrap a cf_walker_t in an rb_walker_t
+ *
+ * @param[in] ctx	A cf_data_walk_ctx_t.
+ * @param[in] data	A CONF_DATA entry.
+ */
+static int _cf_data_walk(void *ctx, void *data)
+{
+	cf_data_walk_ctx_t	*cd_ctx = ctx;
+	CONF_DATA		*cd = data;
+	void			*mutable;
+	int			ret;
+
+	if (cd->type != cd_ctx->type) return 0;
+
+	memcpy(&mutable, &cd->data, sizeof(data));
+	ret = cd_ctx->cb(mutable, cd_ctx->ctx);
+
+	return ret;
+}
+
+/** Walk over a specific type of CONF_DATA
+ *
+ * @param[in] cs	containing the CONF_DATA to walk over.
+ * @param[in] type	of CONF_DATA to walk over.
+ * @param[in] cb	to call when we find CONF_DATA of the specified type.
+ * @param[in] ctx	to pass to cb.
+ */
+void cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx)
+{
+	cf_data_walk_ctx_t cd_ctx = {
+		.type = type,
+		.cb = cb,
+		.ctx = ctx
+	};
+
+	rbtree_walk(cs->data_tree, RBTREE_IN_ORDER, _cf_data_walk, &cd_ctx);
+}
+
 /*
  *	This is here to make the rest of the code easier to read.  It
  *	ties conffile.c to log.c, but it means we don't have to
