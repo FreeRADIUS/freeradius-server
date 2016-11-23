@@ -192,9 +192,6 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 
 	/*
 	 *	Get a talloc pool specifically for this packet.
-	 *
-	 *	@todo: send an empty NAK back, saying we couldn't do
-	 *	it.
 	 */
 	ctx = talloc_pool(worker, worker->talloc_pool_size);
 	if (!ctx) {
@@ -209,13 +206,7 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	rad_assert(worker->transports[cd->transport] != NULL);
 	request = worker->transports[cd->transport]->recv_request(worker->transports[cd->transport], cd->ctx, ctx, cd->m.data, cd->m.data_size);
 
-	/*
-	 *	@todo Send an empty NAK back, saying "we couldn't do
-	 *	anything with this request".
-	 */
-	if (!request) {
-		return NULL;
-	}
+	if (!request) return NULL;
 
 	/*
 	 *	Update the transport-specific fields.
@@ -287,8 +278,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		/*
 		 *	Waiting too long, delete it.
-		 *
-		 *	@todo send a NAK
 		 */
 		if (waiting > NANOSEC) {
 			(void) fr_heap_extract(worker->to_decode, cd);
@@ -317,8 +306,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		/*
 		 *	Waiting too long, delete it.
-		 *
-		 *	@todo send a NAK
 		 */
 		(void) fr_heap_extract(worker->localized, cd);
 		fr_message_done(&cd->m);
@@ -334,8 +321,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		/*
 		 *	Waiting too long, delete it.
-		 *
-		 *	@todo send a NAK
 		 */
 		(void) fr_heap_extract(worker->decoded, request);
 		talloc_free(request);
@@ -351,8 +336,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		/*
 		 *	Waiting too long, delete it.
-		 *
-		 *	@todo send a NAK
 		 */
 		(void) fr_heap_extract(worker->runnable, request);
 		talloc_free(request);
@@ -375,8 +358,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		/*
 		 *	Waiting too long, delete it.
-		 *
-		 *	@todo send a NAK
 		 */
 		fr_time_tracking_resume(&request->tracking, now);
 		fr_time_tracking_end(&request->tracking, now, &worker->tracking);
