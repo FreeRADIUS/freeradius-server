@@ -83,6 +83,8 @@ typedef struct fr_time_tracking_t {
 #define FR_DLIST_INIT(head) do { head.prev = head.next = &head; } while (0)
 #define FR_DLIST_INSERT_TAIL(head, entry) do { entry.prev = head.prev; entry.next = &head; head.prev->next = &entry; head.prev = &entry; } while (0)
 #define FR_DLIST_REMOVE(entry) do { entry.prev->next = entry.next; entry.next->prev = entry.prev; FR_DLIST_INIT(entry); } while (0)
+#define FR_DLIST_FIRST(head) (head.next == &head) ? NULL : head.next
+#define FR_DLIST_NEXT(head, p_entry) (p_entry->next == &head) ? NULL : p_entry->next
 
 int fr_time_start(void);
 fr_time_t fr_time(void);

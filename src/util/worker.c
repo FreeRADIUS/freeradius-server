@@ -41,6 +41,9 @@ struct fr_worker_t {
 
 	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
 
+	fr_dlist_t		channel_head;
+	fr_dlist_t		channel_tail;
+
 	fr_heap_t		*to_decode;	//!< messages from the master, to be decoded or localized
 	fr_heap_t		*localized;	//!< localized messages to be decoded
 	fr_heap_t		*decoded;	//!< decoded requests which should (eventually) be runnable
@@ -269,13 +272,14 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 {
 	fr_time_t waiting;
 	fr_channel_data_t *cd;
+	fr_dlist_t *entry;
 	REQUEST *request;
 
 	/*
 	 *	Check the "to_decode" queue for old packets.
 	 */
 	while ((cd = fr_heap_peek_tail(worker->to_decode)) != NULL) {
-		fr_message_t *l;
+		fr_message_t *lm;
 
 		waiting = now - cd->m.when;
 
@@ -297,10 +301,10 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 *	0.1 to 1s.  Localize it.
 		 */
 		(void) fr_heap_extract(worker->to_decode, cd);
-		l = fr_message_localize(worker, &cd->m, sizeof(cd));
-		if (!l) goto nak;
+		lm = fr_message_localize(worker, &cd->m, sizeof(cd));
+		if (!lm) goto nak;
 
-		(void) fr_heap_insert(worker->localized, l);
+		(void) fr_heap_insert(worker->localized, lm);
 	}
 
 	/*
@@ -357,28 +361,26 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	/*
 	 *	Check the resumable queue for old packets.
 	 */
-	if (worker->tracking.list.next != &worker->tracking.list) {
-		fr_dlist_t *list = worker->tracking.list.next;
-
-		while (list != &worker->tracking.list) {
-			request = fr_ptr_to_type(REQUEST, tracking.list, list);
+	for (entry = FR_DLIST_FIRST(worker->tracking.list);
+	     entry != NULL;
+	     entry = FR_DLIST_NEXT(worker->tracking.list, entry)) {
+		request = fr_ptr_to_type(REQUEST, tracking.list, entry);
 #ifndef NDEBUG
-			(void) talloc_get_type_abort(request, REQUEST);
+		(void) talloc_get_type_abort(request, REQUEST);
 #endif
 
-			waiting = now - request->recv_time;
+		waiting = now - request->recv_time;
 
-			if (waiting < (30 * (fr_time_t) NANOSEC)) break;
+		if (waiting < (30 * (fr_time_t) NANOSEC)) break;
 
-			/*
-			 *	Waiting too long, delete it.
-			 *
-			 *	@todo send a NAK
-			 */
-			fr_time_tracking_resume(&request->tracking, now);
-			fr_time_tracking_end(&request->tracking, now, &worker->tracking);
-			talloc_free(request);
-		}
+		/*
+		 *	Waiting too long, delete it.
+		 *
+		 *	@todo send a NAK
+		 */
+		fr_time_tracking_resume(&request->tracking, now);
+		fr_time_tracking_end(&request->tracking, now, &worker->tracking);
+		talloc_free(request);
 	}
 }
 

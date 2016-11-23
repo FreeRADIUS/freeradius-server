@@ -81,6 +81,8 @@ typedef struct fr_channel_data_t {
 		struct {
 			fr_time_t		*start_time;	//!< time original request started (network -> worker)
 			uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
+
+			fr_dlist_t		list;		//!< list of unprocessed packets for the worker
 		} request;
 
 		struct {

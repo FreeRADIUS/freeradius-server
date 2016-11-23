@@ -106,6 +106,7 @@ struct rad_request {
 	fr_channel_t		*channel;
 	fr_transport_t		*transport;
 	fr_heap_t		*backlog;
+	fr_dlist_t		list;
 };
 #endif
 
