@@ -66,12 +66,12 @@ typedef struct fr_transport_t fr_transport_t;
 /**
  *  Have a bare packet, and decode it to a REQUEST
  */
-typedef REQUEST *(*fr_transport_recv_request_t)(fr_transport_t const *transport, void const *instance, TALLOC_CTX *ctx, uint8_t *const data, size_t data_len);
+typedef REQUEST *(*fr_transport_recv_request_t)(fr_transport_t const *transport, void const *packet_ctx, TALLOC_CTX *ctx, uint8_t *const data, size_t data_len);
 
 /**
  *  Have a REQUEST, and encode it to a packet
  */
-typedef ssize_t (*fr_transport_send_reply_t)(fr_transport_t const *transport, void const *instance, uint8_t const *data, size_t data_len, REQUEST *request);
+typedef ssize_t (*fr_transport_send_reply_t)(fr_transport_t const *transport, void const *packet_ctx, uint8_t const *data, size_t data_len, REQUEST *request);
 
 /**
  *  Process a request through the transport async state machine.
