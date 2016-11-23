@@ -43,6 +43,7 @@ typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
 int		fr_event_list_num_elements(fr_event_list_t *el);
+int		fr_event_list_kq(fr_event_list_t *el);
 int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
 
 int		fr_event_fd_delete(fr_event_list_t *el, int fd);

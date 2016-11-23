@@ -151,6 +151,18 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 	return fr_heap_num_elements(el->times);
 }
 
+/** Return the kq associated with an event list.
+ *
+ * @param[in] el to return timer events for.
+ * @return kq
+ */
+int fr_event_list_kq(fr_event_list_t *el)
+{
+	if (!el) return -1;
+
+	return el->kq;
+}
+
 /** Get the current time according to the event list
  *
  * If the event list is currently dispatching events, we return the time
