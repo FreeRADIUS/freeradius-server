@@ -77,6 +77,13 @@ typedef struct fr_time_tracking_t {
 #define NANOSEC (1000000000)
 #define USEC	(1000000)
 
+/*
+ *	Macros to manage a doubly linked list.
+ */
+#define FR_DLIST_INIT(head) do { head.prev = head.next = &head; } while (0)
+#define FR_DLIST_INSERT_TAIL(head, entry) do { entry.prev = head.prev; entry.next = &head; head.prev->next = &entry; head.prev = &entry; } while (0)
+#define FR_DLIST_REMOVE(entry) do { entry.prev->next = entry.next; entry.next->prev = entry.prev; FR_DLIST_INIT(entry); } while (0)
+
 int fr_time_start(void);
 fr_time_t fr_time(void);
 void fr_time_to_timeval(struct timeval *tv, fr_time_t when) CC_HINT(nonnull);

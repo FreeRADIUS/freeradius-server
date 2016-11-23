@@ -154,16 +154,13 @@ void fr_time_to_timeval(struct timeval *tv, fr_time_t when)
  */
 void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when)
 {
-	fr_dlist_t *l = &(tt->list);
-
 	memset(tt, 0, sizeof(*tt));
 
 	tt->when = when;
 	tt->start = when;
 	tt->resumed = when;
 
-	l->prev = l;
-	l->next = l;
+	FR_DLIST_INIT(tt->list);
 }
 
 
@@ -207,9 +204,6 @@ void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracki
  */
 void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
 {
-	fr_dlist_t *l = &(tt->list);
-	fr_dlist_t *head = &(worker->list);
-
 	tt->when = when;
 	tt->yielded = when;
 
@@ -217,14 +211,10 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
 	tt->running += (tt->yielded - tt->resumed);
 
 	/*
-	 *	Insert this request into the TAIL of the workers list
+	 *	Insert this request into the TAIL of the worker's list
 	 *	of waiting requests.
 	 */
-	l->prev = head->prev;
-	l->next = head;
-
-	head->prev->next = l;
-	head->prev = l;
+	FR_DLIST_INSERT_TAIL(worker->list, tt->list);
 }
 
 
@@ -235,8 +225,6 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
  */
 void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 {
-	fr_dlist_t *l = &(tt->list);
-
 	tt->when = when;
 	tt->resumed = when;
 
@@ -248,9 +236,5 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 	 *	Remove this request into the workers list of waiting
 	 *	requests.
 	 */
-	l->prev->next = l->next;
-	l->next->prev = l->prev;
-
-	l->prev = l;
-	l->next = l;
+	FR_DLIST_REMOVE(tt->list);
 }
