@@ -2526,7 +2526,11 @@ int tls_global_version_check(char const *acknowledged)
  */
 void tls_global_cleanup(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
 	ERR_remove_state(0);
+#elif OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+	ERR_remove_thread_state(NULL);
+#endif
 	ENGINE_cleanup();
 	CONF_modules_unload(1);
 	ERR_free_strings();
