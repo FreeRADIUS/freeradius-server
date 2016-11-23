@@ -26,9 +26,10 @@
 RCSIDH(worker_h, "$Id$")
 
 #include <freeradius-devel/util/channel.h>
-#include <freeradius-devel/util/transport.h>
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
+
+#include <freeradius-devel/util/transport.h>
 
 #ifdef __cplusplus
 extern "C" {

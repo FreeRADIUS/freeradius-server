@@ -39,12 +39,23 @@ struct fr_worker_t {
 
 	size_t			talloc_pool_size; //!< for each REQUEST
 
+	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
+
 	fr_heap_t		*to_decode;	//!< messages from the master, to be decoded or localized
 	fr_heap_t		*localized;	//!< localized messages to be decoded
 	fr_heap_t		*decoded;	//!< decoded requests which should (eventually) be runnable
-
-	uint32_t		highest_priority; //!< highest priority runnable request
 	fr_heap_t		*runnable;	//!< current runnable requests which we've spent time processing
+
+	/*
+	 *	@todo maybe put the REQUEST into an fr_dlist_t,
+	 *	ordered by time?  So that when we need to clean up an
+	 *	old request, we just look at the tail of the list,
+	 *	which is simple.  Which means we also need to put a
+	 *	"worker state" entry into the REQUEST so that we know
+	 *	which heap it's in (or not).  Or, maybe just put the
+	 *	heap pointer into the request... which exposes it
+	 *	unnecessarily, but is easy.
+	 */
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
@@ -234,6 +245,143 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	return request;
 }
 
+#define fr_ptr_to_type(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
+
+
+/** Check timeouts on the various queues
+ *
+ *  This function checks and enforces timeouts on the multiple worker
+ *  queues.  The high priority events can starve low priority ones.
+ *  When that happens, the low priority events will be in the queues for
+ *  "too long", and will need to be cleaned up.
+ *
+ *  @todo We may have medium-priority events which are waiting for too
+ *  long, but we may not find them if there are newer low priority
+ *  events.  This issue should be addressed.  There is no real fix,
+ *  other than walking the entire heap, or re-implementing it so that
+ *  each priority level has it's own heap (or fr_dlist_t), and then we
+ *  check those.
+ *
+ * @param[in] worker the worker
+ * @param[in] now the current time
+ */
+static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
+{
+	fr_time_t waiting;
+	fr_channel_data_t *cd;
+	REQUEST *request;
+
+	/*
+	 *	Check the "to_decode" queue for old packets.
+	 */
+	while ((cd = fr_heap_peek_tail(worker->to_decode)) != NULL) {
+		fr_message_t *l;
+
+		waiting = now - cd->m.when;
+
+		if (waiting < (NANOSEC / 10)) break;
+
+		/*
+		 *	Waiting too long, delete it.
+		 *
+		 *	@todo send a NAK
+		 */
+		if (waiting > NANOSEC) {
+			(void) fr_heap_extract(worker->to_decode, cd);
+		nak:
+			fr_message_done(&cd->m);
+			continue;
+		}
+
+		/*
+		 *	0.1 to 1s.  Localize it.
+		 */
+		(void) fr_heap_extract(worker->to_decode, cd);
+		l = fr_message_localize(worker, &cd->m, sizeof(cd));
+		if (!l) goto nak;
+
+		(void) fr_heap_insert(worker->localized, l);
+	}
+
+	/*
+	 *	Check the "localized" queue for old packets.
+	 */
+	while ((cd = fr_heap_peek_tail(worker->localized)) != NULL) {
+		waiting = now - cd->m.when;
+
+		if (waiting < NANOSEC) break;
+
+		/*
+		 *	Waiting too long, delete it.
+		 *
+		 *	@todo send a NAK
+		 */
+		(void) fr_heap_extract(worker->localized, cd);
+		fr_message_done(&cd->m);
+	}
+
+	/*
+	 *	Check the "decoded" queue for old packets.
+	 */
+	while ((request = fr_heap_peek_tail(worker->decoded)) != NULL) {
+		waiting = now - request->recv_time;
+
+		if (waiting < NANOSEC) break;
+
+		/*
+		 *	Waiting too long, delete it.
+		 *
+		 *	@todo send a NAK
+		 */
+		(void) fr_heap_extract(worker->decoded, request);
+		talloc_free(request);
+	}
+
+	/*
+	 *	Check the "runnable" queue for old packets.
+	 */
+	while ((request = fr_heap_peek_tail(worker->runnable)) != NULL) {
+		waiting = now - request->recv_time;
+
+		if (waiting < NANOSEC) break;
+
+		/*
+		 *	Waiting too long, delete it.
+		 *
+		 *	@todo send a NAK
+		 */
+		(void) fr_heap_extract(worker->runnable, request);
+		talloc_free(request);
+	}
+
+	/*
+	 *	Check the resumable queue for old packets.
+	 */
+	if (worker->tracking.list.next != &worker->tracking.list) {
+		fr_dlist_t *list = worker->tracking.list.next;
+
+		while (list != &worker->tracking.list) {
+			request = fr_ptr_to_type(REQUEST, tracking.list, list);
+#ifndef NDEBUG
+			(void) talloc_get_type_abort(request, REQUEST);
+#endif
+
+			waiting = now - request->recv_time;
+
+			if (waiting < (30 * (fr_time_t) NANOSEC)) break;
+
+			/*
+			 *	Waiting too long, delete it.
+			 *
+			 *	@todo send a NAK
+			 */
+			fr_time_tracking_resume(&request->tracking, now);
+			fr_time_tracking_end(&request->tracking, now, &worker->tracking);
+			talloc_free(request);
+		}
+	}
+}
+
 
 /** Get a runnable request
  *
@@ -249,6 +397,9 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	/*
 	 *	Grab a runnable request, and resume it.
+	 *
+	 *	If it was in the resumeable queue, it gets removed.
+	 *	Otherwise, nothing happens.
 	 */
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
@@ -263,16 +414,16 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	into requests.
 	 */
 	request = fr_heap_pop(worker->decoded);
-	if (request) {
-		fr_time_tracking_start(&request->tracking, now);
-		return request;
-	}
+	if (request) goto start_request;
 
 	/*
 	 *	Grab a request to decode, and start it.
 	 */
 	request = fr_worker_decode_request(worker);
 	if (request) {
+	start_request:
+		request->el = worker->el;
+		request->backlog = worker->runnable;
 		fr_time_tracking_start(&request->tracking, now);
 		return request;
 	}
@@ -492,6 +643,7 @@ static fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 }
 
 
+
 /** The main worker function.
  *
  * @param[in] arg Something from the main server...
@@ -529,11 +681,6 @@ void *fr_worker(UNUSED void *arg)
 		REQUEST *request;
 
 		/*
-		 *	@todo check / warn on yielded requests which
-		 *	have been sitting around for too long.
-		 */
-
-		/*
 		 *	There are runnable requests.  We still service
 		 *	the event loop, but we don't wait for events.
 		 */
@@ -552,6 +699,11 @@ void *fr_worker(UNUSED void *arg)
 		if (num_events > 0) fr_event_service(worker->el);
 
 		now = fr_time();
+
+		/*
+		 *	Ten times a second, check for timeouts on incoming packets.
+		 */
+		if ((now - worker->checked_timeout) > (NANOSEC / 10)) fr_worker_check_timeouts(worker, now);
 
 		request = fr_worker_get_request(worker, now);
 		if (!request) continue;

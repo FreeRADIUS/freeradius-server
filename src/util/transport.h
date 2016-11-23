@@ -100,10 +100,12 @@ struct rad_request {
 	uint32_t		priority;
 	fr_time_t		recv_time;
 	fr_time_t		*original_recv_time;
+	fr_event_list_t		*el;
 	fr_transport_process_t	process_async;
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 	fr_transport_t		*transport;
+	fr_heap_t		*backlog;
 };
 #endif
 
