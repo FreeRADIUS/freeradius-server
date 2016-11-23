@@ -35,6 +35,7 @@ RCSID("$Id$")
 
 #include <Python.h>
 #include <dlfcn.h>
+#include "rlm_python.h"
 
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
@@ -42,58 +43,8 @@ static void		*python_dlhandle;
 static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
 static PyObject		*main_module;		//!< Pthon configuration dictionary.
 
-/** Specifies the module.function to load for processing a section
- *
- */
-typedef struct python_func_def {
-	PyObject	*module;		//!< Python reference to module.
-	PyObject	*function;		//!< Python reference to function in module.
-
-	char const	*module_name;		//!< String name of module.
-	char const	*function_name;		//!< String name of function in module.
-} python_func_def_t;
-
-/** An instance of the rlm_python module
- *
- */
-typedef struct rlm_python_t {
-	char const	*name;			//!< Name of the module instance
-	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
-	char const	*python_path;		//!< Path to search for python files in.
-	PyObject	*module;		//!< Local, interpreter specific module, containing
-						//!< FreeRADIUS functions.
-	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
-						//!< instance.
-
-	python_func_def_t
-	instantiate,
-	authorize,
-	authenticate,
-	preacct,
-	accounting,
-	checksimul,
-	pre_proxy,
-	post_proxy,
-	post_auth,
-#ifdef WITH_COA
-	recv_coa,
-	send_coa,
-#endif
-	detach;
-
-	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
-						//!< made available to the python script.
-} rlm_python_t;
-
-/** Tracks a python module inst/thread state pair
- *
- * Multiple instances of python create multiple interpreters and each
- * thread must have a PyThreadState per interpreter, to track execution.
- */
-typedef struct python_thread_state {
-	PyThreadState		*state;		//!< Module instance/thread specific state.
-	rlm_python_t const	*inst;		//!< Module instance that created this thread state.
-} python_thread_state_t;
+static rlm_python_t *current_inst;		//!< Needed to pass parameter to PyInit_radiusd
+static CONF_SECTION *current_conf;		//!< Needed to pass parameter to PyInit_radiusd
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -195,6 +146,22 @@ static PyMethodDef module_methods[] = {
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
 	},
 	{ NULL, NULL, 0, NULL },
+};
+
+/*
+ *	Initialise a new module, with our default methods
+ */
+static struct PyModuleDef moduledef = {
+	PyModuleDef_HEAD_INIT,
+	"radiusd",			/*m_doc*/
+	"FreeRADIUS python module",	/*m_doc*/
+	-1,				/*m_size*/
+	module_methods,			/*m_methods*/
+	NULL,				/*m_reload*/
+	NULL,				/*m_traverse*/
+	NULL,				/*m_clear*/
+	NULL,				/*m_free*/
+	
 };
 
 /** Print out the current error
@@ -322,7 +289,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 
 		vp->op = op;
 		if(PyBytes_CheckExact(pStr2)){
-			fr_pair_value_memcpy(vp, (uint8_t*)s2, PyBytes_Size(pStr2));
+			fr_pair_value_memcpy(vp, (uint8_t const*)s2, PyBytes_Size(pStr2));
 			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
 			      fr_int2str(fr_tokens_table, op, "="), s2);
 		}else{
@@ -851,13 +818,85 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 	DEBUG("%*s}", indent_section, " ");
 }
 
+/*
+ * creates a module "radiusd"
+ */
+static PyMODINIT_FUNC PyInit_radiusd(void)
+{
+	CONF_SECTION *cs;
+	/*
+	 * This is ugly, but there is no other way to pass parameters to PyMODINIT_FUNC
+	 */
+	rlm_python_t *inst = current_inst;
+	CONF_SECTION *conf = current_conf;
+	int i;
+
+	inst->module = PyModule_Create(&moduledef);
+	if (!inst->module) {
+		python_error_log();
+		PyEval_SaveThread();
+		return Py_None;
+	}
+
+	/*
+	 *	Py_InitModule3 returns a borrowed ref, the actual
+	 *	module is owned by sys.modules, so we also need
+	 *	to own the module to prevent it being freed early.
+	 */
+	//Py_IncRef(inst->module);
+
+	if (inst->cext_compat) main_module = inst->module;
+
+	for (i = 0; radiusd_constants[i].name; i++) {
+		if ((PyModule_AddIntConstant(inst->module, radiusd_constants[i].name,
+					     radiusd_constants[i].value)) < 0){
+			python_error_log();
+			PyEval_SaveThread();
+			return Py_None;
+		}
+	}
+
+	/*
+	 *	Convert a FreeRADIUS config structure into a python
+	 *	dictionary.
+	 */
+	inst->pythonconf_dict = PyDict_New();
+	if (!inst->pythonconf_dict) {
+		ERROR("Unable to create python dict for config");
+		python_error_log();
+		return Py_None;
+	}
+
+	/*
+	 *	Add module configuration as a dict
+	 */
+	if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0){
+		python_error_log();
+		PyEval_SaveThread();
+		return Py_None;
+	}
+	cs = cf_section_sub_find(conf, "config");
+	if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
+	
+	return inst->module;
+}
+
 /** Initialises a separate python interpreter for this module instance
  *
  */
 static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 {
-	int i;
-
+	/*
+	 * prepare radiusd module to be loaded
+	 */
+	if (!inst->cext_compat || !main_module) {
+		/*
+		 * This is ugly, but there is no other way to pass parameters to PyMODINIT_FUNC
+		 */
+		current_inst = inst;
+		current_conf = conf;
+		PyImport_AppendInittab("radiusd",PyInit_radiusd);
+	}
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
 	 */
@@ -922,7 +961,6 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 *	with Python C extensions if they use GIL lock functions.
 	 */
 	if (!inst->cext_compat || !main_module) {
-		CONF_SECTION *cs;
 
 		/*
 		 *	Set the python search path
@@ -936,6 +974,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 				MEM(path = Py_DecodeLocale(inst->python_path, NULL));
 				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
+				PyObject_SetAttrString(sys,"path",sys_path);
 				PyMem_RawFree(path);
 			}
 #elif PY_VERSION_HEX > 0x03000000
@@ -946,6 +985,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 				MEM(path = _Py_char2wchar(inst->python_path, NULL));
 				PyList_Append(sys_path, PyUnicode_FromWideChar(path,-1));				
+				PyObject_SetAttrString(sys,"path",sys_path);
 				PyMem_RawFree(path);
 			}
 #else
@@ -959,62 +999,6 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 #endif
 		}
 
-		/*
-		 *	Initialise a new module, with our default methods
-		 */
-		static struct PyModuleDef moduledef = {
-			PyModuleDef_HEAD_INIT,
-			"radiusd",			/*m_doc*/
-			"FreeRADIUS python module",	/*m_doc*/
-			-1,				/*m_size*/
-			module_methods,			/*m_methods*/
-			NULL,				/*m_reload*/
-			NULL,				/*m_traverse*/
-			NULL,				/*m_clear*/
-			NULL,				/*m_free*/
-			
-		};
-		inst->module = PyModule_Create(&moduledef);
-		if (!inst->module) {
-		error:
-			python_error_log();
-			PyEval_SaveThread();
-			return -1;
-		}
-
-		/*
-		 *	Py_InitModule3 returns a borrowed ref, the actual
-		 *	module is owned by sys.modules, so we also need
-		 *	to own the module to prevent it being freed early.
-		 */
-		Py_IncRef(inst->module);
-
-		if (inst->cext_compat) main_module = inst->module;
-
-		for (i = 0; radiusd_constants[i].name; i++) {
-			if ((PyModule_AddIntConstant(inst->module, radiusd_constants[i].name,
-						     radiusd_constants[i].value)) < 0)
-				goto error;
-		}
-
-		/*
-		 *	Convert a FreeRADIUS config structure into a python
-		 *	dictionary.
-		 */
-		inst->pythonconf_dict = PyDict_New();
-		if (!inst->pythonconf_dict) {
-			ERROR("Unable to create python dict for config");
-			python_error_log();
-			return -1;
-		}
-
-		/*
-		 *	Add module configuration as a dict
-		 */
-		if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
-
-		cs = cf_section_sub_find(conf, "config");
-		if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
 	} else {
 		inst->module = main_module;
 		Py_IncRef(inst->module);
