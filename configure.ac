@@ -1188,6 +1188,8 @@ if test "x$WITH_OPENSSL" = xyes; then
       HMAC_CTX_free \
       ASN1_STRING_get0_data \
       CONF_modules_load_file \
+      CRYPTO_set_id_callback \
+      CRYPTO_set_locking_callback
     )
     CPPFLAGS="$old_CPPFLAGS"
   fi
