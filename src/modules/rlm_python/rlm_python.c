@@ -864,7 +864,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	if (python_instances == 0) {
 		INFO("Python version: %s", Py_GetVersion());
 
-		python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+		python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) "m.so",
 					 RTLD_NOW | RTLD_GLOBAL);
 		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 
