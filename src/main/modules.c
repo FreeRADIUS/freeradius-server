@@ -383,7 +383,7 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	instance_name = asked_name;
 	if (instance_name[0] == '-') instance_name++;
 
-	return (module_instance_t *)cf_data_find(modules, CF_DATA_TYPE_CONNECTION_POOL, instance_name);
+	return (module_instance_t *)cf_data_find(modules, CF_DATA_TYPE_MODULE_INSTANCE, instance_name);
 }
 
 /** Find an existing module instance and verify it implements the specified method
@@ -886,7 +886,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, CF_DATA_TYPE_CONNECTION_POOL, instance->name, instance, NULL);
+	cf_data_add(modules, CF_DATA_TYPE_MODULE_INSTANCE, instance->name, instance, NULL);
 
 	return instance;
 }

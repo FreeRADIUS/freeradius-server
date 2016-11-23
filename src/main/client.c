@@ -557,7 +557,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	Be forgiving.  If there's already a clients, return
 	 *	it.  Otherwise create a new one.
 	 */
-	clients = cf_data_find(section, 0, "clients");
+	clients = cf_data_find(section, CF_DATA_TYPE_CLIENT, "clients");
 	if (clients) return clients;
 
 	/*

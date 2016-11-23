@@ -394,6 +394,8 @@ typedef struct CONF_PARSER {
 #define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
+typedef void (*cf_data_free)(void *);
+
 void		cf_file_check_user(uid_t uid, gid_t gid);
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
@@ -423,9 +425,10 @@ CONF_SECTION	*cf_section_sub_find_name2(CONF_SECTION const *, char const *name1,
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 
-void *cf_data_find(CONF_SECTION const *, int type, char const *);
-int cf_data_add(CONF_SECTION *, int type, char const *, void const *, void (*)(void *));
-void *cf_data_remove(CONF_SECTION *cs, int type, char const *name);
+void		*cf_data_find(CONF_SECTION const *cs, cf_data_type_t type, char const *name);
+int		cf_data_add(CONF_SECTION *cs, cf_data_type_t type, char const *name,
+			    void const *data, cf_data_free data_free);
+void		*cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name);
 
 char const *cf_pair_attr(CONF_PAIR const *pair);
 char const *cf_pair_value(CONF_PAIR const *pair);

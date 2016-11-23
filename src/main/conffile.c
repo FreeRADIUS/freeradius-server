@@ -3998,9 +3998,20 @@ bool cf_item_is_pair(CONF_ITEM const *item)
 	return item->type == CONF_ITEM_PAIR;
 }
 
-
-static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
-				void const *data, void (*data_free)(void *))
+/** Allocate a new user data container
+ *
+ * @param[in] parent	conf section.
+ * @param[in] type	of user data.  Used for name spacing and walking over a specific
+ *			type of user data.
+ * @param[in] name	String identifier of the user data.
+ * @param[in] data	being added.
+ * @param[in] data_free	function, called when the parent CONF_SECTION is being freed.
+ * @return
+ *	- CONF_DATA on success.
+ *	- NULL on error.
+ */
+static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, cf_data_type_t type, char const *name,
+				void const *data, cf_data_free data_free)
 {
 	CONF_DATA *cd;
 
@@ -4009,6 +4020,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
+	cd->type = type;
 	cd->name = talloc_typed_strdup(cd, name);
 	if (!cd->name) {
 		talloc_free(cd);
@@ -4023,10 +4035,17 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 	return cd;
 }
 
-/*
- *	Find data from a particular section.
+/** Find user data in a config section
+ *
+ * @param[in] cs	to add data to.
+ * @param[in] type	of user data.  Used for name spacing and walking over a specific
+ *			type of user data.
+ * @param[in] name	String identifier of the user data.
+ * @return
+ *	- The user data.
+ *	- NULL if no user data exists.
  */
-void *cf_data_find(CONF_SECTION const *cs, int type, char const *name)
+void *cf_data_find(CONF_SECTION const *cs, cf_data_type_t type, char const *name)
 {
 	if (!cs || !name) return NULL;
 
@@ -4050,11 +4069,19 @@ void *cf_data_find(CONF_SECTION const *cs, int type, char const *name)
 	return NULL;
 }
 
-
-/*
- *	Add named data to a configuration section.
+/** Add user data to a config section
+ *
+ * @param[in] cs	to add data to.
+ * @param[in] type	of user data.  Used for name spacing and walking over a specific
+ *			type of user data.
+ * @param[in] name	String identifier of the user data.
+ * @param[in] data	to add.
+ * @param[in] data_free	Function to free user data when the CONF_SECTION is freed.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
  */
-int cf_data_add(CONF_SECTION *cs, int type, char const *name, void const *data, void (*data_free)(void *))
+int cf_data_add(CONF_SECTION *cs, cf_data_type_t type, char const *name, void const *data, cf_data_free data_free)
 {
 	CONF_DATA *cd;
 
@@ -4065,7 +4092,7 @@ int cf_data_add(CONF_SECTION *cs, int type, char const *name, void const *data, 
 	 */
 	if (cf_data_find(cs, type, name) != NULL) return -1;
 
-	cd = cf_data_alloc(cs, name, data, data_free);
+	cd = cf_data_alloc(cs, type, name, data, data_free);
 	if (!cd) return -1;
 
 	cf_item_add(cs, cf_data_to_item(cd));
@@ -4075,8 +4102,15 @@ int cf_data_add(CONF_SECTION *cs, int type, char const *name, void const *data, 
 
 /** Remove named data from a configuration section
  *
+ * @param[in] cs	to remove data from.
+ * @param[in] type	of user data.  Used for name spacing and walking over a specific
+ *			type of user data.
+ * @param[in] name	String identifier of the user data.
+ * @return
+ *	- The user data.
+ *	- NULL if no matching data is found.
  */
-void *cf_data_remove(CONF_SECTION *cs, int type, char const *name)
+void *cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name)
 {
 	CONF_DATA mycd;
 	CONF_DATA *cd;
