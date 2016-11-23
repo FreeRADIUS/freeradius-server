@@ -189,7 +189,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				break;
 
 			default:
-				len = snprintf(out, freespace, "u%04X", (uint32_t) *p);
+				len = snprintf(out, freespace, "u%04X", (uint8_t) *p);
 				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 				out += len;
 				freespace -= len;
