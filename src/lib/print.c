@@ -583,7 +583,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 					freespace--;
 					break;
 				default:
-					len = snprintf(out, freespace, "u%04X", (uint32_t) *q);
+					len = snprintf(out, freespace, "u%04X", (uint8_t) *q);
 					if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 					out += len;
 					freespace -= len;
