@@ -174,7 +174,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				break;
 
 			case '\n':
-				*out++ = 'b';
+				*out++ = 'n';
 				freespace--;
 				break;
 
