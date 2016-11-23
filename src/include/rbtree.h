@@ -45,7 +45,7 @@ typedef enum {
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
 
-typedef int (*rb_comparator_t)(void const *ctx, void const *data);
+typedef int (*rb_comparator_t)(void const *one, void const *two);
 typedef int (*rb_walker_t)(void *ctx, void *data);
 typedef void (*rb_free_t)(void *data);
 
