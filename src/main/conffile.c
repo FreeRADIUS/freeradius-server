@@ -102,7 +102,7 @@ struct conf_pair {
  */
 struct conf_data {
 	CONF_ITEM  	item;
-	int		type;			//!< Qualifier for name.
+	cf_data_type_t	type;			//!< Qualifier for name.
 	char const 	*name;			//!< Name used to retrieve conf_data.
 	void const   	*data;			//!< User data.
 	void       	(*free)(void *);	//!< Free user data function.
