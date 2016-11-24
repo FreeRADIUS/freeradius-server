@@ -5,7 +5,6 @@ SOURCES := acct.c \
     client.c \
     crypt.c \
     files.c \
-    interpreter.c \
     listen.c \
     mainconfig.c \
     modules.c \
@@ -18,6 +17,7 @@ SOURCES := acct.c \
     session.c \
     snmp.c \
     threads.c \
+    unlang.c \
     virtual_servers.c \
     process.c
 
@@ -26,7 +26,7 @@ include ${top_srcdir}/src/main/tls.mk
 SOURCES += tls_listen.c
 endif
 
-SRC_CFLAGS	:= 
+SRC_CFLAGS	:=
 
 TGT_INSTALLDIR  := ${sbindir}
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(SYSTEMD_LIBS)

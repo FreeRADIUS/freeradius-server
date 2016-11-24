@@ -1,5 +1,5 @@
 /*
- * @name interpreter.c
+ * @name unlang.c
  *
  * Version:	$Id$
  *
@@ -666,9 +666,10 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 #if 0
 	int depth = stack->depth;
 #endif
-	unlang_module_call_t	*sp;
+	unlang_module_call_t		*sp;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
+	module_thread_instance_t	*thread_inst;
 
 	/*
 	 *	Process a stand-alone child, and fall through
@@ -689,12 +690,17 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	}
 
 	/*
+	 *	Grab the thread/module specific data if any exists.
+	 */
+	thread_inst = module_thread_instance_find(sp->module_instance);
+
+	/*
 	 *	For logging unresponsive children.
 	 */
 	request->module = sp->module_instance->name;
 
 	safe_lock(sp->module_instance);
-	request->rcode = sp->method(sp->module_instance->data, NULL, request);
+	request->rcode = sp->method(sp->module_instance->data, thread_inst, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;

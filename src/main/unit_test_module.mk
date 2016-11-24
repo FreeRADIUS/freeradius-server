@@ -8,13 +8,13 @@ SOURCES := \
 	mainconfig.c \
 	modules.c \
 	modcall.c \
-	interpreter.c \
 	unit_test_module.c \
 	soh.c \
 	state.c \
 	session.c \
 	version.c  \
 	virtual_servers.c \
+	unlang.c \
 	realms.c
 
 ifneq ($(OPENSSL_LIBS),)
