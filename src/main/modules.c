@@ -434,7 +434,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 				cf_log_module(modules, "%s does not implement method \"%s\"", inst->name, p + 1);
 				return NULL;
 			}
-			*method = i;
+			if (method) *method = i;
 
 			return inst;
 		}
