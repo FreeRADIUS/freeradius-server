@@ -60,8 +60,6 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 };
 
-static module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_name);
-
 static bool is_reserved_word(const char *name)
 {
 	int i;
@@ -144,13 +142,13 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
  */
 int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name)
 {
-	static bool loop = true;        /* not used, we just need a valid pointer to quiet static analysis */
+	static bool		loop = true;        /* not used, we just need a valid pointer to quiet static analysis */
 
-	CONF_PAIR *cp;
-	CONF_SECTION *cs;
+	CONF_PAIR		*cp;
+	CONF_SECTION		*cs;
 
-	module_instance_t *inst;
-	char const *inst_name;
+	module_instance_t	*inst;
+	char const		*inst_name;
 
 #define FIND_SIBLING_CF_KEY "find_sibling"
 
@@ -185,7 +183,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	inst = module_instantiate(cf_item_parent(cf_section_to_item(module)), inst_name);
+	inst = module_find(cf_item_parent(cf_section_to_item(module)), inst_name);
 
 	/*
 	 *	Remove the config data we added for loop
@@ -372,6 +370,7 @@ int module_instance_read_only(TALLOC_CTX *ctx, char const *name)
 module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 {
 	char const *instance_name;
+	void *inst;
 
 	if (!modules) return NULL;
 
@@ -383,7 +382,10 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	instance_name = asked_name;
 	if (instance_name[0] == '-') instance_name++;
 
-	return (module_instance_t *)cf_data_find(modules, CF_DATA_TYPE_MODULE_INSTANCE, instance_name);
+	inst = cf_data_find(modules, CF_DATA_TYPE_MODULE_INSTANCE, instance_name);
+	if (!inst) return NULL;
+
+	return talloc_get_type_abort(inst, module_instance_t);
 }
 
 /** Find an existing module instance and verify it implements the specified method
@@ -397,53 +399,55 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
  *				the method.
  * @return
  *	- The module instance on success.
- *	- NULL on error.
+ *	- NULL on error (or not found).
  */
 module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTION *modules, char const *name)
 {
 	char			*p;
 	rlm_components_t	i;
-	module_instance_t	*instance;
+	module_instance_t	*inst;
 
 	/*
-	 *	If the module exists, ensure it's instantiated.
-	 *
-	 *	Doing it this way avoids complaints from
-	 *	module_instantiate()
+	 *	Module names are allowed to contain '.'
+	 *	so we search for the bare module name first.
 	 */
-	instance = module_find(modules, name);
-	if (instance) return module_instantiate(modules, name);
+	inst = module_find(modules, name);
+	if (inst) return inst;
 
 	/*
-	 *	Find out which method is being used.
+	 *	Find out if the instance name contains
+	 *	a method, if it doesn't, then the module
+	 *	doesn't exist.
 	 */
 	p = strrchr(name, '.');
 	if (!p) return NULL;
-
-	p++;
 
 	/*
 	 *	Find the component.
 	 */
 	for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-		if (strcmp(p, section_type_value[i].section) == 0) {
-			char buffer[256];
+		if (strcmp(p + 1, section_type_value[i].section) == 0) {
+			char *inst_name;
 
-			strlcpy(buffer, name, sizeof(buffer));
-			buffer[p - name - 1] = '\0';
+			inst_name = talloc_bstrndup(NULL, name, p - name);
+			inst = module_find(modules, inst_name);
+			if (!inst) return NULL;
 
-			instance = module_find(modules, buffer);
-			if (instance) {
-				if (method) *method = i;
-				return module_instantiate(modules, buffer);
+			/*
+			 *	Verify the module actually implements
+			 *	the specified method.
+			 */
+			if (!inst->module->methods[i]) {
+				cf_log_module(modules, "%s does not implement method \"%s\"", inst->name, p + 1);
+				return NULL;
 			}
+			*method = i;
+
+			return inst;
 		}
 	}
 
-	/*
-	 *	Not found.
-	 */
-	return NULL;
+	return inst;
 }
 
 /** Free old instances from HUPs
@@ -602,56 +606,40 @@ int modules_free(void)
 
 /** Complete module setup by calling its instantiate function
  *
- * @param modules section in the main config.
- * @param asked_name The name of the module we're attempting to find.  May include '-'
- *	which indicates that it's ok for the module not to be loaded.
+ * @param[in] instance	of module to complete instantiation for.
+ * @param[in] ctx	modules section, containing instance data.
  * @return
- *	- Module instance matching name if module can be found, and its instantiate
- *	  method returns successfully.
- *	- NULL if instantiation fails or module can't be found.
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static module_instance_t *module_instantiate(CONF_SECTION *modules, char const *asked_name)
+static int _module_instantiate(void *instance, UNUSED void *ctx)
 {
-	module_instance_t *instance;
-
-	/*
-	 *	Find the module.  If it's not there, do nothing.
-	 */
-	instance = module_find(modules, asked_name);
-	if (!instance) {
-		ERROR("Cannot find module \"%s\"", asked_name);
-		return NULL;
-	}
-
-	/*
-	 *	The module is already instantiated.  Return it.
-	 */
-	if (instance->instantiated) return instance;
+	module_instance_t *inst = talloc_get_type_abort(instance, module_instance_t);
 
 	/*
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (instance->module->config &&
-	    (cf_section_parse_pass2(instance->cs, instance->data,
-				    instance->module->config) < 0)) {
-		return NULL;
+	if (inst->module->config &&
+	    (cf_section_parse_pass2(inst->cs, inst->data,
+				    inst->module->config) < 0)) {
+		return -1;
 	}
 
 	/*
 	 *	Call the instantiate method, if any.
 	 */
-	if (instance->module->instantiate) {
-		cf_log_module(instance->cs, "Instantiating module \"%s\" from file %s", instance->name,
-			      cf_section_filename(instance->cs));
+	if (inst->module->instantiate) {
+		cf_log_module(inst->cs, "Instantiating module \"%s\" from file %s", inst->name,
+			      cf_section_filename(inst->cs));
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((instance->module->instantiate)(instance->cs, instance->data) < 0) {
-			cf_log_err_cs(instance->cs, "Instantiation failed for module \"%s\"", instance->name);
+		if ((inst->module->instantiate)(inst->cs, inst->data) < 0) {
+			cf_log_err_cs(inst->cs, "Instantiation failed for module \"%s\"", inst->name);
 
-			return NULL;
+			return -1;
 		}
 	}
 
@@ -660,23 +648,23 @@ static module_instance_t *module_instantiate(CONF_SECTION *modules, char const *
 	 *
 	 *	If it isn't, we create a mutex.
 	 */
-	if ((instance->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		instance->mutex = talloc_zero(instance, pthread_mutex_t);
+	if ((inst->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		inst->mutex = talloc_zero(inst, pthread_mutex_t);
 
 		/*
 		 *	Initialize the mutex.
 		 */
-		pthread_mutex_init(instance->mutex, NULL);
+		pthread_mutex_init(inst->mutex, NULL);
 	}
 
 #ifndef NDEBUG
-	if (instance->data) module_instance_read_only(instance->data, instance->name);
+	if (inst->data) module_instance_read_only(inst->data, inst->name);
 #endif
 
-	instance->instantiated = true;
-	instance->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
+	inst->instantiated = true;
+	inst->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
 
-	return instance;
+	return 0;
 }
 
 /** Completes instantiation of modules
@@ -691,30 +679,12 @@ static module_instance_t *module_instantiate(CONF_SECTION *modules, char const *
  */
 int modules_instantiate(CONF_SECTION *root)
 {
-	CONF_ITEM	*ci, *next;
-	CONF_SECTION	*modules;
+	CONF_SECTION *modules;
 
 	modules = cf_section_sub_find(root, "modules");
 	if (!modules) return 0;
 
-	for (ci = cf_item_find_next(modules, NULL);
-	     ci != NULL;
-	     ci = next) {
-		char const *name;
-		module_instance_t *instance;
-		CONF_SECTION *subcs;
-
-		next = cf_item_find_next(modules, ci);
-
-		if (!cf_item_is_section(ci)) continue;
-
-		subcs = cf_item_to_section(ci);
-		name = cf_section_name2(subcs);
-		if (!name) name = cf_section_name1(subcs);
-
-		instance = module_instantiate(modules, name);
-		if (!instance) return -1;
-	}
+	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_instantiate, NULL) < 0) return -1;
 
 #ifndef NDEBUG
 	{
@@ -970,13 +940,9 @@ int modules_bootstrap(CONF_SECTION *root)
 			 *	they're referenced at all...
 			 */
 			if (cf_item_is_pair(ci)) {
-				cp = cf_item_to_pair(ci);
-				name = cf_pair_attr(cp);
-
-				instance = module_instantiate(modules, name);
-				if (!instance && (name[0] != '-')) {
-					return -1;
-				}
+				cf_log_warn_cp(cf_item_to_pair(ci), "Only virtual modules can be instantiated "
+					       "with the instantiate section");
+				continue;
 			}
 
 			/*

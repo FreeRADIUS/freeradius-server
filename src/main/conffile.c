@@ -4187,8 +4187,11 @@ static int _cf_data_walk(void *ctx, void *data)
  * @param[in] type	of CONF_DATA to walk over.
  * @param[in] cb	to call when we find CONF_DATA of the specified type.
  * @param[in] ctx	to pass to cb.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx)
+int cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx)
 {
 	cf_data_walk_ctx_t cd_ctx = {
 		.type = type,
@@ -4196,7 +4199,7 @@ void cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *c
 		.ctx = ctx
 	};
 
-	rbtree_walk(cs->data_tree, RBTREE_IN_ORDER, _cf_data_walk, &cd_ctx);
+	return rbtree_walk(cs->data_tree, RBTREE_IN_ORDER, _cf_data_walk, &cd_ctx);
 }
 
 /*

@@ -430,7 +430,7 @@ void		*cf_data_find(CONF_SECTION const *cs, cf_data_type_t type, char const *nam
 int		cf_data_add(CONF_SECTION *cs, cf_data_type_t type, char const *name,
 			    void const *data, cf_data_free data_free);
 void		*cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name);
-void		cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx);
+int		cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx);
 
 char const *cf_pair_attr(CONF_PAIR const *pair);
 char const *cf_pair_value(CONF_PAIR const *pair);
