@@ -710,7 +710,8 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 
 /** Bootstrap a virtual module from an instantiate section
  *
- * @param[in] vm_cs that defines the virtual module.
+ * @param[in] modules	section.
+ * @param[in] vm_cs	that defines the virtual module.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
