@@ -830,7 +830,6 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
 	module_instance_t *instance;
-	char buffer[256];
 
 	if (argc == 0) {
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
@@ -854,7 +853,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_FAIL;
 	}
 
-	cprintf_error(listener, "HUP - NYI in version 4", argv[0]);
+	cprintf_error(listener, "HUP - NYI in version 4");
 
 	return CMD_FAIL;
 }
