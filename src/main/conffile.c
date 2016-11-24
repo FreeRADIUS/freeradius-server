@@ -4278,6 +4278,31 @@ void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const
 
 }
 
+void cf_log_warn_cp(CONF_PAIR const *cp, char const *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	rad_assert(cp != NULL);
+
+	WARN("%s[%d]: %s",
+	     cp->item.filename, cp->item.lineno,
+	     buffer);
+}
+
+void cf_log_warn(CONF_SECTION const *cs, char const *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	if (cs) vradlog(&default_log, L_WARN, fmt, ap);
+	va_end(ap);
+}
+
 void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)
 {
 	va_list ap;

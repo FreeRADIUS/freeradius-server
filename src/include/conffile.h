@@ -468,6 +468,8 @@ void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)		CC_HINT(format (prin
 void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
 void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
+void cf_log_warn_cp(CONF_PAIR const *cp, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
+void cf_log_warn(CONF_SECTION const *cs, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
 
