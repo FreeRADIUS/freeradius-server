@@ -58,11 +58,17 @@ static inline _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 	}\
 	return _n;\
 }
+
 #  define fr_thread_local_init(_n, _f) __fr_thread_local_init_##_n(_f)
 #  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
 #  define fr_thread_local_get(_n) _n
 #else
 #  include <pthread.h>
+/** Create a thread local variable with initializers/destructors
+ *
+ * @param _t	Type of variable e.g. 'char *'.  Must be a pointer type.
+ * @param _n	Name of variable e.g. 'my_tls'.
+ */
 #  define fr_thread_local_setup(_t, _n) static _Thread_local _t _n;\
 static pthread_key_t __fr_thread_local_key_##_n;\
 static pthread_once_t __fr_thread_local_once_##_n = PTHREAD_ONCE_INIT;\
@@ -83,8 +89,27 @@ static _t __fr_thread_local_init_##_n(pthread_destructor_t func)\
 	(void) pthread_setspecific(__fr_thread_local_key_##_n, &(_n));\
 	return _n;\
 }
+/** If variable is NULL, call initialization function, else return the variable value
+ *
+ * @param _n	Name of variable e.g. 'my_tls'.
+ * @param _f	Destructor, called when the thread exits to clean up any data.
+ */
 #  define fr_thread_local_init(_n, _f)	__fr_thread_local_init_##_n(_f)
+
+/** Set a new variable value
+ *
+ * @param _n	Name of variable e.g. 'my_tls'.
+ * @param _f	Function to call for initialization.
+ */
 #  define fr_thread_local_set(_n, _v) ((int)!((_n = _v) || 1))
+
+/** Get an existing variable value
+ *
+ * @note In practice this is rarely used, and a call to fr_thread_local_init
+ *	 is used to retrieve the value of the variable.
+ *
+ * @param _n	Name of variable e.g. 'my_tls'.
+ */
 #  define fr_thread_local_get(_n) _n
 #endif
 #endif /* _FR_THREADS_H */
