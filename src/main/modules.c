@@ -547,8 +547,12 @@ static int _module_thread_instantiate(void *instance, UNUSED void *ctx)
 	thread_inst->inst = inst;
 
 	if (inst->module->thread_inst_size) {
+		char *type_name;
+
 		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, inst->module->thread_inst_size));
-		talloc_set_name(thread_inst->data, "%s", inst->name);
+		MEM(type_name = talloc_asprintf(NULL, "%s_thread_t", inst->name));
+		talloc_set_name(thread_inst->data, "%s", type_name);
+		talloc_free(type_name);
 		talloc_set_destructor(thread_inst->data, _module_thread_instance_free);
 		rbtree_insert(thread_inst_tree, thread_inst);
 	}
