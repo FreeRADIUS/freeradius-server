@@ -124,6 +124,20 @@ typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  */
 typedef int (*module_thread_t)(CONF_SECTION *mod_cs, void *instance, void *thread);
 
+/** Module thread destruction callback
+ *
+ * Destroy a module/thread instance.
+ *
+ * @param[in] instance		data, specific to an instantiated module.
+ *				Pre-allocated, and populated during the
+ *				bootstrap and instantiate calls.
+ * @param[in] thread		data specific to this module instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 if instantiation failed.
+ */
+typedef int (*module_thread_detach_t)(void *instance, void *thread);
+
 /** Struct exported by a rlm_* module
  *
  * Determines the capabilities of the module, and maps internal functions
@@ -136,8 +150,11 @@ typedef struct rad_module_t {
 
 	module_instantiate_t	bootstrap;		//!< Callback to register dynamic attrs, xlats, etc.
 	module_instantiate_t	instantiate;		//!< Callback to configure a new module instance.
-	module_thread_t		thread;			//!< Callback to configure a module's instance for
+
+	module_thread_t		thread_instantiate;	//!< Callback to configure a module's instance for
 							//!< a new worker thread.
+	module_thread_detach_t	thread_detach;		//!< Destroy thread specific data.
+	size_t			thread_inst_size;	//!< Size of data to allocate to the thread instance.
 
 	module_method_t		methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
 } rad_module_t;
@@ -162,8 +179,10 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 /*
  *	Create free and destroy module instances
  */
-int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
+void		*module_thread_instance_find(void *inst);
+int		modules_thread_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
+int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_free(void);
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 

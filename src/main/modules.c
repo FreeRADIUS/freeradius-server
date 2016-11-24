@@ -32,6 +32,8 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
+fr_thread_local_setup(rbtree_t *, module_thread_inst_tree);
+
 static TALLOC_CTX *instance_ctx = NULL;
 
 /*
@@ -381,6 +383,20 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	return talloc_get_type_abort(inst, module_instance_t);
 }
 
+/** Free all modules loaded by the server
+ *
+ * @return 0.
+ */
+int modules_free(void)
+{
+	/*
+	 *	Free instances first, then dynamic libraries.
+	 */
+	TALLOC_FREE(instance_ctx);
+
+	return 0;
+}
+
 /** Find an existing module instance and verify it implements the specified method
  *
  * Extracts the method from the module name where the format is @verbatim <module>.<method> @endverbatim
@@ -443,16 +459,137 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 	return inst;
 }
 
-/** Free all modules loaded by the server
+/** Retrieve module/thread specific instance data for a module
  *
- * @return 0.
+ * @param[in] instance	to find thread specific data for.
+ * @return
+ *	- Thread specific instance data on success.
+ *	- NULL if module has no thread instance data.
  */
-int modules_free(void)
+void *module_thread_instance_find(void *instance)
 {
-	/*
-	 *	Free instances first, then dynamic libraries.
-	 */
-	TALLOC_FREE(instance_ctx);
+	module_instance_t		*inst = instance;
+	rbtree_t			*tree = fr_thread_local_get(module_thread_inst_tree);
+	module_thread_instance_t	find, *found;
+
+	if (!inst->module->thread_instantiate || !inst->module->thread_inst_size) return NULL;
+
+	memset(&find, 0, sizeof(find));
+	find.inst = inst;
+
+	found = rbtree_finddata(tree, &find);
+	if (!found) return NULL;
+
+	return found->data;
+}
+
+/** Destructor for module_thread_instance_t
+ *
+ */
+static int _module_thread_instance_free(void *thread_inst_data)
+{
+	module_thread_instance_t *thread_inst = talloc_parent(thread_inst_data);
+
+	if (thread_inst->inst->module->thread_detach) {
+		(void) thread_inst->inst->module->thread_detach(thread_inst->inst, thread_inst->data);
+	}
+
+	return 0;
+}
+
+/** Frees the thread local instance free and any thread local instance data
+ *
+ * @param[in] to_free	Thread specific module instance tree to free.
+ */
+static void _module_thread_inst_tree_free(void *to_free)
+{
+	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free, rbtree_t);
+	rbtree_free(thread_inst_tree);
+}
+
+/** Compare two thread instances based on inst pointer
+ *
+ * @param[in] a		First thread specific module instance.
+ * @param[in] b		Second thread specific module instance.
+ * @return
+ *	- +1 if a > b.
+ *	- -1 if a < b.
+ *	- 0 if a == b.
+ */
+static int _module_thread_inst_tree_cmp(void const *a, void const *b)
+{
+	module_thread_instance_t const *my_a = a, *my_b = b;
+
+	if (my_a->inst > my_b->inst) return +1;
+	if (my_a->inst < my_b->inst) return -1;
+
+	return 0;
+}
+
+/** Setup thread specific instance data for a module
+ *
+ * @param[in] instance	of module to perform thread instantiation for.
+ * @param[in] ctx	modules section, containing instance data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _module_thread_instantiate(void *instance, UNUSED void *ctx)
+{
+	module_instance_t		*inst = talloc_get_type_abort(instance, module_instance_t);
+	module_thread_instance_t	*thread_inst;
+	rbtree_t			*thread_inst_tree = talloc_get_type_abort(ctx, rbtree_t);
+	int				ret;
+
+	if (!inst->module->thread_instantiate) return 0;
+
+	MEM(thread_inst = talloc_zero(NULL, module_thread_instance_t));
+	thread_inst->inst = inst;
+
+	if (inst->module->thread_inst_size) {
+		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, inst->module->thread_inst_size));
+		talloc_set_name(thread_inst->data, "%s", inst->name);
+		talloc_set_destructor(thread_inst->data, _module_thread_instance_free);
+		rbtree_insert(thread_inst_tree, thread_inst);
+	}
+
+	ret = inst->module->thread_instantiate(inst->cs, inst, thread_inst->data);
+	if (ret < 0) {
+		ERROR("Thread instantiation failed for module \"%s\"", inst->name);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Creates per-thread instance data for modules which need it
+ *
+ * Must be called by any new threads before attempting to execute unlang sections.
+ *
+ * @param[in] root	Configuration root.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int modules_thread_instantiate(CONF_SECTION *root)
+{
+	CONF_SECTION *modules;
+	rbtree_t *thread_inst_tree;
+
+	modules = cf_section_sub_find(root, "modules");
+	if (!modules) return 0;
+
+	thread_inst_tree = fr_thread_local_init(module_thread_inst_tree, _module_thread_inst_tree_free);
+	if (!thread_inst_tree) {
+		MEM(thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp, rbtree_node_talloc_free, 0));
+		fr_thread_local_set(module_thread_inst_tree, thread_inst_tree);
+	}
+
+	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_thread_instantiate, thread_inst_tree) < 0) {
+		_module_thread_inst_tree_free(thread_inst_tree);	/* make re-entrant */
+		fr_thread_local_set(module_thread_inst_tree, NULL);
+		return -1;
+	}
 
 	return 0;
 }

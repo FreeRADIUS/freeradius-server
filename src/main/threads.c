@@ -28,6 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/modules.h>
 
 #ifdef HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
@@ -468,6 +469,14 @@ static void *thread_handler(void *arg)
 
 	if (pthread_setspecific(thread_pool.thread_handle_key, thread) != 0) {
 		ERROR("Failed setting key for self");
+		goto done;
+	}
+
+	/*
+	 *	Perform thread specific module instantiation
+	 */
+	if (modules_thread_instantiate(main_config.config) < 0) {
+		ERROR("Thread instantiation failed");
 		goto done;
 	}
 

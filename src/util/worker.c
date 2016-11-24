@@ -511,6 +511,17 @@ void *fr_worker(UNUSED void *arg)
 		return NULL;
 	}
 
+#if 0
+	/*
+	 *	Perform thread specific module instantiation
+	 */
+	if (modules_thread_instantiate(main_config.config) < 0) {
+		ERROR("Thread instantiation failed");
+		talloc_free(ctx);
+		return NULL;
+	}
+#endif
+
 	while (true) {
 		bool wait_for_event;
 		int num_events;

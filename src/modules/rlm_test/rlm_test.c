@@ -98,6 +98,10 @@ typedef struct rlm_test_t {
 	_timeval_t	*timeval_m;
 } rlm_test_t;
 
+typedef struct {
+	pthread_t	value;
+} rlm_test_thread_t;
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -173,6 +177,27 @@ static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PA
 	return 1;
 }
 
+static int mod_thread_instantiate(UNUSED CONF_SECTION *conf, UNUSED void *instance, void *thread)
+{
+	rlm_test_thread_t *t = thread;
+
+	t->value = pthread_self();
+	INFO("Performing instantiation for thread %p", t->value);
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED void *instance, void *thread)
+{
+	rlm_test_thread_t *t = thread;
+
+	INFO("Performing detach for thread %p", t->value);
+
+	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -215,6 +240,8 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
+	rlm_test_thread_t *t = thread;
+
 	RINFO("RINFO message");
 	RDEBUG("RDEBUG message");
 	RDEBUG2("RDEBUG2 message");
@@ -240,6 +267,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
+	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+
 	return RLM_MODULE_OK;
 }
 
@@ -248,6 +277,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
+	rlm_test_thread_t *t = thread;
+
+	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+
 	return RLM_MODULE_OK;
 }
 
@@ -257,6 +290,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
+	rlm_test_thread_t *t = thread;
+
+	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+
 	return RLM_MODULE_OK;
 }
 
@@ -265,6 +302,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED vo
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
+	rlm_test_thread_t *t = thread;
+
+	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+
 	return RLM_MODULE_OK;
 }
 
@@ -280,7 +321,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	request->simul_count=0;
+	rlm_test_thread_t *t = thread;
+
+	request->simul_count = 0;
+
+	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -308,13 +353,16 @@ static int mod_detach(UNUSED void *instance)
  */
 extern rad_module_t rlm_test;
 rad_module_t rlm_test = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "test",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_test_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "test",
+	.type			= RLM_TYPE_THREAD_SAFE,
+	.inst_size		= sizeof(rlm_test_t),
+	.thread_inst_size	= sizeof(rlm_test_thread_t),
+	.config			= module_config,
+	.instantiate		= mod_instantiate,
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+	.detach			= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

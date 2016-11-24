@@ -39,7 +39,7 @@ extern "C" {
  * instance names (may NOT be the module names!), and the per-instance
  * data structures.
  */
-typedef struct module_instance {
+typedef struct {
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	rad_module_t const		*module;	//!< Module this is an instance of.
@@ -59,6 +59,16 @@ typedef struct module_instance {
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
 } module_instance_t;
+
+/** Per thread per instance data
+ *
+ * Stores module and thread specific data.
+ */
+typedef struct {
+	module_instance_t		*inst;		//!< Non-thread local instance of this
+
+	void				*data;		//!< Thread specific instance data.
+} module_thread_instance_t;
 
 module_instance_t	*module_find_with_method(rlm_components_t *method,
 						 CONF_SECTION *modules, char const *asked_name);

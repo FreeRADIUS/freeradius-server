@@ -812,9 +812,14 @@ int main(int argc, char *argv[])
 	if (modules_bootstrap(main_config.config) < 0) goto exit_failure;
 
 	/*
-	 *	Load the modules
+	 *	Instantiate the modules
 	 */
 	if (modules_instantiate(main_config.config) < 0) goto exit_failure;
+
+	/*
+	 *	Perform any thread specific instantiation
+	 */
+	if (modules_thread_instantiate(main_config.config) < 0) goto exit_failure;
 
 	/*
 	 *	And then load the virtual servers.
