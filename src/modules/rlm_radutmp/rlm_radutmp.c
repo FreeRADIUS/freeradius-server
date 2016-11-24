@@ -737,7 +737,7 @@ extern rad_module_t rlm_radutmp;
 rad_module_t rlm_radutmp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radutmp",
-	.type		= RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_HUP_SAFE,
+	.type		= RLM_TYPE_THREAD_UNSAFE,
 	.inst_size	= sizeof(rlm_radutmp_t),
 	.config		= module_config,
 	.methods = {

@@ -33,8 +33,6 @@ RCSIDH(modpriv_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_module_hup_t fr_module_hup_t;
-
 /** Per instance data
  *
  * Per-instance data structure, to correlate the modules with the
@@ -53,8 +51,6 @@ typedef struct module_instance {
 
 	CONF_SECTION			*cs;		//!< Configuration section in modules {}.
 
-	time_t				last_hup;	//!< Last time the module was 'hupped'.
-
 	bool				instantiated;	//!< Whether the module has been instantiated yet.
 
 	bool				force;		//!< Force the module to return a specific code.
@@ -62,16 +58,12 @@ typedef struct module_instance {
 
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
-	fr_module_hup_t	       		*hup;		//!< Previous versions of the module's
-							//!< instance data.
 } module_instance_t;
 
 module_instance_t	*module_find_with_method(rlm_components_t *method,
 						 CONF_SECTION *modules, char const *asked_name);
 module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
-int			module_hup(CONF_SECTION *cs, module_instance_t *node, time_t when);
-
 int			unlang_fixup_update(vp_map_t *map, void *ctx);
 
 #ifdef __cplusplus

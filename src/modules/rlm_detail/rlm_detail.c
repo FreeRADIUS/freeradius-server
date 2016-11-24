@@ -521,7 +521,6 @@ extern rad_module_t rlm_detail;
 rad_module_t rlm_detail = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "detail",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_detail_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

@@ -34,13 +34,6 @@ RCSID("$Id$")
 
 static TALLOC_CTX *instance_ctx = NULL;
 
-struct fr_module_hup_t {
-	module_instance_t	*mi;
-	time_t			when;
-	void			*insthandle;
-	fr_module_hup_t		*next;
-};
-
 /*
  *	Ordered by component
  */
@@ -450,146 +443,6 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 	return inst;
 }
 
-/** Free old instances from HUPs
- *
- */
-static void module_hup_free(module_instance_t *instance, time_t when)
-{
-	fr_module_hup_t *mh, **last;
-
-	/*
-	 *	Walk the list, freeing up old instances.
-	 */
-	last = &(instance->hup);
-	while (*last) {
-		mh = *last;
-
-		/*
-		 *	Free only every 60 seconds.
-		 */
-		if ((when - mh->when) < 60) {
-			last = &(mh->next);
-			continue;
-		}
-
-		talloc_free(mh->insthandle);
-
-		*last = mh->next;
-		talloc_free(mh);
-	}
-}
-
-int module_hup(CONF_SECTION *cs, module_instance_t *instance, time_t when)
-{
-	void *insthandle;
-	fr_module_hup_t *mh;
-
-	if (!instance ||
-	    instance->module->bootstrap ||
-	    !instance->module->instantiate ||
-	    ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
-		return 1;
-	}
-
-	/*
-	 *	Silently ignore multiple HUPs within a short time period.
-	 */
-	if ((instance->last_hup + 2) >= when) return 1;
-	instance->last_hup = when;
-
-	cf_log_module(cs, "Trying to reload module \"%s\"", instance->name);
-
-	/*
-	 *	Parse the module configuration, and setup destructors so the
-	 *	module's detach method is called when it's instance data is
-	 *	about to be freed.
-	 */
-	if (dl_module_instance_data_alloc(&insthandle, instance, instance->handle, cs) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
-			"Using old configuration", instance->name);
-
-		return 0;
-	}
-
-	if ((instance->module->instantiate)(cs, insthandle) < 0) {
-		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", instance->name);
-		talloc_free(insthandle);
-
-		return 0;
-	}
-
-	INFO("Module: Reloaded module \"%s\"", instance->name);
-
-	module_hup_free(instance, when);
-
-	/*
-	 *	Save the old instance handle for later deletion.
-	 */
-	mh = talloc_zero(instance_ctx, fr_module_hup_t);
-	mh->mi = instance;
-	mh->when = when;
-	mh->insthandle = instance->data;
-	mh->next = instance->hup;
-	instance->hup = mh;
-
-	/*
-	 *	Replace the instance handle while the module is running.
-	 */
-	instance->data = insthandle;
-
-	/*
-	 *	FIXME: Set a timeout to come back in 60s, so that
-	 *	we can pro-actively clean up the old instances.
-	 */
-
-	return 1;
-}
-
-/** Reload the configurations of modules that support it
- *
- * @param modules CONF_SECTION.
- * @return
- *	- 0 on failure.
- *	- 1 on success.
- */
-int modules_hup(CONF_SECTION *modules)
-{
-	time_t when;
-	CONF_ITEM *ci;
-	CONF_SECTION *cs;
-	module_instance_t *instance;
-
-	if (!modules) return 0;
-
-	when = time(NULL);
-
-	/*
-	 *	Loop over the modules
-	 */
-	for (ci = cf_item_find_next(modules, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(modules, ci)) {
-		char const *instance_name;
-
-		/*
-		 *	If it's not a section, ignore it.
-		 */
-		if (!cf_item_is_section(ci)) continue;
-
-		cs = cf_item_to_section(ci);
-
-		instance_name = cf_section_name2(cs);
-		if (!instance_name) instance_name = cf_section_name1(cs);
-
-		instance = module_find(modules, instance_name);
-		if (!instance) continue;
-
-		module_hup(cs, instance, when);
-	}
-
-	return 1;
-}
-
 /** Free all modules loaded by the server
  *
  * @return 0.
@@ -662,7 +515,6 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 #endif
 
 	inst->instantiated = true;
-	inst->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
 
 	return 0;
 }
@@ -718,11 +570,6 @@ static int _module_instance_free(module_instance_t *instance)
 		 */
 		pthread_mutex_destroy(instance->mutex);
 	}
-
-	/*
-	 *	Free HUP versions of the module's instance data
-	 */
-	module_hup_free(instance, time(NULL) + 100);
 
 	xlat_unregister(instance->data, instance->name, NULL);
 

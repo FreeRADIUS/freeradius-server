@@ -521,7 +521,6 @@ extern rad_module_t rlm_winbind;
 rad_module_t rlm_winbind = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "winbind",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_winbind_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

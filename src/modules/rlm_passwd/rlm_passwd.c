@@ -562,7 +562,6 @@ extern rad_module_t rlm_passwd;
 rad_module_t rlm_passwd = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "passwd",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_passwd_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

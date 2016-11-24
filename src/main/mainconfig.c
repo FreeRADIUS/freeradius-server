@@ -1133,52 +1133,11 @@ void hup_logfile(void)
 	}
 }
 
-static int hup_callback(void *ctx, void *data)
-{
-	CONF_SECTION *modules = ctx;
-	CONF_SECTION *cs = data;
-	CONF_SECTION *parent;
-	char const *name;
-	module_instance_t *instance;
-
-	/*
-	 *	Files may be defined in sub-sections of a module
-	 *	config.  Walk up the tree until we find the module
-	 *	definition.
-	 */
-	parent = cf_item_parent(cf_section_to_item(cs));
-	while (parent != modules) {
-		cs = parent;
-		parent = cf_item_parent(cf_section_to_item(cs));
-
-		/*
-		 *	Something went wrong.  Oh well...
-		 */
-		if (!parent) return 0;
-	}
-
-	name = cf_section_name2(cs);
-	if (!name) name = cf_section_name1(cs);
-
-	instance = module_find(modules, name);
-	if (!instance) return 0;
-
-	if ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0) return 0;
-
-	if (!module_hup(instance->cs, instance, time(NULL))) return 0;
-
-	return 1;
-}
-
 void main_config_hup(void)
 {
-	int rcode;
-	cached_config_t *cc;
-	CONF_SECTION *cs;
-	time_t when;
-	char buffer[1024];
+	time_t		when;
 
-	static time_t last_hup = 0;
+	static time_t	last_hup = 0;
 
 	/*
 	 *	Re-open the log file.  If we can't, then keep logging
@@ -1199,6 +1158,7 @@ void main_config_hup(void)
 	}
 	last_hup = when;
 
+#if 0
 	rcode = cf_file_changed(cs_cache->cs, hup_callback);
 	if (rcode == CF_FILE_NONE) {
 		INFO("HUP - No files changed.  Ignoring");
@@ -1209,64 +1169,7 @@ void main_config_hup(void)
 		INFO("HUP - Cannot read configuration files.  Ignoring");
 		return;
 	}
+#endif
 
-	/*
-	 *	No config files have changed.
-	 */
-	if ((rcode & CF_FILE_CONFIG) == 0) {
-		if ((rcode & CF_FILE_MODULE) != 0) {
-			INFO("HUP - Files loaded by a module have changed.");
-
-			/*
-			 *	FIXME: reload the module.
-			 */
-
-		}
-		return;
-	}
-
-	cs = cf_section_alloc(NULL, "main", NULL);
-	if (!cs) return;
-
-	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
-
-	INFO("HUP - Re-reading configuration files");
-	if (cf_file_read(cs, buffer) < 0) {
-		ERROR("Failed to re-read or parse %s", buffer);
-		talloc_free(cs);
-		return;
-	}
-
-	cc = talloc_zero(cs_cache, cached_config_t);
-	if (!cc) {
-		ERROR("Out of memory");
-		return;
-	}
-
-	/*
-	 *	Save the current configuration.  Note that we do NOT
-	 *	free older ones.  We should probably do so at some
-	 *	point.  Doing so will require us to mark which modules
-	 *	are still in use, and which aren't.  Modules that
-	 *	can't be HUPed always use the original configuration.
-	 *	Modules that can be HUPed use one of the newer
-	 *	configurations.
-	 */
-	cc->created = time(NULL);
-	cc->cs = talloc_steal(cc, cs);
-	cc->next = cs_cache;
-	cs_cache = cc;
-
-	INFO("HUP - loading modules");
-
-	/*
-	 *	Prefer the new module configuration.
-	 */
-	modules_hup(cf_section_sub_find(cs, "modules"));
-
-	/*
-	 *	Load the new servers.
-	 */
-	virtual_servers_init(cs);
+	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
 }

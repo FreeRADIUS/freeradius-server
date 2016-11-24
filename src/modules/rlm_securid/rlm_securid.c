@@ -544,7 +544,6 @@ extern rad_module_t rlm_securid;
 rad_module_t rlm_securid = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "securid",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_securid_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

@@ -78,11 +78,7 @@ extern const section_type_value_t section_type_value[];
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
 						//!< Server will protect calls
 						//!< with mutex.
-#define RLM_TYPE_HUP_SAFE	(1 << 2) 	//!< Will be restarted on HUP.
-						//!< Server will instantiated
-						//!< new instance, and then
-						//!< destroy old instance.
-#define RLM_TYPE_RESUMABLE     	(1 << 3) 	//!< does yield / resume
+#define RLM_TYPE_RESUMABLE     	(1 << 2) 	//!< does yield / resume
 
 /** Module section callback
  *
@@ -169,7 +165,6 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_free(void);
-int		modules_hup(CONF_SECTION *modules);
 int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
 
 /*

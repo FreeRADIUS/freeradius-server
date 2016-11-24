@@ -128,7 +128,6 @@ extern rad_module_t rlm_always;
 rad_module_t rlm_always = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "always",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_always_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

@@ -517,7 +517,6 @@ extern rad_module_t rlm_realm;
 rad_module_t rlm_realm = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "realm",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(struct rlm_realm_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

@@ -793,7 +793,6 @@ extern rad_module_t rlm_linelog;
 rad_module_t rlm_linelog = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "linelog",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(linelog_instance_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

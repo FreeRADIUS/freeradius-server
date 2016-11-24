@@ -337,7 +337,6 @@ extern rad_module_t rlm_attr_filter;
 rad_module_t rlm_attr_filter = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "attr_filter",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_attr_filter_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

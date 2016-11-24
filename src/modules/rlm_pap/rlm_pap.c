@@ -1071,7 +1071,6 @@ extern rad_module_t rlm_pap;
 rad_module_t rlm_pap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "pap",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_pap_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

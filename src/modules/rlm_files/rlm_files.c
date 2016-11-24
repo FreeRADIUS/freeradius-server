@@ -527,7 +527,6 @@ extern rad_module_t rlm_files;
 rad_module_t rlm_files = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "files",
-	.type		= RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_files_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,

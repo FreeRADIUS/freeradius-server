@@ -854,22 +854,9 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_FAIL;
 	}
 
-	if ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0) {
-		cprintf_error(listener, "Module %s cannot be hup'd\n",
-			argv[0]);
-		return CMD_FAIL;
-	}
+	cprintf_error(listener, "HUP - NYI in version 4", argv[0]);
 
-	if (!module_hup(instance->cs, instance, time(NULL))) {
-		cprintf_error(listener, "Failed to reload module\n");
-		return CMD_FAIL;
-	}
-
-	snprintf(buffer, sizeof(buffer), "modules.%s.hup",
-		 cf_section_name1(instance->cs));
-	trigger_exec(NULL, instance->cs, buffer, true, NULL);
-
-	return CMD_OK;
+	return CMD_FAIL;
 }
 
 static int command_terminate(UNUSED rad_listen_t *listener,
@@ -1099,8 +1086,6 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	}
 
 	if ((instance->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) cprintf(listener, "thread-unsafe\n");
-
-	if ((instance->module->type & RLM_TYPE_HUP_SAFE) != 0) cprintf(listener, "reload-on-hup\n");
 
 	return CMD_OK;
 }
@@ -2506,11 +2491,6 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	instance = module_find(cs, argv[0]);
 	if (!instance) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
-	}
-
-	if ((instance->module->type & RLM_TYPE_HUP_SAFE) == 0) {
-		cprintf_error(listener, "Cannot change configuration of module as it is cannot be HUP'd.\n");
 		return 0;
 	}
 

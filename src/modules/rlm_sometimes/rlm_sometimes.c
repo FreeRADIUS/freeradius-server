@@ -156,7 +156,6 @@ extern rad_module_t rlm_sometimes;
 rad_module_t rlm_sometimes = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sometimes",
-	.type		= RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
 	.inst_size	= sizeof(rlm_sometimes_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
