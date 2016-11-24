@@ -182,7 +182,7 @@ static int mod_thread_instantiate(UNUSED void *instance, void *thread)
 	rlm_test_thread_t *t = thread;
 
 	t->value = pthread_self();
-	INFO("Performing instantiation for thread %p", t->value);
+	INFO("Performing instantiation for thread %p", (void *)t->value);
 
 	return 0;
 }
@@ -191,7 +191,7 @@ static int mod_thread_detach(void *thread)
 {
 	rlm_test_thread_t *t = thread;
 
-	INFO("Performing detach for thread %p", t->value);
+	INFO("Performing detach for thread %p", (void *)t->value);
 
 	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
@@ -238,7 +238,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *thread, REQUEST *request)
 {
 	rlm_test_thread_t *t = thread;
 
@@ -275,7 +275,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
 {
 	rlm_test_thread_t *t = thread;
 
@@ -288,7 +288,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
 {
 	rlm_test_thread_t *t = thread;
 
@@ -300,7 +300,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, UNUSED vo
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
 {
 	rlm_test_thread_t *t = thread;
 
@@ -319,7 +319,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, void *thread, REQUEST *request)
 {
 	rlm_test_thread_t *t = thread;
 
