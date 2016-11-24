@@ -453,7 +453,7 @@ static void *thread_handler(void *arg)
 	ProfilerRegisterThread();
 #endif
 
-	ctx = talloc_init("thread_pool");
+	ctx = talloc_init("thread");
 
 	el = fr_event_list_create(ctx, NULL, NULL);
 	rad_assert(el != NULL);
