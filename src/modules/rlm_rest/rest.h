@@ -102,7 +102,7 @@ extern const FR_NAME_NUMBER http_content_type_table[];
 /*
  *	Structure for section configuration
  */
-typedef struct rlm_rest_section_t {
+typedef struct {
 	char const		*name;		//!< Section name.
 	char const		*uri;		//!< URI to send HTTP request to.
 
@@ -140,10 +140,15 @@ typedef struct rlm_rest_section_t {
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 } rlm_rest_section_t;
 
+typedef struct {
+	CURLM			*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
+						//!< and coralling structure for REST requests.
+} rlm_rest_thread_t;
+
 /*
  *	Structure for module configuration
  */
-typedef struct rlm_rest_t {
+typedef struct {
 	char const		*xlat_name;	//!< Instance name.
 
 	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
@@ -185,7 +190,7 @@ typedef enum {
 /*
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
-typedef struct rlm_rest_request_t {
+typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	REQUEST			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
@@ -201,7 +206,7 @@ typedef struct rlm_rest_request_t {
  *	Curl inbound data context (passed to CURLOPT_WRITEFUNCTION and
  *	CURLOPT_HEADERFUNCTION as CURLOPT_WRITEDATA and CURLOPT_HEADERDATA)
  */
-typedef struct rlm_rest_response_t {
+typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	REQUEST			*request;	//!< Current request.
 	write_state_t		state;		//!< Decoder state.
@@ -220,7 +225,7 @@ typedef struct rlm_rest_response_t {
 /*
  *	Curl context data
  */
-typedef struct rlm_rest_curl_context_t {
+typedef struct {
 	struct curl_slist	*headers;	//!< Any HTTP headers which will be sent with the
 						//!< request.
 
@@ -234,7 +239,7 @@ typedef struct rlm_rest_curl_context_t {
 /*
  *	Connection API handle
  */
-typedef struct rlm_rest_handle_t {
+typedef struct {
 	void			*handle;	//!< Real Handle.
 	rlm_rest_curl_context_t	*ctx;		//!< Context.
 } rlm_rest_handle_t;

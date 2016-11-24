@@ -780,22 +780,43 @@ static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_ite
 	return 0;
 }
 
-
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+/** Create a thread specific multihandle
+ *
+ * Easy handles representing requests are added to the curl multihandle
+ * with the multihandle used for mux/demux.
+ *
+ * @param[in] instance	of rlm_rest_t.
+ * @param[in] thread	specific data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_thread_instantiate(UNUSED void *instance, void *thread)
 {
-	rlm_rest_t *inst = instance;
+	rlm_rest_thread_t	*t = thread;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-
-	/*
-	 *	Register the rest xlat function
-	 */
-	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
+	t->mhandle = curl_multi_init();
+	if (!t->mhandle) return -1;
 
 	return 0;
 }
 
+/** Cleanup all outstanding requests associated with this thread
+ *
+ * Destroys all curl easy handles, and then the multihandle associated
+ * with this thread.
+ *
+ * @param[in] thread	specific data to destroy.
+ * @return 0
+ */
+static int mod_thread_detach(void *thread)
+{
+	rlm_rest_thread_t	*t = thread;
+
+	curl_multi_cleanup(t->mhandle);
+
+	return 0;
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -839,6 +860,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
+
+	return 0;
+}
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_rest_t *inst = instance;
+
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+
+	/*
+	 *	Register the rest xlat function
+	 */
+	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
 
 	return 0;
 }
@@ -919,16 +955,18 @@ static void mod_unload(void)
  */
 extern rad_module_t rlm_rest;
 rad_module_t rlm_rest = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "rest",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_rest_t),
-	.config		= module_config,
-	.load		= mod_load,
-	.unload		= mod_unload,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "rest",
+	.type			= RLM_TYPE_THREAD_SAFE,
+	.inst_size		= sizeof(rlm_rest_t),
+	.config			= module_config,
+	.load			= mod_load,
+	.unload			= mod_unload,
+	.bootstrap		= mod_bootstrap,
+	.instantiate		= mod_instantiate,
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+	.detach			= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
