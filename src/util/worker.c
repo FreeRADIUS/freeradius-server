@@ -125,50 +125,6 @@ static void fr_worker_evfilt_user(int kq, struct kevent const *kev, void *ctx)
 	}
 }
 
-/** Destroy a worker.
- *
- *  The input channels are signaled, and local messages are cleaned up.
- *
- * @param[in] worker the worker to destroy.
- */
-static void fr_worker_destroy(fr_worker_t *worker)
-{
-	int i;
-	fr_channel_data_t *cd;
-
-	/*
-	 *	These messages aren't in the channel, so we have to
-	 *	mark them as unused.
-	 */
-	while ((cd = fr_heap_pop(worker->to_decode)) != NULL) {
-		fr_message_done(&cd->m);
-	}
-
-	while ((cd = fr_heap_pop(worker->localized)) != NULL) {
-		fr_message_done(&cd->m);
-	}
-
-	/*
-	 *	Signal the channels that we're closing.
-	 *
-	 *	The other end owns the channel, and will take care of
-	 *	popping messages in the TO_WORKER queue, and marking
-	 *	them FR_MESSAGE_DONE.  It will ignore the messages in
-	 *	the FROM_WORKER queue, as we own those.  They will be
-	 *	automatically freed when our talloc context is freed.
-	 */
-	for (i = 0; i < worker->num_channels; i++) {
-		fr_channel_signal_close(worker->channel[i]);
-	}
-
-	/*
-	 *	All other requests are talloc'd from the worker
-	 *	context, and will be deleted when it is freed.
-	 */
-	close(worker->kq);
-}
-
-
 /** Decode a request from either the localized queue, or the to_decode queue
  *
  * @param[in] worker the worker
@@ -572,6 +528,44 @@ static int worker_request_cmp(void const *one, void const *two)
 }
 
 
+/** Destroy a worker.
+ *
+ *  The input channels are signaled, and local messages are cleaned up.
+ *
+ * @param[in] worker the worker to destroy.
+ */
+static void fr_worker_destroy(fr_worker_t *worker)
+{
+	int i;
+	fr_channel_data_t *cd;
+
+	/*
+	 *	These messages aren't in the channel, so we have to
+	 *	mark them as unused.
+	 */
+	while ((cd = fr_heap_pop(worker->to_decode)) != NULL) {
+		fr_message_done(&cd->m);
+	}
+
+	while ((cd = fr_heap_pop(worker->localized)) != NULL) {
+		fr_message_done(&cd->m);
+	}
+
+	/*
+	 *	Signal the channels that we're closing.
+	 *
+	 *	The other end owns the channel, and will take care of
+	 *	popping messages in the TO_WORKER queue, and marking
+	 *	them FR_MESSAGE_DONE.  It will ignore the messages in
+	 *	the FROM_WORKER queue, as we own those.  They will be
+	 *	automatically freed when our talloc context is freed.
+	 */
+	for (i = 0; i < worker->num_channels; i++) {
+		fr_channel_signal_close(worker->channel[i]);
+	}
+}
+
+
 /** Create a worker
  *
  * @param[in] ctx the talloc context
@@ -579,7 +573,7 @@ static int worker_request_cmp(void const *one, void const *two)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-static fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 {
 	fr_worker_t *worker;
 
@@ -590,6 +584,9 @@ static fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 		talloc_free(worker);
 		return NULL;
 	}
+
+	worker->kq = fr_event_list_kq(worker->el);
+	rad_assert(worker->kq >= 0);
 
 	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
 		talloc_free(worker);
@@ -620,8 +617,6 @@ static fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 		return NULL;
 	}
 
-	// @todo register our event loop / KQ with the global KQ system
-
 	return worker;
 }
 
@@ -633,30 +628,8 @@ static fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
  * @return
  *	- NULL, there's nothing else to return.
  */
-void *fr_worker(UNUSED void *arg)
+void fr_worker(fr_worker_t *worker)
 {
-	fr_worker_t *worker;
-	TALLOC_CTX *ctx;
-
-	ctx = talloc_init("fr_worker");
-
-	worker = fr_worker_create(ctx);
-	if (!worker) {
-		talloc_free(ctx);
-		return NULL;
-	}
-
-#if 0
-	/*
-	 *	Perform thread specific module instantiation
-	 */
-	if (modules_thread_instantiate(main_config.config) < 0) {
-		ERROR("Thread instantiation failed");
-		talloc_free(ctx);
-		return NULL;
-	}
-#endif
-
 	while (true) {
 		bool wait_for_event;
 		int num_events;
@@ -693,20 +666,4 @@ void *fr_worker(UNUSED void *arg)
 
 		fr_worker_run_request(worker, request);
 	}
-
-	/*
-	 *	Talloc ordering issues. We want to be independent of
-	 *	how talloc walks it's children, and ensure that some
-	 *	things are freed in a specific order.
-	 */
-	fr_worker_destroy(worker);
-
-	talloc_free(ctx);
-
-	// @todo ??? single threaded mode does... what, exactly?
-	// grab packet, and instead of inserting into a channel and signalling, just
-	// puts it into the to_decode queue.
-	// we probably want a completely separate function for single-threaded mode...
-
-	return NULL;
 }

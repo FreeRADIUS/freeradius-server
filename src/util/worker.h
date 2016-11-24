@@ -42,7 +42,9 @@ extern "C" {
  */
 typedef struct fr_worker_t fr_worker_t;
 
-void *fr_worker(void *arg);
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx);
+static void fr_worker_destroy(fr_worker_t *worker);
+void fr_worker(fr_worker_t *worker);
 
 #ifdef __cplusplus
 }
