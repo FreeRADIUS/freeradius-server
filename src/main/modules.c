@@ -384,7 +384,7 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 /** Find an existing module instance and verify it implements the specified method
  *
  * Extracts the method from the module name where the format is @verbatim <module>.<method> @endverbatim
- * and ensures that the module is instantiated, and implements the specified method.
+ * and ensures the module implements the specified method.
  *
  * @param[out] method		the method component we found associated with the module. May be NULL.
  * @param[in] modules		section in the main config.
@@ -708,9 +708,108 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	return instance;
 }
 
+/** Bootstrap a virtual module from an instantiate section
+ *
+ * @param[in] vm_cs that defines the virtual module.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
+{
+	char const		*name;
+	bool			all_same = true;
+	rad_module_t const 	*last = NULL;
+	CONF_ITEM 		*sub_ci;
+	CONF_PAIR		*cp;
+	module_instance_t	*instance;
+
+	name = cf_section_name1(vm_cs);
+
+	/*
+	 *	Groups, etc. must have a name.
+	 */
+	if ((strcmp(name, "group") == 0) ||
+	    (strcmp(name, "redundant") == 0) ||
+	    (strcmp(name, "redundant-load-balance") == 0) ||
+	    (strcmp(name, "load-balance") == 0)) {
+		name = cf_section_name2(vm_cs);
+		if (!name) {
+			cf_log_err_cs(vm_cs, "Subsection must have a name");
+			return -1;
+		}
+
+		if (is_reserved_word(name)) {
+		is_reserved:
+			cf_log_err_cs(vm_cs, "Virtual modules cannot overload unlang keywords");
+			return -1;
+		}
+	} else {
+		goto is_reserved;
+	}
+
+	/*
+	 *	Ensure that the modules we reference here exist.
+	 */
+	for (sub_ci = cf_item_find_next(vm_cs, NULL);
+	     sub_ci != NULL;
+	     sub_ci = cf_item_find_next(vm_cs, sub_ci)) {
+		if (cf_item_is_pair(sub_ci)) {
+			cp = cf_item_to_pair(sub_ci);
+			if (cf_pair_value(cp)) {
+				cf_log_err(sub_ci, "Cannot set return codes in a %s block", cf_section_name1(vm_cs));
+				return -1;
+			}
+
+			/*
+			 *	Allow "foo.authorize" in subsections.
+			 */
+			instance = module_find_with_method(NULL, modules, cf_pair_attr(cp));
+			if (!instance) {
+				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
+					   cf_pair_attr(cp), cf_section_name1(vm_cs));
+				return -1;
+			}
+
+			if (all_same) {
+				if (!last) {
+					last = instance->module;
+				} else if (last != instance->module) {
+					last = NULL;
+					all_same = false;
+				}
+			}
+		} else {
+			all_same = false;
+		}
+
+		/*
+		 *	Don't check subsections for now.
+		 */
+	} /* loop over modules in a "redundant foo" section */
+
+	/*
+	 *	Register a redundant xlat
+	 */
+	if (all_same) {
+		if (!xlat_register_redundant(vm_cs)) {
+			WARN("%s[%d] Not registering expansions for %s",
+			     cf_section_filename(vm_cs), cf_section_lineno(vm_cs),
+			     cf_section_name2(vm_cs));
+		}
+	}
+
+	return 0;
+}
+
 /** Bootstrap modules and virtual modules
  *
  * Parse the module config sections, and load and call each module's init() function.
+ *
+ * @param[in] root of the server configuration.
+ * @return
+ *	- 0 if all modules were bootstrapped successfully.
+ *	- -1 if a module/virtual module failed to boostrap.
  */
 int modules_bootstrap(CONF_SECTION *root)
 {
@@ -756,23 +855,19 @@ int modules_bootstrap(CONF_SECTION *root)
 		name1 = cf_section_name1(subcs);
 
 		if (is_reserved_word(name1)) {
-			cf_log_err_cs(subcs, "Module cannot be named for an 'unlang' keyword");
+			cf_log_err_cs(subcs, "Modules cannot overload unlang keywords");
 			return -1;
 		}
 	}
 
 	/*
-	 *  Look for the 'instantiate' section, which tells us
-	 *  the instantiation order of the modules, and also allows
-	 *  us to load modules with no authorize/authenticate/etc.
-	 *  sections.
+	 *	Look for the 'instantiate' section, which tells us
+	 *	the instantiation order of the modules, and also allows
+	 *	us to load modules with no authorize/authenticate/etc.
+	 *	sections.
 	 */
 	cs = cf_section_sub_find(root, "instantiate");
 	if (cs) {
-		CONF_PAIR *cp;
-		module_instance_t *instance;
-		char const *name;
-
 		cf_log_info(cs, "  instantiate {");
 
 		/*
@@ -797,101 +892,12 @@ int modules_bootstrap(CONF_SECTION *root)
 			 *	"load-balance" or
 			 *	"redundant-load-balance"
 			 */
-			if (cf_item_is_section(ci)) {
-				bool all_same = true;
-				rad_module_t const *last = NULL;
-				CONF_SECTION *subcs;
-				CONF_ITEM *subci;
-
-				subcs = cf_item_to_section(ci);
-				name = cf_section_name1(subcs);
-
-				/*
-				 *	Groups, etc. must have a name.
-				 */
-				if (((strcmp(name, "group") == 0) ||
-				     (strcmp(name, "redundant") == 0) ||
-				     (strcmp(name, "redundant-load-balance") == 0) ||
-				     strcmp(name, "load-balance") == 0)) {
-					name = cf_section_name2(subcs);
-					if (!name) {
-						cf_log_err_cs(subcs, "Subsection must have a name");
-						return -1;
-					}
-
-					if (is_reserved_word(name)) {
-						cf_log_err_cs(subcs,
-							      "Instantiate sections cannot be named "
-							      "for an 'unlang' keyword");
-						return -1;
-					}
-				} else {
-					if (is_reserved_word(name)) {
-						cf_log_err_cs(subcs,
-							      "Instantiate sections cannot be named "
-							      "for an 'unlang' keyword");
-						return -1;
-					}
-				}
-
-				/*
-				 *	Ensure that the modules we reference here exist.
-				 */
-				for (subci = cf_item_find_next(subcs, NULL);
-				     subci != NULL;
-				     subci = cf_item_find_next(subcs, subci)) {
-					if (cf_item_is_pair(subci)) {
-						cp = cf_item_to_pair(subci);
-						if (cf_pair_value(cp)) {
-							cf_log_err(subci, "Cannot set return codes in a %s block",
-								   cf_section_name1(subcs));
-							return -1;
-						}
-
-						/*
-						 *	Allow "foo.authorize" in subsections.
-						 */
-						instance = module_find_with_method(NULL, modules, cf_pair_attr(cp));
-						if (!instance) {
-							cf_log_err(subci, "Module instance \"%s\" referenced in "
-									   "%s block, does not exist",
-								   cf_pair_attr(cp),
-								   cf_section_name1(subcs));
-							return -1;
-						}
-
-						if (all_same) {
-							if (!last) {
-								last = instance->module;
-							} else if (last != instance->module) {
-								last = NULL;
-								all_same = false;
-							}
-						}
-					} else {
-						all_same = false;
-					}
-
-					/*
-					 *	Don't check subsections for now.
-					 */
-				} /* loop over modules in a "redundant foo" section */
-
-				/*
-				 *	Register a redundant xlat
-				 */
-				if (all_same) {
-					if (!xlat_register_redundant(cf_item_to_section(ci))) {
-						WARN("%s[%d] Not registering expansions for %s",
-						     cf_section_filename(subcs), cf_section_lineno(subcs),
-						     cf_section_name2(subcs));
-					}
-				}
-			}  /* handle subsections */
-		} /* loop over the "instantiate" section */
+			if (cf_item_is_section(ci) &&
+			    (virtual_module_bootstrap(modules, cf_item_to_section(ci)) < 0)) return -1;
+		}
 
 		cf_log_info(cs, "  }");
-	} /* if there's an 'instantiate' section. */
+	}
 
 	cf_log_info(modules, " } # modules");
 
