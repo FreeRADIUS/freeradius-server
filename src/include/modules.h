@@ -113,7 +113,6 @@ typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  *
  * Called whenever a new thread is created.
  *
- * @param[in] mod_cs		Module instance's configuration section.
  * @param[in] instance		data, specific to an instantiated module.
  *				Pre-allocated, and populated during the
  *				bootstrap and instantiate calls.
@@ -122,21 +121,18 @@ typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_t)(CONF_SECTION *mod_cs, void *instance, void *thread);
+typedef int (*module_thread_t)(void *instance, void *thread);
 
 /** Module thread destruction callback
  *
  * Destroy a module/thread instance.
  *
- * @param[in] instance		data, specific to an instantiated module.
- *				Pre-allocated, and populated during the
- *				bootstrap and instantiate calls.
  * @param[in] thread		data specific to this module instance.
  * @return
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_detach_t)(void *instance, void *thread);
+typedef int (*module_thread_detach_t)(void *thread);
 
 /** Struct exported by a rlm_* module
  *

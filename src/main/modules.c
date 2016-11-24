@@ -491,7 +491,7 @@ static int _module_thread_instance_free(void *thread_inst_data)
 	module_thread_instance_t *thread_inst = talloc_parent(thread_inst_data);
 
 	if (thread_inst->inst->module->thread_detach) {
-		(void) thread_inst->inst->module->thread_detach(thread_inst->inst, thread_inst->data);
+		(void) thread_inst->inst->module->thread_detach(thread_inst->data);
 	}
 
 	return 0;
@@ -553,7 +553,7 @@ static int _module_thread_instantiate(void *instance, UNUSED void *ctx)
 		rbtree_insert(thread_inst_tree, thread_inst);
 	}
 
-	ret = inst->module->thread_instantiate(inst->cs, inst, thread_inst->data);
+	ret = inst->module->thread_instantiate(inst, thread_inst->data);
 	if (ret < 0) {
 		ERROR("Thread instantiation failed for module \"%s\"", inst->name);
 		return -1;

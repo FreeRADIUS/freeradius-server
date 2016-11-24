@@ -177,7 +177,7 @@ static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PA
 	return 1;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION *conf, UNUSED void *instance, void *thread)
+static int mod_thread_instantiate(UNUSED void *instance, void *thread)
 {
 	rlm_test_thread_t *t = thread;
 
@@ -187,7 +187,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION *conf, UNUSED void *instan
 	return 0;
 }
 
-static int mod_thread_detach(UNUSED void *instance, void *thread)
+static int mod_thread_detach(void *thread)
 {
 	rlm_test_thread_t *t = thread;
 
