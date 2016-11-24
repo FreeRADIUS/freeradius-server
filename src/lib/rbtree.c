@@ -74,6 +74,15 @@ static void free_walker(rbtree_t *tree, rbnode_t *x)
 	talloc_free(x);
 }
 
+/** Wrapper function for rbtree_create to allow talloc node data to be freed
+ *
+ * @param[in] data	Talloced data to free.
+ */
+void rbtree_node_talloc_free(void *data)
+{
+	talloc_free(data);
+}
+
 /** Executes the free walker on a tree, and then frees the tree itself
  *
  * @note If you don't require the free walker to execute, you can just
