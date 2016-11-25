@@ -408,6 +408,7 @@ DIAG_OFF(format-nonliteral)
  *	 buffer is determined with a call to talloc_array_length()
  *
  * - %pV prints a value box as a string.
+ * - %pS prints a string with FreeRADIUS style escaping, and '"' as the quote char.
  *
  * This breaks strict compatibility with printf but allows us to continue using
  * the static format string and argument type validation.
@@ -435,7 +436,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 		char *q;
 		char len[2] = { '\0', '\0' };
 		long precision = 0;
-		char *custom = NULL;
+		char *subst = NULL;
 
 		if ((*p != '%') || (*++p == '%')) {
 			fmt_q = p + 1;
@@ -599,27 +600,27 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 		case 'p':
 			/*
-			 *	Custom types
+			 *	subst types
 			 */
 			switch (*(p + 1)) {
 			case 'H':
 			{
-				value_box_t const *value = va_arg(ap_q, value_box_t const *);
-
-				p++;
+				value_box_t const *in = va_arg(ap_q, value_box_t const *);
 
 				/*
 				 *	Allocations that are not part of the output
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				custom = value_box_asprint(NULL, value->type, value->datum.enumv, value, '"');
-				if (!custom) {
+				subst = value_box_asprint(NULL, in->type, in->datum.enumv, in, '"');
+				if (!subst) {
 					talloc_free(out);
 					return NULL;
 				}
 
 			do_splice:
+				p++;
+
 				/*
 				 *	Pass part of a format string to printf
 				 */
@@ -633,15 +634,15 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					oom:
 						fr_strerror_printf("Out of memory");
 						talloc_free(out);
-						talloc_free(custom);
+						talloc_free(subst);
 						va_end(ap_p);
 						va_end(ap_q);
 						return NULL;
 					}
 					out = out_tmp;
 
-					out_tmp = talloc_strdup_append_buffer(out, custom);
-					TALLOC_FREE(custom);
+					out_tmp = talloc_strdup_append_buffer(out, subst);
+					TALLOC_FREE(subst);
 					if (!out_tmp) goto oom;
 					out = out_tmp;
 
@@ -655,9 +656,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 			case 'B':
 			{
-				uint8_t const *bin = va_arg(ap_q, uint8_t *);
-
-				p++;
+				uint8_t const *in = va_arg(ap_q, uint8_t const *);
 
 				/*
 				 *	Only automagically figure out the length
@@ -666,11 +665,21 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	This allows %b to be used with stack buffers,
 				 *	so long as the length is specified in the format string.
 				 */
-				if (precision == 0) precision = talloc_array_length(bin);
+				if (precision == 0) precision = talloc_array_length(in);
 
-				custom = talloc_array(NULL, char, (precision * 2) + 1);
-				if (!custom) goto oom;
-				fr_bin2hex(custom, bin, precision);
+				subst = talloc_array(NULL, char, (precision * 2) + 1);
+				if (!subst) goto oom;
+				fr_bin2hex(subst, in, precision);
+
+				goto do_splice;
+			}
+
+			case 'S':
+			{
+				char const *in = va_arg(ap_q, char const *);
+
+				subst = fr_asprint(NULL, in, strlen(in), '"');
+				if (!subst) goto oom;
 
 				goto do_splice;
 			}
