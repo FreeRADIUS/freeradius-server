@@ -634,9 +634,9 @@ wait:
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if ((status != 0) || (ret < 0)) {
-				RERROR("Program returned code (%d) and output '%s'", status, answer);
+				RERROR("Program returned code (%d) and output \"%pS\"", status, answer);
 			} else {
-				RDEBUG2("Program returned code (%d) and output '%s'", status, answer);
+				RDEBUG2("Program returned code (%d) and output \"%pS\"", status, answer);
 			}
 
 			return ret < 0 ? ret : status;
