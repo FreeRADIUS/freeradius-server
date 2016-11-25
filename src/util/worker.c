@@ -527,7 +527,7 @@ static int worker_request_cmp(void const *one, void const *two)
 	return 0;
 }
 
-
+#if 0
 /** Destroy a worker.
  *
  *  The input channels are signaled, and local messages are cleaned up.
@@ -564,7 +564,7 @@ static void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_signal_close(worker->channel[i]);
 	}
 }
-
+#endif
 
 /** Create a worker
  *
