@@ -102,7 +102,7 @@ fr_time_t fr_time(void)
 		ts.tv_sec--;
 
 		ts.tv_nsec -= ts_started.tv_nsec;
-		if (ts.tv_nsec > NANOSEC) {
+		if ((fr_time_t)ts.tv_nsec > NANOSEC) {
 			ts.tv_nsec -= NANOSEC;
 			ts.tv_sec++;
 		}
