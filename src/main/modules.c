@@ -587,12 +587,12 @@ int modules_thread_instantiate(CONF_SECTION *root)
 	thread_inst_tree = fr_thread_local_init(module_thread_inst_tree, _module_thread_inst_tree_free);
 	if (!thread_inst_tree) {
 		MEM(thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp, rbtree_node_talloc_free, 0));
-		fr_thread_local_set(module_thread_inst_tree, thread_inst_tree);
+		module_thread_inst_tree = thread_inst_tree;
 	}
 
 	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_thread_instantiate, thread_inst_tree) < 0) {
 		_module_thread_inst_tree_free(thread_inst_tree);	/* make re-entrant */
-		fr_thread_local_set(module_thread_inst_tree, NULL);
+		module_thread_inst_tree = NULL;
 		return -1;
 	}
 
