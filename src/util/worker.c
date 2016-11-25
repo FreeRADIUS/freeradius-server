@@ -620,7 +620,14 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 	return worker;
 }
 
-
+/** Get the KQ for the worker
+ *
+ * @param[in] worker the worker data structure
+ */
+int fr_worker_kq(fr_worker_t *worker)
+{
+	return worker->kq;
+}
 
 /** The main worker function.
  *
