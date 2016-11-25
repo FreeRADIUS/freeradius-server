@@ -574,9 +574,10 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 #define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->control, _a, _b, _c)
 
 /* threads.c */
-int	thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);
-int	thread_pool_init(void);
-void	thread_pool_stop(void);
+fr_event_list_t	*thread_event_list(void);
+int		thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);
+int		thread_pool_init(void);
+void		thread_pool_stop(void);
 
 /*
  *	In threads.c

@@ -37,7 +37,7 @@ typedef void (*pthread_destructor_t)(void*);
  *	These should ONLY be called where __Thread_local is a pointer to heap
  *	allocated memory that needs to be freed on thread exit.
  *
- *	For other types like ints __Thread_local should be used directly
+ *	For other types like ints _Thread_local should be used directly
  *	without the macros.
  */
 #ifndef HAVE_PTHREAD_H
