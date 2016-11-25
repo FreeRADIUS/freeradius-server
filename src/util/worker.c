@@ -534,7 +534,7 @@ static int worker_request_cmp(void const *one, void const *two)
  *
  * @param[in] worker the worker to destroy.
  */
-static void fr_worker_destroy(fr_worker_t *worker)
+void fr_worker_destroy(fr_worker_t *worker)
 {
 	int i;
 	fr_channel_data_t *cd;
