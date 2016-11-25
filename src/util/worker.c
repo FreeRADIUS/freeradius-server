@@ -624,9 +624,7 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 
 /** The main worker function.
  *
- * @param[in] arg Something from the main server...
- * @return
- *	- NULL, there's nothing else to return.
+ * @param[in] worker the worker data structure to manage
  */
 void fr_worker(fr_worker_t *worker)
 {
