@@ -52,6 +52,11 @@ module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
 
 main_config_t		main_config;				//!< Main server configuration.
 
+void *module_thread_instance_find(UNUSED void *inst)
+{
+	return NULL;
+}
+
 /* Linker hacks */
 
 static void NEVER_RETURNS usage(void)
