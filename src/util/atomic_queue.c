@@ -1,8 +1,4 @@
 /*
- * atomic_queue.c	Thread-safe queues.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +12,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @brief Thread-safe queues.
+ * @file util/atomic_queue.c
+ *
+ * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 Alister Winfield
  */
 RCSID("$Id$")
 
@@ -99,7 +103,7 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 	}
 
 	aq->size = size;
-	
+
 	/*
 	 *	Set the head / tail indexes, and force other CPUs to
 	 *	see the writes.
@@ -257,7 +261,7 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 		fr_atomic_queue_entry_t *entry;
 
 		entry = &aq->entry[i];
-		
+
 		fprintf(fp, "\t[%d] = { %p, %zd }\n",
 			i, entry->data, load(entry->seq));
 	}

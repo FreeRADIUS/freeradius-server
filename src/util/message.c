@@ -1,8 +1,4 @@
 /*
- * message.c	Messages for inter-thread communication.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +12,15 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @brief Messages for inter-thread communication
+ * @file util/message.c
+ *
+ * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 
@@ -666,7 +669,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
  * The newly allocated message is zeroed.
  *
  * @param[in] ms the message set
- * @param[in] mr the message ring to allocate from 
+ * @param[in] mr the message ring to allocate from
  * @param[in] clean whether to clean the message ring
  * @return
  *	- NULL on failed allocation
@@ -1304,7 +1307,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	uint8_t *p, *aligned_p;
 	intptr_t addr;
 	size_t aligned_size;
-	
+
 
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(ms, fr_message_set_t);

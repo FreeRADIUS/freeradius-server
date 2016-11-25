@@ -1,8 +1,4 @@
 /*
- * channel.c	Two-way thread-safe channels
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +12,15 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
  *
- * Copyright 2016  Alan DeKok <aland@freeradius.org>
+ * @brief Two-way thread-safe channels
+ * @file util/channel.c
+ *
+ * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
 
@@ -203,7 +206,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 	rad_assert(end->last_write <= when);
 	end->last_write = when;
-	
+
 	/*
 	 *	Increment the number of outstanding packets.  If we
 	 *	just sent a new one, wake up the other end.
@@ -343,7 +346,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 		*p_request = fr_channel_recv_request(ch);
 		return -1;
 	}
-	
+
 	rad_assert(end->num_outstanding > 0);
 	end->num_outstanding--;
 
