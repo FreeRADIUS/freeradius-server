@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 
-fr_thread_local_setup(rbtree_t *, module_thread_inst_tree);
+fr_thread_local_setup(rbtree_t *, module_thread_inst_tree)
 
 static TALLOC_CTX *instance_ctx = NULL;
 
@@ -535,7 +535,7 @@ static int _module_thread_inst_tree_cmp(void const *a, void const *b)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _module_thread_instantiate(void *instance, UNUSED void *ctx)
+static int _module_thread_instantiate(void *instance, void *ctx)
 {
 	module_instance_t		*inst = talloc_get_type_abort(instance, module_instance_t);
 	module_thread_instance_t	*thread_inst;
