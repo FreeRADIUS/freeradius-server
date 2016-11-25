@@ -310,7 +310,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		waiting = now - request->recv_time;
 
-		if (waiting < (30 * NANOSEC)) break;
+		if (waiting < (30 * (fr_time_t) NANOSEC)) break;
 
 		/*
 		 *	Waiting too long, delete it.

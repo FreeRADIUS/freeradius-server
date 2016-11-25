@@ -74,7 +74,7 @@ typedef struct fr_time_tracking_t {
 	fr_dlist_t	list;			//!< for linking a request to various lists
 } fr_time_tracking_t;
 
-#define NANOSEC ((fr_time_t) (1000000000))
+#define NANOSEC (1000000000)
 #define USEC	(1000000)
 
 /*
