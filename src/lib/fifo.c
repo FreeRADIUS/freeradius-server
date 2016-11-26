@@ -29,13 +29,13 @@ struct fr_fifo_t {
 	unsigned int num;
 	unsigned int first, last;
 	unsigned int max;
-	fr_fifo_free_t freeNode;
+	fr_fifo_free_t free_node;
 
 	void *data[1];
 };
 
 
-fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t freeNode)
+fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t free_node)
 {
 	fr_fifo_t *fi;
 
@@ -46,7 +46,7 @@ fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t freeNode)
 	talloc_set_type(fi, fr_fifo_t);
 
 	fi->max = max;
-	fi->freeNode = freeNode;
+	fi->free_node = free_node;
 
 	return fi;
 }
@@ -57,7 +57,7 @@ void fr_fifo_free(fr_fifo_t *fi)
 
 	if (!fi) return;
 
-	if (fi->freeNode) {
+	if (fi->free_node) {
 		for (i = 0 ; i < fi->num; i++) {
 			unsigned int element;
 
@@ -66,7 +66,7 @@ void fr_fifo_free(fr_fifo_t *fi)
 				element -= fi->max;
 			}
 
-			fi->freeNode(fi->data[element]);
+			fi->free_node(fi->data[element]);
 			fi->data[element] = NULL;
 		}
 	}
