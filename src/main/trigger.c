@@ -28,9 +28,9 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-static CONF_SECTION	*trigger_exec_main, *trigger_exec_subcs;
-static rbtree_t		*trigger_last_fired_tree;
-static pthread_mutex_t	*trigger_mutex;
+static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
+static rbtree_t			*trigger_last_fired_tree;
+static pthread_mutex_t		*trigger_mutex;
 
 #define REQUEST_INDEX_TRIGGER_NAME	1
 #define REQUEST_INDEX_TRIGGER_ARGS	2
@@ -119,7 +119,7 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
  *
  * @param cs	to use as global trigger section.
  */
-void trigger_exec_init(CONF_SECTION *cs)
+void trigger_exec_init(CONF_SECTION const *cs)
 {
 	trigger_exec_main = cs;
 	trigger_exec_subcs = cf_section_sub_find(cs, "trigger");
@@ -157,20 +157,20 @@ void trigger_exec_free(void)
  * @return 		- 0 on success.
  *			- -1 on failure.
  */
-int trigger_exec(REQUEST *request, CONF_SECTION *cs, char const *name, bool rate_limit, VALUE_PAIR *args)
+int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool rate_limit, VALUE_PAIR *args)
 {
-	CONF_SECTION	*subcs;
+	CONF_SECTION const	*subcs;
 
-	CONF_ITEM	*ci;
-	CONF_PAIR	*cp;
+	CONF_ITEM		*ci;
+	CONF_PAIR		*cp;
 
-	char const	*attr;
-	char const	*value;
+	char const		*attr;
+	char const		*value;
 
-	VALUE_PAIR	*vp;
+	VALUE_PAIR		*vp;
 
-	REQUEST		*fake = NULL;
-	int		ret = 0;
+	REQUEST			*fake = NULL;
+	int			ret = 0;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
