@@ -19,7 +19,7 @@
  * @file rlm_rest.c
  * @brief Integrate FreeRADIUS with RESTfull APIs
  *
- * @copyright 2012-2014  Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
+ * @copyright 2012-2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
