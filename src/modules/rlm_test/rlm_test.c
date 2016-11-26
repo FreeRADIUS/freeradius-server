@@ -177,12 +177,13 @@ static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PA
 	return 1;
 }
 
-static int mod_thread_instantiate(UNUSED void *instance, void *thread)
+static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
+				  void *thread)
 {
 	rlm_test_thread_t *t = thread;
 
 	t->value = pthread_self();
-	INFO("Performing instantiation for thread %p", (void *)t->value);
+	INFO("Performing instantiation for thread %p (ctx %p)", (void *)t->value, t);
 
 	return 0;
 }

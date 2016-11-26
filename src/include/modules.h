@@ -113,15 +113,17 @@ typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  *
  * Called whenever a new thread is created.
  *
+ * @param[in] mod_cs		Module instance's configuration section.
  * @param[in] instance		data, specific to an instantiated module.
  *				Pre-allocated, and populated during the
  *				bootstrap and instantiate calls.
+ * @param[in] el		The event list serviced by this thread.
  * @param[in] thread		data specific to this module instance.
  * @return
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_t)(fr_event_list_t *el, void *instance, void *thread);
+typedef int (*module_thread_t)(CONF_SECTION const *mod_cs, void *instance, fr_event_list_t *el, void *thread);
 
 /** Module thread destruction callback
  *
