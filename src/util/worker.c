@@ -424,9 +424,15 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 */
 	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
 
+	/*
+	 *	@todo The rest of the work in this function is channel
+	 *	related.  We probably want to pull that into a
+	 *	separate function, so that we can run in
+	 *	single-theaded mode.
+	 */
 	ch = request->channel;
 
-	// @todo allocater a channel_data_t
+	// @todo allocate a channel_data_t
 	// @todo call send_request
 
 	reply = fr_channel_recv_reply(ch); /* HACK for travis, while we're writing the rest of the code */
@@ -685,5 +691,9 @@ void fr_worker(fr_worker_t *worker)
 		if (!request) continue;
 
 		fr_worker_run_request(worker, request);
+
+		/*
+		 *	@todo convert the reply to a message here.
+		 */
 	}
 }
