@@ -411,8 +411,8 @@ void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 int		cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
 			      char const *dflt, FR_TOKEN dflt_quote);
-int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
-int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
+int		cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables);
+int		cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 int		cf_file_read(CONF_SECTION *cs, char const *file);
 void		cf_file_free(CONF_SECTION *cs);
@@ -475,7 +475,7 @@ void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format 
 
 void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
-			     CONF_SECTION *outercs,
+			     CONF_SECTION const *outercs,
 			     char const *ptr);
 #ifdef WITH_CONF_WRITE
 size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);

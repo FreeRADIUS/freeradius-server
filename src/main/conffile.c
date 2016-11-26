@@ -967,7 +967,7 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
-			     CONF_SECTION *outercs,
+			     CONF_SECTION const *outercs,
 			     char const *ptr)
 {
 	CONF_PAIR *cp;
