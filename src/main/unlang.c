@@ -1525,7 +1525,7 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
 	mr->action_callback(request, mr->module.module_instance->data, mutable, action);
 }
 
-/** Yeild a request
+/** Yield a request
  *
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
