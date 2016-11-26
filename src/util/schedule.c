@@ -371,6 +371,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
+	bool done = false;
 	fr_schedule_worker_t *sw;
 
 	sc->running = false;
@@ -391,7 +392,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	underneath the workers!
 	 */
 	while (sem_wait(&sc->semaphore) == 0) {
-		bool done = false;
 
 		/*
 		 *	Needs to be done in a lock for thread safety.
@@ -399,6 +399,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		PTHREAD_MUTEX_LOCK(&sc->mutex);
 		done = (sc->num_workers_exited == 0);
 		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+
+		if (done) break;
 	}
 
 	sem_destroy(&sc->semaphore);
