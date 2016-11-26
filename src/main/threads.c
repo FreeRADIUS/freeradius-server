@@ -105,7 +105,7 @@ typedef struct fr_pps_t {
  * Libcurl is a good example of this, where it manages its own timers
  * for IO events, and needs to be awoken, when a timeout expires.
  */
-static _Thread_local fr_event_list_t *el;
+static _Thread_local fr_event_list_t *thread_el;
 
 /*
  *	A data structure to manage the thread pool.  There's no real
@@ -455,7 +455,7 @@ static void thread_process_request(THREAD_HANDLE *thread, REQUEST *request)
  */
 fr_event_list_t *thread_event_list(void)
 {
-	return el;
+	return thread_el;
 }
 
 /*
@@ -469,6 +469,7 @@ static void *thread_handler(void *arg)
 	THREAD_HANDLE		*thread = talloc_get_type_abort(arg, THREAD_HANDLE);
 	TALLOC_CTX		*ctx;
 	fr_heap_t		*local_backlog;
+	fr_event_list_t		*el;
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
 	ProfilerRegisterThread();
@@ -476,7 +477,7 @@ static void *thread_handler(void *arg)
 
 	ctx = talloc_init("thread");
 
-	el = fr_event_list_create(ctx, NULL, NULL);
+	el = thread_el = fr_event_list_create(ctx, NULL, NULL);
 	rad_assert(el != NULL);
 
 	local_backlog = fr_heap_create(timestamp_cmp, offsetof(REQUEST, heap_id));
