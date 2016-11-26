@@ -121,7 +121,7 @@ typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_t)(void *instance, void *thread);
+typedef int (*module_thread_t)(fr_event_list_t *el, void *instance, void *thread);
 
 /** Module thread destruction callback
  *
@@ -176,7 +176,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
  *	Create free and destroy module instances
  */
 void		*module_thread_instance_find(void *inst);
-int		modules_thread_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
+int		modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el) CC_HINT(nonnull);
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_free(void);

@@ -527,10 +527,15 @@ static int _module_thread_inst_tree_cmp(void const *a, void const *b)
 	return 0;
 }
 
+typedef struct {
+	rbtree_t	*tree;		//!< Containing the thread instances.
+	fr_event_list_t *el;		//!< Event list for this thread.
+} _thread_intantiate_ctx_t;
+
 /** Setup thread specific instance data for a module
  *
  * @param[in] instance	of module to perform thread instantiation for.
- * @param[in] ctx	modules section, containing instance data.
+ * @param[in] ctx	additional arguments to pass to a module's thread_instantiate function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -539,7 +544,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 {
 	module_instance_t		*inst = talloc_get_type_abort(instance, module_instance_t);
 	module_thread_instance_t	*thread_inst;
-	rbtree_t			*thread_inst_tree = talloc_get_type_abort(ctx, rbtree_t);
+	_thread_intantiate_ctx_t	*thread_inst_ctx = ctx;
 	int				ret;
 
 	if (!inst->module->thread_instantiate) return 0;
@@ -551,14 +556,20 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		char *type_name;
 
 		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, inst->module->thread_inst_size));
+
+		/*
+		 *	Fixup the type name, incase something calls
+		 *	talloc_get_type_abort() on it...
+		 */
 		MEM(type_name = talloc_asprintf(NULL, "%s_thread_t", inst->name));
 		talloc_set_name(thread_inst->data, "%s", type_name);
 		talloc_free(type_name);
+
 		talloc_set_destructor(thread_inst->data, _module_thread_instance_free);
-		rbtree_insert(thread_inst_tree, thread_inst);
+		rbtree_insert(thread_inst_ctx->tree, thread_inst);
 	}
 
-	ret = inst->module->thread_instantiate(inst, thread_inst->data);
+	ret = inst->module->thread_instantiate(thread_inst_ctx->el, inst, thread_inst->data);
 	if (ret < 0) {
 		ERROR("Thread instantiation failed for module \"%s\"", inst->name);
 		return -1;
@@ -576,21 +587,25 @@ static int _module_thread_instantiate(void *instance, void *ctx)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int modules_thread_instantiate(CONF_SECTION *root)
+int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 {
-	CONF_SECTION *modules;
-	rbtree_t *thread_inst_tree;
+	CONF_SECTION			*modules;
+	rbtree_t			*thread_inst_tree;
+	_thread_intantiate_ctx_t	ctx;
 
 	modules = cf_section_sub_find(root, "modules");
 	if (!modules) return 0;
 
 	thread_inst_tree = fr_thread_local_init(module_thread_inst_tree, _module_thread_inst_tree_free);
 	if (!thread_inst_tree) {
-		MEM(thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp, rbtree_node_talloc_free, 0));
-		module_thread_inst_tree = thread_inst_tree;
+		MEM(thread_inst_tree = module_thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp,
+									       rbtree_node_talloc_free, 0));
 	}
 
-	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_thread_instantiate, thread_inst_tree) < 0) {
+	ctx.el = el;
+	ctx.tree = thread_inst_tree;
+
+	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_thread_instantiate, &ctx) < 0) {
 		_module_thread_inst_tree_free(thread_inst_tree);	/* make re-entrant */
 		module_thread_inst_tree = NULL;
 		return -1;

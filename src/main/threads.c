@@ -97,16 +97,6 @@ typedef struct fr_pps_t {
 } fr_pps_t;
 #endif
 
-/** Holds this thread's event_list
- *
- * Some modules need direct access to the event_list, so they can
- * insert events that fire independently of processing requests.
- *
- * Libcurl is a good example of this, where it manages its own timers
- * for IO events, and needs to be awoken, when a timeout expires.
- */
-static _Thread_local fr_event_list_t *thread_el;
-
 /*
  *	A data structure to manage the thread pool.  There's no real
  *	need for a data structure, but it makes things conceptually
@@ -446,18 +436,6 @@ static void thread_process_request(THREAD_HANDLE *thread, REQUEST *request)
 #endif
 }
 
-/** Return this thread's event list
- *
- * Can be used by modules to get the event_list for the current thread,
- * so that they can add their own timers outside of request processing.
- *
- * @return This thread's fr_event_list_t.
- */
-fr_event_list_t *thread_event_list(void)
-{
-	return thread_el;
-}
-
 /*
  *	The main thread handler for requests.
  *
@@ -477,7 +455,7 @@ static void *thread_handler(void *arg)
 
 	ctx = talloc_init("thread");
 
-	el = thread_el = fr_event_list_create(ctx, NULL, NULL);
+	el = fr_event_list_create(ctx, NULL, NULL);
 	rad_assert(el != NULL);
 
 	local_backlog = fr_heap_create(timestamp_cmp, offsetof(REQUEST, heap_id));
@@ -496,7 +474,7 @@ static void *thread_handler(void *arg)
 	/*
 	 *	Perform thread specific module instantiation
 	 */
-	if (modules_thread_instantiate(main_config.config) < 0) {
+	if (modules_thread_instantiate(main_config.config, el) < 0) {
 		ERROR("Thread instantiation failed");
 		goto done;
 	}

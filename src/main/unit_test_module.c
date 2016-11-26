@@ -655,6 +655,7 @@ int main(int argc, char *argv[])
 	VALUE_PAIR		*filter_vps = NULL;
 	bool			xlat_only = false;
 	fr_state_tree_t		*state = NULL;
+	fr_event_list_t		*el = NULL;
 
 	fr_talloc_fault_setup();
 
@@ -817,9 +818,15 @@ int main(int argc, char *argv[])
 	if (modules_instantiate(main_config.config) < 0) goto exit_failure;
 
 	/*
+	 *	Create a dummy event list
+	 */
+	el = fr_event_list_create(NULL, NULL, NULL);
+	rad_assert(el != NULL);
+
+	/*
 	 *	Perform any thread specific instantiation
 	 */
-	if (modules_thread_instantiate(main_config.config) < 0) goto exit_failure;
+	if (modules_thread_instantiate(main_config.config, el) < 0) goto exit_failure;
 
 	/*
 	 *	And then load the virtual servers.
@@ -960,6 +967,11 @@ finish:
 	talloc_free(state);
 
 	xlat_unregister(NULL, "poke", xlat_poke);
+
+	/*
+	 *	Free the event list.
+	 */
+	talloc_free(el);
 
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircompares / maps.

@@ -785,13 +785,16 @@ static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_ite
  * Easy handles representing requests are added to the curl multihandle
  * with the multihandle used for mux/demux.
  *
+ * @param[in] cs	Module config.
  * @param[in] instance	of rlm_rest_t.
  * @param[in] thread	specific data.
+ * @param[in] el	associated with this thread.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_thread_instantiate(UNUSED void *instance, void *thread)
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
+				  void *thread)
 {
 	rlm_rest_thread_t	*t = thread;
 
