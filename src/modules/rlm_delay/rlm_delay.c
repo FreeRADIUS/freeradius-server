@@ -134,7 +134,7 @@ static rlm_rcode_t delay_add(rlm_delay_t const *inst, REQUEST *request)
 		RDEBUG2("Rescheduling request");
 	}
 
-	if (unlang_event_timeout_add(request, delay_done, inst, now, &when) < 0) return RLM_MODULE_FAIL;
+	if (unlang_event_timeout_add(request, delay_done, now, &when) < 0) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_YIELD;
 }

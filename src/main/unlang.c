@@ -1349,7 +1349,6 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
  *
  * param[in] request		the current request.
  * param[in] callback		to call.
- * param[in] inst		The module instance
  * param[in] ctx		for the callback.
  * param[in] timeout		when to call the timeout (i.e. now + timeout).
  * @return
@@ -1357,17 +1356,19 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
  *	- <0 on error.
  */
 int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
-			     void const *inst, void const *ctx, struct timeval *when)
+			     void const *ctx, struct timeval *when)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
-	unlang_event_t *ev;
+	unlang_event_t		*ev;
+	unlang_module_call_t	*sp;
 
 	rad_assert(stack->depth > 0);
 
 	frame = &stack->frame[stack->depth];
 
 	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
+	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
 	if (!ev) return -1;
@@ -1375,7 +1376,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout_callback = callback;
-	ev->inst = inst;
+	ev->inst = sp->module_instance->data;
 	ev->ctx = ctx;
 
 	if (fr_event_timer_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
@@ -1400,7 +1401,6 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
  *
  * @param[in] request		The current request.
  * @param[in] callback		to call.
- * @param[in] inst		The module instance
  * @param[in] ctx		for the callback.
  * @param[in] fd		to watch.  When it becomes readable the request is marked as resumable,
  *				with the callback being called by the worker responsible for processing
@@ -1410,17 +1410,19 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
  *	- <0 on error.
  */
 int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-				 void const *inst, void const *ctx, int fd)
+				 void const *ctx, int fd)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
-	unlang_event_t *ev;
+	unlang_event_t		*ev;
+	unlang_module_call_t	*sp;
 
 	rad_assert(stack->depth > 0);
 
 	frame = &stack->frame[stack->depth];
 
 	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
+	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
 	if (!ev) return -1;
@@ -1428,7 +1430,7 @@ int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callb
 	ev->request = request;
 	ev->fd = fd;
 	ev->fd_callback = callback;
-	ev->inst = inst;
+	ev->inst = sp->module_instance->data;
 	ev->ctx = ctx;
 
 	if (!fr_event_fd_insert(request->el, fd, unlang_event_fd_handler, NULL, NULL, ev)) {

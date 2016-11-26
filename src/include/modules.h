@@ -271,10 +271,10 @@ typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instanc
 typedef void (*fr_unlang_action_t)(REQUEST *request, void *module_instance, void *ctx, fr_state_action_t action);
 
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
-					 void const *module_instance, void const *ctx, struct timeval *timeout);
+					 void const *ctx, struct timeval *timeout);
 
 int		unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-					     void const *module_instance, void const *ctx, int fd);
+					     void const *ctx, int fd);
 
 int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
 

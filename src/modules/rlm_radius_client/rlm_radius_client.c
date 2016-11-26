@@ -423,7 +423,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 	gettimeofday(&now, NULL);
 	fr_timeval_add(&timeout, &now, &timeout);
 
-	unlang_event_timeout_add(request, mod_proxy_no_reply, inst, ccr, &timeout);
+	unlang_event_timeout_add(request, mod_proxy_no_reply, ccr, &timeout);
 
 	return unlang_yield(request, mod_resume_continue, mod_action_dup, ccr);
 }
