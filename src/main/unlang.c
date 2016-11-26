@@ -1359,7 +1359,15 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
 int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 			     void const *inst, void const *ctx, struct timeval *when)
 {
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
 	unlang_event_t *ev;
+
+	rad_assert(stack->depth > 0);
+
+	frame = &stack->frame[stack->depth];
+
+	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
 
 	ev = talloc_zero(request, unlang_event_t);
 	if (!ev) return -1;
@@ -1404,7 +1412,15 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
 				 void const *inst, void const *ctx, int fd)
 {
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
 	unlang_event_t *ev;
+
+	rad_assert(stack->depth > 0);
+
+	frame = &stack->frame[stack->depth];
+
+	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
 
 	ev = talloc_zero(request, unlang_event_t);
 	if (!ev) return -1;
