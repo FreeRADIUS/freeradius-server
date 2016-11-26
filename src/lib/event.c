@@ -275,6 +275,11 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 		return NULL;
 	}
 
+	if (el->exit) {
+		fr_strerror_printf("Event loop exiting");
+		return NULL;
+	}
+
 	memset(&find, 0, sizeof(find));
 
 	/*
@@ -413,6 +418,11 @@ int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, voi
 
 	if (!parent) {
 		fr_strerror_printf("Invalid arguments: NULL parent");
+		return -1;
+	}
+
+	if (el->exit) {
+		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
 
@@ -558,7 +568,10 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	struct timeval when, *wake;
 	struct timespec ts_when, *ts_wake;
 
-	if (el->exit) return -1;
+	if (el->exit) {
+		fr_strerror_printf("Event loop exiting");
+		return -1;
+	}
 
 	/*
 	 *	Find the first event.  If there's none, we wait
@@ -630,6 +643,8 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 void fr_event_service(fr_event_list_t *el)
 {
 	int i;
+
+	if (el->exit) return;
 
 	/*
 	 *	Loop over all of the events, servicing them.
