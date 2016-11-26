@@ -49,7 +49,7 @@ static const CONF_PARSER module_config[] = {
 /** Called when the delay is complete, and we're running from the interpreter
  *
  */
-static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *ctx)
+static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, UNUSED void *ctx)
 {
 	return RLM_MODULE_OK;
 }
@@ -63,7 +63,7 @@ static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *instance, 
  * @param[in] ctx		Scheduled end of the delay.
  * @param[in] fired		When request processing was resumed.
  */
-static void delay_done(REQUEST *request, UNUSED void *instance, void *ctx, struct timeval *fired)
+static void delay_done(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx, struct timeval *fired)
 {
 	struct timeval *when = talloc_get_type_abort(ctx, struct timeval);
 

@@ -176,7 +176,8 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	unlang_resumable(ccr->request);
 }
 
-static void mod_proxy_no_reply(REQUEST *request, UNUSED void *instance, void *ctx, UNUSED struct timeval *now)
+static void mod_proxy_no_reply(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
+			       UNUSED struct timeval *now)
 {
 	rlm_radius_client_request_t *ccr = ctx;
 
@@ -186,7 +187,7 @@ static void mod_proxy_no_reply(REQUEST *request, UNUSED void *instance, void *ct
 }
 
 
-static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
+static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
 	rlm_rcode_t			rcode;
 	rlm_radius_client_instance_t	*inst = instance;
@@ -212,7 +213,7 @@ static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, void *ctx)
 	return rcode;
 }
 
-static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *ctx)
+static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *thread, void *ctx)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -246,11 +247,11 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *c
 
 	child->request_state = REQUEST_RECV;
 
-	return mod_resume_recv(request, instance, ccr);
+	return mod_resume_recv(request, instance, thread, ccr);
 }
 
 
-static void mod_action_dup(REQUEST *request, void *instance, void *ctx, fr_state_action_t action)
+static void mod_action_dup(REQUEST *request, void *instance, UNUSED void *thread, void *ctx, fr_state_action_t action)
 {
 	rlm_radius_client_instance_t const *inst = instance;
 	rlm_radius_client_request_t *ccr = ctx;
@@ -428,7 +429,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 	return unlang_yield(request, mod_resume_continue, mod_action_dup, ccr);
 }
 
-static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
+static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
 	rlm_rcode_t rcode;
 	rlm_radius_client_instance_t const *inst = instance;
@@ -454,7 +455,7 @@ static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, void *ctx)
 /** Send packets outbound.
  *
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
 {
 	rlm_radius_client_instance_t const *inst = instance;
 	rlm_radius_client_conn_t *conn;
@@ -597,7 +598,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, UNUSED void *thr
 
 	child->request_state = REQUEST_SEND;
 
-	return mod_resume_send(request, instance, ccr);
+	return mod_resume_send(request, instance, thread, ccr);
 }
 
 static char const *auth_names[][2] = {

@@ -669,7 +669,6 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	unlang_module_call_t		*sp;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	module_thread_instance_t	*thread_inst;
 
 	/*
 	 *	Process a stand-alone child, and fall through
@@ -692,7 +691,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	/*
 	 *	Grab the thread/module specific data if any exists.
 	 */
-	thread_inst = module_thread_instance_find(sp->module_instance);
+	frame->modcall.thread = module_thread_instance_find(sp->module_instance);
 
 	/*
 	 *	For logging unresponsive children.
@@ -700,7 +699,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	request->module = sp->module_instance->name;
 
 	safe_lock(sp->module_instance);
-	request->rcode = sp->method(sp->module_instance->data, thread_inst, request);
+	request->rcode = sp->method(sp->module_instance->data, frame->modcall.thread, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
@@ -851,7 +850,7 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
 
 	safe_lock(sp->module_instance);
-	*presult = mr->callback(request, mr->module.module_instance->data, mutable);
+	*presult = mr->callback(request, mr->module.module_instance->data, mr->thread, mutable);
 	safe_unlock(sp->module_instance);
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
@@ -1275,6 +1274,7 @@ typedef struct unlang_event_t {
 	fr_unlang_timeout_callback_t	timeout_callback;		//!< Function to call on timeout.
 	fr_unlang_fd_callback_t		fd_callback;			//!< Function to call when FD is readable.
 	void const			*inst;				//!< Module instance to pass to callbacks.
+	void				*thread;			//!< Thread specific module instance.
 	void const			*ctx;				//!< ctx data to pass to callbacks.
 	fr_event_timer_t		*ev;				//!< Event in this worker's event heap.
 } unlang_event_t;
@@ -1312,7 +1312,7 @@ static void unlang_event_timeout_handler(struct timeval *now, void *ctx)
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->timeout_callback(ev->request, mutable_inst, mutable_ctx, now);
+	ev->timeout_callback(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
 	talloc_free(ev);
 }
 
@@ -1337,7 +1337,7 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_callback(ev->request, mutable_inst, mutable_ctx, fd);
+	ev->fd_callback(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
 }
 
 /** Set a timeout for the request.
@@ -1377,6 +1377,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->fd = -1;
 	ev->timeout_callback = callback;
 	ev->inst = sp->module_instance->data;
+	ev->thread = frame->modcall.thread;
 	ev->ctx = ctx;
 
 	if (fr_event_timer_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
@@ -1431,6 +1432,7 @@ int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callb
 	ev->fd = fd;
 	ev->fd_callback = callback;
 	ev->inst = sp->module_instance->data;
+	ev->thread = frame->modcall.thread;
 	ev->ctx = ctx;
 
 	if (!fr_event_fd_insert(request->el, fd, unlang_event_fd_handler, NULL, NULL, ev)) {
@@ -1522,7 +1524,7 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
 
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
 
-	mr->action_callback(request, mr->module.module_instance->data, mutable, action);
+	mr->action_callback(request, mr->module.module_instance->data, mr->thread, mutable, action);
 }
 
 /** Yield a request
@@ -1550,10 +1552,11 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 	rad_assert(mr != NULL);
 
 	memcpy(&mr->module, frame->instruction, sizeof(mr->module));
-
+	mr->thread = frame->modcall.thread;
 	mr->module.self.type = UNLANG_TYPE_RESUME;
 	mr->callback = callback;
 	mr->action_callback = action_callback;
+	mr->thread = module_thread_instance_find(mr->module.module_instance->data); /* Could have caller pass this? */
 	mr->ctx = ctx;
 
 	frame->instruction = unlang_resumption_to_generic(mr);

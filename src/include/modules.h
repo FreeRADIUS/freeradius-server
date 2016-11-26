@@ -227,11 +227,13 @@ int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
  *	on a registered FD occurs before the timeout event fires.
  *
  * @param[in] request		the request.
- * @param[in] module_instance	the module instance.
+ * @param[in] instance		the module instance.
+ * @param[in] thread		data specific to this module instance.
  * @param[in] ctx		a local context for the callback.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_instance, void *ctx, struct timeval *fired);
+typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *instance, void *thread, void *ctx,
+					     struct timeval *fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -241,22 +243,24 @@ typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *module_inst
  * @note The callback is automatically removed on unlang_resumable(), so
  *
  * @param[in] request		the current request.
- * @param[in] module_instance	the module instance.
+ * @param[in] instance		the module instance.
+ * @param[in] thread		data specific to this module instance.
  * @param[in] ctx		a local context for the callback.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *module_instance, void *ctx, int fd);
+typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *instance, void *thread, void *ctx, int fd);
 
 /** A callback for when the request is resumed.
  *
  * The resumed request cannot call the normal "authorize", etc. method.  It needs a separate callback.
  *
  * @param[in] request		the current request.
- * @param[in] module_instance	The module instance.
+ * @param[in] instance		The module instance.
+ * @param[in] thread		data specific to this module instance.
  * @param[in] ctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instance, void *ctx);
+typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *instance, void *thread, void *ctx);
 
 /** A callback when the request gets a fr_state_action_t.
  *
@@ -265,12 +269,14 @@ typedef rlm_rcode_t (*fr_unlang_resume_t)(REQUEST *request, void *module_instanc
  *
  * @note The callback is automatically removed on unlang_resumable().
  *
- * param[in] request		The current request.
- * param[in] module_instance	The module instance.
- * param[in] ctx		for the callback.
- * param[in] action		which is signalling the request.
+ * @param[in] request		The current request.
+ * @param[in] instance		The module instance.
+ * @param[in] thread		data specific to this module instance.
+ * @param[in] ctx		for the callback.
+ * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_unlang_action_t)(REQUEST *request, void *module_instance, void *ctx, fr_state_action_t action);
+typedef void (*fr_unlang_action_t)(REQUEST *request, void *instance, void *thread, void *ctx,
+				   fr_state_action_t action);
 
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void const *ctx, struct timeval *timeout);

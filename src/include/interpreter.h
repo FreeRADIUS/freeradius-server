@@ -163,6 +163,7 @@ typedef struct {
  */
 typedef struct {
 	unlang_module_call_t	module;		//!< Module call that returned #RLM_MODULE_YIELD.
+	void			*thread;	//!< data specific to the module.
 	fr_unlang_resume_t	callback;	//!< Function the yielding module indicated should
 						//!< be called when the request could be resumed.
 	fr_unlang_action_t	action_callback;  //!< Function the yielding module indicated should
@@ -180,6 +181,10 @@ typedef struct {
 	int			exec;
 	char			*xlat_name;
 } unlang_xlat_inline_t;
+
+typedef struct {
+	void			*thread;	//!< Thread specific module instance.
+} unlang_stack_entry_modcall_t;
 
 /** State of a foreach loop
  *
@@ -223,6 +228,7 @@ typedef struct {
 	unlang_t		*instruction;
 
 	union {
+		unlang_stack_entry_modcall_t	modcall;
 		unlang_stack_entry_foreach_t	foreach;
 		unlang_stack_entry_redundant_t	redundant;
 	};
