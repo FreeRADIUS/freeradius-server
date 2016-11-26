@@ -47,12 +47,12 @@ RCSID("$Id$")
 #include <semaphore.h>
 #endif
 
+#define SEMAPHORE_LOCKED	(0)
+
 #ifdef __APPLE__
 #include <mach/task.h>
 #include <mach/mach_init.h>
 #include <mach/semaphore.h>
-
-#define SEMAPHORE_LOCKED	(0)
 
 #undef sem_t
 #define sem_t semaphore_t
@@ -147,11 +147,11 @@ static int fr_schedule_get_worker_kq(fr_schedule_t *sc)
 	int i, kq;
 	fr_schedule_worker_t *sw;
 
-	pthread_mutex_lock(&sc->mutex);
+	PTHREAD_MUTEX_LOCK(&sc->mutex);
 
 	sw = fr_heap_pop(sc->workers);
 	if (!sw) {
-		pthread_mutex_unlock(&sc->mutex);
+		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 		return -1;
 	}
 
@@ -160,7 +160,7 @@ static int fr_schedule_get_worker_kq(fr_schedule_t *sc)
 	sw->uses++;
 	(void) fr_heap_insert(sc->workers, sw);
 
-	pthread_mutex_unlock(&sc->mutex);
+	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	return kq;
 }
@@ -186,10 +186,10 @@ static void *fr_schedule_worker_thread(void *arg)
 		/*
 		 *	Tell the scheduler that we've exited.
 		 */
-		pthread_mutex_lock(&sc->mutex);
+		PTHREAD_MUTEX_LOCK(&sc->mutex);
 		(void) fr_heap_insert(sc->done_workers, sw);
 		sc->num_workers_exited++;
-		pthread_mutex_unlock(&sc->mutex);
+		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 		sem_post(&sc->semaphore);
 		return NULL;
@@ -211,10 +211,10 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	sw->status = FR_WORKER_RUNNING;
 
-	pthread_mutex_lock(&sc->mutex);
+	PTHREAD_MUTEX_LOCK(&sc->mutex);
 	(void) fr_heap_insert(sc->workers, sw);
 	sc->num_workers++;
-	pthread_mutex_unlock(&sc->mutex);
+	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	/*
 	 *	Do all of the work.
@@ -237,13 +237,13 @@ static void *fr_schedule_worker_thread(void *arg)
 	 *	Move ourselves from the list of live workers, and add
 	 *	ourselves to the list of dead workers.
 	 */
-	pthread_mutex_lock(&sc->mutex);
+	PTHREAD_MUTEX_LOCK(&sc->mutex);
 	(void) fr_heap_extract(sc->workers, sw);
 	sc->num_workers--;
 
 	(void) fr_heap_insert(sc->done_workers, sw);
 	sc->num_workers_exited++;
-	pthread_mutex_unlock(&sc->mutex);
+	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	sw->status = FR_WORKER_EXITED;
 
@@ -396,9 +396,9 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		/*
 		 *	Needs to be done in a lock for thread safety.
 		 */
-		pthread_mutex_lock(&sc->mutex);
+		PTHREAD_MUTEX_LOCK(&sc->mutex);
 		done = (sc->num_workers_exited == 0);
-		pthread_mutex_unlock(&sc->mutex);
+		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 	}
 
 	sem_destroy(&sc->semaphore);
