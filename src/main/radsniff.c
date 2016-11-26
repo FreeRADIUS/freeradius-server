@@ -2064,7 +2064,7 @@ fr_event_list_t *list, int fd, UNUSED void *ctx)
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
-		rs_collectd_reopen(list, &now);
+		rs_collectd_reopen(&now, list);
 	}
 		break;
 #else
