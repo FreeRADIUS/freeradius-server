@@ -632,6 +632,18 @@ int fr_worker_kq(fr_worker_t *worker)
 	return worker->kq;
 }
 
+/** Signal a worker to exit
+ *
+ *  WARNING: This may be called from another thread!  Care is required.
+ *
+ * @param[in] worker the worker data structure to manage
+ */
+void fr_worker_exit(fr_worker_t *worker)
+{
+	fr_event_loop_exit(worker->el, 1);
+}
+
+
 /** The main worker function.
  *
  * @param[in] worker the worker data structure to manage
