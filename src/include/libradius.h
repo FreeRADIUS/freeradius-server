@@ -380,6 +380,7 @@ ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 int		fr_time_from_str(time_t *date, char const *date_str);
+void		fr_timeval_from_ms(struct timeval *out, uint64_t ms);
 void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start);
 void		fr_timeval_add(struct timeval *out, struct timeval const *a, struct timeval const *b);
 void		fr_timeval_divide(struct timeval *out, struct timeval const *in, int divisor);

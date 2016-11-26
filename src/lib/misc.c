@@ -936,6 +936,18 @@ int fr_time_from_str(time_t *date, char const *date_str)
 }
 
 #define USEC 1000000
+
+/** Convert a time specified in milliseconds to a timeval
+ *
+ * @param[out] out	Where to write the result.
+ * @param[in] ms	To convert to a timeval struct.
+ */
+void fr_timeval_from_ms(struct timeval *out, uint64_t ms)
+{
+	out->tv_sec = ms / 1000;
+	out->tv_usec = (ms % 1000) * 1000;
+}
+
 /** Subtract one timeval from another
  *
  * @param[out] out Where to write difference.
