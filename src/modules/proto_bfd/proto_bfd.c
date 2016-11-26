@@ -230,7 +230,7 @@ typedef struct bfd_socket_t {
 static int bfd_start_packets(bfd_state_t *session);
 static int bfd_start_control(bfd_state_t *session);
 static int bfd_stop_control(bfd_state_t *session);
-static void bfd_detection_timeout(void *ctx, struct timeval *now);
+static void bfd_detection_timeout(struct timeval *now, void *ctx);
 static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd);
 
 static fr_event_list_t *el = NULL; /* don't ask */
@@ -849,7 +849,7 @@ static void bfd_sign(bfd_state_t *session, bfd_packet_t *bfd)
 /*
  *	Send a packet.
  */
-static void bfd_send_packet(void *ctx, UNUSED struct timeval *now)
+static void bfd_send_packet(UNUSED struct timeval *now, void *ctx)
 {
 	bfd_state_t *session = ctx;
 	bfd_packet_t bfd;
@@ -1079,7 +1079,7 @@ static void bfd_set_desired_min_tx_interval(bfd_state_t *session,
 }
 
 
-static void bfd_detection_timeout(void *ctx, struct timeval *now)
+static void bfd_detection_timeout(struct timeval *now, void *ctx)
 {
 	bfd_state_t *session = ctx;
 

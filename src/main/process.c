@@ -122,7 +122,7 @@ void request_trace_state_machine(REQUEST *request)
  */
 #define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, fr_state_action_t action)
 
-static void request_timer(void *ctx, struct timeval *now);
+static void request_timer(struct timeval *now, void *ctx);
 
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
  *
@@ -457,7 +457,7 @@ static int request_init_delay(REQUEST *request)
 /*
  *	Callback for ALL timer events related to the request.
  */
-static void request_timer(void *ctx, UNUSED struct timeval *now)
+static void request_timer(UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 #ifdef DEBUG_STATE_MACHINE
@@ -1849,7 +1849,7 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 /*
  *	Timer function for all TCP sockets.
  */
-static void tcp_socket_timer(void *ctx, struct timeval *now)
+static void tcp_socket_timer(struct timeval *now, void *ctx)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 	listen_socket_t *sock = listener->data;
@@ -3505,7 +3505,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
  *	Called from start of zombie period, OR after control socket
  *	marks the home server dead.
  */
-static void ping_home_server(void *ctx, struct timeval *now)
+static void ping_home_server(struct timeval *now, void *ctx)
 {
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	REQUEST *request;
@@ -3762,7 +3762,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 			buffer, sizeof(buffer)),
 	      home->port, (int) response_window->tv_sec, (int) response_window->tv_usec);
 
-	ping_home_server(home, now);
+	ping_home_server(now, home);
 }
 
 
@@ -3789,7 +3789,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 			struct timeval now;
 
 			gettimeofday(&now, NULL);
-			ping_home_server(home, &now);
+			ping_home_server(&now, home);
 		} else {
 			DEBUG("PING: Already pinging home server %s", home->log_name);
 		}
@@ -3809,7 +3809,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 }
 
 
-void revive_home_server(void *ctx, UNUSED struct timeval *now)
+void revive_home_server(UNUSED struct timeval *now, void *ctx)
 {
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	char buffer[INET6_ADDRSTRLEN];
@@ -4773,7 +4773,7 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 }
 
 
-static int event_status(UNUSED void *ctx, struct timeval *wake)
+static int event_status(struct timeval *wake, UNUSED void *ctx)
 {
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
@@ -5041,7 +5041,7 @@ static int event_new_fd(rad_listen_t *this)
  *	Emit a systemd watchdog notification and reschedule the event.
  */
 #ifdef HAVE_SYSTEMD_WATCHDOG
-static void sd_watchdog_event(void *ctx)
+static void sd_watchdog_event(struct timeval *now, void *ctx)
 {
 	struct timeval when;
 
@@ -5050,7 +5050,7 @@ static void sd_watchdog_event(void *ctx)
 
 	fr_event_list_time(&when, el);
 	tv_add(&when, sd_watchdog_interval / 2);
-	if (!fr_event_timer_insert(el, (fr_event_callback_t) sd_watchdog_event, ctx, &when, ctx)) {
+	if (!fr_event_timer_insert(el, sd_watchdog_event, ctx, &when, ctx)) {
 		rad_panic("Failed to insert watchdog event");
 	}
 }

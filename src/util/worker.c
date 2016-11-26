@@ -457,7 +457,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
  * @param[in] ctx the worker
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_worker_idle(void *ctx, struct timeval *wake)
+static int fr_worker_idle(struct timeval *wake, void *ctx)
 {
 	bool found = false;
 	fr_worker_t *worker = ctx;

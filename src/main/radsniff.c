@@ -786,7 +786,7 @@ static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED stru
 /** Process stats for a single interval
  *
  */
-static void rs_stats_process(void *ctx, struct timeval *now)
+static void rs_stats_process(struct timeval *now, void *ctx)
 {
 	size_t		i;
 	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
@@ -1062,7 +1062,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 	talloc_free(request);
 }
 
-static void _rs_event(void *ctx, UNUSED struct timeval *now)
+static void _rs_event(UNUSED struct timeval *now, void *ctx)
 {
 	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
 	request->event = NULL;
@@ -1670,7 +1670,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		original->packet->timestamp = header->ts;
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
 		if (fr_event_timer_insert(event->list, _rs_event, original,
-				    &original->when, &original->event) < 0) {
+					  &original->when, &original->event) < 0) {
 			REDEBUG("Failed inserting new event");
 
 			talloc_free(original);
@@ -1840,7 +1840,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 	}
 }
 
-static int  _rs_event_status(UNUSED void *ctx, struct timeval *wake)
+static int  _rs_event_status(struct timeval *wake, UNUSED void *ctx)
 {
 	if (wake && ((wake->tv_sec != 0) || (wake->tv_usec >= 100000))) {
 		DEBUG2("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
@@ -2000,7 +2000,7 @@ static void _unmark_link(void *request)
 /** Re-open the collectd socket
  *
  */
-static void rs_collectd_reopen(void *ctx, struct timeval *now)
+static void rs_collectd_reopen(struct timeval *now, void *ctx)
 {
 	fr_event_list_t *list = ctx;
 	static fr_event_timer_t *event;

@@ -1295,10 +1295,11 @@ static int _unlang_event_free(unlang_event_t *ev)
 
 /** Call the callback registered for a timeout event
  *
- * @param[in] ctx	unlang_event_t structure holding callbacks.
  * @param[in] now	The current time, as held by the event_list.
+ * @param[in] ctx	unlang_event_t structure holding callbacks.
+ *
  */
-static void unlang_event_timeout_handler(void *ctx, struct timeval *now)
+static void unlang_event_timeout_handler(struct timeval *now, void *ctx)
 {
 #ifndef NDEBUG
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
@@ -1542,7 +1543,7 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 	return RLM_MODULE_YIELD;
 }
 
-static void unlang_timer_hook(void *ctx, UNUSED struct timeval *now)
+static void unlang_timer_hook(UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 #ifdef DEBUG_STATE_MACHINE

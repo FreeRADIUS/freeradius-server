@@ -404,7 +404,7 @@ static int timestamp_cmp(void const *one, void const *two)
 /*
  *	Enforce max_request_time.
  */
-static void max_request_time_hook(void *ctx, UNUSED struct timeval *now)
+static void max_request_time_hook(UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 #ifdef DEBUG_STATE_MACHINE
@@ -551,7 +551,7 @@ static void *thread_handler(void *arg)
 
 				request->el = el;
 				if (fr_event_timer_insert(request->el, max_request_time_hook,
-						    request, &when, &request->ev) < 0) {
+							  request, &when, &request->ev) < 0) {
 					REDEBUG("Failed inserting max_request_time");
 				}
 			} while (request != NULL);

@@ -32,13 +32,48 @@ RCSIDH(event_h, "$Id$")
 extern "C" {
 #endif
 
+/** An opaque file descriptor handle
+ */
 typedef struct fr_event_fd_t fr_event_fd_t;
+
+/** An opaque event list handle
+ */
 typedef struct fr_event_list_t fr_event_list_t;
+
+/** An opaque timer handle
+ */
 typedef struct fr_event_timer_t fr_event_timer_t;
 
-typedef	void (*fr_event_callback_t)(void *, struct timeval *now);
-typedef	int (*fr_event_status_t)(void *status_ctx, struct timeval *);
+/** Called when a timer event fires
+ *
+ * @param[in] now	The current time.
+ * @param[in] ctx	User ctx passed to #fr_event_timer_insert.
+ */
+typedef	void (*fr_event_callback_t)(struct timeval *now, void *ctx);
+
+/** Called after each event loop cycle
+ *
+ * Called before calling kqueue to put the thread in a sleeping state.
+ *
+ * @param[in] now	The current time.
+ * @param[in] ctx	User ctx passed to #fr_event_list_create.
+ */
+typedef	int (*fr_event_status_t)(struct timeval *now, void *ctx);
+
+/** Called when an IO event occurs on a file descriptor
+ *
+ * @param[in] el	Event list the file descriptor was inserted into.
+ * @param[in] sock	That experienced the IO event.
+ * @param[in] ctx	User ctx passed to #fr_event_fd_insert.
+ */
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
+
+/** Called when a user kevent occurs
+ *
+ * @param[in] kq	that received the user kevent.
+ * @param[in] kev	The kevent.
+ * @param[in] ctx	User ctx passed to #fr_event_user_insert.
+ */
 typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *ctx);
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
