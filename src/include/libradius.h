@@ -523,7 +523,6 @@ void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 typedef struct	fr_fifo_t fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);
 fr_fifo_t	*fr_fifo_create(TALLOC_CTX *ctx, int max_entries, fr_fifo_free_t freeNode);
-void		fr_fifo_free(fr_fifo_t *fi);
 int		fr_fifo_push(fr_fifo_t *fi, void *data);
 void		*fr_fifo_pop(fr_fifo_t *fi);
 void		*fr_fifo_peek(fr_fifo_t *fi);
