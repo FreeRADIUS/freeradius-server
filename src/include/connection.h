@@ -125,7 +125,7 @@ typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
  *	Pool allocation/initialisation
  */
 fr_connection_pool_t	*fr_connection_pool_init(TALLOC_CTX *ctx,
-						 CONF_SECTION *cs,
+						 CONF_SECTION const *cs,
 						 void *opaque,
 						 fr_connection_create_t c,
 						 fr_connection_alive_t a,

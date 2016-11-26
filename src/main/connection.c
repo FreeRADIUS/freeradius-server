@@ -118,7 +118,7 @@ struct fr_connection_pool_t {
 	pthread_cond_t	done_reconnecting;	//!< Before calling the create callback, threads should
 						//!< block on this condition if reconnecting == true.
 
-	CONF_SECTION	*cs;			//!< Configuration section holding the section of parsed
+	CONF_SECTION const *cs;			//!< Configuration section holding the section of parsed
 						//!< config file that relates to this pool.
 	void		*opaque;		//!< Pointer to context data that will be passed to callbacks.
 
@@ -947,7 +947,7 @@ void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
  *	- NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
-					      CONF_SECTION *cs,
+					      CONF_SECTION const *cs,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
@@ -1040,7 +1040,13 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 
 	DEBUG2("Initialising connection pool");
 
-	if (cf_section_parse(cs, pool, connection_config) < 0) goto error;
+	{
+		CONF_SECTION *mutable;
+
+		memcpy(&mutable, &cs, sizeof(mutable));
+
+		if (cf_section_parse(mutable, pool, connection_config) < 0) goto error;
+	}
 
 	/*
 	 *	Some simple limits
