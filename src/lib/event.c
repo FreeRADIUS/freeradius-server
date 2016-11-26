@@ -333,7 +333,20 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
 
 	fr_event_timer_t *ev;
 
-	if (!el || !parent || !*parent) return -1;
+	if (!el) {
+		fr_strerror_printf("Invalid argument: NULL event list");
+		return -1;
+	}
+
+	if (!parent) {
+		fr_strerror_printf("Invalid arguments: NULL event pointer");
+		return -1;
+	}
+
+	if (!*parent) {
+		fr_strerror_printf("Invalid arguments: NULL event");
+		return -1;
+	}
 
 #ifndef NDEBUG
 	/*
@@ -352,7 +365,15 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
 	*parent = NULL;
 
 	ret = fr_heap_extract(el->times, ev);
-	(void)fr_cond_assert(ret == 1);	/* events MUST be in the heap */
+
+	/*
+	 *	Events MUST be in the heap
+	 */
+	if (!fr_cond_assert(ret == 1)) {
+		fr_strerror_printf("Event not found in heap");
+		talloc_free(ev);
+		return -1;
+	}
 	talloc_free(ev);
 
 	return ret;
