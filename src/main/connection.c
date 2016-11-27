@@ -958,10 +958,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	fr_connection_t *this;
 	time_t now;
 
-	if (!cs || !opaque || !c) {
-		ERROR("%s: Invalid argument", __FUNCTION__);
-		return NULL;
-	}
+	if (!cs || !opaque || !c) return NULL;
 
 	now = time(NULL);
 
