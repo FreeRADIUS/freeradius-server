@@ -273,13 +273,17 @@ char const *fr_syserror(int num)
 	 *	XSI-Compliant version
 	 */
 #if !defined(HAVE_FEATURES_H) || !defined(__GLIBC__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 500) && ! _GNU_SOURCE)
-	ret = strerror_r(num, p, end - p);
-	if (ret != 0) {
+	{
+		int ret;
+		
+		ret = strerror_r(num, p, end - p);
+		if (ret != 0) {
 #  ifndef NDEBUG
-		fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p (%zu bytes), "
-			"returned %i: %s\n", num, buffer, (size_t)FR_STRERROR_BUFSIZE, ret, strerror(ret));
+			fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p (%zu bytes), "
+				"returned %i: %s\n", num, buffer, (size_t)FR_STRERROR_BUFSIZE, ret, strerror(ret));
 #  endif
-		buffer[0] = '\0';
+			buffer[0] = '\0';
+		}
 	}
 	return buffer;
 	/*
