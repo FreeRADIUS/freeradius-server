@@ -969,7 +969,8 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 */
 	pool = talloc_zero(NULL, fr_connection_pool_t);
 	if (!pool) {
-		ERROR("%s: Out of memory", __FUNCTION__);
+		/* Simply using ERROR here results in a null pointer dereference */
+		_RADLOG(L_ERR, "%s: Out of memory", __FUNCTION__);
 		return NULL;
 	}
 
