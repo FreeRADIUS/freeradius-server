@@ -302,7 +302,10 @@ static ssize_t rest_xlat_resume(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_
 
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
 
-	if (rlm_rest_status_update(request, handle) < 0) return -1;
+	if (rlm_rest_status_update(request, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
@@ -364,7 +367,10 @@ static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *
 
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
 
-	if (rlm_rest_status_update(request, handle) < 0) return -1;
+	if (rlm_rest_status_update(request, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
@@ -422,6 +428,7 @@ static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *
 		break;
 	}
 
+finish:
 	rest_request_cleanup(instance, handle);
 
 	fr_connection_release(t->pool, request, handle);
@@ -460,7 +467,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 	return unlang_yield(request, mod_authorize_result, rest_io_action, handle);
 }
 
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, void *thread, void *ctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -473,7 +480,10 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
 
-	if (rlm_rest_status_update(request, handle) < 0) return -1;
+	if (rlm_rest_status_update(request, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
@@ -531,6 +541,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 		break;
 	}
 
+finish:
 	rest_request_cleanup(instance, handle);
 
 	fr_connection_release(t->pool, request, handle);
@@ -541,7 +552,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instan
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *thread, REQUEST *request)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -584,7 +595,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	return unlang_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_accounting_result(REQUEST *request, UNUSED void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_accounting_result(REQUEST *request, void *instance, void *thread, void *ctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -597,7 +608,10 @@ static rlm_rcode_t mod_accounting_result(REQUEST *request, UNUSED void *instance
 
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
 
-	if (rlm_rest_status_update(request, handle) < 0) return -1;
+	if (rlm_rest_status_update(request, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
 
 	hcode = rest_get_handle_code(handle);
 	if (hcode >= 500) {
@@ -623,6 +637,7 @@ static rlm_rcode_t mod_accounting_result(REQUEST *request, UNUSED void *instance
 		break;
 	}
 
+finish:
 	rest_request_cleanup(instance, handle);
 
 	fr_connection_release(t->pool, request, handle);
@@ -633,7 +648,7 @@ static rlm_rcode_t mod_accounting_result(REQUEST *request, UNUSED void *instance
 /*
  *	Send accounting info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -658,7 +673,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	return unlang_yield(request, mod_accounting_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_post_auth_result(REQUEST *request, UNUSED void *instance, void *thread, void *ctx)
+static rlm_rcode_t mod_post_auth_result(REQUEST *request, void *instance, void *thread, void *ctx)
 {
 	rlm_rest_t const		*inst = instance;
 	rlm_rest_thread_t		*t = thread;
@@ -671,7 +686,10 @@ static rlm_rcode_t mod_post_auth_result(REQUEST *request, UNUSED void *instance,
 
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
 
-	if (rlm_rest_status_update(request, handle) < 0) return -1;
+	if (rlm_rest_status_update(request, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
 
 	hcode = rest_get_handle_code(handle);
 	if (hcode >= 500) {
@@ -697,6 +715,7 @@ static rlm_rcode_t mod_post_auth_result(REQUEST *request, UNUSED void *instance,
 		break;
 	}
 
+finish:
 	rest_request_cleanup(inst, handle);
 
 	fr_connection_release(t->pool, request, handle);
