@@ -240,7 +240,6 @@ char const *fr_strerror(void)
 char const *fr_syserror(int num)
 {
 	char *buffer, *p, *end;
-	int ret;
 
 	buffer = fr_syserror_buffer;
 	if (!buffer) {

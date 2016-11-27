@@ -1677,15 +1677,19 @@ error:
  *
  * Sets up callbacks for all response processing (buffers and body data).
  *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] handle to configure.
- * @param[in] request Current request.
- * @param[in] method to use (HTTP verbs PUT, POST, DELETE etc...).
- * @param[in] type Content-Type for request encoding, also sets the default for decoding.
- * @param[in] username to use for HTTP authentication, may be NULL in which case configured defaults will be used.
- * @param[in] password to use for HTTP authentication, may be NULL in which case configured defaults will be used.
- * @param[in] uri buffer containing the expanded URI to send the request to.
+ * @param[in] instance		configuration data.
+ * @param[in] t			Thread specific instance data.
+ * @param[in] section		configuration data.
+ * @param[in] handle		to configure.
+ * @param[in] request		Current request.
+ * @param[in] method		to use (HTTP verbs PUT, POST, DELETE etc...).
+ * @param[in] type		Content-Type for request encoding, also sets
+ *				the default for decoding.
+ * @param[in] username		to use for HTTP authentication, may be NULL in
+ *				which case configured defaults will be used.
+ * @param[in] password		to use for HTTP authentication, may be NULL in
+ *				which case configured defaults will be used.
+ * @param[in] uri		buffer containing the expanded URI to send the request to.
  * @return
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
