@@ -58,8 +58,15 @@ typedef struct fr_event_fd_t {
 	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
 	fr_event_fd_handler_t	error;			//!< Callback for when an error occurs on the FD.
 
-	bool			registered;		//!< Whether this fr_event_fd_t's FD has been registered with
-							//!< kevent.
+	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
+							//!< kevent.  Mostly for debugging.
+
+	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
+							//!< deferred until after the handlers complete.
+
+	bool			do_delete;		//!< Deferred deletion flag.  Delete this event *after*
+							//!< the handlers complete.
+
 	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
 } fr_event_fd_t;
 
@@ -132,7 +139,7 @@ static int fr_event_fd_cmp(void const *a, void const *b)
 	return 0;
 }
 
-/** Return the number of file descriptors registered with this event loop
+/** Return the number of file descriptors is_registered with this event loop
  *
  */
 int fr_event_list_num_fds(fr_event_list_t *el)
@@ -210,9 +217,21 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 
 	ef = rbtree_finddata(el->fds, &find);
 	if (!ef) {
-		fr_strerror_printf("No events registered for fd %i", fd);
+		fr_strerror_printf("No events is_registered for fd %i", fd);
 		return -1;
 	}
+
+	/*
+	 *	Defer the delete, so we don't free
+	 *	an ef structure that might still be
+	 *	in use within fr_event_service.
+	 */
+	if (ef->in_handler) {
+		ef->do_delete = true;
+
+		return 0;
+	}
+
 	/*
 	 *	Destructor may prevent ef from being
 	 *	freed if kevent de-registration fails.
@@ -237,7 +256,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 	if (ef->read) filter |= EVFILT_READ;
 	if (ef->write) filter |= EVFILT_WRITE;
 
-	if (ef->registered) {
+	if (ef->is_registered) {
 		EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, 0);
 		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
 			fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
@@ -245,7 +264,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 		}
 	}
 	rbtree_deletebydata(el->fds, ef);
-	ef->registered = false;
+	ef->is_registered = false;
 
 	el->num_fds--;
 
@@ -328,6 +347,13 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 			EV_SET(ev_p++, ef->fd, filter, EV_DELETE, 0, 0, 0);
 			filter = 0;
 		}
+
+		/*
+		 *	I/O handler may delete an event, then
+		 *	re-add it.  To avoid deleting modified
+		 *	events we unset the do_delete flag.
+		 */
+		ef->do_delete = false;
 	}
 
 	ef->ctx = ctx;
@@ -349,7 +375,7 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 		talloc_free(ef);
 		return NULL;
 	}
-	ef->registered = true;
+	ef->is_registered = true;
 
 	return ef;
 }
@@ -678,7 +704,23 @@ void fr_event_service(fr_event_list_t *el)
 	 *	Loop over all of the events, servicing them.
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
-		fr_event_fd_t *ev = el->events[i].udata;
+		fr_event_fd_t *ev;
+
+		/*
+		 *	Process any user events
+		 */
+		if (el->user && (el->events[i].flags & EVFILT_USER)) {
+			el->user(el->kq, &el->events[i], el->user_ctx);
+			continue;
+		}
+
+#ifndef NDEBUG
+		ev = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
+#else
+		ev = el->events[i].udata;
+#endif
+
+		if (!fr_cond_assert(ev->is_registered)) continue;
 
 		if ((el->events[i].flags & EV_EOF) || (el->events[i].flags & EV_ERROR)) {
 			/*
@@ -694,9 +736,16 @@ void fr_event_service(fr_event_list_t *el)
 			continue;
 		}
 
+		ev->in_handler = true;
 		if (ev->read && (el->events[i].flags & EVFILT_READ)) ev->read(el, ev->fd, ev->ctx);
-		if (ev->write && (el->events[i].flags & EVFILT_WRITE)) ev->write(el, ev->fd, ev->ctx);
-		if (el->user && (el->events[i].flags & EVFILT_USER)) el->user(el->kq, &el->events[i], el->user_ctx);
+		if (ev->write && (el->events[i].flags & EVFILT_WRITE) && !ev->do_delete) ev->write(el, ev->fd, ev->ctx);
+		ev->in_handler = false;
+
+		/*
+		 *	Process any deferred deletes performed
+		 *	by the I/O handler.
+		 */
+		if (ev->do_delete) fr_event_fd_delete(el, ev->fd);
 	}
 
 	if (fr_heap_num_elements(el->times) > 0) {
