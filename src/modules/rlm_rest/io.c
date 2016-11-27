@@ -34,7 +34,7 @@ DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
 #define SET_OPTION(_x, _y)\
 do {\
-	if ((ret = curl_multi_setopt(mandle, _x, _y)) != CURLE_OK) {\
+	if ((ret = curl_multi_setopt(mandle, _x, _y)) != CURLM_OK) {\
 		option = STRINGIFY(_x);\
 		goto error;\
 	}\
@@ -65,14 +65,14 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			thread->transfers--;
 
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &request);
-			if (!fr_cond_assert(ret == CURLE_OK)) return;
+			if (!fr_cond_assert(ret == CURLM_OK)) return;
 
 			VERIFY_REQUEST(request);
 
 			/*
 			 *	If the request failed, say why...
 			 */
-			if (m->data.result != CURLE_OK) {
+			if (m->data.result != CURLM_OK) {
 				REDEBUG("%s (%i)", curl_easy_strerror(m->data.result), m->data.result);
 			}
 
@@ -101,7 +101,7 @@ static inline void _rest_io_service(rlm_rest_thread_t *t, int fd, int event)
 	int			running = 0;
 
 	ret = curl_multi_socket_action(mandle, fd, event, &running);
-	if (ret != CURLE_OK) {
+	if (ret != CURLM_OK) {
 		ERROR("Failed servicing curl multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
 		return;
 	}
@@ -224,7 +224,7 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 
 	if (timeout_ms == 0) {
 		ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
-		if (ret != CURLE_OK) {
+		if (ret != CURLM_OK) {
 			ERROR("Failed servicing curl multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
 			return -1;
 		}
@@ -347,7 +347,7 @@ void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, f
 	RDEBUG("Forcefully cancelling pending REST request");
 
 	ret = curl_multi_remove_handle(t->mandle, randle->candle);	/* Gracefully terminate the request */
-	if (ret != CURLE_OK) {
+	if (ret != CURLM_OK) {
 		RERROR("Failed removing curl handle from multi-handle: %s (%i)", curl_multi_strerror(ret), ret);
 		/* Not much we can do */
 	}
@@ -385,7 +385,7 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 	curl_easy_setopt(candle, CURLOPT_PRIVATE, request);
 
 	ret = curl_multi_add_handle(t->mandle, candle);
-	if (ret != CURLE_OK) {
+	if (ret != CURLM_OK) {
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
 
 		return -1;
