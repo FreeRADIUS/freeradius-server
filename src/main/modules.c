@@ -583,6 +583,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
  * Must be called by any new threads before attempting to execute unlang sections.
  *
  * @param[in] root	Configuration root.
+ * @param[in] el	Event list servived by this thread.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

@@ -60,6 +60,7 @@ static rlm_rcode_t delay_return(UNUSED REQUEST *request, UNUSED void *instance, 
  *
  * @param[in] request		The current request.
  * @param[in] instance		This instance of the delay module.
+ * @param[in] thread		Thread specific module instance.
  * @param[in] ctx		Scheduled end of the delay.
  * @param[in] fired		When request processing was resumed.
  */
