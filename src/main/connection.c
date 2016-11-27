@@ -954,11 +954,14 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 					      char const *log_prefix)
 {
 	uint32_t i;
-	fr_connection_pool_t *pool;
+	fr_connection_pool_t *pool = NULL;
 	fr_connection_t *this;
 	time_t now;
 
-	if (!cs || !opaque || !c) return NULL;
+	if (!cs || !opaque || !c) {
+		ERROR("%s: Invalid argument", __FUNCTION__);
+		return NULL;
+	}
 
 	now = time(NULL);
 
@@ -968,13 +971,17 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	beneath the pool.
 	 */
 	pool = talloc_zero(NULL, fr_connection_pool_t);
-	if (!pool) return NULL;
+	if (!pool) {
+		ERROR("%s: Out of memory", __FUNCTION__);
+		return NULL;
+	}
 
 	/*
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
 	if (fr_talloc_link_ctx(ctx, pool) < 0) {
+		ERROR("%s: Failed linking pool ctx", __FUNCTION__);
 		talloc_free(pool);
 
 		return NULL;
@@ -1029,6 +1036,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_connection_t, heap));
 	}
 	if (!pool->heap) {
+		ERROR("%s: Failed creating connection heap", __FUNCTION__);
 		talloc_free(pool);
 		return NULL;
 	}
@@ -1045,7 +1053,10 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 
 		memcpy(&mutable, &cs, sizeof(mutable));
 
-		if (cf_section_parse(mutable, pool, connection_config) < 0) goto error;
+		if (cf_section_parse(mutable, pool, connection_config) < 0) {
+			ERROR("Configuration parsing failed: %s", fr_strerror());
+			goto error;
+		}
 	}
 
 	/*
@@ -1099,6 +1110,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	for (i = 0; i < pool->start; i++) {
 		this = fr_connection_spawn(pool, NULL, now, false, true);
 		if (!this) {
+			ERROR("Failed spawning initial connections");
 		error:
 			fr_connection_pool_free(pool);
 			return NULL;
