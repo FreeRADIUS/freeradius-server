@@ -65,24 +65,25 @@ typedef struct fr_event_fd_t {
  *
  */
 struct fr_event_list_t {
-	fr_heap_t		*times;			//!< of events to be executed.
+	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
 	int			exit;
 
-	void			*status_ctx;		//!< context for status function
+
 	fr_event_status_t	status;			//!< Function to call on each iteration of the event loop.
+	void			*status_ctx;		//!< Context for status function.
 
 	struct timeval  	now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
 
 	int			num_fds;		//!< Number of FDs listened to by this event list.
-	int			num_fd_events;		//!< Number of events in this event list
+	int			num_fd_events;		//!< Number of events in this event list.
 
-	int			kq;			//!< instance association with this event list.
+	int			kq;			//!< instance associated with this event list.
 
 	fr_event_user_handler_t user;			//!< callback for EVFILT_USER events
-	void			*user_ctx;		//!< context pointer to pass to the user callback
+	void			*user_ctx;		//!< Context pointer to pass to the user callback.
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 };
