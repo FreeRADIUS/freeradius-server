@@ -54,11 +54,11 @@ struct fr_event_timer_t {
 typedef struct fr_event_fd_t {
 	int			fd;			//!< File descriptor we're listening for events on.
 
-	fr_event_fd_handler_t	read;			//!< callback for when data is available.
-	fr_event_fd_handler_t	write;			//!< callback for when we can write data.
-	fr_event_fd_handler_t	error;			//!< callback for when an error occurs on the FD.
+	fr_event_fd_handler_t	read;			//!< Callback for when data is available.
+	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
+	fr_event_fd_handler_t	error;			//!< Callback for when an error occurs on the FD.
 
-	void			*ctx;			//!< context pointer to pass to each file descriptor callback.
+	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
 } fr_event_fd_t;
 
 /** Stores all information relating to an event list
