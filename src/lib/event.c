@@ -58,6 +58,8 @@ typedef struct fr_event_fd_t {
 	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
 	fr_event_fd_handler_t	error;			//!< Callback for when an error occurs on the FD.
 
+	bool			registered;		//!< Whether this fr_event_fd_t's FD has been registered with
+							//!< kevent.
 	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
 } fr_event_fd_t;
 
@@ -211,7 +213,11 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 		fr_strerror_printf("No events registered for fd %i", fd);
 		return -1;
 	}
-	talloc_free(ef);
+	/*
+	 *	Destructor may prevent ef from being
+	 *	freed if kevent de-registration fails.
+	 */
+	if (talloc_free(ef) < 0) return -1;
 
 	return 0;
 }
@@ -228,15 +234,20 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 
 	fr_event_list_t	*el = talloc_parent(ef);
 
-	rbtree_deletebydata(el->fds, ef);
-
 	if (ef->read) filter |= EVFILT_READ;
 	if (ef->write) filter |= EVFILT_WRITE;
 
-	EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, NULL);
-	(void) kevent(el->kq, &evset, 1, NULL, 0, NULL);
+	if (ef->registered) {
+		EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, 0);
+		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+			fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
+			return -1;
+		}
+	}
+	rbtree_deletebydata(el->fds, ef);
+	ef->registered = false;
 
-	el->num_fds++;
+	el->num_fds--;
 
 	return 0;
 }
@@ -257,9 +268,10 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 				  fr_event_fd_handler_t error,
 				  void *ctx)
 {
-	int		filter = 0;
-	struct kevent	evset;
-	fr_event_fd_t	*ef, find;
+	int			filter = 0;
+	struct kevent		evset[2];
+	struct kevent		*ev_p = evset;
+	fr_event_fd_t		*ef, find;
 
 	if (!el) {
 		fr_strerror_printf("Invalid argument: NULL event list");
@@ -300,10 +312,24 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 		}
 		talloc_set_destructor(ef, _fr_event_fd_free);
 		el->num_fds++;
+		ef->fd = fd;
 		rbtree_insert(el->fds, ef);
+	/*
+	 *	Existing filters will be overwritten if there's
+	 *	a new filter which takes their place.  If there
+	 *	is no new filter however, we need to delete the
+	 *	existing one.
+	 */
+	} else {
+		if (ef->read && !read) filter |= EVFILT_READ;
+		if (ef->write && !write) filter |= EVFILT_WRITE;
+
+		if (filter) {
+			EV_SET(ev_p++, ef->fd, filter, EV_DELETE, 0, 0, 0);
+			filter = 0;
+		}
 	}
 
-	ef->fd = fd;
 	ef->ctx = ctx;
 
 	if (read) {
@@ -317,12 +343,13 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 	}
 	ef->error = error;
 
-	EV_SET(&evset, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
-	if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+	EV_SET(ev_p++, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
+	if (kevent(el->kq, evset, ev_p - evset, NULL, 0, NULL) < 0) {
 		fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
 		talloc_free(ef);
 		return NULL;
 	}
+	ef->registered = true;
 
 	return ef;
 }
