@@ -2802,7 +2802,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		if (!fr_event_fd_insert(events, self_pipe[0], rs_signal_action, NULL, NULL, events)) {
+		if (fr_event_fd_insert(events, self_pipe[0], rs_signal_action, NULL, NULL, events) < 0) {
 			ERROR("Failed inserting signal pipe descriptor: %s", fr_strerror());
 			goto finish;
 		}
@@ -2821,7 +2821,7 @@ int main(int argc, char *argv[])
 			event->out = out;
 			event->stats = stats;
 
-			if (!fr_event_fd_insert(events, in_p->fd, rs_got_packet, NULL, NULL, event)) {
+			if (fr_event_fd_insert(events, in_p->fd, rs_got_packet, NULL, NULL, event) < 0) {
 				ERROR("Failed inserting file descriptor");
 				goto finish;
 			}

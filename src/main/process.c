@@ -4888,7 +4888,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
-		if (!fr_event_fd_insert(el, this->fd, event_socket_handler, NULL, NULL, this)) {
+		if (fr_event_fd_insert(el, this->fd, event_socket_handler, NULL, NULL, this) < 0) {
 			ERROR("Failed adding event handler for socket: %s", fr_strerror());
 			fr_exit(1);
 		}
@@ -5393,7 +5393,7 @@ int radius_event_start(bool have_children)
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (!fr_event_fd_insert(el, self_pipe[0], event_signal_handler, NULL, NULL, el)) {
+	if (fr_event_fd_insert(el, self_pipe[0], event_signal_handler, NULL, NULL, el) < 0) {
 		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
 		return -1;
 	}

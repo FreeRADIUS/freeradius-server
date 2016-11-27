@@ -368,7 +368,7 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 		return -1;
 	}
 
-	if (!fr_event_fd_insert(el, sockfd, mod_event_fd, NULL, NULL, conn)) {
+	if (fr_event_fd_insert(el, sockfd, mod_event_fd, NULL, NULL, conn) < 0) {
 		DEBUG("Failed adding event for socket: %s", fr_strerror());
 		close(sockfd);
 		return -1;

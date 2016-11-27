@@ -279,37 +279,39 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
  * @param[in] write	function to call when fd is writable.
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] ctx	to pass to handler.
- * @return a handle to use for future deletion of the file descriptor event.
+ * @return
+ *	- 0 on succes.
+ *	- -1 on failure.
  */
-fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
-				  fr_event_fd_handler_t read,
-				  fr_event_fd_handler_t write,
-				  fr_event_fd_handler_t error,
-				  void *ctx)
+int fr_event_fd_insert(fr_event_list_t *el, int fd,
+		       fr_event_fd_handler_t read,
+		       fr_event_fd_handler_t write,
+		       fr_event_fd_handler_t error,
+		       void *ctx)
 {
-	int			filter = 0;
-	struct kevent		evset[2];
-	struct kevent		*ev_p = evset;
-	fr_event_fd_t		*ef, find;
+	int	      filter = 0;
+	struct kevent evset[2];
+	struct kevent *ev_p = evset;
+	fr_event_fd_t *ef, find;
 
 	if (!el) {
 		fr_strerror_printf("Invalid argument: NULL event list");
-		return NULL;
+		return -1;
 	}
 
 	if (!read && !write) {
 		fr_strerror_printf("Invalid arguments: NULL read and write callbacks");
-		return NULL;
+		return -1;
 	}
 
 	if (fd < 0) {
 		fr_strerror_printf("Invalid arguments: Bad FD %i", fd);
-		return NULL;
+		return -1;
 	}
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
-		return NULL;
+		return -1;
 	}
 
 	memset(&find, 0, sizeof(find));
@@ -326,8 +328,8 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 	if (!ef) {
 		ef = talloc_zero(el, fr_event_fd_t);
 		if (!ef) {
-			fr_strerror_printf("Failed allocating memory for FD");
-			return NULL;
+			fr_strerror_printf("Out of memory");
+			return -1;
 		}
 		talloc_set_destructor(ef, _fr_event_fd_free);
 		el->num_fds++;
@@ -373,11 +375,11 @@ fr_event_fd_t *fr_event_fd_insert(fr_event_list_t *el, int fd,
 	if (kevent(el->kq, evset, ev_p - evset, NULL, 0, NULL) < 0) {
 		fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
 		talloc_free(ef);
-		return NULL;
+		return -1;
 	}
 	ef->is_registered = true;
 
-	return ef;
+	return 0;
 }
 
 
