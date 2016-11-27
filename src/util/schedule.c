@@ -375,6 +375,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	fr_schedule_worker_t *sw;
 
 	sc->running = false;
+	rad_assert(sc->num_workers > 0);
 
 	// signal the network threads to exit
 
