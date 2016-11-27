@@ -139,19 +139,11 @@ typedef struct {
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 } rlm_rest_section_t;
 
-typedef struct {
-	CURLM			*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
-						//!< and coralling structure for REST requests.
-} rlm_rest_thread_t;
-
 /*
  *	Structure for module configuration
  */
 typedef struct {
 	char const		*xlat_name;	//!< Instance name.
-
-	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
-						//!< TCP connections.
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 
@@ -165,6 +157,20 @@ typedef struct {
 						//!< checking.
 	rlm_rest_section_t	post_auth;	//!< Configuration specific to Post-auth
 } rlm_rest_t;
+
+/** Thread specific rlm_rest instance data
+ *
+ */
+typedef struct {
+	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
+	fr_connection_pool_t	*pool;		//!< Thread specific connection pool.
+	CURLM			*mandle;	//!< Thread specific multi handle.  Serves as the dispatch
+						//!< and coralling structure for REST requests.
+	fr_event_list_t		*el;		//!< This thread's event list.
+	fr_event_timer_t	*ev;		//!< Used to manage IO timers for libcurl.
+	unsigned int		transfers;	//!< Keep track of how many outstanding transfers
+						//!< we think there are.
+} rlm_rest_thread_t;
 
 /*
  *	States for stream based attribute encoders
@@ -239,8 +245,8 @@ typedef struct {
  *	Connection API handle
  */
 typedef struct {
-	void			*handle;	//!< Real Handle.
-	rlm_rest_curl_context_t	*ctx;		//!< Context.
+	CURL			*candle;	//!< Libcurl easy handle
+	rlm_rest_curl_context_t	*ctx;		//!< Context, re-initialised after each request.
 } rlm_rest_handle_t;
 
 /*
@@ -250,22 +256,17 @@ typedef struct {
 typedef size_t (*rest_read_t)(void *ptr, size_t size, size_t nmemb,
 			      void *userdata);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
-int mod_conn_alive(void *instance, void *handle);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 /*
  *	Request processing API
  */
-int rest_request_config(rlm_rest_t const *instance,
+int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
 			rlm_rest_section_t const *section, REQUEST *request,
 			void *handle, http_method_t method,
 			http_body_type_t type, char const *uri,
-			char const *username, char const *password) CC_HINT(nonnull (1,2,3,4,7));
-
-int rest_request_perform(rlm_rest_t const *instance,
-			 rlm_rest_section_t const *section, REQUEST *request,
-			 void *handle);
+			char const *username, char const *password) CC_HINT(nonnull (1,2,3,4,5,8));
 
 int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle);
@@ -276,8 +277,7 @@ int rest_response_decode(rlm_rest_t const *instance,
 
 void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
 
-void rest_request_cleanup(rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			  void *handle);
+void rest_request_cleanup(rlm_rest_t const *instance, void *handle);
 
 #define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.code)
 
@@ -292,3 +292,11 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
 ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, REQUEST *request, char const *uri);
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, REQUEST *request,
 			       void *handle, char const *uri);
+
+/*
+ *	Async IO helpers
+ */
+void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, fr_state_action_t action);
+int rest_io_request_enqueue(rlm_rest_thread_t *thread, REQUEST *request, void *handle);
+int rest_io_init(rlm_rest_thread_t *thread);
+

@@ -89,7 +89,6 @@ static const CONF_PARSER xlat_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("connect_uri", PW_TYPE_STRING, rlm_rest_t, connect_uri) },
 	{ FR_CONF_DEPRECATED("connect_timeout", PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", PW_TYPE_STRING, rlm_rest_t, connect_proxy) },
 	CONF_PARSER_TERMINATOR
@@ -133,7 +132,8 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	return 0;
 }
 
-static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_section_t const *section, void *handle,
+static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
+			    rlm_rest_section_t const *section, void *handle,
 			    REQUEST *request, char const *username, char const *password)
 {
 	ssize_t		uri_len;
@@ -155,7 +155,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_section_t const
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
 	 */
-	ret = rest_request_config(instance, section, request, handle, section->method, section->body,
+	ret = rest_request_config(instance, thread, section, request, handle, section->method, section->body,
 				  uri, username, password);
 	talloc_free(uri);
 	if (ret < 0) return -1;
@@ -164,19 +164,10 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_section_t const
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
-	ret = rest_request_perform(instance, section, request, handle);
+	ret = rest_io_request_enqueue(thread, request, handle);
 	if (ret < 0) return -1;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
-
-	if (rlm_rest_status_update(request, handle) < 0) return -1;
-
 	return 0;
-}
-
-static void rlm_rest_cleanup(rlm_rest_t const *instance, rlm_rest_section_t const *section, void *handle)
-{
-	rest_request_cleanup(instance, section, handle);
 }
 
 /*
@@ -187,14 +178,13 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 			 REQUEST *request, char const *fmt)
 {
 	rlm_rest_t const	*inst = mod_inst;
-	void			*handle;
-	int			hcode;
+	rlm_rest_handle_t	*handle = NULL;
+	ssize_t			len;
 	int			ret;
-	ssize_t			len, slen = 0;
 	char			*uri = NULL;
 	char const		*p = fmt, *q;
-	char const		*body;
 	http_method_t		method;
+	void			*thread = NULL;
 
 	rad_assert(*out == NULL);
 
@@ -242,8 +232,11 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 */
 	while (isspace(*p) && p++);
 
-	handle = fr_connection_get(inst->pool, request);
+#if 0
+	handle = fr_connection_get(t->pool, request);
+
 	if (!handle) return -1;
+#endif
 
 	/*
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
@@ -251,8 +244,11 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 */
 	len = rest_uri_host_unescape(&uri, mod_inst, request, handle, p);
 	if (len <= 0) {
-		slen = -1;
-		goto finish;
+	error:
+		rest_request_cleanup(mod_inst, handle);
+		talloc_free(section);
+
+		return -1;
 	}
 
 	/*
@@ -275,22 +271,34 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, section, request, handle, section->method, section->body, uri, NULL, NULL);
+	ret = rest_request_config(mod_inst, thread, section, request,
+				  handle, section->method, section->body, uri, NULL, NULL);
 	talloc_free(uri);
-	if (ret < 0) {
-		slen = -1;
-		goto finish;
-	}
+	if (ret < 0) goto error;
 
 	/*
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
+	 *
+	 * @fixme need to pass in thread to all xlat functions
 	 */
-	ret = rest_request_perform(mod_inst, section, request, handle);
-	if (ret < 0) {
-		slen = -1;
-		goto finish;
-	}
+	ret = rest_io_request_enqueue(NULL, request, handle);
+	if (ret < 0) goto error;
+
+	return 0;	/* FIXME XLAT YIELD */
+}
+
+#if 0
+static ssize_t rest_xlat_resume(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+				void const *mod_inst, UNUSED void const *xlat_inst,
+				REQUEST *request, UNUSED char const *fmt)
+{
+	rlm_rest_t const	*inst = mod_inst;
+	rlm_rest_handle_t	*handle = NULL;	/* FIXME POPULATE FROM REQUEST */
+	int			hcode;
+	ssize_t			len, slen = 0;
+	char const		*body;
+	rlm_rest_section_t	*section = NULL; /* FIXME POPULATE FROM REQUEST */
 
 	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
 
@@ -333,41 +341,30 @@ error:
 	}
 
 finish:
-	rlm_rest_cleanup(mod_inst, section, handle);
+	rest_request_cleanup(mod_inst, handle);
 
-	fr_connection_release(inst->pool, request, handle);
+	fr_connection_release(t->pool, request, handle);
 
 	talloc_free(section);
 
 	return slen;
 }
+#endif
 
-/*
- *	Find the named user in this modules database.  Create the set
- *	of attribute-value pairs to check and reply with for this user
- *	from the database. The authentication code only needs to check
- *	the password, the rest is done here.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *thread, void *ctx)
 {
 	rlm_rest_t const		*inst = instance;
-	rlm_rest_section_t const	*section = &inst->authorize;
+	rlm_rest_thread_t		*t = thread;
+	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_handle_t		*handle = ctx;
 
-	void	*handle;
-	int	hcode;
-	int	rcode = RLM_MODULE_OK;
-	int	ret;
+	int				hcode;
+	int				rcode = RLM_MODULE_OK;
+	int				ret;
 
-	if (!section->name) return RLM_MODULE_NOOP;
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
 
-	handle = fr_connection_get(inst->pool, request);
-	if (!handle) return RLM_MODULE_FAIL;
-
-	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
-	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
+	if (rlm_rest_status_update(request, handle) < 0) return -1;
 
 	hcode = rest_get_handle_code(handle);
 	switch (hcode) {
@@ -414,7 +411,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		}
 	}
 
-finish:
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
@@ -426,9 +422,118 @@ finish:
 		break;
 	}
 
-	rlm_rest_cleanup(instance, section, handle);
+	rest_request_cleanup(instance, handle);
 
-	fr_connection_release(inst->pool, request, handle);
+	fr_connection_release(t->pool, request, handle);
+
+	return rcode;
+}
+
+/*
+ *	Find the named user in this modules database.  Create the set
+ *	of attribute-value pairs to check and reply with for this user
+ *	from the database. The authentication code only needs to check
+ *	the password, the rest is done here.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
+{
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
+	rlm_rest_section_t const	*section = &inst->authorize;
+
+	void				*handle;
+	int				ret;
+
+	if (!section->name) return RLM_MODULE_NOOP;
+
+	handle = fr_connection_get(t->pool, request);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(instance, thread, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rest_request_cleanup(instance, handle);
+		fr_connection_release(t->pool, request, handle);
+
+		return RLM_MODULE_FAIL;
+	}
+
+	return unlang_yield(request, mod_authorize_result, rest_io_action, handle);
+}
+
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, UNUSED void *instance, void *thread, void *ctx)
+{
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
+	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_handle_t		*handle = ctx;
+
+	int				hcode;
+	int				rcode = RLM_MODULE_OK;
+	int				ret;
+
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) return -1;
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+	case 404:
+	case 410:
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
+
+	case 403:
+		rcode = RLM_MODULE_USERLOCK;
+		break;
+
+	case 401:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) {
+			rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+	case 204:
+		rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			ret = rest_response_decode(inst, section, request, handle);
+			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+			else if (ret == 0) rcode = RLM_MODULE_OK;
+			else		   rcode = RLM_MODULE_UPDATED;
+			break;
+		} else if (hcode < 500) {
+			rcode = RLM_MODULE_INVALID;
+		} else {
+			rcode = RLM_MODULE_FAIL;
+		}
+	}
+
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_USERLOCK:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
+	rest_request_cleanup(instance, handle);
+
+	fr_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -439,15 +544,14 @@ finish:
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->authenticate;
+	rlm_rest_handle_t		*handle;
 
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
+	int				ret;
 
-	VALUE_PAIR const *username;
-	VALUE_PAIR const *password;
+	VALUE_PAIR const		*username;
+	VALUE_PAIR const		*password;
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
@@ -465,65 +569,53 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		return RLM_MODULE_INVALID;
 	}
 
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(instance, section, handle, request, username->vp_strvalue, password->vp_strvalue);
+	ret = rlm_rest_perform(instance, thread, section,
+			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
+		rest_request_cleanup(instance, handle);
+		fr_connection_release(t->pool, request, handle);
+
+		return RLM_MODULE_FAIL;
 	}
+
+	return unlang_yield(request, mod_authenticate_result, NULL, handle);
+}
+
+static rlm_rcode_t mod_accounting_result(REQUEST *request, UNUSED void *instance, void *thread, void *ctx)
+{
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
+	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_handle_t		*handle = ctx;
+
+	int				hcode;
+	int				rcode = RLM_MODULE_OK;
+	int				ret;
+
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) return -1;
 
 	hcode = rest_get_handle_code(handle);
-	switch (hcode) {
-	case 404:
-	case 410:
-		rcode = RLM_MODULE_NOTFOUND;
-		break;
-
-	case 403:
-		rcode = RLM_MODULE_USERLOCK;
-		break;
-
-	case 401:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		ret = rest_response_decode(inst, section, request, handle);
-		if (ret < 0) {
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		rcode = RLM_MODULE_REJECT;
-		break;
-
-	case 204:
+	if (hcode >= 500) {
+		rcode = RLM_MODULE_FAIL;
+	} else if (hcode == 204) {
 		rcode = RLM_MODULE_OK;
-		break;
-
-	default:
-		/*
-		 *	Attempt to parse content if there was any.
-		 */
-		if ((hcode >= 200) && (hcode < 300)) {
-			ret = rest_response_decode(inst, section, request, handle);
-			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-			else if (ret == 0) rcode = RLM_MODULE_OK;
-			else		   rcode = RLM_MODULE_UPDATED;
-			break;
-		} else if (hcode < 500) {
-			rcode = RLM_MODULE_INVALID;
-		} else {
-			rcode = RLM_MODULE_FAIL;
-		}
+	} else if ((hcode >= 200) && (hcode < 300)) {
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+		else if (ret == 0) rcode = RLM_MODULE_OK;
+		else		   rcode = RLM_MODULE_UPDATED;
+	} else {
+		rcode = RLM_MODULE_INVALID;
 	}
 
-finish:
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
-	case RLM_MODULE_USERLOCK:
 		rest_response_error(request, handle);
 		break;
 
@@ -531,9 +623,9 @@ finish:
 		break;
 	}
 
-	rlm_rest_cleanup(instance, section, handle);
+	rest_request_cleanup(instance, handle);
 
-	fr_connection_release(inst->pool, request, handle);
+	fr_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -544,23 +636,42 @@ finish:
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->accounting;
 
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
+	void				*handle;
+	int				ret;
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
+		rest_request_cleanup(instance, handle);
+		fr_connection_release(t->pool, request, handle);
+
+		return RLM_MODULE_FAIL;
 	}
+
+	return unlang_yield(request, mod_accounting_result, NULL, handle);
+}
+
+static rlm_rcode_t mod_post_auth_result(REQUEST *request, UNUSED void *instance, void *thread, void *ctx)
+{
+	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
+	rlm_rest_section_t const 	*section = &inst->authenticate;
+	rlm_rest_handle_t		*handle = ctx;
+
+	int				hcode;
+	int				rcode = RLM_MODULE_OK;
+	int				ret;
+
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) return -1;
 
 	hcode = rest_get_handle_code(handle);
 	if (hcode >= 500) {
@@ -576,7 +687,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		rcode = RLM_MODULE_INVALID;
 	}
 
-finish:
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
@@ -587,9 +697,9 @@ finish:
 		break;
 	}
 
-	rlm_rest_cleanup(inst, section, handle);
+	rest_request_cleanup(inst, handle);
 
-	fr_connection_release(inst->pool, request, handle);
+	fr_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -597,57 +707,30 @@ finish:
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
 {
 	rlm_rest_t const		*inst = instance;
+	rlm_rest_thread_t		*t = thread;
 	rlm_rest_section_t const	*section = &inst->post_auth;
 
-	void *handle;
-	int hcode;
-	int rcode = RLM_MODULE_OK;
-	int ret;
+	void				*handle;
+	int				ret;
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
+		rest_request_cleanup(instance, handle);
+
+		fr_connection_release(t->pool, request, handle);
+
+		return RLM_MODULE_FAIL;
 	}
 
-	hcode = rest_get_handle_code(handle);
-	if (hcode >= 500) {
-		rcode = RLM_MODULE_FAIL;
-	} else if (hcode == 204) {
-		rcode = RLM_MODULE_OK;
-	} else if ((hcode >= 200) && (hcode < 300)) {
-		ret = rest_response_decode(inst, section, request, handle);
-		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-		else if (ret == 0) rcode = RLM_MODULE_OK;
-		else		   rcode = RLM_MODULE_UPDATED;
-	} else {
-		rcode = RLM_MODULE_INVALID;
-	}
-
-finish:
-	switch (rcode) {
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_FAIL:
-		rest_response_error(request, handle);
-		break;
-
-	default:
-		break;
-	}
-
-	rlm_rest_cleanup(inst, section, handle);
-
-	fr_connection_release(inst->pool, request, handle);
-
-	return rcode;
+	return unlang_yield(request, mod_post_auth_result, NULL, handle);
 }
 
 static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_items,
@@ -785,23 +868,37 @@ static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_ite
  * Easy handles representing requests are added to the curl multihandle
  * with the multihandle used for mux/demux.
  *
- * @param[in] cs	Module config.
+ * @param[in] conf	section containing the configuration of this module instance.
  * @param[in] instance	of rlm_rest_t.
  * @param[in] thread	specific data.
- * @param[in] el	associated with this thread.
+ * @param[in] el	The event list serviced by this thread.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
-				  void *thread)
+static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
 {
+	rlm_rest_t		*inst = instance;
 	rlm_rest_thread_t	*t = thread;
+	CONF_SECTION		*my_conf;
 
-	t->mhandle = curl_multi_init();
-	if (!t->mhandle) return -1;
+	t->el = el;
+	t->inst = instance;
 
-	return 0;
+	/*
+	 *	Temporary hack to make config parsing
+	 *	thread safe.
+	 */
+	my_conf = cf_section_dup(NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
+	t->pool = fr_connection_pool_init(NULL, my_conf, instance, mod_conn_create, NULL, inst->xlat_name);
+	talloc_free(my_conf);
+
+	if (!t->pool) {
+		ERROR("Pool instantiation failed");
+		return -1;
+	}
+
+	return rest_io_init(t);
 }
 
 /** Cleanup all outstanding requests associated with this thread
@@ -816,7 +913,8 @@ static int mod_thread_detach(void *thread)
 {
 	rlm_rest_thread_t	*t = thread;
 
-	curl_multi_cleanup(t->mhandle);
+	curl_multi_cleanup(t->mandle);
+	fr_connection_pool_free(t->pool);
 
 	return 0;
 }
@@ -861,9 +959,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
-	if (!inst->pool) return -1;
-
 	return 0;
 }
 
@@ -878,19 +973,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Register the rest xlat function
 	 */
 	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
-
-	return 0;
-}
-
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int mod_detach(void *instance)
-{
-	rlm_rest_t *inst = instance;
-
-	fr_connection_pool_free(inst->pool);
 
 	return 0;
 }
@@ -962,6 +1044,7 @@ rad_module_t rlm_rest = {
 	.name			= "rest",
 	.type			= RLM_TYPE_THREAD_SAFE,
 	.inst_size		= sizeof(rlm_rest_t),
+	.thread_inst_size	= sizeof(rlm_rest_thread_t),
 	.config			= module_config,
 	.load			= mod_load,
 	.unload			= mod_unload,
@@ -969,7 +1052,6 @@ rad_module_t rlm_rest = {
 	.instantiate		= mod_instantiate,
 	.thread_instantiate	= mod_thread_instantiate,
 	.thread_detach		= mod_thread_detach,
-	.detach			= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

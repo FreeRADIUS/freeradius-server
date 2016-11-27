@@ -248,7 +248,7 @@ typedef struct json_flags {
  */
 static int _mod_conn_free(rlm_rest_handle_t *randle)
 {
-	curl_easy_cleanup(randle->handle);
+	curl_easy_cleanup(randle->candle);
 
 	return 0;
 }
@@ -272,48 +272,19 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  * @see fr_connection_create_t
  * @see connection.c
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
-	rlm_rest_t const *inst = instance;
+	rlm_rest_t const	*inst = instance;
 
 	rlm_rest_handle_t	*randle = NULL;
 	rlm_rest_curl_context_t	*curl_ctx = NULL;
 
-	CURL *candle = curl_easy_init();
+	CURL			*candle;
 
-	CURLcode ret = CURLE_OK;
-	char const *option = "unknown";
-
+	candle = curl_easy_init();
 	if (!candle) {
 		ERROR("Failed to create CURL handle");
 		return NULL;
-	}
-
-	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(timeout));
-
-	if (inst->connect_uri) {
-		/*
-		 *  re-establish TCP connection to webserver. This would usually be
-		 *  done on the first request, but we do it here to minimise
-		 *  latency.
-		 */
-		SET_OPTION(CURLOPT_SSL_VERIFYPEER, 0);
-		SET_OPTION(CURLOPT_SSL_VERIFYHOST, 0);
-		SET_OPTION(CURLOPT_CONNECT_ONLY, 1);
-		SET_OPTION(CURLOPT_URL, inst->connect_uri);
-		SET_OPTION(CURLOPT_NOSIGNAL, 1);
-		if (inst->connect_proxy) SET_OPTION(CURLOPT_PROXY, inst->connect_proxy);
-
-		DEBUG("Connecting to \"%s\"", inst->connect_uri);
-
-		ret = curl_easy_perform(candle);
-		if (ret != CURLE_OK) {
-			ERROR("Connection failed: %i - %s", ret, curl_easy_strerror(ret));
-
-			goto connection_error;
-		}
-	} else {
-		DEBUG2("Skipping pre-connect, connect_uri not specified");
 	}
 
 	/*
@@ -326,64 +297,10 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	curl_ctx->request.instance = inst;
 
 	randle->ctx = curl_ctx;
-	randle->handle = candle;
+	randle->candle = candle;
 	talloc_set_destructor(randle, _mod_conn_free);
 
-	/*
-	 *  Clear any previously configured options for the first request.
-	 */
-	curl_easy_reset(candle);
-
 	return randle;
-
-	/*
-	 *  Cleanup for error conditions.
-	 */
-error:
-	ERROR("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret);
-
-	/*
-	 *  So we don't leak CURL handles.
-	 */
-connection_error:
-	curl_easy_cleanup(candle);
-	if (randle) talloc_free(randle);
-
-	return NULL;
-}
-
-/** Verifies that the last TCP socket associated with a handle is still active.
- *
- * Quieries libcurl to try and determine if the TCP socket associated with a
- * connection handle is still viable.
- *
- * @param[in] instance configuration data.
- * @param[in] handle to check.
- * @returns
- *	- False if the last socket is dead, or if the socket state couldn't be determined.
- *	- True if TCP socket is still alive.
- */
-int mod_conn_alive(void *instance, void *handle)
-{
-	rlm_rest_t const	*inst = instance;
-	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->handle;
-
-	long last_socket;
-	CURLcode ret;
-
-	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
-	if (ret != CURLE_OK) {
-		ERROR("Couldn't determine socket state: %i - %s", ret, curl_easy_strerror(ret));
-
-		return false;
-	}
-
-	if (last_socket == -1) {
-		return false;
-	}
-
-	return true;
 }
 
 /** Copies a pre-expanded xlat string to the output buffer
@@ -805,7 +722,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
 	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->handle;
+	CURL			*candle = randle->candle;
 
 	char const *p = raw, *q;
 
@@ -1698,7 +1615,7 @@ static int rest_request_config_body(rlm_rest_t const *instance, rlm_rest_section
 				    REQUEST *request, rlm_rest_handle_t *handle, rest_read_t func)
 {
 	rlm_rest_curl_context_t *ctx = handle->ctx;
-	CURL			*candle = handle->handle;
+	CURL			*candle = handle->candle;
 
 	CURLcode ret = CURLE_OK;
 	char const *option = "unknown";
@@ -1773,14 +1690,14 @@ error:
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
  */
-int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t const *section,
+int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
 			REQUEST *request, void *handle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
 {
 	rlm_rest_handle_t	*randle	= handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
-	CURL			*candle = randle->handle;
+	CURL			*candle = randle->candle;
 	struct timeval		timeout;
 
 	http_auth_type_t	auth = section->auth;
@@ -1798,7 +1715,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t const *se
 	rad_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
-
+	
 	/*
 	 *	Setup any header options and generic headers.
 	 */
@@ -1818,7 +1735,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t const *se
 		if (!ctx->headers) goto error_header;
 	}
 
-	timeout = fr_connection_pool_timeout(instance->pool);
+	timeout = fr_connection_pool_timeout(t->pool);
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
 	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
 
@@ -2031,8 +1948,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t const *se
 	 */
 	switch (type) {
 	case HTTP_BODY_NONE:
-		if (rest_request_config_body(instance, section, request, handle,
-					     NULL) < 0) {
+		if (rest_request_config_body(instance, section, request, handle, NULL) < 0) {
 			return -1;
 		}
 
@@ -2130,41 +2046,11 @@ error_header:
 	return -1;
 }
 
-/** Sends a REST (HTTP) request.
- *
- * Send the actual REST request to the server. The response will be handled by
- * the numerous callbacks configured in rest_request_config.
- *
- * @param[in] instance configuration data.
- * @param[in] section configuration data.
- * @param[in] request Current request.
- * @param[in] handle to use.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rest_request_perform(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
-			 REQUEST *request, void *handle)
-{
-	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->handle;
-	CURLcode		ret;
-
-	ret = curl_easy_perform(candle);
-	if (ret != CURLE_OK) {
-		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
-
-		return -1;
-	}
-
-	return 0;
-}
-
 int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section,
 			   REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->handle;
+	CURL			*candle = randle->candle;
 	CURLcode		ret;
 	int			i;
 	char		 	buffer[265];
@@ -2310,14 +2196,13 @@ int rest_response_decode(rlm_rest_t const *instance, rlm_rest_section_t const *s
  * context data.
  *
  * @param[in] instance configuration data.
- * @param[in] section configuration data.
  * @param[in] handle to cleanup.
  */
-void rest_request_cleanup(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t const *section, void *handle)
+void rest_request_cleanup(UNUSED rlm_rest_t const *instance, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
-	CURL			*candle = randle->handle;
+	CURL			*candle = randle->candle;
 
 	/*
 	 *  Clear any previously configured options
@@ -2457,7 +2342,7 @@ ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *requ
 			       void *handle, char const *uri)
 {
 	rlm_rest_handle_t	*randle = handle;
-	CURL			*candle = randle->handle;
+	CURL			*candle = randle->candle;
 
 	char const		*p, *q;
 
