@@ -175,7 +175,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Retrieve the thread specific pipe we use
 	 *	to communicate with the multiplexer.
 	 */
-	fd_ptr = fr_thread_local_init(req_pipe, _req_pipe_unregister);
+	fd_ptr = req_pipe;
 	if (!fd_ptr) {
 		fd_ptr = talloc(NULL, int);
 		fd = sigtran_client_thread_register();
@@ -185,7 +185,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			return RLM_MODULE_FAIL;
 		}
 		*fd_ptr = fd;
-		fr_thread_local_set(req_pipe, fd_ptr);
+		fr_thread_local_set_destructor(req_pipe, _req_pipe_unregister, fd_ptr);
 	} else {
 		fd = *fd_ptr;
 	}

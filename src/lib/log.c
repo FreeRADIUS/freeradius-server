@@ -153,7 +153,8 @@ static char const *fr_errno_macro_names[] = {
  */
 static void _fr_logging_free(void *arg)
 {
-	talloc_free(arg);
+	char *buff = talloc_get_type_abort(arg, char);
+	talloc_free(buff);
 }
 
 /** Log to thread local error buffer
@@ -167,22 +168,14 @@ void fr_strerror_printf(char const *fmt, ...)
 
 	char *buffer;
 
-	buffer = fr_thread_local_init(fr_strerror_buffer, _fr_logging_free);
+	buffer = fr_strerror_buffer;
 	if (!buffer) {
-		int ret;
-
 		buffer = talloc_zero_array(NULL, char, (FR_STRERROR_BUFSIZE * 2) + 1);	/* One byte extra for status */
 		if (!buffer) {
 			fr_perror("Failed allocating memory for libradius error buffer");
 			return;
 		}
-
-		ret = fr_thread_local_set(fr_strerror_buffer, buffer);
-		if (ret != 0) {
-			fr_perror("Failed setting up TLS for libradius error buffer: %s", fr_syserror(ret));
-			talloc_free(buffer);
-			return;
-		}
+		fr_thread_local_set_destructor(fr_strerror_buffer, _fr_logging_free, buffer);
 	}
 
 	/*
@@ -222,7 +215,7 @@ char const *fr_strerror(void)
 {
 	char *buffer;
 
-	buffer = fr_thread_local_get(fr_strerror_buffer);
+	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
 	switch (buffer[FR_STRERROR_BUFSIZE * 2]) {
@@ -249,20 +242,14 @@ char const *fr_syserror(int num)
 	char *buffer, *p, *end;
 	int ret;
 
-	buffer = fr_thread_local_init(fr_syserror_buffer, _fr_logging_free);
+	buffer = fr_syserror_buffer;
 	if (!buffer) {
 		buffer = talloc_array(NULL, char, FR_STRERROR_BUFSIZE);
 		if (!buffer) {
 			fr_perror("Failed allocating memory for system error buffer");
 			return NULL;
 		}
-
-		ret = fr_thread_local_set(fr_syserror_buffer, buffer);
-		if (ret != 0) {
-			fr_perror("Failed setting up TLS for system error buffer: %s", fr_syserror(ret));
-			talloc_free(buffer);
-			return NULL;
-		}
+ 		fr_thread_local_set_destructor(fr_syserror_buffer, _fr_logging_free, buffer);
 	}
 
 	if (!num) return "No error";

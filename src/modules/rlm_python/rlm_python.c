@@ -637,19 +637,14 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObjec
 	 *	Check to see if we've got a thread state tree
 	 *	If not, create one.
 	 */
-	thread_tree = fr_thread_local_init(local_thread_state, _python_thread_tree_free);
+	thread_tree = local_thread_state;
 	if (!thread_tree) {
 		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_entry_free, 0);
 		if (!thread_tree) {
 			RERROR("Failed allocating thread state tree");
 			return RLM_MODULE_FAIL;
 		}
-
-		ret = fr_thread_local_set(local_thread_state, thread_tree);
-		if (ret != 0) {
-			talloc_free(thread_tree);
-			return RLM_MODULE_FAIL;
-		}
+		fr_thread_local_set_destructor(local_thread_state, _python_thread_tree_free, thread_tree);
 	}
 
 	find.inst = inst;

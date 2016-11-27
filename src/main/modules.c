@@ -470,7 +470,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 void *module_thread_instance_find(void *instance)
 {
 	module_instance_t		*inst = instance;
-	rbtree_t			*tree = fr_thread_local_get(module_thread_inst_tree);
+	rbtree_t			*tree = module_thread_inst_tree;
 	module_thread_instance_t	find, *found;
 
 	if (!inst->module->thread_instantiate || !inst->module->thread_inst_size) return NULL;
@@ -486,16 +486,19 @@ void *module_thread_instance_find(void *instance)
 
 /** Destructor for module_thread_instance_t
  *
+ * @note This cannot be converted to a talloc destructor,
+ *	as we need to call thread_detach *before* any of the children
+ *	of the talloc ctx are freed.
  */
-static int _module_thread_instance_free(void *thread_inst_data)
+static void _module_thread_instance_free(void *to_free)
 {
-	module_thread_instance_t *thread_inst = talloc_parent(thread_inst_data);
+	module_thread_instance_t *thread_inst = talloc_get_type_abort(to_free, module_thread_instance_t);
 
 	if (thread_inst->inst->module->thread_detach) {
 		(void) thread_inst->inst->module->thread_detach(thread_inst->data);
 	}
 
-	return 0;
+	talloc_free(thread_inst);
 }
 
 /** Frees the thread local instance free and any thread local instance data
@@ -504,7 +507,8 @@ static int _module_thread_instance_free(void *thread_inst_data)
  */
 static void _module_thread_inst_tree_free(void *to_free)
 {
-	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free, rbtree_t);
+	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
+
 	rbtree_free(thread_inst_tree);
 }
 
@@ -565,7 +569,6 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		talloc_set_name(thread_inst->data, "%s", type_name);
 		talloc_free(type_name);
 
-		talloc_set_destructor(thread_inst->data, _module_thread_instance_free);
 		rbtree_insert(thread_inst_ctx->tree, thread_inst);
 	}
 
@@ -597,10 +600,12 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 	modules = cf_section_sub_find(root, "modules");
 	if (!modules) return 0;
 
-	thread_inst_tree = fr_thread_local_init(module_thread_inst_tree, _module_thread_inst_tree_free);
+	thread_inst_tree = module_thread_inst_tree;
 	if (!thread_inst_tree) {
-		MEM(thread_inst_tree = module_thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp,
-									       rbtree_node_talloc_free, 0));
+		MEM(thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp,
+						     _module_thread_instance_free, 0));
+		fr_thread_local_set_destructor(module_thread_inst_tree,
+					       _module_thread_inst_tree_free, thread_inst_tree);
 	}
 
 	ctx.el = el;
