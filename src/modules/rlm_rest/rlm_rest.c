@@ -170,6 +170,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	return 0;
 }
 
+#if 0
 /*
  *	Simple xlat to read text data from a URL
  */
@@ -288,7 +289,6 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	return 0;	/* FIXME XLAT YIELD */
 }
 
-#if 0
 static ssize_t rest_xlat_resume(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 				void const *mod_inst, UNUSED void const *xlat_inst,
 				REQUEST *request, UNUSED char const *fmt)
@@ -988,10 +988,12 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
+#if 0
 	/*
 	 *	Register the rest xlat function
 	 */
 	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
+#endif
 
 	return 0;
 }
