@@ -567,9 +567,9 @@ static void *thread_handler(void *arg)
 		}
 
 		/*
-		 *	It only returns 0 on EINTR.
+		 *	Poll again...
 		 */
-		if (rcode == 0) continue;
+		if ((errno == EINTR) && (rcode == 0)) continue;
 
 		DEBUG3("Thread %d processing timers and sockets", thread->thread_num);
 
