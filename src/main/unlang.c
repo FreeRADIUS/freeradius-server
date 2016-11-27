@@ -1541,12 +1541,14 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
 	unlang_resumption_t	*mr;
+	unlang_module_call_t	*sp;
 
 	rad_assert(stack->depth > 0);
 
 	frame = &stack->frame[stack->depth];
 
 	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
+	sp = unlang_generic_to_module_call(frame->instruction);
 
 	mr = talloc(request, unlang_resumption_t);
 	rad_assert(mr != NULL);
@@ -1556,7 +1558,7 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 	mr->module.self.type = UNLANG_TYPE_RESUME;
 	mr->callback = callback;
 	mr->action_callback = action_callback;
-	mr->thread = module_thread_instance_find(mr->module.module_instance->data); /* Could have caller pass this? */
+	mr->thread = module_thread_instance_find(sp->module_instance);
 	mr->ctx = ctx;
 
 	frame->instruction = unlang_resumption_to_generic(mr);
