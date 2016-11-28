@@ -1677,7 +1677,7 @@ error:
  *
  * Sets up callbacks for all response processing (buffers and body data).
  *
- * @param[in] instance		configuration data.
+ * @param[in] inst		configuration data.
  * @param[in] t			Thread specific instance data.
  * @param[in] section		configuration data.
  * @param[in] handle		to configure.
@@ -1694,7 +1694,7 @@ error:
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
  */
-int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
+int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
 			REQUEST *request, void *handle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
@@ -1740,6 +1740,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_re
 	}
 
 	timeout = fr_connection_pool_timeout(t->pool);
+	ERROR("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
+	      FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
 	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
 
@@ -1952,7 +1954,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_re
 	 */
 	switch (type) {
 	case HTTP_BODY_NONE:
-		if (rest_request_config_body(instance, section, request, handle, NULL) < 0) {
+		if (rest_request_config_body(inst, section, request, handle, NULL) < 0) {
 			return -1;
 		}
 
@@ -1972,7 +1974,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_re
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(instance, section, request, handle,
+		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
@@ -1992,7 +1994,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_re
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(instance, section, request, handle,
+		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
@@ -2010,7 +2012,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_re
 
 		rest_request_init(request, &ctx->request);
 
-		if (rest_request_config_body(instance, section, request, handle,
+		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_json) < 0) {
 			return -1;
 		}
@@ -2023,7 +2025,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *t, rlm_re
 		rest_request_init(request, &ctx->request);
 		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
-		if (rest_request_config_body(instance, section, request, handle,
+		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_post) < 0) {
 			return -1;
 		}
