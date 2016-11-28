@@ -275,8 +275,8 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
  *
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to read from.
- * @param[in] read	function to call when fd is readable.
- * @param[in] write	function to call when fd is writable.
+ * @param[in] read_fn	function to call when fd is readable.
+ * @param[in] write_fn	function to call when fd is writable.
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] ctx	to pass to handler.
  * @return
@@ -284,8 +284,8 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
  *	- -1 on failure.
  */
 int fr_event_fd_insert(fr_event_list_t *el, int fd,
-		       fr_event_fd_handler_t read,
-		       fr_event_fd_handler_t write,
+		       fr_event_fd_handler_t read_fn,
+		       fr_event_fd_handler_t write_fn,
 		       fr_event_fd_handler_t error,
 		       void *ctx)
 {
@@ -299,7 +299,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		return -1;
 	}
 
-	if (!read && !write) {
+	if (!read_fn && !write_fn) {
 		fr_strerror_printf("Invalid arguments: NULL read and write callbacks");
 		return -1;
 	}
@@ -346,8 +346,8 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	} else {
 		pre_existing = true;
 
-		if (ef->read && !read) filter |= EVFILT_READ;
-		if (ef->write && !write) filter |= EVFILT_WRITE;
+		if (ef->read && !read_fn) filter |= EVFILT_READ;
+		if (ef->write && !write_fn) filter |= EVFILT_WRITE;
 
 		if (filter) {
 			EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, 0);
@@ -375,13 +375,13 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 
 	ef->ctx = ctx;
 
-	if (read) {
-		ef->read = read;
+	if (read_fn) {
+		ef->read = read_fn;
 		filter |= EVFILT_READ;
 	}
 
-	if (write) {
-		ef->write = write;
+	if (write_fn) {
+		ef->write = write_fn;
 		filter |= EVFILT_WRITE;
 	}
 	ef->error = error;
