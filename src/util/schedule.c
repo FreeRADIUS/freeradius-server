@@ -134,7 +134,6 @@ static int worker_cmp(void const *one, void const *two)
 }
 
 
-#if 0
 /** Get a workers KQ
  *
  * @param[in] sc the scheduler
@@ -142,9 +141,9 @@ static int worker_cmp(void const *one, void const *two)
  *	- <0 on error, or no free worker
  *	- the kq of the worker thread
  */
-static int fr_schedule_get_worker_kq(fr_schedule_t *sc)
+int fr_schedule_get_worker_kq(fr_schedule_t *sc)
 {
-	int i, kq;
+	int kq;
 	fr_schedule_worker_t *sw;
 
 	PTHREAD_MUTEX_LOCK(&sc->mutex);
@@ -164,7 +163,6 @@ static int fr_schedule_get_worker_kq(fr_schedule_t *sc)
 
 	return kq;
 }
-#endif
 
 
 /** Initialize and run the worker thread.

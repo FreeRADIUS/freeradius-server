@@ -39,6 +39,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 				  void *worker_thread_ctx);
 /* schedulers are async, so there's no fr_schedule_run() */
 int fr_schedule_destroy(fr_schedule_t *sc);
+int fr_schedule_get_worker_kq(fr_schedule_t *sc);
 
 
 #ifdef __cplusplus
