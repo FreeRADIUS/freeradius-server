@@ -65,6 +65,7 @@ struct fr_worker_t {
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
+	uint32_t       		num_transports;	//!< how many transport layers we have
 	fr_transport_t		**transports;	//!< array of active transports.
 
 	fr_channel_t		*channel[1];	//!< list of channels
@@ -163,6 +164,7 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a to a request.
 	 */
+	rad_assert(cd->transport <= worker->num_transports);
 	rad_assert(worker->transports[cd->transport] != NULL);
 	request = worker->transports[cd->transport]->recv_request(worker->transports[cd->transport], cd->ctx, ctx, cd->m.data, cd->m.data_size);
 
@@ -583,9 +585,11 @@ void fr_worker_destroy(fr_worker_t *worker)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_transport_t **transports)
 {
 	fr_worker_t *worker;
+
+	if (!num_transports || !transports) return NULL;
 
 	worker = talloc_zero(ctx, fr_worker_t);
 
@@ -626,6 +630,9 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx)
 		talloc_free(worker);
 		return NULL;
 	}
+
+	worker->num_transports = num_transports;
+	worker->transports = transports;
 
 	return worker;
 }

@@ -116,6 +116,9 @@ struct fr_schedule_t {
 
 	fr_heap_t	*workers;		//!< heap of workers
 	fr_heap_t	*done_workers;		//!< heap of done workers
+
+	uint32_t	num_transports;		//!< how many transport layers we have
+	fr_transport_t	**transports;		//!< array of active transports.
 };
 
 
@@ -193,7 +196,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		return NULL;
 	}
 
-	sw->worker = fr_worker_create(ctx);
+	sw->worker = fr_worker_create(ctx, sc->num_transports, sc->transports);
 	if (!sw->worker) {
 		talloc_free(ctx);
 		goto fail;
@@ -266,6 +269,7 @@ static void *fr_schedule_worker_thread(void *arg)
  *	- fr_schedule_t new scheduler
  */
 fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_workers,
+				  uint32_t num_transports, fr_transport_t **transports,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
 {
@@ -290,6 +294,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 	sc->worker_instantiate_ctx = worker_thread_ctx;
 
 	sc->running = true;
+	sc->num_transports = num_transports;
+	sc->transports = transports;
 
 	/*
 	 *	No inputs or workers, we're single threaded mode.
