@@ -918,14 +918,14 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	 *	Fast path (assuming attributes
 	 *	are in the same dictionary).
 	 */
-	if ((da_b->parent->flags.is_root) && (da_b->parent->flags.is_root)) return pair_cmp_by_num_tag(vp_a, vp_b);
+	if ((da_a->parent->flags.is_root) && (da_b->parent->flags.is_root)) return pair_cmp_by_num_tag(vp_a, vp_b);
 
 	fr_proto_tlv_stack_build(tlv_stack_a, da_a);
 	fr_proto_tlv_stack_build(tlv_stack_b, da_b);
 
 	for (i = 0; (da_a = tlv_stack_a[i]) && (da_b = tlv_stack_b[i]); i++) {
 		if (da_a->attr > da_b->attr) return +1;
-		if (da_b->attr < da_b->attr) return -1;
+		if (da_a->attr < da_b->attr) return -1;
 	}
 
 	/*
@@ -937,7 +937,7 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	if (!da_a && da_b) return -1;
 
 	if (vp_a->tag > vp_b->tag) return +1;
-	if (vp_b->tag < vp_b->tag) return -1;
+	if (vp_a->tag < vp_b->tag) return -1;
 
 	return 0;
 }
