@@ -318,10 +318,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 
 	/*
 	 *	Get the existing fr_event_fd_t if it exists.
-	 *
-	 *	We don't need to do anything special for kqueue if
-	 *	there are new callbacks, as the old filters get
-	 *	replaced with the new ones automatically.
 	 */
 	find.fd = fd;
 	ef = rbtree_finddata(el->fds, &find);
