@@ -1319,7 +1319,7 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
-	fr_dict_attr_t const *a_82, *b_82;
+	fr_dict_attr_t const *ancestor_a, *ancestor_b;
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
@@ -1348,10 +1348,10 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *
 	 *	Check if either of the options are descended from option 82.
 	 */
-	a_82 = fr_dict_parent_common(dhcp_option_82, my_a->da, true);
-	b_82 = fr_dict_parent_common(dhcp_option_82, my_b->da, true);
-	if (a_82 && !b_82) return +1;
-	if (!a_82 && !b_82) return -1;
+	ancestor_a = fr_dict_parent_common(dhcp_option_82, my_a->da, true) ;
+	ancestor_b = fr_dict_parent_common(dhcp_option_82, my_b->da, true);
+	if (ancestor_a && ancestor_a->attr == PW_DHCP_OPTION_82 && !ancestor_b) return +1;
+	if (!ancestor_a && ancestor_b && ancestor_b->attr == PW_DHCP_OPTION_82) return -1;
 
 	return fr_pair_cmp_by_parent_num_tag(my_a, my_b);
 }
