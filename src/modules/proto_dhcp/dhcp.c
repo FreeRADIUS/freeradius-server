@@ -1067,6 +1067,14 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	 */
 	if (p[0] == 0) return 1;		/* 0x00 - Padding option */
 	if (p[0] == 255) {			/* 0xff - End of options signifier */
+		size_t i;
+
+		for (i = 1; i < data_len; i++) {
+			if (p[i] != 0) {
+				FR_PROTO_HEX_DUMP("ignoring trailing junk at end of packet", p + i, data_len - i);
+				break;
+			}
+		}
 		return data_len;
 	}
 
