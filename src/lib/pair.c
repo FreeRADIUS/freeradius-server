@@ -987,7 +987,7 @@ int8_t fr_pair_cmp_by_parent_num_tag(void const *a, void const *b)
 	 *	Fast path (assuming attributes
 	 *	are in the same dictionary).
 	 */
-	if ((da_b->parent->flags.is_root) && (da_b->parent->flags.is_root)) return pair_cmp_by_num_tag(vp_a, vp_b);
+	if ((da_a->parent->flags.is_root) && (da_b->parent->flags.is_root)) return pair_cmp_by_num_tag(vp_a, vp_b);
 
 	fr_proto_tlv_stack_build(tlv_stack_a, da_a);
 	fr_proto_tlv_stack_build(tlv_stack_b, da_b);
