@@ -262,6 +262,8 @@ static void *fr_schedule_worker_thread(void *arg)
  * @param[in] ctx the talloc context
  * @param[in] max_inputs the number of network threads
  * @param[in] max_workers the number of worker threads
+ * @param[in] num_transports the number of transports in the transport array
+ * @param[in] transports the array of transports.
  * @param[in] worker_thread_instantiate callback for new worker threads
  * @param[in] worker_thread_ctx context for callback
  * @return
