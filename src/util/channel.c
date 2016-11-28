@@ -406,11 +406,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
  */
 int fr_channel_worker_sleeping(fr_channel_t *ch)
 {
-	int which;
 	struct kevent kev;
 	fr_channel_end_t *end;
 
-	which = FROM_WORKER;
 	end = &(ch->end[FROM_WORKER]);
 
 	/*
