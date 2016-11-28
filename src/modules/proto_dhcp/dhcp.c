@@ -1071,9 +1071,8 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		for (i = 1; i < data_len; i++) {
 			if (p[i] != 0) {
-				fr_strerror_printf("%s: Non padding option follows end of options signifier",
-						   __FUNCTION__);
-				return -1;
+				WARN("DHCP: Non padding option follows end of options signifier");
+				break;
 			}
 		}
 		return data_len;
