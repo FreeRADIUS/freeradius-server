@@ -30,11 +30,9 @@ RCSID("$Id$")
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
-#define WHICH_TO_FLAGS(_x)	(((_x) + 1) & 0x03)
-//#define FLAGS_TO_WHICH(_x)	(((_x) & 0x03) - 1)
-
 typedef enum fr_channel_signal_t {
-	FR_CHANNEL_SIGNAL_DATA_READY = 0,
+	FR_CHANNEL_SIGNAL_DATA_TO_WORKER = 0,
+	FR_CHANNEL_SIGNAL_DATA_FROM_WORKER,
 	FR_CHANNEL_SIGNAL_WORKER_SLEEPING,
 	FR_CHANNEL_SIGNAL_OPEN,
 	FR_CHANNEL_SIGNAL_CLOSE,
@@ -147,7 +145,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_end_t *end, int which)
+static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_end_t *end, fr_channel_signal_t which)
 {
 	struct kevent kev;
 
@@ -158,7 +156,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, FR_CHANNEL_SIGNAL_DATA_READY, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), 0, ch);
+	EV_SET(&kev, which, EVFILT_USER, EV_ADD, 0, 0, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -232,7 +230,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	/*
 	 *	Tell the other end that there is new data ready.
 	 */
-	return fr_channel_data_ready(ch, when, end, TO_WORKER);
+	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
 }
 
 /** Receive a reply message from the channel
@@ -373,7 +371,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	thread.
 	 */
 	if (end->num_outstanding == 0) {
-		return fr_channel_data_ready(ch, when, end, FROM_WORKER);
+		return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 	}
 
 	/*
@@ -392,7 +390,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 		return 0;
 	}
 
-	return fr_channel_data_ready(ch, when, end, FROM_WORKER);
+	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 }
 
 
@@ -427,7 +425,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFOR | WHICH_TO_FLAGS(which), end->ack, ch);
+	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, 0, end->ack, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -474,9 +472,14 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	 *	return the channel to the caller, and rely on it to
 	 *	service the channel.
 	 */
-	if (kev->ident == FR_CHANNEL_SIGNAL_DATA_READY) {
+	if (kev->ident == FR_CHANNEL_SIGNAL_DATA_FROM_WORKER) {
 		*p_channel = ch;
-		return FR_CHANNEL_DATA_READY;
+		return FR_CHANNEL_DATA_READY_RECEIVER;
+	}
+
+	if (kev->ident == FR_CHANNEL_SIGNAL_DATA_TO_WORKER) {
+		*p_channel = ch;
+		return FR_CHANNEL_DATA_READY_WORKER;
 	}
 
 	/*
@@ -532,7 +535,7 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	 *	The worker hasn't seen our last few packets.  Signal
 	 *	that there is data ready.
 	 */
-	rcode = fr_channel_data_ready(ch, when, end, FROM_WORKER);
+	rcode = fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 	if (rcode < 0) return FR_CHANNEL_ERROR;
 
 	return FR_CHANNEL_NOOP;

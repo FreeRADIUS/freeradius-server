@@ -92,13 +92,14 @@ static void fr_worker_evfilt_user(int kq, struct kevent const *kev, void *ctx)
 		 *	to do.
 		 */
 	case FR_CHANNEL_NOOP:
+	case FR_CHANNEL_DATA_READY_RECEIVER:
 		break;
 
 		/*
 		 *	Data is ready on this channel.  Drain
 		 *	it to the local to_decode heap.
 		 */
-	case FR_CHANNEL_DATA_READY:
+	case FR_CHANNEL_DATA_READY_WORKER:
 		while ((cd = fr_channel_recv_request(ch)) != NULL) {
 			(void) fr_heap_insert(worker->to_decode, cd);
 		}
