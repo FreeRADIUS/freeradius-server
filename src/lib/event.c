@@ -289,10 +289,10 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		       fr_event_fd_handler_t error,
 		       void *ctx)
 {
-	int	      filter = 0;
-	struct kevent evset[2];
-	struct kevent *ev_p = evset;
-	fr_event_fd_t *ef, find;
+	int	      	filter = 0;
+	struct kevent	evset;
+	fr_event_fd_t	*ef, find;
+	bool		pre_existing;
 
 	if (!el) {
 		fr_strerror_printf("Invalid argument: NULL event list");
@@ -322,15 +322,21 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	find.fd = fd;
 	ef = rbtree_finddata(el->fds, &find);
 	if (!ef) {
+		pre_existing = false;
+
 		ef = talloc_zero(el, fr_event_fd_t);
 		if (!ef) {
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
 		talloc_set_destructor(ef, _fr_event_fd_free);
+
 		el->num_fds++;
+
 		ef->fd = fd;
+
 		rbtree_insert(el->fds, ef);
+
 	/*
 	 *	Existing filters will be overwritten if there's
 	 *	a new filter which takes their place.  If there
@@ -338,11 +344,24 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	 *	existing one.
 	 */
 	} else {
+		pre_existing = true;
+
 		if (ef->read && !read) filter |= EVFILT_READ;
 		if (ef->write && !write) filter |= EVFILT_WRITE;
 
 		if (filter) {
-			EV_SET(ev_p++, ef->fd, filter, EV_DELETE, 0, 0, 0);
+			EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, 0);
+
+			/*
+			 *	kevent on macOS sierra (and possibly others)
+			 *	is broken, and doesn't allow us to perform
+			 *	an EVILT_* add and delete in the same
+			 *	call.
+			 */
+			if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+				fr_strerror_printf("Failed deleting filter for FD %i: %s", fd, fr_syserror(errno));
+				return -1;
+			}
 			filter = 0;
 		}
 
@@ -367,10 +386,10 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	}
 	ef->error = error;
 
-	EV_SET(ev_p++, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
-	if (kevent(el->kq, evset, ev_p - evset, NULL, 0, NULL) < 0) {
-		fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
-		talloc_free(ef);
+	EV_SET(&evset, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
+	if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+		fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
+		if (!pre_existing) talloc_free(ef);
 		return -1;
 	}
 	ef->is_registered = true;
