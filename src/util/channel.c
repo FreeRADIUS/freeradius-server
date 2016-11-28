@@ -70,6 +70,8 @@ typedef struct fr_channel_t {
 	fr_time_t		cpu_time;	//!< total time used by the worker for this channel
 	fr_time_t		processing_time; //!< time spent by the worker processing requests
 
+	bool			active;		//!< is this channel active?
+
 	fr_channel_end_t	end[2];		//!< two ends of the channel
 } fr_channel_t;
 
@@ -118,6 +120,8 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 	ch->end[FROM_WORKER].last_write = when;
 	ch->end[FROM_WORKER].last_read_other = when;
 	ch->end[FROM_WORKER].last_signal = when;
+
+	ch->active = true;
 
 	return ch;
 }
@@ -545,10 +549,9 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
  *	- false the channel is closing.
  *	- true the channel is active
  */
-bool fr_channel_active(UNUSED fr_channel_t *ch)
+bool fr_channel_active(fr_channel_t *ch)
 {
-	return true;
-
+	return ch->active;
 }
 
 /** Signal a channel that it is closing.
@@ -558,7 +561,9 @@ bool fr_channel_active(UNUSED fr_channel_t *ch)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_signal_close(UNUSED fr_channel_t *ch)
+int fr_channel_signal_close(fr_channel_t *ch)
 {
+	ch->active = false;
+
 	return 0;
 }
