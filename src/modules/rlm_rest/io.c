@@ -65,14 +65,14 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			thread->transfers--;
 
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &request);
-			if (!fr_cond_assert(ret == CURLM_OK)) return;
+			if (!fr_cond_assert(ret == CURLE_OK)) return;
 
 			VERIFY_REQUEST(request);
 
 			/*
 			 *	If the request failed, say why...
 			 */
-			if (m->data.result != CURLM_OK) {
+			if (m->data.result != CURLE_OK) {
 				REDEBUG("%s (%i)", curl_easy_strerror(m->data.result), m->data.result);
 			}
 
@@ -385,7 +385,7 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 	curl_easy_setopt(candle, CURLOPT_PRIVATE, request);
 
 	ret = curl_multi_add_handle(t->mandle, candle);
-	if (ret != CURLM_OK) {
+	if (ret != CURLE_OK) {
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
 
 		return -1;
