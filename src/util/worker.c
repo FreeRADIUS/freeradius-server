@@ -180,7 +180,7 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	request->transport = worker->transports[cd->transport];
 	request->original_recv_time = cd->request.start_time;
 	request->recv_time = cd->m.when;
-	request->priority = cd->request.priority;
+	request->priority = cd->priority;
 
 	/*
 	 *	We're done with this message.
@@ -512,8 +512,8 @@ static int worker_message_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one;
 	fr_channel_data_t const *b = two;
 
-	if (a->request.priority < b->request.priority) return -1;
-	if (a->request.priority > b->request.priority) return +1;
+	if (a->priority < b->priority) return -1;
+	if (a->priority > b->priority) return +1;
 
 	if (a->m.when < b->m.when) return -1;
 	if (a->m.when > b->m.when) return +1;

@@ -76,12 +76,11 @@ typedef struct fr_channel_data_t {
 
 	void			*ctx;		//!< packet context.  Usually socket information
 	uint32_t		transport;	//!< transport ID for this packet
+	uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
 
 	union {
 		struct {
 			fr_time_t		*start_time;	//!< time original request started (network -> worker)
-			uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
-
 			fr_dlist_t		list;		//!< list of unprocessed packets for the worker
 		} request;
 
