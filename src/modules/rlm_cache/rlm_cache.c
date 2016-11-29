@@ -51,7 +51,10 @@ static const CONF_PARSER module_config[] = {
  */
 static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t const *inst, REQUEST *request)
 {
-	if (!inst->driver->acquire) return 0;
+	if (!inst->driver->acquire) {
+		*out = NULL;
+		return 0;
+	}
 
 	return inst->driver->acquire(out, &inst->config, inst->driver_inst, request);
 }
@@ -577,7 +580,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 
 		rcode = cache_find(&c, inst, request, &handle, key, key_len);
 		if (rcode == RLM_MODULE_FAIL) goto finish;
-		rad_assert(handle);
+		rad_assert(!inst->driver->acquire || handle);
 
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
@@ -638,7 +641,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 		default:
 			rad_assert(0);
 		}
-		rad_assert(handle);
+		rad_assert(!inst->driver->acquire || handle);
 	}
 
 	/*
@@ -697,7 +700,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 		default:
 			rad_assert(0);
 		}
-		rad_assert(handle);
+		rad_assert(!inst->driver->acquire || handle);
 	}
 
 	/*
@@ -746,7 +749,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 		default:
 			rad_assert(0);
 		}
-		rad_assert(handle);
+		rad_assert(!inst->driver->acquire || handle);
 		goto finish;
 	}
 
