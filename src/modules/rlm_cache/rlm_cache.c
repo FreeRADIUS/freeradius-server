@@ -52,7 +52,7 @@ static const CONF_PARSER module_config[] = {
 static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t const *inst, REQUEST *request)
 {
 	if (!inst->driver->acquire) {
-		*handle = NULL;
+		*out = NULL;
 		return 0;
 	}
 
