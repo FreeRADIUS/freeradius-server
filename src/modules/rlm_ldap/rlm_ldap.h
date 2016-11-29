@@ -133,7 +133,7 @@ typedef enum {
 
 extern FR_NAME_NUMBER const ldap_supported_extensions[];
 
-typedef struct ldap_instance rlm_ldap_t;
+typedef struct rlm_ldap_s rlm_ldap_t;
 
 typedef struct ldap_acct_section {
 	CONF_SECTION	*cs;				//!< Section configuration.
@@ -159,25 +159,6 @@ typedef struct rlm_ldap_control {
 							//!< we've finished using it.
 } rlm_ldap_control_t;
 
-/** Tracks the state of a libldap connection handle
- *
- */
-typedef struct ldap_handle {
-	LDAP		*handle;			//!< libldap handle.
-	bool		rebound;			//!< Whether the connection has been rebound to something
-							//!< other than the admin user.
-	bool		referred;			//!< Whether the connection is now established a server
-							//!< other than the configured one.
-
-	rlm_ldap_control_t serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations with
-								//!< this handle.
-	rlm_ldap_control_t clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations with
-								//!< this handle.
-	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
-	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
-
-	rlm_ldap_t const *inst;				//!< rlm_ldap configuration.
-} ldap_handle_t;
 
 typedef enum {
 	LDAP_DIRECTORY_UNKNOWN = 0,			//!< We can't determine the directory server.
@@ -206,14 +187,15 @@ typedef struct ldap_directory {
 							//!< password.
 } ldap_directory_t;
 
-struct ldap_instance {
-	char const	*name;				//!< Instance name.
-
-	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
-	fr_connection_pool_t *pool;			//!< Connection pool instance.
-
-	char const	**config_server;		//!< Server set in the config.
+/** Pool configuration
+ *
+ * Must not be passed into functions except via the connection handle
+ * this avoids problems with not using the connection pool configuration.
+ */
+typedef struct {
 	char		*server;			//!< Initial server to bind to.
+	char const	**config_server;		//!< Server set in the config.
+
 	uint16_t	port;				//!< Port to use when binding to the server.
 
 	char const	*admin_identity;		//!< Identity we bind as when we need to query the LDAP
@@ -222,8 +204,8 @@ struct ldap_instance {
 
 	ldap_sasl	admin_sasl;			//!< SASL parameters used when binding as the admin.
 
-	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
 	int		dereference;			//!< libldap value specifying dereferencing behaviour.
+	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
 
 	bool		chase_referrals;		//!< If the LDAP server returns a referral to another server
 							//!< or point in the tree, follow it, establishing new
@@ -238,10 +220,65 @@ struct ldap_instance {
 							//!< referrals on the same server, but won't bind to other
 							//!< servers.
 
-	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
+	/*
+	 *	TLS items.
+	 */
+	int		tls_mode;
+	bool		start_tls;			//!< Send the Start TLS message to the LDAP directory
+							//!< to start encrypted communications using the standard
+							//!< LDAP port.
 
-	ldap_directory_t *directory;			//!< Server capabilities.
-	pthread_mutex_t directory_mutex;		//!< Sync modifications to directory structure.
+	char const	*tls_ca_file;			//!< Sets the full path to a CA certificate (used to validate
+							//!< the certificate the server presents).
+
+	char const	*tls_ca_path;			//!< Sets the path to a directory containing CA certificates.
+
+	char const	*tls_certificate_file;		//!< Sets the path to the public certificate file we present
+							//!< to the servers.
+
+	char const	*tls_private_key_file;		//!< Sets the path to the private key for our public
+							//!< certificate.
+
+	char const	*tls_require_cert_str;		//!< Sets requirements for validating the certificate the
+							//!< server presents.
+
+	int		tls_require_cert;		//!< OpenLDAP constant representing the require cert string.
+
+	/*
+	 *	Options
+	 */
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+	bool		session_tracking;		//!< Whether we add session tracking controls, which help
+							//!< identify the autz or acct session the commands were
+							//!< issued for.
+#endif
+
+	/*
+	 *	For keep-alives.
+	 */
+#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
+	uint32_t	keepalive_idle;			//!< Number of seconds a connections needs to remain idle
+							//!< before TCP starts sending keepalive probes.
+#endif
+#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
+	uint32_t	keepalive_probes;		//!< Number of missed timeouts before the connection is
+							//!< dropped.
+#endif
+#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
+	uint32_t	keepalive_interval;		//!< Interval between keepalive probes.
+#endif
+
+	/*
+	 *	Search timelimits
+	 */
+	uint32_t	srv_timelimit;			//!< How long the server should spent on a single request
+							//!< (also bounded by value on the server).
+} ldap_pool_inst_t;
+
+struct rlm_ldap_s {
+	char const	*name;				//!< Instance name.
+
+	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 
 	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
@@ -250,6 +287,11 @@ struct ldap_instance {
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
 	vp_map_t	*user_map; 			//!< Attribute map applied to users and profiles.
+
+	/*
+	 *	Search time limits
+	 */
+	uint32_t	res_timeout;			//!< How long we wait for a result from the server.
 
 	/*
 	 *	User object attributes and filters
@@ -267,10 +309,11 @@ struct ldap_instance {
 	bool		access_positive;		//!< If true the presence of the attribute will allow access,
 							//!< else it will deny access.
 
+	ldap_sasl_dynamic user_sasl;			//!< SASL parameters used when binding as the user.
+
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
 
-	ldap_sasl_dynamic user_sasl;			//!< SASL parameters used when binding as the user.
 
 	/*
 	 *	Group object attributes and filters
@@ -333,46 +376,6 @@ struct ldap_instance {
 	ldap_acct_section_t *postauth;			//!< Modify mappings for post-auth.
 	ldap_acct_section_t *accounting;		//!< Modify mappings for accounting.
 
-	/*
-	 *	TLS items.  We should really normalize these with the
-	 *	TLS code in 3.0.
-	 */
-	int		tls_mode;
-	bool		start_tls;			//!< Send the Start TLS message to the LDAP directory
-							//!< to start encrypted communications using the standard
-							//!< LDAP port.
-
-	char const	*tls_ca_file;			//!< Sets the full path to a CA certificate (used to validate
-							//!< the certificate the server presents).
-
-	char const	*tls_ca_path;			//!< Sets the path to a directory containing CA certificates.
-
-	char const	*tls_certificate_file;		//!< Sets the path to the public certificate file we present
-							//!< to the servers.
-
-	char const	*tls_private_key_file;		//!< Sets the path to the private key for our public
-							//!< certificate.
-
-	char const	*tls_random_file;		//!< Path to the random file if /dev/random and /dev/urandom
-							//!< are unavailable.
-
-	char const	*tls_require_cert_str;		//!< Sets requirements for validating the certificate the
-							//!< server presents.
-
-	int		tls_require_cert;		//!< OpenLDAP constant representing the require cert string.
-
-	/*
-	 *	Options
-	 */
-#ifdef LDAP_CONTROL_X_SESSION_TRACKING
-	bool		session_tracking;		//!< Whether we add session tracking controls, which help
-							//!< identify the autz or acct session the commands were
-							//!< issued for.
-#endif
-	uint32_t	res_timeout;			//!< How long we wait for a result from the server.
-	uint32_t	srv_timelimit;			//!< How long the server should spent on a single request
-							//!< (also bounded by value on the server).
-
 #ifdef WITH_EDIR
 	/*
 	 *	eDir support
@@ -382,21 +385,41 @@ struct ldap_instance {
 	bool		edir_autz;			//!< If true, and we have the Universal Password, bind with it
 							//!< to perform additional authorisation checks.
 #endif
+
+	fr_connection_pool_t *pool;			//!< Connection pool instance.
+	ldap_pool_inst_t pool_inst;			//!< Connection configuration instance.
+
 	/*
-	 *	For keep-alives.
+	 *	Global config
 	 */
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	uint32_t	keepalive_idle;			//!< Number of seconds a connections needs to remain idle
-							//!< before TCP starts sending keepalive probes.
-#endif
-#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	uint32_t	keepalive_probes;		//!< Number of missed timeouts before the connection is
-							//!< dropped.
-#endif
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	uint32_t	keepalive_interval;		//!< Interval between keepalive probes.
-#endif
+	char const	*tls_random_file;		//!< Path to the random file if /dev/random and /dev/urandom
+							//!< are unavailable.
+
+	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 };
+
+/** Tracks the state of a libldap connection handle
+ *
+ */
+typedef struct ldap_handle {
+	LDAP		*handle;			//!< libldap handle.
+	bool		rebound;			//!< Whether the connection has been rebound to something
+							//!< other than the admin user.
+	bool		referred;			//!< Whether the connection is now established a server
+							//!< other than the configured one.
+
+	rlm_ldap_control_t serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations with
+								//!< this handle.
+	rlm_ldap_control_t clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations with
+								//!< this handle.
+	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
+	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
+
+	ldap_directory_t *directory;			//!< The type of directory we're connected to.
+
+	ldap_pool_inst_t const *pool_inst;		//!< rlm_ldap connection configuration.
+	rlm_ldap_t	 const *inst;			//!< rlm_ldap pool inst.
+} ldap_handle_t;
 
 /** Result of expanding the RHS of a set of maps
  *
@@ -489,7 +512,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn,
 				  LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn);
 
 /*
  *	ldap.c - Callbacks for the connection pool API.
@@ -563,7 +586,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
-int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t *inst, ldap_handle_t **pconn);
+int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t const *inst, ldap_handle_t **pconn);
 
 /*
  *	edir.c - Magic extensions for Novell

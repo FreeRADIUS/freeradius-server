@@ -921,7 +921,8 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 				*pconn = fr_connection_reconnect(inst->pool, request, *pconn);
 				if (*pconn) {
 					ROPTIONAL(RWDEBUG, WARN, "Bind with %s to %s failed: %s. Got new socket, "
-						  "retrying...", *dn ? dn : "(anonymous)", inst->server, error);
+						  "retrying...", *dn ? dn : "(anonymous)",
+						  (*pconn)->pool_inst->server, error);
 
 					talloc_free(extra); /* don't leak debug info */
 
@@ -937,7 +938,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			/* FALL-THROUGH */
 		default:
 			ROPTIONAL(REDEBUG, ERROR, "Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
-				  inst->server, error);
+				  (*pconn)->pool_inst->server, error);
 			LDAP_EXTRA_DEBUG();
 
 			break;
@@ -1020,8 +1021,8 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	 *	Do all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
-				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->pool_inst->admin_identity,
+				       (*pconn)->pool_inst->admin_password, &(*pconn)->pool_inst->admin_sasl, true,
 				       NULL, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
@@ -1183,8 +1184,8 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	 *	Perform all modifications as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
-				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->pool_inst->admin_identity,
+				       (*pconn)->pool_inst->admin_password, &(*pconn)->pool_inst->admin_sasl, true,
 				       NULL, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
@@ -1313,8 +1314,8 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	Perform all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
-				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->pool_inst->admin_identity,
+				       (*pconn)->pool_inst->admin_password, &(*pconn)->pool_inst->admin_sasl, true,
 				       NULL, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
@@ -1475,7 +1476,7 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
  * @param inst rlm_ldap configuration.
  * @param request Current request.
  */
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
@@ -1490,7 +1491,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 	    !fr_pair_find_by_num(request->control, 0, PW_USER_PASSWORD, TAG_ANY) &&
 	    !fr_pair_find_by_num(request->control, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
 	    !fr_pair_find_by_num(request->control, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
-		switch (inst->directory->type) {
+		switch (conn->directory->type) {
 		case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP");
@@ -1521,13 +1522,13 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 			break;
 
 		default:
-			if (!inst->admin_identity) {
+			if (!conn->pool_inst->admin_identity) {
 				RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 				RWDEBUG("!!! but no password attribute found in search result");
 				RWDEBUG("!!! Either:");
 				RWDEBUG("!!!  - Ensure the user object contains a password attribute, and that ");
 				RWDEBUG("!!!    \"%s\" has permission to read that password attribute (recommended)",
-					inst->admin_identity);
+					conn->pool_inst->admin_identity);
 				RWDEBUG("!!!  - Bind as the user by listing %s in the authenticate section, and",
 					inst->name);
 				RWDEBUG("!!!	setting attribute &control:Auth-Type := '%s' in the authorize section",
@@ -1565,14 +1566,15 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t request, UNUSED ber_int_t msgid,
 			   void *ctx)
 {
-	ldap_rcode_t		status;
-	ldap_handle_t		*conn = talloc_get_type_abort(ctx, ldap_handle_t);
-	rlm_ldap_t const	*inst = conn->inst;
+	ldap_rcode_t			status;
+	ldap_handle_t			*conn = talloc_get_type_abort(ctx, ldap_handle_t);
+	ldap_pool_inst_t const		*pool_inst = conn->pool_inst;
+	rlm_ldap_t const		*inst = conn->inst;
 
-	char const		*admin_identity = NULL;
-	char const		*admin_password = NULL;
+	char const			*admin_identity = NULL;
+	char const			*admin_password = NULL;
 
-	int			ldap_errno;
+	int				ldap_errno;
 
 	conn->referred = true;
 	conn->rebound = true;	/* not really, but oh well... */
@@ -1586,7 +1588,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	 *	SASL mech is inherited from the module that defined the connection
 	 *	pool.
 	 */
-	if (inst->use_referral_credentials) {
+	if (pool_inst->use_referral_credentials) {
 		LDAPURLDesc	*ldap_url;
 		int		ret;
 		char		**ext;
@@ -1649,12 +1651,12 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	} else
 #  endif
 	{
-		admin_identity = conn->inst->admin_identity;
-		admin_password = conn->inst->admin_password;
+		admin_identity = pool_inst->admin_identity;
+		admin_password = pool_inst->admin_password;
 	}
 
 	status = rlm_ldap_bind(inst, NULL, &conn, admin_identity, admin_password,
-			       &conn->inst->admin_sasl, false, NULL, NULL, NULL);
+			       &conn->pool_inst->admin_sasl, false, NULL, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
@@ -1746,19 +1748,20 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 	int ldap_errno, ldap_version;
 
-	rlm_ldap_t	*inst = instance;
-	ldap_handle_t	*conn;
-	LDAP		*handle = NULL;
+	rlm_ldap_t const	*inst = talloc_get_type_abort(instance, rlm_ldap_t);
+	ldap_pool_inst_t const	*pool_inst = &inst->pool_inst;
+	ldap_handle_t		*conn;
+	LDAP			*handle = NULL;
 
-	DEBUG("Connecting to %s", inst->server);
+	DEBUG("Connecting to %s", pool_inst->server);
 #ifdef HAVE_LDAP_INITIALIZE
-	ldap_errno = ldap_initialize(&handle, inst->server);
+	ldap_errno = ldap_initialize(&handle, pool_inst->server);
 	if (ldap_errno != LDAP_SUCCESS) {
 		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
 		return NULL;
 	}
 #else
-	handle = ldap_init(inst->server, inst->port);
+	handle = ldap_init(pool_inst->server, pool_inst->port);
 	if (!handle) {
 		ERROR("ldap_init failed");
 		return NULL;
@@ -1771,7 +1774,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	conn = talloc_zero(ctx, ldap_handle_t);
 	if (!conn) return NULL;
 
-	conn->inst = inst;
+	conn->pool_inst = pool_inst;
 	conn->handle = handle;
 	conn->rebound = false;
 	conn->referred = false;
@@ -1798,18 +1801,18 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	/*
 	 *	Leave "dereference" unset to use the OpenLDAP default.
 	 */
-	if (inst->dereference_str) {
-		do_ldap_option(LDAP_OPT_DEREF, "dereference", &(inst->dereference));
+	if (pool_inst->dereference_str) {
+		do_ldap_option(LDAP_OPT_DEREF, "dereference", &(pool_inst->dereference));
 	}
 
 	/*
 	 *	Leave "chase_referrals" unset to use the OpenLDAP default.
 	 */
-	if (!inst->chase_referrals_unset) {
-		if (inst->chase_referrals) {
+	if (!pool_inst->chase_referrals_unset) {
+		if (pool_inst->chase_referrals) {
 			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_ON);
 
-			if (inst->rebind == true) {
+			if (pool_inst->rebind == true) {
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 				ldap_set_rebind_proc(conn->handle, rlm_ldap_rebind, conn);
 #endif
@@ -1821,7 +1824,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
-	 *	A value of zero results in an instant failure.
+	 *	A value of zero results in an pool_instant failure.
 	 *
 	 *	When most people specify zero they mean infinite.
 	 *
@@ -1836,41 +1839,41 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	}
 #endif
 
-	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(inst->srv_timelimit));
+	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(pool_inst->srv_timelimit));
 
 	ldap_version = LDAP_VERSION3;
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &(inst->keepalive_idle));
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &(pool_inst->keepalive_idle));
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &(inst->keepalive_probes));
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &(pool_inst->keepalive_probes));
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &(inst->keepalive_interval));
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &(pool_inst->keepalive_interval));
 #endif
 
 #ifdef HAVE_LDAP_START_TLS_S
 	/*
 	 *	Set all of the TLS options
 	 */
-	if (inst->tls_mode) do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
+	if (pool_inst->tls_mode) do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(pool_inst->tls_mode));
 
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", inst->tls_ca_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", inst->tls_ca_path);
+	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", pool_inst->tls_ca_file);
+	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", pool_inst->tls_ca_path);
 
 	/*
 	 *	Set certificate options
 	 */
-	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", inst->tls_certificate_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", inst->tls_private_key_file);
+	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", pool_inst->tls_certificate_file);
+	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", pool_inst->tls_private_key_file);
 
 #  ifdef LDAP_OPT_X_TLS_NEVER
-	if (inst->tls_require_cert_str) {
-		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &inst->tls_require_cert);
+	if (pool_inst->tls_require_cert_str) {
+		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &pool_inst->tls_require_cert);
 	}
 #  endif
 
@@ -1889,8 +1892,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	/*
 	 *	And finally start the TLS code.
 	 */
-	if (inst->start_tls) {
-		if (inst->port == 636) {
+	if (pool_inst->start_tls) {
+		if (pool_inst->port == 636) {
 			WARN("Told to Start TLS on LDAPS port this will probably fail, please correct the "
 			     "configuration");
 		}
@@ -1904,25 +1907,14 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	}
 #endif /* HAVE_LDAP_START_TLS_S */
 
-	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), false, timeout, NULL, NULL);
+	status = rlm_ldap_bind(inst, NULL, &conn, conn->pool_inst->admin_identity, conn->pool_inst->admin_password,
+			       &(conn->pool_inst->admin_sasl), false, timeout, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) goto error;
 
 	/*
-	 *	This allows multiple connections to spawn simultaneously,
-	 *	but prevents them being used until we've directory
-	 *	directory capabilities.
+	 *	Only error out on memory allocation errors
 	 */
-	if (!inst->directory) {
-		pthread_mutex_lock(&inst->directory_mutex);
-		if (!inst->directory) {
-			/*
-			 *	Only error out on memory allocation errors
-			 */
-			if (rlm_ldap_directory_alloc(NULL, &inst->directory, inst, &conn) < 0) goto error;
-			pthread_mutex_unlock(&inst->directory_mutex);
-		}
-	}
+	if (rlm_ldap_directory_alloc(conn, &conn->directory, inst, &conn) < 0) goto error;
 
 	return conn;
 

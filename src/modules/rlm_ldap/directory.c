@@ -56,7 +56,7 @@ static FR_NAME_NUMBER const ldap_directory_type_table[] = {
  *	- 1 if we failed identifying the directory server.
  *	- -1 on error.
  */
-int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t *inst, ldap_handle_t **pconn)
+int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t const *inst, ldap_handle_t **pconn)
 {
 	static char const	*attrs[] = { "vendorname",
 					     "vendorversion",
@@ -115,7 +115,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 
 	values = ldap_get_values_len((*pconn)->handle, entry, "vendorname");
 	if (values) {
-		directory->vendor_str = rlm_ldap_berval_to_string(inst, values[0]);
+		directory->vendor_str = rlm_ldap_berval_to_string(directory, values[0]);
 		INFO("Directory vendor: %s", directory->vendor_str);
 
 		ldap_value_free_len(values);
@@ -123,7 +123,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 
 	values = ldap_get_values_len((*pconn)->handle, entry, "vendorversion");
 	if (values) {
-		directory->version_str = rlm_ldap_berval_to_string(inst, values[0]);
+		directory->version_str = rlm_ldap_berval_to_string(directory, values[0]);
 		INFO("Directory version: %s", directory->version_str);
 
 		ldap_value_free_len(values);
