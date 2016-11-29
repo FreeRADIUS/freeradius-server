@@ -1649,12 +1649,12 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	} else
 #  endif
 	{
-		admin_identity = inst->admin_identity;
-		admin_password = inst->admin_password;
+		admin_identity = conn->inst->admin_identity;
+		admin_password = conn->inst->admin_password;
 	}
 
 	status = rlm_ldap_bind(inst, NULL, &conn, admin_identity, admin_password,
-			       &inst->admin_sasl, false, NULL, NULL, NULL);
+			       &conn->inst->admin_sasl, false, NULL, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
