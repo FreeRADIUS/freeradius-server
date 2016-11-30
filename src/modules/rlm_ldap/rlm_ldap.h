@@ -194,7 +194,7 @@ typedef struct ldap_directory {
  */
 typedef struct {
 	char		*server;			//!< Initial server to bind to.
-	char const	**config_server;		//!< Server set in the config.
+	char const	**server_str;		//!< Server set in the config.
 
 	uint16_t	port;				//!< Port to use when binding to the server.
 

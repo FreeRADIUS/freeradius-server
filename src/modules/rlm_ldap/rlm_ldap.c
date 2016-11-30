@@ -229,7 +229,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	Pool config items
 	 */
-	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_MULTI, rlm_ldap_t, pool_inst.config_server) },	/* Do not set to required */
+	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_MULTI, rlm_ldap_t, pool_inst.server_str) },	/* Do not set to required */
 
 	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, rlm_ldap_t, pool_inst.port) },
 
@@ -1516,7 +1516,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	connection pool.
 	 */
 	if (!cf_pair_find(conf, "pool")) {
-		if (!inst->pool_inst.config_server) {
+		if (!inst->pool_inst.server_str) {
 			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
 			goto error;
 		}
@@ -1555,8 +1555,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Now iterate over all the 'server' config items
 	 */
-	for (i = 0; i < talloc_array_length(inst->pool_inst.config_server); i++) {
-		char const *value = inst->pool_inst.config_server[i];
+	for (i = 0; i < talloc_array_length(inst->pool_inst.server_str); i++) {
+		char const *value = inst->pool_inst.server_str[i];
 		size_t j;
 
 		/*
