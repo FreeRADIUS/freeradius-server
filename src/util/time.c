@@ -121,13 +121,11 @@ fr_time_t fr_time(void)
 #else  /* __MACH__ is defined */
 
 	uint64_t when;
-	Nanoseconds elapsedNano;
 
 	when = mach_absolute_time();
 	when -= abs_started;
 
-	elapsedNano = AbsoluteToNanoseconds( *(AbsoluteTime *) &when );
-	return *(uint64_t *) &elapsedNano;
+	return when * (timebase.numer / timebase.denom);
 #endif
 }
 
