@@ -1475,6 +1475,7 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
  *
  * @param inst rlm_ldap configuration.
  * @param request Current request.
+ * @param conn the connection handle
  */
 void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn)
 {
