@@ -614,6 +614,12 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 do_null_case:
 	talloc_free(data.datum.ptr);
 
+	/*
+	 *	Nothing found.  Just continue, and ignore the "switch"
+	 *	statement.
+	 */
+	if (!found) return UNLANG_ACTION_CONTINUE;
+
 	unlang_push(stack, found, frame->result, false);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
