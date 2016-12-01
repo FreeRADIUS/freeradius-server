@@ -831,7 +831,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			   LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
-	ldap_pool_inst_t	*pool_inst = (*pconn)->pool_inst;
+	ldap_pool_inst_t const	*pool_inst = (*pconn)->pool_inst;
 
 	int			msgid = -1;
 
