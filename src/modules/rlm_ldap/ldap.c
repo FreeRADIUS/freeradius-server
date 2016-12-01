@@ -1941,13 +1941,15 @@ ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 
 	conn = fr_connection_get(inst->pool, request);
 
+	rad_assert(!conn || conn->pool_inst);
+
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
 	/*
 	 *	Add optional session tracking controls,
 	 *	that contain values of some attributes
 	 *	in the request.
 	 */
-	if ((conn != NULL) & (request != NULL) & conn->pool_inst->session_tracking) {
+	if ((conn != NULL) && (request != NULL) && conn->pool_inst->session_tracking) {
 		if (rlm_ldap_control_add_session_tracking(conn, request) < 0) {
 			fr_connection_release(inst->pool, request, conn);
 			return NULL;
