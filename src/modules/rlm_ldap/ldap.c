@@ -831,6 +831,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			   LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
+	ldap_pool_inst_t	*pool_inst = (*pconn)->pool_inst;
 
 	int			msgid = -1;
 
@@ -922,7 +923,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 				if (*pconn) {
 					ROPTIONAL(RWDEBUG, WARN, "Bind with %s to %s failed: %s. Got new socket, "
 						  "retrying...", *dn ? dn : "(anonymous)",
-						  (*pconn)->pool_inst->server, error);
+						  pool_inst->server, error);
 
 					talloc_free(extra); /* don't leak debug info */
 
@@ -938,7 +939,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst,
 			/* FALL-THROUGH */
 		default:
 			ROPTIONAL(REDEBUG, ERROR, "Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
-				  (*pconn)->pool_inst->server, error);
+				  pool_inst->server, error);
 			LDAP_EXTRA_DEBUG();
 
 			break;
