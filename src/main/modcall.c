@@ -1752,9 +1752,9 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 	/*
 	 *	Loop over the children of this group.
 	 */
-	for (ci=cf_item_find_next(g->cs, NULL);
+	for (ci = cf_item_find_next(g->cs, NULL);
 	     ci != NULL;
-	     ci=cf_item_find_next(g->cs, ci)) {
+	     ci = cf_item_find_next(g->cs, ci)) {
 
 		/*
 		 *	Sections are references to other groups, or
@@ -1768,7 +1768,7 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 			/*
 			 *	Skip precompiled blocks.
 			 */
-			if (cf_data_find(subcs, CF_DATA_TYPE_UNLANG, "unlang")) continue;
+			if (cf_data_find(subcs, unlang_group_t, NULL)) continue;
 
 			/*
 			 *	"actions" apply to the current group.
@@ -2242,7 +2242,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 		return NULL;
 	}
 
-	cond = cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
+	cond = cf_data_find(cs, fr_cond_t, NULL);
 	rad_assert(cond != NULL);
 
 	if (cond->type == COND_TYPE_FALSE) {
@@ -3036,7 +3036,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	/*
 	 *	Associate the unlang with the configuration section.
 	 */
-	cf_data_add(cs, CF_DATA_TYPE_UNLANG, "unlang", c, NULL);
+	cf_data_add(cs, c, NULL, false);
 
 	dump_tree(c, c->debug_name);
 	return 0;

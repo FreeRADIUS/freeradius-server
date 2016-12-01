@@ -1775,6 +1775,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	conn = talloc_zero(ctx, ldap_handle_t);
 	if (!conn) return NULL;
 
+	conn->inst = inst;
 	conn->pool_inst = pool_inst;
 	conn->handle = handle;
 	conn->rebound = false;

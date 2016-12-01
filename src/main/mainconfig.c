@@ -1097,7 +1097,7 @@ int main_config_free(void)
 	 *	Clean up the configuration data
 	 *	structures.
 	 */
-	client_list_free(NULL);
+	client_list_free();
 	realms_free();
 	listen_free(&main_config.listen);
 

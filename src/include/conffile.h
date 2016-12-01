@@ -280,17 +280,6 @@ _Generic((_ct), \
 #define PW_BASE_TYPE(_t)		(0xff & (_t))
 /* @} **/
 
-typedef enum {
-	CF_DATA_TYPE_DEFAULT = 0,
-	CF_DATA_TYPE_CLIENT,
-	CF_DATA_TYPE_HOME_SERVER_POOL,
-	CF_DATA_TYPE_UNLANG,
-	CF_DATA_TYPE_PROTOCOL,
-	CF_DATA_TYPE_MODULE_INSTANCE,
-	CF_DATA_TYPE_CONNECTION_POOL,
-	CF_DATA_TYPE_TLS
-} cf_data_type_t;
-
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
 do {\
 	if (!(_cond)) {\
@@ -394,7 +383,6 @@ typedef struct CONF_PARSER {
 #define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
-typedef void (*cf_data_free)(void *);
 typedef int (*cf_walker_t)(void *data, void *ctx);
 
 void		cf_file_check_user(uid_t uid, gid_t gid);
@@ -426,11 +414,17 @@ CONF_SECTION	*cf_section_sub_find_name2(CONF_SECTION const *, char const *name1,
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 
-void		*cf_data_find(CONF_SECTION const *cs, cf_data_type_t type, char const *name);
-int		cf_data_add(CONF_SECTION *cs, cf_data_type_t type, char const *name,
-			    void const *data, cf_data_free data_free);
-void		*cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name);
-int		cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx);
+#define		cf_data_find(_cs, _type, _name) (_type *)_cf_data_find(_cs, #_type, _name)
+void		*_cf_data_find(CONF_SECTION const *cs, char const *type, char const *name);
+
+#define		cf_data_add(_cs, _data, _name, _free) _cf_data_add(_cs, _data, _name, _free)
+int		_cf_data_add(CONF_SECTION *cs, void const *data, char const *name, bool free);
+
+#define		cf_data_remove(_cs, _type, _name) (_type *)_cf_data_remove(_cs, #_type, _name)	     
+void		*_cf_data_remove(CONF_SECTION *cs, char const *type, char const *name);
+
+#define		cf_data_walk(_cs, _type, _cb, _ctx) _cf_data_walk(_cs, #_type, _cb, _ctx)
+int		_cf_data_walk(CONF_SECTION *cs, char const *type, cf_walker_t cb, void *ctx);
 
 char const *cf_pair_attr(CONF_PAIR const *pair);
 char const *cf_pair_value(CONF_PAIR const *pair);

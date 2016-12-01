@@ -56,6 +56,8 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #endif
 };
 
+static int module_instantiate(CONF_SECTION *root, char const *name);
+
 static bool is_reserved_word(const char *name)
 {
 	int i;
@@ -125,12 +127,12 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
    }
  * @endverbatim
  *
- * @param out where to write the pointer to a module's config section.  May be NULL on success,
+ * @param[out] out where to write the pointer to a module's config section.  May be NULL on success,
  *	indicating the config item was not found within the module #CONF_SECTION
  *	or the chain of module references was followed and the module at the end of the chain
  *	did not a subsection.
- * @param module #CONF_SECTION.
- * @param name of the polymorphic sub-section.
+ * @param[in] module #CONF_SECTION.
+ * @param[in] name of the polymorphic sub-section.
  * @return
  *	- 0 on success with referenced section.
  *	- 1 on success with local section.
@@ -138,10 +140,9 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
  */
 int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name)
 {
-	static bool		loop = true;        /* not used, we just need a valid pointer to quiet static analysis */
-
 	CONF_PAIR		*cp;
 	CONF_SECTION		*cs;
+
 
 	module_instance_t	*inst;
 	char const		*inst_name;
@@ -166,12 +167,12 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	cp = cf_pair_find(module, name);
 	if (!cp) return 0;
 
-	if (cf_data_find(module, CF_DATA_TYPE_CONNECTION_POOL, FIND_SIBLING_CF_KEY)) {
+	if (cf_data_find(module, CONF_SECTION, FIND_SIBLING_CF_KEY)) {
 		cf_log_err_cp(cp, "Module reference loop found");
 
 		return -1;
 	}
-	cf_data_add(module, CF_DATA_TYPE_CONNECTION_POOL, FIND_SIBLING_CF_KEY, &loop, NULL);
+	cf_data_add(module, module, FIND_SIBLING_CF_KEY, false);
 
 	/*
 	 *	Item found, resolve it to a module instance.
@@ -180,12 +181,29 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 */
 	inst_name = cf_pair_value(cp);
 	inst = module_find(cf_item_parent(cf_section_to_item(module)), inst_name);
+	if (!inst->instantiated) {
+		CONF_SECTION *parent = module;
+
+		/*
+		 *	Find the root of the config...
+		 */
+		do {
+			CONF_SECTION *tmp;
+
+			tmp = cf_item_parent(cf_section_to_item(parent));
+			if (!tmp) break;
+
+			parent = tmp;
+		} while (true);
+
+		module_instantiate(parent, inst_name);
+	}
 
 	/*
 	 *	Remove the config data we added for loop
 	 *	detection.
 	 */
-	cf_data_remove(module, CF_DATA_TYPE_CONNECTION_POOL, FIND_SIBLING_CF_KEY);
+	cf_data_remove(module, CONF_SECTION, FIND_SIBLING_CF_KEY);
 	if (!inst) {
 		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
 
@@ -239,7 +257,6 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 
 	int ret;
 
-#define CONNECTION_POOL_CF_KEY "connection_pool"
 #define parent_name(_x) cf_section_name(cf_item_parent(cf_section_to_item(_x)))
 
 	cs_name1 = cf_section_name1(module);
@@ -302,7 +319,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	 *	This allows modules to pass in the config sections
 	 *	they would like to use the connection pool from.
 	 */
-	pool = cf_data_find(cs, CF_DATA_TYPE_CONNECTION_POOL, CONNECTION_POOL_CF_KEY);
+	pool = cf_data_find(cs, fr_connection_pool_t, NULL);
 	if (!pool) {
 		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
 		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
@@ -311,7 +328,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 		fr_connection_pool_enable_triggers(pool, trigger_prefix, trigger_args);
 
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
-		cf_data_add(cs, CF_DATA_TYPE_CONNECTION_POOL, CONNECTION_POOL_CF_KEY, pool, NULL);
+		cf_data_add(cs, pool, NULL, false);
 		return pool;
 	}
 	fr_connection_pool_ref(pool);
@@ -326,7 +343,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	if (mycs != cs) {
 		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
 		       log_prefix, pool, parent_name(cs), parent_name(mycs));
-		cf_data_add(mycs, CF_DATA_TYPE_CONNECTION_POOL, CONNECTION_POOL_CF_KEY, pool, NULL);
+		cf_data_add(mycs, pool, NULL, false);
 	}
 
 	return pool;
@@ -378,7 +395,7 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	instance_name = asked_name;
 	if (instance_name[0] == '-') instance_name++;
 
-	inst = cf_data_find(modules, CF_DATA_TYPE_MODULE_INSTANCE, instance_name);
+	inst = cf_data_find(modules, module_instance_t, instance_name);
 	if (!inst) return NULL;
 
 	return talloc_get_type_abort(inst, module_instance_t);
@@ -611,7 +628,7 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 	ctx.el = el;
 	ctx.tree = thread_inst_tree;
 
-	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_thread_instantiate, &ctx) < 0) {
+	if (cf_data_walk(modules, module_instance_t, _module_thread_instantiate, &ctx) < 0) {
 		_module_thread_inst_tree_free(thread_inst_tree);	/* make re-entrant */
 		module_thread_inst_tree = NULL;
 		return -1;
@@ -631,6 +648,8 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 static int _module_instantiate(void *instance, UNUSED void *ctx)
 {
 	module_instance_t *inst = talloc_get_type_abort(instance, module_instance_t);
+
+	if (inst->instantiated) return 0;
 
 	/*
 	 *	Now that ALL modules are instantiated, and ALL xlats
@@ -682,6 +701,36 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	return 0;
 }
 
+/** Force instantiation of a module
+ *
+ * Occasionally modules may share resources such as connection pools.
+ * The only way for this to work reliably, and without introducing ordering
+ * requirements for the user, for the module referenced to be instantiated
+ * before (or during) the referencer being instantiated.
+ *
+ * In all other cases this function should not be used, and implicit
+ * instantiation should be relied upon to instantiate modules.
+ *
+ * @param[in] root	Configuration root.
+ * @param[in] name	of module to instantiate.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int module_instantiate(CONF_SECTION *root, char const *name)
+{
+	module_instance_t *inst;
+	CONF_SECTION		*modules;
+
+	modules = cf_section_sub_find(root, "modules");
+	if (!modules) return 0;
+
+	inst = cf_data_find(modules, module_instance_t, name);
+	if (!inst) return -1;
+
+	return _module_instantiate(inst, NULL);
+}
+
 /** Completes instantiation of modules
  *
  * Allows the module to initialise connection pools, and complete any registrations that depend on
@@ -699,7 +748,7 @@ int modules_instantiate(CONF_SECTION *root)
 	modules = cf_section_sub_find(root, "modules");
 	if (!modules) return 0;
 
-	if (cf_data_walk(modules, CF_DATA_TYPE_MODULE_INSTANCE, _module_instantiate, NULL) < 0) return -1;
+	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
 
 #ifndef NDEBUG
 	{
@@ -866,7 +915,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, CF_DATA_TYPE_MODULE_INSTANCE, instance->name, instance, NULL);
+	cf_data_add(modules, instance, instance->name, false);
 
 	return instance;
 }

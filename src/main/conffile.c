@@ -102,10 +102,10 @@ struct conf_pair {
  */
 struct conf_data {
 	CONF_ITEM  	item;
-	cf_data_type_t	type;			//!< Qualifier for name.
-	char const 	*name;			//!< Name used to retrieve conf_data.
-	void const   	*data;			//!< User data.
-	void       	(*free)(void *);	//!< Free user data function.
+	char const	*type;		//!< C type of data being stored.
+	char const 	*name;		//!< Additional qualification of type.
+	void const   	*data;		//!< User data.
+	bool		free;		//!< Free user data function.
 };
 
 struct conf_part {
@@ -244,13 +244,13 @@ static CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 	return out;
 }
 
-static int _cf_data_free(CONF_DATA *cd)
+static int _cd_free(CONF_DATA *cd)
 {
 	void *to_free;
 
 	memcpy(&to_free, cd->data, sizeof(to_free));
 
-	if (cd->free) cd->free(to_free);
+	if (cd->free) talloc_free(to_free);
 
 	return 0;
 }
@@ -304,11 +304,22 @@ static int data_cmp(void const *a, void const *b)
 {
 	CONF_DATA const *one = a;
 	CONF_DATA const *two = b;
+	int		ret;
 
-	if (one->type > two->type) return +1;
-	if (one->type < two->type) return -1;
+	if (one->type && !two->type) return +1;
+	if (!two->type && one->type) return -1;
 
-	return strcmp(one->name, two->name);
+	if (one->type && two->type) {
+		ret = strcmp(one->type, two->type);
+		if (ret != 0) return ret;
+	}
+
+	if (one->name && !two->name) return +1;
+	if (!one->name && two->name) return -1;
+
+	if (one->name && two->name) return strcmp(one->name, two->name);
+
+	return 0;
 }
 
 /*
@@ -337,7 +348,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	FILE *fp;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, CF_DATA_TYPE_DEFAULT, "filename");
+	tree = cf_data_find(top, rbtree_t, "filename");
 	if (!tree) return NULL;
 
 	fp = fopen(filename, "r");
@@ -420,7 +431,7 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	int		fd;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, CF_DATA_TYPE_DEFAULT, "filename");
+	tree = cf_data_find(top, rbtree_t, "filename");
 	if (!tree) return false;
 
 	file = talloc(tree, cf_file_t);
@@ -554,7 +565,7 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 	rbtree_t *tree;
 
 	top = cf_top_section(cs);
-	tree = cf_data_find(top, CF_DATA_TYPE_DEFAULT, "filename");
+	tree = cf_data_find(top, rbtree_t, "filename");
 	if (!tree) return true;
 
 	cb.rcode = CF_FILE_NONE;
@@ -3101,7 +3112,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			talloc_free(p);
 			css->name2 = talloc_typed_strdup(css, buff[2]);
 
-			cf_data_add(css, CF_DATA_TYPE_UNLANG, "if", cond, NULL);
+			cf_data_add(css, cond, NULL, false);
 
 		add_section:
 			cf_item_add(this, &(css->item));
@@ -3549,7 +3560,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	tree = rbtree_create(cs, filename_cmp, NULL, 0);
 	if (!tree) return -1;
 
-	cf_data_add(cs, CF_DATA_TYPE_DEFAULT, "filename", tree, NULL);
+	cf_data_add(cs, tree, "filename", false);
 
 	/*
 	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
@@ -4001,17 +4012,14 @@ bool cf_item_is_pair(CONF_ITEM const *item)
 /** Allocate a new user data container
  *
  * @param[in] parent	conf section.
- * @param[in] type	of user data.  Used for name spacing and walking over a specific
- *			type of user data.
  * @param[in] name	String identifier of the user data.
  * @param[in] data	being added.
- * @param[in] data_free	function, called when the parent CONF_SECTION is being freed.
+ * @param[in] do_free	function, called when the parent CONF_SECTION is being freed.
  * @return
  *	- CONF_DATA on success.
  *	- NULL on error.
  */
-static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, cf_data_type_t type, char const *name,
-				void const *data, cf_data_free data_free)
+static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, void const *data, char const *name, bool do_free)
 {
 	CONF_DATA *cd;
 
@@ -4020,17 +4028,22 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, cf_data_type_t type, char 
 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
-	cd->type = type;
-	cd->name = talloc_typed_strdup(cd, name);
-	if (!cd->name) {
-		talloc_free(cd);
-		return NULL;
+
+	/*
+	 *	strdup so if the data is freed, we can
+	 *	still remove it from the section without
+	 *	explosions.
+	 */
+	if (data) {
+		cd->type = talloc_typed_strdup(cd, talloc_get_name(data));
+		cd->data = data;
 	}
+	if (name) cd->name = talloc_typed_strdup(cd, name);
 
-	cd->data = data;
-	cd->free = data_free;
-
-	if (cd->free) talloc_set_destructor(cd, _cf_data_free);
+	if (do_free) {
+		cd->free = true;
+		talloc_set_destructor(cd, _cd_free);
+	}
 
 	return cd;
 }
@@ -4045,9 +4058,12 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, cf_data_type_t type, char 
  *	- The user data.
  *	- NULL if no user data exists.
  */
-void *cf_data_find(CONF_SECTION const *cs, cf_data_type_t type, char const *name)
+void *_cf_data_find(CONF_SECTION const *cs, char const *type, char const *name)
 {
-	if (!cs || !name) return NULL;
+	if (!cs || (!type && !name)) {
+		cf_log_err_cs(cs, "Invalid arguments");
+		return NULL;
+	}
 
 	/*
 	 *	Find the name in the tree, for speed.
@@ -4072,28 +4088,38 @@ void *cf_data_find(CONF_SECTION const *cs, cf_data_type_t type, char const *name
 /** Add user data to a config section
  *
  * @param[in] cs	to add data to.
- * @param[in] type	of user data.  Used for name spacing and walking over a specific
- *			type of user data.
- * @param[in] name	String identifier of the user data.
  * @param[in] data	to add.
- * @param[in] data_free	Function to free user data when the CONF_SECTION is freed.
+ * @param[in] name	String identifier of the user data.
+ * @param[in] do_free	Function to free user data when the CONF_SECTION is freed.
  * @return
  *	- 0 on success.
  *	- -1 on error.
  */
-int cf_data_add(CONF_SECTION *cs, cf_data_type_t type, char const *name, void const *data, cf_data_free data_free)
+int _cf_data_add(CONF_SECTION *cs, void const *data, char const *name, bool do_free)
 {
-	CONF_DATA *cd;
+	CONF_DATA	*cd;
+	char const	*type = NULL;
 
-	if (!cs || !name) return -1;
+	if (!cs || (!data && !name)) {
+		cf_log_err_cs(cs, "Invalid arguments");
+		return -1;
+	}
+
+	if (data) type = talloc_get_name(data);
 
 	/*
 	 *	Already exists.  Can't add it.
 	 */
-	if (cf_data_find(cs, type, name) != NULL) return -1;
+	if (_cf_data_find(cs, type, name)) {
+		cf_log_err_cs(cs, "Data of type %s with name %s already exists", type, name);
+		return -1;
+	}
 
-	cd = cf_data_alloc(cs, type, name, data, data_free);
-	if (!cd) return -1;
+	cd = cf_data_alloc(cs, data, name, do_free);
+	if (!cd) {
+		cf_log_err_cs(cs, "Failed allocating data");
+		return -1;
+	}
 
 	cf_item_add(cs, cf_data_to_item(cd));
 
@@ -4110,7 +4136,7 @@ int cf_data_add(CONF_SECTION *cs, cf_data_type_t type, char const *name, void co
  *	- The user data.
  *	- NULL if no matching data is found.
  */
-void *cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name)
+void *_cf_data_remove(CONF_SECTION *cs, char const *type, char const *name)
 {
 	CONF_DATA mycd;
 	CONF_DATA *cd;
@@ -4156,7 +4182,7 @@ void *cf_data_remove(CONF_SECTION *cs, cf_data_type_t type, char const *name)
  *
  */
 typedef struct cf_data_walk_ctx {
-	cf_data_type_t	type;		//!< of CONF_DATA we're iterating over.
+	char const 	*type;		//!< of CONF_DATA we're iterating over.
 	cf_walker_t	cb;		//!< cb to process CONF_DATA.
 	void		*ctx;		//!< to pass to cb.
 } cf_data_walk_ctx_t;
@@ -4166,14 +4192,14 @@ typedef struct cf_data_walk_ctx {
  * @param[in] ctx	A cf_data_walk_ctx_t.
  * @param[in] data	A CONF_DATA entry.
  */
-static int _cf_data_walk(void *ctx, void *data)
+static int _cf_data_walk_cb(void *ctx, void *data)
 {
 	cf_data_walk_ctx_t	*cd_ctx = ctx;
 	CONF_DATA		*cd = data;
 	void			*mutable;
 	int			ret;
 
-	if (cd->type != cd_ctx->type) return 0;
+	if ((cd->type != cd_ctx->type) && (strcmp(cd->type, cd_ctx->type) != 0)) return 0;
 
 	memcpy(&mutable, &cd->data, sizeof(data));
 	ret = cd_ctx->cb(mutable, cd_ctx->ctx);
@@ -4191,7 +4217,7 @@ static int _cf_data_walk(void *ctx, void *data)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ctx)
+int _cf_data_walk(CONF_SECTION *cs, char const *type, cf_walker_t cb, void *ctx)
 {
 	cf_data_walk_ctx_t cd_ctx = {
 		.type = type,
@@ -4199,7 +4225,7 @@ int cf_data_walk(CONF_SECTION *cs, cf_data_type_t type, cf_walker_t cb, void *ct
 		.ctx = ctx
 	};
 
-	return rbtree_walk(cs->data_tree, RBTREE_IN_ORDER, _cf_data_walk, &cd_ctx);
+	return rbtree_walk(cs->data_tree, RBTREE_IN_ORDER, _cf_data_walk_cb, &cd_ctx);
 }
 
 /*
@@ -4480,7 +4506,7 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 
 			fputs(" ", fp);
 
-			c = cf_data_find(cs, CF_DATA_TYPE_UNLANG, "if");
+			c = cf_data_find(cs, fr_cond_t, NULL);
 			if (c) {
 				char buffer[1024];
 

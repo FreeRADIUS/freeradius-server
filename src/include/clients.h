@@ -137,7 +137,7 @@ typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
 
 RADCLIENT_LIST	*client_list_init(CONF_SECTION *cs);
 
-void		client_list_free(RADCLIENT_LIST *clients);
+void		client_list_free(void);
 
 RADCLIENT_LIST	*client_list_parse_section(CONF_SECTION *section, bool tls_required);
 

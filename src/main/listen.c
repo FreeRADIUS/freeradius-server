@@ -105,9 +105,13 @@ static int _listen_config_free(listen_config_t *lc)
 int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
 {
 	rad_protocol_t const *proto;
+	dl_module_t *module;
 
-	proto = cf_data_find(cs, CF_DATA_TYPE_PROTOCOL, "proto");
-	if (!proto || !proto->compile) return 0;
+	module = cf_data_find(cs, dl_module_t, "proto");
+	if (!module) return 0;
+
+	proto = (rad_protocol_t const *)module->common;
+	if (!proto->compile) return 0;
 
 	if (proto->compile(server, cs) < 0) {
 		cf_log_err_cs(server, "Failed compiling unlang policies for listen type '%s'", proto->name);
@@ -223,13 +227,13 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			return -1;
 		}
 
-		if (cf_data_find(cs, CF_DATA_TYPE_PROTOCOL, "proto") != NULL) {
+		if (cf_data_find(cs, dl_module_t, "proto") != NULL) {
 			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
 			talloc_const_free(module);
 			return -1;
 		}
 
-		cf_data_add(cs, CF_DATA_TYPE_PROTOCOL, "proto", proto, NULL);
+		cf_data_add(cs, module, "proto", false);
 	}
 
 	/*

@@ -681,6 +681,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	to dealing with it's parent.
 	 */
 	sp = unlang_generic_to_module_call(instruction);
+	rad_assert(sp);
 
 	/*
 	 *	If the request should stop, refuse to do anything.
@@ -1210,7 +1211,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	associated with sections.
 	 */
 	if (cs) {
-		instruction = cf_data_find(cs, CF_DATA_TYPE_UNLANG, "unlang");
+		instruction = (unlang_t *)cf_data_find(cs, unlang_group_t, NULL);
 		if (!instruction) {
 			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
 				cf_section_name1(cs), cf_section_name2(cs));

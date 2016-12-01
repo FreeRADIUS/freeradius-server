@@ -393,11 +393,6 @@ static CONF_PARSER home_server_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-static void null_free(UNUSED void *data)
-{
-}
-
 /*
  *	Ensure that all of the parameters in the home server are OK.
  */
@@ -596,7 +591,7 @@ bool realm_home_server_add(home_server_t *home)
 	/*
 	 *	Mark it as already processed
 	 */
-	cf_data_add(home->cs, CF_DATA_TYPE_HOME_SERVER_POOL, "home_server", (void *)null_free, null_free);
+	cf_data_add(home->cs, home, NULL, false);
 
 	return true;
 }
@@ -1017,6 +1012,8 @@ static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home
 	pool = talloc_size(rc, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 	if (!pool) return NULL;	/* just for pairanoia */
 
+	talloc_set_type(pool, home_pool_t);
+
 	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 	pool->name = name;
 	pool->type = type;
@@ -1356,7 +1353,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	if (do_print) cf_log_info(cs, " }");
 
-	cf_data_add(cs, CF_DATA_TYPE_HOME_SERVER_POOL, "home_server_pool", pool, NULL);
+	cf_data_add(cs, pool, NULL, false);
 	(void) talloc_steal(cs, pool);
 
 	rad_assert(pool->server_type != 0);
@@ -2232,7 +2229,7 @@ int realms_init(CONF_SECTION *config)
 		/*
 		 *	Pool was already loaded.
 		 */
-		if (cf_data_find(cs, CF_DATA_TYPE_HOME_SERVER_POOL, "home_server_pool")) continue;
+		if (cf_data_find(cs, home_pool_t, NULL)) continue;
 
 		type = pool_peek_type(config, cs);
 		if (type == HOME_TYPE_INVALID) goto error;
