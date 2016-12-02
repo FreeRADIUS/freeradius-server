@@ -87,6 +87,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 {
 	fr_time_t when;
 	fr_channel_t *ch;
+	struct kevent events[10];
 
 	ch = talloc_zero(ctx, fr_channel_t);
 	if (!ch) return NULL;
@@ -120,6 +121,28 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 	ch->end[FROM_WORKER].last_signal = when;
 
 	ch->active = true;
+
+	/*
+	 *	Enable each individual EVFILT_USER event.
+	 */
+	EV_SET(&events[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
+	EV_SET(&events[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
+	EV_SET(&events[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
+	if (kevent(kq_worker, events, 3, NULL, 0, NULL) < 0) {
+		talloc_free(ch);
+		return NULL;
+	}
+
+	/*
+	 *	And the same for the master KQ.
+	 */
+	EV_SET(&events[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
+	EV_SET(&events[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
+	EV_SET(&events[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
+	if (kevent(kq_master, events, 3, NULL, 0, NULL) < 0) {
+		talloc_free(ch);
+		return NULL;
+	}
 
 	return ch;
 }
@@ -156,7 +179,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, which, EVFILT_USER, EV_ADD, 0, 0, ch);
+	EV_SET(&kev, which, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -423,7 +446,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	 *	that a thread listening on multiple channels can
 	 *	receive events unique to each one.
 	 */
-	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, 0, end->ack, ch);
+	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, end->ack, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
@@ -492,11 +515,10 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	}
 
 	/*
-	 *	Only the master can signal that a channel should be
-	 *	closed.
+	 *	Each end can signal the channel to close.
 	 */
 	if (kev->ident == FR_CHANNEL_SIGNAL_CLOSE) {
-		rad_assert(kq == ch->end[TO_WORKER].kq);
+		rad_assert(kq == ch->end[kev->fflags].kq);
 
 		*p_channel = ch;
 		return FR_CHANNEL_CLOSE;
@@ -562,9 +584,32 @@ bool fr_channel_active(fr_channel_t *ch)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_signal_close(fr_channel_t *ch)
+int fr_channel_signal_close(fr_channel_t *ch, bool ack)
 {
+	struct kevent kev;
+
 	ch->active = false;
 
-	return 0;
+	EV_SET(&kev, FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFCOPY, ack, ch);
+
+	return kevent(ch->end[ack].kq, &kev, 1, NULL, 0, NULL);
+}
+
+/** Send a channel to a KQ
+ *
+ * @param[in] kq the kqueue to send the channel
+ * @param[in] ch the channel
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_signal_open(int kq, fr_channel_t *ch)
+{
+	struct kevent kev;
+
+	rad_assert(kq == ch->end[TO_WORKER].kq);
+
+	EV_SET(&kev, FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, ch);
+
+	return kevent(kq, &kev, 1, NULL, 0, NULL);
 }

@@ -230,7 +230,7 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 	 *	closing/
 	 */
 	while ((worker = fr_heap_pop(rc->workers)) != NULL) {
-		fr_channel_signal_close(worker->channel);
+		fr_channel_signal_close(worker->channel, false);
 		(void) fr_heap_insert(rc->closing, worker);
 	}
 
@@ -251,8 +251,15 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 	return 0;
 }
 
+/** The main network worker function.
+ *
+ * @param[in] rc th receiver data structure to run.
+ */
 void fr_receiver(fr_receiver_t *rc)
 {
+	/*
+	 *	The receiver is entirely event driven.
+	 */
 	while (fr_event_loop(rc->el) == 0) {
 		/* nothing */
 	}

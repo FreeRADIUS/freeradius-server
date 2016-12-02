@@ -30,6 +30,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/schedule.h>
 #include <freeradius-devel/rbtree.h>
 
+#include <freeradius-devel/util/receiver.h>
+
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
 #define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
@@ -92,6 +94,19 @@ typedef struct fr_schedule_worker_t {
 	fr_schedule_worker_status_t status;	//!< status of the worker
 	fr_worker_t	*worker;		//!< the worker data structure
 } fr_schedule_worker_t;
+
+/**
+ *	A data structure to track network threads / receivers.
+ */
+typedef struct fr_schedule_receiver_t {
+	pthread_t	pthread_id;		//!< the thread of this receiver
+
+	int		kq;			//!< the receivers KQ
+	fr_event_list_t *el;			//!< the receivers event list
+
+	fr_receiver_t	*rc;			//!< the receive data structure
+} fr_schedule_receiver_t;
+
 
 /**
  *  The scheduler
@@ -421,6 +436,15 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	return 0;
 }
 
+
+#if 0
+int fr_schedule_socket_add(fr_schedule_t *sc, int fd, fr_transport_t *transport, void *ctx)
+{
+	// send it to a receivers KQ as transport / ctx
+	// it receives it via the USERFILT, and adds the transport / ctx
+	// transport_ctx is largely rad_listen_t, which is a transport-specific socket
+}
+#endif
 
 /*
  *	@todo single threaded mode.  Instead of having function
