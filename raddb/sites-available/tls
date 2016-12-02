@@ -235,37 +235,11 @@ listen {
 		#
 		cache {
 		      #
-		      #  Enable it.  The default is "no".
-		      #  Deleting the entire "cache" subsection
-		      #  Also disables caching.
-		      #
-		      #  You can disallow resumption for a
-		      #  particular user by adding the following
-		      #  attribute to the control item list:
-		      #
-		      #		Allow-Session-Resumption = No
-		      #
-		      #  If "enable = no" below, you CANNOT
-		      #  enable resumption for just one user
-		      #  by setting the above attribute to "yes".
-		      #
-		      enable = no
-
-		      #
 		      #  Lifetime of the cached entries, in hours.
 		      #  The sessions will be deleted after this
 		      #  time.
 		      #
 		      lifetime = 24 # hours
-
-		      #
-		      #  The maximum number of entries in the
-		      #  cache.  Set to "0" for "infinite".
-		      #
-		      #  This could be set to the number of users
-		      #  who are logged in... which can be a LOT.
-		      #
-		      max_entries = 255
 
 		      #
 		      #  Internal "name" of the session cache.
