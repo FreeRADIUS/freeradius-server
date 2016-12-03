@@ -111,6 +111,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_da
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
+
+int fr_channel_add_kevent_receiver(fr_channel_t *ch, struct kevent *kev, int size);
+int fr_channel_add_kevent_worker(fr_channel_t *ch, struct kevent *kev, int size);
 fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel) CC_HINT(nonnull);
 
 bool fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);

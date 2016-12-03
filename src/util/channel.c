@@ -31,7 +31,8 @@ RCSID("$Id$")
 #define FROM_WORKER (1)
 
 typedef enum fr_channel_signal_t {
-	FR_CHANNEL_SIGNAL_DATA_TO_WORKER = 0,
+	FR_CHANNEL_SIGNAL_FAIL = 0,
+	FR_CHANNEL_SIGNAL_DATA_TO_WORKER,
 	FR_CHANNEL_SIGNAL_DATA_FROM_WORKER,
 	FR_CHANNEL_SIGNAL_WORKER_SLEEPING,
 	FR_CHANNEL_SIGNAL_OPEN,
@@ -87,18 +88,19 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 {
 	fr_time_t when;
 	fr_channel_t *ch;
-	struct kevent events[10];
+	int num_events;
+	struct kevent events[4];
 
 	ch = talloc_zero(ctx, fr_channel_t);
 	if (!ch) return NULL;
 
-	ch->end[TO_WORKER].aq = fr_atomic_queue_create(ch, 64);
+	ch->end[TO_WORKER].aq = fr_atomic_queue_create(ch, 1024);
 	if (!ch->end[TO_WORKER].aq) {
 		talloc_free(ch);
 		return NULL;
 	}
 
-	ch->end[FROM_WORKER].aq = fr_atomic_queue_create(ch, 64);
+	ch->end[FROM_WORKER].aq = fr_atomic_queue_create(ch, 1024);
 	if (!ch->end[FROM_WORKER].aq) {
 		talloc_free(ch);
 		return NULL;
@@ -122,24 +124,8 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 
 	ch->active = true;
 
-	/*
-	 *	Enable each individual EVFILT_USER event.
-	 */
-	EV_SET(&events[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&events[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&events[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
-	if (kevent(kq_worker, events, 3, NULL, 0, NULL) < 0) {
-		talloc_free(ch);
-		return NULL;
-	}
-
-	/*
-	 *	And the same for the master KQ.
-	 */
-	EV_SET(&events[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&events[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&events[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_ONESHOT, NOTE_FFCOPY, 0, NULL);
-	if (kevent(kq_master, events, 3, NULL, 0, NULL) < 0) {
+	num_events = fr_channel_add_kevent_worker(ch, events, 4);
+	if (kevent(kq_worker, events, num_events, NULL, 0, NULL) < 0) {
 		talloc_free(ch);
 		return NULL;
 	}
@@ -221,6 +207,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(end->aq, cd)) {
+		fprintf(stderr, "QUEUE FULL!\n");
 		*p_reply = fr_channel_recv_reply(ch);
 		return -1;
 	}
@@ -267,10 +254,12 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
 	fr_channel_end_t *end;
+	fr_channel_end_t *master;
 	fr_atomic_queue_t *aq;
 
 	aq = ch->end[FROM_WORKER].aq;
 	end = &(ch->end[FROM_WORKER]);
+	master = &(ch->end[TO_WORKER]);
 
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
@@ -293,15 +282,15 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 	 *	we've received one more reply, and with the workers
 	 *	ACK.
 	 */
-	rad_assert(end->num_outstanding > 0);
-	rad_assert(cd->live.sequence > end->ack);
-	rad_assert(cd->live.sequence <= end->sequence); /* must have fewer replies than requests */
+	rad_assert(master->num_outstanding > 0);
+	rad_assert(cd->live.sequence > master->ack);
+	rad_assert(cd->live.sequence <= master->sequence); /* must have fewer replies than requests */
 
-	end->num_outstanding--;
-	end->ack = cd->live.sequence;
+	master->num_outstanding--;
+	master->ack = cd->live.sequence;
 
-	rad_assert(end->last_read_other <= cd->m.when);
-	end->last_read_other = cd->m.when;
+	rad_assert(master->last_read_other <= cd->m.when);
+	master->last_read_other = cd->m.when;
 
 	return cd;
 }
@@ -449,6 +438,28 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, end->ack, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
+}
+
+int fr_channel_add_kevent_worker(fr_channel_t *ch, struct kevent *kev, int size)
+{
+	if (size < 3) return -1;
+
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_CLEAR , NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+
+	return 3;
+}
+
+int fr_channel_add_kevent_receiver(fr_channel_t *ch, struct kevent *kev, int size)
+{
+	if (size < 3) return -1;
+
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+
+	return 3;
 }
 
 
