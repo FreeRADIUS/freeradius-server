@@ -130,6 +130,12 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 		return NULL;
 	}
 
+	num_events = fr_channel_add_kevent_receiver(ch, events, 4);
+	if (kevent(kq_master, events, num_events, NULL, 0, NULL) < 0) {
+		talloc_free(ch);
+		return NULL;
+	}
+
 	return ch;
 }
 
@@ -529,7 +535,7 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	 *	Each end can signal the channel to close.
 	 */
 	if (kev->ident == FR_CHANNEL_SIGNAL_CLOSE) {
-		rad_assert(kq == ch->end[kev->fflags].kq);
+		rad_assert(kq == ch->end[kev->data].kq);
 
 		*p_channel = ch;
 		return FR_CHANNEL_CLOSE;
