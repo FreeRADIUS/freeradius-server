@@ -54,16 +54,6 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-#if 0
-SHIT
-
-- we have to have the array of events to listen for on every call to kevent()
-- which upsets some assumptions about code / API encapsulation
-- the behavior of EV_ADD and EV_ENABLE seem to be reversed from the documentation
-  -  tho https://wiki.netbsd.org/tutorials/kqueue_tutorial/ says to do EV_ADD | EV_ENABLE
--
-#endif
-
 static void *channel_master(void *arg)
 {
 	bool running, signaled_close;
@@ -73,9 +63,6 @@ static void *channel_master(void *arg)
 	fr_message_set_t *ms;
 	TALLOC_CTX *ctx;
 	fr_channel_t *channel = arg;
-
-	int num_listen_events;
-	struct kevent listen_events[MAX_KEVENTS];
 	struct kevent received_events[MAX_KEVENTS];
 
 	ctx = talloc_init("channel_master");
@@ -167,8 +154,7 @@ check_close:
 		MPRINT1("Master waiting on events.\n");
 		rad_assert(num_messages <= max_messages);
 
-		num_listen_events = fr_channel_add_kevent_receiver(channel, listen_events, MAX_KEVENTS);
-		rcode = kevent(kq_master, listen_events, num_listen_events, received_events, MAX_KEVENTS, NULL);
+		rcode = kevent(kq_master, NULL, 0, received_events, MAX_KEVENTS, NULL);
 
 		MPRINT1("Master kevent returned %d\n", rcode);
 
@@ -285,7 +271,8 @@ static void *channel_worker(void *arg)
 
 		MPRINT1("\tWorker waiting on events.\n");
 
-		num_listen_events = fr_channel_add_kevent_worker(channel, listen_events, MAX_KEVENTS);
+//		num_listen_events = fr_channel_add_kevent_worker(channel, listen_events, MAX_KEVENTS);
+		num_listen_events = 0;
 		rcode = kevent(kq_worker, listen_events, num_listen_events, received_events, MAX_KEVENTS, NULL);
 
 		MPRINT1("\tWorker kevent returned %d events\n", rcode);
@@ -338,7 +325,8 @@ static void *channel_worker(void *arg)
 				MPRINT1("\tWorker got data ready signal\n");
 
 				cd = fr_channel_recv_request(channel);
-				rad_assert(cd != NULL);
+				if (!cd) continue;
+
 				while (cd) {
 					int message_id;
 
