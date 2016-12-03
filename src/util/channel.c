@@ -450,9 +450,9 @@ int fr_channel_add_kevent_worker(fr_channel_t *ch, struct kevent *kev, int size)
 {
 	if (size < 3) return -1;
 
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_CLEAR , NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_RECEIPT , NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
 
 	return 3;
 }
@@ -461,9 +461,9 @@ int fr_channel_add_kevent_receiver(fr_channel_t *ch, struct kevent *kev, int siz
 {
 	if (size < 3) return -1;
 
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
 
 	return 3;
 }
@@ -535,7 +535,7 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	 *	Each end can signal the channel to close.
 	 */
 	if (kev->ident == FR_CHANNEL_SIGNAL_CLOSE) {
-		rad_assert(kq == ch->end[kev->data].kq);
+//		rad_assert(kq == ch->end[kev->data].kq);
 
 		*p_channel = ch;
 		return FR_CHANNEL_CLOSE;
