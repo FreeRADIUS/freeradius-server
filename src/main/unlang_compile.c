@@ -1,8 +1,4 @@
 /*
- * @name modcall.c
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,17 +12,22 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
  */
 
+/**
+ * $Id$
+ *
+ * @file unlang_compile.c
+ * @brief Functions to convert configuration sections into unlang structures.
+ *
+ * @copyright 2006-2016 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
-
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */

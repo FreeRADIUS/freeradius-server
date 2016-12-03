@@ -7,14 +7,14 @@ SOURCES := \
 	files.c \
 	mainconfig.c \
 	modules.c \
-	modcall.c \
 	unit_test_module.c \
 	soh.c \
 	state.c \
 	session.c \
 	version.c  \
 	virtual_servers.c \
-	unlang.c \
+	unlang_compile.c \
+	unlang_interpret.c \
 	realms.c
 
 ifneq ($(OPENSSL_LIBS),)

@@ -8,7 +8,6 @@ SOURCES := acct.c \
     listen.c \
     mainconfig.c \
     modules.c \
-    modcall.c \
     radiusd.c \
     realms.c \
     state.c \
@@ -17,7 +16,8 @@ SOURCES := acct.c \
     session.c \
     snmp.c \
     threads.c \
-    unlang.c \
+    unlang_compile.c \
+    unlang_interpret.c \
     virtual_servers.c \
     process.c
 
