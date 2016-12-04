@@ -63,7 +63,7 @@ static void *channel_master(void *arg)
 	fr_message_set_t *ms;
 	TALLOC_CTX *ctx;
 	fr_channel_t *channel = arg;
-	struct kevent received_events[MAX_KEVENTS];
+	struct kevent events[MAX_KEVENTS];
 
 	ctx = talloc_init("channel_master");
 	if (!ctx) _exit(1);
@@ -154,7 +154,7 @@ check_close:
 		MPRINT1("Master waiting on events.\n");
 		rad_assert(num_messages <= max_messages);
 
-		rcode = kevent(kq_master, NULL, 0, received_events, MAX_KEVENTS, NULL);
+		rcode = kevent(kq_master, NULL, 0, events, MAX_KEVENTS, NULL);
 
 		MPRINT1("Master kevent returned %d\n", rcode);
 
@@ -176,7 +176,7 @@ check_close:
 			fr_channel_event_t ce;
 			fr_channel_t *new_channel;
 
-			ce = fr_channel_service_kevent(kq_worker, &received_events[i], now, &new_channel);
+			ce = fr_channel_service_kevent(kq_worker, &events[i], now, &new_channel);
 			MPRINT1("\tWorker Got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_DATA_READY_RECEIVER) {
@@ -248,10 +248,7 @@ static void *channel_worker(void *arg)
 	fr_message_set_t *ms;
 	TALLOC_CTX *ctx;
 	fr_channel_t *channel = arg;
-
-	int num_listen_events;
-	struct kevent listen_events[MAX_KEVENTS];
-	struct kevent received_events[MAX_KEVENTS];
+	struct kevent events[MAX_KEVENTS];
 
 	ctx = talloc_init("channel_worker");
 	if (!ctx) _exit(1);
@@ -271,9 +268,7 @@ static void *channel_worker(void *arg)
 
 		MPRINT1("\tWorker waiting on events.\n");
 
-//		num_listen_events = fr_channel_add_kevent_worker(channel, listen_events, MAX_KEVENTS);
-		num_listen_events = 0;
-		rcode = kevent(kq_worker, listen_events, num_listen_events, received_events, MAX_KEVENTS, NULL);
+		rcode = kevent(kq_worker, NULL, 0, events, MAX_KEVENTS, NULL);
 
 		MPRINT1("\tWorker kevent returned %d events\n", rcode);
 
@@ -291,7 +286,7 @@ static void *channel_worker(void *arg)
 		for (i = 0; i < rcode; i++) {
 			fr_channel_event_t ce;
 
-			ce = fr_channel_service_kevent(kq_worker, &received_events[i], now, &new_channel);
+			ce = fr_channel_service_kevent(kq_worker, &events[i], now, &new_channel);
 			MPRINT1("\tWorker Got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_OPEN) {
