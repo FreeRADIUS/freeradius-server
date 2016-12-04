@@ -75,6 +75,30 @@ typedef struct fr_channel_t {
 } fr_channel_t;
 
 
+static int fr_channel_add_kevent_worker(fr_channel_t *ch, struct kevent *kev, int size)
+{
+	if (size < 3) return -1;
+
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_RECEIPT , NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+
+	return 3;
+}
+
+
+static int fr_channel_add_kevent_receiver(fr_channel_t *ch, struct kevent *kev, int size)
+{
+	if (size < 3) return -1;
+
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+
+	return 3;
+}
+
+
 /** Create a new channel
  *
  * @param[in] ctx the talloc_ctx for the channel
@@ -442,28 +466,6 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, end->ack, ch);
 
 	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
-}
-
-int fr_channel_add_kevent_worker(fr_channel_t *ch, struct kevent *kev, int size)
-{
-	if (size < 3) return -1;
-
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_RECEIPT , NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-
-	return 3;
-}
-
-int fr_channel_add_kevent_receiver(fr_channel_t *ch, struct kevent *kev, int size)
-{
-	if (size < 3) return -1;
-
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-
-	return 3;
 }
 
 
