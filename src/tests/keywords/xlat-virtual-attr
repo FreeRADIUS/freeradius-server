@@ -6,7 +6,7 @@ update reply {
 	Filter-Id := "filter"
 }
 
-if ("%{Client-Shortname}" != '<UNKNOWN-CLIENT>') {
+if ("%{Client-Shortname}" != 'test') {
 	update reply {
 		Filter-Id += "fail 0"
 	}

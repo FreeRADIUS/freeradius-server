@@ -95,17 +95,45 @@ static rad_listen_t *listen_alloc(void *ctx)
 	return this;
 }
 
-static RADCLIENT *client_alloc(void *ctx)
+static RADCLIENT *client_alloc(void *ctx, char const *ip, char const *name)
 {
+	CONF_SECTION *cs;
+	CONF_PAIR *cp;
 	RADCLIENT *client;
 
-	client = talloc_zero(ctx, RADCLIENT);
-	if (!client) return NULL;
+	cs = cf_section_alloc(NULL, "client", name);
+	cp = cf_pair_alloc(cs, "ipaddr", ip, T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
+	cf_pair_add(cs, cp);
+
+	cp = cf_pair_alloc(cs, "secret", "supersecret", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
+	cf_pair_add(cs, cp);
+
+	cp = cf_pair_alloc(cs, "nas_type", "test", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
+	cf_pair_add(cs, cp);
+
+	cp = cf_pair_alloc(cs, "shortname", "test", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
+	cf_pair_add(cs, cp);
+
+	cp = cf_pair_alloc(cs, "groups", "foo", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
+	cf_pair_add(cs, cp);
+
+	cp = cf_pair_alloc(cs, "groups", "bar", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
+	cf_pair_add(cs, cp);
+
+	cp = cf_pair_alloc(cs, "groups", "baz", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
+	cf_pair_add(cs, cp);
+
+	client = client_afrom_cs(ctx, cs, NULL, false);
+	if (!client) {
+		ERROR("Failed creating test client: %s", fr_strerror());
+		rad_assert(0);
+	}
+	rad_assert(client);
 
 	return client;
 }
 
-static REQUEST *request_from_file(FILE *fp)
+static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 {
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
@@ -134,7 +162,7 @@ static REQUEST *request_from_file(FILE *fp)
 	}
 
 	request->listener = listen_alloc(request);
-	request->client = client_alloc(request);
+	request->client = client;
 
 	request->number = 0;
 
@@ -656,6 +684,7 @@ int main(int argc, char *argv[])
 	bool			xlat_only = false;
 	fr_state_tree_t		*state = NULL;
 	fr_event_list_t		*el = NULL;
+	RADCLIENT		*client = NULL;
 
 	fr_talloc_fault_setup();
 
@@ -784,12 +813,30 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init() < 0) {
 	exit_failure:
 		rcode = EXIT_FAILURE;
 		goto finish;
+	}
+
+	/*
+	 *	Create a dummy client on 127.0.0.1
+	 */
+	{
+		fr_ipaddr_t	ip;
+		char const	*ip_str = "127.0.0.1";
+
+		if (fr_inet_pton(&ip, ip_str, strlen(ip_str), AF_UNSPEC, false, true) < 0) {
+			rcode = EXIT_FAILURE;
+			goto finish;
+		}
+
+		client = client_find(NULL, &ip, IPPROTO_IP);
+		if (!client) {
+			client = client_alloc(NULL, ip_str, "test");
+			client_add(NULL, client);
+		}
 	}
 
 	/*
@@ -876,7 +923,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_from_file(fp);
+	request = request_from_file(fp, client);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
 		rcode = EXIT_FAILURE;
