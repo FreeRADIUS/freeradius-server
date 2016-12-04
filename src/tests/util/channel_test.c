@@ -466,6 +466,8 @@ int main(int argc, char *argv[])
 	close(kq_master);
 	close(kq_worker);
 
+	fr_channel_debug(channel, stdout);
+
 	talloc_free(autofree);
 
 	return 0;
