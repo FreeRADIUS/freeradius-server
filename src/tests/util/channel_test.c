@@ -45,6 +45,7 @@ static int		debug_lvl = 0;
 static int		kq_master, kq_worker;
 static int		max_messages = 10;
 static int		max_outstanding = 1;
+static bool		touch_memory = false;
 
 static void NEVER_RETURNS usage(void)
 {
@@ -120,6 +121,17 @@ static void *channel_master(void *arg)
 			num_messages++;
 
 			cd->m.when = fr_time();
+
+			if (touch_memory) {
+				size_t j, k;
+
+				for (j = k = 0; j < cd->m.data_size; j++) {
+					k += cd->m.data[j];
+				}
+
+				cd->m.data[4] = k;
+			}
+
 			memcpy(cd->m.data, &num_messages, sizeof(num_messages));
 
 			MPRINT1("Master sent message %d\n", num_messages);
@@ -337,6 +349,17 @@ static void *channel_worker(void *arg)
 					reply->m.when = fr_time();
 					fr_message_done(&cd->m);
 
+					if (touch_memory) {
+						size_t j, k;
+
+						for (j = k = 0; j < reply->m.data_size; j++) {
+							k += reply->m.data[j];
+						}
+
+						reply->m.data[4] = k;
+					}
+
+
 					MPRINT1("\tWorker sending reply to messages %d\n", worker_messages);
 					rcode = fr_channel_send_reply(channel, reply, &cd);
 					if (rcode < 0) {
@@ -389,7 +412,7 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	while ((c = getopt(argc, argv, "hm:o:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "hm:o:tx")) != EOF) switch (c) {
 		case 'x':
 			debug_lvl++;
 			break;
@@ -400,6 +423,10 @@ int main(int argc, char *argv[])
 
 		case 'o':
 			max_outstanding = atoi(optarg);
+			break;
+
+		case 't':
+			touch_memory = true;
 			break;
 
 		case 'h':
