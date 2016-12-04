@@ -259,12 +259,10 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
-	fr_channel_end_t *end;
 	fr_channel_end_t *master;
 	fr_atomic_queue_t *aq;
 
 	aq = ch->end[FROM_WORKER].aq;
-	end = &(ch->end[FROM_WORKER]);
 	master = &(ch->end[TO_WORKER]);
 
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
