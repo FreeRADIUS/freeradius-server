@@ -120,6 +120,8 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
+
 /*
  *	Fall-Through checking function from rlm_files.c
  */
@@ -275,7 +277,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				char const *query, vp_map_t const *maps)
+				vp_tmpl_t const *query, vp_map_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -294,12 +296,18 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	char const		**fields = NULL, *map_rhs;
 	char			map_rhs_buff[128];
 
+	char			*query_str = NULL;
+
 #define MAX_SQL_FIELD_INDEX (64)
 
 	int			field_index[MAX_SQL_FIELD_INDEX];
 	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
 
 	rad_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
+
+	if (tmpl_aexpand(request, &query_str, request, query, sql_escape_for_xlat_func, inst) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 
@@ -311,11 +319,14 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	sql_set_user(inst, request, NULL);
 
 	handle = fr_connection_get(inst->pool, request);		/* connection pool should produce error */
-	if (!handle) return 0;
+	if (!handle) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
 
-	rlm_sql_query_log(inst, request, NULL, query);
+	rlm_sql_query_log(inst, request, NULL, query_str);
 
-	ret = rlm_sql_select_query(inst, request, &handle, query);
+	ret = rlm_sql_select_query(inst, request, &handle, query_str);
 	if (ret != RLM_SQL_OK) {
 		RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
 		rcode = RLM_MODULE_FAIL;
@@ -419,6 +430,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
 
 finish:
+	talloc_free(query_str);
 	talloc_free(fields);
 	fr_connection_release(inst->pool, request, handle);
 
@@ -1121,8 +1133,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc,
-							sql_escape_for_xlat_func, NULL, 0);
+	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, NULL, 0);
 
 	return 0;
 }

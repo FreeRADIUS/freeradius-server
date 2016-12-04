@@ -386,6 +386,9 @@ free_urldesc:
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
  *
+ * @todo For xlat expansions we need to parse the raw URL first, and then apply
+ *	different escape functions to the different parts.
+ *
  * @param[in] mod_inst #rlm_ldap_t
  * @param[in] proc_inst unused.
  * @param[in,out] request The current request.
@@ -397,7 +400,7 @@ free_urldesc:
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				char const *url, vp_map_t const *maps)
+				vp_tmpl_t const *url, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -408,19 +411,24 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	LDAPMessage		*result = NULL;
 	LDAPMessage		*entry = NULL;
 	vp_map_t const		*map;
+	char			*url_str;
 
 	ldap_handle_t		*conn;
 
 	rlm_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
-	if (!ldap_is_ldap_url(url)) {
-		REDEBUG("Map query string does not look like a valid LDAP URI");
+	if (tmpl_aexpand(request, &url_str, request, url, rlm_ldap_escape_func, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
-	if (ldap_url_parse(url, &ldap_url)){
+	if (!ldap_is_ldap_url(url_str)) {
+		REDEBUG("Map query string does not look like a valid LDAP URI");
+		goto free_urlstr;
+	}
+
+	if (ldap_url_parse(url_str, &ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
-		return RLM_MODULE_FAIL;
+		goto free_urlstr;
 	}
 
 	/*
@@ -523,6 +531,8 @@ free_expanded:
 	talloc_free(expanded.ctx);
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
+free_urlstr:
+	talloc_free(url_str);
 
 	return rcode;
 }
@@ -1459,7 +1469,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	xlat_register(inst, inst->name, ldap_xlat, rlm_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
+	map_proc_register(inst, inst->name, mod_map_proc, NULL, 0);
 
 	return 0;
 }

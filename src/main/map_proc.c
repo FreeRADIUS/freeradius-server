@@ -41,8 +41,6 @@ struct map_proc {
 
 	map_proc_func_t		evaluate;		//!< Module's map processor function.
 	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.
-	xlat_escape_t		escape;			//!< Escape function to apply to expansions in the map
-							//!< query string.
 	size_t			inst_size;		//!< Size of map_proc instance data to allocate.
 };
 
@@ -110,6 +108,9 @@ map_proc_t *map_proc_find(char const *name)
 	return rbtree_finddata(map_proc_root, &find);
 }
 
+/** Free all map_processors unregistering them
+ *
+ */
 void map_proc_free(void)
 {
 	TALLOC_FREE(map_proc_root);
@@ -119,19 +120,17 @@ void map_proc_free(void)
  *
  * This should be called by every module that provides a map processing function.
  *
- * @param[in] mod_inst of module registering the map_proc.
- * @param[in] name of map processor. If processor already exists, it is replaced.
- * @param[in] evaluate Module's map processor function.
- * @param[in] escape function to sanitize any sub expansions in the map source query.
- * @param[in] instantiate function (optional).
- * @param[in] inst_size of talloc chunk to allocate for instance data (optional).
+ * @param[in] mod_inst		of module registering the map_proc.
+ * @param[in] name		of map processor. If processor already exists, it is replaced.
+ * @param[in] evaluate		Module's map processor function.
+ * @param[in] instantiate	function (optional).
+ * @param[in] inst_size		of talloc chunk to allocate for instance data (optional).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int map_proc_register(void *mod_inst, char const *name,
 		      map_proc_func_t evaluate,
-		      xlat_escape_t escape,
 		      map_proc_instantiate_t instantiate, size_t inst_size)
 {
 	map_proc_t *proc;
@@ -170,7 +169,6 @@ int map_proc_register(void *mod_inst, char const *name,
 
 	proc->mod_inst = mod_inst;
 	proc->evaluate = evaluate;
-	proc->escape = escape;
 	proc->instantiate = instantiate;
 	proc->inst_size = inst_size;
 
@@ -224,15 +222,5 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
  */
 rlm_rcode_t map_proc(REQUEST *request, map_proc_inst_t const *inst)
 {
-	char		*value = NULL;
-	rlm_rcode_t	rcode;
-
-	if (tmpl_aexpand(request, &value, request, inst->src,
-			 inst->proc->escape, inst->proc->mod_inst) < 0) return RLM_MODULE_FAIL;
-	rad_assert(value);	/* Leave me here (PITA to track down NULL key issues) */
-
-	rcode = inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, value, inst->maps);
-	talloc_free(value);
-
-	return rcode;
+	return inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, inst->src, inst->maps);
 }

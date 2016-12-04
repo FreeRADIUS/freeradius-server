@@ -236,19 +236,20 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 
 /** Parses a JSON string, and executes jpath queries against it to map values to attributes
  *
- * @param mod_inst unused.
- * @param proc_inst cached jpath sequences.
- * @param request The current request.
- * @param src string to parse.
- * @param maps Head of the map list.
+ * @param mod_inst	unused.
+ * @param proc_inst	cached jpath sequences.
+ * @param request	The current request.
+ * @param json		JSON string to parse.
+ * @param maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST *request,
-			      	char const *src, vp_map_t const *maps)
+			      	vp_tmpl_t const *json, vp_map_t const *maps)
 {
+	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
 
 	rlm_json_jpath_cache_t		*cache = proc_inst;
@@ -256,19 +257,22 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 	rlm_json_jpath_to_eval_t	to_eval;
 
-	if ((talloc_array_length(src) - 1) == 0) {
+	char				*json_str = NULL;
+
+	if (tmpl_aexpand(request, &json_str, request, json, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+
+	if ((talloc_array_length(json_str) - 1) == 0) {
 		REDEBUG("Zero length string is not valid JSON data");
 		return RLM_MODULE_FAIL;
 	}
 
 	tok = json_tokener_new();
-	to_eval.root = json_tokener_parse_ex(tok, src, (int)(talloc_array_length(src) - 1));
+	to_eval.root = json_tokener_parse_ex(tok, json_str, (int)(talloc_array_length(json_str) - 1));
 	if (!to_eval.root) {
-		REMARKER(src, tok->char_offset, json_tokener_error_desc(json_tokener_get_error(tok)));
-		json_tokener_free(tok);
-		return RLM_MODULE_FAIL;
+		REMARKER(json_str, tok->char_offset, json_tokener_error_desc(json_tokener_get_error(tok)));
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
 	}
-	json_tokener_free(tok);
 
 	for (map = maps; map; map = map->next) {
 		switch (map->rhs->type) {
@@ -280,9 +284,8 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 			to_eval.jpath = cache->jpath;
 
 			if (map_to_request(request, map, _json_map_proc_get_value, &to_eval) < 0) {
-			error:
-				json_object_put(to_eval.root);
-				return RLM_MODULE_FAIL;
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 			cache = cache->next;
 			break;
@@ -298,29 +301,37 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 			if (tmpl_aexpand(request, &to_parse, request, map->rhs, fr_jpath_escape_func, NULL) < 0) {
 				RERROR("Failed getting jpath data: %s", fr_strerror());
-				goto error;
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 			slen = fr_jpath_parse(request, &node, to_parse, talloc_array_length(to_parse) - 1);
 			if (slen <= 0) {
 				REMARKER(to_parse, -(slen), fr_strerror());
 				talloc_free(to_parse);
-				goto error;
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 			to_eval.jpath = node;
 
 			if (map_to_request(request, map, _json_map_proc_get_value, &to_eval) < 0) {
 				talloc_free(node);
 				talloc_free(to_parse);
-				goto error;
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 			talloc_free(node);
 		}
 			break;
 		}
 	}
-	json_object_put(to_eval.root);
 
-	return RLM_MODULE_UPDATED;
+
+finish:
+	talloc_free(json_str);
+	json_object_put(to_eval.root);
+	json_tokener_free(tok);
+
+	return rcode;
 }
 
 static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
@@ -328,7 +339,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
-	if (map_proc_register(instance, "json", mod_map_proc, NULL,
+	if (map_proc_register(instance, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;
 	return 0;
 }

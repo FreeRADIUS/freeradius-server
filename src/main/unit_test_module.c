@@ -634,7 +634,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 
 
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED REQUEST *request,
-			      	UNUSED char const *src, UNUSED vp_map_t const *maps)
+			      	UNUSED vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }
@@ -779,7 +779,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (map_proc_register(NULL, "test-fail", mod_map_proc, NULL,  NULL, 0) < 0) {
+	if (map_proc_register(NULL, "test-fail", mod_map_proc, NULL, 0) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}

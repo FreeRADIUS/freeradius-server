@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				char const *key, vp_map_t const *maps);
+				vp_tmpl_t const *key, vp_map_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -390,7 +390,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	And register the map function.
 	 */
-	map_proc_register(inst, inst->name, mod_map_proc, NULL, csv_map_verify, 0);
+	map_proc_register(inst, inst->name, mod_map_proc, csv_map_verify, 0);
 
 	return 0;
 }
@@ -456,27 +456,34 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 
 /** Perform a search and map the result of the search to server attributes
  *
- * @param[in] mod_inst #rlm_csv_t
- * @param[in] proc_inst mapping map entries to field numbers.
- * @param[in,out] request The current request.
- * @param[in] key key to look for
- * @param[in] maps Head of the map list.
+ * @param[in] mod_inst	#rlm_csv_t.
+ * @param[in] proc_inst	mapping map entries to field numbers.
+ * @param[in,out]	request The current request.
+ * @param[in] key	key to look for
+ * @param[in] maps	Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				char const *key, vp_map_t const *maps)
+				vp_tmpl_t const *key, vp_map_t const *maps)
 {
+	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_t		*inst = mod_inst;
 	rlm_csv_entry_t		*e, my_entry;
 	vp_map_t const		*map;
+	char			*key_str = NULL;
 
-	my_entry.key = key;
+	if (tmpl_aexpand(request, &key_str, request, key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+
+	my_entry.key = key_str;
 
 	e = rbtree_finddata(inst->tree, &my_entry);
-	if (!e) return RLM_MODULE_NOOP;
+	if (!e) {
+		rcode = RLM_MODULE_NOOP;
+		goto finish;
+	}
 
 	RINDENT();
 	for (map = maps;
@@ -491,7 +498,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
 				RDEBUG("Failed expanding RHS at %s", map->lhs->name);
-				return RLM_MODULE_FAIL;
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 		} else {
 			memcpy(&field_name, &map->rhs->name, sizeof(field_name)); /* const */
@@ -503,7 +511,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 		if (field < 0) {
 			RDEBUG("No such field name %s", map->rhs->name);
-			return RLM_MODULE_FAIL;
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
 		}
 
 		/*
@@ -511,11 +520,14 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		 *	create the VP and add it to the map.
 		 */
 		if (map_to_request(request, map, csv_map_getvalue, e->data[field]) < 0) {
-			return RLM_MODULE_FAIL;
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
 		}
 	}
 
-	return RLM_MODULE_UPDATED;
+finish:
+	talloc_free(key_str);
+	return rcode;
 }
 
 extern rad_module_t rlm_csv;
