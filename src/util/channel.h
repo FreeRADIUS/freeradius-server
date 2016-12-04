@@ -119,6 +119,8 @@ bool fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 int fr_channel_signal_open(int kq, fr_channel_t *ch) CC_HINT(nonnull);
 int fr_channel_signal_close(fr_channel_t *ch, bool ack) CC_HINT(nonnull);
 
+void fr_channel_debug(fr_channel_t *ch, FILE *fp);
+
 #ifdef __cplusplus
 }
 #endif

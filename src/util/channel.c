@@ -27,8 +27,22 @@ RCSID("$Id$")
 #include <freeradius-devel/util/channel.h>
 #include <freeradius-devel/rad_assert.h>
 
+/*
+ *	Debugging, mainly for channel_test
+ */
+#if 0
+#define MPRINT(...) MPRINT(__VA_ARGS__)
+#else
+#define MPRINT(...)
+#endif
+
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
+
+/**
+ *	The minimum interval between worker signals.
+ */
+#define SIGNAL_INTERVAL (1000000)
 
 typedef enum fr_channel_signal_t {
 	FR_CHANNEL_SIGNAL_FAIL = 0,
@@ -50,6 +64,8 @@ typedef struct fr_channel_end_t {
 
 	int			num_outstanding; //!< number of outstanding requests with no reply
 
+	size_t			num_signals;
+
 	uint64_t		sequence;	//!< sequence number for this channel.
 	uint64_t		ack;		//!< sequence number of the other end
 
@@ -57,7 +73,7 @@ typedef struct fr_channel_end_t {
 	fr_time_t		last_read_other; //!< last time we successfully read a message from the other the channel
 	fr_time_t		message_interval; //!< interval between messages
 
-	fr_time_t		last_signal;	//!< the last time when we signaled the other end
+	fr_time_t		last_sent_signal; //!< the last time when we signaled the other end
 
 	fr_atomic_queue_t	*aq;		//!< the queue of messages
 } fr_channel_end_t;
@@ -140,11 +156,11 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 
 	ch->end[TO_WORKER].last_write = when;
 	ch->end[TO_WORKER].last_read_other = when;
-	ch->end[TO_WORKER].last_signal = when;
+	ch->end[TO_WORKER].last_sent_signal = when;
 
 	ch->end[FROM_WORKER].last_write = when;
 	ch->end[FROM_WORKER].last_read_other = when;
-	ch->end[FROM_WORKER].last_signal = when;
+	ch->end[FROM_WORKER].last_sent_signal = when;
 
 	ch->active = true;
 
@@ -188,7 +204,8 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 {
 	struct kevent kev;
 
-	end->last_signal = when;
+	end->last_sent_signal = when;
+	end->num_signals++;
 
 	/*
 	 *	The ident is the pointer to the channel.  This is so
@@ -237,7 +254,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(end->aq, cd)) {
-		fprintf(stderr, "QUEUE FULL!\n");
+		MPRINT("QUEUE FULL!\n");
 		*p_reply = fr_channel_recv_reply(ch);
 		return -1;
 	}
@@ -414,22 +431,27 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 		return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 	}
 
+	MPRINT("\twhen - last_read_other = %zd - %zd = %zd\n", when, end->last_read_other, when - end->last_read_other);
+	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, end->last_sent_signal, when - end->last_sent_signal);
+	MPRINT("\tack - sequence = %zd - %zd = %zd\n", end->ack, end->sequence, end->ack - end->sequence);
+
 	/*
-	 *	If we've received a new packet in the last
-	 *	millisecond, OR we've sent a signal in the last
-	 *	millisecond, then we don't need to send a new signal.
-	 *	But we DO send a signal if we haven't seen an ACK for
-	 *	a few packets.
+	 *	If we've received a new packet in the last while, OR
+	 *	we've sent a signal in the last while, then we don't
+	 *	need to send a new signal.  But we DO send a signal if
+	 *	we haven't seen an ACK for a few packets.
 	 *
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	if ((((end->last_read_other - when) < 1000) ||
-	     ((end->last_signal - when) < 1000)) &&
-	    (end->sequence - end->ack) <= 3) {
+	if (((end->ack - end->sequence) <= 5) &&
+	    ((when- - end->last_read_other < SIGNAL_INTERVAL) ||
+	     ((when - end->last_sent_signal) < SIGNAL_INTERVAL))) {
+		MPRINT("WORKER SKIPS\n");
 		return 0;
 	}
 
+	MPRINT("WORKER SIGNALS\n");
 	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 }
 
@@ -457,6 +479,8 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	 *	we're sleeping.  It already knows.
 	 */
 	if (end->num_outstanding == 0) return 0;
+
+	end->num_signals++;
 
 	/*
 	 *	The ident is the pointer to the channel.  This is so
@@ -629,4 +653,13 @@ int fr_channel_signal_open(int kq, fr_channel_t *ch)
 	EV_SET(&kev, FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, ch);
 
 	return kevent(kq, &kev, 1, NULL, 0, NULL);
+}
+
+void fr_channel_debug(fr_channel_t *ch, FILE *fp)
+{
+	fprintf(fp, "to worker\n");
+	fprintf(fp, "\tnum_signals = %zd\n", ch->end[TO_WORKER].num_signals);
+
+	fprintf(fp, "to receive\n");
+	fprintf(fp, "\tnum_signals = %zd\n", ch->end[FROM_WORKER].num_signals);
 }
