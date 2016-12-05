@@ -45,7 +45,7 @@ addons:
       - gdb
       - graphviz
       - lintian
-      - mysql-server
+      - mysql-server-5.6
       - pbuilder
       - python-dev
       - quilt
