@@ -251,7 +251,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 		matches = *nmatch;
 	}
 
-#ifdef PCRE_CONFIG_JIT
+#if (PCRE_MAJOR >= 8) && (PCRE_MINOR >= 32) && defined(PCRE_CONFIG_JIT)
 	if (preg->jitd) {
 		ret = pcre_jit_exec(preg->compiled, preg->extra, subject, len, 0, 0,
 				    (int *)pmatch, matches * 3, fr_pcre_jit_stack);
