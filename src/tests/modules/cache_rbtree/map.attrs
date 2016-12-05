@@ -1,12 +1,10 @@
 #
 #  Input packet
 #
-User-Name = "famous"
-User-Password = "bradpitt"
+User-Name = "bob"
+User-Password = "olobobob"
 
 #
 #  Expected answer
 #
 Response-Packet-Type == Access-Accept
-Reply-Message == 'success'
-

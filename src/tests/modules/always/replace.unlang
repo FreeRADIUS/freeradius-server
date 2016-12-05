@@ -5,7 +5,3 @@ my_reject	# should be "ok"
 update control {
 	Cleartext-Password := "hello"
 }
-
-update reply {
-	Filter-Id := "success"
-}
