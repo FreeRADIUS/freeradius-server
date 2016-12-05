@@ -528,41 +528,40 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
-	/*
-	 *	Data is ready on one or both channels.  Non-zero
-	 *	idents are just signals that data is ready.  We just
-	 *	return the channel to the caller, and rely on it to
-	 *	service the channel.
-	 */
-	if (kev->ident == FR_CHANNEL_SIGNAL_DATA_FROM_WORKER) {
+	switch (kev->ident) {
+		/*
+		 *	Data is ready on one or both channels.  Non-zero
+		 *	idents are just signals that data is ready.  We just
+		 *	return the channel to the caller, and rely on it to
+		 *	service the channel.
+		 */
+	case FR_CHANNEL_SIGNAL_DATA_FROM_WORKER:
 		*p_channel = ch;
 		return FR_CHANNEL_DATA_READY_RECEIVER;
-	}
 
-	if (kev->ident == FR_CHANNEL_SIGNAL_DATA_TO_WORKER) {
+	case FR_CHANNEL_SIGNAL_DATA_TO_WORKER:
 		*p_channel = ch;
 		return FR_CHANNEL_DATA_READY_WORKER;
-	}
 
-	/*
-	 *	Someone is sending us a new channel.  We MUST be the
-	 *	worker.  Return the channel to the worker.
-	 */
-	if (kev->ident == FR_CHANNEL_SIGNAL_OPEN) {
+		/*
+		 *	Someone is sending us a new channel.  We MUST be the
+		 *	worker.  Return the channel to the worker.
+		 */
+	case FR_CHANNEL_SIGNAL_OPEN:
 		rad_assert(kq == ch->end[TO_WORKER].kq);
 
 		*p_channel = ch;
 		return FR_CHANNEL_OPEN;
-	}
 
-	/*
-	 *	Each end can signal the channel to close.
-	 */
-	if (kev->ident == FR_CHANNEL_SIGNAL_CLOSE) {
-//		rad_assert(kq == ch->end[kev->data].kq);
-
+		/*
+		 *	Each end can signal the channel to close.
+		 */
+	case FR_CHANNEL_SIGNAL_CLOSE:
 		*p_channel = ch;
 		return FR_CHANNEL_CLOSE;
+
+	case FR_CHANNEL_SIGNAL_WORKER_SLEEPING:
+		break;
 	}
 
 	rad_assert(kev->ident == FR_CHANNEL_SIGNAL_WORKER_SLEEPING);
