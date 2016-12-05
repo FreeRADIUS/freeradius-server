@@ -234,7 +234,7 @@ static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
  *	Verify the result of the map.
  */
 static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
-			  UNUSED vp_tmpl_t const *src, vp_map_t const *maps)
+			  vp_tmpl_t const *src, vp_map_t const *maps)
 {
 	rlm_csv_t	*inst = mod_inst;
 	vp_map_t const	*map;
