@@ -44,6 +44,20 @@ RCSID("$Id$")
  */
 #define SIGNAL_INTERVAL (1000000)
 
+/**
+ *	Size of the atomic queues.
+ *
+ *	The queue reader MUST service the queue occasionally,
+ *	otherwise the writer will not be able to write.  If it's too
+ *	low, the writer will fail.  If it's too high, it will
+ *	unnecessarily use memory.  So we're better off putting it on
+ *	the high side.
+ *
+ *	The reader SHOULD service the queues at inter-packet latency.
+ *	i.e. at 1M pps, the queue will get serviced every microsecond.
+ */
+#define ATOMIC_QUEUE_SIZE (1024)
+
 typedef enum fr_channel_signal_t {
 	FR_CHANNEL_SIGNAL_FAIL = 0,
 	FR_CHANNEL_SIGNAL_DATA_TO_WORKER,
@@ -134,13 +148,13 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 	ch = talloc_zero(ctx, fr_channel_t);
 	if (!ch) return NULL;
 
-	ch->end[TO_WORKER].aq = fr_atomic_queue_create(ch, 1024);
+	ch->end[TO_WORKER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_WORKER].aq) {
 		talloc_free(ch);
 		return NULL;
 	}
 
-	ch->end[FROM_WORKER].aq = fr_atomic_queue_create(ch, 1024);
+	ch->end[FROM_WORKER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[FROM_WORKER].aq) {
 		talloc_free(ch);
 		return NULL;
