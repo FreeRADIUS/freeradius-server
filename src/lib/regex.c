@@ -32,7 +32,13 @@
  */
 #ifdef HAVE_PCRE
 
+#if (PCRE_MAJOR >= 8) && (PCRE_MINOR >= 32) && defined(PCRE_CONFIG_JIT)
+#  define HAVE_PCRE_JIT_EXEC 1
+#endif
+
+#ifdef HAVE_PCRE_JIT_EXEC
 fr_thread_local_setup(pcre_jit_stack *, fr_pcre_jit_stack)
+#endif
 
 /** Free regex_t structure
  *
@@ -225,6 +231,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	int	ret;
 	size_t	matches;
 
+#ifdef HAVE_PCRE_JIT_EXEC
 	/*
 	 *	Allocate thread local JIT stack
 	 */
@@ -235,6 +242,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 			return -1;
 		}
 	}
+#endif
 
 	/*
 	 *	PCRE_NO_AUTO_CAPTURE is a compile time only flag,
@@ -251,7 +259,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 		matches = *nmatch;
 	}
 
-#if (PCRE_MAJOR >= 8) && (PCRE_MINOR >= 32) && defined(PCRE_CONFIG_JIT)
+#ifdef HAVE_PCRE_JIT_EXEC
 	if (preg->jitd) {
 		ret = pcre_jit_exec(preg->compiled, preg->extra, subject, len, 0, 0,
 				    (int *)pmatch, matches * 3, fr_pcre_jit_stack);
