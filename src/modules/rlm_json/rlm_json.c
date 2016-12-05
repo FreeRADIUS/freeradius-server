@@ -107,6 +107,7 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 
 /** Pre-parse and validate literal jpath expressions for maps
  *
+ * @param[in] cs	#CONF_SECTION that defined the map instance.
  * @param[in] mod_inst	module instance (unused).
  * @param[in] proc_inst	the cache structure to fill.
  * @param[in] src	Where to get the JSON data from.

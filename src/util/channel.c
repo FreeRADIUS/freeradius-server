@@ -620,7 +620,8 @@ bool fr_channel_active(fr_channel_t *ch)
 
 /** Signal a channel that it is closing.
  *
- * @param[in] ch the channel
+ * @param[in] ch	The channel.
+ * @param[in] ack	Whether we're acking a previous request to close the channel.
  * @return
  *	- <0 on error
  *	- 0 on success
