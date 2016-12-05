@@ -624,7 +624,7 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	request_data_by_persistance(&data, request, true);
 
-	if (request->state && !data) return true;
+	if (!request->state && !data) return true;
 
 	if (request->state) {
 		RDEBUG2("Saving &session-state");
