@@ -572,11 +572,13 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	 */
 	rad_assert(kq == ch->end[FROM_WORKER].kq);
 
+#ifndef NDEBUG
 	/*
 	 *	Run-time sanity check.
 	 */
 	end = &ch->end[FROM_WORKER];
 	if (end->kq != kq) return FR_CHANNEL_ERROR;
+#endif
 
 	end = &ch->end[TO_WORKER];
 
