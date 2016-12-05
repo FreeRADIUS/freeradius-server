@@ -33,7 +33,7 @@ extern "C" {
 #    include <pcre.h>
 /*
  *  Versions older then 8.20 didn't have the JIT functionality
- *  gracefully degrade.
+ *  so, gracefully degrade.
  */
 #    ifndef PCRE_STUDY_JIT_COMPILE
 #      define PCRE_STUDY_JIT_COMPILE 0
@@ -51,6 +51,8 @@ typedef struct regmatch {
 typedef struct regex {
 	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one of evaluation.
 	pcre		*compiled;	//!< Compiled regular expression.
+
+	bool		jitd;		//!< Whether JIT data is available.
 	pcre_extra	*extra;		//!< Result of studying a regular expression.
 } regex_t;
 #  else

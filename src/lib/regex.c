@@ -30,7 +30,10 @@
  *	Wrapper functions for libpcre. Much more powerful, and guaranteed
  *	to be binary safe but require libpcre.
  */
-#  ifdef HAVE_PCRE
+#ifdef HAVE_PCRE
+
+fr_thread_local_setup(pcre_jit_stack *, fr_pcre_jit_stack)
+
 /** Free regex_t structure
  *
  * Calls libpcre specific free functions for the expression and study.
@@ -68,15 +71,17 @@ static void _pcre_talloc_free(void *to_free) {
  *
  * @note Compiled expression must be freed with talloc_free.
  *
- * @param out Where to write out a pointer to the structure containing the compiled expression.
- * @param pattern to compile.
- * @param len of pattern.
- * @param ignore_case whether to do case insensitive matching.
- * @param multiline If true $ matches newlines.
- * @param subcaptures Whether to compile the regular expression to store subcapture
- *	data.
- * @param runtime If false run the pattern through the PCRE JIT to convert it to machine code.
- *	This trades startup time (longer) for runtime performance (better).
+ * @param[out] out		Where to write out a pointer to the structure containing
+ *				the compiled expression.
+ * @param[in] pattern		to compile.
+ * @param[in] len		of pattern.
+ * @param[in] ignore_case	Whether to do case insensitive matching.
+ * @param[in] multiline		If true $ matches newlines.
+ * @param[in] subcaptures	Whether to compile the regular expression to store subcapture
+ *				data.
+ * @param[in] runtime		If false run the pattern through the PCRE JIT to convert it
+ *				to machine code. This trades startup time (longer) for
+ *				runtime performance (better).
  * @return
  *	- >= 1 on success.
  *	- <= 0 on error. Negative value is offset of parse error.
@@ -90,11 +95,25 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	regex_t *preg;
 
 	static bool setup;
+	static bool study_flags;
 
 	/*
 	 *	Lets us use subcapture copy
 	 */
 	if (!setup) {
+#ifdef PCRE_CONFIG_JIT
+		int *do_jit = 0;
+
+		/*
+		 *	If the headers are from >= 8.20
+		 *	check at runtime to see if this version
+		 *	of the libpcre library was compiled with
+		 *	JIT support.
+		 */
+		pcre_config(PCRE_CONFIG_JIT, &do_jit);
+
+		if (do_jit) study_flags |= PCRE_STUDY_JIT_COMPILE;
+#endif
 		pcre_malloc = _pcre_talloc_array;	/* pcre_malloc is a global provided by libpcre */
 		pcre_free = _pcre_talloc_free;		/* pcre_free is a global provided by libpcre */
 	}
@@ -120,15 +139,32 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 		return -(ssize_t)offset;
 	}
+
 	if (!runtime) {
 		preg->precompiled = true;
-		preg->extra = pcre_study(preg->compiled, PCRE_STUDY_JIT_COMPILE, &error);
+		preg->extra = pcre_study(preg->compiled, study_flags, &error);
 		if (error) {
 			talloc_free(preg);
 			fr_strerror_printf("Pattern study failed: %s", error);
 
 			return 0;
 		}
+
+#ifdef PCRE_INFO_JIT
+		/*
+		 *	Check to see if the JIT was successful.
+		 *
+		 * 	Not all platforms have JIT support, the pattern
+		 *	may not be jitable, or JIT support may have been
+		 *	disabled.
+		 */
+		if (study_flags & PCRE_STUDY_JIT_COMPILE) {
+			int jitd = 0;
+
+			pcre_fullinfo(preg->compiled, preg->extra, PCRE_INFO_JIT, &jitd);
+			if (jitd) preg->jitd = true;
+		}
+#endif
 	}
 
 	*out = preg;
@@ -163,6 +199,15 @@ static const FR_NAME_NUMBER regex_pcre_error_str[] = {
 	{ NULL, 0 }
 };
 
+/** Free a PCRE JIT stack on exit
+ *
+ * @param[in] stack to free.
+ */
+static void _pcre_jit_stack_free(void *stack)
+{
+	pcre_jit_stack_free(stack);
+}
+
 /** Wrapper around pcre_exec
  *
  * @param preg The compiled expression.
@@ -181,6 +226,17 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	size_t	matches;
 
 	/*
+	 *	Allocate thread local JIT stack
+	 */
+	if (!fr_pcre_jit_stack) {
+		fr_thread_local_set_destructor(fr_pcre_jit_stack, _pcre_jit_stack_free, pcre_jit_stack_alloc(128, 512));
+		if (!fr_pcre_jit_stack) {
+			fr_strerror_printf("Allocating JIT stack failed");
+			return -1;
+		}
+	}
+
+	/*
 	 *	PCRE_NO_AUTO_CAPTURE is a compile time only flag,
 	 *	and can't be passed here.
 	 *	We rely on the fact that matches has been set to
@@ -195,7 +251,15 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 		matches = *nmatch;
 	}
 
-	ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, 0, (int *)pmatch, matches * 3);
+#ifdef PCRE_CONFIG_JIT
+	if (preg->jitd) {
+		ret = pcre_jit_exec(preg->compiled, preg->extra, subject, len, 0, 0,
+				    (int *)pmatch, matches * 3, fr_pcre_jit_stack);
+	} else
+#endif
+	{
+		ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, 0, (int *)pmatch, matches * 3);
+	}
 	if (ret < 0) {
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
 
