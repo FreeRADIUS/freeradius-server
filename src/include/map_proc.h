@@ -54,15 +54,17 @@ typedef rlm_rcode_t (*map_proc_func_t)(void *mod_inst, void *proc_inst, REQUEST 
 
 /** Allocate new instance data for a map processor
  *
- * @param[out] proc_inst Structure to populate. Allocated by #map_proc_instantiate.
- * @param[in] mod_inst Module instance that registered the #map_proc_t.
- * @param[in] src template.
- * @param[in] maps Head of the list of maps to process.
+ * @param[in] cs	#CONF_SECTION representing this instance of a map processor.
+ * @param[in] mod_inst	Module instance that registered the #map_proc_t.
+ * @param[in] proc_inst	Structure to populate. Allocated by #map_proc_instantiate.
+ * @param[in] src	template.
+ * @param[in] maps	Head of the list of maps to process.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*map_proc_instantiate_t)(void *proc_inst, void *mod_inst, vp_tmpl_t const *src, vp_map_t const *maps);
+typedef int (*map_proc_instantiate_t)(CONF_SECTION *cs, void *mod_inst, void *proc_inst,
+				      vp_tmpl_t const *src, vp_map_t const *maps);
 
 map_proc_t	*map_proc_find(char const *name);
 
@@ -72,7 +74,7 @@ int		map_proc_register(void *mod_inst, char const *name,
 				  map_proc_instantiate_t instantiate, size_t inst_size);
 
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
-				      vp_tmpl_t const *src, vp_map_t const *maps);
+				      CONF_SECTION *cs, vp_tmpl_t const *src, vp_map_t const *maps);
 
 rlm_rcode_t	map_proc(REQUEST *request, map_proc_inst_t const *inst);
 

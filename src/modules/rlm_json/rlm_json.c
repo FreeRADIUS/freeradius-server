@@ -107,21 +107,27 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
 
 /** Pre-parse and validate literal jpath expressions for maps
  *
- * @param[out] proc_inst the cache structure to fill.
- * @param[in] mod_inst module instance (unused).
- * @param[in] src Where to get the JSON data from (unused).
- * @param[in] maps set of maps to translate to jpaths.
+ * @param[in] mod_inst	module instance (unused).
+ * @param[in] proc_inst	the cache structure to fill.
+ * @param[in] src	Where to get the JSON data from.
+ * @param[in] maps	set of maps to translate to jpaths.
  * @return
  *	- 0 on success.
  * 	- -1 on failure.
  */
-static int mod_map_proc_instantiate(void *proc_inst, UNUSED void *mod_inst,
+static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
 				    UNUSED vp_tmpl_t const *src, vp_map_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
 	vp_map_t const		*map;
 	ssize_t			slen;
 	rlm_json_jpath_cache_t	 *cache = cache_inst, **tail = &cache->next;
+
+	if (!src) {
+		cf_log_err_cs(cs, "Missing JSON source");
+
+		return -1;
+	}
 
 	for (map = maps; map; map = map->next) {
 		CONF_PAIR	*cp = cf_item_to_pair(map->ci);

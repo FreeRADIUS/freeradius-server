@@ -179,16 +179,17 @@ int map_proc_register(void *mod_inst, char const *name,
  *
  * This should be called for every map {} section in the configuration.
  *
- * @param ctx to allocate proc instance in.
- * @param proc resolved with #map_proc_find.
- * @param src template.
- * @param maps Head of the list of maps.
+ * @param[in] ctx	to allocate proc instance in.
+ * @param[in] proc	resolved with #map_proc_find.
+ * @param[in] cs	#CONF_SECTION representing this instance of a map processor.
+ * @param[in] src	template.
+ * @param[in] maps	Head of the list of maps.
  * @return
  *	- New #map_proc_inst_t on success.
  *	- NULL on error.
  */
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
-				      vp_tmpl_t const *src, vp_map_t const *maps)
+				      CONF_SECTION *cs, vp_tmpl_t const *src, vp_map_t const *maps)
 {
 	map_proc_inst_t *inst;
 
@@ -203,7 +204,7 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 			if (!inst->data) return NULL;
 		}
 
-		if (proc->instantiate(inst->data, proc->mod_inst, src, maps) < 0) {
+		if (proc->instantiate(cs, proc->mod_inst, inst->data, src, maps) < 0) {
 			talloc_free(inst);
 			return NULL;
 		}

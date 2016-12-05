@@ -382,6 +382,21 @@ free_urldesc:
 	return len;
 }
 
+/*
+ *	Verify the result of the map.
+ */
+static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
+			   vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+{
+	if (!src) {
+		cf_log_err_cs(cs, "Missing LDAP URI");
+
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Perform a search and map the result of the search to server attributes
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
@@ -1469,7 +1484,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	xlat_register(inst, inst->name, ldap_xlat, rlm_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	map_proc_register(inst, inst->name, mod_map_proc, NULL, 0);
+	map_proc_register(inst, inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;
 }

@@ -956,6 +956,11 @@ static bool pass2_fixup_map(unlang_group_t *g)
 	 */
 	if (!pass2_fixup_update(g)) return false;
 
+	/*
+	 *	Map sections don't need a VPT.
+	 */
+	if (!g->vpt) return true;
+
 	return pass2_fixup_tmpl(g->map->ci, &g->vpt, false);
 }
 #endif
@@ -1367,28 +1372,71 @@ static unlang_t *compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_c
 	return c;
 }
 
+static int compile_map_name(unlang_group_t *g)
+{
+	/*
+	 *	If the section has arguments beyond
+	 *	name1 and name2, they form input
+	 *	arguments into the map.
+	 */
+	if (cf_section_argv(g->cs, 0)) {
+		char	quote;
+		size_t	quoted_len;
+		char	*quoted_str;
+
+		switch (cf_section_argv_type(g->cs, 0)) {
+		case T_DOUBLE_QUOTED_STRING:
+			quote = '"';
+			break;
+
+		case T_SINGLE_QUOTED_STRING:
+			quote = '\'';
+			break;
+
+		case T_BACK_QUOTED_STRING:
+			quote = '`';
+			break;
+
+		default:
+			quote = '\0';
+			break;
+		}
+
+		quoted_len = fr_snprint_len(g->vpt->name, g->vpt->len, quote);
+		quoted_str = talloc_array(g, char, quoted_len);
+		fr_snprint(quoted_str, quoted_len, g->vpt->name, g->vpt->len, quote);
+
+		g->self.name = talloc_asprintf(g, "map %s %s", cf_section_name2(g->cs), quoted_str);
+		g->self.debug_name = g->self.name;
+		talloc_free(quoted_str);
+
+		return 0;
+	}
+
+	g->self.name = talloc_asprintf(g, "map %s", cf_section_name2(g->cs));
+	g->self.debug_name = g->self.name;
+
+	return 0;
+}
 
 static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_SECTION *cs, UNUSED unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
+			     CONF_SECTION *cs, UNUSED unlang_group_type_t group_type,
+			     unlang_group_type_t parentgroup_type, UNUSED unlang_type_t mod_type)
 {
-	int rcode;
-	unlang_group_t *g;
-	unlang_t *c;
-	CONF_SECTION *modules;
-	ssize_t slen;
-	char const *tmpl_str;
-	FR_TOKEN type;
-	char quote;
-	size_t tmpl_len, quoted_len;
-	char *quoted_str;
+	int		rcode;
+	unlang_group_t	*g;
+	unlang_t	*c;
+	CONF_SECTION	*modules;
+	ssize_t		slen;
+	char const	*tmpl_str;
 
-	vp_map_t *head;
-	vp_tmpl_t *vpt;
+	vp_map_t	*head;
+	vp_tmpl_t	*vpt = NULL;
 
-	map_proc_t *proc;
-	map_proc_inst_t *proc_inst;
+	map_proc_t	*proc;
+	map_proc_inst_t	*proc_inst;
 
-	char const *name2 = cf_section_name2(cs);
+	char const	*name2 = cf_section_name2(cs);
 
 	modules = cf_section_sub_find(main_config.config, "modules");
 	if (!modules) {
@@ -1402,39 +1450,43 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		return NULL;
 	}
 
+	/*
+	 *	If there's a third string, it's the map src.
+	 *
+	 *	Convert it into a template.
+	 */
 	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
-	if (!tmpl_str) {
-		cf_log_err_cs(cs, "No template found in map");
-		return NULL;
-	}
+	if (tmpl_str) {
+		FR_TOKEN type;
 
-	tmpl_len = strlen(tmpl_str);
-	type = cf_section_argv_type(cs, 0);
+		type = cf_section_argv_type(cs, 0);
 
-	/*
-	 *	Try to parse the template.
-	 */
-	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, tmpl_len, type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-	if (slen < 0) {
-		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
-		return NULL;
-	}
+		/*
+		 *	Try to parse the template.
+		 */
+		slen = tmpl_afrom_str(cs, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
+				      type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		if (slen < 0) {
+			cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
+			return NULL;
+		}
 
-	/*
-	 *	Limit the allowed template types.
-	 */
-	switch (vpt->type) {
-	case TMPL_TYPE_UNPARSED:
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_EXEC:
-		break;
+		/*
+		 *	Limit the allowed template types.
+		 */
+		switch (vpt->type) {
+		case TMPL_TYPE_UNPARSED:
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_ATTR_UNDEFINED:
+		case TMPL_TYPE_EXEC:
+			break;
 
-	default:
-		talloc_free(vpt);
-		cf_log_err_cs(cs, "Invalid third argument for map");
-		return NULL;
+		default:
+			talloc_free(vpt);
+			cf_log_err_cs(cs, "Invalid third argument for map");
+			return NULL;
+		}
 	}
 
 	/*
@@ -1450,47 +1502,25 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	g = group_allocate(parent, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP);
 	if (!g) return NULL;
 
-	proc_inst = map_proc_instantiate(g, proc, vpt, head);
+	/*
+	 *	Call the map's instantiation function to validate
+	 *	the map and perform any caching required.
+	 */
+	proc_inst = map_proc_instantiate(g, proc, cs, vpt, head);
 	if (!proc_inst) {
 		talloc_free(g);
 		cf_log_err_cs(cs, "Failed instantiating map function '%s'", name2);
 		return NULL;
 	}
-
 	c = unlang_group_to_generic(g);
-
-	switch (type) {
-	case T_DOUBLE_QUOTED_STRING:
-		quote = '"';
-		break;
-
-	case T_SINGLE_QUOTED_STRING:
-		quote = '\'';
-		break;
-
-	case T_BACK_QUOTED_STRING:
-		quote = '`';
-		break;
-
-	default:
-		quote = '\0';
-		break;
-	}
-
-	quoted_len = fr_snprint_len(tmpl_str, tmpl_len, quote);
-	quoted_str = talloc_array(c, char, quoted_len);
-	fr_snprint(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
-
-	c->name = talloc_asprintf(c, "map %s %s", name2, quoted_str);
-	c->debug_name = c->name;
-
-	talloc_free(quoted_str);
 
 	(void) compile_action_defaults(c, unlang_ctx, parentgroup_type);
 
 	g->map = talloc_steal(g, head);
-	g->vpt = talloc_steal(g, vpt);
+	if (vpt) g->vpt = talloc_steal(g, vpt);
 	g->proc_inst = proc_inst;
+
+	compile_map_name(g);
 
 	/*
 	 *	Cache the module in the unlang_group_t struct.

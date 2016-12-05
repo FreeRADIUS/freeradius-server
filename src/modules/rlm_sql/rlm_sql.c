@@ -264,6 +264,21 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 	return 0;
 }
 
+/*
+ *	Verify the result of the map.
+ */
+static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
+			  vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+{
+	if (!src) {
+		cf_log_err_cs(cs, "Missing SQL query");
+
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Executes a SELECT query and maps the result to server attributes
  *
  * @param mod_inst #rlm_sql_t instance.
@@ -1133,7 +1148,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, NULL, 0);
+	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_map_verify, 0);
 
 	return 0;
 }

@@ -3130,7 +3130,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		if (strcmp(buff[1], "map") == 0) {
 			char const *mod;
-			char const *exp;
+			char const *exp = NULL;
+			char const *p;
 
 			t2 = gettoken(&ptr, buff[2], talloc_array_length(buff[2]), false);
 
@@ -3158,21 +3159,20 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				goto error;
 			}
 
-			t3 = gettoken(&ptr, buff[4], talloc_array_length(buff[4]), false);
-			if (!fr_str_tok[t3]) {
-				ERROR("%s[%d]: Expected map string after '%s'",
-				      filename, *lineno, buff[2]);
-				goto error;
-			}
+			p = ptr;
+			t3 = gettoken(&p, buff[4], talloc_array_length(buff[4]), false);
+			if (fr_str_tok[t3]) {
+				ptr = p;
 
-			exp = cf_expand_variables(filename, lineno,
-						  this,
-						  buff[5], talloc_array_length(buff[5]),
-						  buff[4], NULL);
-			if (!exp) {
-				ERROR("%s[%d]: Parse error expanding ${...} in map module name",
-				      filename, *lineno);
-				goto error;
+				exp = cf_expand_variables(filename, lineno,
+							  this,
+							  buff[5], talloc_array_length(buff[5]),
+							  buff[4], NULL);
+				if (!exp) {
+					ERROR("%s[%d]: Parse error expanding ${...} in map module name",
+					      filename, *lineno);
+					goto error;
+				}
 			}
 
 			if (gettoken(&ptr, buff[6], talloc_array_length(buff[6]), false) != T_LCBRACE) {
@@ -3193,12 +3193,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.lineno = *lineno;
 			css->name2_type = T_BARE_WORD;
 
-			css->argc = 1;
-			css->argv = talloc_array(css, char const *, 1);
-			css->argv[0] = talloc_typed_strdup(css->argv, exp);
-
-			css->argv_type = talloc_array(css, FR_TOKEN, 1);
-			css->argv_type[0] = t3;
+			css->argc = 0;
+			if (exp) {
+				css->argv = talloc_array(css, char const *, 1);
+				css->argv[0] = talloc_typed_strdup(css->argv, exp);
+				css->argv_type = talloc_array(css, FR_TOKEN, 1);
+				css->argv_type[0] = t3;
+				css->argc++;
+			}
 
 			goto add_section;
 		}

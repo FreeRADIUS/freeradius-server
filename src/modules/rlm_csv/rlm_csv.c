@@ -230,14 +230,20 @@ static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
 	return -1;
 }
 
-
 /*
  *	Verify the result of the map.
  */
-static int csv_map_verify(UNUSED void *proc_inst, void *mod_inst, UNUSED vp_tmpl_t const *src, vp_map_t const *maps)
+static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
+			  UNUSED vp_tmpl_t const *src, vp_map_t const *maps)
 {
-	rlm_csv_t *inst = mod_inst;
-	vp_map_t const *map;
+	rlm_csv_t	*inst = mod_inst;
+	vp_map_t const	*map;
+
+	if (!src) {
+		cf_log_err_cs(cs, "Missing file name");
+
+		return -1;
+	}
 
 	for (map = maps;
 	     map != NULL;
@@ -252,7 +258,6 @@ static int csv_map_verify(UNUSED void *proc_inst, void *mod_inst, UNUSED vp_tmpl
 
 	return 0;
 }
-
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -452,8 +457,6 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	return 0;
 }
 
-
-
 /** Perform a search and map the result of the search to server attributes
  *
  * @param[in] mod_inst	#rlm_csv_t.
@@ -470,7 +473,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 				vp_tmpl_t const *key, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
-	rlm_csv_t		*inst = mod_inst;
+	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 	rlm_csv_entry_t		*e, my_entry;
 	vp_map_t const		*map;
 	char			*key_str = NULL;
