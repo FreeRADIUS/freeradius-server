@@ -116,12 +116,12 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  * 	- -1 on failure.
  */
 static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
-				    UNUSED vp_tmpl_t const *src, vp_map_t const *maps)
+				    vp_tmpl_t const *src, vp_map_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
 	vp_map_t const		*map;
 	ssize_t			slen;
-	rlm_json_jpath_cache_t	 *cache = cache_inst, **tail = &cache->next;
+	rlm_json_jpath_cache_t	*cache = cache_inst, **tail = &cache->next;
 
 	if (!src) {
 		cf_log_err_cs(cs, "Missing JSON source");
