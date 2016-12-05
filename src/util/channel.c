@@ -95,9 +95,9 @@ static int fr_channel_add_kevent_worker(fr_channel_t *ch, struct kevent *kev, in
 {
 	if (size < 3) return -1;
 
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD | EV_RECEIPT , NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD , NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, ch);
 
 	return 3;
 }
@@ -107,9 +107,9 @@ static int fr_channel_add_kevent_receiver(fr_channel_t *ch, struct kevent *kev, 
 {
 	if (size < 3) return -1;
 
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD | EV_RECEIPT, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, ch);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, ch);
 
 	return 3;
 }
@@ -660,7 +660,11 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 {
 	fprintf(fp, "to worker\n");
 	fprintf(fp, "\tnum_signals = %zd\n", ch->end[TO_WORKER].num_signals);
+	fprintf(fp, "\tsequence = %zd\n", ch->end[TO_WORKER].sequence);
+	fprintf(fp, "\tack = %zd\n", ch->end[TO_WORKER].ack);
 
 	fprintf(fp, "to receive\n");
 	fprintf(fp, "\tnum_signals = %zd\n", ch->end[FROM_WORKER].num_signals);
+	fprintf(fp, "\tsequence = %zd\n", ch->end[FROM_WORKER].sequence);
+	fprintf(fp, "\tack = %zd\n", ch->end[FROM_WORKER].ack);
 }
