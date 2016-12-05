@@ -445,7 +445,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	predictions about packet processing time?
 	 */
 	if (((end->ack - end->sequence) <= 5) &&
-	    ((when- - end->last_read_other < SIGNAL_INTERVAL) ||
+	    ((when - end->last_read_other < SIGNAL_INTERVAL) ||
 	     ((when - end->last_sent_signal) < SIGNAL_INTERVAL))) {
 		MPRINT("WORKER SKIPS\n");
 		return 0;
