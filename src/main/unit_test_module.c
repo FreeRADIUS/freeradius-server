@@ -660,6 +660,20 @@ static bool do_xlats(char const *filename, FILE *fp)
 	return true;
 }
 
+/*
+ *	Verify the result of the map.
+ */
+static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
+			   UNUSED vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+{
+	if (!src) {
+		cf_log_err_cs(cs, "Missing source");
+
+		return -1;
+	}
+
+	return 0;
+}
 
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED REQUEST *request,
 			      	UNUSED vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
@@ -808,7 +822,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (map_proc_register(NULL, "test-fail", mod_map_proc, NULL, 0) < 0) {
+	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}

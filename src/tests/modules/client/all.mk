@@ -1,0 +1,3 @@
+#
+#  Test the "always" module
+#

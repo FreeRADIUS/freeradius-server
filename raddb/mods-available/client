@@ -1,0 +1,19 @@
+#
+#  Currently takes no configuration.  May be used to load static file definitions
+#  in future...
+#
+#  For now allows:
+#
+#  map client [<ipaddr>] {
+#	Tmp-String-0 := 'nas_type'
+#	Tmp-String-1 := 'shortname'
+#	Tmp-String-3 += 'groups'	# Creates multiple attributes from custom group attribute associated
+#					# with the client.
+#  }
+# 
+#  "%{client:nas_type}"			# Expands to client's nas_type (or "" if nas_type not set)
+#  "%{client:<ipaddr>.nas_type}"	# Expands to the specified client's nas_type (or "" if nas_type not set or
+#					# client does not exist).
+client {
+
+}

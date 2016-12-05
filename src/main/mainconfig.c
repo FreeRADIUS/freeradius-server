@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
@@ -379,90 +380,6 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	strlcpy(*out, value, outlen);
 
 	return strlen(*out);
-}
-
-
-/*
- *	Xlat for %{client:foo}
- */
-static ssize_t xlat_client(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
-{
-	char const *value = NULL;
-	CONF_PAIR *cp;
-
-	if (!request->client) {
-		RWDEBUG("No client associated with this request");
-		return 0;
-	}
-
-	cp = cf_pair_find(request->client->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		if (strcmp(fmt, "shortname") == 0 && request->client->shortname) {
-			value = request->client->shortname;
-		}
-		else if (strcmp(fmt, "nas_type") == 0 && request->client->nas_type) {
-			value = request->client->nas_type;
-		} else {
-			**out = '\0';
-			return 0;
-		}
-	}
-
-	strlcpy(*out, value, outlen);
-
-	return strlen(*out);
-}
-
-/*
- *	Xlat for %{getclient:<ipaddr>.foo}
- */
-static ssize_t xlat_getclient(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
-{
-	char const *value = NULL;
-	char buffer[INET6_ADDRSTRLEN], *q;
-	char const *p = fmt;
-	fr_ipaddr_t ip;
-	CONF_PAIR *cp;
-	RADCLIENT *client = NULL;
-
-	q = strrchr(p, '.');
-	if (!q || (q == p) || (((size_t)(q - p)) > sizeof(buffer))) {
-		REDEBUG("Invalid client string");
-		goto error;
-	}
-
-	strlcpy(buffer, p, (q + 1) - p);
-	if (fr_inet_pton(&ip, buffer, -1, AF_UNSPEC, false, true) < 0) {
-		REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", buffer);
-		goto error;
-	}
-
-	fmt = q + 1;
-
-	client = client_find(NULL, &ip, IPPROTO_IP);
-	if (!client) {
-		RDEBUG("No client found with IP \"%s\"", buffer);
-		return 0;
-	}
-
-	cp = cf_pair_find(client->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		if (strcmp(fmt, "shortname") == 0) {
-			strlcpy(*out, request->client->shortname, outlen);
-			return strlen(*out);
-		}
-		return 0;
-	}
-
-	strlcpy(*out, value, outlen);
-	return strlen(*out);
-
-error:
-	return -1;
 }
 
 /*
@@ -1054,8 +971,6 @@ do {\
 	 *	...and the client and listen xlats which need to be
 	 *	defined before we start parsing the config.
 	 */
-	xlat_register(NULL, "client", xlat_client, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(NULL, "getclient", xlat_getclient, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(NULL, "listen", xlat_listen, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
