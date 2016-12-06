@@ -405,9 +405,10 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
-	fr_channel_end_t *end;
+	fr_channel_end_t *end, *other;
 
 	end = &(ch->end[FROM_WORKER]);
+	other = &(ch->end[TO_WORKER]);
 
 	when = cd->m.when;
 
@@ -447,7 +448,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 
 	MPRINT("\twhen - last_read_other = %zd - %zd = %zd\n", when, end->last_read_other, when - end->last_read_other);
 	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, end->last_sent_signal, when - end->last_sent_signal);
-	MPRINT("\tack - sequence = %zd - %zd = %zd\n", end->ack, end->sequence, end->ack - end->sequence);
+	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", end->sequence, other->ack, end->sequence - other->ack);
 
 	/*
 	 *	If we've received a new packet in the last while, OR
@@ -458,7 +459,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	if (((end->ack - end->sequence) <= 5) &&
+	rad_assert(other->ack <= end->sequence);
+	if (((end->sequence - other->ack) <= 100) &&
 	    ((when - end->last_read_other < SIGNAL_INTERVAL) ||
 	     ((when - end->last_sent_signal) < SIGNAL_INTERVAL))) {
 		MPRINT("WORKER SKIPS\n");
