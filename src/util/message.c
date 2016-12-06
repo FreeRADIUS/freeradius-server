@@ -38,24 +38,6 @@ RCSID("$Id$")
 #define MPRINT(...)
 #endif
 
-/** An array of messages
- *
- *  We wish to occasionally increase the size of the message array,
- *  without re-allocing it.  Some recipients may still be referencing
- *  messages.
- */
-typedef struct fr_message_ring_t {
-	uint8_t			*messages;	//!< array of messages
-	int			size;		//!< size of the array
-	size_t			message_size;	//!< size of each message, including fr_message_t
-
-	int			data_start;	//!< start of used portion of the array
-	int			data_end;	//!< end of the used portion of the array
-	int			write_offset;	//!< where the writes are done.
-
-	//  6 7 8 for alignment ?
-} fr_message_ring_t;
-
 #define MSG_ARRAY_SIZE (16)
 
 /**
@@ -129,52 +111,10 @@ struct fr_message_set_t {
 	int			allocated;
 	int			freed;
 
-	fr_message_ring_t	*mr_array[MSG_ARRAY_SIZE]; //!< array of message arrays
+	fr_ring_buffer_t	*mr_array[MSG_ARRAY_SIZE]; //!< array of message arrays
 
 	fr_ring_buffer_t	*rb_array[MSG_ARRAY_SIZE]; //!< array of ring buffers
 };
-
-
-/** Create a new message ring.
- *
- * @param[in] ctx the talloc ctx
- * @param[in] num_messages to allow in the ring
- * @param[in] message_size of each message, including fr_message_t
- * @return
- *	- NULL on error
- *	- fr_message_ring_t * on success
- */
-static fr_message_ring_t *fr_message_ring_create(TALLOC_CTX *ctx, int num_messages, size_t message_size)
-{
-	int i;
-	fr_message_ring_t *mr;
-
-	mr = talloc_zero(ctx, fr_message_ring_t);
-	if (!mr) return NULL;
-
-	MPRINT("MEMORY RING ALLOC %d\n", num_messages);
-
-	mr->messages = talloc_size(mr, num_messages * message_size);
-	if (!mr->messages) {
-		talloc_free(mr);
-		return NULL;
-	}
-
-	talloc_set_type(mr->messages, fr_message_t);
-
-	mr->size = num_messages;
-	mr->message_size = message_size;
-	for (i = 0; i < num_messages; i++) {
-		fr_message_t *m;
-
-		m = MR_ARRAY(i);
-
-		m->status = FR_MESSAGE_FREE;
-	}
-
-	return mr;
-}
-
 
 
 /** Create a message set
@@ -219,7 +159,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 		return NULL;
 	}
 
-	ms->mr_array[0] = fr_message_ring_create(ms, num_messages, message_size);
+	ms->mr_array[0] = fr_ring_buffer_create(ms, num_messages * message_size);
 	if (!ms->mr_array[0]) {
 		talloc_free(ms);
 		return NULL;
@@ -347,51 +287,23 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
  * @param[in] mr the message ring
  * @param[in] max_to_clean maximum number of messages to clean at a time.
  */
-static int fr_message_ring_gc(fr_message_set_t *ms, fr_message_ring_t *mr, int max_to_clean)
+static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int max_to_clean)
 {
-	int i;
 	int messages_cleaned = 0;
+	fr_message_t *m;
+	size_t size;
 
-	/*
-	 *	Wrap indices prior to doing any cleanup.
-	 */
-recheck:
-	if (mr->data_start >= mr->size) {
-		rad_assert(mr->data_start == mr->data_end);
-		rad_assert(mr->data_start == mr->size);
+	while (true) {
+		(void) fr_ring_buffer_start(mr, (uint8_t **) &m, &size);
+		if (size == 0) break;
 
-		if (mr->write_offset < mr->data_start) {
-			mr->data_start = 0;
-			mr->data_end = mr->write_offset;
-		} else {
-			mr->data_start = 0;
-			mr->data_end = 0;
-			mr->write_offset = 0;
-		}
-	}
+		rad_assert(m != NULL);
+		rad_assert(size >= ms->message_size);
 
-	rad_assert(mr->data_start <= mr->data_end);
-	rad_assert(mr->data_start < mr->size);
-	rad_assert(mr->data_end <= mr->size);
-	rad_assert(mr->write_offset <= mr->size);
-
-	/*
-	 *	Loop over messages in the oldest block, seeing if we
-	 *	need to delete them.
-	 */
-	for (i = mr->data_start; i < mr->data_end; i++) {
-		fr_message_t *m;
-
-		m = MR_ARRAY(i);
+		if (m->status != FR_MESSAGE_DONE) break;
 
 		rad_assert(m->status != FR_MESSAGE_FREE);
 
-		if (m->status != FR_MESSAGE_DONE) {
-			max_to_clean = messages_cleaned;
-			break;
-		}
-
-		mr->data_start++;
 		messages_cleaned++;
 		m->status = FR_MESSAGE_FREE;
 		ms->freed++;
@@ -402,44 +314,10 @@ recheck:
 			memset(m, 0, ms->message_size);
 #endif
 		}
+
+		fr_ring_buffer_free(mr, ms->message_size);
+
 		if (messages_cleaned >= max_to_clean) break;
-	}
-
-	/*
-	 *	There's still data in the ring buffer, we're done
-	 *	cleaning.
-	 */
-	if (mr->data_start < mr->data_end) {
-		MPRINT("CLEANED %d (%p) non-empty (wo %d, start %d, end %d)\n", messages_cleaned, mr,
-			mr->write_offset, mr->data_start, mr->data_end);
-		return messages_cleaned;
-	}
-
-	/*
-	 *	We've cleaned everything.
-	 */
-	if (mr->data_start == mr->data_end) {
-		if (mr->write_offset == mr->data_end) {
-			mr->data_start = 0;
-			mr->data_end = 0;
-			mr->write_offset = 0;
-
-			MPRINT("CLEANED %d (%p) empty\n", messages_cleaned, mr);
-			return messages_cleaned;
-		}
-
-		rad_assert(mr->write_offset < mr->data_start);
-		rad_assert(mr->write_offset < mr->size);
-		mr->data_start = 0;
-		mr->data_end = mr->write_offset;
-	}
-
-	/*
-	 *	The ring buffer still has data, and we're allowed to
-	 *	clean more messages.  Go do so.
-	 */
-	if ((mr->write_offset > 0) && (messages_cleaned < max_to_clean)) {
-		goto recheck;
 	}
 
 	MPRINT("CLEANED %d (%p) left\n", messages_cleaned, mr);
@@ -471,7 +349,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 
 	for (i = 0; i <= ms->mr_max; i++) {
 
-		fr_message_ring_t *mr = ms->mr_array[i];
+		fr_ring_buffer_t *mr = ms->mr_array[i];
 
 		(void) fr_message_ring_gc(ms, mr, max_to_clean);
 
@@ -479,7 +357,7 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 		 *	If the message ring buffer is empty, check if
 		 *	we should perhaps delete it.
 		 */
-		if ((mr->data_start == 0) && (mr->data_end == 0)) {
+		if (fr_ring_buffer_used(mr) == 0) {
 			/*
 			 *	Try to ensure that at least one array
 			 *	is empty.
@@ -675,15 +553,9 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
  *	- NULL on failed allocation
  *      - fr_message_t* on successful allocation.
  */
-static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring_t *mr, bool clean)
+static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_ring_buffer_t *mr, bool clean)
 {
 	fr_message_t *m;
-
-	rad_assert(mr != NULL);
-	rad_assert(mr->write_offset <= mr->size);
-	rad_assert(mr->data_start <= mr->size);
-	rad_assert(mr->data_start <= mr->data_end);
-	rad_assert(mr->data_end <= mr->size);
 
 	/*
 	 *	We're at the start of a buffer with data, and there's
@@ -700,76 +572,22 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 	 *	extremely rare.
 	 */
 	if (clean) {
-		int used = 0;
-
-		if (mr->write_offset < mr->data_start) {
-			used += mr->write_offset;
+		if (fr_message_ring_gc(ms, mr, 4) == 0) {
+			return NULL;
 		}
-		used += (mr->data_end - mr->data_start);
 
-		if (used >= mr->size) {
-			if (fr_message_ring_gc(ms, mr, 4) == 0) {
-				return NULL;
-			}
-
-			/*
-			 *	Else we cleaned up some entries in this array.
-			 *	Go allocate a message.
-			 */
-		}
+		/*
+		 *	Else we cleaned up some entries in this array.
+		 *	Go allocate a message.
+		 */
 	}
 
 	/*
-	 *	We're at the start of the buffer, and there's room.
-	 *	Grab an entry and continue.
+	 *	Grab a new message from the underlying ring buffer.
 	 */
-	if (mr->write_offset < mr->data_start) {
-		m = MR_ARRAY(mr->write_offset);
-		mr->write_offset++;
-
+	m = (fr_message_t *) fr_ring_buffer_alloc(mr, ms->message_size);
 #ifndef NDEBUG
-		memset(m, 0, mr->message_size);
-#endif
-		m->status = FR_MESSAGE_USED;
-		return m;
-	}
-
-	/*
-	 *	We've wrapped around and filled the buffer.
-	 */
-	if (mr->write_offset != mr->data_end) {
-		rad_assert(mr->data_start < mr->data_end);
-		rad_assert(mr->data_start < mr->size);
-		rad_assert(mr->data_end <= mr->size);
-		rad_assert(mr->write_offset == mr->data_start);
-		return NULL;
-	}
-
-	/*
-	 *	We're writing to the end of the buffer.  Grab an entry
-	 *	and continue.
-	 */
-	rad_assert(mr->write_offset == mr->data_end);
-	rad_assert(mr->data_end < mr->size);
-
-	m = MR_ARRAY(mr->write_offset);
-	mr->write_offset++;
-	mr->data_end++;
-
-	/*
-	 *	Wrap around to the start if we fall off of the
-	 *	end of the buffer.
-	 *
-	 *	Note that data_start MAY still be zero, in
-	 *	which case we don't want to write anything
-	 *	here.
-	 */
-	if (mr->write_offset >= mr->size) {
-		mr->write_offset = 0;
-	}
-
-#ifndef NDEBUG
-	memset(m, 0, mr->message_size);
+	memset(m, 0, ms->message_size);
 #endif
 	m->status = FR_MESSAGE_USED;
 	return m;
@@ -778,21 +596,19 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_message_ring
 /**  Allocate a fr_message_t, WITHOUT a ring buffer.
  *
  * @param[in] ms the message set
- * @param[out] p_mr the message ring we allocated the message from
  * @param[out] p_cleaned a flag to indicate if we cleaned the message array
  * @return
  *      - NULL on error
  *	- fr_message_t* on success
  */
-static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_ring_t **p_mr, bool *p_cleaned)
+static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleaned)
 {
 	int i;
 	fr_message_t *m;
-	fr_message_ring_t *mr;
+	fr_ring_buffer_t *mr;
 
 	ms->allocated++;
 	*p_cleaned = false;
-	*p_mr = NULL;
 
 	/*
 	 *	Grab the current message array.  In the general case,
@@ -800,10 +616,11 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	buffer.
 	 */
 	mr = ms->mr_array[ms->mr_current];
-	m = fr_message_ring_alloc(ms, mr, true);
+	m = (fr_message_t *) fr_ring_buffer_alloc(mr, ms->message_size);
 	if (m) {
+		memset(m, 0, ms->message_size);
+		m->status = FR_MESSAGE_USED;
 		MPRINT("ALLOC normal\n");
-		*p_mr = mr;
 		return m;
 	}
 
@@ -824,7 +641,6 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	m = fr_message_ring_alloc(ms, mr, true);
 	if (m) {
 		MPRINT("ALLOC after cleanup\n");
-		*p_mr = mr;
 		return m;
 	}
 
@@ -849,7 +665,6 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 			ms->mr_current = i;
 			MPRINT("ALLOC from changed ring buffer\n");
 			MPRINT("SET MR to changed %d\n", ms->mr_current);
-			*p_mr = mr;
 			return m;
 		}
 	}
@@ -866,7 +681,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 *	Allocate another message ring, double the size
 	 *	of the previous maximum.
 	 */
-	mr = fr_message_ring_create(ms, ms->mr_array[ms->mr_max]->size * 2, ms->message_size);
+	mr = fr_ring_buffer_create(ms, fr_ring_buffer_size(ms->mr_array[ms->mr_max]) * 2);
 	if (!mr) return NULL;
 
 	/*
@@ -885,47 +700,23 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, fr_message_rin
 	 */
 	m = fr_message_ring_alloc(ms, mr, false);
 	if (!m) return NULL;
+
 	MPRINT("ALLOC after doubled message ring\n");
 
-	*p_mr = mr;
 	return m;
-}
-
-/** Deallocate a message
- *
- * @param[in] ms the message set
- * @param[in] mr the message ring
- * @param[in] m the message
- * @return NULL, always
- */
-static fr_message_t *fr_message_unalloc(fr_message_set_t *ms, fr_message_ring_t *mr, fr_message_t *m)
-{
-	/*
-	 *	Undo the allocation we did here.  Which requires us to
-	 *	remember that "mr" was the message ring from which we
-	 *	allocated the message.
-	 */
-	m->rb = NULL;
-	m->status = FR_MESSAGE_FREE;
-
-	mr->write_offset--;
-	ms->allocated--;
-
-	return NULL;
 }
 
 
 /** Get a ring buffer for a message
  *
  * @param[in] ms the message set
- * @param[in] mr the message ring
  * @param[in] m the message
  * @param[in] cleaned_up whether the message set was partially garbage collected
  * @return
  *	- NULL on error, and m is deallocated
  *	- m on success
  */
-static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message_ring_t *mr, fr_message_t *m,
+static fr_message_t *fr_message_get_ring_buffer(fr_message_set_t *ms, fr_message_t *m,
 						bool cleaned_up)
 {
 	int i;
@@ -1033,7 +824,9 @@ alloc_rb:
 cleanup:
 	MPRINT("OUT OF MEMORY\n");
 
-	return fr_message_unalloc(ms, mr, m);
+	m->rb = NULL;
+	m->status = FR_MESSAGE_DONE;
+	return NULL;
 }
 
 
@@ -1064,7 +857,6 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 {
 	bool cleaned_up;
 	fr_message_t *m;
-	fr_message_ring_t *mr;
 
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
@@ -1075,8 +867,11 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	/*
 	 *	Allocate a bare message.
 	 */
-	m = fr_message_get_message(ms, &mr, &cleaned_up);
-	if (!m) return NULL;
+	m = fr_message_get_message(ms, &cleaned_up);
+	if (!m) {
+		fprintf(stderr, "NULL %d\n", __LINE__);
+		return NULL;
+	}
 
 	/*
 	 *	If the caller is not allocating any packet data, just
@@ -1092,7 +887,7 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	 */
 	m->rb_size = reserve_size;
 
-	return fr_message_get_ring_buffer(ms, mr, m, cleaned_up);
+	return fr_message_get_ring_buffer(ms, m, cleaned_up);
 }
 
 /** Allocate packet data for a message
@@ -1196,7 +991,6 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	size_t room;
 	uint8_t *p;
 	fr_message_t *m2;
-	fr_message_ring_t *mr;
 
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
@@ -1236,7 +1030,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	/*
 	 *	Allocate a new message.
 	 */
-	m2 = fr_message_get_message(ms, &mr, &cleaned_up);
+	m2 = fr_message_get_message(ms, &cleaned_up);
 	if (!m2) {
 		return NULL;
 	}
@@ -1256,7 +1050,9 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 		m2->data = fr_ring_buffer_reserve(m2->rb, m2->rb_size);
 		rad_assert(m2->data != NULL);
 		if (!m2->data) {
-			return fr_message_unalloc(ms, mr, m2);
+			m->rb = NULL;
+			m->status = FR_MESSAGE_DONE;
+			return NULL;
 		}
 	}
 
@@ -1266,7 +1062,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	fr_ring_buffer_reserve_split() on it, and on the old
 	 *	one.
 	 */
-	if (!fr_message_get_ring_buffer(ms, mr, m2, false)) {
+	if (!fr_message_get_ring_buffer(ms, m2, false)) {
 		return NULL;
 	}
 
@@ -1390,15 +1186,11 @@ int fr_message_set_messages_used(fr_message_set_t *ms)
 
 	used = 0;
 	for (i = 0; i <= ms->mr_max; i++) {
-		fr_message_ring_t *mr;
+		fr_ring_buffer_t *mr;
 
 		mr = ms->mr_array[i];
 
-		if (mr->write_offset < mr->data_start) {
-			used += mr->write_offset;
-		}
-
-		used += (mr->data_end - mr->data_start);
+		used += fr_ring_buffer_used(mr) / ms->message_size;
 	}
 
 	return used;
@@ -1426,8 +1218,7 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	 */
 	num_cleaned = 0;
 	for (i = 0; i <= ms->mr_max; i++) {
-		num_cleaned += fr_message_ring_gc(ms, ms->mr_array[i],
-						  ms->mr_array[i]->size);
+		num_cleaned += fr_message_ring_gc(ms, ms->mr_array[i], ~0);
 	}
 
 	MPRINT("GC cleaned %d\n", num_cleaned);
@@ -1455,10 +1246,10 @@ void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
 	fprintf(fp, "ring buffers   = %d\t(current %d)\n", ms->rb_max + 1, ms->rb_current);
 
 	for (i = 0; i <= ms->mr_max; i++) {
-		fr_message_ring_t *mr = ms->mr_array[i];
+		fr_ring_buffer_t *mr = ms->mr_array[i];
 
-		fprintf(fp, "messages[%d] =\tsize %d, write_offset %d, data_start %d, data_end %d\n",
-			i, mr->size, mr->write_offset, mr->data_start, mr->data_end);
+		fprintf(fp, "messages[%d] =\tsize %zd, used %zd\n",
+			i, fr_ring_buffer_size(mr), fr_ring_buffer_used(mr));
 	}
 
 	for (i = 0; i <= ms->rb_max; i++) {
