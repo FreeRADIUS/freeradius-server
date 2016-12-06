@@ -290,8 +290,8 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
 static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int max_to_clean)
 {
 	int messages_cleaned = 0;
-	fr_message_t *m;
 	size_t size;
+	fr_message_t *m;
 
 	while (true) {
 		(void) fr_ring_buffer_start(mr, (uint8_t **) &m, &size);
@@ -300,9 +300,9 @@ static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int ma
 		rad_assert(m != NULL);
 		rad_assert(size >= ms->message_size);
 
-		if (m->status != FR_MESSAGE_DONE) break;
 
 		rad_assert(m->status != FR_MESSAGE_FREE);
+		if (m->status != FR_MESSAGE_DONE) break;
 
 		messages_cleaned++;
 		m->status = FR_MESSAGE_FREE;
