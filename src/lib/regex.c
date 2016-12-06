@@ -205,6 +205,7 @@ static const FR_NAME_NUMBER regex_pcre_error_str[] = {
 	{ NULL, 0 }
 };
 
+#ifdef HAVE_PCRE_JIT_EXEC
 /** Free a PCRE JIT stack on exit
  *
  * @param[in] stack to free.
@@ -213,6 +214,7 @@ static void _pcre_jit_stack_free(void *stack)
 {
 	pcre_jit_stack_free(stack);
 }
+#endif
 
 /** Wrapper around pcre_exec
  *
