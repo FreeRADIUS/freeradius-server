@@ -123,5 +123,5 @@ AC_SUBST(lua_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_CONFIG_HEADER(config.h)
-AC_OUTPUT([rlm_lua.mk libfreeradius-lua.mk])  # keep this!  Don't change!
+AC_OUTPUT([all.mk rlm_lua.mk libfreeradius-lua.mk])  # keep this!  Don't change!
 
