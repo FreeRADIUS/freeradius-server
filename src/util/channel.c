@@ -703,14 +703,14 @@ int fr_channel_signal_open(fr_channel_t *ch)
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 {
 	fprintf(fp, "to worker\n");
-	fprintf(fp, "\tnum_signals = %zd\n", ch->end[TO_WORKER].num_signals);
-	fprintf(fp, "\tnum_kevents = %zd\n", ch->end[TO_WORKER].num_kevents);
+	fprintf(fp, "\tnum_signals sent = %zd\n", ch->end[TO_WORKER].num_signals);
+	fprintf(fp, "\tnum_kevents checked = %zd\n", ch->end[TO_WORKER].num_kevents);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[TO_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[TO_WORKER].ack);
 
 	fprintf(fp, "to receive\n");
-	fprintf(fp, "\tnum_signals = %zd\n", ch->end[FROM_WORKER].num_signals);
-	fprintf(fp, "\tnum_kevents = %zd\n", ch->end[FROM_WORKER].num_kevents);
+	fprintf(fp, "\tnum_signals sent = %zd\n", ch->end[FROM_WORKER].num_signals);
+	fprintf(fp, "\tnum_kevents checked = %zd\n", ch->end[FROM_WORKER].num_kevents);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[FROM_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[FROM_WORKER].ack);
 }
