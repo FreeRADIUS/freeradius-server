@@ -117,9 +117,9 @@ static int fr_channel_add_kevent_worker(struct kevent *kev, int size)
 {
 	if (size < 3) return -1;
 
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD , NOTE_FFCOPY, 0, NULL);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
 
 	return 3;
 }
@@ -129,9 +129,9 @@ static int fr_channel_add_kevent_receiver(struct kevent *kev, int size)
 {
 	if (size < 3) return -1;
 
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
+	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
 
 	return 3;
 }
@@ -141,7 +141,7 @@ static int fr_channel_kevent_signal(int kq, fr_channel_control_t *cc)
 {
 	struct kevent kev;
 
-	EV_SET(&kev, cc->signal, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFCOPY, cc->ack, cc->ch);
+	EV_SET(&kev, cc->signal, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFNOP, cc->ack, cc->ch);
 
 	return kevent(kq, &kev, 1, NULL, 0, NULL);
 }
