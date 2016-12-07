@@ -531,7 +531,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *  event.  Note that the caller does NOT pass the channel into this
  *  function.  Instead, the channel is taken from the kevent.
  *
- * @param[in] kq the kqueue on which the event was received
+ * @param[in] aq the atomic queue on which we receive control-plane messages
  * @param[in] kev the event of type EVFILT_USER
  * @param[in] when the current time
  * @param[out] p_channel the channel which should be serviced.
@@ -542,7 +542,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
  *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
+fr_channel_event_t fr_channel_service_kevent(UNUSED fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
 {
 	int rcode;
 	uint64_t ack;
@@ -579,8 +579,6 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 		 *	worker.  Return the channel to the worker.
 		 */
 	case FR_CHANNEL_SIGNAL_OPEN:
-		rad_assert(kq == ch->end[TO_WORKER].kq);
-
 		*p_channel = ch;
 		return FR_CHANNEL_OPEN;
 
@@ -596,18 +594,6 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 	}
 
 	rad_assert(kev->ident == FR_CHANNEL_SIGNAL_WORKER_SLEEPING);
-
-	/*
-	 *	"worker sleeping" signals are only allowed from the
-	 *	worker to the master thread.
-	 */
-	rad_assert(kq == ch->end[FROM_WORKER].kq);
-
-	/*
-	 *	Run-time sanity check.
-	 */
-	end = &ch->end[FROM_WORKER];
-	if (end->kq != kq) return FR_CHANNEL_ERROR;
 
 	end = &ch->end[TO_WORKER];
 
@@ -690,23 +676,20 @@ int fr_channel_ack_worker_close(fr_channel_t *ch)
 
 /** Send a channel to a KQ
  *
- * @param[in] kq the kqueue to send the channel
  * @param[in] ch the channel
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_signal_open(int kq, fr_channel_t *ch)
+int fr_channel_signal_open(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
-
-	rad_assert(kq == ch->end[TO_WORKER].kq);
 
 	cc.signal = FR_CHANNEL_SIGNAL_OPEN;
 	cc.ack = 0;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(kq, &cc);
+	return fr_channel_kevent_signal(ch->end[TO_WORKER].kq, &cc);
 }
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
@@ -720,4 +703,32 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 	fprintf(fp, "\tnum_signals = %zd\n", ch->end[FROM_WORKER].num_signals);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[FROM_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[FROM_WORKER].ack);
+}
+
+/** Receive an "open channel" signal.
+ *
+ *  Called only by the worker.
+ *
+ * @param[in] ctx the talloc context for worker messages
+ * @param[in] ch the channel
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_worker_receive_open(UNUSED TALLOC_CTX *ctx, UNUSED fr_channel_t *ch)
+{
+#if 0
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
+	ch->end[FROM_WORKER].control = fr_control_create(ctx,
+							 ch->end[FROM_WORKER].kq,
+							 ch->end[FROM_WORKER].aq_control);
+	if (!ch->end[FROM_WORKER].control) {
+		return -1;
+	}
+#endif
+
+	return 0;
 }

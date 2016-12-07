@@ -34,6 +34,8 @@ RCSID("$Id$")
 struct fr_worker_t {
 	int			kq;		//!< my kq
 
+	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
+
 	fr_message_set_t	*ms;		//!< replies are allocated from here.
 
 	fr_event_list_t		*el;		//!< our event list
@@ -75,7 +77,7 @@ struct fr_worker_t {
 /** Handle EVFILT_USER events
  *
  */
-static void fr_worker_evfilt_user(int kq, struct kevent const *kev, void *ctx)
+static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
 {
 	fr_channel_event_t what;
 	fr_channel_t *ch;
@@ -85,7 +87,7 @@ static void fr_worker_evfilt_user(int kq, struct kevent const *kev, void *ctx)
 
 	rad_assert(kev->filter == EVFILT_USER);
 
-	what = fr_channel_service_kevent(kq, kev, when, &ch);
+	what = fr_channel_service_kevent(worker->aq_control, kev, when, &ch);
 
 	switch (what) {
 		/*
@@ -604,6 +606,12 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 
 	worker->kq = fr_event_list_kq(worker->el);
 	rad_assert(worker->kq >= 0);
+
+	worker->aq_control = fr_atomic_queue_create(worker, 128);
+	if (!worker->aq_control) {
+		talloc_free(worker);
+		return NULL;
+	}
 
 	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
 		talloc_free(worker);

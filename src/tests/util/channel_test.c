@@ -81,7 +81,7 @@ static void *channel_master(void *arg)
 	/*
 	 *	Signal the worker that the channel is open
 	 */
-	rcode = fr_channel_signal_open(kq_worker, channel);
+	rcode = fr_channel_signal_open(channel);
 	if (rcode < 0) {
 		fprintf(stderr, "Failed signaling open: %s\n", strerror(errno));
 		exit(1);
@@ -189,7 +189,7 @@ check_close:
 			fr_channel_event_t ce;
 			fr_channel_t *new_channel;
 
-			ce = fr_channel_service_kevent(kq_worker, &events[i], now, &new_channel);
+			ce = fr_channel_service_kevent(aq_master, &events[i], now, &new_channel);
 			MPRINT1("\tWorker Got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_DATA_READY_RECEIVER) {
@@ -215,6 +215,8 @@ check_close:
 				running = false;
 				continue;
 			}
+
+			if (ce == FR_CHANNEL_NOOP) continue;
 
 			fprintf(stderr, "Master got unexpected CE %d\n", ce);
 
@@ -299,12 +301,19 @@ static void *channel_worker(void *arg)
 		for (i = 0; i < rcode; i++) {
 			fr_channel_event_t ce;
 
-			ce = fr_channel_service_kevent(kq_worker, &events[i], now, &new_channel);
+			/*
+			 *	@todo drain the control plane on one kevent.
+			 */
+			ce = fr_channel_service_kevent(aq_worker, &events[i], now, &new_channel);
 			MPRINT1("\tWorker Got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_OPEN) {
 				MPRINT1("\tWorker received a new channel\n");
 				rad_assert(new_channel == channel);
+				if (fr_channel_worker_receive_open(ctx, new_channel) < 0) {
+					fprintf(stderr, "Failed calling receive open.\n");
+					exit(1);
+				}
 				continue;
 			}
 
@@ -370,6 +379,8 @@ static void *channel_worker(void *arg)
 				}
 				continue;
 			}
+
+			if (ce == FR_CHANNEL_NOOP) continue;
 
 			fprintf(stderr, "Worker got unexpected CE %d\n", ce);
 

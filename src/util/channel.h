@@ -113,13 +113,16 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
 
-fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel) CC_HINT(nonnull);
+fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel) CC_HINT(nonnull);
 
 bool fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_signal_open(int kq, fr_channel_t *ch) CC_HINT(nonnull);
+int fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
+int fr_channel_worker_receive_open(TALLOC_CTX *ctx, fr_channel_t *ch) CC_HINT(nonnull);
+
 int fr_channel_signal_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
 int fr_channel_ack_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
+
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp);
 
