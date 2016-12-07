@@ -1104,9 +1104,12 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_DEFINE(HAVE_OPENSSL_SSL_H, 1, [Define to 1 if you have the <openssl/ssl.h> header file.])
 
     AC_CHECK_HEADERS( \
+      openssl/asn1.h \
+      openssl/conf.h \
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \
+      openssl/hmac.h \
       openssl/md5.h \
       openssl/md4.h \
       openssl/sha.h \
@@ -1174,6 +1177,20 @@ if test "x$WITH_OPENSSL" = xyes; then
         AC_MSG_RESULT([cross-compiling (assuming yes)])
       ]
     )
+    dnl #
+    dnl #  Check if the new HMAC_CTX interface is defined
+    dnl #
+    AC_CHECK_FUNCS( \
+      SSL_get_client_random \
+      SSL_get_server_random \
+      SSL_SESSION_get_master_key \
+      HMAC_CTX_new \
+      HMAC_CTX_free \
+      ASN1_STRING_get0_data \
+      CONF_modules_load_file \
+      CRYPTO_set_id_callback \
+      CRYPTO_set_locking_callback
+    )
     CPPFLAGS="$old_CPPFLAGS"
   fi
 
@@ -1182,7 +1199,6 @@ if test "x$WITH_OPENSSL" = xyes; then
   AC_SUBST(OPENSSL_LDFLAGS)
   AC_SUBST(OPENSSL_CPPFLAGS)
   export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
-  AC_CHECK_FUNCS(SSL_get_client_random,SSL_get_server_random)
 fi
 
 dnl #
