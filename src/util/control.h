@@ -47,7 +47,7 @@ void fr_control_free(fr_control_t *c);
 int fr_control_gc(fr_control_t *c) CC_HINT(nonnull);
 
 int fr_control_message_send(fr_control_t *c, void *data, size_t data_size);
-ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent *kev, void *data, size_t data_size);
+ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent const *kev, void *data, size_t data_size);
 
 #ifdef __cplusplus
 }

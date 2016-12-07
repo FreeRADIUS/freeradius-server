@@ -275,7 +275,7 @@ int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
  *	- 0 this kevent is not for us.
  *	- >0 the amount of data we've read
  */
-ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent *kev, void *data, size_t data_size)
+ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent const *kev, void *data, size_t data_size)
 {
 	uint8_t *p;
 	fr_control_message_t *m;
