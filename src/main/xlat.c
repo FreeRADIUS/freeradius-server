@@ -2362,16 +2362,31 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl + 1);
-		if (str) {
-			XLAT_DEBUG("%.*sALTERNATE got string: %s", lvl, xlat_spaces, str);
-			break;
+		/*
+		 *	If there are no "next" nodes, call ourselves
+		 *	recursively, which is fast.
+		 *
+		 *	If there are "next" nodes, call xlat_process()
+		 *	which does a ton more work.
+		 */
+		if (!node->next) {
+			str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
+			if (str) {
+				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
+			} else {
+				str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
+				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
+			}
+		} else {
+
+			if (xlat_process(&str, request, node->child, escape, escape_ctx) > 0) {
+				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
+			} else {
+				(void) xlat_process(&str, request, node->alternate, escape, escape_ctx);
+				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
+			}
 		}
-
-		XLAT_DEBUG("%.*sALTERNATE going to alternate", lvl, xlat_spaces);
-		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl + 1);
 		break;
-
 	}
 
 	/*
