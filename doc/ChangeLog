@@ -26,6 +26,8 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* Rename lt_* functions to avoid linker issues with
 	  libtool.  Fixes #1277
 	* Many miscellaneous fixes and typos.
+	* Allow long strings in %{%{foo} bar:-%{baz} blah".
+	  Fixes #1866
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
