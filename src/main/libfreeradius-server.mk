@@ -17,7 +17,9 @@ SOURCES	:=	cond_eval.c \
 		util.c \
 		version.c \
 		pair.c \
-		xlat.c
+		xlat_eval.c \
+		xlat_func.c \
+		xlat_tokenize.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_FLAGS) $(GPERFTOOLS_LIBS)
