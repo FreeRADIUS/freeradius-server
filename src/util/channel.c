@@ -88,6 +88,8 @@ typedef struct fr_channel_end_t {
 
 	size_t			num_signals;
 
+	size_t			num_kevents;
+
 	uint64_t		sequence;	//!< sequence number for this channel.
 	uint64_t		ack;		//!< sequence number of the other end
 
@@ -141,7 +143,7 @@ static int fr_channel_kevent_signal(int kq, fr_channel_control_t *cc)
 {
 	struct kevent kev;
 
-	EV_SET(&kev, cc->signal, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFNOP, cc->ack, cc->ch);
+	EV_SET(&kev, cc->signal, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFCOPY, cc->ack, cc->ch);
 
 	return kevent(kq, &kev, 1, NULL, 0, NULL);
 }
@@ -542,7 +544,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
  *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-fr_channel_event_t fr_channel_service_kevent(UNUSED fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
+fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
 {
 	int rcode;
 	uint64_t ack;
@@ -554,6 +556,12 @@ fr_channel_event_t fr_channel_service_kevent(UNUSED fr_atomic_queue_t *aq, struc
 	*p_channel = NULL;
 
 	ch = kev->udata;
+
+	if (aq == ch->end[TO_WORKER].aq_control) {
+		ch->end[TO_WORKER].num_kevents++;
+	} else {
+		ch->end[FROM_WORKER].num_kevents++;
+	}
 
 #ifndef NDEBUG
 	talloc_get_type_abort(ch, fr_channel_t);
@@ -696,11 +704,13 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 {
 	fprintf(fp, "to worker\n");
 	fprintf(fp, "\tnum_signals = %zd\n", ch->end[TO_WORKER].num_signals);
+	fprintf(fp, "\tnum_kevents = %zd\n", ch->end[TO_WORKER].num_kevents);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[TO_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[TO_WORKER].ack);
 
 	fprintf(fp, "to receive\n");
 	fprintf(fp, "\tnum_signals = %zd\n", ch->end[FROM_WORKER].num_signals);
+	fprintf(fp, "\tnum_kevents = %zd\n", ch->end[FROM_WORKER].num_kevents);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[FROM_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[FROM_WORKER].ack);
 }
