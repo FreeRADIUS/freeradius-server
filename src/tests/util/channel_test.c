@@ -190,7 +190,7 @@ check_close:
 			fr_channel_t *new_channel;
 
 			ce = fr_channel_service_kevent(aq_master, &events[i], now, &new_channel);
-			MPRINT1("\tWorker Got channel event %d\n", ce);
+			MPRINT1("Master Got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_DATA_READY_RECEIVER) {
 				MPRINT1("Master got data ready signal\n");
