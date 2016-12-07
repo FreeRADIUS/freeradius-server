@@ -43,6 +43,7 @@ RCSID("$Id$")
 
 static int		debug_lvl = 0;
 static int		kq_master, kq_worker;
+static fr_atomic_queue_t *aq_master, *aq_worker;
 static int		max_messages = 10;
 static int		max_outstanding = 1;
 static bool		touch_memory = false;
@@ -445,7 +446,15 @@ int main(int argc, char *argv[])
 	kq_worker = kqueue();
 	rad_assert(kq_worker >= 0);
 
-	channel = fr_channel_create(autofree, kq_master, kq_worker);
+	aq_master = fr_atomic_queue_create(autofree, 128);
+	rad_assert(aq_master != NULL);
+
+	aq_worker = fr_atomic_queue_create(autofree, 128);
+	rad_assert(aq_worker != NULL);
+
+	channel = fr_channel_create(autofree,
+				    kq_master, aq_master,
+				    kq_worker, aq_worker);
 	if (!channel) {
 		fprintf(stderr, "channel_test: Failed to create channel\n");
 		exit(1);

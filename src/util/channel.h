@@ -102,7 +102,8 @@ typedef enum fr_channel_event_t {
 	FR_CHANNEL_CLOSE,
 } fr_channel_event_t;
 
-fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker);
+fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_t *aq_master,
+				int kq_worker, fr_atomic_queue_t *aq_worker);
 
 int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_reply) CC_HINT(nonnull);
 fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);

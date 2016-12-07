@@ -82,6 +82,8 @@ typedef struct fr_channel_control_t {
 typedef struct fr_channel_end_t {
 	int			kq;		//!< the kqueue associated with the channel
 
+	fr_atomic_queue_t	*aq_control;   	//!< the control channel queue
+
 	int			num_outstanding; //!< number of outstanding requests with no reply
 
 	size_t			num_signals;
@@ -154,7 +156,8 @@ static int fr_channel_kevent_signal(int kq, fr_channel_control_t *cc)
  *	- NULL on error
  *	- channel on success
  */
-fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
+fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_t *aq_master,
+				int kq_worker, fr_atomic_queue_t *aq_worker)
 {
 	fr_time_t when;
 	fr_channel_t *ch;
@@ -177,7 +180,9 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
 	}
 
 	ch->end[TO_WORKER].kq = kq_worker;
+	ch->end[TO_WORKER].aq_control = aq_worker;
 	ch->end[FROM_WORKER].kq = kq_master;
+	ch->end[FROM_WORKER].aq_control = aq_master;
 
 	/*
 	 *	Initialize all of the timers to now.
