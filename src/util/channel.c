@@ -67,6 +67,12 @@ typedef enum fr_channel_signal_t {
 	FR_CHANNEL_SIGNAL_CLOSE,
 } fr_channel_signal_t;
 
+typedef struct fr_channel_control_t {
+	fr_channel_signal_t	signal;		//!< the signal to send
+	uint64_t		ack;		//!< or the endpoint..
+	fr_channel_t		*ch;		//!< the channel
+} fr_channel_control_t;
+
 /**
  *  One end of a channel, which consists of a kqueue descriptor, and
  *  an atomic queue.  The atomic queue is there to get bulk data
@@ -126,6 +132,16 @@ static int fr_channel_add_kevent_receiver(struct kevent *kev, int size)
 	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_ADD, NOTE_FFCOPY, 0, NULL);
 
 	return 3;
+}
+
+
+static int fr_channel_kevent_signal(int kq, fr_channel_control_t *cc)
+{
+	struct kevent kev;
+
+	EV_SET(&kev, cc->signal, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFCOPY, cc->ack, cc->ch);
+
+	return kevent(kq, &kev, 1, NULL, 0, NULL);
 }
 
 
@@ -216,19 +232,16 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, int kq_worker)
  */
 static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_end_t *end, fr_channel_signal_t which)
 {
-	struct kevent kev;
+	fr_channel_control_t cc;
 
 	end->last_sent_signal = when;
 	end->num_signals++;
 
-	/*
-	 *	The ident is the pointer to the channel.  This is so
-	 *	that a thread listening on multiple channels can
-	 *	receive events unique to each one.
-	 */
-	EV_SET(&kev, which, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, ch);
+	cc.signal = which;
+	cc.ack = 0;
+	cc.ch = ch;
 
-	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
+	return fr_channel_kevent_signal(end->kq, &cc);
 }
 
 #define IALPHA (8)
@@ -484,8 +497,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
  */
 int fr_channel_worker_sleeping(fr_channel_t *ch)
 {
-	struct kevent kev;
 	fr_channel_end_t *end;
+	fr_channel_control_t cc;
 
 	end = &(ch->end[FROM_WORKER]);
 
@@ -498,14 +511,11 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 
 	end->num_signals++;
 
-	/*
-	 *	The ident is the pointer to the channel.  This is so
-	 *	that a thread listening on multiple channels can
-	 *	receive events unique to each one.
-	 */
-	EV_SET(&kev, FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, end->ack, ch);
+	cc.signal = FR_CHANNEL_SIGNAL_WORKER_SLEEPING;
+	cc.ack = end->ack;
+	cc.ch = ch;
 
-	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
+	return fr_channel_kevent_signal(end->kq, &cc);
 }
 
 
@@ -643,13 +653,15 @@ bool fr_channel_active(fr_channel_t *ch)
  */
 int fr_channel_signal_close(fr_channel_t *ch, bool ack)
 {
-	struct kevent kev;
+	fr_channel_control_t cc;
 
 	ch->active = false;
 
-	EV_SET(&kev, FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFCOPY, ack, ch);
+	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
+	cc.ack = ack;
+	cc.ch = ch;
 
-	return kevent(ch->end[ack].kq, &kev, 1, NULL, 0, NULL);
+	return fr_channel_kevent_signal(ch->end[ack].kq, &cc);
 }
 
 /** Send a channel to a KQ
@@ -662,13 +674,15 @@ int fr_channel_signal_close(fr_channel_t *ch, bool ack)
  */
 int fr_channel_signal_open(int kq, fr_channel_t *ch)
 {
-	struct kevent kev;
+	fr_channel_control_t cc;
 
 	rad_assert(kq == ch->end[TO_WORKER].kq);
 
-	EV_SET(&kev, FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, ch);
+	cc.signal = FR_CHANNEL_SIGNAL_OPEN;
+	cc.ack = 0;
+	cc.ch = ch;
 
-	return kevent(kq, &kev, 1, NULL, 0, NULL);
+	return fr_channel_kevent_signal(kq, &cc);
 }
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
