@@ -40,11 +40,6 @@ RCSID("$Id$")
 
 #define MSG_ARRAY_SIZE (16)
 
-/**
- *  Get a fr_message_t pointer from an array index.
- */
-#define MR_ARRAY(_x) (fr_message_t *)(mr->messages + ((_x) * mr->message_size))
-
 /** A Message set, composed of message headers and ring buffer data.
  *
  *  A message set is intended to send short-lived messages.  The
