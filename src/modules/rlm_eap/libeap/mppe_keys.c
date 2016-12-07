@@ -29,41 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-/*
- *	OpenSSL compatibility, to avoid ifdef's through the rest of the code.
- */
-size_t SSL_get_client_random(const SSL *s, unsigned char *out, size_t outlen)
-{
-	if (!outlen) return sizeof(s->s3->client_random);
-
-	if (outlen > sizeof(s->s3->client_random)) outlen = sizeof(s->s3->client_random);
-
-	memcpy(out, s->s3->client_random, outlen);
-	return outlen;
-}
-
-size_t SSL_get_server_random(const SSL *s, unsigned char *out, size_t outlen)
-{
-	if (!outlen) return sizeof(s->s3->server_random);
-
-	if (outlen > sizeof(s->s3->server_random)) outlen = sizeof(s->s3->server_random);
-
-	memcpy(out, s->s3->server_random, outlen);
-	return outlen;
-}
-
-static size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned char *out, size_t outlen)
-{
-	if (!outlen) return s->master_key_length;
-
-	if (outlen > (size_t)s->master_key_length) outlen = (size_t)s->master_key_length;
-
-	memcpy(out, s->master_key, outlen);
-	return outlen;
-}
-#endif
-
 /*
  * TLS PRF from RFC 2246
  */

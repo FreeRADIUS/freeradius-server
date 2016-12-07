@@ -398,6 +398,9 @@
 /* Define to 1 if you have the `SSL_get_server_random' function. */
 #undef HAVE_SSL_GET_SERVER_RANDOM
 
+/* Define to 1 if you have the `SSL_SESSION_get_master_key' function. */
+#undef HAVE_SSL_SESSION_GET_MASTER_KEY
+
 /* Define to 1 if you have the <stdbool.h> header file. */
 #undef HAVE_STDBOOL_H
 

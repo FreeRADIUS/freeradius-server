@@ -1183,6 +1183,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_CHECK_FUNCS( \
       SSL_get_client_random \
       SSL_get_server_random \
+      SSL_SESSION_get_master_key \
       HMAC_CTX_new \
       HMAC_CTX_free \
       ASN1_STRING_get0_data \
