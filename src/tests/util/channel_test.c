@@ -168,7 +168,6 @@ check_close:
 		rad_assert(num_messages <= max_messages);
 
 		rcode = kevent(kq_master, NULL, 0, events, MAX_KEVENTS, NULL);
-
 		MPRINT1("Master kevent returned %d\n", rcode);
 
 		if (rcode < 0) {
@@ -190,7 +189,7 @@ check_close:
 			fr_channel_t *new_channel;
 
 			ce = fr_channel_service_kevent(aq_master, &events[i], now, &new_channel);
-			MPRINT1("Master Got channel event %d\n", ce);
+			MPRINT1("Master got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_DATA_READY_RECEIVER) {
 				MPRINT1("Master got data ready signal\n");
@@ -284,7 +283,6 @@ static void *channel_worker(void *arg)
 		MPRINT1("\tWorker waiting on events.\n");
 
 		rcode = kevent(kq_worker, NULL, 0, events, MAX_KEVENTS, NULL);
-
 		MPRINT1("\tWorker kevent returned %d events\n", rcode);
 
 		if (rcode < 0) {
@@ -305,7 +303,7 @@ static void *channel_worker(void *arg)
 			 *	@todo drain the control plane on one kevent.
 			 */
 			ce = fr_channel_service_kevent(aq_worker, &events[i], now, &new_channel);
-			MPRINT1("\tWorker Got channel event %d\n", ce);
+			MPRINT1("\tWorker got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_OPEN) {
 				MPRINT1("\tWorker received a new channel\n");
