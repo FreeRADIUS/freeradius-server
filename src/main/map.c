@@ -815,7 +815,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		if (!new) return -1;
 
 		/*
-		 *	We do the debug printing because radius_axlat_struct
+		 *	We do the debug printing because xlat_aeval_compiled
 		 *	doesn't have access to the original string.  It's been
 		 *	mangled during the parsing to xlat_exp_t
 		 */
@@ -823,7 +823,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		RINDENT();
 
 		str = NULL;
-		slen = radius_axlat_struct(request, &str, request, map->rhs->tmpl_xlat, NULL, NULL);
+		slen = xlat_aeval_compiled(request, &str, request, map->rhs->tmpl_xlat, NULL, NULL);
 		REXDENT();
 
 		if (slen < 0) {
@@ -852,7 +852,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		if (!new) return -1;
 
 		str = NULL;
-		slen = radius_axlat(request, &str, request, map->rhs->name, NULL, NULL);
+		slen = xlat_aeval(request, &str, request, map->rhs->name, NULL, NULL);
 		if (slen < 0) {
 			rcode = slen;
 			goto error;

@@ -801,7 +801,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		 */
 
 		if (inst->ntlm_cpw_username) {
-			len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_username, NULL, NULL);
+			len = xlat_eval(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_username, NULL, NULL);
 			if (len < 0) {
 				goto ntlm_auth_err;
 			}
@@ -818,7 +818,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		}
 
 		if (inst->ntlm_cpw_domain) {
-			len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_domain, NULL, NULL);
+			len = xlat_eval(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_domain, NULL, NULL);
 			if (len < 0) {
 				goto ntlm_auth_err;
 			}
@@ -1065,7 +1065,7 @@ ntlm_auth_err:
 		*x = '\0';
 
 		/* Perform the xlat */
-		result_len = radius_xlat(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
+		result_len = xlat_eval(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
 		if (result_len < 0){
 			return -1;
 		} else if (result_len == 0) {

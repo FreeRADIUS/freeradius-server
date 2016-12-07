@@ -223,7 +223,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	VALUE_PAIR *vp;
 	char timestamp[256];
 
-	if (radius_xlat(timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
+	if (xlat_eval(timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
 		return -1;
 	}
 
@@ -358,9 +358,9 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	/*
 	 *	Generate the path for the detail file.  Use the same
 	 *	format, but truncate at the last /.  Then feed it
-	 *	through radius_xlat() to expand the variables.
+	 *	through xlat_eval() to expand the variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, inst->escape_func, NULL) < 0) {
+	if (xlat_eval(buffer, sizeof(buffer), request, inst->filename, inst->escape_func, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 

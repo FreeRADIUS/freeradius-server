@@ -691,7 +691,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 		return 0;
 	}
 
-	len = radius_axlat(request, &expanded, request, sqluser, NULL, NULL);
+	len = xlat_aeval(request, &expanded, request, sqluser, NULL, NULL);
 	if (len < 0) {
 		return -1;
 	}
@@ -734,7 +734,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
 	entry = *phead = NULL;
 
 	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) return 0;
-	if (radius_axlat(request, &expanded, request, inst->config->groupmemb_query,
+	if (xlat_aeval(request, &expanded, request, inst->config->groupmemb_query,
 			 inst->sql_escape_func, *handle) < 0) return -1;
 
 	ret = rlm_sql_select_query(inst, request, handle, expanded);
@@ -913,7 +913,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			/*
 			 *	Expand the group query
 			 */
-			if (radius_axlat(request, &expanded, request, inst->config->authorize_group_check_query,
+			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_check_query,
 					 inst->sql_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
@@ -963,7 +963,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
-			if (radius_axlat(request, &expanded, request, inst->config->authorize_group_reply_query,
+			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_reply_query,
 					 inst->sql_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
@@ -1306,7 +1306,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 
-		if (radius_axlat(request, &expanded, request, inst->config->authorize_check_query,
+		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Failed generating query");
 			rcode = RLM_MODULE_FAIL;
@@ -1354,7 +1354,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		/*
 		 *	Now get the reply pairs since the paircompare matched
 		 */
-		if (radius_axlat(request, &expanded, request, inst->config->authorize_reply_query,
+		if (xlat_aeval(request, &expanded, request, inst->config->authorize_reply_query,
 				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
@@ -1534,7 +1534,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		*p++ = '.';
 	}
 
-	if (radius_xlat(p, sizeof(path) - (p - path), request, section->reference, NULL, NULL) < 0) {
+	if (xlat_eval(p, sizeof(path) - (p - path), request, section->reference, NULL, NULL) < 0) {
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;
@@ -1581,7 +1581,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 			goto finish;
 		}
 
-		if (radius_axlat(request, &expanded, request, value, inst->sql_escape_func, handle) < 0) {
+		if (xlat_aeval(request, &expanded, request, value, inst->sql_escape_func, handle) < 0) {
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
@@ -1741,7 +1741,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 		return RLM_MODULE_FAIL;
 	}
 
-	if (radius_axlat(request, &expanded, request, inst->config->simul_count_query,
+	if (xlat_aeval(request, &expanded, request, inst->config->simul_count_query,
 			 inst->sql_escape_func, handle) < 0) {
 		fr_connection_release(inst->pool, request, handle);
 		sql_unset_user(inst, request);
@@ -1783,7 +1783,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 		goto finish;
 	}
 
-	if (radius_axlat(request, &expanded, request, inst->config->simul_verify_query,
+	if (xlat_aeval(request, &expanded, request, inst->config->simul_verify_query,
 			 inst->sql_escape_func, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
 

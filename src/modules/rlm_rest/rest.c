@@ -826,7 +826,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 		RDEBUG2("Performing xlat expansion of response value");
 
-		if (radius_axlat(request, &expanded, request, value, NULL, NULL) < 0) {
+		if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) {
 			goto skip;
 		}
 
@@ -934,7 +934,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		type = PW_TYPE_STRING;
 		value = json_object_get_string(leaf);
 		if (flags->do_xlat) {
-			if (radius_axlat(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
+			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
 			src.datum.strvalue = expanded;
 			src.length = talloc_array_length(src.datum.strvalue) - 1;
 		} else {
@@ -1832,7 +1832,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			if (username) {
 				SET_OPTION(CURLOPT_USERNAME, username);
 			} else if (section->username) {
-				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
+				if (xlat_eval(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
 					option = STRINGIFY(CURLOPT_USERNAME);
 					goto error;
 				}
@@ -1842,7 +1842,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			if (password) {
 				SET_OPTION(CURLOPT_PASSWORD, password);
 			} else if (section->password) {
-				if (radius_xlat(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
+				if (xlat_eval(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
 					option = STRINGIFY(CURLOPT_PASSWORD);
 					goto error;
 				}
@@ -1855,7 +1855,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			if (username) {
 				SET_OPTION(CURLOPT_TLSAUTH_USERNAME, username);
 			} else if (section->username) {
-				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
+				if (xlat_eval(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
 					option = STRINGIFY(CURLOPT_TLSAUTH_USERNAME);
 					goto error;
 				}
@@ -1865,7 +1865,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 			if (password) {
 				SET_OPTION(CURLOPT_TLSAUTH_PASSWORD, password);
 			} else if (section->password) {
-				if (radius_xlat(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
+				if (xlat_eval(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
 					option = STRINGIFY(CURLOPT_TLSAUTH_PASSWORD);
 					goto error;
 				}
@@ -1965,7 +1965,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		rest_custom_data_t *data;
 		char *expanded = NULL;
 
-		if (radius_axlat(request, &expanded, request, section->data, NULL, NULL) < 0) return -1;
+		if (xlat_aeval(request, &expanded, request, section->data, NULL, NULL) < 0) return -1;
 
 		data = talloc_zero(request, rest_custom_data_t);
 		data->p = expanded;
@@ -2309,7 +2309,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
 
 	path = (uri + len);
 
-	len = radius_axlat(request, out, request, scheme, NULL, NULL);
+	len = xlat_aeval(request, out, request, scheme, NULL, NULL);
 	talloc_free(scheme);
 	if (len < 0) {
 		TALLOC_FREE(*out);
@@ -2317,7 +2317,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
 		return 0;
 	}
 
-	len = radius_axlat(request, &path_exp, request, path, rest_uri_escape, NULL);
+	len = xlat_aeval(request, &path_exp, request, path, rest_uri_escape, NULL);
 	if (len < 0) {
 		TALLOC_FREE(*out);
 

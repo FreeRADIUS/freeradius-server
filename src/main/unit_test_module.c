@@ -628,7 +628,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 				continue;
 			}
 
-			len = radius_xlat_struct(output, sizeof(output), request, head, NULL, NULL);
+			len = xlat_eval_compiled(output, sizeof(output), request, head, NULL, NULL);
 			if (len < 0) {
 				snprintf(output, sizeof(output), "ERROR expanding xlat: %s", fr_strerror());
 				continue;

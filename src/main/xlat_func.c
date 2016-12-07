@@ -591,7 +591,7 @@ static ssize_t xlat_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	If it's a string, expand it again
 	 */
 	if (vp->da->type == PW_TYPE_STRING) {
-		slen = radius_xlat(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
+		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
 		if (slen <= 0) return slen;
 	/*
 	 *	If it's not a string, treat it as a literal

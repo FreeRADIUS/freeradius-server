@@ -245,7 +245,7 @@ unsigned int tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		vp = pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
 		if (!vp) return 0;
 
-		hex_len = radius_xlat(buffer, sizeof(buffer), request, conf->psk_query,
+		hex_len = xlat_eval(buffer, sizeof(buffer), request, conf->psk_query,
 				      NULL, NULL);
 		if (!hex_len) {
 			RWDEBUG("PSK expansion returned an empty string.");

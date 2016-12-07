@@ -102,7 +102,7 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 	if (extra_msg) {
 		extra[0] = ' ';
 		p = extra + 1;
-		if (radius_xlat(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) {
+		if (xlat_eval(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) {
 			return;
 		}
 	} else {

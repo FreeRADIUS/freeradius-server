@@ -278,7 +278,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
-	if (radius_axlat(request, &expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) return -1;
+	if (xlat_aeval(request, &expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) return -1;
 
 	ret = data->sql_inst->sql_query(data->sql_inst, request, handle, expanded);
 	if (ret < 0){
@@ -322,7 +322,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	/*
 	 *	Do an xlat on the provided string
 	 */
-	if (radius_axlat(request, &expanded, request, query, data->sql_inst->sql_escape_func, handle) < 0) {
+	if (xlat_aeval(request, &expanded, request, query, data->sql_inst->sql_escape_func, handle) < 0) {
 		return 0;
 	}
 	retval = data->sql_inst->sql_select_query(data->sql_inst, request, &handle, expanded);
@@ -419,7 +419,7 @@ static int do_logging(REQUEST *request, char const *str, int rcode)
 
 	if (!str || !*str) return rcode;
 
-	if (radius_axlat(request, &expanded, request, str, NULL, NULL) < 0) {
+	if (xlat_aeval(request, &expanded, request, str, NULL, NULL) < 0) {
 		return rcode;
 	}
 

@@ -240,7 +240,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	if (my_ok && conf->check_cert_cn) {
 		char cn_str[1024];
 
-		if (radius_xlat(cn_str, sizeof(cn_str), request, conf->check_cert_cn, NULL, NULL) < 0) {
+		if (xlat_eval(cn_str, sizeof(cn_str), request, conf->check_cert_cn, NULL, NULL) < 0) {
 			/* if this fails, fail the verification */
 			my_ok = 0;
 		} else {

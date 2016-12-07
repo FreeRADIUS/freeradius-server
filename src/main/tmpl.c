@@ -1549,7 +1549,7 @@ ssize_t _tmpl_to_type(void *out,
 			return -1;
 		}
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_xlat((char *)buff, bufflen, request, vpt->name, escape, escape_ctx);
+		slen = xlat_eval((char *)buff, bufflen, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) return slen;
 
 		/*
@@ -1570,7 +1570,7 @@ ssize_t _tmpl_to_type(void *out,
 			return -1;
 		}
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_xlat_struct((char *)buff, bufflen, request, vpt->tmpl_xlat, escape, escape_ctx);
+		slen = xlat_eval_compiled((char *)buff, bufflen, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) return slen;
 
 		RDEBUG2("   --> %s", (char *)buff);	/* Print pre-unescaping (so it's escaped) */
@@ -1843,7 +1843,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL XLAT");
 
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat(tmp_ctx, (char **)&vd.datum.ptr, request, vpt->name, escape, escape_ctx);
+		slen = xlat_aeval(tmp_ctx, (char **)&vd.datum.ptr, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) goto error;
 		vd.length = slen;
 
@@ -1870,7 +1870,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat_struct(tmp_ctx, (char **)&vd.datum.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
+		slen = xlat_aeval_compiled(tmp_ctx, (char **)&vd.datum.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) return slen;
 
 		vd.length = slen;

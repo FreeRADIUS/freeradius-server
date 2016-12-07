@@ -159,7 +159,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	eap_round_t	*eap_round = eap_session->this_round;
 	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *) instance;
 
-	if (radius_xlat(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
+	if (xlat_eval(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 

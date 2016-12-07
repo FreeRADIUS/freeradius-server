@@ -187,7 +187,7 @@ static int genericcmp(UNUSED void *instance,
 
 		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
 
-		if (radius_xlat(value, sizeof(value), request, name, NULL, NULL) < 0) {
+		if (xlat_eval(value, sizeof(value), request, name, NULL, NULL) < 0) {
 			return 0;
 		}
 		vp = fr_pair_make(req, NULL, check->da->name, value, check->op);

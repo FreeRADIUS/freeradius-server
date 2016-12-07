@@ -745,7 +745,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 
 		/*
 		 *	Prevent infinitely recursive calls if
-		 *	radius_axlat attempts to write to the request log.
+		 *	xlat_aeval attempts to write to the request log.
 		 */
 		request->log.func = NULL;
 
@@ -753,7 +753,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	This is SLOW!  Doing it for every log message
 		 *	in every request is NOT recommended!
 		 */
-		if (radius_axlat(request, &exp, request, filename, rad_filename_escape, NULL) < 0) return;
+		if (xlat_aeval(request, &exp, request, filename, rad_filename_escape, NULL) < 0) return;
 
 		/*
 		 *	Restore the original logging function

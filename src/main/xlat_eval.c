@@ -714,21 +714,20 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 	return total;
 }
 
-
 /** Replace %whatever in a string.
  *
  * See 'doc/configuration/variables.rst' for more information.
  *
- * @param[in] ctx to allocate expansion buffers in.
- * @param[out] out Where to write pointer to output buffer.
- * @param[in] outlen Size of out.
- * @param[in] request current request.
- * @param[in] node the xlat structure to expand
- * @param[in] escape function to escape final value e.g. SQL quoting.
- * @param[in] escape_ctx pointer to pass to escape function.
+ * @param[in] ctx		to allocate expansion buffers in.
+ * @param[out] out		Where to write pointer to output buffer.
+ * @param[in] outlen		Size of out.
+ * @param[in] request		current request.
+ * @param[in] node		the xlat structure to expand
+ * @param[in] escape		function to escape final value e.g. SQL quoting.
+ * @param[in] escape_ctx	pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure.
  */
-static ssize_t xlat_expand_struct(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request,
+static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request,
 				  xlat_exp_t const *node, xlat_escape_t escape, void const *escape_ctx)
 {
 	char *buff;
@@ -762,23 +761,23 @@ static ssize_t xlat_expand_struct(TALLOC_CTX *ctx, char **out, size_t outlen, RE
 	return len;
 }
 
-static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
+static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
 			   xlat_escape_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
 
 /** Replace %whatever in a string.
  *
  * See 'doc/configuration/variables.rst' for more information.
  *
- * @param[in] ctx to allocate expansion buffers in.
- * @param[out] out Where to write pointer to output buffer.
- * @param[in] outlen Size of out.
- * @param[in] request current request.
- * @param[in] fmt string to expand.
- * @param[in] escape function to escape final value e.g. SQL quoting.
- * @param[in] escape_ctx pointer to pass to escape function.
+ * @param[in] ctx		to allocate expansion buffers in.
+ * @param[out] out		Where to write pointer to output buffer.
+ * @param[in] outlen		Size of out.
+ * @param[in] request		current request.
+ * @param[in] fmt		string to expand.
+ * @param[in] escape		function to escape final value e.g. SQL quoting.
+ * @param[in] escape_ctx	pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure.
  */
-static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
+static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
 			   xlat_escape_t escape, void const *escape_ctx)
 {
 	ssize_t len;
@@ -807,7 +806,7 @@ static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *
 		return -1;
 	}
 
-	len = xlat_expand_struct(ctx, out, outlen, request, node, escape, escape_ctx);
+	len = _xlat_eval_compiled(ctx, out, outlen, request, node, escape, escape_ctx);
 	talloc_free(node);
 
 	REXDENT();
@@ -816,28 +815,28 @@ static ssize_t xlat_expand(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *
 	return len;
 }
 
-ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request,
-		    char const *fmt, xlat_escape_t escape, void const *escape_ctx)
+ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request,
+		  char const *fmt, xlat_escape_t escape, void const *escape_ctx)
 {
-	return xlat_expand(request, &out, outlen, request, fmt, escape, escape_ctx);
+	return _xlat_eval(request, &out, outlen, request, fmt, escape, escape_ctx);
 }
 
-ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request,
+ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request,
 			   xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
-	return xlat_expand_struct(request, &out, outlen, request, xlat, escape, escape_ctx);
+	return _xlat_eval_compiled(request, &out, outlen, request, xlat, escape, escape_ctx);
 }
 
-ssize_t radius_axlat(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
-		     xlat_escape_t escape, void const *escape_ctx)
+ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *fmt,
+		   xlat_escape_t escape, void const *escape_ctx)
 {
 	*out = NULL;
-	return xlat_expand(ctx, out, 0, request, fmt, escape, escape_ctx);
+	return _xlat_eval(ctx, out, 0, request, fmt, escape, escape_ctx);
 }
 
-ssize_t radius_axlat_struct(TALLOC_CTX *ctx, char **out, REQUEST *request,
+ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 			    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 {
 	*out = NULL;
-	return xlat_expand_struct(ctx, out, 0, request, xlat, escape, escape_ctx);
+	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
 }

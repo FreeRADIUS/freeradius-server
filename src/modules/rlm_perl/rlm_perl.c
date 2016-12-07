@@ -299,7 +299,7 @@ static XS(XS_radiusd_radlog)
 }
 
 /*
- *	This is a wraper for radius_axlat
+ *	This is a wraper for xlat_aeval
  *	Now users are able to get data that is accessible only via xlat
  *	e.g. %{client:...}
  *	Call syntax is radiusd::xlat(string), string will be handled the
@@ -319,7 +319,7 @@ static XS(XS_radiusd_xlat)
 
 	in_str = (char *) SvPV(ST(0), PL_na);
 
-	slen = radius_axlat(request, &expanded, request, in_str, NULL, NULL);
+	slen = xlat_aeval(request, &expanded, request, in_str, NULL, NULL);
 	if (slen < 0) {
 		REDEBUG("Error parsing xlat '%s'", in_str);
 		XSRETURN_UNDEF;

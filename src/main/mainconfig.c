@@ -356,7 +356,7 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	Expand it safely.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) return 0;
+	if (xlat_eval(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) return 0;
 
 	ci = cf_reference_item(request->root->config,
 			       request->root->config, buffer);

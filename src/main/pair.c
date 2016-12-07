@@ -578,7 +578,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *	We've got to xlat the string before doing
 		 *	the comparison.
 		 */
-		radius_xlat_do(request, check_item);
+		xlat_eval_do(request, check_item);
 
 		/*
 		 *	OK it is present now compare them.
@@ -652,7 +652,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
  *	- -1 On xlat failure.
  *	- -2 On parse failure.
  */
-int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
+int xlat_eval_do(REQUEST *request, VALUE_PAIR *vp)
 {
 	ssize_t slen;
 
@@ -661,7 +661,7 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 
 	vp->type = VT_DATA;
 
-	slen = radius_axlat(request, &expanded, request, vp->xlat, NULL, NULL);
+	slen = xlat_aeval(request, &expanded, request, vp->xlat, NULL, NULL);
 	talloc_const_free(vp->xlat);
 	vp->xlat = NULL;
 	if (slen < 0) {

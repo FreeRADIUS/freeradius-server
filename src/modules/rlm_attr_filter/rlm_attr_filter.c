@@ -219,7 +219,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				if (!vp) {
 					goto error;
 				}
-				radius_xlat_do(request, vp);
+				xlat_eval_do(request, vp);
 				fr_cursor_append(&out, vp);
 			}
 		}

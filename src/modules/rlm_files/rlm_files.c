@@ -361,7 +361,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	} else {
 		int len;
 
-		len = radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
+		len = xlat_eval(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
 		if (len < 0) {
 			return RLM_MODULE_FAIL;
 		}
@@ -413,7 +413,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			if (radius_xlat_do(request, vp) < 0) {
+			if (xlat_eval_do(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
 				fr_pair_list_free(&check_tmp);
 				continue;

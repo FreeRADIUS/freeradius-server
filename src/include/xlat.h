@@ -68,19 +68,19 @@ typedef ssize_t (*xlat_func_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 typedef int (*xlat_instantiate_t)(void *xlat_inst, void *mod_inst, char const *fmt);
 
-ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
+ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 		    void const *escape_ctx)
 	CC_HINT(nonnull (1 ,3 ,4));
 
-ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request, xlat_exp_t const *xlat,
+ssize_t xlat_eval_compiled(char *out, size_t outlen, REQUEST *request, xlat_exp_t const *xlat,
 			   xlat_escape_t escape, void const *escape_ctx)
 	CC_HINT(nonnull (1 ,3 ,4));
 
-ssize_t radius_axlat(TALLOC_CTX *ctx, char **out, REQUEST *request,
+ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, REQUEST *request,
 		     char const *fmt, xlat_escape_t escape, void const *escape_ctx)
 	CC_HINT(nonnull (2, 3, 4));
 
-ssize_t radius_axlat_struct(TALLOC_CTX *ctx, char **out, REQUEST *request,
+ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 			    xlat_exp_t const *xlat, xlat_escape_t escape, void const *escape_ctx)
 	CC_HINT(nonnull (2, 3, 4));
 

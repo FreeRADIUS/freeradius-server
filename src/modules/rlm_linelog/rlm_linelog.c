@@ -651,7 +651,7 @@ build_vector:
 	{
 		char path[2048];
 
-		if (radius_xlat(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
+		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 

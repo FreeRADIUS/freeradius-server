@@ -672,7 +672,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	strlcpy(argv_buf, cmd, argv_buflen);
 
 	/*
-	 *	Split the string into argv's BEFORE doing radius_xlat...
+	 *	Split the string into argv's BEFORE doing xlat_eval...
 	 */
 	from = cmd;
 	to = argv_buf;
@@ -764,7 +764,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 
 		if (!request) continue;
 
-		sublen = radius_xlat(to, left - 1, request, argv[i], NULL, NULL);
+		sublen = xlat_eval(to, left - 1, request, argv[i], NULL, NULL);
 		if (sublen <= 0) {
 			if (can_fail) {
 				/*

@@ -1167,7 +1167,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 		*p++ = '.';
 	}
 
-	if (radius_xlat(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) {
+	if (xlat_eval(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) {
 		goto error;
 	}
 
@@ -1241,7 +1241,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 		} else if (do_xlat) {
 			char *exp = NULL;
 
-			if (radius_axlat(request, &exp, request, value, NULL, NULL) <= 0) {
+			if (xlat_aeval(request, &exp, request, value, NULL, NULL) <= 0) {
 				RDEBUG("Skipping attribute \"%s\"", attr);
 
 				talloc_free(exp);

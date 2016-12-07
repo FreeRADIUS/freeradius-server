@@ -524,7 +524,7 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, 
 		in = buffer;
 	}
 
-	len = radius_xlat(out, outlen, request, in, rlm_ldap_escape_func, NULL);
+	len = xlat_eval(out, outlen, request, in, rlm_ldap_escape_func, NULL);
 	if (len < 0) {
 		REDEBUG("Failed creating filter");
 
