@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/util/queue.h>
+#include <freeradius-devel/util/channel.h>
 #include <freeradius-devel/util/worker.h>
 #include <freeradius-devel/util/receiver.h>
 

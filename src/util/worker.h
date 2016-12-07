@@ -25,7 +25,8 @@
  */
 RCSIDH(worker_h, "$Id$")
 
-#include <freeradius-devel/util/channel.h>
+#include <talloc.h>
+
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 

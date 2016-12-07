@@ -26,7 +26,7 @@
 RCSIDH(transport_h, "$Id$")
 
 #include <freeradius-devel/util/time.h>
-
+#include <freeradius-devel/util/channel.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/worker.h>
+#include <freeradius-devel/util/channel.h>
 #include <freeradius-devel/rad_assert.h>
 
 /**
