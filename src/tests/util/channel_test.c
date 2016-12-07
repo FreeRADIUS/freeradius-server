@@ -195,7 +195,10 @@ check_close:
 				MPRINT1("Master got data ready signal\n");
 
 				reply = fr_channel_recv_reply(channel);
-				if (!reply) continue;
+				if (!reply) {
+					MPRINT1("Master SIGNAL WITH NO DATA!\n");
+					continue;
+				}
 
 				do {
 					num_replies++;
@@ -340,7 +343,10 @@ static void *channel_worker(void *arg)
 				MPRINT1("\tWorker got data ready signal\n");
 
 				cd = fr_channel_recv_request(channel);
-				if (!cd) continue;
+				if (!cd) {
+					MPRINT1("\tWorker SIGNAL WITH NO DATA!\n");
+					continue;
+				}
 
 				while (cd) {
 					int message_id;
