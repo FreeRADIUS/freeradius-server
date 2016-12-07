@@ -2379,10 +2379,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			}
 		} else {
 
-			if (xlat_process(ctx, &str, request, node->child, escape, escape_ctx) > 0) {
+			if (xlat_process(&str, request, node->child, escape, escape_ctx) > 0) {
 				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
 			} else {
-				(void) xlat_process(ctx, &str, request, node->alternate, escape, escape_ctx);
+				(void) xlat_process(&str, request, node->alternate, escape, escape_ctx);
 				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
 			}
 		}
