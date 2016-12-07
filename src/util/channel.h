@@ -118,7 +118,8 @@ fr_channel_event_t fr_channel_service_kevent(int kq, struct kevent const *kev, f
 bool fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_signal_open(int kq, fr_channel_t *ch) CC_HINT(nonnull);
-int fr_channel_signal_close(fr_channel_t *ch, bool ack) CC_HINT(nonnull);
+int fr_channel_signal_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
+int fr_channel_ack_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp);
 

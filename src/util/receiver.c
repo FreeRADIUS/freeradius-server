@@ -230,7 +230,7 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 	 *	closing/
 	 */
 	while ((worker = fr_heap_pop(rc->workers)) != NULL) {
-		fr_channel_signal_close(worker->channel, false);
+		fr_channel_signal_worker_close(worker->channel);
 		(void) fr_heap_insert(rc->closing, worker);
 	}
 

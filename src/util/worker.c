@@ -573,7 +573,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	automatically freed when our talloc context is freed.
 	 */
 	for (i = 0; i < worker->num_channels; i++) {
-		fr_channel_signal_close(worker->channel[i], true);
+		fr_channel_ack_worker_close(worker->channel[i]);
 	}
 }
 

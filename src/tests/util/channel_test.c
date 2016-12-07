@@ -155,7 +155,7 @@ static void *channel_master(void *arg)
 		 */
 check_close:
 		if (!signaled_close && (num_messages >= max_messages) && (num_outstanding == 0)) {
-			rcode = fr_channel_signal_close(channel, false);
+			rcode = fr_channel_signal_worker_close(channel);
 			if (rcode < 0) {
 				fprintf(stderr, "Failed signaling close: %s\n", strerror(errno));
 				exit(1);
@@ -323,7 +323,7 @@ static void *channel_worker(void *arg)
 					fr_message_done(&cd->m);
 				}
 
-				(void) fr_channel_signal_close(channel, true);
+				(void) fr_channel_ack_worker_close(channel);
 				continue;
 			}
 

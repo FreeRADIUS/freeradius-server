@@ -648,25 +648,44 @@ bool fr_channel_active(fr_channel_t *ch)
 	return ch->active;
 }
 
-/** Signal a channel that it is closing.
+/** Signal a worker that the channel is closing
  *
  * @param[in] ch	The channel.
- * @param[in] ack	Whether we're acking a previous request to close the channel.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_signal_close(fr_channel_t *ch, bool ack)
+int fr_channel_signal_worker_close(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
 
 	ch->active = false;
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
-	cc.ack = ack;
+	cc.ack = TO_WORKER;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(ch->end[ack].kq, &cc);
+	return fr_channel_kevent_signal(ch->end[TO_WORKER].kq, &cc);
+}
+
+/** Acknowledge that the channel is closing
+ *
+ * @param[in] ch	The channel.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_ack_worker_close(fr_channel_t *ch)
+{
+	fr_channel_control_t cc;
+
+	ch->active = false;
+
+	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
+	cc.ack = FROM_WORKER;
+	cc.ch = ch;
+
+	return fr_channel_kevent_signal(ch->end[FROM_WORKER].kq, &cc);
 }
 
 /** Send a channel to a KQ
