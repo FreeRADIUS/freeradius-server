@@ -1623,10 +1623,10 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 #endif
 
 		case XLAT_ALTERNATE:
-			DEBUG("%.*sif {", lvl, xlat_tabs);
+			DEBUG("%.*sXLAT-IF {", lvl, xlat_tabs);
 			xlat_tokenize_debug(node->child, lvl + 1);
 			DEBUG("%.*s}", lvl, xlat_tabs);
-			DEBUG("%.*selse {", lvl, xlat_tabs);
+			DEBUG("%.*sXLAT-ELSE {", lvl, xlat_tabs);
 			xlat_tokenize_debug(node->alternate, lvl + 1);
 			DEBUG("%.*s}", lvl, xlat_tabs);
 			break;
@@ -2117,7 +2117,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Don't escape this.
 		 */
 	case XLAT_LITERAL:
-		XLAT_DEBUG("xlat_aprint LITERAL");
+		XLAT_DEBUG("%.*sxlat_aprint LITERAL", lvl, xlat_spaces);
 		return talloc_typed_strdup(ctx, node->fmt);
 
 		/*
@@ -2130,7 +2130,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		struct tm ts;
 		time_t when;
 
-		XLAT_DEBUG("xlat_aprint PERCENT");
+		XLAT_DEBUG("%.*sxlat_aprint PERCENT", lvl, xlat_spaces);
 
 		str = talloc_array(ctx, char, freespace); /* @todo do better allocation */
 		p = node->fmt;
@@ -2225,15 +2225,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
-		XLAT_DEBUG("xlat_aprint ATTRIBUTE");
+		XLAT_DEBUG("%.*sxlat_aprint ATTRIBUTE", lvl, xlat_spaces);
 
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, request, &node->attr, escape ? false : true, true);
 		if (str) {
-			XLAT_DEBUG("EXPAND attr %s", node->attr.tmpl_da->name);
-			XLAT_DEBUG("       ---> %s", str);
+			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr.tmpl_da->name);
+			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);
 		}
 		break;
 
@@ -2327,25 +2327,25 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
-		XLAT_DEBUG("xlat_aprint REGEX");
+		XLAT_DEBUG("%.*sxlat_aprint REGEX", lvl, xlat_spaces);
 		if (regex_request_to_sub(ctx, &str, request, node->attr.tmpl_num) < 0) return NULL;
 
 		break;
 #endif
 
 	case XLAT_ALTERNATE:
-		XLAT_DEBUG("xlat_aprint ALTERNATE");
+		XLAT_DEBUG("%.*sxlat_aprint ALTERNATE", lvl, xlat_spaces);
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
+		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl + 1);
 		if (str) {
-			XLAT_DEBUG("ALTERNATE got string: %s", str);
+			XLAT_DEBUG("%.*sALTERNATE got string: %s", lvl, xlat_spaces, str);
 			break;
 		}
 
-		XLAT_DEBUG("ALTERNATE going to alternate");
-		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
+		XLAT_DEBUG("%.*sALTERNATE going to alternate", lvl, xlat_spaces);
+		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl + 1);
 		break;
 
 	}
