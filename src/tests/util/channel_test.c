@@ -446,6 +446,8 @@ int main(int argc, char *argv[])
 			usage();
 	}
 
+	if (max_outstanding > max_messages) max_outstanding = max_messages;
+
 #if 0
 	argc -= (optind - 1);
 	argv += (optind - 1);
