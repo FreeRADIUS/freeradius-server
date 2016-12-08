@@ -100,6 +100,19 @@ static void *channel_master(void *arg)
 		int num_to_send;
 		fr_channel_data_t *cd, *reply;
 
+#if 0
+		/*
+		 *	Drain the input queues before sleeping.
+		 */
+		while ((reply = fr_channel_recv_reply(channel)) != NULL) {
+			num_replies++;
+			num_outstanding--;
+			MPRINT1("Master got reply %d, outstanding=%d, %d/%d sent.\n",
+				num_replies, num_outstanding, num_messages, max_messages);
+			fr_message_done(&reply->m);
+		}
+#endif
+
 		/*
 		 *	Ensure we have outstanding messages.
 		 */
@@ -154,6 +167,7 @@ static void *channel_master(void *arg)
 		 *	Signal close only when done.
 		 */
 check_close:
+
 		if (!signaled_close && (num_messages >= max_messages) && (num_outstanding == 0)) {
 			rcode = fr_channel_signal_worker_close(channel);
 			if (rcode < 0) {
