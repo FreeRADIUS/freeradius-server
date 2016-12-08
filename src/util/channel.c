@@ -734,6 +734,8 @@ int fr_channel_worker_receive_open(UNUSED TALLOC_CTX *ctx, UNUSED fr_channel_t *
 	talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
+	if (ch->end[FROM_WORKER].control) return -1;
+
 	ch->end[FROM_WORKER].control = fr_control_create(ctx,
 							 ch->end[FROM_WORKER].kq,
 							 ch->end[FROM_WORKER].aq_control);
