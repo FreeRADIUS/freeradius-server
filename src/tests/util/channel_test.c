@@ -323,18 +323,13 @@ static void *channel_worker(void *arg)
 			MPRINT1("\tWorker got channel event %d\n", ce);
 
 			if (ce == FR_CHANNEL_OPEN) {
-				static int already_opened = false;
-
 				MPRINT1("\tWorker received a new channel\n");
 				rad_assert(new_channel == channel);
-				rad_assert(already_opened == false);
 
 				if (fr_channel_worker_receive_open(ctx, new_channel) < 0) {
 					fprintf(stderr, "Failed calling receive open.\n");
 					exit(1);
 				}
-
-				already_opened = true;
 
 				continue;
 			}
