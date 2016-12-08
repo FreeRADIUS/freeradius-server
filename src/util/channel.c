@@ -39,6 +39,22 @@ RCSID("$Id$")
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
+/*
+ *	To make debugging easier...
+ */
+#define EV_FLAG (EV_ADD | EV_CLEAR)
+
+/**
+ *	Require more than this number of packets outstanding, before
+ *	we start suppressing signals from the master.
+ */
+#define SUPPRESS_SIGNALS_MASTER (0)
+
+/*&
+ *	Whether or not to quench some signals from the worker.
+ */
+#define SUPPRESS_SIGNALS_WORKER (1)
+
 /**
  *	The minimum interval between worker signals.
  */
@@ -114,11 +130,6 @@ typedef struct fr_channel_t {
 	fr_channel_end_t	end[2];		//!< two ends of the channel
 } fr_channel_t;
 
-
-/*
- *	To make debugging easier...
- */
-#define EV_FLAG (EV_ADD | EV_CLEAR)
 
 static int fr_channel_add_kevent_worker(struct kevent *kev, int size)
 {
@@ -307,23 +318,31 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	rad_assert(end->last_write <= when);
 	end->last_write = when;
 
-	/*
-	 *	Increment the number of outstanding packets.  If we
-	 *	just sent a new one, wake up the other end.
-	 *	Otherwise, rely on the other end to poll or signal as
-	 *	necessary.
-	 */
 	end->num_outstanding++;
-	if (end->num_outstanding > 1) {
+
+	/*
+	 *	We just sent the first packet.  There can't possibly be a reply, so don't bother looking.
+	 */
+	if (end->num_outstanding == 1) {
+		*p_reply = NULL;
+
+
+		/*
+		 *	There is at least one old packet which is
+		 *	outstanding, look for a reply.
+		 */
+	} else if (end->num_outstanding > 1) {
 		*p_reply = fr_channel_recv_reply(ch);
-		return 0;
 	}
 
 	/*
-	 *	We just sent the first request, so there can't
-	 *	possibly be a reply yet.
+	 *	If we got a reply, AND there are still more
+	 *	outstanding packets, don't bother signaling the
+	 *	worker.  It will check our queue when it sends the reply.
 	 */
-	*p_reply = NULL;
+	if (*p_reply && (end->num_outstanding > SUPPRESS_SIGNALS_MASTER)) {
+		return 0;
+	}
 
 	/*
 	 *	Tell the other end that there is new data ready.
@@ -477,6 +496,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, end->last_sent_signal, when - end->last_sent_signal);
 	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", end->sequence, other->ack, end->sequence - other->ack);
 
+#ifdef SUPPRESS_SIGNALS_WORKER
 	/*
 	 *	If we've received a new packet in the last while, OR
 	 *	we've sent a signal in the last while, then we don't
@@ -493,6 +513,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 		MPRINT("WORKER SKIPS\n");
 		return 0;
 	}
+#endif
 
 	MPRINT("WORKER SIGNALS\n");
 	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
