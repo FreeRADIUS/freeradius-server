@@ -153,7 +153,9 @@ static int fr_channel_kevent_signal(int kq, fr_channel_control_t *cc)
  *
  * @param[in] ctx the talloc_ctx for the channel
  * @param[in] kq_master the KQ of the master
+ * @param[in] aq_master the atomic of the master, where control data will be sent
  * @param[in] kq_worker the KQ of the worker
+ * @param[in] aq_worker the atomic of the worker, where control data will be sent
  * @return
  *	- NULL on error
  *	- channel on success
