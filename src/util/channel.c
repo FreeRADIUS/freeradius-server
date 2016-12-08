@@ -112,6 +112,8 @@ typedef struct fr_channel_end_t {
 	uint64_t		sequence;	//!< sequence number for this channel.
 	uint64_t		ack;		//!< sequence number of the other end
 
+	uint64_t		sequence_at_last_signal; //!< when we last signaled
+
 	fr_time_t		last_write;	//!< last write to the channel
 	fr_time_t		last_read_other; //!< last time we successfully read a message from the other the channel
 	fr_time_t		message_interval; //!< interval between messages
@@ -159,13 +161,15 @@ static int fr_channel_add_kevent_receiver(struct kevent *kev, int size)
 }
 
 
-static int fr_channel_kevent_signal(int kq, fr_channel_control_t *cc)
+static int fr_channel_kevent_signal(fr_channel_end_t *end, fr_channel_control_t *cc)
 {
 	struct kevent kev;
 
 	EV_SET(&kev, cc->signal, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFCOPY, cc->ack, cc->ch);
 
-	return kevent(kq, &kev, 1, NULL, 0, NULL);
+	end->sequence_at_last_signal = end->sequence;
+
+	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
 }
 
 
@@ -270,7 +274,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	cc.ack = 0;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(end->kq, &cc);
+	return fr_channel_kevent_signal(end, &cc);
 }
 
 #define IALPHA (8)
@@ -554,7 +558,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	cc.ack = end->ack;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(end->kq, &cc);
+	return fr_channel_kevent_signal(end, &cc);
 }
 
 
@@ -620,7 +624,8 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		 */
 		ack = (uint64_t) kev->data;
 		end = &ch->end[TO_WORKER];
-		if (ack != end->sequence) {
+		if ((ack < end->sequence) &&
+		    (end->sequence_at_last_signal != end->sequence)) {
 			end->num_resignals++;
 			(void) fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
 		}
@@ -716,7 +721,7 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
 	cc.ack = TO_WORKER;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(ch->end[TO_WORKER].kq, &cc);
+	return fr_channel_kevent_signal(&ch->end[TO_WORKER], &cc);
 }
 
 /** Acknowledge that the channel is closing
@@ -736,7 +741,7 @@ int fr_channel_ack_worker_close(fr_channel_t *ch)
 	cc.ack = FROM_WORKER;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(ch->end[FROM_WORKER].kq, &cc);
+	return fr_channel_kevent_signal(&ch->end[FROM_WORKER], &cc);
 }
 
 /** Send a channel to a KQ
@@ -754,7 +759,7 @@ int fr_channel_signal_open(fr_channel_t *ch)
 	cc.ack = 0;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(ch->end[TO_WORKER].kq, &cc);
+	return fr_channel_kevent_signal(&ch->end[TO_WORKER], &cc);
 }
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
