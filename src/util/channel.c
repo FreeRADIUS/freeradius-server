@@ -103,9 +103,11 @@ typedef struct fr_channel_end_t {
 
 	int			num_outstanding; //!< number of outstanding requests with no reply
 
-	size_t			num_signals;
+	size_t			num_signals;	//!< number of kevent signals we've sent
 
-	size_t			num_kevents;
+	size_t			num_resignals;	//!< number of signals resent
+
+	size_t			num_kevents;	//!< number of times we've looked at kevents
 
 	uint64_t		sequence;	//!< sequence number for this channel.
 	uint64_t		ack;		//!< sequence number of the other end
@@ -619,6 +621,7 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		ack = (uint64_t) kev->data;
 		end = &ch->end[TO_WORKER];
 		if (ack != end->sequence) {
+			end->num_resignals++;
 			(void) fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
 		}
 
@@ -758,6 +761,7 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 {
 	fprintf(fp, "to worker\n");
 	fprintf(fp, "\tnum_signals sent = %zd\n", ch->end[TO_WORKER].num_signals);
+	fprintf(fp, "\tnum_signals re-sent = %zd\n", ch->end[TO_WORKER].num_resignals);
 	fprintf(fp, "\tnum_kevents checked = %zd\n", ch->end[TO_WORKER].num_kevents);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[TO_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[TO_WORKER].ack);
