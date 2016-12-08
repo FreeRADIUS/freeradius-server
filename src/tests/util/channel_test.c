@@ -297,16 +297,6 @@ static void *channel_worker(void *arg)
 		fr_time_t now;
 		fr_channel_t *new_channel;
 
-		/*
-		 *	Because we ACK all of the requests
-		 *	immediately, we have to signal the master
-		 *	before we're sleeping.xb
-		 */
-		if (fr_channel_worker_sleeping(channel) < 0) {
-			fprintf(stderr, "Failed signalling worker sleeping!\n");
-			exit(1);
-		}
-
 		MPRINT1("\tWorker waiting on events.\n");
 
 		rcode = kevent(kq_worker, NULL, 0, events, MAX_KEVENTS, NULL);
