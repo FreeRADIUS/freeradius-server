@@ -44,6 +44,16 @@ extern "C" {
  */
 typedef struct fr_channel_t fr_channel_t;
 
+typedef enum fr_channel_event_t {
+	FR_CHANNEL_ERROR = 0,
+	FR_CHANNEL_NOOP,
+	FR_CHANNEL_DATA_READY_WORKER,
+	FR_CHANNEL_DATA_READY_RECEIVER,
+	FR_CHANNEL_OPEN,
+	FR_CHANNEL_CLOSE,
+	FR_CHANNEL_EMPTY,
+} fr_channel_event_t;
+
 /**
  *  Channel information which is added to a message.
  *
@@ -92,15 +102,6 @@ typedef struct fr_channel_data_t {
 	};
 
 } fr_channel_data_t;
-
-typedef enum fr_channel_event_t {
-	FR_CHANNEL_ERROR = 0,
-	FR_CHANNEL_NOOP,
-	FR_CHANNEL_DATA_READY_WORKER,
-	FR_CHANNEL_DATA_READY_RECEIVER,
-	FR_CHANNEL_OPEN,
-	FR_CHANNEL_CLOSE,
-} fr_channel_event_t;
 
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_t *aq_master,
 				int kq_worker, fr_atomic_queue_t *aq_worker);
