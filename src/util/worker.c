@@ -95,6 +95,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 		 *	information.  There's nothing for us
 		 *	to do.
 		 */
+	case FR_CHANNEL_EMPTY:
 	case FR_CHANNEL_NOOP:
 	case FR_CHANNEL_DATA_READY_RECEIVER:
 		break;
