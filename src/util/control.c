@@ -103,7 +103,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
 	 *	The implementation here is perhaps a bit less optimal,
 	 *	but it's clean, and it works.
 	 */
-	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, EV_ADD, NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
 	if (kevent(kq, &kev, 1, NULL, 0, NULL) < 0) {
 		talloc_free(c);
 		return NULL;
@@ -257,7 +257,7 @@ int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
 		return -1;
 	}
 
-	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
 	return kevent(c->kq, &kev, 1, NULL, 0, NULL);
 }
 
