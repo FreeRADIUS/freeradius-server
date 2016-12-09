@@ -59,7 +59,7 @@ static void NEVER_RETURNS usage(void)
 static void *channel_master(void *arg)
 {
 	bool running, signaled_close;
-	int rcode, i;
+	int rcode, i, num_events;
 	int num_outstanding, num_messages;
 	int num_replies;
 	fr_message_set_t *ms;
@@ -181,24 +181,24 @@ check_close:
 		MPRINT1("Master waiting on events.\n");
 		rad_assert(num_messages <= max_messages);
 
-		rcode = kevent(kq_master, NULL, 0, events, MAX_KEVENTS, NULL);
-		MPRINT1("Master kevent returned %d\n", rcode);
+		num_events = kevent(kq_master, NULL, 0, events, MAX_KEVENTS, NULL);
+		MPRINT1("Master kevent returned %d\n", num_events);
 
-		if (rcode < 0) {
-			if (rcode == EINTR) continue;
+		if (num_events < 0) {
+			if (num_events == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
 			exit(1);
 		}
 
-		if (rcode == 0) continue;
+		if (num_events == 0) continue;
 
 		now = fr_time();
 
 		/*
 		 *	Service the events.
 		 */
-		for (i = 0; i < rcode; i++) {
+		for (i = 0; i < num_events; i++) {
 			fr_channel_event_t ce;
 			fr_channel_t *new_channel;
 
@@ -274,7 +274,7 @@ check_close:
 static void *channel_worker(void *arg)
 {
 	bool running = true;
-	int rcode;
+	int rcode, num_events;
 	int worker_messages = 0;
 	fr_message_set_t *ms;
 	TALLOC_CTX *ctx;
@@ -299,21 +299,21 @@ static void *channel_worker(void *arg)
 
 		MPRINT1("\tWorker waiting on events.\n");
 
-		rcode = kevent(kq_worker, NULL, 0, events, MAX_KEVENTS, NULL);
-		MPRINT1("\tWorker kevent returned %d events\n", rcode);
+		num_events = kevent(kq_worker, NULL, 0, events, MAX_KEVENTS, NULL);
+		MPRINT1("\tWorker kevent returned %d events\n", num_events);
 
-		if (rcode < 0) {
-			if (rcode == EINTR) continue;
+		if (num_events < 0) {
+			if (num_events == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
 			exit(1);
 		}
 
-		if (rcode == 0) continue;
+		if (num_events == 0) continue;
 
 		now = fr_time();
 
-		for (i = 0; i < rcode; i++) {
+		for (i = 0; i < num_events; i++) {
 			fr_channel_event_t ce;
 
 			/*
