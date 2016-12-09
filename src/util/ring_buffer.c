@@ -520,3 +520,14 @@ int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size
 
 	return 0;
 }
+
+/** Print debug information about the ring buffer
+ *
+ * @param[in] rb the ring buffer
+ * @param[in] fp the FILE where the messages are printed.
+ */
+void fr_ring_buffer_debug(fr_ring_buffer_t *rb, FILE *fp)
+{
+	fprintf(fp, "Buffer %p, write_offset %zd, data_start %zd, data_end %zd\n",
+		rb->buffer, rb->write_offset, rb->data_start, rb->data_end);
+}

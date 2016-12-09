@@ -52,6 +52,8 @@ int fr_ring_buffer_close(fr_ring_buffer_t *rb) CC_HINT(nonnull);
 size_t fr_ring_buffer_size(fr_ring_buffer_t *rb) CC_HINT(nonnull);
 size_t fr_ring_buffer_used(fr_ring_buffer_t *rb) CC_HINT(nonnull);
 
+void fr_ring_buffer_debug(fr_ring_buffer_t *rb, FILE *fp) CC_HINT(nonnull);
+
 #ifdef __cplusplus
 }
 #endif
