@@ -586,6 +586,7 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 	uint64_t ack;
 	fr_channel_end_t *end;
 	fr_channel_t *ch;
+	fr_channel_event_t ce;
 
 	rad_assert(kev->filter == EVFILT_USER);
 
@@ -614,24 +615,6 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		*p_channel = ch;
 		return FR_CHANNEL_DATA_READY_RECEIVER;
 
-	case FR_CHANNEL_SIGNAL_DATA_DONE_WORKER:
-		*p_channel = ch;
-
-		/*
-		 *	Compare their ACK to the last sequence we
-		 *	sent.  If it's different, we signal the worker
-		 *	to wake up.
-		 */
-		ack = (uint64_t) kev->data;
-		end = &ch->end[TO_WORKER];
-		if ((ack < end->sequence) &&
-		    (end->sequence_at_last_signal != end->sequence)) {
-			end->num_resignals++;
-			(void) fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
-		}
-
-		return FR_CHANNEL_DATA_READY_RECEIVER;
-
 	case FR_CHANNEL_SIGNAL_DATA_TO_WORKER:
 		*p_channel = ch;
 		return FR_CHANNEL_DATA_READY_WORKER;
@@ -651,32 +634,40 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		*p_channel = ch;
 		return FR_CHANNEL_CLOSE;
 
-	case FR_CHANNEL_SIGNAL_WORKER_SLEEPING:
-
 		/*
-		 *	Can only be sent from the worker to the master.
+		 *	Only sent by the worker.  Both of these
+		 *	situations are largely the same, except for
+		 *	return codes.
 		 */
-		rad_assert(aq == ch->end[FROM_WORKER].aq_control);
+	case FR_CHANNEL_SIGNAL_DATA_DONE_WORKER:
+		*p_channel = ch;
+		ce = FR_CHANNEL_DATA_READY_RECEIVER;
+		break;
+
+	case FR_CHANNEL_SIGNAL_WORKER_SLEEPING:
+		ce = FR_CHANNEL_NOOP;
 		break;
 	}
 
-	rad_assert(kev->ident == FR_CHANNEL_SIGNAL_WORKER_SLEEPING);
-
-	end = &ch->end[TO_WORKER];
+	rad_assert(aq == ch->end[FROM_WORKER].aq_control);
 
 	/*
-	 *	If the signal is ACKing the last packet we sent, we
-	 *	don't do anything else.
+	 *	Compare their ACK to the last sequence we
+	 *	sent.  If it's different, we signal the worker
+	 *	to wake up.
 	 */
 	ack = (uint64_t) kev->data;
+	end = &ch->end[TO_WORKER];
 	if (ack == end->sequence) {
 		fprintf(stderr, "WORKER ACKed sync\n");
-		return FR_CHANNEL_NOOP;
+		return ce;
 	}
 
+	/*
+	 *	The worker is sleeping or done.  There are more
+	 *	packets available, so we signal it to wake up again.
+	 */
 	rad_assert(ack < end->sequence);
-
-	fprintf(stderr, "WORKER will be signaled to process packets\n");
 
 	/*
 	 *	The worker hasn't seen our last few packets.  Signal
@@ -685,7 +676,7 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 	rcode = fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
 	if (rcode < 0) return FR_CHANNEL_ERROR;
 
-	return FR_CHANNEL_NOOP;
+	return ce;
 }
 
 
