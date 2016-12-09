@@ -104,6 +104,8 @@ static void *control_master(UNUSED void *arg)
 
 			MPRINT1("Master got message %zu.\n", m.counter);
 
+			rad_assert(m.header == CONTROL_MAGIC);
+
 			if (m.counter == (max_messages - 1)) goto do_exit;
 		}
 	}
@@ -134,7 +136,7 @@ static void *control_worker(UNUSED void *arg)
 
 retry:
 		if (fr_control_message_send(control, &m, sizeof(m)) < 0) {
-			MPRINT1("\tWorker failed retrying message %zu\n", i);
+			MPRINT1("\tWorker retrying message %zu\n", i);
 			usleep(10);
 			goto retry;
 		}
