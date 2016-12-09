@@ -113,6 +113,8 @@ uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 		return NULL;
 	}
 
+	rad_assert(rb->write_offset == rb->data_end);
+
 	/*
 	 *	Data fits at the end of the ring buffer.
 	 *
@@ -197,6 +199,8 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 
 		return NULL;
 	}
+
+	rad_assert(rb->write_offset == rb->data_end);
 
 	/*
 	 *	Data fits at the end of the ring buffer.
@@ -390,6 +394,8 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 		if (!size) return 0;
 	}
 
+	rad_assert(rb->write_offset == rb->data_end);
+
 	/*
 	 *	Free some data from the start.
 	 */
@@ -479,6 +485,7 @@ size_t fr_ring_buffer_used(fr_ring_buffer_t *rb)
 	if (rb->write_offset < rb->data_start) {
 		size = rb->write_offset;
 	} else {
+		rad_assert(rb->write_offset == rb->data_end);
 		size = 0;
 	}
 
