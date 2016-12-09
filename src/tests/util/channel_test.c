@@ -51,6 +51,9 @@ static bool		touch_memory = false;
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: channel_test [OPTS]\n");
+	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");
+	fprintf(stderr, "  -o <outstanding>       Keep number of messages outstanding\n");
+	fprintf(stderr, "  -t                     Touch memory for fake packets.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
 	exit(1);
