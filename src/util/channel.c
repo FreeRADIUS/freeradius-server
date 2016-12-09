@@ -586,7 +586,7 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 	uint64_t ack;
 	fr_channel_end_t *end;
 	fr_channel_t *ch;
-	fr_channel_event_t ce;
+	fr_channel_event_t ce = FR_CHANNEL_ERROR;
 
 	rad_assert(kev->filter == EVFILT_USER);
 
