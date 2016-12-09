@@ -335,13 +335,15 @@ uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size
  *  bytes are reset to zero.
  *
  * @param[in] rb a ring buffer
- * @param[in] size to mark as "unused" in the buffer.
+ * @param[in] size_to_free bytes to mark as "unused" in the buffer.
  * @return
  *	- <0 on error.  Which can only be "ring buffer is full".
  *      - 0 on success
  */
-int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
+int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size_to_free)
 {
+	size_t block_size;
+
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
 #endif
@@ -349,7 +351,7 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 	/*
 	 *	Nothing to free, do nothing.
 	 */
-	if (!size) return 0;
+	if (!size_to_free) return 0;
 
 	/*
 	 *	Freeing data from the middle of the buffer.
@@ -357,8 +359,6 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 	 *	|***W....S****E....|
 	 */
 	if (rb->write_offset < rb->data_start) {
-		size_t block_size;
-
 		block_size = rb->data_end - rb->data_start;
 
 		/*
@@ -366,8 +366,8 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 		 *
 		 *	|***W.......S*E....|
 		 */
-		if (size < block_size) {
-			rb->data_start += size;
+		if (size_to_free < block_size) {
+			rb->data_start += size_to_free;
 			return 0;
 		}
 
@@ -376,14 +376,14 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 		 */
 		rb->data_start = 0;
 		rb->data_end = rb->write_offset;
-		size -= block_size;
+		size_to_free -= block_size;
 
 		/*
 		 *	Free everything left: empty the buffer
 		 *	entirely.  This also handles the case of
-		 *	size==0 and write_offset==0.
+		 *	size_to_free==0 and write_offset==0.
 		 */
-		if (size == rb->write_offset) {
+		if (size_to_free == rb->write_offset) {
 			goto empty_buffer;
 		}
 
@@ -391,23 +391,25 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 		 *	The buffer has data but we're not freeing
 		 *	any more of it, return.
 		 */
-		if (!size) return 0;
+		if (!size_to_free) return 0;
 	}
 
 	rad_assert(rb->write_offset == rb->data_end);
 
-	/*
-	 *	Free some data from the start.
-	 */
-	if (size < (rb->data_end - rb->data_start)) {
-		rb->data_start += size;
-		return 0;
-	}
+	block_size = rb->data_end - rb->data_start;
 
 	/*
 	 *	Freeing too much, return an error.
 	 */
-	if (size > (rb->data_end - rb->data_start)) return -1;
+	if (size_to_free > block_size) return -1;
+
+	/*
+	 *	Free some data from the start.
+	 */
+	if (size_to_free < block_size) {
+		rb->data_start += size_to_free;
+		return 0;
+	}
 
 	/*
 	 *	Free all data in the buffer.
