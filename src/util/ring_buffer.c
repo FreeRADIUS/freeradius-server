@@ -399,7 +399,7 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 	/*
 	 *	Free some data from the start.
 	 */
-	if (size < rb->data_end) {
+	if (size < (rb->data_end - rb->data_start)) {
 		rb->data_start += size;
 		return 0;
 	}
@@ -407,7 +407,7 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size)
 	/*
 	 *	Freeing too much, return an error.
 	 */
-	if (size > rb->data_end) return -1;
+	if (size > (rb->data_end - rb->data_start)) return -1;
 
 	/*
 	 *	Free all data in the buffer.
