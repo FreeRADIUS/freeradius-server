@@ -31,7 +31,7 @@ RCSID("$Id$")
  *	Debugging, mainly for channel_test
  */
 #if 0
-#define MPRINT(...) MPRINT(__VA_ARGS__)
+#define MPRINT(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define MPRINT(...)
 #endif
