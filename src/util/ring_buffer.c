@@ -511,13 +511,13 @@ int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
 #endif
 
+	*p_start = rb->buffer + rb->data_start;
+
 	if (rb->write_offset < rb->data_start) {
-		*p_start = rb->buffer;
 		*p_size = rb->write_offset;
 		return 0;
 	}
 
-	*p_start = rb->buffer + rb->data_start;
 	*p_size = (rb->data_end - rb->data_start);
 
 	return 0;
