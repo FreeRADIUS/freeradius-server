@@ -647,6 +647,11 @@ fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, 
 	rad_assert(ack < end->sequence);
 
 	/*
+	 *	We're signaling it again...
+	 */
+	end->num_resignals++;
+
+	/*
 	 *	The worker hasn't seen our last few packets.  Signal
 	 *	that there is data ready.
 	 */
