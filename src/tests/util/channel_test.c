@@ -68,6 +68,8 @@ static void *channel_master(void *arg)
 	fr_message_set_t *ms;
 	TALLOC_CTX *ctx;
 	fr_channel_t *channel = arg;
+	fr_channel_t *new_channel;
+	fr_channel_event_t ce;
 	struct kevent events[MAX_KEVENTS];
 
 	ctx = talloc_init("channel_master");
@@ -172,6 +174,7 @@ static void *channel_master(void *arg)
 check_close:
 
 		if (!signaled_close && (num_messages >= max_messages) && (num_outstanding == 0)) {
+			MPRINT1("Master signaling worker to exit.\n");
 			rcode = fr_channel_signal_worker_close(channel);
 			if (rcode < 0) {
 				fprintf(stderr, "Failed signaling close: %s\n", strerror(errno));
@@ -196,20 +199,22 @@ check_close:
 
 		if (num_events == 0) continue;
 
-		now = fr_time();
-
 		/*
 		 *	Service the events.
 		 */
 		for (i = 0; i < num_events; i++) {
-			fr_channel_event_t ce;
-			fr_channel_t *new_channel;
+			(void) fr_channel_service_kevent(aq_master, &events[i]);
+		}
 
-			ce = fr_channel_service_kevent(aq_master, &events[i], now, &new_channel);
+		now = fr_time();
+
+		while ((ce = fr_channel_service_aq(aq_master, now, &new_channel)) != FR_CHANNEL_EMPTY) {
 			MPRINT1("Master got channel event %d\n", ce);
-
-			if (ce == FR_CHANNEL_DATA_READY_RECEIVER) {
+			
+			switch (ce) {
+			case FR_CHANNEL_DATA_READY_RECEIVER:
 				MPRINT1("Master got data ready signal\n");
+				rad_assert(new_channel == channel);
 
 				reply = fr_channel_recv_reply(channel);
 				if (!reply) {
@@ -224,33 +229,29 @@ check_close:
 						num_replies, num_outstanding, num_messages, max_messages);
 					fr_message_done(&reply->m);
 				} while ((reply = fr_channel_recv_reply(channel)) != NULL);
+				break;
 
-				continue;
-			}
-
-			if (ce == FR_CHANNEL_CLOSE) {
+			case FR_CHANNEL_CLOSE:
 				MPRINT1("Master received close signal\n");
+				rad_assert(new_channel == channel);
 				rad_assert(signaled_close == true);
 				running = false;
-				continue;
-			}
+				break;
 
-			if (ce == FR_CHANNEL_NOOP) continue;
+			case FR_CHANNEL_NOOP:
+				break;
 
-			fprintf(stderr, "Master got unexpected CE %d\n", ce);
+			default:
+				fprintf(stderr, "Master got unexpected CE %d\n", ce);
 
-			/*
-			 *	Not written yet!
-			 */
-			rad_assert(0 == 1);
-		}
-	}
-
-	MPRINT1("Master signaling worker to exit.\n");
-
-
-	// wait for final set of messages
-
+				/*
+				 *	Not written yet!
+				 */
+				rad_assert(0 == 1);
+				break;
+			} /* switch over signal returned */
+		} /* drain the control plane */
+	} /* loop until told to exit */
 
 	MPRINT1("Master exiting.\n");
 
@@ -282,6 +283,7 @@ static void *channel_worker(void *arg)
 	fr_message_set_t *ms;
 	TALLOC_CTX *ctx;
 	fr_channel_t *channel = arg;
+	fr_channel_event_t ce;
 	struct kevent events[MAX_KEVENTS];
 
 	ctx = talloc_init("channel_worker");
@@ -314,18 +316,20 @@ static void *channel_worker(void *arg)
 
 		if (num_events == 0) continue;
 
+		for (i = 0; i < num_events; i++) {
+			(void) fr_channel_service_kevent(aq_worker, &events[i]);
+		}
+
 		now = fr_time();
 
-		for (i = 0; i < num_events; i++) {
-			fr_channel_event_t ce;
+		while ((ce = fr_channel_service_aq(aq_worker, now, &new_channel)) != FR_CHANNEL_EMPTY) {
+			fr_channel_data_t *cd, *reply;
 
-			/*
-			 *	@todo drain the control plane on one kevent.
-			 */
-			ce = fr_channel_service_kevent(aq_worker, &events[i], now, &new_channel);
 			MPRINT1("\tWorker got channel event %d\n", ce);
 
-			if (ce == FR_CHANNEL_OPEN) {
+			switch (ce) {
+
+			case FR_CHANNEL_OPEN:
 				MPRINT1("\tWorker received a new channel\n");
 				rad_assert(new_channel == channel);
 
@@ -333,14 +337,11 @@ static void *channel_worker(void *arg)
 					fprintf(stderr, "Failed calling receive open.\n");
 					exit(1);
 				}
+				break;
 
-				continue;
-			}
-
-			if (ce == FR_CHANNEL_CLOSE) {
-				fr_channel_data_t *cd;
-
+			case FR_CHANNEL_CLOSE:
 				MPRINT1("\tWorker requested to close the channel.\n");
+				rad_assert(new_channel == channel);
 				running = false;
 
 				/*
@@ -351,20 +352,18 @@ static void *channel_worker(void *arg)
 					MPRINT1("\tWorker got message %d\n", worker_messages);
 					fr_message_done(&cd->m);
 				}
-
+				
 				(void) fr_channel_ack_worker_close(channel);
-				continue;
-			}
+				break;
 
-			if (ce == FR_CHANNEL_DATA_READY_WORKER) {
-				fr_channel_data_t *cd, *reply;
-
+			case FR_CHANNEL_DATA_READY_WORKER:
 				MPRINT1("\tWorker got data ready signal\n");
+				rad_assert(new_channel == channel);
 
 				cd = fr_channel_recv_request(channel);
 				if (!cd) {
 					MPRINT1("\tWorker SIGNAL WITH NO DATA!\n");
-					continue;
+					break;
 				}
 
 				while (cd) {
@@ -400,18 +399,22 @@ static void *channel_worker(void *arg)
 					}
 					rad_assert(rcode == 0);
 				}
-				continue;
-			}
+				break;
 
-			if (ce == FR_CHANNEL_NOOP) continue;
+			case FR_CHANNEL_NOOP:
+				rad_assert(new_channel == channel);
+				break;
 
-			fprintf(stderr, "Worker got unexpected CE %d\n", ce);
+			default:
+				fprintf(stderr, "Worker got unexpected CE %d\n", ce);
 
-			/*
-			 *	Not written yet!
-			 */
-			rad_assert(0 == 1);
-		}
+				/*
+				 *	Not written yet!
+				 */
+				rad_assert(0 == 1);
+				break;
+			} /* switch over signals */
+		} /* drain the control plane */
 	}
 
 	MPRINT1("\tWorker exiting.\n");

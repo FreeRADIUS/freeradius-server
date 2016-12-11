@@ -76,9 +76,11 @@ struct fr_worker_t {
 
 /** Handle EVFILT_USER events
  *
+ * @todo fix for fr_channel_service_aq() also
  */
-static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
+static void fr_worker_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev, UNUSED void *ctx)
 {
+#if 0
 	fr_channel_event_t what;
 	fr_channel_t *ch;
 	fr_channel_data_t *cd;
@@ -132,6 +134,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	case FR_CHANNEL_ERROR:
 		return;
 	}
+#endif
 }
 
 /** Decode a request from either the localized queue, or the to_decode queue

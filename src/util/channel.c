@@ -581,7 +581,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
  *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-static fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, fr_channel_t **p_channel)
+fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, fr_channel_t **p_channel)
 {
 	int rcode;
 	uint64_t ack;
@@ -666,16 +666,11 @@ static fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t
  *
  * @param[in] aq the atomic queue on which we receive control-plane messages
  * @param[in] kev the event of type EVFILT_USER
- * @param[in] when the current time
- * @param[out] p_channel the channel which should be serviced.
  * @return
- *	- FR_CHANNEL_ERROR on error
- *	- FR_CHANNEL_NOOP, on do nothing
- *	- FR_CHANNEL_DATA_READY on data ready
- *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
- *	- FR_CHANNEL_CLOSE when a channel should be closed
+ *	- <0 on error
+ *	- 0 on success
  */
-fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
+int fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev)
 {
 	fr_channel_t *ch;
 	fr_channel_control_t *cc;
@@ -700,11 +695,10 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 	}
 
 	if (!fr_atomic_queue_push(aq, cc)) {
-		*p_channel = NULL;
-		return FR_CHANNEL_ERROR;
+		return -1;
 	}
 
-	return fr_channel_service_aq(aq, when, p_channel);
+	return 0;
 }
 
 
