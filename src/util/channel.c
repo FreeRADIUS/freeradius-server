@@ -276,7 +276,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	end->num_signals++;
 
 	cc.signal = which;
-	cc.ack = 0;
+	cc.ack = end->ack;
 	cc.ch = ch;
 
 	return fr_channel_kevent_signal(end, &cc);
