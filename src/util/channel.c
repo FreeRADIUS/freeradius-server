@@ -637,7 +637,6 @@ static fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t
 	 */
 	end = &ch->end[TO_WORKER];
 	if (ack == end->sequence) {
-		fprintf(stderr, "WORKER ACKed sync\n");
 		return ce;
 	}
 
