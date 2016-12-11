@@ -562,15 +562,11 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 }
 
 
-/** Service an EVFILT_USER event.
+/** Service a control-plane queue
  *
- *  The channels use EVFILT_USER events for internal signaling.  A
- *  master / worker should call this function for every EVFILT_USER
- *  event.  Note that the caller does NOT pass the channel into this
- *  function.  Instead, the channel is taken from the kevent.
+ *  Which contains magic messages created by the channel.
  *
  * @param[in] aq the atomic queue on which we receive control-plane messages
- * @param[in] kev the event of type EVFILT_USER
  * @param[in] when the current time
  * @param[out] p_channel the channel which should be serviced.
  * @return
@@ -580,31 +576,30 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
  *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
+static fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, fr_channel_t **p_channel)
 {
 	int rcode;
 	uint64_t ack;
+	fr_channel_control_t *cc;
+	fr_channel_signal_t cs;
+	fr_channel_event_t ce = FR_CHANNEL_ERROR;
 	fr_channel_end_t *end;
 	fr_channel_t *ch;
-	fr_channel_event_t ce = FR_CHANNEL_ERROR;
 
-	rad_assert(kev->filter == EVFILT_USER);
-
-	*p_channel = NULL;
-
-	ch = kev->udata;
-
-	if (aq == ch->end[TO_WORKER].aq_control) {
-		ch->end[TO_WORKER].num_kevents++;
-	} else {
-		ch->end[FROM_WORKER].num_kevents++;
+	if (!fr_atomic_queue_pop(aq, (void **) &cc)) {
+		*p_channel = NULL;
+		return FR_CHANNEL_EMPTY;
 	}
 
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
-#endif
+	cs = cc->signal;
+	ack = cc->ack;
+	*p_channel = ch = cc->ch;
+	talloc_free(cc);
 
-	switch (kev->ident) {
+	switch (cs) {
+	case FR_CHANNEL_SIGNAL_FAIL:
+		return FR_CHANNEL_ERROR;
+
 		/*
 		 *	Data is ready on one or both channels.  Non-zero
 		 *	idents are just signals that data is ready.  We just
@@ -612,11 +607,9 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		 *	service the channel.
 		 */
 	case FR_CHANNEL_SIGNAL_DATA_FROM_WORKER:
-		*p_channel = ch;
 		return FR_CHANNEL_DATA_READY_RECEIVER;
 
 	case FR_CHANNEL_SIGNAL_DATA_TO_WORKER:
-		*p_channel = ch;
 		return FR_CHANNEL_DATA_READY_WORKER;
 
 		/*
@@ -624,14 +617,12 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		 *	worker.  Return the channel to the worker.
 		 */
 	case FR_CHANNEL_SIGNAL_OPEN:
-		*p_channel = ch;
 		return FR_CHANNEL_OPEN;
 
 		/*
 		 *	Each end can signal the channel to close.
 		 */
 	case FR_CHANNEL_SIGNAL_CLOSE:
-		*p_channel = ch;
 		return FR_CHANNEL_CLOSE;
 
 		/*
@@ -640,7 +631,6 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 		 *	return codes.
 		 */
 	case FR_CHANNEL_SIGNAL_DATA_DONE_WORKER:
-		*p_channel = ch;
 		ce = FR_CHANNEL_DATA_READY_RECEIVER;
 		break;
 
@@ -656,7 +646,6 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 	 *	sent.  If it's different, we signal the worker
 	 *	to wake up.
 	 */
-	ack = (uint64_t) kev->data;
 	end = &ch->end[TO_WORKER];
 	if (ack == end->sequence) {
 		fprintf(stderr, "WORKER ACKed sync\n");
@@ -677,6 +666,57 @@ fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct keven
 	if (rcode < 0) return FR_CHANNEL_ERROR;
 
 	return ce;
+}
+
+
+/** Service an EVFILT_USER event.
+ *
+ *  The channels use EVFILT_USER events for internal signaling.  A
+ *  master / worker should call this function for every EVFILT_USER
+ *  event.  Note that the caller does NOT pass the channel into this
+ *  function.  Instead, the channel is taken from the kevent.
+ *
+ * @param[in] aq the atomic queue on which we receive control-plane messages
+ * @param[in] kev the event of type EVFILT_USER
+ * @param[in] when the current time
+ * @param[out] p_channel the channel which should be serviced.
+ * @return
+ *	- FR_CHANNEL_ERROR on error
+ *	- FR_CHANNEL_NOOP, on do nothing
+ *	- FR_CHANNEL_DATA_READY on data ready
+ *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
+ *	- FR_CHANNEL_CLOSE when a channel should be closed
+ */
+fr_channel_event_t fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev, fr_time_t when, fr_channel_t **p_channel)
+{
+	fr_channel_t *ch;
+	fr_channel_control_t *cc;
+
+	rad_assert(kev->filter == EVFILT_USER);
+
+	cc = talloc(aq, fr_channel_control_t);
+	rad_assert(cc != NULL);
+
+	cc->signal = kev->ident;
+	cc->ack = (uint64_t) kev->data;
+	cc->ch = ch = kev->udata;
+
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+	
+	if (aq == ch->end[TO_WORKER].aq_control) {
+		ch->end[TO_WORKER].num_kevents++;
+	} else {
+		ch->end[FROM_WORKER].num_kevents++;
+	}
+
+	if (!fr_atomic_queue_push(aq, cc)) {
+		*p_channel = NULL;
+		return FR_CHANNEL_ERROR;
+	}
+
+	return fr_channel_service_aq(aq, when, p_channel);
 }
 
 
