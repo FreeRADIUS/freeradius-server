@@ -46,11 +46,12 @@ typedef struct fr_channel_t fr_channel_t;
 
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
-	FR_CHANNEL_NOOP,
 	FR_CHANNEL_DATA_READY_WORKER,
 	FR_CHANNEL_DATA_READY_RECEIVER,
 	FR_CHANNEL_OPEN,
 	FR_CHANNEL_CLOSE,
+
+	FR_CHANNEL_NOOP,
 	FR_CHANNEL_EMPTY,
 } fr_channel_event_t;
 

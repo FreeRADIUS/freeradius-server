@@ -75,13 +75,18 @@ RCSID("$Id$")
 #define ATOMIC_QUEUE_SIZE (1024)
 
 typedef enum fr_channel_signal_t {
-	FR_CHANNEL_SIGNAL_FAIL = 0,
-	FR_CHANNEL_SIGNAL_DATA_TO_WORKER,
-	FR_CHANNEL_SIGNAL_DATA_FROM_WORKER,
+	FR_CHANNEL_SIGNAL_ERROR			= FR_CHANNEL_ERROR,
+	FR_CHANNEL_SIGNAL_DATA_TO_WORKER	= FR_CHANNEL_DATA_READY_WORKER,
+	FR_CHANNEL_SIGNAL_DATA_FROM_WORKER	= FR_CHANNEL_DATA_READY_RECEIVER,
+	FR_CHANNEL_SIGNAL_OPEN			= FR_CHANNEL_OPEN,
+	FR_CHANNEL_SIGNAL_CLOSE			= FR_CHANNEL_CLOSE,
+
+	/*
+	 *	The preceding MUST be in the same order as fr_channel_event_t
+	 */
+
 	FR_CHANNEL_SIGNAL_DATA_DONE_WORKER,
 	FR_CHANNEL_SIGNAL_WORKER_SLEEPING,
-	FR_CHANNEL_SIGNAL_OPEN,
-	FR_CHANNEL_SIGNAL_CLOSE,
 } fr_channel_signal_t;
 
 typedef struct fr_channel_control_t {
@@ -597,33 +602,17 @@ static fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t
 	talloc_free(cc);
 
 	switch (cs) {
-	case FR_CHANNEL_SIGNAL_FAIL:
-		return FR_CHANNEL_ERROR;
-
 		/*
-		 *	Data is ready on one or both channels.  Non-zero
-		 *	idents are just signals that data is ready.  We just
-		 *	return the channel to the caller, and rely on it to
-		 *	service the channel.
+		 *	These all have the same numbers as the channel
+		 *	events, and have no extra processing.  We just
+		 *	return them as-is.
 		 */
-	case FR_CHANNEL_SIGNAL_DATA_FROM_WORKER:
-		return FR_CHANNEL_DATA_READY_RECEIVER;
-
+	case FR_CHANNEL_SIGNAL_ERROR:
 	case FR_CHANNEL_SIGNAL_DATA_TO_WORKER:
-		return FR_CHANNEL_DATA_READY_WORKER;
-
-		/*
-		 *	Someone is sending us a new channel.  We MUST be the
-		 *	worker.  Return the channel to the worker.
-		 */
+	case FR_CHANNEL_SIGNAL_DATA_FROM_WORKER:
 	case FR_CHANNEL_SIGNAL_OPEN:
-		return FR_CHANNEL_OPEN;
-
-		/*
-		 *	Each end can signal the channel to close.
-		 */
 	case FR_CHANNEL_SIGNAL_CLOSE:
-		return FR_CHANNEL_CLOSE;
+		return (fr_channel_event_t) cs;
 
 		/*
 		 *	Only sent by the worker.  Both of these
