@@ -147,6 +147,9 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		 *	head is larger than the current entry, the queue is full.
 		 */
 		if (diff < 0) {
+#if 0
+			fr_atomic_queue_debug(aq, stderr);
+#endif
 			return false;
 		}
 
@@ -239,6 +242,19 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 }
 
 #ifndef NDEBUG
+
+#if 0
+typedef struct fr_control_message_t {
+	int			status;		//!< status of this message
+	size_t				data_size;     	//!< size of the data we're sending
+
+	int			signal;		//!< the signal to send
+	uint64_t		ack;		//!< or the endpoint..
+	void			*ch;		//!< the channel
+} fr_control_message_t;
+#endif
+
+
 /**  Dump an atomic queue.
  *
  *  Absolutely NOT thread-safe.
@@ -262,8 +278,19 @@ void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 
 		entry = &aq->entry[i];
 
-		fprintf(fp, "\t[%d] = { %p, %zd }\n",
+		fprintf(fp, "\t[%d] = { %p, %zd }",
 			i, entry->data, load(entry->seq));
+#if 0
+		if (entry->data) {
+			fr_control_message_t *c;
+
+			c = entry->data;
+
+			fprintf(fp, "\tstatus %d, data_size %zd, signal %d, ack %zd, ch %p",
+				c->status, c->data_size, c->signal, c->ack, c->ch);
+		}
+#endif
+		fprintf(fp, "\n");
 	}
 }
 #endif
