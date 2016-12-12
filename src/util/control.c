@@ -220,7 +220,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, void *dat
 }
 
 
-/** Send a control message with specific data.
+/** Push a control-plane message
  *
  *  This function is called ONLY from the originating thread.
  *
@@ -231,10 +231,9 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, void *dat
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
+int fr_control_message_push(fr_control_t *c, void *data, size_t data_size)
 {
 	fr_control_message_t *m;
-	struct kevent kev;
 
 #ifndef NDEBUG
 	(void) talloc_get_type_abort(c, fr_control_t);
@@ -257,17 +256,42 @@ int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
 		return -1;
 	}
 
+	return 0;
+}
+
+/** Send a control-plane message
+ *
+ *  This function is called ONLY from the originating thread.
+ *
+ * @param[in] c the control structure
+ * @param[in] data the data to write to the control plane
+ * @param[in] data_size the size of the data to write to the control plane.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
+{
+	struct kevent kev;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(c, fr_control_t);
+#endif
+
+	if (fr_control_message_push(c, data, data_size) < 0) {
+		return -1;
+	}
+
 	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
 	return kevent(c->kq, &kev, 1, NULL, 0, NULL);
 }
 
 
-/** Receive a control-plane message
+/** Pop control-plane message
  *
  *  This function is called ONLY from the receiving thread.
  *
  * @param[in] aq the recipients atomic queue for control-plane messages
- * @param[in] kev the kevent for this receiver
  * @param[in,out] data where the data is stored
  * @param[in] data_size the size of the buffer where we store the data.
  * @return
@@ -275,12 +299,10 @@ int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
  *	- 0 this kevent is not for us.
  *	- >0 the amount of data we've read
  */
-ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent const *kev, void *data, size_t data_size)
+ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, void *data, size_t data_size)
 {
 	uint8_t *p;
 	fr_control_message_t *m;
-
-	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
@@ -300,4 +322,25 @@ ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent const *k
 
 	m->status = FR_CONTROL_MESSAGE_DONE;
 	return data_size;
+}
+
+
+/** Receive a control-plane message
+ *
+ *  This function is called ONLY from the receiving thread.
+ *
+ * @param[in] aq the recipients atomic queue for control-plane messages
+ * @param[in] kev the kevent for this receiver
+ * @param[in,out] data where the data is stored
+ * @param[in] data_size the size of the buffer where we store the data.
+ * @return
+ *	- <0 the size of the data we need to read the next message
+ *	- 0 this kevent is not for us.
+ *	- >0 the amount of data we've read
+ */
+ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent const *kev, void *data, size_t data_size)
+{
+	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
+
+	return fr_control_message_pop(aq, data, data_size);
 }
