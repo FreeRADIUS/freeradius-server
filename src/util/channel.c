@@ -44,11 +44,6 @@ RCSID("$Id$")
  */
 #define EV_FLAG (EV_ADD | EV_CLEAR)
 
-/*&
- *	Whether or not to quench some signals from the worker.
- */
-#define SUPPRESS_SIGNALS_WORKER (1)
-
 /**
  *	The minimum interval between worker signals.
  */
@@ -504,7 +499,18 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, end->last_sent_signal, when - end->last_sent_signal);
 	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", end->sequence, other->ack, end->sequence - other->ack);
 
-#ifdef SUPPRESS_SIGNALS_WORKER
+#ifdef __APPLE__
+	/*
+	 *	If we've sent them a signal since the last ACK, they
+	 *	will receive it, and process the packets.  So we don't
+	 *	need to signal them again.
+	 *
+	 *	But... this doesn't appear to work on the Linux
+	 *	libkqueue implementation.
+	 */
+	if (end->sequence_at_last_signal > other->ack) return 0;
+#endif
+
 	/*
 	 *	If we've received a new packet in the last while, OR
 	 *	we've sent a signal in the last while, then we don't
@@ -521,7 +527,6 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 		MPRINT("WORKER SKIPS\n");
 		return 0;
 	}
-#endif
 
 	MPRINT("WORKER SIGNALS\n");
 	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
