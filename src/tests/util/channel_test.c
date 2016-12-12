@@ -35,8 +35,9 @@ RCSID("$Id$")
 
 #include <sys/event.h>
 
-#define MAX_MESSAGES	(2048)
-#define MAX_KEVENTS	(10)
+#define MAX_MESSAGES		(2048)
+#define MAX_CONTROL_PLANE	(1024)
+#define MAX_KEVENTS		(10)
 
 #define MPRINT1 if (debug_lvl) printf
 #define MPRINT2 if (debug_lvl > 1) printf
@@ -45,14 +46,16 @@ static int		debug_lvl = 0;
 static int		kq_master, kq_worker;
 static fr_atomic_queue_t *aq_master, *aq_worker;
 static int		max_messages = 10;
+static int		max_control_plane = 0;
 static int		max_outstanding = 1;
 static bool		touch_memory = false;
 
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: channel_test [OPTS]\n");
+	fprintf(stderr, "  -c <control-plane>     Size of the control plane queue.\n");
 	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");
-	fprintf(stderr, "  -o <outstanding>       Keep number of messages outstanding\n");
+	fprintf(stderr, "  -o <outstanding>       Keep number of messages outstanding.\n");
 	fprintf(stderr, "  -t                     Touch memory for fake packets.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
@@ -450,9 +453,13 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	while ((c = getopt(argc, argv, "hm:o:tx")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "c:hm:o:tx")) != EOF) switch (c) {
 		case 'x':
 			debug_lvl++;
+			break;
+
+		case 'c':
+			max_control_plane = atoi(optarg);
 			break;
 
 		case 'm':
@@ -474,6 +481,11 @@ int main(int argc, char *argv[])
 
 	if (max_outstanding > max_messages) max_outstanding = max_messages;
 
+	if (!max_control_plane) {
+		max_control_plane = MAX_CONTROL_PLANE;
+		if (max_outstanding > max_control_plane) max_control_plane = max_outstanding;
+	}
+
 #if 0
 	argc -= (optind - 1);
 	argv += (optind - 1);
@@ -485,10 +497,10 @@ int main(int argc, char *argv[])
 	kq_worker = kqueue();
 	rad_assert(kq_worker >= 0);
 
-	aq_master = fr_atomic_queue_create(autofree, 128);
+	aq_master = fr_atomic_queue_create(autofree, max_control_plane);
 	rad_assert(aq_master != NULL);
 
-	aq_worker = fr_atomic_queue_create(autofree, 128);
+	aq_worker = fr_atomic_queue_create(autofree, max_control_plane);
 	rad_assert(aq_worker != NULL);
 
 	channel = fr_channel_create(autofree,
