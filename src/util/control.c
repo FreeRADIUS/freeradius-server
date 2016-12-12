@@ -32,8 +32,17 @@ RCSID("$Id$")
 #include <sys/event.h>
 
 #define FR_CONTROL_SIGNAL	(1024)
-#define FR_CONTROL_MAX_MESSAGES (128)
+#define FR_CONTROL_MAX_MESSAGES (1024)
 #define FR_CONTROL_MAX_SIZE	(64)
+
+/*
+ *	Debugging, mainly for channel_test
+ */
+#if 0
+#define MPRINT(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define MPRINT(...)
+#endif
 
 /**
  *  Status of control messages
@@ -239,6 +248,8 @@ int fr_control_message_push(fr_control_t *c, void *data, size_t data_size)
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
+	MPRINT("CONTROL push aq %p\n", c->aq);
+
 	/*
 	 *	Get a message.  If we can't get one, do garbage
 	 *	collection.  Get another, and if that fails, we're
@@ -248,11 +259,15 @@ int fr_control_message_push(fr_control_t *c, void *data, size_t data_size)
 	if (!m) {
 		(void) fr_control_gc(c);
 		m = fr_control_message_alloc(c, data, data_size);
-		if (!m) return -1;
+		if (!m) {
+			MPRINT("CONTROL %p failed after GC\n", c);
+			return -1;
+		}
 	}
 
 	if (!fr_atomic_queue_push(c->aq, m)) {
 		m->status = FR_CONTROL_MESSAGE_DONE;
+		MPRINT("CONTROL %p failed in atomic push to aq %p\n", c, c->aq);
 		return -1;
 	}
 
@@ -303,6 +318,8 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, void *data, size_t data_si
 {
 	uint8_t *p;
 	fr_control_message_t *m;
+
+	MPRINT("CONTROL pop aq %p\n", aq);
 
 	if (!fr_atomic_queue_pop(aq, (void **) &m)) return 0;
 
