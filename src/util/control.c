@@ -357,5 +357,5 @@ int fr_control_message_service_kevent(UNUSED fr_atomic_queue_t *aq, struct keven
 {
 	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
 
-	return 0;
+	return 1;
 }
