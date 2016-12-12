@@ -40,11 +40,6 @@ RCSID("$Id$")
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
-/*
- *	To make debugging easier...
- */
-#define EV_FLAG (EV_ADD | EV_CLEAR)
-
 /**
  *	The minimum interval between worker signals.
  */
@@ -640,7 +635,7 @@ fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, 
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_service_kevent(fr_channel_t *ch, fr_atomic_queue_t *aq, UNUSED struct kevent const *kev)
+int fr_channel_service_kevent(fr_channel_t *ch, fr_atomic_queue_t *aq, struct kevent const *kev)
 {
 #ifndef NDEBUG
 	talloc_get_type_abort(ch, fr_channel_t);
