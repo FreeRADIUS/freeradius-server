@@ -253,38 +253,38 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
-	fr_channel_end_t *end;
+	fr_channel_end_t *master;
 
-	end = &(ch->end[TO_WORKER]);
+	master = &(ch->end[TO_WORKER]);
 	when = cd->m.when;
 
-	sequence = end->sequence + 1;
+	sequence = master->sequence + 1;
 	cd->live.sequence = sequence;
-	cd->live.ack = end->ack;
+	cd->live.ack = master->ack;
 
 	/*
 	 *	Push the message onto the queue for the other end.  If
 	 *	the push fails, the caller should try another queue.
 	 */
-	if (!fr_atomic_queue_push(end->aq, cd)) {
+	if (!fr_atomic_queue_push(master->aq, cd)) {
 		MPRINT("QUEUE FULL!\n");
 		*p_reply = fr_channel_recv_reply(ch);
 		return -1;
 	}
 
-	end->sequence = sequence;
-	message_interval = when - end->last_write;
-	end->message_interval = RTT(end->message_interval, message_interval);
+	master->sequence = sequence;
+	message_interval = when - master->last_write;
+	master->message_interval = RTT(master->message_interval, message_interval);
 
-	rad_assert(end->last_write <= when);
-	end->last_write = when;
+	rad_assert(master->last_write <= when);
+	master->last_write = when;
 
-	end->num_outstanding++;
+	master->num_outstanding++;
 
 	/*
 	 *	We just sent the first packet.  There can't possibly be a reply, so don't bother looking.
 	 */
-	if (end->num_outstanding == 1) {
+	if (master->num_outstanding == 1) {
 		*p_reply = NULL;
 
 
@@ -292,7 +292,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 		 *	There is at least one old packet which is
 		 *	outstanding, look for a reply.
 		 */
-	} else if (end->num_outstanding > 1) {
+	} else if (master->num_outstanding > 1) {
 		*p_reply = fr_channel_recv_reply(ch);
 
 		/*
@@ -301,7 +301,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 		 *	Skip the signal.
 		 */
 		if (!*p_reply ||
-		    ((*p_reply && (end->num_outstanding > 1)))) {
+		    ((*p_reply && (master->num_outstanding > 1)))) {
 			return 0;
 		}
 	}
@@ -309,7 +309,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	/*
 	 *	Tell the other end that there is new data ready.
 	 */
-	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
+	return fr_channel_data_ready(ch, when, master, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
 }
 
 /** Receive a reply message from the channel
@@ -373,22 +373,22 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 {
 	fr_channel_data_t *cd;
-	fr_channel_end_t *end;
+	fr_channel_end_t *worker;
 	fr_atomic_queue_t *aq;
 
 	aq = ch->end[TO_WORKER].aq;
-	end = &(ch->end[FROM_WORKER]);
+	worker = &(ch->end[FROM_WORKER]);
 
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
-	rad_assert(cd->live.sequence > end->ack);
-	rad_assert(cd->live.sequence >= end->sequence); /* must have more requests than replies */
+	rad_assert(cd->live.sequence > worker->ack);
+	rad_assert(cd->live.sequence >= worker->sequence); /* must have more requests than replies */
 
-	end->num_outstanding++;
-	end->ack = cd->live.sequence;
+	worker->num_outstanding++;
+	worker->ack = cd->live.sequence;
 
-	rad_assert(end->last_read_other <= cd->m.when);
-	end->last_read_other = cd->m.when;
+	rad_assert(worker->last_read_other <= cd->m.when);
+	worker->last_read_other = cd->m.when;
 
 	return cd;
 }
@@ -413,31 +413,31 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
-	fr_channel_end_t *end, *other;
+	fr_channel_end_t *worker, *master;
 
-	end = &(ch->end[FROM_WORKER]);
-	other = &(ch->end[TO_WORKER]);
+	worker = &(ch->end[FROM_WORKER]);
+	master = &(ch->end[TO_WORKER]);
 
 	when = cd->m.when;
 
-	sequence = end->sequence + 1;
+	sequence = worker->sequence + 1;
 	cd->live.sequence = sequence;
-	cd->live.ack = end->ack;
+	cd->live.ack = worker->ack;
 
-	if (!fr_atomic_queue_push(end->aq, cd)) {
+	if (!fr_atomic_queue_push(worker->aq, cd)) {
 		*p_request = fr_channel_recv_request(ch);
 		return -1;
 	}
 
-	rad_assert(end->num_outstanding > 0);
-	end->num_outstanding--;
+	rad_assert(worker->num_outstanding > 0);
+	worker->num_outstanding--;
 
-	end->sequence = sequence;
-	message_interval = when - end->last_write;
-	end->message_interval = RTT(end->message_interval, message_interval);
+	worker->sequence = sequence;
+	message_interval = when - worker->last_write;
+	worker->message_interval = RTT(worker->message_interval, message_interval);
 
-	rad_assert(end->last_write <= when);
-	end->last_write = when;
+	rad_assert(worker->last_write <= when);
+	worker->last_write = when;
 
 	/*
 	 *	Even if we think we have no more packets to process,
@@ -450,13 +450,13 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	No packets outstanding, we HAVE to signal the master
 	 *	thread.
 	 */
-	if (end->num_outstanding == 0) {
-		return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_DONE_WORKER);
+	if (worker->num_outstanding == 0) {
+		return fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_DONE_WORKER);
 	}
 
-	MPRINT("\twhen - last_read_other = %zd - %zd = %zd\n", when, end->last_read_other, when - end->last_read_other);
-	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, end->last_sent_signal, when - end->last_sent_signal);
-	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", end->sequence, other->ack, end->sequence - other->ack);
+	MPRINT("\twhen - last_read_other = %zd - %zd = %zd\n", when, worker->last_read_other, when - worker->last_read_other);
+	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, worker->last_sent_signal, when - worker->last_sent_signal);
+	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", worker->sequence, master->ack, worker->sequence - master->ack);
 
 #ifdef __APPLE__
 	/*
@@ -467,7 +467,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	But... this doesn't appear to work on the Linux
 	 *	libkqueue implementation.
 	 */
-	if (end->sequence_at_last_signal > other->ack) return 0;
+	if (worker->sequence_at_last_signal > master->ack) return 0;
 #endif
 
 	/*
@@ -479,16 +479,16 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	rad_assert(other->ack <= end->sequence);
-	if (((end->sequence - other->ack) <= 100) &&
-	    ((when - end->last_read_other < SIGNAL_INTERVAL) ||
-	     ((when - end->last_sent_signal) < SIGNAL_INTERVAL))) {
+	rad_assert(master->ack <= worker->sequence);
+	if (((worker->sequence - master->ack) <= 1000) &&
+	    ((when - worker->last_read_other < SIGNAL_INTERVAL) ||
+	     ((when - worker->last_sent_signal) < SIGNAL_INTERVAL))) {
 		MPRINT("WORKER SKIPS\n");
 		return 0;
 	}
 
 	MPRINT("WORKER SIGNALS\n");
-	return fr_channel_data_ready(ch, when, end, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
+	return fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 }
 
 
@@ -504,25 +504,25 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
  */
 int fr_channel_worker_sleeping(fr_channel_t *ch)
 {
-	fr_channel_end_t *end;
+	fr_channel_end_t *worker;
 	fr_channel_control_t cc;
 
-	end = &(ch->end[FROM_WORKER]);
+	worker = &(ch->end[FROM_WORKER]);
 
 	/*
 	 *	We don't have any outstanding requests to process for
 	 *	this channel, don't signal the network thread that
 	 *	we're sleeping.  It already knows.
 	 */
-	if (end->num_outstanding == 0) return 0;
+	if (worker->num_outstanding == 0) return 0;
 
-	end->num_signals++;
+	worker->num_signals++;
 
 	cc.signal = FR_CHANNEL_SIGNAL_WORKER_SLEEPING;
-	cc.ack = end->ack;
+	cc.ack = worker->ack;
 	cc.ch = ch;
 
-	return fr_control_message_send(end->control, &cc, sizeof(cc));
+	return fr_control_message_send(worker->control, &cc, sizeof(cc));
 }
 
 
