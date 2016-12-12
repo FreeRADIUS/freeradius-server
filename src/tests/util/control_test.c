@@ -92,7 +92,7 @@ static void *control_master(UNUSED void *arg)
 		MPRINT1("Master draining the control plane.\n");
 
 		while (true) {
-			data_size = fr_control_message_receive(aq, &kev, &m, sizeof(m));
+			data_size = fr_control_message_pop(aq, &m, sizeof(m));
 			if (data_size == 0) goto wait_for_events;
 
 			if (data_size < 0) {

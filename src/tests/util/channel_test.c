@@ -325,9 +325,9 @@ static void *channel_worker(void *arg)
 			(void) fr_channel_service_kevent(channel, aq_worker, &events[i]);
 		}
 
-		now = fr_time();
-
 		MPRINT1("\tWorker servicing control-plane aq %p\n", aq_worker);
+
+		now = fr_time();
 
 		while ((ce = fr_channel_service_aq(aq_worker, now, &new_channel)) != FR_CHANNEL_EMPTY) {
 			fr_channel_data_t *cd, *reply;
@@ -422,6 +422,11 @@ static void *channel_worker(void *arg)
 				rad_assert(0 == 1);
 				break;
 			} /* switch over signals */
+
+			/*
+			 *	Get a new idea of "now".
+			 */
+			now = fr_time();
 		} /* drain the control plane */
 	}
 
