@@ -206,10 +206,12 @@ check_close:
 		 *	Service the events.
 		 */
 		for (i = 0; i < num_events; i++) {
-			(void) fr_channel_service_kevent(aq_master, &events[i]);
+			(void) fr_channel_service_kevent(channel, aq_master, &events[i]);
 		}
 
 		now = fr_time();
+
+		MPRINT1("Master servicing control-plane aq %p\n", aq_master);
 
 		while ((ce = fr_channel_service_aq(aq_master, now, &new_channel)) != FR_CHANNEL_EMPTY) {
 			MPRINT1("Master got channel event %d\n", ce);
@@ -320,10 +322,12 @@ static void *channel_worker(void *arg)
 		if (num_events == 0) continue;
 
 		for (i = 0; i < num_events; i++) {
-			(void) fr_channel_service_kevent(aq_worker, &events[i]);
+			(void) fr_channel_service_kevent(channel, aq_worker, &events[i]);
 		}
 
 		now = fr_time();
+
+		MPRINT1("\tWorker servicing control-plane aq %p\n", aq_worker);
 
 		while ((ce = fr_channel_service_aq(aq_worker, now, &new_channel)) != FR_CHANNEL_EMPTY) {
 			fr_channel_data_t *cd, *reply;
@@ -405,11 +409,12 @@ static void *channel_worker(void *arg)
 				break;
 
 			case FR_CHANNEL_NOOP:
+				MPRINT1("\tWorker got NOOP\n");
 				rad_assert(new_channel == channel);
 				break;
 
 			default:
-				fprintf(stderr, "Worker got unexpected CE %d\n", ce);
+				fprintf(stderr, "\tWorker got unexpected CE %d\n", ce);
 
 				/*
 				 *	Not written yet!

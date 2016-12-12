@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/channel.h>
+#include <freeradius-devel/util/control.h>
 #include <freeradius-devel/rad_assert.h>
 
 /*
@@ -93,7 +94,9 @@ typedef struct fr_channel_control_t {
 typedef struct fr_channel_end_t {
 	int			kq;		//!< the kqueue associated with the channel
 
-	fr_atomic_queue_t	*aq_control;   	//!< the control channel queue
+	fr_atomic_queue_t	*aq_control;   	//!< the control plane queue - global to the thread
+
+	fr_control_t		*control;	//!< the control plane
 
 	int			num_outstanding; //!< number of outstanding requests with no reply
 
@@ -114,7 +117,7 @@ typedef struct fr_channel_end_t {
 
 	fr_time_t		last_sent_signal; //!< the last time when we signaled the other end
 
-	fr_atomic_queue_t	*aq;		//!< the queue of messages
+	fr_atomic_queue_t	*aq;		//!< the queue of messages - visible only to this channel
 } fr_channel_end_t;
 
 /**
@@ -128,43 +131,6 @@ typedef struct fr_channel_t {
 
 	fr_channel_end_t	end[2];		//!< two ends of the channel
 } fr_channel_t;
-
-
-static int fr_channel_add_kevent_worker(struct kevent *kev, int size)
-{
-	if (size < 3) return -1;
-
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_OPEN, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_TO_WORKER, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-
-	return 3;
-}
-
-
-static int fr_channel_add_kevent_receiver(struct kevent *kev, int size)
-{
-	if (size < 4) return -1;
-
-	EV_SET(&kev[0], FR_CHANNEL_SIGNAL_WORKER_SLEEPING, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-	EV_SET(&kev[1], FR_CHANNEL_SIGNAL_CLOSE, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-	EV_SET(&kev[2], FR_CHANNEL_SIGNAL_DATA_FROM_WORKER, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-	EV_SET(&kev[3], FR_CHANNEL_SIGNAL_DATA_DONE_WORKER, EVFILT_USER, EV_FLAG, NOTE_FFNOP, 0, NULL);
-
-	return 4;
-}
-
-
-static int fr_channel_kevent_signal(fr_channel_end_t *end, fr_channel_control_t *cc)
-{
-	struct kevent kev;
-
-	EV_SET(&kev, cc->signal, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFCOPY, cc->ack, cc->ch);
-
-	end->sequence_at_last_signal = end->sequence;
-
-	return kevent(end->kq, &kev, 1, NULL, 0, NULL);
-}
 
 
 /** Create a new channel
@@ -183,8 +149,6 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_
 {
 	fr_time_t when;
 	fr_channel_t *ch;
-	int num_events;
-	struct kevent events[4];
 
 	ch = talloc_zero(ctx, fr_channel_t);
 	if (!ch) return NULL;
@@ -219,19 +183,19 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_
 	ch->end[FROM_WORKER].last_read_other = when;
 	ch->end[FROM_WORKER].last_sent_signal = when;
 
+	ch->end[TO_WORKER].control = fr_control_create(ctx,
+							 ch->end[TO_WORKER].kq,
+							 ch->end[TO_WORKER].aq_control);
+	if (!ch->end[TO_WORKER].control) {
+		talloc_free(ch);
+		return NULL;
+	}
+
+	MPRINT("Master CONTROL aq_master %p aq_worker %p\n", aq_master, aq_worker);
+
+	MPRINT("Master CONTROL %p aq %p\n", ch->end[TO_WORKER].control, ch->end[TO_WORKER].aq_control);
+
 	ch->active = true;
-
-	num_events = fr_channel_add_kevent_worker(events, 4);
-	if (kevent(kq_worker, events, num_events, NULL, 0, NULL) < 0) {
-		talloc_free(ch);
-		return NULL;
-	}
-
-	num_events = fr_channel_add_kevent_receiver(events, 4);
-	if (kevent(kq_master, events, num_events, NULL, 0, NULL) < 0) {
-		talloc_free(ch);
-		return NULL;
-	}
 
 	return ch;
 }
@@ -268,7 +232,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	cc.ack = end->ack;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(end, &cc);
+	return fr_control_message_send(end->control, &cc, sizeof(cc));
 }
 
 #define IALPHA (8)
@@ -563,7 +527,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 	cc.ack = end->ack;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(end, &cc);
+	return fr_control_message_send(end->control, &cc, sizeof(cc));
 }
 
 
@@ -585,21 +549,21 @@ fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, 
 {
 	int rcode;
 	uint64_t ack;
-	fr_channel_control_t *cc;
+	ssize_t data_size;
+	fr_channel_control_t cc;
 	fr_channel_signal_t cs;
 	fr_channel_event_t ce = FR_CHANNEL_ERROR;
 	fr_channel_end_t *end;
 	fr_channel_t *ch;
 
-	if (!fr_atomic_queue_pop(aq, (void **) &cc)) {
-		*p_channel = NULL;
-		return FR_CHANNEL_EMPTY;
-	}
+	data_size = fr_control_message_pop(aq, &cc, sizeof(cc));
+	if (data_size == 0) return FR_CHANNEL_EMPTY;
 
-	cs = cc->signal;
-	ack = cc->ack;
-	*p_channel = ch = cc->ch;
-	talloc_free(cc);
+	rad_assert(data_size == sizeof(cc));
+
+	cs = cc.signal;
+	ack = cc.ack;
+	*p_channel = ch = cc.ch;
 
 	switch (cs) {
 		/*
@@ -669,38 +633,27 @@ fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, 
  *  event.  Note that the caller does NOT pass the channel into this
  *  function.  Instead, the channel is taken from the kevent.
  *
+ * @param[in] ch the channel to service
  * @param[in] aq the atomic queue on which we receive control-plane messages
  * @param[in] kev the event of type EVFILT_USER
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev)
+int fr_channel_service_kevent(fr_channel_t *ch, fr_atomic_queue_t *aq, UNUSED struct kevent const *kev)
 {
-	fr_channel_t *ch;
-	fr_channel_control_t *cc;
-
-	rad_assert(kev->filter == EVFILT_USER);
-
-	cc = talloc(aq, fr_channel_control_t);
-	rad_assert(cc != NULL);
-
-	cc->signal = kev->ident;
-	cc->ack = (uint64_t) kev->data;
-	cc->ch = ch = kev->udata;
-
 #ifndef NDEBUG
 	talloc_get_type_abort(ch, fr_channel_t);
 #endif
-	
+
+	if (fr_control_message_service_kevent(aq, kev) == 0) {
+		return 0;
+	}
+
 	if (aq == ch->end[TO_WORKER].aq_control) {
 		ch->end[TO_WORKER].num_kevents++;
 	} else {
 		ch->end[FROM_WORKER].num_kevents++;
-	}
-
-	if (!fr_atomic_queue_push(aq, cc)) {
-		return -1;
 	}
 
 	return 0;
@@ -739,7 +692,7 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
 	cc.ack = TO_WORKER;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(&ch->end[TO_WORKER], &cc);
+	return fr_control_message_send(ch->end[TO_WORKER].control, &cc, sizeof(cc));
 }
 
 /** Acknowledge that the channel is closing
@@ -759,7 +712,7 @@ int fr_channel_ack_worker_close(fr_channel_t *ch)
 	cc.ack = FROM_WORKER;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(&ch->end[FROM_WORKER], &cc);
+	return fr_control_message_send(ch->end[FROM_WORKER].control, &cc, sizeof(cc));
 }
 
 /** Send a channel to a KQ
@@ -777,7 +730,7 @@ int fr_channel_signal_open(fr_channel_t *ch)
 	cc.ack = 0;
 	cc.ch = ch;
 
-	return fr_channel_kevent_signal(&ch->end[TO_WORKER], &cc);
+	return fr_control_message_send(ch->end[TO_WORKER].control, &cc, sizeof(cc));
 }
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
@@ -806,9 +759,8 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_worker_receive_open(UNUSED TALLOC_CTX *ctx, UNUSED fr_channel_t *ch)
+int fr_channel_worker_receive_open(TALLOC_CTX *ctx, fr_channel_t *ch)
 {
-#if 0
 #ifndef NDEBUG
 	talloc_get_type_abort(ch, fr_channel_t);
 #endif
@@ -821,7 +773,8 @@ int fr_channel_worker_receive_open(UNUSED TALLOC_CTX *ctx, UNUSED fr_channel_t *
 	if (!ch->end[FROM_WORKER].control) {
 		return -1;
 	}
-#endif
+
+	MPRINT("\tWorker CONTROL %p\n", ch->end[FROM_WORKER].control);
 
 	return 0;
 }

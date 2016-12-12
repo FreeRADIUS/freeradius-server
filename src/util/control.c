@@ -342,22 +342,20 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, void *data, size_t data_si
 }
 
 
-/** Receive a control-plane message
+/** Service a control-plane kevent
  *
  *  This function is called ONLY from the receiving thread.
  *
  * @param[in] aq the recipients atomic queue for control-plane messages
  * @param[in] kev the kevent for this receiver
- * @param[in,out] data where the data is stored
- * @param[in] data_size the size of the buffer where we store the data.
  * @return
- *	- <0 the size of the data we need to read the next message
+ *	- <0 error
  *	- 0 this kevent is not for us.
- *	- >0 the amount of data we've read
+ *	- >0 this kevent is for us
  */
-ssize_t fr_control_message_receive(fr_atomic_queue_t *aq, struct kevent const *kev, void *data, size_t data_size)
+int fr_control_message_service_kevent(UNUSED fr_atomic_queue_t *aq, struct kevent const *kev)
 {
 	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
 
-	return fr_control_message_pop(aq, data, data_size);
+	return 0;
 }
