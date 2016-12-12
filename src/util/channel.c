@@ -44,12 +44,6 @@ RCSID("$Id$")
  */
 #define EV_FLAG (EV_ADD | EV_CLEAR)
 
-/**
- *	Require more than this number of packets outstanding, before
- *	we start suppressing signals from the master.
- */
-#define SUPPRESS_SIGNALS_MASTER (0)
-
 /*&
  *	Whether or not to quench some signals from the worker.
  */
@@ -346,15 +340,16 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 		 */
 	} else if (end->num_outstanding > 1) {
 		*p_reply = fr_channel_recv_reply(ch);
-	}
 
-	/*
-	 *	If we got a reply, AND there are still more
-	 *	outstanding packets, don't bother signaling the
-	 *	worker.  It will check our queue when it sends the reply.
-	 */
-	if (*p_reply && (end->num_outstanding > SUPPRESS_SIGNALS_MASTER)) {
-		return 0;
+		/*
+		 *	There's no reply yet, so we still have packets outstanding.
+		 *	Or, there is a reply, and there are more packets outstanding.
+		 *	Skip the signal.
+		 */
+		if (!*p_reply ||
+		    ((*p_reply && (end->num_outstanding > 1)))) {
+			return 0;
+		}
 	}
 
 	/*
