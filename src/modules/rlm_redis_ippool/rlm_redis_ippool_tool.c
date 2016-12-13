@@ -472,8 +472,6 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 							 op->pool, op->pool_len, false);
 		     s_ret == REDIS_RCODE_TRY_AGAIN;
 		     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &replies[0])) {
-
-
 			status = REDIS_RCODE_SUCCESS;
 
 			/*
@@ -1492,11 +1490,9 @@ do { \
 		len = strlen(argv[1]);
 		MEM(arg = talloc_array(conf, uint8_t, len));
 		len = fr_value_str_unescape(arg, argv[1], len, '"');
-		if (!fr_cond_assert(len)) {
-			MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
-		} else {
-			TALLOC_FREE(arg);
-		}
+		rad_assert(len);
+
+		MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
 	}
 
 	if (argc >= 3 && (argv[2][0] != '\0')) {
@@ -1506,11 +1502,9 @@ do { \
 		len = strlen(argv[2]);
 		MEM(arg = talloc_array(conf, uint8_t, len));
 		len = fr_value_str_unescape(arg, argv[2], len, '"');
-		if (!fr_cond_assert(len)) {
-			MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
-		} else {
-			TALLOC_FREE(arg);
-		}
+		rad_assert(len);
+
+		MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));
 	}
 
 	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
@@ -1683,6 +1677,7 @@ do { \
 		if (driver_show_lease(&leases, conf->driver, p) < 0) {
 			exit(1);
 		}
+		rad_assert(leases);
 
 		len = talloc_array_length(leases);
 		INFO("Retrieved information for %zu address(es)/prefix(es)", len - 1);
