@@ -632,6 +632,7 @@ fi
 %{_libdir}/freeradius/rlm_cache.so
 %{_libdir}/freeradius/rlm_cache_rbtree.so
 %{_libdir}/freeradius/rlm_chap.so
+%{_libdir}/freeradius/rlm_client.so
 %{_libdir}/freeradius/rlm_cram.so
 %{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
