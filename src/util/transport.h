@@ -27,6 +27,7 @@ RCSIDH(transport_h, "$Id$")
 
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/channel.h>
+//#include <freeradius-devel/util/io.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,14 +65,39 @@ typedef enum fr_transport_final_t {
 typedef struct fr_transport_t fr_transport_t;
 
 /**
- *  Have a bare packet, and decode it to a REQUEST
+ *  Read a packet from the network into a buffer.
  */
-typedef REQUEST *(*fr_transport_recv_request_t)(fr_transport_t const *transport, void const *packet_ctx, TALLOC_CTX *ctx, uint8_t *const data, size_t data_len);
+//typedef int (*fr_transport_read_t)(int fd, fr_io_buffer_t *io);
+
+/**
+ *  Process raw packets into a form suitable
+ */
+//typedef int (*fr_transport_send_request_t)(fr_io_buffer_t *io);
+
+/**
+ *  Have a raw packet, and decode it to a REQUEST
+ */
+typedef int (*fr_transport_decode_t)(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST **p_request);
+
+/**
+ *  Have a REQUEST, and encode it to raw packet.
+ */
+typedef int (*fr_transport_encode_t)(void const *packet_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
+
+/**
+ *  Do any worker-specific processing of the request.
+ */
+typedef int *(*fr_transport_recv_request_t)(REQUEST *);
+
+/**
+ *  Receive a reply in the master thread.
+ */
+//typedef int (*fr_transport_recv_reply_t)(fr_io_buffer_t *io);
 
 /**
  *  Have a REQUEST, and encode it to a packet
  */
-typedef ssize_t (*fr_transport_send_reply_t)(fr_transport_t const *transport, void const *packet_ctx, uint8_t const *data, size_t data_len, REQUEST *request);
+typedef ssize_t (*fr_transport_send_reply_t)(void const *packet_ctx, uint8_t const *data, size_t data_len, REQUEST *request);
 
 /**
  *  Process a request through the transport async state machine.
@@ -86,6 +112,8 @@ typedef	fr_transport_final_t (*fr_transport_process_t)(REQUEST *, fr_transport_a
 typedef struct fr_transport_t {
 	char const			*name;		//!< name of this transport
 	fr_transport_recv_request_t	recv_request;	//!< function to receive a request (worker -> master)
+	fr_transport_decode_t		decode;		//!< function to decode packet to request (worker)
+	fr_transport_encode_t		encode;		//!< function to encode request to packet (worker)
 	fr_transport_send_reply_t	send_reply;	//!< function to send a reply (worker -> master)
 	fr_transport_process_t		process;	//!< process a request
 } fr_transport_t;
@@ -97,6 +125,9 @@ typedef struct fr_transport_t {
  */
 struct rad_request {
 	int			heap_id;
+	fr_dlist_t		list;			//!< for tracking decoded / runnable
+	fr_dlist_t		*resumable;		//!< list of resumable requests
+
 	uint32_t		priority;
 	fr_time_t		recv_time;
 	fr_time_t		*original_recv_time;
@@ -105,8 +136,6 @@ struct rad_request {
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 	fr_transport_t		*transport;
-	fr_heap_t		*backlog;
-	fr_dlist_t		list;
 };
 #endif
 
