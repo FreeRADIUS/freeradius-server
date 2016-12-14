@@ -58,9 +58,9 @@ struct fr_worker_t {
 
 	fr_worker_heap_t	to_decode;	//!< messages from the master, to be decoded or localized
 	fr_worker_heap_t       	localized;	//!< localized messages to be decoded
-	fr_worker_heap_t      	runnable;	//!< current runnable requests which we've spent time processing
 
-	fr_dlist_t		resumable;	//!< list of resumable requests
+	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
+	fr_dlist_t		time_order;	//!< time order of requests
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
@@ -84,7 +84,7 @@ struct fr_worker_t {
 	} while (0)
 
 #define WORKER_HEAP_INSERT(_name, _var, _member) do { \
-		FR_DLIST_INSERT_TAIL(worker->_name.list, _var->_member); \
+		FR_DLIST_INSERT_HEAD(worker->_name.list, _var->_member); \
 		(void) fr_heap_insert(worker->_name.heap, _var);	\
 	} while (0)
 
@@ -217,7 +217,6 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	rad_assert(request != NULL);
 
 	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, &request);
-
 	if (rcode < 0) {
 		talloc_free(ctx);
 		return NULL;
@@ -237,7 +236,15 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	request->original_recv_time = cd->request.start_time;
 	request->recv_time = cd->m.when;
 	request->priority = cd->priority;
-	request->resumable = &worker->resumable;
+	request->runnable = worker->runnable;
+	request->el = worker->el;
+
+	/*
+	 *	New requests are inserted into the time order list in
+	 *	strict time priority.  Once they are in the list, they
+	 *	are only removed when the request is freed.
+	 */
+	FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
 
 	/*
 	 *	We're done with this message.
@@ -335,10 +342,10 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	/*
 	 *	Check the "runnable" queue for old requests.
 	 */
-	while ((entry = FR_DLIST_TAIL(worker->runnable.list)) != NULL) {
+	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		REQUEST *request;
 
-		request = fr_ptr_to_type(REQUEST, list, entry);
+		request = fr_ptr_to_type(REQUEST, time_order, entry);
 		waiting = now - request->recv_time;
 
 		if (waiting < NANOSEC) break;
@@ -346,49 +353,13 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		WORKER_HEAP_EXTRACT(runnable, request, list);
+		FR_DLIST_REMOVE(request->time_order);
+		(void) fr_heap_extract(worker->runnable, request);
 
 		fr_time_tracking_resume(&request->tracking, now);
 		request->process_async(request, FR_TRANSPORT_ACTION_DONE);
 		fr_time_tracking_end(&request->tracking, now, &worker->tracking);
 		talloc_free(request);
-	}
-
-	/*
-	 *	Check the list of yielded requests for old requests.
-	 *
-	 *	This is the list which is most likely to have old
-	 *	requests, as the requests are waiting for some
-	 *	external event to wake them up again.
-	 */
-	entry = FR_DLIST_FIRST(worker->tracking.list);
-	while (entry != NULL) {
-		fr_dlist_t *next;
-		REQUEST *request;
-
-		next = FR_DLIST_NEXT(worker->tracking.list, entry);
-
-		request = fr_ptr_to_type(REQUEST, tracking.list, entry);
-#ifndef NDEBUG
-		(void) talloc_get_type_abort(request, REQUEST);
-#endif
-		waiting = now - request->recv_time;
-
-		if (waiting < NANOSEC) break;
-
-		/*
-		 *	Waiting too long, delete it.
-		 *
-		 *	Note that we don't need to remove it from the
-		 *	tracking list, fr_time_tracking_resume() does
-		 *	that for us.
-		 */
-		fr_time_tracking_resume(&request->tracking, now);
-		request->process_async(request, FR_TRANSPORT_ACTION_DONE);
-		fr_time_tracking_end(&request->tracking, now, &worker->tracking);		
-		talloc_free(request);
-
-		entry = next;
 	}
 }
 
@@ -404,24 +375,11 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 {
 	REQUEST *request;
-	fr_dlist_t *entry;
-
-	/*
-	 *	The resumable list is updated asychronously in the IO
-	 *	and timer handlers.  Resumable requests have a higher
-	 *	priority than runnable requests.
-	 */
-	entry = FR_DLIST_FIRST(worker->resumable);
-	if (entry) {
-		request = fr_ptr_to_type(REQUEST, list, entry);
-		FR_DLIST_REMOVE(request->list);
-		return request;
-	}
 
 	/*
 	 *	Grab a runnable request, and resume it.
 	 */
-	WORKER_HEAP_POP(runnable, request, list);
+	request = fr_heap_pop(worker->runnable);
 	if (request) {
 		fr_time_tracking_resume(&request->tracking, now);
 		return request;
@@ -432,7 +390,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request = fr_worker_decode_request(worker);
 	if (request) {
-		request->el = worker->el;
 		fr_time_tracking_start(&request->tracking, now);
 		return request;
 	}
@@ -475,6 +432,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 */
 	switch (final) {
 	case FR_TRANSPORT_DONE:
+		fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
+		FR_DLIST_REMOVE(request->time_order);
 		talloc_free(request);
 		return;
 
@@ -487,11 +446,6 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	}
 
 	/*
-	 *	The request is done.  Track that.
-	 */
-	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
-
-	/*
 	 *	@todo The rest of the work in this function is channel
 	 *	related.  We probably want to pull that into a
 	 *	separate function, so that we can run in
@@ -500,14 +454,21 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	ch = request->channel;
 
 	// @todo allocate a channel_data_t
-	// @todo call send_request
 
 	reply = talloc(ch, fr_channel_data_t); /* HACK for travis, while we're writing the rest of the code */
+
+       // @todo call encode
+
+	/*
+	 *	The request is done.  Track that.
+	 */
+	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
 
 	/*
 	 *	@todo Use a talloc pool for the request.  Clean it up,
 	 *	and insert it back into a slab allocator.
 	 */
+	FR_DLIST_REMOVE(request->time_order);
 	talloc_free(request);
 
 	/*
@@ -529,9 +490,9 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
  */
 static int fr_worker_idle(struct timeval *wake, void *ctx)
 {
-	bool found = false;
+	bool sleeping;
+	int i;
 	fr_worker_t *worker = ctx;
-	REQUEST *request;
 
 	/*
 	 *	The application is polling the event loop, but has
@@ -540,13 +501,20 @@ static int fr_worker_idle(struct timeval *wake, void *ctx)
 	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) return 0;
 
 	/*
-	 *	The event loop will be sleeping for a time.  We might
-	 *	as well get some work in.
+	 *	See if we need to sleep, because if there's nothing
+	 *	more to do, we need to tell the other end of the
+	 *	channels that we're sleeping.
 	 */
-	while ((request = fr_worker_decode_request(worker)) != NULL) {
-		found =  true;
-		WORKER_HEAP_INSERT(runnable, request, list);
-	}
+	sleeping = (fr_heap_num_elements(worker->runnable) == 0);
+	if (sleeping) sleeping = (fr_heap_num_elements(worker->localized.heap) == 0);
+	if (sleeping) sleeping = (fr_heap_num_elements(worker->to_decode.heap) == 0);
+
+	/*
+	 *	Tell the event loop that there is new work to do.  We
+	 *	don't want to wait for events, but instead check them,
+	 *	and start processing packets immediately.
+	 */
+	if (!sleeping) return 1;
 
 	/*
 	 *	Nothing more to do, and the event loop has us sleeping
@@ -555,20 +523,11 @@ static int fr_worker_idle(struct timeval *wake, void *ctx)
 	 *	will take care of skipping the signal if there are no
 	 *	outstanding requests for it.
 	 */
-	if (!found) {
-		int i;
-
-		for (i = 0; i < worker->num_channels; i++) {
-			(void) fr_channel_worker_sleeping(worker->channel[i]);
-		}
+	for (i = 0; i < worker->num_channels; i++) {
+		(void) fr_channel_worker_sleeping(worker->channel[i]);
 	}
 
-	/*
-	 *	Tell the event loop that there is new work to do.  We
-	 *	don't want to wait for events, but instead check them,
-	 *	and start processing packets immediately.
-	 */
-	return 1;
+	return 0;
 }
 
 static int worker_message_cmp(void const *one, void const *two)
@@ -585,7 +544,9 @@ static int worker_message_cmp(void const *one, void const *two)
 	return 0;
 }
 
-
+/**
+*
+*/
 static int worker_request_cmp(void const *one, void const *two)
 {
 	REQUEST const *a = one;
@@ -599,7 +560,6 @@ static int worker_request_cmp(void const *one, void const *two)
 
 	return 0;
 }
-
 
 /** Destroy a worker.
  *
@@ -691,9 +651,12 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 	WORKER_HEAP_INIT(to_decode, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 	WORKER_HEAP_INIT(localized, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 
-	WORKER_HEAP_INIT(runnable, worker_request_cmp, REQUEST, heap_id);
-
-	FR_DLIST_INIT(worker->resumable);
+	worker->runnable = fr_heap_create(worker_request_cmp, offsetof(REQUEST, heap_id));
+	if (!worker->runnable) {
+		talloc_free(worker);
+		return NULL;
+	}
+	FR_DLIST_INIT(worker->time_order);
 
 	worker->num_transports = num_transports;
 	worker->transports = transports;
@@ -738,7 +701,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	There are runnable requests.  We still service
 		 *	the event loop, but we don't wait for events.
 		 */
-		wait_for_event = (fr_heap_num_elements(worker->runnable.heap) == 0);
+		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 
 		/*
 		 *	Check the event list.  If there's an error
@@ -780,6 +743,7 @@ void fr_worker(fr_worker_t *worker)
 void worker_resume_request(REQUEST *request)
 {
 	FR_DLIST_REMOVE(request->tracking.list);
-	FR_DLIST_INSERT_TAIL_PTR(request->resumable, request->list);
+
+	(void) fr_heap_insert(request->runnable, request);
 }
 #endif

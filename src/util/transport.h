@@ -125,8 +125,9 @@ typedef struct fr_transport_t {
  */
 struct rad_request {
 	int			heap_id;
-	fr_dlist_t		list;			//!< for tracking decoded / runnable
-	fr_dlist_t		*resumable;		//!< list of resumable requests
+
+	fr_dlist_t		time_order;		//!< tracking requests by time order
+	fr_heap_t		*runnable;		//!< heap of runnable requests
 
 	uint32_t		priority;
 	fr_time_t		recv_time;
