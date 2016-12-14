@@ -175,12 +175,14 @@ static void fr_worker_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev
 
 /** Decode a request from either the localized queue, or the to_decode queue
  *
+ *  The request returned from this function MUST be immediately runnable.
+ *
  * @param[in] worker the worker
  * @return
  *	- NULL on nothing to decode
  *	- REQUEST the decoded request
  */
-static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
+static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
 {
 	int rcode;
 	fr_channel_data_t *cd;
@@ -258,6 +260,7 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker)
 	 *	transitions.
 	 */
 	request->process_async = request->transport->process;
+	fr_time_tracking_start(&request->tracking, now);
 
 	return request;
 }
@@ -388,13 +391,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	/*
 	 *	Grab a request to decode, and start it.
 	 */
-	request = fr_worker_decode_request(worker);
-	if (request) {
-		fr_time_tracking_start(&request->tracking, now);
-		return request;
-	}
-
-	return NULL;
+	return fr_worker_decode_request(worker, now);
 }
 
 
@@ -484,6 +481,10 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 }
 
 /** Run the event loop 'idle' callback
+ *
+ *  This function MUST DO NO WORK.  All it does is check if there's
+ *  work, and tell the event code to return to the main loop if
+ *  there's work to do.
  *
  * @param[in] ctx the worker
  * @param[in] wake the time when the event loop will wake up.
