@@ -408,18 +408,14 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	/*
 	 *	The resumable list is updated asychronously in the IO
-	 *	and timer handlers.  We have to pull the requests out
-	 *	of the resumable list, and insert them into the
-	 *	runnable list.
+	 *	and timer handlers.  Resumable requests have a higher
+	 *	priority than runnable requests.
 	 */
 	entry = FR_DLIST_FIRST(worker->resumable);
-	while (entry != NULL) {
-		fr_dlist_t *next;
-
-		next = FR_DLIST_NEXT(worker->resumable, entry);
-
+	if (entry) {
 		request = fr_ptr_to_type(REQUEST, list, entry);
-		WORKER_HEAP_INSERT(runnable, request, list);
+		FR_DLIST_REMOVE(request->list);
+		return request;
 	}
 
 	/*
