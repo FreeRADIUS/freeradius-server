@@ -231,7 +231,7 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
 	 *	Note that the message "when" time MUST be copied from
 	 *	the original recv time.  We use "when" here, instead
 	 *	of *cd->request.recv_time, on the odd chance that a
-	 *	new packet arrived while we were getting aroudn to
+	 *	new packet arrived while we were getting around to
 	 *	processing this message.
 	 */
 	request->channel = cd->channel.ch;
@@ -639,7 +639,7 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 	worker->kq = fr_event_list_kq(worker->el);
 	rad_assert(worker->kq >= 0);
 
-	worker->aq_control = fr_atomic_queue_create(worker, 128);
+	worker->aq_control = fr_atomic_queue_create(worker, 1024);
 	if (!worker->aq_control) {
 		talloc_free(worker);
 		return NULL;
@@ -669,10 +669,21 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 /** Get the KQ for the worker
  *
  * @param[in] worker the worker data structure
+ * @return kq
  */
 int fr_worker_kq(fr_worker_t *worker)
 {
 	return worker->kq;
+}
+
+/** Get the control-plane queue for the worker
+ *
+ * @param[in] worker the worker data structure
+ * @return the atomic queue for the control plane
+ */
+fr_atomic_queue_t *fr_worker_control_plane(fr_worker_t *worker)
+{
+	return worker->aq_control;
 }
 
 /** Signal a worker to exit
@@ -744,8 +755,17 @@ void fr_worker(fr_worker_t *worker)
  */
 void worker_resume_request(REQUEST *request)
 {
+	/*
+	 *	The request is no longer in the "yielded" list.  But
+	 *	it isn't resumed (yet) so we don't add CPU time for
+	 *	it.
+	 */
 	FR_DLIST_REMOVE(request->tracking.list);
 
+	/*
+	 *	It's runnable again.
+	 */
 	(void) fr_heap_insert(request->runnable, request);
 }
 #endif
+
