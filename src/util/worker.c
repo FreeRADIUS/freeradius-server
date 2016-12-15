@@ -20,6 +20,43 @@
  * @brief Worker thread functions.
  * @file util/worker.c
  *
+ *  The "worker" thread is the one responsible for the bulk of the
+ *  work done when processing a request.  Workers are spawned by the
+ *  scheduler, and create a KQ and control-plane AQ for control-plane
+ *  communication.
+ *
+ *  When a network thread discovers that it needs more workers, it
+ *  asks the scheduler for a KQ/AQ combination.  The network thread
+ *  then creates a channel dedicated to that worker, and sends the
+ *  channel to the worker in a "new channel" message.  The worker
+ *  receives the channel, and sends an ACK back to the network thread.
+ *
+ *  The network thread then sends the worker new packets, which the
+ *  worker receives and processes.
+ *
+ *  The lifecycle of a packet MUST be carefully managed.  Initially,
+ *  messages are put into the "to_decode" heap.  If the messages sit
+ *  in the heap for too long, they are localized and put into the
+ *  "localized" heap.  Each heap is ordered by (priority, time), so
+ *  that high priority packets take precedence over low priority
+ *  packets.
+ *
+ *  Both queues have linked lists of received packets, ordered by
+ *  time.  This list is used to clean up packets which have been in
+ *  the heap for "too long", in fr_worker_check_timeouts().
+ *
+ *  When a packet is decoded, it is put into the "runnable" heap, and
+ *  also into the head of the "time_order" linked list. The main loop
+ *  fr_worker() then pulls requests off of this heap and runs them.
+ *  The fr_worker_check_timeouts() function also checks the tail of
+ *  the "time_order" list, and ages out requests which have been
+ *  running for "too long".
+ *
+ *  A request may return one of FR_TRANSPORT_YIELD,
+ *  FR_TRANSPORT_REPLY, or FR_TRANSPORT_DONE.  If a request is
+ *  yeilded, it is placed onto the yielded list in the worker
+ *  "tracking" data structure.
+ *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
 RCSID("$Id$")
@@ -71,8 +108,8 @@ struct fr_worker_t {
 };
 
 /*
- *	We need wrapper macros because we put both channel data
- *	messages and requests into similar data structures.
+ *	We need wrapper macros because we have multiple instances of
+ *	the same code.
  */
 #define WORKER_HEAP_INIT(_name, _func, _type, _member) do { \
 		FR_DLIST_INIT(worker->_name.list); \
@@ -97,6 +134,7 @@ struct fr_worker_t {
 		(void) fr_heap_extract(worker->_name.heap, _var); \
 		FR_DLIST_REMOVE(_var->_member); \
 	} while (0)
+
 
 /** Drain the input channel
  *
@@ -194,6 +232,7 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
 	 *	Find either a localized message, or one which is in
 	 *	the "to_decode" queue.
 	 */
+redo:
 	WORKER_HEAP_POP(localized, cd, request.list);
 	if (!cd) {
 		WORKER_HEAP_POP(to_decode, cd, request.list);
@@ -201,7 +240,18 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
 	if (!cd) return NULL;
 
 	/*
+	 *	This message has asynchronously aged out while it was
+	 *	in the queue.  Delete it, and go get another one.
+	 */
+	if (cd->m.when != *cd->request.start_time) {
+		fr_message_done(&cd->m);
+		goto redo;
+	}
+
+	/*
 	 *	Get a talloc pool specifically for this packet.
+	 *
+	 *	@todo use talloc_pooled_object()
 	 */
 	ctx = talloc_pool(worker, worker->talloc_pool_size);
 	if (!ctx) {
