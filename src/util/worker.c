@@ -178,6 +178,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev
  *  The request returned from this function MUST be immediately runnable.
  *
  * @param[in] worker the worker
+ * @param[in] now the current time
  * @return
  *	- NULL on nothing to decode
  *	- REQUEST the decoded request
