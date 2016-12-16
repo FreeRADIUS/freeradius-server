@@ -357,13 +357,6 @@ redo:
  *  When that happens, the low priority events will be in the queues for
  *  "too long", and will need to be cleaned up.
  *
- *  @todo We may have medium-priority events which are waiting for too
- *  long, but we may not find them if there are newer low priority
- *  events.  This issue should be addressed.  There is no real fix,
- *  other than walking the entire heap, or re-implementing it so that
- *  each priority level has it's own heap (or fr_dlist_t), and then we
- *  check those.
- *
  * @param[in] worker the worker
  * @param[in] now the current time
  */
