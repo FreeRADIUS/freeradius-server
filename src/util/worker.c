@@ -202,10 +202,13 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 			break;
 
 		case FR_CHANNEL_DATA_READY_WORKER:
+			rad_assert(ch != NULL);
 			fr_worker_drain_input(worker, ch, NULL);
 			break;
 
 		case FR_CHANNEL_OPEN:
+			rad_assert(ch != NULL);
+
 			ok = false;
 			for (i = 0; i < worker->max_channels; i++) {
 				if (worker->channel[i] != NULL) continue;
@@ -227,6 +230,8 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 			break;
 
 		case FR_CHANNEL_CLOSE:
+			rad_assert(ch != NULL);
+
 			ok = false;
 			for (i = 0; i < worker->max_channels; i++) {
 				if (worker->channel[i] != ch) continue;
