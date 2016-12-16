@@ -64,6 +64,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/worker.h>
 #include <freeradius-devel/util/channel.h>
 #include <freeradius-devel/util/control.h>
+#include <freeradius-devel/util/message.h>
 #include <freeradius-devel/rad_assert.h>
 
 /**
@@ -89,6 +90,9 @@ struct fr_worker_t {
 
 	int			num_channels;	//!< actual number of channels
 	int			max_channels;	//!< maximum number of channels
+
+	int                     message_set_size; //!< default start number of messages
+	int                     ring_buffer_size; //!< default start size for the ring buffers
 
 	size_t			talloc_pool_size; //!< for each REQUEST
 
@@ -182,6 +186,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 		int i;
 		bool ok;
 		fr_channel_t *ch;
+		fr_message_set_t *ms;
 
 		ce = fr_channel_service_aq(worker->aq_control, now, &ch);
 		switch (ce) {
@@ -207,6 +212,13 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 
 				worker->channel[i] = ch;
 				(void) fr_channel_worker_receive_open(ctx, ch);
+
+				ms = fr_message_set_create(worker, worker->message_set_size,
+							   sizeof(fr_channel_data_t),
+							   worker->ring_buffer_size);
+				rad_assert(ms != NULL);
+				fr_channel_worker_ctx_add(ch, ms);
+
 				worker->num_channels++;
 				ok = true;
 			}
@@ -228,6 +240,12 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 				 *	to close it again.
 				 */
 				(void) fr_channel_worker_ack_close(ch);
+
+				ms = fr_channel_worker_ctx_get(ch);
+				rad_assert(ms != NULL);
+				fr_message_set_gc(ms);
+				talloc_free(ms);
+
 				worker->channel[i] = NULL;
 				rad_assert(worker->num_channels > 0);
 				worker->num_channels--;
@@ -332,6 +350,7 @@ redo:
 	request->priority = cd->priority;
 	request->runnable = worker->runnable;
 	request->el = worker->el;
+	request->packet_ctx = cd->ctx;
 
 	/*
 	 *	New requests are inserted into the time order list in
@@ -492,9 +511,11 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
  */
 static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 {
+	ssize_t size;
 	fr_channel_data_t *reply, *cd;
 	fr_channel_t *ch;
 	fr_transport_final_t final;
+	fr_message_set_t *ms;
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -536,12 +557,33 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	Allocate and send the reply.
 	 */
 	ch = request->channel;
+	rad_assert(ch != NULL);
 
-	// @todo allocate a channel_data_t
+	ms = fr_channel_worker_ctx_get(ch);
+	rad_assert(ms != NULL);
 
-	reply = talloc(ch, fr_channel_data_t); /* HACK for travis, while we're writing the rest of the code */
+	/*
+	 *	@todo make the reservation size transport-specific
+	 */
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, 1024);
+	rad_assert(reply != NULL);
 
-       // @todo call encode
+	/*
+	 *	Encode it.
+	 */
+	size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.data_size);
+	if (size < 0) {
+		fr_message_done(&reply->m);
+		goto fail;
+	}
+
+	rad_assert(size > 0);
+
+	/*
+	 *	Resize the buffer to the actual packet size.
+	 */
+	cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, size);
+	rad_assert(cd == reply);
 
 	/*
 	 *	The request is done.  Track that.
@@ -549,11 +591,18 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
 
 	/*
-	 *	@todo Use a talloc pool for the request.  Clean it up,
-	 *	and insert it back into a slab allocator.
+	 *	Fill in the rest of the fields in the channel message.
+	 *
+	 *	sequence / ack will be filled in by fr_channel_send_reply()
 	 */
-	FR_DLIST_REMOVE(request->time_order);
-	talloc_free(request);
+	reply->m.when = request->tracking.when;
+	reply->reply.cpu_time = worker->tracking.running;
+	reply->reply.processing_time = request->tracking.running;
+	reply->reply.request_time = request->recv_time;
+
+	reply->ctx = request->packet_ctx;
+	reply->priority = request->priority;
+	reply->transport = request->transport->id;
 
 	/*
 	 *	Send the reply, which also polls the request queue.
@@ -565,6 +614,15 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	time we're done processing a request.
 	 */
 	if (cd) fr_worker_drain_input(worker, ch, cd);
+
+	/*
+	 *	@todo Use a talloc pool for the request.  Clean it up,
+	 *	and insert it back into a slab allocator.
+	 */
+fail:
+	FR_DLIST_REMOVE(request->time_order);
+	talloc_free(request);
+
 }
 
 /** Run the event loop 'idle' callback

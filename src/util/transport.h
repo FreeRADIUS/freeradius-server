@@ -82,7 +82,7 @@ typedef int (*fr_transport_decode_t)(void const *packet_ctx, uint8_t *const data
 /**
  *  Have a REQUEST, and encode it to raw packet.
  */
-typedef int (*fr_transport_encode_t)(void const *packet_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_transport_encode_t)(void const *packet_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
 
 /**
  *  Do any worker-specific processing of the request.
@@ -111,6 +111,7 @@ typedef	fr_transport_final_t (*fr_transport_process_t)(REQUEST *, fr_transport_a
  */
 typedef struct fr_transport_t {
 	char const			*name;		//!< name of this transport
+	uint32_t			id;		//!< ID of this transport
 	fr_transport_recv_request_t	recv_request;	//!< function to receive a request (worker -> master)
 	fr_transport_decode_t		decode;		//!< function to decode packet to request (worker)
 	fr_transport_encode_t		encode;		//!< function to encode request to packet (worker)
@@ -136,6 +137,7 @@ struct rad_request {
 	fr_transport_process_t	process_async;
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
+	void			*packet_ctx;
 	fr_transport_t		*transport;
 };
 #endif
