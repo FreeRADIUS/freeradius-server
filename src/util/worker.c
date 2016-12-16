@@ -104,7 +104,7 @@ struct fr_worker_t {
 	uint32_t       		num_transports;	//!< how many transport layers we have
 	fr_transport_t		**transports;	//!< array of active transports.
 
-	fr_channel_t		*channel[1];	//!< list of channels
+	fr_channel_t		**channel;	//!< list of channels
 };
 
 /*
@@ -666,11 +666,20 @@ void fr_worker_destroy(fr_worker_t *worker)
  */
 fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_transport_t **transports)
 {
+	int max_channels = 64;
 	fr_worker_t *worker;
 
 	if (!num_transports || !transports) return NULL;
 
 	worker = talloc_zero(ctx, fr_worker_t);
+	if (!worker) return NULL;
+
+	worker->channel = talloc_zero_array(worker, fr_channel_t *, max_channels);
+	if (!worker->channel) {
+		talloc_free(worker);
+		return NULL;
+	}
+	worker->max_channels = max_channels;
 
 	worker->el = fr_event_list_create(worker, fr_worker_idle, worker);
 	if (!worker->el) {
