@@ -124,7 +124,7 @@ int fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
 int fr_channel_worker_receive_open(TALLOC_CTX *ctx, fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_signal_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
-int fr_channel_ack_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
+int fr_channel_worker_ack_close(fr_channel_t *ch) CC_HINT(nonnull);
 
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp);

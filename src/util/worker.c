@@ -219,7 +219,15 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 			for (i = 0; i < worker->max_channels; i++) {
 				if (worker->channel[i] != ch) continue;
 
-				(void) fr_channel_ack_worker_close(ch);
+				/*
+				 *	@todo check the status, and
+				 *	put the channel into a
+				 *	"closing" list if we can't
+				 *	close it right now.  Then,
+				 *	wake up after a time and try
+				 *	to close it again.
+				 */
+				(void) fr_channel_worker_ack_close(ch);
 				rad_assert(worker->num_channels > 0);
 				worker->num_channels--;
 				ok = true;
@@ -675,7 +683,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	automatically freed when our talloc context is freed.
 	 */
 	for (i = 0; i < worker->num_channels; i++) {
-		fr_channel_ack_worker_close(worker->channel[i]);
+		fr_channel_worker_ack_close(worker->channel[i]);
 	}
 }
 

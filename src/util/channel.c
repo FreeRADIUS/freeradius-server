@@ -697,7 +697,7 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_ack_worker_close(fr_channel_t *ch)
+int fr_channel_worker_ack_close(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
 

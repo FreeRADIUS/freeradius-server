@@ -360,7 +360,7 @@ static void *channel_worker(void *arg)
 					fr_message_done(&cd->m);
 				}
 				
-				(void) fr_channel_ack_worker_close(channel);
+				(void) fr_channel_worker_ack_close(channel);
 				break;
 
 			case FR_CHANNEL_DATA_READY_WORKER:
