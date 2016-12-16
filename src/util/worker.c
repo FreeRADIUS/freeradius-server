@@ -247,8 +247,10 @@ static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
 {
 	int rcode;
 	fr_channel_data_t *cd;
-	TALLOC_CTX *ctx;
 	REQUEST *request;
+#ifndef HAVE_TALLOC_POOLED_OBJECT
+	TALLOC_CTX *ctx;
+#endif
 
 	/*
 	 *	Find either a localized message, or one which is in
@@ -270,10 +272,9 @@ redo:
 		goto redo;
 	}
 
+#ifndef HAVE_TALLOC_POOLED_OBJECT
 	/*
 	 *	Get a talloc pool specifically for this packet.
-	 *
-	 *	@todo use talloc_pooled_object()
 	 */
 	ctx = talloc_pool(worker, worker->talloc_pool_size);
 	if (!ctx) {
@@ -281,15 +282,24 @@ redo:
 		return NULL;
 	}
 
+	talloc_set_name_const(ctx, "REQUEST");
+
+	request = (REQUEST *) ctx;
+	memset(request, 0, sizeof(*request));
+#else
+	request = talloc_pooled_object(worker, REQUEST, 1, worker->talloc_pool_size);
+	if (!request) {
+		fr_message_done(&cd->m);
+		return NULL;
+	}
+#endif
+
 	/*
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a request.
 	 */
 	rad_assert(cd->transport <= worker->num_transports);
 	rad_assert(worker->transports[cd->transport] != NULL);
-
-	request = talloc_zero(ctx, REQUEST);
-	rad_assert(request != NULL);
 
 	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, &request);
 	if (rcode < 0) {
@@ -701,7 +711,9 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 		talloc_free(worker);
 		return NULL;
 	}
+
 	worker->max_channels = max_channels;
+	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
 
 	worker->el = fr_event_list_create(worker, fr_worker_idle, worker);
 	if (!worker->el) {
