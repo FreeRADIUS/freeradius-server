@@ -228,6 +228,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 				 *	to close it again.
 				 */
 				(void) fr_channel_worker_ack_close(ch);
+				worker->channel[i] = NULL;
 				rad_assert(worker->num_channels > 0);
 				worker->num_channels--;
 				ok = true;
@@ -505,6 +506,11 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 	} else {
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
+
+		/*
+		 *	@todo if it isn't done, implement the "wait
+		 *	for child to die" code.
+		 */
 		rad_assert(final == FR_TRANSPORT_DONE);
 	}
 
@@ -527,10 +533,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	}
 
 	/*
-	 *	@todo The rest of the work in this function is channel
-	 *	related.  We probably want to pull that into a
-	 *	separate function, so that we can run in
-	 *	single-theaded mode.
+	 *	Allocate and send the reply.
 	 */
 	ch = request->channel;
 
