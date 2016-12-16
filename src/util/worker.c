@@ -152,6 +152,7 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
 }
 
+
 /** Service an EVFILT_USER event
  *
  * @param[in] kq the kq to service
@@ -160,13 +161,75 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
  */
 static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
 {
+	fr_time_t now;
+	fr_channel_event_t ce;
 	fr_worker_t *worker = ctx;
 
 #ifndef NDEBUG
 	talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
-	(void) fr_control_message_service_kevent(worker->aq_control, kev);
+	if (!fr_control_message_service_kevent(worker->aq_control, kev)) {
+		return;
+	}
+
+	now = fr_time();
+
+	/*
+	 *	Service all available control-plane events
+	 */
+	while (true) {
+		int i;
+		bool ok;
+		fr_channel_t *ch;
+
+		ce = fr_channel_service_aq(worker->aq_control, now, &ch);
+		switch (ce) {
+		case FR_CHANNEL_ERROR:
+		case FR_CHANNEL_EMPTY:
+			return;
+
+		case FR_CHANNEL_NOOP:
+			continue;
+
+		case FR_CHANNEL_DATA_READY_RECEIVER:
+			rad_assert(0 == 1);
+			break;
+
+		case FR_CHANNEL_DATA_READY_WORKER:
+			fr_worker_drain_input(worker, ch, NULL);
+			break;
+
+		case FR_CHANNEL_OPEN:
+			ok = false;
+			for (i = 0; i < worker->max_channels; i++) {
+				if (worker->channel[i] != NULL) continue;
+
+				worker->channel[i] = ch;
+				(void) fr_channel_worker_receive_open(ctx, ch);
+				worker->num_channels++;
+				ok = true;
+			}
+
+			rad_cond_assert(ok);
+			break;
+
+		case FR_CHANNEL_CLOSE:
+			ok = false;
+			for (i = 0; i < worker->max_channels; i++) {
+				if (worker->channel[i] != ch) continue;
+
+				(void) fr_channel_ack_worker_close(ch);
+				rad_assert(worker->num_channels > 0);
+				worker->num_channels--;
+				ok = true;
+				break;
+			}
+
+			rad_cond_assert(ok);
+			break;
+		}
+	}
 }
 
 
