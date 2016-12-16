@@ -101,9 +101,9 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 		entry->check = entry->reply;
 		entry->reply = NULL;
 
-		for (vp = fr_cursor_init(&cursor, &entry->check);
+		for (vp = fr_pair_cursor_init(&cursor, &entry->check);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 		    /*
 		     * If it's NOT a vendor attribute,
 		     * and it's NOT a wire protocol
@@ -174,7 +174,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	 *	Head of the output list
 	 */
 	output = NULL;
-	fr_cursor_init(&out, &output);
+	fr_pair_cursor_init(&out, &output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -196,9 +196,9 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = fr_cursor_init(&check, &pl->check);
+		for (check_item = fr_pair_cursor_init(&check, &pl->check);
 		     check_item;
-		     check_item = fr_cursor_next(&check)) {
+		     check_item = fr_pair_cursor_next(&check)) {
 			if (!check_item->da->vendor &&
 			    (check_item->da->attr == PW_FALL_THROUGH) &&
 				(check_item->vp_integer == 1)) {
@@ -220,7 +220,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 					goto error;
 				}
 				xlat_eval_do(request, vp);
-				fr_cursor_append(&out, vp);
+				fr_pair_cursor_append(&out, vp);
 			}
 		}
 
@@ -232,17 +232,17 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input_item = fr_cursor_init(&input, &packet->vps);
+		for (input_item = fr_pair_cursor_init(&input, &packet->vps);
 		     input_item;
-		     input_item = fr_cursor_next(&input)) {
+		     input_item = fr_pair_cursor_next(&input)) {
 			pass = fail = 0; /* reset the pass,fail vars for each reply item */
 
 			/*
 			 *  Reset the check_item pointer to beginning of the list
 			 */
-			for (check_item = fr_cursor_first(&check);
+			for (check_item = fr_pair_cursor_first(&check);
 			     check_item;
-			     check_item = fr_cursor_next(&check)) {
+			     check_item = fr_pair_cursor_next(&check)) {
 				/*
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
@@ -272,7 +272,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				if (!vp) {
 					goto error;
 				}
-				fr_cursor_append(&out, vp);
+				fr_pair_cursor_append(&out, vp);
 			}
 		}
 

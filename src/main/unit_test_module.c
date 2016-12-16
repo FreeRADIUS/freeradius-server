@@ -202,9 +202,9 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	/*
 	 *	Fix up Digest-Attributes issues
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	Double quoted strings get marked up as xlat expansions,
 		 *	but we don't support that here.
@@ -349,9 +349,9 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 #endif
 
 	if (rad_debug_lvl) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			/*
 			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 			 */
@@ -421,9 +421,9 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 
 	fprintf(fp, "%s\n", fr_packet_codes[packet->code]);
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */

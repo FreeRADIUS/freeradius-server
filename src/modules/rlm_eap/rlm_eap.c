@@ -789,8 +789,8 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	 *	This is vendor Cisco (9), Cisco-AVPair
 	 *	attribute (1)
 	 */
-	fr_cursor_init(&cursor, &request->proxy->reply->vps);
-	while ((vp = fr_cursor_next_by_num(&cursor, 9, 1, TAG_ANY))) {
+	fr_pair_cursor_init(&cursor, &request->proxy->reply->vps);
+	while ((vp = fr_pair_cursor_next_by_num(&cursor, 9, 1, TAG_ANY))) {
 		/*
 		 *	If it's "leap:session-key", then stop.
 		 *

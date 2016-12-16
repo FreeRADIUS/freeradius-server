@@ -1396,8 +1396,8 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_cursor_init(&cursor, &packet->vps);
-	while ((vp = fr_cursor_current(&cursor))) {
+	fr_pair_cursor_init(&cursor, &packet->vps);
+	while ((vp = fr_pair_cursor_current(&cursor))) {
 		size_t		last_len, room;
 		char const	*last_name = NULL;
 
@@ -1426,11 +1426,11 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 				}
 
 				memcpy(ptr, vp->vp_octets, len);
-				fr_cursor_next(&cursor);
+				fr_pair_cursor_next(&cursor);
 				goto next;
 			}
 #endif
-			fr_cursor_next(&cursor);
+			fr_pair_cursor_next(&cursor);
 			continue;
 		}
 
@@ -1526,7 +1526,7 @@ int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 	packet_length = packet->data_len - RADIUS_HDR_LEN;
 	num_attributes = 0;
 
-	fr_cursor_init(&cursor, &head);
+	fr_pair_cursor_init(&cursor, &head);
 
 	/*
 	 *	Loop over the attributes, decoding them into VPs.
@@ -1552,7 +1552,7 @@ int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 		/*
 		 *	Count the ones which were just added
 		 */
-		while (fr_cursor_next(&cursor)) num_attributes++;
+		while (fr_pair_cursor_next(&cursor)) num_attributes++;
 
 		/*
 		 *	VSA's may not have been counted properly in
@@ -1577,9 +1577,9 @@ int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 		packet_length -= my_len;
 	}
 
-	fr_cursor_init(&out, &packet->vps);
-	fr_cursor_last(&out);		/* Move insertion point to the end of the list */
-	fr_cursor_merge(&out, head);
+	fr_pair_cursor_init(&out, &packet->vps);
+	fr_pair_cursor_last(&out);		/* Move insertion point to the end of the list */
+	fr_pair_cursor_merge(&out, head);
 
 	/*
 	 *	Merge information from the outside world into our

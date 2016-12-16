@@ -450,9 +450,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	 */
 	tuplelen = 0;
 	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) tuplelen++;
+		     vp = fr_pair_cursor_next(&cursor)) tuplelen++;
 	}
 
 	if (tuplelen == 0) {
@@ -465,9 +465,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
+		     vp = fr_pair_cursor_next(&cursor), i++) {
 			PyObject *pp;
 
 			/* The inside tuple has two only: */

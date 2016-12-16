@@ -159,7 +159,7 @@ typedef struct value_pair {
 typedef struct vp_cursor {
 	VALUE_PAIR	**first;
 	VALUE_PAIR	*found;					//!< pairfind marker.
-	VALUE_PAIR	*last;					//!< Temporary only used for fr_cursor_append
+	VALUE_PAIR	*last;					//!< Temporary only used for fr_pair_cursor_append
 	VALUE_PAIR	*current;				//!< The current attribute.
 	VALUE_PAIR	*next;					//!< Next attribute to process.
 } vp_cursor_t;

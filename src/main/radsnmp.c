@@ -191,7 +191,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 
 	if (!oid) return 0;
 
-	fr_cursor_end(cursor);
+	fr_pair_cursor_end(cursor);
 
 	/*
 	 *	Trim first.
@@ -253,7 +253,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		vp = fr_pair_afrom_da(ctx, index_attr);
 		vp->vp_integer = attr;
 
-		fr_cursor_append(cursor, vp);
+		fr_pair_cursor_append(cursor, vp);
 	}
 
 	/*
@@ -261,7 +261,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 	 */
 	if (slen <= 0) {
 	error:
-		fr_cursor_free(cursor);
+		fr_pair_cursor_free(cursor);
 		return slen;
 	}
 
@@ -317,7 +317,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 			break;
 		}
 
-		fr_cursor_append(cursor, vp);
+		fr_pair_cursor_append(cursor, vp);
 		return slen;
 	}
 
@@ -336,7 +336,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 	vp->vp_integer = type;
 	vp->vp_length = sizeof(vp->vp_integer);
 
-	fr_cursor_append(cursor, vp);
+	fr_pair_cursor_append(cursor, vp);
 
 	return slen;
 }
@@ -403,9 +403,9 @@ static int radsnmp_get_response(int fd,
 	 *	attribute grouping to coalesce all related index
 	 *	attributes under a single request OID.
 	 */
-	 for (vp = fr_cursor_init(&cursor, &head);
+	 for (vp = fr_pair_cursor_init(&cursor, &head);
 	      vp;
-	      vp = fr_cursor_next(&cursor)) {
+	      vp = fr_pair_cursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
 	      	/*
 	      	 *	We only care about TLV attributes beneath our root
@@ -468,7 +468,7 @@ static int radsnmp_get_response(int fd,
 		/*
 		 *	Next attribute should be the type
 		 */
-		type_vp = fr_cursor_next(&cursor);
+		type_vp = fr_pair_cursor_next(&cursor);
 		if (!type_vp || (type_vp->da != type)) {
 			fr_strerror_printf("No %s found in response, or occurred out of order", type->name);
 			return -1;
@@ -633,7 +633,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			ERROR("Failed allocating request");
 			return EXIT_FAILURE;
 		}
-		fr_cursor_init(&cursor, &request->vps);
+		fr_pair_cursor_init(&cursor, &request->vps);
 
 		NEXT_LINE(line, buffer);
 
@@ -729,7 +729,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			return EXIT_FAILURE;
 		}
 		vp->vp_integer = (unsigned int)command;	/* Commands must match dictionary */
-		fr_cursor_append(&cursor, vp);
+		fr_pair_cursor_append(&cursor, vp);
 
 		/*
 		 *	Add message authenticator or the stats
@@ -741,7 +741,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			return EXIT_FAILURE;
 		}
 		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1);
-		fr_cursor_append(&cursor, vp);
+		fr_pair_cursor_append(&cursor, vp);
 
 		/*
 		 *	Send the packet

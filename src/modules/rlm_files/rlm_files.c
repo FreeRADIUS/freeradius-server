@@ -147,7 +147,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree,
 			 *	and probably ':=' for server
 			 *	configuration items.
 			 */
-			for (vp = fr_cursor_init(&cursor, &entry->check); vp; vp = fr_cursor_next(&cursor)) {
+			for (vp = fr_pair_cursor_init(&cursor, &entry->check); vp; vp = fr_pair_cursor_next(&cursor)) {
 				/*
 				 *	Ignore attributes which are set
 				 *	properly.
@@ -213,7 +213,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree,
 			 *	It's a common enough mistake, that it's
 			 *	worth doing.
 			 */
-			for (vp = fr_cursor_init(&cursor, &entry->reply); vp; vp = fr_cursor_next(&cursor)) {
+			for (vp = fr_pair_cursor_init(&cursor, &entry->reply); vp; vp = fr_pair_cursor_next(&cursor)) {
 				/*
 				 *	If it's NOT a vendor attribute,
 				 *	and it's NOT a wire protocol
@@ -410,9 +410,9 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 		}
 
 		check_tmp = fr_pair_list_copy(request, pl->check);
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			if (xlat_eval_do(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
 				fr_pair_list_free(&check_tmp);

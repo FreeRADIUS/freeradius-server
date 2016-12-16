@@ -254,10 +254,10 @@ static int _lua_pair_get(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_pair_cursor_init(&cursor, &request->packet->vps);
 
 	for (index = (int) lua_tointeger(L, -1); index >= 0; index--) {
-		vp = fr_cursor_next_by_da(&cursor, da, TAG_ANY);
+		vp = fr_pair_cursor_next_by_da(&cursor, da, TAG_ANY);
 		if (!vp) {
 			return 0;
 		}
@@ -304,10 +304,10 @@ static int _lua_pair_set(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_pair_cursor_init(&cursor, &request->packet->vps);
 
 	for (index = (int) lua_tointeger(L, -2); index >= 0; index--) {
-		vp = fr_cursor_next_by_da(&cursor, da, TAG_ANY);
+		vp = fr_pair_cursor_next_by_da(&cursor, da, TAG_ANY);
 		if (vp) {
 			break;
 		}
@@ -318,7 +318,7 @@ static int _lua_pair_set(lua_State *L)
 	 *	attribute the cursor is currently positioned at.
 	 */
 	if (delete) {
-		fr_cursor_remove(&cursor);
+		fr_pair_cursor_remove(&cursor);
 		return 0;
 	}
 
@@ -331,9 +331,9 @@ static int _lua_pair_set(lua_State *L)
 	 *	else we add a new VP to the list.
 	 */
 	if (vp) {
-		fr_cursor_replace(&cursor, new);
+		fr_pair_cursor_replace(&cursor, new);
 	} else {
-		fr_cursor_append(&cursor, new);
+		fr_pair_cursor_append(&cursor, new);
 	}
 
 	return 0;
@@ -361,7 +361,7 @@ static int _lua_pair_iterator(lua_State *L)
 	rad_assert(da);
 
 	/* Packet list should be light user data too at some point... */
-	vp = fr_cursor_next_by_da(cursor, da, TAG_ANY);
+	vp = fr_pair_cursor_next_by_da(cursor, da, TAG_ANY);
 	if (!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -397,7 +397,7 @@ static int _lua_pair_iterator_init(lua_State *L)
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
+	fr_pair_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushlightuserdata(L, up);
 	lua_pushcclosure(L, _lua_pair_iterator, 2);
@@ -416,7 +416,7 @@ static int _lua_list_iterator(lua_State *L)
 	rad_assert(cursor);
 
 	/* Packet list should be light user data too at some point... */
-	vp = fr_cursor_current(cursor);
+	vp = fr_pair_cursor_current(cursor);
 	if(!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -428,7 +428,7 @@ static int _lua_list_iterator(lua_State *L)
 		return -1;
 	}
 
-	fr_cursor_next(cursor);
+	fr_pair_cursor_next(cursor);
 
 	return 2;
 }
@@ -446,7 +446,7 @@ static int _lua_list_iterator_init(lua_State *L)
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
+	fr_pair_cursor_init(cursor, &request->packet->vps);	/* @FIXME: Shouldn't use list head */
 
 	lua_pushlightuserdata(L, cursor);
 	lua_pushcclosure(L, _lua_list_iterator, 1);
@@ -780,7 +780,7 @@ int do_lua(rlm_lua_t const *inst, REQUEST *request, char const *funcname)
 	RDEBUG2("Calling %s() in interpreter %p", funcname, L);
 
 	fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_pair_cursor_init(&cursor, &request->packet->vps);
 
 	/*
 	 *	Setup the environment

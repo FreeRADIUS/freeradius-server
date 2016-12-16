@@ -436,7 +436,7 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 	if (!out) {
 		out = talloc(request, vp_cursor_t);
 		rad_assert(out != NULL);
-		fr_cursor_init(out, &first);
+		fr_pair_cursor_init(out, &first);
 	}
 
 	/*
@@ -476,7 +476,7 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 		}
 
 	next_attr:
-		while (fr_cursor_next(out)) {
+		while (fr_pair_cursor_next(out)) {
 			/* nothing */
 		}
 
@@ -523,7 +523,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 * Copy what we need into the TTLS tunnel and leave
 		 * the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
+		for (vp = fr_pair_cursor_init(&cursor, &reply->vps); vp; vp = fr_pair_cursor_next(&cursor)) {
 			if (vp->da->vendor != VENDORPEC_MICROSOFT) continue;
 
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
@@ -560,9 +560,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
-		(void) fr_cursor_init(&cursor, &reply->vps);
+		(void) fr_pair_cursor_init(&cursor, &reply->vps);
 
-		while ((vp = fr_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY)) != NULL) {
+		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY)) != NULL) {
 			eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 		}
 
@@ -829,7 +829,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	vp_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
 
-	for (vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
+	for (vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
 		PW_CODE code = PW_CODE_ACCESS_REJECT;
 		char *value;
 

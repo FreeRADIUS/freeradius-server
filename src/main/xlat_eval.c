@@ -284,7 +284,7 @@ do_print:
 	{
 		char *p, *q;
 
-		if (!fr_cursor_current(&cursor)) return NULL;
+		if (!fr_pair_cursor_current(&cursor)) return NULL;
 		p = fr_pair_value_asprint(ctx, vp, quote);
 		if (!p) return NULL;
 
@@ -303,7 +303,7 @@ do_print:
 		 *	The cursor was set to the correct
 		 *	position above by tmpl_cursor_init.
 		 */
-		vp = fr_cursor_current(&cursor);
+		vp = fr_pair_cursor_current(&cursor);
 		break;
 	}
 

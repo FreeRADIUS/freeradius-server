@@ -1411,7 +1411,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	delim = *p;
 
-	fr_cursor_init(&to_merge, &head);
+	fr_pair_cursor_init(&to_merge, &head);
 
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
 	     vp;
@@ -1482,7 +1482,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				rad_assert(0);
 			}
 
-			fr_cursor_append(&to_merge, new);
+			fr_pair_cursor_append(&to_merge, new);
 
 			p = q + 1;	/* next */
 
@@ -1492,14 +1492,14 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		/*
 		 *	Remove the unexploded version
 		 */
-		vp = fr_cursor_remove(&cursor);
+		vp = fr_pair_cursor_remove(&cursor);
 		talloc_free(vp);
 
 	next:
 		continue;	/* Apparently goto labels aren't allowed at the end of loops? */
 	}
 
-	fr_cursor_merge(&cursor, head);
+	fr_pair_cursor_merge(&cursor, head);
 
 	return snprintf(*out, outlen, "%i", count);
 }

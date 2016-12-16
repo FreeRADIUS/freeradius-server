@@ -947,9 +947,9 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
 			RINDENT();
-			for (vp = fr_cursor_init(&cursor, &check_tmp);
+			for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
 			     vp;
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_pair_cursor_next(&cursor)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
 			 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
@@ -1336,9 +1336,9 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 		RDEBUG2("Conditional check items matched, merging assignment check items");
 		RINDENT();
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			if (!fr_assignment_op[vp->op]) continue;
 
 			rdebug_pair(2, request, vp, NULL);

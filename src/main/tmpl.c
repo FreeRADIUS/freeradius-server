@@ -191,7 +191,7 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
  * @return a pointer to the HEAD of a list in the #REQUEST.
  *
  * @see tmpl_cursor_init
- * @see fr_cursor_init
+ * @see fr_pair_cursor_init
  */
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 {
@@ -2186,7 +2186,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		if (err) *err = -2;
 		return NULL;
 	}
-	(void) fr_cursor_init(cursor, vps);
+	(void) fr_pair_cursor_init(cursor, vps);
 
 	switch (vpt->type) {
 	/*
@@ -2195,7 +2195,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 	case TMPL_TYPE_ATTR:
 		switch (vpt->tmpl_num) {
 		case NUM_ANY:
-			vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
+			vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
 			if (!vp) {
 				if (err) *err = -1;
 				return NULL;
@@ -2210,7 +2210,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		{
 			VALUE_PAIR *last = NULL;
 
-			while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
+			while ((vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
 				VERIFY_VP(vp);
 				last = vp;
 			}
@@ -2228,11 +2228,11 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		 *	total number of attributes.
 		 */
 		case NUM_COUNT:
-			return fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
+			return fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
 
 		default:
 			num = vpt->tmpl_num;
-			while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
+			while ((vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
 				VERIFY_VP(vp);
 				if (num-- <= 0) return vp;
 			}
@@ -2247,7 +2247,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		case NUM_COUNT:
 		case NUM_ANY:
 		case NUM_ALL:
-			vp = fr_cursor_init(cursor, vps);
+			vp = fr_pair_cursor_init(cursor, vps);
 			if (!vp) {
 				if (err) *err = -1;
 				return NULL;
@@ -2262,9 +2262,9 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		{
 			VALUE_PAIR *last = NULL;
 
-			for (vp = fr_cursor_init(cursor, vps);
+			for (vp = fr_pair_cursor_init(cursor, vps);
 			     vp;
-			     vp = fr_cursor_next(cursor)) {
+			     vp = fr_pair_cursor_next(cursor)) {
 				VERIFY_VP(vp);
 				last = vp;
 			}
@@ -2275,9 +2275,9 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 
 		default:
 			num = vpt->tmpl_num;
-			for (vp = fr_cursor_init(cursor, vps);
+			for (vp = fr_pair_cursor_init(cursor, vps);
 			     vp;
-			     vp = fr_cursor_next(cursor)) {
+			     vp = fr_pair_cursor_next(cursor)) {
 				VERIFY_VP(vp);
 				if (num-- <= 0) return vp;
 			}
@@ -2323,7 +2323,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
 		case NUM_COUNT:	/* This cursor is being used to count matching attrs */
 			break;
 		}
-		return fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
+		return fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
 
 	case TMPL_TYPE_LIST:
 		switch (vpt->tmpl_num) {
@@ -2334,7 +2334,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
 		case NUM_COUNT:	/* This cursor is being used to count matching attrs */
 			break;
 		}
-		return fr_cursor_next(cursor);
+		return fr_pair_cursor_next(cursor);
 
 	default:
 		rad_assert(0);
@@ -2370,7 +2370,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 
 	*out = NULL;
 
-	fr_cursor_init(&to, out);
+	fr_pair_cursor_init(&to, out);
 
 	for (vp = tmpl_cursor_init(&err, &from, request, vpt);
 	     vp;
@@ -2380,7 +2380,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 			fr_pair_list_free(out);
 			return -4;
 		}
-		fr_cursor_append(&to, vp);
+		fr_pair_cursor_append(&to, vp);
 	}
 
 	return err;

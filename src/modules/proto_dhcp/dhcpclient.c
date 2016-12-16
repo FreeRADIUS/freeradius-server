@@ -151,9 +151,9 @@ static RADIUS_PACKET *request_init(char const *filename)
 	/*
 	 *	Fix / set various options
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &request->vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
@@ -560,9 +560,9 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 #endif
 	       packet->data_len);
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
 		fr_pair_snprint(buffer, sizeof(buffer), vp);

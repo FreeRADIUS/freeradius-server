@@ -411,7 +411,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	fr_dict_attr_t const *da;
 
 	rad_assert(ctx != NULL);
-	fr_cursor_init(&cursor, &head);
+	fr_pair_cursor_init(&cursor, &head);
 
 	/*
 	 *	FIXME: allow multiple entries.
@@ -451,7 +451,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	}
 
 	vp->op = map->op;
-	fr_cursor_merge(&cursor, vp);
+	fr_pair_cursor_merge(&cursor, vp);
 
 	*out = head;
 	return 0;

@@ -145,9 +145,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	hold mutexes.  They might be locked when we fork,
 		 *	and will remain locked in the child.
 		 */
-		for (vp = fr_cursor_init(&cursor, &input_pairs);
+		for (vp = fr_pair_cursor_init(&cursor, &input_pairs);
 		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
@@ -171,9 +171,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			envp[envlen++] = talloc_strdup(input_ctx, buffer);
 		}
 
-		fr_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
+		fr_pair_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
 		while ((envlen < ((sizeof(envp) / sizeof(*envp)) - 1)) &&
-		       (vp = fr_cursor_next_by_num(&cursor, 0, PW_EXEC_EXPORT, TAG_ANY))) {
+		       (vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_EXEC_EXPORT, TAG_ANY))) {
 			DEBUG3("export %s", vp->vp_strvalue);
 			memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
 		}

@@ -396,7 +396,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_INIT) ctx->state = READ_STATE_ATTR_BEGIN;
 
 	while (freespace > 0) {
-		vp = fr_cursor_current(&ctx->cursor);
+		vp = fr_pair_cursor_current(&ctx->cursor);
 		if (!vp) {
 			ctx->state = READ_STATE_END;
 
@@ -467,7 +467,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  there are more attributes, insert a separator
 		 */
-		if (fr_cursor_next(&ctx->cursor)) {
+		if (fr_pair_cursor_next(&ctx->cursor)) {
 			if (freespace < 1) goto no_space;
 			*p++ = '&';
 			freespace--;
@@ -1764,9 +1764,9 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	fr_cursor_init(&headers, &request->control);
-	while (fr_cursor_next_by_num(&headers, 0, PW_REST_HTTP_HEADER, TAG_ANY)) {
-		header = fr_cursor_remove(&headers);
+	fr_pair_cursor_init(&headers, &request->control);
+	while (fr_pair_cursor_next_by_num(&headers, 0, PW_REST_HTTP_HEADER, TAG_ANY)) {
+		header = fr_pair_cursor_remove(&headers);
 		if (!strchr(header->vp_strvalue, ':')) {
 			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
 				header->vp_strvalue);
@@ -2023,7 +2023,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 
 	case HTTP_BODY_POST:
 		rest_request_init(request, &ctx->request);
-		fr_cursor_init(&(ctx->request.cursor), &request->packet->vps);
+		fr_pair_cursor_init(&(ctx->request.cursor), &request->packet->vps);
 
 		if (rest_request_config_body(inst, section, request, handle,
 					     rest_encode_post) < 0) {
@@ -2077,7 +2077,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 	} ptr;
 	ptr.to_info = NULL;
 
-	fr_cursor_init(&list, &request->packet->vps);
+	fr_pair_cursor_init(&list, &request->packet->vps);
 
 	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
 	if (ret != CURLE_OK) {
@@ -2093,7 +2093,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 		struct curl_slist *cert_attrs;
 
 		RDEBUG2("Processing certificate %i",i);
-		fr_cursor_init(&cursor, &cert_vps);
+		fr_pair_cursor_init(&cursor, &cert_vps);
 
 		for (cert_attrs = ptr.to_certinfo->certinfo[i];
 		     cert_attrs;
@@ -2116,7 +2116,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
 				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);
 			} else {
-				fr_cursor_append(&cursor, vp);
+				fr_pair_cursor_append(&cursor, vp);
 			}
 		}
 
@@ -2128,7 +2128,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 			 *	Print out all the pairs we have so far
 			 */
 			rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, "&");
-			fr_cursor_merge(&list, cert_vps);
+			fr_pair_cursor_merge(&list, cert_vps);
 			cert_vps = NULL;
 		}
 	}

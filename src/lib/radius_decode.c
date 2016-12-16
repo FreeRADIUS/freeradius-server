@@ -360,7 +360,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		total += ptr[1] - 2;
 		ptr += ptr[1];
 	}
-	fr_cursor_append(cursor, vp);
+	fr_pair_cursor_append(cursor, vp);
 	return ptr - data;
 }
 
@@ -386,7 +386,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *  Record where we were in the list when this function was called
 	 */
-	fr_cursor_init(&tlv_cursor, &head);
+	fr_pair_cursor_init(&tlv_cursor, &head);
 	while (p < end) {
 		ssize_t tlv_len;
 
@@ -413,7 +413,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		if (tlv_len < 0) goto error;
 		p += p[1];
 	}
-	fr_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
 
 	return data_len;
 }
@@ -440,7 +440,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *  Record where we were in the list when this function was called
 	 */
-	fr_cursor_init(&child_cursor, &head);
+	fr_pair_cursor_init(&child_cursor, &head);
 	child_num = 1;
 	while (p < end) {
 		ssize_t child_len;
@@ -465,7 +465,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		raw:
 			fr_pair_list_free(&head);
-			fr_cursor_init(&child_cursor, &head);
+			fr_pair_cursor_init(&child_cursor, &head);
 
 			/*
 			 *	Build an unknown attr of the entire STRUCT.
@@ -484,7 +484,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		p += child->flags.length;
 		child_num++;	/* go to the next child */
 	}
-	fr_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
 
 	return data_len;
 }
@@ -855,7 +855,7 @@ create_attrs:
 	packet_len -= 4;
 	total = 4;
 
-	fr_cursor_init(&tlv_cursor, &head);
+	fr_pair_cursor_init(&tlv_cursor, &head);
 	while (attr_len > 0) {
 		ssize_t vsa_len;
 
@@ -875,7 +875,7 @@ create_attrs:
 		packet_len -= vsa_len;
 		total += vsa_len;
 	}
-	fr_cursor_merge(cursor, head);
+	fr_pair_cursor_merge(cursor, head);
 
 	/*
 	 *	When the unknown attributes were created by
@@ -1406,7 +1406,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	}
 	vp->type = VT_DATA;
 	vp->vp_tainted = true;
-	fr_cursor_append(cursor, vp);
+	fr_pair_cursor_append(cursor, vp);
 
 	return attr_len;
 }
@@ -1457,7 +1457,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 		 */
 		vp = fr_pair_afrom_da(ctx,da);
 		if (!vp) return -1;
-		fr_cursor_append(cursor, vp);
+		fr_pair_cursor_append(cursor, vp);
 		vp->vp_tainted = true;		/* not REALLY necessary, but what the heck */
 
 		return 2;

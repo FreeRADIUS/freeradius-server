@@ -80,12 +80,12 @@ static inline void exfile_trigger_exec(exfile_t *ef, REQUEST *request, exfile_en
 	}
 
 	args = ef->trigger_args;
-	fr_cursor_init(&cursor, &args);
+	fr_pair_cursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
 	fr_pair_value_strcpy(vp, entry->filename);
 
-	fr_cursor_prepend(&cursor, vp);
+	fr_pair_cursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
 	trigger_exec(request, ef->conf, name, false, args);

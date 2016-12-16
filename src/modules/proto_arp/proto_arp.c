@@ -194,7 +194,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		da = fr_dict_attr_by_name(NULL, header_names[i].name);
 		if (!da) return 0;
 
-		fr_cursor_init(&cursor, &vp);
+		fr_pair_cursor_init(&cursor, &vp);
 		len = fr_radius_decode_pair_value(request->packet, &cursor, da, p, header_names[i].len,
 						  header_names[i].len, &decoder_ctx);
 		if (len <= 0) {

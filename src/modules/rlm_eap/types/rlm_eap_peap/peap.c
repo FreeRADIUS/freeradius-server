@@ -284,8 +284,8 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	memcpy(p + EAP_HEADER_LEN, data, total);
 	fr_pair_value_memsteal(vp, p);
 
-	fr_cursor_init(&cursor, &head);
-	fr_cursor_append(&cursor, vp);
+	fr_pair_cursor_init(&cursor, &head);
+	fr_pair_cursor_append(&cursor, vp);
 	while (total < data_len) {
 		vp = fr_pair_afrom_num(packet, 0, PW_EAP_MESSAGE);
 		if (!vp) {
@@ -297,7 +297,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 
 		total += vp->vp_length;
 
-		fr_cursor_append(&cursor, vp);
+		fr_pair_cursor_append(&cursor, vp);
 	}
 
 	return head;
@@ -324,10 +324,10 @@ static int eap_peap_inner_from_pairs(REQUEST *request, tls_session_t *tls_sessio
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
 	 */
-	fr_cursor_init(&cursor, &vp);
-	for (this = fr_cursor_next(&cursor);
+	fr_pair_cursor_init(&cursor, &vp);
+	for (this = fr_pair_cursor_next(&cursor);
 	     this;
-	     this = fr_cursor_next(&cursor)) {
+	     this = fr_pair_cursor_next(&cursor)) {
 		(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 

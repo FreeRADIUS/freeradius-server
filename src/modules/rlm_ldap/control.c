@@ -189,9 +189,9 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 
 	memcpy(&hostname, &main_config.name, sizeof(hostname)); /* const / non-const issues */
 
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
 		case PW_NAS_IP_ADDRESS:
 		case PW_NAS_IPV6_ADDRESS:

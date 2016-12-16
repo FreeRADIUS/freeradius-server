@@ -305,7 +305,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *  Record where we were in the list when this function was called
 	 */
-	fr_cursor_init(&tlv_cursor, &head);
+	fr_pair_cursor_init(&tlv_cursor, &head);
 	while ((size_t)(end - p) >= sizeof(uint32_t)) {
 		uint8_t		sim_at = p[0];
 		size_t		sim_at_len = p[0] * sizeof(uint32_t);
@@ -348,7 +348,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		if (rcode < 0) goto error;
 		p += sim_at_len;
 	}
-	fr_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
 
 	return end - p;
 }
@@ -546,7 +546,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	}
 
 	vp->type = VT_DATA;
-	fr_cursor_append(cursor, vp);
+	fr_pair_cursor_append(cursor, vp);
 
 	return attr_len;
 }
@@ -685,7 +685,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 	 *	Move the cursor to the end, so we know if
 	 *	any additional attributes were added.
 	 */
-	fr_cursor_end(decoded);
+	fr_pair_cursor_end(decoded);
 
 	/*
 	 *	Check if we have enough data for a single attribute
@@ -708,7 +708,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 		if (rcode <= 0) {
 			REDEBUG("%s", fr_strerror());
 		error:
-			fr_cursor_free(decoded);	/* Free any attributes we added */
+			fr_pair_cursor_free(decoded);	/* Free any attributes we added */
 			return -1;
 		}
 
@@ -730,7 +730,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 		}
 		vp->vp_integer = data[0];
 		vp->vp_length = 1;
-		fr_cursor_append(decoded, vp);
+		fr_pair_cursor_append(decoded, vp);
 	}
 
 	return 0;
@@ -779,8 +779,8 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	eap_packet->id = (id & 0xff);
 	eap_packet->type.num = type;
 
-	(void)fr_cursor_init(&cursor, &to_encode);
-	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
+	(void)fr_pair_cursor_init(&cursor, &to_encode);
+	while ((vp = fr_pair_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
 		int vp_len;
 
 		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
@@ -840,8 +840,8 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	/*
 	 *	Encode all the things...
 	 */
-	(void)fr_cursor_first(&cursor);
-	while ((vp = fr_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
+	(void)fr_pair_cursor_first(&cursor);
+	while ((vp = fr_pair_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
 		int	rounded_len;
 		size_t	vp_len;
 

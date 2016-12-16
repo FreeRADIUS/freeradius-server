@@ -78,7 +78,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		goto error;
 	}
 
-	fr_cursor_init(&cursor, &head);
+	fr_pair_cursor_init(&cursor, &head);
 
 	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, &src);
 	     vp;
@@ -88,7 +88,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		VALUE_PAIR	*vps = NULL;
 		vp_cursor_t	options_cursor;
 
-		fr_cursor_init(&options_cursor, &vps);
+		fr_pair_cursor_init(&options_cursor, &vps);
 		/*
 		 *	Loop over all the options data
 		 */
@@ -102,12 +102,12 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 			}
 			p += len;
 		}
-		fr_cursor_merge(&cursor, vps);
+		fr_pair_cursor_merge(&cursor, vps);
 	}
 
-	for (vp = fr_cursor_first(&cursor);
+	for (vp = fr_pair_cursor_first(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
 		decoded++;
 	}
@@ -134,7 +134,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	while (isspace((int) *fmt)) fmt++;
 
 	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) return 0;
-	fr_cursor_init(&cursor, &vp);
+	fr_pair_cursor_init(&cursor, &vp);
 
 	len = fr_dhcp_encode_option(binbuf, sizeof(binbuf), &cursor, NULL);
 	talloc_free(vp);

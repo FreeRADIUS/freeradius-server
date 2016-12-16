@@ -334,9 +334,9 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			continue;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &to_cache);
+		for (vp = fr_pair_cursor_init(&cursor, &to_cache);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			/*
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
@@ -761,9 +761,9 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->control);
+	for (vp = fr_pair_cursor_init(&cursor, &request->control);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
 		case PW_CACHE_TTL:
 		case PW_CACHE_STATUS_ONLY:
@@ -771,7 +771,7 @@ finish:
 		case PW_CACHE_ALLOW_INSERT:
 		case PW_CACHE_MERGE_NEW:
 			RDEBUG2("Removing &control:%s", vp->da->name);
-			vp = fr_cursor_remove(&cursor);
+			vp = fr_pair_cursor_remove(&cursor);
 			talloc_free(vp);
 			break;
 		}

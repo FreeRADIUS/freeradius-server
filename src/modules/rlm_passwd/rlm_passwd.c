@@ -528,9 +528,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 		return RLM_MODULE_NOTFOUND;
 	}
 
-	for (i = fr_cursor_init(&cursor, &key);
+	for (i = fr_pair_cursor_init(&cursor, &key);
 	     i;
-	     i = fr_cursor_next_by_num(&cursor, inst->keyattr->vendor, inst->keyattr->attr, TAG_ANY)) {
+	     i = fr_pair_cursor_next_by_num(&cursor, inst->keyattr->vendor, inst->keyattr->attr, TAG_ANY)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */

@@ -43,7 +43,7 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	vp_cursor_t cursor;
 	int i;
 
-	fr_cursor_init(&cursor, &head);
+	fr_pair_cursor_init(&cursor, &head);
 
 	switch (map->lhs->type) {
 	/*
@@ -94,7 +94,7 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 				goto next_pair;
 			}
 
-			fr_cursor_merge(&cursor, vp);
+			fr_pair_cursor_merge(&cursor, vp);
 			talloc_free(attr);
 
 			/*
@@ -128,7 +128,7 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 			}
 
 			vp->op = map->op;
-			fr_cursor_append(&cursor, vp);
+			fr_pair_cursor_append(&cursor, vp);
 
 			/*
 			 *	Only process the first value, unless the operator is +=

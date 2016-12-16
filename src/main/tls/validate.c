@@ -137,7 +137,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	client's cert in SSL_CTX's X509_STORE.
 	 */
 	if (identity && (depth <= 1) && !SSL_session_reused(ssl)) {
-		fr_cursor_init(&cursor, &cert_vps);
+		fr_pair_cursor_init(&cursor, &cert_vps);
 		tls_session_pairs_from_x509_cert(&cursor, request, tls_session, cert, depth);
 
 		/*

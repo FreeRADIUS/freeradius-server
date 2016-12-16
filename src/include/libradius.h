@@ -285,32 +285,32 @@ ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,  vp_cursor_t *cursor, fr_dict_at
 /*
  *	cursor.c
  */
-VALUE_PAIR	*fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
-void		fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
-VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_cursor_last(vp_cursor_t *cursor);
-void		fr_cursor_end(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag);
+VALUE_PAIR	*fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
+void		fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
+VALUE_PAIR	*fr_pair_cursor_first(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_last(vp_cursor_t *cursor);
+void		fr_pair_cursor_end(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag);
 
-VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag)
+VALUE_PAIR	*fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag)
 		CC_HINT(nonnull);
 
-VALUE_PAIR	*fr_cursor_next_by_child_num(vp_cursor_t *cursor,
+VALUE_PAIR	*fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
 					     fr_dict_attr_t const *parent, unsigned int attr,
 					     int8_t tag);
 
-VALUE_PAIR	*fr_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor, int8_t tag)
+VALUE_PAIR	*fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t const *ancestor, int8_t tag)
 		CC_HINT(nonnull);
 
-VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_cursor_next_peek(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_cursor_current(vp_cursor_t *cursor);
-void		fr_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp);
-void		fr_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp);
-void		fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
-VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
-VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
-void		fr_cursor_free(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_next(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_next_peek(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_current(vp_cursor_t *cursor);
+void		fr_pair_cursor_prepend(vp_cursor_t *cursor, VALUE_PAIR *vp);
+void		fr_pair_cursor_append(vp_cursor_t *cursor, VALUE_PAIR *vp);
+void		fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
+VALUE_PAIR	*fr_pair_cursor_remove(vp_cursor_t *cursor);
+VALUE_PAIR	*fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
+void		fr_pair_cursor_free(vp_cursor_t *cursor);
 
 /* value.c */
 extern size_t const value_box_field_sizes[];

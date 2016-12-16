@@ -35,9 +35,9 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	vp_cursor_t		cursor;
 
 	total = 0;
-	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &request->reply->vps);
 	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
@@ -83,14 +83,14 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	ptr += 4;
 	end = ptr + total;
 
-	fr_cursor_init(&cursor, &request->reply->vps);
-	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
+	fr_pair_cursor_init(&cursor, &request->reply->vps);
+	while ((vp = fr_pair_cursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
 		next:
-			fr_cursor_next(&cursor);
+			fr_pair_cursor_next(&cursor);
 			continue;
 		}
 		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) goto next;
@@ -191,7 +191,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 		rad_assert(data_len <= talloc_array_length(chbind->request));
 
-		fr_cursor_init(&cursor, &fake->packet->vps);
+		fr_pair_cursor_init(&cursor, &fake->packet->vps);
 		while (data_len > 0) {
 			ssize_t attr_len;
 
@@ -261,9 +261,9 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Compute the total length of the channel binding data.
 	 */
 	length = 0;
-	for (vp =fr_cursor_init(&cursor, &first);
+	for (vp =fr_pair_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
+	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
 		length += vp->vp_length;
 	}
 
@@ -282,9 +282,9 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Copy the data over to our packet.
 	 */
 	packet = (chbind_packet_t *) ptr;
-	for (vp = fr_cursor_init(&cursor, &first);
+	for (vp = fr_pair_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
+	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
 		memcpy(ptr, vp->vp_octets, vp->vp_length);
 		ptr += vp->vp_length;
 	}

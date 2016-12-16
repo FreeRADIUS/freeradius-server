@@ -49,8 +49,8 @@ static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 
-	for (vp = fr_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_cursor_next(cursor));
-	return fr_cursor_current(cursor);
+	for (vp = fr_pair_cursor_current(cursor); vp && vp->da->flags.internal; vp = fr_pair_cursor_next(cursor));
+	return fr_pair_cursor_current(cursor);
 }
 
 /** Find the next attribute to encode
@@ -63,11 +63,11 @@ static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor)
 	VALUE_PAIR *vp;
 
 	for (;;) {
-		vp = fr_cursor_next(cursor);
+		vp = fr_pair_cursor_next(cursor);
 		if (!vp || !vp->da->flags.internal) break;
 	}
 
-	return fr_cursor_current(cursor);
+	return fr_pair_cursor_current(cursor);
 }
 
 /** Encode a CHAP password
@@ -515,10 +515,10 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 	ssize_t			len;
 	unsigned int		child_num = 1;
 	uint8_t			*p = out;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	VERIFY_VP(fr_cursor_current(cursor));
+	VERIFY_VP(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != PW_TYPE_STRUCT) {
@@ -573,7 +573,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
 
 		/*
 		 *	We can encode multiple sub TLVs, if after
@@ -581,7 +581,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 		 *	at this depth is the same.
 		 */
 		if (da != tlv_stack[depth]) break;
-		vp = fr_cursor_current(cursor);
+		vp = fr_pair_cursor_current(cursor);
 
 		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
 	}
@@ -595,7 +595,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 {
 	ssize_t			len;
 	uint8_t			*p = out;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	while (outlen >= 5) {
@@ -626,7 +626,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
 
 		/*
 	 	 *	We can encode multiple sub TLVs, if after
@@ -634,7 +634,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 	 	 *	at this depth is the same.
 	 	 */
 		if (da != tlv_stack[depth]) break;
-		vp = fr_cursor_current(cursor);
+		vp = fr_pair_cursor_current(cursor);
 
 		FR_PROTO_HEX_DUMP("Done TLV", out, p - out);
 	}
@@ -648,7 +648,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 {
 	ssize_t			len;
 
-	VERIFY_VP(fr_cursor_current(cursor));
+	VERIFY_VP(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != PW_TYPE_TLV) {
@@ -696,7 +696,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	uint8_t	const		*data;
 	uint8_t			*ptr = out;
 	uint8_t			buffer[64];
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 	fr_radius_ctx_t *ctx = encoder_ctx;
 
@@ -964,7 +964,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	PW_TYPE			vsa_type;
 #endif
 	uint8_t			*start = out;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 
 	VERIFY_VP(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -1099,7 +1099,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 	uint8_t			*ptr = out;
 	uint8_t			const *p;
 	size_t			len, left;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
@@ -1343,7 +1343,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	int			len;
 	uint32_t		lvalue;
 	uint8_t			*start = out;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 
 	VERIFY_VP(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -1498,7 +1498,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			  vp_cursor_t *cursor, void *encoder_ctx)
 {
-	VALUE_PAIR const *vp = fr_cursor_current(cursor);
+	VALUE_PAIR const *vp = fr_pair_cursor_current(cursor);
 
 	/*
 	 *	Sanity checks
@@ -1686,7 +1686,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	/*
 	 *	We couldn't do it, so we didn't do anything.
 	 */
-	if (fr_cursor_current(cursor) == vp) {
+	if (fr_pair_cursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
 		return -1;
 	}

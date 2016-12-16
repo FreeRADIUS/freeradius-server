@@ -398,15 +398,15 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 		RDEBUG2("foreach %s ", instruction->name);
 
 		rad_assert(vps != NULL);
-		fr_cursor_init(&frame->foreach.cursor, &vps);
+		fr_pair_cursor_init(&frame->foreach.cursor, &vps);
 
 		frame->foreach.depth = foreach_depth;
 		frame->foreach.vps = vps;
 
-		vp = fr_cursor_first(&frame->foreach.cursor);
+		vp = fr_pair_cursor_first(&frame->foreach.cursor);
 
 	} else {
-		vp = fr_cursor_next(&frame->foreach.cursor);
+		vp = fr_pair_cursor_next(&frame->foreach.cursor);
 
 		/*
 		 *	We've been asked to unwind to the

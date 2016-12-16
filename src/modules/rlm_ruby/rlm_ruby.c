@@ -211,9 +211,9 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 
 	n_tuple = 0;
 	if (request) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			 n_tuple++;
 		}
 	}
@@ -225,9 +225,9 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 	rb_request = rb_ary_new2(n_tuple);
 
 	if (request) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			VALUE tmp = rb_ary_new2(2);
 
 			/* The name. logic from fr_pair_snprint, lib/print.c */

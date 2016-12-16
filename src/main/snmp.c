@@ -584,7 +584,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 		vp = fr_pair_afrom_da(request->reply, da);
 		vp->vp_integer = i;
 		vp->vp_length = dict_attr_sizes[PW_TYPE_INTEGER][0];
-		fr_cursor_prepend(out, vp);
+		fr_pair_cursor_prepend(out, vp);
 
 		return 0;			/* done */
 	}
@@ -632,17 +632,17 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 	/*
 	 *	Get the index from the index attribute's value.
 	 */
-	vp = fr_cursor_current(cursor);
+	vp = fr_pair_cursor_current(cursor);
 	index_num = vp->vp_integer;
 
 	/*
 	 *	Advance the cursor to the next index attribute
 	 *	if it is an index attribute...
 	 */
-	next = fr_cursor_next_peek(cursor);
+	next = fr_pair_cursor_next_peek(cursor);
 	if (next && fr_dict_parent_common(vp->da, next->da, true)) {
 		fr_proto_tlv_stack_build(tlv_stack, next->da);
-		fr_cursor_next_by_ancestor(cursor, vp->da, TAG_ANY);
+		fr_pair_cursor_next_by_ancestor(cursor, vp->da, TAG_ANY);
 	}
 
 	return snmp_process_index(out, request, tlv_stack, depth, *cursor, &map[1], snmp_ctx, snmp_op, index_num);
@@ -715,7 +715,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	vp = fr_cursor_current(cursor);
+	vp = fr_pair_cursor_current(cursor);
 
 	/*
 	 *	Return element in map that matches the da at this
@@ -781,11 +781,11 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 		vp = fr_pair_afrom_da(request->reply, map_p->da);
 		value_box_steal(vp, &vp->data, vp->da->type, &data);
-		fr_cursor_append(out, vp);
+		fr_pair_cursor_append(out, vp);
 
 		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);
 		vp->vp_integer = map_p->type;
-		fr_cursor_append(out, vp);
+		fr_pair_cursor_append(out, vp);
 	}
 		return 0;
 
@@ -797,11 +797,11 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
 			vp->vp_integer = PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
 			vp->vp_length = sizeof(vp->vp_integer);
-			fr_cursor_append(out, vp);
+			fr_pair_cursor_append(out, vp);
 			return 0;
 		}
 
-		vp = fr_cursor_current(cursor);
+		vp = fr_pair_cursor_current(cursor);
 		ret = map_p->set(map_p, snmp_ctx, &vp->data);
 		if (ret < 0) switch (-(ret)) {
 		case PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE:
@@ -812,7 +812,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
 			vp->vp_integer = -(ret);
 			vp->vp_length = sizeof(vp->vp_integer);
-			fr_cursor_append(out, vp);
+			fr_pair_cursor_append(out, vp);
 			break;
 
 		default:
@@ -901,10 +901,10 @@ int fr_snmp_process(REQUEST *request)
 
 	VALUE_PAIR		*op;
 
-	fr_cursor_init(&request_cursor, &request->packet->vps);
-	fr_cursor_init(&op_cursor, &request->packet->vps);
-	fr_cursor_init(&reply_cursor, &request->reply->vps);
-	fr_cursor_init(&out_cursor, &head);
+	fr_pair_cursor_init(&request_cursor, &request->packet->vps);
+	fr_pair_cursor_init(&op_cursor, &request->packet->vps);
+	fr_pair_cursor_init(&reply_cursor, &request->reply->vps);
+	fr_pair_cursor_init(&out_cursor, &head);
 
 	RDEBUG2("Processing SNMP stats request");
 
@@ -916,9 +916,9 @@ int fr_snmp_process(REQUEST *request)
 	 *	not allowed in the RADIUS protocol, so we
 	 *	encode the TLV as an octet type attribute
 	 */
-	for (vp = fr_cursor_first(&request_cursor);
+	for (vp = fr_pair_cursor_first(&request_cursor);
 	     vp;
-	     vp = fr_cursor_next(&request_cursor)) {
+	     vp = fr_pair_cursor_next(&request_cursor)) {
 		fr_dict_attr_t const *da;
 
 		if (!vp->da->flags.is_unknown) continue;
@@ -947,9 +947,9 @@ int fr_snmp_process(REQUEST *request)
 		}
 		vp->da = da;
 	}
-	fr_cursor_first(&request_cursor);
+	fr_pair_cursor_first(&request_cursor);
 
-	while ((vp = fr_cursor_next_by_ancestor(&request_cursor, fr_snmp_root, TAG_ANY))) {
+	while ((vp = fr_pair_cursor_next_by_ancestor(&request_cursor, fr_snmp_root, TAG_ANY))) {
 		fr_proto_tlv_stack_build(tlv_stack, vp->da);
 
 		/*
@@ -959,7 +959,7 @@ int fr_snmp_process(REQUEST *request)
 		for (depth = 0; tlv_stack[depth]; depth++) if (fr_snmp_root == tlv_stack[depth]) break;
 
 		/*
-		 *	Any attribute returned by fr_cursor_next_by_ancestor
+		 *	Any attribute returned by fr_pair_cursor_next_by_ancestor
 		 *	should have the SNMP root attribute as an ancestor.
 		 */
 		rad_assert(tlv_stack[depth]);
@@ -968,7 +968,7 @@ int fr_snmp_process(REQUEST *request)
 		/*
 		 *	Operator attribute acts as a request delimiter
 		 */
-		op = fr_cursor_next_by_da(&op_cursor, fr_snmp_op_attr, TAG_ANY);
+		op = fr_pair_cursor_next_by_da(&op_cursor, fr_snmp_op_attr, TAG_ANY);
 		if (!op) {
 			ERROR("Missing operation (%s)", fr_snmp_op_attr->name);
 			return -1;
@@ -1010,7 +1010,7 @@ int fr_snmp_process(REQUEST *request)
 		}
 	}
 
-	fr_cursor_merge(&reply_cursor, head);
+	fr_pair_cursor_merge(&reply_cursor, head);
 
 	return 0;
 }

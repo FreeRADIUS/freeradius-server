@@ -108,9 +108,9 @@ static void cisco_vsa_hack(REQUEST *request)
 	char		newattr[FR_MAX_STRING_LEN];
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;
-	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		vendorcode = vp->da->vendor;
 		if (!((vendorcode == 9) || (vendorcode == 6618))) {
 			continue; /* not a Cisco or Quintum VSA, continue */
@@ -168,9 +168,9 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	int number = 1;
 	vp_cursor_t cursor;
 
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_pair_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		fr_dict_attr_t const *da;
 
 		if (vp->da->vendor != 12394) {
@@ -300,9 +300,9 @@ static void rad_mangle(rlm_preprocess_t const *inst, REQUEST *request)
 	}
 
 	num_proxy_state = 0;
-	for (tmp = fr_cursor_init(&cursor, &request->packet->vps);
+	for (tmp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 	     tmp;
-	     tmp = fr_cursor_next(&cursor)) {
+	     tmp = fr_pair_cursor_next(&cursor)) {
 		if (tmp->da->vendor != 0) {
 			continue;
 		}
@@ -334,9 +334,9 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 
 	if (!check) return 0;
 
-	for (check_item = fr_cursor_init(&cursor, &check);
+	for (check_item = fr_pair_cursor_init(&cursor, &check);
 	     check_item && (result != 0);
-	     check_item = fr_cursor_next(&cursor)) {
+	     check_item = fr_pair_cursor_next(&cursor)) {
 		/* FIXME: fr_pair_list_copy should be removed once VALUE_PAIRs are no longer in linked lists */
 		tmp = fr_pair_copy(request, check_item);
 		tmp->op = check_item->op;

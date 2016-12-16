@@ -327,9 +327,9 @@ static int detail_recv(rad_listen_t *listener)
 		vp_cursor_t cursor;
 
 		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
-		for (vp = fr_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			debug_pair(vp);
 		}
 	}
@@ -566,7 +566,7 @@ open_file:
 		goto do_header;
 	}
 
-	fr_cursor_init(&cursor, &data->vps);
+	fr_pair_cursor_init(&cursor, &data->vps);
 
 	/*
 	 *	Read a header, OR a value-pair.
@@ -661,7 +661,7 @@ open_file:
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
-				fr_cursor_append(&cursor, vp);
+				fr_pair_cursor_append(&cursor, vp);
 			}
 			continue;
 		}
@@ -681,7 +681,7 @@ open_file:
 		vp = NULL;
 		if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
-			fr_cursor_merge(&cursor, vp);
+			fr_pair_cursor_merge(&cursor, vp);
 		}
 	}
 

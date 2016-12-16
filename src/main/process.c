@@ -3111,8 +3111,8 @@ do_home:
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			/* FIXME: Can't make assumptions about ordering */
-			fr_cursor_init(&cursor, &vp);
-			fr_cursor_merge(&cursor, request->proxy->packet->vps);
+			fr_pair_cursor_init(&cursor, &vp);
+			fr_pair_cursor_merge(&cursor, request->proxy->packet->vps);
 			request->proxy->packet->vps = vp;
 		}
 		fr_pair_value_strcpy(vp, strippedname->vp_strvalue);

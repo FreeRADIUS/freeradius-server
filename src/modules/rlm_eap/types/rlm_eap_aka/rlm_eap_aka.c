@@ -306,7 +306,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/* vps is the data from the client */
 	vps = request->packet->vps;
 
-	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_pair_cursor_init(&cursor, &request->packet->vps);
 
 	ctx.keys = &(eap_aka_session->keys);
 	ret = fr_sim_decode(eap_session->request,
@@ -316,7 +316,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			    &ctx);
 	if (ret < 0) return RLM_MODULE_INVALID;
 
-	vp = fr_cursor_next(&cursor);
+	vp = fr_pair_cursor_next(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
 		RDEBUG2("EAP-AKA decoded attributes");
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);

@@ -1229,7 +1229,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
 
-	fr_cursor_init(&cursor, &request->control);
+	fr_pair_cursor_init(&cursor, &request->control);
 
 	RDEBUG2("Converting control list to client fields");
 	RINDENT();
@@ -1249,8 +1249,8 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			return NULL;
 		}
 
-		fr_cursor_first(&cursor);
-		if (!fr_cursor_next_by_da(&cursor, da, TAG_ANY)) {
+		fr_pair_cursor_first(&cursor);
+		if (!fr_pair_cursor_next_by_da(&cursor, da, TAG_ANY)) {
 			/*
 			 *	Not required.  Skip it.
 			 */
@@ -1261,7 +1261,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			       dynamic_config[i].name);
 			goto error;
 		}
-		vp = fr_cursor_remove(&cursor);
+		vp = fr_pair_cursor_remove(&cursor);
 
 		/*
 		 *	Freed at the same time as the vp.
@@ -1403,8 +1403,8 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		talloc_free(vp);
 	}
 
-	fr_cursor_first(&cursor);
-	vp = fr_cursor_remove(&cursor);
+	fr_pair_cursor_first(&cursor);
+	vp = fr_pair_cursor_remove(&cursor);
 	if (vp) {
 		do {
 			char *value;
@@ -1427,7 +1427,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			cf_pair_add(c->cs, cp);
 
 			talloc_free(vp);
-		} while ((vp = fr_cursor_remove(&cursor)));
+		} while ((vp = fr_pair_cursor_remove(&cursor)));
 	}
 	REXDENT();
 

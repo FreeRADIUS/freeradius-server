@@ -940,12 +940,12 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_d
 
 	last_match = vps;
 
-	fr_cursor_init(&list_cursor, &last_match);
-	fr_cursor_init(&out_cursor, out);
+	fr_pair_cursor_init(&list_cursor, &last_match);
+	fr_pair_cursor_init(&out_cursor, out);
 	for (i = 0; i < num; i++) {
-		match = fr_cursor_next_by_da(&list_cursor, da[i], TAG_ANY);
+		match = fr_pair_cursor_next_by_da(&list_cursor, da[i], TAG_ANY);
 		if (!match) {
-			fr_cursor_init(&list_cursor, &last_match);
+			fr_pair_cursor_init(&list_cursor, &last_match);
 			continue;
 		}
 
@@ -955,11 +955,11 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_d
 				fr_pair_list_free(out);
 				return -1;
 			}
-			fr_cursor_append(&out_cursor, copy);
+			fr_pair_cursor_append(&out_cursor, copy);
 			last_match = match;
 
 			count++;
-		} while ((match = fr_cursor_next_by_da(&list_cursor, da[i], TAG_ANY)));
+		} while ((match = fr_pair_cursor_next_by_da(&list_cursor, da[i], TAG_ANY)));
 	}
 
 	return count;
@@ -1631,9 +1631,9 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				vp_cursor_t cursor;
 				VALUE_PAIR *vp;
 
-				for (vp = fr_cursor_init(&cursor, &search.link_vps);
+				for (vp = fr_pair_cursor_init(&cursor, &search.link_vps);
 				     vp;
-				     vp = fr_cursor_next(&cursor)) {
+				     vp = fr_pair_cursor_next(&cursor)) {
 					fr_pair_steal(original, search.link_vps);
 				}
 				original->link_vps = search.link_vps;
@@ -1930,9 +1930,9 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 		return -1;
 	}
 
-	for (vp = fr_cursor_init(&cursor, out);
+	for (vp = fr_pair_cursor_init(&cursor, out);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	xlat expansion isn't supported here
 		 */
@@ -2536,10 +2536,10 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		fr_cursor_init(&cursor, &conf->filter_request_vps);
-		type = fr_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
+		fr_pair_cursor_init(&cursor, &conf->filter_request_vps);
+		type = fr_pair_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
 		if (type) {
-			fr_cursor_remove(&cursor);
+			fr_pair_cursor_remove(&cursor);
 			conf->filter_request_code = type->vp_integer;
 			talloc_free(type);
 		}
@@ -2553,10 +2553,10 @@ int main(int argc, char *argv[])
 			usage(64);
 		}
 
-		fr_cursor_init(&cursor, &conf->filter_response_vps);
-		type = fr_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
+		fr_pair_cursor_init(&cursor, &conf->filter_response_vps);
+		type = fr_pair_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
 		if (type) {
-			fr_cursor_remove(&cursor);
+			fr_pair_cursor_remove(&cursor);
 			conf->filter_response_code = type->vp_integer;
 			talloc_free(type);
 		}

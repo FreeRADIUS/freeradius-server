@@ -488,9 +488,9 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	int compare;
 	bool first_only;
 
-	for (check_item = fr_cursor_init(&cursor, &check);
+	for (check_item = fr_pair_cursor_init(&cursor, &check);
 	     check_item;
-	     check_item = fr_cursor_next(&cursor)) {
+	     check_item = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -766,9 +766,9 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_pair_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
 		value = fr_pair_asprint(request, vp, '"');
@@ -795,9 +795,9 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, c
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 	RINDENT();
-	for (vp = fr_cursor_init(&cursor, &vp);
+	for (vp = fr_pair_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 		if (vp->da->flags.internal) continue;
 

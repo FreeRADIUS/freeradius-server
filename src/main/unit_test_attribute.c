@@ -702,8 +702,8 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			}
 
 			attr = data;
-			fr_cursor_init(&cursor, &head);
-			while ((vp = fr_cursor_current(&cursor))) {
+			fr_pair_cursor_init(&cursor, &head);
+			while ((vp = fr_pair_cursor_current(&cursor))) {
 				len = fr_radius_encode_pair(attr, data + sizeof(data) - attr, &cursor, &encoder_ctx);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
@@ -738,7 +738,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				}
 			}
 
-			fr_cursor_init(&cursor, &head);
+			fr_pair_cursor_init(&cursor, &head);
 			my_len = 0;
 			while (len > 0) {
 				my_len = fr_radius_decode_pair(NULL, &cursor, fr_dict_root(fr_dict_internal), attr, len,
@@ -763,9 +763,9 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			 */
 			if (head) {
 				p = output;
-				for (vp = fr_cursor_first(&cursor);
+				for (vp = fr_pair_cursor_first(&cursor);
 				     vp;
-				     vp = fr_cursor_next(&cursor)) {
+				     vp = fr_pair_cursor_next(&cursor)) {
 					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
@@ -801,11 +801,11 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				continue;
 			}
 
-			fr_cursor_init(&cursor, &head);
+			fr_pair_cursor_init(&cursor, &head);
 
 
 			attr = data;
-			while ((vp = fr_cursor_current(&cursor))) {
+			while ((vp = fr_pair_cursor_current(&cursor))) {
 				len = fr_dhcp_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
@@ -842,7 +842,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				option_p = attr;
 				end = option_p + len;
 
-				fr_cursor_init(&cursor, &head);
+				fr_pair_cursor_init(&cursor, &head);
 
 				/*
 				 *	Loop over all the options data
@@ -866,9 +866,9 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			 */
 			if (head) {
 				p = output;
-				for (vp = fr_cursor_first(&cursor);
+				for (vp = fr_pair_cursor_first(&cursor);
 				     vp;
-				     vp = fr_cursor_next(&cursor)) {
+				     vp = fr_pair_cursor_next(&cursor)) {
 					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 

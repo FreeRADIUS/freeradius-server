@@ -276,7 +276,7 @@ error:
 	fast_vps = eap_fast_fast2vp((REQUEST *)tls_session, s, (uint8_t *)&opaque_plaintext, plen, fast_da, NULL);
 	if (!fast_vps) return 0;
 
-	for (VALUE_PAIR *vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
+	for (VALUE_PAIR *vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
 		char *value;
 
 		switch (vp->da->attr) {

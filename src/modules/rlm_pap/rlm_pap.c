@@ -324,9 +324,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	VALUE_PAIR		*vp;
 	vp_cursor_t		cursor;
 
-	for (vp = fr_cursor_init(&cursor, &request->control);
+	for (vp = fr_pair_cursor_init(&cursor, &request->control);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 	     	VERIFY_VP(vp);
 	next:
 		switch (vp->da->attr) {
@@ -353,15 +353,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			}
 
 			new = normify_with_header(request, vp);
-			if (new) fr_cursor_append(&cursor, new); /* inserts at the end of the list */
+			if (new) fr_pair_cursor_append(&cursor, new); /* inserts at the end of the list */
 
 			RDEBUG2("Removing &control:Password-With-Header");
-			vp = fr_cursor_remove(&cursor);	/* advances the cursor for us */
+			vp = fr_pair_cursor_remove(&cursor);	/* advances the cursor for us */
 			talloc_free(vp);
 
 			found_pw = true;
 
-			vp = fr_cursor_current(&cursor);
+			vp = fr_pair_cursor_current(&cursor);
 			if (vp) goto next;
 		}
 			break;
@@ -973,9 +973,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	config items, to find out which authentication
 	 *	function to call.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->control);
+	for (vp = fr_pair_cursor_init(&cursor, &request->control);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_pair_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;

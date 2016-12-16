@@ -876,7 +876,7 @@ do { \
 	VALUE_PAIR *_vp; \
 	_vp = fr_pair_make(ctx, NULL, _name, _value, T_OP_SET); \
 	if (_vp) { \
-		fr_cursor_append(cursor, _vp); \
+		fr_pair_cursor_append(cursor, _vp); \
 	} else { \
 		RWDEBUG("Failed creating attribute %s: %s", _name, fr_strerror()); \
 	} \
@@ -1053,7 +1053,7 @@ do { \
 				if (!vp) {
 					RDEBUG3("Skipping: %s += '%s'", attribute, value);
 				} else {
-					fr_cursor_append(cursor, vp);
+					fr_pair_cursor_append(cursor, vp);
 				}
 			}
 			BIO_free_all(out);

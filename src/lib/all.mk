@@ -22,6 +22,7 @@ SOURCES		:= cbuff.c \
 		   md5.c \
 		   net.c \
 		   pair.c \
+		   pair_cursor.c \
 		   pcap.c \
 		   print.c \
 		   proto.c \

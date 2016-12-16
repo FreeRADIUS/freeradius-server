@@ -394,9 +394,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			/*
 			 *	xlat expansions aren't supported here
 			 */
-			for (vp = fr_cursor_init(&cursor, &request->filter);
+			for (vp = fr_pair_cursor_init(&cursor, &request->filter);
 			     vp;
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_pair_cursor_next(&cursor)) {
 				if (vp->type == VT_XLAT) {
 					vp->type = VT_DATA;
 					vp->vp_strvalue = vp->xlat;
@@ -406,7 +406,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
 				case PW_RESPONSE_PACKET_TYPE:
 				case PW_PACKET_TYPE:
-					fr_cursor_remove(&cursor);	/* so we don't break the filter */
+					fr_pair_cursor_remove(&cursor);	/* so we don't break the filter */
 					request->filter_code = vp->vp_integer;
 					talloc_free(vp);
 
@@ -424,9 +424,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Process special attributes
 		 */
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			/*
 			 *	Double quoted strings get marked up as xlat expansions,
 			 *	but we don't support that in request.

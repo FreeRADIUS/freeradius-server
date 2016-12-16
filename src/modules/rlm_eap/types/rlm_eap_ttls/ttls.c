@@ -151,7 +151,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	vp_cursor_t	out;
 	fr_dict_attr_t const *da;
 
-	fr_cursor_init(&out, &first);
+	fr_pair_cursor_init(&out, &first);
 
 	while (data_left > 0) {
 		rad_assert(data_left <= data_len);
@@ -225,11 +225,11 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			}
 
 			fr_pair_value_memcpy(vp, data, size);
-			fr_cursor_append(&out, vp);
+			fr_pair_cursor_append(&out, vp);
 			goto next_attr;
 		}
 
-		vp = fr_cursor_current(&out);
+		vp = fr_pair_cursor_current(&out);
 
 		/*
 		 *	Ensure that the client is using the
@@ -284,7 +284,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		}
 
 	next_attr:
-		while (fr_cursor_next(&out)) {
+		while (fr_pair_cursor_next(&out)) {
 			/* nothing */
 		}
 
@@ -340,7 +340,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	p = buffer;
 	total = 0;
 
-	for (vp = fr_cursor_init(&cursor, &first); vp; vp = fr_cursor_next(&cursor)) {
+	for (vp = fr_pair_cursor_init(&cursor, &first); vp; vp = fr_pair_cursor_next(&cursor)) {
 		/*
 		 *	Too much data: die.
 		 */
@@ -502,16 +502,16 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	{
 		RDEBUG("Got tunneled Access-Accept");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
+		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &reply->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 		     	switch (vp->da->vendor) {
 			case VENDORPEC_MICROSOFT:
 				if (vp->da->attr == PW_MSCHAP2_SUCCESS) {
@@ -519,7 +519,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 
 					rcode = RLM_MODULE_HANDLED;
 					t->authenticated = true;
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
@@ -527,7 +527,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				if (vp->da->attr == PW_UKERNA_CHBIND) {
 					rcode = RLM_MODULE_HANDLED;
 					t->authenticated = true;
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
@@ -553,19 +553,19 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	case PW_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
-		fr_cursor_init(&to_tunnel, &tunnel_vps);
+		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_pair_cursor_init(&cursor, &reply->vps);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 		     	switch (vp->da->vendor) {
 			case VENDORPEC_UKERNA:
 				if (vp->da->attr == PW_UKERNA_CHBIND) {
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
@@ -573,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				switch (vp->da->attr) {
 				case PW_EAP_MESSAGE:
 				case PW_REPLY_MESSAGE:
-					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 					break;
 
 				default:

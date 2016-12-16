@@ -107,7 +107,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	If we can't parse it, or if it's malformed,
 	 *	it's still unknown.
 	 */
-	fr_cursor_init(&cursor, &vp);
+	fr_pair_cursor_init(&cursor, &vp);
 	rlen = fr_radius_decode_pair_value(map, &cursor, da, ptr, len, len, NULL);
 	talloc_free(ptr);
 
@@ -791,9 +791,9 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if (!found) return 0;
 
-		for (vp = fr_cursor_init(&cursor, &found);
+		for (vp = fr_pair_cursor_init(&cursor, &found);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_cursor_next(&cursor)) {
 			vp->op = T_OP_ADD;
 		}
 
@@ -897,7 +897,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if (tmpl_copy_vps(ctx, &found, request, map->rhs) < 0) return 0;
 
-		vp = fr_cursor_init(&from, &found);
+		vp = fr_pair_cursor_init(&from, &found);
 
 		/*
 		 *  Src/Dst attributes don't match, convert src attributes
@@ -907,8 +907,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		    (map->rhs->tmpl_da->type != map->lhs->tmpl_da->type)) {
 			vp_cursor_t to;
 
-			(void) fr_cursor_init(&to, out);
-			for (; vp; vp = fr_cursor_next(&from)) {
+			(void) fr_pair_cursor_init(&to, out);
+			for (; vp; vp = fr_pair_cursor_next(&from)) {
 				new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!new) return -1;
 
@@ -919,7 +919,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 					fr_pair_list_free(&new);
 					return -1;
 				}
-				vp = fr_cursor_remove(&from);
+				vp = fr_pair_cursor_remove(&from);
 				talloc_free(vp);
 
 				if (new->da->type == PW_TYPE_STRING) {
@@ -928,7 +928,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 				new->op = map->op;
 				new->tag = map->lhs->tmpl_tag;
-				fr_cursor_append(&to, new);
+				fr_pair_cursor_append(&to, new);
 			}
 			return 0;
 		}
@@ -937,7 +937,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 *   Otherwise we just need to fixup the attribute types
 		 *   and operators
 		 */
-		for (; vp; vp = fr_cursor_next(&from)) {
+		for (; vp; vp = fr_pair_cursor_next(&from)) {
 			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
 			vp->tag = map->lhs->tmpl_tag;
@@ -1160,9 +1160,9 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	/*
 	 *	Print the VPs
 	 */
-	for (vp = fr_cursor_init(&src_list, &head);
+	for (vp = fr_pair_cursor_init(&src_list, &head);
 	     vp;
-	     vp = fr_cursor_next(&src_list)) {
+	     vp = fr_pair_cursor_next(&src_list)) {
 		VERIFY_VP(vp);
 
 		if (rad_debug_lvl) map_debug_log(request, map, vp);
@@ -1212,13 +1212,13 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	being NULL (no attribute at that index).
 	 */
 	num = map->lhs->tmpl_num;
-	(void) fr_cursor_init(&dst_list, list);
+	(void) fr_pair_cursor_init(&dst_list, list);
 	if (num != NUM_ANY) {
-		while ((dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag))) {
+		while ((dst = fr_pair_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag))) {
 			if (num-- == 0) break;
 		}
 	} else {
-		dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag);
+		dst = fr_pair_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag);
 	}
 	rad_assert(!dst || (map->lhs->tmpl_da == dst->da));
 
@@ -1248,7 +1248,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 *	We've found the Nth one.  Delete it, and only it.
 		 */
 		} else {
-			dst = fr_cursor_remove(&dst_list);
+			dst = fr_pair_cursor_remove(&dst_list);
 			fr_pair_list_free(&dst);
 		}
 
@@ -1279,13 +1279,13 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 *	Instance specific[n] delete
 		 */
 		if (map->lhs->tmpl_num != NUM_ANY) {
-			for (vp = fr_cursor_first(&src_list);
+			for (vp = fr_pair_cursor_first(&src_list);
 			     vp;
-			     vp = fr_cursor_next(&src_list)) {
+			     vp = fr_pair_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
 				rcode = radius_compare_vps(request, vp, dst);
 				if (rcode == 0) {
-					dst = fr_cursor_remove(&dst_list);
+					dst = fr_pair_cursor_remove(&dst_list);
 					fr_pair_list_free(&dst);
 					found = true;
 				}
@@ -1298,16 +1298,16 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		/*
 		 *	All instances[*] delete
 		 */
-		for (dst = fr_cursor_current(&dst_list);
+		for (dst = fr_pair_cursor_current(&dst_list);
 		     dst;
-		     dst = fr_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag)) {
-			for (vp = fr_cursor_first(&src_list);
+		     dst = fr_pair_cursor_next_by_da(&dst_list, map->lhs->tmpl_da, map->lhs->tmpl_tag)) {
+			for (vp = fr_pair_cursor_first(&src_list);
 			     vp;
-			     vp = fr_cursor_next(&src_list)) {
+			     vp = fr_pair_cursor_next(&src_list)) {
 				head->op = T_OP_CMP_EQ;
 				rcode = radius_compare_vps(request, vp, dst);
 				if (rcode == 0) {
-					dst = fr_cursor_remove(&dst_list);
+					dst = fr_pair_cursor_remove(&dst_list);
 					fr_pair_list_free(&dst);
 					found = true;
 				}
@@ -1322,9 +1322,9 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	Another fixup pass to set tags on attributes we're about to insert
 	 */
 	if (map->lhs->tmpl_tag != TAG_ANY) {
-		for (vp = fr_cursor_init(&src_list, &head);
+		for (vp = fr_pair_cursor_init(&src_list, &head);
 		     vp;
-		     vp = fr_cursor_next(&src_list)) {
+		     vp = fr_pair_cursor_next(&src_list)) {
 			vp->tag = map->lhs->tmpl_tag;
 		}
 	}
@@ -1341,8 +1341,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		}
 
 		/* Insert first instance (if multiple) */
-		fr_cursor_first(&src_list);
-		fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
+		fr_pair_cursor_first(&src_list);
+		fr_pair_cursor_append(&dst_list, fr_pair_cursor_remove(&src_list));
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
 		break;
@@ -1352,13 +1352,13 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 */
 	case T_OP_SET:
 		/* Wind to last instance */
-		fr_cursor_last(&src_list);
+		fr_pair_cursor_last(&src_list);
 		if (dst) {
-			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-			dst = fr_cursor_replace(&dst_list, fr_cursor_remove(&src_list));
+			DEBUG_OVERWRITE(dst, fr_pair_cursor_current(&src_list));
+			dst = fr_pair_cursor_replace(&dst_list, fr_pair_cursor_remove(&src_list));
 			fr_pair_list_free(&dst);
 		} else {
-			fr_cursor_append(&dst_list, fr_cursor_remove(&src_list));
+			fr_pair_cursor_append(&dst_list, fr_pair_cursor_remove(&src_list));
 		}
 		/* Free any we didn't insert */
 		fr_pair_list_free(&head);
@@ -1388,14 +1388,14 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		fr_pair_list_sort(&head, fr_pair_cmp_by_da_tag);
 		fr_pair_list_sort(list, fr_pair_cmp_by_da_tag);
 
-		fr_cursor_first(&dst_list);
+		fr_pair_cursor_first(&dst_list);
 
-		for (b = fr_cursor_first(&src_list);
+		for (b = fr_pair_cursor_first(&src_list);
 		     b;
-		     b = fr_cursor_next(&src_list)) {
-			for (a = fr_cursor_current(&dst_list);
+		     b = fr_pair_cursor_next(&src_list)) {
+			for (a = fr_pair_cursor_current(&dst_list);
 			     a;
-			     a = fr_cursor_next(&dst_list)) {
+			     a = fr_pair_cursor_next(&dst_list)) {
 				int8_t cmp;
 
 				cmp = fr_pair_cmp_by_da_tag(a, b);	/* attribute and tag match */
@@ -1404,7 +1404,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 				cmp = (value_box_cmp_op(map->op, a->da->type, &a->data, b->da->type, &b->data) == 0);
 				if (cmp != 0) {
-					a = fr_cursor_remove(&dst_list);
+					a = fr_pair_cursor_remove(&dst_list);
 					talloc_free(a);
 				}
 			}
@@ -1434,9 +1434,9 @@ finish:
 		context->username = NULL;
 		context->password = NULL;
 
-		for (vp = fr_cursor_init(&src_list, list);
+		for (vp = fr_pair_cursor_init(&src_list, list);
 		     vp;
-		     vp = fr_cursor_next(&src_list)) {
+		     vp = fr_pair_cursor_next(&src_list)) {
 
 			if (vp->da->vendor != 0) continue;
 			if (vp->da->flags.has_tag) continue;
