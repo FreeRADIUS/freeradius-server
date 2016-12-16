@@ -63,6 +63,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/worker.h>
 #include <freeradius-devel/util/channel.h>
+#include <freeradius-devel/util/control.h>
 #include <freeradius-devel/rad_assert.h>
 
 /**
@@ -151,65 +152,23 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
 }
 
-/** Handle EVFILT_USER events
+/** Service an EVFILT_USER event
  *
- * @todo fix for fr_channel_service_aq() also
+ * @param[in] kq the kq to service
+ * @param[in] kev the kevent to service
+ * @param[in] ctx the fr_worker_t
  */
-static void fr_worker_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev, UNUSED void *ctx)
+static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
 {
-#if 0
-	fr_channel_event_t what;
-	fr_channel_t *ch;
-	fr_time_t when = fr_time(); /* @todo pass in from caller */
 	fr_worker_t *worker = ctx;
 
-	rad_assert(kev->filter == EVFILT_USER);
-
-	what = fr_channel_service_kevent(worker->aq_control, kev, when, &ch);
-
-	switch (what) {
-		/*
-		 *	The channel exchanged signaling
-		 *	information.  There's nothing for us
-		 *	to do.
-		 */
-	case FR_CHANNEL_EMPTY:
-	case FR_CHANNEL_NOOP:
-	case FR_CHANNEL_DATA_READY_RECEIVER:
-		break;
-
-		/*
-		 *	Data is ready on this channel.  Drain
-		 *	it to the local to_decode heap.
-		 */
-	case FR_CHANNEL_DATA_READY_WORKER:
-		fr_worker_drain_input(worker, ch, NULL);
-		break;
-
-		/*
-		 *	This is a new channel.  Save it.
-		 *
-		 *	@todo open a new channel
-		 */
-	case FR_CHANNEL_OPEN:
-		break;
-
-		/*
-		 *	The channel is closing.  Stop it.
-		 *
-		 *	@todo Close the channel
-		 */
-	case FR_CHANNEL_CLOSE:
-		break;
-
-		/*
-		 *	Oops.  @todo Close the channel
-		 */
-	case FR_CHANNEL_ERROR:
-		return;
-	}
+#ifndef NDEBUG
+	talloc_get_type_abort(worker, fr_worker_t);
 #endif
+
+	(void) fr_control_message_service_kevent(worker->aq_control, kev);
 }
+
 
 /** Decode a request from either the localized queue, or the to_decode queue
  *
@@ -683,6 +642,11 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 
 	worker->el = fr_event_list_create(worker, fr_worker_idle, worker);
 	if (!worker->el) {
+		talloc_free(worker);
+		return NULL;
+	}
+
+	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
 		talloc_free(worker);
 		return NULL;
 	}
