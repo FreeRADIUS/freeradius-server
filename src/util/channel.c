@@ -93,6 +93,8 @@ typedef struct fr_channel_end_t {
 
 	fr_control_t		*control;	//!< the control plane
 
+	void			*ctx;		//!< worker context
+
 	int			num_outstanding; //!< number of outstanding requests with no reply
 
 	size_t			num_signals;	//!< number of kevent signals we've sent
@@ -681,6 +683,10 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
 
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
 	ch->active = false;
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
@@ -701,6 +707,10 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
 
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
 	ch->active = false;
 
 	cc.signal = FR_CHANNEL_SIGNAL_CLOSE;
@@ -709,6 +719,35 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
 
 	return fr_control_message_send(ch->end[FROM_WORKER].control, &cc, sizeof(cc));
 }
+
+/** Add worker-specific data to a channel
+ *
+ * @param[in] ch the channel
+ * @param[in] ctx the context to add.
+ */
+void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx)
+{
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
+	ch->end[FROM_WORKER].ctx = ctx;
+}
+
+
+/** Get worker-specific data from a channel
+ *
+ * @param[in] ch the channel
+ */
+void *fr_channel_worker_ctx_get(fr_channel_t *ch)
+{
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
+	return ch->end[FROM_WORKER].ctx;
+}
+
 
 /** Send a channel to a KQ
  *
