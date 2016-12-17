@@ -49,35 +49,35 @@ typedef struct fr_cursor_s {
 	char const		*type;		//!< If set, used for explicit runtime type safety checks.
 } fr_cursor_t;
 
-void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t *in);
+void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t *in) CC_HINT(nonnull);
 
-void *fr_cursor_head(fr_cursor_t *cursor);
+void *fr_cursor_head(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_tail(fr_cursor_t *cursor);
+void *fr_cursor_tail(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_next(fr_cursor_t *cursor);
+void *fr_cursor_next(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_next_peek(fr_cursor_t *cursor);
+void *fr_cursor_next_peek(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_list_next_peek(fr_cursor_t *cursor);
+void *fr_cursor_list_next_peek(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_list_prev_peek(fr_cursor_t *cursor);
+void *fr_cursor_list_prev_peek(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_current(fr_cursor_t *cursor);
+void *fr_cursor_current(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void fr_cursor_prepend(fr_cursor_t *cursor, void *v);
+void fr_cursor_prepend(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
-void fr_cursor_append(fr_cursor_t *cursor, void *v);
+void fr_cursor_append(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
-void fr_cursor_insert(fr_cursor_t *cursor, void *v);
+void fr_cursor_insert(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 
-void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append);
+void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append) CC_HINT(nonnull);
 
-void *fr_cursor_remove(fr_cursor_t *cursor);
+void *fr_cursor_remove(fr_cursor_t *cursor) CC_HINT(nonnull);
 
-void *fr_cursor_replace(fr_cursor_t *cursor, void *r);
+void *fr_cursor_replace(fr_cursor_t *cursor, void *r) CC_HINT(nonnull);
 
-void fr_cursor_list_free(fr_cursor_t *cursor);
+void fr_cursor_list_free(fr_cursor_t *cursor) CC_HINT(nonnull);
 
 /** Initialise a cursor with runtime talloc type safety checks and a custom iterator
  *

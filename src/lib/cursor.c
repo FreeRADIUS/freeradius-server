@@ -128,8 +128,6 @@ void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t *in)
  */
 void *fr_cursor_head(fr_cursor_t *cursor)
 {
-	if (!cursor->head) return NULL;
-
 	cursor->current = *cursor->head;
 	cursor->prev = NULL;
 
@@ -143,7 +141,7 @@ void *fr_cursor_head(fr_cursor_t *cursor)
  */
 void *fr_cursor_tail(fr_cursor_t *cursor)
 {
-	if (!cursor->head || !*cursor->head) return NULL;
+	if (!*cursor->head) return NULL;
 
 	cursor->current = cursor_tail(&cursor->prev, cursor, cursor->current);
 	cursor->tail = cursor->current;				/* my as well update our insertion tail */
@@ -158,9 +156,9 @@ void *fr_cursor_tail(fr_cursor_t *cursor)
  *	- Next item.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
  */
-void *fr_cursor_next(fr_cursor_t *cursor)
+void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
 {
-	if (!cursor->head || !*cursor->head) return NULL;
+	if (!*cursor->head) return NULL;
 
 	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
@@ -219,7 +217,7 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
  *	- The item the cursor currently points to.
  *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
  */
-void *fr_cursor_current(fr_cursor_t *cursor)
+void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
 {
 	return cursor->current;
 }
@@ -234,12 +232,9 @@ void *fr_cursor_current(fr_cursor_t *cursor)
  * @param cursor to operate on.
  * @param v to insert.
  */
-void fr_cursor_prepend(fr_cursor_t *cursor, void *v)
+void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 {
 	void *old;
-
-	if (!cursor->head) return;				/* cursor must have been initialised */
-	if (!v) return;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->type) _talloc_get_type_abort(v, cursor->type, __location__);
@@ -274,12 +269,9 @@ void fr_cursor_prepend(fr_cursor_t *cursor, void *v)
  * @param[in] cursor to operate on.
  * @param[in] v to insert.
  */
-void fr_cursor_append(fr_cursor_t *cursor, void *v)
+void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
 {
 	void *old;
-
-	if (!cursor->head) return;				/* cursor must have been initialised */
-	if (!v) return;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->type) _talloc_get_type_abort(v, cursor->type, __location__);
@@ -326,9 +318,6 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
 {
 	void *old;
 
-	if (!cursor->head) return;
-	if (!v) return;
-
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->type) _talloc_get_type_abort(v, cursor->type, __location__);
 #endif
@@ -360,9 +349,6 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 {
 	void		*v;
 
-	if (!to_append) return;
-	if (!cursor->head || !to_append->head) return;		/* cursors must have been initialised */
-
 	/*
 	 *	We have to do it the expensive way, as to_append
 	 *	may use a custom iterator function, and so we only
@@ -392,11 +378,10 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
  *	- item we just removed.
  *	- NULL on error.
  */
-void *fr_cursor_remove(fr_cursor_t *cursor)
+void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 {
 	void *v, *p;
 
-	if (!cursor->head) return NULL;				/* cursor must have been initialised */
 	if (!cursor->current) return NULL;			/* don't do anything fancy, it's just a noop */
 
 	v = cursor->current;
@@ -454,11 +439,9 @@ void *fr_cursor_remove(fr_cursor_t *cursor)
  *	- item we just replaced.
  *	- NULL on error.
  */
-void *fr_cursor_replace(fr_cursor_t *cursor, void *r)
+void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 {
 	void *v, *p;
-
-	if (!cursor->head) return NULL;	/* cursor must have been initialised */
 
 	/*
 	 *	Correct behaviour here is debatable
@@ -523,7 +506,7 @@ void fr_cursor_list_free(fr_cursor_t *cursor)
 {
 	void *v;
 
-	if (!*(cursor->head)) return;	/* noop */
+	if (!*cursor->head) return;	/* noop */
 
 	do {
 		v = fr_cursor_remove(cursor);
@@ -541,12 +524,10 @@ void fr_cursor_list_free(fr_cursor_t *cursor)
  * @param[in] type	if iterating over talloced memory.
  * @return the attribute pointed to by v.
  */
-void *_fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
-		      fr_cursor_iter_t iter, void const *ctx, char const *type)
+void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
+				    fr_cursor_iter_t iter, void const *ctx, char const *type)
 {
 	void **v;
-
-	if (!head || !cursor) return NULL;
 
 	memcpy(&v, &head, sizeof(v));			/* stupid const hacks */
 
