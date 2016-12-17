@@ -757,7 +757,7 @@ NEVER_RETURNS void fr_fault(int sig)
 
 		FR_FAULT_LOG("Panic action exited with %i", code);
 
-		fr_exit_now(1);
+		fr_exit_now(128 + sig);
 	}
 
 
@@ -771,7 +771,7 @@ finish:
 
 	raise(sig);
 
-	fr_exit_now(1);		/* Function marked as noreturn */
+	fr_exit_now(128 + sig);		/* Function marked as noreturn */
 }
 
 /** Callback executed on fatal talloc error
@@ -961,12 +961,12 @@ int fr_fault_setup(char const *cmd, char const *program)
 			debug_state = DEBUGGER_STATE_NOT_ATTACHED;	/* i.e. enable signal handlers */
 		/*
 		 *  Figure out if we were started under a debugger
-		 */		 
+		 */
 		} else {
-			if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();		
+			if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
 			debug_state = fr_debug_state;
 		}
-		
+
 		talloc_set_log_fn(_fr_talloc_log);
 
 		/*
