@@ -234,6 +234,8 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 
 			ok = false;
 			for (i = 0; i < worker->max_channels; i++) {
+				if (!worker->channel[i]) continue;
+
 				if (worker->channel[i] != ch) continue;
 
 				/*
@@ -244,7 +246,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 				 *	wake up after a time and try
 				 *	to close it again.
 				 */
-				(void) fr_channel_worker_ack_close(worker->channel[i]);
+				(void) fr_channel_worker_ack_close(ch]);
 
 				ms = fr_channel_worker_ctx_get(ch);
 				rad_assert(ms != NULL);
