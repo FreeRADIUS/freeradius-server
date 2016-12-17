@@ -244,7 +244,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 				 *	wake up after a time and try
 				 *	to close it again.
 				 */
-				(void) fr_channel_worker_ack_close(ch);
+				(void) fr_channel_worker_ack_close(worker->channel[i]);
 
 				ms = fr_channel_worker_ctx_get(ch);
 				rad_assert(ms != NULL);
