@@ -29,13 +29,14 @@
 
 #include <talloc.h>
 #include <string.h>
+#include <stdint.h>
 #include <freeradius-devel/cursor.h>
 
 #define NEXT_PTR(_v) ((void **)(((uint8_t *)(_v)) + cursor->offset))
 
 /** Internal function to get the next attribute
  *
- * @param[in, out] prev	attribute to the one we returned.  May be NULL.
+ * @param[in,out] prev	attribute to the one we returned.  May be NULL.
  * @param[in] cursor	to operate on.
  * @param[in] current	attribute.
  * @return
@@ -77,7 +78,7 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 
 /** Internal function to get the last attribute
  *
- * @param[in, out] prev	attribute to the one we returned.  May be NULL.
+ * @param[in,out] prev	attribute to the one we returned.  May be NULL.
  * @param[in] cursor	to operate on.
  * @param[in] current	attribute.
  * @return the last attribute.
@@ -145,17 +146,17 @@ void *fr_cursor_tail(fr_cursor_t *cursor)
 	if (!cursor->head || !*cursor->head) return NULL;
 
 	cursor->current = cursor_tail(&cursor->prev, cursor, cursor->current);
-	cursor->tail = cursor->current;		/* May as well update our insertion tail */
+	cursor->tail = cursor->current;				/* my as well update our insertion tail */
 
 	return cursor->current;
 }
 
 /** Advanced the cursor to the next item
  *
- * @param cursor to operate on.
+ * @param[in] cursor to operate on.
  * @return
- *	- Next item
- *	- NULL if no more #void in the collection.
+ *	- Next item.
+ *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
  */
 void *fr_cursor_next(fr_cursor_t *cursor)
 {
@@ -168,10 +169,10 @@ void *fr_cursor_next(fr_cursor_t *cursor)
 
 /** Return the next iterator item without advancing the cursor
  *
- * @param cursor to operate on.
+ * @param[in] cursor to operate on.
  * @return
- *	- Next #void.
- *	- NULL if no more #void are in the collection.
+ *	- Next item.
+ *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
  */
 void *fr_cursor_next_peek(fr_cursor_t *cursor)
 {
@@ -187,7 +188,7 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  * @param[in] cursor to operator on.
  * @return
  *	- Next item in list.
- *	- NULL if no next item available.
+ *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
  */
  void *fr_cursor_list_next_peek(fr_cursor_t *cursor)
 {
@@ -214,7 +215,9 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
 /** Return the item the cursor current points to
  *
  * @param[in] cursor to operate on.
- * @return the item the cursor currently points to.
+ * @return
+ *	- The item the cursor currently points to.
+ *	- NULL if the list is empty, or the cursor has advanced past the end of the list.
  */
 void *fr_cursor_current(fr_cursor_t *cursor)
 {
@@ -235,9 +238,12 @@ void fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 {
 	void *old;
 
-	if (!cursor->head) return;		/* cursor must have been initialised */
-
+	if (!cursor->head) return;				/* cursor must have been initialised */
 	if (!v) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (cursor->type) _talloc_get_type_abort(v, cursor->type, __location__);
+#endif
 
 	/*
 	 *	Cursor was initialised with a pointer to a NULL item
@@ -246,9 +252,9 @@ void fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 		*cursor->head = v;
 		cursor->tail = *cursor->head;
 
-		*NEXT_PTR(v) = NULL;		/* Only insert one at a time */
+		*NEXT_PTR(v) = NULL;				/* Only insert one at a time */
 
-		fr_cursor_next(cursor);		/* Update current */
+		fr_cursor_next(cursor);				/* Update current */
 
 		return;
 	}
@@ -265,10 +271,8 @@ void fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 
 /** Insert a single item at the end of the list
  *
- * @note If the cursor already advanced
- *
- * @param cursor to operate on.
- * @param v to insert.
+ * @param[in] cursor to operate on.
+ * @param[in] v to insert.
  */
 void fr_cursor_append(fr_cursor_t *cursor, void *v)
 {
@@ -276,6 +280,10 @@ void fr_cursor_append(fr_cursor_t *cursor, void *v)
 
 	if (!cursor->head) return;				/* cursor must have been initialised */
 	if (!v) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (cursor->type) _talloc_get_type_abort(v, cursor->type, __location__);
+#endif
 
 	/*
 	 *	Cursor was initialised with a pointer to a NULL item
@@ -318,6 +326,13 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
 {
 	void *old;
 
+	if (!cursor->head) return;
+	if (!v) return;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (cursor->type) _talloc_get_type_abort(v, cursor->type, __location__);
+#endif
+
 	if (!cursor->current) {
 		fr_cursor_append(cursor, v);
 		return;
@@ -343,27 +358,17 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
  */
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 {
-	void		*v, *t;
+	void		*v;
 
 	if (!to_append) return;
-	if (!cursor->head || !to_append->head) return;	/* cursor must have been initialised */
-
-	v = fr_cursor_current(to_append);
-	if (!v) return;
-
-	t = cursor_tail(NULL, cursor, cursor->current);
-	if (t) {
-		*NEXT_PTR(t) = v;
-	} else {
-		*(cursor->head) = v;
-	}
+	if (!cursor->head || !to_append->head) return;		/* cursors must have been initialised */
 
 	/*
-	 *	Fixup from cursor
+	 *	We have to do it the expensive way, as to_append
+	 *	may use a custom iterator function, and so we only
+	 *	merge a subset of the items.
 	 */
-	if (to_append->prev) *NEXT_PTR(to_append->prev) = NULL;
-	to_append->current = NULL;
-	if (to_append->tail == v) to_append->tail = to_append->prev;
+	while ((v = fr_cursor_remove(to_append))) fr_cursor_append(cursor, v);
 }
 
 /** Remove the current item
@@ -382,7 +387,7 @@ void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
    }
  @endcode
  *
- * @param cursor to remove the current item from.
+ * @param[in] cursor to remove the current item from.
  * @return
  *	- item we just removed.
  *	- NULL on error.
@@ -443,10 +448,10 @@ void *fr_cursor_remove(fr_cursor_t *cursor)
  * After replacing the current item, the cursor will be rewound,
  * and the next item selected by the iterator function will become current.
  *
- * @param cursor	to replace the current item in.
- * @param r		#void to insert.
+ * @param[in] cursor	to replace the current item in.
+ * @param[in] r		item to insert.
  * @return
- *	- #void we just replaced.
+ *	- item we just replaced.
  *	- NULL on error.
  */
 void *fr_cursor_replace(fr_cursor_t *cursor, void *r)
@@ -467,7 +472,7 @@ void *fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	p = cursor->prev;
 
 	/*
-	 *	...item must be at the head of the list.
+	 *	Item at the head of the list.
 	 */
 	if (*cursor->head == v) {
 		*cursor->head = r;
@@ -482,13 +487,13 @@ void *fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	  */
 	if (cursor->current) {
 		cursor->current = p;
-		cursor->prev = NULL;			/* populated on next call to fr_cursor_next */
+		cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
 	}
 
 	/*
 	 *	Fixup tail pointer.
 	 */
-	if (cursor->tail == v) cursor->tail = r;	/* set tail to the replacement */
+	if (cursor->tail == v) cursor->tail = r;		/* set tail to the replacement */
 
 	/*
 	 *	re-advance the cursor.
@@ -512,7 +517,7 @@ void *fr_cursor_replace(fr_cursor_t *cursor, void *r)
  *
  * Current should be the item *after* the one freed.
  *
- * @param cursor to free items in.
+ * @param[in] cursor to free items in.
  */
 void fr_cursor_list_free(fr_cursor_t *cursor)
 {
@@ -550,6 +555,7 @@ void *_fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
 	cursor->prev = cursor->current = NULL;
 	cursor->iter = iter;
 	cursor->offset = offset;
+	cursor->type = type;
 	memcpy(&cursor->ctx, &ctx, sizeof(cursor->ctx));
 
 	if (*head) return fr_cursor_next(cursor);	/* Initialise current */
@@ -559,7 +565,7 @@ void *_fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
 
 #ifdef TESTING
 /*
- *  cc cursor.c -g3 -Wall -DTESTING -I../include -l talloc -o test_cursor && ./test_cursor
+ *  cc cursor.c -g3 -Wall -DTESTING -I../ -l talloc -o test_cursor && ./test_cursor
  */
 #include <stddef.h>
 #include <freeradius-devel/cutest.h>
