@@ -1,4 +1,4 @@
->/*
+/*
  * worker_test.c	Tests for channels
  *
  * Version:	$Id$
