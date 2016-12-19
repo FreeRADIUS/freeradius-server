@@ -1840,7 +1840,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 	}
 }
 
-static int  _rs_event_status(struct timeval *wake, UNUSED void *ctx)
+static int  _rs_event_status(UNUSED void *ctx, struct timeval *wake)
 {
 	if (wake && ((wake->tv_sec != 0) || (wake->tv_usec >= 100000))) {
 		DEBUG2("Waking up in %d.%01u seconds.", (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
