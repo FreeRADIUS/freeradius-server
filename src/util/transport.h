@@ -125,6 +125,7 @@ typedef struct fr_transport_t {
  *	Minimal data structure to use the new code.
  */
 struct rad_request {
+	uint64_t		number;
 	int			heap_id;
 
 	fr_dlist_t		time_order;		//!< tracking requests by time order
