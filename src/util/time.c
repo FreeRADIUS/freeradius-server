@@ -193,7 +193,12 @@ void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracki
 	 */
 	worker->running += tt->running;
 	worker->waiting += tt->waiting;
-	worker->predicted = RTT(worker->predicted, tt->running);
+
+	if (!worker->predicted) {
+		worker->predicted = tt->running;
+	} else {
+		worker->predicted = RTT(worker->predicted, tt->running);
+	}
 }
 
 

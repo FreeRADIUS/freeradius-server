@@ -281,7 +281,12 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 	master->sequence = sequence;
 	message_interval = when - master->last_write;
-	master->message_interval = RTT(master->message_interval, message_interval);
+
+	if (!master->message_interval) {
+		master->message_interval = message_interval;
+	} else {
+		master->message_interval = RTT(master->message_interval, message_interval);
+	}
 
 	rad_assert(master->last_write <= when);
 	master->last_write = when;
