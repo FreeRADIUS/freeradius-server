@@ -113,6 +113,7 @@ struct fr_worker_t {
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_dlist_t		time_order;	//!< time order of requests
 
+	int			num_requests;	//!< number of requests processed by this worker
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
 	uint32_t       		num_transports;	//!< how many transport layers we have
@@ -164,6 +165,7 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	}
 
 	do {
+		worker->num_requests++;
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
@@ -985,6 +987,7 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 {
 	fprintf(fp, "\tkq = %d\n", worker->kq);
 	fprintf(fp, "\tnum_channels = %d\n", worker->num_channels);
+	fprintf(fp, "\tnum_requests = %d\n", worker->num_requests);
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 
