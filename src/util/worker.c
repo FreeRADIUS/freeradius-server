@@ -224,6 +224,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 
 				worker->num_channels++;
 				ok = true;
+				break;
 			}
 
 			rad_cond_assert(ok);
