@@ -148,12 +148,6 @@ struct fr_worker_t {
 		if (_var) FR_DLIST_REMOVE(_var->_member); \
 	} while (0)
 
-#define WORKER_HEAP_EXTRACT(_name, _var, _member) do { \
-		(void) fr_heap_extract(worker->_name.heap, _var); \
-		FR_DLIST_REMOVE(_var->_member); \
-	} while (0)
-
-
 /** Drain the input channel
  *
  * @param[in] worker the worker
