@@ -335,7 +335,7 @@ redo:
 	rad_assert(cd->transport <= worker->num_transports);
 	rad_assert(worker->transports[cd->transport] != NULL);
 
-	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, &request);
+	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
 		talloc_free(ctx);
 		return NULL;
@@ -936,6 +936,11 @@ void worker_resume_request(REQUEST *request)
 }
 #endif
 
+/** Print debug information about the worker structure
+ *
+ * @param[in] worker the worker
+ * @param[in] fp the file where the debug output is printed.
+ */
 void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 {
 	fprintf(fp, "Worker %p\n", worker);
@@ -944,4 +949,23 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 
+}
+
+/** Create a channel to the worker
+ *
+ *  Called by the master (i.e. network) thread when it needs to create
+ *  a new channel to a particuler worker.
+ *
+ * @param[in] ctx the masters context where the channel will be created
+ * @param[in] worker the worker
+ * @param[in] kq_master the KQ for the master
+ * @param[in] aq_master the atomic queue of the master, where control data will be sent
+ */
+fr_channel_t *fr_worker_channel_create(TALLOC_CTX *ctx, fr_worker_t const *worker, int kq_master, fr_atomic_queue_t *aq_master)
+{
+#ifndef NDEBUG
+	talloc_get_type_abort(worker, fr_worker_t);
+#endif
+
+	return fr_channel_create(ctx, kq_master, aq_master, worker->kq, worker->aq_control);
 }

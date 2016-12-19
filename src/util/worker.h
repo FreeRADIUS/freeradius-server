@@ -50,6 +50,7 @@ fr_atomic_queue_t *fr_worker_control_plane(fr_worker_t *worker) CC_HINT(nonnull)
 void fr_worker(fr_worker_t *worker) CC_HINT(nonnull);
 void fr_worker_exit(fr_worker_t *worker) CC_HINT(nonnull);
 void fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
+fr_channel_t *fr_worker_channel_create(TALLOC_CTX *ctx, fr_worker_t const *worker, int kq_master, fr_atomic_queue_t *aq_master) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

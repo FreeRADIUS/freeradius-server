@@ -77,7 +77,7 @@ typedef struct fr_transport_t fr_transport_t;
 /**
  *  Have a raw packet, and decode it to a REQUEST
  */
-typedef int (*fr_transport_decode_t)(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST **p_request);
+typedef int (*fr_transport_decode_t)(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request);
 
 /**
  *  Have a REQUEST, and encode it to raw packet.
