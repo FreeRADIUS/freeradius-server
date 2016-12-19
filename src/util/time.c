@@ -239,3 +239,26 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 	 */
 	FR_DLIST_REMOVE(tt->list);
 }
+
+
+/** Print debug information about the time tracking structure
+ *
+ */
+void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
+{
+#define DPRINT(_x) fprintf(fp, "\t" #_x " = %zd\n", tt->_x);
+
+	fprintf(fp, "Absolute timers\n");
+	DPRINT(start);
+	DPRINT(end);
+	DPRINT(when);
+
+	fprintf(fp, "When it last yielded / resumed\n");
+	DPRINT(yielded);
+	DPRINT(resumed);
+
+	fprintf(fp, "Time spent processing this request\n");
+	DPRINT(predicted);
+	DPRINT(running);
+	DPRINT(waiting);
+}

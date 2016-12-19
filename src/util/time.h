@@ -30,6 +30,7 @@ RCSIDH(time_h, "$Id$")
  */
 #include <freeradius-devel/missing.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,6 +98,7 @@ void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonn
 void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker) CC_HINT(nonnull);
 void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when) CC_HINT(nonnull);
+void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
