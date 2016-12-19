@@ -751,6 +751,35 @@ void *fr_channel_worker_ctx_get(fr_channel_t *ch)
 }
 
 
+/** Add master-specific data to a channel
+ *
+ * @param[in] ch the channel
+ * @param[in] ctx the context to add.
+ */
+void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
+{
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
+	ch->end[TO_WORKER].ctx = ctx;
+}
+
+
+/** Get master-specific data from a channel
+ *
+ * @param[in] ch the channel
+ */
+void *fr_channel_master_ctx_get(fr_channel_t *ch)
+{
+#ifndef NDEBUG
+	talloc_get_type_abort(ch, fr_channel_t);
+#endif
+
+	return ch->end[TO_WORKER].ctx;
+}
+
+
 /** Send a channel to a KQ
  *
  * @param[in] ch the channel
