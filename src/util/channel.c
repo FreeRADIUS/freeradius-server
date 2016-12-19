@@ -238,7 +238,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 }
 
 #define IALPHA (8)
-#define RTT(_old, _new) ((_old + ((IALPHA - 1) * _new)) / IALPHA)
+#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
 
 /** Send a request message into the channel
  *

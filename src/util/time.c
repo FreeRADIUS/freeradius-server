@@ -166,7 +166,7 @@ void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when)
 
 
 #define IALPHA (8)
-#define RTT(_old, _new) ((_old + ((IALPHA - 1) * _new)) / IALPHA)
+#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
 
 /** End time tracking for this request.
  *
