@@ -67,6 +67,15 @@ RCSID("$Id$")
 #include <freeradius-devel/util/message.h>
 #include <freeradius-devel/rad_assert.h>
 
+/*
+ *	Debugging, mainly for worker_test
+ */
+#if 0
+#define MPRINT(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define MPRINT(...)
+#endif
+
 /**
  *  Track things by priority and time.
  */
@@ -211,9 +220,12 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 
 			ok = false;
 			for (i = 0; i < worker->max_channels; i++) {
+				rad_assert(worker->channel[i] != ch);
+
 				if (worker->channel[i] != NULL) continue;
 
 				worker->channel[i] = ch;
+				MPRINT("\treceived channel %p into array entry %d\n", ch, i);
 				(void) fr_channel_worker_receive_open(ctx, ch);
 
 				ms = fr_message_set_create(worker, worker->message_set_size,
@@ -895,12 +907,14 @@ void fr_worker(fr_worker_t *worker)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
+		MPRINT("\tWaiting for events %d\n", wait_for_event);
 
 		/*
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
 		num_events = fr_event_corral(worker->el, wait_for_event);
+		MPRINT("\tGot num_events %d\n", num_events);
 		if (num_events < 0) break;
 
 		/*
@@ -913,7 +927,10 @@ void fr_worker(fr_worker_t *worker)
 		/*
 		 *	Ten times a second, check for timeouts on incoming packets.
 		 */
-		if ((now - worker->checked_timeout) > (NANOSEC / 10)) fr_worker_check_timeouts(worker, now);
+		if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
+			MPRINT("checking timeouts\n");
+			fr_worker_check_timeouts(worker, now);
+		}
 
 		/*
 		 *	Get a runnable request.  If there isn't one, continue.
@@ -925,6 +942,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Run the request, and either track it as
 		 *	yielded, or send a reply.
 		 */
+		MPRINT("\trunning request %p\n", request);
 		fr_worker_run_request(worker, request);
 	}
 }
