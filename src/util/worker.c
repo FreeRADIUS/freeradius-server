@@ -158,9 +158,13 @@ struct fr_worker_t {
  */
 static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_channel_data_t *cd)
 {
-	if (!cd) cd = fr_channel_recv_request(ch);
+	if (!cd) {
+		cd = fr_channel_recv_request(ch);
+		if (!cd) return;
+	}
 
 	do {
+		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
 }
@@ -314,7 +318,7 @@ redo:
 	 *	This message has asynchronously aged out while it was
 	 *	in the queue.  Delete it, and go get another one.
 	 */
-	if (cd->m.when != *cd->request.start_time) {
+	if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
 		fr_message_done(&cd->m);
 		goto redo;
 	}
@@ -371,6 +375,11 @@ redo:
 	request->runnable = worker->runnable;
 	request->el = worker->el;
 	request->packet_ctx = cd->ctx;
+
+	/*
+	 *	Hoist run-time checks here.
+	 */
+	if (!cd->request.start_time) request->original_recv_time = &request->recv_time;
 
 	/*
 	 *	New requests are inserted into the time order list in
@@ -542,7 +551,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	active, run it.  Otherwise, tell it that it's done.
 	 */
 	if ((*request->original_recv_time == request->recv_time) &&
-	    (fr_channel_active(request->channel))) {
+	    fr_channel_active(request->channel)) {
 		final = request->process_async(request, FR_TRANSPORT_ACTION_RUN);
 
 	} else {
@@ -591,7 +600,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	/*
 	 *	Encode it.
 	 */
-	size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.data_size);
+	size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
 	if (size < 0) {
 		fr_message_done(&reply->m);
 		goto fail;
