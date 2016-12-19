@@ -105,6 +105,7 @@ typedef struct fr_channel_end_t {
 
 	uint64_t		sequence;	//!< sequence number for this channel.
 	uint64_t		ack;		//!< sequence number of the other end
+	uint64_t		their_view_of_my_sequence;	//!< should be clear
 
 	uint64_t		sequence_at_last_signal; //!< when we last signaled
 
@@ -357,6 +358,7 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 
 	master->num_outstanding--;
 	master->ack = cd->live.sequence;
+	master->their_view_of_my_sequence = cd->live.ack;
 
 	rad_assert(master->last_read_other <= cd->m.when);
 	master->last_read_other = cd->m.when;
@@ -388,6 +390,7 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 
 	worker->num_outstanding++;
 	worker->ack = cd->live.sequence;
+	worker->their_view_of_my_sequence = cd->live.ack;
 
 	rad_assert(worker->last_read_other <= cd->m.when);
 	worker->last_read_other = cd->m.when;
@@ -415,10 +418,9 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 {
 	uint64_t sequence;
 	fr_time_t when, message_interval;
-	fr_channel_end_t *worker, *master;
+	fr_channel_end_t *worker;
 
 	worker = &(ch->end[FROM_WORKER]);
-	master = &(ch->end[TO_WORKER]);
 
 	when = cd->m.when;
 
@@ -458,7 +460,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 
 	MPRINT("\twhen - last_read_other = %zd - %zd = %zd\n", when, worker->last_read_other, when - worker->last_read_other);
 	MPRINT("\twhen - ast signal = %zd - %zd = %zd\n", when, worker->last_sent_signal, when - worker->last_sent_signal);
-	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", worker->sequence, master->ack, worker->sequence - master->ack);
+	MPRINT("\tsequence - ack = %zd - %zd = %zd\n", worker->sequence, worker->their_view_of_my_sequence, worker->sequence - worker->their_view_of_my_sequence);
 
 #ifdef __APPLE__
 	/*
@@ -469,7 +471,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	But... this doesn't appear to work on the Linux
 	 *	libkqueue implementation.
 	 */
-	if (worker->sequence_at_last_signal > master->ack) return 0;
+	if (worker->sequence_at_last_signal > worker->their_view_of_my_sequence) return 0;
 #endif
 
 	/*
@@ -481,8 +483,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	FIXME: make these limits configurable, or include
 	 *	predictions about packet processing time?
 	 */
-	rad_assert(master->ack <= worker->sequence);
-	if (((worker->sequence - master->ack) <= 1000) &&
+	rad_assert(worker->their_view_of_my_sequence <= worker->sequence);
+	if (((worker->sequence - worker->their_view_of_my_sequence) <= 1000) &&
 	    ((when - worker->last_read_other < SIGNAL_INTERVAL) ||
 	     ((when - worker->last_sent_signal) < SIGNAL_INTERVAL))) {
 		MPRINT("WORKER SKIPS\n");
