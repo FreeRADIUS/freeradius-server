@@ -71,7 +71,7 @@ RCSID("$Id$")
  *	Debugging, mainly for worker_test
  */
 #if 0
-#define MPRINT(...) fprintf(stderr, __VA_ARGS__)
+#define MPRINT(...) fprintf(stdout, __VA_ARGS__)
 #else
 #define MPRINT(...)
 #endif
@@ -114,6 +114,9 @@ struct fr_worker_t {
 	fr_dlist_t		time_order;	//!< time order of requests
 
 	int			num_requests;	//!< number of requests processed by this worker
+	int			num_decoded;
+	int			num_replies;
+
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
 	uint32_t       		num_transports;	//!< how many transport layers we have
@@ -137,7 +140,7 @@ struct fr_worker_t {
 
 #define WORKER_HEAP_INSERT(_name, _var, _member) do { \
 		FR_DLIST_INSERT_HEAD(worker->_name.list, _var->_member); \
-		(void) fr_heap_insert(worker->_name.heap, _var);	\
+		(void) fr_heap_insert(worker->_name.heap, _var);        \
 	} while (0)
 
 #define WORKER_HEAP_POP(_name, _var, _member) do { \
@@ -161,11 +164,15 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 {
 	if (!cd) {
 		cd = fr_channel_recv_request(ch);
-		if (!cd) return;
+		if (!cd) {
+			MPRINT("\tno data?\n");
+			return;
+		}
 	}
 
 	do {
 		worker->num_requests++;
+		MPRINT("\tWORKER received request %zd\n", worker->num_requests);
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
@@ -189,6 +196,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 #endif
 
 	if (!fr_control_message_service_kevent(worker->aq_control, kev)) {
+		MPRINT("\tWORKER kevent not for us!\n");
 		return;
 	}
 
@@ -206,22 +214,32 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 		ce = fr_channel_service_aq(worker->aq_control, now, &ch);
 		switch (ce) {
 		case FR_CHANNEL_ERROR:
+			MPRINT("\tWORKER aq error\n");
+			return;
+
+
 		case FR_CHANNEL_EMPTY:
+			MPRINT("\tWORKER aq empty\n");
 			return;
 
 		case FR_CHANNEL_NOOP:
+			MPRINT("\tWORKER aq noop\n");
 			continue;
 
 		case FR_CHANNEL_DATA_READY_RECEIVER:
 			rad_assert(0 == 1);
+			MPRINT("\tWORKER aq data ready ? MASTER ?\n");
 			break;
 
 		case FR_CHANNEL_DATA_READY_WORKER:
 			rad_assert(ch != NULL);
+			MPRINT("\tWORKER aq data ready\n");
 			fr_worker_drain_input(worker, ch, NULL);
 			break;
 
 		case FR_CHANNEL_OPEN:
+			MPRINT("\tWORKER aq channel open\n");
+
 			rad_assert(ch != NULL);
 
 			ok = false;
@@ -249,6 +267,8 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 			break;
 
 		case FR_CHANNEL_CLOSE:
+			MPRINT("\tWORKER aq channel close\n");
+
 			rad_assert(ch != NULL);
 
 			ok = false;
@@ -316,11 +336,14 @@ redo:
 	}
 	if (!cd) return NULL;
 
+	worker->num_decoded++;
+
 	/*
 	 *	This message has asynchronously aged out while it was
 	 *	in the queue.  Delete it, and go get another one.
 	 */
 	if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
+		MPRINT("\tIGNORING old message\n");
 		fr_message_done(&cd->m);
 		goto redo;
 	}
@@ -354,12 +377,6 @@ redo:
 	rad_assert(cd->transport <= worker->num_transports);
 	rad_assert(worker->transports[cd->transport] != NULL);
 
-	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
-	if (rcode < 0) {
-		talloc_free(ctx);
-		return NULL;
-	}
-
 	/*
 	 *	Update the transport-specific fields.
 	 *
@@ -379,9 +396,24 @@ redo:
 	request->packet_ctx = cd->ctx;
 
 	/*
+	 *	Now that the "request" structure has been initialized, go decode the packet.
+	 */
+	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
+	if (rcode < 0) {
+		MPRINT("\tFAILED decode of request %zd\n", request->number);
+		talloc_free(ctx);
+		return NULL;
+	}
+
+	/*
 	 *	Hoist run-time checks here.
 	 */
 	if (!cd->request.start_time) request->original_recv_time = &request->recv_time;
+
+	/*
+	 *	We're done with this message.
+	 */
+	fr_message_done(&cd->m);
 
 	/*
 	 *	New requests are inserted into the time order list in
@@ -389,11 +421,6 @@ redo:
 	 *	are only removed when the request is freed.
 	 */
 	FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
-
-	/*
-	 *	We're done with this message.
-	 */
-	fr_message_done(&cd->m);
 
 	/*
 	 *	Bootstrap the async state machine with the initial
@@ -424,6 +451,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	fr_time_t waiting;
 	fr_dlist_t *entry;
 
+#if 0
 	/*
 	 *	Check the "localized" queue for old packets.
 	 *
@@ -476,6 +504,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		WORKER_HEAP_INSERT(localized, cd, request.list);
 	}
+#endif
 
 	/*
 	 *	Check the "runnable" queue for old requests.
@@ -604,6 +633,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 */
 	size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
 	if (size < 0) {
+		MPRINT("\tWORKER failes encode\n");
 		fr_message_done(&reply->m);
 		goto fail;
 	}
@@ -638,7 +668,12 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
-	(void) fr_channel_send_reply(ch, reply, &cd);
+	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
+		MPRINT("\tWORKER failes sending reply\n");
+		cd = NULL;
+	}
+
+	worker->num_replies++;
 
 	/*
 	 *	Drain the incoming TO_WORKER queue.  We do this every
@@ -700,6 +735,13 @@ static int fr_worker_idle(void *ctx, struct timeval *wake)
 	 */
 	if (!sleeping) return 1;
 
+	MPRINT("\tWORKER sleeping running %zd, localized %zd, to_decode %zd\n",
+	       fr_heap_num_elements(worker->runnable),
+	       fr_heap_num_elements(worker->localized.heap),
+	       fr_heap_num_elements(worker->to_decode.heap));
+	MPRINT("\tWORKER requests %d, decoded %d, replied %d\n",
+	       worker->num_requests, worker->num_decoded, worker->num_replies);
+
 	/*
 	 *	Nothing more to do, and the event loop has us sleeping
 	 *	for a period of time.  Signal the producers that we're
@@ -714,6 +756,9 @@ static int fr_worker_idle(void *ctx, struct timeval *wake)
 	return 0;
 }
 
+/**
+ *  Track a channel in the "to_decode" or "localized" heap.
+ */
 static int worker_message_cmp(void const *one, void const *two)
 {
 	fr_channel_data_t const *a = one;
@@ -729,8 +774,8 @@ static int worker_message_cmp(void const *one, void const *two)
 }
 
 /**
-*
-*/
+ *  Track a REQUEST in the "running" heap.
+ */
 static int worker_request_cmp(void const *one, void const *two)
 {
 	REQUEST const *a = one;
@@ -931,7 +976,10 @@ void fr_worker(fr_worker_t *worker)
 		/*
 		 *	Service outstanding events.
 		 */
-		if (num_events > 0) fr_event_service(worker->el);
+		if (num_events > 0) {
+			MPRINT("\tservicing events\n");
+			fr_event_service(worker->el);
+		}
 
 		now = fr_time();
 
@@ -939,7 +987,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Ten times a second, check for timeouts on incoming packets.
 		 */
 		if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
-			MPRINT("checking timeouts\n");
+			MPRINT("\tchecking timeouts\n");
 			fr_worker_check_timeouts(worker, now);
 		}
 
