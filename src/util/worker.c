@@ -983,7 +983,6 @@ void worker_resume_request(REQUEST *request)
  */
 void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 {
-	fprintf(fp, "Worker %p\n", worker);
 	fprintf(fp, "\tkq = %d\n", worker->kq);
 	fprintf(fp, "\tnum_channels = %d\n", worker->num_channels);
 
