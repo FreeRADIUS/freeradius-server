@@ -1,4 +1,4 @@
-/*
+>/*
  * worker_test.c	Tests for channels
  *
  * Version:	$Id$
@@ -29,9 +29,8 @@ RCSID("$Id$")
 #	include <getopt.h>
 #endif
 
-#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#endif
+#include <signal.h>
 
 #include <sys/event.h>
 
