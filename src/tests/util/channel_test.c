@@ -244,6 +244,7 @@ check_close:
 				break;
 
 			case FR_CHANNEL_NOOP:
+				MPRINT1("Master got NOOP\n");
 				break;
 
 			default:
