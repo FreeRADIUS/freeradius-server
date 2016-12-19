@@ -60,7 +60,7 @@ typedef	void (*fr_event_callback_t)(struct timeval *now, void *ctx);
  * @param[in] now	The current time.
  * @param[in] ctx	User ctx passed to #fr_event_list_create.
  */
-typedef	int (*fr_event_status_t)(struct timeval *now, void *ctx);
+typedef	int (*fr_event_status_t)(void *ctx, struct timeval *now);
 
 /** Called when an IO event occurs on a file descriptor
  *

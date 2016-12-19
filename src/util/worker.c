@@ -641,11 +641,18 @@ fail:
  * @param[in] ctx the worker
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_worker_idle(struct timeval *wake, void *ctx)
+static int fr_worker_idle(void *ctx, struct timeval *wake)
 {
 	bool sleeping;
 	int i;
 	fr_worker_t *worker = ctx;
+
+#ifndef NDEBUG
+	talloc_get_type_abort(worker, fr_worker_t);
+	rad_assert(worker->runnable != NULL);
+	rad_assert(worker->to_decode.heap != NULL);
+	rad_assert(worker->localized.heap != NULL);
+#endif
 
 	/*
 	 *	The application is polling the event loop, but has

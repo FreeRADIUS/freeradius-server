@@ -4773,7 +4773,7 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 }
 
 
-static int event_status(struct timeval *wake, UNUSED void *ctx)
+static int event_status(UNUSED void *ctx, struct timeval *wake)
 {
 	if (rad_debug_lvl == 0) {
 		if (just_started) {
