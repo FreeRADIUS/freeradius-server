@@ -243,6 +243,8 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 
 /** Print debug information about the time tracking structure
  *
+ * @param[in] tt the time tracking structure
+ * @param[in] fp the file where the debug output is printed.
  */
 void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
 {
