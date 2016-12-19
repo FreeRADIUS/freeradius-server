@@ -789,8 +789,13 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 		return NULL;
 	}
 
+	/*
+	 *	@todo make these configurable
+	 */
 	worker->max_channels = max_channels;
 	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
+	worker->message_set_size = 1024;
+	worker->ring_buffer_size = (1 << 16);
 
 	worker->el = fr_event_list_create(worker, fr_worker_idle, worker);
 	if (!worker->el) {
