@@ -1038,6 +1038,8 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 	fprintf(fp, "\tnum_requests = %d\n", worker->num_requests);
 
 	fr_time_tracking_debug(&worker->tracking, fp);
+	fprintf(fp, "\tcalculated (predicted) total CPU time = %zd\n", worker->tracking.predicted * worker->num_requests);
+	fprintf(fp, "\tcalculated (counted) predicted per request time = %zd\n", worker->tracking.running / worker->num_requests);
 
 }
 
