@@ -114,8 +114,9 @@ struct fr_worker_t {
 	fr_dlist_t		time_order;	//!< time order of requests
 
 	int			num_requests;	//!< number of requests processed by this worker
-	int			num_decoded;
-	int			num_replies;
+	int			num_decoded;	//!< number of messages which have been decoded
+	int			num_replies;	//!< number of messages which were replied to
+	int			num_timeouts;	//!< number of messages which timed out
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
@@ -147,6 +148,11 @@ struct fr_worker_t {
 		_var = fr_heap_pop(worker->_name.heap); \
 		if (_var) FR_DLIST_REMOVE(_var->_member); \
 	} while (0)
+
+#define WORKER_HEAP_EXTRACT(_name, _var, _member) do { \
+               (void) fr_heap_extract(worker->_name.heap, _var); \
+               FR_DLIST_REMOVE(_var->_member); \
+       } while (0)
 
 /** Drain the input channel
  *
@@ -428,6 +434,76 @@ redo:
 	return request;
 }
 
+
+/** Send a NAK to the network thread
+ *
+ *  The network thread believes that a worker is running a request until that request has been NAK'd.
+ *
+ * @param[in] worker the worker
+ * @param[in] cd the message to NAK
+ * @param[in] now when the message is NAKd
+ */
+static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
+{
+	size_t size;
+	fr_channel_data_t *reply;
+	fr_channel_t *ch;
+	fr_message_set_t *ms;
+
+	worker->num_timeouts++;
+
+	/*
+	 *	Cache the outbound channel.  We'll need it later.
+	 */
+	ch = cd->channel.ch;
+
+	ms = fr_channel_worker_ctx_get(ch);
+	rad_assert(ms != NULL);
+
+	/*
+	 *	@todo make the reservation size transport-specific
+	 */
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, 1024);
+	rad_assert(reply != NULL);
+
+	/*
+	 *	Encode a NAK
+	 */
+	size = worker->transports[cd->transport]->nak(cd->ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
+
+	(void) fr_message_alloc(ms, &reply->m, size);
+
+	/*
+	 *	Fill in the NAK.
+	 */
+	reply->m.when = now;
+	reply->reply.cpu_time = worker->tracking.running;
+	reply->reply.processing_time = 0;
+	reply->reply.request_time = cd->m.when;
+
+	reply->ctx = cd->ctx;
+	reply->priority = cd->priority;
+	reply->transport = cd->transport;
+
+	/*
+	 *	Mark the original message as done.
+	 */
+	fr_message_done(&cd->m);
+
+	/*
+	 *	Send the reply, which also polls the request queue.
+	 */
+	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
+		MPRINT("\tWORKER fails sending reply\n");
+		cd = NULL;
+	}
+
+	worker->num_replies++;
+
+	if (cd) fr_worker_drain_input(worker, ch, cd);
+}
+
+
 #define fr_ptr_to_type(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
 
 /** Check timeouts on the various queues
@@ -445,7 +521,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	fr_time_t waiting;
 	fr_dlist_t *entry;
 
-#if 0
 	/*
 	 *	Check the "localized" queue for old packets.
 	 *
@@ -464,7 +539,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 *	Waiting too long, delete it.
 		 */
 		WORKER_HEAP_EXTRACT(localized, cd, request.list);
-		fr_message_done(&cd->m);
+		fr_worker_nak(worker, cd, now);
 	}
 
 	/*
@@ -485,7 +560,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		if (waiting > NANOSEC) {
 			WORKER_HEAP_EXTRACT(to_decode, cd, request.list);
 		nak:
-			fr_message_done(&cd->m);
+			fr_worker_nak(worker, cd, now);
 			continue;
 		}
 
@@ -498,7 +573,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		WORKER_HEAP_INSERT(localized, cd, request.list);
 	}
-#endif
 
 	/*
 	 *	Check the "runnable" queue for old requests.
@@ -627,7 +701,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 */
 	size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
 	if (size < 0) {
-		MPRINT("\tWORKER failes encode\n");
+		MPRINT("\tWORKER fails encode\n");
 		fr_message_done(&reply->m);
 		goto fail;
 	}
@@ -663,7 +737,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	Send the reply, which also polls the request queue.
 	 */
 	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
-		MPRINT("\tWORKER failes sending reply\n");
+		MPRINT("\tWORKER fails sending reply\n");
 		cd = NULL;
 	}
 

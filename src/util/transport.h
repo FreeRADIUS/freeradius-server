@@ -80,6 +80,13 @@ typedef struct fr_transport_t fr_transport_t;
 typedef int (*fr_transport_decode_t)(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request);
 
 /**
+ *  Have a raw packet, and send a NAK.  This function MUST NOT fail.
+ *  It must always return some data.
+ */
+typedef size_t (*fr_transport_nak_t)(void const *packet_ctx, uint8_t *const packet, size_t packet_len,
+				      uint8_t *reply, size_t reply_len);
+
+/**
  *  Have a REQUEST, and encode it to raw packet.
  */
 typedef ssize_t (*fr_transport_encode_t)(void const *packet_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
@@ -115,6 +122,7 @@ typedef struct fr_transport_t {
 	fr_transport_recv_request_t	recv_request;	//!< function to receive a request (worker -> master)
 	fr_transport_decode_t		decode;		//!< function to decode packet to request (worker)
 	fr_transport_encode_t		encode;		//!< function to encode request to packet (worker)
+	fr_transport_nak_t		nak;		//!< function to send a NAK
 	fr_transport_send_reply_t	send_reply;	//!< function to send a reply (worker -> master)
 	fr_transport_process_t		process;	//!< process a request
 } fr_transport_t;

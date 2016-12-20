@@ -57,6 +57,7 @@ static int		max_control_plane = 0;
 static int		max_outstanding = 1;
 static bool		touch_memory = false;
 static int		num_workers = 1;
+static bool		quiet = false;
 static fr_schedule_worker_t workers[MAX_WORKERS];
 
 static void NEVER_RETURNS usage(void)
@@ -65,6 +66,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -c <control-plane>     Size of the control plane queue.\n");
 	fprintf(stderr, "  -m <messages>	  Send number of messages.\n");
 	fprintf(stderr, "  -o <outstanding>       Keep number of messages outstanding.\n");
+	fprintf(stderr, "  -q                     quiet - suppresses worker stats.\n");
 	fprintf(stderr, "  -t                     Touch memory for fake packets.\n");
 	fprintf(stderr, "  -w N                   Create N workers.  Default is 1.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
@@ -93,6 +95,21 @@ static ssize_t test_encode(void const *packet_ctx, REQUEST *request, uint8_t *co
 	return data_len;
 }
 
+static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t packet_len, uint8_t *reply, UNUSED size_t reply_len)
+{
+	uint32_t number;
+
+	/*
+	 *	The data is the packet number.
+	 */
+	memcpy(&number, packet, sizeof(number));
+	memcpy(reply, packet, sizeof(number));
+
+	MPRINT1("\t\tNAK !!! request %zd - data %p %p size %zd\n", number, packet_ctx, packet, packet_len);
+
+	return 10;
+}
+
 static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
@@ -104,6 +121,7 @@ static fr_transport_t transport = {
 	.id = 1,
 	.decode = test_decode,
 	.encode = test_encode,
+	.nak = test_nak,
 	.process = test_process,
 };
 
@@ -284,8 +302,10 @@ check_close:
 			MPRINT1("Master signaling workers to exit.\n");
 
 			for (i = 0; i < num_workers; i++) {
-				printf("Worker %d\n", i);
-				fr_worker_debug(workers[i].worker, stdout);
+				if (!quiet) {
+					printf("Worker %d\n", i);
+					fr_worker_debug(workers[i].worker, stdout);
+				}
 
 				rcode = fr_channel_signal_worker_close(workers[i].ch);
 				if (rcode < 0) {
@@ -422,7 +442,7 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	while ((c = getopt(argc, argv, "c:hm:o:tw:x")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "c:hm:o:qtw:x")) != EOF) switch (c) {
 		case 'x':
 			debug_lvl++;
 			break;
@@ -437,6 +457,10 @@ int main(int argc, char *argv[])
 
 		case 'o':
 			max_outstanding = atoi(optarg);
+			break;
+
+		case 'q':
+			quiet = true;
 			break;
 
 		case 't':
