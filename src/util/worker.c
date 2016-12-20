@@ -992,15 +992,6 @@ int fr_worker_kq(fr_worker_t *worker)
 	return worker->kq;
 }
 
-/** Get the control-plane queue for the worker
- *
- * @param[in] worker the worker data structure
- * @return the atomic queue for the control plane
- */
-fr_atomic_queue_t *fr_worker_control_plane(fr_worker_t *worker)
-{
-	return worker->aq_control;
-}
 
 /** Signal a worker to exit
  *
