@@ -358,9 +358,14 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 	 *	BUT we use fixed-point arithmetic, so we need to use inverse alpha,
 	 *	which works out to the following equation:
 	 *
-	 *	RTT_new = (RTT_old + (ialpha - 1) * RTT_sample) / ialpha
+	 *	RTT_new = (RTT_sample + (ialpha - 1) * RTT_old) / ialpha
+	 *
+	 *	NAKs have zero processing time, so we ignore them for
+	 *	the purpose of RTT.
 	 */
-	ch->processing_time = RTT(ch->processing_time, cd->reply.processing_time);
+	if (cd->reply.processing_time) {
+		ch->processing_time = RTT(ch->processing_time, cd->reply.processing_time);
+	}
 	ch->cpu_time = cd->reply.cpu_time;
 
 	/*
