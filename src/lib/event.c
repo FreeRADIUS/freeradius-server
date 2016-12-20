@@ -726,7 +726,7 @@ void fr_event_service(fr_event_list_t *el)
 		/*
 		 *	Process any user events
 		 */
-		if (el->user && (el->events[i].flags & EVFILT_USER)) {
+		if (el->user && (el->events[i].filter == EVFILT_USER)) {
 			el->user(el->kq, &el->events[i], el->user_ctx);
 			continue;
 		}
@@ -754,8 +754,8 @@ void fr_event_service(fr_event_list_t *el)
 		}
 
 		ev->in_handler = true;
-		if (ev->read && (el->events[i].flags & EVFILT_READ)) ev->read(el, ev->fd, ev->ctx);
-		if (ev->write && (el->events[i].flags & EVFILT_WRITE) && !ev->do_delete) ev->write(el, ev->fd, ev->ctx);
+		if (ev->read && (el->events[i].filter == EVFILT_READ)) ev->read(el, ev->fd, ev->ctx);
+		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->do_delete) ev->write(el, ev->fd, ev->ctx);
 		ev->in_handler = false;
 
 		/*
