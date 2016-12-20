@@ -19,9 +19,11 @@
  * Copyright 2007  Alan DeKok <aland@ox.org>
  */
 #include <freeradius-devel/ident.h>
+#include <limits.h>
+
 RCSIDH(rlm_expr_h, "$Id$")
 
 void pair_builtincompare_init(void);
 void pair_builtincompare_detach(void);
-
+long long strtonum(const char *nptr, long long minval, long long maxval, const char **errstr);
 #endif
