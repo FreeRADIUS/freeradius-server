@@ -105,7 +105,7 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	memcpy(&number, packet, sizeof(number));
 	memcpy(reply, packet, sizeof(number));
 
-	MPRINT1("\t\tNAK !!! request %zd - data %p %p size %zd\n", number, packet_ctx, packet, packet_len);
+	MPRINT1("\t\tNAK !!! request %zd - data %p %p size %zd\n", (uint64_t) number, packet_ctx, packet, packet_len);
 
 	return 10;
 }
