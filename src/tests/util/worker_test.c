@@ -146,7 +146,6 @@ static void *worker_thread(void *arg)
 		exit(1);
 	}
 
-
 	MPRINT1("\tWorker %d looping.\n", sw->id);
 	fr_worker(worker);
 
@@ -308,6 +307,7 @@ check_close:
 				}
 
 				rcode = fr_channel_signal_worker_close(workers[i].ch);
+				MPRINT1("Master asked exit for worker %d.\n", workers[i].id);
 				if (rcode < 0) {
 					fprintf(stderr, "Failed signaling close %d: %s\n", i, strerror(errno));
 					exit(1);
@@ -400,15 +400,24 @@ check_close:
 
 	MPRINT1("Master exiting.\n");
 
+	fr_time_t last_checked = fr_time();
+
 	/*
 	 *	Busy-wait for the workers to exit;
 	 */
 	do {
+		fr_time_t now = fr_time();
+
 		num_outstanding = num_workers;
 	
 		for (i = 0; i < num_workers; i++) {
-			if (workers[i].worker == NULL) num_outstanding--;
+			if (!workers[i].worker) num_outstanding--;
 		}
+
+		if ((now - last_checked) > (NANOSEC / 10)) {
+			MPRINT1("still num_outstanding %d\n", num_outstanding);
+		}
+
 	} while (num_outstanding > 0);
 
 	/*
