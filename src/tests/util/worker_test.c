@@ -482,6 +482,7 @@ int main(int argc, char *argv[])
 	if (!max_control_plane) {
 		max_control_plane = MAX_CONTROL_PLANE;
 		if (max_outstanding > max_control_plane) max_control_plane = max_outstanding;
+		if (num_workers > max_control_plane) max_control_plane = num_workers + (num_workers >> 1);
 	}
 
 #if 0
