@@ -563,7 +563,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("retry_msg", PW_TYPE_STRING, rlm_mschap_t, retry_msg) },
 	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_TMPL, rlm_mschap_t, wb_username) },
 	{ FR_CONF_OFFSET("winbind_domain", PW_TYPE_TMPL, rlm_mschap_t, wb_domain) },
+#ifdef WITH_AUTH_WINBIND
 	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", PW_TYPE_BOOLEAN, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+#endif
 #ifdef __APPLE__
 	{ FR_CONF_OFFSET("use_open_directory", PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), .dflt = "yes" },
 #endif
