@@ -1438,8 +1438,10 @@ finish:
 		     vp;
 		     vp = fr_pair_cursor_next(&src_list)) {
 
+			if (!vp->da->parent->flags.is_root) continue;
 			if (vp->da->vendor != 0) continue;
 			if (vp->da->flags.has_tag) continue;
+			if (vp->da->type != PW_TYPE_STRING) continue;
 
 			if (!context->username && (vp->da->attr == PW_USER_NAME)) {
 				context->username = vp;
