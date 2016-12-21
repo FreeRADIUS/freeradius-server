@@ -53,7 +53,6 @@ RCSID("$Id$")
  */
 extern int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
 extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
-extern int		tls_global_init(void);
 
 
 typedef struct fr_schedule_worker_t {
@@ -573,8 +572,6 @@ int main(int argc, char *argv[])
 	if (debug_lvl) {
 		setvbuf(stdout, NULL, _IONBF, 0);
 	}
-
-	tls_global_init();
 
 	master_process(autofree);
 
