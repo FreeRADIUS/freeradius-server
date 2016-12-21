@@ -202,13 +202,30 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 
 	if (!cursor->first) return NULL;
 
-	for (i = cursor->found ? cursor->found->next : cursor->current;
-	     i != NULL;
-	     i = i->next) {
-		VERIFY_VP(i);
-		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
-			break;
+	if (!vendor) {
+		/*
+		 *	Find top-level attributes.
+		 */
+		for (i = cursor->found ? cursor->found->next : cursor->current;
+		     i != NULL;
+		     i = i->next) {
+			VERIFY_VP(i);
+			if (i->da->parent->flags.is_root &&
+			    (i->da->attr == attr) && (i->da->vendor == 0) &&
+			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+				break;
+			}
+		}
+	} else {
+		for (i = cursor->found ? cursor->found->next : cursor->current;
+		     i != NULL;
+		     i = i->next) {
+			VERIFY_VP(i);
+			if (i->da->parent->type == PW_TYPE_VENDOR &&
+			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
+			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+				break;
+			}
 		}
 	}
 
