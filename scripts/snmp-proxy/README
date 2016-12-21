@@ -20,6 +20,26 @@ make sure snmpd is agentx master (snmpd.conf):
 
      master agentx
 
+Download the module from
+
+	 http://search.cpan.org/dist/Net-Radius/
+
+Extract it in this directory:
+
+    $ tar -zxf Net-Radius-2.103.tar.gz
+    $ cd Net-Radius-2.103
+    $ patch -p1 < net-radius-freeradius-dictionary.diff
+
+Then build the Perl module.
+
+    $ perl Makefile.PL
+    $ make
+    $ make test
+
+And install the Perl module as root:
+
+    $ make install
+
 run the script (no demonizing support yet):
 
     $ ./freeradius-snmp.pl
