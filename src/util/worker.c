@@ -670,6 +670,9 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	case FR_TRANSPORT_DONE:
 		fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
 		FR_DLIST_REMOVE(request->time_order);
+		/*
+		 *	@todo make sure it sends a NAK.
+		 */
 		talloc_free(request);
 		return;
 
