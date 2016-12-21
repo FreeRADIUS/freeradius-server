@@ -98,20 +98,13 @@ fr_time_t fr_time(void)
 
 	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
 
-
-	ts.tv_sec -= ts_started.tv_sec;
-	if (ts.tv_sec > 0) {
-		ts.tv_nsec += NANOSEC;
+	if (ts.tv_nsec < ts_started.tv_nsec) {
 		ts.tv_sec--;
-
-		ts.tv_nsec -= ts_started.tv_nsec;
-		if ((fr_time_t)ts.tv_nsec > NANOSEC) {
-			ts.tv_nsec -= NANOSEC;
-			ts.tv_sec++;
-		}
-	} else {
-		ts.tv_nsec -= ts_started.tv_nsec;
+		ts.tv_nsec += NANOSEC;
 	}
+
+	ts.tv_sec = ts.tv_sec - ts_started.tv_sec;
+	ts.tv_nsec = ts.tv_nsec - ts_started.tv_nsec;
 
 	now = ts.tv_sec * NANOSEC;
 	now += ts.tv_nsec;
