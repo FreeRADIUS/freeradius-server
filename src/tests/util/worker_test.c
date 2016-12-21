@@ -449,7 +449,10 @@ int main(int argc, char *argv[])
 	int c;
 	TALLOC_CTX	*autofree = talloc_init("main");
 
-	fr_time_start();
+	if (fr_time_start() < 0) {
+		fprintf(stderr, "Failed to start time: %s\n", strerror(errno));
+		exit(1);
+	}
 
 	while ((c = getopt(argc, argv, "c:hm:o:qtw:x")) != EOF) switch (c) {
 		case 'x':
