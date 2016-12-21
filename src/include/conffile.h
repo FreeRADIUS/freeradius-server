@@ -120,6 +120,10 @@ __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && !((_t) & PW_TYPE_MUL
 	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
 __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && ((_t) & PW_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t **), _p, (_mismatch_size_m) 0), \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_DATE) && !((_t) & PW_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), time_t *), _p, (_mismatch_time) 0), \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_DATE) && ((_t) & PW_TYPE_MULTI), \
+	__builtin_choose_expr(is_compatible((_ct), time_t **), _p, (_mismatch_time_m) 0), \
 _Generic((_ct), \
 	vp_tmpl_t **	: __builtin_choose_expr(((_t) & PW_TYPE_TMPL) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
@@ -149,10 +153,6 @@ _Generic((_ct), \
 						(PW_BASE_TYPE(_t) == PW_TYPE_IPV6_PREFIX) || \
 						(PW_BASE_TYPE(_t) == PW_TYPE_COMBO_IP_ADDR)) && \
 						((_t) & PW_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
-	time_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_DATE) && !((_t) & PW_TYPE_MULTI), \
-			_p, (_mismatch_time) 0), \
-	time_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_DATE) && ((_t) & PW_TYPE_MULTI), \
-			_p, (_mismatch_time_m) 0), \
 	size_t[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_ABINARY) && !((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_abinary) 0), \
 	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_ABINARY) && ((_t) & PW_TYPE_MULTI), \
@@ -189,7 +189,7 @@ _Generic((_ct), \
 			_p, (_mismatch_timeval) 0), \
 	_timeval_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && ((_t) & PW_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
-	default: (conf_type_mismatch)0))))
+	default: (conf_type_mismatch)0))))))
 
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
@@ -420,7 +420,7 @@ void		*_cf_data_find(CONF_SECTION const *cs, char const *type, char const *name)
 #define		cf_data_add(_cs, _data, _name, _free) _cf_data_add(_cs, _data, _name, _free)
 int		_cf_data_add(CONF_SECTION *cs, void const *data, char const *name, bool free);
 
-#define		cf_data_remove(_cs, _type, _name) (_type *)_cf_data_remove(_cs, #_type, _name)	     
+#define		cf_data_remove(_cs, _type, _name) (_type *)_cf_data_remove(_cs, #_type, _name)
 void		*_cf_data_remove(CONF_SECTION *cs, char const *type, char const *name);
 
 #define		cf_data_walk(_cs, _type, _cb, _ctx) _cf_data_walk(_cs, #_type, _cb, _ctx)
