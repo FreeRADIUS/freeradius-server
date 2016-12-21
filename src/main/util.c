@@ -904,6 +904,9 @@ void verify_request(char const *file, int line, REQUEST *request)
 #ifdef WITH_VERIFY_PTR
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
+
+	if (request->username) VERIFY_VP(request->username);
+	if (request->password) VERIFY_VP(request->password);
 #endif
 
 	if (request->packet) {
