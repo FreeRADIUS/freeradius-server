@@ -890,15 +890,31 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **last = head;
 
-	for(i = *head; i; i = next) {
-		VERIFY_VP(i);
-		next = i->next;
-		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
-			*last = next;
-			talloc_free(i);
-		} else {
-			last = &i->next;
+	if (!vendor) {
+		for(i = *head; i; i = next) {
+			VERIFY_VP(i);
+			next = i->next;
+			if (i->da->parent->flags.is_root &&
+			    (i->da->attr == attr) && (i->da->vendor == 0) &&
+			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+				*last = next;
+				talloc_free(i);
+			} else {
+				last = &i->next;
+			}
+		}
+	} else {
+		for(i = *head; i; i = next) {
+			VERIFY_VP(i);
+			next = i->next;
+			if ((i->da->parent->type == PW_TYPE_VENDOR) &&
+			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
+			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+				*last = next;
+				talloc_free(i);
+			} else {
+				last = &i->next;
+			}
 		}
 	}
 }
@@ -1648,8 +1664,16 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 			continue;
 		}
 
-		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
-			continue;
+		if (!vendor) {
+			if (!vp->da->parent->flags.is_root ||
+			    (vp->da->attr != attr) || (vp->da->vendor != 0)) {
+				continue;
+			}
+		} else {
+			if ((vp->da->parent->type != PW_TYPE_VENDOR) ||
+			    (vp->da->attr != attr) || (vp->da->vendor != vendor)) {
+				continue;
+			}
 		}
 
 	do_copy:
@@ -1712,7 +1736,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		/*
 		 *	We never move Fall-Through.
 		 */
-		if (!i->da->vendor && i->da->attr == PW_FALL_THROUGH) {
+		if (!i->da->vendor && i->da->attr == PW_FALL_THROUGH && i->da->parent->flags.is_root) {
 			tail_from = &(i->next);
 			continue;
 		}
@@ -1910,9 +1934,18 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 		/*
 		 *	If it isn't an exact match, ignore it.
 		 */
-		if (!((i->da->vendor == vendor) && (i->da->attr == attr))) {
-			iprev = i;
-			continue;
+		if (!vendor) {
+			if (!(i->da->parent->flags.is_root &&
+			      (i->da->attr == attr) && (i->da->vendor == 0))) {
+				iprev = i;
+				continue;
+			}
+		} else {
+			if (!((i->da->parent->type == PW_TYPE_VENDOR) &&
+			      (i->da->attr == attr) && (i->da->vendor == vendor))) {
+				iprev = i;
+				continue;
+			}
 		}
 
 	move:
