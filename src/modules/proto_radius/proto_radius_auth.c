@@ -799,36 +799,46 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
 		    ((request->root->reject_delay.tv_sec > 0) ||
 		     (request->root->reject_delay.tv_usec > 0))) {
-			struct timeval when;
+			struct timeval when, delay;
 
-			when = request->root->reject_delay;
+			delay = request->root->reject_delay;
 
 			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
 			if (vp) {
 				if (vp->vp_integer <= 10) {
-					when.tv_sec = vp->vp_integer;
+					delay.tv_sec = vp->vp_integer;
 				} else {
-					when.tv_sec = 10;
+					delay.tv_sec = 10;
 				}
-				when.tv_usec = 0;
+				delay.tv_usec = 0;
 			} else {
 				vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
 				if (vp) {
 					if (vp->vp_integer <= 10 * USEC) {
-						when.tv_sec = vp->vp_integer / USEC;
-						when.tv_usec = vp->vp_integer % USEC;
+						delay.tv_sec = vp->vp_integer / USEC;
+						delay.tv_usec = vp->vp_integer % USEC;
 					} else {
-						when.tv_sec = 10;
-						when.tv_usec = 0;
+						delay.tv_sec = 10;
+						delay.tv_usec = 0;
 					}
 				}
 			}
 
-			RDEBUG2("Delaying response for %d.%06d seconds",
-				(int) when.tv_sec, (int) when.tv_usec);
+			/*
+			 *	Delay it from when we received the
+			 *	request, not from when we're sending
+			 *	the reply.
+			 */
+			fr_timeval_add(&when, &request->packet->timestamp, &delay);
+			if (fr_timeval_cmp(&when, &request->reply->timestamp) > 0) {
+				fr_timeval_subtract(&delay, &when, &request->reply->timestamp);
 
-			if (unlang_delay(request, &when, auth_reject_delay) == 0) {
-				return;
+				RDEBUG2("Delaying Access-Reject for %d.%06d seconds",
+					(int) delay.tv_sec, (int) delay.tv_usec);
+				
+				if (unlang_delay(request, &delay, auth_reject_delay) == 0) {
+					return;
+				}
 			}
 
 			/* else fall through to sending the response immediately. */
