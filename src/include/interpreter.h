@@ -267,7 +267,7 @@ extern char const *const comp2str[];
 static inline unlang_module_call_t *unlang_generic_to_module_call(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_MODULE_CALL);
-	return (unlang_module_call_t *)p;
+	return talloc_get_type_abort(p, unlang_module_call_t);
 }
 
 static inline unlang_group_t *unlang_group_to_module_call(unlang_t *p)
@@ -290,7 +290,7 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 static inline unlang_xlat_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_XLAT_INLINE);
-	return (unlang_xlat_inline_t *)p;
+	return talloc_get_type_abort(p, unlang_xlat_inline_t);
 }
 
 static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
@@ -301,7 +301,7 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 static inline unlang_resumption_t *unlang_generic_to_resumption(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_RESUME);
-	return (unlang_resumption_t *)p;
+	return talloc_get_type_abort(p, unlang_resumption_t);
 }
 
 static inline unlang_t *unlang_resumption_to_generic(unlang_resumption_t *p)
