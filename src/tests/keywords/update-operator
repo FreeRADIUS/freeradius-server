@@ -48,6 +48,19 @@ if (NAS-Port != 2000) {
 	}
 }
 
+#
+#  Enforce value which previously didn't exist.
+#
+update request {
+	Idle-Timeout >= 14400
+}
+
+if (&request:Idle-Timeout != 14400) {
+	update reply {
+		Filter-Id += "fail Idle-Timeout >= 14400"
+	}
+}
+
 # non-existent attribute
 update request {
        Class -= 0xabcdef
