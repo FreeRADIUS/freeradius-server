@@ -764,20 +764,26 @@ above!
 .IP !=
 Keep all attributes with matching name, and value not equal to the
 given one.
+.IP <
+Keep all attributes having values less than the value
+given here.  Any larger value is replaced by the value given here.  If
+no attribute exists, it is added with the value given here, as with
+"+=".
 .IP <=
 Keep all attributes having values less than, or equal to, the value
 given here.  Any larger value is replaced by the value given here.  If
 no attribute exists, it is added with the value given here, as with
 "+=".
-
-This operator is valid only for attributes of integer type.
+.IP >
+Keep all attributes having values greater than the value
+given here.  Any smaller value is replaced by the value given here.  If
+no attribute exists, it is added with the value given here, as with
+"+=".
 .IP >=
 Keep all attributes having values greater than, or equal to, the value
 given here.  Any smaller value is replaced by the value given here.  If
 no attribute exists, it is added with the value given here, as with
 "+=".
-
-This operator is valid only for attributes of integer type.
 .IP !*
 Delete all occurances of the named attribute, no matter what the
 value.
