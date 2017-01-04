@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "02 January 2016" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "04 January 2016" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -777,44 +777,38 @@ of the expression resolves to multiple values, it means add all values
 to the tail of the list.
 .RE
 .PP
-Enforcement and Filtering Operators
+Filtering Operators
 .RS
 The following operators may also be used in addition to the ones
-listed above.  Their function is to perform enforcement or filtering
-on attributes in a list.
+listed above.  Their function is to perform filtering of attributes in
+a list.
+
+Note that unlike earlier versions of the server, there is no
+enforcement.  That is, if the attribute does not exist, it is not
+added with the given value.
 .IP -=
 Remove all matching attributes from the list.  Both the attribute name
 and value have to match in order for the attribute to be removed from
 the list.
 .IP ==
-Keep all matching attributes.  Both the attribute name and value have
-to match in order for the attribute to remain in the list.
+Keep only those attributes which have values matching the given one.
 
-Note that this operator is very different than the '=' operator listed
-above!
+Note that this operator (eqaulity filtering) is very different than
+the '=' operator (set if not already existing) described above!
 .IP !=
-Keep all attributes with matching name, and value not equal to the
+Keep only those attributes which have values not equal to the
 given one.
 .IP <
-Keep all attributes having values less than the value
-given here.  Any larger value is replaced by the value given here.  If
-no attribute exists, it is added with the value given here, as with
-"+=".
+Keep only those attributes which have values less than the given one.
 .IP <=
-Keep all attributes having values less than, or equal to, the value
-given here.  Any larger value is replaced by the value given here.  If
-no attribute exists, it is added with the value given here, as with
-"+=".
+Keep only those attributes which have values less than, or equal to,
+the given one.
 .IP >
-Keep all attributes having values greater than the value
-given here.  Any smaller value is replaced by the value given here.  If
-no attribute exists, it is added with the value given here, as with
-"+=".
+Keep only those attributes which have values greater than the given
+one.
 .IP >=
-Keep all attributes having values greater than, or equal to, the value
-given here.  Any smaller value is replaced by the value given here.  If
-no attribute exists, it is added with the value given here, as with
-"+=".
+Keep only those attributes which have values greater than, or equal
+to, the given one.
 .IP !*
 Delete all occurrences of the named attribute, no matter what the
 value.

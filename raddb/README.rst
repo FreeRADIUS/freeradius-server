@@ -74,6 +74,15 @@ modifications will be required.
 Use of attributes in xlats e.g. ``%{User-Name}`` remains unchanged.
 There is no plan to require prefixes here.
 
+Update sections and Filtering
+-----------------------------
+
+The filtering operators in v4 have been modified.  They no longer
+*set* the attribute to a value.  Instead, they only *filter* the
+attribute list, and delete any attributes which do not match.  The
+filtering operators do not *create* any attribute.
+
+
 Connection timeouts
 -------------------
 
