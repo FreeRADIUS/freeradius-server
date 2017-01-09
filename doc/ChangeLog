@@ -32,7 +32,6 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* Many miscellaneous fixes and typos.
 	* Allow long strings in %{%{foo} bar:-%{baz} blah".
 	  Fixes #1866
-	* OpenSSL v1.1 compatability fixes.
 	* Fix filtering operators, along with more documentation and
 	  more tests for them.
 
