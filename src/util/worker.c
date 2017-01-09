@@ -686,7 +686,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
 
 		if (final != FR_TRANSPORT_DONE) {
-			FR_DLIST_REMOVE(request->time_order);
 			FR_DLIST_INSERT_TAIL(worker->waiting_to_die, request->time_order);
 			continue;
 		}
@@ -698,8 +697,26 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	}
 
 	/*
-	 *	@todo check the waiting_to_die list.
+	 *	Check the waiting_to_die list.
 	 */
+	for (entry = FR_DLIST_FIRST(worker->waiting_to_die);
+	     entry != NULL;
+	     entry = FR_DLIST_NEXT(worker->waiting_to_die, entry)) {
+		REQUEST *request;
+		fr_transport_final_t final;
+
+		request = fr_ptr_to_type(REQUEST, time_order, entry);
+
+		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
+
+		if (final == FR_TRANSPORT_DONE) {
+			FR_DLIST_REMOVE(worker->waiting_to_die);
+			/*
+			 *	Tell the network side that this request is done.
+			 */
+			fr_worker_send_reply(worker, request, 0);
+		}
+	}
 }
 
 
