@@ -760,7 +760,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
  */
 static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 {
-	ssize_t size;
+	ssize_t size = 0;
 	fr_transport_final_t final;
 
 	/*
@@ -793,7 +793,6 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		/*
 		 *	Done: don't send a reply.
 		 */
-		size = 0;
 		break;
 
 	case FR_TRANSPORT_YIELD:
