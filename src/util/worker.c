@@ -113,6 +113,8 @@ struct fr_worker_t {
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_dlist_t		time_order;	//!< time order of requests
 
+	fr_dlist_t		waiting_to_die;	//!< waiting to die
+
 	int			num_requests;	//!< number of requests processed by this worker
 	int			num_decoded;	//!< number of messages which have been decoded
 	int			num_replies;	//!< number of messages which were replied to
@@ -504,6 +506,95 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 }
 
 
+/** Reply to a request
+ *
+ *  And clean it up.
+ *
+ * @param[in] worker the worker
+ * @param[in] request the request to process
+ * @param[in] size maximum size of the reply data
+ */
+static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t size)
+{
+	fr_channel_data_t *reply, *cd;
+	fr_channel_t *ch;
+	fr_message_set_t *ms;
+
+	/*
+	 *	Allocate and send the reply.
+	 */
+	ch = request->channel;
+	rad_assert(ch != NULL);
+
+	ms = fr_channel_worker_ctx_get(ch);
+	rad_assert(ms != NULL);
+
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
+	rad_assert(reply != NULL);
+
+	/*
+	 *	Encode it, if required.
+	 */
+	if (size) {
+		ssize_t encoded;
+
+		encoded = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
+		if (encoded < 0) {
+			MPRINT("\tWORKER fails encode\n");
+			encoded = 0;
+		}
+
+		/*
+		 *	Resize the buffer to the actual packet size.
+		 */
+		cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, encoded);
+		rad_assert(cd == reply);
+	}
+
+	/*
+	 *	The request is done.  Track that.
+	 */
+	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
+
+	/*
+	 *	Fill in the rest of the fields in the channel message.
+	 *
+	 *	sequence / ack will be filled in by fr_channel_send_reply()
+	 */
+	reply->m.when = request->tracking.when;
+	reply->reply.cpu_time = worker->tracking.running;
+	reply->reply.processing_time = request->tracking.running;
+	reply->reply.request_time = request->recv_time;
+
+	reply->ctx = request->packet_ctx;
+	reply->priority = request->priority;
+	reply->transport = request->transport->id;
+
+	/*
+	 *	Send the reply, which also polls the request queue.
+	 */
+	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
+		MPRINT("\tWORKER fails sending reply\n");
+		cd = NULL;
+	}
+
+	worker->num_replies++;
+
+	/*
+	 *	Drain the incoming TO_WORKER queue.  We do this every
+	 *	time we're done processing a request.
+	 */
+	if (cd) fr_worker_drain_input(worker, ch, cd);
+
+	/*
+	 *	@todo Use a talloc pool for the request.  Clean it up,
+	 *	and insert it back into a slab allocator.
+	 */
+	FR_DLIST_REMOVE(request->time_order);
+	talloc_free(request);
+}
+
+
 #define fr_ptr_to_type(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
 
 /** Check timeouts on the various queues
@@ -579,6 +670,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	 */
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		REQUEST *request;
+		fr_transport_final_t final;
 
 		request = fr_ptr_to_type(REQUEST, time_order, entry);
 		waiting = now - request->recv_time;
@@ -591,11 +683,23 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		FR_DLIST_REMOVE(request->time_order);
 		(void) fr_heap_extract(worker->runnable, request);
 
-		fr_time_tracking_resume(&request->tracking, now);
-		request->process_async(request, FR_TRANSPORT_ACTION_DONE);
-		fr_time_tracking_end(&request->tracking, now, &worker->tracking);
-		talloc_free(request);
+		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
+
+		if (final != FR_TRANSPORT_DONE) {
+			FR_DLIST_REMOVE(request->time_order);
+			FR_DLIST_INSERT_TAIL(worker->waiting_to_die, request->time_order);
+			continue;
+		}
+
+		/*
+		 *	Tell the network side that this request is done.
+		 */
+		fr_worker_send_reply(worker, request, 0);
 	}
+
+	/*
+	 *	@todo check the waiting_to_die list.
+	 */
 }
 
 
@@ -640,10 +744,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 {
 	ssize_t size;
-	fr_channel_data_t *reply, *cd;
-	fr_channel_t *ch;
 	fr_transport_final_t final;
-	fr_message_set_t *ms;
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -657,10 +758,14 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
 
 		/*
-		 *	@todo if it isn't done, implement the "wait
-		 *	for child to die" code.
+		 *	If the request isn't done, put it into the
+		 *	async cleanup queue.
 		 */
-		rad_assert(final == FR_TRANSPORT_DONE);
+		if (final != FR_TRANSPORT_DONE) {
+			FR_DLIST_REMOVE(request->time_order);
+			FR_DLIST_INSERT_TAIL(worker->waiting_to_die, request->time_order);
+			return;
+		}
 	}
 
 	/*
@@ -686,81 +791,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 	}
 
-	/*
-	 *	Allocate and send the reply.
-	 */
-	ch = request->channel;
-	rad_assert(ch != NULL);
-
-	ms = fr_channel_worker_ctx_get(ch);
-	rad_assert(ms != NULL);
-
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
-	rad_assert(reply != NULL);
-
-	/*
-	 *	Encode it, if required.
-	 */
-	if (size) {
-		size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
-		if (size < 0) {
-			MPRINT("\tWORKER fails encode\n");
-			fr_message_done(&reply->m);
-			goto fail;
-		}
-
-		rad_assert(size > 0);
-
-		/*
-		 *	Resize the buffer to the actual packet size.
-		 */
-		cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, size);
-		rad_assert(cd == reply);
-	}
-
-	/*
-	 *	The request is done.  Track that.
-	 */
-	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
-
-	/*
-	 *	Fill in the rest of the fields in the channel message.
-	 *
-	 *	sequence / ack will be filled in by fr_channel_send_reply()
-	 */
-	reply->m.when = request->tracking.when;
-	reply->reply.cpu_time = worker->tracking.running;
-	reply->reply.processing_time = request->tracking.running;
-	reply->reply.request_time = request->recv_time;
-
-	reply->ctx = request->packet_ctx;
-	reply->priority = request->priority;
-	reply->transport = request->transport->id;
-
-	/*
-	 *	Send the reply, which also polls the request queue.
-	 */
-	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
-		MPRINT("\tWORKER fails sending reply\n");
-		cd = NULL;
-	}
-
-	worker->num_replies++;
-
-	/*
-	 *	Drain the incoming TO_WORKER queue.  We do this every
-	 *	time we're done processing a request.
-	 */
-	if (cd) fr_worker_drain_input(worker, ch, cd);
-
-	/*
-	 *	@todo Use a talloc pool for the request.  Clean it up,
-	 *	and insert it back into a slab allocator.
-	 */
-fail:
-	FR_DLIST_REMOVE(request->time_order);
-	talloc_free(request);
-
+	fr_worker_send_reply(worker, request, size);
 }
 
 /** Run the event loop 'idle' callback
@@ -979,6 +1010,7 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 		return NULL;
 	}
 	FR_DLIST_INIT(worker->time_order);
+	FR_DLIST_INIT(worker->waiting_to_die);
 
 	worker->num_transports = num_transports;
 	worker->transports = transports;
