@@ -668,19 +668,21 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 */
 	switch (final) {
 	case FR_TRANSPORT_DONE:
-		fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
-		FR_DLIST_REMOVE(request->time_order);
 		/*
-		 *	@todo make sure it sends a NAK.
+		 *	Done: don't send a reply.
 		 */
-		talloc_free(request);
-		return;
+		size = 0;
+		break;
 
 	case FR_TRANSPORT_YIELD:
 		fr_time_tracking_yield(&request->tracking, fr_time(), &worker->tracking);
 		return;
 
 	case FR_TRANSPORT_REPLY:
+		/*
+		 *	@todo make the reservation size transport-specific
+		 */
+		size = 1024;
 		break;
 	}
 
@@ -693,29 +695,28 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	ms = fr_channel_worker_ctx_get(ch);
 	rad_assert(ms != NULL);
 
-	/*
-	 *	@todo make the reservation size transport-specific
-	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, 1024);
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
 	rad_assert(reply != NULL);
 
 	/*
-	 *	Encode it.
+	 *	Encode it, if required.
 	 */
-	size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
-	if (size < 0) {
-		MPRINT("\tWORKER fails encode\n");
-		fr_message_done(&reply->m);
-		goto fail;
+	if (size) {
+		size = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
+		if (size < 0) {
+			MPRINT("\tWORKER fails encode\n");
+			fr_message_done(&reply->m);
+			goto fail;
+		}
+
+		rad_assert(size > 0);
+
+		/*
+		 *	Resize the buffer to the actual packet size.
+		 */
+		cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, size);
+		rad_assert(cd == reply);
 	}
-
-	rad_assert(size > 0);
-
-	/*
-	 *	Resize the buffer to the actual packet size.
-	 */
-	cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, size);
-	rad_assert(cd == reply);
 
 	/*
 	 *	The request is done.  Track that.
