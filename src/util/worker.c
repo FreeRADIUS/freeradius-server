@@ -621,24 +621,25 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	Find either a localized message, or one which is in
 	 *	the "to_decode" queue.
 	 */
-redo:
-	WORKER_HEAP_POP(localized, cd, request.list);
-	if (!cd) {
-		WORKER_HEAP_POP(to_decode, cd, request.list);
-	}
-	if (!cd) return NULL;
+	do {
+		WORKER_HEAP_POP(localized, cd, request.list);
+		if (!cd) {
+			WORKER_HEAP_POP(to_decode, cd, request.list);
+		}
+		if (!cd) return NULL;
 
-	worker->num_decoded++;
+		worker->num_decoded++;
 
-	/*
-	 *	This message has asynchronously aged out while it was
-	 *	in the queue.  Delete it, and go get another one.
-	 */
-	if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
-		MPRINT("\tIGNORING old message\n");
-		fr_worker_nak(worker, cd, fr_time());
-		goto redo;
-	}
+		/*
+		 *	This message has asynchronously aged out while it was
+		 *	in the queue.  Delete it, and go get another one.
+		 */
+		if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
+			MPRINT("\tIGNORING old message\n");
+			fr_worker_nak(worker, cd, fr_time());
+			cd = NULL;
+		}
+	} while (!cd);
 
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	/*
