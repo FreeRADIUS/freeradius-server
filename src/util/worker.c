@@ -308,135 +308,6 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 }
 
 
-/** Decode a request from either the localized queue, or the to_decode queue
- *
- *  The request returned from this function MUST be immediately runnable.
- *
- * @param[in] worker the worker
- * @param[in] now the current time
- * @return
- *	- NULL on nothing to decode
- *	- REQUEST the decoded request
- */
-static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
-{
-	int rcode;
-	fr_channel_data_t *cd;
-	REQUEST *request;
-#ifndef HAVE_TALLOC_POOLED_OBJECT
-	TALLOC_CTX *ctx;
-#endif
-
-	/*
-	 *	Find either a localized message, or one which is in
-	 *	the "to_decode" queue.
-	 */
-redo:
-	WORKER_HEAP_POP(localized, cd, request.list);
-	if (!cd) {
-		WORKER_HEAP_POP(to_decode, cd, request.list);
-	}
-	if (!cd) return NULL;
-
-	worker->num_decoded++;
-
-	/*
-	 *	This message has asynchronously aged out while it was
-	 *	in the queue.  Delete it, and go get another one.
-	 */
-	if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
-		MPRINT("\tIGNORING old message\n");
-		fr_message_done(&cd->m);
-		goto redo;
-	}
-
-#ifndef HAVE_TALLOC_POOLED_OBJECT
-	/*
-	 *	Get a talloc pool specifically for this packet.
-	 */
-	ctx = talloc_pool(worker, worker->talloc_pool_size);
-	if (!ctx) {
-		fr_message_done(&cd->m);
-		return NULL;
-	}
-
-	talloc_set_name_const(ctx, "REQUEST");
-
-	request = (REQUEST *) ctx;
-	memset(request, 0, sizeof(*request));
-#else
-	request = talloc_pooled_object(worker, REQUEST, 1, worker->talloc_pool_size);
-	if (!request) {
-		fr_message_done(&cd->m);
-		return NULL;
-	}
-#endif
-
-	/*
-	 *	Receive a message to the worker queue, and decode it
-	 *	to a request.
-	 */
-	rad_assert(cd->transport <= worker->num_transports);
-	rad_assert(worker->transports[cd->transport] != NULL);
-
-	/*
-	 *	Update the transport-specific fields.
-	 *
-	 *	Note that the message "when" time MUST be copied from
-	 *	the original recv time.  We use "when" here, instead
-	 *	of *cd->request.recv_time, on the odd chance that a
-	 *	new packet arrived while we were getting around to
-	 *	processing this message.
-	 */
-	request->channel = cd->channel.ch;
-	request->transport = worker->transports[cd->transport];
-	request->original_recv_time = cd->request.start_time;
-	request->recv_time = cd->m.when;
-	request->priority = cd->priority;
-	request->runnable = worker->runnable;
-	request->el = worker->el;
-	request->packet_ctx = cd->ctx;
-
-	/*
-	 *	Now that the "request" structure has been initialized, go decode the packet.
-	 */
-	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
-	if (rcode < 0) {
-		MPRINT("\tFAILED decode of request %zd\n", request->number);
-		talloc_free(ctx);
-		return NULL;
-	}
-
-	/*
-	 *	Hoist run-time checks here.
-	 */
-	if (!cd->request.start_time) request->original_recv_time = &request->recv_time;
-
-	/*
-	 *	We're done with this message.
-	 */
-	fr_message_done(&cd->m);
-
-	/*
-	 *	New requests are inserted into the time order list in
-	 *	strict time priority.  Once they are in the list, they
-	 *	are only removed when the request is freed.
-	 */
-	FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
-
-	/*
-	 *	Bootstrap the async state machine with the initial
-	 *	state of the request.  The process_async function will
-	 *	take care of pushing the state machine through it's
-	 *	transitions.
-	 */
-	request->process_async = request->transport->process;
-	fr_time_tracking_start(&request->tracking, now);
-
-	return request;
-}
-
-
 /** Send a NAK to the network thread
  *
  *  The network thread believes that a worker is running a request until that request has been NAK'd.
@@ -503,6 +374,131 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	worker->num_replies++;
 
 	if (cd) fr_worker_drain_input(worker, ch, cd);
+}
+
+
+/** Decode a request from either the localized queue, or the to_decode queue
+ *
+ *  The request returned from this function MUST be immediately runnable.
+ *
+ * @param[in] worker the worker
+ * @param[in] now the current time
+ * @return
+ *	- NULL on nothing to decode
+ *	- REQUEST the decoded request
+ */
+static REQUEST *fr_worker_decode_request(fr_worker_t *worker, fr_time_t now)
+{
+	int rcode;
+	fr_channel_data_t *cd;
+	REQUEST *request;
+#ifndef HAVE_TALLOC_POOLED_OBJECT
+	TALLOC_CTX *ctx;
+#endif
+
+	/*
+	 *	Find either a localized message, or one which is in
+	 *	the "to_decode" queue.
+	 */
+redo:
+	WORKER_HEAP_POP(localized, cd, request.list);
+	if (!cd) {
+		WORKER_HEAP_POP(to_decode, cd, request.list);
+	}
+	if (!cd) return NULL;
+
+	worker->num_decoded++;
+
+	/*
+	 *	This message has asynchronously aged out while it was
+	 *	in the queue.  Delete it, and go get another one.
+	 */
+	if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
+		MPRINT("\tIGNORING old message\n");
+		fr_worker_nak(worker, cd, fr_time());
+		goto redo;
+	}
+
+#ifndef HAVE_TALLOC_POOLED_OBJECT
+	/*
+	 *	Get a talloc pool specifically for this packet.
+	 */
+	ctx = talloc_pool(worker, worker->talloc_pool_size);
+	if (!ctx) goto nak;
+
+	talloc_set_name_const(ctx, "REQUEST");
+
+	request = (REQUEST *) ctx;
+	memset(request, 0, sizeof(*request));
+#else
+	request = ctx = talloc_pooled_object(worker, REQUEST, 1, worker->talloc_pool_size);
+	if (!request) goto nak;
+#endif
+
+	/*
+	 *	Receive a message to the worker queue, and decode it
+	 *	to a request.
+	 */
+	rad_assert(cd->transport <= worker->num_transports);
+	rad_assert(worker->transports[cd->transport] != NULL);
+
+	/*
+	 *	Update the transport-specific fields.
+	 *
+	 *	Note that the message "when" time MUST be copied from
+	 *	the original recv time.  We use "when" here, instead
+	 *	of *cd->request.recv_time, on the odd chance that a
+	 *	new packet arrived while we were getting around to
+	 *	processing this message.
+	 */
+	request->channel = cd->channel.ch;
+	request->transport = worker->transports[cd->transport];
+	request->original_recv_time = cd->request.start_time;
+	request->recv_time = cd->m.when;
+	request->priority = cd->priority;
+	request->runnable = worker->runnable;
+	request->el = worker->el;
+	request->packet_ctx = cd->ctx;
+
+	/*
+	 *	Now that the "request" structure has been initialized, go decode the packet.
+	 */
+	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
+	if (rcode < 0) {
+		MPRINT("\tFAILED decode of request %zd\n", request->number);
+		talloc_free(ctx);
+nak:
+		fr_worker_nak(worker, cd, fr_time());
+		return NULL;
+	}
+
+	/*
+	 *	Hoist run-time checks here.
+	 */
+	if (!cd->request.start_time) request->original_recv_time = &request->recv_time;
+
+	/*
+	 *	We're done with this message.
+	 */
+	fr_message_done(&cd->m);
+
+	/*
+	 *	New requests are inserted into the time order list in
+	 *	strict time priority.  Once they are in the list, they
+	 *	are only removed when the request is freed.
+	 */
+	FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
+
+	/*
+	 *	Bootstrap the async state machine with the initial
+	 *	state of the request.  The process_async function will
+	 *	take care of pushing the state machine through it's
+	 *	transitions.
+	 */
+	request->process_async = request->transport->process;
+	fr_time_tracking_start(&request->tracking, now);
+
+	return request;
 }
 
 
