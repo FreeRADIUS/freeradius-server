@@ -182,6 +182,115 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 }
 
 
+/** Handle a worker control message for a channel
+ *
+ * @param[in] worker the worker
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+
+static void fr_worker_channel_message(fr_worker_t *worker, void const *data, size_t data_size, fr_time_t now)
+{
+	int i;
+	bool ok;
+	fr_channel_t *ch;
+	fr_message_set_t *ms;
+	fr_channel_event_t ce;
+
+	ce = fr_channel_service_message(now, &ch, data, data_size);
+	switch (ce) {
+	case FR_CHANNEL_ERROR:
+		MPRINT("\tWORKER aq error\n");
+		return;
+
+	case FR_CHANNEL_EMPTY:
+		MPRINT("\tWORKER aq empty\n");
+		return;
+
+	case FR_CHANNEL_NOOP:
+		MPRINT("\tWORKER aq noop\n");
+		return;
+
+	case FR_CHANNEL_DATA_READY_RECEIVER:
+		rad_assert(0 == 1);
+		MPRINT("\tWORKER aq data ready ? MASTER ?\n");
+		break;
+
+	case FR_CHANNEL_DATA_READY_WORKER:
+		rad_assert(ch != NULL);
+		MPRINT("\tWORKER aq data ready\n");
+		fr_worker_drain_input(worker, ch, NULL);
+		break;
+
+	case FR_CHANNEL_OPEN:
+		MPRINT("\tWORKER aq channel open\n");
+
+		rad_assert(ch != NULL);
+
+		ok = false;
+		for (i = 0; i < worker->max_channels; i++) {
+			rad_assert(worker->channel[i] != ch);
+
+			if (worker->channel[i] != NULL) continue;
+
+			worker->channel[i] = ch;
+			MPRINT("\treceived channel %p into array entry %d\n", ch, i);
+			(void) fr_channel_worker_receive_open(worker, ch);
+
+			ms = fr_message_set_create(worker, worker->message_set_size,
+						   sizeof(fr_channel_data_t),
+						   worker->ring_buffer_size);
+			rad_assert(ms != NULL);
+			fr_channel_worker_ctx_add(ch, ms);
+
+			worker->num_channels++;
+			ok = true;
+			break;
+		}
+
+		rad_cond_assert(ok);
+		break;
+
+	case FR_CHANNEL_CLOSE:
+		MPRINT("\tWORKER aq channel close\n");
+
+		rad_assert(ch != NULL);
+
+		ok = false;
+		for (i = 0; i < worker->max_channels; i++) {
+			if (!worker->channel[i]) continue;
+
+			if (worker->channel[i] != ch) continue;
+
+			/*
+			 *	@todo check the status, and
+			 *	put the channel into a
+			 *	"closing" list if we can't
+			 *	close it right now.  Then,
+			 *	wake up after a time and try
+			 *	to close it again.
+			 */
+			(void) fr_channel_worker_ack_close(ch);
+
+			ms = fr_channel_worker_ctx_get(ch);
+			rad_assert(ms != NULL);
+			fr_message_set_gc(ms);
+			talloc_free(ms);
+
+			worker->channel[i] = NULL;
+			rad_assert(worker->num_channels > 0);
+			worker->num_channels--;
+			ok = true;
+			break;
+		}
+
+		rad_cond_assert(ok);
+		break;
+	}
+}
+
+
 /** Service an EVFILT_USER event
  *
  * @param[in] kq the kq to service
@@ -191,7 +300,6 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
 {
 	fr_time_t now;
-	fr_channel_event_t ce;
 	fr_worker_t *worker = ctx;
 
 #ifndef NDEBUG
@@ -209,12 +317,8 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	 *	Service all available control-plane events
 	 */
 	while (true) {
-		int i;
-		bool ok;
 		uint32_t id;
 		size_t data_size;
-		fr_channel_t *ch;
-		fr_message_set_t *ms;
 		char data[256];
 
 		data_size = fr_control_message_pop(worker->aq_control, &id, data, sizeof(data));
@@ -222,96 +326,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 
 		rad_assert(id == FR_CONTROL_ID_CHANNEL);
 
-		ce = fr_channel_service_message(now, &ch, data, data_size);
-		switch (ce) {
-		case FR_CHANNEL_ERROR:
-			MPRINT("\tWORKER aq error\n");
-			return;
-
-		case FR_CHANNEL_EMPTY:
-			MPRINT("\tWORKER aq empty\n");
-			return;
-
-		case FR_CHANNEL_NOOP:
-			MPRINT("\tWORKER aq noop\n");
-			continue;
-
-		case FR_CHANNEL_DATA_READY_RECEIVER:
-			rad_assert(0 == 1);
-			MPRINT("\tWORKER aq data ready ? MASTER ?\n");
-			break;
-
-		case FR_CHANNEL_DATA_READY_WORKER:
-			rad_assert(ch != NULL);
-			MPRINT("\tWORKER aq data ready\n");
-			fr_worker_drain_input(worker, ch, NULL);
-			break;
-
-		case FR_CHANNEL_OPEN:
-			MPRINT("\tWORKER aq channel open\n");
-
-			rad_assert(ch != NULL);
-
-			ok = false;
-			for (i = 0; i < worker->max_channels; i++) {
-				rad_assert(worker->channel[i] != ch);
-
-				if (worker->channel[i] != NULL) continue;
-
-				worker->channel[i] = ch;
-				MPRINT("\treceived channel %p into array entry %d\n", ch, i);
-				(void) fr_channel_worker_receive_open(ctx, ch);
-
-				ms = fr_message_set_create(worker, worker->message_set_size,
-							   sizeof(fr_channel_data_t),
-							   worker->ring_buffer_size);
-				rad_assert(ms != NULL);
-				fr_channel_worker_ctx_add(ch, ms);
-
-				worker->num_channels++;
-				ok = true;
-				break;
-			}
-
-			rad_cond_assert(ok);
-			break;
-
-		case FR_CHANNEL_CLOSE:
-			MPRINT("\tWORKER aq channel close\n");
-
-			rad_assert(ch != NULL);
-
-			ok = false;
-			for (i = 0; i < worker->max_channels; i++) {
-				if (!worker->channel[i]) continue;
-
-				if (worker->channel[i] != ch) continue;
-
-				/*
-				 *	@todo check the status, and
-				 *	put the channel into a
-				 *	"closing" list if we can't
-				 *	close it right now.  Then,
-				 *	wake up after a time and try
-				 *	to close it again.
-				 */
-				(void) fr_channel_worker_ack_close(ch);
-
-				ms = fr_channel_worker_ctx_get(ch);
-				rad_assert(ms != NULL);
-				fr_message_set_gc(ms);
-				talloc_free(ms);
-
-				worker->channel[i] = NULL;
-				rad_assert(worker->num_channels > 0);
-				worker->num_channels--;
-				ok = true;
-				break;
-			}
-
-			rad_cond_assert(ok);
-			break;
-		}
+		fr_worker_channel_message(worker, data, data_size, now);
 	}
 }
 
