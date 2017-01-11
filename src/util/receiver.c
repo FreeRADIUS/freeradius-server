@@ -261,9 +261,17 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 	 *	Service all available control-plane events
 	 */
 	while (true) {
+		uint32_t id;
+		size_t data_size;
 		fr_channel_t *ch;
+		char data[256];
 
-		ce = fr_channel_service_aq(rc->aq_control, now, &ch);
+		data_size = fr_control_message_pop(rc->aq_control, &id, data, sizeof(data));
+		if (!data_size) return;
+
+		rad_assert(id == FR_CONTROL_ID_CHANNEL);
+
+		ce = fr_channel_service_message(now, &ch, data, data_size);
 		switch (ce) {
 		case FR_CHANNEL_ERROR:
 			MPRINT("MASTER aq error\n");

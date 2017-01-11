@@ -211,10 +211,18 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	while (true) {
 		int i;
 		bool ok;
+		uint32_t id;
+		size_t data_size;
 		fr_channel_t *ch;
 		fr_message_set_t *ms;
+		char data[256];
 
-		ce = fr_channel_service_aq(worker->aq_control, now, &ch);
+		data_size = fr_control_message_pop(worker->aq_control, &id, data, sizeof(data));
+		if (!data_size) return;
+
+		rad_assert(id == FR_CONTROL_ID_CHANNEL);
+
+		ce = fr_channel_service_message(now, &ch, data, data_size);
 		switch (ce) {
 		case FR_CHANNEL_ERROR:
 			MPRINT("\tWORKER aq error\n");

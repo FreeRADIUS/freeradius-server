@@ -22,6 +22,7 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/util/control.h>
 #include <freeradius-devel/util/worker.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/fr_log.h>
@@ -417,7 +418,17 @@ static void master_process(TALLOC_CTX *ctx)
 
 		MPRINT1("Master servicing control-plane\n");
 
-		while ((ce = fr_channel_service_aq(aq_master, now, &ch)) != FR_CHANNEL_EMPTY) {
+		while (true) {
+			uint32_t id;
+			size_t data_size;
+			char data[256];
+
+			data_size = fr_control_message_pop(aq_master, &id, data, sizeof(data));
+			if (!data_size) break;
+
+			rad_assert(id == FR_CONTROL_ID_CHANNEL);
+
+			ce = fr_channel_service_message(now, &ch, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
 			
 			switch (ce) {

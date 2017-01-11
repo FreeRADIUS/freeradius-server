@@ -558,13 +558,12 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 }
 
 
-/** Service a control-plane queue
+/** Service a control-plane message
  *
- *  Which contains magic messages created by the channel.
- *
- * @param[in] aq the atomic queue on which we receive control-plane messages
  * @param[in] when the current time
  * @param[out] p_channel the channel which should be serviced.
+ * @param[in] data the control message
+ * @param[in] data_size the size of the control message
  * @return
  *	- FR_CHANNEL_ERROR on error
  *	- FR_CHANNEL_NOOP, on do nothing
@@ -572,24 +571,18 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
  *	- FR_CHANNEL_OPEN when a channel has been opened and sent to us
  *	- FR_CHANNEL_CLOSE when a channel should be closed
  */
-fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, fr_channel_t **p_channel)
+fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size)
 {
 	int rcode;
-	uint32_t id;
 	uint64_t ack;
-	ssize_t data_size;
 	fr_channel_control_t cc;
 	fr_channel_signal_t cs;
 	fr_channel_event_t ce = FR_CHANNEL_ERROR;
 	fr_channel_end_t *master;
 	fr_channel_t *ch;
 
-	data_size = fr_control_message_pop(aq, &id, &cc, sizeof(cc));
-	if (data_size == 0) return FR_CHANNEL_EMPTY;
-
-	rad_assert(id == FR_CONTROL_ID_CHANNEL);
-
 	rad_assert(data_size == sizeof(cc));
+	memcpy(&cc, data, data_size);
 
 	cs = cc.signal;
 	ack = cc.ack;
@@ -624,8 +617,6 @@ fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, 
 		ce = FR_CHANNEL_NOOP;
 		break;
 	}
-
-	rad_assert(aq == ch->end[FROM_WORKER].aq_control);
 
 	/*
 	 *	Compare their ACK to the last sequence we
