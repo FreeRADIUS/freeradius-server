@@ -327,7 +327,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 	}
 
 	/*
-	 *	Creare the heap which holds the workers.
+	 *	Create the heap which holds the workers.
 	 */
 	sc->workers = fr_heap_create(worker_cmp, offsetof(fr_schedule_worker_t, heap_id));
 	if (!sc->workers) {
