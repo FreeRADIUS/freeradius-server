@@ -41,16 +41,21 @@ extern "C" {
  */
 typedef struct fr_control_t fr_control_t;
 
+/*
+ *	A list of pre-allocated IDs, so that the callers don't have to manage their own.
+ */
+#define FR_CONTROL_ID_CHANNEL (1)
+
 fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq);
 void fr_control_free(fr_control_t *c);
 
 int fr_control_gc(fr_control_t *c) CC_HINT(nonnull);
 
-int fr_control_message_send(fr_control_t *c, void *data, size_t data_size) CC_HINT(nonnull);
+int fr_control_message_send(fr_control_t *c, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
 int fr_control_message_service_kevent(fr_atomic_queue_t *aq, struct kevent const *kev) CC_HINT(nonnull);
 
-int fr_control_message_push(fr_control_t *c, void *data, size_t data_size) CC_HINT(nonnull);
-ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, void *data, size_t data_size) CC_HINT(nonnull);
+int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
+ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size) CC_HINT(nonnull);
 
 
 #ifdef __cplusplus

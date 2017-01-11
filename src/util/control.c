@@ -58,6 +58,7 @@ typedef enum fr_control_message_status_t {
  */
 typedef struct fr_control_message_t {
 	fr_control_message_status_t	status;		//!< status of this message
+	uint32_t			id;		//!< ID of this message
 	size_t				data_size;     	//!< size of the data we're sending
 } fr_control_message_t;
 
@@ -200,7 +201,7 @@ void fr_control_free(fr_control_t *c)
  *	- NULL on error
  *	- fr_message_t on success
  */
-static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, void *data, size_t data_size)
+static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, uint32_t id, void *data, size_t data_size)
 {
 	size_t message_size;
 	fr_control_message_t *m;
@@ -219,6 +220,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, void *dat
 	}
 
 	m->status = FR_CONTROL_MESSAGE_USED;
+	m->id = id;
 	m->data_size = data_size;
 
 	p = (uint8_t *) m;
@@ -240,7 +242,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, void *dat
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_push(fr_control_t *c, void *data, size_t data_size)
+int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t data_size)
 {
 	fr_control_message_t *m;
 
@@ -255,10 +257,10 @@ int fr_control_message_push(fr_control_t *c, void *data, size_t data_size)
 	 *	collection.  Get another, and if that fails, we're
 	 *	done.
 	 */
-	m = fr_control_message_alloc(c, data, data_size);
+	m = fr_control_message_alloc(c, id, data, data_size);
 	if (!m) {
 		(void) fr_control_gc(c);
-		m = fr_control_message_alloc(c, data, data_size);
+		m = fr_control_message_alloc(c, id, data, data_size);
 		if (!m) {
 			MPRINT("CONTROL %p failed after GC\n", c);
 			return -1;
@@ -285,7 +287,7 @@ int fr_control_message_push(fr_control_t *c, void *data, size_t data_size)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
+int fr_control_message_send(fr_control_t *c, uint32_t id, void *data, size_t data_size)
 {
 	struct kevent kev;
 
@@ -293,7 +295,7 @@ int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	if (fr_control_message_push(c, data, data_size) < 0) {
+	if (fr_control_message_push(c, id, data, data_size) < 0) {
 		return -1;
 	}
 
@@ -314,7 +316,7 @@ int fr_control_message_send(fr_control_t *c, void *data, size_t data_size)
  *	- 0 this kevent is not for us.
  *	- >0 the amount of data we've read
  */
-ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, void *data, size_t data_size)
+ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size)
 {
 	uint8_t *p;
 	fr_control_message_t *m;
@@ -336,8 +338,8 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, void *data, size_t data_si
 	data_size = m->data_size;
 	memcpy(data, p + sizeof(*m), data_size);
 
-
 	m->status = FR_CONTROL_MESSAGE_DONE;
+	*p_id = m->id;
 	return data_size;
 }
 

@@ -92,7 +92,9 @@ static void *control_master(UNUSED void *arg)
 		MPRINT1("Master draining the control plane.\n");
 
 		while (true) {
-			data_size = fr_control_message_pop(aq, &m, sizeof(m));
+			uint32_t id;
+
+			data_size = fr_control_message_pop(aq, &id, &m, sizeof(m));
 			if (data_size == 0) goto wait_for_events;
 
 			if (data_size < 0) {
@@ -101,6 +103,7 @@ static void *control_master(UNUSED void *arg)
 			}
 		
 			rad_assert(data_size == sizeof(m));
+			rad_assert(id == FR_CONTROL_ID_CHANNEL);
 
 			MPRINT1("Master got message %zu.\n", m.counter);
 
@@ -135,7 +138,7 @@ static void *control_worker(UNUSED void *arg)
 		m.counter = i;
 
 retry:
-		if (fr_control_message_send(control, &m, sizeof(m)) < 0) {
+		if (fr_control_message_send(control, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
 			MPRINT1("\tWorker retrying message %zu\n", i);
 			usleep(10);
 			goto retry;

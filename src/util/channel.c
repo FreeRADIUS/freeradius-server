@@ -234,7 +234,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	cc.ack = end->ack;
 	cc.ch = ch;
 
-	return fr_control_message_send(end->control, &cc, sizeof(cc));
+	return fr_control_message_send(end->control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 #define IALPHA (8)
@@ -554,7 +554,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 
 	MPRINT("\tWORKER SLEEPING num_outstanding %zd, packets in %zd, packets out %zd\n", worker->num_outstanding,
 	       ch->end[TO_WORKER].num_packets, worker->num_packets);
-	return fr_control_message_send(worker->control, &cc, sizeof(cc));
+	return fr_control_message_send(worker->control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 
@@ -575,6 +575,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, fr_channel_t **p_channel)
 {
 	int rcode;
+	uint32_t id;
 	uint64_t ack;
 	ssize_t data_size;
 	fr_channel_control_t cc;
@@ -583,8 +584,10 @@ fr_channel_event_t fr_channel_service_aq(fr_atomic_queue_t *aq, fr_time_t when, 
 	fr_channel_end_t *master;
 	fr_channel_t *ch;
 
-	data_size = fr_control_message_pop(aq, &cc, sizeof(cc));
+	data_size = fr_control_message_pop(aq, &id, &cc, sizeof(cc));
 	if (data_size == 0) return FR_CHANNEL_EMPTY;
+
+	rad_assert(id == FR_CONTROL_ID_CHANNEL);
 
 	rad_assert(data_size == sizeof(cc));
 
@@ -731,7 +734,7 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
 	cc.ack = TO_WORKER;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[TO_WORKER].control, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[TO_WORKER].control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 /** Acknowledge that the channel is closing
@@ -755,7 +758,7 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
 	cc.ack = FROM_WORKER;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[FROM_WORKER].control, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[FROM_WORKER].control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 /** Add worker-specific data to a channel
@@ -831,7 +834,7 @@ int fr_channel_signal_open(fr_channel_t *ch)
 	cc.ack = 0;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[TO_WORKER].control, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[TO_WORKER].control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
