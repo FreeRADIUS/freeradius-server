@@ -156,6 +156,7 @@ struct fr_worker_t {
                FR_DLIST_REMOVE(_var->_member); \
        } while (0)
 
+
 /** Drain the input channel
  *
  * @param[in] worker the worker
@@ -218,7 +219,6 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 		case FR_CHANNEL_ERROR:
 			MPRINT("\tWORKER aq error\n");
 			return;
-
 
 		case FR_CHANNEL_EMPTY:
 			MPRINT("\tWORKER aq empty\n");
