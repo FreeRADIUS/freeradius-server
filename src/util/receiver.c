@@ -29,30 +29,46 @@ RCSID("$Id$")
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/util/queue.h>
 #include <freeradius-devel/util/channel.h>
+#include <freeradius-devel/util/control.h>
 #include <freeradius-devel/util/worker.h>
 #include <freeradius-devel/util/receiver.h>
 
 #include <freeradius-devel/rad_assert.h>
 
-typedef struct fr_receiver_worker_t {
-	int			heap_id;
-	fr_time_t		cpu_time;
-	fr_time_t		processing_time;
+/*
+ *	Debugging, mainly for worker_test
+ */
+#if 0
+#define MPRINT(...) fprintf(stdout, __VA_ARGS__)
+#else
+#define MPRINT(...)
+#endif
 
-	fr_channel_t		*channel;
-	fr_worker_t		*worker;
+typedef struct fr_receiver_worker_t {
+	int			heap_id;		//!< workers are in a heap
+	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
+	fr_time_t		processing_time;	//!< predicted processing time for one packet
+
+	fr_channel_t		*channel;		//!< channel to the worker
+	fr_worker_t		*worker;		//!< worker pointer
 } fr_receiver_worker_t;
 
 struct fr_receiver_t {
-	int			kq;
-	fr_event_list_t		*el;
+	int			kq;			//!< our KQ
 
-	fr_heap_t		*replies;
-	fr_heap_t		*workers;
-	fr_heap_t		*closing;
+	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
-	uint32_t		num_transports;	//!< how many transport layers we have
-	fr_transport_t		**transports;	//!< array of active transports.
+	fr_event_list_t		*el;			//!< our event list
+
+	fr_heap_t		*replies;		//!< replies from the worker, ordered by priority / origin time
+	fr_heap_t		*workers;		//!< workers, ordered by total CPU time spent
+	fr_heap_t		*closing;		//!< workers which are being closed
+
+	uint64_t		num_requests;		//!< number of requests we sent
+	uint64_t		num_replies;		//!< number of replies we received
+
+	uint32_t		num_transports;		//!< how many transport layers we have
+	fr_transport_t		**transports;		//!< array of active transports.
 };
 
 static int worker_cmp(void const *one, void const *two)
@@ -80,11 +96,42 @@ static int reply_cmp(void const *one, void const *two)
 	return 0;
 }
 
+/** Drain the input channel
+ *
+ * @param[in] rc the receiver
+ * @param[in] ch the channel to drain
+ * @param[in] cd the message (if any) to start with
+ */
+static void fr_receiver_drain_input(fr_receiver_t *rc, fr_channel_t *ch, fr_channel_data_t *cd)
+{
+	if (!cd) {
+		cd = fr_channel_recv_reply(ch);
+		if (!cd) {
+			MPRINT("\tno data?\n");
+			return;
+		}
+	}
+
+	do {
+		rc->num_replies++;
+		MPRINT("MASTER received reply %zd\n", rc->num_replies);
+
+		cd->channel.ch = ch;
+		(void) fr_heap_insert(rc->replies, cd);
+	} while ((cd = fr_channel_recv_reply(ch)) != NULL);
+
+	/*
+	 *	@todo get CPU time and processing time from the message, and update the worker.
+	 */
+}
+
 #if 0
 /** Send a message on the "best" channel.
  *
+ * @param rc the receiver
+ * @param cd the message we've received
  */
-int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
+static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 {
 	fr_receiver_worker_t *worker;
 	fr_channel_data_t *reply;
@@ -93,6 +140,9 @@ int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
 #endif
 
+	/*
+	 *	Grab the worker with the least total CPU time.
+	 */
 	worker = fr_heap_pop(rc->workers);
 	if (!worker) return 0;
 
@@ -103,7 +153,7 @@ int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	 *
 	 *	The only practical reason why the channel send will
 	 *	fail is because the recipient is not servicing it's
-	 *	queue.  When that happens, just hand the request to
+	 *	queue.  When that happens, we just hand the request to
 	 *	another channel.
 	 *
 	 *	If we run out of channels to use, the caller needs to
@@ -135,7 +185,7 @@ int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	worker->cpu_time += worker->processing_time;
 
 	/*
-	 *	Insert the worker back into the scheduler.
+	 *	Insert the worker back into the heap of workers.
 	 */
 	(void) fr_heap_insert(rc->workers, worker);
 
@@ -143,16 +193,114 @@ int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	 *	If we have a reply, push it onto our local queue, and
 	 *	poll for more replies.
 	 */
-	if (reply) {
-		do {
-			reply->channel.ch = worker->channel;
-			(void) fr_heap_insert(rc->replies, reply);
-		} while ((reply = fr_channel_recv_reply(worker->channel)) != NULL);
-	}
+	if (reply) fr_receiver_drain_input(rc, worker->channel, reply);
 
 	return 0;
 }
 #endif
+
+/** Run the event loop 'idle' callback
+ *
+ *  This function MUST DO NO WORK.  All it does is check if there's
+ *  work, and tell the event code to return to the main loop if
+ *  there's work to do.
+ *
+ * @param[in] ctx the receiver
+ * @param[in] wake the time when the event loop will wake up.
+ */
+static int fr_receiver_idle(void *ctx, struct timeval *wake)
+{
+	fr_receiver_t *rc = ctx;
+
+#ifndef NDEBUG
+	talloc_get_type_abort(rc, fr_receiver_t);
+#endif
+
+	if (!wake) {
+		// ready to process requests
+		return 0;
+	}
+
+	if ((wake->tv_sec != 0) ||
+	    (wake->tv_usec >= 100000)) {
+#if 0
+		DEBUG("Waking up in %d.%01u seconds.",
+		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
+#endif
+		return 0;
+	}
+
+	return 0;
+}
+
+
+/** Service an EVFILT_USER event
+ *
+ * @param[in] kq the kq to service
+ * @param[in] kev the kevent to service
+ * @param[in] ctx the fr_worker_t
+ */
+static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
+{
+	fr_time_t now;
+	fr_channel_event_t ce;
+	fr_receiver_t *rc = ctx;
+
+#ifndef NDEBUG
+	talloc_get_type_abort(rc, fr_receiver_t);
+#endif
+
+	if (!fr_control_message_service_kevent(rc->aq_control, kev)) {
+		MPRINT("MASTER kevent not for us!\n");
+		return;
+	}
+
+	now = fr_time();
+
+	/*
+	 *	Service all available control-plane events
+	 */
+	while (true) {
+		fr_channel_t *ch;
+
+		ce = fr_channel_service_aq(rc->aq_control, now, &ch);
+		switch (ce) {
+		case FR_CHANNEL_ERROR:
+			MPRINT("MASTER aq error\n");
+			return;
+
+		case FR_CHANNEL_EMPTY:
+			MPRINT("MASTER aq empty\n");
+			return;
+
+		case FR_CHANNEL_NOOP:
+			MPRINT("MASTER aq noop\n");
+			continue;
+
+		case FR_CHANNEL_DATA_READY_RECEIVER:
+			rad_assert(ch != NULL);
+			MPRINT("MASTER aq data ready\n");
+			fr_receiver_drain_input(rc, ch, NULL);
+			break;
+
+		case FR_CHANNEL_DATA_READY_WORKER:
+			rad_assert(0 == 1);
+			MPRINT("MASTER aq data ready ? WORKER ?\n");
+			break;
+
+		case FR_CHANNEL_OPEN:
+			rad_assert(0 == 1);
+			MPRINT("MASTER channel open ?\n");
+			break;
+
+		case FR_CHANNEL_CLOSE:
+			MPRINT("MASTER aq channel close\n");
+			///
+			break;
+		}
+	}
+}
+
 
 /** Create a receiver
  *
@@ -172,7 +320,7 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 	rc = talloc_zero(ctx, fr_receiver_t);
 	if (!rc) return NULL;
 
-	rc->el = fr_event_list_create(rc, NULL, NULL);
+	rc->el = fr_event_list_create(rc, fr_receiver_idle, rc);
 	if (!rc->el) {
 		talloc_free(rc);
 		return NULL;
@@ -181,6 +329,20 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 	rc->kq = fr_event_list_kq(rc->el);
 	rad_assert(rc->kq >= 0);
 
+	rc->aq_control = fr_atomic_queue_create(rc, 1024);
+	if (!rc->aq_control) {
+		talloc_free(rc);
+		return NULL;
+	}
+
+	if (fr_event_user_insert(rc->el, fr_receiver_evfilt_user, rc) < 0) {
+		talloc_free(rc);
+		return NULL;
+	}
+
+	/*
+	 *	Create the various heaps.
+	 */
 	rc->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!rc->replies) {
 		talloc_free(rc);
@@ -199,9 +361,6 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 		return NULL;
 	}
 
-	// insert our kevent handler
-	// start off with a channel?
-	// i.e. get new sockets from that channel?
 
 	rc->num_transports = num_transports;
 	rc->transports = transports;
@@ -242,6 +401,8 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 
 	/*
 	 *	Clean up all of the replies.
+	 *
+	 *	@todo something with the replies, to clean them up...
 	 */
 	while ((cd = fr_heap_pop(rc->replies)) != NULL) {
 		fr_message_done(&cd->m);
