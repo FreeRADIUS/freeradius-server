@@ -234,6 +234,55 @@ static int fr_receiver_idle(void *ctx, struct timeval *wake)
 }
 
 
+/** Handle a receiver control message for a channel
+ *
+ * @param[in] rc the receiver
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+static void fr_receiver_channel_message(fr_receiver_t *rc, void const *data, size_t data_size, fr_time_t now)
+{
+	fr_channel_event_t ce;
+	fr_channel_t *ch;
+
+	ce = fr_channel_service_message(now, &ch, data, data_size);
+	switch (ce) {
+	case FR_CHANNEL_ERROR:
+		MPRINT("MASTER aq error\n");
+		return;
+
+	case FR_CHANNEL_EMPTY:
+		MPRINT("MASTER aq empty\n");
+		return;
+
+	case FR_CHANNEL_NOOP:
+		MPRINT("MASTER aq noop\n");
+		break;
+
+	case FR_CHANNEL_DATA_READY_RECEIVER:
+		rad_assert(ch != NULL);
+		MPRINT("MASTER aq data ready\n");
+		fr_receiver_drain_input(rc, ch, NULL);
+		break;
+
+	case FR_CHANNEL_DATA_READY_WORKER:
+		rad_assert(0 == 1);
+		MPRINT("MASTER aq data ready ? WORKER ?\n");
+		break;
+
+	case FR_CHANNEL_OPEN:
+		rad_assert(0 == 1);
+		MPRINT("MASTER channel open ?\n");
+		break;
+
+	case FR_CHANNEL_CLOSE:
+		MPRINT("MASTER aq channel close\n");
+		///
+		break;
+	}
+}
+
 /** Service an EVFILT_USER event
  *
  * @param[in] kq the kq to service
@@ -243,7 +292,6 @@ static int fr_receiver_idle(void *ctx, struct timeval *wake)
 static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
 {
 	fr_time_t now;
-	fr_channel_event_t ce;
 	fr_receiver_t *rc = ctx;
 
 #ifndef NDEBUG
@@ -263,7 +311,6 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 	while (true) {
 		uint32_t id;
 		size_t data_size;
-		fr_channel_t *ch;
 		char data[256];
 
 		data_size = fr_control_message_pop(rc->aq_control, &id, data, sizeof(data));
@@ -271,41 +318,7 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 
 		rad_assert(id == FR_CONTROL_ID_CHANNEL);
 
-		ce = fr_channel_service_message(now, &ch, data, data_size);
-		switch (ce) {
-		case FR_CHANNEL_ERROR:
-			MPRINT("MASTER aq error\n");
-			return;
-
-		case FR_CHANNEL_EMPTY:
-			MPRINT("MASTER aq empty\n");
-			return;
-
-		case FR_CHANNEL_NOOP:
-			MPRINT("MASTER aq noop\n");
-			continue;
-
-		case FR_CHANNEL_DATA_READY_RECEIVER:
-			rad_assert(ch != NULL);
-			MPRINT("MASTER aq data ready\n");
-			fr_receiver_drain_input(rc, ch, NULL);
-			break;
-
-		case FR_CHANNEL_DATA_READY_WORKER:
-			rad_assert(0 == 1);
-			MPRINT("MASTER aq data ready ? WORKER ?\n");
-			break;
-
-		case FR_CHANNEL_OPEN:
-			rad_assert(0 == 1);
-			MPRINT("MASTER channel open ?\n");
-			break;
-
-		case FR_CHANNEL_CLOSE:
-			MPRINT("MASTER aq channel close\n");
-			///
-			break;
-		}
+		fr_receiver_channel_message(rc, data, data_size, now);
 	}
 }
 
