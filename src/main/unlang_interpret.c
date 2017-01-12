@@ -1030,7 +1030,7 @@ redo:
 			break;
 		}
 
-		if (unlang_ops[instruction->type].children) {
+		if ((unlang_ops[instruction->type].children) && !frame->resume) {
 			RDEBUG2("%s {", instruction->debug_name);
 			RINDENT();
 		}
