@@ -208,9 +208,9 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
  * @param[in] ctx the receiver
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_receiver_idle(void *ctx, struct timeval *wake)
+static int fr_receiver_idle(UNUSED void *ctx, struct timeval *wake)
 {
-	fr_receiver_t *rc = ctx;
+//	fr_receiver_t *rc = ctx;
 
 #ifndef NDEBUG
 	talloc_get_type_abort(rc, fr_receiver_t);
