@@ -395,13 +395,14 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		RDEBUG2("foreach %s ", instruction->name);
-
 		rad_assert(vps != NULL);
 		fr_pair_cursor_init(&frame->foreach.cursor, &vps);
 
 		frame->foreach.depth = foreach_depth;
 		frame->foreach.vps = vps;
+#ifndef NDEBUG
+		frame->foreach.indent = request->log.unlang_indent;
+#endif
 
 		vp = fr_pair_cursor_first(&frame->foreach.cursor);
 
@@ -436,6 +437,9 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 
 			*presult = frame->result;
 			*priority = instruction->actions[*presult];
+#ifndef NDEBUG
+			rad_assert(frame->foreach.indent == request->log.unlang_indent);
+#endif
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
@@ -445,7 +449,8 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 		char buffer[1024];
 
 			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
-			RDEBUG2("# Foreach-Variable-%d = %s", frame->foreach.depth, buffer);
+			RDEBUG2("");
+			RDEBUG2("# looping with: Foreach-Variable-%d = %s", frame->foreach.depth, buffer);
 		}
 #endif
 

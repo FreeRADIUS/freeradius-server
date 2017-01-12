@@ -194,6 +194,9 @@ typedef struct {
 	VALUE_PAIR 		*vps;		//!< List containing the attribute(s) we're iterating over.
 	VALUE_PAIR		*variable;	//!< Attribute we update the value of.
 	int			depth;		//!< Level of nesting of this foreach loop.
+#ifndef NDEBUG
+	int			indent;		//!< for catching indentation issues
+#endif
 } unlang_stack_entry_foreach_t;
 
 /** State of a redundant operation
