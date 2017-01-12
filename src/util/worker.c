@@ -189,7 +189,6 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
  * @param[in] data_size size of the data
  * @param[in] now the current time
  */
-
 static void fr_worker_channel_message(fr_worker_t *worker, void const *data, size_t data_size, fr_time_t now)
 {
 	int i;
