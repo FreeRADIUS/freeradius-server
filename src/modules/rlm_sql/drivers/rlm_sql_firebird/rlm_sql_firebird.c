@@ -216,7 +216,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
 		if (res == 100) {
-			return 0;
+			return RLM_SQL_NO_MORE_ROWS;
 		}
 
 		if (res) {
@@ -225,7 +225,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 			return RLM_SQL_ERROR;
 		}
 	} else {
-		conn->statement_type=0;
+		conn->statement_type = 0;
 	}
 
 	fb_store_row(conn);
