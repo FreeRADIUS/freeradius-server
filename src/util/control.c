@@ -195,6 +195,7 @@ void fr_control_free(fr_control_t *c)
 /** Allocate a control message
  *
  * @param[in] c the control structure
+ * @param[in] id the ident of this message.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
@@ -236,6 +237,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, uint32_t 
  *  This function is called ONLY from the originating thread.
  *
  * @param[in] c the control structure
+ * @param[in] id the ident of this message.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
@@ -281,6 +283,7 @@ int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t dat
  *  This function is called ONLY from the originating thread.
  *
  * @param[in] c the control structure
+ * @param[in] id the ident of this message.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
  * @return
@@ -309,6 +312,7 @@ int fr_control_message_send(fr_control_t *c, uint32_t id, void *data, size_t dat
  *  This function is called ONLY from the receiving thread.
  *
  * @param[in] aq the recipients atomic queue for control-plane messages
+ * @param[out] p_id the ident of this message.
  * @param[in,out] data where the data is stored
  * @param[in] data_size the size of the buffer where we store the data.
  * @return
