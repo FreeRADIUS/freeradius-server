@@ -198,25 +198,26 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (rcode != RLM_SQL_OK) {
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
-		goto query_error;
-	}
+	switch (rcode) {
+	case RLM_SQL_OK:
+		if (row[0]) break;
 
-	if (!row) {
-		RDEBUG("SQL query returned no results");
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
-		ret = -1;
-
-		goto finish;
-	}
-
-	if (!row[0]){
 		RDEBUG("NULL value in first column of result");
 		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		ret = -1;
 
 		goto finish;
+
+	case RLM_SQL_NO_MORE_ROWS:
+		RDEBUG("SQL query returned no results");
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
+		ret = -1;
+
+		goto finish;
+
+	default:
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
+		goto query_error;
 	}
 
 	*out = talloc_bstrndup(request, row[0], strlen(row[0]));
@@ -310,7 +311,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	rlm_sql_row_t		row;
 
-	int			rows;
+	int			rows = 0;
 	int			field_cnt;
 	char const		**fields = NULL, *map_rhs;
 	char			map_rhs_buff[128];
@@ -428,9 +429,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 *	Note: Not all SQL client libraries provide a row count,
 	 *	so we have to do the count here.
 	 */
-	for (ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows = 0;
-	     (ret == RLM_SQL_OK) && row;
-	     ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows++) {
+	while (((ret == rlm_sql_fetch_row(&row, inst, request, &handle)) == RLM_SQL_OK)) {
+		rows++;
 		for (map = maps, j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
 		     map = map->next, j++) {
@@ -441,7 +441,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	if (ret == RLM_SQL_ERROR) goto error;
 
-	if (!rows) {
+	if (rows == 0) {
 		RDEBUG("SQL query returned no results");
 		rcode = RLM_MODULE_NOOP;
 	}
@@ -472,7 +472,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 
 	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
 
-	while ((rlm_sql_fetch_row(&row, inst, NULL, &handle) == RLM_SQL_OK) && (row = handle->row)) {
+	while (rlm_sql_fetch_row(&row, inst, NULL, &handle) == RLM_SQL_OK) {
 		char *server = NULL;
 		i++;
 
@@ -746,10 +746,6 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
 	if (ret != RLM_SQL_OK) return -1;
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		row = (*handle)->row;
-		if (!row)
-			break;
-
 		if (!row[0]){
 			RDEBUG("row[0] returned NULL");
 			(inst->driver->sql_finish_select_query)(*handle, inst->config);
@@ -1758,15 +1754,10 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 	}
 
 	ret = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (ret != 0) {
+	if (ret != RLM_SQL_OK) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
-	if (!row) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
 	request->simul_count = atoi(row[0]);
 
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
@@ -1810,11 +1801,6 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 	}
 
 	while (rlm_sql_fetch_row(&row, inst, request, &handle) == RLM_SQL_OK) {
-		row = handle->row;
-		if (!row) {
-			break;
-		}
-
 		if (!row[2]){
 			RDEBUG("Cannot zap stale entry. No username present in entry");
 			rcode = RLM_MODULE_FAIL;

@@ -241,13 +241,16 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
 	 *	result sets associated with that connection.
 	 */
 	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
-	if (ret < 0) {
+	switch (ret) {
+	case RLM_SQL_OK:
+	case RLM_SQL_NO_MORE_ROWS:
+		return ret;
+
+	default:
 		ROPTIONAL(RERROR, ERROR, "Error fetching row");
-
 		rlm_sql_print_error(inst, request, *handle, false);
+		return ret;
 	}
-
-	return ret;
 }
 
 /** Retrieve any errors from the SQL driver
@@ -497,7 +500,6 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (!row) break;
 		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
