@@ -588,7 +588,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 		return RLM_SQL_RECONNECT;
 
 	case CS_END_DATA:
-		return RLM_SQL_OK;
+		return RLM_SQL_NO_MORE_ROWS;
 
 	case CS_SUCCEED:
 		*out = handle->row = conn->results;

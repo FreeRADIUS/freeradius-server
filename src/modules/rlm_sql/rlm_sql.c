@@ -198,7 +198,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (rcode) {
+	if (rcode != RLM_SQL_OK) {
 		(inst->driver->sql_finish_select_query)(handle, inst->config);
 		goto query_error;
 	}
@@ -472,7 +472,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 
 	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
 
-	while ((rlm_sql_fetch_row(&row, inst, NULL, &handle) == 0) && (row = handle->row)) {
+	while ((rlm_sql_fetch_row(&row, inst, NULL, &handle) == RLM_SQL_OK) && (row = handle->row)) {
 		char *server = NULL;
 		i++;
 
@@ -745,7 +745,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
 	talloc_free(expanded);
 	if (ret != RLM_SQL_OK) return -1;
 
-	while (rlm_sql_fetch_row(&row, inst, request, handle) == 0) {
+	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		row = (*handle)->row;
 		if (!row)
 			break;
@@ -1809,7 +1809,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 		call_num = vp->vp_strvalue;
 	}
 
-	while (rlm_sql_fetch_row(&row, inst, request, &handle) == 0) {
+	while (rlm_sql_fetch_row(&row, inst, request, &handle) == RLM_SQL_OK) {
 		row = handle->row;
 		if (!row) {
 			break;

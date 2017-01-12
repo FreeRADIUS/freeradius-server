@@ -513,7 +513,7 @@ do {\
 	if (!conn->iterator) conn->iterator = cass_iterator_from_result(conn->result);
 	if (!conn->iterator) return RLM_SQL_OK;				/* no result */
 
-	if (!cass_iterator_next(conn->iterator)) return RLM_SQL_OK;	/* no more rows */
+	if (!cass_iterator_next(conn->iterator)) return RLM_SQL_NO_MORE_ROWS;	/* no more rows */
 
 	cass_row = cass_iterator_get_row(conn->iterator);		/* this shouldn't fail ? */
 	fields = sql_num_fields(handle, config);			/* get the number of fields... */

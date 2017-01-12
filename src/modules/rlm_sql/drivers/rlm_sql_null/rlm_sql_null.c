@@ -66,7 +66,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *ha
 {
 	*out = NULL;
 
-	return 0;
+	return RLM_SQL_NO_MORE_ROWS;
 }
 
 static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)

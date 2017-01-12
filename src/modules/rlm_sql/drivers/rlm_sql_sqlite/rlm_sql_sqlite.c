@@ -541,9 +541,9 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) return RLM_SQL_ERROR;
 
 	/*
-	 *	No more rows to process (were done)
+	 *	No more rows to process (we're done)
 	 */
-	if (status == SQLITE_DONE) return RLM_SQL_OK;
+	if (status == SQLITE_DONE) return RLM_SQL_NO_MORE_ROWS;
 
 	/*
 	 *	We only need to do this once per result set, because
@@ -622,7 +622,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	 *	It's just the last error that occurred processing the
 	 *	statement.
 	 */
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Retrieves any errors associated with the connection handle

@@ -452,7 +452,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	if (status == OCI_NO_DATA) {
 		handle->row = 0;
 
-		return RLM_SQL_OK;
+		return RLM_SQL_NO_MORE_ROWS;
 	}
 
 	if (status == OCI_ERROR) {

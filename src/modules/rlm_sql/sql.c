@@ -49,6 +49,7 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 	{ "server error",	RLM_SQL_ERROR		},
 	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
 	{ "no connection",	RLM_SQL_RECONNECT	},
+	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
 	{ NULL, 0 }
 };
 
@@ -495,7 +496,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 	rcode = rlm_sql_select_query(inst, request, handle, query);
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
-	while (rlm_sql_fetch_row(&row, inst, request, handle) == 0) {
+	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		if (!row) break;
 		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
 			REDEBUG("Error parsing user data from database result");

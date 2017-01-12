@@ -207,7 +207,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	c = sql_num_fields(handle, config);
 
 	/* advance cursor */
-	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) return RLM_SQL_ERROR;
+	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) return RLM_SQL_NO_MORE_ROWS;
 
 	MEM(row = (rlm_sql_row_t)talloc_zero_array(handle, char *, c + 1));
 	for (i = 0; i < c; i++) {

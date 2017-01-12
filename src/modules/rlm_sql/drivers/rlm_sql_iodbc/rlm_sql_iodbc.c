@@ -240,7 +240,9 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 
 	*out = handle->row = NULL;
 
-	if ((rc = SQLFetch(conn->stmt)) == SQL_NO_DATA_FOUND) return 0;
+	rc = SQLFetch(conn->stmt);
+	if (rc == SQL_NO_DATA_FOUND) return RLM_SQL_NO_MORE_ROWS;
+
 	/* XXX Check rc for database down, if so, return RLM_SQL_RECONNECT */
 
 	*out = handle->row = conn->row;

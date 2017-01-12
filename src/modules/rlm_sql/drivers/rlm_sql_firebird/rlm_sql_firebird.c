@@ -211,7 +211,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
-		if (res == 100) return RLM_SQL_OK;
+		if (res == 100) return RLM_SQL_NO_MORE_ROWS;
+
 		if (res) {
 			ERROR("Fetch problem: %s", conn->error);
 
