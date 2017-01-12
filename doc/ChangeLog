@@ -11,6 +11,8 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  Herwin Weststrate. See raddb/mods-available/mschap.
 	* Added "recv-coa" method to rlm_rest.  It behaves the
 	  same as "authorize".
+	* Document Trust Router tr_port option.  Patch from
+	  Stefan Paetow.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
@@ -34,6 +36,9 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  Fixes #1866
 	* Fix filtering operators, along with more documentation and
 	  more tests for them.
+	* Fix OpenSSL fixes.  Fixes #1876.
+	* Finish SQL select queries even when SELECT returns no rows.
+	  Fixes #1879.
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
