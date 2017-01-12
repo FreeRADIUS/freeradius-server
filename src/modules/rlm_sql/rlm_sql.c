@@ -189,7 +189,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 		if (numaffected < 1) {
 			RDEBUG("SQL query affected no rows");
-			(inst->driver->sql_finish_query)(handle, inst->config);
+			(inst->module->sql_finish_query)(handle, inst->config);
 
 			goto finish;
 		}
@@ -227,7 +227,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 
 	rcode = rlm_sql_fetch_row(inst, request, &handle);
 	if (rcode) {
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
 		goto query_error;
 	}
 
