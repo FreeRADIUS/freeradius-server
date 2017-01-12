@@ -181,6 +181,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
 		if (numaffected < 1) {
 			RDEBUG("SQL query affected no rows");
+			(inst->driver->sql_finish_query)(handle, inst->config);
 
 			goto finish;
 		}
@@ -197,7 +198,10 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (rcode) goto query_error;
+	if (rcode) {
+		(inst->driver->sql_finish_select_query)(handle, inst->config);
+		goto query_error;
+	}
 
 	if (!row) {
 		RDEBUG("SQL query returned no results");
