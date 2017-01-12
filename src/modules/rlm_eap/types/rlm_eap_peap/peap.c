@@ -777,7 +777,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	 */
 	case PEAP_STATUS_SENT_TLV_FAILURE:
 		RINDENT();
-		RIDEBUG("The users session was previously rejected: returning reject (again.)");
+		REDEBUG("The users session was previously rejected: returning reject (again.)");
 		RIDEBUG("This means you need to read the PREVIOUS messages in the debug output");
 		RIDEBUG("to find out the reason why the user was rejected");
 		RIDEBUG("Look for \"reject\" or \"fail\".  Those earlier messages will tell you");
