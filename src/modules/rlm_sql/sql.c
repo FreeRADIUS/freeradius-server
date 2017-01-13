@@ -240,7 +240,11 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_
 	 */
 	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
 	if (ret < 0) {
-		MOD_ROPTIONAL(RERROR, ERROR, "Error fetching row");
+		if (ret != RLM_SQL_NO_MORE_ROWS) {
+			MOD_ROPTIONAL(RERROR, ERROR, "Error fetching row");
+		} else {
+			MOD_ROPTIONAL(RDEBUG, DEBUG, "No rows were returned.");
+		}
 
 		rlm_sql_print_error(inst, request, *handle, false);
 	}

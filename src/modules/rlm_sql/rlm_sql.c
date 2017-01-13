@@ -180,7 +180,11 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		rcode = rlm_sql_query(inst, request, &handle, query);
 		if (rcode != RLM_SQL_OK) {
 		query_error:
-			RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, rcode, "<INVALID>"));
+			if (rcode != RLM_SQL_NO_MORE_ROWS) {
+				RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, rcode, "<INVALID>"));
+			} else {
+				RDEBUG("No rows were returned.");
+			}
 
 			ret = -1;
 			goto finish;
