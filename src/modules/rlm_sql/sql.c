@@ -243,7 +243,11 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
 	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
 	switch (ret) {
 	case RLM_SQL_OK:
+		rad_assert(*out != NULL);
+		return ret;
+
 	case RLM_SQL_NO_MORE_ROWS:
+		rad_assert(*out == NULL);
 		return ret;
 
 	default:
