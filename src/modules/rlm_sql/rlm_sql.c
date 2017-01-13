@@ -226,7 +226,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(inst, request, &handle);
-	if (rcode != RLM_SQL_OK) {
+	if (rcode < 0) {
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		goto query_error;
 	}
