@@ -127,6 +127,21 @@ typedef struct fr_transport_t {
 	fr_transport_process_t		process;	//!< process a request
 } fr_transport_t;
 
+typedef enum fr_transport_status_t {
+	FR_TRANSPORT_STATUS_INIT = 0,
+	FR_TRANSPORT_STATUS_ACTIVE,
+	FR_TRANSPORT_STATUS_ZOMBIE,
+	FR_TRANSPORT_STATUS_DEAD
+} fr_transport_status_t;
+
+typedef struct fr_transport_socket_t {
+	int			fd;		       	//!< file descriptor
+	fr_transport_status_t	status;			//!< status of this socket
+	void			*ctx;		       	//!< transport-specific context
+	fr_transport_t		*transport;	       	//!< all transport callbacks
+	struct fr_transport_socket_t *parent;		//!< parent (if applicable)
+} fr_transport_socket_t;
+
 
 #ifndef _FR_RADIUSD_H
 /**
