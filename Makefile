@@ -12,6 +12,13 @@
 #
 all:
 
+#
+#  Catch people who try to use BSD make
+#
+ifeq "0" "1"
+.error GNU Make is required to build FreeRADIUS
+endif
+
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
