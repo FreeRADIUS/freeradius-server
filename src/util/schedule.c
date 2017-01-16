@@ -408,12 +408,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 		 */
 		for (i = 0; i < num_workers; i++) {
 			sem_wait(&sc->semaphore);
-
-			PTHREAD_MUTEX_LOCK(&sc->mutex);
-			sw = fr_heap_pop(sc->done_workers);
-			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
-			talloc_free(sw);
 		}
 
 		talloc_free(sc);
@@ -439,10 +433,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
-	bool done = false;
+	int i, num;		
 	fr_schedule_worker_t *sw;
 
 	sc->running = false;
+#ifdef HAVE_PTHREAD_H
 	rad_assert(sc->num_workers > 0);
 
 	// signal the network threads to exit
@@ -451,28 +446,25 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	Signal the workers to exit.  They will push themselves
 	 *	onto the "exited" stack when they're done.
 	 */
+	num = sc->num_workers;
+
+	PTHREAD_MUTEX_LOCK(&sc->mutex);
 	while ((sw = fr_heap_pop(sc->workers)) != NULL) {
 		fr_worker_exit(sw->worker);
 	}
+	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	/*
 	 *	Wait for all worker threads to finish.  THEN clean up
 	 *	modules.  Otherwise, the modules will be removed from
 	 *	underneath the workers!
 	 */
-	while (sem_wait(&sc->semaphore) == 0) {
-
-		/*
-		 *	Needs to be done in a lock for thread safety.
-		 */
-		PTHREAD_MUTEX_LOCK(&sc->mutex);
-		done = (sc->num_workers_exited == 0);
-		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
-		if (done) break;
+	for (i = 0; i < num; i++) {
+		sem_wait(&sc->semaphore);
 	}
 
 	sem_destroy(&sc->semaphore);
+#endif	/* HAVE_PTHREAD_H */
 
 	/*
 	 *	Now that all of the workers are done, we can return to
