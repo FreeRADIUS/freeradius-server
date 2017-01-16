@@ -449,3 +449,14 @@ void fr_receiver(fr_receiver_t *rc)
 		/* nothing */
 	}
 }
+
+/** Signal a reciever to exit
+ *
+ *  WARNING: This may be called from another thread!  Care is required.
+ *
+ * @param[in] rc the receiver data structure to manage
+ */
+void fr_receiver_exit(fr_receiver_t *rc)
+{
+	fr_event_loop_exit(rc->el, 1);
+}

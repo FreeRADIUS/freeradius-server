@@ -32,6 +32,7 @@ extern "C" {
 typedef struct fr_receiver_t fr_receiver_t;
 
 fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_transport_t **transports);
+void fr_receiver_exit(fr_receiver_t *rc);
 int fr_receiver_destroy(fr_receiver_t *rc) CC_HINT(nonnull);
 void fr_receiver(fr_receiver_t *rc) CC_HINT(nonnull);
 
