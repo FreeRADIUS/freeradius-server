@@ -123,7 +123,7 @@ struct fr_schedule_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;			//!< for thread safey
 
-	sem_t		semaphore;		//!< for exited threads
+	sem_t		semaphore;		//!< for inter-thread signaling
 #endif
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
@@ -193,27 +193,13 @@ static void *fr_schedule_worker_thread(void *arg)
 	TALLOC_CTX *ctx;
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
+	fr_schedule_worker_status_t status = FR_WORKER_FAIL;
 
 	ctx = talloc_init("worker");
-	if (!ctx) {
-	fail:
-		sw->status = FR_WORKER_FAIL;
-
-		/*
-		 *	Tell the scheduler that we've exited.
-		 */
-		PTHREAD_MUTEX_LOCK(&sc->mutex);
-		(void) fr_heap_insert(sc->done_workers, sw);
-		sc->num_workers_exited++;
-		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
-		sem_post(&sc->semaphore);
-		return NULL;
-	}
+	if (!ctx) goto fail;
 
 	sw->worker = fr_worker_create(ctx, sc->num_transports, sc->transports);
 	if (!sw->worker) {
-		talloc_free(ctx);
 		goto fail;
 	}
 
@@ -247,24 +233,30 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_worker_destroy(sw->worker);
 	sw->worker = NULL;
 
-	talloc_free(ctx);
-
 	/*
-	 *	Move ourselves from the list of live workers, and add
-	 *	ourselves to the list of dead workers.
+	 *	Remove ourselves from the list of live workers.
 	 */
 	PTHREAD_MUTEX_LOCK(&sc->mutex);
 	(void) fr_heap_extract(sc->workers, sw);
 	sc->num_workers--;
+	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
+	status = FR_WORKER_EXITED;
+
+fail:
+	if (ctx) talloc_free(ctx);
+
+	/*
+	 *	Add outselves to the list of dead workers.
+	 */
+	PTHREAD_MUTEX_LOCK(&sc->mutex);
+	sw->status = status;
 	(void) fr_heap_insert(sc->done_workers, sw);
 	sc->num_workers_exited++;
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
-	sw->status = FR_WORKER_EXITED;
-
 	/*
-	 *	Tell the scheduler that we've exited.
+	 *	Tell the scheduler we're done.
 	 */
 	sem_post(&sc->semaphore);
 
@@ -371,13 +363,68 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 	}
 
 	/*
-	 *	@todo create the network threads
+	 *	Wait for all of the workers to start.
 	 */
+	for (i = 0; i < sc->max_workers; i++) {
+		sem_wait(&sc->semaphore);
+	}
+
+	PTHREAD_MUTEX_LOCK(&sc->mutex);
+	if (sc->num_workers != sc->max_workers) {
+		int num_workers = sc->num_workers;
+		int num_workers_exited = sc->num_workers_exited;
+		fr_schedule_worker_t *sw;
+
+		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+
+		/*
+		 *	Clean up the dead ones which caused the
+		 *	error(s).
+		 */
+		for (i = 0; i < num_workers_exited; i++) {
+			PTHREAD_MUTEX_LOCK(&sc->mutex);
+			sw = fr_heap_pop(sc->done_workers);
+			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+			rad_assert(sw != NULL);
+
+			talloc_free(sw);
+		}
+
+		/*
+		 *	Tell the active workers to exit.
+		 */
+		for (i = 0; i < num_workers; i++) {
+			PTHREAD_MUTEX_LOCK(&sc->mutex);
+			sw = fr_heap_pop(sc->workers);
+			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+			rad_assert(sw != NULL);
+
+			fr_worker_exit(sw->worker);
+		}
+
+		/*
+		 *	Clean up the workers which have no exited, and
+		 *	signaled us that they've exited.
+		 */
+		for (i = 0; i < num_workers; i++) {
+			sem_wait(&sc->semaphore);
+
+			PTHREAD_MUTEX_LOCK(&sc->mutex);
+			sw = fr_heap_pop(sc->done_workers);
+			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+
+			talloc_free(sw);
+		}
+
+		talloc_free(sc);
+		return NULL;
+
+	}
+	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	/*
-	 *	@todo check the workers, to see if they all succeeded.
+	 *	@todo create the network threads
 	 */
-
 #endif
 
 	return sc;
