@@ -126,6 +126,8 @@ typedef struct fr_schedule_receiver_t {
 struct fr_schedule_t {
 	bool		running;		//!< is the scheduler running?
 
+	fr_log_t	*log;			//!< log destination
+
 	int		max_inputs;		//!< number of network threads
 	int		max_workers;		//!< max number of worker threads
 
@@ -209,7 +211,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 
-	MPRINT("Worker %d starting\n", sw->id);
+	fr_log(sc->log, L_DBG, "Worker %d starting\n", sw->id);
 
 	ctx = talloc_init("worker");
 	if (!ctx) goto fail;
@@ -234,7 +236,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	sc->num_workers++;
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
-	MPRINT("Worker %d running\n", sw->id);
+	fr_log(sc->log, L_DBG, "Worker %d running\n", sw->id);
 
 	/*
 	 *	Tell the originator that the thread has started.
@@ -248,7 +250,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_worker(sw->worker);
 
-	MPRINT("Worker %d finished\n", sw->id);
+	fr_log(sc->log, L_DBG, "Worker %d finished\n", sw->id);
 
 	/*
 	 *	Talloc ordering issues. We want to be independent of
@@ -280,7 +282,7 @@ fail:
 	sc->num_workers_exited++;
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
-	MPRINT("Worker %d exiting\n", sw->id);
+	fr_log(sc->log, L_DBG, "Worker %d exiting\n", sw->id);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -360,7 +362,7 @@ fail:
  *	- NULL on error
  *	- fr_schedule_t new scheduler
  */
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_workers,
+fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs, int max_workers,
 				  uint32_t num_transports, fr_transport_t **transports,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
@@ -383,6 +385,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 
 	sc->max_inputs = max_inputs;
 	sc->max_workers = max_workers;
+	sc->log = log;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 	sc->worker_instantiate_ctx = worker_thread_ctx;
@@ -434,7 +437,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 	for (i = 0; i < sc->max_workers; i++) {
 		fr_schedule_worker_t *sw;
 
-		MPRINT("Creating %d/%d workers\n", i, sc->max_workers);
+		fr_log(sc->log, L_DBG, "Creating %d/%d workers\n", i, sc->max_workers);
 
 		/*
 		 *	Create a worker "glue" structure
@@ -448,7 +451,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 
 		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
 		if (rcode != 0) {
-			MPRINT("Failed to create worker %d: %s\n", i, strerror(errno));
+			fr_log(sc->log, L_DBG, "Failed to create worker %d: %s\n", i, strerror(errno));
 			talloc_free(sw);
 			break;
 		}
@@ -460,7 +463,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 	 *	Wait for all of the workers to start.
 	 */
 	for (i = 0; i < num_workers; i++) {
-		MPRINT("Waiting for semaphore from worker %d/%d\n", i, num_workers);
+		fr_log(sc->log, L_DBG, "Waiting for semaphore from worker %d/%d\n", i, num_workers);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
@@ -469,7 +472,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 		int num_workers_exited = sc->num_workers_exited;
 		fr_schedule_worker_t *sw;
 
-		MPRINT("ERROR: Failed to create some workers\n");
+		fr_log(sc->log, L_DBG, "ERROR: Failed to create some workers\n");
 
 		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
@@ -478,7 +481,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 		 *	error(s).
 		 */
 		for (i = 0; i < num_workers_exited; i++) {
-			MPRINT("Pop exited %d/%d\n", i, num_workers_exited);
+			fr_log(sc->log, L_DBG, "Pop exited %d/%d\n", i, num_workers_exited);
 
 			PTHREAD_MUTEX_LOCK(&sc->mutex);
 			sw = fr_heap_pop(sc->done_workers);
@@ -492,7 +495,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 		 *	Tell the active workers to exit.
 		 */
 		for (i = 0; i < num_workers; i++) {
-			MPRINT("Signal to exit %d/%d\n", i, num_workers);
+			fr_log(sc->log, L_DBG, "Signal to exit %d/%d\n", i, num_workers);
 
 			PTHREAD_MUTEX_LOCK(&sc->mutex);
 			sw = fr_heap_pop(sc->workers);
@@ -507,7 +510,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 		 *	signaled us that they've exited.
 		 */
 		for (i = 0; i < num_workers; i++) {
-			MPRINT("Wait for semaphore indicating exit %d/%d\n", i, num_workers);
+			fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, num_workers);
 
 			SEM_WAIT_INTR(&sc->semaphore);
 		}
@@ -536,7 +539,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 	}
 #endif
 
-	MPRINT("Scheduler created successfully\n");
+	fr_log(sc->log, L_DBG, "Scheduler created successfully\n");
 
 	return sc;
 }
@@ -558,7 +561,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 #ifdef HAVE_PTHREAD_H
 	rad_assert(sc->num_workers > 0);
 
-	MPRINT("Destroying scheduler\n");
+	fr_log(sc->log, L_DBG, "Destroying scheduler\n");
 
 	/*
 	 *	Signal the workers to exit.  They will push themselves
@@ -578,7 +581,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	underneath the workers!
 	 */
 	for (i = 0; i < num; i++) {
-		MPRINT("Wait for semaphore indicating exit %d/%d\n", i, num);
+		fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, num);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
