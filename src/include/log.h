@@ -38,11 +38,7 @@ extern FR_NAME_NUMBER const syslog_facility_table[];
 extern FR_NAME_NUMBER const syslog_severity_table[];
 extern FR_NAME_NUMBER const log_str2dst[];
 
-int	radlog_init(fr_log_t *log, bool daemonize);
-
-bool	debug_enabled(log_type_t type, log_lvl_t lvl);
-
-bool	rate_limit_enabled(void);
+#define debug_enabled(_type, _lvl) ((_type & L_DBG) && (_lvl <= rad_debug_lvl))
 
 bool	radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
 	CC_HINT(nonnull);
@@ -358,7 +354,8 @@ do {\
  	}\
 } while (0)
 
-#define RATE_LIMIT_ENABLED rate_limit_enabled()		//!< True if rate limiting is enabled.
+#define RATE_LIMIT_ENABLED fr_rate_limit_enabled()		//!< True if rate limiting is enabled.
+
 /** Rate limit messages
  *
  * Rate limit log messages so they're written a maximum of once per second.

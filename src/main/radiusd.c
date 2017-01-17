@@ -565,7 +565,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Redirect stderr/stdout as appropriate.
 	 */
-	if (radlog_init(&default_log, main_config.daemonize) < 0) {
+	if (fr_log_init(&default_log, main_config.daemonize) < 0) {
 		ERROR("Failed initialising log: %s", fr_strerror());
 		fr_exit(EXIT_FAILURE);
 	}

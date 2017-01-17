@@ -36,6 +36,8 @@ RCSID("$Id$")
 #  include <syslog.h>
 #endif
 
+#include <fcntl.h>
+
 #define FR_STRERROR_BUFSIZE (2048)
 
 fr_thread_local_setup(char *, fr_strerror_buffer)	/* macro */
@@ -685,4 +687,156 @@ int fr_log(fr_log_t const *log, log_type_t type, char const *msg, ...)
 	va_end(ap);
 
 	return r;
+}
+
+static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
+static int stdout_fd = -1;		//!< The original unmolested stdout file descriptor
+static bool rate_limit = true;		//!< Whether repeated log entries should be rate limited
+
+/** On fault, reset STDOUT and STDERR to something useful
+ *
+ * @return 0
+ */
+static int _restore_std(UNUSED int sig)
+{
+	if ((stderr_fd > 0) && (stdout_fd > 0)) {
+		dup2(stderr_fd, STDOUT_FILENO);
+		dup2(stdout_fd, STDERR_FILENO);
+		return 0;
+	}
+
+	if (default_log.fd > 0) {
+		dup2(default_log.fd, STDOUT_FILENO);
+		dup2(default_log.fd, STDERR_FILENO);
+		return 0;
+	}
+
+	return 0;
+}
+
+/** Initialise file descriptors based on logging destination
+ *
+ * @param log Logger to manipulate.
+ * @param daemonize Whether the server is starting as a daemon.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_init(fr_log_t *log, bool daemonize)
+{
+	int devnull;
+
+	rate_limit = daemonize;
+
+	/*
+	 *	If we're running in foreground mode, save STDIN /
+	 *	STDERR as higher FDs, which won't get used by anyone
+	 *	else.  When we fork/exec a program, it's STD FDs will
+	 *	get set to pipes.  We later set STDOUT / STDERR to
+	 *	/dev/null, so that any library trying to write to them
+	 *	doesn't screw anything up.
+	 *
+	 *	Then, when something goes wrong, restore them so that
+	 *	any debugger called from the panic action has access
+	 *	to STDOUT / STDERR.
+	 */
+	if (!daemonize) {
+		fr_fault_set_cb(_restore_std);
+
+		stdout_fd = dup(STDOUT_FILENO);
+		stderr_fd = dup(STDERR_FILENO);
+	}
+
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		fr_strerror_printf("Error opening /dev/null: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	STDOUT & STDERR go to /dev/null, unless we have "-x",
+	 *	then STDOUT & STDERR go to the "-l log" destination.
+	 *
+	 *	The complexity here is because "-l log" can go to
+	 *	STDOUT or STDERR, too.
+	 */
+	if (log->dst == L_DST_STDOUT) {
+		setlinebuf(stdout);
+		log->fd = STDOUT_FILENO;
+
+		/*
+		 *	If we're debugging, allow STDERR to go to
+		 *	STDOUT too, for executed programs.
+		 *
+		 *	Allow stdout when running in foreground mode
+		 *	as it's useful for some profiling tools,
+		 *	like mutrace.
+		 */
+		if (fr_debug_lvl || !daemonize) {
+			dup2(STDOUT_FILENO, STDERR_FILENO);
+		} else {
+			dup2(devnull, STDERR_FILENO);
+		}
+
+	} else if (log->dst == L_DST_STDERR) {
+		setlinebuf(stderr);
+		log->fd = STDERR_FILENO;
+
+		/*
+		 *	If we're debugging, allow STDOUT to go to
+		 *	STDERR too, for executed programs.
+		 *
+		 *	Allow stdout when running in foreground mode
+		 *	as it's useful for some profiling tools,
+		 *	like mutrace.
+		 */
+		if (fr_debug_lvl || !daemonize) {
+			dup2(STDERR_FILENO, STDOUT_FILENO);
+		} else {
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+	} else if (log->dst == L_DST_SYSLOG) {
+		/*
+		 *	Discard STDOUT and STDERR no matter what the
+		 *	status of debugging.  Syslog isn't a file
+		 *	descriptor, so we can't use it.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+
+	} else if (fr_debug_lvl) {
+		/*
+		 *	If we're debugging, allow STDOUT and STDERR to
+		 *	go to the log file.
+		 */
+		dup2(log->fd, STDOUT_FILENO);
+		dup2(log->fd, STDERR_FILENO);
+
+	} else {
+		/*
+		 *	Not debugging, and the log isn't STDOUT or
+		 *	STDERR.  Ensure that we move both of them to
+		 *	/dev/null, so that the calling terminal can
+		 *	exit, and the output from executed programs
+		 *	doesn't pollute STDOUT / STDERR.
+		 */
+		dup2(devnull, STDOUT_FILENO);
+		dup2(devnull, STDERR_FILENO);
+	}
+
+	close(devnull);
+
+	fr_fault_set_log_fd(log->fd);
+
+	return 0;
+}
+
+/** Whether rate limiting is enabled
+ */
+bool fr_rate_limit_enabled(void)
+{
+	if (rate_limit || (fr_debug_lvl < 1)) return true;
+
+	return false;
 }
