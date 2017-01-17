@@ -727,6 +727,12 @@ void fr_event_service(fr_event_list_t *el)
 		 *	Process any user events
 		 */
 		if (el->user && (el->events[i].filter == EVFILT_USER)) {
+			/*
+			 *	This is just a "wakeup" event, which
+			 *	is always ignored.
+			 */
+			if (el->events[i].ident == 0) continue;
+
 			el->user(el->kq, &el->events[i], el->user_ctx);
 			continue;
 		}
@@ -784,9 +790,17 @@ void fr_event_service(fr_event_list_t *el)
  */
 void fr_event_loop_exit(fr_event_list_t *el, int code)
 {
+	struct kevent kev;
+
 	if (!el) return;
 
 	el->exit = code;
+
+	/*
+	 *	Signal the control plane to exit.
+	 */
+	EV_SET(&kev, 0, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
+	(void) kevent(el->kq, &kev, 1, NULL, 0, NULL);
 }
 
 /** Check to see whether the event loop is in the process of exiting
@@ -852,6 +866,7 @@ static int _event_list_free(fr_event_list_t *el)
 fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status, void *status_ctx)
 {
 	fr_event_list_t *el;
+	struct kevent kev;
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
@@ -874,6 +889,15 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status,
 
 	el->status = status;
 	el->status_ctx = status_ctx;
+
+	/*
+	 *	Set our "exit" callback as ident 0.
+	 */
+	EV_SET(&kev, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
+	if (kevent(el->kq, &kev, 1, NULL, 0, NULL) < 0) {
+		talloc_free(el);
+		return NULL;
+	}
 
 	return el;
 }
