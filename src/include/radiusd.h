@@ -593,7 +593,6 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 
 /* main_config.c */
 /* Define a global config structure */
-extern bool			log_dates_utc;
 extern main_config_t		main_config;
 extern bool			event_loop_started;
 

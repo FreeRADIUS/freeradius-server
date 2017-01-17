@@ -32,6 +32,10 @@ RCSID("$Id$")
 #  include <features.h>
 #endif
 
+#ifdef HAVE_SYSLOG_H
+#  include <syslog.h>
+#endif
+
 #define FR_STRERROR_BUFSIZE (2048)
 
 fr_thread_local_setup(char *, fr_strerror_buffer)	/* macro */
@@ -397,3 +401,288 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 	*text = value;
 }
 
+/** Maps log categories to message prefixes
+ */
+const FR_NAME_NUMBER fr_log_levels[] = {
+	{ "Debug : ",		L_DBG		},
+	{ "Auth  : ",		L_AUTH		},
+	{ "Proxy : ",		L_PROXY		},
+	{ "Info  : ",		L_INFO		},
+	{ "Warn  : ",		L_WARN		},
+	{ "Acct  : ",		L_ACCT		},
+	{ "Error : ",		L_ERR		},
+	{ "WARN  : ",		L_DBG_WARN	},
+	{ "ERROR : ",		L_DBG_ERR	},
+	{ "WARN  : ",		L_DBG_WARN_REQ	},
+	{ "ERROR : ",		L_DBG_ERR_REQ	},
+	{ NULL, 0 }
+};
+
+/** @name VT100 escape sequences
+ *
+ * These sequences may be written to VT100 terminals to change the
+ * colour and style of the text.
+ *
+ @code{.c}
+   fprintf(stdout, VTC_RED "This text will be coloured red" VTC_RESET);
+ @endcode
+ * @{
+ */
+#define VTC_RED		"\x1b[31m"	//!< Colour following text red.
+#define VTC_YELLOW      "\x1b[33m"	//!< Colour following text yellow.
+#define VTC_BOLD	"\x1b[1m"	//!< Embolden following text.
+#define VTC_RESET	"\x1b[0m"	//!< Reset terminal text to default style/colour.
+/** @} */
+
+/** Maps log categories to VT100 style/colour escape sequences
+ */
+static const FR_NAME_NUMBER colours[] = {
+	{ "",			L_DBG		},
+	{ VTC_BOLD,		L_AUTH		},
+	{ VTC_BOLD,		L_PROXY		},
+	{ VTC_BOLD,		L_INFO		},
+	{ VTC_BOLD,		L_ACCT		},
+	{ VTC_RED,		L_ERR		},
+	{ VTC_BOLD VTC_YELLOW,	L_WARN		},
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN	},
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR_REQ	},
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN_REQ	},
+	{ NULL, 0 }
+};
+
+
+bool log_dates_utc = false;
+
+fr_log_t default_log = {
+	.colourise = false,		//!< Will be set later. Should be off before we do terminal detection.
+	.fd = STDOUT_FILENO,
+	.dst = L_DST_STDOUT,
+	.file = NULL,
+	.timestamp = L_TIMESTAMP_AUTO
+};
+
+/** Send a server log message to its destination
+ *
+ * @param log	destination.
+ * @param type	of log message.
+ * @param msg	with printf style substitution tokens.
+ * @param ap	Substitution arguments.
+ */
+int vradlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
+{
+	uint8_t		*p;
+	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
+	char		*unsan;
+	size_t		len;
+	int		colourise = log->colourise;
+
+	/*
+	 *	If we don't want any messages, then
+	 *	throw them away.
+	 */
+	if (log->dst == L_DST_NULL) return 0;
+
+	buffer[0] = '\0';
+	len = 0;
+
+	/*
+	 *	Set colourisation
+	 */
+	if (colourise) {
+		len += strlcpy(buffer + len, fr_int2str(colours, type, ""), sizeof(buffer) - len) ;
+		if (len == 0) {
+			colourise = false;
+		}
+	}
+
+	/*
+	 *	Mark the point where we treat the buffer as unsanitized.
+	 */
+	unsan = buffer + len;
+
+	/*
+	 *	Determine if we need to add a timestamp to the start of the message
+	 */
+	switch (log->timestamp) {
+	case L_TIMESTAMP_OFF:
+		break;
+
+	/*
+	 *	If we're not logging to syslog, and the debug level is -xxx
+	 *	then log timestamps by default.
+	 */
+	case L_TIMESTAMP_AUTO:
+		if (log->dst == L_DST_SYSLOG) break;
+		if ((log->dst != L_DST_FILES) && (fr_debug_lvl <= L_DBG_LVL_2)) break;
+		/* FALL-THROUGH */
+
+	case L_TIMESTAMP_ON:
+	{
+		time_t timeval;
+
+		timeval = time(NULL);
+#ifdef HAVE_GMTIME_R
+		if (log_dates_utc) {
+			struct tm utc;
+			gmtime_r(&timeval, &utc);
+			ASCTIME_R(&utc, buffer + len, sizeof(buffer) - len - 1);
+		} else
+#endif
+		{
+			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+		}
+		len = strlen(buffer);
+		len += strlcpy(buffer + len, ": ", sizeof(buffer) - len - 1);
+	}
+		break;
+	}
+
+	/*
+	 *	Add ERROR or WARNING prefixes to messages not going to
+	 *	syslog.  It's redundant for syslog because of syslog
+	 *	facilities.
+	 */
+	if (log->dst != L_DST_SYSLOG) {
+		/*
+		 *	Only print the 'facility' if we're not colourising the log messages
+		 *	and this isn't syslog.
+		 */
+		if (!log->colourise) {
+			len += strlcpy(buffer + len, fr_int2str(fr_log_levels, type, ": "), sizeof(buffer) - len);
+		}
+
+		/*
+		 *	Add an additional prefix to highlight that this is a bad message
+		 *	the user should pay attention to.
+		 */
+		if (len < sizeof(buffer)) switch (type) {
+		case L_DBG_WARN:
+			len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
+			break;
+
+		case L_DBG_ERR:
+			len += strlcpy(buffer + len, "ERROR: ", sizeof(buffer) - len);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	if (len < sizeof(buffer)) len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
+
+	/*
+	 *	Filter out control chars and non UTF8 chars
+	 */
+	for (p = (unsigned char *)unsan; *p != '\0'; p++) {
+		int clen;
+
+		switch (*p) {
+		case '\r':
+		case '\n':
+			*p = ' ';
+			break;
+
+		case '\t':
+			continue;
+
+		default:
+			clen = fr_utf8_char(p, -1);
+			if (!clen) {
+				*p = '?';
+				continue;
+			}
+			p += (clen - 1);
+			break;
+		}
+	}
+
+	/*
+	 *	Reset colourisation if we applied it
+	 */
+	if (colourise && (len < sizeof(buffer))) {
+		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
+	}
+
+	if (len < (sizeof(buffer) - 2)) {
+		buffer[len]	= '\n';
+		buffer[len + 1] = '\0';
+	} else {
+		buffer[sizeof(buffer) - 2] = '\n';
+		buffer[sizeof(buffer) - 1] = '\0';
+	}
+
+	switch (log->dst) {
+
+#ifdef HAVE_SYSLOG_H
+	case L_DST_SYSLOG:
+		switch (type) {
+		case L_DBG:
+		case L_DBG_INFO:
+		case L_DBG_WARN:
+		case L_DBG_ERR:
+		case L_DBG_ERR_REQ:
+		case L_DBG_WARN_REQ:
+			type = LOG_DEBUG;
+			break;
+
+		case L_AUTH:
+		case L_PROXY:
+		case L_ACCT:
+			type = LOG_NOTICE;
+			break;
+
+		case L_INFO:
+			type = LOG_INFO;
+			break;
+
+		case L_WARN:
+			type = LOG_WARNING;
+			break;
+
+		case L_ERR:
+			type = LOG_ERR;
+			break;
+		}
+		syslog(type, "%s", buffer);
+		break;
+#endif
+
+	case L_DST_FILES:
+	case L_DST_STDOUT:
+	case L_DST_STDERR:
+		return write(log->fd, buffer, strlen(buffer));
+
+	default:
+	case L_DST_NULL:	/* should have been caught above */
+		break;
+	}
+
+	return 0;
+}
+
+/** Send a server log message to its destination
+ *
+ * @param log	destination.
+ * @param type	of log message.
+ * @param msg	with printf style substitution tokens.
+ * @param ...	Substitution arguments.
+ */
+int radlog(fr_log_t const *log, log_type_t type, char const *msg, ...)
+{
+	va_list ap;
+	int r = 0;
+
+	va_start(ap, msg);
+
+	/*
+	 *	Non-debug message, or debugging is enabled.  Log it.
+	 */
+	if (((type & L_DBG) == 0) || (fr_debug_lvl > 0)) {
+		r = vradlog(log, type, msg, ap);
+	}
+	va_end(ap);
+
+	return r;
+}
