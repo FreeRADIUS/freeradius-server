@@ -393,6 +393,12 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, int max_inputs, int max_worke
 		return NULL;
 	}
 
+	sc->done_workers = fr_heap_create(worker_cmp, offsetof(fr_schedule_worker_t, heap_id));
+	if (!sc->done_workers) {
+		talloc_free(sc);
+		return NULL;
+	}
+
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
 		talloc_free(sc);
