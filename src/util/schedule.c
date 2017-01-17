@@ -223,6 +223,11 @@ static void *fr_schedule_worker_thread(void *arg)
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	/*
+	 *	Tell the originator that the thread has started.
+	 */
+	sem_post(&sc->semaphore);
+
+	/*
 	 *	Do all of the work.
 	 *
 	 *	@todo check for child processes.
