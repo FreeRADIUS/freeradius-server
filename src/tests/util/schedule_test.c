@@ -116,6 +116,8 @@ static fr_transport_t *transports = &transport;
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: schedule_test [OPTS]\n");
+	fprintf(stderr, "  -n <num>               Start num network threads\n");
+	fprintf(stderr, "  -w <num>               Start num worker threads\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
 	exit(1);
@@ -124,6 +126,8 @@ static void NEVER_RETURNS usage(void)
 int main(int argc, char *argv[])
 {
 	int c;
+	int num_networks = 1;
+	int num_workers = 2;
 	TALLOC_CTX	*autofree = talloc_init("main");
 	fr_schedule_t	*sched;
 
@@ -131,7 +135,17 @@ int main(int argc, char *argv[])
 
 	fr_log_init(&default_log, false);
 
-	while ((c = getopt(argc, argv, "hm:o:tx")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "n:w:x")) != EOF) switch (c) {
+		case 'n':
+			num_networks = atoi(optarg);
+			if ((num_networks <= 0) || (num_networks > 16)) usage();
+			break;
+
+		case 'w':
+			num_workers = atoi(optarg);
+			if ((num_workers <= 0) || (num_workers > 1024)) usage();
+			break;
+
 		case 'x':
 			debug_lvl++;
 			fr_debug_lvl++;
@@ -147,7 +161,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	sched = fr_schedule_create(autofree, &default_log, 1, 2, 1, &transports, NULL, NULL);
+	sched = fr_schedule_create(autofree, &default_log, num_networks, num_workers, 1, &transports, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		exit(1);
