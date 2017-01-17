@@ -43,15 +43,6 @@ RCSID("$Id$")
 #endif
 
 /*
- *	Debugging, mainly for schedule_test
- */
-#if 0
-#define MPRINT(...) fprintf(stdout, __VA_ARGS__)
-#else
-#define MPRINT(...)
-#endif
-
-/*
  *	Other OS's have sem_init, OS X doesn't.
  */
 #ifdef HAVE_SEMAPHORE_H
@@ -352,6 +343,7 @@ fail:
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx the talloc context
+ * @param[in] log the destination for all logging messages
  * @param[in] max_inputs the number of network threads
  * @param[in] max_workers the number of worker threads
  * @param[in] num_transports the number of transports in the transport array
