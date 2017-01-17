@@ -90,14 +90,14 @@ static const CONF_PARSER module_config[] = {
  * radiusd Ruby functions
  */
 
-/* radlog wrapper */
+/* fr_log wrapper */
 
 static VALUE radlog_rb(UNUSED VALUE self, VALUE msg_type, VALUE rb_msg) {
 	int status;
 	char *msg;
 	status = FIX2INT(msg_type);
 	msg = StringValuePtr(rb_msg);
-	radlog(&default_log, status, "%s", msg);
+	fr_log(&default_log, status, "%s", msg);
 	return Qnil;
 }
 

@@ -91,7 +91,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	rlm_krb5 was not built as threadsafe
  */
 #else
-		radlog(&default_log, L_WARN, "libkrb5 is not threadsafe, recompile it with thread support enabled ("
+		fr_log(&default_log, L_WARN, "libkrb5 is not threadsafe, recompile it with thread support enabled ("
 #  ifdef HEIMDAL_KRB5
 		       "--enable-pthread-support"
 #  else

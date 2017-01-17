@@ -318,7 +318,7 @@ static int radlog_always(fr_log_t const *log, log_type_t type, char const *msg, 
 	int r;
 
 	va_start(ap, msg);
-	r = vradlog(log, type, msg, ap);
+	r = fr_vlog(log, type, msg, ap);
 	va_end(ap);
 
 	return r;
@@ -411,7 +411,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		/*
 		 *	If we're debugging to a file, then use that.
 		 *
-		 *	@todo: have vradlog() take a fr_log_t*, so
+		 *	@todo: have fr_vlog() take a fr_log_t*, so
 		 *	that we can cache the opened descriptor, and
 		 *	we don't need to re-open it on every log
 		 *	message.
@@ -732,7 +732,7 @@ void radlog_hex(fr_log_t const *log, log_type_t type, log_lvl_t lvl, uint8_t con
 		if ((i + len) > data_len) len = data_len - i;
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) sprintf(p, "%02x ", data[i + j]);
-		radlog(log, type, "%04x: %s", (int)i, buffer);
+		fr_log(log, type, "%04x: %s", (int)i, buffer);
 	}
 }
 
@@ -744,7 +744,7 @@ void radlog_fatal(char const *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	vradlog(&default_log, L_ERR, fmt, ap);
+	fr_vlog(&default_log, L_ERR, fmt, ap);
 	va_end(ap);
 
 	fr_exit_now(1);

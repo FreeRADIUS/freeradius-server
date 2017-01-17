@@ -170,7 +170,7 @@ fr_thread_local_setup(rbtree_t *, local_thread_state)	/* macro */
  *	radiusd Python functions
  */
 
-/** Allow radlog to be called from python
+/** Allow fr_log to be called from python
  *
  */
 static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
@@ -182,7 +182,7 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 		return NULL;
 	}
 
-	radlog(&default_log, status, "%s", msg);
+	fr_log(&default_log, status, "%s", msg);
 	Py_INCREF(Py_None);
 
 	return Py_None;

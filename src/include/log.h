@@ -79,9 +79,9 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #endif
 
 #ifdef LOG_PREFIX_ARGS
-#  define _RADLOG(_l, _f, ...) radlog(&default_log, _l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#  define _RADLOG(_l, _f, ...) fr_log(&default_log, _l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #else
-#  define _RADLOG(_l, _f, ...) radlog(&default_log, _l, LOG_PREFIX _f, ## __VA_ARGS__)
+#  define _RADLOG(_l, _f, ...) fr_log(&default_log, _l, LOG_PREFIX _f, ## __VA_ARGS__)
 #endif
 
 /** @name Log global messages

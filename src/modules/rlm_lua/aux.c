@@ -146,21 +146,21 @@ int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 				L_DBG_WARN2 = 19,\
 				L_DBG_ERR2 = 20\
 			} log_type_t;\
-			int radlog(log_type_t lvl, char const *fmt, ...);\
+			int fr_log(log_type_t lvl, char const *fmt, ...);\
 			]]\
 		fr_srv = ffi.load(\"freeradius-server\")\
 		fr = ffi.load(\"freeradius-lua\")\
 		debug = function(msg)\
-		   fr_srv.radlog(16, \"%s\", msg)\
+		   fr_srv.fr_fr_log(16, \"%s\", msg)\
 		end\
 		info = function(msg)\
-		   fr_srv.radlog(3, \"%s\", msg)\
+		   fr_srv.fr_log(3, \"%s\", msg)\
 		end\
 		warn = function(msg)\
-		   fr_srv.radlog(5, \"%s\", msg)\
+		   fr_srv.fr_log(5, \"%s\", msg)\
 		end\
 		error = function(msg)\
-		   fr_srv.radlog(4, \"%s\", msg)\
+		   fr_srv.fr_log(4, \"%s\", msg)\
 		end\
 		") != 0) {
 		ERROR("rlm_lua (%s): Failed setting up FFI: %s", inst->xlat_name,

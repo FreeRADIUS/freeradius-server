@@ -469,7 +469,7 @@ fr_log_t default_log = {
  * @param msg	with printf style substitution tokens.
  * @param ap	Substitution arguments.
  */
-int vradlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
+int fr_vlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
 {
 	uint8_t		*p;
 	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
@@ -669,7 +669,7 @@ int vradlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
  * @param msg	with printf style substitution tokens.
  * @param ...	Substitution arguments.
  */
-int radlog(fr_log_t const *log, log_type_t type, char const *msg, ...)
+int fr_log(fr_log_t const *log, log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r = 0;
@@ -680,7 +680,7 @@ int radlog(fr_log_t const *log, log_type_t type, char const *msg, ...)
 	 *	Non-debug message, or debugging is enabled.  Log it.
 	 */
 	if (((type & L_DBG) == 0) || (fr_debug_lvl > 0)) {
-		r = vradlog(log, type, msg, ap);
+		r = fr_vlog(log, type, msg, ap);
 	}
 	va_end(ap);
 
