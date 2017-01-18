@@ -340,6 +340,8 @@ static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data
 
 	rad_assert(data_size == sizeof(*m));
 
+	if (data_size != sizeof(*m)) return;
+
 	m = talloc(rc, fr_receiver_socket_t);
 	rad_assert(m != NULL);
 	memcpy(m, data, sizeof(*m));
