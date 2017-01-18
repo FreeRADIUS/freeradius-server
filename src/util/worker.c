@@ -186,18 +186,19 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 
 /** Handle a worker control message for a channel
  *
- * @param[in] worker the worker
+ * @param[in] ctx the worker
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
  */
-static void fr_worker_channel_message(fr_worker_t *worker, void const *data, size_t data_size, fr_time_t now)
+static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
 {
 	int i;
 	bool ok;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
 	fr_channel_event_t ce;
+	fr_worker_t *worker = ctx;
 
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
@@ -301,6 +302,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 {
 	fr_time_t now;
 	fr_worker_t *worker = ctx;
+	char data[256];
 
 #ifndef NDEBUG
 	talloc_get_type_abort(worker, fr_worker_t);
@@ -316,18 +318,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	/*
 	 *	Service all available control-plane events
 	 */
-	while (true) {
-		uint32_t id;
-		size_t data_size;
-		char data[256];
-
-		data_size = fr_control_message_pop(worker->aq_control, &id, data, sizeof(data));
-		if (!data_size) return;
-
-		rad_assert(id == FR_CONTROL_ID_CHANNEL);
-
-		fr_worker_channel_message(worker, data, data_size, now);
-	}
+	fr_control_service(worker->control, data, sizeof(data), now);
 }
 
 
@@ -1017,6 +1008,11 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 		return NULL;
 	}
 
+	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, fr_worker_channel_callback) < 0) {
+		talloc_free(worker);
+		return NULL;
+	}
+
 	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
 		talloc_free(worker);
 		return NULL;
@@ -1035,8 +1031,6 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 
 	worker->num_transports = num_transports;
 	worker->transports = transports;
-
-	fprintf(stderr, "CREATED WORKER %p\n", worker);
 
 	return worker;
 }
