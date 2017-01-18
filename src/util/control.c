@@ -441,7 +441,7 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 
 void fr_control_service(fr_control_t *c, void *data, size_t data_size, fr_time_t now)
 {
-	uint32_t id;
+	uint32_t id = 0;
 	size_t message_size;
 
 	while (true) {
