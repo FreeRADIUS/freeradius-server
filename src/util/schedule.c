@@ -597,15 +597,18 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	return 0;
 }
 
-
-#if 0
-int fr_schedule_socket_add(fr_schedule_t *sc, int fd, fr_transport_t *transport, void *ctx)
+/** Add a socket to a scheduler.
+ *
+ * @param sc the scheduler
+ * @param fd the file descriptor for the socket
+ * @param ctx the context for the transport
+ * @param transport the transport
+ */
+int fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_transport_t *transport)
 {
-	// send it to a receivers KQ as transport / ctx
-	// it receives it via the USERFILT, and adds the transport / ctx
-	// transport_ctx is largely rad_listen_t, which is a transport-specific socket
+	return fr_receiver_socket_add(sc->sr->rc, fd, ctx, transport);
 }
-#endif
+
 
 /*
  *	@todo single threaded mode.  Instead of having function
