@@ -53,6 +53,7 @@ typedef struct fr_schedule_worker_t {
 static int		debug_lvl = 0;
 static int		kq_master;
 static fr_atomic_queue_t *aq_master;
+static fr_control_t	*control_master;
 static int		max_messages = 10;
 static int		max_control_plane = 0;
 static int		max_outstanding = 1;
@@ -210,7 +211,7 @@ static void master_process(void)
 			 *	worker that it is open
 			 */
 			MPRINT1("Master creating channel to worker %d.\n", num_workers);
-			workers[i].ch = fr_worker_channel_create(ctx, workers[i].worker, kq_master, aq_master);
+			workers[i].ch = fr_worker_channel_create(workers[i].worker, ctx, control_master);
 			rad_assert(workers[i].ch != NULL);
 
 			(void) fr_channel_master_ctx_add(workers[i].ch, &workers[i]);
@@ -338,7 +339,7 @@ check_close:
 		 *	@todo this should NOT take a channel pointer
 		 */
 		for (i = 0; i < num_events; i++) {
-			(void) fr_channel_service_kevent(workers[0].ch, aq_master, &events[i]);
+			(void) fr_channel_service_kevent(workers[0].ch, control_master, &events[i]);
 		}
 
 		now = fr_time();
@@ -518,6 +519,9 @@ int main(int argc, char *argv[])
 
 	aq_master = fr_atomic_queue_create(autofree, max_control_plane);
 	rad_assert(aq_master != NULL);
+
+	control_master = fr_control_create(autofree, kq_master, aq_master);
+	rad_assert(control_master != NULL);
 
 	signal(SIGTERM, sig_ignore);
 

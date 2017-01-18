@@ -26,7 +26,7 @@
 RCSIDH(channel_h, "$Id$")
 
 #include <freeradius-devel/util/message.h>
-#include <freeradius-devel/util/atomic_queue.h>
+#include <freeradius-devel/util/control.h>
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -104,8 +104,7 @@ typedef struct fr_channel_data_t {
 
 } fr_channel_data_t;
 
-fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_t *aq_master,
-				int kq_worker, fr_atomic_queue_t *aq_worker);
+fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker) CC_HINT(nonnull);
 
 int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_reply) CC_HINT(nonnull);
 fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
@@ -115,13 +114,12 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
 
-int fr_channel_service_kevent(fr_channel_t *ch, fr_atomic_queue_t *aq, struct kevent const *kev) CC_HINT(nonnull);
+int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev) CC_HINT(nonnull);
 fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size) CC_HINT(nonnull);
 
 bool fr_channel_active(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_signal_open(fr_channel_t *ch) CC_HINT(nonnull);
-int fr_channel_worker_receive_open(TALLOC_CTX *ctx, fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_signal_worker_close(fr_channel_t *ch) CC_HINT(nonnull);
 int fr_channel_worker_ack_close(fr_channel_t *ch) CC_HINT(nonnull);

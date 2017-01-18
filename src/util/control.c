@@ -364,14 +364,14 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
  *
  *  This function is called ONLY from the receiving thread.
  *
- * @param[in] aq the recipients atomic queue for control-plane messages
+ * @param[in] c the control structure
  * @param[in] kev the kevent for this receiver
  * @return
  *	- <0 error
  *	- 0 this kevent is not for us.
  *	- >0 this kevent is for us
  */
-int fr_control_message_service_kevent(UNUSED fr_atomic_queue_t *aq, struct kevent const *kev)
+int fr_control_message_service_kevent(UNUSED fr_control_t *c, struct kevent const *kev)
 {
 	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
 

@@ -93,6 +93,8 @@ struct fr_worker_t {
 
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
 
+	fr_control_t		*control;	//!< the control plane
+
 	fr_message_set_t	*ms;		//!< replies are allocated from here.
 
 	fr_event_list_t		*el;		//!< our event list
@@ -235,7 +237,6 @@ static void fr_worker_channel_message(fr_worker_t *worker, void const *data, siz
 
 			worker->channel[i] = ch;
 			MPRINT("\treceived channel %p into array entry %d\n", ch, i);
-			(void) fr_channel_worker_receive_open(worker, ch);
 
 			ms = fr_message_set_create(worker, worker->message_set_size,
 						   sizeof(fr_channel_data_t),
@@ -305,7 +306,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
-	if (!fr_control_message_service_kevent(worker->aq_control, kev)) {
+	if (!fr_control_message_service_kevent(worker->control, kev)) {
 		MPRINT("\tWORKER kevent not for us!\n");
 		return;
 	}
@@ -1010,6 +1011,12 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 		return NULL;
 	}
 
+	worker->control = fr_control_create(worker, worker->kq, worker->aq_control);
+	if (!worker->control) {
+		talloc_free(worker);
+		return NULL;
+	}
+
 	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
 		talloc_free(worker);
 		return NULL;
@@ -1028,6 +1035,8 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 
 	worker->num_transports = num_transports;
 	worker->transports = transports;
+
+	fprintf(stderr, "CREATED WORKER %p\n", worker);
 
 	return worker;
 }
@@ -1158,16 +1167,17 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
  *  Called by the master (i.e. network) thread when it needs to create
  *  a new channel to a particuler worker.
  *
- * @param[in] ctx the masters context where the channel will be created
  * @param[in] worker the worker
- * @param[in] kq_master the KQ for the master
- * @param[in] aq_master the atomic queue of the master, where control data will be sent
+ * @param[in] master the control plane of the master
+ * @param[in] ctx the context in which the channel will be created
  */
-fr_channel_t *fr_worker_channel_create(TALLOC_CTX *ctx, fr_worker_t const *worker, int kq_master, fr_atomic_queue_t *aq_master)
+fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ctx, fr_control_t *master)
 {
 #ifndef NDEBUG
 	talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
-	return fr_channel_create(ctx, kq_master, aq_master, worker->kq, worker->aq_control);
+	rad_assert(worker->control != NULL);
+
+	return fr_channel_create(ctx, master, worker->control);
 }

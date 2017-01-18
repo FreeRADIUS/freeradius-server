@@ -214,6 +214,7 @@ static void master_process(TALLOC_CTX *ctx)
 	struct kevent events[MAX_KEVENTS];
 	int kq_master;
 	fr_atomic_queue_t *aq_master;
+	fr_control_t *control_master;
 	int sockfd;
 
 	MPRINT1("Master started.\n");
@@ -232,6 +233,9 @@ static void master_process(TALLOC_CTX *ctx)
 
 	aq_master = fr_atomic_queue_create(ctx, max_control_plane);
 	rad_assert(aq_master != NULL);
+
+	control_master = fr_control_create(ctx, kq_master, aq_master);
+	rad_assert(control_master != NULL);
 
 	sockfd = fr_socket_server_base(IPPROTO_UDP, &my_ipaddr, &my_port, NULL, true);
 	if (sockfd < 0) {
@@ -280,7 +284,7 @@ static void master_process(TALLOC_CTX *ctx)
 			 *	worker that it is open
 			 */
 			MPRINT1("Master creating channel to worker %d.\n", num_workers);
-			workers[i].ch = fr_worker_channel_create(ctx, workers[i].worker, kq_master, aq_master);
+			workers[i].ch = fr_worker_channel_create(workers[i].worker, ctx, control_master);
 			rad_assert(workers[i].ch != NULL);
 
 			(void) fr_channel_master_ctx_add(workers[i].ch, &workers[i]);
@@ -333,7 +337,7 @@ static void master_process(TALLOC_CTX *ctx)
 			fr_packet_ctx_t *pc;
 
 			if (events[i].filter == EVFILT_USER) {
-				(void) fr_channel_service_kevent(workers[0].ch, aq_master, &events[i]);
+				(void) fr_channel_service_kevent(workers[0].ch, control_master, &events[i]);
 				control_plane_signal = true;
 				break;
 			}

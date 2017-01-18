@@ -58,6 +58,8 @@ struct fr_receiver_t {
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
+	fr_control_t		*control;	//!< the control plane
+
 	fr_event_list_t		*el;			//!< our event list
 
 	fr_heap_t		*replies;		//!< replies from the worker, ordered by priority / origin time
@@ -300,7 +302,7 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 	talloc_get_type_abort(rc, fr_receiver_t);
 #endif
 
-	if (!fr_control_message_service_kevent(rc->aq_control, kev)) {
+	if (!fr_control_message_service_kevent(rc->control, kev)) {
 		MPRINT("MASTER kevent not for us!\n");
 		return;
 	}
@@ -354,6 +356,12 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 
 	rc->aq_control = fr_atomic_queue_create(rc, 1024);
 	if (!rc->aq_control) {
+		talloc_free(rc);
+		return NULL;
+	}
+
+	rc->control = fr_control_create(rc, rc->kq, rc->aq_control);
+	if (!rc->control) {
 		talloc_free(rc);
 		return NULL;
 	}

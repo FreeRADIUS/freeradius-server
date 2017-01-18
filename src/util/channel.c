@@ -89,10 +89,6 @@ typedef struct fr_channel_control_t {
  *  second through a kqueue.
  */
 typedef struct fr_channel_end_t {
-	int			kq;		//!< the kqueue associated with the channel
-
-	fr_atomic_queue_t	*aq_control;   	//!< the control plane queue - global to the thread
-
 	fr_control_t		*control;	//!< the control plane
 
 	void			*ctx;		//!< worker context
@@ -138,16 +134,13 @@ typedef struct fr_channel_t {
 /** Create a new channel
  *
  * @param[in] ctx the talloc_ctx for the channel
- * @param[in] kq_master the KQ of the master
- * @param[in] aq_master the atomic queue of the master, where control data will be sent
- * @param[in] kq_worker the KQ of the worker
- * @param[in] aq_worker the atomic queue of the worker, where control data will be sent
+ * @param[in] master the control plane of the master
+ * @param[in] worker the control plane of the worker
  * @return
  *	- NULL on error
  *	- channel on success
  */
-fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_t *aq_master,
-				int kq_worker, fr_atomic_queue_t *aq_worker)
+fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker)
 {
 	fr_time_t when;
 	fr_channel_t *ch;
@@ -167,10 +160,8 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_
 		return NULL;
 	}
 
-	ch->end[TO_WORKER].kq = kq_worker;
-	ch->end[TO_WORKER].aq_control = aq_worker;
-	ch->end[FROM_WORKER].kq = kq_master;
-	ch->end[FROM_WORKER].aq_control = aq_master;
+	ch->end[TO_WORKER].control = worker;
+	ch->end[FROM_WORKER].control = master;
 
 	/*
 	 *	Initialize all of the timers to now.
@@ -184,18 +175,6 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, int kq_master, fr_atomic_queue_
 	ch->end[FROM_WORKER].last_write = when;
 	ch->end[FROM_WORKER].last_read_other = when;
 	ch->end[FROM_WORKER].last_sent_signal = when;
-
-	ch->end[TO_WORKER].control = fr_control_create(ctx,
-							 ch->end[TO_WORKER].kq,
-							 ch->end[TO_WORKER].aq_control);
-	if (!ch->end[TO_WORKER].control) {
-		talloc_free(ch);
-		return NULL;
-	}
-
-	MPRINT("Master CONTROL aq_master %p aq_worker %p\n", aq_master, aq_worker);
-
-	MPRINT("Master CONTROL %p aq %p\n", ch->end[TO_WORKER].control, ch->end[TO_WORKER].aq_control);
 
 	ch->active = true;
 
@@ -663,23 +642,23 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
  *  function.  Instead, the channel is taken from the kevent.
  *
  * @param[in] ch the channel to service
- * @param[in] aq the atomic queue on which we receive control-plane messages
+ * @param[in] c the control plane on which we received the kev
  * @param[in] kev the event of type EVFILT_USER
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_service_kevent(fr_channel_t *ch, fr_atomic_queue_t *aq, struct kevent const *kev)
+int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev)
 {
 #ifndef NDEBUG
 	talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
-	if (fr_control_message_service_kevent(aq, kev) == 0) {
+	if (fr_control_message_service_kevent(c, kev) == 0) {
 		return 0;
 	}
 
-	if (aq == ch->end[TO_WORKER].aq_control) {
+	if (c == ch->end[TO_WORKER].control) {
 		ch->end[TO_WORKER].num_kevents++;
 	} else {
 		ch->end[FROM_WORKER].num_kevents++;
@@ -810,7 +789,7 @@ void *fr_channel_master_ctx_get(fr_channel_t *ch)
 }
 
 
-/** Send a channel to a KQ
+/** Send a channel to a worker
  *
  * @param[in] ch the channel
  * @return
@@ -842,34 +821,4 @@ void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 	fprintf(fp, "\tnum_kevents checked = %zd\n", ch->end[FROM_WORKER].num_kevents);
 	fprintf(fp, "\tsequence = %zd\n", ch->end[FROM_WORKER].sequence);
 	fprintf(fp, "\tack = %zd\n", ch->end[FROM_WORKER].ack);
-}
-
-/** Receive an "open channel" signal.
- *
- *  Called only by the worker.
- *
- * @param[in] ctx the talloc context for worker messages
- * @param[in] ch the channel
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-int fr_channel_worker_receive_open(TALLOC_CTX *ctx, fr_channel_t *ch)
-{
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
-#endif
-
-	if (ch->end[FROM_WORKER].control) return -1;
-
-	ch->end[FROM_WORKER].control = fr_control_create(ctx,
-							 ch->end[FROM_WORKER].kq,
-							 ch->end[FROM_WORKER].aq_control);
-	if (!ch->end[FROM_WORKER].control) {
-		return -1;
-	}
-
-	MPRINT("\tWorker CONTROL %p\n", ch->end[FROM_WORKER].control);
-
-	return 0;
 }

@@ -46,6 +46,7 @@ RCSID("$Id$")
 static int		debug_lvl = 0;
 static int		kq_master, kq_worker;
 static fr_atomic_queue_t *aq_master, *aq_worker;
+static fr_control_t	*control_master, *control_worker;
 static int		max_messages = 10;
 static int		max_control_plane = 0;
 static int		max_outstanding = 1;
@@ -207,7 +208,7 @@ check_close:
 		 *	Service the events.
 		 */
 		for (i = 0; i < num_events; i++) {
-			(void) fr_channel_service_kevent(channel, aq_master, &events[i]);
+			(void) fr_channel_service_kevent(channel, control_master, &events[i]);
 		}
 
 		now = fr_time();
@@ -334,7 +335,7 @@ static void *channel_worker(void *arg)
 		if (num_events == 0) continue;
 
 		for (i = 0; i < num_events; i++) {
-			(void) fr_channel_service_kevent(channel, aq_worker, &events[i]);
+			(void) fr_channel_service_kevent(channel, control_worker, &events[i]);
 		}
 
 		MPRINT1("\tWorker servicing control-plane aq %p\n", aq_worker);
@@ -360,11 +361,6 @@ static void *channel_worker(void *arg)
 			case FR_CHANNEL_OPEN:
 				MPRINT1("\tWorker received a new channel\n");
 				rad_assert(new_channel == channel);
-
-				if (fr_channel_worker_receive_open(ctx, new_channel) < 0) {
-					fprintf(stderr, "Failed calling receive open.\n");
-					exit(1);
-				}
 				break;
 
 			case FR_CHANNEL_CLOSE:
@@ -534,9 +530,13 @@ int main(int argc, char *argv[])
 	aq_worker = fr_atomic_queue_create(autofree, max_control_plane);
 	rad_assert(aq_worker != NULL);
 
-	channel = fr_channel_create(autofree,
-				    kq_master, aq_master,
-				    kq_worker, aq_worker);
+	control_master = fr_control_create(autofree, kq_master, aq_master);
+	rad_assert(control_master != NULL);
+
+	control_worker = fr_control_create(autofree, kq_worker, aq_worker);
+	rad_assert(control_worker != NULL);
+
+	channel = fr_channel_create(autofree, control_master, control_worker);
 	if (!channel) {
 		fprintf(stderr, "channel_test: Failed to create channel\n");
 		exit(1);
