@@ -438,3 +438,18 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 
 	return 0;
 }
+
+void fr_control_service(fr_control_t *c, void *data, size_t data_size, fr_time_t now)
+{
+	uint32_t id;
+	size_t message_size;
+
+	while (true) {
+		message_size = fr_control_message_pop(c->aq, &id, data, data_size);
+		if (!message_size) return;
+
+		if (!c->ident[id].callback) continue;
+
+		c->ident[id].callback(c->ident[id].ctx, data, message_size, now);
+	}
+}
