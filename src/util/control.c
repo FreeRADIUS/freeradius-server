@@ -53,6 +53,7 @@ typedef enum fr_control_message_status_t {
 	FR_CONTROL_MESSAGE_DONE				//!< the message is done (set only by receiver)
 } fr_control_message_status_t;
 
+
 /**
  *  The header for the control message
  */
@@ -61,6 +62,15 @@ typedef struct fr_control_message_t {
 	uint32_t			id;		//!< ID of this message
 	size_t				data_size;     	//!< size of the data we're sending
 } fr_control_message_t;
+
+
+typedef struct fr_control_ctx_t {
+	uint32_t			id;		//!< id of this callback
+	void				*ctx;		//!< context for the callback
+	fr_control_callback_t		callback;	//!< the function to call
+} fr_control_ctx_t;
+
+#define MAX_IDENT (32)
 
 /**
  *  The control structure.
@@ -71,6 +81,8 @@ struct fr_control_t {
 	fr_atomic_queue_t	*aq;			//!< destination AQ
 
 	fr_ring_buffer_t	*rb;			//!< a ring buffer containing my messages to send.
+
+	fr_control_ctx_t 	ident[MAX_IDENT];	//!< callbacks
 };
 
 
@@ -364,4 +376,65 @@ int fr_control_message_service_kevent(UNUSED fr_atomic_queue_t *aq, struct keven
 	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
 
 	return 1;
+}
+
+
+/** Register a callback for an ID
+ *
+ * @param[in] c the control structure
+ * @param[in] id the ident of this message.
+ * @param[in] ctx the context for the callback
+ * @param[in] callback the callback function
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback)
+{
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(c, fr_control_t);
+#endif
+
+	if (id >= MAX_IDENT) return -1;
+
+	/*
+	 *	Re-registering the same thing is OK.
+	 */
+	if ((c->ident[id].ctx == ctx) &&
+	    (c->ident[id].callback == callback)) {
+		return 0;
+	}
+
+	if (c->ident[id].callback != NULL) return -1;
+
+	c->ident[id].id = id;
+	c->ident[id].ctx = ctx;
+	c->ident[id].callback = callback;
+
+	return 0;
+}
+
+/** Delete a callback for an ID
+ *
+ * @param[in] c the control structure
+ * @param[in] id the ident of this message.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_control_callback_delete(fr_control_t *c, uint32_t id)
+{
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(c, fr_control_t);
+#endif
+
+	if (id >= MAX_IDENT) return -1;
+
+	if (c->ident[id].callback == NULL) return 0;
+
+	c->ident[id].id = 0;
+	c->ident[id].ctx = NULL;
+	c->ident[id].callback = NULL;
+
+	return 0;
 }

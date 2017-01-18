@@ -26,6 +26,7 @@
 RCSIDH(control_h, "$Id$")
 
 #include <freeradius-devel/util/atomic_queue.h>
+#include <freeradius-devel/util/time.h>
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -40,6 +41,7 @@ extern "C" {
  *  Multiple-producer, single consumer.
  */
 typedef struct fr_control_t fr_control_t;
+typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_size, fr_time_t now);
 
 /*
  *	A list of pre-allocated IDs, so that the callers don't have to manage their own.
@@ -57,6 +59,8 @@ int fr_control_message_service_kevent(fr_atomic_queue_t *aq, struct kevent const
 int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
 ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size) CC_HINT(nonnull);
 
+int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback) CC_HINT(nonnull(1,4));
+int fr_control_callback_delete(fr_control_t *c, uint32_t id) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
