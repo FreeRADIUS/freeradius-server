@@ -40,6 +40,7 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* Finish SQL select queries even when SELECT returns no rows.
 	  Fixes #1879.
 	* Set Module-Failure-Message for more EAP errors.
+	* Correct typo in dictionary.rfc5580.  Fixes #1882
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
