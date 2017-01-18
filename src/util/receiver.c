@@ -53,6 +53,14 @@ typedef struct fr_receiver_worker_t {
 	fr_worker_t		*worker;		//!< worker pointer
 } fr_receiver_worker_t;
 
+typedef struct fr_receiver_socket_t {
+	int			fd;			//!< the file descriptor
+	void			*ctx;			//!< transport context
+	fr_transport_t		*transport;		//!< the transport
+	int			heap_id;		//!< for the heap
+} fr_receiver_socket_t;
+
+
 struct fr_receiver_t {
 	int			kq;			//!< our KQ
 
@@ -69,9 +77,23 @@ struct fr_receiver_t {
 	uint64_t		num_requests;		//!< number of requests we sent
 	uint64_t		num_replies;		//!< number of replies we received
 
+	fr_heap_t		*sockets;		//!< list of sockets we're managing
+
 	uint32_t		num_transports;		//!< how many transport layers we have
 	fr_transport_t		**transports;		//!< array of active transports.
 };
+
+
+static int socket_cmp(void const *one, void const *two)
+{
+	fr_receiver_socket_t const *a = one;
+	fr_receiver_socket_t const *b = two;
+
+	if (a->fd < b->fd) return -1;
+	if (a->fd > b->fd) return +1;
+
+	return 0;
+}
 
 static int worker_cmp(void const *one, void const *two)
 {
@@ -288,6 +310,51 @@ static void fr_receiver_channel_callback(void *ctx, void const *data, size_t dat
 	}
 }
 
+static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED void *ctx)
+{
+//	fr_receiver_socket_t *m = ctx;
+//	fr_receiver_t *rc = talloc_parent(m);
+	ssize_t data_size;
+	socklen_t salen;
+	struct sockaddr_storage ss;
+	uint8_t buffer[256];
+
+	data_size = recvfrom(sockfd, buffer, sizeof(buffer), 0,
+			     (struct sockaddr *) &ss, &salen);
+	fprintf(stderr, "Got packet size %zd\n", data_size);
+
+	fprintf(stderr, "READ FROM SOCKET %d - %zd bytes\n", sockfd, data_size);
+}
+
+/** Handle a receiver control message callback for a new socket
+ *
+ * @param[in] ctx the receiver
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+{
+	fr_receiver_t *rc = ctx;
+	fr_receiver_socket_t *m;
+
+	rad_assert(data_size == sizeof(*m));
+
+	m = talloc(rc, fr_receiver_socket_t);
+	rad_assert(m != NULL);
+	memcpy(m, data, sizeof(*m));
+
+	if (fr_event_fd_insert(rc->el, m->fd, fr_receiver_read, NULL, NULL, m) < 0) {
+		fprintf(stderr, "FAILED ADDING NEW SOCKET\n");
+		close(m->fd);
+		return;
+	}
+
+	(void) fr_heap_insert(rc->sockets, m);
+
+	fprintf(stderr, "GOT NEW SOCKET\n");
+}
+
 /** Service an EVFILT_USER event
  *
  * @param[in] kq the kq to service
@@ -362,6 +429,11 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 		return NULL;
 	}
 
+	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_SOCKET, rc, fr_receiver_socket_callback) < 0) {
+		talloc_free(rc);
+		return NULL;
+	}
+
 	if (fr_event_user_insert(rc->el, fr_receiver_evfilt_user, rc) < 0) {
 		talloc_free(rc);
 		return NULL;
@@ -370,6 +442,12 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 	/*
 	 *	Create the various heaps.
 	 */
+	rc->sockets = fr_heap_create(socket_cmp, offsetof(fr_receiver_socket_t, heap_id));
+	if (!rc->sockets) {
+		talloc_free(rc);
+		return NULL;
+	}
+
 	rc->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!rc->replies) {
 		talloc_free(rc);
@@ -442,7 +520,7 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 
 /** The main network worker function.
  *
- * @param[in] rc th receiver data structure to run.
+ * @param[in] rc the receiver data structure to run.
  */
 void fr_receiver(fr_receiver_t *rc)
 {
@@ -463,4 +541,22 @@ void fr_receiver(fr_receiver_t *rc)
 void fr_receiver_exit(fr_receiver_t *rc)
 {
 	fr_event_loop_exit(rc->el, 1);
+}
+
+/** Add a socket to a receiver
+ *
+ * @param rc the receiver
+ * @param fd the file descriptor for the socket
+ * @param ctx the context for the transport
+ * @param transport the transport
+ */
+int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t *transport)
+{
+	fr_receiver_socket_t m;
+
+	m.fd = fd;
+	m.ctx = ctx;
+	m.transport = transport;
+
+	return fr_control_message_send(rc->control, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
 }
