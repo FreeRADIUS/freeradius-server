@@ -238,17 +238,18 @@ static int fr_receiver_idle(void *ctx, struct timeval *wake)
 }
 
 
-/** Handle a receiver control message for a channel
+/** Handle a receiver control message callback for a channel
  *
- * @param[in] rc the receiver
+ * @param[in] ctx the receiver
  * @param[in] data the message
  * @param[in] data_size size of the data
  * @param[in] now the current time
  */
-static void fr_receiver_channel_message(fr_receiver_t *rc, void const *data, size_t data_size, fr_time_t now)
+static void fr_receiver_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
 {
 	fr_channel_event_t ce;
 	fr_channel_t *ch;
+	fr_receiver_t *rc = ctx;
 
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
@@ -297,6 +298,7 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 {
 	fr_time_t now;
 	fr_receiver_t *rc = ctx;
+	uint8_t data[256];
 
 #ifndef NDEBUG
 	talloc_get_type_abort(rc, fr_receiver_t);
@@ -312,18 +314,7 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 	/*
 	 *	Service all available control-plane events
 	 */
-	while (true) {
-		uint32_t id;
-		size_t data_size;
-		char data[256];
-
-		data_size = fr_control_message_pop(rc->aq_control, &id, data, sizeof(data));
-		if (!data_size) return;
-
-		rad_assert(id == FR_CONTROL_ID_CHANNEL);
-
-		fr_receiver_channel_message(rc, data, data_size, now);
-	}
+	fr_control_service(rc->control, data, sizeof(data), now);
 }
 
 
@@ -362,6 +353,11 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 
 	rc->control = fr_control_create(rc, rc->kq, rc->aq_control);
 	if (!rc->control) {
+		talloc_free(rc);
+		return NULL;
+	}
+
+	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_CHANNEL, rc, fr_receiver_channel_callback) < 0) {
 		talloc_free(rc);
 		return NULL;
 	}
