@@ -34,6 +34,7 @@ RCSID("$Id$")
 #define FR_CONTROL_SIGNAL	(1024)
 #define FR_CONTROL_MAX_MESSAGES (1024)
 #define FR_CONTROL_MAX_SIZE	(64)
+#define FR_CONTROL_MAX_IDENT	(32)
 
 /*
  *	Debugging, mainly for channel_test
@@ -70,7 +71,6 @@ typedef struct fr_control_ctx_t {
 	fr_control_callback_t		callback;	//!< the function to call
 } fr_control_ctx_t;
 
-#define MAX_IDENT (32)
 
 /**
  *  The control structure.
@@ -82,7 +82,7 @@ struct fr_control_t {
 
 	fr_ring_buffer_t	*rb;			//!< a ring buffer containing my messages to send.
 
-	fr_control_ctx_t 	ident[MAX_IDENT];	//!< callbacks
+	fr_control_ctx_t 	ident[FR_CONTROL_MAX_IDENT];	//!< callbacks
 };
 
 
@@ -395,7 +395,7 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	if (id >= MAX_IDENT) return -1;
+	if (id >= FR_CONTROL_MAX_IDENT) return -1;
 
 	/*
 	 *	Re-registering the same thing is OK.
@@ -428,7 +428,7 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	if (id >= MAX_IDENT) return -1;
+	if (id >= FR_CONTROL_MAX_IDENT) return -1;
 
 	if (c->ident[id].callback == NULL) return 0;
 
@@ -447,6 +447,8 @@ void fr_control_service(fr_control_t *c, void *data, size_t data_size, fr_time_t
 	while (true) {
 		message_size = fr_control_message_pop(c->aq, &id, data, data_size);
 		if (!message_size) return;
+
+		if (id >= FR_CONTROL_MAX_IDENT) continue;
 
 		if (!c->ident[id].callback) continue;
 
