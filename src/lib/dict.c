@@ -2787,6 +2787,12 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 */
 	if (old->type == PW_TYPE_VENDOR) if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
+	/*
+	 *	Look up the attribute.  If it's already defined, don't re-define it.
+	 */
+	da = fr_dict_attr_child_by_num(parent, old->attr);
+	if (da) return old;
+
 	if (fr_dict_attr_add(dict, old->parent, old->name, old->attr, old->type, flags) < 0) return NULL;
 
 	da = fr_dict_attr_child_by_num(parent, old->attr);
