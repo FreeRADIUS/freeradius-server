@@ -1,0 +1,8 @@
+#
+#  PRE: vendor_specific
+#
+#  Tests for Vendor-Specific 
+#
+update reply {
+	Attr-26 := 0x01020304
+}
