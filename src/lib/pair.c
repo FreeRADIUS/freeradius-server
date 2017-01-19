@@ -358,6 +358,18 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	if (!da) return vp;
 
 	/*
+	 *	Don't convert "Attr-26" to "Vendor-Specific", it's structural.
+	 */
+	switch (da->type) {
+	default:
+		break;
+
+	case PW_TYPE_STRUCTURAL:
+	case PW_TYPE_BAD:
+		return vp;
+	}
+
+	/*
 	 *	Skip decoding if we know it's the wrong size for the
 	 *	data type.
 	 */
@@ -650,6 +662,7 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 
 	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
 	if (!da) return -1;
+
 
 	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
 	vp->da = da;
