@@ -66,7 +66,9 @@ struct fr_receiver_t {
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
-	fr_control_t		*control;	//!< the control plane
+	fr_control_t		*control;		//!< the control plane
+
+	fr_ring_buffer_t	*rb;			//!< ring buffer for my control-plane messages
 
 	fr_event_list_t		*el;			//!< our event list
 
@@ -426,6 +428,12 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 		return NULL;
 	}
 
+	rc->rb = fr_ring_buffer_create(rc, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
+	if (!rc->rb) {
+		talloc_free(rc);
+		return NULL;
+	}
+
 	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_CHANNEL, rc, fr_receiver_channel_callback) < 0) {
 		talloc_free(rc);
 		return NULL;
@@ -560,5 +568,5 @@ int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t 
 	m.ctx = ctx;
 	m.transport = transport;
 
-	return fr_control_message_send(rc->control, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
+	return fr_control_message_send(rc->control, rc->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
 }

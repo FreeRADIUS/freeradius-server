@@ -32,8 +32,6 @@ RCSID("$Id$")
 #include <sys/event.h>
 
 #define FR_CONTROL_SIGNAL	(1024)
-#define FR_CONTROL_MAX_MESSAGES (1024)
-#define FR_CONTROL_MAX_SIZE	(64)
 #define FR_CONTROL_MAX_IDENT	(32)
 
 /*
@@ -80,8 +78,6 @@ struct fr_control_t {
 
 	fr_atomic_queue_t	*aq;			//!< destination AQ
 
-	fr_ring_buffer_t	*rb;			//!< a ring buffer containing my messages to send.
-
 	fr_control_ctx_t 	ident[FR_CONTROL_MAX_IDENT];	//!< callbacks
 };
 
@@ -105,13 +101,6 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
 
 	c->kq = kq;
 	c->aq = aq;
-
-	c->rb = fr_ring_buffer_create(c, FR_CONTROL_MAX_SIZE * FR_CONTROL_MAX_MESSAGES);
-	if (!c->rb) {
-		talloc_free(c);
-		return NULL;
-
-	}
 
 	/*
 	 *	Tell the KQ to listen on our events.
@@ -141,17 +130,18 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
  *  and mark them FR_CONTROL_MESSAGE_FREE.
  *
  * @param[in] c the fr_control_t
+ * @param[in] rb the callers ring buffer for message allocation.
  * @return
  *	- <0 there are still messages used
  *	- 0 the control list is empty.
  */
-int fr_control_gc(fr_control_t *c)
+int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 {
 	while (true) {
 		size_t room, message_size;
 		fr_control_message_t *m;
 
-		(void) fr_ring_buffer_start(c->rb, (uint8_t **) &m, &room);
+		(void) fr_ring_buffer_start(rb, (uint8_t **) &m, &room);
 		if (room == 0) break;
 
 		rad_assert(m != NULL);
@@ -171,13 +161,13 @@ int fr_control_gc(fr_control_t *c)
 		message_size += m->data_size;
 		message_size += 63;
 		message_size &= ~(size_t) 63;
-		fr_ring_buffer_free(c->rb, message_size);
+		fr_ring_buffer_free(rb, message_size);
 	}
 
 	/*
 	 *	Maybe we failed to garbage collect everything?
 	 */
-	if (fr_ring_buffer_used(c->rb) > 0) {
+	if (fr_ring_buffer_used(rb) > 0) {
 		return -1;
 	}
 
@@ -196,10 +186,6 @@ void fr_control_free(fr_control_t *c)
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	(void) fr_control_gc(c);
-
-	rad_assert(fr_ring_buffer_used(c->rb) == 0);
-
 	talloc_free(c);
 }
 
@@ -207,6 +193,7 @@ void fr_control_free(fr_control_t *c)
 /** Allocate a control message
  *
  * @param[in] c the control structure
+ * @param[in] rb the callers ring buffer for message allocation.
  * @param[in] id the ident of this message.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
@@ -214,7 +201,7 @@ void fr_control_free(fr_control_t *c)
  *	- NULL on error
  *	- fr_message_t on success
  */
-static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, uint32_t id, void *data, size_t data_size)
+static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
 	size_t message_size;
 	fr_control_message_t *m;
@@ -225,10 +212,10 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, uint32_t 
 	message_size += 63;
 	message_size &= ~(size_t) 63;
 
-	m = (fr_control_message_t *) fr_ring_buffer_alloc(c->rb, message_size);
+	m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
 	if (!m) {
-		(void) fr_control_gc(c);
-		m = (fr_control_message_t *) fr_ring_buffer_alloc(c->rb, message_size);
+		(void) fr_control_gc(c, rb);
+		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
 		if (!m) return NULL;
 	}
 
@@ -249,6 +236,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, uint32_t 
  *  This function is called ONLY from the originating thread.
  *
  * @param[in] c the control structure
+ * @param[in] rb the callers ring buffer for message allocation.
  * @param[in] id the ident of this message.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
@@ -256,7 +244,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, uint32_t 
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t data_size)
+int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
 	fr_control_message_t *m;
 
@@ -271,10 +259,10 @@ int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t dat
 	 *	collection.  Get another, and if that fails, we're
 	 *	done.
 	 */
-	m = fr_control_message_alloc(c, id, data, data_size);
+	m = fr_control_message_alloc(c, rb, id, data, data_size);
 	if (!m) {
-		(void) fr_control_gc(c);
-		m = fr_control_message_alloc(c, id, data, data_size);
+		(void) fr_control_gc(c, rb);
+		m = fr_control_message_alloc(c, rb, id, data, data_size);
 		if (!m) {
 			MPRINT("CONTROL %p failed after GC\n", c);
 			return -1;
@@ -295,6 +283,7 @@ int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t dat
  *  This function is called ONLY from the originating thread.
  *
  * @param[in] c the control structure
+ * @param[in] rb the callers ring buffer for message allocation.
  * @param[in] id the ident of this message.
  * @param[in] data the data to write to the control plane
  * @param[in] data_size the size of the data to write to the control plane.
@@ -302,7 +291,7 @@ int fr_control_message_push(fr_control_t *c, uint32_t id, void *data, size_t dat
  *	- <0 on error
  *	- 0 on success
  */
-int fr_control_message_send(fr_control_t *c, uint32_t id, void *data, size_t data_size)
+int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
 	struct kevent kev;
 
@@ -310,7 +299,7 @@ int fr_control_message_send(fr_control_t *c, uint32_t id, void *data, size_t dat
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	if (fr_control_message_push(c, id, data, data_size) < 0) {
+	if (fr_control_message_push(c, rb, id, data, data_size) < 0) {
 		return -1;
 	}
 

@@ -47,6 +47,7 @@ static fr_atomic_queue_t *aq;
 static size_t		max_messages = 10;
 static int		aq_size = 16;
 static fr_control_t	*control = NULL;
+static fr_ring_buffer_t *rb = NULL;
 
 static void NEVER_RETURNS usage(void)
 {
@@ -138,7 +139,7 @@ static void *control_worker(UNUSED void *arg)
 		m.counter = i;
 
 retry:
-		if (fr_control_message_send(control, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
+		if (fr_control_message_send(control, rb, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
 			MPRINT1("\tWorker retrying message %zu\n", i);
 			usleep(10);
 			goto retry;
@@ -195,6 +196,9 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "control_test: Failed to create control plane\n");
 		exit(1);
 	}
+
+	rb = fr_ring_buffer_create(autofree, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
+	if (!rb) exit(1);
 
 	/*
 	 *	Start the two threads, with the channel.

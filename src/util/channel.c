@@ -91,6 +91,8 @@ typedef struct fr_channel_control_t {
 typedef struct fr_channel_end_t {
 	fr_control_t		*control;	//!< the control plane
 
+	fr_ring_buffer_t	*rb;	//!< ring buffer for control-plane messages
+
 	void			*ctx;		//!< worker context
 
 	int			num_outstanding; //!< number of outstanding requests with no reply
@@ -164,6 +166,22 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 	ch->end[FROM_WORKER].control = master;
 
 	/*
+	 *	Create the ring buffer for the master to send
+	 *	control-plane messages to the worker, and vice-versa.
+	 */
+	ch->end[TO_WORKER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
+	if (!ch->end[TO_WORKER].rb) {
+		talloc_free(ch);
+		return NULL;
+	}
+
+	ch->end[FROM_WORKER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
+	if (!ch->end[FROM_WORKER].rb) {
+		talloc_free(ch);
+		return NULL;
+	}
+
+	/*
 	 *	Initialize all of the timers to now.
 	 */
 	when = fr_time();
@@ -213,7 +231,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 	cc.ack = end->ack;
 	cc.ch = ch;
 
-	return fr_control_message_send(end->control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(end->control, end->rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 #define IALPHA (8)
@@ -533,7 +551,7 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 
 	MPRINT("\tWORKER SLEEPING num_outstanding %zd, packets in %zd, packets out %zd\n", worker->num_outstanding,
 	       ch->end[TO_WORKER].num_packets, worker->num_packets);
-	return fr_control_message_send(worker->control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(worker->control, worker->rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 
@@ -704,7 +722,7 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
 	cc.ack = TO_WORKER;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[TO_WORKER].control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[TO_WORKER].control, ch->end[TO_WORKER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 /** Acknowledge that the channel is closing
@@ -728,7 +746,7 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
 	cc.ack = FROM_WORKER;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[FROM_WORKER].control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[FROM_WORKER].control, ch->end[FROM_WORKER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 /** Add worker-specific data to a channel
@@ -804,7 +822,7 @@ int fr_channel_signal_open(fr_channel_t *ch)
 	cc.ack = 0;
 	cc.ch = ch;
 
-	return fr_control_message_send(ch->end[TO_WORKER].control, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
+	return fr_control_message_send(ch->end[TO_WORKER].control, ch->end[TO_WORKER].rb, FR_CONTROL_ID_CHANNEL, &cc, sizeof(cc));
 }
 
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
