@@ -201,6 +201,21 @@ const bool fr_dict_attr_allowed_chars[UINT8_MAX] = {
 	['z'] = true
 };
 
+/** Structural data types
+ *
+ */
+const bool fr_dict_non_data_types[PW_TYPE_MAX + 1] = {
+	[PW_TYPE_TLV] = true,
+	[PW_TYPE_STRUCT] = true,
+	[PW_TYPE_EXTENDED] = true,
+	[PW_TYPE_LONG_EXTENDED] = true,
+	[PW_TYPE_VSA] = true,
+	[PW_TYPE_EVS] = true,
+	[PW_TYPE_VENDOR] = true,
+	[PW_TYPE_MAX] = true,
+};
+
+
 /*
  *	Create the hash of the name.
  *
