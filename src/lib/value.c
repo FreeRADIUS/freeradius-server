@@ -1236,6 +1236,13 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		    PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
 		    value_box_t const *src)
 {
+	if (fr_dict_non_data_types[dst_type]) {
+		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types.",
+				   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
+	}
+
 	/*
 	 *	If it's the same type, copy.
 	 */
