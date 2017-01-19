@@ -360,14 +360,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	/*
 	 *	Don't convert "Attr-26" to "Vendor-Specific", it's structural.
 	 */
-	switch (da->type) {
-	default:
-		break;
-
-	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_BAD:
-		return vp;
-	}
+	if (fr_dict_non_data_types[da->type]) return vp;
 
 	/*
 	 *	Skip decoding if we know it's the wrong size for the
