@@ -302,21 +302,9 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	 *	We can only cast to basic data types.  Complex ones
 	 *	are forbidden.
 	 */
-	switch (cast) {
-#ifdef WITH_ASCEND_BINARY
-	case PW_TYPE_ABINARY:
-#endif
-	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_TLV:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_EVS:
-	case PW_TYPE_VSA:
+	if (fr_dict_non_data_types[cast]) {
 		*error = "Forbidden data type in cast";
 		return -(p - start);
-
-	default:
-		break;
 	}
 
 	*pda = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + cast);
