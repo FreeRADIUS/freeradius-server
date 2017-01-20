@@ -1,0 +1,24 @@
+#
+#  PRE: vendor_specific
+#
+#  Tests for Vendor-Specific 
+#
+update request {
+	Attr-26 := 0x01020304
+}
+
+if (!&Attr-26) {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+}
+elsif (&Attr-26 != 0x01020304) {
+	update reply {
+		Filter-Id := "fail 2"
+	}
+}
+else {
+	update reply {
+		Filter-Id := "filter"
+	}
+}
