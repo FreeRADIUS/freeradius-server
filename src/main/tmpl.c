@@ -749,8 +749,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 *	If it has, parsing is the same as if the attribute
 			 *	name had been used instead of its OID.
 			 */
-			attr.da = fr_dict_attr_child_by_num(((fr_dict_attr_t *)&attr.unknown.da)->parent,
-							    ((fr_dict_attr_t *)&attr.unknown.da)->attr);
+			attr.da = fr_dict_attr_by_name(NULL, a);
 			if (attr.da) {
 				vpt->auto_converted = true;
 				goto do_num;
