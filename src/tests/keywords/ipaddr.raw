@@ -1,0 +1,14 @@
+#
+#  PRE: update if
+#
+update control {
+       Cleartext-Password := 'hello'
+       reply:Filter-Id := "filter"
+}
+
+#
+#  Malformed NAS-IP-Address
+#
+update request {
+	Attr-4 = 0x010203
+}
