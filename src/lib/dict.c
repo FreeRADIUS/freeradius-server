@@ -683,7 +683,7 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 	return da;
 }
 
-/** Add an attribute to the dictionary
+/** Add an attribute to the name table for the dictionary.
  *
  * @todo we need to check length of none vendor attributes.
  *
@@ -695,11 +695,11 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
  * @param[in] type of attribute.
  * @param[in] flags to set in the attribute.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- fr_dict_attr_t on success
+ *	- NULL on failure
  */
-int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
-		     char const *name, int attr, PW_TYPE type, fr_dict_attr_flags_t flags)
+static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t const *parent,
+						char const *name, int attr, PW_TYPE type, fr_dict_attr_flags_t flags)
 {
 	unsigned int		vendor;
 	size_t			namelen;
@@ -708,17 +708,17 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	INTERNAL_IF_NULL(dict);
 
-	if (!fr_cond_assert(parent)) return -1;
+	if (!fr_cond_assert(parent)) return NULL;
 
 	namelen = strlen(name);
 	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
 	error:
 		fr_strerror_printf("%s: Failed adding '%s': %s", __FUNCTION__, name, fr_strerror());
-		return -1;
+		return NULL;
 	}
 
-	if (fr_dict_valid_name(name) < 0) return -1;
+	if (fr_dict_valid_name(name) < 0) return NULL;
 
 	/*
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
@@ -877,7 +877,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		if (flags.length > 253) {
 			fr_strerror_printf("Invalid length %d", flags.length);
-			return -1;
+			return NULL;
 		}
 
 		if ((type == PW_TYPE_TLV) || (type == PW_TYPE_VENDOR)) {
@@ -1341,16 +1341,39 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 	}
 
+	return n;
+}
+
+/** Add an attribute to the dictionary
+ *
+ * @todo we need to check length of none vendor attributes.
+ *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] parent to add attribute under.
+ * @param[in] name of the attribute.
+ * @param[in] attr number.
+ * @param[in] type of attribute.
+ * @param[in] flags to set in the attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
+		     char const *name, int attr, PW_TYPE type, fr_dict_attr_flags_t flags)
+{
+	fr_dict_attr_t *n;
+	fr_dict_attr_t *mutable;
+
+	n = fr_dict_attr_add_by_name(dict, parent, name, attr, type, flags);
+	if (!n) return -1;
+
 	/*
 	 *	Setup parenting for the attribute
 	 */
-	{
-		fr_dict_attr_t *mutable;
+	memcpy(&mutable, &parent, sizeof(mutable));
 
-		memcpy(&mutable, &parent, sizeof(mutable));
-
-		if (fr_dict_attr_child_add(mutable, n) < 0) return -1;
-	}
+	if (fr_dict_attr_child_add(mutable, n) < 0) return -1;
 
 	return 0;
 }
