@@ -82,3 +82,13 @@ if (&Vendor-11344-Attr-1 != 127.0.0.1) {
 		Filter-Id += 'Fail 8'
 	}
 }
+
+update request {
+	Vendor-66-Attr-1 = 0x01020304
+}
+
+if (&Vendor-66-Attr-1 != 0x01020304) {
+	update reply {
+		Filter-Id += 'Fail 9'
+	}
+}
