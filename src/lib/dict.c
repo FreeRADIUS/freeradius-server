@@ -2826,13 +2826,13 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
 		 *	if it so desires.
 		 */
-		return fr_dict_attr_add_by_name(dict, old->parent, old->name, old->attr, old->type, flags);
+		return fr_dict_attr_add_by_name(dict, parent, old->name, old->attr, old->type, flags);
 	}
 
 	/*
 	 *	Add the attribute by bioth name and number.
 	 */
-	if (fr_dict_attr_add(dict, old->parent, old->name, old->attr, old->type, flags) < 0) return NULL;
+	if (fr_dict_attr_add(dict, parent, old->name, old->attr, old->type, flags) < 0) return NULL;
 
 	/*
 	 *	For paranoia, return it by name.
