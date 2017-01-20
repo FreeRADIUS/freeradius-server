@@ -802,7 +802,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 			}
 
 			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-			    map->lhs->tmpl_da->flags.is_unknown &&
+			    map->lhs->tmpl_da->flags.is_raw &&
 			    map_cast_from_hex(map, rhs_type, rhs)) {
 				/* do nothing */
 
