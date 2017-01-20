@@ -576,8 +576,9 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 
 			rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
 
-			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
+			if (tmpl_define_unknown_attr(c->data.vpt) < 0) {
+				p = lhs_p - tlen;
+				return_P("Failed defining attribute");
 			}
 
 		} else { /* it's an operator */
