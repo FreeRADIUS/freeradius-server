@@ -34,6 +34,7 @@ if (&Tmp-String-0 == 'hello') {
 	}
 }
 
+if (0) { # XXX
 #
 #  Try updating an attribute specified by an OID string
 #  for an unknown vendor
@@ -78,3 +79,4 @@ if (&Tmp-String-1 != 'hello2') {
 	}
 }
 
+} # XXX
