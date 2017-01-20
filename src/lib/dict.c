@@ -2766,6 +2766,9 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 	if (!old) return NULL;
 
+	da = fr_dict_attr_by_name(dict, old->name);
+	if (da) return da;
+
 	/*
 	 *	Define the complete unknown hierarchy
 	 */
@@ -2774,9 +2777,6 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	} else {
 		parent = old->parent;
 	}
-
-	da = fr_dict_attr_child_by_num(parent, old->attr);
-	if (da) return da;
 
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
@@ -2787,10 +2787,13 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 */
 	if (old->type == PW_TYPE_VENDOR) if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
-	if (fr_dict_attr_add(dict, old->parent, old->name, old->attr, old->type, flags) < 0) return NULL;
-
-	da = fr_dict_attr_child_by_num(parent, old->attr);
-	return da;
+	/*
+	 *	Add the unknown by NAME.  e.g. if the admin does "Attr-26", we want
+	 *	to return "Attr-26", and NOT "Vendor-Specific".  The rest of the server
+	 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
+	 *	if it so desires.
+	 */
+	return fr_dict_attr_add_by_name(dict, old->parent, old->name, old->attr, old->type, flags);
 }
 
 /** Free dynamically allocated (unknown attributes)
