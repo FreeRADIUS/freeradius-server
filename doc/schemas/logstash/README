@@ -64,11 +64,6 @@ kibana4-dashboard.json
   Settings/Indices. Then go to Kibana's Settings page, "Objects" and "Import".
   Once imported open the "RADIUS detail" dashboard.
 
-kibana3-dashboard.json
-
-  Basic RADIUS dashboard for Kibana3. To import the dashboard go to Load,
-  Advanced and "Choose File".
-
 
 Example usage
 -------------
