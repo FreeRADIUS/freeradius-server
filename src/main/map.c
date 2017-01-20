@@ -280,7 +280,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	type = cf_pair_value_type(cp);
 
 	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1]) == 'x') &&
-		map_cast_from_hex(map, type, value)) {
+	    (map->lhs->type == TMPL_TYPE_ATTR) &&
+	    map_cast_from_hex(map, type, value)) {
 		/* do nothing */
 	} else {
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
