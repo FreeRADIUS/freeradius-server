@@ -1341,6 +1341,9 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		}
 	}
 
+	n->parent = parent;
+	n->depth = parent->depth + 1;
+
 	return n;
 }
 
