@@ -36,6 +36,24 @@ if (&Tmp-String-0 == 'hello') {
 
 #
 #  Try updating an attribute specified by an OID string
+#  for an unknown vendor
+#
+update {
+	Tmp-Integer-0 := 66
+}
+update {
+	"Vendor-%{Tmp-Integer-0}-Attr-1" := 0x01020304
+}
+
+if (&Vendor-66-Attr-1 != 0x01020304) {
+	update reply {
+		Filter-Id += 'Fail 1a'
+	}
+}
+
+#
+#  Try updating an attribute specified by an OID string
+#  for a known vendor
 #
 update {
 	Tmp-Integer-0 := 11344
@@ -59,3 +77,4 @@ if (&Tmp-String-1 != 'hello2') {
 		Filter-Id += 'Fail 3'
 	}
 }
+
