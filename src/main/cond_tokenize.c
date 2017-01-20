@@ -1014,7 +1014,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				    (c->data.map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 				    (c->data.map->op != T_OP_CMP_TRUE) &&
 				    (c->data.map->op != T_OP_CMP_FALSE) &&
-				    (rhs_type == T_BARE_WORD)) {
+				    (map->rhs->quote == T_BARE_WORD)) {
 					return_rhs("Comparison value must be a quoted string");
 				}
 
