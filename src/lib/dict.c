@@ -2762,6 +2762,7 @@ static fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t con
 
 	new = fr_dict_attr_alloc(ctx, da->name, da->vendor, da->attr, da->type, da->flags);
 	new->flags.is_unknown = 1;
+	new->flags.is_raw = 1;
 	new->parent = parent;
 	new->depth = da->depth;
 
@@ -2806,6 +2807,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
+	flags.is_raw = true;
 
 	/*
 	 *	Ensure the vendor is present in the
@@ -2830,7 +2832,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	}
 
 	/*
-	 *	Add the attribute by bioth name and number.
+	 *	Add the attribute by both name and number.
 	 */
 	if (fr_dict_attr_add(dict, parent, old->name, old->attr, old->type, flags) < 0) return NULL;
 
@@ -2891,6 +2893,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 
 	memset(&flags, 0, sizeof(flags));
 	flags.is_unknown = 1;
+	flags.is_raw = 1;
 	flags.type_size = 1;
 	flags.length = 1;
 
@@ -3020,6 +3023,7 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
 	da->flags.is_unknown = true;
+	da->flags.is_raw = true;
 	da->flags.is_pointer = true;
 	da->parent = parent;
 	da->depth = parent->depth + 1;
@@ -3344,6 +3348,7 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 			vendor_da->parent = parent;
 			vendor_da->depth = parent->depth + 1;
 			vendor_da->flags.is_unknown = 1;
+			vendor_da->flags.is_raw = 1;
 			vendor_da->flags.type_size = 1;
 			vendor_da->flags.length = 1;
 			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%u", vendor);
@@ -3549,6 +3554,7 @@ do { \
 
 	FLAG_SET(is_root);
 	FLAG_SET(is_unknown);
+	FLAG_SET(is_raw);
 	FLAG_SET(internal);
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
