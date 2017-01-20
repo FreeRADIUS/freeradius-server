@@ -2811,12 +2811,30 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	if (old->type == PW_TYPE_VENDOR) if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
 	/*
-	 *	Add the unknown by NAME.  e.g. if the admin does "Attr-26", we want
-	 *	to return "Attr-26", and NOT "Vendor-Specific".  The rest of the server
-	 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
-	 *	if it so desires.
+	 *	Look up the attribute by number.  If it doesn't exist,
+	 *	add it both by name and by number.  If it does exist,
+	 *	add it only by name.
 	 */
-	return fr_dict_attr_add_by_name(dict, old->parent, old->name, old->attr, old->type, flags);
+	da = fr_dict_attr_child_by_num(parent, old->attr);
+	if (da) {
+		/*
+		 *	Add the unknown by NAME.  e.g. if the admin does "Attr-26", we want
+		 *	to return "Attr-26", and NOT "Vendor-Specific".  The rest of the server
+		 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
+		 *	if it so desires.
+		 */
+		return fr_dict_attr_add_by_name(dict, old->parent, old->name, old->attr, old->type, flags);
+	}
+
+	/*
+	 *	Add the attribute by bioth name and number.
+	 */
+	if (fr_dict_attr_add(dict, old->parent, old->name, old->attr, old->type, flags) < 0) return NULL;
+
+	/*
+	 *	For paranoia, return it by name.
+	 */
+	return fr_dict_attr_by_name(dict, old->name);
 }
 
 /** Free dynamically allocated (unknown attributes)
