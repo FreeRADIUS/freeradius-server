@@ -581,6 +581,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				return_P("Failed defining attribute");
 			}
 
+			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+				c->pass2_fixup = PASS2_FIXUP_ATTR;
+			}
+
 		} else { /* it's an operator */
 #ifdef HAVE_REGEX
 			bool regex = false;
