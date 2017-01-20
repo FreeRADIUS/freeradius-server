@@ -1074,8 +1074,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 		slen = tmpl_from_attr_str(&exp_lhs, attr, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) ;
 		if (slen <= 0) {
-			REDEBUG("Left side \"%.*s\" expansion not an attribute reference: %s",
-				(int)map->lhs->len, map->lhs->name, fr_strerror());
+			REDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference: %s",
+				(int)map->lhs->len, map->lhs->name, attr, fr_strerror());
 			talloc_free(attr);
 			return -1;
 		}
