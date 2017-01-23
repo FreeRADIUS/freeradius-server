@@ -279,7 +279,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		/*
 		 *	Diameter pads strings (i.e. User-Password) with trailing zeros.
 		 */
-		if (vp->da->type == PW_TYPE_STRING) {
+		if (vp->vp_type == PW_TYPE_STRING) {
 			fr_pair_value_strcpy(vp, vp->vp_strvalue);
 		}
 
@@ -395,7 +395,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 			total += 4;
 		}
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			attr = htonl(vp->vp_integer); /* stored in host order */

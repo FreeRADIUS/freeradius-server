@@ -134,15 +134,15 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	map->rhs->tmpl_value_box_type = da->type;
 	map->rhs->tmpl_value_box_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
-		if (vp->da->type == PW_TYPE_STRING) {
-			map->rhs->tmpl_value_box_datum.datum.ptr = talloc_bstrndup(map->rhs, vp->vp_ptr, vp->vp_length);
+		if (vp->vp_type == PW_TYPE_STRING) {
+			map->rhs->tmpl_value_box_datum.ptr = talloc_bstrndup(map->rhs, vp->vp_ptr, vp->vp_length);
 			map->rhs->quote = T_SINGLE_QUOTED_STRING;
 		} else {
-			map->rhs->tmpl_value_box_datum.datum.ptr = talloc_memdup(map->rhs, vp->vp_ptr, vp->vp_length);
+			map->rhs->tmpl_value_box_datum.ptr = talloc_memdup(map->rhs, vp->vp_ptr, vp->vp_length);
 			map->rhs->quote = T_BARE_WORD;
 		}
 	} else {
-		value_box_copy(map->rhs, &map->rhs->tmpl_value_box_datum, vp->da->type, &vp->data);
+		value_box_copy(map->rhs, &map->rhs->tmpl_value_box, &vp->data);
 		map->rhs->quote = T_BARE_WORD;
 	}
 	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);
@@ -913,8 +913,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!new) return -1;
 
-				if (value_box_cast(new, &new->data, new->da->type, new->da,
-						    vp->da->type, vp->da, &vp->data) < 0) {
+				if (value_box_cast(new, &new->data,
+						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					fr_pair_list_free(&found);
 					fr_pair_list_free(&new);
@@ -923,9 +923,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				vp = fr_pair_cursor_remove(&from);
 				talloc_free(vp);
 
-				if (new->da->type == PW_TYPE_STRING) {
-					rad_assert(new->vp_strvalue != NULL);
-				}
+				if (new->vp_type == PW_TYPE_STRING) rad_assert(new->vp_strvalue != NULL);
 
 				new->op = map->op;
 				new->tag = map->lhs->tmpl_tag;
@@ -955,13 +953,13 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		if (!new) return -1;
 
 		if (map->lhs->tmpl_da->type == map->rhs->tmpl_value_box_type) {
-			if (value_box_copy(new, &new->data, new->da->type, &map->rhs->tmpl_value_box_datum) < 0) {
+			if (value_box_copy(new, &new->data, &map->rhs->tmpl_value_box) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
-			if (value_box_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_value_box_type,
-					    NULL, &map->rhs->tmpl_value_box_datum) < 0) {
+			if (value_box_cast(new, &new->data, new->vp_type, new->da,
+					   &map->rhs->tmpl_value_box) < 0) {
 				REDEBUG("Implicit cast failed: %s", fr_strerror());
 				rcode = -1;
 				goto error;
@@ -1403,7 +1401,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				if (cmp > 0) break;
 				else if (cmp < 0) continue;
 
-				cmp = (value_box_cmp_op(map->op, a->da->type, &a->data, b->da->type, &b->data) == 0);
+				cmp = (value_box_cmp_op(map->op, &a->data, &b->data) == 0);
 				if (cmp != 0) {
 					a = fr_pair_cursor_remove(&dst_list);
 					talloc_free(a);
@@ -1442,7 +1440,7 @@ finish:
 			if (!vp->da->parent->flags.is_root) continue;
 			if (vp->da->vendor != 0) continue;
 			if (vp->da->flags.has_tag) continue;
-			if (vp->da->type != PW_TYPE_STRING) continue;
+			if (vp->vp_type != PW_TYPE_STRING) continue;
 
 			if (!context->username && (vp->da->attr == PW_USER_NAME)) {
 				context->username = vp;
@@ -1495,15 +1493,12 @@ bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 {
 	size_t		len;
-	fr_dict_attr_t const	*da = NULL;
 	char		*p = out;
 	char		*end = out + outlen;
 
 	VERIFY_MAP(map);
 
-	if (map->lhs->type == TMPL_TYPE_ATTR) da = map->lhs->tmpl_da;
-
-	len = tmpl_snprint(out, (end - p) - 1, map->lhs, da);		/* -1 for proceeding ' ' */
+	len = tmpl_snprint(out, (end - p) - 1, map->lhs);		/* -1 for proceeding ' ' */
 	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 
 	*(p++) = ' ';
@@ -1526,11 +1521,11 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 	    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		*(p++) = '\'';
-		len = tmpl_snprint(p, (end - p) - 1, map->rhs, da);	/* -1 for proceeding '\'' */
+		len = tmpl_snprint(p, (end - p) - 1, map->rhs);	/* -1 for proceeding '\'' */
 		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 		*(p++) = '\'';
 	} else {
-		len = tmpl_snprint(p, end - p, map->rhs, da);
+		len = tmpl_snprint(p, end - p, map->rhs);
 		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 	}
 
@@ -1580,7 +1575,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		vp_tmpl_t	vpt;
 		char const	*quote;
 
-		quote = (vp->da->type == PW_TYPE_STRING) ? "\"" : "";
+		quote = (vp->vp_type == PW_TYPE_STRING) ? "\"" : "";
 
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
@@ -1598,7 +1593,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 *	the quoting based on the data type.
 		 */
 		value = fr_pair_value_asprint(request, vp, quote[0]);
-		tmpl_snprint(buffer, sizeof(buffer), &vpt, vp->da);
+		tmpl_snprint(buffer, sizeof(buffer), &vpt);
 		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
 	}
 		break;
@@ -1607,7 +1602,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	{
 		char const *quote;
 
-		quote = (vp->da->type == PW_TYPE_STRING) ? "\"" : "";
+		quote = (vp->vp_type == PW_TYPE_STRING) ? "\"" : "";
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
@@ -1615,7 +1610,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 *	the quoting based on the data type.
 		 */
 		value = fr_pair_value_asprint(request, vp, quote[0]);
-		tmpl_snprint(buffer, sizeof(buffer), map->rhs, vp->da);
+		tmpl_snprint(buffer, sizeof(buffer), map->rhs);
 		rhs = talloc_typed_asprintf(request, "%s -> %s%s%s", buffer, quote, value, quote);
 	}
 		break;
@@ -1628,7 +1623,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_LIST:
-		tmpl_snprint(buffer, sizeof(buffer), map->lhs, NULL);
+		tmpl_snprint(buffer, sizeof(buffer), map->lhs);
 		RDEBUG("%s %s %s", buffer, fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 

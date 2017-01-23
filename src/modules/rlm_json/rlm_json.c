@@ -167,7 +167,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 				cf_log_err_cp(cp, "Right side of map must be a string");
 				return -1;
 			}
-			p = map->rhs->tmpl_value_box_datum.datum.strvalue;
+			p = map->rhs->tmpl_value_box_datum.strvalue;
 			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_value_box_length);
 			if (slen <= 0) goto error;
 			break;
@@ -232,7 +232,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 		}
 		vp->op = map->op;
 
-		if (value_box_steal(vp, &vp->data, vp->da->type, value) < 0) {
+		if (value_box_steal(vp, &vp->data, value) < 0) {
 			REDEBUG("Copying data to attribute failed: %s", fr_strerror());
 			talloc_free(vp);
 			goto error;

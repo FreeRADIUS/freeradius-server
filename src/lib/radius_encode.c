@@ -431,7 +431,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	 */
 	if (outlen > vp->vp_length) outlen = vp->vp_length;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 		memcpy(out, vp->vp_ptr, outlen);
@@ -499,7 +499,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_DECIMAL:
 	case PW_TYPE_MAX:
-		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->da->type);
+		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->vp_type);
 		return -1;
 
 	/* Don't add default */
@@ -875,11 +875,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
-			if (vp->da->type == PW_TYPE_STRING) {
+			if (vp->vp_type == PW_TYPE_STRING) {
 				if (len > ((ssize_t) (outlen - 1))) len = outlen - 1;
 				ptr[0] = vp->tag;
 				ptr++;
-			} else if (vp->da->type == PW_TYPE_INTEGER) {
+			} else if (vp->vp_type == PW_TYPE_INTEGER) {
 				buffer[0] = vp->tag;
 			} /* else it can't be any other type */
 		}
@@ -1611,7 +1611,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	/*
 	 *	Fast path for the common case.
 	 */
-	if (vp->da->parent->flags.is_root && !vp->da->flags.concat && (vp->da->type != PW_TYPE_TLV)) {
+	if (vp->da->parent->flags.is_root && !vp->da->flags.concat && (vp->vp_type != PW_TYPE_TLV)) {
 		tlv_stack[0] = vp->da;
 		tlv_stack[1] = NULL;
 		FR_PROTO_STACK_PRINT(tlv_stack, 0);

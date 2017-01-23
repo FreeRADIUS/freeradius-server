@@ -612,7 +612,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				subst = value_box_asprint(NULL, in->type, in->datum.enumv, in, '"');
+				subst = value_box_asprint(NULL, in, '"');
 				if (!subst) {
 					talloc_free(out);
 					return NULL;

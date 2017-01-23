@@ -1415,7 +1415,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 				goto error;
 			}
 
-			if (vp->da->type == PW_TYPE_STRING) {
+			if (vp->vp_type == PW_TYPE_STRING) {
 				RDEBUG2("%s = '%s'", vp->da->name, value);
 				cp = cf_pair_alloc(c->cs, vp->da->name, value, T_OP_SET,
 						   T_BARE_WORD, T_SINGLE_QUOTED_STRING);

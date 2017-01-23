@@ -388,7 +388,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 	if (!vp->da->flags.has_tag) {
 		unsigned int i;
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_INTEGER:
 			i = vp->vp_integer;
 			goto print_int;
@@ -446,7 +446,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 	}
 
 	/* keep going if not set above */
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_STRING:
 		/* debug */
 		RDEBUG3("assigning string '%s' as string", vp->da->name);

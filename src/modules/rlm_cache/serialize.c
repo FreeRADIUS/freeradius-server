@@ -67,7 +67,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		char	*value;
 		size_t	len;
 
-		len = tmpl_snprint(attr, sizeof(attr), map->lhs, map->lhs->tmpl_da);
+		len = tmpl_snprint(attr, sizeof(attr), map->lhs);
 		if (is_truncated(len, sizeof(attr))) {
 			fr_strerror_printf("Serialized attribute too long.  Must be < " STRINGIFY(sizeof(attr)) " "
 					   "bytes, got %zu bytes", len);
@@ -75,7 +75,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		}
 
 		value = value_box_asprint(value_pool, map->rhs->tmpl_value_box_type,
-					   map->lhs->tmpl_da, &map->rhs->tmpl_value_box_datum, '\'');
+					   map->lhs->tmpl_da, &map->rhs->tmpl_value_box, '\'');
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
@@ -150,12 +150,12 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 */
 		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
 		case PW_CACHE_CREATED:
-			c->created = map->rhs->tmpl_value_box_datum.datum.date;
+			c->created = map->rhs->tmpl_value_box_datum.date;
 			talloc_free(map);
 			goto next;
 
 		case PW_CACHE_EXPIRES:
-			c->expires = map->rhs->tmpl_value_box_datum.datum.date;
+			c->expires = map->rhs->tmpl_value_box_datum.date;
 			talloc_free(map);
 			goto next;
 

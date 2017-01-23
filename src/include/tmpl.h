@@ -209,10 +209,7 @@ typedef struct vp_tmpl_t {
 		/*
 		 *  Attribute value. Typically used as the RHS of an update map.
 		 */
-		struct {
-			PW_TYPE			type;			 //!< Type of data.
-			value_box_t		data;			 //!< Value data.
-		} literal;
+		value_box_t	literal;			 //!< Value data.
 
 		xlat_exp_t	*xlat;	 //!< pre-parsed xlat_exp_t
 
@@ -247,9 +244,9 @@ typedef struct vp_tmpl_t {
  * @{
  */
 #define tmpl_value_box		data.literal
-#define tmpl_value_box_type		data.literal.type
-#define tmpl_value_box_length	data.literal.data.length
-#define tmpl_value_box_datum		data.literal.data
+#define tmpl_value_box_datum	data.literal.datum
+#define tmpl_value_box_type	data.literal.type
+#define tmpl_value_box_length	data.literal.length
 /* @} **/
 
 /** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX
@@ -399,8 +396,7 @@ vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 				     request_refs_t request, pair_lists_t list);
 
-int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data,
-					      PW_TYPE type, fr_dict_attr_t const *enumv, bool steal);
+int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bool steal);
 
 ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 					      request_refs_t request_def, pair_lists_t list_def,
@@ -430,8 +426,7 @@ void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					vp_tmpl_t const *vpt, fr_dict_attr_t const *cast);
 
-size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
-				    fr_dict_attr_t const *values);
+size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt);
 
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,

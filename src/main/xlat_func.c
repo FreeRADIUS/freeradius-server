@@ -96,7 +96,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:
 		if (vp->vp_length > 8) {
@@ -158,7 +158,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
-		fr_int2str(dict_attr_types, vp->da->type, "???"), vp->vp_length);
+		fr_int2str(dict_attr_types, vp->vp_type, "???"), vp->vp_length);
 
 	return -1;
 }
@@ -187,7 +187,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	The easy case.
 	 */
-	if (vp->da->type == PW_TYPE_OCTETS) {
+	if (vp->vp_type == PW_TYPE_OCTETS) {
 		p = vp->vp_octets;
 		len = vp->vp_length;
 	/*
@@ -195,7 +195,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	print that as hex.
 	 */
 	} else {
-		if (value_box_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type, NULL, &vp->data) < 0) {
+		if (value_box_cast(request, &dst, PW_TYPE_OCTETS, NULL, &vp->data) < 0) {
 			REDEBUG("%s", fr_strerror());
 			goto error;
 		}
@@ -371,7 +371,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			dv = fr_dict_vendor_by_num(NULL, vp->da->vendor);
 			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
-		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 		RIDEBUG2("Length : %zu", vp->vp_length);
 
 		if (!RDEBUG_ENABLED4) continue;
@@ -382,9 +382,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 			value_box_t *dst = NULL;
 
-			if ((PW_TYPE) type->number == vp->da->type) {
-				goto next_type;
-			}
+			if ((PW_TYPE) type->number == vp->vp_type) goto next_type;
 
 			switch (type->number) {
 			case PW_TYPE_INVALID:		/* Not real type */
@@ -401,11 +399,11 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 			dst = talloc_zero(vp, value_box_t);
 			/* We expect some to fail */
-			if (value_box_cast(dst, dst, type->number, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+			if (value_box_cast(dst, dst, type->number, NULL, &vp->data) < 0) {
 				goto next_type;
 			}
 
-			value = value_box_asprint(dst, type->number, NULL, dst, '\'');
+			value = value_box_asprint(dst, dst, '\'');
 			if (!value) goto next_type;
 
 			if ((pad = (11 - strlen(type->name))) < 0) {
@@ -542,7 +540,7 @@ static ssize_t xlat_string(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	These are printed specially.
 	 */
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_OCTETS:
 		return fr_snprint(*out, outlen, (char const *) vp->vp_octets, vp->vp_length, '"');
 
@@ -590,7 +588,7 @@ static ssize_t xlat_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	If it's a string, expand it again
 	 */
-	if (vp->da->type == PW_TYPE_STRING) {
+	if (vp->vp_type == PW_TYPE_STRING) {
 		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
 		if (slen <= 0) return slen;
 	/*

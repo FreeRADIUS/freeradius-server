@@ -92,11 +92,22 @@ size_t const value_box_offsets[] = {
 	[PW_TYPE_MAX]				= 0	/* Force compiler to allocate memory for all types */
 };
 
+/** Copy flags and type data from one value box to another
+ *
+ * @param[in] dst to copy flags to
+ * @param[in] src of data.
+ */
+static inline void value_box_copy_attrs(value_box_t *dst, value_box_t const *src)
+{
+	dst->type = src->type;
+	dst->length = src->length;
+	dst->tainted = src->tainted;
+	if (fr_dict_enum_types[dst->type]) dst->datum.enumv = src->datum.enumv;
+}
+
 /** Compare two values
  *
- * @param[in] a_type of data to compare.
  * @param[in] a Value to compare.
- * @param[in] b_type of data to compare.
  * @param[in] b Value to compare.
  * @return
  *	- -1 if a is less than b.
@@ -104,12 +115,14 @@ size_t const value_box_offsets[] = {
  *	- 1 if a is more than b.
  *	- < -1 on failure.
  */
-int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
-		   PW_TYPE b_type, value_box_t const *b)
+int value_box_cmp(value_box_t const *a, value_box_t const *b)
 {
 	int compare = 0;
 
-	if (a_type != b_type) {
+	if (!fr_cond_assert(a->type != PW_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(b->type != PW_TYPE_INVALID)) return -1;
+
+	if (a->type != b->type) {
 		fr_strerror_printf("Can't compare values of different types");
 		return -2;
 	}
@@ -118,7 +131,7 @@ int value_box_cmp(PW_TYPE a_type, value_box_t const *a,
 	 *	After doing the previous check for special comparisons,
 	 *	do the per-type comparison here.
 	 */
-	switch (a_type) {
+	switch (a->type) {
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:	/* We use memcmp to be \0 safe */
@@ -360,32 +373,31 @@ static int value_box_cidr_cmp_op(FR_TOKEN op, int bytes,
 /** Compare two attributes using an operator
  *
  * @param[in] op to use in comparison.
- * @param[in] a_type of data to compare.
  * @param[in] a Value to compare.
- * @param[in] b_type of data to compare.
  * @param[in] b Value to compare.
  * @return
  *	- 1 if true
  *	- 0 if false
  *	- -1 on failure.
  */
-int value_box_cmp_op(FR_TOKEN op,
-		      PW_TYPE a_type, value_box_t const *a,
-		      PW_TYPE b_type, value_box_t const *b)
+int value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b)
 {
 	int compare = 0;
 
 	if (!a || !b) return -1;
 
-	switch (a_type) {
+	if (!fr_cond_assert(a->type != PW_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(b->type != PW_TYPE_INVALID)) return -1;
+
+	switch (a->type) {
 	case PW_TYPE_IPV4_ADDR:
-		switch (b_type) {
+		switch (b->type) {
 		case PW_TYPE_IPV4_ADDR:		/* IPv4 and IPv4 */
 			goto cmp;
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
 			return value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->datum.ipaddr,
-						      b->datum.ipv4prefix[1], (uint8_t const *) &b->datum.ipv4prefix[2]);
+						     b->datum.ipv4prefix[1], (uint8_t const *) &b->datum.ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -393,16 +405,16 @@ int value_box_cmp_op(FR_TOKEN op,
 		}
 
 	case PW_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
-		switch (b_type) {
+		switch (b->type) {
 		case PW_TYPE_IPV4_ADDR:
 			return value_box_cidr_cmp_op(op, 4, a->datum.ipv4prefix[1],
-						      (uint8_t const *) &a->datum.ipv4prefix[2],
-						      32, (uint8_t const *) &b->datum.ipaddr);
+						     (uint8_t const *) &a->datum.ipv4prefix[2],
+						     32, (uint8_t const *) &b->datum.ipaddr);
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
 			return value_box_cidr_cmp_op(op, 4, a->datum.ipv4prefix[1],
-						      (uint8_t const *) &a->datum.ipv4prefix[2],
-						      b->datum.ipv4prefix[1], (uint8_t const *) &b->datum.ipv4prefix[2]);
+						     (uint8_t const *) &a->datum.ipv4prefix[2],
+						     b->datum.ipv4prefix[1], (uint8_t const *) &b->datum.ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -410,13 +422,13 @@ int value_box_cmp_op(FR_TOKEN op,
 		}
 
 	case PW_TYPE_IPV6_ADDR:
-		switch (b_type) {
+		switch (b->type) {
 		case PW_TYPE_IPV6_ADDR:		/* IPv6 and IPv6 */
 			goto cmp;
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
 			return value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->datum.ipv6addr,
-						      b->datum.ipv6prefix[1], (uint8_t const *) &b->datum.ipv6prefix[2]);
+						     b->datum.ipv6prefix[1], (uint8_t const *) &b->datum.ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -424,16 +436,16 @@ int value_box_cmp_op(FR_TOKEN op,
 		}
 
 	case PW_TYPE_IPV6_PREFIX:
-		switch (b_type) {
+		switch (b->type) {
 		case PW_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
 			return value_box_cidr_cmp_op(op, 16, a->datum.ipv6prefix[1],
-						      (uint8_t const *) &a->datum.ipv6prefix[2],
-						      128, (uint8_t const *) &b->datum.ipv6addr);
+						     (uint8_t const *) &a->datum.ipv6prefix[2],
+						     128, (uint8_t const *) &b->datum.ipv6addr);
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
 			return value_box_cidr_cmp_op(op, 16, a->datum.ipv6prefix[1],
-						      (uint8_t const *) &a->datum.ipv6prefix[2],
-						      b->datum.ipv6prefix[1], (uint8_t const *) &b->datum.ipv6prefix[2]);
+						     (uint8_t const *) &a->datum.ipv6prefix[2],
+						     b->datum.ipv6prefix[1], (uint8_t const *) &b->datum.ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -442,7 +454,7 @@ int value_box_cmp_op(FR_TOKEN op,
 
 	default:
 	cmp:
-		compare = value_box_cmp(a_type, a, b_type, b);
+		compare = value_box_cmp(a, b);
 		if (compare < -1) {	/* comparison error */
 			return -1;
 		}
@@ -691,12 +703,44 @@ size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char qu
 	return out_p - out;
 }
 
+/** Clear/free any existing value
+ *
+ * @note Do not use on uninitialised memory.
+ *
+ * @param[in] data to clear.
+ */
+void value_box_clear(value_box_t *data)
+{
+	switch (data->type) {
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_STRING:
+		TALLOC_FREE(data->datum.ptr);
+		break;
+
+	case PW_TYPE_STRUCTURAL:
+		if (!fr_cond_assert(0)) return;
+
+	case PW_TYPE_INVALID:
+		return;
+
+	default:
+		memset(&data->datum, 0, dict_attr_sizes[data->type][1]);
+		break;
+	}
+
+	data->tainted = false;
+	data->type = PW_TYPE_INVALID;
+	data->length = 0;
+}
+
 /** Convert string value to a value_box_t type
+ *
+ * @fixme Should take taint param.
  *
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
- * @param[in,out] src_type	of value data to create/type of value created.
- * @param[in] src_enumv		fr_dict_attr_t with string aliases for integer values.
+ * @param[in,out] dst_type	of value data to create/dst_type of value created.
+ * @param[in] dst_enumv		fr_dict_attr_t with string aliases for integer values.
  * @param[in] in		String to convert. Binary safe for variable length values
  *				if len is provided.
  * @param[in] inlen		may be < 0 in which case strlen(len) is used to determine
@@ -708,13 +752,15 @@ size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char qu
  *	- -1 on parse error.
  */
 int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
-			PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
-			char const *in, ssize_t inlen, char quote)
+		       PW_TYPE *dst_type, fr_dict_attr_t const *dst_enumv,
+		       char const *in, ssize_t inlen, char quote)
 {
 	fr_dict_enum_t	*dval;
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
+
+	if (!fr_cond_assert(*dst_type != PW_TYPE_INVALID)) return -1;
 
 	if (!in) return -1;
 
@@ -723,13 +769,13 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	/*
 	 *	Set size for all fixed length attributes.
 	 */
-	ret = dict_attr_sizes[*src_type][1];	/* Max length */
+	ret = dict_attr_sizes[*dst_type][1];	/* Max length */
 
 	/*
-	 *	It's a variable ret src_type so we just alloc a new buffer
+	 *	It's a variable ret src->dst_type so we just alloc a new buffer
 	 *	of size len and copy.
 	 */
-	switch (*src_type) {
+	switch (*dst_type) {
 	case PW_TYPE_STRING:
 	{
 		char *buff, *p;
@@ -906,12 +952,12 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
 	case PW_TYPE_VENDOR:
 	case PW_TYPE_BAD:
-		fr_strerror_printf("Invalid type %d", *src_type);
+		fr_strerror_printf("Invalid dst_type %d", *dst_type);
 		return -1;
 	}
 
 	/*
-	 *	It's a fixed size src_type, copy to a temporary buffer and
+	 *	It's a fixed size src->dst_type, copy to a temporary buffer and
 	 *	\0 terminate if insize >= 0.
 	 */
 	if (inlen > 0) {
@@ -925,7 +971,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		in = buffer;
 	}
 
-	switch (*src_type) {
+	switch (*dst_type) {
 	case PW_TYPE_BYTE:
 	{
 		char *p;
@@ -940,10 +986,10 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		 *	Look for the named in for the given
 		 *	attribute.
 		 */
-		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, in)) == NULL) {
+		if (dst_enumv && *p && !is_whitespace(p)) {
+			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   in, src_enumv->name);
+						   in, dst_enumv->name);
 				return -1;
 			}
 
@@ -973,10 +1019,10 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		 *	Look for the named in for the given
 		 *	attribute.
 		 */
-		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, in)) == NULL) {
+		if (dst_enumv && *p && !is_whitespace(p)) {
+			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   in, src_enumv->name);
+						   in, dst_enumv->name);
 				return -1;
 			}
 
@@ -1006,10 +1052,10 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		 *	Look for the named in for the given
 		 *	attribute.
 		 */
-		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, in)) == NULL) {
+		if (dst_enumv && *p && !is_whitespace(p)) {
+			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   in, src_enumv->name);
+						   in, dst_enumv->name);
 				return -1;
 			}
 
@@ -1133,10 +1179,10 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		break;
 
 	/*
-	 *	Crazy polymorphic (IPv4/IPv6) attribute src_type for WiMAX.
+	 *	Crazy polymorphic (IPv4/IPv6) attribute src->dst_type for WiMAX.
 	 *
 	 *	We try and make is saner by replacing the original
-	 *	da, with either an IPv4 or IPv6 da src_type.
+	 *	da, with either an IPv4 or IPv6 da src->dst_type.
 	 *
 	 *	These are not dynamic da, and will have the same vendor
 	 *	and attribute as the original.
@@ -1144,7 +1190,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	case PW_TYPE_COMBO_IP_ADDR:
 	{
 		if (inet_pton(AF_INET6, in, &dst->datum.ipv6addr) > 0) {
-			*src_type = PW_TYPE_IPV6_ADDR;
+			*dst_type = PW_TYPE_IPV6_ADDR;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][1]; /* size of IPv6 address */
 		} else {
 			fr_ipaddr_t ipaddr;
@@ -1154,7 +1200,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 				return -1;
 			}
 
-			*src_type = PW_TYPE_IPV4_ADDR;
+			*dst_type = PW_TYPE_IPV4_ADDR;
 			dst->datum.ipaddr.s_addr = ipaddr.ipaddr.ip4addr.s_addr;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 		}
@@ -1173,22 +1219,36 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	case PW_TYPE_UNBOUNDED:		/* Should have been dealt with above */
 	case PW_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
 	case PW_TYPE_BAD:
-		fr_strerror_printf("Unknown attribute type %d", *src_type);
+		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
 		return -1;
 	}
 
 finish:
 	dst->length = ret;
+	dst->type = *dst_type;
+
+	/*
+	 *	Fixup enumv
+	 */
+	if (fr_dict_enum_types[dst->type]) dst->datum.enumv = dst_enumv;
+
 	return 0;
 }
 
 /** Performs byte order reversal for types that need it
  *
+ * @param[in] dst	Where to write the result.  May be the same as src.
+ * @param[in] src	#value_box_t containing an integer value.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src)
+int value_box_hton(value_box_t *dst, value_box_t const *src)
 {
+	if (!fr_cond_assert(src->type != PW_TYPE_INVALID)) return -1;
+
 	/* 8 byte integers */
-	switch (type) {
+	switch (src->type) {
 	case PW_TYPE_INTEGER64:
 		dst->datum.integer64 = htonll(src->datum.integer64);
 		break;
@@ -1207,13 +1267,16 @@ void value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src)
 
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:
-		(void)fr_cond_assert(0);
-		return;		/* shouldn't happen */
+		if (!fr_cond_assert(0)) return -1; /* shouldn't happen */
 
 	default:
-		value_box_copy(NULL, dst, type, src);
+		value_box_copy(NULL, dst, src);
 		break;
 	}
+
+	value_box_copy_attrs(dst, src);
+
+	return 0;
 }
 
 /** Convert one type of value_box_t to another
@@ -1224,21 +1287,21 @@ void value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src)
  * @param dst Where to write result of casting.
  * @param dst_type to cast to.
  * @param dst_enumv Enumerated values used to converts strings to integers.
- * @param src_type to cast from.
- * @param src_enumv Enumerated values used to convert integers to strings.
  * @param src Input data.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
-		    PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
-		    PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
-		    value_box_t const *src)
+		   PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
+		   value_box_t const *src)
 {
+	if (!fr_cond_assert(dst_type != PW_TYPE_INVALID)) return -1;
+	if (!fr_cond_assert(src->type != PW_TYPE_INVALID)) return -1;
+
 	if (fr_dict_non_data_types[dst_type]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types.",
-				   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 		return -1;
 	}
@@ -1246,12 +1309,12 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	/*
 	 *	If it's the same type, copy.
 	 */
-	if (dst_type == src_type) return value_box_copy(ctx, dst, src_type, src);
+	if (dst_type == src->type) return value_box_copy(ctx, dst, src);
 
 	/*
 	 *	Deserialise a value_box_t
 	 */
-	if (src_type == PW_TYPE_STRING) {
+	if (src->type == PW_TYPE_STRING) {
 		return value_box_from_str(ctx, dst, &dst_type, dst_enumv, src->datum.strvalue, src->length, '\0');
 	}
 
@@ -1259,9 +1322,10 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_box_hton(dst, src_type, src);
+		value_box_hton(dst, src);
 		dst->datum.octets = talloc_memdup(ctx, &dst->datum, src->length);
 		dst->length = src->length;
+		dst->type = dst_type;
 		talloc_set_type(dst->datum.octets, uint8_t);
 		return 0;
 	}
@@ -1270,21 +1334,26 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	Serialise a value_box_t
 	 */
 	if (dst_type == PW_TYPE_STRING) {
-		dst->datum.strvalue = value_box_asprint(ctx, src_type, src_enumv, src, '\0');
+		dst->datum.strvalue = value_box_asprint(ctx, src, '\0');
 		dst->length = talloc_array_length(dst->datum.strvalue) - 1;
+		dst->type = dst_type;
 		return 0;
 	}
 
-	if ((src_type == PW_TYPE_IFID) &&
+	if ((src->type == PW_TYPE_IFID) &&
 	    (dst_type == PW_TYPE_INTEGER64)) {
 		memcpy(&dst->datum.integer64, src->datum.ifid, sizeof(src->datum.ifid));
 		dst->datum.integer64 = htonll(dst->datum.integer64);
+
 	fixed_length:
 		dst->length = dict_attr_sizes[dst_type][0];
+		dst->type = dst_type;
+		if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
+
 		return 0;
 	}
 
-	if ((src_type == PW_TYPE_INTEGER64) &&
+	if ((src->type == PW_TYPE_INTEGER64) &&
 	    (dst_type == PW_TYPE_ETHERNET)) {
 		uint8_t array[8];
 		uint64_t i;
@@ -1302,7 +1371,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	}
 
 	if (dst_type == PW_TYPE_SHORT) {
-		switch (src_type) {
+		switch (src->type) {
 		case PW_TYPE_BYTE:
 			dst->datum.ushort = src->datum.byte;
 			break;
@@ -1321,7 +1390,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	as the long one is on the LHS.
 	 */
 	if (dst_type == PW_TYPE_INTEGER) {
-		switch (src_type) {
+		switch (src->type) {
 		case PW_TYPE_BYTE:
 			dst->datum.integer = src->datum.byte;
 			break;
@@ -1353,7 +1422,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	a larger type, but not vice-versa.
 	 */
 	if (dst_type == PW_TYPE_INTEGER64) {
-		switch (src_type) {
+		switch (src->type) {
 		case PW_TYPE_BYTE:
 			dst->datum.integer64 = src->datum.byte;
 			break;
@@ -1376,7 +1445,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 		default:
 		invalid_cast:
 			fr_strerror_printf("Invalid cast from %s to %s",
-					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 			return -1;
 
@@ -1388,7 +1457,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	We can cast integers less that < INT_MAX to signed
 	 */
 	if (dst_type == PW_TYPE_SIGNED) {
-		switch (src_type) {
+		switch (src->type) {
 		case PW_TYPE_BYTE:
 			dst->datum.sinteger = src->datum.byte;
 			break;
@@ -1425,7 +1494,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	}
 
 	if (dst_type == PW_TYPE_TIMEVAL) {
-		switch (src_type) {
+		switch (src->type) {
 		case PW_TYPE_BYTE:
 			dst->datum.timeval.tv_sec = src->datum.byte;
 			dst->datum.timeval.tv_usec = 0;
@@ -1479,12 +1548,12 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 
 		switch (dst_type) {
 		case PW_TYPE_IPV4_ADDR:
-			switch (src_type) {
+			switch (src->type) {
 			case PW_TYPE_IPV6_ADDR:
 				if (memcmp(src->datum.ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 				bad_v6_prefix_map:
 					fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
-							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+							   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 					return -1;
 				}
@@ -1498,7 +1567,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 				bad_v4_prefix_len:
 					fr_strerror_printf("Invalid cast from %s to %s.  Only /32 prefixes may be "
 							   "cast to IP address types",
-							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+							   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 					return -1;
 				}
@@ -1511,7 +1580,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 				bad_v6_prefix_len:
 					fr_strerror_printf("Invalid cast from %s to %s.  Only /128 prefixes may be "
 							   "cast to IP address types",
-							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+							   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 					return -1;
 				}
@@ -1528,7 +1597,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			break;
 
 		case PW_TYPE_IPV6_ADDR:
-			switch (src_type) {
+			switch (src->type) {
 			case PW_TYPE_IPV4_ADDR:
 				/* Add the v4/v6 mapping prefix */
 				memcpy(dst->datum.ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
@@ -1558,7 +1627,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			break;
 
 		case PW_TYPE_IPV4_PREFIX:
-			switch (src_type) {
+			switch (src->type) {
 			case PW_TYPE_IPV4_ADDR:
 				memcpy(&dst->datum.ipv4prefix[2], &src->datum.ipaddr, sizeof(dst->datum.ipv4prefix) - 2);
 				dst->datum.ipv4prefix[0] = 0;
@@ -1599,7 +1668,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 			break;
 
 		case PW_TYPE_IPV6_PREFIX:
-			switch (src_type) {
+			switch (src->type) {
 			case PW_TYPE_IPV4_ADDR:
 				/* Add the v4/v6 mapping prefix */
 				memcpy(&dst->datum.ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
@@ -1641,34 +1710,41 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 */
 	if ((src->length < dict_attr_sizes[dst_type][0]) ||
 	    (src->length > dict_attr_sizes[dst_type][1])) {
-	    	char const *src_type_name;
+	    	char const *type_name;
 
-	    	src_type_name = fr_int2str(dict_attr_types, src_type, "<INVALID>");
+	    	type_name = fr_int2str(dict_attr_types, src->type, "<INVALID>");
 		fr_strerror_printf("Invalid cast from %s to %s. Length should be between %zu and %zu but is %zu",
-				   src_type_name,
+				   type_name,
 				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
 				   dict_attr_sizes[dst_type][0], dict_attr_sizes[dst_type][1],
 				   src->length);
 		return -1;
 	}
 
-	if (src_type == PW_TYPE_OCTETS) {
+	if (src->type == PW_TYPE_OCTETS) {
 		value_box_t tmp;
 
 	do_octets:
 		if (src->length < value_box_field_sizes[dst_type]) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than destination type size %zd",
-					   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
 					   src->length,
 					   value_box_field_sizes[dst_type]);
 			return -1;
 		}
 
+		/*
+		 *	Copy the raw octets into the datum of a value_box
+		 *	inverting bytesex for integers (if LE).
+		 */
 		memcpy(&tmp.datum, src->datum.octets, value_box_field_sizes[dst_type]);
+		tmp.type = dst_type;
+		tmp.length = value_box_field_sizes[dst_type];
+		if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
 
-		value_box_hton(dst, dst_type, &tmp);
-		dst->length = value_box_field_sizes[dst_type];
+		value_box_hton(dst, &tmp);
+
 		return 0;
 	}
 
@@ -1676,12 +1752,12 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	 *	Convert host order to network byte order.
 	 */
 	if ((dst_type == PW_TYPE_IPV4_ADDR) &&
-	    ((src_type == PW_TYPE_INTEGER) ||
-	     (src_type == PW_TYPE_DATE) ||
-	     (src_type == PW_TYPE_SIGNED))) {
+	    ((src->type == PW_TYPE_INTEGER) ||
+	     (src->type == PW_TYPE_DATE) ||
+	     (src->type == PW_TYPE_SIGNED))) {
 		dst->datum.ipaddr.s_addr = htonl(src->datum.integer);
 
-	} else if ((src_type == PW_TYPE_IPV4_ADDR) &&
+	} else if ((src->type == PW_TYPE_IPV4_ADDR) &&
 		   ((dst_type == PW_TYPE_INTEGER) ||
 		    (dst_type == PW_TYPE_DATE) ||
 		    (dst_type == PW_TYPE_SIGNED))) {
@@ -1690,7 +1766,10 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	} else {		/* they're of the same byte order */
 		memcpy(&dst->datum, &src->datum, src->length);
 	}
+
 	dst->length = src->length;
+	dst->type = dst_type;
+	if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
 
 	return 0;
 }
@@ -1699,19 +1778,20 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
  *
  * @param ctx To allocate buffers in.
  * @param dst Where to copy value_box to.
- * @param src_type Type of src.
  * @param src Where to copy value_box from.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const value_box_t *src)
+int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
 {
-	switch (src_type) {
+	if (!fr_cond_assert(src->type != PW_TYPE_INVALID)) return -1;
+
+	switch (src->type) {
 	default:
-		memcpy(((uint8_t *)dst) + value_box_offsets[src_type],
-		       ((uint8_t const *)src) + value_box_offsets[src_type],
-		       value_box_field_sizes[src_type]);
+		memcpy(((uint8_t *)dst) + value_box_offsets[src->type],
+		       ((uint8_t const *)src) + value_box_offsets[src->type],
+		       value_box_field_sizes[src->type]);
 		break;
 
 	case PW_TYPE_STRING:
@@ -1726,9 +1806,7 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const va
 		break;
 	}
 
-	dst->type = src_type;
-	dst->length = src->length;
-	dst->tainted = src->tainted;
+	value_box_copy_attrs(dst, src);
 
 	return 0;
 }
@@ -1737,15 +1815,16 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const va
  *
  * @param ctx To allocate buffers in.
  * @param dst Where to copy value_box to.
- * @param src_type Type of src.
  * @param src Where to copy value_box from.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const value_box_t *src)
+int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
 {
-	switch (src_type) {
+	if (!fr_cond_assert(src->type != PW_TYPE_INVALID)) return -1;
+
+	switch (src->type) {
 	default:
 		memcpy(dst, src, sizeof(*src));
 		break;
@@ -1768,7 +1847,8 @@ int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const v
 		}
 		break;
 	}
-	dst->length = src->length;
+
+	value_box_copy_attrs(dst, src);
 
 	return 0;
 }
@@ -1776,13 +1856,23 @@ int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE src_type, const v
 /** Print one attribute value to a string
  *
  */
-char *value_box_asprint(TALLOC_CTX *ctx,
-			 PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data, char quote)
+char *value_box_asprint(TALLOC_CTX *ctx, value_box_t const *data, char quote)
 {
 	char *p = NULL;
-	unsigned int i;
 
-	switch (type) {
+	if (!fr_cond_assert(data->type != PW_TYPE_INVALID)) return NULL;
+
+	if (fr_dict_enum_types[data->type] && data->datum.enumv) {
+		fr_dict_enum_t const	*dv;
+		value_box_t		tmp;
+
+		value_box_cast(ctx, &tmp, PW_TYPE_INTEGER, NULL, data);
+
+		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.integer);
+		if (dv) return talloc_typed_strdup(ctx, dv->name);
+	}
+
+	switch (data->type) {
 	case PW_TYPE_STRING:
 	{
 		size_t len, ret;
@@ -1807,29 +1897,17 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		break;
 	}
 
-
 	case PW_TYPE_BYTE:
-		i = data->datum.byte;
-
-	print_int:
-	{
-		fr_dict_enum_t const *dv;
-
-		if (enumv && (dv = fr_dict_enum_by_da(NULL, enumv, i))) {
-			p = talloc_typed_strdup(ctx, dv->name);
-		} else {
-			p = talloc_typed_asprintf(ctx, "%u", i);
-		}
-	}
+		p = talloc_typed_asprintf(ctx, "%u", data->datum.byte);
 		break;
 
 	case PW_TYPE_SHORT:
-		i = data->datum.ushort;
-		goto print_int;
+		p = talloc_typed_asprintf(ctx, "%u", data->datum.ushort);
+		break;
 
 	case PW_TYPE_INTEGER:
-		i = data->datum.integer;
-		goto print_int;
+		p = talloc_typed_asprintf(ctx, "%u", data->datum.integer);
+		break;
 
 	case PW_TYPE_INTEGER64:
 		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.integer64);
@@ -1901,7 +1979,7 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_box_snprint(buff, sizeof(buff), type, enumv, data, '\0');
+		value_box_snprint(buff, sizeof(buff), data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1913,7 +1991,7 @@ char *value_box_asprint(TALLOC_CTX *ctx,
 		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_box_snprint(buff, sizeof(buff), type, enumv, data, '\0');
+		value_box_snprint(buff, sizeof(buff), data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1956,26 +2034,23 @@ char *value_box_asprint(TALLOC_CTX *ctx,
  *
  * @param out Where to write the printed version of the attribute value.
  * @param outlen Length of the output buffer.
- * @param type of data being printed.
- * @param enumv Enumerated string values for integer types.
  * @param data to print.
  * @param quote char to escape in string output.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t value_box_snprint(char *out, size_t outlen,
-			 PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data, char quote)
+size_t value_box_snprint(char *out, size_t outlen, value_box_t const *data, char quote)
 {
-	fr_dict_enum_t	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 	char const	*a = NULL;
 	char		*p = out;
 	time_t		t;
 	struct tm	s_tm;
-	unsigned int	i;
 
 	size_t		len = 0, freespace = outlen;
+
+	if (!fr_cond_assert(data->type != PW_TYPE_INVALID)) return -1;
 
 	if (!data) return 0;
 	if (outlen == 0) return data->length;
@@ -1984,7 +2059,17 @@ size_t value_box_snprint(char *out, size_t outlen,
 
 	p = out;
 
-	switch (type) {
+	if (fr_dict_enum_types[data->type] && data->datum.enumv) {
+		fr_dict_enum_t const	*dv;
+		value_box_t		tmp;
+
+		value_box_cast(NULL, &tmp, PW_TYPE_INTEGER, NULL, data);
+
+		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.integer);
+		if (dv) return strlcpy(out, dv->name, outlen);
+	}
+
+	switch (data->type) {
 	case PW_TYPE_STRING:
 
 		/*
@@ -2017,27 +2102,13 @@ size_t value_box_snprint(char *out, size_t outlen,
 		return fr_snprint(out, outlen, data->datum.strvalue, data->length, quote);
 
 	case PW_TYPE_BYTE:
-		i = data->datum.byte;
-
-	print_int:
-		/* Normal, non-tagged attribute */
-		if (enumv && (v = fr_dict_enum_by_da(NULL, enumv, i)) != NULL) {
-			a = v->name;
-			len = strlen(a);
-		} else {
-			/* should never be truncated */
-			len = snprintf(buf, sizeof(buf), "%u", i);
-			a = buf;
-		}
-		break;
+		return snprintf(out, outlen, "%u", data->datum.byte);
 
 	case PW_TYPE_SHORT:
-		i = data->datum.ushort;
-		goto print_int;
+		return snprintf(out, outlen, "%u", data->datum.ushort);
 
 	case PW_TYPE_INTEGER:
-		i = data->datum.integer;
-		goto print_int;
+		return snprintf(out, outlen, "%u", data->datum.integer);
 
 	case PW_TYPE_INTEGER64:
 		return snprintf(out, outlen, "%" PRIu64, data->datum.integer64);

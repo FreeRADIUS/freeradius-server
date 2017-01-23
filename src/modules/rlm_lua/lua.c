@@ -53,7 +53,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 
 	if (!vp) return -1;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_DATE:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_IPV4_ADDR:
@@ -83,7 +83,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	default:
-		ERROR("Cannot convert %s to Lua type", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		ERROR("Cannot convert %s to Lua type", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 		return -1;
 	}
 	return 0;
@@ -107,7 +107,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 	MEM(vp = fr_pair_afrom_da(request, da));
 	switch (lua_type(L, -1)) {
 	case LUA_TNUMBER:
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_STRING:
 		{
 			char *p;

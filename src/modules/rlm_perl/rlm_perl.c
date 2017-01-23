@@ -624,7 +624,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 
 	char buffer[1024];
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_STRING:
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, vp->vp_strvalue);
@@ -715,7 +715,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		/*
 		 *	It's a normal single valued attribute
 		 */
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_STRING:
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
 			       vp->da->name, vp->vp_strvalue);
@@ -771,7 +771,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		return -1;
 	}
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_STRING:
 		fr_pair_value_bstrncpy(vp, val, len);
 		break;

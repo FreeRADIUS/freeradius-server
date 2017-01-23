@@ -307,7 +307,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			return -1;
 		}
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_ETHERNET:
 			if (attr_len != 6) goto unknown;
 
@@ -517,7 +517,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		out += 6;
 
 		/* Data */
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_IPV4_ADDR:
 			memcpy(out, &vp->vp_ipaddr, 4);
 			break;

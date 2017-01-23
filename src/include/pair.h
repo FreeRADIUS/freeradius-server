@@ -90,7 +90,7 @@ struct value_box {
 		double			decimal;		//!< Double precision float.
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
 
-		uint8_t			filter[32];		//!< Ascend binary format a packed data structure.
+		uint8_t			filter[32];		//!< Ascend binary format (a packed data structure).
 
 	} datum;
 
@@ -197,6 +197,7 @@ typedef struct value_pair_raw {
 #define vp_decimal	data.datum.decimal
 #define vp_ptr		data.datum.ptr				//!< Either octets or strvalue
 
+#define vp_type		data.type
 #define vp_length	data.length
 #define vp_tainted	data.tainted
 
@@ -246,7 +247,7 @@ void		fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *vp);
 void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
 
 int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
-				      unsigned int vendor, unsigned int attr, int8_t tag, PW_TYPE type,
+				      unsigned int vendor, unsigned int attr, int8_t tag,
 				      value_box_t *value);
 
 void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
@@ -261,7 +262,7 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
  *	- 0 if not equal.
  *	- -1 on failure.
  */
-#define		fr_pair_cmp_op(_op, _a, _b)	value_box_cmp_op(_op, _a->da->type, &_a->data, _b->da->type, &_b->data)
+#define		fr_pair_cmp_op(_op, _a, _b)	value_box_cmp_op(_op, &_a->data, &_b->data)
 int8_t		fr_pair_cmp_by_da_tag(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num_tag(void const *a, void const *b);
 int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);

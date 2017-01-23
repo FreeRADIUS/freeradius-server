@@ -354,7 +354,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 
 	PyTuple_SET_ITEM(pp, 0, attribute);
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_STRING:
 		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
 		break;

@@ -798,7 +798,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		/*
 		 *	String attributes have a 16bit "Actual Length" field at the start.
 		 */
-		} else if (vp->da->type == PW_TYPE_STRING) {
+		} else if (vp->vp_type == PW_TYPE_STRING) {
 			vp_len = vp->vp_length + 2;
 		/*
 		 *	All other attributes we trust the length.
@@ -855,7 +855,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		/*
 		 *	For strings we have an 'actual' value field.
 		 */
-		if (vp->da->type == PW_TYPE_STRING) {
+		if (vp->vp_type == PW_TYPE_STRING) {
 			vp_len = vp->vp_length + 2;
 		/*
 		 *	All other attributes we trust the length.
@@ -873,7 +873,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		p[0] = vp->da->attr;
 		p[1] = rounded_len >> 2;
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_OCTETS:
 			memcpy(&p[2], vp->vp_octets, vp->vp_length);
 			break;
@@ -938,7 +938,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		{
 			value_box_t data;
 
-			value_box_hton(&data, vp->da->type, &vp->data);
+			value_box_hton(&data, &vp->data);
 			memcpy(&p[2], &data, vp->vp_length);
 		}
 

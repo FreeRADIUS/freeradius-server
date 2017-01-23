@@ -899,7 +899,6 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 
 	VALUE_PAIR	*vp;
 
-	PW_TYPE		type;
 	value_box_t	src;
 
 	if (fr_json_object_is_type(leaf, json_type_null)) {
@@ -920,18 +919,17 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
-		type = PW_TYPE_SIGNED;
 		src.datum.sinteger = json_object_get_int(leaf);
+		src.type = PW_TYPE_SIGNED;
 		break;
 
 	case json_type_double:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
-		type = PW_TYPE_DECIMAL;
 		src.datum.decimal = json_object_get_double(leaf);
+		src.type = PW_TYPE_DECIMAL;
 		break;
 
 	case json_type_string:
-		type = PW_TYPE_STRING;
 		value = json_object_get_string(leaf);
 		if (flags->do_xlat) {
 			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
@@ -941,6 +939,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 			src.datum.strvalue = value;
 			src.length = json_object_get_string_len(leaf);
 		}
+		src.type = PW_TYPE_STRING;
 
 		break;
 
@@ -952,17 +951,17 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		 *
 		 *	"I knew you liked JSON so I put JSON in your JSON!"
 		 */
-		type = PW_TYPE_STRING;
 		src.datum.strvalue = json_object_get_string(leaf);
 		if (!src.datum.strvalue) {
 			RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
 
 			return NULL;
 		}
+		src.type = PW_TYPE_STRING;
 		src.length = strlen(src.datum.strvalue);
 	}
 
-	ret = value_box_cast(vp, &vp->data, vp->da->type, vp->da, type, NULL, &src);
+	ret = value_box_cast(vp, &vp->data, da->type, da, &src);
 	talloc_free(expanded);
 	if (ret < 0) {
 		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping): %s", da->name, fr_strerror());

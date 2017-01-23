@@ -92,8 +92,8 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if (*data_name == '&') {
 		if (radius_get_vp(&vp, request, data_name) < 0) goto nothing;
 
-		if ((vp->da->type != PW_TYPE_OCTETS) &&
-		    (vp->da->type != PW_TYPE_STRING)) {
+		if ((vp->vp_type != PW_TYPE_OCTETS) &&
+		    (vp->vp_type != PW_TYPE_STRING)) {
 			REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
 			goto nothing;
 		}

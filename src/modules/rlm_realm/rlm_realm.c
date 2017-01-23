@@ -481,7 +481,7 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, UNUSED void *thread
 	/*
 	 *	Catch the case of broken dictionaries.
 	 */
-	if (vp->da->type != PW_TYPE_STRING) return RLM_MODULE_NOOP;
+	if (vp->vp_type != PW_TYPE_STRING) return RLM_MODULE_NOOP;
 
 	/*
 	 *	The string is too short.

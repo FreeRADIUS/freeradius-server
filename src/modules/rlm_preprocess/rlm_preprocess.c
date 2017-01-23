@@ -116,9 +116,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			continue; /* not a Cisco or Quintum VSA, continue */
 		}
 
-		if (vp->da->type != PW_TYPE_STRING) {
-			continue;
-		}
+		if (vp->vp_type != PW_TYPE_STRING) continue;
 
 		/*
 		 *  No weird packing.  Ignore it.
@@ -173,18 +171,12 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	     vp = fr_pair_cursor_next(&cursor)) {
 		fr_dict_attr_t const *da;
 
-		if (vp->da->vendor != 12394) {
-			continue;
-		}
+		if (vp->da->vendor != 12394) continue;
 
-		if (vp->da->type != PW_TYPE_STRING) {
-			continue;
-		}
+		if (vp->vp_type != PW_TYPE_STRING) continue;
 
 		da = fr_dict_attr_by_num(NULL, 12394, number);
-		if (!da) {
-			continue;
-		}
+		if (!da) continue;
 
 		vp->da = da;
 

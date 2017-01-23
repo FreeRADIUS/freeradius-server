@@ -694,7 +694,7 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 		return;
 	}
 
-	if (vp->da->type == PW_TYPE_STRING) {
+	if (vp->vp_type == PW_TYPE_STRING) {
 		char *p;
 
 		p = talloc_array(vp, char, len + 1 + 1);	/* Account for the ident byte */

@@ -780,7 +780,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		if (map_p->get(request->reply, &data, map_p, snmp_ctx) < 0) goto error;
 
 		vp = fr_pair_afrom_da(request->reply, map_p->da);
-		value_box_steal(vp, &vp->data, vp->da->type, &data);
+		value_box_steal(vp, &vp->data, &data);
 		fr_pair_cursor_append(out, vp);
 
 		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);
@@ -935,7 +935,7 @@ int fr_snmp_process(REQUEST *request)
 		 *	Clear out any junk values
 		 */
 		if (da->type == PW_TYPE_TLV) {
-			switch (vp->da->type) {
+			switch (vp->vp_type) {
 			case PW_TYPE_OCTETS:
 			case PW_TYPE_STRING:
 				talloc_free(vp->data.datum.ptr);

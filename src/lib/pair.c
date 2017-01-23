@@ -102,6 +102,8 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	 */
 	vp->da = da;
 	vp->vp_length = da->flags.length;
+	vp->vp_type = da->type;
+	if (fr_dict_enum_types[da->type]) vp->data.datum.enumv = da;
 
 	return vp;
 }
@@ -244,7 +246,7 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 		return n;
 	}
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_OCTETS:
 		n->vp_octets = NULL;	/* else fr_pair_value_memcpy will free vp's value */
 		fr_pair_value_memcpy(n, vp->vp_octets, n->vp_length);
@@ -315,10 +317,10 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 					char const *attribute, char const *value,
 					FR_TOKEN op)
 {
-	ssize_t		len;
-	VALUE_PAIR	*vp, *vp2;
-	fr_dict_attr_t const *da;
-	vp_cursor_t cursor;
+	ssize_t			len;
+	VALUE_PAIR		*vp, *vp2;
+	fr_dict_attr_t const	*da;
+	vp_cursor_t		cursor;
 
 	vp = fr_pair_alloc(ctx);
 	if (!vp) return NULL;
@@ -560,7 +562,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	/*
 	 *	We allow this for stupidity, but it's really a bad idea.
 	 */
-	if (vp->da->type == PW_TYPE_TLV) {
+	if (vp->vp_type == PW_TYPE_TLV) {
 		ssize_t			len;
 		VALUE_PAIR		*head = NULL;
 		PW_TYPE			type = PW_TYPE_OCTETS;
@@ -849,7 +851,6 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
  * @param[in] attr Number of attribute to update.
  * @param[in] vendor of attribute to update.
  * @param[in] tag of attribute to update.
- * @param[in] type of value.
  * @param[in] value to set.
  * @return
  *	- 0 on success.
@@ -857,7 +858,7 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
  */
 int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 			  unsigned int vendor, unsigned int attr, int8_t tag,
-			  PW_TYPE type, value_box_t *value)
+			  value_box_t *value)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -866,14 +867,14 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 	vp = fr_pair_cursor_next_by_num(&cursor, vendor, attr, tag);
 	if (vp) {
 		VERIFY_VP(vp);
-		if (value_box_steal(vp, &vp->data, type, value) < 0) return -1;
+		if (value_box_steal(vp, &vp->data, value) < 0) return -1;
 		return 0;
 	}
 
 	vp = fr_pair_afrom_num(ctx, vendor, attr);
 	if (!vp) return -1;
 	vp->tag = tag;
-	if (value_box_steal(vp, &vp->data, type, value) < 0) return -1;
+	if (value_box_steal(vp, &vp->data, value) < 0) return -1;
 
 	fr_pair_cursor_append(&cursor, vp);
 
@@ -1078,7 +1079,7 @@ int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			regex_t	*preg;
 			char	*value;
 
-			if (!fr_cond_assert(a->da->type == PW_TYPE_STRING)) return -1;
+			if (!fr_cond_assert(a->vp_type == PW_TYPE_STRING)) return -1;
 
 			slen = regex_compile(NULL, &preg, a->xlat, talloc_array_length(a->xlat) - 1, false, false, false, true);
 			if (slen <= 0) {
@@ -1153,8 +1154,7 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			return 1;
 		}
 
-		ret = value_box_cmp(a_p->da->type, &a_p->data,
-				     b_p->da->type, &b_p->data);
+		ret = value_box_cmp(&a_p->data, &b_p->data);
 		if (ret != 0) {
 			(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
 			return ret;
@@ -1793,7 +1793,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	so instead we over-write the
 			 *	vp that it's pointing to.
 			 */
-			switch (found->da->type) {
+			switch (found->vp_type) {
 			default:
 				j = found->next;
 				memcpy(found, i, sizeof(*found));
@@ -1906,7 +1906,7 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 		return;
 	}
 
-	for(i = *from; i; i = next) {
+	for (i = *from; i; i = next) {
 		VERIFY_VP(i);
 		next = i->next;
 
@@ -2056,7 +2056,6 @@ void fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **fr
 int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
 	PW_TYPE type;
-	VERIFY_VP(vp);
 
 	if (!value) return -1;
 
@@ -2087,6 +2086,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 			return -1;
 		}
 		vp->da = da;
+		if (fr_dict_enum_types[da->type]) vp->data.datum.enumv = da;
 	}
 	vp->type = VT_DATA;
 
@@ -2095,97 +2095,67 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	return 0;
 }
 
-/** Set the type of the VALUE_PAIR value buffer to match it's fr_dict_attr_t
- *
- * @param vp to fixup.
- */
-inline static void fr_pair_value_set_type(VALUE_PAIR *vp)
-{
-	if (!vp->vp_ptr) return;
-
-	switch (vp->da->type) {
-	case PW_TYPE_OCTETS:
-		talloc_set_type(vp->vp_ptr, uint8_t);
-		return;
-
-	case PW_TYPE_STRING:
-		talloc_set_type(vp->vp_ptr, char);
-		return;
-
-	default:
-		return;
-	}
-}
-
 /** Copy data into an "octets" data type.
  *
- * @param[in,out] vp to update
- * @param[in] src data to copy
- * @param[in] size of the data, may be 0 in which case previous value will be freed.
+ * @param[in,out] vp	to update
+ * @param[in] src	data to copy
+ * @param[in] size	of the data.
  */
 void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
-	uint8_t *p = NULL, *q;
+	uint8_t *p = NULL;
 
-	VERIFY_VP(vp);
+	p = talloc_memdup(vp, src, size);
+	if (!p) return;
 
-	if (size > 0) {
-		p = talloc_memdup(vp, src, size);
-		if (!p) return;
-		talloc_set_type(p, uint8_t);
-	}
-
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	TALLOC_FREE(q);
+	value_box_clear(&vp->data);
 
 	vp->vp_octets = p;
 	vp->vp_length = size;
+	vp->vp_type = PW_TYPE_OCTETS;
+	talloc_set_type(vp->vp_ptr, uint8_t);
 
-	if (size > 0) fr_pair_value_set_type(vp);
+	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
 }
 
 /** Reparent an allocated octet buffer to a VALUE_PAIR
  *
- * @param[in,out] vp to update
- * @param[in] src buffer to steal.
+ * @param[in,out] vp	to update
+ * @param[in] src	buffer to steal.
  */
 void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src)
 {
-	uint8_t *q;
-
-	VERIFY_VP(vp);
-
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	talloc_free(q);
+	value_box_clear(&vp->data);
 
 	vp->vp_octets = talloc_steal(vp, src);
-	vp->type = VT_DATA;
 	vp->vp_length = talloc_array_length(vp->vp_octets);
-	fr_pair_value_set_type(vp);
+	vp->vp_type = PW_TYPE_OCTETS;
+	talloc_set_type(vp->vp_ptr, uint8_t);
+
+	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
 }
 
 /** Reparent an allocated char buffer to a VALUE_PAIR
  *
- * @param[in,out] vp to update
- * @param[in] src buffer to steal.
+ * @param[in,out] vp	to update
+ * @param[in] src	buffer to steal.
  */
 void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
 {
-	uint8_t *q;
+	if (!fr_cond_assert(vp->da->type == PW_TYPE_STRING)) return;
 
-	VERIFY_VP(vp);
-
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	talloc_free(q);
+	value_box_clear(&vp->data);
 
 	vp->vp_strvalue = talloc_steal(vp, src);
-	vp->type = VT_DATA;
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	fr_pair_value_set_type(vp);
+	vp->vp_type = PW_TYPE_STRING;
+	talloc_set_type(vp->vp_ptr, char);
+
+	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
 }
@@ -2194,20 +2164,20 @@ void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
  *
  * If len is larger than the current buffer, the additional space will be filled with '\0'
  *
- * @param[in,out] vp to update
- * @param[in] src buffer to steal.
- * @param[in] len of data in buffer.
+ * @note vp->da must be of type PW_TYPE_STRING.
+ *
+ * @param[in,out] vp	to update
+ * @param[in] src	buffer to steal.
+ * @param[in] len	of data in buffer.
  */
 void fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len)
 {
-	uint8_t	*q;
 	char	*p;
 	size_t	buf_len;
 
-	VERIFY_VP(vp);
+	if (!fr_cond_assert(vp->da->type == PW_TYPE_STRING)) return;
 
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	talloc_free(q);
+	value_box_clear(&vp->data);
 
 	buf_len = talloc_array_length(src);
 	if (buf_len > (len + 1)) {
@@ -2218,36 +2188,38 @@ void fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len)
 	} else {
 		vp->vp_strvalue = talloc_steal(vp, src);
 	}
-	vp->vp_strvalue = talloc_steal(vp, src);
-	vp->type = VT_DATA;
 	vp->vp_length = len;
-	fr_pair_value_set_type(vp);
+	vp->vp_type = PW_TYPE_STRING;
+	talloc_set_type(vp->vp_ptr, char);
+
+	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
 }
 
 /** Copy data into an "string" data type.
  *
+ * @note vp->da must be of type PW_TYPE_STRING.
+ *
  * @param[in,out] vp to update
  * @param[in] src data to copy
  */
 void fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
 {
-	char *p, *q;
+	char *p;
 
-	VERIFY_VP(vp);
+	if (!fr_cond_assert(vp->da->type == PW_TYPE_STRING)) return;
 
 	p = talloc_strdup(vp, src);
-
 	if (!p) return;
 
-	memcpy(&q, &vp->vp_strvalue, sizeof(q));
-	talloc_free(q);
+	value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	fr_pair_value_set_type(vp);
+	vp->vp_type = PW_TYPE_STRING;
+	talloc_set_type(vp->vp_ptr, char);
 
 	VERIFY_VP(vp);
 }
@@ -2257,15 +2229,17 @@ void fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
  * @note unlike the original strncpy, this function does not stop
  *	if it finds \0 bytes embedded in the string.
  *
+ * @note vp->da must be of type PW_TYPE_STRING.
+ *
  * @param[in,out] vp to update.
  * @param[in] src data to copy.
  * @param[in] len of data to copy.
  */
 void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 {
-	char *p, *q;
+	char *p;
 
-	VERIFY_VP(vp);
+	if (!fr_cond_assert(vp->da->type == PW_TYPE_STRING)) return;
 
 	p = talloc_array(vp, char, len + 1);
 	if (!p) return;
@@ -2273,18 +2247,21 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 	memcpy(p, src, len);	/* embdedded \0 safe */
 	p[len] = '\0';
 
-	memcpy(&q, &vp->vp_strvalue, sizeof(q));
-	talloc_free(q);
+	value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
 	vp->vp_length = len;
-	fr_pair_value_set_type(vp);
+	vp->vp_type = PW_TYPE_STRING;
+	talloc_set_type(vp->vp_ptr, char);
+
+	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
 }
 
 /** Print data into an "string" data type.
+ *
+ * @note vp->da must be of type PW_TYPE_STRING.
  *
  * @param[in,out] vp to update
  * @param[in] fmt the format string
@@ -2292,24 +2269,23 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 void fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
 {
 	va_list ap;
-	char *p, *q;
+	char *p;
 
-	VERIFY_VP(vp);
+	if (!fr_cond_assert(vp->da->type == PW_TYPE_STRING)) return;
 
 	va_start(ap, fmt);
 	p = talloc_vasprintf(vp, fmt, ap);
 	va_end(ap);
-
 	if (!p) return;
 
-	memcpy(&q, &vp->vp_strvalue, sizeof(q));
-	talloc_free(q);
+	value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
-
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	fr_pair_value_set_type(vp);
+	vp->vp_type = PW_TYPE_STRING;
+	talloc_set_type(vp->vp_ptr, char);
+
+	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
 }
@@ -2331,7 +2307,7 @@ size_t fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, cha
 
 	if (vp->type == VT_XLAT) return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
 
-	return value_box_snprint(out, outlen, vp->da->type, vp->da, &vp->data, quote);
+	return value_box_snprint(out, outlen, &vp->data, quote);
 }
 
 /** Print one attribute value to a string
@@ -2345,11 +2321,9 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
-	if (vp->type == VT_XLAT) {
-		return fr_asprint(ctx, vp->xlat, talloc_array_length(vp->xlat) - 1, quote);
-	}
+	if (vp->type == VT_XLAT) return fr_asprint(ctx, vp->xlat, talloc_array_length(vp->xlat) - 1, quote);
 
-	return value_box_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
+	return value_box_asprint(ctx, &vp->data, quote);
 }
 
 /** Return a const buffer for an enum type attribute
@@ -2367,7 +2341,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 	char const		*str;
 	fr_dict_enum_t const	*enumv = NULL;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	case PW_TYPE_NUMERIC:
 		break;
 
@@ -2376,7 +2350,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 		return NULL;
 	}
 
-	if (vp->da->flags.has_value) switch (vp->da->type) {
+	if (vp->da->flags.has_value) switch (vp->vp_type) {
 	case PW_TYPE_BOOLEAN:
 		return vp->vp_bool ? "yes" : "no";
 
@@ -2595,13 +2569,13 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 	value = fr_pair_value_asprint(ctx, vp, quote);
 
 	if (vp->da->flags.has_tag) {
-		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+		if (quote && (vp->vp_type == PW_TYPE_STRING)) {
 			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
 		} else {
 			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
 		}
 	} else {
-		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+		if (quote && (vp->vp_type == PW_TYPE_STRING)) {
 			str = talloc_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
 		} else {
 			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
@@ -2807,7 +2781,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 
 	fr_dict_verify(file, line, vp->da);
 
-	if (vp->vp_ptr) switch (vp->da->type) {
+	if (vp->vp_ptr) switch (vp->vp_type) {
 	case PW_TYPE_OCTETS:
 	{
 		size_t len;
@@ -2889,7 +2863,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
 				     "not found in global dictionary",
 				     file, line, vp->da, vp->da->name,
-				     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+				     fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
@@ -2914,6 +2888,24 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 				     da, da->name, fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
+	}
+
+	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
+		if (vp->data.type != PW_TYPE_OCTETS) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR (raw/unknown) attribute %p \"%s\" "
+				     "data type incorrect.  Expected %s, got %s",
+				     file, line, vp->da, vp->da->name,
+				     fr_int2str(dict_attr_types, PW_TYPE_OCTETS, "<INVALID>"),
+				     fr_int2str(dict_attr_types, vp->data.type, "<INVALID>"));
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
+	} else if (vp->da->type != vp->data.type) {
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
+			     "data type (%s) does not match da type (%s)",
+			     file, line, vp->da, vp->da->name,
+			     fr_int2str(dict_attr_types, vp->data.type, "<INVALID>"),
+			     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 }
 

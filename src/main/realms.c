@@ -2360,6 +2360,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 
 	if (!request->proxy->packet) {
 		VALUE_PAIR *vp;
+		char buff[11];	/* 4294967295 + \0 */
 
 		MEM(request->proxy->packet = fr_radius_alloc(request->proxy, true));
 
@@ -2375,7 +2376,8 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	doesn't need it.
 		 */
 		vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_PROXY_STATE, 0);
-		fr_pair_value_snprintf(vp, "%u", request->packet->id);
+		snprintf(buff, sizeof(buff), "%u", request->packet->id);
+		fr_pair_value_memcpy(vp, (uint8_t *)buff, strlen(buff));
 
 		/*
 		 *	If there is no PW_CHAP_CHALLENGE attribute but

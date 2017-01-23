@@ -123,8 +123,7 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	 *	current request.
 	 */
 	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!list || (fr_pair_update_by_num(ctx, list, 0, PW_REST_HTTP_STATUS_CODE,
-					    TAG_ANY, PW_TYPE_INTEGER, &value) < 0)) {
+	if (!list || (fr_pair_update_by_num(ctx, list, 0, PW_REST_HTTP_STATUS_CODE, TAG_ANY, &value) < 0)) {
 		REDEBUG("Failed updating &REST-HTTP-Status-Code");
 		return -1;
 	}

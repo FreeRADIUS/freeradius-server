@@ -849,7 +849,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		break;
 
 	default:
-		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
+		fr_strerror_printf("Internal sanity check %d %d", vp->vp_type, __LINE__);
 		talloc_free(vp);
 		return -1;
 	} /* switch over type */
@@ -1163,7 +1163,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			}
 		}
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_BYTE:
 			vp->vp_byte = p[0];
 			vp->vp_length = 1;
@@ -1212,7 +1212,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		default:
-			fr_strerror_printf("BAD TYPE %d", vp->da->type);
+			fr_strerror_printf("BAD TYPE %d", vp->vp_type);
 			fr_pair_list_free(&vp);
 			break;
 		}
@@ -1426,7 +1426,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	default:
-		fr_strerror_printf("Unsupported option type %d", vp->da->type);
+		fr_strerror_printf("Unsupported option type %d", vp->vp_type);
 		(void)fr_pair_cursor_next(cursor);
 		return -2;
 	}
@@ -1903,9 +1903,9 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 #endif
 
 	if (!fr_cond_assert(macaddr) ||
-	    !fr_cond_assert((macaddr->da->type == PW_TYPE_ETHERNET) || (macaddr->da->type == PW_TYPE_OCTETS))) {
+	    !fr_cond_assert((macaddr->vp_type == PW_TYPE_ETHERNET) || (macaddr->vp_type == PW_TYPE_OCTETS))) {
 		fr_strerror_printf("Wrong VP type (%s) for chaddr",
-				   fr_int2str(dict_attr_types, macaddr->da->type, "<invalid>"));
+				   fr_int2str(dict_attr_types, macaddr->vp_type, "<invalid>"));
 		return -1;
 	}
 
@@ -1922,7 +1922,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
-	if (macaddr->da->type == PW_TYPE_ETHERNET) {
+	if (macaddr->vp_type == PW_TYPE_ETHERNET) {
 		memcpy(&req.arp_ha.sa_data, macaddr->vp_ether, sizeof(macaddr->vp_ether));
 	} else {
 		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->vp_length);

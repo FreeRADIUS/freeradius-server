@@ -158,8 +158,8 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
  *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         PW_TYPE lhs_type, value_box_t const *lhs,
-		         PW_TYPE rhs_type, value_box_t const *rhs)
+		         value_box_t const *lhs,
+		         value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 
@@ -171,7 +171,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
 	if (!rad_cond_assert(lhs != NULL)) return -1;
-	if (!rad_cond_assert(lhs_type == PW_TYPE_STRING)) return -1;
+	if (!rad_cond_assert(lhs->type == PW_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX %s %s",
 		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
@@ -183,7 +183,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 
 	default:
-		if (!rad_cond_assert(rhs_type == PW_TYPE_STRING)) return -1;
+		if (!rad_cond_assert(rhs && rhs->type == PW_TYPE_STRING)) return -1;
 		if (!rad_cond_assert(rhs && rhs->datum.strvalue)) return -1;
 		slen = regex_compile(request, &rreg, rhs->datum.strvalue, rhs->length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
@@ -226,18 +226,18 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 #ifdef WITH_EVAL_DEBUG
 static void cond_print_operands(REQUEST *request,
-			   	PW_TYPE lhs_type, value_box_t const *lhs,
-			   	PW_TYPE rhs_type, value_box_t const *rhs)
+			   	value_box_t const *lhs,
+			   	value_box_t const *rhs)
 {
 	if (lhs) {
-		if (lhs_type == PW_TYPE_STRING) {
+		if (lhs->type == PW_TYPE_STRING) {
 			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->datum.strvalue, lhs->length);
 		} else {
 			char *lhs_hex;
 
 			lhs_hex = talloc_array(request, char, (lhs->length * 2) + 1);
 
-			if (lhs_type == PW_TYPE_OCTETS) {
+			if (lhs->type == PW_TYPE_OCTETS) {
 				fr_bin2hex(lhs_hex, lhs->datum.octets, lhs->length);
 			} else {
 				fr_bin2hex(lhs_hex, (uint8_t const *)&lhs->datum, lhs->length);
@@ -252,14 +252,14 @@ static void cond_print_operands(REQUEST *request,
 	}
 
 	if (rhs) {
-		if (rhs_type == PW_TYPE_STRING) {
+		if (rhs->type == PW_TYPE_STRING) {
 			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->datum.strvalue, rhs->length);
 		} else {
 			char *rhs_hex;
 
 			rhs_hex = talloc_array(request, char, (rhs->length * 2) + 1);
 
-			if (rhs_type == PW_TYPE_OCTETS) {
+			if (rhs->type == PW_TYPE_OCTETS) {
 				fr_bin2hex(rhs_hex, rhs->datum.octets, rhs->length);
 			} else {
 				fr_bin2hex(rhs_hex, (uint8_t const *)&rhs->datum, rhs->length);
@@ -285,16 +285,14 @@ static void cond_print_operands(REQUEST *request,
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
-			   PW_TYPE lhs_type, value_box_t const *lhs,
-			   PW_TYPE rhs_type, value_box_t const *rhs)
+static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, value_box_t const *lhs, value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 	int rcode;
 
 #ifdef WITH_EVAL_DEBUG
-		EVAL_DEBUG("CMP OPERANDS");
-		cond_print_operands(request, lhs_type, lhs, rhs_type, rhs);
+	EVAL_DEBUG("CMP OPERANDS");
+	cond_print_operands(request, lhs, rhs);
 #endif
 
 #ifdef HAVE_REGEX
@@ -302,7 +300,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 	 *	Regex comparison
 	 */
 	if (map->op == T_OP_REG_EQ) {
-		rcode = cond_do_regex(request, c, lhs_type, lhs, rhs_type, rhs);
+		rcode = cond_do_regex(request, c, lhs, rhs);
 		goto finish;
 	}
 #endif
@@ -318,7 +316,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 		vp = fr_pair_afrom_da(request, map->lhs->tmpl_da);
 		vp->op = c->data.map->op;
 
-		value_box_copy(vp, &vp->data, rhs_type, rhs);
+		value_box_copy(vp, &vp->data, rhs);
 
 		rcode = paircompare(request, request->packet->vps, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
@@ -326,15 +324,8 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 		goto finish;
 	}
 
-	/*
-	 *	At this point both operands should have been normalised
-	 *	to the same type, and there's no special comparisons
-	 *	left.
-	 */
-	rad_assert(lhs_type == rhs_type);
-
 	EVAL_DEBUG("CMP WITH VALUE DATA");
-	rcode = value_box_cmp_op(map->op, lhs_type, lhs, rhs_type, rhs);
+	rcode = value_box_cmp_op(map->op, lhs, rhs);
 finish:
 	switch (rcode) {
 	case 0:
@@ -399,25 +390,21 @@ done:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
-				  PW_TYPE lhs_type, fr_dict_attr_t const *lhs_enumv,
-				  value_box_t const *lhs)
+static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, value_box_t const *lhs)
 {
-	vp_map_t const *map = c->data.map;
+	vp_map_t const		*map = c->data.map;
 
-	fr_dict_attr_t const *cast = NULL;
-	PW_TYPE cast_type = PW_TYPE_INVALID;
+	int			rcode;
 
-	int rcode;
+	value_box_t		*rhs = NULL;
 
-	PW_TYPE rhs_type = PW_TYPE_INVALID;
-	fr_dict_attr_t const *rhs_enumv = NULL;
-	value_box_t *rhs = NULL;
+	fr_dict_attr_t const	*cast = NULL;
+	PW_TYPE			cast_type = PW_TYPE_INVALID;
 
-	value_box_t lhs_cast, rhs_cast;
-	void *lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
+	value_box_t		lhs_cast, rhs_cast;
+	void			*lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
 
-	xlat_escape_t escape = NULL;
+	xlat_escape_t		escape = NULL;
 
 	/*
 	 *	Cast operand to correct type.
@@ -429,17 +416,16 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 	 */
 #define CAST(_s) \
 do {\
-	if ((cast_type != PW_TYPE_INVALID) && (_s ## _type != PW_TYPE_INVALID) && (cast_type != _s ## _type)) {\
+	if ((cast_type != PW_TYPE_INVALID) && _s && (_s ->type != PW_TYPE_INVALID) && (cast_type != _s->type)) {\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
-			   fr_int2str(dict_attr_types, _s ## _type, "<INVALID>"),\
+			   fr_int2str(dict_attr_types, _s->type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
-		if (value_box_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s) < 0) {\
+		if (value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
 			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
 			rcode = -1;\
 			goto finish;\
 		}\
 		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.datum.ptr;\
-		_s ## _type = cast_type;\
 		_s = &_s ## _cast;\
 	}\
 } while (0)
@@ -447,8 +433,8 @@ do {\
 #define CHECK_INT_CAST(_l, _r) \
 do {\
 	if ((cast_type == PW_TYPE_INVALID) &&\
-	    _l && (_l ## _type == PW_TYPE_STRING) &&\
-	    _r && (_r ## _type == PW_TYPE_STRING) &&\
+	    _l && (_l->type == PW_TYPE_STRING) &&\
+	    _r && (_r->type == PW_TYPE_STRING) &&\
 	    all_digits(lhs->datum.strvalue) && all_digits(rhs->datum.strvalue)) {\
 	    	cast_type = PW_TYPE_INTEGER64;\
 	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO integer64");\
@@ -475,12 +461,9 @@ do {\
 	if (c->pass2_fixup == PASS2_PAIRCOMPARE) {
 		rad_assert(!c->cast);
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
-#ifndef NDEBUG
-		/* expensive assert */
-		rad_assert((map->rhs->type != TMPL_TYPE_ATTR) || !radius_find_compare(map->rhs->tmpl_da));
-#endif
+		rad_assert((map->rhs->type != TMPL_TYPE_ATTR) || !radius_find_compare(map->rhs->tmpl_da)); /* expensive assert */
+
 		cast = map->lhs->tmpl_da;
-		cast_type = cast->type;
 
 		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
 			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
@@ -523,15 +506,13 @@ do {\
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->rhs);
 		     vp;
 	     	     vp = tmpl_cursor_next(&cursor, map->rhs)) {
-			rhs_type = vp->da->type;
-			rhs_enumv = vp->da;
 			rhs = &vp->data;
 
 			CHECK_INT_CAST(lhs, rhs);
 			CAST(lhs);
 			CAST(rhs);
 
-			rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
+			rcode = cond_cmp_values(request, c, lhs, rhs);
 			if (rcode != 0) break;
 
 			TALLOC_FREE(rhs_cast_buff);
@@ -540,14 +521,13 @@ do {\
 		break;
 
 	case TMPL_TYPE_DATA:
-		rhs_type = map->rhs->tmpl_value_box_type;
-		rhs = &map->rhs->tmpl_value_box_datum;
+		rhs = &map->rhs->tmpl_value_box;
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
 		CAST(rhs);
 
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
+		rcode = cond_cmp_values(request, c, lhs, rhs);
 		break;
 
 	/*
@@ -578,16 +558,17 @@ do {\
 			data.datum.strvalue = map->rhs->name;
 			data.length = map->rhs->len;
 		}
+		data.type = PW_TYPE_STRING;
+
 		rad_assert(data.datum.strvalue);
 
-		rhs_type = PW_TYPE_STRING;
 		rhs = &data;
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
 		CAST(rhs);
 
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
+		rcode = cond_cmp_values(request, c, lhs, rhs);
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) talloc_free(data.datum.ptr);
 
 		break;
@@ -598,7 +579,7 @@ do {\
 	 */
 	case TMPL_TYPE_REGEX_STRUCT:
 		CAST(lhs);
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, PW_TYPE_INVALID, NULL);
+		rcode = cond_cmp_values(request, c, lhs, NULL);
 		break;
 	/*
 	 *	Unsupported types (should have been parse errors)
@@ -661,7 +642,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 #ifndef NDEBUG
 			rad_assert(radius_find_compare(map->lhs->tmpl_da)); /* expensive assert */
 #endif
-			rcode = cond_normalise_and_cmp(request, c, PW_TYPE_INVALID, NULL, NULL);
+			rcode = cond_normalise_and_cmp(request, c, NULL);
 			break;
 		}
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
@@ -672,15 +653,14 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 			 *	if we get at least one set of operands that
 			 *	evaluates to true.
 			 */
-	     		rcode = cond_normalise_and_cmp(request, c, vp->da->type, vp->da, &vp->data);
+	     		rcode = cond_normalise_and_cmp(request, c, &vp->data);
 	     		if (rcode != 0) break;
 		}
 	}
 		break;
 
 	case TMPL_TYPE_DATA:
-		rcode = cond_normalise_and_cmp(request, c,
-					       map->lhs->tmpl_value_box_type, NULL, &map->lhs->tmpl_value_box_datum);
+		rcode = cond_normalise_and_cmp(request, c, &map->lhs->tmpl_value_box);
 		break;
 
 	case TMPL_TYPE_UNPARSED:
@@ -705,8 +685,9 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 			data.length = map->lhs->len;
 		}
 		rad_assert(data.datum.strvalue);
+		data.type = PW_TYPE_STRING;
 
-		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data);
+		rcode = cond_normalise_and_cmp(request, c, &data);
 		if (p) talloc_free(p);
 	}
 		break;

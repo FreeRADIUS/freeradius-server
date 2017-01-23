@@ -584,7 +584,7 @@ build_vector:
 				MEM(vector = talloc_realloc(request, vector, struct iovec, alloced));
 			}
 
-			switch (vp->da->type) {
+			switch (vp->vp_type) {
 			case PW_TYPE_OCTETS:
 			case PW_TYPE_STRING:
 				vector[i].iov_base = vp->vp_ptr;

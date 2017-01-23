@@ -257,10 +257,10 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		     i++, vp = tmpl_cursor_next(&cursor, &vpt)) {
 			int64_t y;
 
-			if (vp->da->type != PW_TYPE_INTEGER64) {
+			if (vp->vp_type != PW_TYPE_INTEGER64) {
 				value_box_t	value;
 
-				if (value_box_cast(vp, &value, PW_TYPE_INTEGER64, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+				if (value_box_cast(vp, &value, PW_TYPE_INTEGER64, NULL, &vp->data) < 0) {
 					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt.len,
 						vpt.name, fr_strerror());
 					return false;
@@ -1004,8 +1004,8 @@ static int decode_xlat_ref(uint8_t **out, size_t *outlen, REQUEST *request, char
 	 *	These are large types.  Return pointers to the
 	 *	data instead of copying the data.
 	 */
-	if ((vp->da->type == PW_TYPE_STRING) ||
-	    (vp->da->type == PW_TYPE_OCTETS)) {
+	if ((vp->vp_type == PW_TYPE_STRING) ||
+	    (vp->vp_type == PW_TYPE_OCTETS)) {
 		*out = vp->vp_ptr;
 		*outlen = vp->vp_length;
 		return 0;
@@ -1424,7 +1424,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *	This can theoretically operate on lists too
 		 *	so we need to check the type of each attribute.
 		 */
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
 			break;
@@ -1456,7 +1456,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			}
 			new->tag = vp->tag;
 
-			switch (vp->da->type) {
+			switch (vp->vp_type) {
 			case PW_TYPE_OCTETS:
 			{
 				uint8_t *buff;

@@ -74,7 +74,7 @@ next:
 			p += len;
 		}
 
-		len = tmpl_snprint(p, end - p, c->data.vpt, NULL);
+		len = tmpl_snprint(p, end - p, c->data.vpt);
 		RETURN_IF_TRUNCATED(p, len, end - p);
 		break;
 

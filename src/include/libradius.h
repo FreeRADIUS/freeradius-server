@@ -316,37 +316,32 @@ void		fr_pair_cursor_free(vp_cursor_t *cursor);
 extern size_t const value_box_field_sizes[];
 extern size_t const value_box_offsets[];
 
-int		value_box_cmp(PW_TYPE a_type, value_box_t const *a,
-			       PW_TYPE b_type, value_box_t const *b);
+int		value_box_cmp(value_box_t const *a, value_box_t const *b);
 
-int		value_box_cmp_op(FR_TOKEN op,
-				  PW_TYPE a_type, value_box_t const *a,
-				  PW_TYPE b_type, value_box_t const *b);
+int		value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b);
 
 size_t		fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
 
-int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
-				    PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
-				    char const *src, ssize_t src_len, char quote);
+void		value_box_clear(value_box_t *data);
 
-void		value_box_hton(value_box_t *dst, PW_TYPE type, value_box_t const *src);
+int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
+				   PW_TYPE *type, fr_dict_attr_t const *enumv,
+				   char const *in, ssize_t inlen, char quote);
+
+int		value_box_hton(value_box_t *dst, value_box_t const *src);
 
 int		value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
-				PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
-				PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
-				value_box_t const *src);
+			       PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
+			       value_box_t const *src);
 
-int		value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE type, const value_box_t *src);
+int		value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src);
 
 size_t		value_box_snprint(char *out, size_t outlen,
-				  PW_TYPE type, fr_dict_attr_t const *enumv,
 				  value_box_t const *data, char quote);
 
-int		value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, PW_TYPE type, value_box_t const *src);
+int		value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src);
 
-char		*value_box_asprint(TALLOC_CTX *ctx,
-				    PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data,
-				    char quote);
+char		*value_box_asprint(TALLOC_CTX *ctx, value_box_t const *data, char quote);
 
 extern uint32_t	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)

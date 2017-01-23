@@ -192,7 +192,6 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 				 PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	value_box_t	in;
-	PW_TYPE		src_type = 0;
 
 	memset(&in, 0, sizeof(in));
 
@@ -211,34 +210,34 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 			return -1;
 		}
 		if (reply->integer < 0) {		/* 32bit signed (supported) */
-			src_type = PW_TYPE_SIGNED;
+			in.type = PW_TYPE_SIGNED;
 			in.datum.sinteger = (int32_t) reply->integer;
 			in.length = sizeof(in.datum.sinteger);
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
-			src_type = PW_TYPE_INTEGER64;
+			in.type = PW_TYPE_INTEGER64;
 			in.datum.integer64 = (uint64_t) reply->integer;
 			in.length = sizeof(in.datum.integer64);
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			src_type = PW_TYPE_INTEGER;
+			in.type = PW_TYPE_INTEGER;
 			in.datum.integer = (uint32_t) reply->integer;
 			in.length = sizeof(in.datum.integer);
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			src_type = PW_TYPE_SHORT;
+			in.type = PW_TYPE_SHORT;
 			in.datum.ushort = (uint16_t) reply->integer;
 			in.length = sizeof(in.datum.ushort);
 		}
 		else {		/* 8bit unsigned (supported) */
-			src_type = PW_TYPE_BYTE;
+			in.type = PW_TYPE_BYTE;
 			in.datum.byte = (uint8_t) reply->integer;
 			in.length = sizeof(in.datum.byte);
 		}
 		break;
 
 	case REDIS_REPLY_STRING:
-		src_type = PW_TYPE_STRING;
+		in.type = PW_TYPE_STRING;
 		in.datum.ptr = reply->str;
 		in.length = reply->len;
 		break;
@@ -249,11 +248,8 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 		rad_assert(0);
 	}
 
-	if (src_type == dst_type) {
-		if (value_box_copy(ctx, out, src_type, &in) < 0) return -1;
-	} else {
-		if (value_box_cast(ctx, out, dst_type, dst_enumv, src_type, NULL, &in) < 0) return -1;
-	}
+	if (value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
+
 	return 0;
 }
 
@@ -331,10 +327,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 		}
 
 		/* This will only fail only memory allocation errors */
-		if (tmpl_afrom_value_box(map, &map->rhs, &vpt,
-					  map->lhs->tmpl_da->type, map->lhs->tmpl_da, true) < 0) {
-			goto error;
-		}
+		if (tmpl_afrom_value_box(map, &map->rhs, &vpt, true) < 0) goto error;
 	}
 		break;
 
@@ -381,7 +374,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 	rad_assert(map->rhs->type == TMPL_TYPE_DATA);
 
-	key_len = tmpl_snprint(key_buf, sizeof(key_buf), map->lhs, map->lhs->tmpl_da);
+	key_len = tmpl_snprint(key_buf, sizeof(key_buf), map->lhs);
 	if (is_truncated(key_len, sizeof(key_buf))) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
 				   "bytes, got %zu bytes", key_len);
@@ -393,7 +386,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	switch (map->rhs->tmpl_value_box_type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_value_box_datum.datum.ptr;
+		out[2] = map->rhs->tmpl_value_box_datum.ptr;
 		out_len[2] = map->rhs->tmpl_value_box_length;
 		break;
 
@@ -405,8 +398,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		char	value[256];
 		size_t	len;
 
-		len = value_box_snprint(value, sizeof(value), map->rhs->tmpl_value_box_type, map->lhs->tmpl_da,
-					&map->rhs->tmpl_value_box_datum, '\0');
+		len = value_box_snprint(value, sizeof(value), &map->rhs->tmpl_value_box, '\0');
 		new = talloc_bstrndup(pool, value, len);
 		if (!new) {
 			talloc_free(key);

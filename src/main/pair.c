@@ -82,13 +82,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		char *expr = NULL, *value = NULL;
 		char const *expr_p, *value_p;
 
-		if (check->da->type == PW_TYPE_STRING) {
+		if (check->vp_type == PW_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
 			expr_p = expr = fr_pair_value_asprint(check, check, '\0');
 		}
 
-		if (vp->da->type == PW_TYPE_STRING) {
+		if (vp->vp_type == PW_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
 			value_p = value = fr_pair_value_asprint(vp, vp, '\0');
@@ -147,7 +147,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	 *	a string
 	 *
 	 */
-	if (vp->da->type != check->da->type) return -1;
+	if (vp->vp_type != check->vp_type) return -1;
 
 	/*
 	 *	Tagged attributes are equal if and only if both the
@@ -161,7 +161,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	/*
 	 *	Not a regular expression, compare the types.
 	 */
-	switch (check->da->type) {
+	switch (check->vp_type) {
 #ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated

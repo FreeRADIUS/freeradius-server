@@ -434,7 +434,7 @@ static int radsnmp_get_response(int fd,
 			slen = dict_print_attr_oid(p, end - p, parent, vp->da->parent);
 			if (slen < 0) return -1;
 
-			if (vp->da->type != PW_TYPE_INTEGER) {
+			if (vp->vp_type != PW_TYPE_INTEGER) {
 				fr_strerror_printf("Index attribute \"%s\" is not of type \"integer\"", vp->da->name);
 				return -1;
 			}
@@ -489,7 +489,7 @@ static int radsnmp_get_response(int fd,
 		io_vector[3].iov_base = newline;
 		io_vector[3].iov_len = 1;
 
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_OCTETS:
 			memcpy(&io_vector[4].iov_base, &vp->vp_strvalue, sizeof(io_vector[4].iov_base));
 			io_vector[4].iov_len = vp->vp_length;
@@ -506,7 +506,7 @@ static int radsnmp_get_response(int fd,
 			 *	because we always need return integer values not
 			 *	value aliases.
 			 */
-			len = value_box_snprint(value_buff, sizeof(value_buff), vp->da->type, NULL, &vp->data, '\0');
+			len = value_box_snprint(value_buff, sizeof(value_buff), &vp->data, '\0');
 			if (is_truncated(len, sizeof(value_buff))) {
 				fr_strerror_printf("Insufficient fixed value buffer");
 				return -1;

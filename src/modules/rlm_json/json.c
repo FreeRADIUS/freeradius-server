@@ -30,32 +30,31 @@
 
 /** Convert json object to value_box_t
  *
- * @param ctx to allocate any value buffers in (should usually be the same as out).
- * @param out Where to write value_box.
- * @param object to convert.
- * @param dst_type FreeRADIUS type to convert to.
- * @param dst_enumv Enumeration values to allow string to integer conversions.
+ * @param[in] ctx	to allocate any value buffers in (should usually be the same as out).
+ * @param[in] out	Where to write value_box.
+ * @param[in] object	to convert.
+ * @param[in] dst_type	FreeRADIUS type to convert to.
+ * @param[in] dst_enumv	Enumeration values to allow string to integer conversions.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *object,
-				 PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
+				PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
 {
-	PW_TYPE src_type = PW_TYPE_INVALID;
 	value_box_t in;
 
 	memset(&in, 0, sizeof(in));
 
 	switch (fr_json_object_get_type(object)) {
 	case json_type_string:
-		src_type = PW_TYPE_STRING;
+		in.type = PW_TYPE_STRING;
 		in.datum.strvalue = json_object_get_string(object);
 		in.length = json_object_get_string_len(object);
 		break;
 
 	case json_type_double:
-		src_type = PW_TYPE_DECIMAL;
+		in.type = PW_TYPE_DECIMAL;
 		in.datum.decimal = json_object_get_double(object);
 		in.length = sizeof(in.datum.decimal);
 		break;
@@ -84,25 +83,25 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 			return -1;
 		}
 		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
-			src_type = PW_TYPE_INTEGER64;
+			in.type = PW_TYPE_INTEGER64;
 			in.datum.integer64 = (uint64_t) num;
 			in.length = sizeof(in.datum.integer64);
 		} else
 #endif
 		if (num < 0) {			/* 32bit signed (supported) */
-			src_type = PW_TYPE_SIGNED;
+			in.type = PW_TYPE_SIGNED;
 			in.datum.sinteger = num;
 			in.length = sizeof(in.datum.sinteger);
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			src_type = PW_TYPE_INTEGER;
+			in.type = PW_TYPE_INTEGER;
 			in.datum.integer = (uint32_t) num;
 			in.length = sizeof(in.datum.integer);
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			src_type = PW_TYPE_SHORT;
+			in.type = PW_TYPE_SHORT;
 			in.datum.ushort = (uint16_t) num;
 			in.length = sizeof(in.datum.ushort);
 		} else {		/* 8bit unsigned (supported) */
-			src_type = PW_TYPE_BYTE;
+			in.type = PW_TYPE_BYTE;
 			in.datum.byte = (uint8_t) num;
 			in.length = sizeof(in.datum.byte);
 		}
@@ -110,7 +109,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 		break;
 
 	case json_type_boolean:
-		src_type = PW_TYPE_BOOLEAN;
+		in.type = PW_TYPE_BOOLEAN;
 		in.datum.boolean = json_object_get_boolean(object);
 		in.length = sizeof(in.datum.boolean);
 		break;
@@ -118,38 +117,32 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 	case json_type_null:
 	case json_type_array:
 	case json_type_object:
-		src_type = PW_TYPE_STRING;
+		in.type = PW_TYPE_STRING;
 		in.datum.strvalue = json_object_to_json_string(object);
 		in.length = strlen(in.datum.strvalue);
 		break;
 	}
 
-	if (src_type == dst_type) {
-		if (value_box_copy(ctx, out, src_type, &in) < 0) return -1;
-	} else {
-		if (value_box_cast(ctx, out, dst_type, dst_enumv, src_type, NULL, &in) < 0) return -1;
-	}
+	if (value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
+
 	return 0;
 }
 
 /** Convert boxed value_box to a JSON object
  *
  * @param[in] ctx	to allocate temporary buffers in
- * @param[in] type	of value data.
- * @param[in] enumv	of value data.
  * @param[in] data	to convert.
  */
-json_object *json_object_from_value_box(TALLOC_CTX *ctx,
-					 PW_TYPE type, fr_dict_attr_t const *enumv, value_box_t const *data)
+json_object *json_object_from_value_box(TALLOC_CTX *ctx, value_box_t const *data)
 {
-	switch (type) {
+	switch (data->type) {
 	default:
 	do_string:
 	{
 		char		*p;
 		json_object	*obj;
 
-		p = value_box_asprint(ctx, type, enumv, data, '\0');
+		p = value_box_asprint(ctx, data, '\0');
 		if (!p) return NULL;
 
 		obj = json_object_new_string(p);
@@ -227,7 +220,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 	size_t len, freespace = outlen;
 
 	if (!vp->da->flags.has_tag) {
-		switch (vp->da->type) {
+		switch (vp->vp_type) {
 		case PW_TYPE_INTEGER:
 			if (vp->da->flags.has_value) break;
 
@@ -251,7 +244,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		}
 	}
 
-	if (vp->da->type == PW_TYPE_STRING) {
+	if (vp->vp_type == PW_TYPE_STRING) {
 		char *tmp = fr_json_from_string(NULL, vp->vp_strvalue, true);
 
 		/* Indicate truncation */
@@ -358,7 +351,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 			MEM(vp_object = json_object_new_object());
 			json_object_object_add(obj, name_with_prefix, vp_object);
 
-			MEM(type_name = json_object_new_string(fr_int2str(dict_attr_types, vp->da->type, "<INVALID>")));
+			MEM(type_name = json_object_new_string(fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>")));
 			json_object_object_add(vp_object, "type", type_name);
 
 			MEM(values = json_object_new_array());
@@ -373,7 +366,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 			return NULL;
 		}
 
-		MEM(value = json_object_from_value_box(ctx, vp->da->type, vp->da, &vp->data));
+		MEM(value = json_object_from_value_box(ctx, &vp->data));
 		json_object_array_add(values, value);
 
 		/*

@@ -53,7 +53,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	switch (vp->da->type) {
+	switch (vp->vp_type) {
 	/*
 	 *	These are 'to' types, i.e. we'll convert the integers
 	 *	to a time structure, and then output it in the specified

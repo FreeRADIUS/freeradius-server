@@ -1028,7 +1028,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_CASE:
 			g = unlang_group_to_module_call(this);
-			tmpl_snprint(buffer, sizeof(buffer), g->vpt, NULL);
+			tmpl_snprint(buffer, sizeof(buffer), g->vpt);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_ops[this->type].name, buffer);
 			unlang_dump(g->children, depth + 1);

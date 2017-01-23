@@ -599,36 +599,31 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
  * @param[in,out] ctx to allocate #vp_tmpl_t in.
  * @param[out] out Where to write pointer to new #vp_tmpl_t.
  * @param[in] data to convert.
- * @param[in] type of data.
- * @param[in] enumv Used to convert integers to string types for printing. May be NULL.
  * @param[in] steal If true, any buffers are moved to the new ctx instead of being duplicated.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data,
-			  PW_TYPE type, fr_dict_attr_t const *enumv, bool steal)
+int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bool steal)
 {
 	char const *name;
 	vp_tmpl_t *vpt;
 
 	vpt = talloc(ctx, vp_tmpl_t);
-	name = value_box_asprint(vpt, type, enumv, data, '\0');
+	name = value_box_asprint(vpt, data, '\0');
 	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name),
-		  (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
+		  (data->type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
-		if (value_box_steal(vpt, &vpt->tmpl_value_box_datum, type, data) < 0) {
+		if (value_box_steal(vpt, &vpt->tmpl_value_box, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
-		vpt->tmpl_value_box_type = type;
 	} else {
-		if (value_box_copy(vpt, &vpt->tmpl_value_box_datum, type, data) < 0) {
+		if (value_box_copy(vpt, &vpt->tmpl_value_box, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
-		vpt->tmpl_value_box_type = type;
 	}
 	*out = vpt;
 
@@ -1066,11 +1061,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			vpt->tmpl_value_box_datum.datum.ptr = talloc_array(vpt, uint8_t, binlen);
+			vpt->tmpl_value_box_datum.ptr = talloc_array(vpt, uint8_t, binlen);
 			vpt->tmpl_value_box_length = binlen;
 			vpt->tmpl_value_box_type = PW_TYPE_OCTETS;
 
-			len = fr_hex2bin(vpt->tmpl_value_box_datum.datum.ptr, binlen, in + 2, inlen - 2);
+			len = fr_hex2bin(vpt->tmpl_value_box_datum.ptr, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains none hex char");
 				talloc_free(vpt);
@@ -1236,8 +1231,8 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		if (value_box_from_str(vpt, &vpt->tmpl_value_box_datum, &vpt->tmpl_value_box_type,
-					enumv, vpt->name, vpt->len, '\0') < 0) return -1;
+		if (value_box_from_str(vpt, &vpt->tmpl_value_box, &vpt->tmpl_value_box_type,
+				       enumv, vpt->name, vpt->len, '\0') < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
 
@@ -1247,8 +1242,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 
 		if (type == vpt->tmpl_value_box_type) return 0;	/* noop */
 
-		if (value_box_cast(vpt, &new, type, enumv, vpt->tmpl_value_box_type,
-				    NULL, &vpt->tmpl_value_box_datum) < 0) return -1;
+		if (value_box_cast(vpt, &new, type, enumv, &vpt->tmpl_value_box) < 0) return -1;
 
 		/*
 		 *	Free old value buffers
@@ -1256,15 +1250,14 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv
 		switch (vpt->tmpl_value_box_type) {
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
-			talloc_free(vpt->tmpl_value_box_datum.datum.ptr);
+			talloc_free(vpt->tmpl_value_box_datum.ptr);
 			break;
 
 		default:
 			break;
 		}
 
-		value_box_copy(vpt, &vpt->tmpl_value_box_datum, type, &new);
-		vpt->tmpl_value_box_type = type;
+		value_box_copy(vpt, &vpt->tmpl_value_box, &new);
 	}
 		break;
 
@@ -1288,12 +1281,12 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 	rad_assert(vpt != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_UNPARSED);
 
-	vpt->tmpl_value_box.vp_strvalue = talloc_typed_strdup(vpt, vpt->name);
-	rad_assert(vpt->tmpl_value_box.vp_strvalue != NULL);
+	vpt->tmpl_value_box_datum.strvalue = talloc_typed_strdup(vpt, vpt->name);
+	rad_assert(vpt->tmpl_value_box_datum.strvalue != NULL);
 
 	vpt->type = TMPL_TYPE_DATA;
 	vpt->tmpl_value_box_type = PW_TYPE_STRING;
-	vpt->tmpl_value_box_length = talloc_array_length(vpt->tmpl_value_box.vp_strvalue) - 1;
+	vpt->tmpl_value_box_length = talloc_array_length(vpt->tmpl_value_box_datum.strvalue) - 1;
 }
 
 /** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
@@ -1317,10 +1310,10 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		    vp_tmpl_t const *vpt, fr_dict_attr_t const *cast)
 {
-	int rcode;
-	VALUE_PAIR *vp;
-	value_box_t data;
-	char *p;
+	int		rcode;
+	VALUE_PAIR	*vp;
+	value_box_t	data;
+	char		*p;
 
 	VERIFY_TMPL(vpt);
 
@@ -1331,9 +1324,9 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
-		rad_assert(vp->da->type == vpt->tmpl_value_box_type);
+		rad_assert(vp->vp_type == vpt->tmpl_value_box_type);
 
-		value_box_copy(vp, &vp->data, vpt->tmpl_value_box_type, &vpt->tmpl_value_box_datum);
+		value_box_copy(vp, &vp->data, &vpt->tmpl_value_box);
 		*out = vp;
 		return 0;
 	}
@@ -1348,7 +1341,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	/*
 	 *	New escapes: strings are in binary form.
 	 */
-	if (vp->da->type == PW_TYPE_STRING) {
+	if (vp->vp_type == PW_TYPE_STRING) {
 		vp->data.datum.ptr = talloc_steal(vp, data.datum.ptr);
 		vp->vp_length = rcode;
 	} else if (fr_pair_value_from_str(vp, data.datum.strvalue, rcode) < 0) {
@@ -1606,7 +1599,7 @@ ssize_t _tmpl_to_type(void *out,
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		to_cast = &vpt->tmpl_value_box_datum;
+		to_cast = &vpt->tmpl_value_box;
 		src_type = vpt->tmpl_value_box_type;
 	}
 		break;
@@ -1694,7 +1687,7 @@ ssize_t _tmpl_to_type(void *out,
 		/*
 		 *	Data type conversion...
 		 */
-		ret = value_box_cast(ctx, &vd_from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
+		ret = value_box_cast(ctx, &vd_from_cast, dst_type, NULL, to_cast);
 		if (ret < 0) return -1;
 
 
@@ -1797,7 +1790,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 	VALUE_PAIR		*vp = NULL;
 	value_box_t		vd;
-	PW_TYPE			src_type = PW_TYPE_STRING;
 	bool			needs_dup = false;
 
 	ssize_t			slen = -1;
@@ -1815,6 +1807,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		vd.length = vpt->len;
 		vd.datum.strvalue = vpt->name;
+		vd.type = PW_TYPE_STRING;
 		to_cast = &vd;
 		needs_dup = true;
 		break;
@@ -1830,6 +1823,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			return slen;
 		}
 		vd.length = strlen(vd.datum.strvalue);
+		vd.type = PW_TYPE_STRING;
 		MEM(vd.datum.strvalue = talloc_realloc(tmp_ctx, vd.datum.ptr, char, vd.length + 1));	/* Trim */
 		rad_assert(vd.datum.strvalue[vd.length] == '\0');
 		to_cast = &vd;
@@ -1838,6 +1832,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_XLAT:
 	{
 		value_box_t	tmp;
+		PW_TYPE		src_type = PW_TYPE_STRING;
 
 		RDEBUG4("EXPAND TMPL XLAT");
 
@@ -1857,6 +1852,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		vd.datum.strvalue = tmp.datum.strvalue;
 		vd.length = tmp.length;
+		vd.type = PW_TYPE_STRING;
 		to_cast = &vd;
 	}
 		break;
@@ -1864,6 +1860,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_XLAT_STRUCT:
 	{
 		value_box_t	tmp;
+		PW_TYPE		src_type = PW_TYPE_STRING;
 
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
@@ -1885,6 +1882,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		vd.datum.strvalue = tmp.datum.strvalue;
 		vd.length = tmp.length;
+		vd.type = PW_TYPE_STRING;
 		to_cast = &vd;
 
 		RDEBUG2("   --> %s", vd.datum.strvalue);	/* Print post-unescaping */
@@ -1900,9 +1898,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		rad_assert(vp);
 
 		to_cast = &vp->data;
-		src_type = vp->da->type;
-
-		switch (src_type) {
+		switch (to_cast->type) {
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
 			rad_assert(to_cast->datum.ptr);
@@ -1918,10 +1914,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = &vpt->tmpl_value_box_datum;
-		src_type = vpt->tmpl_value_box_type;
-
-		switch (src_type) {
+		to_cast = &vpt->tmpl_value_box;
+		switch (to_cast->type) {
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
 			rad_assert(to_cast->datum.ptr);
@@ -1950,11 +1944,11 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	/*
 	 *	Don't dup the buffers unless we need to.
 	 */
-	if ((src_type != dst_type) || needs_dup) {
-		ret = value_box_cast(ctx, &from_cast, dst_type, NULL, src_type, vp ? vp->da : NULL, to_cast);
+	if ((to_cast->type != dst_type) || needs_dup) {
+		ret = value_box_cast(ctx, &from_cast, dst_type, NULL, to_cast);
 		if (ret < 0) goto error;
 	} else {
-		switch (src_type) {
+		switch (to_cast->type) {
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
 			/*
@@ -1991,13 +1985,11 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
  * @param[out] out Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen Size of output buffer.
  * @param[in] vpt to print.
- * @param[in] values Used for #TMPL_TYPE_DATA only. #fr_dict_attr_t to use when mapping integer
- *	values to strings.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt, fr_dict_attr_t const *values)
+size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 {
 	size_t		len;
 	char const	*p;
@@ -2134,8 +2126,7 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return value_box_snprint(out, outlen, vpt->tmpl_value_box_type, values, &vpt->tmpl_value_box_datum,
-					 fr_token_quote[vpt->quote]);
+		return value_box_snprint(out, outlen, &vpt->tmpl_value_box, fr_token_quote[vpt->quote]);
 
 	default:
 		goto empty;
@@ -2678,7 +2669,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		 */
 		switch (vpt->tmpl_value_box_type) {
 		case PW_TYPE_STRING:
-			if (vpt->tmpl_value_box.vp_strvalue[vpt->tmpl_value_box_length] != '\0') {
+			if (vpt->tmpl_value_box_datum.strvalue[vpt->tmpl_value_box_length] != '\0') {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
 					     "terminated", file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);

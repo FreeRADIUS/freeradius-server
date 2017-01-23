@@ -56,7 +56,7 @@ static const CONF_PARSER module_config[] = {
 static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rad_assert(check->da->type == PW_TYPE_STRING);
+	rad_assert(check->vp_type == PW_TYPE_STRING);
 
 	RINFO("Example-Paircmp called with \"%s\"", check->vp_strvalue);
 

@@ -1455,7 +1455,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 		 *	because the talloc API won't let us.  So, we
 		 *	just create a fake attribute.
 		 */
-		vp = fr_pair_afrom_da(ctx,da);
+		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
 		fr_pair_cursor_append(cursor, vp);
 		vp->vp_tainted = true;		/* not REALLY necessary, but what the heck */
