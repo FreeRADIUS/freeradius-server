@@ -50,17 +50,17 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
 	vp_tmpl_t *vpt;
 
-	if (node->next || (node->type != XLAT_ATTRIBUTE) || (node->attr.type != TMPL_TYPE_ATTR)) return NULL;
+	if (node->next || (node->type != XLAT_ATTRIBUTE) || (node->attr->type != TMPL_TYPE_ATTR)) return NULL;
 
 	/*
 	 *   Concat means something completely different as an attribute reference
 	 *   Count isn't implemented.
 	 */
-	if ((node->attr.tmpl_num == NUM_COUNT) || (node->attr.tmpl_num == NUM_ALL)) return NULL;
+	if ((node->attr->tmpl_num == NUM_COUNT) || (node->attr->tmpl_num == NUM_ALL)) return NULL;
 
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, -1, T_BARE_WORD);
 	if (!vpt) return NULL;
-	memcpy(&vpt->data, &node->attr.data, sizeof(vpt->data));
+	memcpy(&vpt->data, &node->attr->data, sizeof(vpt->data));
 
 	VERIFY_TMPL(vpt);
 
@@ -84,8 +84,8 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->type = XLAT_ATTRIBUTE;
 	node->fmt = talloc_bstrndup(node, vpt->name, vpt->len);
-	tmpl_init(&node->attr, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
-	memcpy(&node->attr.data, &vpt->data, sizeof(vpt->data));
+	node->attr = tmpl_alloc(node, TMPL_TYPE_ATTR,node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
+	memcpy(&node->attr->data, &vpt->data, sizeof(vpt->data));
 
 	return node;
 }
@@ -201,7 +201,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			*error = "Invalid regex reference.  Must be in range 0-" STRINGIFY(REQUEST_MAX_REGEX);
 			return -2;
 		}
-		node->attr.tmpl_num = num;
+		node->regex_index = num;
 
 		node->type = XLAT_REGEX;
 		*head = node;
@@ -282,7 +282,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	- '[' - Which is an attribute index, so it must be an attribute.
 	 *      - '}' - The end of the expansion, which means it was a bareword.
 	 */
-	slen = tmpl_from_attr_substr(&node->attr, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, true, true);
+	slen = tmpl_afrom_attr_substr(node, &node->attr, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, true, true);
 	if (slen <= 0) {
 		/*
 		 *	If the parse error occurred before the ':'
@@ -303,8 +303,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	Might be a virtual XLAT attribute
 	 */
-	if (node->attr.type == TMPL_TYPE_ATTR_UNDEFINED) {
-		node->xlat = xlat_find(node->attr.tmpl_unknown_name);
+	if (node->attr->type == TMPL_TYPE_ATTR_UNDEFINED) {
+		node->xlat = xlat_find(node->attr->tmpl_unknown_name);
 		if (node->xlat && node->xlat->mod_inst && !node->xlat->internal) {
 			talloc_free(node);
 			*error = "Missing content in expansion";
@@ -313,7 +313,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 		if (node->xlat) {
 			node->type = XLAT_VIRTUAL;
-			node->fmt = node->attr.tmpl_unknown_name;
+			node->fmt = node->attr->tmpl_unknown_name;
 
 			XLAT_DEBUG("VIRTUAL <-- %s", node->fmt);
 			*head = node;
@@ -527,26 +527,26 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			break;
 
 		case XLAT_ATTRIBUTE:
-			rad_assert(node->attr.tmpl_da != NULL);
-			RDEBUG3("attribute --> %s", node->attr.tmpl_da->name);
+			rad_assert(node->attr->tmpl_da != NULL);
+			RDEBUG3("attribute --> %s", node->attr->tmpl_da->name);
 			rad_assert(node->child == NULL);
-			if ((node->attr.tmpl_tag != TAG_ANY) || (node->attr.tmpl_num != NUM_ANY)) {
+			if ((node->attr->tmpl_tag != TAG_ANY) || (node->attr->tmpl_num != NUM_ANY)) {
 				RDEBUG3("{");
 
 				RINDENT();
-				RDEBUG3("ref  %d", node->attr.tmpl_request);
-				RDEBUG3("list %d", node->attr.tmpl_list);
+				RDEBUG3("ref  %d", node->attr->tmpl_request);
+				RDEBUG3("list %d", node->attr->tmpl_list);
 
-				if (node->attr.tmpl_tag != TAG_ANY) {
-					RDEBUG3("tag %d", node->attr.tmpl_tag);
+				if (node->attr->tmpl_tag != TAG_ANY) {
+					RDEBUG3("tag %d", node->attr->tmpl_tag);
 				}
-				if (node->attr.tmpl_num != NUM_ANY) {
-					if (node->attr.tmpl_num == NUM_COUNT) {
+				if (node->attr->tmpl_num != NUM_ANY) {
+					if (node->attr->tmpl_num == NUM_COUNT) {
 						RDEBUG3("[#]");
-					} else if (node->attr.tmpl_num == NUM_ALL) {
+					} else if (node->attr->tmpl_num == NUM_ALL) {
 						RDEBUG3("[*]");
 					} else {
-						RDEBUG3("[%d]", node->attr.tmpl_num);
+						RDEBUG3("[%d]", node->attr->tmpl_num);
 					}
 				}
 				REXDENT();
@@ -571,7 +571,7 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
-			RDEBUG3("regex-var --> %d", node->attr.tmpl_num);
+			RDEBUG3("regex-var --> %d", node->regex_index);
 			break;
 #endif
 
@@ -619,31 +619,31 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '%';
 			*(p++) = '{';
 
-			if (node->attr.tmpl_request != REQUEST_CURRENT) {
-				strlcpy(p, fr_int2str(request_refs, node->attr.tmpl_request, "??"), end - p);
+			if (node->attr->tmpl_request != REQUEST_CURRENT) {
+				strlcpy(p, fr_int2str(request_refs, node->attr->tmpl_request, "??"), end - p);
 				p += strlen(p);
 				*(p++) = '.';
 			}
 
-			if ((node->attr.tmpl_request != REQUEST_CURRENT) ||
-			    (node->attr.tmpl_list != PAIR_LIST_REQUEST)) {
-				strlcpy(p, fr_int2str(pair_lists, node->attr.tmpl_list, "??"), end - p);
+			if ((node->attr->tmpl_request != REQUEST_CURRENT) ||
+			    (node->attr->tmpl_list != PAIR_LIST_REQUEST)) {
+				strlcpy(p, fr_int2str(pair_lists, node->attr->tmpl_list, "??"), end - p);
 				p += strlen(p);
 				*(p++) = ':';
 			}
 
-			strlcpy(p, node->attr.tmpl_da->name, end - p);
+			strlcpy(p, node->attr->tmpl_da->name, end - p);
 			p += strlen(p);
 
-			if (node->attr.tmpl_tag != TAG_ANY) {
+			if (node->attr->tmpl_tag != TAG_ANY) {
 				*(p++) = ':';
-				snprintf(p, end - p, "%u", node->attr.tmpl_tag);
+				snprintf(p, end - p, "%u", node->attr->tmpl_tag);
 				p += strlen(p);
 			}
 
-			if (node->attr.tmpl_num != NUM_ANY) {
+			if (node->attr->tmpl_num != NUM_ANY) {
 				*(p++) = '[';
-				switch (node->attr.tmpl_num) {
+				switch (node->attr->tmpl_num) {
 				case NUM_COUNT:
 					*(p++) = '#';
 					break;
@@ -653,7 +653,7 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 					break;
 
 				default:
-					snprintf(p, end - p, "%i", node->attr.tmpl_num);
+					snprintf(p, end - p, "%i", node->attr->tmpl_num);
 					p += strlen(p);
 				}
 				*(p++) = ']';
@@ -662,7 +662,7 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			break;
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
-			snprintf(p, end - p, "%%{%i}", node->attr.tmpl_num);
+			snprintf(p, end - p, "%%{%i}", node->regex_index);
 			p += strlen(p);
 			break;
 #endif

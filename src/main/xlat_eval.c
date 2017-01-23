@@ -463,9 +463,9 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, request, &node->attr, escape ? false : true, true);
+		str = xlat_getvp(ctx, request, node->attr, escape ? false : true, true);
 		if (str) {
-			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr.tmpl_da->name);
+			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr->tmpl_da->name);
 			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);
 		}
 		break;
@@ -566,7 +566,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
 		XLAT_DEBUG("%.*sxlat_aprint REGEX", lvl, xlat_spaces);
-		if (regex_request_to_sub(ctx, &str, request, node->attr.tmpl_num) < 0) return NULL;
+		if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) return NULL;
 
 		break;
 #endif
