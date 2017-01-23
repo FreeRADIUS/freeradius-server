@@ -753,7 +753,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
 	int rcode = 0;
-	VALUE_PAIR *vp = NULL, *new, *found = NULL;
+	VALUE_PAIR *vp = NULL, *found = NULL, *n;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
 	ssize_t slen;
@@ -812,8 +812,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 		rad_assert(map->rhs->tmpl_xlat != NULL);
 
-		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!new) return -1;
+		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+		if (!n) return -1;
 
 		/*
 		 *	We do the debug printing because xlat_aeval_compiled
@@ -834,23 +834,23 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 		RDEBUG2("--> %s", str);
 
-		rcode = fr_pair_value_from_str(new, str, -1);
+		rcode = fr_pair_value_from_str(n, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
-			fr_pair_list_free(&new);
+			fr_pair_list_free(&n);
 			goto error;
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
-		*out = new;
+		n->op = map->op;
+		n->tag = map->lhs->tmpl_tag;
+		*out = n;
 		break;
 
 	case TMPL_TYPE_XLAT:
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!new) return -1;
+		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+		if (!n) return -1;
 
 		str = NULL;
 		slen = xlat_aeval(request, &str, request, map->rhs->name, NULL, NULL);
@@ -859,31 +859,31 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 			goto error;
 		}
 
-		rcode = fr_pair_value_from_str(new, str, -1);
+		rcode = fr_pair_value_from_str(n, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
-			fr_pair_list_free(&new);
+			fr_pair_list_free(&n);
 			goto error;
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
-		*out = new;
+		n->op = map->op;
+		n->tag = map->lhs->tmpl_tag;
+		*out = n;
 		break;
 
 	case TMPL_TYPE_UNPARSED:
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!new) return -1;
+		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+		if (!n) return -1;
 
-		if (fr_pair_value_from_str(new, map->rhs->name, -1) < 0) {
+		if (fr_pair_value_from_str(n, map->rhs->name, -1) < 0) {
 			rcode = 0;
 			goto error;
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
-		*out = new;
+		n->op = map->op;
+		n->tag = map->lhs->tmpl_tag;
+		*out = n;
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -910,24 +910,24 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 			(void) fr_pair_cursor_init(&to, out);
 			for (; vp; vp = fr_pair_cursor_next(&from)) {
-				new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-				if (!new) return -1;
+				n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+				if (!n) return -1;
 
-				if (value_box_cast(new, &new->data,
+				if (value_box_cast(n, &n->data,
 						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					fr_pair_list_free(&found);
-					fr_pair_list_free(&new);
+					fr_pair_list_free(&n);
 					return -1;
 				}
 				vp = fr_pair_cursor_remove(&from);
 				talloc_free(vp);
 
-				rad_assert((new->vp_type != PW_TYPE_STRING) || (new->vp_strvalue != NULL));
+				rad_assert((n->vp_type != PW_TYPE_STRING) || (n->vp_strvalue != NULL));
 
-				new->op = map->op;
-				new->tag = map->lhs->tmpl_tag;
-				fr_pair_cursor_append(&to, new);
+				n->op = map->op;
+				n->tag = map->lhs->tmpl_tag;
+				fr_pair_cursor_append(&to, n);
 			}
 			return 0;
 		}
@@ -949,25 +949,25 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		rad_assert(map->lhs->tmpl_da);
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 
-		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!new) return -1;
+		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+		if (!n) return -1;
 
 		if (map->lhs->tmpl_da->type == map->rhs->tmpl_value_box_type) {
-			if (value_box_copy(new, &new->data, &map->rhs->tmpl_value_box) < 0) {
+			if (value_box_copy(n, &n->data, &map->rhs->tmpl_value_box) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
-			if (value_box_cast(new, &new->data, new->vp_type, new->da,
+			if (value_box_cast(n, &n->data, n->vp_type, n->da,
 					   &map->rhs->tmpl_value_box) < 0) {
 				REDEBUG("Implicit cast failed: %s", fr_strerror());
 				rcode = -1;
 				goto error;
 			}
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
-		*out = new;
+		n->op = map->op;
+		n->tag = map->lhs->tmpl_tag;
+		*out = n;
 
 		VERIFY_MAP(map);
 		break;
@@ -997,12 +997,12 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 do {\
 	if (RDEBUG_ENABLED3) {\
 		char *old = fr_pair_value_asprint(request, _old, '"');\
-		char *new = fr_pair_value_asprint(request, _new, '"');\
+		char *n = fr_pair_value_asprint(request, _new, '"');\
 		RINDENT();\
-		RDEBUG3("--> overwriting '%s' with '%s'", old, new);\
+		RDEBUG3("--> overwriting '%s' with '%s'", old, n);\
 		REXDENT();\
 		talloc_free(old);\
-		talloc_free(new);\
+		talloc_free(n);\
 	}\
 } while (0)
 
