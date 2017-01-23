@@ -398,10 +398,6 @@ void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int nu
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bool steal);
 
-ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
-					      request_refs_t request_def, pair_lists_t list_def,
-					      bool allow_unknown, bool allow_undefined);
-
 ssize_t			tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
 					   pair_lists_t list_def,

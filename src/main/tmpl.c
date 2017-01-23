@@ -667,9 +667,9 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bo
  *
  * @see REMARKER to produce pretty error markers from the return value.
  */
-ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
-			      request_refs_t request_def, pair_lists_t list_def,
-			      bool allow_unknown, bool allow_undefined)
+static ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
+				     request_refs_t request_def, pair_lists_t list_def,
+				     bool allow_unknown, bool allow_undefined)
 {
 	char const *p;
 	long num;
