@@ -923,7 +923,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				vp = fr_pair_cursor_remove(&from);
 				talloc_free(vp);
 
-				if (new->vp_type == PW_TYPE_STRING) rad_assert(new->vp_strvalue != NULL);
+				rad_assert((new->vp_type != PW_TYPE_STRING) || (new->vp_strvalue != NULL));
 
 				new->op = map->op;
 				new->tag = map->lhs->tmpl_tag;
