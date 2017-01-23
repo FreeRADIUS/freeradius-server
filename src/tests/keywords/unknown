@@ -43,20 +43,20 @@ if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {
 #  Check that unknown attributes which are defined
 #  get automatically resolved to the real attribute.
 #
-if (&Vendor-11344-Attr-1 == 127.0.0.1) {
+if (&Attr-26.11344.1 == 127.0.0.1) {
 	update reply {
 		Filter-Id += 'Fail 3'
 	}
 }
 
-if (&Vendor-11344-Attr-1 != 127.0.0.2) {
+if (&Attr-26.11344.1 != 127.0.0.2) {
 	update reply {
 		Filter-Id += 'Fail 4'
 	}
 }
 
 update request {
-	&Vendor-11344-Attr-1 := 0x7f000001
+	&Attr-26.11344.1 := 0x7f000001
 }
 
 if (&FreeRADIUS-Proxied-To == 127.0.0.2) {
@@ -71,23 +71,23 @@ if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
 	}
 }
 
-if (&Vendor-11344-Attr-1 == 127.0.0.2) {
+if (&Attr-26.11344.1 == 127.0.0.2) {
 	update reply {
 		Filter-Id += 'Fail 7'
 	}
 }
 
-if (&Vendor-11344-Attr-1 != 127.0.0.1) {
+if (&Attr-26.11344.1 != 127.0.0.1) {
 	update reply {
 		Filter-Id += 'Fail 8'
 	}
 }
 
 update request {
-	Vendor-66-Attr-1 = 0x01020304
+	&Attr-26.66.1 = 0x01020304
 }
 
-if (&Vendor-66-Attr-1 != 0x01020304) {
+if (&Attr-26.66.1 != 0x01020304) {
 	update reply {
 		Filter-Id += 'Fail 9'
 	}

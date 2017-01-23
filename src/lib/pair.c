@@ -304,8 +304,6 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
  * Where the attribute name is in the form:
  *  - Attr-%d
  *  - Attr-%d.%d.%d...
- *  - Vendor-%d-Attr-%d
- *  - VendorName-Attr-%d
  *
  * @param ctx for talloc
  * @param attribute name to parse.
@@ -599,10 +597,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	}
 
 	/*
-	 *	FIXME: if (strcasecmp(attribute, vp->da->name) != 0)
-	 *	then the user MAY have typed in the attribute name
-	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
-	 *
 	 *	We probably want to fix fr_pair_value_from_str to accept
 	 *	octets as values for any attribute.
 	 */

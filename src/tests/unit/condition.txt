@@ -620,10 +620,7 @@ data false
 condition &Attr-1 == 0x616263
 data &User-Name == 'abc'
 
-condition &Vendor-11344-Attr-1 == 0x7f000001
-data &FreeRADIUS-Proxied-To == 127.0.0.1
-
-condition &FreeRADIUS-Attr-1 == 0x7f000001
+condition &Attr-26.11344.1 == 0x7f000001
 data &FreeRADIUS-Proxied-To == 127.0.0.1
 
 #

@@ -2998,6 +2998,7 @@ size_t dict_print_attr_oid(char *out, size_t outlen,
 	if ((p + len) >= end) return p - out;
 	p += len;
 
+
 	for (i = depth + 1; i < (int)da->depth; i++) {
 		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
 		if ((p + len) >= end) return p - out;
@@ -3046,7 +3047,6 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 	bufsize -= len;
 
 	dict_print_attr_oid(p, bufsize, NULL, da);
-
 	return 0;
 }
 
@@ -3134,8 +3134,6 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
  * Where the attribute name is in the form:
  *  - Attr-%d
  *  - Attr-%d.%d.%d...
- *  - Vendor-%d-Attr-%d
- *  - VendorName-Attr-%d
  *
  * @copybrief fr_dict_unknown_from_fields
  *
@@ -3159,13 +3157,12 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 			     fr_dict_attr_t const *parent, char const *name)
 {
-	unsigned int   	attr, vendor = 0;
+	unsigned int   	attr, vendor;
 	unsigned long	num;
 
 	char const	*p = name;
 	char		*q;
 
-	fr_dict_vendor_t const	*dv = NULL;
 	fr_dict_attr_t const	*child;
 
 	INTERNAL_IF_NULL(dict);
@@ -3176,88 +3173,10 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	if (da) memset(da, 0, sizeof(*da));
 
 	/*
-	 *	Pull off vendor prefix first.
-	 */
-	if (strncasecmp(p, "Attr-", 5) != 0) {
-		if (strncasecmp(p, "Vendor-", 7) == 0) {
-			num = strtoul(p + 7, &q, 10);
-			if (!num || (num >=  UINT_MAX)) {
-				fr_strerror_printf("Invalid vendor value in attribute name '%s'", name);
-
-				return -1;
-			}
-			vendor = num;
-
-			p = q;
-
-		/* must be vendor name */
-		} else {
-			char buffer[256];
-
-			q = strchr(p, '-');
-
-			if (!q) {
-				fr_strerror_printf("Invalid vendor name in attribute name '%s'", name);
-				return -1;
-			}
-
-			if ((size_t)(q - p) >= sizeof(buffer)) {
-				fr_strerror_printf("Vendor name too long in attribute name '%s'", name);
-
-				return -1;
-			}
-
-			memcpy(buffer, p, (q - p));
-			buffer[q - p] = '\0';
-
-			vendor = fr_dict_vendor_by_name(dict, buffer);
-			if (!vendor) {
-				fr_strerror_printf("Unknown name '%s'", name);
-
-				return -1;
-			}
-
-			p = q;
-		}
-
-		/*
-		 *	In both the above cases the context for the vendor
-		 *	attribute has been omitted, so we need to fixup
-		 *	the parent.
-		 */
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("Vendor specified without context, but parent is not root");
-			return -1;
-		}
-
-		/*
-		 *	Assume the context is VSA (26)
-		 */
-		child = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
-		if (!child) {
-			fr_strerror_printf("Missing definition for Vendor-Specific (26)");
-			return -1;
-		}
-		parent = child;
-
-		/*
-		 *	The code below should resolve the vendor.
-		 */
-
-		if (*p != '-') {
-			fr_strerror_printf("Invalid text following vendor definition in attribute name '%s'", name);
-
-			return -1;
-		}
-		p++;
-	}
-
-	/*
-	 *	Attr-%d
+	 *	All raw attributes are of the form "Attr-#-#-#-#"
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
 		fr_strerror_printf("Unknown attribute '%s'", name);
-
 		return -1;
 	}
 
@@ -3267,20 +3186,22 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 
 		return -1;
 	}
+
 	attr = num;
+	vendor = 0;
 
 	p = q;
 
 	/*
-	 *	Vendor-%d-Attr-%d
-	 *	VendorName-Attr-%d
-	 *	Attr-%d
-	 *	Attr-%d.
-	 *
-	 *	Anything else is invalid.
+	 *	The common case: Attr-26.  Just create it and go.
 	 */
-	if (((vendor != 0) && (*p != '\0')) ||
-	    ((vendor == 0) && *p && (*p != '.'))) {
+	if (!*p) return fr_dict_unknown_from_fields(da, parent, 0, attr);
+
+	/*
+	 *	Allow only Attr-%d.%d.%d
+
+	 */
+	if (*p != '.') {
 	invalid:
 		fr_strerror_printf("Invalid OID");
 		return -1;
@@ -3288,90 +3209,88 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 
 	/*
 	 *	Look for OIDs.  Require the "Attr-26.Vendor-Id.type"
-	 *	format, and disallow "Vendor-%d-Attr-%d" and
-	 *	"VendorName-Attr-%d"
+	 *	format.
 	 *
 	 *	This section parses the Vendor-Id portion of
 	 *	Attr-%d.%d.  where the first number is 26, *or* an
-	 *	extended name of the "evs" foundta type.
+	 *	extended name of the "evs" found type.
 	 */
-	if (*p == '.') {
-		child = fr_dict_attr_child_by_num(parent, attr);
-		if (!child) {
-			fr_strerror_printf("Cannot parse names without dictionaries");
-			return -1;
-		}
+	child = fr_dict_attr_child_by_num(parent, attr);
+	if (!child) {
+		fr_strerror_printf("Cannot parse names without dictionaries");
+		return -1;
+	}
 
-		switch (child->type) {
-		case PW_TYPE_STRUCTURAL:
-			break;
+	switch (child->type) {
+	case PW_TYPE_STRUCTURAL:
+		break;
 
-		default:
-			fr_strerror_printf("Standard attributes cannot use OIDs");
-			return -1;
-		}
-
-		if ((child->type == PW_TYPE_VSA) || (child->type == PW_TYPE_EVS)) {
-			num = strtoul(p + 1, &q, 10);
-			if (!num || (num >=  UINT_MAX)) {
-				fr_strerror_printf("Invalid vendor");
-
-				return -1;
-			}
-			vendor = num;
-
-			if (*q != '.') goto invalid;
-
-			p = q;
-
-			attr = 0;	/* Attr must exist beneath the vendor */
-		} /* else the second number is a TLV number */
-		parent = child;
+	default:
+		fr_strerror_printf("Attributes of simple data types cannot use OIDs");
+		return -1;
 	}
 
 	/*
-	 *	Get the expected maximum size of the name.
+	 *	Attr-26 means that the following data is a 32-bit vendor ID.
 	 */
-	if (vendor) {
-		dv = fr_dict_vendor_by_num(dict, vendor);
+	if (child->type == PW_TYPE_VSA) {
+		fr_dict_attr_t const *dv;
+
+		num = strtoul(p + 1, &q, 10);
+		if (!num || (num >=  UINT_MAX)) {
+			fr_strerror_printf("Invalid vendor");
+
+			return -1;
+		}
+		vendor = num;
+
+		/*
+		 *	&Attr-26.11344 is invalid.
+		 */
+		if (*q != '.') goto invalid;
+
+		p = q;
+
+		attr = 0;
+
+		/*
+		 *	See if there is a vendor already defined.  If
+		 *	not, we may be able to add one.
+		 */
+		dv = fr_dict_attr_child_by_num(child, vendor);
 		if (dv) {
-			/*
-			 *	Parent needs to be EVS or VSA
-			 */
-			if ((parent->type != PW_TYPE_VSA) && (parent->type != PW_TYPE_EVS)) {
-				fr_strerror_printf("Vendor specified, but current parent is not 'evs' or 'vsa'");
+			child = dv;
+
+		} else {
+			if (!vendor_da) {
+				fr_strerror_printf("Unknown vendor %u", vendor);
 				return -1;
 			}
 
-			child = fr_dict_attr_child_by_num(parent, vendor);
-			if (!child) {
-				fr_strerror_printf("Missing vendor attr for %i", vendor);
-				return -1;
-			}
-			parent = child;
-
-			/*
-			 *	Build the unknown vendor, assuming it's a normal format.
-			 */
-		} else if (vendor_da) {
 			vendor_da->attr = vendor;
 			vendor_da->type = PW_TYPE_VENDOR;
-			vendor_da->parent = parent;
-			vendor_da->depth = parent->depth + 1;
+			vendor_da->parent = child;
+			vendor_da->depth = child->depth + 1;
 			vendor_da->flags.is_unknown = 1;
 			vendor_da->flags.is_raw = 1;
 			vendor_da->flags.type_size = 1;
 			vendor_da->flags.length = 1;
 			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%u", vendor);
 
-			parent = vendor_da;
-		} else {
-			fr_strerror_printf("Unknown vendor disallowed");
-			return -1;
+			child = vendor_da;
 		}
 	}
 
-	if (*p == '.') if (fr_dict_attr_by_oid(dict, &parent, &vendor, &attr, p + 1) < 0) return -1;
+	/*
+	 *	Reparent the attribute based on the child we found.
+	 */
+	parent = child;
+
+	if (*p == '.') {
+		if (fr_dict_attr_by_oid(dict, &parent, &vendor, &attr, p + 1) < 0) {
+			return -1;
+		}
+	}
 
 	/*
 	 *	If the caller doesn't provide a fr_dict_attr_t

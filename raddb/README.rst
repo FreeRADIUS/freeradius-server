@@ -74,6 +74,13 @@ modifications will be required.
 Use of attributes in xlats e.g. ``%{User-Name}`` remains unchanged.
 There is no plan to require prefixes here.
 
+As of version 3, the preferred format for "unknown" attributes is
+``&Attr-oid.oid.oid``, e.g. ``&Attr-26.11344.255``.  However, version
+3 would still parse (but not generate) attributes of the form
+``Vendor-FreeRADIUS-Attr-255``.  The ``Vendor-`` syntax has been
+removed in version 4.  The server would never produce it, and allowing
+it made attribute parsing significantly more complex.
+
 Update sections and Filtering
 -----------------------------
 
