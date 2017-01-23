@@ -782,10 +782,10 @@ finish:
 /** Allow single attribute values to be retrieved from the cache
  *
  */
-static ssize_t cache_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
+static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt) CC_HINT(nonnull);
-static ssize_t cache_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
+static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 			  void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
 {
@@ -800,20 +800,23 @@ static ssize_t cache_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t free
 	uint8_t const		*key;
 	ssize_t			key_len;
 
-	vp_tmpl_t		target;
+	vp_tmpl_t		*target = NULL;
 	vp_map_t		*map = NULL;
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);
 	if (key_len < 0) return -1;
 
-	slen = tmpl_from_attr_substr(&target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(ctx, &target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
 		REDEBUG("%s", fr_strerror());
 		return -1;
 	}
 
-	if (cache_acquire(&handle, mod_inst, request) < 0) return -1;
+	if (cache_acquire(&handle, mod_inst, request) < 0) {
+		talloc_free(target);
+		return -1;
+	}
 
 	switch (cache_find(&c, mod_inst, request, handle, key, key_len)) {
 	case RLM_MODULE_OK:		/* found */
@@ -823,18 +826,21 @@ static ssize_t cache_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t free
 		return 0;
 
 	default:
+		talloc_free(target);
 		return -1;
 	}
 
 	for (map = c->maps; map; map = map->next) {
-		if ((map->lhs->tmpl_da != target.tmpl_da) ||
-		    (map->lhs->tmpl_tag != target.tmpl_tag) ||
-		    (map->lhs->tmpl_list != target.tmpl_list)) continue;
+		if ((map->lhs->tmpl_da != target->tmpl_da) ||
+		    (map->lhs->tmpl_tag != target->tmpl_tag) ||
+		    (map->lhs->tmpl_list != target->tmpl_list)) continue;
 
 		*out = value_box_asprint(request, &map->rhs->tmpl_value_box, '\0');
 		ret = talloc_array_length(*out) - 1;
 		break;
 	}
+
+	talloc_free(target);
 
 	/*
 	 *	Check if we found a matching map
