@@ -735,7 +735,7 @@ void value_box_clear(value_box_t *data)
 
 /** Convert string value to a value_box_t type
  *
- * @fixme Should take taint param.
+ * @todo Should take taint param.
  *
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
