@@ -64,9 +64,14 @@ struct xlat_exp {
 	xlat_exp_t	*next;		//!< Next in the list.
 
 	xlat_exp_t	*child;		//!< Nested expansion.
-	xlat_exp_t	*alternate;	//!< Alternative expansion if this one expanded to a zero length string.
 
-	vp_tmpl_t	attr;		//!< An attribute template.
+	union {
+		xlat_exp_t	*alternate;	//!< Alternative expansion if this one expanded to a zero length string.
+
+		vp_tmpl_t	*attr;		//!< An attribute template.
+
+		int		regex_index;	//!< for %{1} and friends.
+	};
 	xlat_t const	*xlat;		//!< The xlat expansion to expand format with.
 };
 
