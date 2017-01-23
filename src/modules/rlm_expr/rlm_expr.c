@@ -187,6 +187,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	bool invert = false;
 	bool negative = false;
 	char const *p = *string;
+	vp_tmpl_t *vpt = NULL;
 
 	/*
 	 *	Look for a number.
@@ -227,12 +228,11 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		int		i, max, err;
 		ssize_t		slen;
 		VALUE_PAIR	*vp;
-		vp_tmpl_t	vpt;
 		vp_cursor_t cursor;
 
 		p += 1;
 
-		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+		slen = tmpl_afrom_attr_substr(request, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 		if (slen <= 0) {
 			REDEBUG("Failed parsing attribute name '%s': %s", p, fr_strerror());
 			return false;
@@ -240,41 +240,42 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		p += slen;
 
-		if (vpt.tmpl_num == NUM_COUNT) {
+		if (vpt->tmpl_num == NUM_COUNT) {
 			REDEBUG("Attribute count is not supported");
 			return false;
 		}
 
-		if (vpt.tmpl_num == NUM_ALL) {
+		if (vpt->tmpl_num == NUM_ALL) {
 			max = 65535;
 		} else {
 			max = 1;
 		}
 
 		x = 0;
-		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, &vpt);
+		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
-		     i++, vp = tmpl_cursor_next(&cursor, &vpt)) {
+		     i++, vp = tmpl_cursor_next(&cursor, vpt)) {
 			int64_t y;
 
 			if (vp->vp_type != PW_TYPE_INTEGER64) {
 				value_box_t	value;
 
 				if (value_box_cast(vp, &value, PW_TYPE_INTEGER64, NULL, &vp->data) < 0) {
-					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt.len,
-						vpt.name, fr_strerror());
+					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt->len,
+						vpt->name, fr_strerror());
 					return false;
 				}
 				if (value.datum.integer64 > INT64_MAX) {
 				overflow:
+					if (vpt) talloc_free(vpt);
 					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-						"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.datum.integer64);
+						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.datum.integer64);
 					return false;
 				}
 				y = (int64_t)value.datum.integer64;
 
 				RINDENT();
-				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt.len, vpt.name, y);
+				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt->len, vpt->name, y);
 				REXDENT();
 			} else {
 				if (vp->vp_integer64 > INT64_MAX) goto overflow;
@@ -292,7 +293,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		} /* loop over all found VPs */
 
 		if (err != 0) {
-			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt.len, vpt.name);
+			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);
 			goto done;
 		}
 
@@ -331,6 +332,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	}
 
 done:
+	if (vpt) talloc_free(vpt);
+
 	if (invert) x = ~x;
 
 	if (negative) x = -x;
@@ -1266,25 +1269,25 @@ static ssize_t hmac_sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
  */
-static ssize_t pairs_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			  REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t vpt;
+	vp_tmpl_t *vpt = NULL;
 	vp_cursor_t cursor;
 	size_t len, freespace = outlen;
 	char *p = *out;
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
+	if (tmpl_afrom_attr_str(ctx, &vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
 		REDEBUG("%s", fr_strerror());
 		return -1;
 	}
 
-	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&cursor, &vpt)) {
+	     vp = tmpl_cursor_next(&cursor, vpt)) {
 	     	FR_TOKEN op = vp->op;
 
 	     	vp->op = T_OP_EQ;
@@ -1293,6 +1296,7 @@ static ssize_t pairs_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 		if (is_truncated(len, freespace)) {
 		no_space:
+			talloc_free(vpt);
 			REDEBUG("Insufficient space to store pair string, needed %zu bytes have %zu bytes",
 				(p - *out) + len, outlen);
 			return -1;
@@ -1313,6 +1317,7 @@ static ssize_t pairs_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/* Trim the trailing ', ' */
 	if (p != *out) p -= 2;
 	*p = '\0';
+	talloc_free(vpt);
 
 	return (p - *out);
 }
@@ -1376,11 +1381,11 @@ static ssize_t base64_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t out
  *
  * Example: "%{explode:&ref <delim>}"
  */
-static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t vpt;
+	vp_tmpl_t *vpt = NULL;
 	vp_cursor_t cursor, to_merge;
 	VALUE_PAIR *vp, *head = NULL;
 	ssize_t slen;
@@ -1393,7 +1398,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	while (isspace(*p) && p++);
 
-	slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
 		REDEBUG("%s", fr_strerror());
 		return -1;
@@ -1403,6 +1408,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	if (*p++ != ' ') {
 	arg_error:
+		talloc_free(vpt);
 		REDEBUG("explode needs exactly two arguments: &ref <delim>");
 		return -1;
 	}
@@ -1413,9 +1419,9 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	fr_pair_cursor_init(&to_merge, &head);
 
-	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&cursor, &vpt)) {
+	     vp = tmpl_cursor_next(&cursor, vpt)) {
 	     	VALUE_PAIR *new;
 	     	char const *end;
 		char const *q;
@@ -1500,6 +1506,7 @@ static ssize_t explode_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	}
 
 	fr_pair_cursor_merge(&cursor, head);
+	talloc_free(vpt);
 
 	return snprintf(*out, outlen, "%i", count);
 }
