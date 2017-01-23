@@ -91,7 +91,7 @@ struct fr_dict {
 
 /** Map data types to names representing those types
  */
-const FR_NAME_NUMBER dict_attr_types[] = {
+FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "string",		PW_TYPE_STRING },
 	{ "octets",		PW_TYPE_OCTETS },
 
@@ -143,7 +143,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 
 /** Map data types to min / max data sizes
  */
-const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
+size_t const dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
 	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
 	[PW_TYPE_STRING]	= {0, ~0},
@@ -183,7 +183,7 @@ const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
 /** Characters allowed in dictionary names
  *
  */
-const bool fr_dict_attr_allowed_chars[UINT8_MAX] = {
+bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
 	['-'] = true, ['.'] = true, ['/'] = true, ['_'] = true,
 	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
 	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
@@ -204,17 +204,28 @@ const bool fr_dict_attr_allowed_chars[UINT8_MAX] = {
 /** Structural data types
  *
  */
-const bool fr_dict_non_data_types[PW_TYPE_MAX + 1] = {
+bool const fr_dict_non_data_types[PW_TYPE_MAX + 1] = {
 	[PW_TYPE_TLV] = true,
 	[PW_TYPE_STRUCT] = true,
 	[PW_TYPE_EXTENDED] = true,
 	[PW_TYPE_LONG_EXTENDED] = true,
 	[PW_TYPE_VSA] = true,
 	[PW_TYPE_EVS] = true,
-	[PW_TYPE_VENDOR] = true,
-	[PW_TYPE_MAX] = true,
+	[PW_TYPE_VENDOR] = true
 };
 
+/** Numeric dictionary types
+ *
+ * @note Must be updated to match the anonymous enum types union in value_box_t
+ */
+bool const fr_dict_enum_types[PW_TYPE_MAX + 1] = {
+	[PW_TYPE_BYTE] = true,
+	[PW_TYPE_SHORT] = true,
+	[PW_TYPE_INTEGER] = true,
+	[PW_TYPE_INTEGER64] = true,
+	[PW_TYPE_SIZE] = true,
+	[PW_TYPE_SIGNED] = true
+};
 
 /*
  *	Create the hash of the name.
