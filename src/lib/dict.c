@@ -3195,7 +3195,14 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	/*
 	 *	The common case: Attr-26.  Just create it and go.
 	 */
-	if (!*p) return fr_dict_unknown_from_fields(da, parent, 0, attr);
+	if (!*p) {
+		if (!da) {
+			fr_strerror_printf("Failed creating attribute");
+			return -1;
+		}
+
+		return fr_dict_unknown_from_fields(da, parent, 0, attr);
+	}
 
 	/*
 	 *	Allow only Attr-%d.%d.%d
