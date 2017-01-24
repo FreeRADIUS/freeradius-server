@@ -647,7 +647,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bo
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
  *	This #fr_dict_attr_t will have its ``flags.is_unknown`` field set to true.
- *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
+ *	If #tmpl_afrom_attr_substr is being called on startup, the #vp_tmpl_t may be
  *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
  *	dictionary.
  *	If the unknown attribute is not added to the main dictionary the #vp_tmpl_t
@@ -671,7 +671,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	ssize_t		slen;
 	vp_tmpl_t	*vpt;
 
-	MEM(vpt = talloc_zero(ctx, vp_tmpl_t)); /* tmpl_from_attr_substr zeros it */
+	MEM(vpt = talloc_zero(ctx, vp_tmpl_t));
 
 	p = name;
 
@@ -917,7 +917,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  *	done by the modcall code.  Compilation on pass1 of that code could fail, as
  *	attributes or xlat functions registered by modules may not be available (yet).
  *
- * @note For details of attribute parsing see #tmpl_from_attr_substr.
+ * @note For details of attribute parsing see #tmpl_afrom_attr_substr.
  *
  * @param[in,out] ctx To allocate #vp_tmpl_t in.
  * @param[out] out Where to write the pointer to the new #vp_tmpl_t.
@@ -943,7 +943,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  *	(number of bytes parsed).
  *	@see REMARKER to produce pretty error markers from the return value.
  *
- * @see tmpl_from_attr_substr
+ * @see tmpl_afrom_attr_substr
  */
 ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t inlen, FR_TOKEN type,
 		       request_refs_t request_def, pair_lists_t list_def, bool do_unescape)
