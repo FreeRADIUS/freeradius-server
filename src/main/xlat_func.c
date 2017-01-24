@@ -326,13 +326,13 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 
-	vp_tmpl_t vpt;
+	vp_tmpl_t *vpt;
 
 	if (!RDEBUG_ENABLED2) return -1;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
+	if (tmpl_afrom_attr_str(request, &vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
 		RDEBUG("%s", fr_strerror());
 		return -1;
 	}
@@ -340,23 +340,23 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	RIDEBUG("Attributes matching \"%s\"", fmt);
 
 	RINDENT();
-	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&cursor, &vpt)) {
+	     vp = tmpl_cursor_next(&cursor, vpt)) {
 		FR_NAME_NUMBER const *type;
 		char *value;
 
 		value = fr_pair_value_asprint(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %s",
-				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
+				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
 				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
 				value);
 		} else {
 			RIDEBUG2("&%s:%s %s %s",
-				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
+				fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"),
 				vp->da->name,
 				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
 				value);
@@ -419,6 +419,8 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			type++;
 		}
 	}
+	talloc_free(vpt);
+
 	return 0;
 }
 

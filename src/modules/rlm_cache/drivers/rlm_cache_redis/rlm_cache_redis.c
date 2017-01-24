@@ -39,8 +39,8 @@ typedef struct rlm_cache_redis {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
-	vp_tmpl_t		created_attr;	//!< LHS of the Cache-Created map.
-	vp_tmpl_t		expires_attr;	//!< LHS of the Cache-Expires map.
+	vp_tmpl_t		*created_attr;	//!< LHS of the Cache-Created map.
+	vp_tmpl_t		*expires_attr;	//!< LHS of the Cache-Expires map.
 
 	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
@@ -70,14 +70,14 @@ static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CON
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
-	if (tmpl_from_attr_str(&driver->created_attr, "&Cache-Created",
-			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
+	if (tmpl_afrom_attr_str(driver, &driver->created_attr, "&Cache-Created",
+			        REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
 		ERROR("Cache-Created attribute not defined");
 		return -1;
 	}
 
-	if (tmpl_from_attr_str(&driver->expires_attr, "&Cache-Expires",
-			       REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
+	if (tmpl_afrom_attr_str(driver, &driver->expires_attr, "&Cache-Expires",
+			        REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) < 0) {
 		ERROR("Cache-Expires attribute not defined");
 		return -1;
 	}
@@ -272,14 +272,14 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	vp_tmpl_t		expires_value;
 	vp_map_t		expires = {
 					.op	= T_OP_SET,
-					.lhs	= &driver->expires_attr,
+					.lhs	= driver->expires_attr,
 					.rhs	= &expires_value,
 				};
 
 	vp_tmpl_t		created_value;
 	vp_map_t		created = {
 					.op	= T_OP_SET,
-					.lhs	= &driver->created_attr,
+					.lhs	= driver->created_attr,
 					.rhs	= &created_value,
 					.next	= &expires
 				};

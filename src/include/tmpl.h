@@ -40,8 +40,6 @@
  *
  * @see tmpl_afrom_str
  * @see tmpl_afrom_attr_str
- * @see tmpl_from_attr_str
- * @see tmpl_from_attr_substr
  *
  * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
  * functions which can be used to iterate over only the #VALUE_PAIR that match a
@@ -144,22 +142,6 @@ typedef enum tmpl_type {
 
 extern const FR_NAME_NUMBER tmpl_names[];
 
-/** Describes a #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNDEFINED or #TMPL_TYPE_LIST
- */
-typedef struct {
-	request_refs_t		request;		//!< Request to search or insert in.
-	pair_lists_t		list;			//!< List to search or insert in.
-
-	fr_dict_attr_t const		*da;			//!< Resolved dictionary attribute.
-	union {
-		uint8_t			da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-		uint8_t			vendor[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-		char			name[FR_DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
-	} unknown;
-	int			num;			 //!< For array references.
-	int8_t			tag;			 //!< For tag references.
-} value_pair_tmpl_attr_t;
-
 /** A source or sink of value data.
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
@@ -200,12 +182,20 @@ typedef struct vp_tmpl_t {
 #endif
 
 	union {
-		/*
-		 *  Attribute reference. Either an attribute currently in the request
-		 *  or an attribute to create.
-		 */
-		value_pair_tmpl_attr_t attribute;
+		struct {
+			request_refs_t		request;		//!< Request to search or insert in.
+			pair_lists_t		list;			//!< List to search or insert in.
 
+			fr_dict_attr_t const		*da;			//!< Resolved dictionary attribute.
+			union {
+				uint8_t			da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+				uint8_t			vendor[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+				char			name[FR_DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
+			} unknown;
+			int			num;			 //!< For array references.
+			int8_t			tag;			 //!< For tag references.
+		} attribute;
+		
 		/*
 		 *  Attribute value. Typically used as the RHS of an update map.
 		 */
@@ -227,6 +217,7 @@ typedef struct vp_tmpl_t {
 #define tmpl_list		data.attribute.list
 #define tmpl_da			data.attribute.da
 #define tmpl_unknown		data.attribute.unknown.da
+#define tmpl_unknown_vendor	data.attribute.unknown.vendor
 #define tmpl_unknown_name      	data.attribute.unknown.name
 #define tmpl_num		data.attribute.num
 #define tmpl_tag		data.attribute.tag
@@ -397,11 +388,6 @@ void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int nu
 				     request_refs_t request, pair_lists_t list);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bool steal);
-
-ssize_t			tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
-					   request_refs_t request_def,
-					   pair_lists_t list_def,
-					   bool allow_unknown, bool allow_undefined);
 
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 					       request_refs_t request_def, pair_lists_t list_def,

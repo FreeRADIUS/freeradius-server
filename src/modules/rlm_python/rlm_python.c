@@ -225,13 +225,11 @@ failed:
 static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyObject *pValue,
 			char const *funcname, char const *list_name)
 {
-	int	     i;
-	int	     tuplesize;
-	vp_tmpl_t       dst;
+	int	     	i;
+	int	     	tuplesize;
+	vp_tmpl_t       *dst;
 	VALUE_PAIR      *vp;
 	REQUEST         *current = request;
-
-	memset(&dst, 0, sizeof(dst));
 
 	/*
 	 *	If the Python function gave us None for the tuple,
@@ -300,21 +298,25 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			}
 		}
 
-		if (tmpl_from_attr_str(&dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(ctx, &dst, s1, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
 			ERROR("%s - Failed to find attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
 
-		if (radius_request(&current, dst.tmpl_request) < 0) {
+		if (radius_request(&current, dst->tmpl_request) < 0) {
 			ERROR("%s - Attribute name %s:%s refers to outer request but not in a tunnel, skipping...",
 			      funcname, list_name, s1);
+			talloc_free(dst);
 			continue;
 		}
 
-		if (!(vp = fr_pair_afrom_da(ctx, dst.tmpl_da))) {
+		vp = fr_pair_afrom_da(ctx, dst->tmpl_da);
+		talloc_free(dst);
+		if (!vp) {
 			ERROR("%s - Failed to create attribute %s:%s", funcname, list_name, s1);
 			continue;
 		}
+
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, -1) < 0) {

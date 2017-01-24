@@ -821,15 +821,15 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, c
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	int rcode;
-	vp_tmpl_t vpt;
+	vp_tmpl_t *vpt;
 
 	*out = NULL;
 
-	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
-		return -4;
-	}
+	if (tmpl_afrom_attr_str(request, &vpt, name,
+				REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) return -4;
 
-	rcode = tmpl_find_vp(out, request, &vpt);
+	rcode = tmpl_find_vp(out, request, vpt);
+	talloc_free(vpt);
 
 	return rcode;
 }
@@ -848,15 +848,15 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
 {
 	int rcode;
-	vp_tmpl_t vpt;
+	vp_tmpl_t *vpt;
 
 	*out = NULL;
 
-	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
-		return -4;
-	}
+	if (tmpl_afrom_attr_str(request, &vpt, name,
+				REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) return -4;
 
-	rcode = tmpl_copy_vps(ctx, out, request, &vpt);
+	rcode = tmpl_copy_vps(ctx, out, request, vpt);
+	talloc_free(vpt);
 
 	return rcode;
 }

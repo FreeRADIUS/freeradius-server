@@ -1028,18 +1028,20 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	int			rcode = 0;
 	int			num;
 	VALUE_PAIR		**list, *vp, *dst, *head = NULL;
-	REQUEST			*context;
+	REQUEST			*context, *tmp_ctx = NULL;
 	TALLOC_CTX		*parent;
 	vp_cursor_t		dst_list, src_list;
 
 	bool			found = false;
 
 	vp_map_t		exp_map;
-	vp_tmpl_t		exp_lhs;
+	vp_tmpl_t		*exp_lhs;
 
 	VERIFY_MAP(map);
 	rad_assert(map->lhs != NULL);
 	rad_assert(map->rhs != NULL);
+
+	tmp_ctx = talloc_new(request);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
@@ -1053,34 +1055,39 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		break;
 
 	/*
-	 *	Everything else gets expanded, then re-parsed as an
-	 *	attribute reference.
+	 *	Everything else gets expanded, then re-parsed as an attribute reference.
+	 *
+	 *	This allows the syntax like:
+	 *	- "Attr-%{number}" := "value"
 	 */
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_EXEC:
 	{
-		char *attr;
+		char *attr_str;
 		ssize_t slen;
 
-		slen = tmpl_aexpand(request, &attr, request, map->lhs, NULL, NULL);
+		slen = tmpl_aexpand(request, &attr_str, request, map->lhs, NULL, NULL);
 		if (slen <= 0) {
 			REDEBUG("Left side \"%.*s\" of map failed expansion", (int)map->lhs->len, map->lhs->name);
-			rad_assert(!attr);
-			return -1;
+			rad_assert(!attr_str);
+			rcode = -1;
+			goto finish;
 		}
 
-		slen = tmpl_from_attr_str(&exp_lhs, attr, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) ;
+		slen = tmpl_afrom_attr_str(tmp_ctx, &exp_lhs, attr_str,
+					   REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 		if (slen <= 0) {
 			REDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference: %s",
-				(int)map->lhs->len, map->lhs->name, attr, fr_strerror());
-			talloc_free(attr);
-			return -1;
+				(int)map->lhs->len, map->lhs->name, attr_str, fr_strerror());
+			talloc_free(attr_str);
+			rcode = -1;
+			goto finish;
 		}
-		rad_assert((exp_lhs.type == TMPL_TYPE_ATTR) || (exp_lhs.type == TMPL_TYPE_LIST));
+		rad_assert((exp_lhs->type == TMPL_TYPE_ATTR) || (exp_lhs->type == TMPL_TYPE_LIST));
 
 		memcpy(&exp_map, map, sizeof(exp_map));
-		exp_map.lhs = &exp_lhs;
+		exp_map.lhs = exp_lhs;
 		map = &exp_map;
 	}
 		break;
@@ -1100,14 +1107,16 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
 			(int)map->lhs->len, map->lhs->name,
 			fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
-		return -2;
+		rcode = -2;
+		goto finish;
 	}
 
 	context = request;
 	if (radius_request(&context, map->lhs->tmpl_request) < 0) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
-		return -2;
+		rcode = -2;
+		goto finish;
 	}
 
 	/*
@@ -1118,7 +1127,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	     (map->lhs->tmpl_list == PAIR_LIST_DM)) && !request->coa) {
 		if (!request_alloc_coa(context)) {
 			REDEBUG("Failed to create a CoA/Disconnect Request message");
-			return -2;
+			rcode = -2;
+			goto finish;
 		}
 		context->coa->proxy->packet->code = (map->lhs->tmpl_list == PAIR_LIST_COA) ?
 					    PW_CODE_COA_REQUEST :
@@ -1129,8 +1139,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
-
-		return -2;
+		rcode = -2;
+		goto finish;
 	}
 
 	parent = radius_list_ctx(context, map->lhs->tmpl_list);
@@ -1146,11 +1156,11 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		rcode = func(parent, &head, request, map, ctx);
 		if (rcode < 0) {
 			rad_assert(!head);
-			return rcode;
+			goto finish;
 		}
 		if (!head) {
 			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
-			return rcode;
+			goto finish;
 		}
 	} else {
 		if (rad_debug_lvl) map_debug_log(request, map, NULL);
@@ -1183,7 +1193,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				context->username = NULL;
 				context->password = NULL;
 			}
-			return 0;
+			goto finish;
 
 		case T_OP_SET:
 			if (map->rhs->type == TMPL_TYPE_LIST) {
@@ -1197,11 +1207,12 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				fr_pair_list_move(parent, list, &head);
 				fr_pair_list_free(&head);
 			}
-			goto finish;
+			goto update;
 
 		default:
 			fr_pair_list_free(&head);
-			return -1;
+			rcode = -1;
+			goto finish;
 		}
 	}
 
@@ -1234,7 +1245,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	case T_OP_CMP_FALSE:
 		/* We don't need the src VPs (should just be 'ANY') */
 		rad_assert(!head);
-		if (!dst) return 0;
+		if (!dst) goto finish;
 
 		/*
 		 *	Wildcard: delete all of the matching ones, based on tag.
@@ -1255,7 +1266,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 *	Check that the User-Name and User-Password
 		 *	caches point to the correct attribute.
 		 */
-		goto finish;
+		goto update;
 
 	/*
 	 *	-= - Delete attributes in the dst list which match any of the
@@ -1271,7 +1282,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		/* We didn't find any attributes earlier */
 		if (!dst) {
 			fr_pair_list_free(&head);
-			return 0;
+			goto finish;
 		}
 
 		/*
@@ -1289,9 +1300,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 					found = true;
 				}
 			}
+			rcode = 0;
 			fr_pair_list_free(&head);
-			if (!found) return 0;
-			goto finish;
+			if (!found) goto finish;
+			goto update;
 		}
 
 		/*
@@ -1312,9 +1324,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				}
 			}
 		}
+		rcode = 0;
 		fr_pair_list_free(&head);
-		if (!found) return 0;
-		goto finish;
+		if (!found) goto finish;
+		goto update;
 	}
 
 	/*
@@ -1336,7 +1349,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
 			fr_pair_list_free(&head);
-			return 0;
+			goto finish;
 		}
 
 		/* Insert first instance (if multiple) */
@@ -1415,10 +1428,11 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 
 	default:
 		rad_assert(0);	/* Should have been caught be the caller */
-		return -1;
+		rcode = -1;
+		goto finish;
 	}
 
-finish:
+update:
 	rad_assert(!head);
 
 	/*
@@ -1458,7 +1472,10 @@ finish:
 			}
 		}
 	}
-	return 0;
+
+finish:
+	talloc_free(tmp_ctx);
+	return rcode;
 }
 
 /** Check whether the destination of a map is currently valid

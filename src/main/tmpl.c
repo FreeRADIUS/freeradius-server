@@ -632,275 +632,6 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bo
 
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
- * @note The name field is just a copy of the input pointer, if you know that string might be
- *	freed before you're done with the #vp_tmpl_t use #tmpl_afrom_attr_str
- *	instead.
- *
- * @param[out] vpt to modify.
- * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
- *	If only #request_refs and #pair_lists qualifiers are found, a #TMPL_TYPE_LIST
- *	#vp_tmpl_t will be produced.
- * @param[in] request_def The default #REQUEST to set if no #request_refs qualifiers are
- *	found in name.
- * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
- *	name.
- * @param[in] allow_unknown If true attributes in the format accepted by
- *	#fr_dict_unknown_from_suboid will be allowed, even if they're not in the main
- *	dictionaries.
- *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
- *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
- *	This #fr_dict_attr_t will have its ``flags.is_unknown`` field set to true.
- *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
- *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
- *	dictionary.
- *	If the unknown attribute is not added to the main dictionary the #vp_tmpl_t
- *	cannot be used to search for a #VALUE_PAIR in a #REQUEST.
- * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
- *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
- *	will be produced.  A #vp_tmpl_t of this type can be passed to
- *	#tmpl_define_undefined_attr which will add the attribute to the global dictionary,
- *	and fixup the #vp_tmpl_t, changing it to a #TMPL_TYPE_ATTR with a pointer to the
- *	new #fr_dict_attr_t.
- * @return
- *	- <= 0 on error (parse failure offset as negative integer).
- *	- > 0 on success (number of bytes parsed).
- *
- * @see REMARKER to produce pretty error markers from the return value.
- */
-static ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
-				     request_refs_t request_def, pair_lists_t list_def,
-				     bool allow_unknown, bool allow_undefined)
-{
-	char const *p;
-	long num;
-	char *q;
-	tmpl_type_t type = TMPL_TYPE_ATTR;
-
-	value_pair_tmpl_attr_t attr;	/* So we don't fill the tmpl with junk and then error out */
-
-	memset(vpt, 0, sizeof(*vpt));
-	memset(&attr, 0, sizeof(attr));
-
-	p = name;
-
-	if (*p == '&') p++;
-
-	p += radius_request_name(&attr.request, p, request_def);
-	if (attr.request == REQUEST_UNKNOWN) {
-		fr_strerror_printf("Invalid request qualifier");
-		return -(p - name);
-	}
-
-	/*
-	 *	Finding a list qualifier is optional
-	 */
-	p += radius_list_name(&attr.list, p, list_def);
-	if (attr.list == PAIR_LIST_UNKNOWN) {
-		fr_strerror_printf("Invalid list qualifier");
-		return -(p - name);
-	}
-
-	attr.tag = TAG_ANY;
-	attr.num = NUM_ANY;
-
-	/*
-	 *	This may be just a bare list, but it can still
-	 *	have instance selectors and tag selectors.
-	 */
-	switch (*p) {
-	case '\0':
-		type = TMPL_TYPE_LIST;
-		goto finish;
-
-	case '[':
-		type = TMPL_TYPE_LIST;
-		goto do_num;
-
-	default:
-		break;
-	}
-
-	attr.da = fr_dict_attr_by_name_substr(NULL, &p);
-	if (!attr.da) {
-		char const *a;
-
-		/*
-		 *	Record start of attribute in case we need to error out.
-		 */
-		a = p;
-
-		fr_strerror();	/* Clear out any existing errors */
-
-		/*
-		 *	Attr-1.2.3.4 is OK.
-		 */
-		if (fr_dict_unknown_from_suboid(NULL, (fr_dict_attr_t *)&attr.unknown.vendor,
-						(fr_dict_attr_t *)&attr.unknown.da, fr_dict_root(fr_dict_internal),
-						&p) == 0) {
-			/*
-			 *	Check what we just parsed really hasn't been defined
-			 *	in the main dictionaries.
-			 *
-			 *	If it has, parsing is the same as if the attribute
-			 *	name had been used instead of its OID.
-			 */
-			attr.da = fr_dict_attr_by_name(NULL, a);
-			if (attr.da) {
-				vpt->auto_converted = true;
-				goto do_num;
-			}
-
-			if (!allow_unknown) {
-				fr_strerror_printf("Unknown attribute");
-				return -(a - name);
-			}
-
-			/*
-			 *	Unknown attributes can't be encoded, as we don't
-			 *	know how to encode them!
-			 */
-			((fr_dict_attr_t *)attr.unknown.da)->flags.internal = 1;
-			attr.da = (fr_dict_attr_t *)&attr.unknown.da;
-
-			goto do_num; /* unknown attributes can't have tags */
-		}
-
-		/*
-		 *	Can't parse it as an attribute, might be a literal string
-		 *	let the caller decide.
-		 *
-		 *	Don't alter the fr_strerror buffer, should contain the parse
-		 *	error from fr_dict_unknown_from_suboid.
-		 */
-		if (!allow_undefined) return -(a - name);
-
-		/*
-		 *	Copy the name to a field for later resolution
-		 */
-		type = TMPL_TYPE_ATTR_UNDEFINED;
-		for (q = attr.unknown.name; fr_dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
-			if (q >= (attr.unknown.name + sizeof(attr.unknown.name) - 1)) {
-				fr_strerror_printf("Attribute name is too long");
-				return -(p - name);
-			}
-		}
-		*q = '\0';
-
-		goto do_num;
-	}
-
-	/*
-	 *	The string MIGHT have a tag.
-	 */
-	if (*p == ':') {
-		if (attr.da && !attr.da->flags.has_tag) { /* Lists don't have a da */
-			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
-			return -(p - name);
-		}
-
-		num = strtol(p + 1, &q, 10);
-		if ((num > 0x1f) || (num < 0)) {
-			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
-			return -((p + 1)- name);
-		}
-
-		attr.tag = num;
-		p = q;
-	}
-
-do_num:
-	if (*p == '\0') goto finish;
-
-	if (*p == '[') {
-		p++;
-
-		switch (*p) {
-		case '#':
-			attr.num = NUM_COUNT;
-			p++;
-			break;
-
-		case '*':
-			attr.num = NUM_ALL;
-			p++;
-			break;
-
-		case 'n':
-			attr.num = NUM_LAST;
-			p++;
-			break;
-
-		default:
-			num = strtol(p, &q, 10);
-			if (p == q) {
-				fr_strerror_printf("Array index is not an integer");
-				return -(p - name);
-			}
-
-			if ((num > 1000) || (num < 0)) {
-				fr_strerror_printf("Invalid array reference '%li' (should be between 0-1000)", num);
-				return -(p - name);
-			}
-			attr.num = num;
-			p = q;
-			break;
-		}
-
-		if (*p != ']') {
-			fr_strerror_printf("No closing ']' for array index");
-			return -(p - name);
-		}
-		p++;
-	}
-
-finish:
-	vpt->type = type;
-	vpt->name = name;
-	vpt->len = p - name;
-	vpt->quote = T_BARE_WORD;
-
-	/*
-	 *	Copy over the attribute definition, now we're
-	 *	sure what we were passed is valid.
-	 */
-	memcpy(&vpt->data.attribute, &attr, sizeof(vpt->data.attribute));
-	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da->flags.is_unknown) {
-		vpt->tmpl_da = (fr_dict_attr_t *)&vpt->data.attribute.unknown.da;
-	}
-
-	VERIFY_TMPL(vpt);	/* Because we want to ensure we produced something sane */
-
-	return vpt->len;
-}
-
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
- *
- * @note Unlike #tmpl_from_attr_substr this function will error out if the entire
- *	name string isn't parsed.
- *
- * @copydetails tmpl_from_attr_substr
- */
-ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
-			   request_refs_t request_def, pair_lists_t list_def,
-			   bool allow_unknown, bool allow_undefined)
-{
-	ssize_t slen;
-
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
-	if (slen <= 0) return slen;
-	if (name[slen] != '\0') {
-		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
-		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
-		return -slen;
-	}
-
-	VERIFY_TMPL(vpt);
-
-	return slen;
-}
-
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
- *
  * @param[in,out] ctx to allocate #vp_tmpl_t in.
  * @param[out] out Where to write pointer to new #vp_tmpl_t.
  * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
@@ -933,23 +664,221 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			       request_refs_t request_def, pair_lists_t list_def,
 			       bool allow_unknown, bool allow_undefined)
 {
-	ssize_t slen;
-	vp_tmpl_t *vpt;
+	char const	*p;
+	long		num;
+	char		*q;
+	tmpl_type_t	type = TMPL_TYPE_ATTR;
+	ssize_t		slen;
+	vp_tmpl_t	*vpt;
 
-	MEM(vpt = talloc(ctx, vp_tmpl_t)); /* tmpl_from_attr_substr zeros it */
+	MEM(vpt = talloc_zero(ctx, vp_tmpl_t)); /* tmpl_from_attr_substr zeros it */
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
-	if (slen <= 0) {
-		TALLOC_FREE(vpt);
+	p = name;
+
+	if (*p == '&') p++;
+
+	p += radius_request_name(&vpt->tmpl_request, p, request_def);
+	if (vpt->tmpl_request == REQUEST_UNKNOWN) {
+		fr_strerror_printf("Invalid request qualifier");
+		slen = -(p - name);
+	error:
+		talloc_free(vpt);
 		return slen;
 	}
-	vpt->name = talloc_strndup(vpt, vpt->name, slen);
 
-	VERIFY_TMPL(vpt);
+	/*
+	 *	Finding a list qualifier is optional
+	 */
+	p += radius_list_name(&vpt->tmpl_list, p, list_def);
+	if (vpt->tmpl_list == PAIR_LIST_UNKNOWN) {
+		fr_strerror_printf("Invalid list qualifier");
+		slen = -(p - name);
+		goto error;
+	}
+
+	vpt->tmpl_tag = TAG_ANY;
+	vpt->tmpl_num = NUM_ANY;
+
+	/*
+	 *	This may be just a bare list, but it can still
+	 *	have instance selectors and tag selectors.
+	 */
+	switch (*p) {
+	case '\0':
+		type = TMPL_TYPE_LIST;
+		goto finish;
+
+	case '[':
+		type = TMPL_TYPE_LIST;
+		goto do_num;
+
+	default:
+		break;
+	}
+
+	vpt->tmpl_da = fr_dict_attr_by_name_substr(NULL, &p);
+	if (!vpt->tmpl_da) {
+		char const *a;
+
+		/*
+		 *	Record start of attribute in case we need to error out.
+		 */
+		a = p;
+
+		fr_strerror();	/* Clear out any existing errors */
+
+		/*
+		 *	Attr-1.2.3.4 is OK.
+		 */
+		if (fr_dict_unknown_from_suboid(NULL, (fr_dict_attr_t *)&vpt->tmpl_unknown_vendor,
+						(fr_dict_attr_t *)&vpt->tmpl_unknown, fr_dict_root(fr_dict_internal),
+						&p) == 0) {
+			/*
+			 *	Check what we just parsed really hasn't been defined
+			 *	in the main dictionaries.
+			 *
+			 *	If it has, parsing is the same as if the attribute
+			 *	name had been used instead of its OID.
+			 */
+			vpt->tmpl_da = fr_dict_attr_by_name(NULL, a);
+			if (vpt->tmpl_da) {
+				vpt->auto_converted = true;
+				goto do_num;
+			}
+
+			if (!allow_unknown) {
+				fr_strerror_printf("Unknown attribute");
+				slen = -(a - name);
+				goto error;
+			}
+
+			/*
+			 *	Unknown attributes can't be encoded, as we don't
+			 *	know how to encode them!
+			 */
+			((fr_dict_attr_t *)vpt->tmpl_unknown)->flags.internal = 1;
+			vpt->tmpl_da = (fr_dict_attr_t *)&vpt->tmpl_unknown;
+
+			goto do_num; /* unknown attributes can't have tags */
+		}
+
+		/*
+		 *	Can't parse it as an attribute, might be a literal string
+		 *	let the caller decide.
+		 *
+		 *	Don't alter the fr_strerror buffer, should contain the parse
+		 *	error from fr_dict_unknown_from_suboid.
+		 */
+		if (!allow_undefined) {
+			fr_strerror_printf("Undefined attributes not allowed here");
+			slen = -(a - name);
+			goto error;
+		}
+
+		/*
+		 *	Copy the name to a field for later resolution
+		 */
+		type = TMPL_TYPE_ATTR_UNDEFINED;
+		for (q = vpt->tmpl_unknown_name; fr_dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
+			if (q >= (vpt->tmpl_unknown_name + sizeof(vpt->tmpl_unknown_name) - 1)) {
+				fr_strerror_printf("Attribute name is too long");
+				slen = -(p - name);
+				goto error;
+			}
+		}
+		*q = '\0';
+
+		goto do_num;
+	}
+
+	/*
+	 *	The string MIGHT have a tag.
+	 */
+	if (*p == ':') {
+		if (vpt->tmpl_da && !vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
+			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
+			slen = -(p - name);
+			goto error;
+		}
+
+		num = strtol(p + 1, &q, 10);
+		if ((num > 0x1f) || (num < 0)) {
+			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
+			slen = -((p + 1)- name);
+			goto error;
+		}
+
+		vpt->tmpl_tag = num;
+		p = q;
+	}
+
+do_num:
+	if (*p == '\0') goto finish;
+
+	if (*p == '[') {
+		p++;
+
+		switch (*p) {
+		case '#':
+			vpt->tmpl_num = NUM_COUNT;
+			p++;
+			break;
+
+		case '*':
+			vpt->tmpl_num = NUM_ALL;
+			p++;
+			break;
+
+		case 'n':
+			vpt->tmpl_num = NUM_LAST;
+			p++;
+			break;
+
+		default:
+			num = strtol(p, &q, 10);
+			if (p == q) {
+				fr_strerror_printf("Array index is not an integer");
+				slen = -(p - name);
+				goto error;
+			}
+
+			if ((num > 1000) || (num < 0)) {
+				fr_strerror_printf("Invalid array reference '%li' (should be between 0-1000)", num);
+				slen = -(p - name);
+				goto error;
+			}
+			vpt->tmpl_num = num;
+			p = q;
+			break;
+		}
+
+		if (*p != ']') {
+			fr_strerror_printf("No closing ']' for array index");
+			slen = -(p - name);
+			goto error;
+		}
+		p++;
+	}
+
+finish:
+	vpt->type = type;
+	vpt->name = talloc_strndup(vpt, name, p - name);
+	vpt->len = p - name;
+	vpt->quote = T_BARE_WORD;
+
+	/*
+	 *	Copy over the attribute definition, now we're
+	 *	sure what we were passed is valid.
+	 */
+	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.is_unknown) {
+		vpt->tmpl_da = (fr_dict_attr_t *)&vpt->tmpl_unknown;
+	}
+
+	VERIFY_TMPL(vpt);	/* Because we want to ensure we produced something sane */
 
 	*out = vpt;
 
-	return slen;
+	return vpt->len;
 }
 
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
@@ -964,26 +893,17 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 			    bool allow_unknown, bool allow_undefined)
 {
 	ssize_t slen;
-	vp_tmpl_t *vpt;
 
-	MEM(vpt = talloc(ctx, vp_tmpl_t)); /* tmpl_from_attr_substr zeros it */
+	slen = tmpl_afrom_attr_substr(ctx, out, name, request_def, list_def, allow_unknown, allow_undefined);
+	if (slen <= 0) return slen;
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
-	if (slen <= 0) {
-		TALLOC_FREE(vpt);
-		return slen;
-	}
 	if (name[slen] != '\0') {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
-		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
-		TALLOC_FREE(vpt);
+		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, (*out)->type, "<INVALID>"));
 		return -slen;
 	}
-	vpt->name = talloc_strndup(vpt, vpt->name, vpt->len);
 
-	VERIFY_TMPL(vpt);
-
-	*out = vpt;
+	VERIFY_TMPL(*out);
 
 	return slen;
 }
@@ -2639,7 +2559,8 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_da != NULL) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST da pointer was NULL", file, line);
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST da pointer was not NULL. "
+				     "da name was %s", file, line, vpt->tmpl_da->name);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 		break;

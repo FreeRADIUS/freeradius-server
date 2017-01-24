@@ -1030,7 +1030,8 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	int max_attrs = max;
-
+	vp_tmpl_t *dst = NULL;
+		
 	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
 		REDEBUG("Can't process VP container, expected JSON object"
@@ -1057,33 +1058,32 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 			.is_json = 0
 		};
 
-		vp_tmpl_t dst;
 		REQUEST *current = request;
 		VALUE_PAIR **vps, *vp = NULL;
-
-		memset(&dst, 0, sizeof(dst));
+		
+		TALLOC_FREE(dst);
 
 		/*
 		 *  Resolve attribute name to a dictionary entry and pairlist.
 		 */
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
-		if (tmpl_from_attr_str(&dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(request, &dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
 			RWDEBUG("Failed parsing attribute: %s, skipping...", fr_strerror());
 			continue;
 		}
 
-		if (radius_request(&current, dst.tmpl_request) < 0) {
+		if (radius_request(&current, dst->tmpl_request) < 0) {
 			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping...");
 			continue;
 		}
 
-		vps = radius_list(current, dst.tmpl_list);
+		vps = radius_list(current, dst->tmpl_list);
 		if (!vps) {
 			RWDEBUG("List not valid in this context, skipping...");
 			continue;
 		}
-		ctx = radius_list_ctx(current, dst.tmpl_list);
+		ctx = radius_list_ctx(current, dst->tmpl_list);
 
 		/*
 		 *  Alternative JSON structure which allows operator,
@@ -1181,7 +1181,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 						   level + 1, max_attrs);*/
 			} else {
 				vp = json_pair_make_leaf(instance, section, ctx, request,
-							dst.tmpl_da, &flags, element);
+							 dst->tmpl_da, &flags, element);
 				if (!vp) continue;
 			}
 			rdebug_pair(2, request, vp, NULL);
@@ -1192,6 +1192,8 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 		 */
 		} while ((++i < elements) && (element = json_object_array_get_idx(value, i)));
 	}
+	
+	talloc_free(dst);
 
 	return max - max_attrs;
 }

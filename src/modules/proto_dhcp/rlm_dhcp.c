@@ -53,36 +53,37 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 			   	 REQUEST *request, char const *fmt)
 {
 	vp_cursor_t	cursor, src_cursor;
-	vp_tmpl_t	src;
+	vp_tmpl_t	*src;
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
 	ssize_t		slen;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	slen = tmpl_from_attr_str(&src, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	slen = tmpl_afrom_attr_str(request, &src, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
 		REMARKER(fmt, slen, fr_strerror());
 	error:
+		talloc_free(src);
 		return -1;
 	}
 
-	if (src.type != TMPL_TYPE_ATTR) {
-		REDEBUG("dhcp_options cannot operate on a %s", fr_int2str(tmpl_names, src.type, "<INVALID>"));
+	if (src->type != TMPL_TYPE_ATTR) {
+		REDEBUG("dhcp_options cannot operate on a %s", fr_int2str(tmpl_names, src->type, "<INVALID>"));
 		goto error;
 	}
 
-	if (src.tmpl_da->type != PW_TYPE_OCTETS) {
+	if (src->tmpl_da->type != PW_TYPE_OCTETS) {
 		REDEBUG("dhcp_options got a %s attribute needed octets",
-			fr_int2str(dict_attr_types, src.tmpl_da->type, "<INVALID>"));
+			fr_int2str(dict_attr_types, src->tmpl_da->type, "<INVALID>"));
 		goto error;
 	}
 
 	fr_pair_cursor_init(&cursor, &head);
 
-	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, &src);
+	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, src);
 	     vp;
-	     vp = tmpl_cursor_next(&src_cursor, &src)) {
+	     vp = tmpl_cursor_next(&src_cursor, src)) {
 		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
 		ssize_t		len;
 		VALUE_PAIR	*vps = NULL;
@@ -118,6 +119,8 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	fr_pair_list_free(&head);
 
 	snprintf(*out, outlen, "%i", decoded);
+
+	talloc_free(src);
 
 	return strlen(*out);
 }
