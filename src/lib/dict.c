@@ -3193,9 +3193,10 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	p = q;
 
 	/*
-	 *	The common case: Attr-26.  Just create it and go.
+	 *	The common case: Attr-X,  Just create it and go.
 	 */
 	if (!*p) {
+do_create:
 		if (!da) {
 			fr_strerror_printf("Failed creating attribute");
 			return -1;
@@ -3224,6 +3225,7 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	 */
 	child = fr_dict_attr_child_by_num(parent, attr);
 	if (!child) {
+fail:
 		fr_strerror_printf("Cannot parse names without dictionaries");
 		return -1;
 	}
@@ -3238,9 +3240,43 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	}
 
 	/*
+	 *	Attr-241.X
+	 *
+	 *	X may be 26, in which case we allow unknown vendors under it.
+	 */
+	if ((child->type == PW_TYPE_EXTENDED) || (child->type == PW_TYPE_LONG_EXTENDED)) {
+		parent = child;
+
+		num = strtoul(p + 5, &q, 10);
+		if (!num || (num >= UINT_MAX)) {
+			fr_strerror_printf("Invalid value in attribute name '%s'", name);
+			return -1;
+		}
+
+		attr = num;
+		p = q;
+
+		/*
+		 *	The common case: Attr-241.X,  Just create it and go.
+		 */
+		if (!*p) goto do_create;
+
+		/*
+		 *	Attr-241.X.  Does X exist?
+		 */
+		child = fr_dict_attr_child_by_num(parent, attr);
+		if (!child) goto fail;
+
+		/*
+		 *	Fall through to checking for EVS.
+		 */
+	}
+
+	/*
 	 *	Attr-26 means that the following data is a 32-bit vendor ID.
 	 */
-	if (child->type == PW_TYPE_VSA) {
+	if ((child->type == PW_TYPE_VSA) ||
+	    (child->type == PW_TYPE_EVS)) {
 		fr_dict_attr_t const *dv;
 
 		num = strtoul(p + 1, &q, 10);
