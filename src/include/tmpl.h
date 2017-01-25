@@ -186,11 +186,11 @@ typedef struct vp_tmpl_t {
 			request_refs_t		request;		//!< Request to search or insert in.
 			pair_lists_t		list;			//!< List to search or insert in.
 
-			fr_dict_attr_t const		*da;			//!< Resolved dictionary attribute.
+			fr_dict_attr_t const	*da;			//!< Resolved dictionary attribute.
 			union {
-				uint8_t			da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-				uint8_t			vendor[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-				char			name[FR_DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
+				uint8_t		da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+				uint8_t		vendor[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+				char 		*name;			//!< Raw unknown dictionary name.
 			} unknown;
 			int			num;			 //!< For array references.
 			int8_t			tag;			 //!< For tag references.

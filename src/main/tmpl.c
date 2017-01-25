@@ -666,8 +666,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 {
 	char const	*p;
 	long		num;
-	char		*q;
-	tmpl_type_t	type = TMPL_TYPE_ATTR;
 	ssize_t		slen;
 	vp_tmpl_t	*vpt;
 
@@ -698,6 +696,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 	vpt->tmpl_tag = TAG_ANY;
 	vpt->tmpl_num = NUM_ANY;
+	vpt->type = TMPL_TYPE_ATTR;
 
 	/*
 	 *	This may be just a bare list, but it can still
@@ -705,11 +704,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	 */
 	switch (*p) {
 	case '\0':
-		type = TMPL_TYPE_LIST;
+		vpt->type = TMPL_TYPE_LIST;
 		goto finish;
 
 	case '[':
-		type = TMPL_TYPE_LIST;
+		vpt->type = TMPL_TYPE_LIST;
 		goto do_num;
 
 	default:
@@ -719,6 +718,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	vpt->tmpl_da = fr_dict_attr_by_name_substr(NULL, &p);
 	if (!vpt->tmpl_da) {
 		char const *a;
+		char const *q;
 
 		/*
 		 *	Record start of attribute in case we need to error out.
@@ -778,15 +778,21 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		/*
 		 *	Copy the name to a field for later resolution
 		 */
-		type = TMPL_TYPE_ATTR_UNDEFINED;
-		for (q = vpt->tmpl_unknown_name; fr_dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
-			if (q >= (vpt->tmpl_unknown_name + sizeof(vpt->tmpl_unknown_name) - 1)) {
-				fr_strerror_printf("Attribute name is too long");
-				slen = -(p - name);
-				goto error;
-			}
+		vpt->type = TMPL_TYPE_ATTR_UNDEFINED;
+		for (q = p; fr_dict_attr_allowed_chars[(int) *q]; q++);
+		if (q == p) {
+			fr_strerror_printf("Invalid attribute name");
+			slen = -(p - name);
+			goto error;
 		}
-		*q = '\0';
+
+		if ((q - p) >= FR_DICT_ATTR_MAX_NAME_LEN) {
+			fr_strerror_printf("Attribute name is too long");
+			slen = -(p - name);
+			goto error;
+		}
+		vpt->tmpl_unknown_name = talloc_strndup(vpt, p, q - p);
+		p = q;
 
 		goto do_num;
 	}
@@ -795,6 +801,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	 *	The string MIGHT have a tag.
 	 */
 	if (*p == ':') {
+		char *q;
+
 		if (vpt->tmpl_da && !vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
 			slen = -(p - name);
@@ -835,6 +843,9 @@ do_num:
 			break;
 
 		default:
+		{
+			char *q;
+
 			num = strtol(p, &q, 10);
 			if (p == q) {
 				fr_strerror_printf("Array index is not an integer");
@@ -849,6 +860,7 @@ do_num:
 			}
 			vpt->tmpl_num = num;
 			p = q;
+		}
 			break;
 		}
 
@@ -861,7 +873,6 @@ do_num:
 	}
 
 finish:
-	vpt->type = type;
 	vpt->name = talloc_strndup(vpt, name, p - name);
 	vpt->len = p - name;
 	vpt->quote = T_BARE_WORD;
