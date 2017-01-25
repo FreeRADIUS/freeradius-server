@@ -812,7 +812,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		num = strtol(p + 1, &q, 10);
 		if ((num > 0x1f) || (num < 0)) {
 			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
-			slen = -((p + 1)- name);
+			slen = -((p + 1) - name);
 			goto error;
 		}
 
