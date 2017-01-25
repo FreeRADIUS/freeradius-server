@@ -1041,6 +1041,11 @@ int detail_decode(rad_listen_t *this, REQUEST *request)
 #else
 	listen_detail_t *data = this->data;
 
+	RDEBUG("Received %s from detail file %s",
+	       fr_packet_codes[request->packet->code], data->filename_work);
+
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "\t");
+
 	return data->signal;
 #endif
 }
