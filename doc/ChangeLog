@@ -15,6 +15,8 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  Stefan Paetow.
 	* Update elasticsearch/logstash examples so that they work
 	  with elastic stack v5.  Patch from Matthew Newton.
+	* Print information about packets, replies, and contents
+	  in the detail file reader.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
