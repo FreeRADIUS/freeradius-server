@@ -1368,6 +1368,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		for (b = fr_cursor_first(&src_list);
 		     b;
 		     b = fr_cursor_next(&src_list)) {
+			found = false;
+
 			for (a = fr_cursor_current(&dst_list);
 			     a;
 			     a = fr_cursor_next(&dst_list)) {
@@ -1377,13 +1379,66 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				if (cmp > 0) break;
 				else if (cmp < 0) continue;
 
+				/*
+				 *	The LHS exists.  We need to
+				 *	limit it's value based on the
+				 *	operator, and on the value of
+				 *	the RHS.
+				 */
 				cmp = (value_data_cmp_op(map->op, a->da->type, &a->data, a->vp_length, b->da->type, &b->data, b->vp_length) == 0);
-				if (cmp != 0) {
+				if (cmp == 1) switch (map->op) {
+
+					/*
+					 *	Keep only matching attributes.
+					 */
+				default:
+				case T_OP_REG_NE:
+				case T_OP_NE:
+				case T_OP_REG_EQ:
+				case T_OP_CMP_EQ:
 					a = fr_cursor_remove(&dst_list);
 					talloc_free(a);
+					break;
+
+					/*
+					 *	Keep matching
+					 *	attribute, and enforce
+					 *	matching values.
+					 */
+				case T_OP_GE:
+				case T_OP_GT:
+				case T_OP_LE:
+				case T_OP_LT:
+					DEBUG_OVERWRITE(a, b);
+					(void) value_data_copy(a, &a->data, a->da->type,
+							       &b->data, b->vp_length);
+					found = true;
+					break;
 				}
 			}
-			if (!a) break;	/* end of the list */
+
+			/*
+			 *	End of the dst list.
+			 */
+			if (!a) {
+				if (found) break;
+
+				switch (map->op) {
+				default:
+					break;
+
+					/*
+					 *	It wasn't found.  Insert it with the given value.
+					 */
+				case T_OP_GE:
+				case T_OP_GT:
+				case T_OP_LE:
+				case T_OP_LT:
+					(void) fr_cursor_insert(&dst_list, fr_pair_copy(parent, b));
+					break;
+				}
+				break;
+			}
 		}
 		fr_pair_list_free(&head);
 	}

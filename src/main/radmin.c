@@ -40,6 +40,7 @@ RCSID("$Id$")
 
 #ifdef HAVE_LIBREADLINE
 
+# include <stdio.h>
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
 #  define USE_READLINE (1)

@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "05 February 2016" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "02 January 2016" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -290,7 +290,8 @@ the same request.
 
 Load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
+or update an attribute list. Please see raddb/radiusd.conf 
+"instantiate" section for more configuration examples.
 
 .DS
 	redundant-load-balance {
@@ -760,20 +761,29 @@ to match in order for the attribute to remain in the list.
 
 Note that this operator is very different than the '=' operator listed
 above!
+.IP !=
+Keep all attributes with matching name, and value not equal to the
+given one.
+.IP <
+Keep all attributes having values less than the value
+given here.  Any larger value is replaced by the value given here.  If
+no attribute exists, it is added with the value given here, as with
+"+=".
 .IP <=
 Keep all attributes having values less than, or equal to, the value
 given here.  Any larger value is replaced by the value given here.  If
 no attribute exists, it is added with the value given here, as with
 "+=".
-
-This operator is valid only for attributes of integer type.
-.IP >=
-Keep all attributes having values greater than, or equal to, the value
-given here.  Any larger value is replaced by the value given here.  If
+.IP >
+Keep all attributes having values greater than the value
+given here.  Any smaller value is replaced by the value given here.  If
 no attribute exists, it is added with the value given here, as with
 "+=".
-
-This operator is valid only for attributes of integer type.
+.IP >=
+Keep all attributes having values greater than, or equal to, the value
+given here.  Any smaller value is replaced by the value given here.  If
+no attribute exists, it is added with the value given here, as with
+"+=".
 .IP !*
 Delete all occurances of the named attribute, no matter what the
 value.

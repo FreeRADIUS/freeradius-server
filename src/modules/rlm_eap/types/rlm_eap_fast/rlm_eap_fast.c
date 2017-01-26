@@ -185,9 +185,15 @@ static void eap_fast_session_ticket(tls_session_t *tls_session, uint8_t *client_
 }
 
 // hostap:src/crypto/tls_openssl.c:tls_sess_sec_cb()
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 static int _session_secret(SSL *s, void *secret, int *secret_len,
 			   UNUSED STACK_OF(SSL_CIPHER) *peer_ciphers,
 			   UNUSED SSL_CIPHER **cipher, void *arg)
+#else
+static int _session_secret(SSL *s, void *secret, int *secret_len,
+			   UNUSED STACK_OF(SSL_CIPHER) *peer_ciphers,
+			   UNUSED const SSL_CIPHER **cipher, void *arg)
+#endif
 {
 	// FIXME enforce non-anon cipher
 
@@ -206,8 +212,8 @@ static int _session_secret(SSL *s, void *secret, int *secret_len,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	eap_fast_session_ticket(tls_session, s->s3->client_random, s->s3->server_random, secret, secret_len);
 #else
-	uint8_t const client_random[SSL3_RANDOM_SIZE];
-	uint8_t const server_random[SSL3_RANDOM_SIZE];
+	uint8_t client_random[SSL3_RANDOM_SIZE];
+	uint8_t server_random[SSL3_RANDOM_SIZE];
 
 	SSL_get_client_random(s, client_random, sizeof(client_random));
 	SSL_get_server_random(s, server_random, sizeof(server_random));

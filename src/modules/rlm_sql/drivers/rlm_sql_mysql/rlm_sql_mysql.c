@@ -493,7 +493,10 @@ retry_fetch_row:
 				goto retry_fetch_row;
 			}
 		} else if (ret > 0) return sql_check_error(NULL, ret);
+
+		/* If ret is 0 then there are no more rows */
 #endif
+		return RLM_SQL_NO_MORE_ROWS;
 	}
 	return RLM_SQL_OK;
 }

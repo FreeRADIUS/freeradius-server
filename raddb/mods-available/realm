@@ -33,6 +33,7 @@ realm suffix {
 	# for a trust-router.  For all other realms,
 	# they are ignored.
 #	trust_router = "localhost"
+#	tr_port = 12309
 #	rp_realm = "painless-security.com"
 #	default_community = "apc.moonshot.ja.net"
 }

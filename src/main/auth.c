@@ -332,6 +332,7 @@ int rad_postauth(REQUEST *request)
 		if (request->reply->code != PW_CODE_ACCESS_REJECT) {
 			RDEBUG("Using Post-Auth-Type Reject");
 
+			request->reply->code = PW_CODE_ACCESS_REJECT;
 			process_post_auth(PW_POST_AUTH_TYPE_REJECT, request);
 		}
 

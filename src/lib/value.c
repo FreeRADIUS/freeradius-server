@@ -635,7 +635,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				return -1;
 			}
 
-			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len);
+			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len - 2);
 			if (bin < ret) {
 				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
 			}
@@ -1530,6 +1530,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		p[1] = 'x';
 
 		fr_bin2hex(p + 2, data->octets, inlen);
+		p[2 + (inlen * 2)] = '\0';
 		break;
 
 	case PW_TYPE_DATE:

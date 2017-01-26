@@ -49,6 +49,7 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 	{ "server error",	RLM_SQL_ERROR		},
 	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
 	{ "no connection",	RLM_SQL_RECONNECT	},
+	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
 	{ NULL, 0 }
 };
 
@@ -489,7 +490,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_ha
 	rcode = rlm_sql_select_query(inst, request, handle, query);
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
-	while (rlm_sql_fetch_row(inst, request, handle) == 0) {
+	while (rlm_sql_fetch_row(inst, request, handle) == RLM_SQL_OK) {
 		row = (*handle)->row;
 		if (!row) break;
 		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {

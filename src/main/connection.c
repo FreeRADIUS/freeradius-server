@@ -643,9 +643,11 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	have fewer than "min".  When that happens, open more
 	 *	connections to enforce "min".
 	 */
-	if ((pool->num + pool->pending) <= pool->min) {
+	if ((pool->num + pool->pending) < pool->min) {
 		spawn = pool->min - (pool->num + pool->pending);
 		extra = 0;
+
+		INFO("Need %i more connections to reach min connections (%i)", spawn, pool->min);
 
 	/*
 	 *	If we're about to create more than "max",
@@ -666,7 +668,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	AND we don't have enough idle connections.
 	 *	Open some more.
 	 */
-	} else if (idle <= pool->spare) {
+	} else if (idle < pool->spare) {
 		/*
 		 *	Not enough spare connections.  Spawn a few.
 		 *	But cap the pool size at "max"
@@ -677,6 +679,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		if ((pool->num + pool->pending + spawn) > pool->max) {
 			spawn = pool->max - (pool->num + pool->pending);
 		}
+
+		INFO("Need %i more connections to reach %i spares", spawn, pool->spare);
 
 	/*
 	 *	min < num < max
@@ -712,8 +716,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	a connection. Avoids spurious log messages.
 	 */
 	if (spawn) {
-		INFO("%s: Need %i more connections to reach %i spares",
-		     pool->log_prefix, spawn, pool->spare);
 		pthread_mutex_unlock(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
 		pthread_mutex_lock(&pool->mutex);
@@ -838,7 +840,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
-		
+
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
 		}

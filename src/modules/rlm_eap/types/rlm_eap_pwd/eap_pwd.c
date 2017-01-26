@@ -45,7 +45,9 @@ static void H_Init(HMAC_CTX *ctx)
 	uint8_t allzero[SHA256_DIGEST_LENGTH];
 
 	memset(allzero, 0, SHA256_DIGEST_LENGTH);
-	HMAC_Init(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256());
+
+	HMAC_CTX_init(ctx);
+	HMAC_Init_ex(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
 }
 
 static void H_Update(HMAC_CTX *ctx, uint8_t const *data, int len)
@@ -76,7 +78,8 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label, int labelle
 	L = htons(resultbitlen);
 	while (len < resultbytelen) {
 		ctr++; i = htons(ctr);
-		HMAC_Init(&hctx, key, keylen, EVP_sha256());
+		HMAC_CTX_init(&hctx);
+		HMAC_Init_ex(&hctx, key, keylen, EVP_sha256(), NULL);
 		if (ctr > 1) {
 			HMAC_Update(&hctx, digest, mdlen);
 		}

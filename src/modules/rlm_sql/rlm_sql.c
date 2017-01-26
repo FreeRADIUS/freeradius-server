@@ -189,6 +189,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 		if (numaffected < 1) {
 			RDEBUG("SQL query affected no rows");
+			(inst->module->sql_finish_query)(handle, inst->config);
 
 			goto finish;
 		}
@@ -225,7 +226,10 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(inst, request, &handle);
-	if (rcode) goto query_error;
+	if (rcode < 0) {
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		goto query_error;
+	}
 
 	row = handle->row;
 	if (!row) {
@@ -282,7 +286,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 
 	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
 
-	while ((rlm_sql_fetch_row(inst, NULL, &handle) == 0) && (row = handle->row)) {
+	while ((rlm_sql_fetch_row(inst, NULL, &handle) == RLM_SQL_OK) && (row = handle->row)) {
 		int num_rows;
 		char *server = NULL;
 
@@ -506,7 +510,7 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 
 	fr_pair_value_strsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
-	vp->op = T_OP_SET;	
+	vp->op = T_OP_SET;
 
 	/*
 	 *	Delete any existing SQL-User-Name, and replace it with ours.
@@ -543,7 +547,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 	talloc_free(expanded);
 	if (ret != RLM_SQL_OK) return -1;
 
-	while (rlm_sql_fetch_row(inst, request, handle) == 0) {
+	while (rlm_sql_fetch_row(inst, request, handle) == RLM_SQL_OK) {
 		row = (*handle)->row;
 		if (!row)
 			break;
@@ -851,7 +855,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *
 	 *	We need this to check if the sql_fields callback is provided.
 	 */
-	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
+	inst->handle = fr_dlopenext(inst->config->sql_driver_name);
 	if (!inst->handle) {
 		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, fr_strerror());
 		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
@@ -1598,7 +1602,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		call_num = vp->vp_strvalue;
 	}
 
-	while (rlm_sql_fetch_row(inst, request, &handle) == 0) {
+	while (rlm_sql_fetch_row(inst, request, &handle) == RLM_SQL_OK) {
 		int num_rows;
 
 		row = handle->row;

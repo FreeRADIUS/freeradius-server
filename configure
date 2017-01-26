@@ -8665,9 +8665,12 @@ $as_echo "#define HAVE_OPENSSL_SSL_H 1" >>confdefs.h
 
 
     for ac_header in \
+      openssl/asn1.h \
+      openssl/conf.h \
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \
+      openssl/hmac.h \
       openssl/md5.h \
       openssl/md4.h \
       openssl/sha.h \
@@ -8779,6 +8782,28 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
+                for ac_func in \
+      SSL_get_client_random \
+      SSL_get_server_random \
+      SSL_SESSION_get_master_key \
+      HMAC_CTX_new \
+      HMAC_CTX_free \
+      ASN1_STRING_get0_data \
+      CONF_modules_load_file \
+      CRYPTO_set_id_callback \
+      CRYPTO_set_locking_callback
+
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
     CPPFLAGS="$old_CPPFLAGS"
   fi
 
@@ -8787,17 +8812,6 @@ fi
 
 
   export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
-  for ac_func in SSL_get_client_random
-do :
-  ac_fn_c_check_func "$LINENO" "SSL_get_client_random" "ac_cv_func_SSL_get_client_random"
-if test "x$ac_cv_func_SSL_get_client_random" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_SSL_GET_CLIENT_RANDOM 1
-_ACEOF
- SSL_get_server_random
-fi
-done
-
 fi
 
 if test "x$PCAP_LIBS" = x; then

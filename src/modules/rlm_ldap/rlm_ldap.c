@@ -670,6 +670,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		ldap_errno = ldap_get_option(NULL, LDAP_OPT_API_INFO, &info);
 		if (ldap_errno == LDAP_OPT_SUCCESS) {
+			int i;
+
 			/*
 			 *	Don't generate warnings if the compile type vendor name
 			 *	is found within the link time vendor name.
@@ -691,8 +693,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			INFO("rlm_ldap: libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
 
+			if (info.ldapai_extensions != NULL ) {
+				for ( i = 0; info.ldapai_extensions[i] != NULL; i++) {
+					ldap_memfree(info.ldapai_extensions[i]);
+				}
+				ldap_memfree(info.ldapai_extensions);
+			}
 			ldap_memfree(info.ldapai_vendor_name);
-			ldap_memfree(info.ldapai_extensions);
 		} else {
 			DEBUG("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
 			      "returned: %i", ldap_errno);
@@ -839,6 +846,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Now iterate over all the 'server' config items
 	 */
+	if (!inst->server) inst->server = talloc_strdup(inst, "");
 	for (cp = cf_pair_find(conf, "server");
 	     cp;
 	     cp = cf_pair_find_next(conf, cp, "server")) {

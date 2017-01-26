@@ -37,51 +37,51 @@ static void P_hash(EVP_MD const *evp_md,
 		   unsigned char const *seed,   unsigned int seed_len,
 		   unsigned char *out, unsigned int out_len)
 {
-	HMAC_CTX ctx_a, ctx_out;
+	HMAC_CTX *ctx_a, *ctx_out;
 	unsigned char a[HMAC_MAX_MD_CBLOCK];
 	unsigned int size;
 
-	HMAC_CTX_init(&ctx_a);
-	HMAC_CTX_init(&ctx_out);
+	ctx_a = HMAC_CTX_new();
+	ctx_out = HMAC_CTX_new();
 #ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
-	HMAC_CTX_set_flags(&ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-	HMAC_CTX_set_flags(&ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+	HMAC_CTX_set_flags(ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+	HMAC_CTX_set_flags(ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 #endif
-	HMAC_Init_ex(&ctx_a, secret, secret_len, evp_md, NULL);
-	HMAC_Init_ex(&ctx_out, secret, secret_len, evp_md, NULL);
+	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
+	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
 
-	size = HMAC_size(&ctx_out);
+	size = HMAC_size(ctx_out);
 
 	/* Calculate A(1) */
-	HMAC_Update(&ctx_a, seed, seed_len);
-	HMAC_Final(&ctx_a, a, NULL);
+	HMAC_Update(ctx_a, seed, seed_len);
+	HMAC_Final(ctx_a, a, NULL);
 
 	while (1) {
 		/* Calculate next part of output */
-		HMAC_Update(&ctx_out, a, size);
-		HMAC_Update(&ctx_out, seed, seed_len);
+		HMAC_Update(ctx_out, a, size);
+		HMAC_Update(ctx_out, seed, seed_len);
 
 		/* Check if last part */
 		if (out_len < size) {
-			HMAC_Final(&ctx_out, a, NULL);
+			HMAC_Final(ctx_out, a, NULL);
 			memcpy(out, a, out_len);
 			break;
 		}
 
 		/* Place digest in output buffer */
-		HMAC_Final(&ctx_out, out, NULL);
-		HMAC_Init_ex(&ctx_out, NULL, 0, NULL, NULL);
+		HMAC_Final(ctx_out, out, NULL);
+		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
 		out += size;
 		out_len -= size;
 
 		/* Calculate next A(i) */
-		HMAC_Init_ex(&ctx_a, NULL, 0, NULL, NULL);
-		HMAC_Update(&ctx_a, a, size);
-		HMAC_Final(&ctx_a, a, NULL);
+		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
+		HMAC_Update(ctx_a, a, size);
+		HMAC_Final(ctx_a, a, NULL);
 	}
 
-	HMAC_CTX_cleanup(&ctx_a);
-	HMAC_CTX_cleanup(&ctx_out);
+	HMAC_CTX_free(ctx_a);
+	HMAC_CTX_free(ctx_out);
 	memset(a, 0, sizeof(a));
 }
 
@@ -243,14 +243,9 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 
 	p[0] = header & 0xff;
 
-#ifdef HAVE_SSL_GET_CLIENT_RANDOM
 	SSL_get_client_random(s, p + 1, SSL3_RANDOM_SIZE);
 	SSL_get_server_random(s, p + 1 + SSL3_RANDOM_SIZE, SSL3_RANDOM_SIZE);
-#else
-	memcpy(p + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
-	memcpy(p + 1 + SSL3_RANDOM_SIZE,
-	       s->s3->server_random, SSL3_RANDOM_SIZE);
-#endif
+
 	vp->vp_octets = p;
 	fr_pair_add(&packet->vps, vp);
 }
@@ -260,22 +255,24 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
  */
 void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_t size, char const *prf_label)
 {
+	uint8_t *p;
+	size_t len, master_key_len;
 	uint8_t seed[128 + 2*SSL3_RANDOM_SIZE];
-	uint8_t *p = seed;
-	size_t len;
+	uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
 	len = strlen(prf_label);
 	if (len > 128) len = 128;
 
+	p = seed;
 	memcpy(p, prf_label, len);
 	p += len;
-	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+	SSL_get_server_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
-	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+	SSL_get_client_random(s, p, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 
-	PRF(s->session->master_key, s->session->master_key_length,
-	    seed, p - seed, buffer, scratch, size);
+	master_key_len = SSL_SESSION_get_master_key(SSL_get_session(s), master_key, sizeof(master_key));
+	PRF(master_key, master_key_len, seed, p - seed, buffer, scratch, size);
 }
 
 

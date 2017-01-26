@@ -42,17 +42,18 @@ RCSIDH(rlm_sql_h, "$Id$")
 
 /* SQL Errors */
 typedef enum {
-	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error
-	RLM_SQL_ERROR = -2,		//!< General connection/server error
-	RLM_SQL_OK = 0,			//!< Success
-	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect
-	RLM_SQL_ALT_QUERY = 2		//!< Key constraint violation
+	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error.
+	RLM_SQL_ERROR = -2,		//!< General connection/server error.
+	RLM_SQL_OK = 0,			//!< Success.
+	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect.
+	RLM_SQL_ALT_QUERY,		//!< Key constraint violation, use an alternative query.
+	RLM_SQL_NO_MORE_ROWS,		//!< No more rows available
 } sql_rcode_t;
 
 typedef enum {
-	FALL_THROUGH_DEFAULT = 0,
+	FALL_THROUGH_NO = 0,
 	FALL_THROUGH_YES,
-	FALL_THROUGH_NO
+	FALL_THROUGH_DEFAULT,
 } sql_fall_through_t;
 
 

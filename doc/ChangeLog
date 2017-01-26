@@ -4,6 +4,19 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  the RFC.
 	* Added 'cipher_server_preference' to mods-available/eap
 	  Patch from #1797.
+	* OpenSSL 1.1.0 compatibility fixes.
+	* rlm_perl: radiusd::xlat to evaluate xlat string
+	  within perl script
+	* Allow authentication retry in winbind. Patch from
+	  Herwin Weststrate. See raddb/mods-available/mschap.
+	* Added "recv-coa" method to rlm_rest.  It behaves the
+	  same as "authorize".
+	* Document Trust Router tr_port option.  Patch from
+	  Stefan Paetow.
+	* Update elasticsearch/logstash examples so that they work
+	  with elastic stack v5.  Patch from Matthew Newton.
+	* Print information about packets, replies, and contents
+	  in the detail file reader.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
@@ -14,7 +27,24 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	* update rlm_counter "man" page.  Fixes #1775.
 	* Remove erroneous assert.  Fixes #1778.
 	* fix mschap password change test.  Fixes #1792.
+	* Cleanup config file on data remove.  Fixes #1795.
 	* passwd module returns "notfound" if not found.
+	* Check for old OpenSSL, and don't build rlm_eap_fast
+	  if it necessary.  Fixes #1803
+	* Cleanup memory better after ldap version query.
+	  Patch from Aleksey Katargin.
+	* Rename lt_* functions to avoid linker issues with
+	  libtool.  Fixes #1277
+	* Many miscellaneous fixes and typos.
+	* Allow long strings in %{%{foo} bar:-%{baz} blah".
+	  Fixes #1866
+	* Fix filtering operators, along with more documentation and
+	  more tests for them.
+	* Fix OpenSSL fixes.  Fixes #1876.
+	* Finish SQL select queries even when SELECT returns no rows.
+	  Fixes #1879.
+	* Set Module-Failure-Message for more EAP errors.
+	* Correct typo in dictionary.rfc5580.  Fixes #1882
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements

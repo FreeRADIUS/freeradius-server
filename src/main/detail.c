@@ -85,6 +85,9 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	} else {
 		int rtt;
 		struct timeval now;
+
+		RDEBUG("detail (%s): Done %s packet.", data->name, fr_packet_codes[request->packet->code]);
+
 		/*
 		 *	We call gettimeofday a lot.  But it should be OK,
 		 *	because there's nothing else to do.
@@ -1024,12 +1027,24 @@ int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 /*
  *	Overloaded to return "should we fix delay times"
  */
-int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+int detail_decode(rad_listen_t *this, REQUEST *request)
 {
 #ifdef WITH_DETAIL_THREAD
+	listen_detail_t *data = this->data;
+
+	RDEBUG("Received %s from detail file %s",
+	       fr_packet_codes[request->packet->code], data->filename_work);
+
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "\t");
+
 	return 0;
 #else
 	listen_detail_t *data = this->data;
+
+	RDEBUG("Received %s from detail file %s",
+	       fr_packet_codes[request->packet->code], data->filename_work);
+
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "\t");
 
 	return data->signal;
 #endif

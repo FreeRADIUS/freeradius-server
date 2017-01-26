@@ -415,6 +415,14 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
+#ifdef WITH_DETAIL
+	/*
+	 *	Don't print IP addresses for detail files.
+	 */
+	if (request->listener &&
+	    (request->listener->type == RAD_LISTEN_DETAIL)) return;
+
+#endif
 	/*
 	 *	Client-specific debugging re-prints the input
 	 *	packet into the client log.

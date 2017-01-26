@@ -1,3 +1,4 @@
+
 /*
  * dhcp.c	Functions to send/receive dhcp packets.
  *
@@ -1155,11 +1156,13 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
 	if ((my_a->da->attr == PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr != PW_DHCP_MESSAGE_TYPE)) return -1;
+	if ((my_a->da->attr != PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE)) return +1;
 
 	/*
 	 *	Relay-Agent is last
 	 */
-	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return 1;
+	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return +1;
+	if ((my_a->da->attr != PW_DHCP_OPTION_82) && (my_b->da->attr == PW_DHCP_OPTION_82)) return -1;
 
 	if (my_a->da->attr < my_b->da->attr) return -1;
 	if (my_a->da->attr > my_b->da->attr) return 1;

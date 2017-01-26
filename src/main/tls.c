@@ -1412,7 +1412,11 @@ error:
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, int *copy)
+#else
+static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int len, int *copy)
+#endif
 {
 	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
@@ -1911,8 +1915,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		cn_str[1024];
 	char		buf[64];
 	X509		*client_cert;
-	X509_CINF	*client_inf;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	const STACK_OF(X509_EXTENSION) *ext_list;
+#else
 	STACK_OF(X509_EXTENSION) *ext_list;
+#endif
 	SSL		*ssl;
 	int		err, depth, lookup, loc;
 	fr_tls_server_conf_t *conf;
@@ -2017,7 +2024,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
+	X509_NAME_oneline(X509_get_issuer_name(client_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && issuer[0]) {
@@ -2054,14 +2061,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef GEN_EMAIL
 				case GEN_EMAIL:
 					vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
-						      (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
+						      (char const *) ASN1_STRING_get0_data(name->d.rfc822Name), T_OP_SET);
 					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 					break;
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
 				case GEN_DNS:
 					vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
-						      (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
+						      (char const *) ASN1_STRING_get0_data(name->d.dNSName), T_OP_SET);
 					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 					break;
 #endif	/* GEN_DNS */
@@ -2072,7 +2079,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					    /* we've got a UPN - Must be ASN1-encoded UTF8 string */
 					    if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
 						    vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
-								  (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
+								  (char const *) ASN1_STRING_get0_data(name->d.otherName->value->value.utf8string), T_OP_SET);
 						    rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 						break;
 					    } else {
@@ -2110,8 +2117,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (lookup == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		ext_list = X509_get0_extensions(client_cert);
+#else
+		X509_CINF	*client_inf;
 		client_inf = client_cert->cert_info;
 		ext_list = client_inf->extensions;
+#endif
 	} else {
 		ext_list = NULL;
 	}
@@ -2171,7 +2183,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	REXDENT();
 
-	switch (ctx->error) {
+	switch (X509_STORE_CTX_get_error(ctx)) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
 		RERROR("issuer=%s", issuer);
 		break;
@@ -2452,7 +2464,7 @@ void tls_global_init(void)
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
-	OPENSSL_config(NULL);
+	CONF_modules_load_file(NULL, NULL, 0);
 
 	/*
 	 *	Initialize the index for the certificates.
@@ -2514,7 +2526,11 @@ int tls_global_version_check(char const *acknowledged)
  */
 void tls_global_cleanup(void)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
 	ERR_remove_state(0);
+#elif OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+	ERR_remove_thread_state(NULL);
+#endif
 	ENGINE_cleanup();
 	CONF_modules_unload(1);
 	ERR_free_strings();

@@ -62,7 +62,6 @@ int	eaptls_fail(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
 int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
 
 
-/* MPPE key generation */
 void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
 void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
 void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
