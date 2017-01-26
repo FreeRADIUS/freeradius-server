@@ -227,6 +227,11 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		return -1;
 	}
 
+	if (!packet->vps) {
+		RWDEBUG("Skipping empty packet");
+		return 0;
+	}
+
 #define WRITE(fmt, ...) do {\
 	if (fprintf(out, fmt, ## __VA_ARGS__) < 0) {\
 		RERROR("Failed writing to detail file: %s", fr_syserror(errno));\
