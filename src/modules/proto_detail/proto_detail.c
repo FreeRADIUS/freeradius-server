@@ -322,17 +322,6 @@ static int detail_recv(rad_listen_t *listener)
 	rcode = read(data->master_pipe[0], &packet, sizeof(packet));
 	if (rcode <= 0) return rcode;
 
-	if (DEBUG_ENABLED2) {
-		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
-
-		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
-		for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
-		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
-			debug_pair(vp);
-		}
-	}
 	rad_assert(packet != NULL);
 
 	switch (packet->code) {
@@ -623,7 +612,10 @@ open_file:
 		/*
 		 *	Should be =, :=, +=, ...
 		 */
-		if (!strchr(op, '=')) continue;
+		if (!strchr(op, '=')) {
+			WARN("detail (%s): Skipping line without operator - %s", data->name, buffer);
+			continue;
+		}
 
 		/*
 		 *	Skip non-protocol attributes.
@@ -672,6 +664,8 @@ open_file:
 			continue;
 		}
 
+		DEBUG3("detail (%s): Trying to read VP from line - %s", data->name, buffer);
+
 		/*
 		 *	Read one VP.
 		 *
@@ -682,6 +676,8 @@ open_file:
 		if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
 			fr_pair_cursor_merge(&cursor, vp);
+		} else {
+			WARN("detail (%s): Failed reading VP from line - %s", data->name, buffer);
 		}
 	}
 
@@ -727,6 +723,8 @@ open_file:
 	 *	anything.  Clean up, and don't return anything.
 	 */
 	if (!data->vps) {
+		WARN("detail (%s): Read empty packet from file %s",
+		     data->name, data->filename_work);
 		data->entry_state = STATE_HEADER;
 		if (!data->fp || feof(data->fp)) goto cleanup;
 		return NULL;
@@ -940,11 +938,24 @@ static int detail_delay(listen_detail_t *data)
 
 static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
+	listen_detail_t *data = this->data;
+
+	RDEBUG2("detail (%s): Finished %s packet", data->name,
+		fr_packet_codes[request->packet->code]);
+
 	return 0;
 }
 
-static int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+static int detail_decode(rad_listen_t *this, REQUEST *request)
 {
+	listen_detail_t *data = this->data;
+
+	if (DEBUG_ENABLED2) {
+		RDEBUG2("detail (%s): Read %s packet from %s", data->name,
+			fr_packet_codes[request->packet->code], data->filename_work);
+		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
+	}
+
 	return 0;
 }
 
