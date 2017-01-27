@@ -936,7 +936,7 @@ static int detail_delay(listen_detail_t *data)
 	return delay;
 }
 
-static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+static int detail_encode(rad_listen_t *this, REQUEST *request)
 {
 	listen_detail_t *data = this->data;
 
