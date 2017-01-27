@@ -336,7 +336,6 @@ int detail_recv(rad_listen_t *listener)
 		vp_cursor_t cursor;
 
 		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
-
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -672,14 +671,17 @@ open_file:
 		 *	FIXME: print an error for badly formatted attributes?
 		 */
 		if (sscanf(buffer, "%255s %7s %1023s", key, op, value) != 3) {
-			WARN("detail (%s): Skipping badly formatted line %s", data->name, buffer);
+			WARN("detail (%s): Skipping badly formatted line - %s", data->name, buffer);
 			continue;
 		}
 
 		/*
 		 *	Should be =, :=, +=, ...
 		 */
-		if (!strchr(op, '=')) continue;
+		if (!strchr(op, '=')) {
+			WARN("detail (%s): Skipping line without operator - %s", data->name, buffer);
+			continue;
+		}
 
 		/*
 		 *	Skip non-protocol attributes.
@@ -728,6 +730,8 @@ open_file:
 			continue;
 		}
 
+		DEBUG3("detail (%s): Trying to read VP from line - %s", data->name, buffer);
+
 		/*
 		 *	Read one VP.
 		 *
@@ -738,6 +742,8 @@ open_file:
 		if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
 			fr_cursor_merge(&cursor, vp);
+		} else {
+			WARN("detail (%s): Failed reading VP from line - %s", data->name, buffer);
 		}
 	}
 
