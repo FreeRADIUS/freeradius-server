@@ -3022,6 +3022,11 @@ static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const 
 	size_t len = 0;
 	size_t bufsize = FR_DICT_ATTR_MAX_NAME_LEN;
 
+	if (!fr_cond_assert(parent)) {
+		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
+		return -1;
+	}
+
 	memset(da, 0, FR_DICT_ATTR_SIZE);
 
 	da->attr = attr;
@@ -3064,6 +3069,11 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t		*new_parent = NULL;
+
+	if (!fr_cond_assert(parent)) {
+		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
+		return -1;
+	}
 
 	/*
 	 *	If there's a vendor specified, we check to see
@@ -3152,6 +3162,12 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					.type_size = true,
 					.length = true
 				};
+
+	if (!fr_cond_assert(parent)) {
+		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
+		return -1;
+	}
+
 	*out = NULL;
 
 	/*
@@ -3209,9 +3225,11 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				};
 
 	if (!fr_cond_assert(parent)) {
-		fr_strerror_printf("%s: Invalid argument parent was NULL", __FUNCTION__);
+		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
 		return -1;
 	}
+
+	*out = NULL;
 
 	if (parent->type == PW_TYPE_VENDOR) vendor = parent->attr;
 
@@ -3253,6 +3271,11 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	TALLOC_CTX		*top_ctx = NULL, *our_ctx = ctx;
 
 	fr_dict_attr_t		*n = NULL;
+
+	if (!fr_cond_assert(parent)) {
+		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
+		return -1;
+	}
 
 	*out = NULL;
 
