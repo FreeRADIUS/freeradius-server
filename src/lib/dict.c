@@ -774,6 +774,8 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 {
 	fr_dict_attr_t *da;
 
+	if (!fr_cond_assert(parent)) return NULL;
+
 	da = (fr_dict_attr_t *)talloc_zero_array(ctx, uint8_t, sizeof(*da));
 	if (!da) {
 		fr_strerror_printf("Out of memory");
@@ -3206,6 +3208,11 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					.is_pointer = true
 				};
 
+	if (!fr_cond_assert(parent)) {
+		fr_strerror_printf("%s: Invalid argument parent was NULL", __FUNCTION__);
+		return -1;
+	}
+
 	if (parent->type == PW_TYPE_VENDOR) vendor = parent->attr;
 
 	da = fr_dict_attr_alloc(ctx, parent, NULL, vendor, num, PW_TYPE_OCTETS, &flags);
@@ -3333,7 +3340,6 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		 */
 		case '\0':
 			if (fr_dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) goto error;
-			da = n;
 			break;
 		}
 	} while (p < end);
