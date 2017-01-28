@@ -3072,7 +3072,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 
 	if (!fr_cond_assert(parent)) {
 		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
-		return -1;
+		return NULL;
 	}
 
 	/*
@@ -3192,9 +3192,6 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				   "attributes, not '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 		return -1;
 	}
-
-
-	return 0;
 }
 
 /** Initialise a fr_dict_attr_t from an ASCII attribute and value
@@ -3395,7 +3392,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  * Find the first invalid attribute name char in the string pointed to by name.
  *
  * Copy the characters between the start of the name string and the first none
- * #dict_attr_allowed_char to a buffer and initialise da as an unknown attribute.
+ * #dict_attr_allowed_chars char to a buffer and initialise da as an unknown attribute.
  *
  * @param[in] ctx	To allocate unknown #fr_dict_attr_t in.
  * @param[out] out	Where to write the head of the chain unknown dictionary attributes.
@@ -3915,11 +3912,11 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int v
  * to by name.
  *
  * Copy the characters between the start of the name string and the first
- * none dict_attr_allowed_char to a buffer and perform a dictionary lookup
+ * none #dict_attr_allowed_chars char to a buffer and perform a dictionary lookup
  * using that value.
  *
  * If the attribute exists, advance the pointer pointed to by name
- * to the first none dict_attr_allowed_char char, and return the DA.
+ * to the first none #dict_attr_allowed_chars char, and return the DA.
  *
  * If the attribute does not exist, don't advance the pointer and return
  * NULL.
