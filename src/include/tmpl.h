@@ -188,9 +188,9 @@ typedef struct vp_tmpl_t {
 
 			fr_dict_attr_t const	*da;			//!< Resolved dictionary attribute.
 			union {
-				uint8_t		da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-				uint8_t		vendor[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-				char 		*name;			//!< Raw unknown dictionary name.
+				fr_dict_attr_t		*da;		//!< Unknown dictionary 
+									//!< attribute buffer.
+				char			*name;
 			} unknown;
 			int			num;			 //!< For array references.
 			int8_t			tag;			 //!< For tag references.
@@ -217,7 +217,6 @@ typedef struct vp_tmpl_t {
 #define tmpl_list		data.attribute.list
 #define tmpl_da			data.attribute.da
 #define tmpl_unknown		data.attribute.unknown.da
-#define tmpl_unknown_vendor	data.attribute.unknown.vendor
 #define tmpl_unknown_name      	data.attribute.unknown.name
 #define tmpl_num		data.attribute.num
 #define tmpl_tag		data.attribute.tag

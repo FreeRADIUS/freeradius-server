@@ -642,7 +642,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bo
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
  *	name.
  * @param[in] allow_unknown If true attributes in the format accepted by
- *	#fr_dict_unknown_from_suboid will be allowed, even if they're not in the main
+ *	#fr_dict_unknown_afrom_suboid will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
@@ -717,22 +717,16 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 	vpt->tmpl_da = fr_dict_attr_by_name_substr(NULL, &p);
 	if (!vpt->tmpl_da) {
-		char const *a;
 		char const *q;
-
-		/*
-		 *	Record start of attribute in case we need to error out.
-		 */
-		a = p;
 
 		fr_strerror();	/* Clear out any existing errors */
 
+		slen = fr_dict_unknown_afrom_oid_substr(vpt, &vpt->tmpl_unknown,
+						    	fr_dict_root(fr_dict_internal), p);
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
-		if (fr_dict_unknown_from_suboid(NULL, (fr_dict_attr_t *)&vpt->tmpl_unknown_vendor,
-						(fr_dict_attr_t *)&vpt->tmpl_unknown, fr_dict_root(fr_dict_internal),
-						&p) == 0) {
+		if (slen > 0) {
 			/*
 			 *	Check what we just parsed really hasn't been defined
 			 *	in the main dictionaries.
@@ -740,7 +734,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			 *	If it has, parsing is the same as if the attribute
 			 *	name had been used instead of its OID.
 			 */
-			vpt->tmpl_da = fr_dict_attr_by_name(NULL, a);
+			vpt->tmpl_da = fr_dict_attr_by_name(NULL, p);
 			if (vpt->tmpl_da) {
 				vpt->auto_converted = true;
 				goto do_num;
@@ -748,7 +742,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 			if (!allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
-				slen = -(a - name);
+				slen = -(p - name);
 				goto error;
 			}
 
@@ -756,8 +750,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			 *	Unknown attributes can't be encoded, as we don't
 			 *	know how to encode them!
 			 */
-			((fr_dict_attr_t *)vpt->tmpl_unknown)->flags.internal = 1;
-			vpt->tmpl_da = (fr_dict_attr_t *)&vpt->tmpl_unknown;
+			vpt->tmpl_unknown->flags.internal = 1;
+			vpt->tmpl_da = vpt->tmpl_unknown;
+
+			p += slen;
 
 			goto do_num; /* unknown attributes can't have tags */
 		}
@@ -771,7 +767,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		 */
 		if (!allow_undefined) {
 			fr_strerror_printf("Undefined attributes not allowed here");
-			slen = -(a - name);
+			slen = -(p - name);
 			goto error;
 		}
 
@@ -881,9 +877,7 @@ finish:
 	 *	Copy over the attribute definition, now we're
 	 *	sure what we were passed is valid.
 	 */
-	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.is_unknown) {
-		vpt->tmpl_da = (fr_dict_attr_t *)&vpt->tmpl_unknown;
-	}
+	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.is_unknown) vpt->tmpl_da = vpt->tmpl_unknown;
 
 	VERIFY_TMPL(vpt);	/* Because we want to ensure we produced something sane */
 
@@ -908,7 +902,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 	slen = tmpl_afrom_attr_substr(ctx, out, name, request_def, list_def, allow_unknown, allow_undefined);
 	if (slen <= 0) return slen;
 
-	if (name[slen] != '\0') {
+	if (slen != (ssize_t)strlen(name)) {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
 		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, (*out)->type, "<INVALID>"));
 		return -slen;
@@ -2514,10 +2508,10 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_da->flags.is_unknown) {
-			if (vpt->tmpl_da != (fr_dict_attr_t const *)&vpt->data.attribute.unknown.da) {
+			if (vpt->tmpl_da != vpt->tmpl_unknown) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-					     "da is marked as unknown, but does not point to the template's "
-					     "unknown da buffer", file, line);
+					     "da is marked as unknown, but address is not equal to the template's "
+					     "unknown da pointer", file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 

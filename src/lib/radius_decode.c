@@ -797,6 +797,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	 */
 	vendor_da = fr_dict_attr_child_by_num(parent, vendor);
 	if (!vendor_da) {
+		fr_dict_attr_t *n;
 		/*
 		 *	RFC format is 1 octet type, 1 octet length
 		 */
@@ -805,7 +806,8 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 			return -1;
 		}
 
-		if (fr_dict_unknown_vendor_afrom_num(ctx, &vendor_da, parent, vendor) < 0) return -1;
+		if (fr_dict_unknown_vendor_afrom_num(ctx, &n, parent, vendor) < 0) return -1;
+		vendor_da = n;
 
 		/*
 		 *	Create an unknown DV too...

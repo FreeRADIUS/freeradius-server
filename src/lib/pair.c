@@ -228,18 +228,20 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	memcpy(n, vp, sizeof(*n));
 
 	/*
-	 *	If the DA is unknown, steal "n" to "ctx".  This does
-	 *	nothing for "n", but will also copy the unknown "da".
+	 *	Copy the unknown attribute hierarchy
 	 */
 	if (n->da->flags.is_unknown) {
-		fr_pair_steal(ctx, n);
-	}
+		n->da = fr_dict_unknown_acopy(n, n->da);
+		if (!n->da) talloc_free(n);
 
+		return NULL;
+	}
 	n->next = NULL;
 
 	/*
-	 *	If it's an xlat, copy the raw string and return early,
-	 *	so we don't pre-expand or otherwise mangle the VALUE_PAIR.
+	 *	If it's an xlat, copy the raw string and return
+	 *	early, so we don't pre-expand or otherwise mangle
+	 *	the VALUE_PAIR.
 	 */
 	if (vp->type == VT_XLAT) {
 		n->xlat = talloc_typed_strdup(n, n->xlat);
@@ -318,16 +320,17 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	ssize_t			len;
 	VALUE_PAIR		*vp, *vp2;
 	fr_dict_attr_t const	*da;
+	fr_dict_attr_t		*n;
 	vp_cursor_t		cursor;
 
 	vp = fr_pair_alloc(ctx);
 	if (!vp) return NULL;
 
-	vp->da = fr_dict_unknown_afrom_oid(ctx, fr_dict_internal, fr_dict_root(fr_dict_internal), attribute);
-	if (!vp->da) {
+	if (fr_dict_unknown_afrom_oid_str(vp, &n, fr_dict_root(fr_dict_internal), attribute) <= 0) {
 		talloc_free(vp);
 		return NULL;
 	}
+	vp->da = n;
 
 	/*
 	 *	No value.  Nothing more to do.

@@ -179,30 +179,27 @@ fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 /*
  *	Unknown ephemeral attributes
  */
+
+fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old);
 
 void			fr_dict_unknown_free(fr_dict_attr_t const **da);
 
-int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
+int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 							 fr_dict_attr_t const *parent, unsigned int vendor);
 
 size_t			dict_print_attr_oid(char *buffer, size_t outlen,
 					    fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
-int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent,
-						    unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
-
 fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 						      unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
 
-int			fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
-						 fr_dict_attr_t const *parent, char const *name);
+ssize_t			fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
+			      	      		      fr_dict_attr_t const *parent, char const *oid_str);
 
-fr_dict_attr_t const	*fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_t *dict,
-						   fr_dict_attr_t const *parent, char const *name);
-
-int			fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
-						    fr_dict_attr_t const *parent, char const **name);
+ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
+							 fr_dict_attr_t const *parent, char const *name);
 
 fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da);
 
