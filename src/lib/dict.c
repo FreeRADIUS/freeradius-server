@@ -3392,7 +3392,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  * Find the first invalid attribute name char in the string pointed to by name.
  *
  * Copy the characters between the start of the name string and the first none
- * #dict_attr_allowed_chars char to a buffer and initialise da as an unknown attribute.
+ * #fr_dict_attr_allowed_chars char to a buffer and initialise da as an unknown attribute.
  *
  * @param[in] ctx	To allocate unknown #fr_dict_attr_t in.
  * @param[out] out	Where to write the head of the chain unknown dictionary attributes.
@@ -3912,11 +3912,11 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int v
  * to by name.
  *
  * Copy the characters between the start of the name string and the first
- * none #dict_attr_allowed_chars char to a buffer and perform a dictionary lookup
+ * none #fr_dict_attr_allowed_chars char to a buffer and perform a dictionary lookup
  * using that value.
  *
  * If the attribute exists, advance the pointer pointed to by name
- * to the first none #dict_attr_allowed_chars char, and return the DA.
+ * to the first none #fr_dict_attr_allowed_chars char, and return the DA.
  *
  * If the attribute does not exist, don't advance the pointer and return
  * NULL.
