@@ -145,6 +145,9 @@ typedef struct dict_vendor {
  */
 #define FR_DICT_ATTR_SIZE		(sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN)
 
+/** Characters that are allowed in dictionary attribute names
+ *
+ */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX];
 extern bool const	fr_dict_non_data_types[PW_TYPE_MAX + 1];
 extern bool const	fr_dict_enum_types[PW_TYPE_MAX + 1];
