@@ -3278,7 +3278,6 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 			      	      fr_dict_attr_t const *parent, char const *oid_str)
 {
 	char const		*p = oid_str, *end = oid_str + strlen(oid_str);
-	char			*q;
 	fr_dict_attr_t const	*our_parent = parent;
 	TALLOC_CTX		*top_ctx = NULL, *our_ctx = ctx;
 
@@ -3294,29 +3293,25 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	if (fr_dict_valid_name(oid_str) < 0) return -1;
 
 	/*
-	 *	All raw attributes are of the form "Attr-#-#-#-#"
+	 *	All unknown attributes are of the form "Attr-#-#-#-#"
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
 		fr_strerror_printf("Unknown attribute '%s'", oid_str);
 		return 0;
 	}
-
 	p += 5;
 
 	do {
-		unsigned long		num;
+		unsigned int		num;
 		fr_dict_attr_t const	*da = NULL;
 
-		num = strtoul(p, &q, 10);
-		if ((p == q) || ((*q != '\0') && (*q != '.'))) {
-			fr_strerror_printf("OID component must be an integer");
+		if (fr_dict_oid_component(&num, &p) < 0) {
 		error:
 			talloc_free(top_ctx);
 			return -(p - oid_str);
 		}
-		p = q + 1;
 
-		switch (*q) {
+		switch (*p) {
 		/*
 		 *	Structural attribute
 		 */
@@ -3377,6 +3372,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 			if (fr_dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) goto error;
 			break;
 		}
+		p++;
 	} while (p < end);
 
 	if (!n) return 0;
