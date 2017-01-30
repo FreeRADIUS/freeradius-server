@@ -3062,8 +3062,8 @@ static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const 
  * @param[in] vendor number.
  * @return 0 on success.
  */
-fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
-					     unsigned int vendor, unsigned int attr)
+fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+						   unsigned int vendor, unsigned int attr)
 {
 	uint8_t			*p;
 	fr_dict_attr_t const	*da;

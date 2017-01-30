@@ -195,7 +195,7 @@ int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 size_t			dict_print_attr_oid(char *buffer, size_t outlen,
 					    fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
-fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+fr_dict_attr_t const   	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 						      unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
 
 ssize_t			fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,

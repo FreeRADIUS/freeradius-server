@@ -319,7 +319,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
-			fr_dict_attr_t *unknown_child;
+			fr_dict_attr_t const *unknown_child;
 
 			FR_PROTO_TRACE("Failed to find child %u of TLV %s", p[0], parent->name);
 
