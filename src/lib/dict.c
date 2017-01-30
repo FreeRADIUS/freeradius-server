@@ -3128,6 +3128,21 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	}
 
 	/*
+	 *	The config files may reference the unknown by name.
+	 *	If so, use the pre-defined name instead of an unknown
+	 *	one.
+	 *
+	 *	@fixme: pass the root into this function!
+	 */
+	da = fr_dict_attr_by_name(NULL, n->name);
+	if (da) {
+		fr_dict_unknown_free(&parent);
+		parent = n;
+		fr_dict_unknown_free(&parent);
+		return da;
+	}
+
+	/*
 	 *	Ensure the parent is freed at the same time as the
 	 *	unknown DA.  This should be OK as we never parent
 	 *	multiple unknown attributes off the same parent.
