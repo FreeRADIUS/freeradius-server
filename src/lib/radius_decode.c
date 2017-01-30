@@ -392,7 +392,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
-			fr_dict_attr_t *unknown_child;
+			fr_dict_attr_t const *unknown_child;
 
 			FR_PROTO_TRACE("Failed to find child %u of TLV %s", p[0], parent->name);
 
@@ -1145,11 +1145,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
-			fr_dict_attr_t *new;
-
 			if ((p[0] != PW_VENDOR_SPECIFIC) || (data_len < (3 + 4 + 1))) {
 				/* da->attr < 255, da->vendor == 0 */
-				new = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
+				child = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
 			} else {
 				/*
 				 *	Try to find the VSA.
@@ -1159,10 +1157,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 				if (vendor == 0) goto raw;
 
-				new = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[7]);
+				child = fr_dict_unknown_afrom_fields(ctx, parent, vendor, p[7]);
 			}
-			child = new;
-
 			if (!child) {
 				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 				return -1;
