@@ -154,6 +154,8 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	rlm_sql_t const		*inst = mod_inst;
 	sql_rcode_t		rcode;
 	ssize_t			ret = 0;
+	size_t			len = 0;
+	char const		*p;
 
 	handle = fr_connection_get(inst->pool, request);	/* connection pool should produce error */
 	if (!handle) return 0;
@@ -161,12 +163,17 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	rlm_sql_query_log(inst, request, NULL, fmt);
 
 	/*
+	 *	Trim whitespace for the prefix check
+	 */
+	for (p = query; is_whitespace(p); p++);
+
+	/*
 	 *	If the query starts with any of the following prefixes,
 	 *	then return the number of rows affected
 	 */
-	if ((strncasecmp(fmt, "insert", 6) == 0) ||
-	    (strncasecmp(fmt, "update", 6) == 0) ||
-	    (strncasecmp(fmt, "delete", 6) == 0)) {
+	if ((strncasecmp(p, "insert", 6) == 0) ||
+	    (strncasecmp(p, "update", 6) == 0) ||
+	    (strncasecmp(p, "delete", 6) == 0)) {
 		int numaffected;
 
 		rcode = rlm_sql_query(inst, request, &handle, fmt);
