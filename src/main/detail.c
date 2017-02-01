@@ -789,6 +789,8 @@ open_file:
 	 *	anything.  Clean up, and don't return anything.
 	 */
 	if (!data->vps) {
+		WARN("detail (%s): Read empty packet from file %s",
+		     data->name, data->filename_work);
 		data->state = STATE_HEADER;
 		if (!data->fp || feof(data->fp)) goto cleanup;
 		return NULL;
