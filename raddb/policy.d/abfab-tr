@@ -60,7 +60,7 @@ abfab_client_check {
 	# set GSS-Acceptor-Service-Name attribute from the client configuration
 	if ("%{client:gss_acceptor_service_name}") {
 		update request {
-			GSS-Acceptor-Service-Name := "%{client:gss_acceptor_service_name}"
+			GSS-Acceptor-Service-Name = "%{client:gss_acceptor_service_name}"
 		}
 	}
 
