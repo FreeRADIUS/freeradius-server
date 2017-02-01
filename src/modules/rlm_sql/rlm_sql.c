@@ -154,6 +154,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	sql_rcode_t		rcode;
 	ssize_t			ret = 0;
 	size_t			len = 0;
+	char const		*p;
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
@@ -168,12 +169,17 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	rlm_sql_query_log(inst, request, NULL, query);
 
 	/*
+	 *	Trim whitespace for the prefix check
+	 */
+	for (p = query; is_whitespace(p); p++);
+
+	/*
 	 *	If the query starts with any of the following prefixes,
 	 *	then return the number of rows affected
 	 */
-	if ((strncasecmp(query, "insert", 6) == 0) ||
-	    (strncasecmp(query, "update", 6) == 0) ||
-	    (strncasecmp(query, "delete", 6) == 0)) {
+	if ((strncasecmp(p, "insert", 6) == 0) ||
+	    (strncasecmp(p, "update", 6) == 0) ||
+	    (strncasecmp(p, "delete", 6) == 0)) {
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
