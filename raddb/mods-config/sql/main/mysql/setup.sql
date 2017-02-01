@@ -9,6 +9,11 @@
 ##	$Id$
 
 #
+#  Create a database for RADIUS related things
+#
+CREATE DATABASE radius;
+
+#
 #  Create default administrator for RADIUS
 #
 CREATE USER 'radius'@'localhost';
