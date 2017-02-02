@@ -507,7 +507,7 @@ retry_fetch_row:
 	num_fields = mysql_num_fields(conn->result);
 	if (!num_fields) return RLM_SQL_NO_MORE_ROWS;
 
- 	field_lens = mysql_fetch_lengths(conn->result);
+	field_lens = mysql_fetch_lengths(conn->result);
 
 	MEM(handle->row = talloc_zero_array(handle, char *, num_fields + 1));
 	for (i = 0; i < num_fields; i++) {
