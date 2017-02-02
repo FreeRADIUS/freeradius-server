@@ -1,6 +1,6 @@
 [Unit]
 Description=FreeRADIUS multi-protocol policy server
-After=syslog.target network.target
+After=network.target
 Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ http://networkradius.com/doc/
 
 [Service]
