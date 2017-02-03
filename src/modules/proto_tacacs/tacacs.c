@@ -516,7 +516,6 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 				if (pair_make(&vp, packet, "TACACS-Data") < 0)
 					return -1;
 				fr_pair_value_bstrncpy(vp, p, pkt->authen.start.data_len);
-				p += vp->vp_length;
 				fr_pair_cursor_append(&cursor, vp);
 			}
 
@@ -536,7 +535,6 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 				if (pair_make(&vp, packet, "TACACS-Data") < 0)
 					return -1;
 				fr_pair_value_bstrncpy(vp, p, ntohs(pkt->authen.cont.data_len));
-				p += vp->vp_length;
 				fr_pair_cursor_append(&cursor, vp);
 
 				data = vp;
@@ -592,7 +590,6 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 			if (pair_make(&vp, packet, "TACACS-Remote-Address") < 0)
 				return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->author.req.rem_addr_len);
-			p += vp->vp_length;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
@@ -662,7 +659,6 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 			if (pair_make(&vp, packet, "TACACS-Remote-Address") < 0)
 				return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->acct.req.rem_addr_len);
-			p += vp->vp_length;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
