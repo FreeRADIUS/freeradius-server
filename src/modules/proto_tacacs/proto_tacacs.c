@@ -62,7 +62,7 @@ static void tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 
 static void tacacs_status(REQUEST * const request, rlm_rcode_t rcode)
 {
-	char const *k, *v;
+	char const *k, *v = "Unknown";
 
 	switch (tacacs_type(request->packet)) {
 	case TAC_PLUS_AUTHEN:
