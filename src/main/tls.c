@@ -1459,16 +1459,6 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		struct stat	st;
 		VALUE_PAIR	*vps = NULL;
 
-		/* read in the cached VPs from the .vps file */
-		snprintf(filename, sizeof(filename), "%s%c%s.vps",
-			 conf->session_cache_path, FR_DIR_SEP, buffer);
-		rv = pairlist_read(talloc_ctx, filename, &pairlist, 1);
-		if (rv < 0) {
-			/* not safe to un-persist a session w/o VPs */
-			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
-			goto err;
-		}
-
 		/* load the actual SSL session */
 		snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDONLY);
@@ -1521,6 +1511,16 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		sess = d2i_SSL_SESSION(NULL, o, st.st_size);
 		if (!sess) {
 			RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+			goto err;
+		}
+
+		/* read in the cached VPs from the .vps file */
+		snprintf(filename, sizeof(filename), "%s%c%s.vps",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
+		rv = pairlist_read(talloc_ctx, filename, &pairlist, 1);
+		if (rv < 0) {
+			/* not safe to un-persist a session w/o VPs */
+			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
 			goto err;
 		}
 
