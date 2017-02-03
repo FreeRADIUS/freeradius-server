@@ -11,6 +11,7 @@ missing.h
 radpaths.h
 eap.sim.h
 eap.aka.h
+tacacs.h
 rfc*.h
 tls.h
 vqp.h

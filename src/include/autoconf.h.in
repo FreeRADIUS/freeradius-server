@@ -636,6 +636,9 @@
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
 
+/* define if you want tacacs */
+#undef WITH_TACACS
+
 /* define if you want tcp */
 #undef WITH_TCP
 

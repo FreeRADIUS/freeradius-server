@@ -483,6 +483,7 @@ fi
 AX_WITH_FEATURE_ARGS([tcp],[yes])
 AX_WITH_FEATURE_ARGS([vmps],[yes])
 AX_WITH_FEATURE_ARGS([dhcp],[yes])
+AX_WITH_FEATURE_ARGS([tacacs],[yes])
 AX_WITH_FEATURE_ARGS([udpfromto],[yes])
 
 dnl #

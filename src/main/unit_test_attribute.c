@@ -35,6 +35,10 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/dhcp.h>
 
+#ifdef WITH_TACACS
+#include "../modules/proto_tacacs/tacacs.h"
+#endif
+
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
@@ -886,6 +890,80 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			}
 			continue;
 		}
+
+#ifdef WITH_TACACS
+		/*
+		 *	And some TACACS tests
+		 */
+		if (strncmp(p, "encode-tacacs ", 14) == 0) {
+			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
+
+			if (strcmp(p + 14, "-") == 0) {
+				WARN("cannot encode as client");
+				p = output;
+			} else {
+				p += 14;
+			}
+
+			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			packet->vps = head;
+			if (tacacs_encode(packet, NULL))
+				ERROR("BARF");
+
+			fr_pair_list_free(&head);
+
+			outlen = packet->data_len;
+			memcpy(data, packet->data, outlen);
+			talloc_free(packet);
+
+			goto print_hex;
+		}
+
+		if (strncmp(p, "decode-tacacs ", 14) == 0) {
+			vp_cursor_t cursor;
+			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
+
+			if (strcmp(p + 14, "-") == 0) {
+				WARN("cannot decode as client");
+				attr = data;
+				len = data_len;
+			} else {
+				attr = data;
+				len = encode_hex(p + 14, data, sizeof(data));
+				if (len == 0) {
+					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
+					exit(1);
+				}
+			}
+
+			packet->vps = NULL;
+			packet->data = attr;
+			packet->data_len = len;
+
+			if (tacacs_decode(packet))
+				ERROR("BARF");
+
+			fr_pair_cursor_init(&cursor, &packet->vps);
+			p = output;
+			for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
+				fr_pair_snprint(p, sizeof(output) - (p - output), vp);
+				p += strlen(p);
+
+				if (vp->next) {
+					strcpy(p, ", ");
+					p += 2;
+				}
+			}
+
+			talloc_free(packet);
+
+			continue;
+		}
+#endif	/* WITH_TACACS */
 
 		if (strncmp(p, "attribute ", 10) == 0) {
 			p += 10;

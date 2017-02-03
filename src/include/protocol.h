@@ -64,6 +64,7 @@ typedef struct rad_protocol_t {
 
 	rad_listen_recv_t	recv;			//!< Read an incoming packet from the descriptor.
 	rad_listen_send_t	send;			//!< Write an outgoing packet to the descriptor.
+	rad_listen_error_t	error;			//!< Handle error/eol on the descriptor.
 
 	rad_listen_print_t	print;			//!< Print a line describing the packet being sent or the
 							//!< packet that was received.

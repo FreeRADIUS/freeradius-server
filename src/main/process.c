@@ -4772,6 +4772,14 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 	listener->recv(listener);
 }
 
+static void event_socket_error(NDEBUG_UNUSED fr_event_list_t *xel, int fd, void *ctx)
+{
+	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
+
+	rad_assert(xel == el);
+
+	listener->error(listener, fd);
+}
 
 static int event_status(UNUSED void *ctx, struct timeval *wake)
 {
@@ -4888,7 +4896,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
-		if (fr_event_fd_insert(el, this->fd, event_socket_handler, NULL, NULL, this) < 0) {
+		if (fr_event_fd_insert(el, this->fd, event_socket_handler, NULL, event_socket_error, this)) {
 			ERROR("Failed adding event handler for socket: %s", fr_strerror());
 			fr_exit(1);
 		}
@@ -5028,7 +5036,6 @@ static int event_new_fd(rad_listen_t *this)
 
 		this->print(this, buffer, sizeof(buffer));
 		DEBUG("... cleaning up socket %s", buffer);
-
 		listen_free(&this);
 		return 1;
 	}

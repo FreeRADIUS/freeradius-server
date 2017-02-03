@@ -897,7 +897,6 @@ static void auth_queued(REQUEST *request, fr_state_action_t action)
 		break;
 
 	case FR_ACTION_DONE:
-		(void) fr_heap_extract(request->backlog, request);
 		request_delete(request);
 		break;
 

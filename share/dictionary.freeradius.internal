@@ -379,6 +379,14 @@ ATTRIBUTE	Sigtran-Mobile-Network-Code		1231	integer
 ATTRIBUTE	Sigtran-Mobile-Country-Code		1232	integer
 
 #
+#	For TACACS+, some attribute definitions for database interface
+#
+ATTRIBUTE	TACACS-Root				1240	tlv
+BEGIN-TLV	TACACS-Root
+$INCLUDE dictionary.tacacs
+END-TLV		TACACS-Root
+
+#
 #  Server-side "listen type = foo"
 #
 ATTRIBUTE	Listen-Socket-Type			1250	integer
