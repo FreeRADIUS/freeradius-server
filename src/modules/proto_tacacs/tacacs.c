@@ -407,7 +407,6 @@ cook:
 			break;
 		}
 		memcpy(ptr, field.data->vp_octets, field.data->vp_length);
-		ptr += field.data->vp_length;
 	}
 skip_fields:
 
