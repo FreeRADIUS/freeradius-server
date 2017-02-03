@@ -241,4 +241,6 @@ int tacacs_decode(RADIUS_PACKET * const packet);
 int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret);
 int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret);
 
+extern fr_dict_attr_t const *dict_tacacs_root;
+
 #endif /* _FR_TACACS_H */

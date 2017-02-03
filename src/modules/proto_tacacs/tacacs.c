@@ -31,7 +31,7 @@
 
 #include "tacacs.h"
 
-extern fr_dict_attr_t const *dict_tacacs_root;
+fr_dict_attr_t const *dict_tacacs_root = NULL;
 
 tacacs_type_t tacacs_type(RADIUS_PACKET const * const packet)
 {

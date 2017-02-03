@@ -29,8 +29,6 @@
 
 #include "tacacs.h"
 
-fr_dict_attr_t const *dict_tacacs_root;
-
 /*
  *	Debug the packet if requested - cribbed from common_packet_debug
  */
