@@ -1364,7 +1364,6 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			return 0;
 		}
 
-
 		/* Do not convert to TALLOC - Thread safety */
 		/* alloc and convert to ASN.1 */
 		sess_blob = malloc(blob_len);
@@ -1388,6 +1387,21 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			RERROR("Session serialisation failed, failed opening session file %s: %s",
 			      filename, fr_syserror(errno));
 			goto error;
+		}
+
+		/*
+		 *	Set the filename to be temporarily write-only.
+		 */
+		if (request) {
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_CACHE_FILENAME, 0);
+			if (vp) {
+				fr_pair_value_strcpy(vp, filename);
+				fr_pair_add(&request->state, vp);
+			}
+
+			(void) fchmod(fd, S_IWUSR);
 		}
 
 		todo = blob_len;
