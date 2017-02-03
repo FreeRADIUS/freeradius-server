@@ -397,13 +397,13 @@ cook:
 	if (field.data) {
 		switch (pkt->hdr.type) {
 		case TAC_PLUS_AUTHEN:
-			pkt->authen.reply.data_len = htons(field.server_msg->vp_length);
+			pkt->authen.reply.data_len = htons(field.data->vp_length);
 			break;
 		case TAC_PLUS_AUTHOR:
-			pkt->author.res.data_len = htons(field.server_msg->vp_length);
+			pkt->author.res.data_len = htons(field.data->vp_length);
 			break;
 		case TAC_PLUS_ACCT:
-			pkt->acct.res.data_len = htons(field.server_msg->vp_length);
+			pkt->acct.res.data_len = htons(field.data->vp_length);
 			break;
 		}
 		memcpy(ptr, field.data->vp_octets, field.data->vp_length);
