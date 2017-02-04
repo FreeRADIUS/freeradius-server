@@ -161,36 +161,41 @@ inline static ssize_t tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
 #endif
 }
 
-/** Write a newly created session to the cache
+/** Write a newly created session data to the tls_session structure
+ *
+ * @note If you hit an assert in this function, it was likely called twice, which shouldn't happen
+ *	so blame OpenSSL.
  *
  * @param[in] ssl session state.
  * @param[in] sess to serialise and write to the cache.
  * @return 0.  What we return is not used by OpenSSL to indicate success or failure,
  *	but to indicate whether it should free its copy of the session data.
  */
-static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
+static int tls_cache_serialize(SSL *ssl, SSL_SESSION *sess)
 {
-	fr_tls_conf_t		*conf;
 	REQUEST			*request;
 	tls_session_t		*tls_session;
 	size_t			len, rcode;
 
 	uint8_t			*p, *data = NULL;
-	VALUE_PAIR		*vp;
+
 	uint8_t	const		*key;
-	ssize_t			key_len;
+	size_t			key_len;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
-	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+
+	/*
+	 *	This functions should only be called once during the lifetime
+	 *	of the tls_session, as the fields aren't re-populated on
+	 *	resumption.
+	 */
+	rad_assert(!tls_session->session_id);
+	rad_assert(!tls_session->session_blob);
 
 	key_len = tls_cache_id(&key, sess);
-	if (key_len < 0) {
+	if (key_len == 0) {
 		REDEBUG("Session ID buffer to small");
-		return 0;
-	}
-	if (tls_cache_attrs(request, key, (size_t)key_len, CACHE_ACTION_SESSION_WRITE) < 0) {
-		RWDEBUG("Failed adding session key to the request");
 		return 0;
 	}
 
@@ -203,7 +208,7 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 	}
 
 	/* alloc and convert to ASN.1 */
-	data = talloc_array(NULL, uint8_t, len);
+	data = talloc_array(tls_session, uint8_t, len);
 	if (!data) {
 		RWDEBUG("Session serialisation failed, couldn't allocate buffer (%zd bytes)", len);
 		return 0;
@@ -214,21 +219,75 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 	rcode = i2d_SSL_SESSION(sess, &p);
 	if (rcode != len) {
 		RWDEBUG("Session serialisation failed");
-		goto error;
+		talloc_free(data);
+		return 0;
+	}
+
+	/*
+	 *	Store the session blob and session id for writing
+	 *	later, once all the authentication phases have completed.
+	 */
+	tls_session->session_id = talloc_memdup(tls_session, key, key_len);
+	if (!tls_session->session_id) {
+		talloc_free(data);
+		return 0;
+	}
+	tls_session->session_blob = data;
+
+	return 0;
+}
+
+/** Call the specified virtual server to write session data to the cache
+ *
+ * @note Should be called after all authentication methods have completed.
+ *
+ * We do this here (instead of in tls_cache_serialize),
+ * because we only want to write session data to the cache if all phases were successful.
+ *
+ * If we wrote out the cache data earlier, and the server exited whilst the session was in
+ * progress, the supplicant could resume the session (and get access) even if phase2
+ * never completed.
+ *
+ * @param[in] request		The current request.
+ * @param[in] tls_session	to write to the cache.
+ * @return
+ *	- 1 noop.
+ *	- 0 success.
+ *	- -1 failed writing cached session.
+ */
+int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
+{
+	fr_tls_conf_t	*conf;
+	int		ret = 0;
+	VALUE_PAIR	*vp;
+
+	conf = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
+
+	if (!tls_session->session_blob || !tls_session->session_id) {
+		RDEBUG2("No session data available to cache");
+		return 1;
+	}
+
+	if (tls_cache_attrs(request, tls_session->session_id, talloc_array_length(tls_session->session_id),
+			    CACHE_ACTION_SESSION_WRITE) < 0) {
+		RWDEBUG("Failed adding session key to the request");
+		return -1;
 	}
 
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
 	vp = fr_pair_afrom_num(request->state_ctx, 0, PW_TLS_SESSION_DATA);
-	if (!vp) goto error;
+	if (!vp) {
+		REDEBUG("%s", fr_strerror());
+		return -1;
+	}
 
-	fr_pair_value_memsteal(vp, data);
+	fr_pair_value_memcpy(vp, tls_session->session_blob, talloc_array_length(tls_session->session_blob));
 	RINDENT();
 	rdebug_pair(L_DBG_LVL_2, request, vp, "&session-state:");
 	REXDENT();
 	fr_pair_add(&request->state, vp);
-	data = NULL;
 
 	/*
 	 *	Call the virtual server to write the session
@@ -240,6 +299,7 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 
 	default:
 		RWDEBUG("Failed storing session data");
+		ret = -1;
 		break;
 	}
 
@@ -248,10 +308,7 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 	 */
 	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
 
-error:
-	if (data) talloc_free(data);
-
-	return 0;
+	return ret;
 }
 
 /** Read session data from the cache
@@ -372,6 +429,12 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
 	request = talloc_get_type_abort(SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
+	/*
+	 *	Free any previously stored session blobs or data
+	 */
+	TALLOC_FREE(tls_session->session_id);
+	TALLOC_FREE(tls_session->session_blob);
+
 	key_len = tls_cache_id(&key, sess);
 	if (key_len < 0) {
 		RWDEBUG("Session ID buffer too small");
@@ -404,6 +467,9 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 /** Prevent a TLS session from being cached
  *
  * Usually called if the session has failed for some reason.
+ *
+ * Will clear any serialized data out of the tls_session structure
+ * and should result in tls_cache_delete being called.
  *
  * @param session on which to prevent resumption.
  */
@@ -502,7 +568,7 @@ void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uin
 
 	rad_assert(session_context);
 
-	SSL_CTX_sess_set_new_cb(ctx, tls_cache_write);
+	SSL_CTX_sess_set_new_cb(ctx, tls_cache_serialize);
 	SSL_CTX_sess_set_get_cb(ctx, tls_cache_read);
 	SSL_CTX_sess_set_remove_cb(ctx, tls_cache_delete);
 	SSL_CTX_set_quiet_shutdown(ctx, 1);

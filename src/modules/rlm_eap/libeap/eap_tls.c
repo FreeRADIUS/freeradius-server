@@ -268,6 +268,20 @@ int eap_tls_success(eap_session_t *eap_session)
 #endif
 
 	/*
+	 *	Write the session to the session cache
+	 *
+	 *	We do this here (instead of relying on OpenSSL to call the
+	 *	session caching callback), because we only want to write
+	 *	session data to the cache if all phases were successful.
+	 *
+	 *	If we wrote out the cache data earlier, and the server
+	 *	exited whilst the session was in progress, the supplicant
+	 *	could resume the session (and get access) even if phase2
+	 *	never completed.
+	 */
+	tls_cache_write(request, tls_session);
+
+	/*
 	 *	Build the success packet
 	 */
 	if (eap_tls_compose(eap_session, EAP_TLS_ESTABLISHED,
