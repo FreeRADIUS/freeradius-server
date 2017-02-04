@@ -1309,6 +1309,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 
 	case PW_TYPE_SIZE:
 		flags.length = sizeof(size_t);
+		break;
 
 	case PW_TYPE_ETHERNET:
 		flags.length = 6;
