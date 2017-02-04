@@ -171,6 +171,10 @@ typedef struct _tls_session_t {
 							//!< what the key being generated will be used for.
 
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
+
+	uint8_t		*session_id;			//!< Identifier for cached session.
+	uint8_t		*session_blob;			//!< Cached session data.
+
 	void		*opaque;			//!< Used to store module specific data.
 
 	struct {
@@ -394,6 +398,8 @@ do {\
 int		tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type);
 
 void		tls_cache_deny(tls_session_t *tls_session);
+
+int		tls_cache_write(REQUEST *request, tls_session_t *tls_session);
 
 int		tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
