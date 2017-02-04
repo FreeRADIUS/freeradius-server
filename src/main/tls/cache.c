@@ -62,11 +62,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	- -1 on failure.
  */
 static int tls_cache_attrs(REQUEST *request,
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 			   uint8_t const *key,
-#else
-			   uint8_t *key,
-#endif
 			   size_t key_len, tls_cache_action_t action)
 {
 	VALUE_PAIR *vp;
@@ -149,32 +145,19 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 
 /** Retrieve session ID (in binary form) from the session
  *
- * @param[out] out Where to write the session id.
- * @param[in] outlen length of output buffer.
- * @param[in] tls_session to get Id for.
- * @return
- *	- -1 on failure (buffer too small).
- *	- >0 on success, the number of bytes written.
+ * @param[out] out Where to write the session ID pointer.
+ * @return the length of the session ID.
  */
-static ssize_t tls_cache_id(uint8_t *out, size_t outlen, SSL_SESSION *tls_session)
+inline static ssize_t tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
 {
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
+	*out = sess->session_id;
+	return sess->session_id_length;
+#else
 	size_t len;
 
-	len = tls_session->session_id_length;
-	if (len > outlen) return -1;
-	memcpy(out, tls_session->session_id, len);
-
-	return (ssize_t)len;
-#else
-	unsigned int len;
-	uint8_t const *p;
-
-	p = SSL_SESSION_get_id(tls_session, &len);
-	if (len > outlen) return -1;
-	memcpy(out, p, len);
-
-	return (ssize_t)len;
+	*out = SSL_SESSION_get_id(sess, (unsigned int *)&len);
+	return len;
 #endif
 }
 
@@ -187,23 +170,26 @@ static ssize_t tls_cache_id(uint8_t *out, size_t outlen, SSL_SESSION *tls_sessio
  */
 static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 {
-	fr_tls_conf_t	*conf;
+	fr_tls_conf_t		*conf;
 	REQUEST			*request;
+	tls_session_t		*tls_session;
 	size_t			len, rcode;
-	ssize_t			slen;
+
 	uint8_t			*p, *data = NULL;
 	VALUE_PAIR		*vp;
-	uint8_t			buffer[MAX_CACHE_ID_SIZE];
+	uint8_t	const		*key;
+	ssize_t			key_len;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	slen = tls_cache_id(buffer, sizeof(buffer), sess);
-	if (slen < 0) {
+	key_len = tls_cache_id(&key, sess);
+	if (key_len < 0) {
 		REDEBUG("Session ID buffer to small");
 		return 0;
 	}
-	if (tls_cache_attrs(request, (uint8_t *) buffer, (size_t)slen, CACHE_ACTION_SESSION_WRITE) < 0) {
+	if (tls_cache_attrs(request, key, (size_t)key_len, CACHE_ACTION_SESSION_WRITE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return 0;
 	}
@@ -379,22 +365,22 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 	fr_tls_conf_t		*conf;
 	tls_session_t		*tls_session;
 	REQUEST			*request;
-	uint8_t			buffer[MAX_CACHE_ID_SIZE];
-	ssize_t			slen;
+	uint8_t	const		*key;
+	ssize_t			key_len;
 
 	conf = talloc_get_type_abort(SSL_CTX_get_app_data(ctx), fr_tls_conf_t);
 	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
 	request = talloc_get_type_abort(SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
-	slen = tls_cache_id(buffer, sizeof(buffer), sess);
-	if (slen < 0) {
+	key_len = tls_cache_id(&key, sess);
+	if (key_len < 0) {
 		RWDEBUG("Session ID buffer too small");
 	error:
 		talloc_free(request);
 		return;
 	}
 
-	if (tls_cache_attrs(request, buffer, (size_t)slen, CACHE_ACTION_SESSION_DELETE) < 0) {
+	if (tls_cache_attrs(request, key, (size_t)key_len, CACHE_ACTION_SESSION_DELETE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		goto error;
 	}
