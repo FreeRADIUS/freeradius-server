@@ -317,8 +317,8 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED void
 //	fr_receiver_socket_t *m = ctx;
 //	fr_receiver_t *rc = talloc_parent(m);
 	ssize_t data_size;
-	socklen_t salen;
 	struct sockaddr_storage ss;
+	socklen_t salen = sizeof(ss);
 	uint8_t buffer[256];
 
 	data_size = recvfrom(sockfd, buffer, sizeof(buffer), 0,
