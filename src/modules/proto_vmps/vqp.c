@@ -88,7 +88,7 @@ static ssize_t vqp_recv_header(int sockfd)
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < VQP_HDR_LEN) {
-		udp_recv_discard(sockfd);
+		(void) udp_recv_discard(sockfd);
 		return 0;
 	}
 
@@ -100,7 +100,7 @@ static ssize_t vqp_recv_header(int sockfd)
 	    (header[1] < 1) ||
 	    (header[1] > 4) ||
 	    (header[3] > VQP_MAX_ATTRIBUTES)) {
-		udp_recv_discard(sockfd);
+		(void) udp_recv_discard(sockfd);
 		return 0;
 	}
 
