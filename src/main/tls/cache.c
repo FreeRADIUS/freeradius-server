@@ -172,7 +172,6 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 {
 	fr_tls_conf_t		*conf;
 	REQUEST			*request;
-	tls_session_t		*tls_session;
 	size_t			len, rcode;
 
 	uint8_t			*p, *data = NULL;
@@ -181,7 +180,6 @@ static int tls_cache_write(SSL *ssl, SSL_SESSION *sess)
 	ssize_t			key_len;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
 	key_len = tls_cache_id(&key, sess);
