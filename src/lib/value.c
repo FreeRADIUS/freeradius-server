@@ -1094,6 +1094,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		}
 		dst->datum.size = i;
 	}
+		break;
 
 	case PW_TYPE_TIMEVAL:
 		if (fr_timeval_from_str(&dst->datum.timeval, in) < 0) return -1;
