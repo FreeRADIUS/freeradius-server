@@ -416,9 +416,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'I': /* Request ID */
-			if (request->packet) {
-				snprintf(str, freespace, "%i", request->packet->id);
-			}
+			rad_assert(request != NULL);
+			snprintf(str, freespace, "%i", request->packet->id);
 			break;
 
 		case 'M': /* Request microsecond */
