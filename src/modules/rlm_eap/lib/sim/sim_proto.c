@@ -939,7 +939,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 			value_box_t data;
 
 			value_box_hton(&data, &vp->data);
-			memcpy(&p[2], &data, vp->vp_length);
+			memcpy(&p[2], &data.datum, vp->vp_length);
 		}
 
 		/*
