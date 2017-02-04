@@ -1157,7 +1157,10 @@ static int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 		fr_exit(1);
 	}
 
-	pthread_create(&data->pthread_id, NULL, detail_handler_thread, this);
+	if (pthread_create(&data->pthread_id, NULL, detail_handler_thread, this) != 0) {
+		ERROR("detail (%s): Error creating detail reader thread: %s", data->name, fr_syserror(errno));
+		fr_exit(1);
+	}
 
 	this->fd = data->master_pipe[0];
 
