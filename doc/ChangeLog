@@ -17,6 +17,8 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  with elastic stack v5.  Patch from Matthew Newton.
 	* Print information about packets, replies, and contents
 	  in the detail file reader.
+	* Update abfab-tr policy.  Pull request #1893
+	  from Stefan Paetow.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
@@ -45,6 +47,9 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  Fixes #1879.
 	* Set Module-Failure-Message for more EAP errors.
 	* Correct typo in dictionary.rfc5580.  Fixes #1882
+	* Update systemd target.  Pull request #1896.
+	* Trim starting whitespace in xlat strings.
+	* Get MySQL result lengths using normal API.
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
