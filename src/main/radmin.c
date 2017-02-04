@@ -499,6 +499,7 @@ int main(int argc, char **argv)
 
 		case 'S':
 			secret = NULL;
+			break;
 
 		case 'x':
 			rad_debug_lvl++;
