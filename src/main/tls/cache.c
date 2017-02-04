@@ -33,8 +33,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define MAX_CACHE_ID_SIZE (256)
-
 /** Add attributes identifying the TLS session to be acted upon, and the action to be performed
  *
  * Adds the following attributes to the request:
