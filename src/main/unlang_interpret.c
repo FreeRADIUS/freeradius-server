@@ -479,7 +479,7 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request, unlang_stack_t *stac
 	char buffer[128];
 
 	if (!mx->exec) {
-		xlat_eval(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
+		(void) xlat_eval(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
 	} else {
 		RDEBUG("`%s`", mx->xlat_name);
 		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
