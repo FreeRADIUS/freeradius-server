@@ -175,6 +175,7 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 			request->reply->code = 0;
 			break;
 		}
+		/* FALL-THROUGH */
 
 	send_reply:
 		/*
