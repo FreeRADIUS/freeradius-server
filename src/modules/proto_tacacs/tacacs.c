@@ -35,12 +35,9 @@ fr_dict_attr_t const *dict_tacacs_root = NULL;
 
 tacacs_type_t tacacs_type(RADIUS_PACKET const * const packet)
 {
-	fr_dict_attr_t const *da;
 	VALUE_PAIR const *vp;
 
-	da = fr_dict_attr_by_name(NULL, "TACACS-Packet-Type");
-	rad_assert(da != NULL);
-	vp = fr_pair_find_by_da(packet->vps, da, TAG_ANY);
+	vp = fr_pair_find_by_child_num(packet->vps, dict_tacacs_root, PW_TACACS_PACKET_TYPE, TAG_ANY);
 	rad_assert(vp != NULL);
 
 	return (tacacs_type_t)vp->vp_byte;
@@ -54,7 +51,7 @@ char const * tacacs_lookup_packet_code(RADIUS_PACKET const * const packet)
 
 	type = tacacs_type(packet);
 
-	da = fr_dict_attr_by_name(NULL, "TACACS-Packet-Type");
+	da = fr_dict_attr_child_by_num(dict_tacacs_root, PW_TACACS_PACKET_TYPE);
 	rad_assert(da != NULL);
 	dv = fr_dict_enum_by_da(NULL, da, type);
 	rad_assert(dv != NULL);
@@ -64,12 +61,9 @@ char const * tacacs_lookup_packet_code(RADIUS_PACKET const * const packet)
 
 uint32_t tacacs_session_id(RADIUS_PACKET const * const packet)
 {
-	fr_dict_attr_t const *da;
 	VALUE_PAIR const *vp;
 
-	da = fr_dict_attr_by_name(NULL, "TACACS-Session-Id");
-	rad_assert(da != NULL);
-	vp = fr_pair_find_by_da(packet->vps, da, TAG_ANY);
+	vp = fr_pair_find_by_child_num(packet->vps, dict_tacacs_root, PW_TACACS_SESSION_ID, TAG_ANY);
 	rad_assert(vp != NULL);
 
 	return vp->vp_integer;
@@ -409,20 +403,6 @@ cook:
 		memcpy(ptr, field.data->vp_octets, field.data->vp_length);
 	}
 skip_fields:
-
-	return 0;
-}
-
-static int pair_make(VALUE_PAIR **vp, RADIUS_PACKET *packet, char const *name)
-{
-	char buffer[256];
-
-	*vp = fr_pair_make(packet, NULL, name, NULL, T_OP_EQ);
-	if (!*vp) {
-		strlcpy(buffer, fr_strerror(), sizeof(buffer));
-		fr_strerror_printf("Cannot decode packet due to internal error: %s", buffer);
-		return -1;
-	}
 
 	return 0;
 }
@@ -817,42 +797,34 @@ int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const origin
 	uint8_t			vminor;
 	tacacs_type_t		type;
 	uint8_t			seq_no;
-	fr_dict_attr_t const	*da;
 	VALUE_PAIR 		*vp;
 
-	da = fr_dict_attr_by_name(NULL, "TACACS-Version-Minor");
-	rad_assert(da != NULL);
-	vp = fr_pair_find_by_da(original->vps, da, TAG_ANY);
+	vp = fr_pair_find_by_child_num(original->vps, dict_tacacs_root, PW_TACACS_VERSION_MINOR, TAG_ANY);
 	rad_assert(vp != NULL);
 	vminor = vp->vp_byte;
 
-	vp = fr_pair_afrom_da(packet, da);
-	if (!vp)
-		return -1;
+	vp = fr_pair_afrom_da(packet, vp->da);
+	if (!vp) return -1;
 	vp->vp_byte = vminor;
 	fr_pair_add(&packet->vps, vp);
 
 	type = tacacs_type(original);
 
-	if (pair_make(&vp, packet, "TACACS-Packet-Type") < 0)
-		return -1;
+	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PACKET_TYPE);
 	vp->vp_byte = type;
 	fr_pair_add(&packet->vps, vp);
 
-	da = fr_dict_attr_by_name(NULL, "TACACS-Sequence-Number");
-	rad_assert(da != NULL);
-	vp = fr_pair_find_by_da(original->vps, da, TAG_ANY);
+	vp = fr_pair_find_by_child_num(original->vps, dict_tacacs_root, PW_TACACS_SEQUENCE_NUMBER, TAG_ANY);
 	rad_assert(vp != NULL);
 	seq_no = vp->vp_byte + 1;	/* we catch client 255 on ingress */
 
-	vp = fr_pair_afrom_da(packet, da);
-	if (!vp)
-		return -1;
+	vp = fr_pair_afrom_da(packet, vp->da);
+	if (!vp) return -1;	
 	vp->vp_byte = seq_no;
 	fr_pair_add(&packet->vps, vp);
 
-	if (pair_make(&vp, packet, "TACACS-Session-Id") < 0)
-		return -1;
+	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_SESSION_ID);
+	if (!vp) return -1;
 	vp->vp_integer = tacacs_session_id(original);
 	fr_pair_add(&packet->vps, vp);
 
