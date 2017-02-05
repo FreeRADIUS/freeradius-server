@@ -2253,11 +2253,11 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			 *	Set the is_set field for the subsection.
 			 */
 			if (variables[i].type & PW_TYPE_IS_SET) {
-				bool *is_set = NULL;
+				bool *is_set;
 
 				is_set = variables[i].data ? variables[i].is_set_ptr :
 							     ((uint8_t *)base) + variables[i].is_set_offset;
-				*is_set = !!subcs;
+				if (is_set) *is_set = !!subcs;
 			}
 
 			/*
