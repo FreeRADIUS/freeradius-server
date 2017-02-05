@@ -428,7 +428,7 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	cf_file_t	*file;
 	CONF_SECTION	*top;
 	rbtree_t	*tree;
-	int		fd;
+	int		fd = -1;
 
 	top = cf_top_section(cs);
 	tree = cf_data_find(top, rbtree_t, "filename");
@@ -446,6 +446,7 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 			rad_file_error(errno);	/* Write error and euid/egid to error buff */
 			ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
 		error:
+			if (fd >= 0) close(fd);
 			talloc_free(file);
 			return false;
 		}
