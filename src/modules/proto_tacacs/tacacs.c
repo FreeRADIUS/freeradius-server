@@ -436,27 +436,29 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 	VALUE_PAIR *data = NULL;
 	uint32_t session_id;
 
+	if (!dict_tacacs_root) return -1;
+
 	fr_pair_cursor_init(&cursor, &packet->vps);
 
-	if (pair_make(&vp, packet, "TACACS-Version-Minor") < 0)
-		return -1;
+	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_VERSION_MINOR);
+	if (!vp) return -1;
 	vp->vp_byte = pkt->hdr.ver.minor;
 	fr_pair_cursor_append(&cursor, vp);
 
-	if (pair_make(&vp, packet, "TACACS-Packet-Type") < 0)
-		return -1;
+	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PACKET_TYPE);
+	if (!vp) return -1;
 	vp->vp_byte = pkt->hdr.type;
 	fr_pair_cursor_append(&cursor, vp);
 
 	packet->code = pkt->hdr.type;
 
-	if (pair_make(&vp, packet, "TACACS-Sequence-Number") < 0)
-		return -1;
+	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_SEQUENCE_NUMBER);
+	if (!vp) return -1;
 	vp->vp_byte = pkt->hdr.seq_no;
 	fr_pair_cursor_append(&cursor, vp);
 
-	if (pair_make(&vp, packet, "TACACS-Session-Id") < 0)
-		return -1;
+	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_SESSION_ID);
+	if (!vp) return -1;
 	vp->vp_integer = ntohl(pkt->hdr.session_id);
 	fr_pair_cursor_append(&cursor, vp);
 	session_id = vp->vp_integer;
@@ -467,53 +469,53 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		case 1:
 			p = pkt->authen.start.body;
 
-			if (pair_make(&vp, packet, "TACACS-Action") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACTION);
+			if (!vp) return -1;
 			vp->vp_byte = pkt->authen.start.action;
 			fr_pair_cursor_append(&cursor, vp);
 
-			if (pair_make(&vp, packet, "TACACS-Privilege-Level") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PRIVILEGE_LEVEL);
+			if (!vp) return -1;
 			vp->vp_byte = pkt->authen.start.priv_lvl;
 			fr_pair_cursor_append(&cursor, vp);
 
-			if (pair_make(&vp, packet, "TACACS-Authentication-Type") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_TYPE);
+			if (!vp) return -1;
 			vp->vp_byte = pkt->authen.start.authen_type;
 			fr_pair_cursor_append(&cursor, vp);
 
-			if (pair_make(&vp, packet, "TACACS-Authentication-Service") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_SERVICE);
+			if (!vp) return -1;
 			vp->vp_byte = pkt->authen.start.authen_service;
 			fr_pair_cursor_append(&cursor, vp);
 
 			if (pkt->authen.start.user_len) {
-				if (pair_make(&vp, packet, "TACACS-User-Name") < 0)
-					return -1;
+				vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_USER_NAME);
+				if (!vp) return -1;
 				fr_pair_value_bstrncpy(vp, p, pkt->authen.start.user_len);
 				p += vp->vp_length;
 				fr_pair_cursor_append(&cursor, vp);
 			}
 
 			if (pkt->authen.start.port_len) {
-				if (pair_make(&vp, packet, "TACACS-Client-Port") < 0)
-					return -1;
+				vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_CLIENT_PORT);
+				if (!vp) return -1;
 				fr_pair_value_bstrncpy(vp, p, pkt->authen.start.port_len);
 				p += vp->vp_length;
 				fr_pair_cursor_append(&cursor, vp);
 			}
 
 			if (pkt->authen.start.rem_addr_len) {
-				if (pair_make(&vp, packet, "TACACS-Remote-Address") < 0)
-					return -1;
+				vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_REMOTE_ADDRESS);
+				if (!vp) return -1;
 				fr_pair_value_bstrncpy(vp, p, pkt->authen.start.rem_addr_len);
 				p += vp->vp_length;
 				fr_pair_cursor_append(&cursor, vp);
 			}
 
 			if (pkt->authen.start.data_len) {
-				if (pair_make(&vp, packet, "TACACS-Data") < 0)
-					return -1;
+				vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_DATA);
+				if (!vp) return -1;
 				fr_pair_value_bstrncpy(vp, p, pkt->authen.start.data_len);
 				fr_pair_cursor_append(&cursor, vp);
 			}
@@ -523,16 +525,16 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 			p = pkt->authen.cont.body;
 
 			if (pkt->authen.cont.user_msg_len) {
-				if (pair_make(&vp, packet, "TACACS-User-Message") < 0)
-					return -1;
+				vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_USER_MESSAGE);
+				if (!vp) return -1;
 				fr_pair_value_bstrncpy(vp, p, ntohs(pkt->authen.cont.user_msg_len));
 				p += vp->vp_length;
 				fr_pair_cursor_append(&cursor, vp);
 			}
 
 			if (pkt->authen.cont.data_len) {
-				if (pair_make(&vp, packet, "TACACS-Data") < 0)
-					return -1;
+				vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_DATA);
+				if (!vp) return -1;
 				fr_pair_value_bstrncpy(vp, p, ntohs(pkt->authen.cont.data_len));
 				fr_pair_cursor_append(&cursor, vp);
 
@@ -549,45 +551,45 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		p = pkt->author.req.body;
 		p += pkt->author.req.arg_cnt;
 
-		if (pair_make(&vp, packet, "TACACS-Authentication-Method") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_METHOD);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->author.req.authen_method;
 		fr_pair_cursor_append(&cursor, vp);
 
-		if (pair_make(&vp, packet, "TACACS-Privilege-Level") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PRIVILEGE_LEVEL);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->author.req.priv_lvl;
 		fr_pair_cursor_append(&cursor, vp);
 
-		if (pair_make(&vp, packet, "TACACS-Authentication-Type") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_TYPE);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->author.req.authen_type;
 		fr_pair_cursor_append(&cursor, vp);
 
-		if (pair_make(&vp, packet, "TACACS-Authentication-Service") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_SERVICE);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->author.req.authen_service;
 		fr_pair_cursor_append(&cursor, vp);
 
 		if (pkt->author.req.user_len) {
-			if (pair_make(&vp, packet, "TACACS-User-Name") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_USER_NAME);
+			if (!vp) return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->author.req.user_len);
 			p += vp->vp_length;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
 		if (pkt->author.req.port_len) {
-			if (pair_make(&vp, packet, "TACACS-Client-Port") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_CLIENT_PORT);
+			if (!vp) return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->author.req.port_len);
 			p += vp->vp_length;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
 		if (pkt->author.req.rem_addr_len) {
-			if (pair_make(&vp, packet, "TACACS-Remote-Address") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_REMOTE_ADDRESS);
+			if (!vp) return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->author.req.rem_addr_len);
 			fr_pair_cursor_append(&cursor, vp);
 		}
@@ -600,63 +602,63 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		p += pkt->acct.req.arg_cnt;
 
 		if (pkt->acct.req.flags & TAC_PLUS_ACCT_FLAG_START) {
-			if (pair_make(&vp, packet, "TACACS-Accounting-Flags") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACCOUNTING_FLAGS);
+			if (!vp) return -1;
 			vp->vp_byte = TAC_PLUS_ACCT_FLAG_START;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 		if (pkt->acct.req.flags & TAC_PLUS_ACCT_FLAG_STOP) {
-			if (pair_make(&vp, packet, "TACACS-Accounting-Flags") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACCOUNTING_FLAGS);
+			if (!vp) return -1;
 			vp->vp_byte = TAC_PLUS_ACCT_FLAG_STOP;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 		if (pkt->acct.req.flags & TAC_PLUS_ACCT_FLAG_WATCHDOG) {
-			if (pair_make(&vp, packet, "TACACS-Accounting-Flags") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACCOUNTING_FLAGS);
+			if (!vp) return -1;
 			vp->vp_byte = TAC_PLUS_ACCT_FLAG_WATCHDOG;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
-		if (pair_make(&vp, packet, "TACACS-Authentication-Method") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_METHOD);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->acct.req.authen_method;
 		fr_pair_cursor_append(&cursor, vp);
 
-		if (pair_make(&vp, packet, "TACACS-Privilege-Level") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PRIVILEGE_LEVEL);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->acct.req.priv_lvl;
 		fr_pair_cursor_append(&cursor, vp);
 
-		if (pair_make(&vp, packet, "TACACS-Authentication-Type") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_TYPE);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->acct.req.authen_type;
 		fr_pair_cursor_append(&cursor, vp);
 
-		if (pair_make(&vp, packet, "TACACS-Authentication-Service") < 0)
-			return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_SERVICE);
+		if (!vp) return -1;
 		vp->vp_byte = pkt->acct.req.authen_service;
 		fr_pair_cursor_append(&cursor, vp);
 
 		if (pkt->acct.req.user_len) {
-			if (pair_make(&vp, packet, "TACACS-User-Name") < 0)
-				return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_USER_NAME);
+		if (!vp) return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->acct.req.user_len);
 			p += vp->vp_length;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
 		if (pkt->acct.req.port_len) {
-			if (pair_make(&vp, packet, "TACACS-Client-Port") < 0)
-				return -1;
+		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_CLIENT_PORT);
+		if (!vp) return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->acct.req.port_len);
 			p += vp->vp_length;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
 		if (pkt->acct.req.rem_addr_len) {
-			if (pair_make(&vp, packet, "TACACS-Remote-Address") < 0)
-				return -1;
+			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_REMOTE_ADDRESS);
+			if (!vp) return -1;
 			fr_pair_value_bstrncpy(vp, p, pkt->acct.req.rem_addr_len);
 			fr_pair_cursor_append(&cursor, vp);
 		}
