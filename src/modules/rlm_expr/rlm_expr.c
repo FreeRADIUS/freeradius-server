@@ -1192,7 +1192,7 @@ static ssize_t hmac_md5_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	data = data_buffer;
 	data_len = sizeof(data_buffer);
-	if (decode_xlat_ref(&data, &data_len, request, p) < 0)
+	if (decode_xlat_ref(&data, &data_len, request, p) < 0) return -1;
 
 	key = key_buffer;
 	key_len = sizeof(key_buffer);
@@ -1251,7 +1251,7 @@ static ssize_t hmac_sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	data = data_buffer;
 	data_len = sizeof(data_buffer);
-	if (decode_xlat_ref(&data, &data_len, request, p) < 0)
+	if (decode_xlat_ref(&data, &data_len, request, p) < 0) return -1;
 
 	key = key_buffer;
 	key_len = sizeof(key_buffer);
