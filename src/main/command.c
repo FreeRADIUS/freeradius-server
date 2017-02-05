@@ -292,7 +292,7 @@ static int fr_server_domain_socket(UNUSED char const *path, UNUSED gid_t gid)
  */
 static int fr_server_domain_socket(char const *path, gid_t gid, bool blocking)
 {
-	int			dir_fd = -1, path_fd = -1, sock_fd = -1, parent_fd = -1;
+	int			dir_fd = -1, sock_fd = -1, parent_fd = -1;
 	char const		*name;
 	char			*buff = NULL, *dir = NULL, *p;
 
@@ -352,7 +352,6 @@ static int fr_server_domain_socket(char const *path, gid_t gid, bool blocking)
 	error:
 		talloc_free(dir);
 		if (dir_fd >= 0) close(dir_fd);
-		if (path_fd >= 0) close(path_fd);
 		if (sock_fd >= 0) close(sock_fd);
 		if (parent_fd >= 0) close(parent_fd);
 		return -1;
@@ -714,7 +713,6 @@ static int fr_server_domain_socket(char const *path, gid_t gid, bool blocking)
 	rad_suid_down();
 
 	close(dir_fd);
-	if (path_fd >= 0) close(path_fd);
 	close(parent_fd);
 
 	return sock_fd;
