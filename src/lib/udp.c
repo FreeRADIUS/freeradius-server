@@ -149,7 +149,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 	 */
 	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port)) {
 		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
-		udp_recv_discard(sockfd);
+		(void) udp_recv_discard(sockfd);
 
 		return -1;
 	}
