@@ -726,7 +726,8 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 		/*
 		 *	If the packet is too big, then the socket is bad.
 		 */
-		if (packet_len > TACACS_MAX_PACKET_SIZE) {
+		if ((packet->data_len > TACACS_MAX_PACKET_SIZE) ||
+		    (packet_len > TACACS_MAX_PACKET_SIZE)) {
 			fr_strerror_printf("Discarding packet: Larger than limitation of " STRINGIFY(MAX_PACKET_LEN) " bytes");
 			return -1;
 		}
