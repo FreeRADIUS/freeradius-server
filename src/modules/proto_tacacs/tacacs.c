@@ -75,7 +75,7 @@ static bool tacacs_ok(RADIUS_PACKET const * const packet, bool from_client)
 	size_t hdr_len, len;
 
 	if (pkt->hdr.ver.major != TAC_PLUS_MAJOR_VER || pkt->hdr.ver.minor & 0xe) {	/* minor == {0,1} */
-		ERROR("Unsupported version %u.%u", pkt->hdr.ver.major, pkt->hdr.ver.minor);
+		fr_strerror_printf("Unsupported version %u.%u", pkt->hdr.ver.major, pkt->hdr.ver.minor);
 		return false;
 	}
 
@@ -85,11 +85,11 @@ static bool tacacs_ok(RADIUS_PACKET const * const packet, bool from_client)
 	case TAC_PLUS_AUTHEN:
 		if ((from_client && pkt->hdr.seq_no % 2 != 1) || (!from_client && pkt->hdr.seq_no % 2 != 0)) {
 bad_seqno:
-			ERROR("Invalid sequence number %u (from_client = %s)", pkt->hdr.seq_no, from_client ? "true" : "false");
+			fr_strerror_printf("Invalid sequence number %u (from_client = %s)", pkt->hdr.seq_no, from_client ? "true" : "false");
 			return false;
 		}
 		if (pkt->hdr.seq_no == 255) {
-			ERROR("client sent seq_no set to 255");
+			fr_strerror_printf("client sent seq_no set to 255");
 			return false;
 		}
 
@@ -111,7 +111,7 @@ bad_seqno:
 		case 1:
 			len = pkt->authen.start.user_len + pkt->authen.start.port_len + pkt->authen.start.rem_addr_len + pkt->authen.start.data_len;
 			if (len + offsetof(tacacs_packet_authen_start_hdr_t, body) != hdr_len) {
-				ERROR("Authen START Header/Body size mismatch");
+				fr_strerror_printf("Authen START Header/Body size mismatch");
 				return false;
 			}
 			break;
@@ -119,13 +119,13 @@ bad_seqno:
 			if (from_client) {
 				len = ntohs(pkt->authen.cont.user_msg_len) + ntohs(pkt->authen.cont.data_len);
 				if (len + offsetof(tacacs_packet_authen_cont_hdr_t, body) != hdr_len) {
-					ERROR("Authen CONTINUE Header/Body size mismatch");
+					fr_strerror_printf("Authen CONTINUE Header/Body size mismatch");
 					return false;
 				}
 			} else {
 				len = ntohs(pkt->authen.reply.server_msg_len) + ntohs(pkt->authen.reply.data_len);
 				if (len + offsetof(tacacs_packet_authen_reply_hdr_t, body) != hdr_len) {
-					ERROR("Authen REPLY Header/Body size mismatch");
+					fr_strerror_printf("Authen REPLY Header/Body size mismatch");
 					return false;
 				}
 			}
@@ -137,7 +137,7 @@ bad_seqno:
 			for (unsigned int i = 0; i < pkt->author.req.arg_cnt; i++)
 				len += pkt->author.req.body[i];
 			if (len + offsetof(tacacs_packet_author_req_hdr_t, body) != hdr_len) {
-				ERROR("Author REQUEST Header/Body size mismatch");
+				fr_strerror_printf("Author REQUEST Header/Body size mismatch");
 				return false;
 			}
 		} else {
@@ -145,7 +145,7 @@ bad_seqno:
 			for (unsigned int i = 0; i < pkt->author.res.arg_cnt; i++)
 				len += pkt->author.res.body[i];
 			if (len + offsetof(tacacs_packet_author_res_hdr_t, body) != hdr_len) {
-				ERROR("Author RESPONSE Header/Body size mismatch");
+				fr_strerror_printf("Author RESPONSE Header/Body size mismatch");
 				return false;
 			}
 		}
@@ -158,20 +158,20 @@ bad_seqno:
 			for (unsigned int i = 0; i < pkt->acct.req.arg_cnt; i++)
 				len += pkt->acct.req.body[i];
 			if (len + offsetof(tacacs_packet_acct_req_hdr_t, body) != hdr_len) {
-				ERROR("Acct REQUEST Header/Body size mismatch");
+				fr_strerror_printf("Acct REQUEST Header/Body size mismatch");
 				return false;
 			}
 
 			flags = pkt->acct.req.flags & 0xe;
 			if (flags == 0x0 || flags == 0x6 || flags == 0xc || flags == 0xe) {
 				/* FIXME send to client TACACS-Accounting-Status Error */
-				ERROR("Acct RESPONSE invalid flags set");
+				fr_strerror_printf("Acct RESPONSE invalid flags set");
 				return false;
 			}
 		} else {
 			len = pkt->acct.res.server_msg_len + pkt->acct.res.data_len;
 			if (len + offsetof(tacacs_packet_acct_res_hdr_t, body) != hdr_len) {
-				ERROR("Acct RESPONSE Header/Body size mismatch");
+				fr_strerror_printf("Acct RESPONSE Header/Body size mismatch");
 				return false;
 			}
 		}
@@ -193,13 +193,13 @@ static int tacacs_xor(RADIUS_PACKET * const packet, char const *secret)
 		if (pkt->hdr.flags & TAC_PLUS_UNENCRYPTED_FLAG)
 			return 0;
 		else {
-			ERROR("Packet is encrypted but no secret for the client is set");
+			fr_strerror_printf("Packet is encrypted but no secret for the client is set");
 			return -1;
 		}
 	}
 
 	if (pkt->hdr.flags & TAC_PLUS_UNENCRYPTED_FLAG) {
-		ERROR("Packet is unencrypted but a secret has been set for the client");
+		fr_strerror_printf("Packet is unencrypted but a secret has been set for the client");
 		return -1;
 	}
 
@@ -647,7 +647,7 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 
 		break;
 	default:
-		ERROR("Unsupported TACACS+ type %u", pkt->hdr.type);
+		fr_strerror_printf("Unsupported TACACS+ type %u", pkt->hdr.type);
 		return -1;
 	}
 
@@ -762,7 +762,6 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 	 *	See if it's a well-formed TACACS packet.
 	 */
 	if (!tacacs_ok(packet, true)) {
-		fr_strerror_printf("Failed validation of TACACS request (incorrect secret?)");
 		return -1;
 	}
 
@@ -844,5 +843,8 @@ int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const origin
 		return -1;
 	}
 
+	/*
+	 *	@fixme: EINTR and retry
+	 */
 	return write(packet->sockfd, packet->data, packet->data_len);
 }
