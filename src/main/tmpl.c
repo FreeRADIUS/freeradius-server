@@ -1664,7 +1664,7 @@ ssize_t _tmpl_to_type(void *out,
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
 		value_box_field_sizes[dst_type], *((void **)out), value_box_offsets[dst_type]);
 
-	memcpy(out, from_cast + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
+	memcpy(out, ((uint8_t const *) from_cast) + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
 
 	return from_cast->length;
 }
