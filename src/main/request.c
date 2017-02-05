@@ -342,7 +342,6 @@ int request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, v
 
 			break;	/* replace the existing entry */
 		}
-		if (!*last) break;
 	}
 
 	/*
@@ -417,7 +416,6 @@ void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
 
 			return ptr;
 		}
-		if (!*last) break;
 	}
 
 	return NULL;		/* wasn't found, too bad... */
