@@ -178,8 +178,8 @@ void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracki
 	/*
 	 *	This request cannot be in any list.
 	 */
-	rad_assert(tt->list.prev = &tt->list);
-	rad_assert(tt->list.next = &tt->list);
+	rad_assert(tt->list.prev == &tt->list);
+	rad_assert(tt->list.next == &tt->list);
 
 	/*
 	 *	Update the time that the worker spent processing the request.
