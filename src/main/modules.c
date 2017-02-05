@@ -181,6 +181,12 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 */
 	inst_name = cf_pair_value(cp);
 	inst = module_find(cf_item_parent(cf_section_to_item(module)), inst_name);
+	if (!inst) {
+		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
+
+		return -1;
+	}
+
 	if (!inst->instantiated) {
 		CONF_SECTION *parent = module;
 
@@ -204,11 +210,6 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	detection.
 	 */
 	cf_data_remove(module, CONF_SECTION, FIND_SIBLING_CF_KEY);
-	if (!inst) {
-		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
-
-		return -1;
-	}
 
 	/*
 	 *	Check the module instances are of the same type.
