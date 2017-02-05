@@ -417,7 +417,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 			 buffer, sizeof(buffer)),
 	       packet->dst_port, packet->id);
 
-	fr_radius_send(packet, NULL, inst->home_server->secret);
+	(void) fr_radius_send(packet, NULL, inst->home_server->secret);
 	packet->count++;
 
 	timeout = ccr->inst->home_server->response_window;
