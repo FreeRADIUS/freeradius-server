@@ -288,7 +288,7 @@ static int status_socket_recv(rad_listen_t *listener)
 
 	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
-		udp_recv_discard(listener->fd);
+		(void) udp_recv_discard(listener->fd);
 		return 0;
 	}
 	talloc_set_name_const(ctx, "status_listener_pool");
