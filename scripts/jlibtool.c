@@ -2255,6 +2255,7 @@ static int run_mode(command_t *cmd)
 
 		strcpy(libpath, cmd->arglist->vals[0]);
 		add_dotlibs(libpath);
+#if 0
 		l = strrchr(libpath, '/');
 		if (!l) l = strrchr(libpath, '\\');
 		if (l) {
@@ -2263,6 +2264,7 @@ static int run_mode(command_t *cmd)
 		} else {
 			l = ".libs/";
 		}
+#endif
 
 		l = "./build/lib/local/.libs";
 		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
