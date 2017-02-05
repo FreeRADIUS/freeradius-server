@@ -280,6 +280,11 @@ static void bfd_pipe_recv(UNUSED fr_event_list_t *xel, int fd, void *ctx)
 	}
 
 	/*
+	 *	This is already checked in the caller, but what the heck...
+	 */
+	if (bfd.length > sizeof(bfd)) goto fail;
+
+	/*
 	 *	Read the rest of the packet.
 	 */
 	num = read(fd, ((uint8_t *) &bfd) + 4, bfd.length - 4);
@@ -1432,6 +1437,11 @@ static int bfd_socket_recv(rad_listen_t *listener)
 
 	if (bfd.length < 24) {
 		DEBUG("BFD packet has wrong length (%d < 24)", bfd.length);
+		return 0;
+	}
+
+	if (bfd.length > sizeof(bfd)) {
+		DEBUG("BFD packet has wrong length (%d > %zd)", bfd.length, sizeof(bfd));
 		return 0;
 	}
 
