@@ -313,7 +313,7 @@ invalid:
 		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
 					 inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr, buffer, sizeof(buffer)),
 					 fr_strerror());
-		udp_recv_discard(sockfd);
+		(void) udp_recv_discard(sockfd);
 
 		return 0;
 	}
