@@ -222,6 +222,7 @@ static void status_running(REQUEST *request, fr_state_action_t action)
 		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 		}
+		/* FALL-THROUGH */
 
 	default:
 	done:
