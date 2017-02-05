@@ -475,6 +475,8 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	if (fd < 0) goto perm_error;
 	if (fstat(fd, &file->buf) < 0) goto perm_error;
 
+	close(fd);
+
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
 		ERROR("Configuration file %s is globally writable.  "
@@ -490,7 +492,6 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 	if (!rbtree_insert(tree, file)) talloc_free(file);
 
 	return true;
-
 }
 
 
