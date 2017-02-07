@@ -426,7 +426,7 @@ skip_group:
 	 *	Flush everything
 	 */
 	fclose(outfp);
-	exfile_unlock(inst->ef, outfd); /* do NOT close outfp */
+	exfile_unlock(inst->ef, outfd); /* do NOT close outfd */
 
 	/*
 	 *	And everything is fine.

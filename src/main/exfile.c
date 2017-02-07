@@ -294,7 +294,7 @@ do_return:
 	 *	Try to lock it.  If we can't lock it, it's because
 	 *	some reader has re-named the file to "foo.work" and
 	 *	locked it.  So, we close the current file, re-open it,
-	 *	and try again/
+	 *	and try again.
 	 */
 	if (ef->locking) {
 		for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
