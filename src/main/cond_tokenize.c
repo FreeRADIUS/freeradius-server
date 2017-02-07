@@ -1112,8 +1112,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_COMBO_IP_ADDR) {
 						fr_dict_attr_t const *da;
 
-						da = fr_dict_attr_by_type(NULL, c->data.map->lhs->tmpl_da->vendor,
-									  c->data.map->lhs->tmpl_da->attr,
+						da = fr_dict_attr_by_type(c->data.map->lhs->tmpl_da,
 									  c->data.map->rhs->tmpl_value_box_type);
 						if (!da) {
 							return_rhs("Cannot find type for attribute");

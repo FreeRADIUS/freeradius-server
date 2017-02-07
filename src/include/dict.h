@@ -235,7 +235,7 @@ fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t *dict, char const *attr);
 
 fr_dict_attr_t const	*fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr);
 
-fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor, unsigned int attr, PW_TYPE type);
+fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, PW_TYPE type);
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
 

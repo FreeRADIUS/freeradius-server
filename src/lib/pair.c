@@ -357,7 +357,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	/*
 	 *	Convert unknowns to knowns
 	 */
-	da = fr_dict_attr_by_num(fr_dict_internal, vp->da->vendor, vp->da->attr);
+	da = fr_dict_attr_known(fr_dict_internal, vp->da);
 	if (!da) return vp;
 
 	/*
@@ -2076,7 +2076,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	if (type != vp->da->type) {
 		fr_dict_attr_t const *da;
 
-		da = fr_dict_attr_by_type(NULL, vp->da->vendor, vp->da->attr, type);
+		da = fr_dict_attr_by_type(vp->da, type);
 		if (!da) {
 			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
 					   fr_int2str(dict_attr_types, type, "<INVALID>"), vp->da->name);
@@ -2865,7 +2865,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
-			da = fr_dict_attr_by_type(NULL, vp->da->vendor, vp->da->attr, vp->da->type);
+			da = fr_dict_attr_by_type(vp->da, vp->da->type);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 					     "variant (%s) not found in global dictionary",

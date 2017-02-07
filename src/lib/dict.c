@@ -307,7 +307,7 @@ static uint32_t dict_attr_combo_hash(void const *data)
 	uint32_t hash;
 	fr_dict_attr_t const *attr = data;
 
-	hash = fr_hash(&attr->vendor, sizeof(attr->vendor));
+	hash = fr_hash(&attr->parent, sizeof(attr->parent));
 	hash = fr_hash_update(&attr->type, sizeof(attr->type), hash);
 	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
 }
@@ -320,11 +320,11 @@ static int dict_attr_combo_cmp(void const *one, void const *two)
 	fr_dict_attr_t const *a = one;
 	fr_dict_attr_t const *b = two;
 
+	if (a->parent < b->parent) return -1;
+	if (a->parent > b->parent) return +1;
+
 	if (a->type < b->type) return -1;
 	if (a->type > b->type) return +1;
-
-	if (a->vendor < b->vendor) return -1;
-	if (a->vendor > b->vendor) return +1;
 
 	return a->attr - b->attr;
 }
@@ -4045,26 +4045,22 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
  *
  * @note Only works with PW_TYPE_COMBO_IP
  *
- * @param[in] dict of protocol context we're operating in.  If NULL the internal
- *	dictionary will be used.
- * @param[in] vendor number of the attribute.
- * @param[in] attr number of the attribute.
- * @param[in] type Variant of attribute to lookup.
+ * @param[in] da	to look for type variant of.
+ * @param[in] type	Variant of attribute to lookup.
  * @return
- * 	- Attribute matching vendor/attr/type.
+ * 	- Attribute matching parent/attr/type.
  * 	- NULL if no matching attribute could be found.
  */
-fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor, unsigned int attr, PW_TYPE type)
+fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, PW_TYPE type)
 {
-	fr_dict_attr_t da;
+	fr_dict_t	*dict = fr_dict_by_da(da);
+	fr_dict_attr_t	find = {
+				.parent = da->parent,
+				.attr = da->attr,
+				.type = type
+			};
 
-	INTERNAL_IF_NULL(dict);
-
-	da.attr = attr;
-	da.vendor = vendor;
-	da.type = type;
-
-	return fr_hash_table_finddata(dict->attributes_combo, &da);
+	return fr_hash_table_finddata(dict->attributes_combo, &find);
 }
 
 /** Check if a child attribute exists in a parent using a pointer (da)

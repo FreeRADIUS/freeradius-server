@@ -1102,9 +1102,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	case PW_TYPE_COMBO_IP_ADDR:
 		if (data_len == 4) {
-			child = fr_dict_attr_by_type(NULL, parent->vendor, parent->attr, PW_TYPE_IPV4_ADDR);
+			child = fr_dict_attr_by_type(parent, PW_TYPE_IPV4_ADDR);
 		} else if (data_len == 16) {
-			child = fr_dict_attr_by_type(NULL, parent->vendor, parent->attr, PW_TYPE_IPV6_ADDR);
+			child = fr_dict_attr_by_type(parent, PW_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
 		}

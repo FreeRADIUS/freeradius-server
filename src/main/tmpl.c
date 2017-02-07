@@ -2531,8 +2531,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			}
 
 			if ((da->type == PW_TYPE_COMBO_IP_ADDR) && (da->type != vpt->tmpl_da->type)) {
-				da = fr_dict_attr_by_type(NULL, vpt->tmpl_da->vendor,
-							  vpt->tmpl_da->attr, vpt->tmpl_da->type);
+				da = fr_dict_attr_by_type(vpt->tmpl_da, vpt->tmpl_da->type);
 				if (!da) {
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" variant (%s) not found in global dictionary",
