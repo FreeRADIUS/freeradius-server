@@ -82,9 +82,9 @@ ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-Id		23.2	byte
 ATTRIBUTE	Alc-Acct-I-Inprof-Pkts			23.3	integer64
 
 ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	struct[10]
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Selection	24.1	byte
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-Id		24.2	byte
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts			24.3	integer64
+ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-Selection	24.1	byte
+ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-Id		24.2	byte
+ATTRIBUTE	Alc-Acct-I-Outprof-Pkts			24.3	integer64
 
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	struct[10]
 ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-Selection	25.1	byte
