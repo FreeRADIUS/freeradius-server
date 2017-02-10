@@ -2696,7 +2696,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	 *	Create the table of attributes by name.   There MAY NOT
 	 *	be multiple attributes of the same name.
 	 */
-	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, hash_pool_free);
+	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, NULL);
 	if (!dict->attributes_by_name) goto error;
 
 	/*
