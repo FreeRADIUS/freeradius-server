@@ -1428,17 +1428,26 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 
 		/*
 		 *	If the attribute has identical number, then
-		 *	ignore the duplicate.
+		 *	error out.  We don't allow duplicate attribute
+		 *	definitions.
 		 */
 		a = fr_hash_table_finddata(dict->attributes_by_name, n);
 		if (a && (strcasecmp(a->name, n->name) == 0)) {
-			if (a->attr != n->attr) {
+			if ((a->attr != n->attr) || (a->parent != n->parent)) {
 				fr_strerror_printf("Duplicate attribute name");
 				talloc_free(n);
 				goto error;
 			}
 		}
 
+		/*
+		 *	Otherwise the attribute has been redefined later
+		 *	in the dictionary.
+		 *
+		 *	The original fr_dict_attr_t remains in the
+		 *	dictionary but entry in the name hash table is
+		 *	updated to point to the new definition.
+		 */
 		if (!fr_hash_table_replace(dict->attributes_by_name, n)) {
 			fr_strerror_printf("Internal error storing attribute");
 			talloc_free(n);
