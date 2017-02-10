@@ -48,7 +48,7 @@ data Invalid OID component "bob" (0)
 
 # 243.244 doesn't exist
 dictionary ATTRIBUTE	Unit-Fail	241.243.255.1	integer
-data Unknown child attribute starting at "255.1"
+data Unknown attribute "255" in OID string "255.1"
 
 dictionary ATTRIBUTE	Unit-Array	255		octets[123458]
 data Invalid length for 'octets[...]'
