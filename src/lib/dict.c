@@ -3780,7 +3780,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 
 		child = fr_dict_attr_child_by_num(*parent, num);
 		if (!child) {
-			fr_strerror_printf("Unknown child attribute starting at \"%s\"", oid);
+			fr_strerror_printf("Unknown attribute \"%i\" in OID string \"%s\"", num, oid);
 			return 0;	/* We parsed nothing */
 		}
 
