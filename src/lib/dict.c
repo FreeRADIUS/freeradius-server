@@ -3361,7 +3361,9 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				 *	PW_TYPE_STRING (for example)
 				 */
 				default:
-					fr_strerror_printf("Previous OID component specified a non-structural type");
+					fr_strerror_printf("Previous OID component in \"%.*s\" specified a "
+							   "non-structural type (%s)", (int)(p - oid_str), oid_str,
+							   fr_int2str(dict_attr_types, our_parent->type, "<INVALID>"));
 					goto error;
 				}
 			}
