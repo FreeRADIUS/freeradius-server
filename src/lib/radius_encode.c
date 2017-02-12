@@ -1565,8 +1565,17 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
  * This is the main entry point into the encoder.  It sets up the encoder array
  * we use for tracking our TLV/VSA/EVS nesting and then calls the appropriate
  * dispatch function.
+ *
+ * @param[out] out		Where to write encoded data.
+ * @param[in] outlen		Length of the out buffer.
+ * @param[in] cursor		Specifying attribute to encode.
+ * @param[in] encoder_ctx	Additional data such as the shared secret to use.
+ * @return
+ *	- >0 The number of bytes written to out.
+ *	- 0 Nothing to encode (or attribute skipped).
+ *	- <0 an error occurred.
  */
-int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const *vp;
 	int ret;
@@ -1576,8 +1585,9 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	fr_dict_attr_t const *da = NULL;
 
 	if (!cursor || !out || (outlen <= 2)) return -1;
+
 	vp = first_encodable(cursor);
-	if (!vp) return -1;
+	if (!vp) return 0;
 
 	VERIFY_VP(vp);
 

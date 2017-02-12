@@ -256,7 +256,7 @@ int		fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int 
 
 ssize_t		fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR const *vp);
 
-int		fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
 
 /*
  *	radius_decode.c
