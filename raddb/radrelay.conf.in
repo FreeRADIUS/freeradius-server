@@ -130,14 +130,14 @@ home_server_pool radrelay {
 	home_server = home1
 }
 
-server radrelay {
-	#
-	#  A dummy realm.
-	#
-	realm radrelay {
-		acct_pool = radrelay
-	}
+#
+#  A dummy realm.
+#
+realm radrelay {
+	acct_pool = radrelay
+}
 
+server radrelay {
 	#
 	#  Read the detail file.
 	#
