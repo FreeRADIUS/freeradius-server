@@ -2344,6 +2344,8 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
+	bool			eap = false;
+	bool			non_eap = false;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -2549,6 +2551,13 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			 */
 		case PW_EAP_MESSAGE:
 			require_ma = true;
+			eap = true;
+			break;
+
+		case PW_USER_PASSWORD:
+		case PW_CHAP_PASSWORD:
+		case PW_ARAP_PASSWORD:
+			non_eap = true;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -2623,6 +2632,15 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
 		failure = DECODE_FAIL_MA_MISSING;
+		goto finish;
+	}
+
+	if (eap && non_eap) {
+		FR_DEBUG_STRERROR_PRINTF("Bad packet from host %s:  Packet contains EAP-Message and non-EAP authentication attribute",
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)));
+		failure = DECODE_FAIL_TOO_MANY_AUTH;
 		goto finish;
 	}
 

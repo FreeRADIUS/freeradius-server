@@ -1364,7 +1364,6 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			return 0;
 		}
 
-
 		/* Do not convert to TALLOC - Thread safety */
 		/* alloc and convert to ASN.1 */
 		sess_blob = malloc(blob_len);
@@ -1388,6 +1387,21 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			RERROR("Session serialisation failed, failed opening session file %s: %s",
 			      filename, fr_syserror(errno));
 			goto error;
+		}
+
+		/*
+		 *	Set the filename to be temporarily write-only.
+		 */
+		if (request) {
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_afrom_num(request->state_ctx, PW_TLS_CACHE_FILENAME, 0);
+			if (vp) {
+				fr_pair_value_strcpy(vp, filename);
+				fr_pair_add(&request->state, vp);
+			}
+
+			(void) fchmod(fd, S_IWUSR);
 		}
 
 		todo = blob_len;
@@ -1459,16 +1473,6 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		struct stat	st;
 		VALUE_PAIR	*vps = NULL;
 
-		/* read in the cached VPs from the .vps file */
-		snprintf(filename, sizeof(filename), "%s%c%s.vps",
-			 conf->session_cache_path, FR_DIR_SEP, buffer);
-		rv = pairlist_read(talloc_ctx, filename, &pairlist, 1);
-		if (rv < 0) {
-			/* not safe to un-persist a session w/o VPs */
-			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
-			goto err;
-		}
-
 		/* load the actual SSL session */
 		snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDONLY);
@@ -1521,6 +1525,16 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		sess = d2i_SSL_SESSION(NULL, o, st.st_size);
 		if (!sess) {
 			RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+			goto err;
+		}
+
+		/* read in the cached VPs from the .vps file */
+		snprintf(filename, sizeof(filename), "%s%c%s.vps",
+			 conf->session_cache_path, FR_DIR_SEP, buffer);
+		rv = pairlist_read(talloc_ctx, filename, &pairlist, 1);
+		if (rv < 0) {
+			/* not safe to un-persist a session w/o VPs */
+			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
 			goto err;
 		}
 

@@ -545,6 +545,8 @@ VALUE	TLS-OCSP-Cert-Valid		skipped			2
 VALUE	TLS-OCSP-Cert-Valid		yes			1
 VALUE	TLS-OCSP-Cert-Valid		no			0
 
+ATTRIBUTE	TLS-Cache-Filename			1946	string
+
 #
 #	Range:	1940-2099
 #		Free

@@ -2443,8 +2443,8 @@ home_server_t *home_server_ldb(char const *realmname,
 			hash = 0;
 			break;
 		}
-		fr_hash_update(&request->packet->src_port,
-				 sizeof(request->packet->src_port), hash);
+		hash = fr_hash_update(&request->packet->src_port,
+				      sizeof(request->packet->src_port), hash);
 		start = hash % pool->num_home_servers;
 		break;
 
