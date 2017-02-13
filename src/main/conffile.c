@@ -4229,6 +4229,8 @@ int _cf_data_walk(CONF_SECTION *cs, char const *type, cf_walker_t cb, void *ctx)
 		.ctx = ctx
 	};
 
+	if (!cs->data_tree) return 0;
+
 	return rbtree_walk(cs->data_tree, RBTREE_IN_ORDER, _cf_data_walk_cb, &cd_ctx);
 }
 
