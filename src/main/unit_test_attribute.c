@@ -907,12 +907,14 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
+				talloc_free(packet);
 				continue;
 			}
 
 			packet->vps = head;
 			if (tacacs_encode(packet, NULL) < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
+				talloc_free(packet);
 				continue;
 			}
 
@@ -948,6 +950,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 			if (tacacs_decode(packet) < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
+				talloc_free(packet);
 				continue;
 			}
 
@@ -964,7 +967,6 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			}
 
 			talloc_free(packet);
-
 			continue;
 		}
 #endif	/* WITH_TACACS */
