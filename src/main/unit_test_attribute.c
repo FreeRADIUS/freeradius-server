@@ -911,8 +911,10 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			}
 
 			packet->vps = head;
-			if (tacacs_encode(packet, NULL))
-				ERROR("BARF");
+			if (tacacs_encode(packet, NULL) < 0) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
 
 			fr_pair_list_free(&head);
 
@@ -944,8 +946,10 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			packet->data = attr;
 			packet->data_len = len;
 
-			if (tacacs_decode(packet))
-				ERROR("BARF");
+			if (tacacs_decode(packet) < 0) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
 
 			fr_pair_cursor_init(&cursor, &packet->vps);
 			p = output;
