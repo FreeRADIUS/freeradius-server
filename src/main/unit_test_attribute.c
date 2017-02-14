@@ -807,7 +807,6 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 			fr_pair_cursor_init(&cursor, &head);
 
-
 			attr = data;
 			while ((vp = fr_pair_cursor_current(&cursor))) {
 				len = fr_dhcp_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
@@ -918,8 +917,6 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				continue;
 			}
 
-			fr_pair_list_free(&head);
-
 			outlen = packet->data_len;
 			memcpy(data, packet->data, outlen);
 			talloc_free(packet);
@@ -980,6 +977,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			}
 
 			fr_pair_snprint(output, sizeof(output), head);
+			fr_pair_list_free(&head);
 			continue;
 		}
 
