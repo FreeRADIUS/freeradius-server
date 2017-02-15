@@ -10,6 +10,7 @@
 ######################################################################
 
 DH_KEY_SIZE	= 2048
+OPENSSL		= openssl
 
 #
 #  Set the passwords
@@ -49,7 +50,7 @@ passwords.mk: server.cnf ca.cnf client.cnf
 #
 ######################################################################
 dh:
-	openssl gendh -out dh -2 $(DH_KEY_SIZE)
+	$(OPENSSL) gendh -out dh -2 $(DH_KEY_SIZE)
 
 ######################################################################
 #
@@ -59,11 +60,11 @@ dh:
 ca.key ca.pem: ca.cnf
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -keyout ca.key -out ca.pem \
+	$(OPENSSL) req -new -x509 -keyout ca.key -out ca.pem \
 		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf
 
 ca.der: ca.pem
-	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
+	$(OPENSSL) x509 -inform PEM -outform DER -in ca.pem -out ca.der
 
 ######################################################################
 #
@@ -71,20 +72,20 @@ ca.der: ca.pem
 #
 ######################################################################
 server.csr server.key: server.cnf
-	openssl req -new  -out server.csr -keyout server.key -config ./server.cnf
+	$(OPENSSL) req -new  -out server.csr -keyout server.key -config ./server.cnf
 
 server.crt: server.csr ca.key ca.pem
-	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
+	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
 
 server.p12: server.crt
-	openssl pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+	$(OPENSSL) pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 
 server.pem: server.p12
-	openssl pkcs12 -in server.p12 -out server.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+	$(OPENSSL) pkcs12 -in server.p12 -out server.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 
 .PHONY: server.vrfy
 server.vrfy: ca.pem
-	@openssl verify -CAfile ca.pem server.pem
+	@$(OPENSSL) verify -CAfile ca.pem server.pem
 
 ######################################################################
 #
@@ -93,22 +94,22 @@ server.vrfy: ca.pem
 #
 ######################################################################
 client.csr client.key: client.cnf
-	openssl req -new  -out client.csr -keyout client.key -config ./client.cnf
+	$(OPENSSL) req -new  -out client.csr -keyout client.key -config ./client.cnf
 
 client.crt: client.csr ca.pem ca.key
-	openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
+	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
 
 client.p12: client.crt
-	openssl pkcs12 -export -in client.crt -inkey client.key -out client.p12  -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
+	$(OPENSSL) pkcs12 -export -in client.crt -inkey client.key -out client.p12  -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
 
 client.pem: client.p12
-	openssl pkcs12 -in client.p12 -out client.pem -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
+	$(OPENSSL) pkcs12 -in client.p12 -out client.pem -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
 	cp client.pem $(USER_NAME).pem
 
 .PHONY: client.vrfy
 client.vrfy: ca.pem client.pem
 	c_rehash .
-	openssl verify -CApath . client.pem
+	$(OPENSSL) verify -CApath . client.pem
 
 ######################################################################
 #
@@ -122,10 +123,10 @@ serial:
 	@echo '01' > serial
 
 print:
-	openssl x509 -text -in server.crt
+	$(OPENSSL) x509 -text -in server.crt
 
 printca:
-	openssl x509 -text -in ca.pem
+	$(OPENSSL) x509 -text -in ca.pem
 
 clean:
 	@rm -f *~ *old client.csr client.key client.crt client.p12 client.pem
