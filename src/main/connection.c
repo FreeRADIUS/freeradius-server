@@ -836,11 +836,6 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 		goto do_return;
 	}
 
-	/*
-	 *	We don't have a connection.  Try to open a new one.
-	 */
-	rad_assert(pool->state.active == pool->state.num);
-
 	if (pool->state.num == pool->max) {
 		bool complain = false;
 
