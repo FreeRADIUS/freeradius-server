@@ -823,11 +823,6 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 */
 	if (!spawn) return NULL;
 
-	/*
-	 *	We don't have a connection.  Try to open a new one.
-	 */
-	rad_assert(pool->active == pool->num);
-
 	if (pool->num == pool->max) {
 		bool complain = false;
 
