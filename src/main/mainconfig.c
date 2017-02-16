@@ -591,15 +591,6 @@ static int switch_users(CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Once we're done with all of the privileged work,
-	 *	permanently change the UID.
-	 */
-	if (do_suid) {
-		rad_suid_set_down_uid(server_uid);
-		rad_suid_down();
-	}
-
-	/*
 	 *	If we don't already have a log file open, open one
 	 *	now.  We may not have been logging anything yet.  The
 	 *	server normally starts up fairly quietly.
@@ -630,6 +621,15 @@ static int switch_users(CONF_SECTION *cs)
 				main_config.name, main_config.log_file, fr_syserror(errno));
 			return 0;
 		}
+	}
+
+	/*
+	 *	Once we're done with all of the privileged work,
+	 *	permanently change the UID.
+	 */
+	if (do_suid) {
+		rad_suid_set_down_uid(server_uid);
+		rad_suid_down();
 	}
 
 	/*
