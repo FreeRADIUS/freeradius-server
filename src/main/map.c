@@ -150,8 +150,12 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
+	 *
+	 *	@fixme Is this even necessary?  It looks like it goes
+	 *	through a lot of work in order to set the name to
+	 *	(drum roll) exactly the same thing it was before.
 	 */
-	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1, T_BARE_WORD);
+	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, NULL, -1, T_BARE_WORD);
 	memcpy(&vpt->data.attribute, &map->lhs->data.attribute, sizeof(vpt->data.attribute));
 	vpt->tmpl_da = da;
 
@@ -159,19 +163,24 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	Be sure to keep the "&control:" or "control:" prefix.
 	 *	If it's there, we re-generate it from whatever was in
 	 *	the original name, including the '&'.
+	 *
+	 *	If we don't have a prefix, ensure that the attribute
+	 *	name is prefixed with '&'.
 	 */
 	p = map->lhs->name;
 	if (*p == '&') p++;
 	len = radius_list_name(&list, p, PAIR_LIST_UNKNOWN);
 
 	if (list != PAIR_LIST_UNKNOWN) {
-		talloc_const_free(vpt->name);
-
 		vpt->name = talloc_asprintf(vpt, "%.*s:%s",
 					    (int) len, map->lhs->name,
 					    map->lhs->tmpl_da->name);
-		vpt->len = strlen(vpt->name);
+	} else {
+		vpt->name = talloc_asprintf(vpt, "&%s",
+					    map->lhs->tmpl_da->name);
 	}
+	vpt->len = strlen(vpt->name);
+	vpt->quote = T_BARE_WORD;
 
 	talloc_free(map->lhs);
 	map->lhs = vpt;
