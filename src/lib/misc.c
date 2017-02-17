@@ -302,10 +302,12 @@ static int ip_prefix_from_str(char const *str, uint32_t *paddr)
 }
 
 
-/** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
+/**
+ * Parse an IPv4 address, IPv4 prefix in presentation format (and others), or
+ * a hostname.
  *
  * @param out Where to write the ip address value.
- * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
+ * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY), or a hostname.
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
@@ -317,8 +319,8 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	unsigned int mask;
 	char *eptr;
 
-	/* Dotted quad + / + [0-9]{1,2} */
-	char buffer[INET_ADDRSTRLEN + 3];
+	/* Dotted quad + / + [0-9]{1,2} or a hostname (RFC1035 2.3.4 Size limits) */
+	char buffer[256];
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
@@ -400,7 +402,9 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	return 0;
 }
 
-/** Parse an IPv6 address or IPv6 prefix in presentation format (and others)
+/**
+ * Parse an IPv6 address or IPv6 prefix in presentation format (and others),
+ * or a hostname.
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
@@ -415,8 +419,8 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	unsigned int prefix;
 	char *eptr;
 
-	/* IPv6  + / + [0-9]{1,3} */
-	char buffer[INET6_ADDRSTRLEN + 4];
+	/* IPv6  + / + [0-9]{1,3} or a hostname (RFC1035 2.3.4 Size limits) */
+	char buffer[256];
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
