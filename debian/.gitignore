@@ -1,7 +1,6 @@
 freeradius-common
 freeradius-config
 freeradius-dbg
-freeradius-iodbc
 freeradius-krb5
 freeradius-ldap
 freeradius-mysql

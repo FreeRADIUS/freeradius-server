@@ -393,7 +393,6 @@ export LDFLAGS="-Wl,--build-id"
         --with-rlm-dbm-lib-dir=%{_libdir} \
         --with-rlm-krb5-include-dir=/usr/kerberos/include \
         --without-rlm_eap_ikev2 \
-        --without-rlm_sql_iodbc \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
         --with-jsonc-lib-dir=%{_libdir} \

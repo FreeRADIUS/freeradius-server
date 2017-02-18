@@ -11,7 +11,7 @@
 #
 #       mods-config/sql/driver/<driver>
 #
-#  Where "driver" is cassandra, db2, firebird, freetds, iodbc, null, mysql
+#  Where "driver" is cassandra, db2, firebird, freetds, null, mysql
 #  oracle, postgresql, sqlite, unixodbc.
 #
 # $Id$
@@ -30,7 +30,6 @@ sql {
 	#    * rlm_sql_db2
 	#    * rlm_sql_firedbird
 	#    * rlm_sql_freetds (mssql)
-	#    * rlm_sql_iodbc
 	#    * rlm_sql_null (log queries to disk)
 	#    * rlm_sql_mysql
 	#    * rlm_sql_oracle

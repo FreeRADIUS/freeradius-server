@@ -1,4 +1,3 @@
-rlm_sql_iodbc
 rlm_sql_mysql
 rlm_sql_postgresql
 rlm_sql_oracle

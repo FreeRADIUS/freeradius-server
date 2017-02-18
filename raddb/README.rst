@@ -113,7 +113,6 @@ The following modules should honour ``connect_timeout``:
 - rlm_sql_cassandra
 - rlm_sql_db2
 - rlm_sql_freetds
-- rlm_sql_iodbc
 - rlm_sql_mysql
 - rlm_sql_unixodbc
 
