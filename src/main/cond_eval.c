@@ -102,7 +102,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 		 *	The VPT *doesn't* have a "bare word" type,
 		 *	which arguably it should.
 		 */
-		rcode = (vpt->name != '\0');
+		rcode = (*vpt->name != '\0');
 		break;
 
 	case TMPL_TYPE_ATTR:
