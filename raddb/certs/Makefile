@@ -50,7 +50,7 @@ passwords.mk: server.cnf ca.cnf client.cnf
 #
 ######################################################################
 dh:
-	$(OPENSSL) gendh -out dh -2 $(DH_KEY_SIZE)
+	$(OPENSSL) dhparam -out dh -2 $(DH_KEY_SIZE)
 
 ######################################################################
 #
