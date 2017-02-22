@@ -169,18 +169,6 @@ reply items, so the reply will be empty.
 .RE
 
 .DS
-DEFAULT	Auth-Type = System
-.br
-	Fall-Through = Yes
-
-.DE
-.RS
-For all users reaching this entry, perform authentication against the
-system, unless Auth-Type has already been set.  Also, process any
-following entries which may match.
-.RE
-
-.DS
 DEFAULT Service-Type == Framed-User, Framed-Protocol == PPP
 .br
 	Service-Type = Framed-User,
