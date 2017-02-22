@@ -55,8 +55,6 @@ addons:
       - firebird-dev
       - freetds-dev
       - libcap-dev
-      - libcouchbase2-libevent
-      - libcouchbase-dev
       - libcurl4-openssl-dev
       - libgdbm-dev
       - libhiredis-dev
