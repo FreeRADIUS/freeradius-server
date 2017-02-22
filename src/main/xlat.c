@@ -2129,6 +2129,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		size_t freespace = 256;
 		struct tm ts;
 		time_t when;
+		int usec;
 
 		XLAT_DEBUG("%.*sxlat_aprint PERCENT", lvl, xlat_spaces);
 
@@ -2136,8 +2137,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		p = node->fmt;
 
 		when = request->timestamp;
+		usec = 0;
 		if (request->packet) {
 			when = request->packet->timestamp.tv_sec;
+			usec = request->packet->timestamp.tv_usec;
 		}
 
 		switch (*p) {
@@ -2194,12 +2197,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 		case 'S': /* request timestamp in SQL format*/
 			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
+			nl = str + strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
+			rad_assert(((str + freespace) - nl) >= 8);
+			snprintf(nl, (str + freespace) - nl, ".%06d",  usec);
 			break;
 
 		case 'T': /* request timestamp */
 			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", &ts);
+			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S", &ts);
+			
 			break;
 
 		case 'Y': /* request year */
