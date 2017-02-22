@@ -108,11 +108,11 @@ listen {
 	#  	    - IPv6 address as above
 	#  	    - wildcard (i.e. *), which means IPv4 wildcard.
 	#	    - hostname
-	#	      If there is only one A or AAA record returned
+	#	      If there is only one A or AAAA record returned
 	#	      for the host name, it is used.
-	#	      If multiple A or AAA records are returned
+	#	      If multiple A or AAAA records are returned
 	#	      for the host name, only the first one is used.
-	#	      If both A and AAA records are returned
+	#	      If both A and AAAA records are returned
 	#	      for the host name, only the A record is used.
 	#
 	# ipv4addr = *
