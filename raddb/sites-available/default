@@ -92,8 +92,10 @@ listen {
 	#	IPv6 address (e.g. 2001:db8::1, for ipv6addr/ipaddr)
 	#	hostname     (radius.example.com,
 	#			A record for ipv4addr,
-	#       		AAAA record for ipv6addr,
-	#			A or AAAA record for ipaddr)
+	#			AAAA record for ipv6addr,
+	#			A or AAAA record for ipaddr;
+	#			A record is always preferred for ipaddr,
+	#			regardless of system configuration)
 	#       wildcard     (*)
 	#
 	# ipv4addr = *
