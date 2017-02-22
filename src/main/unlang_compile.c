@@ -101,7 +101,7 @@ static void dump_mc(unlang_t *c, int indent)
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->module_instance->name);
 	} else if ((c->type > UNLANG_TYPE_MODULE_CALL) && (c->type <= UNLANG_TYPE_POLICY)) {
-		unlang_group_t *g = unlang_group_to_module_call(c);
+		unlang_group_t *g = unlang_generic_to_group(c);
 		unlang_t *p;
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 		      unlang_ops[c->type].name);
@@ -987,14 +987,14 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 #ifdef WITH_UNLANG
 		case UNLANG_TYPE_MAP:
-			g = unlang_group_to_module_call(this); /* FIXMAP: print option 3, too */
+			g = unlang_generic_to_group(this); /* FIXMAP: print option 3, too */
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 			      unlang_ops[this->type].name,
 			      cf_section_name2(g->cs));
 			goto print_map;
 
 		case UNLANG_TYPE_UPDATE:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_ops[this->type].name);
 
@@ -1008,7 +1008,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 			break;
 
 		case UNLANG_TYPE_ELSE:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
@@ -1017,7 +1017,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 		case UNLANG_TYPE_IF:
 		case UNLANG_TYPE_ELSIF:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
 				unlang_ops[this->type].name, buffer);
@@ -1027,7 +1027,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_CASE:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			tmpl_snprint(buffer, sizeof(buffer), g->vpt);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_ops[this->type].name, buffer);
@@ -1037,7 +1037,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 		case UNLANG_TYPE_POLICY:
 		case UNLANG_TYPE_FOREACH:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_ops[this->type].name, this->name);
 			unlang_dump(g->children, depth + 1);
@@ -1050,7 +1050,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 #endif
 		case UNLANG_TYPE_GROUP:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 			      unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
@@ -1059,7 +1059,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 
 		case UNLANG_TYPE_LOAD_BALANCE:
 		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-			g = unlang_group_to_module_call(this);
+			g = unlang_generic_to_group(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_ops[this->type].name);
 			unlang_dump(g->children, depth + 1);
@@ -2054,7 +2054,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			}
 		}
 
-		f = unlang_group_to_module_call(parent);
+		f = unlang_generic_to_group(parent);
 		rad_assert(f->vpt != NULL);
 
 		/*
@@ -2116,7 +2116,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 	}
 
-	g = unlang_group_to_module_call(c);
+	g = unlang_generic_to_group(c);
 	g->vpt = talloc_steal(g, vpt);
 
 	/*
@@ -2205,7 +2205,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 
-	g = unlang_group_to_module_call(c);
+	g = unlang_generic_to_group(c);
 	g->vpt = vpt;
 
 	return c;
@@ -2299,7 +2299,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	c->name = unlang_ops[c->type].name;
 	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
-	g = unlang_group_to_module_call(c);
+	g = unlang_generic_to_group(c);
 	g->cond = cond;
 
 	return c;
@@ -2309,10 +2309,10 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 {
 	unlang_group_t *p, *f;
 
-	p = unlang_group_to_module_call(parent);
+	p = unlang_generic_to_group(parent);
 	if (!p->tail) goto else_fail;
 
-	f = unlang_group_to_module_call(p->tail);
+	f = unlang_generic_to_group(p->tail);
 	if ((f->self.type != UNLANG_TYPE_IF) && (f->self.type != UNLANG_TYPE_ELSIF)) {
 	else_fail:
 		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
@@ -2451,7 +2451,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
 
-	g = unlang_group_to_module_call(c);
+	g = unlang_generic_to_group(c);
 
 	/*
 	 *	Allow for keyed load-balance / redundant-load-balance sections.
@@ -2558,7 +2558,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	/*
 	 *	Check that all children are of the new type.
 	 */
-	g = unlang_group_to_module_call(c);
+	g = unlang_generic_to_group(c);
 
 	for (child = g->children; child != NULL; child = child->next) {
 		unlang_module_call_t *single;

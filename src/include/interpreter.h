@@ -273,7 +273,7 @@ static inline unlang_module_call_t *unlang_generic_to_module_call(unlang_t *p)
 	return talloc_get_type_abort(p, unlang_module_call_t);
 }
 
-static inline unlang_group_t *unlang_group_to_module_call(unlang_t *p)
+static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
 {
 	rad_assert((p->type > UNLANG_TYPE_MODULE_CALL) && (p->type <= UNLANG_TYPE_POLICY));
 

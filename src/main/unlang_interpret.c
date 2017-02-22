@@ -110,7 +110,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 
 	uint32_t count = 0;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
 		*priority = instruction->actions[*presult];
@@ -251,7 +251,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 
 	/*
 	 *	This should really have been caught in the
@@ -283,7 +283,7 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 
 	if (!frame->resume) {
 		/*
@@ -306,7 +306,7 @@ static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
@@ -353,7 +353,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 
 	if (!frame->resume) {
 		int i, foreach_depth = -1;
@@ -501,7 +501,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	vp_map_t		map;
 	vp_tmpl_t		vpt;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 
 	memset(&cond, 0, sizeof(cond));
 	memset(&map, 0, sizeof(map));
@@ -526,7 +526,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 		for (this = g->children; this; this = this->next) {
 			rad_assert(this->type == UNLANG_TYPE_CASE);
 
-			h = unlang_group_to_module_call(this);
+			h = unlang_generic_to_group(this);
 			if (h->vpt) continue;
 
 			found = this;
@@ -560,7 +560,7 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 	for (this = g->children; this; this = this->next) {
 		rad_assert(this->type == UNLANG_TYPE_CASE);
 
-		h = unlang_group_to_module_call(this);
+		h = unlang_generic_to_group(this);
 
 		/*
 		 *	Remember the default case
@@ -638,7 +638,7 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 	int rcode;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_group_t	*g = unlang_group_to_module_call(instruction);
+	unlang_group_t	*g = unlang_generic_to_group(instruction);
 	vp_map_t *map;
 
 	RINDENT();
@@ -663,7 +663,7 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 {
 	unlang_stack_frame_t *frame = &stack->frame[stack->depth];
 	unlang_t *instruction = frame->instruction;
-	unlang_group_t *g = unlang_group_to_module_call(instruction);
+	unlang_group_t *g = unlang_generic_to_group(instruction);
 
 	RINDENT();
 	*presult = map_proc(request, g->proc_inst);
@@ -755,7 +755,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
 
-	g = unlang_group_to_module_call(instruction);
+	g = unlang_generic_to_group(instruction);
 	rad_assert(g->cond != NULL);
 
 	condition = cond_eval(request, *presult, 0, g->cond);
