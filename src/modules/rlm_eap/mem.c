@@ -90,8 +90,6 @@ static int _eap_handler_free(eap_handler_t *handler)
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;
 
-	if (handler->certs) fr_pair_list_free(&handler->certs);
-
 	/*
 	 *	Give helpful debug messages if:
 	 *
