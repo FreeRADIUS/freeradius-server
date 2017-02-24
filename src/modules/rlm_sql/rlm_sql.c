@@ -947,6 +947,8 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode != 0) {
 	fail:
+		exec_trigger(NULL, inst->cs, "modules.sql.fail", true);
+
 		/*
 		 *	Destroy any half opened connections.
 		 */
