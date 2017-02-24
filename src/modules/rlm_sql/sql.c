@@ -54,49 +54,6 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 };
 
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
-{
-	int rcode;
-	rlm_sql_t *inst = instance;
-	rlm_sql_handle_t *handle;
-
-	/*
-	 *	Connections cannot be alloced from the inst or
-	 *	pool contexts due to threading issues.
-	 */
-	handle = talloc_zero(ctx, rlm_sql_handle_t);
-	if (!handle) return NULL;
-
-	handle->log_ctx = talloc_pool(handle, 2048);
-	if (!handle->log_ctx) {
-		talloc_free(handle);
-		return NULL;
-	}
-
-	/*
-	 *	Handle requires a pointer to the SQL inst so the
-	 *	destructor has access to the module configuration.
-	 */
-	handle->inst = inst;
-
-	rcode = (inst->module->sql_socket_init)(handle, inst->config);
-	if (rcode != 0) {
-	fail:
-		/*
-		 *	Destroy any half opened connections.
-		 */
-		talloc_free(handle);
-		return NULL;
-	}
-
-	if (inst->config->connect_query) {
-		if (rlm_sql_select_query(inst, NULL, &handle, inst->config->connect_query) != RLM_SQL_OK) goto fail;
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-	}
-
-	return handle;
-}
-
 /*************************************************************************
  *
  *	Function: sql_fr_pair_list_afrom_str
