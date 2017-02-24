@@ -111,8 +111,6 @@ static int _eap_handler_free(eap_handler_t *handler)
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
-
-	talloc_free(handler);
 	
 	return 0;
 }
