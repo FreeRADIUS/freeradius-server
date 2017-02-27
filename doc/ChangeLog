@@ -19,6 +19,15 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  in the detail file reader.
 	* Update abfab-tr policy.  Pull request #1893
 	  from Stefan Paetow.
+	* Reject packets which contain User-Password and
+	  EAP-Message.
+	* Add example for filtering Access-Challenge.
+	  See sites-enabled/default.
+	* Pull symlink fixes from v4.0.x.  Fixes #1859.
+	* Add systemd reload.  Not everything is reloaded, but
+	  some is.  Fixes #1662.
+	* Better documentation for listen "ipaddr".  Fixes #1921
+	* Add dictionary.cnergee, updated dictionary.nomadix.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
@@ -47,9 +56,22 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  Fixes #1879.
 	* Set Module-Failure-Message for more EAP errors.
 	* Correct typo in dictionary.rfc5580.  Fixes #1882
+	* Remove obselete systemd syslog.target.
+	* Client-Port-Balance load-balancing now uses client port.
+	* Radrelay examples fixed from Alex Clouter.
 	* Update systemd target.  Pull request #1896.
 	* Trim starting whitespace in xlat strings.
 	* Get MySQL result lengths using normal API.
+	* suid down after fchown().  Fixes #1914.
+	* Fix cases of comparing pointer to NUL character.  Fixes #1915.
+	* OpenSSL v1.1 fixes.  Pull request #1921.
+	* Better Handle v4/v6 host names.  Pull request #1919.
+	* Remove "Auth-Type = System" from docs and examples.
+	* Don't crash on malformed %{home_server}.  Fixes #1922
+	* fix erroneous use of talloc destructor in rlm_eap
+	* Issue trigger modules.sql.fail.  Fixes #1923
+	* Document python_path gotcha's.  Fixes #1845
+	* dlopen() the specific version of Python.  Fixes #1592
 
 FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
