@@ -9,6 +9,7 @@ WatchdogSec=60
 NotifyAccess=all
 PIDFile=/run/freeradius/freeradius.pid
 EnvironmentFile=-/etc/default/freeradius
+RuntimeDirectory=/var/run/freeradius
 ExecStartPre=/usr/sbin/freeradius $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStart=/usr/sbin/freeradius $FREERADIUS_OPTIONS
 Restart=on-failure

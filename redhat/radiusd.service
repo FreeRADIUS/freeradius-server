@@ -4,7 +4,9 @@ After=network.target
 Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ http://networkradius.com/doc/
 
 [Service]
-Type=forking
+Type=notify
+WatchdogSec=60
+NotifyAccess=all
 PIDFile=/var/run/radiusd/radiusd.pid
 EnvironmentFile=-/etc/sysconfig/radiusd
 RuntimeDirectory=/var/run/radiusd
