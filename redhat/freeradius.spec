@@ -617,15 +617,16 @@ fi
 %attr(755,root,root) %{_libdir}/freeradius/lib*.so*
 # RADIUS Loadable Modules
 %dir %attr(755,root,root) %{_libdir}/freeradius
-%{_libdir}/freeradius/proto_dhcp.so
-%{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_arp.so
 %{_libdir}/freeradius/proto_bfd.so
 %{_libdir}/freeradius/proto_detail.so
+%{_libdir}/freeradius/proto_dhcp.so
 %{_libdir}/freeradius/proto_radius_acct.so
 %{_libdir}/freeradius/proto_radius_auth.so
 %{_libdir}/freeradius/proto_radius_coa.so
 %{_libdir}/freeradius/proto_radius_status.so
+%{_libdir}/freeradius/proto_vmps.so
+%{_libdir}/freeradius/proto_tacacs.so
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
