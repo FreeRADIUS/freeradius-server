@@ -1,4 +1,4 @@
-.TH RADCLIENT 1 "28 March 2014" "" "FreeRADIUS Daemon"
+.TH RADCLIENT 1 "28 February 2017" "" "FreeRADIUS Daemon"
 .SH NAME
 radclient - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
@@ -124,6 +124,15 @@ can be specified. If no UDP port is specified, it is looked up in
 accounting packets, and \fBradius\fP for all other requests. If a
 service is not found in \fI/etc/services\fP, 1813 and 1812 are used
 respectively.
+
+If a host name is specified, then radclient will do a DNS lookup, and
+use the A record to find the IP address of the RADIUS server.  If
+there is no A record, then radclient will look for an AAAA record.  If
+there is no AAAA record, an error will be produced.
+
+IPv6 addresses may be specified by surrounding it in square brackets.
+For example, [2002:c000:0201:0:0:0:0:0], or with a port,
+[2002:c000:0201:0:0:0:0:0]:18120.
 
 The RADIUS attributes read by \fIradclient\fP can contain the special
 attribute \fBPacket-Dst-IP-Address\fP.  If this attribute exists, then
