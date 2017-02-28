@@ -636,7 +636,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	socket to send DHCP packets.
 	 */
 	if (request->reply->code == PW_DHCP_OFFER) {
-		VALUE_PAIR *hwvp = fr_pair_find_by_num(request->reply->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Client-Hardware-Address */
+		VALUE_PAIR *hwvp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 267, TAG_ANY); /* DHCP-Client-Hardware-Address */
 
 		if (!hwvp) return RLM_MODULE_FAIL;
 
