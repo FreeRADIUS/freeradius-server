@@ -626,7 +626,7 @@ do_port:
 	 *	input length indicates there are more than 5 chars
 	 *	after the ':' then there's an issue.
 	 */
-	if (len > ((q + sizeof(buffer)) - value)) {
+	if (len > (size_t) ((q + sizeof(buffer)) - value)) {
 	error:
 		fr_strerror_printf("IP string contains trailing garbage after port delimiter");
 		return -1;
