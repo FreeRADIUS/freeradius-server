@@ -8,7 +8,7 @@ able to patch the code to work correctly, then we invite you to join the
 development list to discuss it. If you're the type who know little about
 how to code, then this is the place for you!
 
-# You Found A Bug
+# You found a bug
 
 Where the server terminates ungracefully due to a bus error,
 segmentation violation, or other memory error, you should create
@@ -29,7 +29,7 @@ faq, please visit http://www.freeradius.org/list/users.html
 Please make sure to READ and RESPECT the house-rules. You will get much
 better response and much faster if you do!
 
-# Core Dumps
+# Core dumps
 
 If the server, or one of the accompanying programs core dumps, then
 you should rebuild the server as follows:
@@ -58,7 +58,7 @@ You can also enable the "panic_action" given in raddb/radiusd.conf.
 See the comments in that file for more details about automatically
 collecting gdb debugging information when the server crashes.
 
-# Debugging A Live Server
+# Debugging a live server
 
 If you can't get a core dump, or the problem doesn't result in a
 core dump, you may have to run the server under gdb.  To do this,
@@ -81,7 +81,7 @@ server:
 Where the "..." are the command-line arguments you normally pass to
 radiusd.  For debugging, you probably want to do:
 
-    (gdb) set args -f
+    (gdb) set args -fxx
 
 Then, do:
 
@@ -94,7 +94,7 @@ window, and you should be back at the gdb prompt:
 
 And follow the instructions in the next section.
 
-# Obtaining Useful Information
+# Obtaining useful information
 
 Once you have a core dump loaded into gdb, or FreeRADIUS running under
 gdb, you may use the commands below to get useful information about
@@ -139,7 +139,7 @@ be a number of errors related to OpenSSL, dlopen(), or libtldl.  We
 cannot do anything about those problems.  However, any errors that are
 inside of the FreeRADIUS source should be brought to our attention.
 
-# Running With "Screen"
+# Running with "Screen"
 
 If the bug is a crash of the server, and it takes a long time for the
 crash to happen, perform the following steps:
@@ -162,5 +162,5 @@ crash to happen, perform the following steps:
 * logout from screen
 
 
-FreeRADIUS Project, copyright 2014
+FreeRADIUS Project, copyright 2017
 $Id$
