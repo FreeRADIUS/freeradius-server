@@ -13,7 +13,7 @@ how to code, then this is the place for you!
 Where the server terminates ungracefully due to a bus error,
 segmentation violation, or other memory error, you should create
 a new issue in the issue tracker <URL: http://bugs.freeradius.org>,
-including information from sections 4 and 5.
+including information from the debugging sections below.
 
 For other issues, you should first discuss them on the users list,
 to see if anyone can reproduce them. Often there's a simple explanation
@@ -52,7 +52,7 @@ Enable logging in `gdb` via the following commands:
     (gdb) set logging file gdb-radiusd.log
     (gdb) set logging on
 
-and follow the instructions in section 4, below.
+and follow the instructions in the proceeding section.
 
 You can also enable the "panic_action" given in raddb/radiusd.conf.
 See the comments in that file for more details about automatically
