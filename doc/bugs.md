@@ -1,6 +1,6 @@
 # Introduction
 
-The FreeRADIUS web site is at <URL: http://www.freeradius.org>, and
+The FreeRADIUS web site is at http://www.freeradius.org, and
 most information referenced in this document can be found there.
 
 This is primarily for non-developers of the FreeRADIUS server. If you are
@@ -12,7 +12,7 @@ how to code, then this is the place for you!
 
 Where the server terminates ungracefully due to a bus error,
 segmentation violation, or other memory error, you should create
-a new issue in the issue tracker <URL: http://bugs.freeradius.org>,
+a new issue in the issue tracker http://bugs.freeradius.org,
 including information from the debugging sections below.
 
 For other issues, you should first discuss them on the users list,
