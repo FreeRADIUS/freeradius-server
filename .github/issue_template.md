@@ -6,7 +6,7 @@
 - [ ] Defect - Unexpected behaviour (obvious or verified by project member).
 - [ ] Feature request.
 
-See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/bugs) for debugging instructions.
+See [here](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/bugs.md) for debugging instructions and how to obtain backtraces.
 
 NOTE: PATCHES GO IN PULL REQUESTS.  IF YOU SUBMIT A DIFF HERE, THE DEVELOPMENT TEAM WILL HUNT YOU DOWN AND BEAT YOU OVER THE HEAD WITH YOUR OWN KEYBOARD. 
 
