@@ -43,6 +43,14 @@ extern "C" {
  */
 #define RLM_MODULE_INIT RADIUSD_MAGIC_NUMBER
 
+typedef enum {
+	DL_TYPE_MODULE = 0,	//!< Standard loadable module.
+	DL_TYPE_PROTO,		//!< Protocol module.
+	DL_TYPE_SUBMODULE	//!< Driver (or method in the case of EAP)
+} dl_module_type_t;
+
+typedef struct dl_module dl_module_t;
+
 /** Called when a module is first loaded
  *
  * Used to perform global library initialisation.
@@ -82,22 +90,41 @@ typedef void (*module_unload_t)(void);
  */
 typedef int (*module_detach_t)(void *instance);
 
+/** Callback to call when a module is first loaded
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	in module's symbol table, who's presence triggered this function.
+ * @param[in] user_ctx	passed to dl_module_init_register.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure
+ */
+typedef int (*dl_module_init_t)(dl_module_t const *module, void *symbol, void *user_ctx);
+
+
+/** Callback when a module is destroyed
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	in module's symbol table, who's presence triggered this function.
+ * @param[in] user_ctx	passed to dl_module_init_register
+ */
+typedef void (*dl_module_free_t)(dl_module_t const *module, void *symbol, void *user_ctx);
+
 /** Common fields for the interface struct modules export
  *
  */
 #define RAD_MODULE_COMMON \
 	struct { \
-		uint64_t 		magic;		\
-		char const		*name;		\
-		size_t			inst_size;	\
-		CONF_PARSER const	*config;        \
-		module_load_t		load;           \
-		module_unload_t		unload;		\
-		module_detach_t		detach;		\
+		uint64_t 			magic;		\
+		char const			*name;		\
+		size_t				inst_size;	\
+		CONF_PARSER const		*config;        \
+		module_load_t			load;           \
+		module_unload_t			unload;		\
+		module_detach_t			detach;		\
 	}
 
 /** Fields common to all types of loadable modules
- *
  */
 typedef struct dl_module_common {
 	RAD_MODULE_COMMON;
@@ -107,16 +134,26 @@ typedef struct dl_module_common {
  *
  * Contains module's dlhandle, and the functions it exports.
  */
-typedef struct dl_module {
+struct dl_module {
 	char const			*name;		//!< Name of the module e.g. sql.
+	dl_module_t const		*parent;	//!< of this module.
+	dl_module_type_t		type;		//!< The type of module.
 	dl_module_common_t const	*common;	//!< Symbol exported by the module, containing its public
 							//!< functions, name and behaviour control flags.
 	void				*handle;	//!< Handle returned by dlopen.
-} dl_module_t;
+};
+
+int			dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void *ctx);
+
+int			dl_module_sym_free_register(char const *symbol, dl_module_free_t func, void *ctx);
 
 int			dl_module_instance_data_alloc(void **out, TALLOC_CTX *ctx,
 						      dl_module_t const *module, CONF_SECTION *cs);
-dl_module_t const	*dl_module(CONF_SECTION *conf, char const *name, char const *prefix);
+
+dl_module_t const	*dl_module_by_symbol(void *sym);
+
+dl_module_t const	*dl_module(CONF_SECTION *conf, dl_module_t const *parent,
+				   char const *name, dl_module_type_t type);
 
 #ifdef __cplusplus
 }

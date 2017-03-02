@@ -790,7 +790,6 @@ cleanup:
 	return rcode;
 }
 
-
 /*
  *  Display the syntax for starting this program.
  */

@@ -42,6 +42,8 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
+extern rad_module_t rlm_sql;
+
 /*
  *	So we can do pass2 xlat checks on the queries.
  */
@@ -1081,7 +1083,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the driver
 	 */
-	inst->driver_handle = dl_module(driver_cs, name, "rlm_sql_");
+	inst->driver_handle = dl_module(driver_cs, dl_module_by_symbol(&rlm_sql), name, DL_TYPE_SUBMODULE);
 	if (!inst->driver_handle) return -1;
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_handle->common;
 
@@ -1917,7 +1919,6 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 
 
 /* globally exported name */
-extern rad_module_t rlm_sql;
 rad_module_t rlm_sql = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "sql",

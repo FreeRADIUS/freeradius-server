@@ -873,7 +873,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Load the module shared library.
 	 */
-	module = dl_module(cs, name1, "rlm_");
+	module = dl_module(cs, NULL, name1, DL_TYPE_MODULE);
 	if (!module) {
 		talloc_free(instance);
 		return NULL;

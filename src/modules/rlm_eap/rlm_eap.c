@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/dl.h>
 #include "rlm_eap.h"
 
+extern rad_module_t rlm_eap;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_config_t, default_method_name), .dflt = "md5" },
@@ -96,7 +97,7 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	/*
 	 *	Load the submodule for the specified EAP method
 	 */
-	method->submodule_handle = dl_module(cs, eap_type2name(num), "rlm_eap_");
+	method->submodule_handle = dl_module(cs, dl_module_by_symbol(&rlm_eap), eap_type2name(num), DL_TYPE_SUBMODULE);
 	if (!method->submodule_handle) return -1;
 	method->submodule = (rlm_eap_submodule_t const *)method->submodule_handle->common;
 
@@ -928,7 +929,6 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-extern rad_module_t rlm_eap;
 rad_module_t rlm_eap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "eap",

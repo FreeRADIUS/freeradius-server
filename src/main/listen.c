@@ -198,7 +198,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			value = buffer;
 		}
 
-		module = dl_module(cs, value, "proto_");
+		module = dl_module(cs, NULL, value, DL_TYPE_PROTO);
 		if (!module) return -1;
 		proto = (rad_protocol_t const *)module->common;
 

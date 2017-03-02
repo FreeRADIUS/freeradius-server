@@ -34,6 +34,8 @@ RCSID("$Id$")
 
 #include "rlm_cache.h"
 
+extern rad_module_t rlm_cache;
+
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", PW_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
 	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_cache_config_t, key) },
@@ -939,7 +941,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the appropriate driver for our backend
 	 */
-	inst->driver_handle = dl_module(driver_cs, name, "rlm_cache_");
+	inst->driver_handle = dl_module(driver_cs, dl_module_by_symbol(&rlm_cache), name, DL_TYPE_SUBMODULE);
 	if (!inst->driver_handle) return -1;
 
 	inst->driver = (cache_driver_t const *)inst->driver_handle->common;
@@ -1003,7 +1005,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_cache;
 rad_module_t rlm_cache = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "cache",
