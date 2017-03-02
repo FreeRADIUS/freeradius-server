@@ -4778,6 +4778,16 @@ static void event_socket_error(NDEBUG_UNUSED fr_event_list_t *xel, int fd, void 
 
 	rad_assert(xel == el);
 
+	/*
+	 *	No error callback.  Just delete the listener.
+	 */
+	if (!listener->error) {
+		listener->status = RAD_LISTEN_STATUS_EOL;
+		fr_event_fd_delete(el, listener->fd);
+		return;
+	}
+
+
 	listener->error(listener, fd);
 }
 
