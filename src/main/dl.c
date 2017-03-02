@@ -101,11 +101,13 @@ static int dl_module_sym_init_cmp(void const *one, void const *two)
 	dl_module_sym_init_t const *a = one;
 	dl_module_sym_init_t const *b = two;
 
+	rad_assert(a && b);
+
 	if (a->symbol && !b->symbol) return +1;
 	if (!b->symbol && a->symbol) return -1;
-	if (!a->symbol && !b->symbol) return 0;
+	if (a->symbol && b->symbol) return strcmp(a->symbol, b->symbol);
 
-	return strcmp(a->symbol, b->symbol);
+	return 0;
 }
 
 static int dl_module_sym_free_cmp(void const *one, void const *two)
@@ -113,11 +115,13 @@ static int dl_module_sym_free_cmp(void const *one, void const *two)
 	dl_module_sym_free_t const *a = one;
 	dl_module_sym_free_t const *b = two;
 
+	rad_assert(a && b);
+
 	if (a->symbol && !b->symbol) return +1;
 	if (!b->symbol && a->symbol) return -1;
-	if (!a->symbol && !b->symbol) return 0;
+	if (a->symbol && b->symbol) strcmp(a->symbol, b->symbol);
 
-	return strcmp(a->symbol, b->symbol);
+	return 0;
 }
 
 static int dl_module_sym_cmp(void const *one, void const *two)
