@@ -103,7 +103,7 @@ static int dl_module_sym_init_cmp(void const *one, void const *two)
 
 	if (a->symbol && !b->symbol) return +1;
 	if (!b->symbol && a->symbol) return -1;
-	if (a->symbol && b->symbol) return 0;
+	if (!a->symbol && !b->symbol) return 0;
 
 	return strcmp(a->symbol, b->symbol);
 }
@@ -115,7 +115,7 @@ static int dl_module_sym_free_cmp(void const *one, void const *two)
 
 	if (a->symbol && !b->symbol) return +1;
 	if (!b->symbol && a->symbol) return -1;
-	if (a->symbol && b->symbol) return 0;
+	if (!a->symbol && !b->symbol) return 0;
 
 	return strcmp(a->symbol, b->symbol);
 }
