@@ -139,28 +139,26 @@ be a number of errors related to OpenSSL, dlopen(), or libtldl.  We
 cannot do anything about those problems.  However, any errors that are
 inside of the FreeRADIUS source should be brought to our attention.
 
-# Running with "Screen"
+# Running with ``screen``
 
 If the bug is a crash of the server, and it takes a long time for the
 crash to happen, perform the following steps:
 
-* log in as root
-* open a screen session (https://www.gnu.org/software/screen/)
-  `$ screen bash`
-* make sure FreeRADIUS is not running
-* make sure you have all the debug symbols about, or a debugable
-  version of the server installed
-* configure screen to log to a file; `Ctrl-A H`
-* type `gdb /path/to/radius`  (or /path/to/freeradius on Debian)
-* at the `(gdb)` prompt, type `run -X`
-* detach from screen `Ctrl-A D`
-* when you notice FreeRADIUS has died, reconnect to your screen session
-  `$ screen -D -r`
-* at the `(gdb)` prompt type `where` or for *lots* of info try
-  `thread apply all bt full`
-* tell screen to stop logging, `Ctrl-A H`
-* logout from screen
+* Log in as root.
+* Open a screen session (https://www.gnu.org/software/screen/) `$ screen bash`.
+* Make sure FreeRADIUS is not running.
+* Make sure you have all the debug symbols about, or a debugable
+  version of the server installed (one built with ``--enable developer``).
+* Configure screen to log to a file; <kbd>Ctrl</kbd>+<kbd>a</kbd>,<kbd>h</kbd>
+* Type `gdb /path/to/radius`  (or /path/to/freeradius on Debian).
+* At the `(gdb)` prompt, type `run -X`.
+* Detach from screen <kbd>Ctrl</kbd>+<kbd>a</kbd>,<kbd>d</kbd>.
+* When you notice FreeRADIUS has died, reconnect to your screen session
+  `$ screen -D -r`.
+* At the `(gdb)` prompt type `where` or for *lots* of info try
+  `thread apply all bt full`.
+* Tell screen to stop logging, <kbd>Ctrl</kbd>+<kbd>a</kbd>,<kbd>h</kbd>.
+* Logout from screen.
 
 
 FreeRADIUS Project, copyright 2017
-$Id$
