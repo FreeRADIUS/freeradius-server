@@ -2444,18 +2444,6 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
  * is called when refcount > 0 sometimes, if another thread
  * is using the session
  */
-static void sess_free_vps(UNUSED void *parent, void *data_ptr,
-				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-				UNUSED long argl, UNUSED void *argp)
-{
-	VALUE_PAIR *vp = data_ptr;
-	if (!vp) return;
-
-	DEBUG2(LOG_PREFIX ": Freeing cached session VPs");
-
-	fr_pair_list_free(&vp);
-}
-
 static void sess_free_certs(UNUSED void *parent, void *data_ptr,
 				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
 				UNUSED long argl, UNUSED void *argp)
@@ -2900,7 +2888,7 @@ post_ca:
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (fr_tls_ex_index_vps < 0)
-			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
+			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
 
 	/*
