@@ -3696,7 +3696,10 @@ static void home_trigger(home_server_t *home, char const *trigger)
 
 static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 {
+	home_state_t old_state;
 	char buffer[INET6_ADDRSTRLEN];
+
+	old_state = home->state;
 
 	home->state = HOME_STATE_ALIVE;
 	home->response_timeouts = 0;
@@ -3708,11 +3711,19 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 
 	fr_event_timer_delete(el, &home->ev);
 
-	RPROXY("Marking home server %s port %d alive",
-	       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-			 &request->proxy->packet->dst_ipaddr.ipaddr,
-			 buffer, sizeof(buffer)),
-	       request->proxy->packet->dst_port);
+	if (old_state == HOME_STATE_UNKNOWN) {
+		RPROXY("Home server %s port %d went from idle -> alive",
+		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
+				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->packet->dst_port);
+	} else {
+		RPROXY("Marking home server %s port %d alive",
+		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
+				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->packet->dst_port);
+	}
 }
 
 
