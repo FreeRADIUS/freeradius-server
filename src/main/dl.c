@@ -88,10 +88,30 @@ static FR_NAME_NUMBER const dl_type_prefix[] = {
  */
 char const *radlib_dir = NULL;
 
-static rbtree_t *dl_module_sym_init_tree = NULL;
-static rbtree_t *dl_module_sym_free_tree = NULL;
-static rbtree_t *dl_module_sym_tree = NULL;
-static rbtree_t *dl_handle_tree = NULL;
+/** Linked list of symbol initialisation callbacks
+ *
+ * @note Is linked list to retain insertion order.  We don't expect huge numbers
+ *	of callbacks so there shouldn't be efficiency issues.
+ */
+static dl_module_sym_init_t	*dl_module_sym_init = NULL;
+
+/** Linked list of symbol free callbacks
+ *
+ * @note Is linked list to retain insertion order.  We don't expect huge numbers
+ *	of callbacks so there shouldn't be efficiency issues.
+ */
+static dl_module_sym_free_t	*dl_module_sym_free = NULL;
+
+/** Tree to map main symbol to dl_handle_t
+ *
+ * Used by modules to get their own dl_handle_t for loading submodules.
+ */
+static rbtree_t			*dl_module_sym_tree = NULL;
+
+/** Tree of any shared objects loaded
+ *
+ */
+static rbtree_t			*dl_handle_tree = NULL;
 
 static int dl_init(void);
 static void dl_free(void);
@@ -102,6 +122,9 @@ static int dl_module_sym_init_cmp(void const *one, void const *two)
 	dl_module_sym_init_t const *b = two;
 
 	rad_assert(a && b);
+
+	if ((void *)a->func > (void *)b->func) return +1;
+	if ((void *)a->func < (void *)b->func) return -1;
 
 	if (a->symbol && !b->symbol) return +1;
 	if (!b->symbol && a->symbol) return -1;
@@ -116,6 +139,9 @@ static int dl_module_sym_free_cmp(void const *one, void const *two)
 	dl_module_sym_free_t const *b = two;
 
 	rad_assert(a && b);
+
+	if ((void *)a->func > (void *)b->func) return +1;
+	if ((void *)a->func < (void *)b->func) return -1;
 
 	if (a->symbol && !b->symbol) return +1;
 	if (!b->symbol && a->symbol) return -1;
@@ -397,32 +423,30 @@ int dl_module_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_module_t cons
  *
  * This cuts down the amount of boilerplate code in 'mod_load' functions.
  *
- * @param[in] ctx	The dl_module handle to operate on.
- * @param[in] data	The callback to call.
+ * @param[in] dl_module	to search for symbols in.
  * @return
  *	- 0 continue walking.
  *	- -1 error.
  */
-static int _dl_module_sym_init_walk(void *ctx, void *data)
+static int dl_module_sym_init_walk(dl_module_t const *dl_module)
 {
-	dl_module_sym_init_t	*head = talloc_get_type_abort(data, dl_module_sym_init_t), *init;
-	dl_module_t		*dl_module = talloc_get_type_abort(ctx, dl_module_t);
-	void			*sym = NULL;
+	dl_module_sym_init_t	*init;
 	fr_cursor_t		cursor;
+	void			*sym = NULL;
 
-	if (head->symbol) {
-		char		*sym_name = NULL;
-
-		MEM(sym_name = talloc_asprintf(NULL, "%s_%s", dl_module->name, head->symbol));
-		sym = dlsym(dl_module->handle, sym_name);
-		talloc_free(sym_name);
-
-		if (!sym) return 0;
-	}
-
-	for (init = fr_cursor_talloc_init(&cursor, &head, dl_module_sym_init_t);
+	for (init = fr_cursor_init(&cursor, &dl_module_sym_init);
 	     init;
 	     init = fr_cursor_next(&cursor)) {
+		if (init->symbol) {
+			char *sym_name = NULL;
+
+			MEM(sym_name = talloc_asprintf(NULL, "%s_%s", dl_module->name, init->symbol));
+			sym = dlsym(dl_module->handle, sym_name);
+			talloc_free(sym_name);
+
+			if (!sym) continue;
+		}
+
 		if (init->func(dl_module, sym, init->ctx) < 0) return -1;
 	}
 
@@ -431,41 +455,34 @@ static int _dl_module_sym_init_walk(void *ctx, void *data)
 
 /** Walk over the registered init callbacks, searching for the symbols they depend on
  *
- * Allows code outside of the dl API to register initialisation functions that get
+ * Allows code outside of the dl API to register free functions that get
  * executed depending on whether the module exports a particular symbol.
  *
  * This cuts down the amount of boilerplate code in 'mod_unload' functions.
  *
- * @param[in] ctx	The dl_module handle to operate on.
- * @param[in] data	The callback to call.
- * @return
- *	- 0 continue walking.
- *	- -1 found suitable node.
+ * @param[in] dl_module	to search for symbols in.
  */
-static int _dl_module_sym_free_walk(void *ctx, void *data)
+static void dl_module_sym_free_walk(dl_module_t const *dl_module)
 {
-	dl_module_sym_free_t	*head = talloc_get_type_abort(data, dl_module_sym_free_t), *free;
-	dl_module_t		*dl_module = talloc_get_type_abort(ctx, dl_module_t);
-	void			*sym = NULL;
+	dl_module_sym_free_t	*free;
 	fr_cursor_t		cursor;
+	void			*sym = NULL;
 
-	if (head->symbol) {
-		char		*sym_name = NULL;
-
-		MEM(sym_name = talloc_asprintf(NULL, "%s_%s", dl_module->name, head->symbol));
-		sym = dlsym(dl_module->handle, sym_name);
-		talloc_free(sym_name);
-
-		if (!sym) return 0;
-	}
-
-	for (free = fr_cursor_talloc_init(&cursor, &head, dl_module_sym_init_t);
+	for (free = fr_cursor_init(&cursor, &dl_module_sym_free);
 	     free;
 	     free = fr_cursor_next(&cursor)) {
+		if (free->symbol) {
+			char *sym_name = NULL;
+
+			MEM(sym_name = talloc_asprintf(NULL, "%s_%s", dl_module->name, free->symbol));
+			sym = dlsym(dl_module->handle, sym_name);
+			talloc_free(sym_name);
+
+			if (!sym) continue;
+		}
+
 		free->func(dl_module, sym, free->ctx);
 	}
-
-	return 0;
 }
 
 /** Free a module
@@ -481,7 +498,7 @@ static int _dl_module_free(dl_module_t *dl_module)
 
 	DEBUG3("Unloading module \"%s\" (%p/%p)", dl_module->name, dl_module->handle, dl_module->common);
 
-	rbtree_walk(dl_module_sym_free_tree, RBTREE_IN_ORDER, _dl_module_sym_free_walk, dl_module);
+	dl_module_sym_free_walk(dl_module);
 
 	/*
 	 *	Only dlclose() handle if we're *NOT* running under valgrind
@@ -501,6 +518,8 @@ static int _dl_module_free(dl_module_t *dl_module)
 
 /** Register a callback to execute when a module is first loaded
  *
+ * @note Will replace ctx data for callbacks with the same symbol/func.
+ *
  * @param[in] symbol	that determines whether func should be called. "<modname>_" is
  *			added as a prefix to the symbol.  The prefix is added because
  *			some modules are loaded with RTLD_GLOBAL into the global symbol
@@ -514,28 +533,45 @@ static int _dl_module_free(dl_module_t *dl_module)
  */
 int dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void *ctx)
 {
-	dl_module_sym_init_t find, *found, *new;
+	dl_module_sym_init_t	*new;
+	fr_cursor_t		cursor;
 
-	MEM(new = talloc(dl_module_sym_init_tree, dl_module_sym_init_t));
+	dl_module_sym_init_unregister(symbol, func);
+
+	MEM(new = talloc(NULL, dl_module_sym_init_t));
 	new->symbol = symbol;
 	new->func = func;
 	new->ctx = ctx;
 
-	find.symbol = symbol;
-	find.func = func;
-
-	found = rbtree_finddata(dl_module_sym_init_tree, &find);
-	if (found) {
-		new->next = found;
-		rbtree_deletebydata(dl_module_sym_init_tree, found);
-	}
-
-	rbtree_insert(dl_module_sym_init_tree, new);
+	fr_cursor_init(&cursor, &dl_module_sym_init);
+	fr_cursor_append(&cursor, new);
 
 	return 0;
 }
 
-/** Register a callback to execute when a module is first loaded
+/** Unregister an callback that was to be executed when a module was first loaded
+ *
+ * @param[in] symbol	the callback is attached to.
+ * @param[in] func	the callback.
+ */
+void dl_module_sym_init_unregister(char const *symbol, dl_module_init_t func)
+{
+	dl_module_sym_init_t	*found, find;
+	fr_cursor_t		cursor;
+
+	find.symbol = symbol;
+	find.func = func;
+
+	for (found = fr_cursor_init(&cursor, &dl_module_sym_init);
+	     found && (dl_module_sym_init_cmp(&find, found) != 0);
+	     found = fr_cursor_next(&cursor));
+
+	if (found) talloc_free(fr_cursor_remove(&cursor));
+}
+
+/** Register a callback to execute when a module is unloaded
+ *
+ * @note Will replace ctx data for callbacks with the same symbol/func.
  *
  * @param[in] symbol	that determines whether func should be called. "<modname>_" is
  *			added as a prefix to the symbol.  The prefix is added because
@@ -550,24 +586,39 @@ int dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void 
  */
 int dl_module_sym_free_register(char const *symbol, dl_module_free_t func, void *ctx)
 {
-	dl_module_sym_free_t find, *found, *new;
+	dl_module_sym_free_t	*new;
+	fr_cursor_t		cursor;
 
-	MEM(new = talloc(dl_module_sym_free_tree, dl_module_sym_free_t));
+	dl_module_sym_free_unregister(symbol, func);
+
+	MEM(new = talloc(NULL, dl_module_sym_free_t));
 	new->symbol = symbol;
 	new->func = func;
 	new->ctx = ctx;
+	fr_cursor_init(&cursor, &dl_module_sym_free);
+	fr_cursor_append(&cursor, new);
+
+	return 0;
+}
+
+/** Unregister an callback that was to be executed when a module was unloaded
+ *
+ * @param[in] symbol	the callback is attached to.
+ * @param[in] func	the callback.
+ */
+void dl_module_sym_free_unregister(char const *symbol, dl_module_free_t func)
+{
+	dl_module_sym_free_t	*found, find;
+	fr_cursor_t		cursor;
 
 	find.symbol = symbol;
 	find.func = func;
-	found = rbtree_finddata(dl_module_sym_free_tree, &find);
-	if (found) {
-		new->next = found;
-		rbtree_deletebydata(dl_module_sym_free_tree, found);
-	}
 
-	rbtree_insert(dl_module_sym_free_tree, new);
+	for (found = fr_cursor_init(&cursor, &dl_module_sym_free);
+	     found && (dl_module_sym_free_cmp(&find, found) != 0);
+	     found = fr_cursor_next(&cursor));
 
-	return 0;
+	if (found) talloc_free(fr_cursor_remove(&cursor));
 }
 
 /** Lookup a dl_module_t via its public symbol
@@ -674,7 +725,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	Call initialisation functions
 	 */
-	if (rbtree_walk(dl_module_sym_init_tree, RBTREE_IN_ORDER, _dl_module_sym_init_walk, dl_module) < 0) {
+	if (dl_module_sym_init_walk(dl_module) < 0) {
 		cf_log_err_cs(conf, "Module initialisation failed \"%s\"", module_name);
 		goto error;
 	}
@@ -699,23 +750,11 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
  */
 static int dl_init(void)
 {
-	if (dl_handle_tree && dl_module_sym_init_tree) return 0;
+	if (dl_handle_tree) return 0;
 
 	dl_handle_tree = rbtree_create(NULL, dl_handle_cmp, NULL, 0);
 	if (!dl_handle_tree) {
 		ERROR("Failed initialising dl_handle_tree");
-		return -1;
-	}
-
-	dl_module_sym_init_tree = rbtree_create(NULL, dl_module_sym_init_cmp, NULL, 0);
-	if (!dl_module_sym_init_tree) {
-		ERROR("Failed initialising dl_module_sym_init_tree");
-		return -1;
-	}
-
-	dl_module_sym_free_tree = rbtree_create(NULL, dl_module_sym_free_cmp, NULL, 0);
-	if (!dl_module_sym_free_tree) {
-		ERROR("Failed initialising dl_module_sym_init_tree");
 		return -1;
 	}
 
@@ -740,8 +779,21 @@ static int dl_init(void)
 
 static void dl_free(void)
 {
+	fr_cursor_t cursor;
+	dl_module_sym_init_t *init;
+	dl_module_sym_free_t *free;
+
 	talloc_free(dl_handle_tree);
-	talloc_free(dl_module_sym_init_tree);
-	talloc_free(dl_module_sym_free_tree);
 	talloc_free(dl_module_sym_tree);
+
+	/*
+	 *	Free any registered callbacks
+	 */
+	for (init = fr_cursor_init(&cursor, &dl_module_sym_init);
+	     init;
+	     init = fr_cursor_next(&cursor)) talloc_free(fr_cursor_remove(&cursor));
+
+	for (free = fr_cursor_init(&cursor, &dl_module_sym_free);
+	     free;
+	     free = fr_cursor_next(&cursor)) talloc_free(fr_cursor_remove(&cursor));
 }

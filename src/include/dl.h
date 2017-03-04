@@ -145,7 +145,11 @@ struct dl_module {
 
 int			dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void *ctx);
 
+void			dl_module_sym_init_unregister(char const *symbol, dl_module_init_t func);
+
 int			dl_module_sym_free_register(char const *symbol, dl_module_free_t func, void *ctx);
+
+void			dl_module_sym_free_unregister(char const *symbol, dl_module_free_t func);
 
 int			dl_module_instance_data_alloc(void **out, TALLOC_CTX *ctx,
 						      dl_module_t const *module, CONF_SECTION *cs);
