@@ -3820,7 +3820,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
  *	- The vendor.
  *	- NULL if no vendor with that name was regitered for this protocol.
  */
-int fr_dict_vendor_by_name(fr_dict_t *dict, char const *name)
+int fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name)
 {
 	fr_dict_vendor_t *dv;
 	size_t buffer[(sizeof(*dv) + FR_DICT_VENDOR_MAX_NAME_LEN + sizeof(size_t) - 1) / sizeof(size_t)];
@@ -3846,7 +3846,7 @@ int fr_dict_vendor_by_name(fr_dict_t *dict, char const *name)
  *	- The vendor.
  *	- NULL if no vendor with that number was regitered for this protocol.
  */
-fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t *dict, int vendorpec)
+fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, int vendorpec)
 {
 	fr_dict_vendor_t dv;
 
@@ -3888,7 +3888,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
  *	- NULL if vendor does not exist.
  *	- A fr_dict_attr_t representing the vendor in the dictionary hierarchy.
  */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int vendor_root, unsigned int vendor)
+fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned int vendor_root, unsigned int vendor)
 {
 	fr_dict_attr_t const *da;
 
@@ -3951,7 +3951,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int v
  * 	- Attribute matching name.
  *  	- NULL if no matching attribute could be found.
  */
-fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name)
+fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t const *dict, char const **name)
 {
 	fr_dict_attr_t *find;
 	fr_dict_attr_t const *da;
@@ -3998,7 +3998,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **
  * 	- Attribute matching name.
  * 	- NULL if no matching attribute could be found.
  */
-fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t *dict, char const *name)
+fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *name)
 {
 	fr_dict_attr_t *da;
 	uint32_t buffer[(sizeof(*da) + FR_DICT_ATTR_MAX_NAME_LEN + 3) / 4];

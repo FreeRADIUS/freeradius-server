@@ -221,17 +221,18 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 /*
  *	Lookup
  */
-int			fr_dict_vendor_by_name(fr_dict_t *dict, char const *name);
+int			fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name);
 
-fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t *dict, int vendor);
+fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, int vendor);
 
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 
-fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_t *dict, unsigned int vendor_root, unsigned int vendor);
+fr_dict_attr_t const	*fr_dict_vendor_attr_by_num(fr_dict_t const *dict,
+						    unsigned int vendor_root, unsigned int vendor);
 
-fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name);
+fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t const *dict, char const **name);
 
-fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t *dict, char const *attr);
+fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *attr);
 
 fr_dict_attr_t const	*fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr);
 
