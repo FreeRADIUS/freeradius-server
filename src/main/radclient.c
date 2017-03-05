@@ -1625,17 +1625,17 @@ int main(int argc, char **argv)
 	dict_free();
 
 	if (do_summary) {
-		DEBUG("Packet summary:\n"
-		      "\tAccepted      : %" PRIu64 "\n"
-		      "\tRejected      : %" PRIu64 "\n"
-		      "\tLost          : %" PRIu64 "\n"
-		      "\tPassed filter : %" PRIu64 "\n"
-		      "\tFailed filter : %" PRIu64,
-		      stats.accepted,
-		      stats.rejected,
-		      stats.lost,
-		      stats.passed,
-		      stats.failed
+		printf("Packet summary:\n"
+		       "\tAccepted      : %" PRIu64 "\n"
+		       "\tRejected      : %" PRIu64 "\n"
+		       "\tLost          : %" PRIu64 "\n"
+		       "\tPassed filter : %" PRIu64 "\n"
+		       "\tFailed filter : %" PRIu64,
+		       stats.accepted,
+		       stats.rejected,
+		       stats.lost,
+		       stats.passed,
+		       stats.failed
 		);
 	}
 
