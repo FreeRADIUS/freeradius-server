@@ -28,6 +28,7 @@ FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	  some is.  Fixes #1662.
 	* Better documentation for listen "ipaddr".  Fixes #1921
 	* Add dictionary.cnergee, updated dictionary.nomadix.
+	* radclient no longer needs -x to print statistics with -s.
 
 	Bug fixes
 	* Minor typos.  Fixes #1763
