@@ -683,7 +683,6 @@ fi
 %{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{_libdir}/freeradius/rlm_example.so
-%{_libdir}/freeradius/rlm_smsotp.so
 %endif
 
 %files config

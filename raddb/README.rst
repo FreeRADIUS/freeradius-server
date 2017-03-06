@@ -103,7 +103,6 @@ module's ``pool {}`` section.
 
 The following modules should honour ``connect_timeout``:
 
-- rlm_smsotp
 - rlm_rest
 - rlm_linelog (network connections only)
 - rlm_ldap
