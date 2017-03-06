@@ -1630,7 +1630,7 @@ int main(int argc, char **argv)
 		       "\tRejected      : %" PRIu64 "\n"
 		       "\tLost          : %" PRIu64 "\n"
 		       "\tPassed filter : %" PRIu64 "\n"
-		       "\tFailed filter : %" PRIu64,
+		       "\tFailed filter : %" PRIu64 "\n",
 		       stats.accepted,
 		       stats.rejected,
 		       stats.lost,
