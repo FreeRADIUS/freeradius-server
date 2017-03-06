@@ -391,7 +391,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	entry->cleanup = now + state->timeout;
 
 	/*
-	 *	Some modules like rlm_otp create their own magic
+	 *	Some modules create their own magic
 	 *	state attributes.  If a state value already exists
 	 *	int the reply, we use that in preference to the
 	 *	old state.
