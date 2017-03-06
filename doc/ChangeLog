@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.13 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
+FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Add dictionary.rfc7930.  Note that we do not implement
 	  the RFC.
