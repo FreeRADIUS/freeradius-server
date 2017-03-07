@@ -56,7 +56,7 @@ typedef enum {
  *	- 0 success.
  *	- -1 on failure.
  */
-static time_t ocsp_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1){
+static int ocsp_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1){
 	struct		tm t;
 	char const	*p = (char const *)asn1->data, *end = p + strlen(p);
 
@@ -103,8 +103,9 @@ static time_t ocsp_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1){
 	t.tm_sec = (*(p++) - '0') * 10;
 	t.tm_sec += (*(p++) - '0');
 
-	/* Apparently OpenSSL converts all timestamps to UTC? Maybe? */
-	*out = mktime(&t);
+	/* ASN1_TIME is UTC, but mktime will treat it as being in the local timezone */
+	*out = mktime(&t) + timezone;
+
 	return 0;
 }
 

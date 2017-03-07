@@ -69,6 +69,8 @@ static uint64_t abs_started;
  */
 int fr_time_start(void)
 {
+	tzset();	/* Populate timezone, daylight and tzname globals */
+
 	(void) gettimeofday(&tm_started, NULL);
 
 #ifdef HAVE_CLOCK_GETTIME
