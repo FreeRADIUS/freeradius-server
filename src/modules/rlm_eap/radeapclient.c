@@ -468,6 +468,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 		/*
 		 *	Keep a copy of the the password attribute.
 		 */
+		case PW_CLEARTEXT_PASSWORD:
 		case PW_USER_PASSWORD:
 		case PW_CHAP_PASSWORD:
 		case PW_MS_CHAP_PASSWORD:
