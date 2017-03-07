@@ -3139,6 +3139,61 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	return conf;
 }
 
+/** Convert OpenSSL's ASN1_TIME to an epoch time
+ *
+ * @param[out] out	Where to write the time_t.
+ * @param[in] asn1	The ASN1_TIME to convert.
+ * @return
+ *	- 0 success.
+ *	- -1 on failure.
+ */
+static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
+{
+	struct		tm t;
+	char const	*p = asn1, *end = p + strlen(p);
+
+	memset(&t, 0, sizeof(t));
+
+	if ((end - p) <= 12) {
+		if ((end - p) < 2) {
+			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
+					   end - p);
+			return -1;
+		}
+
+		t.tm_year = (*(p++) - '0') * 10;
+		t.tm_year += (*(p++) - '0');
+		if (t.tm_year < 70) t.tm_year += 100;
+	} else {
+		t.tm_year = (*(p++) - '0') * 1000;
+		t.tm_year += (*(p++) - '0') * 100;
+		t.tm_year += (*(p++) - '0') * 10;
+		t.tm_year += (*(p++) - '0');
+		t.tm_year -= 1900;
+	}
+
+	if ((end - p) < 10) {
+		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
+				   end - p);
+		return -1;
+	}
+
+	t.tm_mon = (*(p++) - '0') * 10;
+	t.tm_mon += (*(p++) - '0') - 1; // -1 since January is 0 not 1.
+	t.tm_mday = (*(p++) - '0') * 10;
+	t.tm_mday += (*(p++) - '0');
+	t.tm_hour = (*(p++) - '0') * 10;
+	t.tm_hour += (*(p++) - '0');
+	t.tm_min = (*(p++) - '0') * 10;
+	t.tm_min += (*(p++) - '0');
+	t.tm_sec = (*(p++) - '0') * 10;
+	t.tm_sec += (*(p++) - '0');
+
+	/* Apparently OpenSSL converts all timestamps to UTC? Maybe? */
+	*out = timegm(&t);
+	return 0;
+}
+
 int tls_success(tls_session_t *ssn, REQUEST *request)
 {
 	VALUE_PAIR *vp, *vps = NULL;
@@ -3216,6 +3271,36 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 *	Save the certs in the packet, so that we can see them.
 			 */
 			fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *certs));
+
+
+			vp = fr_pair_find_by_num(request->packet->vps, PW_TLS_CLIENT_CERT_EXPIRATION, 0, TAG_ANY);
+			if (vp) {
+				time_t expires;
+
+				if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
+					RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s", buffer);
+					SSL_CTX_remove_session(ssn->ctx, ssn->ssl_session);
+					return -1;
+				}
+
+				if (expires <= request->timestamp) {
+					RDEBUG2("Certificate has expired, removing cache entry for session %s", buffer);
+					SSL_CTX_remove_session(ssn->ctx, ssn->ssl_session);
+					return -1;
+				}
+
+				/*
+				 *	Account for Session-Timeout, if it's available.
+				 */
+				vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+				if (vp) {
+					if ((request->timestamp + vp->vp_integer) > expires) {
+						vp->vp_integer = expires - request->timestamp;
+						RWDEBUG2("Updating Session-Timeout to %u, due to impending certificate expiration",
+							 vp->vp_integer);
+					}
+				}
+			}
 		}
 
 		if (vps) {
