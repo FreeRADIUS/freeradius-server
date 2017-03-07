@@ -22,16 +22,19 @@
 #  dictionary attacks, therefore should be chosen as a "random"
 #  string and kept secret.
 #
-targeted_id_salt = "changeme"
+#  If you use special characters %, { and }, escape them with a \ first
+#
+targeted_id_salt = 'changeme'
+
 #
 #  Moonshot namespaces
 #  These namespaces are used for UUID generation.
 #  They should not be changed by implementors
 #
-moonshot_host_namespace = "a574a04e-b7ff-4850-aa24-a8599c7de1c6"
-moonshot_realm_namespace = "dea5f26d-a013-4444-977d-d09fc990d2e6"
-moonshot_coi_namespace = "145d7e7e-7d54-43ee-bbcb-3c6ad9428247"
- 
+moonshot_host_namespace = 'a574a04e-b7ff-4850-aa24-a8599c7de1c6'
+moonshot_realm_namespace = 'dea5f26d-a013-4444-977d-d09fc990d2e6'
+moonshot_coi_namespace = '145d7e7e-7d54-43ee-bbcb-3c6ad9428247'
+
 #  This policy generates a host-specific targeted ID
 #
 moonshot_host_tid.post-auth {
@@ -41,6 +44,13 @@ moonshot_host_tid.post-auth {
 		if ("%{echo:/usr/bin/uuid -v 5 ${policy.moonshot_host_namespace} %{tolower:%{User-Name}}${policy.targeted_id_salt}%{tolower:%{outer.request:GSS-Acceptor-Host-Name}}}" =~ /^([^ ]+)([ ]*)$/) {
 			update outer.session-state {
 				Moonshot-Host-TargetedId := "%{1}@%{tolower:%{request:Realm}}"
+			}
+			if (&outer.session-state:Moonshot-Host-TargetedId =~ /([\%\{\}]+)/) {
+				update outer.session-state {
+					Moonshot-Host-TargetedId !* ANY
+					Module-Failure-Message = 'Invalid Moonshot-Host-TargetedId, check your targeted_id_salt!'
+				}
+				reject
 			}
 		}
 	}
@@ -55,6 +65,13 @@ moonshot_realm_tid.post-auth {
 			update outer.session-state {
 				Moonshot-Realm-TargetedId := "%{1}@%{tolower:%{request:Realm}}"
 			}
+			if (&outer.session-state:Moonshot-Realm-TargetedId =~ /([\%\{\}]+)/) {
+				update outer.session-state {
+					Moonshot-Realm-TargetedId !* ANY
+					Module-Failure-Message = 'Invalid Moonshot-Realm-TargetedId, check your targeted_id_salt!'
+				}
+				reject
+			}
 		}
 	}
 }
@@ -67,6 +84,13 @@ moonshot_coi_tid.post-auth {
 		if ("%{echo:/usr/bin/uuid -v 5 ${policy.moonshot_coi_namespace} %{tolower:%{User-Name}}${policy.targeted_id_salt}%{tolower:%{outer.request:Trust-Router-COI}}}" =~ /^([^ ]+)([ ]*)$/) {
 			update outer.session-state {
 				Moonshot-TR-COI-TargetedId := "%{1}@%{tolower:%{request:Realm}}"
+			}
+			if (&outer.session-state:Moonshot-TR-COI-TargetedId =~ /([\%\{\}]+)/) {
+				update outer.session-state {
+					Moonshot-TR-COI-TargetedId !* ANY
+					Module-Failure-Message = 'Invalid Moonshot-TR-COI-TargetedId, check your targeted_id_salt!'
+				}
+				reject
 			}
 		}
 	}
