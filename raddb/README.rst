@@ -76,8 +76,8 @@ ordering when the modules are loaded.
 
 Modules can be enabled by creating a soft link.  For module ``foo``, do::
 
-  $ cd raddb
-  $ ln -s mods-available/foo mods-enabled/foo
+  $ cd raddb/mods-enabled
+  $ ln -s ../mods-available/foo
 
 To create "local" versions of the modules, we suggest copying the file
 instead.  This leaves the original file (with documentation) in the
