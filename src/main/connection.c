@@ -357,7 +357,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	if ((pool->state.num + pool->state.pending) >= pool->max) {
 		pthread_mutex_unlock(&pool->mutex);
 
-		ROPTIONAL(RERROR, ERROR, "Cannot open new connection, already at max");
+		ROPTIONAL(RERROR, ERROR, "%s: Cannot open new connection, already at max", pool->log_prefix);
 		return NULL;
 	}
 
@@ -377,8 +377,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 		pthread_mutex_unlock(&pool->mutex);
 
 		if (!RATE_LIMIT_ENABLED || complain) {
-			ROPTIONAL(RERROR, ERROR, "Last connection attempt failed, waiting %d seconds before retrying",
-				  (int)((pool->state.last_failed + pool->retry_delay) - now));
+			ROPTIONAL(RERROR, ERROR, "%s: Last connection attempt failed, waiting %d seconds before retrying",
+				  pool->log_prefix, (int)((pool->state.last_failed + pool->retry_delay) - now));
 		}
 
 		return NULL;
@@ -389,7 +389,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 */
 	if (pool->state.pending > pool->pending_window) {
 		pthread_mutex_unlock(&pool->mutex);
-		RATE_LIMIT(ROPTIONAL(RWARN, WARN, "Cannot open a new connection due to rate limit after failure"));
+		RATE_LIMIT(ROPTIONAL(RWARN, WARN, "%s: Cannot open a new connection due to rate limit after failure", pool->log_prefix));
 
 		return NULL;
 	}
@@ -418,8 +418,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 */
 	pending_window = (pool->max - pool->state.num);
 	if (pool->pending_window < pending_window) pending_window = pool->pending_window;
-	ROPTIONAL(RDEBUG, DEBUG, "Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
-		  number, pool->state.pending, pending_window);
+	ROPTIONAL(RDEBUG, DEBUG, "%s: Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
+		  pool->log_prefix, number, pool->state.pending, pending_window);
 
 	/*
 	 *	Allocate a new top level ctx for the create callback
@@ -436,7 +436,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 */
 	conn = pool->create(ctx, pool->opaque, &pool->connect_timeout);
 	if (!conn) {
-		ROPTIONAL(RERROR, ERROR, "Opening connection failed (%" PRIu64 ")", number);
+		ROPTIONAL(RERROR, ERROR, "%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, number);
 
 		pool->state.last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
@@ -599,11 +599,11 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	if (this->in_use) return 1;
 
 	if (this->needs_reconnecting) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Closing expired connection (%" PRIu64 "): Needs reconnecting",
-			  this->number);
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s: Closing expired connection (%" PRIu64 "): Needs reconnecting",
+			  pool->log_prefix, this->number);
 	do_delete:
 		if (pool->state.num <= pool->min) {
-			ROPTIONAL(RDEBUG2, DEBUG2, "You probably need to lower \"min\"");
+			ROPTIONAL(RDEBUG2, DEBUG2, "%s: you probably need to lower \"min\"", pool->log_prefix);
 		}
 		fr_connection_close_internal(pool, request, this);
 		return 0;
@@ -611,22 +611,22 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 
 	if ((pool->max_uses > 0) &&
 	    (this->num_uses >= pool->max_uses)) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Closing expired connection (%" PRIu64 "): Hit max_uses limit",
-			  this->number);
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s: Closing expired connection (%" PRIu64 "): Hit max_uses limit",
+			  pool->log_prefix, this->number);
 		goto do_delete;
 	}
 
 	if ((pool->lifetime > 0) &&
 	    ((this->created + pool->lifetime) < now)) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Closing expired connection (%" PRIu64 "): Hit lifetime limit",
-			  this->number);
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s: Closing expired connection (%" PRIu64 "): Hit lifetime limit",
+			  pool->log_prefix, this->number);
 		goto do_delete;
 	}
 
 	if ((pool->idle_timeout > 0) &&
 	    ((this->last_released.tv_sec + pool->idle_timeout) < now)) {
-		ROPTIONAL(RINFO, INFO, "Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %u seconds",
-		     	  this->number, (int) (now - this->last_released.tv_sec));
+		ROPTIONAL(RINFO, INFO, "%s: Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %u seconds",
+		     	  pool->log_prefix, this->number, (int) (now - this->last_released.tv_sec));
 		goto do_delete;
 	}
 
@@ -680,7 +680,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 		spawn = pool->min - (pool->state.num + pool->state.pending);
 		extra = 0;
 
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach min connections (%i)", spawn, pool->min);
+		ROPTIONAL(RINFO, INFO, "%s: Need %i more connections to reach min connections (%i)", pool->log_prefix, spawn, pool->min);
 
 	/*
 	 *	If we're about to create more than "max",
@@ -713,7 +713,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 			spawn = pool->max - (pool->state.num + pool->state.pending);
 		}
 
-		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach %i spares", spawn, pool->spare);
+		ROPTIONAL(RINFO, INFO, "%s: Need %i more connections to reach %i spares", pool->log_prefix, spawn, pool->spare);
 
 	/*
 	 *	min < num < max
@@ -772,8 +772,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 
 		if (!rad_cond_assert(found)) goto done;
 
-		ROPTIONAL(RDEBUG, DEBUG, "Closing connection (%" PRIu64 "), from %d unused connections",
-			  found->number, extra);
+		ROPTIONAL(RDEBUG, DEBUG, "%s: Closing connection (%" PRIu64 "), from %d unused connections",
+			  pool->log_prefix, found->number, extra);
 		fr_connection_close_internal(pool, request, found);
 
 		/*
@@ -854,7 +854,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 
 		pthread_mutex_unlock(&pool->mutex);
 		if (!RATE_LIMIT_ENABLED || complain) {
-			ROPTIONAL(RERROR, ERROR, "No connections available and at max connection limit");
+			ROPTIONAL(RERROR, ERROR, "%s: No connections available and at max connection limit", pool->log_prefix);
 			/*
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
@@ -869,8 +869,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 
 	if (!spawn) return NULL;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "%i of %u connections in use.  You  may need to increase \"spare\"",
-	       pool->state.active, pool->state.num);
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s: %i of %u connections in use.  You  may need to increase \"spare\"",
+		  pool->log_prefix, pool->state.active, pool->state.num);
 
 	/*
 	 *	Returns unlocked on failure, or locked on success
@@ -889,7 +889,7 @@ do_return:
 #endif
 	pthread_mutex_unlock(&pool->mutex);
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Reserved connection (%" PRIu64 ")", this->number);
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 	return this->connection;
 }
@@ -1421,7 +1421,7 @@ void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *c
 	rad_assert(pool->state.active != 0);
 	pool->state.active--;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Released connection (%" PRIu64 ")", this->number);
+	ROPTIONAL(RDEBUG2, DEBUG2, "%s: Released connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 	/*
 	 *	We mirror the "spawn on get" functionality by having
@@ -1471,7 +1471,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, REQUEST *request, void
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
 
-	ROPTIONAL(RINFO, INFO, "Deleting inviable connection (%" PRIu64 ")", this->number);
+	ROPTIONAL(RINFO, INFO, "%s: Deleting inviable connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 	fr_connection_close_internal(pool, request, this);
 	fr_connection_pool_check(pool, request);			/* Whilst we still have the lock (will release the lock) */
@@ -1508,7 +1508,7 @@ int fr_connection_close(fr_connection_pool_t *pool, REQUEST *request, void *conn
 	 */
 	gettimeofday(&pool->state.last_closed, NULL);
 
-	ROPTIONAL(RINFO, INFO, "Deleting connection (%" PRIu64 ")", this->number);
+	ROPTIONAL(RINFO, INFO, "%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 	fr_connection_close_internal(pool, request, this);
 	fr_connection_pool_check(pool, request);
