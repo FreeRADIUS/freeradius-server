@@ -1,3 +1,10 @@
+FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* radtest uses Cleartext-Password for EAP, not
+	  User-Password.
+
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Add dictionary.rfc7930.  Note that we do not implement
