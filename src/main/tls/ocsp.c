@@ -56,7 +56,8 @@ typedef enum {
  *	- 0 success.
  *	- -1 on failure.
  */
-static int ocsp_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1){
+int tls_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
+{
 	struct		tm t;
 	char const	*p = (char const *)asn1->data, *end = p + strlen(p);
 
@@ -601,7 +602,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 *	on the code path, other times we don't.
 		 */
 		if (now.tv_sec == 0) gettimeofday(&now, NULL);
-		if (ocsp_asn1time_to_epoch(&next, next_update) < 0) {
+		if (tls_asn1time_to_epoch(&next, next_update) < 0) {
 			REDEBUG("Failed parsing next_update time: %s", fr_strerror());
 			ocsp_status = OCSP_STATUS_SKIPPED;
 			goto finish;

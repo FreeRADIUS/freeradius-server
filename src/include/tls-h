@@ -450,6 +450,8 @@ int		tls_ocsp_check(REQUEST *request, SSL *ssl,
 			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 			       fr_tls_ocsp_conf_t *conf, bool staple_response);
 
+int		tls_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
+
 /*
  *	tls/session.c
  */
