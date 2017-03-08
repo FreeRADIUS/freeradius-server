@@ -392,9 +392,15 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		fr_strerror_printf("Failed determining parent directory");
 	error:
 		talloc_free(dir);
-		close(dir_fd);
-		close(sock_fd);
-		close(parent_fd);
+		if (dir_fd >= 0) {
+			close(dir_fd);
+		}
+		if (sock_fd >= 0) {
+			close(sock_fd);
+		}
+		if (parent_fd >= 0) {
+			close(parent_fd);
+		}
 		return -1;
 	}
 
@@ -677,8 +683,12 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	if (uid != (uid_t)-1) rad_seuid(euid);
 	if (gid != (gid_t)-1) rad_segid(egid);
 
-	close(dir_fd);
-	close(parent_fd);
+	if (dir_fd >= 0) {
+		close(dir_fd);
+	}
+	if (parent_fd >= 0) {
+		close(parent_fd);
+	}
 
 	return sock_fd;
 }
