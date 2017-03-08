@@ -3811,6 +3811,38 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	}
 }
 
+/** Attempt to locate the protocol dictionary containing an attribute
+ *
+ * @note Unlike fr_dict_by_attr_name, doesn't search through all the dictionaries,
+ *	just uses the fr_dict_attr_t hierarchy and the talloc hierarchy to locate
+ *	the dictionary (much much faster and more scalable).
+ *
+ * @param[in] da To get the containing dictionary for.
+ * @return
+ *	- The dictionary containing da.
+ *	- NULL.
+ */
+fr_dict_t *fr_dict_by_da(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const *da_p = da;
+
+	while (da_p->parent) {
+		da_p = da_p->parent;
+		VERIFY_DA(da_p);
+	}
+
+	if (!da_p->flags.is_root) {
+		fr_strerror_printf("%s: Attribute has not been inserted into a dictionary", __FUNCTION__, da->name);
+		return NULL;
+	}
+
+	/*
+	 *	Parent of the root attribute must
+	 *	be the dictionary.
+	 */
+	return talloc_get_type_abort(talloc_parent(da_p), fr_dict_t);
+}
+
 /** Look up a vendor by its name
  *
  * @param[in] dict of protocol context we're operating in.  If NULL the internal
