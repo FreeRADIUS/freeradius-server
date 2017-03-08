@@ -2197,15 +2197,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 		case 'S': /* request timestamp in SQL format*/
 			if (!localtime_r(&when, &ts)) goto error;
-			nl = str + strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
-			rad_assert(((str + freespace) - nl) >= 8);
-			snprintf(nl, (str + freespace) - nl, ".%06d",  usec);
+			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
 			break;
 
 		case 'T': /* request timestamp */
 			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S", &ts);
-			
+			nl = str + strftime(str, freespace, "%Y-%m-%d-%H.%M.%S", &ts);
+			rad_assert(((str + freespace) - nl) >= 8);
+			snprintf(nl, (str + freespace) - nl, ".%06d",  usec);
 			break;
 
 		case 'Y': /* request year */
