@@ -910,9 +910,25 @@ do { \
 	buffer[0] = '\0';
 	asn_time = X509_get_notAfter(cert);
 	if (identity && asn_time && (asn_time->length < (int)sizeof(buffer))) {
+		time_t expires;
+
 		memcpy(buffer, (char *)asn_time->data, asn_time->length);
 		buffer[asn_time->length] = '\0';
 		ADD_CERT_ATTR(cert_attr_names[FR_TLS_EXPIRATION][attr_index], buffer);
+
+		/*
+		 *	Add expiration as a time (duh)
+		 */
+		if ((attr_index == 0) &&
+		    (tls_asn1time_to_epoch(&expires, asn_time) == 0)) {
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_afrom_num(ctx, 0, PW_TLS_CLIENT_CERT_EXPIRATION_TIME);
+			if (vp) {
+				vp->vp_date = expires;
+				fr_pair_cursor_append(cursor, vp);
+			}
+		}
 	}
 
 	/*
