@@ -3832,7 +3832,7 @@ fr_dict_t *fr_dict_by_da(fr_dict_attr_t const *da)
 	}
 
 	if (!da_p->flags.is_root) {
-		fr_strerror_printf("%s: Attribute has not been inserted into a dictionary", __FUNCTION__, da->name);
+		fr_strerror_printf("%s: Attribute %s has not been inserted into a dictionary", __FUNCTION__, da->name);
 		return NULL;
 	}
 
