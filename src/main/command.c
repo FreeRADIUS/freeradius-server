@@ -393,6 +393,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	error:
 		talloc_free(dir);
 		close(dir_fd);
+		close(sock_fd);
+		close(parent_fd);
 		return -1;
 	}
 
@@ -458,7 +460,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		if (ret < 0) {
 			fr_strerror_printf("Failed changing ownership of control socket directory: %s",
 					   fr_syserror(errno));
-			return -1;
+			goto error;
 		}
 	/*
 	 *	Control socket dir already exists, but we still need to
@@ -526,7 +528,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		if (client_fd >= 0) {
 			fr_strerror_printf("Control socket '%s' is already in use", path);
 			close(client_fd);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -676,6 +678,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	if (gid != (gid_t)-1) rad_segid(egid);
 
 	close(dir_fd);
+	close(parent_fd);
 
 	return sock_fd;
 }
