@@ -1808,7 +1808,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 		talloc_free(tokens);
 		rad_assert(error != NULL);
 
-		REMARKER(fmt, -slen, error);
+		REMARKER(fmt, -slen, error ? error : "(null)");
 		return slen;
 	}
 
