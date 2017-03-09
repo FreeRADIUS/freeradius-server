@@ -917,12 +917,9 @@ do { \
 		ADD_CERT_ATTR(cert_attr_names[FR_TLS_EXPIRATION][attr_index], buffer);
 
 		/*
-		 *	Add expiration as a time (duh)
+		 *	Add expiration as a time since the epoch
 		 */
-		if ((attr_index == 0) &&
-		    (tls_asn1time_to_epoch(&expires, asn_time) == 0)) {
-			VALUE_PAIR *vp;
-
+		if ((attr_index == 0) && (tls_utils_asn1time_to_epoch(&expires, asn_time) == 0)) {
 			vp = fr_pair_afrom_num(ctx, 0, PW_TLS_CLIENT_CERT_EXPIRATION_TIME);
 			if (vp) {
 				vp->vp_date = expires;
