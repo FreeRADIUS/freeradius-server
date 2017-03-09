@@ -303,6 +303,8 @@ static int ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, ldap_h
 
 	*sss = NULL;
 
+	if (!extensions) return 0;
+
 	/*
 	 *	Parse extensions in the LDAP URL
 	 */
