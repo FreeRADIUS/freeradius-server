@@ -286,6 +286,77 @@ static ssize_t ldap_unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t out
 	return rlm_ldap_unescape_func(request, *out, outlen, fmt, NULL);
 }
 
+/** Parse a subset (just server side sort for now) of LDAP URL extensions
+ *
+ * @param[out] sss		Where to write a pointer to the server side sort control
+ *				we created.
+ * @param[in] request		The current request.
+ * @param[in] conn		Handle to allocate controls under.
+ * @param[in] extensions	A NULL terminated array of extensions.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, ldap_handle_t *conn, char **extensions)
+{
+	int i;
+
+	*sss = NULL;
+
+	/*
+	 *	Parse extensions in the LDAP URL
+	 */
+	for (i = 0; extensions[i]; i++) {
+		char *p;
+		bool is_critical = false;
+
+		p = extensions[i];
+		if (*p == '!') {
+			is_critical = true;
+			p++;
+		}
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+		/*
+		 *	Server side sort control
+		 */
+		if (strncmp(p, "sss", 3) == 0) {
+			LDAPSortKey	**keys;
+			int		ret;
+
+			p += 3;
+			p = strchr(p, '=');
+			if (!p) {
+				REDEBUG("Server side sort extension must be in the format \"[!]sss=<key>[,key]\"");
+				return -1;
+			}
+			p++;
+
+			ret = ldap_create_sort_keylist(&keys, p);
+			if (ret != LDAP_SUCCESS) {
+				REDEBUG("Invalid server side sort value \"%s\": %s", p, ldap_err2string(ret));
+				return -1;
+			}
+
+			if (*sss) ldap_control_free(*sss);
+
+			ret = ldap_create_sort_control(conn->handle, keys, is_critical ? 1 : 0, sss);
+			ldap_free_sort_keylist(keys);
+			if (ret != LDAP_SUCCESS) {
+				ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
+				return -1;
+			}
+
+			continue;
+		}
+#endif
+
+		RWDEBUG("URL extension \"%s\" ignored", p);
+	}
+
+	return 0;
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  */
@@ -308,6 +379,8 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	char const		*url;
 	char const		**attrs;
+
+	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
 	url = fmt;
 
@@ -338,8 +411,15 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
 
+	if (ldap_parse_url_extensions(&server_ctrls[0], request, conn, ldap_url->lud_exts) < 0) goto free_socket;
+
 	status = rlm_ldap_search(&result, inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-				 ldap_url->lud_filter, attrs, NULL, NULL);
+				 ldap_url->lud_filter, attrs, server_ctrls, NULL);
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	if (server_ctrls[0]) ldap_control_free(server_ctrls[0]);
+#endif
+
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -430,6 +510,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	ldap_handle_t		*conn;
 
+	LDAPControl		*server_ctrls[] = { NULL, NULL };
+
 	rlm_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
 	if (tmpl_aexpand(request, &url_str, request, url, rlm_ldap_escape_func, NULL) < 0) {
@@ -457,8 +539,15 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	conn = mod_conn_get(inst, request);
 	if (!conn) goto free_expanded;
 
+	if (ldap_parse_url_extensions(&server_ctrls[0], request, conn, ldap_url->lud_exts) < 0) goto free_socket;
+
 	status = rlm_ldap_search(&result, inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-				 ldap_url->lud_filter, expanded.attrs, NULL, NULL);
+				 ldap_url->lud_filter, expanded.attrs, server_ctrls, NULL);
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	if (server_ctrls[0]) ldap_control_free(server_ctrls[0]);
+#endif
+
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -478,8 +567,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	for (entry = ldap_first_entry(conn->handle, result);
 	     entry;
 	     entry = ldap_next_entry(conn->handle, entry)) {
-		int	i;
 		char	*dn = NULL;
+		int	i;
+
 
 		if (RDEBUG_ENABLED2) {
 			dn = ldap_get_dn(conn->handle, entry);
