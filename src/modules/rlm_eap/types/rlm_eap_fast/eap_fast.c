@@ -1235,9 +1235,6 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		eap_fast_append_result(tls_session, code);
 
-		if (code == PW_CODE_ACCESS_REJECT)
-			break;
-
 		if (t->pac.send) {
 			RDEBUG("Peer requires new PAC");
 			eap_fast_send_pac_tunnel(request, tls_session);
