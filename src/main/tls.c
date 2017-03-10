@@ -1360,7 +1360,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		blob_len = i2d_SSL_SESSION(sess, NULL);
 		if (blob_len < 1) {
 			/* something went wrong */
-			RWDEBUG("Session serialisation failed, couldn't determine required buffer length");
+			if (request) RWDEBUG("Session serialisation failed, couldn't determine required buffer length");
 			return 0;
 		}
 
@@ -1375,7 +1375,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		p = sess_blob;
 		rv = i2d_SSL_SESSION(sess, &p);
 		if (rv != blob_len) {
-			RWDEBUG("Session serialisation failed");
+			if (request) RWDEBUG("Session serialisation failed");
 			goto error;
 		}
 
@@ -1384,8 +1384,8 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
 		if (fd < 0) {
-			RERROR("Session serialisation failed, failed opening session file %s: %s",
-			      filename, fr_syserror(errno));
+			if (request) RERROR("Session serialisation failed, failed opening session file %s: %s",
+					    filename, fr_syserror(errno));
 			goto error;
 		}
 
@@ -1409,7 +1409,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		while (todo > 0) {
 			rv = write(fd, p, todo);
 			if (rv < 1) {
-				RWDEBUG("Failed writing session: %s", fr_syserror(errno));
+				if (request) RWDEBUG("Failed writing session: %s", fr_syserror(errno));
 				close(fd);
 				goto error;
 			}
@@ -1417,7 +1417,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			todo -= rv;
 		}
 		close(fd);
-		RWDEBUG("Wrote session %s to %s (%d bytes)", buffer, filename, blob_len);
+		if (request) RWDEBUG("Wrote session %s to %s (%d bytes)", buffer, filename, blob_len);
 	}
 
 error:
