@@ -2122,8 +2122,9 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	}
 
 #ifdef WITH_TCP
-	rad_assert(request->proxy_listener != NULL);
-	request->proxy_listener->count--;
+	if (request->proxy_listener) {
+		request->proxy_listener->count--;
+	}
 #endif
 	request->proxy_listener = NULL;
 
