@@ -126,7 +126,8 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 	RDEBUG2("Merging cache entry into request");
 
-	if (c->packet && request->packet) {
+	if (c->packet) {
+		rad_assert(request->packet != NULL);
 		rdebug_pair_list(L_DBG_LVL_2, request, c->packet, "&request:");
 		radius_pairmove(request, &request->packet->vps, fr_pair_list_copy(request->packet, c->packet), false);
 	}
