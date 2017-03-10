@@ -1580,6 +1580,61 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 	return RLM_MODULE_YIELD;
 }
 
+/** Update the top of the stack to be a resume action and add a new action to the stack.
+ * The process action (which can possibly yeild) will be performed immediately and the post_process
+ * action will be run next.
+ *
+ * @param[in] request		The current request.
+ * @param[in] process		action to be run next by the interpreter.
+ * @param[in] process_ctx	to pass to the process action.
+ * @param[in] post_process	action to be run as a second step.
+ * @param[in] post_process_ctx	to pass to the post_process action.
+ * @return always returns RLM_MODULE_YIELD.
+ */
+rlm_rcode_t unlang_two_step_process(REQUEST *request, fr_unlang_resume_t process, void const *process_ctx,
+			 fr_unlang_resume_t post_process, void const *post_process_ctx)
+{
+	unlang_stack_frame_t	*frame1, *frame2;
+	unlang_stack_t		*stack = request->stack;
+	unlang_resumption_t	*mr;
+	unlang_resumption_t	*rp;
+
+	frame1 = &stack->frame[stack->depth];
+
+	rad_assert(frame1->instruction->type == UNLANG_TYPE_MODULE_CALL || frame1->instruction->type == UNLANG_TYPE_RESUME);
+
+	if (frame1->instruction->type == UNLANG_TYPE_MODULE_CALL) {
+		unlang_yield(request, post_process, NULL, post_process_ctx);
+		frame1->resume = true;
+	} else {
+		mr = unlang_generic_to_resumption(frame1->instruction);
+		mr->callback = post_process;
+	}
+
+	rp = unlang_generic_to_resumption(frame1->instruction);
+
+	unlang_push(stack, frame1->instruction, frame1->result, false);
+
+	frame2 = &stack->frame[stack->depth];
+	mr = talloc(request, unlang_resumption_t);
+	rad_assert(mr != NULL);
+
+	memcpy(&mr->module, frame1->instruction, sizeof(mr->module));
+	mr->thread = frame1->modcall.thread;
+	mr->module.self.type = UNLANG_TYPE_RESUME;
+	mr->callback = process;
+	mr->action_callback = NULL;
+	mr->thread = module_thread_instance_find(rp->module.module_instance);
+	mr->ctx = process_ctx;
+
+	frame2->instruction = unlang_resumption_to_generic(mr);
+	frame2->resume = true;
+
+	unlang_resumable(request);
+
+	return RLM_MODULE_YIELD;
+}
+
 static void unlang_timer_hook(UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);

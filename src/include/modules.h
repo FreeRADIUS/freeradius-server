@@ -297,6 +297,9 @@ rlm_rcode_t	unlang_yield(REQUEST *request, fr_unlang_resume_t callback, fr_unlan
 
 int		unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
 
+rlm_rcode_t unlang_two_step_process(REQUEST *request, fr_unlang_resume_t process, void const *process_ctx,
+			 fr_unlang_resume_t post_process, void const *post_process_ctx);
+
 #ifdef __cplusplus
 }
 #endif
