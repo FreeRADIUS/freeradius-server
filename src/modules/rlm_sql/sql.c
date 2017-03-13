@@ -483,6 +483,91 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 	return RLM_SQL_ERROR;
 }
 
+rlm_rcode_t rlm_sql_select_query_async(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
+{
+	rlm_sql_thread_select_query_ctx_t *select_query_ctx = ctx;
+	rlm_sql_t const *inst = instance;
+
+	if (select_query_ctx->next_step == SELECT_QUERY_RESUME) goto resume;
+
+	select_query_ctx->rcode = RLM_SQL_ERROR;
+
+	/* Caller should check they have a valid handle */
+	rad_assert(*select_query_ctx->handle);
+
+	/* There's no query to run, return an error */
+	if (select_query_ctx->query[0] == '\0') {
+		if (request) REDEBUG("Zero length query");
+
+		select_query_ctx->rcode = RLM_SQL_QUERY_INVALID;
+
+		return RLM_MODULE_OK;
+	}
+
+	/*
+	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 */
+	select_query_ctx->max_attempts = inst->pool ? fr_connection_pool_state(inst->pool)->num : 0;
+
+	/*
+	 *  For sanity, for when no connections are viable, and we can't make a new one
+	 */
+	for (select_query_ctx->curr_attempt = 0;
+		 select_query_ctx->curr_attempt < (select_query_ctx->max_attempts + 1);
+		 select_query_ctx->curr_attempt++) {
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", select_query_ctx->query);
+
+		select_query_ctx->sql_ret = (inst->driver->sql_select_query)(*select_query_ctx->handle, inst->config, select_query_ctx->query);
+
+		if (select_query_ctx->sql_ret == RLM_SQL_YIELD) {
+			select_query_ctx->next_step = SELECT_QUERY_RESUME;
+			return unlang_yield(request, rlm_sql_select_query_async, NULL, ctx);
+		}
+
+	resume:
+		/*
+		 * In case the driver is asynchronous, get the current query status
+		 */
+		if (select_query_ctx->sql_ret == RLM_SQL_YIELD)
+			select_query_ctx->sql_ret = (inst->driver->sql_select_status)(*select_query_ctx->handle, inst->config);
+
+		switch (select_query_ctx->sql_ret) {
+		case RLM_SQL_OK:
+			break;
+
+		/*
+		 *	Run through all available sockets until we exhaust all existing
+		 *	sockets in the pool and fail to establish a *new* connection.
+		 */
+		case RLM_SQL_RECONNECT:
+			*select_query_ctx->handle = fr_connection_reconnect(inst->pool, request, *select_query_ctx->handle);
+			/* Reconnection failed */
+			if (!*select_query_ctx->handle) {
+				select_query_ctx->rcode = RLM_SQL_RECONNECT;
+				return RLM_MODULE_OK;
+			}
+
+			/* Reconnection succeeded, try again with the new handle */
+			continue;
+
+		case RLM_SQL_QUERY_INVALID:
+		case RLM_SQL_ERROR:
+		default:
+			rlm_sql_print_error(inst, request, *select_query_ctx->handle, false);
+			(inst->driver->sql_finish_select_query)(*select_query_ctx->handle, inst->config);
+			break;
+		}
+
+		select_query_ctx->rcode = select_query_ctx->sql_ret;
+		return RLM_MODULE_OK;
+	 }
+
+	 ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
+
+	 select_query_ctx->rcode = RLM_SQL_ERROR;
+
+	 return RLM_MODULE_OK;
+}
 
 /*************************************************************************
  *

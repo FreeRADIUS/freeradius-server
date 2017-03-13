@@ -51,6 +51,7 @@ typedef enum {
 	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect.
 	RLM_SQL_ALT_QUERY,		//!< Key constraint violation, use an alternative query.
 	RLM_SQL_NO_MORE_ROWS,		//!< No more rows available
+	RLM_SQL_YIELD,			//!< Async driver is yielding
 } sql_rcode_t;
 
 typedef enum {
@@ -170,6 +171,25 @@ typedef struct {
 
 typedef struct sql_grouplist rlm_sql_grouplist_t;
 typedef struct sql_thread_group rlm_sql_thread_group_t;
+
+/** Context data for rlm_sql_select_query
+ *
+ */
+typedef enum {
+	SELECT_QUERY_START = 0,
+	SELECT_QUERY_RESUME,
+} sql_thread_select_query_state_t;
+
+typedef struct {
+	sql_thread_select_query_state_t	next_step;
+	sql_rcode_t			rcode;
+	int					sql_ret;
+	rlm_sql_handle_t	**handle;
+	char				*query;
+	int					max_attempts;	//!< Maximum number of attempts to run query
+	int					curr_attempt;	//!< Number of attempts ro run query
+} rlm_sql_thread_select_query_ctx_t;
+
 /** Context data for sql_getvpdata
  *
  */
@@ -278,6 +298,10 @@ typedef struct rlm_sql_driver_t {
 
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
+	/*
+	 * For asynchronous drivers, get the status of the latest query
+	 */
+	sql_rcode_t (*sql_select_status)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -334,6 +358,7 @@ int		sql_dict_init(rlm_sql_handle_t *handle);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
 sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+rlm_rcode_t rlm_sql_select_query_async(REQUEST *request, void *instance, void *thread, void *ctx);
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
