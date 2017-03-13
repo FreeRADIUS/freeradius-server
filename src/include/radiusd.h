@@ -460,7 +460,9 @@ void		pairlist_free(PAIR_LIST **);
 
 /* version.c */
 int		rad_check_lib_magic(uint64_t magic);
+#ifdef ENABLE_OPENSSL_COMPAT_CHECK
 int 		ssl_check_consistency(void);
+#endif
 char const	*ssl_version_by_num(uint32_t version);
 char const	*ssl_version_num(void);
 char const	*ssl_version_range(uint32_t low, uint32_t high);
