@@ -18,7 +18,7 @@ SUBDIRS		:= util
 HEADERS	= \
 	build.h \
 	conf.h \
-	conffile.h \
+	conf_file.h \
 	detail.h \
 	event.h \
 	hash.h \

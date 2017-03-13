@@ -26,7 +26,7 @@
  */
 RCSIDH(map_h, "$Id$")
 
-#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/conf_file.h>
 #include <freeradius-devel/tmpl.h>
 
 #ifdef __cplusplus

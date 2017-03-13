@@ -119,7 +119,7 @@ typedef struct radmin_state {
 //static radmin_state_t state;
 
 /*
- *	The rest of this is because the conffile.c, etc. assume
+ *	The rest of this is because the conf_file.c, etc. assume
  *	they're running inside of the server.  And we don't (yet)
  *	have a "libfreeradius-server", or "libfreeradius-util".
  */
@@ -525,7 +525,7 @@ int main(int argc, char **argv)
 		struct passwd	*pwd;
 		struct group	*grp;
 
-		file = NULL;	/* MUST read it from the conffile now */
+		file = NULL;	/* MUST read it from the conf_file now */
 
 		snprintf(buffer, sizeof(buffer), "%s/%s.conf", radius_dir, name);
 

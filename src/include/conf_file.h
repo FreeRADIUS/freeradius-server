@@ -18,13 +18,13 @@
 /**
  * $Id$
  *
- * @file include/conffile.h
+ * @file include/conf_file.h
  * @brief API to parse FreeRADIUS configuration file format, and convert string
  *	values to native C datatypes.
  *
  * @copyright 2015  The FreeRADIUS server project
  */
-RCSIDH(conffile_h, "$Id$")
+RCSIDH(conf_file_h, "$Id$")
 
 #include <stddef.h>
 #include <stdint.h>

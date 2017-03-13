@@ -713,7 +713,7 @@ int main_config_init(void)
 	/*
 	 *	We need to load the dictionaries before reading the
 	 *	configuration files.  This is because of the
-	 *	pre-compilation in conffile.c.  That should probably
+	 *	pre-compilation in conf_file.c.  That should probably
 	 *	be fixed to be done as a second stage.
 	 */
 	if (!main_config.dictionary_dir) main_config.dictionary_dir = talloc_typed_strdup(NULL, DICTDIR);

@@ -1,5 +1,5 @@
 /*
- * conffile.c	Read the radiusd.conf file.
+ * conf_file.c	Read the radiusd.conf file.
  *
  *		Yep I should learn to use lex & yacc, or at least
  *		write a decent parser. I know how to do that, really :)
@@ -1377,7 +1377,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 
 static char const parse_spaces[] = "                                                                                                                                                                                                                                                                ";
 
-/** Validation function for ipaddr conffile types
+/** Validation function for ipaddr conf_file types
  *
  */
 static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW_TYPE type, char const *value,
@@ -4236,7 +4236,7 @@ int _cf_data_walk(CONF_SECTION *cs, char const *type, cf_walker_t cb, void *ctx)
 
 /*
  *	This is here to make the rest of the code easier to read.  It
- *	ties conffile.c to log.c, but it means we don't have to
+ *	ties conf_file.c to log.c, but it means we don't have to
  *	pollute every other function with the knowledge of the
  *	configuration internals.
  */

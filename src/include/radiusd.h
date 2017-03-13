@@ -27,7 +27,7 @@ RCSIDH(radiusd_h, "$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/conf.h>
-#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/conf_file.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/heap.h>
 

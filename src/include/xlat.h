@@ -29,7 +29,7 @@ RCSIDH(xlat_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/conf_file.h>
 
 typedef struct xlat_exp xlat_exp_t;
 

@@ -28,7 +28,7 @@
  */
 RCSIDH(tls_h, "$Id$")
 
-#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/conf_file.h>
 
 /*
  *	This changed in OpenSSL 1.1.0 (they allow deprecated interfaces)

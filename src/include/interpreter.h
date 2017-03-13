@@ -23,7 +23,7 @@
  *
  * @author Alan DeKok <aland@freeradius.org>
  */
-#include <freeradius-devel/conffile.h> /* Need CONF_* definitions */
+#include <freeradius-devel/conf_file.h> /* Need CONF_* definitions */
 #include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
