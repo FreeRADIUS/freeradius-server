@@ -352,7 +352,7 @@ struct sql_grouplist {
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
-int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
+rlm_rcode_t	sql_getvpdata(REQUEST *request, void *instance, void *thread, void *ctx);
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));

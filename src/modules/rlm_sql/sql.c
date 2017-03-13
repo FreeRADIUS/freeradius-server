@@ -576,31 +576,46 @@ rlm_rcode_t rlm_sql_select_query_async(REQUEST *request, void *instance, UNUSED 
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
-		  VALUE_PAIR **pair, char const *query)
+static rlm_rcode_t sql_getvpdata_resume(REQUEST *request, void *instance, void *thread, void *ctx);
+
+rlm_rcode_t sql_getvpdata(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_sql_row_t	row;
-	int		rows = 0;
-	sql_rcode_t	rcode;
+	rlm_sql_thread_sql_getvpdata_ctx_t *db_ctx = ctx;
+	rlm_sql_thread_select_query_ctx_t *select_query_ctx;
 
 	rad_assert(request);
 
-	rcode = rlm_sql_select_query(inst, request, handle, query);
-	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
+	select_query_ctx = talloc_zero(request, rlm_sql_thread_select_query_ctx_t);
+	select_query_ctx->handle = db_ctx->handle;
+	select_query_ctx->query = db_ctx->query;
 
-	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
+	return unlang_two_step_process(request, rlm_sql_select_query_async, select_query_ctx, sql_getvpdata_resume, db_ctx);
+}
+
+static rlm_rcode_t sql_getvpdata_resume(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
+{
+	rlm_sql_thread_sql_getvpdata_ctx_t *db_ctx = ctx;
+	rlm_sql_row_t	row;
+	TALLOC_CTX *talloc_ctx = db_ctx->talloc_ctx;
+	rlm_sql_t const *inst = instance;
+
+	rad_assert(talloc_ctx);
+
+	db_ctx->rows = 0;
+
+	while (rlm_sql_fetch_row(&row, inst, request, db_ctx->handle) == RLM_SQL_OK) {
+		if (sql_fr_pair_list_afrom_str(talloc_ctx, request, &db_ctx->attr, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
-			(inst->driver->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*db_ctx->handle, inst->config);
 
-			return -1;
+			return RLM_MODULE_FAIL;
 		}
-		rows++;
+		db_ctx->rows++;
 	}
-	(inst->driver->sql_finish_select_query)(*handle, inst->config);
+	(inst->driver->sql_finish_select_query)(*db_ctx->handle, inst->config);
 
-	return rows;
+	return RLM_MODULE_OK;
 }
 
 /*
