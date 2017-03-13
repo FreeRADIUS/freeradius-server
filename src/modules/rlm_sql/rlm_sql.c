@@ -779,6 +779,86 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
 	return num_groups;
 }
 
+static rlm_rcode_t sql_get_grouplist_resume(REQUEST *request, void *instance, void *thread, void *ctx);
+
+/*
+ * Get group list
+ * Yield if SQL driver supports async queries.
+ */
+static rlm_rcode_t sql_get_grouplist_async(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_thread_group_t *group_ctx = ctx;
+	rlm_sql_t const *inst = instance;
+
+	int rcode;
+
+	/* NOTE: sql_set_user should have been run before calling this function */
+
+	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) {
+		group_ctx->sql_getvpdata_ctx.rows = 0;
+		return RLM_MODULE_OK;
+	}
+	if (xlat_aeval(request, &group_ctx->sql_getvpdata_ctx.query, request, inst->config->groupmemb_query,
+			 inst->sql_escape_func, *group_ctx->sql_getvpdata_ctx.handle) < 0) {
+		group_ctx->sql_getvpdata_ctx.rows = -1;
+		return RLM_MODULE_OK;
+	}
+
+	rcode = rlm_sql_select_query(inst, request, group_ctx->sql_getvpdata_ctx.handle, group_ctx->sql_getvpdata_ctx.query);
+
+	switch(rcode) {
+	case RLM_SQL_YIELD:
+		return unlang_yield(request, sql_get_grouplist_resume, NULL, ctx);
+
+	case RLM_SQL_OK:
+		return sql_get_grouplist_resume(request, instance, thread, ctx);
+
+	default:
+		talloc_free(group_ctx->sql_getvpdata_ctx.query);
+		return RLM_MODULE_FAIL;
+	}
+}
+
+static rlm_rcode_t sql_get_grouplist_resume(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
+{
+	rlm_sql_thread_group_t *group_ctx = ctx;
+	rlm_sql_t const *inst = instance;
+
+	rlm_sql_row_t row;
+	rlm_sql_grouplist_t *entry;
+
+	entry = group_ctx->group_list = NULL;
+	group_ctx->sql_getvpdata_ctx.rows = 0;
+
+	talloc_free(group_ctx->sql_getvpdata_ctx.query);
+
+	while (rlm_sql_fetch_row(&row, inst, request, group_ctx->sql_getvpdata_ctx.handle) == RLM_SQL_OK) {
+		if (!row[0]){
+			RDEBUG("row[0] returned NULL");
+			(inst->driver->sql_finish_select_query)(*group_ctx->sql_getvpdata_ctx.handle, inst->config);
+			talloc_free(entry);
+			group_ctx->sql_getvpdata_ctx.rows = -1;
+			goto finish;
+		}
+
+		if (!group_ctx->group_list) {
+			group_ctx->group_list = talloc_zero(*group_ctx->sql_getvpdata_ctx.handle, rlm_sql_grouplist_t);
+			entry = group_ctx->group_list;
+		} else {
+			entry->next = talloc_zero(group_ctx->group_list, rlm_sql_grouplist_t);
+			entry = entry->next;
+		}
+		entry->next = NULL;
+		entry->name = talloc_typed_strdup(entry, row[0]);
+
+		group_ctx->sql_getvpdata_ctx.rows++;
+	}
+
+	(inst->driver->sql_finish_select_query)(*group_ctx->sql_getvpdata_ctx.handle, inst->config);
+
+finish:
+	return RLM_MODULE_OK;
+}
 
 /*
  * sql groupcmp function. That way we can do group comparisons (in the users file for example)
