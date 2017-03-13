@@ -181,6 +181,37 @@ typedef struct {
 
 	VALUE_PAIR			*attr;
 } rlm_sql_thread_sql_getvpdata_ctx_t;
+
+/** Context data for mod_authorize
+ *
+ */
+
+typedef enum {
+	AUTHORIZE_START = 0,
+	AUTHORIZE_POST_CHECK_QUERY,
+	AUTHORIZE_POST_REPLY_QUERY,
+	AUTHORIZE_POST_PROCESS_GROUPS,
+	AUTHORIZE_POST_PROCESS_PROFILE,
+} sql_thread_authorize_state_t;
+
+typedef struct {
+	sql_thread_authorize_state_t	next_step;
+	rlm_rcode_t			rcode;
+
+	rlm_sql_handle_t	*handle;
+	rlm_sql_thread_sql_getvpdata_ctx_t	sql_getvpdata_ctx;
+
+	VALUE_PAIR			*user_profile;
+
+	bool				user_found;
+
+	sql_fall_through_t	do_fall_through;
+
+
+	rlm_sql_thread_group_t	*group_ctx;
+
+} rlm_sql_thread_authorize_t;
+
 /** Context data for sql_get_grouplist_async
  *
  */
