@@ -935,45 +935,68 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	return 1;
 }
 
-static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
-					  sql_fall_through_t *do_fall_through)
+static rlm_rcode_t rlm_sql_process_groups(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
-	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
+	rlm_sql_t const *inst = instance;
+	rlm_sql_thread_group_t *group_ctx = ctx;
 
-	char			*expanded = NULL;
-	int			rows;
+	rad_assert(ctx);
 
 	rad_assert(request->packet != NULL);
 
+	/*
+	 * Because of the new async model, this function gets called multiple times
+	 * at different stages of the group processing.
+	 * Simply jump to where processing needs to resume.
+	 */
+	switch (group_ctx->next_step) {
+		case PROCESS_GROUPS_POST_GET_GROUPLIST:
+			goto post_get_grouplist;
+		case PROCESS_GROUPS_POST_GROUP_CHECK:
+			goto post_getvpdata_group_check;
+		case PROCESS_GROUPS_POST_GROUP_REPLY:
+			goto post_getvpdata_group_reply;
+		default:
+			goto start;
+	}
+
+start:
 	if (!inst->config->groupmemb_query) {
 		RWARN("Cannot do check groups when group_membership_query is not set");
 
 	do_nothing:
-		*do_fall_through = FALL_THROUGH_DEFAULT;
+		group_ctx->do_fall_through = FALL_THROUGH_DEFAULT;
 
 		/*
 		 *	Didn't add group attributes or allocate
 		 *	memory, so don't do anything else.
 		 */
-		return RLM_MODULE_NOTFOUND;
+		group_ctx->rcode = RLM_MODULE_NOTFOUND;
+		return RLM_MODULE_OK;
 	}
 
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	rows = sql_get_grouplist(inst, handle, request, &head);
-	if (rows < 0) {
+	group_ctx->next_step = PROCESS_GROUPS_POST_GET_GROUPLIST;
+	return unlang_two_step_process(request, sql_get_grouplist_async, ctx, rlm_sql_process_groups, ctx);
+
+post_get_grouplist:
+	group_ctx->rcode = RLM_MODULE_NOOP;
+
+	group_ctx->head = group_ctx->group_list;
+
+	if (group_ctx->sql_getvpdata_ctx.rows < 0) {
 		REDEBUG("Error retrieving group list");
 
-		return RLM_MODULE_FAIL;
+		group_ctx->rcode = RLM_MODULE_FAIL;
+		return RLM_MODULE_OK;
 	}
-	if (rows == 0) {
+	if (group_ctx->sql_getvpdata_ctx.rows == 0) {
 		RDEBUG2("User not found in any groups");
 		goto do_nothing;
 	}
-	rad_assert(head);
+	rad_assert(group_ctx->head);
 
 	RDEBUG2("User found in the group table");
 
@@ -981,18 +1004,19 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	 *	Add the Sql-Group attribute to the request list so we know
 	 *	which group we're retrieving attributes for
 	 */
-	sql_group = pair_make_request(inst->group_da->name, NULL, T_OP_EQ);
-	if (!sql_group) {
+	group_ctx->sql_group = pair_make_request(inst->group_da->name, NULL, T_OP_EQ);
+	if (!group_ctx->sql_group) {
 		REDEBUG("Error creating %s attribute", inst->group_da->name);
-		rcode = RLM_MODULE_FAIL;
+		group_ctx->rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
-	entry = head;
+	group_ctx->entry = group_ctx->head;
+
 	do {
 	next:
-		rad_assert(entry != NULL);
-		fr_pair_value_strcpy(sql_group, entry->name);
+		rad_assert(group_ctx->entry != NULL);
+		fr_pair_value_strcpy(group_ctx->sql_group, group_ctx->entry->name);
 
 		if (inst->config->authorize_group_check_query) {
 			vp_cursor_t cursor;
@@ -1001,18 +1025,23 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			/*
 			 *	Expand the group query
 			 */
-			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_check_query,
-					 inst->sql_escape_func, *handle) < 0) {
+			if (xlat_aeval(request, &group_ctx->sql_getvpdata_ctx.query, request, inst->config->authorize_group_check_query,
+	 				 inst->sql_escape_func, *group_ctx->sql_getvpdata_ctx.handle) < 0) {
 				REDEBUG("Error generating query");
-				rcode = RLM_MODULE_FAIL;
+				group_ctx->rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request, inst, request, handle, &check_tmp, expanded);
-			TALLOC_FREE(expanded);
-			if (rows < 0) {
-				REDEBUG("Error retrieving check pairs for group %s", entry->name);
-				rcode = RLM_MODULE_FAIL;
+			group_ctx->sql_getvpdata_ctx.talloc_ctx = request;
+			group_ctx->next_step = PROCESS_GROUPS_POST_GROUP_CHECK;
+			return unlang_two_step_process(request, sql_getvpdata, &group_ctx->sql_getvpdata_ctx, rlm_sql_process_groups, group_ctx);
+
+		post_getvpdata_group_check:
+			TALLOC_FREE(group_ctx->sql_getvpdata_ctx.query);
+
+			if (group_ctx->sql_getvpdata_ctx.rows < 0) {
+				REDEBUG("Error retrieving check pairs for group %s", group_ctx->entry->name);
+				group_ctx->rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
@@ -1020,84 +1049,88 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 *	If we got check rows we need to process them before we decide to
 			 *	process the reply rows
 			 */
-			if ((rows > 0) &&
-			    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
-				fr_pair_list_free(&check_tmp);
-				entry = entry->next;
+			if ((group_ctx->sql_getvpdata_ctx.rows > 0) &&
+				(paircompare(request, request->packet->vps, group_ctx->sql_getvpdata_ctx.attr, &request->reply->vps) != 0)) {
+				fr_pair_list_free(&group_ctx->sql_getvpdata_ctx.attr);
+				group_ctx->entry = group_ctx->entry->next;
 
-				if (!entry) break;
+				if (!group_ctx->entry) break;
 
 				goto next;	/* != continue */
 			}
 
-			RDEBUG2("Group \"%s\": Conditional check items matched", entry->name);
-			rcode = RLM_MODULE_OK;
+			RDEBUG2("Group \"%s\": Conditional check items matched", group_ctx->entry->name);
+			group_ctx->rcode = RLM_MODULE_OK;
 
-			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
+			RDEBUG2("Group \"%s\": Merging assignment check items", group_ctx->entry->name);
 			RINDENT();
-			for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
-			     vp;
-			     vp = fr_pair_cursor_next(&cursor)) {
-			 	if (!fr_assignment_op[vp->op]) continue;
+			for (vp = fr_pair_cursor_init(&cursor, &group_ctx->sql_getvpdata_ctx.attr);
+				 vp;
+				 vp = fr_pair_cursor_next(&cursor)) {
+				if (!fr_assignment_op[vp->op]) continue;
 
-			 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+				rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			}
 			REXDENT();
-			radius_pairmove(request, &request->control, check_tmp, true);
-			check_tmp = NULL;
+			radius_pairmove(request, &request->control, group_ctx->sql_getvpdata_ctx.attr, true);
+			group_ctx->sql_getvpdata_ctx.attr = NULL;
 		}
 
 		if (inst->config->authorize_group_reply_query) {
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
-			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_reply_query,
-					 inst->sql_escape_func, *handle) < 0) {
+			if (xlat_aeval(request, &group_ctx->sql_getvpdata_ctx.query, request, inst->config->authorize_group_reply_query,
+					 inst->sql_escape_func, *group_ctx->sql_getvpdata_ctx.handle) < 0) {
 				REDEBUG("Error generating query");
-				rcode = RLM_MODULE_FAIL;
+				group_ctx->rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request->reply, inst, request, handle, &reply_tmp, expanded);
-			TALLOC_FREE(expanded);
-			if (rows < 0) {
-				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
-				rcode = RLM_MODULE_FAIL;
+			group_ctx->sql_getvpdata_ctx.talloc_ctx = request->reply;
+			group_ctx->next_step = PROCESS_GROUPS_POST_GROUP_REPLY;
+			return unlang_two_step_process(request, sql_getvpdata, &group_ctx->sql_getvpdata_ctx, rlm_sql_process_groups, group_ctx);
+
+		post_getvpdata_group_reply:
+			TALLOC_FREE(group_ctx->sql_getvpdata_ctx.query);
+			if (group_ctx->sql_getvpdata_ctx.rows < 0) {
+				REDEBUG("Error retrieving reply pairs for group %s", group_ctx->entry->name);
+				group_ctx->rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
-			if (rows == 0) {
-				*do_fall_through = FALL_THROUGH_DEFAULT;
+			if (group_ctx->sql_getvpdata_ctx.rows == 0) {
+				group_ctx->do_fall_through = FALL_THROUGH_DEFAULT;
 				continue;
 			}
 
-			rad_assert(reply_tmp != NULL); /* coverity, among others */
-			*do_fall_through = fall_through(reply_tmp);
+			rad_assert(group_ctx->sql_getvpdata_ctx.attr != NULL); /* coverity, among others */
+			group_ctx->do_fall_through = fall_through(group_ctx->sql_getvpdata_ctx.attr);
 
-			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
-			rcode = RLM_MODULE_OK;
+			RDEBUG2("Group \"%s\": Merging reply items", group_ctx->entry->name);
+			group_ctx->rcode = RLM_MODULE_OK;
 
-			rdebug_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
+			rdebug_pair_list(L_DBG_LVL_2, request, group_ctx->sql_getvpdata_ctx.attr, NULL);
 
-			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
-			reply_tmp = NULL;
+			radius_pairmove(request, &request->reply->vps, group_ctx->sql_getvpdata_ctx.attr, true);
+			group_ctx->sql_getvpdata_ctx.attr = NULL;
 		/*
 		 *	If there's no reply query configured, then we assume
 		 *	FALL_THROUGH_NO, which is the same as the users file if you
 		 *	had no reply attributes.
 		 */
 		} else {
-			*do_fall_through = FALL_THROUGH_DEFAULT;
+			group_ctx->do_fall_through = FALL_THROUGH_DEFAULT;
 		}
 
-		entry = entry->next;
-	} while (entry != NULL && (*do_fall_through == FALL_THROUGH_YES));
+		group_ctx->entry = group_ctx->entry->next;
+	} while (group_ctx->entry != NULL && (group_ctx->do_fall_through == FALL_THROUGH_YES));
 
 finish:
-	talloc_free(head);
+	talloc_free(group_ctx->head);
 	fr_pair_delete_by_num(&request->packet->vps, 0, inst->group_da->attr, TAG_ANY);
 
-	return rcode;
+	return RLM_MODULE_OK;
 }
 
 

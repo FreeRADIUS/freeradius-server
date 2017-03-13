@@ -161,6 +161,51 @@ typedef struct rlm_sql_handle {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
+/** Thread specific rlm_sql instance data
+ *
+ */
+typedef struct {
+	rlm_sql_t const		*inst;		//!< Instance of rlm_sql.
+} rlm_sql_thread_t;
+
+typedef struct sql_grouplist rlm_sql_grouplist_t;
+typedef struct sql_thread_group rlm_sql_thread_group_t;
+/** Context data for sql_getvpdata
+ *
+ */
+typedef struct {
+	TALLOC_CTX			*talloc_ctx;
+	rlm_sql_handle_t	**handle;
+	int					rows;
+	char				*query;
+
+	VALUE_PAIR			*attr;
+} rlm_sql_thread_sql_getvpdata_ctx_t;
+/** Context data for sql_get_grouplist_async
+ *
+ */
+typedef enum {
+	PROCESS_GROUPS_START = 0,
+	PROCESS_GROUPS_POST_GET_GROUPLIST,
+	PROCESS_GROUPS_POST_GROUP_CHECK,
+	PROCESS_GROUPS_POST_GROUP_REPLY,
+} sql_thread_group_state_t;
+
+struct sql_thread_group {
+	sql_thread_group_state_t	next_step;
+	rlm_rcode_t			rcode;
+
+	rlm_sql_thread_sql_getvpdata_ctx_t	sql_getvpdata_ctx;
+
+	rlm_sql_grouplist_t *group_list;
+	rlm_sql_grouplist_t *head;
+	rlm_sql_grouplist_t *entry;
+
+	VALUE_PAIR			*sql_group;
+
+	sql_fall_through_t	do_fall_through;
+};
+
 extern const FR_NAME_NUMBER sql_rcode_table[];
 /*
  *	Capabilities flags for drivers
@@ -244,10 +289,10 @@ struct sql_inst {
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
 };
 
-typedef struct sql_grouplist {
+struct sql_grouplist {
 	char			*name;
 	struct sql_grouplist	*next;
-} rlm_sql_grouplist_t;
+};
 
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
