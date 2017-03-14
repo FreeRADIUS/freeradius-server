@@ -167,6 +167,10 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	rad_assert(lhs_type == PW_TYPE_STRING);
 	rad_assert(lhs != NULL);
 
+	if (lhs_type != PW_TYPE_STRING || lhs == NULL) {
+		return -1;
+	}
+
 	EVAL_DEBUG("CMP WITH REGEX %s %s",
 		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
 		   map->rhs->tmpl_mflag ? "MULTILINE" : "SINGLELINE");
@@ -179,6 +183,11 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	default:
 		rad_assert(rhs_type == PW_TYPE_STRING);
 		rad_assert(rhs->strvalue);
+
+		if (rhs_type != PW_TYPE_STRING || rhs == NULL) {
+			return -1;
+		}
+
 		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
@@ -363,8 +372,6 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		case '[':	/* we don't list close braces */
 		case '{':
 		case '(':
-			if (outlen < 3) goto done;
-
 			*(p++) = '\\';
 			outlen--;
 			/* FALL-THROUGH */
@@ -376,7 +383,6 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		}
 	}
 
-done:
 	*(p++) = '\0';
 	return p - out;
 }

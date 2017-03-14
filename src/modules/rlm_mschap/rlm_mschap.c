@@ -1472,6 +1472,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 
 	default:
 		rad_assert(0);
+		return RLM_MODULE_FAIL;
 	}
 	mschap_add_reply(request, ident, "MS-CHAP-Error", buffer, strlen(buffer));
 
