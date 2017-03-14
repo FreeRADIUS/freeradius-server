@@ -345,7 +345,7 @@ static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t ui
  */
 static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 {
-	int			dir_fd = -1, path_fd = -1, sock_fd = -1, parent_fd = -1;
+	int			dir_fd = -1, sock_fd = -1, parent_fd = -1;
 	char const		*name;
 	char			*buff = NULL, *dir = NULL, *p;
 
@@ -393,7 +393,6 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	error:
 		talloc_free(dir);
 		close(dir_fd);
-		close(path_fd);
 		return -1;
 	}
 
@@ -677,7 +676,6 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	if (gid != (gid_t)-1) rad_segid(egid);
 
 	close(dir_fd);
-	close(path_fd);
 
 	return sock_fd;
 }
