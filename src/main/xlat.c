@@ -1787,7 +1787,10 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	 *	much faster.
 	 */
 	tokens = talloc_typed_strdup(request, fmt);
-	if (!tokens) return -1;
+	if (!tokens) {
+		error = "Out of memory";
+		return -1;
+	}
 
 	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
 
@@ -1806,6 +1809,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	 */
 	if (slen < 0) {
 		talloc_free(tokens);
+
 		rad_assert(error != NULL);
 
 		REMARKER(fmt, -slen, error);
