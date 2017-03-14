@@ -659,7 +659,6 @@ fi
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logintime.so
 %{_libdir}/freeradius/rlm_mschap.so
-%{_libdir}/freeradius/rlm_otp.so
 %{_libdir}/freeradius/rlm_pam.so
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
