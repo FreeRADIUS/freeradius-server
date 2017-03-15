@@ -72,12 +72,12 @@ BuildRequires: openssl-devel
 BuildRequires: libcurl-devel
 BuildRequires: libkqueue-devel
 BuildRequires: libpcap-devel
-BuildRequires: libsystemd-devel
 BuildRequires: libtalloc-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
 BuildRequires: pam-devel
 BuildRequires: readline-devel
+BuildRequires: systemd-devel
 BuildRequires: zlib-devel
 
 Requires(pre): shadow-utils glibc-common
