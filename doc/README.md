@@ -1,29 +1,6 @@
-# Introduction
-
-The server started off in 1999 as compatible with Livingston
-radiusd-2.01 (no menus or s/key support though).  Over time is has
-expanded to become the leading RADIUS server.
-
-o Can limit the maximum number of simultaneous logins on a per-user basis!
-o Multiple DEFAULT entries, that can optionally fall-through.
-o In fact, every entry can fall-through
-o Deny/permit access based on huntgroup users dials into
-o Set certain parameters (such as static IP address) based on huntgroup
-o Extra "hints" file that can select SLIP/PPP/rlogin based on
-  username pattern (Puser or user.ppp is PPP, plain "user" is rlogin etc).
-o Can execute an external program when user has authenticated (for example
-  to run a sendmail queue).
-o Can use `$INCLUDE filename' in radiusd.conf, users, and dictionary files
-o Can act as a proxy server, relaying requests to a remote server
-o Supports Vendor-Specific attributes
-o Supports many different plug-in modules for authentication,
-  authorization, and accounting.
-
-
 # Installation
 
 See the `INSTALL` file, in the parent directory.
-
 
 # Configuration Files
 
@@ -62,41 +39,49 @@ http://lists.freeradius.org/mailman/listinfo/freeradius-devel
 
 Please do not raise general configuration issues there.
 
-# Other Information
+# Directories
+## Documentation
 
-  The files in other directories are:
+| Directory			| Description
+|---				|---
+| ``debian/`` 			| Files to build a "freeradius" Debian Linux package.
+| ``doc/``  			| Various snippets of documentation
+| ``doc/rfc/``			| Copies of the RFC's.  If you have Perl, do a 'make' in that directory, and look at the HTML output.
+| ``man/``			| Unix Manual pages for the server, configuration files, and associated utilities.
 
-  debian/	Files to build a "freeradius" Debian Linux package.
+## Utility
 
-  doc/		Various snippets of documentation
-  doc/rfc/	Copies of the RFC's.  If you have Perl, do a 'make' in
-		that directory, and look at the HTML output.
+| Directory			| Description
+|---				|---
+| ``mibs/``			| SNMP Mibs for the server.
+| ``scripts/``			| Sample scripts for startup and maintenance.
 
-  man/		Unix Manual pages for the server, configuration files,
-		and associated utilities.
+## Configuration
 
-  mibs/		SNMP Mibs for the server.
+| Directory			| Description
+|---				|---
+| ``raddb/``			| Sample configuration files for the server.
+| ``raddb/mods-available``	| Module configuration files.
+| ``raddb/mods-enabled``	| Directory containing symlinks to raddb/mods-available. Controls which modules are enabled.
+| ``raddb/sites-available``	| Virtual servers.
+| ``raddb/sites-enabled``	| Directory containing symlinks to raddb/sites-available. Control which virtual servers are enabled.
 
-  raddb/	Sample configuration files for the server.
+## Packaging
+| Directory			| Description
+|---				|---
+| ``redhat/``			| Additional files for a RedHat Linux system.
+| ``suse/``			| Additional files for a SuSE (UnitedLinux) system.
 
-  raddb/mods-available
-  raddb/mods-enabled
+## Source
+| Directory			| Description
+|---				|---
+| ``src/``			| Source code
+| ``src/main/``			| Source code for the daemon and associated utilities.
+| ``src/lib/``			| Source code for the RADIUS library.
+| ``src/include/``		| Header files.
+| ``src/modules/``		| Dynamic plug-in modules
 
-  raddb/sites-available
-  raddb/sites-enabled
-
-  redhat/	Additional files for a RedHat Linux system.
-
-  scripts/	Sample scripts for startup and maintenance.
-
-  src/		Source code
-  src/main	source code for the daemon and associated utilities
-  src/lib	source code for the RADIUS library
-  src/include	header files
-  src/modules	dynamic plug-in modules
-
-  suse/		Additional files for a SuSE (UnitedLinux) system.
-
+# Debugging
 
 If you have ANY problems, concerns, or surprises when running
 the server, then run it in debugging mode, as root, from the
@@ -113,5 +98,3 @@ For further details, see:
 http://www.freeradius.org/faq/
 
 and the `bugs.md`  file, in this directory.
-
-$Id$
