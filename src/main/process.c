@@ -43,7 +43,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 #ifdef HAVE_SYS_WAIT_H
-#	include <sys/wait.h>
+#  include <sys/wait.h>
 #endif
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
@@ -5216,7 +5216,7 @@ int radius_event_init(TALLOC_CTX *ctx) {
 	if (!el) return 0;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
-	if ( (int) sd_watchdog_interval > 0 ) sd_watchdog_event(NULL, ctx);
+	if ((int) sd_watchdog_interval > 0) sd_watchdog_event(NULL, ctx);
 #endif
 
 	return 1;

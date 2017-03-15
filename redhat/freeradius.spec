@@ -69,15 +69,16 @@ BuildRequires: freeradius-openssl-devel
 BuildRequires: openssl-devel
 %endif
 
-BuildRequires: pam-devel
-BuildRequires: zlib-devel
-BuildRequires: net-snmp-devel
-BuildRequires: net-snmp-utils
-BuildRequires: readline-devel
-BuildRequires: libpcap-devel
-BuildRequires: libtalloc-devel
 BuildRequires: libcurl-devel
 BuildRequires: libkqueue-devel
+BuildRequires: libpcap-devel
+BuildRequires: libsystemd-devel
+BuildRequires: libtalloc-devel
+BuildRequires: net-snmp-devel
+BuildRequires: net-snmp-utils
+BuildRequires: pam-devel
+BuildRequires: readline-devel
+BuildRequires: zlib-devel
 
 Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig
@@ -88,6 +89,7 @@ Requires: freeradius-openssl
 %else
 Requires: openssl
 %endif
+
 Requires: libpcap
 Requires: readline
 Requires: libtalloc
