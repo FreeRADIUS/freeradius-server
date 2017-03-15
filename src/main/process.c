@@ -5070,14 +5070,14 @@ static int event_new_fd(rad_listen_t *this)
  *	Emit a systemd watchdog notification and reschedule the event.
  */
 #ifdef HAVE_SYSTEMD_WATCHDOG
-static void sd_watchdog_event(UNUSED struct timeval *now, UNUSED void *ctx)
+static void sd_watchdog_event(struct timeval *now, UNUSED void *ctx)
 {
 	struct timeval when;
 
 	DEBUG("Emitting systemd watchdog notification");
 	sd_notify(0, "WATCHDOG=1");
 
-	fr_event_list_time(&when, el);
+	memcpy(&when, now, sizeof(when));
 	tv_add(&when, sd_watchdog_interval / 2);
 	if (!fr_event_timer_insert(el, sd_watchdog_event, NULL, &when, sd_watchdog_ev)) {
 		rad_panic("Failed to insert watchdog event");
@@ -5218,7 +5218,12 @@ int radius_event_init(TALLOC_CTX *ctx)
 	if (!el) return 0;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
-	if ((int) sd_watchdog_interval > 0) sd_watchdog_event(NULL, NULL);
+	if ((int) sd_watchdog_interval > 0) {
+		struct timeval now;
+
+		fr_event_list_time(&now, el);
+		sd_watchdog_event(&now, NULL);
+	}
 #endif
 
 	return 1;
