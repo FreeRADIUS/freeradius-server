@@ -29,6 +29,10 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	  and translate that into queries to the server.
 	* rlm_perl: radiusd::xlat to evaluate xlat string within
 	  perl script
+	* rlm_ldap supports maps, which can map the contents
+	  of multiple LDAP objects to RADIUS attributes.
+	* Both the rlm_ldap map and xlat functions support server
+	  side sort control specifiers in their URLs.
 
 	Bug fixes
 	* Attribute names in unlang MUST be prefixed with &
