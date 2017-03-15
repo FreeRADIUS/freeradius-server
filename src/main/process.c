@@ -5079,7 +5079,7 @@ static void sd_watchdog_event(struct timeval *now, UNUSED void *ctx)
 
 	memcpy(&when, now, sizeof(when));
 	tv_add(&when, sd_watchdog_interval / 2);
-	if (!fr_event_timer_insert(el, sd_watchdog_event, NULL, &when, &sd_watchdog_ev)) {
+	if (fr_event_timer_insert(el, sd_watchdog_event, NULL, &when, &sd_watchdog_ev) < 0) {
 		rad_panic("Failed to insert watchdog event");
 	}
 }
