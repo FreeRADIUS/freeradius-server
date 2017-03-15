@@ -55,7 +55,7 @@ extern fr_cond_t *debug_condition;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 extern uint64_t sd_watchdog_interval;
-static fr_event_t *sd_watchdog_ev;
+static fr_event_timer_t *sd_watchdog_ev;
 #endif
 
 static bool spawn_workers = false;
@@ -5079,7 +5079,7 @@ static void sd_watchdog_event(struct timeval *now, UNUSED void *ctx)
 
 	memcpy(&when, now, sizeof(when));
 	tv_add(&when, sd_watchdog_interval / 2);
-	if (!fr_event_timer_insert(el, sd_watchdog_event, NULL, &when, sd_watchdog_ev)) {
+	if (!fr_event_timer_insert(el, sd_watchdog_event, NULL, &when, &sd_watchdog_ev)) {
 		rad_panic("Failed to insert watchdog event");
 	}
 }
