@@ -387,7 +387,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION, SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION));
 
 	/*
-	 *	SSL_set_session increases the reference could
+	 *	SSL_set_session increases the reference count
 	 *	on the session, so when OpenSSL attempts to
 	 *	free it, when setting our returned session
 	 *	it becomes a noop.
