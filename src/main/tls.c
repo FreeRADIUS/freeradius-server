@@ -3116,14 +3116,29 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
 
-	if (!conf->private_key_file) {
-		ERROR(LOG_PREFIX ": TLS Server requires a private key file");
-		goto error;
-	}
+	/*
+	 *	Only check for certificate things if we don't have a
+	 *	PSK query.
+	 */
+	if (conf->psk_identity) {
+		if (conf->private_key_file) {
+			WARN(LOG_PREFIX ": Ignoring private key file due to psk_identity being used");
+		}
 
-	if (!conf->certificate_file) {
-		ERROR(LOG_PREFIX ": TLS Server requires a certificate file");
-		goto error;
+		if (conf->certificate_file) {
+			WARN(LOG_PREFIX ": Ignoring certificate file due to psk_identity being used");
+		}
+
+	} else {
+		if (!conf->private_key_file) {
+			ERROR(LOG_PREFIX ": TLS Server requires a private key file");
+			goto error;
+		}
+
+		if (!conf->certificate_file) {
+			ERROR(LOG_PREFIX ": TLS Server requires a certificate file");
+			goto error;
+		}
 	}
 
 	/*
