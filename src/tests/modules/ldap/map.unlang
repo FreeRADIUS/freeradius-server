@@ -23,7 +23,7 @@ else {
 	test_fail
 }
 
-if (&request:Tmp-String-1[1] == 'cn=radprofile1,ou=profiles,dc=example,dc=com') {
+if (&request:Tmp-String-1[1] == 'cn=profile1,ou=profiles,dc=example,dc=com') {
 	test_pass
 }
 else {
