@@ -1,0 +1,15 @@
+#
+#  Input packet
+#
+User-Name = "mike"
+User-Password = "mikeymikemike"
+NAS-IP-Address = 6.6.6.6
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Idle-Timeout == 3600
+Session-Timeout == 7200
+Acct-Interim-Interval == 1800
+Framed-IP-Netmask == "255.255.0.0"
