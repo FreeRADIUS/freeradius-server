@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include	<fcntl.h>
 
 typedef struct rlm_files_t {
-	char const *compat_mode;
-
 	char const *key;
 
 	char const *filename;
@@ -88,7 +86,6 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ FR_CONF_OFFSET("auth_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
-	{ FR_CONF_OFFSET("compat", PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_files_t, compat_mode) },
 	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_files_t, key) },
 	CONF_PARSER_TERMINATOR
 };
@@ -100,7 +97,7 @@ static int pairlist_cmp(void const *a, void const *b)
 		      ((PAIR_LIST const *)b)->name);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree, char const *compat_mode_str)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
@@ -119,26 +116,14 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree,
 	}
 
 	/*
-	 *	Walk through the 'users' file list, if we're debugging,
-	 *	or if we're in compat_mode.
+	 *	Walk through the 'users' file list, if we're debugging.
 	 */
-	if ((rad_debug_lvl) ||
-	    (compat_mode_str && (strcmp(compat_mode_str, "cistron") == 0))) {
+	if (rad_debug_lvl) {
 		VALUE_PAIR *vp;
-		bool compat_mode = false;
-
-		if (compat_mode_str && (strcmp(compat_mode_str, "cistron") == 0)) {
-			compat_mode = true;
-		}
 
 		entry = users;
 		while (entry) {
 			vp_cursor_t cursor;
-			if (compat_mode) {
-				DEBUG("[%s]:%d Cistron compatibility checks for entry %s ...",
-						filename, entry->lineno,
-						entry->name);
-			}
 
 			/*
 			 *	Look for improper use of '=' in the
@@ -162,47 +147,13 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree,
 				 *	ensure it has '=='.
 				 */
 				if ((vp->da->vendor != 0) ||
-						(vp->da->attr < 0x100)) {
-					if (!compat_mode) {
-						WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-								filename, entry->lineno,
-								vp->da->name, vp->da->name,
-								entry->name);
-					} else {
-						DEBUG("\tChanging '%s =' to '%s =='",
-								vp->da->name, vp->da->name);
-					}
+				    (vp->da->attr < 0x100)) {
+					WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+					     filename, entry->lineno,
+					     vp->da->name, vp->da->name,
+					     entry->name);
 					vp->op = T_OP_CMP_EQ;
 					continue;
-				}
-
-				/*
-				 *	Cistron Compatibility mode.
-				 *
-				 *	Re-write selected attributes
-				 *	to be '+=', instead of '='.
-				 *
-				 *	All others get set to '=='
-				 */
-				if (compat_mode) {
-					/*
-					 *	Non-wire attributes become +=
-					 *
-					 *	On the write attributes
-					 *	become ==
-					 */
-					if ((vp->da->attr >= 0x100) &&
-					    (vp->da->attr <= 0xffff) &&
-					    (vp->da->attr != PW_HINT) &&
-					    (vp->da->attr != PW_HUNTGROUP_NAME)) {
-						DEBUG("\tChanging '%s =' to '%s +='", vp->da->name, vp->da->name);
-
-						vp->op = T_OP_ADD;
-					} else {
-						DEBUG("\tChanging '%s =' to '%s =='", vp->da->name, vp->da->name);
-
-						vp->op = T_OP_CMP_EQ;
-					}
 				}
 			} /* end of loop over check items */
 
@@ -322,7 +273,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_files_t *inst = instance;
 
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
+#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
 
 	READFILE(filename, common);
 	READFILE(usersfile, users);
