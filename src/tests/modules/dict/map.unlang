@@ -1,4 +1,4 @@
-if ("%{attr_by_number:1}" == 'User-Name') {
+if ("%{attr_by_num:1}" == 'User-Name') {
 	test_pass
 }
 else {

@@ -28,11 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 /*
- *	Xlat for %{attr_by_number:<number>}
+ *	Xlat for %{attr_by_num:<number>}
  */
-static ssize_t xlat_dict_attr_by_number(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-					UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-					REQUEST *request, char const *fmt)
+static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+				     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				     REQUEST *request, char const *fmt)
 {
 	char			*q;
 	fr_dict_t const		*dict = NULL;
@@ -72,7 +72,7 @@ static ssize_t xlat_dict_attr_by_number(TALLOC_CTX *ctx, char **out, UNUSED size
  */
 static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
-	xlat_register(instance, "attr_by_number", xlat_dict_attr_by_number, NULL, NULL, 0, 0);
+	xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0);
 
 	return 0;
 }
