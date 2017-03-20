@@ -6,6 +6,17 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Bug fixes
 	* radtest uses Cleartext-Password for EAP, not
 	  User-Password.
+	* Update documentation for mods-enabled/ linking.
+	* Enhanced checks for moonshot salt.  Fixes #1933.
+	* Allow session resumption for RadSec connections.
+	  Fixes #1936.
+	* Update "huntgroups" file to note that port ranges
+	  are not supported.
+	* Fix OpenSSL permissions issues on default key files.
+	  Fixes #1941.
+	* Certificates are not required when PSK is used.
+	* Allow SubjectAltName as first extension in cert.
+	  Fixes #1946.
 
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
