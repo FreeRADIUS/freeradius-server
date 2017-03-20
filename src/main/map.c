@@ -545,42 +545,6 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	return 0;
 }
 
-/** Compare map where LHS is #TMPL_TYPE_ATTR
- *
- * Compares maps by lhs->tmpl_da, lhs->tmpl_tag, lhs->tmpl_num
- *
- * @note both map->lhs must be #TMPL_TYPE_ATTR.
- *
- * @param a first map.
- * @param b second map.
- */
-int8_t map_cmp_by_lhs_attr(void const *a, void const *b)
-{
-	vp_tmpl_t const *my_a = ((vp_map_t const *)a)->lhs;
-	vp_tmpl_t const *my_b = ((vp_map_t const *)b)->lhs;
-
-	VERIFY_TMPL(my_a);
-	VERIFY_TMPL(my_b);
-
-	uint8_t cmp;
-
-	rad_assert(my_a->type == TMPL_TYPE_ATTR);
-	rad_assert(my_b->type == TMPL_TYPE_ATTR);
-
-	cmp = fr_pointer_cmp(my_a->tmpl_da, my_b->tmpl_da);
-	if (cmp != 0) return cmp;
-
-	if (my_a->tmpl_tag < my_b->tmpl_tag) return -1;
-
-	if (my_a->tmpl_tag > my_b->tmpl_tag) return 1;
-
-	if (my_a->tmpl_num < my_b->tmpl_num) return -1;
-
-	if (my_a->tmpl_num > my_b->tmpl_num) return 1;
-
-	return 0;
-}
-
 static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
 {
 	vp_map_t *fast;
