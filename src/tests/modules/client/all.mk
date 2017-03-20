@@ -1,3 +1,3 @@
 #
-#  Test the "always" module
+#  Test the "client" module
 #
