@@ -2149,7 +2149,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	/*
 	 *	Get the RFC822 Subject Alternative Name
 	 */
-	loc = X509_get_ext_by_NID(client_cert, NID_subject_alt_name, 0);
+	loc = X509_get_ext_by_NID(client_cert, NID_subject_alt_name, -1);
 	if (certs && (lookup <= 1) && (loc >= 0)) {
 		X509_EXTENSION *ext = NULL;
 		GENERAL_NAMES *names = NULL;
