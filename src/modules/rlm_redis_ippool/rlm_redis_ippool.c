@@ -1114,7 +1114,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		}
 
 		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->requested_address, NULL, NULL) < 0) {
-			REDEBUG("Failed expanding requested_address");
+			REDEBUG("Failed expanding requested_address (%s)", inst->requested_address->name);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1129,7 +1129,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 					    &ip, device_id, device_id_len,
 					    gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
-			RDEBUG2("IP address lease updated");
+			RDEBUG2("Requested IP address' \"%s\" lease updated", ip_str);
 
 			/*
 			 *	Copy over the input IP address to the reply attribute
@@ -1160,15 +1160,15 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		 *	be found.  This extremely useful for migrations.
 		 */
 		case IPPOOL_RCODE_NOT_FOUND:
-			REDEBUG("IP address is not a member of the specified pool");
+			REDEBUG("Requested IP address \"%s\" is not a member of the specified pool", ip_str);
 			return RLM_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_EXPIRED:
-			REDEBUG("IP address lease already expired at time of renewal");
+			REDEBUG("Requested IP address' \"%s\" lease already expired at time of renewal", ip_str);
 			return RLM_MODULE_INVALID;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
-			REDEBUG("IP address lease allocated to another device");
+			REDEBUG("Requested IP address' \"%s\" lease allocated to another device", ip_str);
 			return RLM_MODULE_INVALID;
 
 		default:
@@ -1196,7 +1196,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		switch (redis_ippool_release(inst, request, key_prefix, key_prefix_len,
 					     &ip, device_id, device_id_len)) {
 		case IPPOOL_RCODE_SUCCESS:
-			RDEBUG2("IP address released");
+			RDEBUG2("IP address \"%s\" released", ip_str);
 			return RLM_MODULE_UPDATED;
 
 		/*
@@ -1205,11 +1205,11 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		 *	be found.  This extremely useful for migrations.
 		 */
 		case IPPOOL_RCODE_NOT_FOUND:
-			REDEBUG("IP address is not a member of the specified pool");
+			REDEBUG("Requested IP address \"%s\" is not a member of the specified pool", ip_str);
 			return RLM_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
-			REDEBUG("IP address lease allocated to another device");
+			REDEBUG("Requested IP address' \"%s\" lease allocated to another device", ip_str);
 			return RLM_MODULE_INVALID;
 
 		default:
