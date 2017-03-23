@@ -580,40 +580,48 @@ static rlm_rcode_t sql_getvpdata_resume(REQUEST *request, void *instance, void *
 
 rlm_rcode_t sql_getvpdata(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_sql_thread_sql_getvpdata_ctx_t *db_ctx = ctx;
-	rlm_sql_thread_select_query_ctx_t *select_query_ctx;
+	rlm_sql_getvpdata_ctx_t *sql_getvpdata_ctx = talloc_get_type_abort(ctx, rlm_sql_getvpdata_ctx_t);
+	rlm_sql_query_ctx_t *select_query_ctx;
 
 	rad_assert(request);
 
-	select_query_ctx = talloc_zero(request, rlm_sql_thread_select_query_ctx_t);
-	select_query_ctx->handle = db_ctx->handle;
-	select_query_ctx->query = db_ctx->query;
+	sql_getvpdata_ctx->select_query_ctx = talloc_zero(sql_getvpdata_ctx, rlm_sql_query_ctx_t);
 
-	return unlang_two_step_process(request, rlm_sql_select_query_async, select_query_ctx, sql_getvpdata_resume, db_ctx);
+	select_query_ctx = sql_getvpdata_ctx->select_query_ctx;
+	select_query_ctx->handle = sql_getvpdata_ctx->handle;
+	select_query_ctx->query = sql_getvpdata_ctx->query;
+
+	return unlang_two_step_process(request, rlm_sql_select_query, select_query_ctx, sql_getvpdata_resume, sql_getvpdata_ctx);
 }
 
 static rlm_rcode_t sql_getvpdata_resume(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_sql_thread_sql_getvpdata_ctx_t *db_ctx = ctx;
+	rlm_sql_getvpdata_ctx_t *sql_getvpdata_ctx = talloc_get_type_abort(ctx, rlm_sql_getvpdata_ctx_t);
+	rlm_sql_query_ctx_t *select_query_ctx = sql_getvpdata_ctx->select_query_ctx;
 	rlm_sql_row_t	row;
-	TALLOC_CTX *talloc_ctx = db_ctx->talloc_ctx;
+	TALLOC_CTX *talloc_ctx = sql_getvpdata_ctx->talloc_ctx;
 	rlm_sql_t const *inst = instance;
 
 	rad_assert(talloc_ctx);
 
-	db_ctx->rows = 0;
+	sql_getvpdata_ctx->rows = 0;
 
-	while (rlm_sql_fetch_row(&row, inst, request, db_ctx->handle) == RLM_SQL_OK) {
-		if (sql_fr_pair_list_afrom_str(talloc_ctx, request, &db_ctx->attr, row) != 0) {
-			REDEBUG("Error parsing user data from database result");
+	/* error handled by rlm_sql_select_query */
+	sql_getvpdata_ctx->rcode = select_query_ctx->rcode;
 
-			(inst->driver->sql_finish_select_query)(*db_ctx->handle, inst->config);
+	if (select_query_ctx->rcode == RLM_SQL_OK) {
+		while (rlm_sql_fetch_row(&row, inst, request, sql_getvpdata_ctx->handle) == RLM_SQL_OK) {
+			if (sql_fr_pair_list_afrom_str(talloc_ctx, request, &sql_getvpdata_ctx->attr, row) != 0) {
+				REDEBUG("Error parsing user data from database result");
 
-			return RLM_MODULE_FAIL;
+				(inst->driver->sql_finish_select_query)(*sql_getvpdata_ctx->handle, inst->config);
+
+				return RLM_MODULE_FAIL;
+			}
+			sql_getvpdata_ctx->rows++;
 		}
-		db_ctx->rows++;
+		(inst->driver->sql_finish_select_query)(*sql_getvpdata_ctx->handle, inst->config);
 	}
-	(inst->driver->sql_finish_select_query)(*db_ctx->handle, inst->config);
 
 	return RLM_MODULE_OK;
 }
