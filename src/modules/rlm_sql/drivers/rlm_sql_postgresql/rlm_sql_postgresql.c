@@ -62,9 +62,16 @@ typedef struct rlm_sql_postgres_config {
 	bool		send_application_name;
 } rlm_sql_postgres_t;
 
+typedef enum {
+	POSTGRES_CONN_READY = 0,
+	POSTGRES_CONN_WAIT_READ,
+	POSTGRES_CONN_WAIT_WRITE,
+} rlm_sql_postgres_conn_state_t;
+
 typedef struct rlm_sql_postgres_conn {
 	PGconn		*db;
 	PGresult	*result;
+	rlm_sql_postgres_conn_state_t	state;
 	int		cur_row;
 	int		num_fields;
 	int		affected_rows;
@@ -163,6 +170,13 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 	return 0;
 }
 
+static int sql_get_fd(rlm_sql_handle_t *handle)
+{
+	rlm_sql_postgres_conn_t *conn = handle->conn;
+
+	return PQsocket(conn->db);
+}
+
 static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 					    UNUSED struct timeval const *timeout)
 {
@@ -192,12 +206,11 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 	return 0;
 }
 
-static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
-					      char const *query)
+static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle,
+			UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
-	ExecStatusType status;
-	int numfields = 0;
+	int res;
 
 	if (!conn->db) {
 		ERROR("Socket not connected");
@@ -205,14 +218,92 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	}
 
 	/*
-	 *  Returns a PGresult pointer or possibly a null pointer.
-	 *  A non-null pointer will generally be returned except in
-	 *  out-of-memory conditions or serious errors such as inability
-	 *  to send the command to the server. If a null pointer is
-	 *  returned, it should be treated like a PGRES_FATAL_ERROR
-	 *  result.
+	 *  Returns 1 if the command was successfully dispatched and 0 if not.
+	 *  There isn't much in the way of description as to what can cause it to fail
+	 *  except if there is an ongoing request for the same connection.
+	 *  This should not happen, but if it does, a reconnect should solve it.
 	 */
-	conn->result = PQexec(conn->db, query);
+	if (!PQsendQuery(conn->db, query)) {
+		ERROR("Failed sending query: %s", PQerrorMessage(conn->db));
+		return RLM_SQL_RECONNECT;
+	}
+
+	/*
+	 * Attempt to flush the send queue
+	 * Not sure what can cause this error. Try to reconnect.
+	 */
+	res = PQflush(conn->db);
+ 	if (res < 0) {
+		ERROR("Failed slushing send queue: %s", PQerrorMessage(conn->db));
+		return RLM_SQL_RECONNECT;
+	} else if (res > 0) {
+		DEBUG4("Can't send data to Postgres server, yielding...");
+		conn->state = POSTGRES_CONN_WAIT_WRITE;
+	}
+
+	return RLM_SQL_YIELD;
+}
+
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle,
+			UNUSED rlm_sql_config_t *config, char const *query)
+{
+	return sql_query(handle, config, query);
+}
+
+static sql_rcode_t sql_query_status(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+{
+	rlm_sql_postgres_conn_t *conn = handle->conn;
+	ExecStatusType status;
+	int numfields = 0;
+	int res;
+	PGresult *ignored_result;
+
+	/*
+	 * Don't do anything if query has been cancelled
+	 */
+	if (handle->cancelled) {
+		 DEBUG2("Query cancelled");
+		 return RLM_SQL_CLOSE;
+	}
+
+	/*
+	 * In case the socket is not writable when a request needs to be send, we yield
+	 * The status CB can therefore get called before the request is sent
+	 * Flush send queue and yield
+	 */
+	if (conn->state == POSTGRES_CONN_WAIT_WRITE) {
+		/*
+		 * Attempt to flush the send queue
+		 * Not sure what can cause this error. Try to reconnect.
+		 */
+		res = PQflush(conn->db);
+		if (res < 0) {
+			ERROR("Failed slushing send queue: %s", PQerrorMessage(conn->db));
+			return RLM_SQL_RECONNECT;
+		} else if (res > 0) {
+			DEBUG4("Still can't send data to Postgres server, yielding...");
+			return RLM_SQL_YIELD;
+		}
+	}
+
+	/*
+	 * Let libq consume the received data
+	 */
+	if (!PQconsumeInput(conn->db)) {
+		ERROR("Error consuming input from FD %i", PQsocket(conn->db));
+		return RLM_SQL_ERROR;
+	}
+
+	/*
+	 * Make sure enough data has been received.
+	 */
+	if (PQisBusy(conn->db)) {
+		DEBUG4("Not all data retrieved from FD %i", PQsocket(conn->db));
+		conn->state = POSTGRES_CONN_WAIT_READ;
+		return RLM_SQL_YIELD;
+	}
+
+	conn->result = PQgetResult(conn->db);
 
 	/*
 	 *  As this error COULD be a connection error OR an out-of-memory
@@ -223,6 +314,18 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 		ERROR("Failed getting query result: %s", PQerrorMessage(conn->db));
 		return RLM_SQL_RECONNECT;
 	}
+
+	DEBUG4("All data retrieved from FD %i", PQsocket(conn->db));
+
+	/*
+	 * There should only be a single command being executed
+	 * Discard any other results
+	 */
+	while ((ignored_result = PQgetResult(conn->db))) {
+		PQclear(ignored_result);
+	}
+
+	conn->state = POSTGRES_CONN_READY;
 
 	status = PQresultStatus(conn->result);
 	DEBUG("Status: %s", PQresStatus(status));
@@ -283,9 +386,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	return RLM_SQL_ERROR;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query_status(rlm_sql_handle_t *handle,
+			UNUSED rlm_sql_config_t *config)
 {
-	return sql_query(handle, config, query);
+	return sql_query_status(handle, config);
 }
 
 static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -533,8 +637,10 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 	.config				= driver_config,
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
+	.sql_query				= sql_query,
+	.sql_query_status		= sql_query_status,
 	.sql_select_query		= sql_select_query,
+	.sql_select_query_status= sql_select_query_status,
 	.sql_num_fields			= sql_num_fields,
 	.sql_fields			= sql_fields,
 	.sql_fetch_row			= sql_fetch_row,
@@ -542,5 +648,6 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 	.sql_finish_query		= sql_free_result,
 	.sql_finish_select_query	= sql_free_result,
 	.sql_affected_rows		= sql_affected_rows,
-	.sql_escape_func		= sql_escape_func
+	.sql_escape_func		= sql_escape_func,
+	.sql_get_fd				= sql_get_fd,
 };
