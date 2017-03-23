@@ -45,6 +45,7 @@ RCSIDH(rlm_sql_h, "$Id$")
 
 /* SQL Errors */
 typedef enum {
+	RLM_SQL_CLOSE = -4,		// !< Connection should be closed to cancel request
 	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error.
 	RLM_SQL_ERROR = -2,		//!< General connection/server error.
 	RLM_SQL_OK = 0,			//!< Success.
@@ -53,6 +54,13 @@ typedef enum {
 	RLM_SQL_NO_MORE_ROWS,		//!< No more rows available
 	RLM_SQL_YIELD,			//!< Async driver is yielding
 } sql_rcode_t;
+
+typedef enum {
+	SQL_READ,
+	SQL_WRITE,
+	SQL_READ_WRITE,
+	SQL_REMOVE,
+} sql_io_t;
 
 typedef enum {
 	FALL_THROUGH_NO = 0,
@@ -153,25 +161,43 @@ typedef struct sql_config {
 } rlm_sql_config_t;
 
 typedef struct sql_inst rlm_sql_t;
+typedef struct sql_thread rlm_sql_thread_t;
 
 typedef struct rlm_sql_handle {
 	void			*conn;				//!< Database specific connection handle.
-	rlm_sql_row_t		row;				//!< Row data from the last query.
-	rlm_sql_t const		*inst;				//!< The rlm_sql instance this connection belongs to.
-	rlm_sql_thread_t const	*thread;		//!< The sql thread context this connection belongs to.
+	rlm_sql_row_t		row;			//!< Row data from the last query.
+	rlm_sql_t const		*inst;			//!< The rlm_sql instance this connection belongs to.
+	rlm_sql_thread_t const	*thread;	//!< The sql thread context this connection belongs to.
 	TALLOC_CTX		*log_ctx;			//!< Talloc pool used to avoid allocing memory
-								//!< when log strings need to be copied.
+										//!< when log strings need to be copied.
+	int cancelled;						//!< True if request (not query) has been cancelled
 } rlm_sql_handle_t;
+
+/** Thread specific fd to REQUEST mapping for requests waiting for a SQL reply
+ *
+ */
+typedef struct sql_fd_map_t rlm_sql_fd_map_t;
+struct sql_fd_map_t {
+	int					fd;				//!< FD of underlying SQL connection
+	rlm_sql_handle_t	*handle;		//!< Handle for current SQL request
+	REQUEST				*request;		//!< Request being processed
+	fr_event_timer_t	*ev;			//!< Used to manage IO timers.
+	rlm_sql_fd_map_t	*prev;			//!< Previous element in chained list
+	rlm_sql_fd_map_t	*next;			//!< Next element in chained list
+	rlm_sql_fd_map_t	**head;			//!< Pointer to head of chained list
+};
 
 /** Thread specific rlm_sql instance data
  *
  */
-typedef struct {
-	rlm_sql_t const		*inst;		//!< Instance of rlm_sql.
-} rlm_sql_thread_t;
+struct sql_thread {
+	rlm_sql_t const			*inst;		//!< Instance of rlm_sql.
+	fr_connection_pool_t	*pool;		//!< Thread specific connection pool.
+	fr_event_list_t			*el;		//!< This thread's event list.
+	rlm_sql_fd_map_t		*fd_map;	//!< Map FD to request waiting for reply
+};
 
 typedef struct sql_grouplist rlm_sql_grouplist_t;
-typedef struct sql_thread_group rlm_sql_thread_group_t;
 
 /** Context data for rlm_sql_select_query
  *
@@ -182,81 +208,90 @@ typedef enum {
 } sql_thread_select_query_state_t;
 
 typedef struct {
-	sql_thread_select_query_state_t	next_step;
-	sql_rcode_t			rcode;
-	int					sql_ret;
-	rlm_sql_handle_t	**handle;
-	char				*query;
-	int					max_attempts;	//!< Maximum number of attempts to run query
-	int					curr_attempt;	//!< Number of attempts ro run query
-} rlm_sql_thread_select_query_ctx_t;
+	sql_thread_select_query_state_t	next_step;	//!< Next step when request resumes
+	sql_rcode_t						rcode;		//!< Return code
+	int								sql_ret;	//!< Intermediate query status code
+	rlm_sql_handle_t				**handle;	//!< SQL connection handle
+	char							*query;		//!< Query to execute
+	int								max_attempts;	//!< Maximum number of attempts to run query
+	int								curr_attempt;	//!< Number of attempts ro run query
+} rlm_sql_query_ctx_t;
 
 /** Context data for sql_getvpdata
  *
  */
 typedef struct {
-	TALLOC_CTX			*talloc_ctx;
-	rlm_sql_handle_t	**handle;
-	int					rows;
-	char				*query;
-
-	VALUE_PAIR			*attr;
-} rlm_sql_thread_sql_getvpdata_ctx_t;
-
-/** Context data for mod_authorize
- *
- */
-
-typedef enum {
-	AUTHORIZE_START = 0,
-	AUTHORIZE_POST_CHECK_QUERY,
-	AUTHORIZE_POST_REPLY_QUERY,
-	AUTHORIZE_POST_PROCESS_GROUPS,
-	AUTHORIZE_POST_PROCESS_PROFILE,
-} sql_thread_authorize_state_t;
-
-typedef struct {
-	sql_thread_authorize_state_t	next_step;
-	rlm_rcode_t			rcode;
-
-	rlm_sql_handle_t	*handle;
-	rlm_sql_thread_sql_getvpdata_ctx_t	sql_getvpdata_ctx;
-
-	VALUE_PAIR			*user_profile;
-
-	bool				user_found;
-
-	sql_fall_through_t	do_fall_through;
-
-
-	rlm_sql_thread_group_t	*group_ctx;
-
-} rlm_sql_thread_authorize_t;
+	sql_rcode_t			rcode;				//!< Return code
+	TALLOC_CTX			*talloc_ctx;		//!< Talloc context
+	rlm_sql_handle_t	**handle;			//!< SQL connection handle
+	rlm_sql_query_ctx_t *select_query_ctx;	//!< Context for call to sql_select_query
+	int					rows;				//!< Number of rows returned by query
+	char				*query;				//!< Query to execute
+	VALUE_PAIR			*attr;				//!< Attribute to set value for
+} rlm_sql_getvpdata_ctx_t;
 
 /** Context data for sql_get_grouplist_async
  *
  */
 typedef enum {
-	PROCESS_GROUPS_START = 0,
-	PROCESS_GROUPS_POST_GET_GROUPLIST,
-	PROCESS_GROUPS_POST_GROUP_CHECK,
-	PROCESS_GROUPS_POST_GROUP_REPLY,
-} sql_thread_group_state_t;
+	PROCESS_GROUP_PRE_CHECK = 0,
+	PROCESS_GROUP_POST_CHECK,
+	PROCESS_GROUP_PRE_REPLY,
+	PROCESS_GROUP_POST_REPLY,
+	PROCESS_GROUP_NEXT_GROUP,
+} sql_process_groups_state_t;
 
-struct sql_thread_group {
-	sql_thread_group_state_t	next_step;
+typedef struct {
+	sql_process_groups_state_t	next_step;			//!< Next step when request resumes
+	rlm_rcode_t					rcode;				//!< Return code
+
+	rlm_sql_getvpdata_ctx_t		*sql_getvpdata_ctx;	//!< Context for call to sql_getvpdata
+	rlm_sql_query_ctx_t			*sql_query_ctx;		//!< Context for call to sql_query
+
+	rlm_sql_grouplist_t			*group_list;		//!< List of groups retrieved from DB
+	rlm_sql_grouplist_t			*head;				//!< State variable: head of list of groups
+	rlm_sql_grouplist_t			*entry;				//!< State variable: current entry being processed
+
+	VALUE_PAIR					*sql_group;			//!< Attribute to assign groups to
+
+	sql_fall_through_t			do_fall_through;	//!< Value for Fall-Through
+} rlm_sql_process_groups_ctx_t;
+
+/** Context data for mod_authorize
+ *
+ */
+
+typedef struct {
+	rlm_rcode_t						rcode;				//!< Return code
+	rlm_sql_handle_t				*handle;			//!< SQL connection handle
+	rlm_sql_getvpdata_ctx_t			*sql_getvpdata_ctx;	//!< Context for sql_getvpdata
+	rlm_sql_process_groups_ctx_t	*sql_process_group_ctx;	//!< Context for sql_process_groups
+	VALUE_PAIR						*user_profile;		//!< User profile attribute
+
+	bool							user_found;			//!< True is user was found in DB
+
+	sql_fall_through_t				do_fall_through;	//!< Value for Fall-Through
+} rlm_sql_authorize_ctx_t;
+
+/** Context data for acct_redundant
+ *
+ */
+ typedef enum {
+ 	ACCT_REDUNDANT_START = 0,
+ 	ACCT_REDUNDANT_RESUME,
+ } rlm_sql_acct_redundant_state_t;
+
+typedef struct {
+	rlm_sql_acct_redundant_state_t	next_step;
 	rlm_rcode_t			rcode;
 
-	rlm_sql_thread_sql_getvpdata_ctx_t	sql_getvpdata_ctx;
+	rlm_sql_handle_t	*handle;
+	rlm_sql_query_ctx_t	*sql_query_ctx;
 
-	rlm_sql_grouplist_t *group_list;
-	rlm_sql_grouplist_t *head;
-	rlm_sql_grouplist_t *entry;
-
-	VALUE_PAIR			*sql_group;
-
-	sql_fall_through_t	do_fall_through;
-};
+	sql_acct_section_t	*section;
+	CONF_PAIR 			*pair;
+	char const			*attr;
+} rlm_sql_acct_redundant_ctx_t;
 
 extern const FR_NAME_NUMBER sql_rcode_table[];
 /*
@@ -296,13 +331,18 @@ typedef struct rlm_sql_driver_t {
 	sql_rcode_t (*mod_instantiate)(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 				       struct timeval const *timeout);
-
+	sql_rcode_t (*sql_socket_init_result)(rlm_sql_handle_t *handle);
+	int (*sql_socket_wait)(rlm_sql_handle_t *handle);
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
+	/*
+	 * For asynchronous drivers, get the status of the pending query
+	 */
+	sql_rcode_t (*sql_query_status)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	/*
-	 * For asynchronous drivers, get the status of the latest query
+	 * For asynchronous drivers, get the status of the pending select query
 	 */
-	sql_rcode_t (*sql_select_status)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_select_query_status)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -317,6 +357,7 @@ typedef struct rlm_sql_driver_t {
 
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	int (*sql_get_fd)(rlm_sql_handle_t *handle);
 
 	xlat_escape_t	sql_escape_func;
 } rlm_sql_driver_t;
@@ -357,10 +398,11 @@ rlm_rcode_t	sql_getvpdata(REQUEST *request, void *instance, void *thread, void *
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
-sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-rlm_rcode_t rlm_sql_select_query_async(REQUEST *request, void *instance, void *thread, void *ctx);
+rlm_rcode_t rlm_sql_query(REQUEST *request, void *instance, UNUSED void *thread, void *ctx);
+rlm_rcode_t rlm_sql_select_query(REQUEST *request, void *instance, void *thread, void *ctx);
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
+rlm_sql_fd_map_t*	sql_lookup_fd_map(rlm_sql_thread_t *thread, int fd);
+int		sql_set_io_event_handlers(rlm_sql_t const *inst, sql_io_t io, rlm_sql_thread_t *thread, int fd, rlm_sql_fd_map_t *fd_map_elt);
 #endif
