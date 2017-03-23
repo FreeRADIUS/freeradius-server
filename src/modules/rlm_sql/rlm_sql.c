@@ -1804,6 +1804,8 @@ static rlm_rcode_t mod_authorize_error(REQUEST *request, void *instance, UNUSED 
 	return authorize_ctx->rcode;
 }
 
+static rlm_rcode_t acct_redundant_loop(REQUEST *request, void *instance, UNUSED void *thread, void *ctx);
+static rlm_rcode_t acct_redundant_finish(REQUEST *request, void *instance, UNUSED void *thread, void *ctx);
 /*
  *	Generic function for failing between a bunch of queries.
  *
@@ -1814,19 +1816,18 @@ static rlm_rcode_t mod_authorize_error(REQUEST *request, void *instance, UNUSED 
  *	doesn't update any rows, the next matching config item is used.
  *
  */
-static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section)
+static rlm_rcode_t acct_redundant(rlm_sql_t *inst, rlm_sql_thread_t *thread,
+								  REQUEST *request, sql_acct_section_t *section)
 {
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-
-	rlm_sql_handle_t	*handle = NULL;
-	int			sql_ret;
-	int			numaffected = 0;
+	rlm_sql_acct_redundant_ctx_t *acct_redundant_ctx = talloc_zero(request, rlm_sql_acct_redundant_ctx_t);
 
 	CONF_ITEM		*item;
 
 	char			path[FR_MAX_STRING_LEN];
 	char			*p = path;
-	char			*expanded = NULL;
+
+	acct_redundant_ctx->rcode = RLM_MODULE_OK;
+	acct_redundant_ctx->section = section;
 
 	rad_assert(section);
 
@@ -1835,9 +1836,9 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 	}
 
 	if (xlat_eval(p, sizeof(path) - (p - path), request, section->reference, NULL, NULL) < 0) {
-		rcode = RLM_MODULE_FAIL;
+		acct_redundant_ctx->rcode = RLM_MODULE_FAIL;
 
-		goto finish;
+		return acct_redundant_finish(request, inst, thread, acct_redundant_ctx);
 	}
 
 	/*
@@ -1847,130 +1848,165 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 	item = cf_reference_item(NULL, section->cs, path);
 	if (!item) {
 		RWDEBUG("No such configuration item %s", path);
-		rcode = RLM_MODULE_NOOP;
+		acct_redundant_ctx->rcode = RLM_MODULE_NOOP;
 
-		goto finish;
+		return acct_redundant_finish(request, inst, thread, acct_redundant_ctx);
 	}
 	if (cf_item_is_section(item)){
 		RWDEBUG("Sections are not supported as references");
-		rcode = RLM_MODULE_NOOP;
+		acct_redundant_ctx->rcode = RLM_MODULE_NOOP;
 
-		goto finish;
+		return acct_redundant_finish(request, inst, thread, acct_redundant_ctx);
 	}
 
-	pair = cf_item_to_pair(item);
-	attr = cf_pair_attr(pair);
+	acct_redundant_ctx->pair = cf_item_to_pair(item);
+	acct_redundant_ctx->attr = cf_pair_attr(acct_redundant_ctx->pair);
 
-	RDEBUG2("Using query template '%s'", attr);
+	RDEBUG2("Using query template '%s'", acct_redundant_ctx->attr);
 
-	handle = fr_connection_get(inst->pool, request);
-	if (!handle) {
-		rcode = RLM_MODULE_FAIL;
+	acct_redundant_ctx->handle = fr_connection_get(thread->pool, request);
+	if (!acct_redundant_ctx->handle) {
+		acct_redundant_ctx->rcode = RLM_MODULE_FAIL;
 
-		goto finish;
+		return acct_redundant_finish(request, inst, thread, acct_redundant_ctx);
 	}
+
+	acct_redundant_ctx->sql_query_ctx = talloc_zero(acct_redundant_ctx, rlm_sql_query_ctx_t);
+	acct_redundant_ctx->sql_query_ctx->handle = &acct_redundant_ctx->handle;
 
 	sql_set_user(inst, request, NULL);
 
+	acct_redundant_ctx->next_step = ACCT_REDUNDANT_START;
+
+	return acct_redundant_loop(request, inst, thread, acct_redundant_ctx);
+}
+
+static rlm_rcode_t acct_redundant_loop(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_acct_redundant_ctx_t *acct_redundant_ctx = talloc_get_type_abort(ctx, rlm_sql_acct_redundant_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+
+	char const	*value;
+	int			numaffected = 0;
+
 	while (true) {
-		value = cf_pair_value(pair);
-		if (!value) {
-			RDEBUG("Ignoring null query");
-			rcode = RLM_MODULE_NOOP;
+		switch (acct_redundant_ctx->next_step) {
+		case ACCT_REDUNDANT_START:
+			value = cf_pair_value(acct_redundant_ctx->pair);
+			if (!value) {
+				RDEBUG("Ignoring null query");
+				acct_redundant_ctx->rcode = RLM_MODULE_NOOP;
 
-			goto finish;
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+			}
+
+			if (xlat_aeval(request, &acct_redundant_ctx->sql_query_ctx->query, request, value,
+						   inst->sql_escape_func, acct_redundant_ctx->handle) < 0) {
+				acct_redundant_ctx->rcode = RLM_MODULE_FAIL;
+
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+			}
+
+			if (!*acct_redundant_ctx->sql_query_ctx->query) {
+				RDEBUG("Ignoring null query");
+				acct_redundant_ctx->rcode = RLM_MODULE_NOOP;
+				talloc_free(acct_redundant_ctx->sql_query_ctx->query);
+
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+			}
+
+			rlm_sql_query_log(inst, request, acct_redundant_ctx->section, acct_redundant_ctx->sql_query_ctx->query);
+
+			acct_redundant_ctx->next_step = ACCT_REDUNDANT_RESUME;
+
+			return unlang_two_step_process(request, rlm_sql_query, acct_redundant_ctx->sql_query_ctx,
+										   acct_redundant_loop, ctx);
+
+		case ACCT_REDUNDANT_RESUME:
+			TALLOC_FREE(acct_redundant_ctx->sql_query_ctx->query);
+			RDEBUG("SQL query returned: %s", fr_int2str(sql_rcode_table, acct_redundant_ctx->sql_query_ctx->sql_ret, "<INVALID>"));
+
+			switch (acct_redundant_ctx->sql_query_ctx->sql_ret) {
+			/*
+			 *  Query was a success! Now we just need to check if it did anything.
+			 */
+			case RLM_SQL_OK:
+				break;
+
+			/*
+			 *  A general, unrecoverable server fault.
+			 */
+			case RLM_SQL_ERROR:
+			/*
+			 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
+			 *  were exhausted, and we couldn't create a new connection,
+			 *  so we do not need to call fr_connection_release.
+			 */
+			case RLM_SQL_RECONNECT:
+				acct_redundant_ctx->rcode = RLM_MODULE_FAIL;
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+
+			/*
+			 *  Query was invalid, this is a terminal error, but we still need
+			 *  to do cleanup, as the connection handle is still valid.
+			 */
+			case RLM_SQL_QUERY_INVALID:
+				acct_redundant_ctx->rcode = RLM_MODULE_INVALID;
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+
+			/*
+			 *  Driver found an error (like a unique key constraint violation)
+			 *  that hinted it might be a good idea to try an alternative query.
+			 */
+			case RLM_SQL_ALT_QUERY:
+				goto next;
+			}
+			rad_assert(acct_redundant_ctx->handle);
+
+			/*
+			 *  We need to have updated something for the query to have been
+			 *  counted as successful.
+			 */
+			numaffected = (inst->driver->sql_affected_rows)(acct_redundant_ctx->handle, inst->config);
+			(inst->driver->sql_finish_query)(acct_redundant_ctx->handle, inst->config);
+			RDEBUG("%i record(s) updated", numaffected);
+
+			if (numaffected > 0)
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);	/* A query succeeded, were done! */
+		next:
+			/*
+			 *  We assume all entries with the same name form a redundant
+			 *  set of queries.
+			 */
+			acct_redundant_ctx->pair = cf_pair_find_next(acct_redundant_ctx->section->cs, acct_redundant_ctx->pair,
+														 acct_redundant_ctx->attr);
+
+			if (!acct_redundant_ctx->pair) {
+				RDEBUG("No additional queries configured");
+				acct_redundant_ctx->rcode = RLM_MODULE_NOOP;
+
+				return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+			}
+
+			acct_redundant_ctx->next_step = ACCT_REDUNDANT_START;
+			RDEBUG("Trying next query...");
 		}
-
-		if (xlat_aeval(request, &expanded, request, value, inst->sql_escape_func, handle) < 0) {
-			rcode = RLM_MODULE_FAIL;
-
-			goto finish;
-		}
-
-		if (!*expanded) {
-			RDEBUG("Ignoring null query");
-			rcode = RLM_MODULE_NOOP;
-			talloc_free(expanded);
-
-			goto finish;
-		}
-
-		rlm_sql_query_log(inst, request, section, expanded);
-
-		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
-		TALLOC_FREE(expanded);
-		RDEBUG("SQL query returned: %s", fr_int2str(sql_rcode_table, sql_ret, "<INVALID>"));
-
-		switch (sql_ret) {
-		/*
-		 *  Query was a success! Now we just need to check if it did anything.
-		 */
-		case RLM_SQL_OK:
-			break;
-
-		/*
-		 *  A general, unrecoverable server fault.
-		 */
-		case RLM_SQL_ERROR:
-		/*
-		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
-		 *  were exhausted, and we couldn't create a new connection,
-		 *  so we do not need to call fr_connection_release.
-		 */
-		case RLM_SQL_RECONNECT:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		/*
-		 *  Query was invalid, this is a terminal error, but we still need
-		 *  to do cleanup, as the connection handle is still valid.
-		 */
-		case RLM_SQL_QUERY_INVALID:
-			rcode = RLM_MODULE_INVALID;
-			goto finish;
-
-		/*
-		 *  Driver found an error (like a unique key constraint violation)
-		 *  that hinted it might be a good idea to try an alternative query.
-		 */
-		case RLM_SQL_ALT_QUERY:
-			goto next;
-		}
-		rad_assert(handle);
-
-		/*
-		 *  We need to have updated something for the query to have been
-		 *  counted as successful.
-		 */
-		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
-		(inst->driver->sql_finish_query)(handle, inst->config);
-		RDEBUG("%i record(s) updated", numaffected);
-
-		if (numaffected > 0) break;	/* A query succeeded, were done! */
-	next:
-		/*
-		 *  We assume all entries with the same name form a redundant
-		 *  set of queries.
-		 */
-		pair = cf_pair_find_next(section->cs, pair, attr);
-
-		if (!pair) {
-			RDEBUG("No additional queries configured");
-			rcode = RLM_MODULE_NOOP;
-
-			goto finish;
-		}
-
-		RDEBUG("Trying next query...");
 	}
 
+	return acct_redundant_finish(request, instance, thread, acct_redundant_ctx);
+}
 
-finish:
-	talloc_free(expanded);
-	fr_connection_release(inst->pool, request, handle);
+static rlm_rcode_t acct_redundant_finish(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_acct_redundant_ctx_t *acct_redundant_ctx = talloc_get_type_abort(ctx, rlm_sql_acct_redundant_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_thread_t *t = talloc_get_type_abort(thread, rlm_sql_thread_t);
+
+	talloc_free(acct_redundant_ctx->sql_query_ctx->query);
+	fr_connection_release(t->pool, request, acct_redundant_ctx->handle);
 	sql_unset_user(inst, request);
 
-	return rcode;
+	return acct_redundant_ctx->rcode;
 }
 
 #ifdef WITH_ACCOUNTING
@@ -1978,13 +2014,13 @@ finish:
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_accounting(void *instance, void *thread, REQUEST *request)
 {
-	rlm_sql_t const *inst = instance;
+	rlm_sql_t *inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	if (inst->config->accounting.reference_cp) {
-		return acct_redundant(inst, request, &inst->config->accounting);
+		return acct_redundant(inst, thread, request, &inst->config->accounting);
 	}
 
 	return RLM_MODULE_NOOP;
