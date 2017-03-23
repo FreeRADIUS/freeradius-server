@@ -1423,46 +1423,31 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_authorize_resume(REQUEST *request, void *instance, void *thread, void *ctx);
+{
+
+	/*
+	 */
+}
+
+static rlm_rcode_t mod_authorize_release(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_error(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_pre_check(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_post_check(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_pre_reply(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_post_reply(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_pre_group(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_post_group(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_pre_profile(REQUEST *request, void *instance, void *thread, void *ctx);
+static rlm_rcode_t mod_authorize_post_profile(REQUEST *request, void *instance, void *thread, void *ctx);
 
 static rlm_rcode_t mod_authorize(void *instance, void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, void *thread, REQUEST *request)
 {
-	rlm_sql_thread_authorize_t *authorize_ctx = talloc_zero(request, rlm_sql_thread_authorize_t);
-	authorize_ctx->next_step = AUTHORIZE_START;
+	rlm_sql_thread_t *t = talloc_get_type_abort(thread, rlm_sql_thread_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
 
-	/*
-	 * Simply call the resurme function for the initial call
-	 */
-	return mod_authorize_resume(request, instance, thread, authorize_ctx);
-}
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_zero(request, rlm_sql_authorize_ctx_t);
 
-static rlm_rcode_t mod_authorize_resume(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
-{
-	rlm_sql_thread_authorize_t *authorize_ctx = ctx;
-	rlm_sql_t const *inst = instance;
-
-	rad_assert(authorize_ctx);
-
-	/*
-	 * Because of the new async model, this function gets called multiple times
-	 * at different stages of the authorize processing.
-	 * Simply jump to where processing needs to resume.
-	 */
-		switch (authorize_ctx->next_step) {
-		case AUTHORIZE_POST_CHECK_QUERY:
-			goto post_check_query;
-		case AUTHORIZE_POST_REPLY_QUERY:
-			goto post_reply_query;
-		case AUTHORIZE_POST_PROCESS_GROUPS:
-			goto post_process_groups;
-		case AUTHORIZE_POST_PROCESS_PROFILE:
-			goto post_process_profile;
-		default:
-			goto start;
-	}
-
-start:
 	/*
 	 * Initialise authorize thread context
 	 */
@@ -1492,236 +1477,329 @@ start:
 	 *	After this point use goto error or goto release to cleanup socket temporary pairlists and
 	 *	temporary attributes.
 	 */
-	authorize_ctx->handle = fr_connection_get(inst->pool, request);
+	authorize_ctx->handle = fr_connection_get(t->pool, request);
 	if (!authorize_ctx->handle) {
 		authorize_ctx->rcode = RLM_MODULE_FAIL;
-		goto error;
+
+		return mod_authorize_error(request, instance, thread, authorize_ctx);
 	}
-	authorize_ctx->sql_getvpdata_ctx.handle = &authorize_ctx->handle;
+
+	authorize_ctx->sql_getvpdata_ctx = talloc_zero(authorize_ctx, rlm_sql_getvpdata_ctx_t);
+	authorize_ctx->sql_getvpdata_ctx->handle = &authorize_ctx->handle;
+
+	return mod_authorize_pre_check(request, instance, thread, authorize_ctx);
+}
+
+static rlm_rcode_t mod_authorize_pre_check(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+
+	/*
+	 * If check query not defined, proceed to get replies
+	 */
+	if (!inst->config->authorize_check_query) {
+		return mod_authorize_pre_reply(request, instance, thread, ctx);
+	}
 
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query) {
-		if (xlat_aeval(request, &authorize_ctx->sql_getvpdata_ctx.query, request, inst->config->authorize_check_query,
-				 inst->sql_escape_func, authorize_ctx->handle) < 0) {
-			REDEBUG("Failed generating query");
-			authorize_ctx->rcode = RLM_MODULE_FAIL;
-			goto error;
-		}
+	if (xlat_aeval(request, &authorize_ctx->sql_getvpdata_ctx->query, request, inst->config->authorize_check_query,
+			 inst->sql_escape_func, authorize_ctx->handle) < 0) {
+		REDEBUG("Failed generating query");
+		authorize_ctx->rcode = RLM_MODULE_FAIL;
 
-		authorize_ctx->sql_getvpdata_ctx.talloc_ctx = request;
-
-		authorize_ctx->next_step = AUTHORIZE_POST_CHECK_QUERY;
-		return unlang_two_step_process(request, sql_getvpdata, &authorize_ctx->sql_getvpdata_ctx, mod_authorize_resume, authorize_ctx);
-
-	post_check_query:
-		TALLOC_FREE(authorize_ctx->sql_getvpdata_ctx.query);
-		if (authorize_ctx->sql_getvpdata_ctx.rows < 0) {
-			REDEBUG("Failed getting check attributes");
-			authorize_ctx->rcode = RLM_MODULE_FAIL;
-
-			goto error;
-		}
-
-		if (authorize_ctx->sql_getvpdata_ctx.rows == 0) goto skipreply;	/* Don't need to free VPs we don't have */
-
-		/*
-		 *	Only do this if *some* check pairs were returned
-		 */
-		RDEBUG2("User found in radcheck table");
-		authorize_ctx->user_found = true;
-		if (paircompare(request, request->packet->vps, authorize_ctx->sql_getvpdata_ctx.attr, &request->reply->vps) != 0) {
-			fr_pair_list_free(&authorize_ctx->sql_getvpdata_ctx.attr);
-			authorize_ctx->sql_getvpdata_ctx.attr = NULL;
-			goto skipreply;
-		}
-
-		RDEBUG2("Conditional check items matched, merging assignment check items");
-		RINDENT();
-		vp_cursor_t cursor;
-		VALUE_PAIR *vp;
-		for (vp = fr_pair_cursor_init(&cursor, &authorize_ctx->sql_getvpdata_ctx.attr);
-			 vp;
-			 vp = fr_pair_cursor_next(&cursor)) {
-			if (!fr_assignment_op[vp->op]) continue;
-
-			rdebug_pair(2, request, vp, NULL);
-		}
-		REXDENT();
-		radius_pairmove(request, &request->control, authorize_ctx->sql_getvpdata_ctx.attr, true);
-
-		authorize_ctx->rcode = RLM_MODULE_OK;
-		authorize_ctx->sql_getvpdata_ctx.attr = NULL;
+		return mod_authorize_error(request, instance, thread, ctx);
 	}
 
-	if (inst->config->authorize_reply_query) {
-		/*
-		 *	Now get the reply pairs since the paircompare matched
-		 */
-		if (xlat_aeval(request, &authorize_ctx->sql_getvpdata_ctx.query, request, inst->config->authorize_reply_query,
-				 inst->sql_escape_func, authorize_ctx->handle) < 0) {
-			REDEBUG("Error generating query");
-			authorize_ctx->rcode = RLM_MODULE_FAIL;
-			goto error;
-		}
+	authorize_ctx->sql_getvpdata_ctx->talloc_ctx = request;
 
-		authorize_ctx->sql_getvpdata_ctx.talloc_ctx = request->reply;
-		authorize_ctx->next_step = AUTHORIZE_POST_REPLY_QUERY;
-		return unlang_two_step_process(request, sql_getvpdata, &authorize_ctx->sql_getvpdata_ctx, mod_authorize_resume, authorize_ctx);
+	return unlang_two_step_process(request, sql_getvpdata, authorize_ctx->sql_getvpdata_ctx, mod_authorize_post_check, authorize_ctx);
+}
 
-	post_reply_query:
-		TALLOC_FREE(authorize_ctx->sql_getvpdata_ctx.query);
-		if (authorize_ctx->sql_getvpdata_ctx.rows < 0) {
-			REDEBUG("SQL query error getting reply attributes");
-			authorize_ctx->rcode = RLM_MODULE_FAIL;
-			goto error;
-		}
+static rlm_rcode_t mod_authorize_post_check(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
 
-		if (authorize_ctx->sql_getvpdata_ctx.rows == 0) goto skipreply;
+	TALLOC_FREE(authorize_ctx->sql_getvpdata_ctx->query);
+	if (authorize_ctx->sql_getvpdata_ctx->rcode != RLM_SQL_OK) {
+		REDEBUG("Failed getting check attributes");
+		authorize_ctx->rcode = RLM_MODULE_FAIL;
 
-		authorize_ctx->do_fall_through = fall_through(authorize_ctx->sql_getvpdata_ctx.attr);
-
-		RDEBUG2("User found in radreply table, merging reply items");
-		authorize_ctx->user_found = true;
-
-		rdebug_pair_list(L_DBG_LVL_2, request, authorize_ctx->sql_getvpdata_ctx.attr, NULL);
-
-		radius_pairmove(request, &request->reply->vps, authorize_ctx->sql_getvpdata_ctx.attr, true);
-
-		authorize_ctx->rcode = RLM_MODULE_OK;
-		authorize_ctx->sql_getvpdata_ctx.attr = NULL;
+		return mod_authorize_error(request, instance, thread, ctx);
 	}
+
+	if (authorize_ctx->sql_getvpdata_ctx->rows == 0)
+		return mod_authorize_pre_group(request, instance, thread, ctx);	/* Don't need to free VPs we don't have */
+
+	/*
+	 *	Only do this if *some* check pairs were returned
+	 */
+	RDEBUG2("User found in radcheck table");
+	authorize_ctx->user_found = true;
+	if (paircompare(request, request->packet->vps, authorize_ctx->sql_getvpdata_ctx->attr, &request->reply->vps) != 0) {
+		fr_pair_list_free(&authorize_ctx->sql_getvpdata_ctx->attr);
+		authorize_ctx->sql_getvpdata_ctx->attr = NULL;
+
+		return mod_authorize_pre_group(request, instance, thread, ctx);
+	}
+
+	RDEBUG2("Conditional check items matched, merging assignment check items");
+	RINDENT();
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+	for (vp = fr_pair_cursor_init(&cursor, &authorize_ctx->sql_getvpdata_ctx->attr);
+		 vp;
+		 vp = fr_pair_cursor_next(&cursor)) {
+		if (!fr_assignment_op[vp->op]) continue;
+
+		rdebug_pair(2, request, vp, NULL);
+	}
+	REXDENT();
+	radius_pairmove(request, &request->control, authorize_ctx->sql_getvpdata_ctx->attr, true);
+
+	authorize_ctx->rcode = RLM_MODULE_OK;
+	authorize_ctx->sql_getvpdata_ctx->attr = NULL;
+
+	return mod_authorize_pre_reply(request, instance, thread, ctx);
+}
+
+static rlm_rcode_t mod_authorize_pre_reply(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+
+	/*
+	 * If reply query not defined, proceed to process groups
+	 */
+	if (!inst->config->authorize_reply_query) {
+		return mod_authorize_pre_group(request, instance, thread, ctx);
+	}
+
+	/*
+	 *	Now get the reply pairs since the paircompare matched
+	 */
+	if (xlat_aeval(request, &authorize_ctx->sql_getvpdata_ctx->query, request, inst->config->authorize_reply_query,
+			 inst->sql_escape_func, authorize_ctx->handle) < 0) {
+		REDEBUG("Error generating query");
+		authorize_ctx->rcode = RLM_MODULE_FAIL;
+
+		return mod_authorize_error(request, instance, thread, ctx);
+	}
+
+	authorize_ctx->sql_getvpdata_ctx->talloc_ctx = request->reply;
+	return unlang_two_step_process(request, sql_getvpdata, authorize_ctx->sql_getvpdata_ctx,
+				mod_authorize_post_reply, authorize_ctx);
+}
+
+static rlm_rcode_t mod_authorize_post_reply(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+
+	TALLOC_FREE(authorize_ctx->sql_getvpdata_ctx->query);
+	if (authorize_ctx->sql_getvpdata_ctx->rcode != RLM_SQL_OK) {
+		REDEBUG("SQL query error getting reply attributes");
+		authorize_ctx->rcode = RLM_MODULE_FAIL;
+
+		return mod_authorize_error(request, instance, thread, ctx);
+	}
+
+	if (authorize_ctx->sql_getvpdata_ctx->rows == 0)
+		return mod_authorize_pre_group(request, instance, thread, ctx);
+
+	authorize_ctx->do_fall_through = fall_through(authorize_ctx->sql_getvpdata_ctx->attr);
+
+	RDEBUG2("User found in radreply table, merging reply items");
+	authorize_ctx->user_found = true;
+
+	rdebug_pair_list(L_DBG_LVL_2, request, authorize_ctx->sql_getvpdata_ctx->attr, NULL);
+
+	radius_pairmove(request, &request->reply->vps, authorize_ctx->sql_getvpdata_ctx->attr, true);
+
+	authorize_ctx->rcode = RLM_MODULE_OK;
+	authorize_ctx->sql_getvpdata_ctx->attr = NULL;
+
+	return mod_authorize_pre_group(request, instance, thread, ctx);
+}
+
+static rlm_rcode_t mod_authorize_pre_group(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	/*
 	 *	Neither group checks or profiles will work without
 	 *	a group membership query.
 	 */
-	if (!inst->config->groupmemb_query) goto release;
+	if (!inst->config->groupmemb_query)
+		return mod_authorize_release(request, instance, thread, ctx);
 
-skipreply:
-	if ((authorize_ctx->do_fall_through == FALL_THROUGH_YES) ||
-		(inst->config->read_groups && (authorize_ctx->do_fall_through == FALL_THROUGH_DEFAULT))) {
+	/*
+	 * If we shouldn't get group attributes, proceed to process profiles
+	 */
+	 if (!((authorize_ctx->do_fall_through == FALL_THROUGH_YES) ||
+	    (inst->config->read_groups && (authorize_ctx->do_fall_through == FALL_THROUGH_DEFAULT)))) {
 
-		RDEBUG3("... falling-through to group processing");
-		authorize_ctx->group_ctx = talloc_zero(request, rlm_sql_thread_group_t);
+		return mod_authorize_pre_profile(request, instance, thread, ctx);
+	}
 
-		/*
-		 * Copy DB handle to group context
-		 */
-		authorize_ctx->group_ctx->sql_getvpdata_ctx.handle = authorize_ctx->sql_getvpdata_ctx.handle;
-		authorize_ctx->group_ctx->next_step = PROCESS_GROUPS_START;
+	RDEBUG3("... falling-through to group processing");
 
-		authorize_ctx->next_step = AUTHORIZE_POST_PROCESS_GROUPS;
+	/*
+	 * Copy DB handle to group context
+	 */
+	if (!authorize_ctx->sql_process_group_ctx) {
+		authorize_ctx->sql_process_group_ctx = talloc_zero(authorize_ctx, rlm_sql_process_groups_ctx_t);
+		authorize_ctx->sql_process_group_ctx->sql_getvpdata_ctx = talloc_zero(authorize_ctx, rlm_sql_getvpdata_ctx_t);
+	}
+	authorize_ctx->sql_process_group_ctx->sql_getvpdata_ctx->handle = authorize_ctx->sql_getvpdata_ctx->handle;
 
-		return unlang_two_step_process(request, rlm_sql_process_groups, authorize_ctx->group_ctx, mod_authorize_resume, authorize_ctx);
+	return unlang_two_step_process(request, rlm_sql_process_groups, authorize_ctx->sql_process_group_ctx,
+				mod_authorize_post_group, authorize_ctx);
+}
 
-	post_process_groups:
-		rad_assert(authorize_ctx->group_ctx);
+static rlm_rcode_t mod_authorize_post_group(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
 
-		switch (authorize_ctx->group_ctx->rcode) {
-		/*
-		 *	Nothing bad happened, continue...
-		 */
-		case RLM_MODULE_UPDATED:
-			authorize_ctx->rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
-		case RLM_MODULE_OK:
-			if (authorize_ctx->rcode != RLM_MODULE_UPDATED) {
-				authorize_ctx->rcode = RLM_MODULE_OK;
-			}
-			/* FALL-THROUGH */
-		case RLM_MODULE_NOOP:
-			authorize_ctx->user_found = true;
-			break;
-
-		case RLM_MODULE_NOTFOUND:
-			break;
-
-		default:
-			authorize_ctx->rcode = authorize_ctx->group_ctx->rcode;
-			goto release;
+	switch (authorize_ctx->sql_process_group_ctx->rcode) {
+	/*
+	 *	Nothing bad happened, continue...
+	 */
+	case RLM_MODULE_UPDATED:
+		authorize_ctx->rcode = RLM_MODULE_UPDATED;
+		/* FALL-THROUGH */
+	case RLM_MODULE_OK:
+		if (authorize_ctx->rcode != RLM_MODULE_UPDATED) {
+			authorize_ctx->rcode = RLM_MODULE_OK;
 		}
+		/* FALL-THROUGH */
+	case RLM_MODULE_NOOP:
+		authorize_ctx->user_found = true;
+		break;
+
+	case RLM_MODULE_NOTFOUND:
+		break;
+
+	default:
+		authorize_ctx->rcode = authorize_ctx->sql_process_group_ctx->rcode;
+
+		return mod_authorize_release(request, instance, thread, ctx);
+	}
+
+	return mod_authorize_pre_profile(request, instance, thread, ctx);
+}
+
+static rlm_rcode_t mod_authorize_pre_profile(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+
+	/*
+	 *	Repeat the group processing with the default profile or User-Profile
+	 */
+	 if (!((authorize_ctx->do_fall_through == FALL_THROUGH_YES) ||
+	    (inst->config->read_profiles && (authorize_ctx->do_fall_through == FALL_THROUGH_DEFAULT)))) {
+
+		return mod_authorize_release(request, instance, thread, ctx);
 	}
 
 	/*
-	 *	Repeat the above process with the default profile or User-Profile
+	 *  Check for a default_profile or for a User-Profile.
 	 */
-	 if ((authorize_ctx->do_fall_through == FALL_THROUGH_YES) ||
-	    (inst->config->read_profiles && (authorize_ctx->do_fall_through == FALL_THROUGH_DEFAULT))) {
+	RDEBUG3("... falling-through to profile processing");
+	authorize_ctx->user_profile = fr_pair_find_by_num(request->control, 0, PW_USER_PROFILE, TAG_ANY);
 
-		/*
-		 *  Check for a default_profile or for a User-Profile.
-		 */
-		RDEBUG3("... falling-through to profile processing");
-		authorize_ctx->user_profile = fr_pair_find_by_num(request->control, 0, PW_USER_PROFILE, TAG_ANY);
+	char const *profile = authorize_ctx->user_profile ?
+			      authorize_ctx->user_profile->vp_strvalue :
+			      inst->config->default_profile;
 
-		char const *profile = authorize_ctx->user_profile ?
-				      authorize_ctx->user_profile->vp_strvalue :
-				      inst->config->default_profile;
+	if (!profile || !*profile)
+		return mod_authorize_release(request, instance, thread, ctx);
 
-		if (!profile || !*profile) {
-			goto release;
-		}
+	RDEBUG2("Checking profile %s", profile);
 
-		RDEBUG2("Checking profile %s", profile);
+	if (sql_set_user(inst, request, profile) < 0) {
+		REDEBUG("Error setting profile");
+		authorize_ctx->rcode = RLM_MODULE_FAIL;
 
-		if (sql_set_user(inst, request, profile) < 0) {
-			REDEBUG("Error setting profile");
-			authorize_ctx->rcode = RLM_MODULE_FAIL;
-			goto error;
-		}
-		authorize_ctx->group_ctx->next_step = PROCESS_GROUPS_START;
-		authorize_ctx->next_step = AUTHORIZE_POST_PROCESS_PROFILE;
-		return unlang_two_step_process(request, rlm_sql_process_groups, authorize_ctx->group_ctx, mod_authorize_resume, authorize_ctx);
-
-	post_process_profile:
-		rad_assert(authorize_ctx->group_ctx);
-
-		switch (authorize_ctx->group_ctx->rcode) {
-		/*
-		 *	Nothing bad happened, continue...
-		 */
-		case RLM_MODULE_UPDATED:
-			authorize_ctx->rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
-		case RLM_MODULE_OK:
-			if (authorize_ctx->rcode != RLM_MODULE_UPDATED) {
-				authorize_ctx->rcode = RLM_MODULE_OK;
-			}
-			/* FALL-THROUGH */
-		case RLM_MODULE_NOOP:
-			authorize_ctx->user_found = true;
-			break;
-
-		case RLM_MODULE_NOTFOUND:
-			break;
-
-		default:
-			authorize_ctx->rcode = authorize_ctx->group_ctx->rcode;
-			goto release;
-		}
+		return mod_authorize_error(request, instance, thread, ctx);
 	}
+
+	/*
+	 * Copy DB handle to group context
+	 */
+	if (!authorize_ctx->sql_process_group_ctx) {
+ 		authorize_ctx->sql_process_group_ctx = talloc_zero(authorize_ctx, rlm_sql_process_groups_ctx_t);
+ 		authorize_ctx->sql_process_group_ctx->sql_getvpdata_ctx = talloc_zero(authorize_ctx, rlm_sql_getvpdata_ctx_t);
+ 	}
+	authorize_ctx->sql_process_group_ctx->sql_getvpdata_ctx->handle = authorize_ctx->sql_getvpdata_ctx->handle;
+
+	return unlang_two_step_process(request, rlm_sql_process_groups, authorize_ctx->sql_process_group_ctx,
+				mod_authorize_post_profile, authorize_ctx);
+}
+
+static rlm_rcode_t mod_authorize_post_profile(REQUEST *request, void *instance, void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+
+	switch (authorize_ctx->sql_process_group_ctx->rcode) {
+	/*
+	 *	Nothing bad happened, continue...
+	 */
+	case RLM_MODULE_UPDATED:
+		authorize_ctx->rcode = RLM_MODULE_UPDATED;
+		/* FALL-THROUGH */
+	case RLM_MODULE_OK:
+		if (authorize_ctx->rcode != RLM_MODULE_UPDATED) {
+			authorize_ctx->rcode = RLM_MODULE_OK;
+		}
+		/* FALL-THROUGH */
+	case RLM_MODULE_NOOP:
+		authorize_ctx->user_found = true;
+		break;
+
+	case RLM_MODULE_NOTFOUND:
+		break;
+
+	default:
+		authorize_ctx->rcode = authorize_ctx->sql_process_group_ctx->rcode;
+	}
+
+	return mod_authorize_release(request, instance, thread, ctx);
+}
+
+static rlm_rcode_t mod_authorize_release(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_thread_t *t = thread;
 
 	/*
 	 *	At this point the key (user) hasn't be found in the check table, the reply table
 	 *	or the group mapping table, and there was no matching profile.
 	 */
-release:
 	if (!authorize_ctx->user_found) {
 		authorize_ctx->rcode = RLM_MODULE_NOTFOUND;
 	}
 
-	fr_connection_release(inst->pool, request, authorize_ctx->handle);
+	fr_connection_release(t->pool, request, authorize_ctx->handle);
 	sql_unset_user(inst, request);
 
 	return authorize_ctx->rcode;
+}
 
-error:
-	fr_pair_list_free(&authorize_ctx->sql_getvpdata_ctx.attr);
+static rlm_rcode_t mod_authorize_error(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
+{
+	rlm_sql_authorize_ctx_t *authorize_ctx = talloc_get_type_abort(ctx, rlm_sql_authorize_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_thread_t *t = thread;
+
+	fr_pair_list_free(&authorize_ctx->sql_getvpdata_ctx->attr);
 	sql_unset_user(inst, request);
 
-	fr_connection_release(inst->pool, request, authorize_ctx->handle);
+	fr_connection_release(t->pool, request, authorize_ctx->handle);
 
 	return authorize_ctx->rcode;
 }
@@ -1745,9 +1823,6 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 	int			numaffected = 0;
 
 	CONF_ITEM		*item;
-	CONF_PAIR 		*pair;
-	char const		*attr = NULL;
-	char const		*value;
 
 	char			path[FR_MAX_STRING_LEN];
 	char			*p = path;
