@@ -1561,21 +1561,26 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 
 	frame = &stack->frame[stack->depth];
 
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
-	sp = unlang_generic_to_module_call(frame->instruction);
+	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL || frame->instruction->type == UNLANG_TYPE_RESUME);
+	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
+		sp = unlang_generic_to_module_call(frame->instruction);
 
-	mr = talloc(request, unlang_resumption_t);
-	rad_assert(mr != NULL);
+		mr = talloc(request, unlang_resumption_t);
+		rad_assert(mr != NULL);
 
-	memcpy(&mr->module, frame->instruction, sizeof(mr->module));
-	mr->thread = frame->modcall.thread;
-	mr->module.self.type = UNLANG_TYPE_RESUME;
-	mr->callback = callback;
-	mr->action_callback = action_callback;
-	mr->thread = module_thread_instance_find(sp->module_instance);
-	mr->ctx = ctx;
+		memcpy(&mr->module, frame->instruction, sizeof(mr->module));
+		mr->thread = frame->modcall.thread;
+		mr->module.self.type = UNLANG_TYPE_RESUME;
+		mr->callback = callback;
+		mr->action_callback = action_callback;
+		mr->thread = module_thread_instance_find(sp->module_instance);
+		mr->ctx = ctx;
 
-	frame->instruction = unlang_resumption_to_generic(mr);
+		frame->instruction = unlang_resumption_to_generic(mr);
+	} else {
+		mr = unlang_generic_to_resumption(frame->instruction);
+		mr->callback = callback;
+	}
 
 	return RLM_MODULE_YIELD;
 }
