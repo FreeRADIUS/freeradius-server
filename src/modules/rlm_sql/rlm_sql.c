@@ -2229,13 +2229,13 @@ release:
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, void *thread, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_post_auth(void *instance, void *thread, REQUEST *request)
 {
-	rlm_sql_t const *inst = instance;
+	rlm_sql_t *inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
-		return acct_redundant(inst, request, &inst->config->postauth);
+		return acct_redundant(inst, thread, request, &inst->config->postauth);
 	}
 
 	return RLM_MODULE_NOOP;
