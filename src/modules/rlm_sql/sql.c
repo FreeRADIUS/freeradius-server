@@ -53,6 +53,179 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 	{ NULL, 0 }
 };
 
+/** Look up a FD in the thread's FD to request map
+ *
+ * @param thread specific data
+ * @param fd to look for
+ * @return
+ *  - #rlm_sql_fd_map_t pointer to map element
+ *  - NULL if FD isn't in map
+ */
+rlm_sql_fd_map_t* sql_lookup_fd_map(rlm_sql_thread_t *thread, int fd)
+{
+	rlm_sql_t const *inst = thread->inst;
+	rlm_sql_fd_map_t *curr = thread->fd_map;
+
+	while (curr) {
+		if (curr->fd == fd) break;
+
+		curr = curr->next;
+	}
+
+	if (!curr) {
+		ERROR("Failed looking up %d in FD map", fd);
+	}
+
+	return curr;
+}
+
+/** Talloc desctructor for #rlm_sql_fd_map_t
+ *
+ * The destructor can only be called if the request times out
+ * In such a case, the underlying SQL query is left hanging.
+ * We therefore close connection to DB to free up whatever memory is used.
+ * We also need to removes map element from the thread's chained list
+ * and remove the timer on the query.
+ *
+ * @param map_elt #rlm_sql_fd_map_t being freed
+ * @return
+ *  - 0
+ */
+static int sql_free_fd_map(rlm_sql_fd_map_t *map_elt)
+{
+	rlm_sql_handle_t *handle = map_elt->handle;
+
+	/*
+	 * Remove element from chained list before freeing memory
+	 */
+	if (map_elt->prev) {
+		map_elt->prev->next = map_elt->next;
+	} else {
+		*map_elt->head = map_elt->next;
+	}
+	if (map_elt->next) {
+		map_elt->next->prev = map_elt->prev;
+	}
+
+	/*
+	 * Delete timer
+	 */
+	fr_event_timer_delete(handle->thread->el, &map_elt->ev);
+
+	/*
+	 * If request is canceled, close connection to force any ongoing query to be cancelled
+	 */
+	fr_connection_close(handle->thread->pool, NULL, handle);
+
+	return 0;
+}
+
+/** Update thread's FD to request map
+ *
+ * Get FD from DB connection handler and map FD to request being processed.
+ * Update IO hadnlers for FD
+ *
+ * @param inst #rlm_sql_t instance
+ * @param handle #rlm_sql_handle_t DB connection instance
+ * @param request to add to map
+ * @param thread specific data
+ */
+static void sql_update_fd_map(rlm_sql_t const *inst, rlm_sql_handle_t *handle, REQUEST *request, rlm_sql_thread_t *thread)
+{
+	rlm_sql_fd_map_t *prev = NULL, *curr = thread->fd_map;
+	int fd = (inst->driver->sql_get_fd)(handle);
+
+	if (fd < 0) {
+		ERROR("Failed getting FD, can't update FD map");
+	} else {
+		while (curr) {
+			if (curr->fd == fd) break;
+
+			prev = curr;
+			curr = curr->next;
+		}
+
+		if (curr) {
+			DEBUG4("Updating request for fd %d", fd);
+			curr->request = request;
+		} else {
+			DEBUG4("Inserting request for fd %d", fd);
+			curr = talloc_zero(request, rlm_sql_fd_map_t);
+			talloc_set_destructor(curr, sql_free_fd_map);
+			curr->fd = fd;
+			curr->request = request;
+			curr->handle = handle;
+
+			/*
+			 * Add eletement to chained list
+			 */
+			if (prev) {
+				curr->prev = prev;
+				prev->next = curr;
+			} else {
+				thread->fd_map = curr;
+				curr->prev = NULL;
+			}
+			curr->head = &thread->fd_map;
+		}
+
+		sql_set_io_event_handlers(inst, SQL_READ_WRITE, thread, fd, curr);
+	}
+}
+
+/** Delete FD from thread's FD to request map
+ *
+ * Remove map element from chained list and remove IO handlers for FD
+ *
+ * @param inst #rlm_sql_t instance
+ * @param handle #rlm_sql_handle_t DB connection instance
+ * @param thread specific data
+ */
+static void sql_delete_fd_map(rlm_sql_t const *inst, rlm_sql_handle_t *handle, rlm_sql_thread_t *thread)
+{
+	rlm_sql_fd_map_t *curr = thread->fd_map;
+	int fd = (inst->driver->sql_get_fd)(handle);
+
+	if (fd < 0) {
+		ERROR("Failed getting FD, can't delete entry from FD map");
+	} else {
+		while (curr) {
+			if (curr->fd == fd) break;
+
+			curr = curr->next;
+		}
+
+		if (!curr) {
+			DEBUG4("fd %d not found in map", fd);
+		} else {
+			DEBUG4("Deleting map entry for fd %d", fd);
+			/*
+			 * Remove element from chained list
+			 */
+			if (curr->prev) {
+				curr->prev->next = curr->next;
+			} else {
+				*curr->head = curr->next;
+			}
+			if (curr->next) {
+				curr->next->prev = curr->prev;
+			}
+
+			/*
+			 * Unregister IO handlers for FD
+			 */
+			sql_set_io_event_handlers(inst, SQL_REMOVE, thread, fd, curr);
+
+			/*
+			 * Disable destructor as it's only to handle case where object
+			 * is freed because request (talloc ctx) is freed to.
+			 */
+			talloc_set_destructor(curr, NULL);
+			talloc_free(curr);
+		}
+	}
+}
+
 void *mod_conn_create(TALLOC_CTX *ctx, void *thread, struct timeval const *timeout)
 {
 	int rcode;
