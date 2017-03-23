@@ -141,6 +141,7 @@ static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 static int generate_sql_clients(rlm_sql_t *inst);
 static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 
+#if 0
 /** Execute an arbitrary SQL query
  *
  *  For selects the first value of the first column will be returned,
@@ -238,6 +239,7 @@ finish:
 
 	return ret;
 }
+#endif
 
 /** Converts a string value into a #VALUE_PAIR
  *
@@ -292,6 +294,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
 	return 0;
 }
 
+#if 0
 /** Executes a SELECT query and maps the result to server attributes
  *
  * @param mod_inst #rlm_sql_t instance.
@@ -463,7 +466,9 @@ finish:
 
 	return rcode;
 }
+#endif
 
+#if 0
 static int generate_sql_clients(rlm_sql_t *inst)
 {
 	rlm_sql_handle_t *handle;
@@ -546,6 +551,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 
 	return ret;
 }
+#endif
 
 /** xlat escape function for drivers which do not provide their own
  *
@@ -732,6 +738,7 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
  */
 #define sql_unset_user(_i, _r) fr_pair_delete_by_num(&_r->packet->vps, _i->sql_user->vendor, _i->sql_user->attr, TAG_ANY)
 
+#if 0
 static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, REQUEST *request,
 			     rlm_sql_grouplist_t **phead)
 {
@@ -778,6 +785,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
 
 	return num_groups;
 }
+#endif
 
 static rlm_rcode_t sql_get_grouplist_resume(REQUEST *request, void *instance, void *thread, void *ctx);
 
@@ -882,6 +890,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	rlm_sql_t const		*inst = instance;
 	rlm_sql_grouplist_t	*head, *entry;
 
+#if 0
 	/*
 	 *	No group queries, don't do group comparisons.
 	 */
@@ -933,6 +942,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	/* Free the grouplist */
 	talloc_free(head);
 	fr_connection_release(inst->pool, request, handle);
+#endif
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s", check->vp_strvalue);
 
@@ -1317,6 +1327,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		}
 	}
 
+#if 0
 	/*
 	 *	Register the SQL xlat function
 	 */
@@ -1326,6 +1337,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Register the SQL map processor function
 	 */
 	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_map_verify, 0);
+#endif
 
 	return 0;
 }
@@ -1409,6 +1421,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+#if 0
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
@@ -1420,6 +1433,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 	}
+#endif
 
 	return RLM_MODULE_OK;
 }
