@@ -2308,7 +2308,7 @@ rad_module_t rlm_sql = {
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 #ifdef WITH_ACCOUNTING
-		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_PREACCT]		= mod_accounting,
 #endif
 #ifdef WITH_SESSION_MGMT
 		[MOD_SESSION]		= mod_checksimul,
