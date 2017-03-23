@@ -264,10 +264,12 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *thread, struct timeval const *timeo
 		return NULL;
 	}
 
+#if 0
 	if (inst->config->connect_query) {
 		if (rlm_sql_select_query(inst, NULL, &handle, inst->config->connect_query) != RLM_SQL_OK) goto fail;
 		(inst->driver->sql_finish_select_query)(handle, inst->config);
 	}
+#endif
 
 	return handle;
 }
