@@ -785,76 +785,80 @@ static rlm_rcode_t sql_get_grouplist_resume(REQUEST *request, void *instance, vo
  * Get group list
  * Yield if SQL driver supports async queries.
  */
-static rlm_rcode_t sql_get_grouplist_async(REQUEST *request, void *instance, void *thread, void *ctx)
+static rlm_rcode_t sql_get_grouplist(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_sql_thread_group_t *group_ctx = ctx;
-	rlm_sql_t const *inst = instance;
+	rlm_sql_process_groups_ctx_t *sql_process_group_ctx = talloc_get_type_abort(ctx, rlm_sql_process_groups_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_query_ctx_t *select_query_ctx;
 
-	int rcode;
+	select_query_ctx = talloc_zero(ctx, rlm_sql_query_ctx_t);
+	sql_process_group_ctx->sql_query_ctx = select_query_ctx;
+
 
 	/* NOTE: sql_set_user should have been run before calling this function */
 
 	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) {
-		group_ctx->sql_getvpdata_ctx.rows = 0;
+		sql_process_group_ctx->sql_getvpdata_ctx->rows = 0;
 		return RLM_MODULE_OK;
 	}
-	if (xlat_aeval(request, &group_ctx->sql_getvpdata_ctx.query, request, inst->config->groupmemb_query,
-			 inst->sql_escape_func, *group_ctx->sql_getvpdata_ctx.handle) < 0) {
-		group_ctx->sql_getvpdata_ctx.rows = -1;
+	if (xlat_aeval(request, &sql_process_group_ctx->sql_getvpdata_ctx->query, request, inst->config->groupmemb_query,
+			 inst->sql_escape_func, *sql_process_group_ctx->sql_getvpdata_ctx->handle) < 0) {
+		sql_process_group_ctx->rcode = RLM_MODULE_FAIL;
 		return RLM_MODULE_OK;
 	}
 
-	rcode = rlm_sql_select_query(inst, request, group_ctx->sql_getvpdata_ctx.handle, group_ctx->sql_getvpdata_ctx.query);
+	/*
+	 * Update handle & query for select_query context
+	 */
+	select_query_ctx->handle = sql_process_group_ctx->sql_getvpdata_ctx->handle;
+	select_query_ctx->query = sql_process_group_ctx->sql_getvpdata_ctx->query;
 
-	switch(rcode) {
-	case RLM_SQL_YIELD:
-		return unlang_yield(request, sql_get_grouplist_resume, NULL, ctx);
-
-	case RLM_SQL_OK:
-		return sql_get_grouplist_resume(request, instance, thread, ctx);
-
-	default:
-		talloc_free(group_ctx->sql_getvpdata_ctx.query);
-		return RLM_MODULE_FAIL;
-	}
+	return unlang_two_step_process(request, rlm_sql_select_query, select_query_ctx, sql_get_grouplist_resume, ctx);
 }
 
 static rlm_rcode_t sql_get_grouplist_resume(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
-	rlm_sql_thread_group_t *group_ctx = ctx;
-	rlm_sql_t const *inst = instance;
+	rlm_sql_process_groups_ctx_t *sql_process_group_ctx = talloc_get_type_abort(ctx, rlm_sql_process_groups_ctx_t);
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	rlm_sql_row_t row;
 	rlm_sql_grouplist_t *entry;
 
-	entry = group_ctx->group_list = NULL;
-	group_ctx->sql_getvpdata_ctx.rows = 0;
+	entry = sql_process_group_ctx->group_list = NULL;
+	sql_process_group_ctx->sql_getvpdata_ctx->rows = 0;
 
-	talloc_free(group_ctx->sql_getvpdata_ctx.query);
+	talloc_free(sql_process_group_ctx->sql_getvpdata_ctx->query);
 
-	while (rlm_sql_fetch_row(&row, inst, request, group_ctx->sql_getvpdata_ctx.handle) == RLM_SQL_OK) {
-		if (!row[0]){
-			RDEBUG("row[0] returned NULL");
-			(inst->driver->sql_finish_select_query)(*group_ctx->sql_getvpdata_ctx.handle, inst->config);
-			talloc_free(entry);
-			group_ctx->sql_getvpdata_ctx.rows = -1;
-			goto finish;
+	if (sql_process_group_ctx->sql_query_ctx->rcode == RLM_SQL_OK) {
+		sql_process_group_ctx->rcode = RLM_MODULE_OK;
+
+		while (rlm_sql_fetch_row(&row, inst, request, sql_process_group_ctx->sql_getvpdata_ctx->handle) == RLM_SQL_OK) {
+			if (!row[0]){
+				RDEBUG("row[0] returned NULL");
+				(inst->driver->sql_finish_select_query)(*sql_process_group_ctx->sql_getvpdata_ctx->handle, inst->config);
+				talloc_free(entry);
+				sql_process_group_ctx->rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+
+			if (!sql_process_group_ctx->group_list) {
+				sql_process_group_ctx->group_list = talloc_zero(*sql_process_group_ctx->sql_getvpdata_ctx->handle, rlm_sql_grouplist_t);
+				entry = sql_process_group_ctx->group_list;
+			} else {
+				entry->next = talloc_zero(sql_process_group_ctx->group_list, rlm_sql_grouplist_t);
+				entry = entry->next;
+			}
+			entry->next = NULL;
+			entry->name = talloc_typed_strdup(entry, row[0]);
+
+			sql_process_group_ctx->sql_getvpdata_ctx->rows++;
 		}
 
-		if (!group_ctx->group_list) {
-			group_ctx->group_list = talloc_zero(*group_ctx->sql_getvpdata_ctx.handle, rlm_sql_grouplist_t);
-			entry = group_ctx->group_list;
-		} else {
-			entry->next = talloc_zero(group_ctx->group_list, rlm_sql_grouplist_t);
-			entry = entry->next;
-		}
-		entry->next = NULL;
-		entry->name = talloc_typed_strdup(entry, row[0]);
-
-		group_ctx->sql_getvpdata_ctx.rows++;
+		(inst->driver->sql_finish_select_query)(*sql_process_group_ctx->sql_getvpdata_ctx->handle, inst->config);
+	} else {
+		/* Propagate error */
+		sql_process_group_ctx->rcode = RLM_MODULE_FAIL;
 	}
-
-	(inst->driver->sql_finish_select_query)(*group_ctx->sql_getvpdata_ctx.handle, inst->config);
 
 finish:
 	return RLM_MODULE_OK;
