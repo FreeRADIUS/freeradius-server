@@ -1410,9 +1410,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config->sql_db);
 
-	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
-	if (!inst->pool) return -1;
-
 	if (inst->config->do_clients) {
 		if (generate_sql_clients(inst) == -1){
 			ERROR("Failed to load clients from SQL");
@@ -1423,10 +1420,42 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return RLM_MODULE_OK;
 }
 
+/** Create a thread specific pool
+ *
+ * Each request uses its own connection.
+ * Each thread therefore needs a pool of connections to handle multiple requests in parallel
+ *
+ * @param[in] conf		section containing the configuration of this module instance.
+ * @param[in] instance	of rlm_sql_t.
+ * @param[in] el		The event list serviced by this thread.
+ * @param[in] thread	specific data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
 {
+	rlm_sql_t			*inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_thread_t	*t = talloc_get_type_abort(thread, rlm_sql_thread_t);
+	CONF_SECTION		*my_conf;
+
+	t->el = el;
+	t->inst = instance;
 
 	/*
+	 *	Temporary hack to make config parsing
+	 *	thread safe.
 	 */
+	my_conf = cf_section_dup(NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
+	t->pool = fr_connection_pool_init(NULL, my_conf, t, mod_conn_create, NULL, inst->name);
+	talloc_free(my_conf);
+
+	if (!t->pool) {
+		ERROR("Pool instantiation failed");
+		return -1;
+	}
+
+	return 0;
 }
 
 static rlm_rcode_t mod_authorize_release(REQUEST *request, void *instance, void *thread, void *ctx);
@@ -2256,6 +2285,7 @@ rad_module_t rlm_sql = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
+	.thread_instantiate	= mod_thread_instantiate,
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
