@@ -53,10 +53,11 @@ const FR_NAME_NUMBER sql_rcode_table[] = {
 	{ NULL, 0 }
 };
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
+void *mod_conn_create(TALLOC_CTX *ctx, void *thread, struct timeval const *timeout)
 {
 	int rcode;
-	rlm_sql_t *inst = instance;
+	rlm_sql_thread_t *t = thread;
+	rlm_sql_t const *inst = t->inst;
 	rlm_sql_handle_t *handle;
 
 	/*
@@ -77,6 +78,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 	 *	destructor has access to the module configuration.
 	 */
 	handle->inst = inst;
+
+	handle->thread = t;
 
 	rcode = (inst->driver->sql_socket_init)(handle, inst->config, timeout);
 	if (rcode != 0) {

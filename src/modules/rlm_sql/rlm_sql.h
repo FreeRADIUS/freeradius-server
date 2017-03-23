@@ -158,6 +158,7 @@ typedef struct rlm_sql_handle {
 	void			*conn;				//!< Database specific connection handle.
 	rlm_sql_row_t		row;				//!< Row data from the last query.
 	rlm_sql_t const		*inst;				//!< The rlm_sql instance this connection belongs to.
+	rlm_sql_thread_t const	*thread;		//!< The sql thread context this connection belongs to.
 	TALLOC_CTX		*log_ctx;			//!< Talloc pool used to avoid allocing memory
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
