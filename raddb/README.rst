@@ -171,6 +171,12 @@ a number of users, and they made the code substantially more
 complicated.  Experience shows that having configurable policies in
 ``unlang`` is preferable to having them hard-coded in C.
 
+rlm_eap_pwd
+~~~~~~~~~~~
+
+The `virtual_server` configuration has been removed from EAP-PWD.  The
+module now looks for &request.control:Cleartext-Password.
+
 rlm_expr
 ~~~~~~~~
 

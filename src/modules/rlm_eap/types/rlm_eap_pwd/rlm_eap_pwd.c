@@ -46,8 +46,6 @@ static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("group", PW_TYPE_INTEGER, rlm_eap_pwd_t, group), .dflt = "19" },
 	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
 	{ FR_CONF_OFFSET("server_id", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_pwd_t, server_id) },
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY,
-			 rlm_eap_pwd_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -125,7 +123,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *e
 static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 {
 	rlm_eap_pwd_t	*inst = talloc_get_type_abort(instance, rlm_eap_pwd_t);
-	REQUEST		*request, *fake;
+	REQUEST		*request;
 
 	pwd_session_t	*session;
 
@@ -133,7 +131,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	pwd_id_packet_t	*packet;
 	eap_packet_t	*response;
 
-	VALUE_PAIR	*pw, *vp;
+	VALUE_PAIR	*vp;
 	eap_round_t	*eap_round;
 	size_t		in_len;
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -279,65 +277,20 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
-		/*
-		 *	Make fake request to get the password for the usable ID
-		 */
-		MEM(fake = request_alloc_fake(eap_session->request));
-
-		fake->username = fr_pair_afrom_num(fake->packet, 0, PW_USER_NAME);
-		if (!fake->username) {
-			RDEBUG("Failed creating pair for peer id");
-			talloc_free(fake);
-			return RLM_MODULE_FAIL;
-		}
-		fr_pair_value_bstrncpy(fake->username, session->peer_id, session->peer_id_len);
-		fr_pair_add(&fake->packet->vps, fake->username);
-
-		if ((vp = fr_pair_find_by_num(request->control, 0, PW_VIRTUAL_SERVER, TAG_ANY)) != NULL) {
-			fake->server = vp->vp_strvalue;
-		} else if (inst->virtual_server) {
-			fake->server = inst->virtual_server;
-		} /* else fake->server == request->server */
-
-		RDEBUG("Sending tunneled request");
-		rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
-
-		RDEBUG("server %s {", fake->server);
-
-		/*
-		 *	Call authorization recursively, which will
-		 *	get the password.
-		 */
-		RINDENT();
-		process_authorize(0, fake);
-		REXDENT();
-
-		/*
-		 *	Note that we don't do *anything* with the reply
-		 *	attributes.
-		 */
-		RDEBUG2("} # server %s", fake->server);
-
-		RDEBUG2("Got tunneled reply code %d", fake->reply->code);
-		rdebug_pair_list(L_DBG_LVL_2, request, fake->reply->vps, NULL);
-
-		pw = fr_pair_find_by_num(fake->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
-		if (!pw) {
+		vp = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+		if (!vp) {
 			REDEBUG("Failed to find password for %s to do pwd authentication", session->peer_id);
-			talloc_free(fake);
 			return RLM_MODULE_REJECT;
 		}
 
 		if (compute_password_element(session, session->group_num,
-					     pw->vp_strvalue, pw->vp_length,
+					     vp->vp_strvalue, vp->vp_length,
 					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
 					     &session->token)) {
 			REDEBUG("Failed to obtain password element");
-			talloc_free(fake);
 			return RLM_MODULE_FAIL;
 		}
-		TALLOC_FREE(fake);
 
 		/*
 		 *	Compute our scalar and element
@@ -558,11 +511,6 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 
 	if (inst->fragment_size < 100) {
 		cf_log_err_cs(cs, "Fragment size is too small");
-		return -1;
-	}
-
-	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
-		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 

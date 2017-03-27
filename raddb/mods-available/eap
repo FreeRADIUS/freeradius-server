@@ -63,6 +63,11 @@ eap {
 
 	## EAP-PWD (Secure password-based authentication)
 	#
+	#  In v4, the "known good" is taken from the
+	#  &request.control:Cleartext-Password list, as is done by
+	#  other modules.  The "inner-tunnel" virtual server is no
+	#  longer used by EAP-PWD.
+	#
 #	pwd {
 #		group = 19
 
@@ -72,15 +77,6 @@ eap {
 		#  This has the same meaning as for TLS.
 		#
 #		fragment_size = 1020
-
-		#
-		#  The virtual server which determines the "known good" password
-		#  for the user. Note that unlike TLS, only the "authorize"
-		#  section is processed.  EAP-PWD requests can be distinguished
-		#  by having a User-Name, but no User-Password, CHAP-Password,
-		#  EAP-Message, etc.
-		#
-#		virtual_server = "inner-tunnel"
 #	}
 
 	## Cisco LEAP
