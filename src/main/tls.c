@@ -2525,6 +2525,38 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 #endif
 #endif
 
+/*
+ * DIE OPENSSL DIE DIE DIE
+ *
+ * What a palaver, just to free some data attached the
+ * session. We need to do this because the "remove" callback
+ * is called when refcount > 0 sometimes, if another thread
+ * is using the session
+ */
+static void sess_free_vps(UNUSED void *parent, void *data_ptr,
+                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
+                                UNUSED long argl, UNUSED void *argp)
+{
+        VALUE_PAIR *vp = data_ptr;
+        if (!vp) return;
+
+        DEBUG2(LOG_PREFIX ": Freeing cached session VPs");
+
+        fr_pair_list_free(&vp);
+}
+
+static void sess_free_certs(UNUSED void *parent, void *data_ptr,
+                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
+                                UNUSED long argl, UNUSED void *argp)
+{
+        VALUE_PAIR **certs = data_ptr;
+        if (!certs) return;
+
+        DEBUG2(LOG_PREFIX ": Freeing cached session Certificates");
+
+        fr_pair_list_free(certs);
+}
+
 /** Add all the default ciphers and message digests reate our context.
  *
  * This should be called exactly once from main, before reading the main config
@@ -2540,7 +2572,7 @@ void tls_global_init(void)
 	/*
 	 *	Initialize the index for the certificates.
 	 */
-	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
 }
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -2957,7 +2989,7 @@ post_ca:
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (fr_tls_ex_index_vps < 0)
-			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
 	}
 
 	/*
