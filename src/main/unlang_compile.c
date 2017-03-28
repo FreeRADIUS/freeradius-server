@@ -722,27 +722,10 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 			 */
 			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 			    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
-				/*
-				 *	RHS is hex, try to parse it as
-				 *	type-specific data.
-				 */
-				if (map->lhs->auto_converted &&
-				    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
-				    (map->rhs->len > 2) && ((map->rhs->len & 0x01) == 0)) {
-					vpt = map->rhs;
-					map->rhs = NULL;
-
-					if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
-						map->rhs = vpt;
-						cf_log_err(map->ci, "Cannot parse RHS hex as the data type of the attribute %s", map->lhs->tmpl_da->name);
-						return -1;
-					}
-					talloc_free(vpt);
-
-				} else if ((map->rhs->len > 0) ||
-					   (map->op != T_OP_CMP_EQ) ||
-					   (map->lhs->tmpl_da->type == PW_TYPE_STRING) ||
-					   (map->lhs->tmpl_da->type == PW_TYPE_OCTETS)) {
+				if ((map->rhs->len > 0) ||
+				    (map->op != T_OP_CMP_EQ) ||
+				    (map->lhs->tmpl_da->type == PW_TYPE_STRING) ||
+				    (map->lhs->tmpl_da->type == PW_TYPE_OCTETS)) {
 
 					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %s",
@@ -1278,26 +1261,10 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 */
 	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		/*
-		 *	Convert it to the correct type.
-		 */
-		if (map->lhs->auto_converted &&
-		    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
-		    (map->rhs->len > 2) && ((map->rhs->len & 0x01) == 0)) {
-			vp_tmpl_t *vpt = map->rhs;
-			map->rhs = NULL;
-
-			if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
-				map->rhs = vpt;
-				cf_log_err(map->ci, "Cannot parse RHS hex as the data type of the attribute %s", map->lhs->tmpl_da->name);
-				return -1;
-			}
-			talloc_free(vpt);
-
-		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		} else if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			cf_log_err(map->ci, "%s", fr_strerror());
 			return -1;
 		}

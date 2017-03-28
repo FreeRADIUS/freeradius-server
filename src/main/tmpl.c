@@ -715,31 +715,26 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		break;
 	}
 
+	/*
+	 *	Look up by name, *including* any Attr-1.2.3.4 which was created when
+	 *	parsing the configuration files.
+	 */
 	vpt->tmpl_da = fr_dict_attr_by_name_substr(NULL, &p);
 	if (!vpt->tmpl_da) {
 		char const *q;
 
 		fr_strerror();	/* Clear out any existing errors */
 
+		/*
+		 *	At this point, the OID *must* be unknown, and
+		 *	not previously used.
+		 */
 		slen = fr_dict_unknown_afrom_oid_substr(vpt, &vpt->tmpl_unknown,
 						    	fr_dict_root(fr_dict_internal), p);
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
 		if (slen > 0) {
-			/*
-			 *	Check what we just parsed really hasn't been defined
-			 *	in the main dictionaries.
-			 *
-			 *	If it has, parsing is the same as if the attribute
-			 *	name had been used instead of its OID.
-			 */
-			vpt->tmpl_da = fr_dict_attr_by_name(NULL, p);
-			if (vpt->tmpl_da) {
-				vpt->auto_converted = true;
-				goto do_num;
-			}
-
 			if (!allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
 				slen = -(p - name);

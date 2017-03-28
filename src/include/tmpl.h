@@ -174,8 +174,6 @@ typedef struct vp_tmpl_t {
 	size_t		len;		//!< Length of the raw string used to create the template.
 	FR_TOKEN	quote;		//!< What type of quoting was around the raw string.
 
-	bool		auto_converted; //!< Attr-26.9.1 --> Cisco-AVPair
-
 #ifdef HAVE_REGEX
 	bool		iflag;		//!< regex - case insensitive (if operand is used in regex comparison)
 	bool		mflag;		//!< regex - multiline flags (controls $ matching)
