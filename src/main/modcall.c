@@ -1684,9 +1684,9 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 				da = dict_attrbytype(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor,
 						     map->rhs->tmpl_data_type);
 				if (!da) {
-					fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-							   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
-							   "<INVALID>"), map->lhs->tmpl_da->name);
+					cf_log_err(map->ci, "Cannot find %s variant of attribute \"%s\"",
+						   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
+							      "<INVALID>"), map->lhs->tmpl_da->name);
 					return -1;
 				}
 				map->lhs->tmpl_da = da;
