@@ -11,4 +11,9 @@
 #
 date {
 	format = "%b %e %Y %H:%M:%S %Z"
+
+	# Use UTC instead of local time.
+	#
+	#  default = no
+#	utc = yes
 }
