@@ -207,10 +207,15 @@ static void eapsoh_verify(REQUEST *request, RADIUS_PACKET *packet,
  *	Verify the tunneled EAP message.
  */
 static int eapmessage_verify(REQUEST *request,
-			     uint8_t const *data, unsigned int data_len)
+			     uint8_t const *data, unsigned int data_len, int peap_version)
 {
 	eap_packet_raw_t const *eap_packet = (eap_packet_raw_t const *) data;
 	eap_type_t eap_method;
+
+	/*
+	 *	Hack for now.
+	 */
+	if (peap_version == 1) return 1;
 
 	/*
 	 *	No data, OR only 1 byte of EAP type.
@@ -241,7 +246,7 @@ static int eapmessage_verify(REQUEST *request,
 			RDEBUG2("Received EAP-TLV response");
 			return 1;
 		}
-		RDEBUG2("Got something weird");
+		RDEBUG2("Received unexpected EAP-Response, rejecting the session.");
 		break;
 
 
@@ -264,7 +269,7 @@ static int eapmessage_verify(REQUEST *request,
  */
 static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 			  EAP_DS *eap_ds,
-			  uint8_t const *data, size_t data_len)
+			  uint8_t const *data, size_t data_len, int peap_version)
 {
 	size_t total;
 	uint8_t *p;
@@ -281,18 +286,25 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 	total = data_len;
 	if (total > 249) total = 249;
 
-	/*
-	 *	Hand-build an EAP packet from the crap in PEAP version 0.
-	 */
-	vp->vp_length = EAP_HEADER_LEN + total;
-	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
+	if (peap_version == 0) {
+		/*
+		 *	Hand-build an EAP packet from the crap in PEAP version 0.
+		 */
+		vp->vp_length = EAP_HEADER_LEN + total;
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 
-	p[0] = PW_EAP_RESPONSE;
-	p[1] = eap_ds->response->id;
-	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
-	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
+		p[0] = PW_EAP_RESPONSE;
+		p[1] = eap_ds->response->id;
+		p[2] = (data_len + EAP_HEADER_LEN) >> 8;
+		p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 
-	memcpy(p + EAP_HEADER_LEN, data, total);
+		memcpy(p + EAP_HEADER_LEN, data, total);
+
+	} else {		/* peapv1 */
+		vp->vp_length = total;
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
+		memcpy(p, data, total);
+	}
 
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_insert(&cursor, vp);
@@ -323,6 +335,9 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	rad_assert(vp != NULL);
 	VALUE_PAIR *this;
 	vp_cursor_t cursor;
+	size_t header = EAP_HEADER_LEN;
+
+	if (tls_session->peap_flag > 0) header = 0;
 
 	/*
 	 *	Skip the id, code, and length.  Just write the EAP
@@ -330,7 +345,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 */
 #ifndef NDEBUG
 	if ((rad_debug_lvl > 2) && fr_log_fp) {
-		size_t i, total, start = EAP_HEADER_LEN;
+		size_t i, total, start = header;
 		total = 0;
 
 		for (this = fr_cursor_init(&cursor, &vp); this; this = fr_cursor_next(&cursor)) {
@@ -360,7 +375,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
-	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->vp_length - EAP_HEADER_LEN);
+	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + header, vp->vp_length - header);
 
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
@@ -730,6 +745,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
 	unsigned int	data_len;
+	size_t		header = 0;
 
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -745,11 +761,13 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	RDEBUG2("PEAP state %s", peap_state(t));
 
 	if ((t->status != PEAP_STATUS_TUNNEL_ESTABLISHED) &&
-	    !eapmessage_verify(request, data, data_len)) {
+	    !eapmessage_verify(request, data, data_len, tls_session->peap_flag)) {
 		REDEBUG("Tunneled data is invalid");
 		if (rad_debug_lvl > 2) print_tunneled_data(data, data_len);
 		return RLM_MODULE_REJECT;
 	}
+
+	if (tls_session->peap_flag > 0) header = EAP_HEADER_LEN;
 
 	switch (t->status) {
 	case PEAP_STATUS_TUNNEL_ESTABLISHED:
@@ -778,7 +796,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 	case PEAP_STATUS_INNER_IDENTITY_REQ_SENT:
 		/* we're expecting an identity response */
-		if (data[0] != PW_EAP_IDENTITY) {
+		if (data[header] != PW_EAP_IDENTITY) {
 			REDEBUG("Expected EAP-Identity, got something else");
 			return RLM_MODULE_REJECT;
 		}
@@ -789,7 +807,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 		t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 		rad_assert(t->username != NULL);
 
-		fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
+		fr_pair_value_bstrncpy(t->username, data + header + 1, data_len - header - 1);
 
 		RDEBUG("Got inner identity '%s'", t->username->vp_strvalue);
 		if (t->soh) {
@@ -804,7 +822,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc_fake(request);
 		rad_assert(!fake->packet->vps);
-		eapsoh_verify(fake, fake->packet, data, data_len);
+		eapsoh_verify(fake, fake->packet, data + header, data_len - header);
 		setup_fake_request(request, fake, t);
 
 		if (t->soh_virtual_server) {
@@ -842,7 +860,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	 *	If we authenticated the user, then it's OK.
 	 */
 	case PEAP_STATUS_SENT_TLV_SUCCESS:
-		if (eappeap_check_tlv(request, data, data_len)) {
+		if (eappeap_check_tlv(request, data + header, data_len - header)) {
 			RDEBUG2("Success");
 			return RLM_MODULE_OK;
 		}
@@ -937,7 +955,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 	case PEAP_STATUS_PHASE2:
 		fake->packet->vps = eap2vp(request, fake->packet,
-					   eap_ds, data, data_len);
+					   eap_ds, data, data_len, tls_session->peap_flag);
 		if (!fake->packet->vps) {
 			talloc_free(fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
@@ -962,11 +980,11 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 		 *	so we add one here, by pulling it out of the
 		 *	EAP-Identity packet.
 		 */
-		if ((data[0] == PW_EAP_IDENTITY) && (data_len > 1)) {
+		if ((data[header] == PW_EAP_IDENTITY) && (data_len > (1 + header))) {
 			t->username = fr_pair_make(t, NULL, "User-Name", NULL, T_OP_EQ);
 			rad_assert(t->username != NULL);
 
-			fr_pair_value_bstrncpy(t->username, data + 1, data_len - 1);
+			fr_pair_value_bstrncpy(t->username, data + header + 1, data_len - header - 1);
 
 			RDEBUG2("Got tunneled identity of %s", t->username->vp_strvalue);
 

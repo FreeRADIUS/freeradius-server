@@ -262,6 +262,13 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		peap = tls_session->opaque = peap_alloc(tls_session, inst);
 	}
 
+	/*
+	 *	Negotiate PEAP versions down.
+	 */
+	if ((handler->eap_ds->response->type.data[0] & 0x03) < tls_session->peap_flag) {
+		tls_session->peap_flag = handler->eap_ds->response->type.data[0] & 0x03;
+	}
+
 	status = eaptls_process(handler);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
