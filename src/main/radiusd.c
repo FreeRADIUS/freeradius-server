@@ -54,6 +54,10 @@ RCSID("$Id$")
 #  define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
+#ifdef HAVE_SYSTEMD
+#  include <systemd/sd-daemon.h>
+#endif
+
 /*
  *  Global variables.
  */
@@ -69,6 +73,11 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 static pid_t radius_pid;
+
+#ifdef HAVE_SYSTEMD_WATCHDOG
+uint64_t sd_watchdog_interval = 0;
+#endif
+
 
 /*
  *  Configuration items.
@@ -354,6 +363,20 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	 *  The systemd watchdog enablement must be checked before we
+	 *  daemonize, but the notifications can come from any process.
+	 */
+#ifdef HAVE_SYSTEMD_WATCHDOG
+	if (!check_config) {
+		if (sd_watchdog_enabled(0, &sd_watchdog_interval) > 0) {
+			INFO("systemd watchdog interval is %d secs.\n", (int) sd_watchdog_interval / 1000000);
+		} else {
+			INFO("systemd watchdog is disabled.\n");
+		}
+	}
+#endif
+
 #ifndef __MINGW32__
 	/*
 	 *  Disconnect from session
@@ -418,6 +441,10 @@ int main(int argc, char *argv[])
 				waitpid(pid, &stat_loc, WNOHANG);
 				exit(EXIT_FAILURE);
 			}
+
+#ifdef HAVE_SYSTEMD
+			sd_notify(0, "READY=1");
+#endif
 
 			exit(EXIT_SUCCESS);
 		}

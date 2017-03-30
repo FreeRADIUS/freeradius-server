@@ -999,6 +999,82 @@ if test "x$WITH_GPERFTOOLS" = xyes; then
   LIBS="${old_LIBS}"
 fi
 
+dnl #
+dnl #  extra argument: --with-systemd
+dnl #
+WITH_SYSTEMD=no
+AC_ARG_WITH(systemd,
+[AS_HELP_STRING([--with-systemd],
+[enable systemd notification support (default=no)])],
+[ case "${withval}" in
+  no)
+    WITH_SYSTEMD=no
+    ;;
+  *)
+    WITH_SYSTEMD=yes
+    ;;
+  esac],
+)
+
+dnl #
+dnl #  extra argument: --systemd-lib-dir=dir
+dnl #
+systemd_lib_dir=
+AC_ARG_WITH(systemd-lib-dir,
+[AS_HELP_STRING([--with-systemd-lib-dir=DIR],
+[directory to look for systemd library files])],
+[ case "$withval" in
+  *) systemd_lib_dir="$withval"
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-systemd-includes=dir
+dnl #
+systemd_include_dir=
+AC_ARG_WITH(systemd-include-dir,
+[AS_HELP_STRING([--with-systemd-include-dir=DIR],
+[directory to look for systemd include files])],
+[ case "$withval" in
+  *) systemd_include_dir="$withval"
+    ;;
+  esac ]
+)
+
+if test "x$WITH_SYSTEMD" = xyes; then
+  smart_try_dir="$systemd_lib_dir"
+  FR_SMART_CHECK_LIB(systemd, sd_notify)
+  if test "x$ac_cv_lib_systemd_sd_notify" != "xyes"; then
+    AC_MSG_WARN([systemd library not found. Use --with-systemd-lib-dir=<path>.])
+  else
+    AC_DEFINE(HAVE_SYSTEMD, 1,
+      [Define to 1 if you have the `systemd' library (-lsystemd).]
+    )
+    HAVE_SYSTEMD=1
+    SYSTEMD_LIBS="${smart_lib}"
+    SYSTEMD_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
+fi
+
+if test "x$HAVE_SYSTEMD" = x; then
+  AC_MSG_NOTICE([skipping test for systemd watchdog])
+else
+  smart_try_dir="$systemd_lib_dir"
+  FR_SMART_CHECK_LIB(systemd, sd_watchdog_enabled)
+  if test "x$ac_cv_lib_systemd_sd_watchdog_enabled" != "xyes"; then
+    AC_MSG_WARN([systemd watchdog is only available from systemd 209.])
+  else
+    AC_DEFINE(HAVE_SYSTEMD_WATCHDOG, 1,
+      [Define to 1 if you have watchdog support in the `systemd' library (-lsystemd).]
+    )
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
+fi
+
 VL_LIB_READLINE
 
 dnl #############################################################
@@ -1295,7 +1371,7 @@ else
 fi
 
 dnl #
-dnl #  Check for the gperftools headers too
+dnl #  Check for the gperftools headers
 dnl #
 if test "x$WITH_GPERFTOOLS" != xyes || test "x$GPERFTOOLS_LIBS" = x; then
   AC_MSG_NOTICE([skipping test for google/profiler.h.])
@@ -1308,6 +1384,23 @@ else
     AC_SUBST(GPERFTOOLS_LDFLAGS)
   else
     AC_MSG_WARN([gperftools headers not found.  Use --with-gperftools-include-dir=<path>.])
+  fi
+fi
+
+dnl #
+dnl #  Check for the systemd headers
+dnl #
+if test "x$WITH_SYSTEMD" != xyes || test "x$SYSTEMD_LIBS" = x; then
+  AC_MSG_NOTICE([skipping test for systemd/sd-daemon.h.])
+else
+  smart_try_dir="$systemd_include_dir"
+  FR_SMART_CHECK_INCLUDE([systemd/sd-daemon.h])
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+    AC_DEFINE(HAVE_SYSTEMD_SD_DAEMON_H, 1, [Define to 1 if you have the <systemd/sd-daemon.h> header file.])
+    AC_SUBST(SYSTEMD_LIBS)
+    AC_SUBST(SYSTEMD_LDFLAGS)
+  else
+    AC_MSG_WARN([systemd headers not found.  Use --with-systemd-include-dir=<path>.])
   fi
 fi
 
