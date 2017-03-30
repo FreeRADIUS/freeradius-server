@@ -1021,7 +1021,7 @@ do { \
 	 *	Only add extensions for the actual client certificate
 	 */
 	if (attr_index == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		ext_list = X509_get0_extensions(cert);
 #else
 		ext_list = cert->cert_info->extensions;
