@@ -1031,7 +1031,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 {
 	int max_attrs = max;
 	vp_tmpl_t *dst = NULL;
-		
+
 	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
 		REDEBUG("Can't process VP container, expected JSON object"
@@ -1060,7 +1060,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 
 		REQUEST *current = request;
 		VALUE_PAIR **vps, *vp = NULL;
-		
+
 		TALLOC_FREE(dst);
 
 		/*
@@ -1192,7 +1192,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 		 */
 		} while ((++i < elements) && (element = json_object_array_get_idx(value, i)));
 	}
-	
+
 	talloc_free(dst);
 
 	return max - max_attrs;
@@ -1720,7 +1720,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	rad_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
-	
+
 	/*
 	 *	Setup any header options and generic headers.
 	 */
@@ -2128,7 +2128,7 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 			/*
 			 *	Print out all the pairs we have so far
 			 */
-			rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, "&");
+			rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, NULL);
 			fr_pair_cursor_merge(&list, cert_vps);
 			cert_vps = NULL;
 		}

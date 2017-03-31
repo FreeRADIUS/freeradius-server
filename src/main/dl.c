@@ -496,8 +496,12 @@ static int _dl_module_free(dl_module_t *dl_module)
 {
 	dl_module = talloc_get_type_abort(dl_module, dl_module_t);
 
-	DEBUG3("Unloading module \"%s\" (%p/%p)", dl_module->name, dl_module->handle, dl_module->common);
-
+	if (DEBUG_ENABLED4) {
+		DEBUG4("%s unloaded.  Handle address %p, symbol address %p",
+		       dl_module->name, dl_module->handle, dl_module->common);
+	} else {
+		DEBUG3("%s unloaded", dl_module->name);
+	}
 	dl_module_sym_free_walk(dl_module);
 
 	/*
