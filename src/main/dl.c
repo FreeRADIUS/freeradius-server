@@ -699,7 +699,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 		return NULL;
 	}
 
-	DEBUG3("Loaded \"%s\", checking if it's valid", module_name);
+	DEBUG3("%s loaded, checking if it's valid", module_name);
 
 	module = dlsym(handle, module_name);
 	if (!module) {
@@ -712,7 +712,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	 */
 	if (dl_module_verify_magic(conf, module) < 0) goto error;
 
-	DEBUG3("Validated \"%s\" (%p/%p)", module_name, handle, module);
+	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, handle, module);
 
 	/* make room for the module type */
 	dl_module = talloc_zero(dl_handle_tree, dl_module_t);
