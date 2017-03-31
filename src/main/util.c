@@ -1299,7 +1299,7 @@ void rad_file_error(int num)
 	if (rad_getpwuid(NULL, &user, geteuid()) < 0) goto finish;
 	if (rad_getgrgid(NULL, &group, getegid()) < 0) goto finish;
 
-	fr_strerror_printf("Effective user/group %s:%s: %s", user->pw_name, group->gr_name, error);
+	fr_strerror_printf("Effective user:group %s:%s: %s", user->pw_name, group->gr_name, error);
 finish:
 	talloc_free(user);
 	talloc_free(group);
