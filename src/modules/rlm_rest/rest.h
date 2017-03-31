@@ -120,6 +120,8 @@ typedef struct rlm_rest_section_t {
 
 	char const		*data;		//!< Custom body data (optional).
 
+	bool			all_lists_body;	//!< Include all lists in the HTTP request
+
 	char const		*auth_str;	//!< The string version of the Auth-Type.
 	http_auth_type_t	auth;		//!< HTTP auth type.
 	bool			require_auth;	//!< Whether HTTP-Auth is required or not.
@@ -183,6 +185,11 @@ typedef enum {
 	WRITE_STATE_DISCARD,
 } write_state_t;
 
+typedef struct rlm_rest_next_vps_t {
+	VALUE_PAIR	**vps;		//!< The actual value pairs
+	char const	*list_name;	//!< The name of the list, used a prefix
+} rlm_rest_next_vps_t;
+
 /*
  *	Outbound data context (passed to CURLOPT_READFUNCTION as CURLOPT_READDATA)
  */
@@ -192,10 +199,13 @@ typedef struct rlm_rest_request_t {
 	read_state_t		state;		//!< Encoder state
 
 	vp_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
+	char const		*list_name;	//!< Name of the current list
 
 	size_t			chunk;		//!< Chunk size
 
 	void			*encoder;	//!< Encoder specific data.
+
+	rlm_rest_next_vps_t	*next_vps;	//!< The list of value pairs to come
 } rlm_rest_request_t;
 
 /*

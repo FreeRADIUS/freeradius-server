@@ -655,7 +655,48 @@ no_space:
 	return len;
 }
 
+/** (Re-)Initialises the data in a rlm_rest_request_t.
+ *
+ * Resets the values of a rlm_rest_request_t to their defaults.
+ *
+ * @param[in] request Current request.
+ * @param[in] vps The list of value pairs to initialize
+ * @param[in] ctx to initialise.
+ * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
+ *	pointer array.
+ */
+static void rest_request_init(REQUEST *request, VALUE_PAIR **vps, rlm_rest_request_t *ctx, bool sort)
+{
+	/*
+	 * 	Setup stream read data
+	 */
+	ctx->request = request;
+	ctx->state = READ_STATE_INIT;
+
+	/*
+	 *	Sorts pairs in place, oh well...
+	 */
+	if (sort) {
+		fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
+	}
+	fr_cursor_init(&ctx->cursor, vps);
+}
+
 #ifdef HAVE_JSON
+/** Internal method called in rest_encode_json
+ *
+ * @param[in] walker Walker to increment if vps are given
+ * @param[in] vps The vps to add
+ * @param[in] list_name The name of the list, like "request" or "control"
+ */
+static void increase_walker_with_next_vps(rlm_rest_next_vps_t **walker, VALUE_PAIR **vps, char const *list_name)
+{
+	rlm_rest_next_vps_t *local_walker = *walker;
+	if (*vps)
+		*local_walker++ = (rlm_rest_next_vps_t){ vps, list_name };
+	*walker = local_walker;
+}
+
 /** Encodes VALUE_PAIR linked list in JSON format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
@@ -718,11 +759,33 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 	if (ctx->state == READ_STATE_END) return 0;
 
 	if (ctx->state == READ_STATE_INIT) {
-		ctx->state = READ_STATE_ATTR_BEGIN;
+		rlm_rest_next_vps_t *walker = NULL;
+		size_t next_vps_members = 5; // request, reply, control, session-state and terminator
+#ifdef WITH_PROXY
+		if (request->proxy) {
+			next_vps_members += 2; // proxy_request and proxy_reply
+		}
+#endif
 
 		if (freespace < 1) goto no_space;
 		*p++ = '{';
 		freespace--;
+
+		walker = ctx->next_vps = talloc_zero_array(request, rlm_rest_next_vps_t, next_vps_members); // FIXME: what to do if talloc fails?
+
+		// Initialize next_vps list
+		increase_walker_with_next_vps(&walker, &request->packet->vps, "request");
+		increase_walker_with_next_vps(&walker, &request->reply->vps, "reply");
+		increase_walker_with_next_vps(&walker, &request->control, "control");
+		increase_walker_with_next_vps(&walker, &request->state, "session-state");
+#ifdef WITH_PROXY
+		if (request->proxy) {
+			increase_walker_with_next_vps(&walker, &request->proxy->packet->vps, "proxy-request");
+			increase_walker_with_next_vps(&walker, &request->proxy->reply->vps, "proxy->reply");
+		}
+#endif
+
+		ctx->state = READ_STATE_ATTR_BEGIN;
 	}
 
 	for (;;) {
@@ -736,24 +799,31 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		 *  array.
 		 */
 		if (!vp && (ctx->state == READ_STATE_ATTR_BEGIN)) {
-			if (freespace < 1) goto no_space;
-			*p++ = '}';
-			freespace--;
+			if (ctx->next_vps->list_name != NULL) {
+				rest_request_init(request, ctx->next_vps->vps, ctx, true);
+				ctx->list_name = ctx->next_vps->list_name;
+				vp = fr_cursor_current(&ctx->cursor);
+				ctx->next_vps++;
+				ctx->state = READ_STATE_ATTR_BEGIN;
+			} else {
+				if (freespace < 1) goto no_space;
+				*p++ = '}';
+				freespace--;
 
-			ctx->state = READ_STATE_END;
-
-			break;
+				ctx->state = READ_STATE_END;
+				break;
+			}
 		}
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
 			/*
 			 *  New attribute, write name, type, and beginning of value array.
 			 */
-			RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
+			RDEBUG2("Encoding attribute \"%s:%s\"", ctx->list_name, vp->da->name);
 
 			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
 
-			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
+			len = snprintf(p, freespace + 1, "\"%s:%s\":{\"type\":\"%s\",\"value\":[", ctx->list_name, vp->da->name, type);
 			if (len >= freespace) goto no_space;
 			p += len;
 			freespace -= len;
@@ -838,11 +908,18 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				freespace--;
 			}
 
+			if (!next && ctx->next_vps->list_name != NULL) {
+				if (freespace < 1) goto no_space;
+				*p++ = ',';
+				freespace--;
+			}
+
+			ctx->state = READ_STATE_ATTR_BEGIN;
+
 			/*
 			 *  We wrote one full attribute value pair, record progress.
 			 */
 			encoded = p;
-			ctx->state = READ_STATE_ATTR_BEGIN;
 		}
 	}
 
@@ -931,32 +1008,6 @@ static ssize_t rest_request_encode_wrapper(char **out, rlm_rest_t const *inst,
 	talloc_free(buff);
 
 	return -1;
-}
-
-/** (Re-)Initialises the data in a rlm_rest_request_t.
- *
- * Resets the values of a rlm_rest_request_t to their defaults.
- *
- * @param[in] request Current request.
- * @param[in] ctx to initialise.
- * @param[in] sort If true VALUE_PAIRs will be sorted within the VALUE_PAIR
- *	pointer array.
- */
-static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool sort)
-{
-	/*
-	 * 	Setup stream read data
-	 */
-	ctx->request = request;
-	ctx->state = READ_STATE_INIT;
-
-	/*
-	 *	Sorts pairs in place, oh well...
-	 */
-	if (sort) {
-		fr_pair_list_sort(&request->packet->vps, fr_pair_cmp_by_da_tag);
-	}
-	fr_cursor_init(&ctx->cursor, &request->packet->vps);
 }
 
 /** Converts plain response into a single VALUE_PAIR
@@ -2296,8 +2347,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 #ifdef HAVE_JSON
 	case HTTP_BODY_JSON:
-		rest_request_init(request, &ctx->request, true);
-
+		ctx->request.request = request;
+		ctx->request.next_vps = NULL;
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_json) < 0) {
 			return -1;
@@ -2307,7 +2358,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 #endif
 
 	case HTTP_BODY_POST:
-		rest_request_init(request, &ctx->request, false);
+		rest_request_init(request, &request->packet->vps, &ctx->request, false);
 
 		if (rest_request_config_body(instance, section, request, handle,
 					     rest_encode_post) < 0) {

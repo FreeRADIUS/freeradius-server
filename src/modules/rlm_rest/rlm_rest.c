@@ -52,6 +52,7 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING, rlm_rest_section_t, proxy) },
 	{ FR_CONF_OFFSET("method", PW_TYPE_STRING, rlm_rest_section_t, method_str), .dflt = "GET" },
 	{ FR_CONF_OFFSET("body", PW_TYPE_STRING, rlm_rest_section_t, body_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("all_lists_body", PW_TYPE_BOOLEAN, rlm_rest_section_t, all_lists_body), .dflt = "no" },
 	{ FR_CONF_OFFSET("data", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data) },
 	{ FR_CONF_OFFSET("force_to", PW_TYPE_STRING, rlm_rest_section_t, force_to_str) },
 
