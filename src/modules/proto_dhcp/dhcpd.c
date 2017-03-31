@@ -105,12 +105,12 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	}
 	vp = fr_pair_find_by_num(request->packet->vps, 259, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Hop-Count */
 	rad_assert(vp != NULL);
-	if (vp->vp_integer > maxhops) {
+	if (vp->vp_byte > maxhops) {
 		DEBUG("DHCP: Number of hops is greater than %d: not relaying\n", maxhops);
 		return 1;
 	} else {
-	    /* Increment hop count */
-	    vp->vp_integer++;
+		/* Increment hop count */
+		vp->vp_byte++;
 	}
 
 	sock = request->listener->data;
@@ -301,10 +301,10 @@ static int dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->packet->vps, 53, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		DICT_VALUE *dv = dict_valbyattr(53, DHCP_MAGIC_VENDOR, vp->vp_integer);
+		DICT_VALUE *dv = dict_valbyattr(53, DHCP_MAGIC_VENDOR, vp->vp_byte);
 		DEBUG("Trying sub-section dhcp %s {...}",
 		      dv ? dv->name : "<unknown>");
-		rcode = process_post_auth(vp->vp_integer, request);
+		rcode = process_post_auth(vp->vp_byte, request);
 	} else {
 		DEBUG("DHCP: Failed to find DHCP-Message-Type in packet!");
 		rcode = RLM_MODULE_FAIL;
@@ -312,7 +312,7 @@ static int dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->reply->vps, 53, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		request->reply->code = vp->vp_integer;
+		request->reply->code = vp->vp_byte;
 		if ((request->reply->code != 0) &&
 		    (request->reply->code < PW_DHCP_OFFSET)) {
 			request->reply->code += PW_DHCP_OFFSET;
@@ -366,7 +366,7 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	/* BOOTREPLY received on port 67 (i.e. from a server) */
-	if (vp->vp_integer == 2) {
+	if (vp->vp_byte == 2) {
 		return dhcprelay_process_server_reply(request);
 	}
 
@@ -376,7 +376,7 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	/* else it's a packet from a client, without relaying */
-	rad_assert(vp->vp_integer == 1); /* BOOTREQUEST */
+	rad_assert(vp->vp_byte == 1); /* BOOTREQUEST */
 
 	sock = request->listener->data;
 
@@ -414,7 +414,7 @@ static int dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->reply->vps, 256, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Opcode */
 	rad_assert(vp != NULL);
-	vp->vp_integer = 2; /* BOOTREPLY */
+	vp->vp_byte = 2; /* BOOTREPLY */
 
 	/*
 	 *	Allow NAKs to be delayed for a short period of time.
