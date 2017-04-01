@@ -72,6 +72,12 @@ static char const *eap_codes[] = {
 static int _eap_module_free(eap_module_t *inst)
 {
 	/*
+	 * Check if handle is still valid. If not, type is referencing freed memory
+	 */
+
+	if (!inst->handle) return 0;
+
+	/*
 	 *	We have to check inst->type as it's only allocated
 	 *	if we loaded the eap method.
 	 */
@@ -83,7 +89,7 @@ static int _eap_module_free(eap_module_t *inst)
 	 *	ad it removes the symbols needed by valgrind.
 	 */
 #else
-	if (inst->handle) dlclose(inst->handle);
+	dlclose(inst->handle);
 #endif
 
 	return 0;
