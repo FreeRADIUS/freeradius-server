@@ -119,6 +119,7 @@ typedef	fr_transport_final_t (*fr_transport_process_t)(REQUEST *, fr_transport_a
 typedef struct fr_transport_t {
 	char const			*name;		//!< name of this transport
 	uint32_t			id;		//!< ID of this transport
+	size_t				default_message_size; // usually minimum message size
 	fr_transport_recv_request_t	recv_request;	//!< function to receive a request (worker -> master)
 	fr_transport_decode_t		decode;		//!< function to decode packet to request (worker)
 	fr_transport_encode_t		encode;		//!< function to encode request to packet (worker)

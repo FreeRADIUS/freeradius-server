@@ -105,6 +105,7 @@ static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t
 static fr_transport_t transport = {
 	.name = "schedule-test",
 	.id = 1,
+	.default_message_size = 4096,
 	.decode = test_decode,
 	.encode = test_encode,
 	.nak = test_nak,
