@@ -857,14 +857,17 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
-	if (reserve_size > ms->max_allocation) return NULL;
+	if (reserve_size > ms->max_allocation) {
+		MPRINT("Reserve %zd > max allocation %zd\n", reserve_size, ms->max_allocation);
+		return NULL;
+	}
 
 	/*
 	 *	Allocate a bare message.
 	 */
 	m = fr_message_get_message(ms, &cleaned_up);
 	if (!m) {
-		fprintf(stderr, "NULL %d\n", __LINE__);
+		MPRINT("Failed to reserve message\n");
 		return NULL;
 	}
 
