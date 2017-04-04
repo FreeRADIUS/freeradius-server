@@ -659,7 +659,7 @@ void fr_receiver(fr_receiver_t *rc)
 	while (true) {
 		bool wait_for_event;
 		int num_events;
-		fr_time_t now;
+//		fr_time_t now;
 		fr_channel_data_t *cd;
 		fr_receiver_socket_t *s;
 
@@ -686,7 +686,7 @@ void fr_receiver(fr_receiver_t *rc)
 			fr_event_service(rc->el);
 		}
 
-		now = fr_time();
+//		now = fr_time();
 
 		cd = fr_heap_pop(rc->replies);
 		if (!cd) continue;
