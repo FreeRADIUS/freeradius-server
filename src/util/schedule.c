@@ -301,7 +301,7 @@ static void *fr_schedule_receiver_thread(void *arg)
 	ctx = talloc_init("receiver");
 	if (!ctx) goto fail;
 
-	sr->rc = fr_receiver_create(ctx, sc->num_transports, sc->transports);
+	sr->rc = fr_receiver_create(ctx, sc->log, sc->num_transports, sc->transports);
 	if (!sr->rc) {
 		goto fail;
 	}
@@ -345,7 +345,7 @@ fail:
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx the talloc context
- * @param[in] log the destination for all logging messages
+ * @param[in] logger the destination for all logging messages
  * @param[in] max_inputs the number of network threads
  * @param[in] max_workers the number of worker threads
  * @param[in] num_transports the number of transports in the transport array
@@ -356,7 +356,7 @@ fail:
  *	- NULL on error
  *	- fr_schedule_t new scheduler
  */
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs, int max_workers,
+fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inputs, int max_workers,
 				  uint32_t num_transports, fr_transport_t **transports,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
@@ -379,7 +379,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs
 
 	sc->max_inputs = max_inputs;
 	sc->max_workers = max_workers;
-	sc->log = log;
+	sc->log = logger;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 	sc->worker_instantiate_ctx = worker_thread_ctx;

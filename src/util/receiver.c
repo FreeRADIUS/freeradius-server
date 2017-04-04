@@ -35,15 +35,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-/*
- *	Debugging, mainly for worker_test
- */
-#if 0
-#define MPRINT(...) fprintf(stdout, __VA_ARGS__)
-#else
-#define MPRINT(...)
-#endif
-
 typedef struct fr_receiver_worker_t {
 	int			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
@@ -67,6 +58,8 @@ typedef struct fr_receiver_socket_t {
 
 struct fr_receiver_t {
 	int			kq;			//!< our KQ
+
+	fr_log_t		*log;			//!< log destination
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
@@ -137,14 +130,13 @@ static void fr_receiver_drain_input(fr_receiver_t *rc, fr_channel_t *ch, fr_chan
 	if (!cd) {
 		cd = fr_channel_recv_reply(ch);
 		if (!cd) {
-			MPRINT("\tno data?\n");
 			return;
 		}
 	}
 
 	do {
 		rc->num_replies++;
-		MPRINT("MASTER received reply %zd\n", rc->num_replies);
+		fr_log(rc->log, L_DBG, "received reply %zd", rc->num_replies);
 
 		cd->channel.ch = ch;
 		(void) fr_heap_insert(rc->replies, cd);
@@ -208,35 +200,35 @@ static void fr_receiver_channel_callback(void *ctx, void const *data, size_t dat
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		MPRINT("MASTER aq error\n");
+		fr_log(rc->log, L_DBG_ERR, "aq error");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		MPRINT("MASTER aq empty\n");
+		fr_log(rc->log, L_DBG, "aq empty");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		MPRINT("MASTER aq noop\n");
+		fr_log(rc->log, L_DBG, "aq noop");
 		break;
 
 	case FR_CHANNEL_DATA_READY_RECEIVER:
 		rad_assert(ch != NULL);
-		MPRINT("MASTER aq data ready\n");
+		fr_log(rc->log, L_DBG, "aq data ready");
 		fr_receiver_drain_input(rc, ch, NULL);
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(0 == 1);
-		MPRINT("MASTER aq data ready ? WORKER ?\n");
+		fr_log(rc->log, L_DBG_ERR, "aq data ready ? WORKER ?");
 		break;
 
 	case FR_CHANNEL_OPEN:
 		rad_assert(0 == 1);
-		MPRINT("MASTER channel open ?\n");
+		fr_log(rc->log, L_DBG, "channel open ?");
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		MPRINT("MASTER aq channel close\n");
+		fr_log(rc->log, L_DBG, "aq channel close");
 		///
 		break;
 	}
@@ -261,7 +253,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	 */
 	worker = fr_heap_pop(rc->workers);
 	if (!worker) {
-		MPRINT("NO WORKERS\n");
+		fr_log(rc->log, L_DBG, "no workers");
 		return 0;
 	}
 
@@ -283,7 +275,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
 		int rcode;
 
-		MPRINT("RECURSING IN SEND_REQUEST\n");
+		fr_log(rc->log, L_DBG, "recursing in send_request");
 		rcode = fr_receiver_send_request(rc, cd);
 
 		/*
@@ -339,12 +331,12 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 
 	rad_assert(s->fd == sockfd);
 
-	MPRINT("RECEIVER READ\n");
+	fr_log(rc->log, L_DBG, "receiver read");
 
 	if (!s->cd) {
 		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->transport->default_message_size);
 		if (!cd) {
-			MPRINT("Failed allocating message %zd!\n", s->transport->default_message_size);
+			fr_log(rc->log, L_ERR, "Failed allocating message size %zd!", s->transport->default_message_size);
 
 			/*
 			 *	@todo - handle errors via transport callback
@@ -355,7 +347,6 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 		cd = s->cd;
 	}
 
-	MPRINT("DATA SIZE %zd %zd\n", cd->m.data_size, cd->m.rb_size);
 	rad_assert(cd->m.data != NULL);
 	rad_assert(cd->m.rb_size >= 256);
 
@@ -364,7 +355,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 */
 	data_size = s->transport->read(s->fd, s->ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
-		MPRINT("GOT ZERO FROM RECVFROM %d\n", __LINE__);
+		fr_log(rc->log, L_DBG_ERR, "got no data from transport read");
 
 		s->cd = cd;
 
@@ -374,8 +365,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	}
 
 	if (data_size < 0) {
-		MPRINT("FAIL READ %d of max %zd: %s\n", __LINE__,
-			cd->m.rb_size, strerror(errno));
+		fr_log(rc->log, L_DBG_ERR, "error from transport read");
 
 		/*
 		 *	@todo - handle errors via transport callback
@@ -384,9 +374,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	}
 	s->cd = NULL;
 
-	MPRINT("Got packet size %zd\n", data_size);
-
-	MPRINT("READ FROM SOCKET %d - %zd bytes\n", sockfd, data_size);
+	fr_log(rc->log, L_DBG, "got packet size %zd", data_size);
 
 	/*
 	 *	Initialize the rest of the fields of the channel data.
@@ -403,7 +391,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	(void) fr_message_alloc(s->ms, &cd->m, data_size);
 
 	if (!fr_receiver_send_request(rc, cd)) {
-		MPRINT("FAILED SENDING PACKET TO WORKER\n");
+		fr_log(rc->log, L_ERR, "Failed sending packet to worker");
 		fr_message_done(&cd->m);
 	}
 }
@@ -437,7 +425,7 @@ static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data
 				      sizeof(fr_channel_data_t),
 				      s->transport->default_message_size * MIN_MESSAGES);
 	if (!s->ms) {
-		MPRINT("FAIL CREATE %d\n", __LINE__);
+		fr_log(rc->log, L_ERR, "Failed creating message buffers for network IO.");
 
 		/*
 		 *	@todo - handle errors via transport callback
@@ -446,14 +434,14 @@ static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data
 	}
 
 	if (fr_event_fd_insert(rc->el, s->fd, fr_receiver_read, NULL, NULL, s) < 0) {
-		MPRINT("FAILED ADDING NEW SOCKET\n");
+		fr_log(rc->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
 		close(s->fd);
 		return;
 	}
 
 	(void) fr_heap_insert(rc->sockets, s);
 
-	MPRINT("GOT NEW SOCKET\n");
+	fr_log(rc->log, L_DBG, "using new socket");
 }
 
 
@@ -503,7 +491,7 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 #endif
 
 	if (!fr_control_message_service_kevent(rc->control, kev)) {
-		MPRINT("MASTER kevent not for us!\n");
+		fr_log(rc->log, L_DBG, "kevent not for us: ignoring");
 		return;
 	}
 
@@ -519,13 +507,14 @@ static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, voi
 /** Create a receiver
  *
  * @param[in] ctx the talloc ctx
+ * @param[in] logger the destination for all logging messages
  * @param[in] num_transports the number of transports in the transport array
  * @param[in] transports the array of transports.
  * @return
  *	- NULL on error
  *	- fr_receiver_t on success
  */
-fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_transport_t **transports)
+fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports)
 {
 	fr_receiver_t *rc;
 
@@ -539,6 +528,8 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 		talloc_free(rc);
 		return NULL;
 	}
+
+	rc->log = logger;
 
 	rc->kq = fr_event_list_kq(rc->el);
 	rad_assert(rc->kq >= 0);
@@ -677,21 +668,21 @@ void fr_receiver(fr_receiver_t *rc)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(rc->replies) == 0);
-		MPRINT("MASTER Waiting for events %d\n", wait_for_event);
+		fr_log(rc->log, L_DBG, "Waiting for events %d", wait_for_event);
 
 		/*
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
 		num_events = fr_event_corral(rc->el, wait_for_event);
-		MPRINT("MASTER Got num_events %d\n", num_events);
+		fr_log(rc->log, L_DBG, "Got num_events %d", num_events);
 		if (num_events < 0) break;
 
 		/*
 		 *	Service outstanding events.
 		 */
 		if (num_events > 0) {
-			MPRINT("MASTER servicing events\n");
+			fr_log(rc->log, L_DBG, "servicing events");
 			fr_event_service(rc->el);
 		}
 
@@ -707,7 +698,7 @@ void fr_receiver(fr_receiver_t *rc)
 
 		s->transport->write(s->fd, s->ctx, cd->m.data, cd->m.data_size);
 
-		MPRINT("MASTER handling reply to socket %p\n", cd->io_ctx);
+		fr_log(rc->log, L_DBG, "handling reply to socket %p", cd->io_ctx);
 		fr_message_done(&cd->m);
 	}
 }
