@@ -330,7 +330,7 @@ static fr_time_t start_time = 0;
  * @param sockfd the socket which is ready to read
  * @param ctx the receiver socket context.
  */
-static void fr_receiver_read(fr_event_list_t *el, int sockfd, void *ctx)
+static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 {
 	fr_receiver_socket_t *s = ctx;
 	fr_receiver_t *rc = talloc_parent(s);
@@ -340,7 +340,6 @@ static void fr_receiver_read(fr_event_list_t *el, int sockfd, void *ctx)
 	socklen_t salen = sizeof(ss);
 
 	rad_assert(s->fd == sockfd);
-	rad_assert(rc->el == el);
 
 	fprintf(stderr, "RECEIVER READ\n");
 
