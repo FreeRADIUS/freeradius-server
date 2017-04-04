@@ -423,6 +423,23 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs
 	}
 
 	/*
+	 *	Create the network thread first.
+	 */
+	sc->sr = talloc_zero(sc, fr_schedule_receiver_t);
+	sc->sr->sc = sc;
+
+	rcode = pthread_create(&sc->sr->pthread_id, &attr, fr_schedule_receiver_thread, sc->sr);
+	if (rcode != 0) goto fail;
+
+	SEM_WAIT_INTR(&sc->semaphore);
+	if (sc->sr->status != FR_CHILD_RUNNING) {
+	fail:
+		TALLOC_FREE(sc->sr);
+		fr_schedule_destroy(sc);
+		return NULL;
+	}
+
+	/*
 	 *	Create all of the workers.
 	 */
 	num_workers = 0;
@@ -512,23 +529,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs
 
 	}
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
-	/*
-	 *	Create the network thread
-	 */
-	sc->sr = talloc_zero(sc, fr_schedule_receiver_t);
-	sc->sr->sc = sc;
-	
-	rcode = pthread_create(&sc->sr->pthread_id, &attr, fr_schedule_receiver_thread, sc->sr);
-	if (rcode != 0) goto fail;
-
-	SEM_WAIT_INTR(&sc->semaphore);
-	if (sc->sr->status != FR_CHILD_RUNNING) {
-	fail:
-		TALLOC_FREE(sc->sr);
-		fr_schedule_destroy(sc);
-		return NULL;
-	}
 #endif
 
 	fr_log(sc->log, L_DBG, "Scheduler created successfully\n");
