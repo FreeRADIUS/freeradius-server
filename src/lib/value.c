@@ -1041,18 +1041,16 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	case PW_TYPE_INTEGER:
 	{
 		char *p;
-		unsigned int i;
 
 		/*
-		 *	Note that ALL integers are unsigned!
+		 *	 If we have an enum, and the value isn't an
+		 *	 integer or hex string, try to parse it as a
+		 *	 named value.  Some VALUE names begin with
+		 *	 numbers, so we have to be a bit flexible
+		 *	 here.
 		 */
-		i = fr_strtoul(in, &p);
-
-		/*
-		 *	Look for the named in for the given
-		 *	attribute.
-		 */
-		if (dst_enumv && *p && !is_whitespace(p)) {
+		if (dst_enumv &&
+		    (!is_integer(in) || (!(in[0] == '0') && (in[1] == 'x')))) {
 			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   in, dst_enumv->name);
@@ -1060,11 +1058,40 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			}
 
 			dst->datum.integer = dval->value;
+
 		} else {
+			unsigned long i;
+			int base = 10;
+
+			/*
+			 *	Empty strings or invalid strings get
+			 *	parsed as zero for backwards
+			 *	compatability.
+			 */
+			if (!*in || !isdigit((int) *in)) {
+				dst->datum.integer = 0;
+				break;
+			}
+
+			/*
+			 *	Hex strings are base 16.
+			 */
+			if ((in[0] == '0') && in[1] == 'x') base = 16;
+
+			i = strtoul(in, &p, base);
+
+			/*
+			 *	Catch and complain on overflows.
+			 */
+			if ((i == ULONG_MAX) || (i >= ((unsigned long) 1) << 32)) {
+				fr_strerror_printf("Integer Value \"%s\" is larger than 1<<32", in);
+				return -1;
+			}
+
 			/*
 			 *	Value is always within the limits
 			 */
-			dst->datum.integer = i;
+			dst->datum.integer = (uint32_t) i;
 		}
 	}
 		break;

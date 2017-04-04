@@ -17,8 +17,10 @@ update request {
 	Tunnel-Server-Endpoint:2 += '192.0.3.2'
 }
 
+"%{debug_attr:request:}"
+
 update request {
-	Tmp-Integer-0 := "%{debug_attr:request:}"
+	Tmp-Integer-0 := 0
 }
 
 # Check the tag printing xlat works correctly

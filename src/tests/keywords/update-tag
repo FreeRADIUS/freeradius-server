@@ -17,10 +17,7 @@ update request {
 	Tunnel-Server-Endpoint:2 += '192.0.3.2'
 }
 
-update request {
-	Tmp-Integer-0 := "%{debug_attr:request:}"
-}
-
+"%{debug_attr:request:}"
 
 #
 # Selecting on attributes which have no tag (0)
