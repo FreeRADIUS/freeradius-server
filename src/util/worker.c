@@ -350,13 +350,13 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	@todo make the reservation size transport-specific
 	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, 1024);
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, worker->transports[cd->transport]->default_message_size);
 	rad_assert(reply != NULL);
 
 	/*
 	 *	Encode a NAK
 	 */
-	size = worker->transports[cd->transport]->nak(cd->ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
+	size = worker->transports[cd->transport]->nak(cd->packet_ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
 
 	(void) fr_message_alloc(ms, &reply->m, size);
 
@@ -368,7 +368,8 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	reply->reply.processing_time = 0;
 	reply->reply.request_time = cd->m.when;
 
-	reply->ctx = cd->ctx;
+	reply->packet_ctx = cd->packet_ctx;
+	reply->io_ctx = cd->io_ctx;
 	reply->priority = cd->priority;
 	reply->transport = cd->transport;
 
@@ -451,7 +452,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->reply.processing_time = request->tracking.running;
 	reply->reply.request_time = request->recv_time;
 
-	reply->ctx = request->packet_ctx;
+	reply->packet_ctx = request->packet_ctx;
+	reply->io_ctx = request->io_ctx;
 	reply->priority = request->priority;
 	reply->transport = request->transport->id;
 
@@ -672,7 +674,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	talloc_set_name_const(ctx, "REQUEST");
 
 	request = (REQUEST *) ctx;
-	memset(request, 0, sizeof(*request));
 #else
 	request = ctx = talloc_pooled_object(worker, REQUEST, 1, worker->talloc_pool_size);
 	if (!request) goto nak;
@@ -694,6 +695,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	new packet arrived while we were getting around to
 	 *	processing this message.
 	 */
+	memset(request, 0, sizeof(*request));
 	request->channel = cd->channel.ch;
 	request->transport = worker->transports[cd->transport];
 	request->original_recv_time = cd->request.start_time;
@@ -701,7 +703,9 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->priority = cd->priority;
 	request->runnable = worker->runnable;
 	request->el = worker->el;
-	request->packet_ctx = cd->ctx;
+	request->packet_ctx = cd->packet_ctx;
+	request->io_ctx = cd->io_ctx;
+	request->number = 0;	/* @todo - assigned by someone intelligent... */
 
 	/*
 	 *	@todo - call worker->transports[cd->transport]->recv_request()
@@ -710,7 +714,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 */
-	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
+	rcode = worker->transports[cd->transport]->decode(cd->packet_ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
 		MPRINT("\tFAILED decode of request %zd\n", request->number);
 		talloc_free(ctx);
@@ -806,7 +810,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		/*
 		 *	@todo make the reservation size transport-specific
 		 */
-		size = 1024;
+		size = request->transport->default_message_size;
 		break;
 	}
 

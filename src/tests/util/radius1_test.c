@@ -187,7 +187,7 @@ static void *worker_thread(void *arg)
 
 static void send_reply(int sockfd, fr_channel_data_t *reply)
 {
-	fr_packet_ctx_t *pc = reply->ctx;
+	fr_packet_ctx_t *pc = reply->packet_ctx;
 
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
@@ -395,7 +395,7 @@ static void master_process(TALLOC_CTX *ctx)
 			MPRINT1("Master sending packet size %zd to worker %d\n", cd->m.data_size, which_worker);
 			cd->m.when = fr_time();
 
-			cd->ctx = pc;
+			cd->packet_ctx = pc;
 			pc->id = packet[1];
 			memcpy(pc->vector, packet + 4, 16);
 

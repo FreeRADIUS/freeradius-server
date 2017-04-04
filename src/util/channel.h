@@ -85,7 +85,8 @@ typedef struct fr_channel_data_t {
 		} channel;
 	};
 
-	void			*ctx;		//!< packet context.  Usually socket information
+	void			*packet_ctx;	//!< packet context, for per-packet information
+	void			*io_ctx; 	//!< context for IO
 	uint32_t		transport;	//!< transport ID for this packet
 	uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
 

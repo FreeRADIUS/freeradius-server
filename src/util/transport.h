@@ -65,11 +65,6 @@ typedef enum fr_transport_final_t {
 typedef struct fr_transport_t fr_transport_t;
 
 /**
- *  Read a packet from the network into a buffer.
- */
-//typedef int (*fr_transport_read_t)(int fd, fr_io_buffer_t *io);
-
-/**
  *  Process raw packets into a form suitable
  */
 //typedef int (*fr_transport_send_request_t)(fr_io_buffer_t *io);
@@ -97,6 +92,13 @@ typedef ssize_t (*fr_transport_encode_t)(void const *packet_ctx, REQUEST *reques
 typedef int *(*fr_transport_recv_request_t)(REQUEST *);
 
 /**
+ *  (Read / write) from a (socket / data buffer) to a (data buffer / socket)
+ *
+ *  @todo - use IO buffers, which allow for stream sockets to read / write partial data
+ */
+typedef ssize_t (*fr_transport_io_t)(int sockfd, void *packet_ctx, uint8_t *buffer, size_t buffer_len);
+
+/**
  *  Receive a reply in the master thread.
  */
 //typedef int (*fr_transport_recv_reply_t)(fr_io_buffer_t *io);
@@ -120,6 +122,8 @@ typedef struct fr_transport_t {
 	char const			*name;		//!< name of this transport
 	uint32_t			id;		//!< ID of this transport
 	size_t				default_message_size; // usually minimum message size
+	fr_transport_io_t		read;		//!< read from a socket to a data buffer
+	fr_transport_io_t		write;		//!< write from a data buffer to a socket
 	fr_transport_recv_request_t	recv_request;	//!< function to receive a request (worker -> master)
 	fr_transport_decode_t		decode;		//!< function to decode packet to request (worker)
 	fr_transport_encode_t		encode;		//!< function to encode request to packet (worker)
@@ -163,6 +167,7 @@ struct rad_request {
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 	void			*packet_ctx;
+	void			*io_ctx;
 	fr_transport_t		*transport;
 };
 #endif

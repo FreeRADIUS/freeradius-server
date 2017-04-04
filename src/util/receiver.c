@@ -261,7 +261,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	 */
 	worker = fr_heap_pop(rc->workers);
 	if (!worker) {
-		fprintf(stderr, "NO WORKERS\n");
+		MPRINT("NO WORKERS\n");
 		return 0;
 	}
 
@@ -283,7 +283,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
 		int rcode;
 
-		fprintf(stderr, "RECURSING IN SEND_REQUEST\n");
+		MPRINT("RECURSING IN SEND_REQUEST\n");
 		rcode = fr_receiver_send_request(rc, cd);
 
 		/*
@@ -336,17 +336,15 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	fr_receiver_t *rc = talloc_parent(s);
 	ssize_t data_size;
 	fr_channel_data_t *cd;
-	struct sockaddr_storage ss;
-	socklen_t salen = sizeof(ss);
 
 	rad_assert(s->fd == sockfd);
 
-	fprintf(stderr, "RECEIVER READ\n");
+	MPRINT("RECEIVER READ\n");
 
 	if (!s->cd) {
 		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->transport->default_message_size);
 		if (!cd) {
-			fprintf(stderr, "Failed allocating message %zd!\n", s->transport->default_message_size);
+			MPRINT("Failed allocating message %zd!\n", s->transport->default_message_size);
 
 			/*
 			 *	@todo - handle errors via transport callback
@@ -357,17 +355,16 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 		cd = s->cd;
 	}
 
-	fprintf(stderr, "DATA SIZE %zd %zd\n", cd->m.data_size, cd->m.rb_size);
+	MPRINT("DATA SIZE %zd %zd\n", cd->m.data_size, cd->m.rb_size);
 	rad_assert(cd->m.data != NULL);
 	rad_assert(cd->m.rb_size >= 256);
 
 	/*
 	 *	@todo - transport->read_request
 	 */
-	data_size = recvfrom(s->fd, cd->m.data, cd->m.rb_size,
-			     0, (struct sockaddr *) &ss, &salen);
+	data_size = s->transport->read(s->fd, s->ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
-		fprintf(stderr, "GOT ZERO FROM RECVFROM %d\n", __LINE__);
+		MPRINT("GOT ZERO FROM RECVFROM %d\n", __LINE__);
 
 		s->cd = cd;
 
@@ -377,7 +374,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	}
 
 	if (data_size < 0) {
-		fprintf(stderr, "FAIL READ %d of max %zd: %s\n", __LINE__,
+		MPRINT("FAIL READ %d of max %zd: %s\n", __LINE__,
 			cd->m.rb_size, strerror(errno));
 
 		/*
@@ -387,15 +384,16 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	}
 	s->cd = NULL;
 
-	fprintf(stderr, "Got packet size %zd\n", data_size);
+	MPRINT("Got packet size %zd\n", data_size);
 
-	fprintf(stderr, "READ FROM SOCKET %d - %zd bytes\n", sockfd, data_size);
+	MPRINT("READ FROM SOCKET %d - %zd bytes\n", sockfd, data_size);
 
 	/*
 	 *	Initialize the rest of the fields of the channel data.
 	 */
 	cd->m.when = fr_time();
-	cd->ctx = s->ctx;
+	cd->packet_ctx = s->ctx;
+	cd->io_ctx = s;
 	cd->transport = 0;	/* @todo - set transport number from the transport */
 	cd->priority = 0;	/* @todo - set priority based on information from the transport layer  */
 	cd->request.start_time = &start_time; /* @todo - set by transport */
@@ -405,7 +403,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	(void) fr_message_alloc(s->ms, &cd->m, data_size);
 
 	if (!fr_receiver_send_request(rc, cd)) {
-		fprintf(stderr, "FAILED SENDING PACKET TO WORKER\n");
+		MPRINT("FAILED SENDING PACKET TO WORKER\n");
 		fr_message_done(&cd->m);
 	}
 }
@@ -439,7 +437,7 @@ static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data
 				      sizeof(fr_channel_data_t),
 				      s->transport->default_message_size * MIN_MESSAGES);
 	if (!s->ms) {
-		fprintf(stderr, "FAIL CREATE %d\n", __LINE__);
+		MPRINT("FAIL CREATE %d\n", __LINE__);
 
 		/*
 		 *	@todo - handle errors via transport callback
@@ -448,14 +446,14 @@ static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data
 	}
 
 	if (fr_event_fd_insert(rc->el, s->fd, fr_receiver_read, NULL, NULL, s) < 0) {
-		fprintf(stderr, "FAILED ADDING NEW SOCKET\n");
+		MPRINT("FAILED ADDING NEW SOCKET\n");
 		close(s->fd);
 		return;
 	}
 
 	(void) fr_heap_insert(rc->sockets, s);
 
-	fprintf(stderr, "GOT NEW SOCKET\n");
+	MPRINT("GOT NEW SOCKET\n");
 }
 
 
@@ -667,11 +665,50 @@ int fr_receiver_destroy(fr_receiver_t *rc)
  */
 void fr_receiver(fr_receiver_t *rc)
 {
-	/*
-	 *	The receiver is entirely event driven.
-	 */
-	while (fr_event_loop(rc->el) == 0) {
-		/* nothing */
+	while (true) {
+		bool wait_for_event;
+		int num_events;
+		fr_time_t now;
+		fr_channel_data_t *cd;
+		fr_receiver_socket_t *s;
+
+		/*
+		 *	There are runnable requests.  We still service
+		 *	the event loop, but we don't wait for events.
+		 */
+		wait_for_event = (fr_heap_num_elements(rc->replies) == 0);
+		MPRINT("MASTER Waiting for events %d\n", wait_for_event);
+
+		/*
+		 *	Check the event list.  If there's an error
+		 *	(e.g. exit), we stop looping and clean up.
+		 */
+		num_events = fr_event_corral(rc->el, wait_for_event);
+		MPRINT("MASTER Got num_events %d\n", num_events);
+		if (num_events < 0) break;
+
+		/*
+		 *	Service outstanding events.
+		 */
+		if (num_events > 0) {
+			MPRINT("MASTER servicing events\n");
+			fr_event_service(rc->el);
+		}
+
+		now = fr_time();
+
+		cd = fr_heap_pop(rc->replies);
+		if (!cd) continue;
+
+		/*
+		 *	@todo - do this correctly
+		 */
+		s = cd->io_ctx;
+
+		s->transport->write(s->fd, s->ctx, cd->m.data, cd->m.data_size);
+
+		MPRINT("MASTER handling reply to socket %p\n", cd->io_ctx);
+		fr_message_done(&cd->m);
 	}
 }
 
