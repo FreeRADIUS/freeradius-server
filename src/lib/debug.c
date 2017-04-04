@@ -947,7 +947,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 	/* Unsure what the side effects of changing the signal handler mid execution might be */
 	if (!setup) {
 		char			*env;
-		fr_debug_state_t	debug_state;
 
 		/*
 		 *  Installing signal handlers interferes with some debugging
@@ -956,15 +955,16 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 */
 		env = getenv("DEBUGGER_ATTACHED");
 		if (env && (strcmp(env, "yes") == 0)) {
-			debug_state = DEBUGGER_STATE_ATTACHED;		/* i.e. disable signal handlers */
+			fr_debug_state = DEBUGGER_STATE_ATTACHED;		/* i.e. disable signal handlers */
+
 		} else if (env && (strcmp(env, "no") == 0)) {
-			debug_state = DEBUGGER_STATE_NOT_ATTACHED;	/* i.e. enable signal handlers */
-		/*
-		 *  Figure out if we were started under a debugger
-		 */
+			fr_debug_state = DEBUGGER_STATE_NOT_ATTACHED;	/* i.e. enable signal handlers */
+
+			/*
+			 *  Figure out if we were started under a debugger
+			 */
 		} else {
 			if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
-			debug_state = fr_debug_state;
 		}
 
 		talloc_set_log_fn(_fr_talloc_log);
@@ -973,7 +973,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		 *  These signals can't be properly dealt with in the debugger
 		 *  if we set our own signal handlers.
 		 */
-		switch (debug_state) {
+		switch (fr_debug_state) {
 		default:
 			/* FALL-THROUGH */
 
