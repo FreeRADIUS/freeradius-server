@@ -62,6 +62,7 @@ static char const	*secret = "testing123";
  */
 extern int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
 extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
+extern int		fr_fault_setup(char const *cmd, char const *program);
 
 static int test_decode(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
@@ -218,6 +219,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 #endif
+
+	fr_fault_setup(NULL, argv[0]);
 
 	(void) fr_schedule_socket_add(sched, sockfd, &sockfd, &transport);
 
