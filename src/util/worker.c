@@ -1167,11 +1167,25 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
  */
 fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ctx, fr_control_t *master)
 {
+	fr_channel_t *ch;
+
 #ifndef NDEBUG
 	talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
 	rad_assert(worker->control != NULL);
 
-	return fr_channel_create(ctx, master, worker->control);
+	ch = fr_channel_create(ctx, master, worker->control);
+	if (!ch) return NULL;
+
+	/*
+	 *	Tell the worker about the channel
+	 */
+	if (fr_channel_signal_open(ch) < 0) {
+		talloc_free(ch);
+		return NULL;
+	}
+
+
+	return ch;
 }

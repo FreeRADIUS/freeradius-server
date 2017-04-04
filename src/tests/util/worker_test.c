@@ -217,12 +217,6 @@ static void master_process(void)
 
 			(void) fr_channel_master_ctx_add(workers[i].ch, &workers[i]);
 
-			rcode = fr_channel_signal_open(workers[i].ch);
-			if (rcode < 0) {
-				fprintf(stderr, "Failed signaling open %d: %s\n", i, strerror(errno));
-				exit(1);
-			}
-
 			num_outstanding++;
 		}
 	}
