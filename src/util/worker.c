@@ -67,15 +67,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/message.h>
 #include <freeradius-devel/rad_assert.h>
 
-/*
- *	Debugging, mainly for worker_test
- */
-#if 0
-#define MPRINT(...) fprintf(stdout, __VA_ARGS__)
-#else
-#define MPRINT(...)
-#endif
-
 /**
  *  Track things by priority and time.
  */
@@ -90,6 +81,8 @@ typedef struct fr_worker_heap_t {
  */
 struct fr_worker_t {
 	int			kq;		//!< my kq
+
+	fr_log_t		*log;			//!< log destination
 
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
 
@@ -170,14 +163,14 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	if (!cd) {
 		cd = fr_channel_recv_request(ch);
 		if (!cd) {
-			MPRINT("\tno data?\n");
+			fr_log(worker->log, L_DBG, "\tno data?");
 			return;
 		}
 	}
 
 	do {
 		worker->num_requests++;
-		MPRINT("\tWORKER received request %zd\n", worker->num_requests);
+		fr_log(worker->log, L_DBG, "\treceived request %zd", worker->num_requests);
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
@@ -203,30 +196,30 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		MPRINT("\tWORKER aq error\n");
+		fr_log(worker->log, L_DBG, "\taq error");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		MPRINT("\tWORKER aq empty\n");
+		fr_log(worker->log, L_DBG, "\taq empty");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		MPRINT("\tWORKER aq noop\n");
+		fr_log(worker->log, L_DBG, "\taq noop");
 		return;
 
 	case FR_CHANNEL_DATA_READY_RECEIVER:
 		rad_assert(0 == 1);
-		MPRINT("\tWORKER aq data ready ? MASTER ?\n");
+		fr_log(worker->log, L_DBG, "\taq data ready ? MASTER ?");
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(ch != NULL);
-		MPRINT("\tWORKER aq data ready\n");
+		fr_log(worker->log, L_DBG, "\taq data ready");
 		fr_worker_drain_input(worker, ch, NULL);
 		break;
 
 	case FR_CHANNEL_OPEN:
-		MPRINT("\tWORKER aq channel open\n");
+		fr_log(worker->log, L_DBG, "\taq channel open");
 
 		rad_assert(ch != NULL);
 
@@ -237,7 +230,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 			if (worker->channel[i] != NULL) continue;
 
 			worker->channel[i] = ch;
-			MPRINT("\treceived channel %p into array entry %d\n", ch, i);
+			fr_log(worker->log, L_DBG, "\treceived channel %p into array entry %d", ch, i);
 
 			ms = fr_message_set_create(worker, worker->message_set_size,
 						   sizeof(fr_channel_data_t),
@@ -254,7 +247,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		MPRINT("\tWORKER aq channel close\n");
+		fr_log(worker->log, L_DBG, "\taq channel close");
 
 		rad_assert(ch != NULL);
 
@@ -309,7 +302,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 #endif
 
 	if (!fr_control_message_service_kevent(worker->control, kev)) {
-		MPRINT("\tWORKER kevent not for us!\n");
+		fr_log(worker->log, L_DBG, "\tkevent not for us!");
 		return;
 	}
 
@@ -382,7 +375,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 *	Send the reply, which also polls the request queue.
 	 */
 	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
-		MPRINT("\tWORKER fails sending reply\n");
+		fr_log(worker->log, L_DBG, "\tfails sending reply");
 		cd = NULL;
 	}
 
@@ -426,7 +419,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 
 		encoded = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
-			MPRINT("\tWORKER fails encode\n");
+			fr_log(worker->log, L_DBG, "\tfails encode");
 			encoded = 0;
 		}
 
@@ -457,13 +450,13 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->priority = request->priority;
 	reply->transport = request->transport->id;
 
-	MPRINT("(%zd) finished, sending reply\n", request->number);
+	fr_log(worker->log, L_DBG, "(%zd) finished, sending reply", request->number);
 
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
 	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
-		MPRINT("\tWORKER fails sending reply\n");
+		fr_log(worker->log, L_DBG, "\tfails sending reply");
 		cd = NULL;
 	}
 
@@ -579,7 +572,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 			continue;
 		}
 
-		MPRINT("(%zd) taking too long, stopping it\n", request->number);
+		fr_log(worker->log, L_DBG, "(%zd) taking too long, stopping it", request->number);
 
 		/*
 		 *	Tell the network side that this request is done.
@@ -603,7 +596,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		if (final == FR_TRANSPORT_DONE) {
 			FR_DLIST_REMOVE(worker->waiting_to_die);
 
-			MPRINT("(%zd) finally finished\n", request->number);
+			fr_log(worker->log, L_DBG, "(%zd) finally finished", request->number);
 
 			/*
 			 *	Tell the network side that this request is done.
@@ -658,7 +651,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		 *	in the queue.  Delete it, and go get another one.
 		 */
 		if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
-			MPRINT("\tIGNORING old message\n");
+			fr_log(worker->log, L_DBG, "\tIGNORING old message");
 			fr_worker_nak(worker, cd, fr_time());
 			cd = NULL;
 		}
@@ -716,7 +709,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	rcode = worker->transports[cd->transport]->decode(cd->packet_ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
-		MPRINT("\tFAILED decode of request %zd\n", request->number);
+		fr_log(worker->log, L_DBG, "\tFAILED decode of request %zd", request->number);
 		talloc_free(ctx);
 nak:
 		fr_worker_nak(worker, cd, fr_time());
@@ -768,7 +761,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	ssize_t size = 0;
 	fr_transport_final_t final;
 
-	MPRINT("(%zd) running\n", request->number);
+	fr_log(worker->log, L_DBG, "(%zd) running", request->number);
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -814,7 +807,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 	}
 
-	MPRINT("(%zd) done naturally\n", request->number);
+	fr_log(worker->log, L_DBG, "(%zd) done naturally", request->number);
 
 	fr_worker_send_reply(worker, request, size);
 }
@@ -863,11 +856,11 @@ static int fr_worker_idle(void *ctx, struct timeval *wake)
 	 */
 	if (!sleeping) return 1;
 
-	MPRINT("\tWORKER sleeping running %zd, localized %zd, to_decode %zd\n",
+	fr_log(worker->log, L_DBG, "\tsleeping running %zd, localized %zd, to_decode %zd",
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	MPRINT("\tWORKER requests %d, decoded %d, replied %d\n",
+	fr_log(worker->log, L_DBG, "\trequests %d, decoded %d, replied %d",
 	       worker->num_requests, worker->num_decoded, worker->num_replies);
 
 	/*
@@ -969,7 +962,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_transport_t **transports)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
@@ -984,6 +977,8 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_trans
 		talloc_free(worker);
 		return NULL;
 	}
+
+	worker->log = logger;
 
 	/*
 	 *	@todo make these configurable
@@ -1094,21 +1089,21 @@ void fr_worker(fr_worker_t *worker)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
-		MPRINT("\tWaiting for events %d\n", wait_for_event);
+		fr_log(worker->log, L_DBG, "\tWaiting for events %d", wait_for_event);
 
 		/*
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
 		num_events = fr_event_corral(worker->el, wait_for_event);
-		MPRINT("\tGot num_events %d\n", num_events);
+		fr_log(worker->log, L_DBG, "\tGot num_events %d", num_events);
 		if (num_events < 0) break;
 
 		/*
 		 *	Service outstanding events.
 		 */
 		if (num_events > 0) {
-			MPRINT("\tservicing events\n");
+			fr_log(worker->log, L_DBG, "\tservicing events");
 			fr_event_service(worker->el);
 		}
 
@@ -1118,7 +1113,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Ten times a second, check for timeouts on incoming packets.
 		 */
 		if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
-			MPRINT("\tchecking timeouts\n");
+			fr_log(worker->log, L_DBG, "\tchecking timeouts");
 			fr_worker_check_timeouts(worker, now);
 		}
 
@@ -1132,7 +1127,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Run the request, and either track it as
 		 *	yielded, or send a reply.
 		 */
-		MPRINT("\trunning request %p\n", request);
+		fr_log(worker->log, L_DBG, "\trunning request %p", request);
 		fr_worker_run_request(worker, request);
 	}
 }

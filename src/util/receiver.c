@@ -441,7 +441,7 @@ static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data
 
 	(void) fr_heap_insert(rc->sockets, s);
 
-	fr_log(rc->log, L_DBG, "using new socket");
+	fr_log(rc->log, L_DBG, "Using new socket with FD %d", s->fd);
 }
 
 

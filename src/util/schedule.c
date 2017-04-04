@@ -202,12 +202,12 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 
-	fr_log(sc->log, L_DBG, "Worker %d starting\n", sw->id);
+	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
 	ctx = talloc_init("worker");
 	if (!ctx) goto fail;
 
-	sw->worker = fr_worker_create(ctx, sc->num_transports, sc->transports);
+	sw->worker = fr_worker_create(ctx, sc->log, sc->num_transports, sc->transports);
 	if (!sw->worker) {
 		goto fail;
 	}
@@ -229,7 +229,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	(void) fr_receiver_worker_add(sc->sr->rc, sw->worker);
 
-	fr_log(sc->log, L_DBG, "Worker %d running\n", sw->id);
+	fr_log(sc->log, L_INFO, "Worker %d running\n", sw->id);
 
 	/*
 	 *	Tell the originator that the thread has started.
@@ -243,7 +243,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	fr_worker(sw->worker);
 
-	fr_log(sc->log, L_DBG, "Worker %d finished\n", sw->id);
+	fr_log(sc->log, L_INFO, "Worker %d finished\n", sw->id);
 
 	/*
 	 *	Talloc ordering issues. We want to be independent of
@@ -264,7 +264,6 @@ static void *fr_schedule_worker_thread(void *arg)
 	status = FR_CHILD_EXITED;
 
 fail:
-	if (ctx) talloc_free(ctx);
 
 	/*
 	 *	Add outselves to the list of dead workers.
@@ -275,7 +274,7 @@ fail:
 	sc->num_workers_exited++;
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
-	fr_log(sc->log, L_DBG, "Worker %d exiting\n", sw->id);
+	fr_log(sc->log, L_INFO, "Worker %d exiting\n", sw->id);
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -298,6 +297,8 @@ static void *fr_schedule_receiver_thread(void *arg)
 	fr_schedule_t *sc = sr->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 
+	fr_log(sc->log, L_INFO, "Network starting\n");
+
 	ctx = talloc_init("receiver");
 	if (!ctx) goto fail;
 
@@ -312,6 +313,8 @@ static void *fr_schedule_receiver_thread(void *arg)
 	 *	Tell the originator that the thread has started.
 	 */
 	sem_post(&sc->semaphore);
+
+	fr_log(sc->log, L_INFO, "Network running");
 
 	/*
 	 *	Do all of the work.
@@ -332,6 +335,8 @@ fail:
 	if (ctx) talloc_free(ctx);
 
 	sr->status = status;
+
+	fr_log(sc->log, L_INFO, "Network exiting");
 
 	/*
 	 *	Tell the scheduler we're done.
@@ -462,7 +467,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 
 		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
 		if (rcode != 0) {
-			fr_log(sc->log, L_DBG, "Failed to create worker %d: %s\n", i, strerror(errno));
+			fr_log(sc->log, L_ERR, "Failed to create worker %d: %s\n", i, strerror(errno));
 			talloc_free(sw);
 			break;
 		}
@@ -483,7 +488,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 		int num_workers_exited = sc->num_workers_exited;
 		fr_schedule_worker_t *sw;
 
-		fr_log(sc->log, L_DBG, "ERROR: Failed to create some workers\n");
+		fr_log(sc->log, L_ERR, "Failed to create some workers\n");
 
 		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
@@ -533,7 +538,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 #endif
 
-	fr_log(sc->log, L_DBG, "Scheduler created successfully\n");
+	fr_log(sc->log, L_INFO, "Scheduler created successfully\n");
 
 	return sc;
 }
@@ -580,6 +585,16 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	}
 
 	/*
+	 *	Pop the "done" workers, and free their contexts here.
+	 */
+	while ((sw = fr_heap_pop(sc->done_workers)) != NULL) {
+		TALLOC_CTX *ctx;
+
+		ctx = talloc_parent(sw);
+		talloc_free(ctx);
+	}
+
+	/*
 	 *	If the network thread is running, tell it to exit.
 	 */
 	if (sc->sr->status == FR_CHILD_RUNNING) {
@@ -589,6 +604,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 	sem_destroy(&sc->semaphore);
 #endif	/* HAVE_PTHREAD_H */
+
+	fr_log(sc->log, L_INFO, "Destroyed scheduler\n");
 
 	/*
 	 *	Now that all of the workers are done, we can return to

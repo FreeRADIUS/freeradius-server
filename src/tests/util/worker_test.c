@@ -143,7 +143,7 @@ static void *worker_thread(void *arg)
 	ctx = talloc_init("worker");
 	if (!ctx) _exit(1);
 
-	worker = sw->worker = fr_worker_create(ctx, 1, &transports);
+	worker = sw->worker = fr_worker_create(ctx, &default_log, 1, &transports);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
 		exit(1);
@@ -460,6 +460,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Failed to start time: %s\n", strerror(errno));
 		exit(1);
 	}
+
+	fr_log_init(&default_log, false);
 
 	while ((c = getopt(argc, argv, "c:hm:o:qtw:x")) != EOF) switch (c) {
 		case 'x':
