@@ -37,6 +37,7 @@ int fr_receiver_destroy(fr_receiver_t *rc) CC_HINT(nonnull);
 void fr_receiver(fr_receiver_t *rc) CC_HINT(nonnull);
 
 int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t *transport) CC_HINT(nonnull);
+int fr_receiver_worker_add(fr_receiver_t *rc, fr_worker_t *worker) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

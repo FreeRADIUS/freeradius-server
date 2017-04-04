@@ -227,6 +227,8 @@ static void *fr_schedule_worker_thread(void *arg)
 	sc->num_workers++;
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
+	(void) fr_receiver_worker_add(sc->sr->rc, sw->worker);
+
 	fr_log(sc->log, L_DBG, "Worker %d running\n", sw->id);
 
 	/*

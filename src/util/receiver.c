@@ -54,10 +54,14 @@ typedef struct fr_receiver_worker_t {
 } fr_receiver_worker_t;
 
 typedef struct fr_receiver_socket_t {
+	int			heap_id;		//!< for the heap
+
 	int			fd;			//!< the file descriptor
 	void			*ctx;			//!< transport context
 	fr_transport_t		*transport;		//!< the transport
-	int			heap_id;		//!< for the heap
+
+	fr_message_set_t	*ms;			//!< message buffers for this socket.
+	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
 } fr_receiver_socket_t;
 
 
@@ -147,83 +151,9 @@ static void fr_receiver_drain_input(fr_receiver_t *rc, fr_channel_t *ch, fr_chan
 	} while ((cd = fr_channel_recv_reply(ch)) != NULL);
 
 	/*
-	 *	@todo get CPU time and processing time from the message, and update the worker.
+	 *	@todo - get CPU time and processing time from the message, and update the worker.
 	 */
 }
-
-#if 0
-/** Send a message on the "best" channel.
- *
- * @param rc the receiver
- * @param cd the message we've received
- */
-static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
-{
-	fr_receiver_worker_t *worker;
-	fr_channel_data_t *reply;
-
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(rc, fr_receiver_t);
-#endif
-
-	/*
-	 *	Grab the worker with the least total CPU time.
-	 */
-	worker = fr_heap_pop(rc->workers);
-	if (!worker) return 0;
-
-	/*
-	 *	Send the message to the channel.  If we fail, recurse.
-	 *	That's easier than manually tracking the channel we
-	 *	popped off of the heap.
-	 *
-	 *	The only practical reason why the channel send will
-	 *	fail is because the recipient is not servicing it's
-	 *	queue.  When that happens, we just hand the request to
-	 *	another channel.
-	 *
-	 *	If we run out of channels to use, the caller needs to
-	 *	allocate another one, and hand it to the scheduler.
-	 */
-	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
-		int rcode;
-
-		rcode = fr_receiver_send_request(rc, cd);
-
-		/*
-		 *	Mark this channel as still busy, for some
-		 *	future time.  This process ensures that we
-		 *	don't immediately pop it off the heap and try
-		 *	to send it another request.
-		 */
-		worker->cpu_time = cd->m.when + worker->processing_time;
-		(void) fr_heap_insert(rc->workers, worker);
-
-		return rcode;
-	}
-
-	/*
-	 *	We're projecting that the worker will use more CPU
-	 *	time to process this request.  The CPU time will be
-	 *	updated with a more accurate number when we receive a
-	 *	reply from this channel.
-	 */
-	worker->cpu_time += worker->processing_time;
-
-	/*
-	 *	Insert the worker back into the heap of workers.
-	 */
-	(void) fr_heap_insert(rc->workers, worker);
-
-	/*
-	 *	If we have a reply, push it onto our local queue, and
-	 *	poll for more replies.
-	 */
-	if (reply) fr_receiver_drain_input(rc, worker->channel, reply);
-
-	return 0;
-}
-#endif
 
 /** Run the event loop 'idle' callback
  *
@@ -312,20 +242,173 @@ static void fr_receiver_channel_callback(void *ctx, void const *data, size_t dat
 	}
 }
 
-static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED void *ctx)
+/** Send a message on the "best" channel.
+ *
+ * @param rc the receiver
+ * @param cd the message we've received
+ */
+static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 {
-//	fr_receiver_socket_t *m = ctx;
-//	fr_receiver_t *rc = talloc_parent(m);
+	fr_receiver_worker_t *worker;
+	fr_channel_data_t *reply;
+
+#ifndef NDEBUG
+	(void) talloc_get_type_abort(rc, fr_receiver_t);
+#endif
+
+	/*
+	 *	Grab the worker with the least total CPU time.
+	 */
+	worker = fr_heap_pop(rc->workers);
+	if (!worker) {
+		fprintf(stderr, "NO WORKERS\n");
+		return 0;
+	}
+
+	(void) talloc_get_type_abort(worker, fr_receiver_worker_t);
+
+	/*
+	 *	Send the message to the channel.  If we fail, recurse.
+	 *	That's easier than manually tracking the channel we
+	 *	popped off of the heap.
+	 *
+	 *	The only practical reason why the channel send will
+	 *	fail is because the recipient is not servicing it's
+	 *	queue.  When that happens, we just hand the request to
+	 *	another channel.
+	 *
+	 *	If we run out of channels to use, the caller needs to
+	 *	allocate another one, and hand it to the scheduler.
+	 */
+	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
+		int rcode;
+
+		fprintf(stderr, "RECURSING IN SEND_REQUEST\n");
+		rcode = fr_receiver_send_request(rc, cd);
+
+		/*
+		 *	Mark this channel as still busy, for some
+		 *	future time.  This process ensures that we
+		 *	don't immediately pop it off the heap and try
+		 *	to send it another request.
+		 */
+		worker->cpu_time = cd->m.when + worker->processing_time;
+		(void) fr_heap_insert(rc->workers, worker);
+
+		return rcode;
+	}
+
+	/*
+	 *	We're projecting that the worker will use more CPU
+	 *	time to process this request.  The CPU time will be
+	 *	updated with a more accurate number when we receive a
+	 *	reply from this channel.
+	 */
+	worker->cpu_time += worker->processing_time;
+
+	/*
+	 *	Insert the worker back into the heap of workers.
+	 */
+	(void) fr_heap_insert(rc->workers, worker);
+
+	/*
+	 *	If we have a reply, push it onto our local queue, and
+	 *	poll for more replies.
+	 */
+	if (reply) fr_receiver_drain_input(rc, worker->channel, reply);
+
+	return 1;
+}
+
+
+static fr_time_t start_time = 0;
+
+
+/** Read a packet from the network.
+ *
+ * @param el the event list
+ * @param sockfd the socket which is ready to read
+ * @param ctx the receiver socket context.
+ */
+static void fr_receiver_read(fr_event_list_t *el, int sockfd, void *ctx)
+{
+	fr_receiver_socket_t *s = ctx;
+	fr_receiver_t *rc = talloc_parent(s);
 	ssize_t data_size;
+	fr_channel_data_t *cd;
 	struct sockaddr_storage ss;
 	socklen_t salen = sizeof(ss);
-	uint8_t buffer[256];
 
-	data_size = recvfrom(sockfd, buffer, sizeof(buffer), 0,
-			     (struct sockaddr *) &ss, &salen);
+	rad_assert(s->fd == sockfd);
+	rad_assert(rc->el == el);
+
+	fprintf(stderr, "RECEIVER READ\n");
+
+	if (!s->cd) {
+		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->transport->default_message_size);
+		if (!cd) {
+			fprintf(stderr, "Failed allocating message %zd!\n", s->transport->default_message_size);
+
+			/*
+			 *	@todo - handle errors via transport callback
+			 */
+			_exit(1);
+		}
+	} else {
+		cd = s->cd;
+	}
+
+	fprintf(stderr, "DATA SIZE %zd %zd\n", cd->m.data_size, cd->m.rb_size);
+	rad_assert(cd->m.data != NULL);
+	rad_assert(cd->m.rb_size >= 256);
+
+	/*
+	 *	@todo - transport->read_request
+	 */
+	data_size = recvfrom(s->fd, cd->m.data, cd->m.rb_size,
+			     0, (struct sockaddr *) &ss, &salen);
+	if (data_size == 0) {
+		fprintf(stderr, "GOT ZERO FROM RECVFROM %d\n", __LINE__);
+
+		s->cd = cd;
+
+		// UDP: ignore
+		// TCP: close socket
+		_exit(1);
+	}
+
+	if (data_size < 0) {
+		fprintf(stderr, "FAIL READ %d of max %zd: %s\n", __LINE__,
+			cd->m.rb_size, strerror(errno));
+
+		/*
+		 *	@todo - handle errors via transport callback
+		 */
+		_exit(1);
+	}
+	s->cd = NULL;
+
 	fprintf(stderr, "Got packet size %zd\n", data_size);
 
 	fprintf(stderr, "READ FROM SOCKET %d - %zd bytes\n", sockfd, data_size);
+
+	/*
+	 *	Initialize the rest of the fields of the channel data.
+	 */
+	cd->m.when = fr_time();
+	cd->ctx = s->ctx;
+	cd->transport = 0;	/* @todo - set transport number from the transport */
+	cd->priority = 0;	/* @todo - set priority based on information from the transport layer  */
+	cd->request.start_time = &start_time; /* @todo - set by transport */
+
+	start_time = cd->m.when;
+
+	(void) fr_message_alloc(s->ms, &cd->m, data_size);
+
+	if (!fr_receiver_send_request(rc, cd)) {
+		fprintf(stderr, "FAILED SENDING PACKET TO WORKER\n");
+		fr_message_done(&cd->m);
+	}
 }
 
 /** Handle a receiver control message callback for a new socket
@@ -338,26 +421,73 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED void
 static void fr_receiver_socket_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
 	fr_receiver_t *rc = ctx;
-	fr_receiver_socket_t *m;
+	fr_receiver_socket_t *s;
 
-	rad_assert(data_size == sizeof(*m));
+	rad_assert(data_size == sizeof(*s));
 
-	if (data_size != sizeof(*m)) return;
+	if (data_size != sizeof(*s)) return;
 
-	m = talloc(rc, fr_receiver_socket_t);
-	rad_assert(m != NULL);
-	memcpy(m, data, sizeof(*m));
+	s = talloc(rc, fr_receiver_socket_t);
+	rad_assert(s != NULL);
+	memcpy(s, data, sizeof(*s));
 
-	if (fr_event_fd_insert(rc->el, m->fd, fr_receiver_read, NULL, NULL, m) < 0) {
+#define MIN_MESSAGES (8)
+
+	/*
+	 *	@todo - make the default number of messages configurable?
+	 */
+	s->ms = fr_message_set_create(s, MIN_MESSAGES,
+				      sizeof(fr_channel_data_t),
+				      s->transport->default_message_size * MIN_MESSAGES);
+	if (!s->ms) {
+		fprintf(stderr, "FAIL CREATE %d\n", __LINE__);
+
+		/*
+		 *	@todo - handle errors via transport callback
+		 */
+		_exit(1);
+	}
+
+	if (fr_event_fd_insert(rc->el, s->fd, fr_receiver_read, NULL, NULL, s) < 0) {
 		fprintf(stderr, "FAILED ADDING NEW SOCKET\n");
-		close(m->fd);
+		close(s->fd);
 		return;
 	}
 
-	(void) fr_heap_insert(rc->sockets, m);
+	(void) fr_heap_insert(rc->sockets, s);
 
 	fprintf(stderr, "GOT NEW SOCKET\n");
 }
+
+
+/** Handle a receiver control message callback for a new worker
+ *
+ * @param[in] ctx the receiver
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+static void fr_receiver_worker_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+{
+	fr_receiver_t *rc = ctx;
+	fr_worker_t *worker;
+	fr_receiver_worker_t *w;
+
+	rad_assert(data_size == sizeof(worker));
+
+	memcpy(&worker, data, data_size);
+	(void) talloc_get_type_abort(worker, fr_worker_t);
+
+	w = talloc_zero(rc, fr_receiver_worker_t);
+	if (!w) _exit(1);
+
+	w->worker = worker;
+	w->channel = fr_worker_channel_create(worker, w, rc->control);
+	if (!w->channel) _exit(1);
+
+	(void) fr_heap_insert(rc->workers, w);
+}
+
 
 /** Service an EVFILT_USER event
  *
@@ -444,6 +574,11 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 		return NULL;
 	}
 
+	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_WORKER, rc, fr_receiver_worker_callback) < 0) {
+		talloc_free(rc);
+		return NULL;
+	}
+
 	if (fr_event_user_insert(rc->el, fr_receiver_evfilt_user, rc) < 0) {
 		talloc_free(rc);
 		return NULL;
@@ -475,7 +610,6 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, uint32_t num_transports, fr_t
 		talloc_free(rc);
 		return NULL;
 	}
-
 
 	rc->num_transports = num_transports;
 	rc->transports = transports;
@@ -564,9 +698,23 @@ int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t 
 {
 	fr_receiver_socket_t m;
 
+	memset(&m, 0, sizeof(m));
 	m.fd = fd;
 	m.ctx = ctx;
 	m.transport = transport;
 
 	return fr_control_message_send(rc->control, rc->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
+}
+
+/** Add a worker to a receiver
+ *
+ * @param rc the receiver
+ * @param worker the worker
+ */
+int fr_receiver_worker_add(fr_receiver_t *rc, fr_worker_t *worker)
+{
+	(void) talloc_get_type_abort(rc, fr_receiver_t);
+	(void) talloc_get_type_abort(worker, fr_worker_t);
+
+	return fr_control_message_send(rc->control, rc->rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
 }
