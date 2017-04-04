@@ -455,6 +455,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->priority = request->priority;
 	reply->transport = request->transport->id;
 
+	MPRINT("(%zd) finished, sending reply\n", request->number);
+
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
@@ -575,6 +577,8 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 			continue;
 		}
 
+		MPRINT("(%zd) taking too long, stopping it\n", request->number);
+
 		/*
 		 *	Tell the network side that this request is done.
 		 */
@@ -596,6 +600,9 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 
 		if (final == FR_TRANSPORT_DONE) {
 			FR_DLIST_REMOVE(worker->waiting_to_die);
+
+			MPRINT("(%zd) finally finished\n", request->number);
+
 			/*
 			 *	Tell the network side that this request is done.
 			 */
@@ -697,6 +704,10 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->packet_ctx = cd->ctx;
 
 	/*
+	 *	@todo - call worker->transports[cd->transport]->recv_request()
+	 */
+
+	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 */
 	rcode = worker->transports[cd->transport]->decode(cd->ctx, cd->m.data, cd->m.data_size, request);
@@ -753,6 +764,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	ssize_t size = 0;
 	fr_transport_final_t final;
 
+	MPRINT("(%zd) running\n", request->number);
+
 	/*
 	 *	If we still have the same packet, and the channel is
 	 *	active, run it.  Otherwise, tell it that it's done.
@@ -796,6 +809,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		size = 1024;
 		break;
 	}
+
+	MPRINT("(%zd) done naturally\n", request->number);
 
 	fr_worker_send_reply(worker, request, size);
 }
