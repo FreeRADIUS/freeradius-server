@@ -956,6 +956,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 /** Create a worker
  *
  * @param[in] ctx the talloc context
+ * @param[in] logger the destination for all logging messages
  * @param[in] num_transports the number of transports in the transport array
  * @param[in] transports the array of transports.
  * @return
