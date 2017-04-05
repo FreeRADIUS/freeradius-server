@@ -202,6 +202,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
+	char buffer[32];
 
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
@@ -216,6 +217,9 @@ static void *fr_schedule_worker_thread(void *arg)
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
 	}
+
+	snprintf(buffer, sizeof(buffer), "thread %d - ", sw->id);
+	fr_worker_name(sw->worker, buffer);
 
 	/*
 	 *	@todo make this a registry
