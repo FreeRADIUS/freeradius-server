@@ -340,7 +340,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	rad_assert(ms != NULL);
 
 	/*
-	 *	@todo make the reservation size transport-specific
+	 *	Allocate a default message size.
 	 */
 	reply = (fr_channel_data_t *) fr_message_reserve(ms, worker->transports[cd->transport]->default_message_size);
 	rad_assert(reply != NULL);
@@ -799,9 +799,6 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		return;
 
 	case FR_TRANSPORT_REPLY:
-		/*
-		 *	@todo make the reservation size transport-specific
-		 */
 		size = request->transport->default_message_size;
 		break;
 	}
