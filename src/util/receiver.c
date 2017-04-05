@@ -518,13 +518,21 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t nu
 {
 	fr_receiver_t *rc;
 
-	if (!num_transports || !transports) return NULL;
+	if (!num_transports || !transports) {
+		fr_strerror_printf("Must specify a transport");
+		return NULL;
+	}
 
 	rc = talloc_zero(ctx, fr_receiver_t);
-	if (!rc) return NULL;
+	if (!rc) {
+	nomem:
+		fr_strerror_printf("Failed allocating memory");
+		return NULL;
+	}
 
 	rc->el = fr_event_list_create(rc, fr_receiver_idle, rc);
 	if (!rc->el) {
+		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
@@ -537,37 +545,43 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t nu
 	rc->aq_control = fr_atomic_queue_create(rc, 1024);
 	if (!rc->aq_control) {
 		talloc_free(rc);
-		return NULL;
+		goto nomem;
 	}
 
 	rc->control = fr_control_create(rc, rc->kq, rc->aq_control);
 	if (!rc->control) {
+		fr_strerror_printf("Failed creating control queue: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
 
 	rc->rb = fr_ring_buffer_create(rc, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!rc->rb) {
+		fr_strerror_printf("Failed creating ring buffer: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
 
 	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_CHANNEL, rc, fr_receiver_channel_callback) < 0) {
+		fr_strerror_printf("Failed adding channel callback: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
 
 	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_SOCKET, rc, fr_receiver_socket_callback) < 0) {
+		fr_strerror_printf("Failed adding socket callback: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
 
 	if (fr_control_callback_add(rc->control, FR_CONTROL_ID_WORKER, rc, fr_receiver_worker_callback) < 0) {
+		fr_strerror_printf("Failed adding worker callback: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
 
 	if (fr_event_user_insert(rc->el, fr_receiver_evfilt_user, rc) < 0) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
 		talloc_free(rc);
 		return NULL;
 	}
@@ -578,25 +592,25 @@ fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t nu
 	rc->sockets = fr_heap_create(socket_cmp, offsetof(fr_receiver_socket_t, heap_id));
 	if (!rc->sockets) {
 		talloc_free(rc);
-		return NULL;
+		goto nomem;
 	}
 
 	rc->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!rc->replies) {
 		talloc_free(rc);
-		return NULL;
+		goto nomem;
 	}
 
 	rc->workers = fr_heap_create(worker_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!rc->workers) {
 		talloc_free(rc);
-		return NULL;
+		goto nomem;
 	}
 
 	rc->closing = fr_heap_create(worker_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!rc->closing) {
 		talloc_free(rc);
-		return NULL;
+		goto nomem;
 	}
 
 	rc->num_transports = num_transports;
