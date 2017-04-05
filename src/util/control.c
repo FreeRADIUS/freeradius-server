@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/control.h>
 #include <freeradius-devel/util/ring_buffer.h>
+#include <freeradius-devel/fr_log.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <string.h>
@@ -97,7 +98,10 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
 	struct kevent kev;
 
 	c = talloc_zero(ctx, fr_control_t);
-	if (!c) return NULL;
+	if (!c) {
+		fr_strerror_printf("Failed allocating memory");
+		return NULL;
+	}
 
 	c->kq = kq;
 	c->aq = aq;
@@ -117,6 +121,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
 	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
 	if (kevent(kq, &kev, 1, NULL, 0, NULL) < 0) {
 		talloc_free(c);
+		fr_strerror_printf("Failed opening KQ for control socket: %s", fr_syserror(errno));
 		return NULL;
 	}
 
@@ -168,6 +173,7 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
 	 *	Maybe we failed to garbage collect everything?
 	 */
 	if (fr_ring_buffer_used(rb) > 0) {
+		fr_strerror_printf("Data still in control buffers");
 		return -1;
 	}
 
@@ -216,7 +222,10 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 	if (!m) {
 		(void) fr_control_gc(c, rb);
 		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
-		if (!m) return NULL;
+		if (!m) {
+			fr_strerror_printf("Failed allocating from ring buffer: %s", fr_strerror());
+			return NULL;
+		}
 	}
 
 	m->status = FR_CONTROL_MESSAGE_USED;
@@ -264,14 +273,14 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 		(void) fr_control_gc(c, rb);
 		m = fr_control_message_alloc(c, rb, id, data, data_size);
 		if (!m) {
-			MPRINT("CONTROL %p failed after GC\n", c);
+			fr_strerror_printf("Failed allocationg after GC");
 			return -1;
 		}
 	}
 
 	if (!fr_atomic_queue_push(c->aq, m)) {
 		m->status = FR_CONTROL_MESSAGE_DONE;
-		MPRINT("CONTROL %p failed in atomic push to aq %p\n", c, c->aq);
+		fr_strerror_printf("Failed pushing message to atomic queue.");
 		return -1;
 	}
 
@@ -293,6 +302,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  */
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
+	int rcode;
 	struct kevent kev;
 
 #ifndef NDEBUG
@@ -304,7 +314,11 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	}
 
 	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
-	return kevent(c->kq, &kev, 1, NULL, 0, NULL);
+	rcode = kevent(c->kq, &kev, 1, NULL, 0, NULL);
+	if (rcode >= 0) return rcode;
+
+	fr_strerror_printf("Failed updating KQ: %s", fr_syserror(errno));
+	return rcode;
 }
 
 
@@ -336,6 +350,7 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
 	 *	There isn't enough room to store the data, die.
 	 */
 	if (data_size < m->data_size) {
+		fr_strerror_printf("Allocation size should be at least %zd", m->data_size);
 		return -(m->data_size);
 	}
 
@@ -384,7 +399,10 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	if (id >= FR_CONTROL_MAX_IDENT) return -1;
+	if (id >= FR_CONTROL_MAX_IDENT) {
+		fr_strerror_printf("Failed adding unknown ID %d", id);
+		return -1;
+	}
 
 	/*
 	 *	Re-registering the same thing is OK.
@@ -394,7 +412,10 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 		return 0;
 	}
 
-	if (c->ident[id].callback != NULL) return -1;
+	if (c->ident[id].callback != NULL) {
+		fr_strerror_printf("Callback is already set");
+		return -1;
+	}
 
 	c->ident[id].id = id;
 	c->ident[id].ctx = ctx;
@@ -417,7 +438,10 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
-	if (id >= FR_CONTROL_MAX_IDENT) return -1;
+	if (id >= FR_CONTROL_MAX_IDENT) {
+		fr_strerror_printf("Failed adding unknown ID %d", id);
+		return -1;
+	}
 
 	if (c->ident[id].callback == NULL) return 0;
 
