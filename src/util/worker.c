@@ -63,7 +63,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/worker.h>
 #include <freeradius-devel/util/channel.h>
-#include <freeradius-devel/util/control.h>
 #include <freeradius-devel/util/message.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -132,7 +131,7 @@ struct fr_worker_t {
 		worker->_name.heap = fr_heap_create(_func, offsetof(_type, _member)); \
 		if (!worker->_name.heap) { \
 			talloc_free(worker); \
-			return NULL; \
+			goto nomem; \
 		} \
 	} while (0)
 
@@ -968,15 +967,22 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_tr
 	int max_channels = 64;
 	fr_worker_t *worker;
 
-	if (!num_transports || !transports) return NULL;
+	if (!num_transports || !transports) {
+		fr_strerror_printf("Must specify a transport");
+		return NULL;
+	}
 
 	worker = talloc_zero(ctx, fr_worker_t);
-	if (!worker) return NULL;
+	if (!worker) {
+nomem:
+		fr_strerror_printf("Failed allocating memory");
+		return NULL;
+	}
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, max_channels);
 	if (!worker->channel) {
 		talloc_free(worker);
-		return NULL;
+		goto nomem;
 	}
 
 	worker->log = logger;
@@ -991,11 +997,13 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_tr
 
 	worker->el = fr_event_list_create(worker, fr_worker_idle, worker);
 	if (!worker->el) {
+		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
 		talloc_free(worker);
 		return NULL;
 	}
 
 	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
 		talloc_free(worker);
 		return NULL;
 	}
@@ -1014,21 +1022,23 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_tr
 	worker->aq_control = fr_atomic_queue_create(worker, 1024);
 	if (!worker->aq_control) {
 		talloc_free(worker);
-		return NULL;
+		goto nomem;
 	}
 
 	worker->control = fr_control_create(worker, worker->kq, worker->aq_control);
 	if (!worker->control) {
 		talloc_free(worker);
-		return NULL;
+		goto nomem;;
 	}
 
 	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, fr_worker_channel_callback) < 0) {
+		fr_strerror_printf("Failed adding control channel: %s", fr_strerror());
 		talloc_free(worker);
 		return NULL;
 	}
 
 	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
 		talloc_free(worker);
 		return NULL;
 	}
@@ -1039,7 +1049,7 @@ fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_tr
 	worker->runnable = fr_heap_create(worker_request_cmp, offsetof(REQUEST, heap_id));
 	if (!worker->runnable) {
 		talloc_free(worker);
-		return NULL;
+		goto nomem;;
 	}
 	FR_DLIST_INIT(worker->time_order);
 	FR_DLIST_INIT(worker->waiting_to_die);
