@@ -278,7 +278,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(master->aq, cd)) {
-		fr_strrerror_printf("Failed pushing to atomic queue");
+		fr_strerror_printf("Failed pushing to atomic queue");
 		*p_reply = fr_channel_recv_reply(ch);
 		return -1;
 	}
@@ -460,7 +460,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	cd->live.ack = worker->ack;
 
 	if (!fr_atomic_queue_push(worker->aq, cd)) {
-		fr_strrerror_printf("Failed pushing to atomic queue");
+		fr_strerror_printf("Failed pushing to atomic queue");
 		*p_request = fr_channel_recv_request(ch);
 		return -1;
 	}
