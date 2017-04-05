@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/channel.h>
 #include <freeradius-devel/util/control.h>
+#include <freeradius-devel/fr_log.h>
 #include <freeradius-devel/rad_assert.h>
 
 /*
@@ -148,18 +149,22 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 	fr_channel_t *ch;
 
 	ch = talloc_zero(ctx, fr_channel_t);
-	if (!ch) return NULL;
+	if (!ch) {
+	nomem:
+		fr_strerror_printf("Failed allocating memory");
+		return NULL;
+	}
 
 	ch->end[TO_WORKER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[TO_WORKER].aq) {
 		talloc_free(ch);
-		return NULL;
+		goto nomem;
 	}
 
 	ch->end[FROM_WORKER].aq = fr_atomic_queue_create(ch, ATOMIC_QUEUE_SIZE);
 	if (!ch->end[FROM_WORKER].aq) {
 		talloc_free(ch);
-		return NULL;
+		goto nomem;
 	}
 
 	ch->end[TO_WORKER].control = worker;
@@ -171,6 +176,8 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 	 */
 	ch->end[TO_WORKER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!ch->end[TO_WORKER].rb) {
+	rb_nomem:
+		fr_strerror_printf("Failed allocating ring buffer: %s", fr_strerror());
 		talloc_free(ch);
 		return NULL;
 	}
@@ -178,7 +185,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 	ch->end[FROM_WORKER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!ch->end[FROM_WORKER].rb) {
 		talloc_free(ch);
-		return NULL;
+		goto rb_nomem;
 	}
 
 	/*
@@ -271,7 +278,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 	 *	the push fails, the caller should try another queue.
 	 */
 	if (!fr_atomic_queue_push(master->aq, cd)) {
-		MPRINT("QUEUE FULL!\n");
+		fr_strrerror_printf("Failed pushing to atomic queue");
 		*p_reply = fr_channel_recv_reply(ch);
 		return -1;
 	}
@@ -344,6 +351,9 @@ fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 	aq = ch->end[FROM_WORKER].aq;
 	master = &(ch->end[TO_WORKER]);
 
+	/*
+	 *	It's OK for the queue to be empty.
+	 */
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
 	/*
@@ -401,6 +411,9 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 	aq = ch->end[TO_WORKER].aq;
 	worker = &(ch->end[FROM_WORKER]);
 
+	/*
+	 *	It's OK for the queue to be empty.
+	 */
 	if (!fr_atomic_queue_pop(aq, (void **) &cd)) return NULL;
 
 	rad_assert(cd->live.sequence > worker->ack);
@@ -447,6 +460,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	cd->live.ack = worker->ack;
 
 	if (!fr_atomic_queue_push(worker->aq, cd)) {
+		fr_strrerror_printf("Failed pushing to atomic queue");
 		*p_request = fr_channel_recv_request(ch);
 		return -1;
 	}
