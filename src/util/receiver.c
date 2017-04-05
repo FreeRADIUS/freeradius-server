@@ -353,7 +353,7 @@ static void fr_receiver_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	/*
 	 *	@todo - transport->read_request
 	 */
-	data_size = s->transport->read(s->fd, s->ctx, cd->m.data, cd->m.rb_size);
+	data_size = s->transport->read(sockfd, s->ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
 		fr_log(rc->log, L_DBG_ERR, "got no data from transport read");
 

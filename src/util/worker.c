@@ -169,7 +169,7 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 
 	do {
 		worker->num_requests++;
-		fr_log(worker->log, L_DBG, "\treceived request %zd", worker->num_requests);
+		fr_log(worker->log, L_DBG, "\treceived request %d", worker->num_requests);
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
