@@ -115,6 +115,12 @@ if test x$with_[]modname != xno; then
 				[ac_cv_ldap_set_rebind_proc=3],
 				[ac_cv_ldap_set_rebind_proc=2])
 		])
+
+		if test "x$ac_cv_func_ldap_create_session_tracking_control" = "xyes"; then
+			AC_DEFINE(HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL, 1)
+		else
+			AC_DEFINE(HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL, 0)
+		fi
 	fi
 
 	dnl ############################################################

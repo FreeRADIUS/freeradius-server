@@ -3225,6 +3225,14 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_ldap_set_rebind_proc" >&5
 $as_echo "$ac_cv_ldap_set_rebind_proc" >&6; }
+
+		if test "x$ac_cv_func_ldap_create_session_tracking_control" = "xyes"; then
+			$as_echo "#define HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL 1" >>confdefs.h
+
+		else
+			$as_echo "#define HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL 0" >>confdefs.h
+
+		fi
 	fi
 
 
