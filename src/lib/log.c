@@ -1,9 +1,4 @@
 /*
- * log.c	Functions in the library call radlib_log() which
- *		does internal logging.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -17,10 +12,14 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
  */
 
+/**
+ * @file lib/log.c
+ * @brief Support functions for logging in FreeRADIUS libraries.
+ *
+ * @copyright 2003,2006  The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
@@ -281,7 +280,7 @@ char const *fr_syserror(int num)
 #if !defined(HAVE_FEATURES_H) || !defined(__GLIBC__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 500) && ! _GNU_SOURCE)
 	{
 		int ret;
-		
+
 		ret = strerror_r(num, p, end - p);
 		if (ret != 0) {
 #  ifndef NDEBUG
