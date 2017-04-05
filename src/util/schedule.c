@@ -104,6 +104,7 @@ typedef struct fr_schedule_worker_t {
 typedef struct fr_schedule_receiver_t {
 	pthread_t	pthread_id;		//!< the thread of this receiver
 
+	int		id;			//!< a unique ID
 	fr_schedule_t	*sc;			//!< the scheduler we are running under
 
 	fr_schedule_child_status_t status;	//!< status of the worker
@@ -205,10 +206,14 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
 	ctx = talloc_init("worker");
-	if (!ctx) goto fail;
+	if (!ctx) {
+		fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", sw->id);
+		goto fail;
+	}
 
 	sw->worker = fr_worker_create(ctx, sc->log, sc->num_transports, sc->transports);
 	if (!sw->worker) {
+		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
 	}
 
@@ -217,6 +222,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 */
 	if (sc->worker_thread_instantiate &&
 	    (sc->worker_thread_instantiate(sc->worker_instantiate_ctx) < 0)) {
+		fr_log(sc->log, L_ERR, "Worker %d - Failed calling thread instantiate", sw->id, fr_strerror());
 		goto fail;
 	}
 
@@ -300,10 +306,14 @@ static void *fr_schedule_receiver_thread(void *arg)
 	fr_log(sc->log, L_INFO, "Network starting\n");
 
 	ctx = talloc_init("receiver");
-	if (!ctx) goto fail;
+	if (!ctx) {
+		fr_log(sc->log, L_ERR, "Network %d - Failed allocating memory", sr->id);
+		goto fail;
+	}
 
 	sr->rc = fr_receiver_create(ctx, sc->log, sc->num_transports, sc->transports);
 	if (!sr->rc) {
+		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sr->id, fr_strerror());
 		goto fail;
 	}
 
@@ -380,7 +390,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	if ((!max_inputs && max_workers) || (max_workers && !max_inputs)) return NULL;
 
 	sc = talloc_zero(ctx, fr_schedule_t);
-	if (!sc) return NULL;
+	if (!sc) {
+	nomem:
+		fr_strerror_printf("Failed allocating memory");
+		return NULL;
+	}
 
 	sc->max_inputs = max_inputs;
 	sc->max_workers = max_workers;
@@ -404,6 +418,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 
 	rcode = pthread_mutex_init(&sc->mutex, NULL);
 	if (rcode != 0) {
+		fr_strerror_printf("Failed initializing mutex");
 		talloc_free(sc);
 		return NULL;
 	}
@@ -414,17 +429,18 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	sc->workers = fr_heap_create(worker_cmp, offsetof(fr_schedule_worker_t, heap_id));
 	if (!sc->workers) {
 		talloc_free(sc);
-		return NULL;
+		goto nomem;
 	}
 
 	sc->done_workers = fr_heap_create(worker_cmp, offsetof(fr_schedule_worker_t, heap_id));
 	if (!sc->done_workers) {
 		talloc_free(sc);
-		return NULL;
+		goto nomem;
 	}
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
+		fr_strerror_printf("Failed creating semaphore: %s", fr_syserror(errno));
 		talloc_free(sc);
 		return NULL;
 	}
@@ -434,9 +450,13 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	 */
 	sc->sr = talloc_zero(sc, fr_schedule_receiver_t);
 	sc->sr->sc = sc;
+	sc->sr->id = 0;
 
 	rcode = pthread_create(&sc->sr->pthread_id, &attr, fr_schedule_receiver_thread, sc->sr);
-	if (rcode != 0) goto fail;
+	if (rcode != 0) {
+		fr_strerror_printf("Failed creating network thread: %s", fr_syserror(errno));
+		goto fail;
+	}
 
 	SEM_WAIT_INTR(&sc->semaphore);
 	if (sc->sr->status != FR_CHILD_RUNNING) {
@@ -467,7 +487,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 
 		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
 		if (rcode != 0) {
-			fr_log(sc->log, L_ERR, "Failed to create worker %d: %s\n", i, strerror(errno));
+			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_syserror(errno));
 			talloc_free(sw);
 			break;
 		}
