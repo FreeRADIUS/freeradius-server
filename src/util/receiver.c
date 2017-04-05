@@ -38,7 +38,7 @@ RCSID("$Id$")
 typedef struct fr_receiver_worker_t {
 	int			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
-	fr_time_t		processing_time;	//!< predicted processing time for one packet
+	fr_time_t		predicted;		//!< predicted processing time for one packet
 
 	fr_channel_t		*channel;		//!< channel to the worker
 	fr_worker_t		*worker;		//!< worker pointer
@@ -119,6 +119,9 @@ static int reply_cmp(void const *one, void const *two)
 	return 0;
 }
 
+#define IALPHA (8)
+#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
+
 /** Drain the input channel
  *
  * @param[in] rc the receiver
@@ -127,6 +130,8 @@ static int reply_cmp(void const *one, void const *two)
  */
 static void fr_receiver_drain_input(fr_receiver_t *rc, fr_channel_t *ch, fr_channel_data_t *cd)
 {
+	fr_receiver_worker_t *w;
+
 	if (!cd) {
 		cd = fr_channel_recv_reply(ch);
 		if (!cd) {
@@ -139,12 +144,20 @@ static void fr_receiver_drain_input(fr_receiver_t *rc, fr_channel_t *ch, fr_chan
 		fr_log(rc->log, L_DBG, "received reply %zd", rc->num_replies);
 
 		cd->channel.ch = ch;
+
+		/*
+		 *	Update stats for the worker.
+		 */
+		w = fr_channel_master_ctx_get(ch);
+		w->cpu_time = cd->reply.cpu_time;
+		if (!w->predicted) {
+			w->predicted = cd->reply.processing_time;
+		} else {
+			w->predicted = RTT(w->predicted, cd->reply.processing_time);
+		}
+
 		(void) fr_heap_insert(rc->replies, cd);
 	} while ((cd = fr_channel_recv_reply(ch)) != NULL);
-
-	/*
-	 *	@todo - get CPU time and processing time from the message, and update the worker.
-	 */
 }
 
 /** Run the event loop 'idle' callback
@@ -284,7 +297,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 		 *	don't immediately pop it off the heap and try
 		 *	to send it another request.
 		 */
-		worker->cpu_time = cd->m.when + worker->processing_time;
+		worker->cpu_time = cd->m.when + worker->predicted;
 		(void) fr_heap_insert(rc->workers, worker);
 
 		return rcode;
@@ -296,7 +309,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	 *	updated with a more accurate number when we receive a
 	 *	reply from this channel.
 	 */
-	worker->cpu_time += worker->processing_time;
+	worker->cpu_time += worker->predicted;
 
 	/*
 	 *	Insert the worker back into the heap of workers.
@@ -469,6 +482,8 @@ static void fr_receiver_worker_callback(void *ctx, void const *data, size_t data
 	w->worker = worker;
 	w->channel = fr_worker_channel_create(worker, w, rc->control);
 	if (!w->channel) _exit(1);
+
+	fr_channel_master_ctx_add(w->channel, w);
 
 	(void) fr_heap_insert(rc->workers, w);
 }
@@ -653,7 +668,8 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 	/*
 	 *	Clean up all of the replies.
 	 *
-	 *	@todo something with the replies, to clean them up...
+	 *	@todo - call transport "done" for the reply, so that
+	 *	it knows the replies are done, too.
 	 */
 	while ((cd = fr_heap_pop(rc->replies)) != NULL) {
 		fr_message_done(&cd->m);
@@ -706,7 +722,7 @@ void fr_receiver(fr_receiver_t *rc)
 		if (!cd) continue;
 
 		/*
-		 *	@todo - do this correctly
+		 *	@todo - call transport "recv reply"
 		 */
 		s = cd->io_ctx;
 
