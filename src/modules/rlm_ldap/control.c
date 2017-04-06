@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file src/modules/fr_ldap/control.c
+ * @file src/modules/rlm_ldap/control.c
  * @brief Functions for managing server/client side sort controls.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

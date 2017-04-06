@@ -54,7 +54,7 @@ ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 	 *	in the request.
 	 */
 	if ((conn != NULL) && (request != NULL) && inst->session_tracking) {
-		if (rlm_ldap_control_add_session_tracking(conn, request) < 0) {
+		if (fr_ldap_control_add_session_tracking(conn, request) < 0) {
 			fr_connection_release(inst->pool, request, conn);
 			return NULL;
 		}

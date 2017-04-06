@@ -23,8 +23,8 @@
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 The FreeRADIUS Server Project.
  */
-#define LOG_PREFIX "rlm_ldap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS handle_config->name
 
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/radiusd.h>
@@ -35,14 +35,14 @@
 /** Data passed to the _sasl interact callback.
  *
  */
-typedef struct rlm_ldap_sasl_ctx {
+typedef struct fr_ldap_sasl_ctx_t {
 	REQUEST			*request;	//!< The current request.
 
 	char const		*identity;	//!< User's DN or identity.
 	char const		*password;	//!< Bind password.
 
 	ldap_sasl const		*extra;		//!< Extra fields (realm and proxy id).
-} rlm_ldap_sasl_ctx_t;
+} fr_ldap_sasl_ctx_t_t;
 
 /** Callback for ldap_sasl_interactive_bind
  *
@@ -54,7 +54,7 @@ typedef struct rlm_ldap_sasl_ctx {
  */
 static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx, void *sasl_callbacks)
 {
-	rlm_ldap_sasl_ctx_t	*this = ctx;
+	fr_ldap_sasl_ctx_t_t	*this = ctx;
 	REQUEST			*request = this->request;
 	sasl_interact_t		*cb = sasl_callbacks;
 	sasl_interact_t		*cb_p;
@@ -103,27 +103,29 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @param[out] extra		information about the error.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_sasl_interactive(REQUEST *request,
+ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 				       ldap_handle_t *conn, char const *identity,
 				       char const *password, ldap_sasl const *sasl,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls,
 				       struct timeval const *timeout,
 				       char const **error, char **extra)
 {
-	ldap_rcode_t		status;
-	int			ret = 0;
-	int			msgid;
-	char const		*mech;
-	LDAPMessage		*result = NULL;
-	rlm_ldap_sasl_ctx_t	sasl_ctx;		/* SASL defaults */
+	ldap_rcode_t			status;
+	int				ret = 0;
+	int				msgid;
+	char const			*mech;
+	LDAPMessage			*result = NULL;
+	fr_ldap_sasl_ctx_t_t		sasl_ctx;		/* SASL defaults */
 
-	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLS];
-	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLS];
+	ldap_handle_config_t const	*handle_config = conn->config;
 
-	rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
-			       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
-			       conn, serverctrls, clientctrls);
+	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
+			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
+			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      conn, serverctrls, clientctrls);
 
 	/* rlm_ldap_result may not be called */
 	if (error) *error = NULL;
@@ -151,7 +153,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = rlm_ldap_result(conn, -1, identity, timeout, NULL, error, extra);
+			status = fr_ldap_result(conn, -1, identity, timeout, NULL, error, extra);
 			break;		/* Old result gets freed on after exit */
 		}
 
@@ -161,7 +163,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(REQUEST *request,
 		 *	If LDAP parse result indicates there was an error
 		 *	then we're done.
 		 */
-		status = rlm_ldap_result(conn, msgid, identity, timeout, &result, error, extra);
+		status = fr_ldap_result(conn, msgid, identity, timeout, &result, error, extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:

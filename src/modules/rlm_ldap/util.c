@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file util.c
+ * @file src/modules/rlm_ldap/util.c
  * @brief Utility functions to escape and parse DNs
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
