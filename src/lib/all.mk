@@ -33,8 +33,10 @@ SOURCES		:= cbuff.c \
 		   regex.c \
 		   sha1.c \
 		   snprintf.c \
+		   strerror.c \
 		   strlcat.c \
 		   strlcpy.c \
+		   syserror.c \
 		   socket.c \
 		   token.c \
 		   udpfromto.c \

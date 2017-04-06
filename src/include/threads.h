@@ -56,7 +56,7 @@ static inline _t __fr_thread_local_set_destructor_##_n(pthread_destructor_t func
 		talloc_set_destructor(ctx, __fr_thread_local_destructor_##_n);\
 		*ctx = func;\
 	}\
-	_n = value\
+	_n = value;\
 	return _n;\
 }
 #  define fr_thread_local_set_destructor(_n, _f, _v) __fr_thread_local_set_destructor_##_n(_f, _v)

@@ -35,10 +35,14 @@
  *	Error functions.
  */
 void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
+void		fr_strerror_printf_push(char const *fmt, ...)  CC_HINT(format (printf, 1, 2));
+
+char const	*fr_strerror(void);
+char const	*fr_strerror_pop(void);
+
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
-char const	*fr_strerror(void);
 char const	*fr_syserror(int num);
 extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
