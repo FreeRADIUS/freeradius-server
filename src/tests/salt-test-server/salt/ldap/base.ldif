@@ -1,16 +1,12 @@
 # Database settings
-dn: olcDatabase=hdb,cn=config
+dn: olcDatabase=mdb,cn=config
 objectClass: olcDatabaseConfig
-objectClass: olcHdbConfig
-olcDatabase: {1}hdb
+objectClass: olcMdbConfig
+olcDatabase: {1}mdb
 olcSuffix: dc=example,dc=com
 olcDbDirectory: /var/lib/ldap
 olcRootDN: cn=admin,dc=example,dc=com
 olcRootPW: {SSHA}SgCZuAcGQA5HlgKi+g5xwVyI2NhXRFYh
-olcDbConfig: set_cachesize 0 2097152 0
-olcDbConfig: set_lk_max_objects 1500
-olcDbConfig: set_lk_max_locks 1500
-olcDbConfig: set_lk_max_lockers 1500
 olcDbIndex: objectClass eq
 olcLastMod: TRUE
 olcDbCheckpoint: 512 30
