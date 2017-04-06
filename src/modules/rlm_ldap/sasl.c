@@ -36,7 +36,6 @@
  *
  */
 typedef struct rlm_ldap_sasl_ctx {
-	rlm_ldap_t const	*inst;		//!< LDAP instance
 	REQUEST			*request;	//!< The current request.
 
 	char const		*identity;	//!< User's DN or identity.
@@ -57,7 +56,6 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 {
 	rlm_ldap_sasl_ctx_t	*this = ctx;
 	REQUEST			*request = this->request;
-	rlm_ldap_t const	*inst = this->inst;
 	sasl_interact_t		*cb = sasl_callbacks;
 	sasl_interact_t		*cb_p;
 
@@ -92,7 +90,6 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 
 /** Initiate an LDAP interactive bind
  *
- * @param[in] inst rlm_ldap configuration.
  * @param[in] request		Current request, this may be NULL.
  * @param[in] conn		to use. May change as this function calls functions
  *				which auto re-connect.
@@ -106,7 +103,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @param[out] extra		information about the error.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
+ldap_rcode_t rlm_ldap_sasl_interactive(REQUEST *request,
 				       ldap_handle_t *conn, char const *identity,
 				       char const *password, ldap_sasl const *sasl,
 				       LDAPControl **serverctrls, LDAPControl **clientctrls,
@@ -132,7 +129,6 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	if (error) *error = NULL;
 	if (extra) *extra = NULL;
 
-	sasl_ctx.inst = inst;
 	sasl_ctx.request = request;
 	sasl_ctx.identity = identity;
 	sasl_ctx.password = password;
@@ -155,7 +151,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = rlm_ldap_result(inst, conn, -1, identity, timeout, NULL, error, extra);
+			status = rlm_ldap_result(conn, -1, identity, timeout, NULL, error, extra);
 			break;		/* Old result gets freed on after exit */
 		}
 
@@ -165,7 +161,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 *	If LDAP parse result indicates there was an error
 		 *	then we're done.
 		 */
-		status = rlm_ldap_result(inst, conn, msgid, identity, timeout, &result, error, extra);
+		status = rlm_ldap_result(conn, msgid, identity, timeout, &result, error, extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:

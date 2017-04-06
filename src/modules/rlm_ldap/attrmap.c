@@ -38,7 +38,7 @@
  */
 int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	rlm_ldap_result_t *self = uctx;
+	fr_ldap_result_t *self = uctx;
 	VALUE_PAIR *head = NULL, *vp;
 	vp_cursor_t cursor;
 	int i;
@@ -309,7 +309,7 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 	unsigned int		total = 0;
 	int			applied = 0;	/* How many maps have been applied to the current request */
 
-	rlm_ldap_result_t	result;
+	fr_ldap_result_t	result;
 	char const		*name;
 
 	for (map = expanded->maps; map != NULL; map = map->next) {
@@ -366,7 +366,7 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 			vp_map_t *attr;
 			char *value;
 
-			value = rlm_ldap_berval_to_string(request, values[i]);
+			value = fr_ldap_berval_to_string(request, values[i]);
 			RDEBUG3("Parsing attribute string '%s'", value);
 			if (map_afrom_attr_str(request, &attr, value,
 					       REQUEST_CURRENT, PAIR_LIST_REPLY,

@@ -24,10 +24,10 @@
  * @copyright 2016 The FreeRADIUS Server Project.
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#define LOG_PREFIX "rlm_ldap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS (*pconn)->config->name
 
-#include "rlm_ldap.h"
+#include "libldap.h"
 
 static FR_NAME_NUMBER const ldap_directory_type_table[] = {
 	{ "Unknown",			LDAP_DIRECTORY_UNKNOWN	},
@@ -49,14 +49,13 @@ static FR_NAME_NUMBER const ldap_directory_type_table[] = {
  *
  * @param[in] ctx	to allocate ldap_directory_t in.
  * @param[out] out	where to write pointer to new ldap_directory_t struct.
- * @param[in] inst	rlm_ldap configuration.
  * @param[in,out] pconn	connection for querying the directory.
  * @return
  *	- 0 on success.
  *	- 1 if we failed identifying the directory server.
  *	- -1 on error.
  */
-int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t const *inst, ldap_handle_t **pconn)
+int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle_t **pconn)
 {
 	static char const	*attrs[] = { "vendorname",
 					     "vendorversion",
@@ -82,7 +81,8 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 
 	directory->type = LDAP_DIRECTORY_UNKNOWN;
 
-	status = rlm_ldap_search(&result, inst, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs, NULL, NULL);
+	status = fr_ldap_search(&result, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)",
+				attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -115,7 +115,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 
 	values = ldap_get_values_len((*pconn)->handle, entry, "vendorname");
 	if (values) {
-		directory->vendor_str = rlm_ldap_berval_to_string(directory, values[0]);
+		directory->vendor_str = fr_ldap_berval_to_string(directory, values[0]);
 		INFO("Directory vendor: %s", directory->vendor_str);
 
 		ldap_value_free_len(values);
@@ -123,7 +123,7 @@ int rlm_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, rlm_ldap_t
 
 	values = ldap_get_values_len((*pconn)->handle, entry, "vendorversion");
 	if (values) {
-		directory->version_str = rlm_ldap_berval_to_string(directory, values[0]);
+		directory->version_str = fr_ldap_berval_to_string(directory, values[0]);
 		INFO("Directory version: %s", directory->version_str);
 
 		ldap_value_free_len(values);

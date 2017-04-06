@@ -1,10 +1,1 @@
-TARGETNAME	:= @targetname@
-
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= $(TARGETNAME).c attrmap.c ldap.c clients.c groups.c edir.c control.c directory.c @SASL@
-
-SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+SUBMAKEFILES := libfreeradius-ldap.mk rlm_ldap.mk

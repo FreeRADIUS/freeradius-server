@@ -1,7 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_ldap.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_ldap])
+AC_DEFUN(modname,[libfreeradius-ldap])
 
 fail=
 SMART_LIBS=
@@ -161,4 +161,10 @@ AC_SUBST(mod_cflags)
 AC_SUBST(SASL)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
+
+AC_OUTPUT(libfreeradius-ldap.mk)
+
+dnl # This is needed so that all.mk is not created unless configure is run
+dnl # so that it doesn't attempt to include libfreeradius-redis.mk which
+dnl # is also dependent on configure being run.
 AC_OUTPUT(all.mk)

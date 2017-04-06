@@ -86,7 +86,7 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
 		return 0;
 	}
 
-	*out = rlm_ldap_berval_to_string(NULL, values[0]);
+	*out = fr_ldap_berval_to_string(NULL, values[0]);
 	ldap_value_free_len(values);
 
 	if (!*out) return -1;
@@ -127,7 +127,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 	count++;
 
 	/*
-	 *	Create an array of LDAP attributes to feed to rlm_ldap_search.
+	 *	Create an array of LDAP attributes to feed to fr_ldap_search.
 	 */
 	attrs = talloc_array(inst, char const *, count);
 	if (rlm_ldap_client_get_attrs(attrs, &idx, map) < 0) {
@@ -145,9 +145,11 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 	 *	Perform all searches as the admin user.
 	 */
 	if (conn->rebound) {
-		status = rlm_ldap_bind(inst, NULL, &conn,
-				       conn->pool_inst->admin_identity, conn->pool_inst->admin_password,
-				       &(conn->pool_inst->admin_sasl), true, NULL, NULL, NULL);
+		status = fr_ldap_bind(NULL, &conn,
+				      conn->config->admin_identity, conn->config->admin_password,
+				      &(conn->config->admin_sasl),
+				      NULL,
+				      NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			ret = -1;
 			goto finish;
@@ -158,8 +160,8 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		conn->rebound = false;
 	}
 
-	status = rlm_ldap_search(&result, inst, NULL, &conn, inst->clientobj_base_dn, inst->clientobj_scope,
-				 inst->clientobj_filter, attrs, NULL, NULL);
+	status = fr_ldap_search(&result, NULL, &conn, inst->clientobj_base_dn, inst->clientobj_scope,
+				inst->clientobj_filter, attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -203,12 +205,12 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 
 			goto finish;
 		}
-		rlm_ldap_normalise_dn(dn, dn);
+		fr_ldap_util_normalise_dn(dn, dn);
 
 		cp = cf_pair_find(map, "identifier");
 		if (cp) {
 			values = ldap_get_values_len(conn->handle, entry, cf_pair_value(cp));
-			if (values) id = rlm_ldap_berval_to_string(NULL, values[0]);
+			if (values) id = fr_ldap_berval_to_string(NULL, values[0]);
 			ldap_value_free_len(values);
 		}
 

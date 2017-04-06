@@ -16,13 +16,13 @@
 
 /**
  * $Id$
- * @file src/modules/rlm_ldap/control.c
+ * @file src/modules/fr_ldap/control.c
  * @brief Functions for managing server/client side sort controls.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#define LOG_PREFIX "rlm_ldap (%s) - "
+#define LOG_PREFIX "fr_ldap (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
 #include "rlm_ldap.h"
@@ -33,21 +33,21 @@
  * because they're overriden in their entirety if any call specific
  * controls are specified.
  *
- * @param[out] serverctrls_out Where to write serverctrls.
- * @param[out] clientctrls_out Where to write clientctrls.
- * @param[in] serverctrls_len length of serverctrls array.
- * @param[in] clientctrls_len length of clientctrls array.
- * @param[in] conn to get controls from.
- * @param[in] serverctrls_in from arguments.
- * @param[in] clientctrls_in from_arguments.
+ * @param[out] serverctrls_out	Where to write serverctrls.
+ * @param[out] clientctrls_out	Where to write clientctrls.
+ * @param[in] serverctrls_len	length of serverctrls array.
+ * @param[in] clientctrls_len	length of clientctrls array.
+ * @param[in] conn		to get controls from.
+ * @param[in] serverctrls_in	from arguments.
+ * @param[in] clientctrls_in	from_arguments.
  */
- void rlm_ldap_control_merge(LDAPControl *serverctrls_out[],
-			     LDAPControl *clientctrls_out[],
- 			     size_t serverctrls_len,
-			     size_t clientctrls_len,
-			     ldap_handle_t *conn,
-			     LDAPControl *serverctrls_in[],
-			     LDAPControl *clientctrls_in[])
+ void fr_ldap_control_merge(LDAPControl *serverctrls_out[],
+			    LDAPControl *clientctrls_out[],
+ 			    size_t serverctrls_len,
+			    size_t clientctrls_len,
+			    ldap_handle_t *conn,
+			    LDAPControl *serverctrls_in[],
+			    LDAPControl *clientctrls_in[])
 {
 	size_t i, num_serverctrls = 0, num_clientctrls = 0;
 
@@ -86,7 +86,7 @@
  *	- 0 on success.
  *	- -1 on failure (exceeded maximum controls).
  */
-int rlm_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
+int fr_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
 {
 	if ((size_t)conn->serverctrls_cnt >= ((sizeof(conn->serverctrls) / sizeof(conn->serverctrls[0])) - 1)) {
 		return -1;
@@ -110,7 +110,7 @@ int rlm_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool fre
  *	- 0 on success.
  *	- -1 on failure (exceeded maximum controls).
  */
-int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
+int fr_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
 {
 	if ((size_t)conn->clientctrls_cnt >= ((sizeof(conn->clientctrls) / sizeof(conn->clientctrls[0])) - 1)) {
 		return -1;
@@ -127,7 +127,7 @@ int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool fre
  *
  * @param conn to clear controls from.
  */
-void rlm_ldap_control_clear(ldap_handle_t *conn)
+void fr_ldap_control_clear(ldap_handle_t *conn)
 {
 	int i;
 
@@ -161,7 +161,7 @@ void rlm_ldap_control_clear(ldap_handle_t *conn)
  * @param conn to add controls to.
  * @param request to draw attributes from.
  */
-int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
+int fr_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 {
 	/*
 	 *	The OpenLDAP guys didn't declare the formatOID parameter to
@@ -267,15 +267,15 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 		goto error;
 	}
 
-	if (username_control && (rlm_ldap_control_add_server(conn, username_control, true) < 0)) goto error;
+	if (username_control && (fr_ldap_control_add_server(conn, username_control, true) < 0)) goto error;
 
-	if (acctsessionid_control && (rlm_ldap_control_add_server(conn, acctsessionid_control, true) < 0)) {
+	if (acctsessionid_control && (fr_ldap_control_add_server(conn, acctsessionid_control, true) < 0)) {
 		conn->serverctrls_cnt--;
 		conn->serverctrls[conn->serverctrls_cnt].control = NULL;
 		goto error;
 	}
 
-	if (acctmultisessionid_control && (rlm_ldap_control_add_server(conn, acctmultisessionid_control, true) < 0)) {
+	if (acctmultisessionid_control && (fr_ldap_control_add_server(conn, acctmultisessionid_control, true) < 0)) {
 		conn->serverctrls_cnt--;
 		conn->serverctrls[conn->serverctrls_cnt].control = NULL;
 		conn->serverctrls_cnt--;
