@@ -26,6 +26,7 @@
  * @copyright 2013-2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013-2016 The FreeRADIUS Server Project.
  */
+RCSID("$Id$")
 
 #include <talloc.h>
 #include <string.h>
@@ -544,9 +545,9 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
 	return NULL;
 }
 
-#ifdef TESTING
+#ifdef TESTING_CURSOR
 /*
- *  cc cursor.c -g3 -Wall -DTESTING -I../ -l talloc -o test_cursor && ./test_cursor
+ *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
  */
 #include <stddef.h>
 #include <freeradius-devel/cutest.h>

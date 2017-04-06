@@ -22,6 +22,8 @@
  *
  * @copyright 2000-2003,2006-2015  The FreeRADIUS server project
  */
+RCSID("$Id$")
+
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
 
