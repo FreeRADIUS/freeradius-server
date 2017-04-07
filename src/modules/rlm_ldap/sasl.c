@@ -58,7 +58,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 {
 	fr_ldap_sasl_ctx_t_t		*this = ctx;
 	REQUEST				*request = this->request;
-	ldap_handle_config_t const	*handle_config = ctx->conn->config;
+	ldap_handle_config_t const	*handle_config = this->conn->config;
 	sasl_interact_t			*cb = sasl_callbacks;
 	sasl_interact_t			*cb_p;
 
