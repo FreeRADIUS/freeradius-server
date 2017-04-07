@@ -42,6 +42,8 @@ typedef struct fr_ldap_sasl_ctx_t {
 	char const		*password;	//!< Bind password.
 
 	ldap_sasl const		*extra;		//!< Extra fields (realm and proxy id).
+
+	ldap_handle_t		*conn;		//!< Connection in use.
 } fr_ldap_sasl_ctx_t_t;
 
 /** Callback for ldap_sasl_interactive_bind
@@ -54,10 +56,11 @@ typedef struct fr_ldap_sasl_ctx_t {
  */
 static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx, void *sasl_callbacks)
 {
-	fr_ldap_sasl_ctx_t_t	*this = ctx;
-	REQUEST			*request = this->request;
-	sasl_interact_t		*cb = sasl_callbacks;
-	sasl_interact_t		*cb_p;
+	fr_ldap_sasl_ctx_t_t		*this = ctx;
+	REQUEST				*request = this->request;
+	ldap_handle_config_t const	*handle_config = conn->config;
+	sasl_interact_t			*cb = sasl_callbacks;
+	sasl_interact_t			*cb_p;
 
 	for (cb_p = cb; cb_p->id != SASL_CB_LIST_END; cb_p++) {
 		ROPTIONAL(RDEBUG3, DEBUG3, "SASL challenge : %s", cb_p->challenge);
@@ -104,11 +107,11 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
-				       ldap_handle_t *conn, char const *identity,
-				       char const *password, ldap_sasl const *sasl,
-				       LDAPControl **serverctrls, LDAPControl **clientctrls,
-				       struct timeval const *timeout,
-				       char const **error, char **extra)
+				      ldap_handle_t *conn, char const *identity,
+				      char const *password, ldap_sasl const *sasl,
+				      LDAPControl **serverctrls, LDAPControl **clientctrls,
+				      struct timeval const *timeout,
+				      char const **error, char **extra)
 {
 	ldap_rcode_t			status;
 	int				ret = 0;
@@ -135,6 +138,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 	sasl_ctx.identity = identity;
 	sasl_ctx.password = password;
 	sasl_ctx.extra = sasl;
+	sasl_ctx.conn = conn;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
 	for (;;) {
