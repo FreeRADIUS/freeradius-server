@@ -17,7 +17,7 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include "libldap.h"
+#include <freeradius-devel/ldap/libfreeradius-ldap.h>
 
 typedef struct ldap_inst_s rlm_ldap_t;
 
@@ -224,12 +224,4 @@ int rlm_ldap_map_do(rlm_ldap_t const *inst, REQUEST *request, LDAP *handle,
  *	clients.c - Dynamic clients (bulk load).
  */
 int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
-
-/*
- *	edir.c - Magic extensions for Novell
- */
-int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *len);
-
-char const *edir_errstr(int code);
-
 #endif

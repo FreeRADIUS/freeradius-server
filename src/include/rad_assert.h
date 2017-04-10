@@ -31,16 +31,16 @@ extern "C" {
 #endif
 
 #ifndef NDEBUG
-bool rad_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
+bool fr_assert_fail(char const *file, unsigned int line, char const *expr) CC_HINT(noreturn);
 #else
-bool rad_assert_fail(char const *file, unsigned int line, char const *expr);
+bool fr_assert_fail(char const *file, unsigned int line, char const *expr);
 #endif
 
 
 #ifdef NDEBUG
 #  define rad_assert(_expr)
 #elif !defined(__clang_analyzer__)
-#  define rad_assert(_expr) ((void) ((_expr) ? (void) 0 : (void) rad_assert_fail(__FILE__, __LINE__, #_expr)))
+#  define rad_assert(_expr) ((void) ((_expr) ? (void) 0 : (void) fr_assert_fail(__FILE__, __LINE__, #_expr)))
 #else
 #  include <assert.h>
 #  define rad_assert assert
@@ -58,7 +58,7 @@ bool rad_assert_fail(char const *file, unsigned int line, char const *expr);
 /** Use for conditions that should result in an assert in dev builds, and return in non-dev builds
  *
  */
-#define rad_cond_assert(_x) (bool)((_x) ? true : (rad_assert_fail(__FILE__,  __LINE__, #_x) && false))
+#define rad_cond_assert(_x) (bool)((_x) ? true : (fr_assert_fail(__FILE__,  __LINE__, #_x) && false))
 
 #ifdef __cplusplus
 }

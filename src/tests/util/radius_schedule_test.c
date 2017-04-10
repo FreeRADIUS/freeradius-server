@@ -22,7 +22,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/schedule.h>
+#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/md5.h>

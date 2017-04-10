@@ -682,6 +682,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+TARGET_SYSTEM
 target_os
 target_vendor
 target_cpu
@@ -2719,6 +2720,8 @@ test -n "$target_alias" &&
   test "$program_prefix$program_suffix$program_transform_name" = \
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
+
+TARGET_SYSTEM="$target"
 
 
 ac_ext=c
@@ -9562,7 +9565,7 @@ $as_echo "$as_me: WARNING: kqueue headers not found. Use --with-kqueue-include-d
   fi
 fi
 
-case "$host" in
+case "$target" in
   *-interix*)
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
     ;;
@@ -14293,7 +14296,7 @@ $as_echo "#define BSDSTYLE 3" >>confdefs.h
 gethostbyaddrrstyle=""
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking gethostbyaddr_r() syntax" >&5
 $as_echo_n "checking gethostbyaddr_r() syntax... " >&6; }
-case "$host" in
+case "$target" in
   *-freebsd*)
                             ac_fn_c_check_decl "$LINENO" "gethostbyaddr_r" "ac_cv_have_decl_gethostbyaddr_r" "
         #ifdef HAVE_NETDB_H
@@ -14696,6 +14699,10 @@ for bar in $MODULES; do
   if test -f "${srcdir}"/src/modules/$bar/configure; then
     mysubdirs="$mysubdirs src/modules/$bar"
   fi
+done
+
+for foo in `find "${srcdir}"/src/lib/ -type f -name configure`; do
+  mysubdirs="$mysubdirs $(dirname $foo)"
 done
 
 

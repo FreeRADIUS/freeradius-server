@@ -23,7 +23,7 @@ endif
 
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
-TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a
+TGT_PREREQS	:= libfreeradius-server.a libfreeradius-util.a
 
 # Libraries can't depend on libraries (oops), so make the binary
 # depend on the EAP code...

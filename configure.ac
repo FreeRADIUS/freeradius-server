@@ -2115,6 +2115,13 @@ for bar in $MODULES; do
   fi
 done
 
+dnl ############################################################
+dnl #  Find any support libraries we need to build
+dnl #############################################################
+for foo in `find "${srcdir}"/src/lib/ -type f -name configure`; do
+  mysubdirs="$mysubdirs $(dirname $foo)"
+done
+
 dnl #
 dnl #  Don't change the variable name here.  Autoconf goes bonkers
 dnl #  if you do.

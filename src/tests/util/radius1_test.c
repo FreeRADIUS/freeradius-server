@@ -22,8 +22,8 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/control.h>
-#include <freeradius-devel/util/worker.h>
+#include <freeradius-devel/io/control.h>
+#include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/fr_log.h>
 #include <freeradius-devel/radius.h>

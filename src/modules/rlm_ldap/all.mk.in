@@ -1,1 +1,0 @@
-SUBMAKEFILES := libfreeradius-ldap.mk rlm_ldap.mk

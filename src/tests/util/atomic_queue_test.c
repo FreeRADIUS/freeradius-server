@@ -22,7 +22,7 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/atomic_queue.h>
+#include <freeradius-devel/io/atomic_queue.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/time.h>

@@ -6,5 +6,5 @@ endif
 
 SOURCES		:= proto_radius_auth.c
 
-TGT_PREREQS	:= libfreeradius-radius.a
+TGT_PREREQS	:= libfreeradius-util.a
 

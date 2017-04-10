@@ -74,6 +74,7 @@ typedef struct rad_protocol_t {
 	rad_listen_decode_t	decode;			//!< Decode an incoming packet.
 } rad_protocol_t;
 
+#define TRANSPORT_NONE 0
 #define TRANSPORT_TCP (1 << IPPROTO_TCP)
 #define TRANSPORT_UDP (1 << IPPROTO_UDP)
 #define TRANSPORT_DUAL (TRANSPORT_UDP | TRANSPORT_TCP)
