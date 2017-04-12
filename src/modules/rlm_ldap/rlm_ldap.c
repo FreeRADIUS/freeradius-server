@@ -1165,7 +1165,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 		goto error;
 	}
 
-	cs = cf_section_sub_find(cf_item_to_section(ci), "update");
+	cs = cf_subsection_find(cf_item_to_section(ci), "update");
 	if (!cs) {
 		REDEBUG("Section must contain 'update' subsection");
 
@@ -1389,7 +1389,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 
 	char const *name = section_type_value[comp].section;
 
-	cs = cf_section_sub_find(parent, name);
+	cs = cf_subsection_find(parent, name);
 	if (!cs) {
 		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
 		       "from this section", inst->name, name);
@@ -1493,7 +1493,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->cs = conf;
 
-	options = cf_section_sub_find(conf, "options");
+	options = cf_subsection_find(conf, "options");
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
 		inst->handle_config.chase_referrals_unset = true;	 /* use OpenLDAP defaults */
 	}
@@ -1908,7 +1908,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Build the attribute map
 	 */
-	update = cf_section_sub_find(inst->cs, "update");
+	update = cf_subsection_find(inst->cs, "update");
 	if (update && (map_afrom_cs(&inst->user_map, update,
 				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
 				    LDAP_MAX_ATTRMAP) < 0)) {
@@ -1933,19 +1933,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->do_clients) {
 		CONF_SECTION *cs, *map, *tmpl;
 
-		cs = cf_section_sub_find(inst->cs, "client");
+		cs = cf_subsection_find(inst->cs, "client");
 		if (!cs) {
 			cf_log_err_cs(conf, "Told to load clients but no client section found");
 			goto error;
 		}
 
-		map = cf_section_sub_find(cs, "attribute");
+		map = cf_subsection_find(cs, "attribute");
 		if (!map) {
 			cf_log_err_cs(cs, "Told to load clients but no attribute section found");
 			goto error;
 		}
 
-		tmpl = cf_section_sub_find(cs, "template");
+		tmpl = cf_subsection_find(cs, "template");
 
 		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
 			cf_log_err_cs(cs, "Error loading clients");

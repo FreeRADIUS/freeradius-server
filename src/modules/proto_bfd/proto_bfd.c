@@ -1726,7 +1726,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Find the sibling "bfd" section of the "listen" section.
 	 */
 	server = cf_item_parent(cf_section_to_item(cs));
-	sock->unlang = cf_section_sub_find(server, "bfd");
+	sock->unlang = cf_subsection_find(server, "bfd");
 
 	return 0;
 }
@@ -1807,7 +1807,7 @@ static int bfd_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *li
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find(server_cs, "bfd");
+	cs = cf_subsection_find(server_cs, "bfd");
 	if (!cs) {
 		cf_log_err_cs(server_cs, "No 'bfd' sub-section found");
 		return -1;
@@ -1823,7 +1823,7 @@ static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find(server_cs, "bfd");
+	cs = cf_subsection_find(server_cs, "bfd");
 	if (!cs) {
 		cf_log_err_cs(server_cs, "No 'bfd' sub-section found");
 		return -1;

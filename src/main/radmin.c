@@ -637,7 +637,7 @@ int main(int argc, char **argv)
 		 *	Log the commands we've run.
 		 */
 		if (!radmin_log.file) {
-			subcs = cf_section_sub_find(cs, "log");
+			subcs = cf_subsection_find(cs, "log");
 			if (subcs) {
 				CONF_PAIR *cp = cf_pair_find(subcs, "radmin");
 				if (cp) {

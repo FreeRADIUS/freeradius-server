@@ -959,7 +959,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 */
 		if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
 
-		cs = cf_section_sub_find(conf, "config");
+		cs = cf_subsection_find(conf, "config");
 		if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
 	} else {
 		inst->module = main_module;

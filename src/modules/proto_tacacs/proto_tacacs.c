@@ -183,8 +183,8 @@ static void tacacs_running(REQUEST *request, fr_state_action_t action)
 		request->server_cs = request->listener->server_cs;
 		request->component = "tacacs";
 
-		unlang = cf_section_sub_find_name2(request->server_cs, "recv", tacacs_lookup_packet_code(request->packet));
-		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "recv", "*");
+		unlang = cf_subsection_find_name2(request->server_cs, "recv", tacacs_lookup_packet_code(request->packet));
+		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
 			goto setup_send;
@@ -284,7 +284,7 @@ stop_processing:
 			goto setup_send;
 		}
 
-		unlang = cf_section_sub_find_name2(request->server_cs, "process", dv->name);
+		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->name);
 		if (!unlang) {
 			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->name);
 			tacacs_status(request, RLM_MODULE_FAIL);
@@ -336,9 +336,9 @@ stop_processing:
 setup_send:
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_section_sub_find_name2(request->server_cs, "send", tacacs_lookup_packet_code(request->packet));
+			unlang = cf_subsection_find_name2(request->server_cs, "send", tacacs_lookup_packet_code(request->packet));
 		}
-		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "send", "*");
+		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "send", "*");
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
@@ -528,7 +528,7 @@ static int tacacs_compile_section(CONF_SECTION *server_cs, char const *name1, ch
 	CONF_SECTION *cs;
 	int ret;
 
-	cs = cf_section_sub_find_name2(server_cs, name1, name2);
+	cs = cf_subsection_find_name2(server_cs, name1, name2);
 	if (!cs) {
 		cf_log_err_cs(server_cs, "Failed finding '%s %s { ... }' section of virtual server %s",
 			name1, name2, cf_section_name2(server_cs));

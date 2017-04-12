@@ -603,7 +603,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* parse perl configuration sub-section */
-	cs = cf_section_sub_find(conf, "config");
+	cs = cf_subsection_find(conf, "config");
 	if (cs) {
 		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF", 1);
 		perl_parse_config(cs, 0, inst->rad_perlconf_hv);

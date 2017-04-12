@@ -1404,7 +1404,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	char const	*name2 = cf_section_name2(cs);
 
-	modules = cf_section_sub_find(main_config.config, "modules");
+	modules = cf_subsection_find(main_config.config, "modules");
 	if (!modules) {
 		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
 		return NULL;
@@ -2588,12 +2588,12 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	cs = cf_section_sub_find(main_config.config, "instantiate");
+	cs = cf_subsection_find(main_config.config, "instantiate");
 	if (cs) {
 		/*
 		 *	Found "foo".  Load it as "foo", or "foo.method".
 		 */
-		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
+		subcs = cf_subsection_find_name2(cs, NULL, virtual_name);
 		if (subcs) {
 			*pcomponent = method;
 			return subcs;
@@ -2605,7 +2605,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	If there's no policy section, we can't do anything else.
 	 */
-	cs = cf_section_sub_find(main_config.config, "policy");
+	cs = cf_subsection_find(main_config.config, "policy");
 	if (!cs) return NULL;
 
 	/*
@@ -2614,7 +2614,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *	And bail out if there's no policy "foo".
 	 */
 	if (method_name) {
-		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
+		subcs = cf_subsection_find_name2(cs, NULL, virtual_name);
 		if (subcs) *pcomponent = method;
 
 		return subcs;
@@ -2628,10 +2628,10 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 */
 	snprintf(buffer, sizeof(buffer), "%s.%s",
 		 virtual_name, comp2str[method]);
-	subcs = cf_section_sub_find_name2(cs, NULL, buffer);
+	subcs = cf_subsection_find_name2(cs, NULL, buffer);
 	if (subcs) return subcs;
 
-	return cf_section_sub_find_name2(cs, NULL, virtual_name);
+	return cf_subsection_find_name2(cs, NULL, virtual_name);
 }
 
 
@@ -2948,7 +2948,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	/*
 	 *	Not a virtual module.  It must be a real module.
 	 */
-	modules = cf_section_sub_find(main_config.config, "modules");
+	modules = cf_subsection_find(main_config.config, "modules");
 	if (!modules) goto fail;
 
 	this = NULL;

@@ -932,7 +932,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		name++;
 	}
 
-	driver_cs = cf_section_sub_find(conf, name);
+	driver_cs = cf_subsection_find(conf, name);
 	if (!driver_cs) {
 		driver_cs = cf_section_alloc(conf, name, NULL);
 		if (!driver_cs) return -1;
@@ -973,7 +973,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	update = cf_section_sub_find(inst->cs, "update");
+	update = cf_subsection_find(inst->cs, "update");
 	if (!update) {
 		cf_log_err_cs(conf, "Must have an 'update' section in order to cache anything");
 		return -1;

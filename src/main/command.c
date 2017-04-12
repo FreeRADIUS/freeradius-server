@@ -842,7 +842,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_OK;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1009,7 +1009,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 		return CMD_FAIL;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1046,7 +1046,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 		return CMD_FAIL;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1073,7 +1073,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 		return CMD_FAIL;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1097,7 +1097,7 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 		return CMD_FAIL;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1124,7 +1124,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 {
 	CONF_SECTION *cs, *subcs;
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return CMD_FAIL;
 
 	subcs = NULL;
@@ -2482,7 +2482,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return 0;
 
 	instance = module_find(cs, argv[0]);
@@ -2560,7 +2560,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	cs = cf_section_sub_find(main_config.config, "modules");
+	cs = cf_subsection_find(main_config.config, "modules");
 	if (!cs) return 0;
 
 	instance = module_find(cs, argv[0]);

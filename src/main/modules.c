@@ -105,7 +105,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	exfile_enable_triggers(handle, cf_section_sub_find(module, "file"), trigger_prefix, trigger_args);
+	exfile_enable_triggers(handle, cf_subsection_find(module, "file"), trigger_prefix, trigger_args);
 
 	return handle;
 }
@@ -154,7 +154,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	/*
 	 *	Is a real section (not referencing sibling module).
 	 */
-	cs = cf_section_sub_find(module, name);
+	cs = cf_subsection_find(module, name);
 	if (cs) {
 		*out = cs;
 
@@ -221,7 +221,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 		return -1;
 	}
 
-	*out = cf_section_sub_find(inst->cs, name);
+	*out = cf_subsection_find(inst->cs, name);
 
 	return 1;
 }
@@ -294,7 +294,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	/*
 	 *	Get our pool config section
 	 */
-	mycs = cf_section_sub_find(module, "pool");
+	mycs = cf_subsection_find(module, "pool");
 	if (!mycs) {
 		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
 		       cf_section_name(module));
@@ -615,7 +615,7 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 	rbtree_t			*thread_inst_tree;
 	_thread_intantiate_ctx_t	ctx;
 
-	modules = cf_section_sub_find(root, "modules");
+	modules = cf_subsection_find(root, "modules");
 	if (!modules) return 0;
 
 	thread_inst_tree = module_thread_inst_tree;
@@ -723,7 +723,7 @@ static int module_instantiate(CONF_SECTION *root, char const *name)
 	module_instance_t *inst;
 	CONF_SECTION		*modules;
 
-	modules = cf_section_sub_find(root, "modules");
+	modules = cf_subsection_find(root, "modules");
 	if (!modules) return 0;
 
 	inst = cf_data_find(modules, module_instance_t, name);
@@ -746,7 +746,7 @@ int modules_instantiate(CONF_SECTION *root)
 {
 	CONF_SECTION *modules;
 
-	modules = cf_section_sub_find(root, "modules");
+	modules = cf_subsection_find(root, "modules");
 	if (!modules) return 0;
 
 	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
@@ -1035,7 +1035,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Remember where the modules were stored.
 	 */
-	modules = cf_section_sub_find(root, "modules");
+	modules = cf_subsection_find(root, "modules");
 	if (!modules) WARN("Cannot find a \"modules\" section in the rooturation file!");
 
 	DEBUG2("%s: #### Loading modules ####", main_config.name);
@@ -1080,7 +1080,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	 *	us to load modules with no authorize/authenticate/etc.
 	 *	sections.
 	 */
-	cs = cf_section_sub_find(root, "instantiate");
+	cs = cf_subsection_find(root, "instantiate");
 	if (cs) {
 		cf_log_info(cs, "  instantiate {");
 

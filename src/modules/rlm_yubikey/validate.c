@@ -88,7 +88,7 @@ yk_error:
 	status = ykclient_init(&inst->ykc);
 	if (status != YKCLIENT_OK) goto yk_error;
 
-	servers = cf_section_sub_find(conf, "servers");
+	servers = cf_subsection_find(conf, "servers");
 	if (servers) {
 		CONF_PAIR *uri, *first;
 		/*

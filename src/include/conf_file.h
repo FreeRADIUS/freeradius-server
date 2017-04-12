@@ -409,8 +409,8 @@ CONF_PAIR	*cf_pair_find(CONF_SECTION const *, char const *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *, CONF_PAIR const *, char const *name);
 CONF_SECTION	*cf_section_find_name2(CONF_SECTION const *section,
 				       char const *name1, char const *name2);
-CONF_SECTION	*cf_section_sub_find(CONF_SECTION const *, char const *name);
-CONF_SECTION	*cf_section_sub_find_name2(CONF_SECTION const *, char const *name1, char const *name2);
+CONF_SECTION	*cf_subsection_find(CONF_SECTION const *, char const *name);
+CONF_SECTION	*cf_subsection_find_name2(CONF_SECTION const *, char const *name1, char const *name2);
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 

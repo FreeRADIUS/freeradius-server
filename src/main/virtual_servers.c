@@ -70,10 +70,10 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	 */
 	server_cs = request->server_cs;
 	if (!server_cs || (strcmp(request->server, cf_section_name2(server_cs)) != 0)) {
-		request->server_cs = cf_section_sub_find_name2(main_config.config, "server", request->server);
+		request->server_cs = cf_subsection_find_name2(main_config.config, "server", request->server);
 	}
 
-	cs = cf_section_sub_find(request->server_cs, section_type_value[comp].section);
+	cs = cf_subsection_find(request->server_cs, section_type_value[comp].section);
 	if (!cs) {
 		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value %s.",
 			section_type_value[comp].section, request->server,
@@ -99,7 +99,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		dv = fr_dict_enum_by_da(NULL, da, idx);
 		if (!dv) return RLM_MODULE_FAIL;
 
-		subcs = cf_section_sub_find_name2(cs, da->name, dv->name);
+		subcs = cf_subsection_find_name2(cs, da->name, dv->name);
 		if (!subcs) {
 			RDEBUG2("%s %s sub-section not found.  Using default return values.",
 				da->name, dv->name);
@@ -379,7 +379,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
-		subcs = cf_section_sub_find(cs,
+		subcs = cf_subsection_find(cs,
 					    section_type_value[comp].section);
 		if (!subcs) continue;
 
@@ -498,7 +498,7 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 		CONF_SECTION *cs2;
 
 		name2 = cf_section_name2(subcs);
-		cs2 = cf_section_sub_find_name2(cs, section_type_value[comp].typename, name2);
+		cs2 = cf_subsection_find_name2(cs, section_type_value[comp].typename, name2);
 		if (cs2 != subcs) {
 			cf_log_err_cs(cs2, "Duplicate configuration section %s %s",
 				      section_type_value[comp].typename, name2);
@@ -551,7 +551,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		/*
 		 *	Check for duplicates.
 		 */
-		subcs = cf_section_sub_find_name2(config, "server", server_name);
+		subcs = cf_subsection_find_name2(config, "server", server_name);
 		if (subcs && (subcs != cs)) {
 			ERROR("Duplicate virtual server \"%s\", in file %s:%d and file %s:%d",
 			      server_name,

@@ -219,7 +219,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			CONF_SECTION *cs;
 			CONF_SECTION *subcs;
 
-			cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
+			cs = cf_subsection_find_name2(main_config.config, "server", client->server);
 			if (!cs) {
 				ERROR("Failed to find virtual server %s", client->server);
 				return false;
@@ -229,7 +229,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	If this server has no "listen" section, add the clients
 			 *	to the global client list.
 			 */
-			subcs = cf_section_sub_find(cs, "listen");
+			subcs = cf_subsection_find(cs, "listen");
 			if (!subcs) goto global_clients;
 
 			/*
@@ -734,7 +734,7 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 		c->server_cs = master->server_cs;
 
 	} else if (c->server) {
-		c->server_cs = cf_section_sub_find_name2(main_config.config, "server", c->server);
+		c->server_cs = cf_subsection_find_name2(main_config.config, "server", c->server);
 		if (!c->server_cs) {
 			ERROR("Failed to find virtual server %s", c->server);
 			goto error;
@@ -806,7 +806,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 			/*
 			 *	Use pre-existing section or alloc a new one
 			 */
-			cc = cf_section_sub_find_name2(out, cf_section_name1(cs), cf_section_name2(cs));
+			cc = cf_subsection_find_name2(out, cf_section_name1(cs), cf_section_name2(cs));
 			if (!cc) {
 				cc = cf_section_alloc(out, cf_section_name1(cs), cf_section_name2(cs));
 				cf_section_add(out, cc);
@@ -906,7 +906,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			goto error;
 		}
 
-		c->server_cs = cf_section_sub_find_name2(main_config.config, "server", c->server);
+		c->server_cs = cf_subsection_find_name2(main_config.config, "server", c->server);
 		if (!c->server_cs) {
 			cf_log_err_cs(cs, "Failed to find virtual server %s", c->server);
 			goto error;
@@ -1033,7 +1033,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			goto error;
 		}
 
-		c->client_server_cs = cf_section_sub_find_name2(main_config.config, "server", c->client_server);
+		c->client_server_cs = cf_subsection_find_name2(main_config.config, "server", c->client_server);
 		if (!c->client_server_cs) {
 			cf_log_err_cs(cs, "Unknown virtual server '%s'", c->client_server);
 			goto error;
@@ -1099,7 +1099,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		 *	create a home server CONF_SECTION and then parse
 		 *	it into a home_server_t.
 		 */
-		} else if (with_coa || cf_section_sub_find(cs, "coa_server")) {
+		} else if (with_coa || cf_subsection_find(cs, "coa_server")) {
 			CONF_SECTION *server;
 			home_server_t *home;
 
@@ -1506,7 +1506,7 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 		return NULL;
 	}
 
-	cs = cf_section_sub_find(cs, "client");
+	cs = cf_subsection_find(cs, "client");
 	if (!cs) {
 		ERROR("No \"client\" section found in client file");
 		return NULL;

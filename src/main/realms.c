@@ -658,7 +658,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
-		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
+		if (!cf_subsection_find_name2(rc->cs, "server", home->server)) {
 			cf_log_err_cs(cs, "No such server %s", home->server);
 			goto error;
 		}
@@ -680,7 +680,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	/*
 	 *	Check the TLS configuration.
 	 */
-	tls = cf_section_sub_find(cs, "tls");
+	tls = cf_subsection_find(cs, "tls");
 	if (tls && home->ipaddr.af == AF_UNSPEC) {
 		cf_log_err_cs(cs, "TLS transport cannot be used for home servers with 'virtual_server' set");
 		goto error;
@@ -963,7 +963,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 	 *	Duplicate the server section, so we don't mangle
 	 *	the client CONF_SECTION we were passed.
 	 */
-	cs = cf_section_sub_find(client, "coa_server");
+	cs = cf_subsection_find(client, "coa_server");
 	if (cs) {
 		server = cf_section_dup(client, cs, "home_server", NULL, true);
 	} else {
@@ -1303,7 +1303,7 @@ static int server_pool_add(realm_config_t *rc,
 			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
-		if (!cf_section_sub_find_name2(rc->cs, "server", pool->virtual_server)) {
+		if (!cf_subsection_find_name2(rc->cs, "server", pool->virtual_server)) {
 			cf_log_err_cp(cp, "No such server %s", pool->virtual_server);
 			goto error;
 		}
@@ -1773,11 +1773,11 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 	if (!pool) {
 		CONF_SECTION *pool_cs;
 
-		pool_cs = cf_section_sub_find_name2(rc->cs,
+		pool_cs = cf_subsection_find_name2(rc->cs,
 						    "home_server_pool",
 						    name);
 		if (!pool_cs) {
-			pool_cs = cf_section_sub_find_name2(rc->cs,
+			pool_cs = cf_subsection_find_name2(rc->cs,
 							    "server_pool",
 							    name);
 		}
@@ -2090,7 +2090,7 @@ static int pool_peek_type(CONF_SECTION *config, CONF_SECTION *cs)
 		return HOME_TYPE_INVALID;
 	}
 
-	server_cs = cf_section_sub_find_name2(config, "home_server", name);
+	server_cs = cf_subsection_find_name2(config, "home_server", name);
 	if (!server_cs) {
 		cf_log_err_cp(cp, "home_server \"%s\" does not exist", name);
 		return HOME_TYPE_INVALID;

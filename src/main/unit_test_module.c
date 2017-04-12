@@ -466,7 +466,7 @@ static ssize_t xlat_poke(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	rad_assert(out != NULL);
 	rad_assert(*out);
 
-	modules = cf_section_sub_find(request->root->config, "modules");
+	modules = cf_subsection_find(request->root->config, "modules");
 	if (!modules) return 0;
 
 	buffer = talloc_strdup(request, fmt);

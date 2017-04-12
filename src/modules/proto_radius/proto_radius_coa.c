@@ -77,8 +77,8 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		unlang = cf_section_sub_find_name2(request->server_cs, "recv", dv->name);
-		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "recv", "*");
+		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->name);
+		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
 			goto done;
@@ -138,9 +138,9 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
+			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->name);
 		}
-		if (!unlang) unlang = cf_section_sub_find_name2(request->server_cs, "send", "*");
+		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "send", "*");
 
 		if (!unlang) goto send_reply;
 
@@ -196,7 +196,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_section_sub_find_name2(request->server_cs, "send", dv->name);
+				unlang = cf_subsection_find_name2(request->server_cs, "send", dv->name);
 				if (unlang) goto rerun_nak;
 
 				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
@@ -376,7 +376,7 @@ static int coa_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find_name2(server_cs, name1, name2);
+	cs = cf_subsection_find_name2(server_cs, name1, name2);
 	if (!cs) return 0;
 
 	cf_log_module(cs, "Loading %s %s {...}", name1, name2);

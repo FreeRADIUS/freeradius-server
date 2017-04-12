@@ -156,7 +156,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #ifdef HAVE_YKCLIENT
 		CONF_SECTION *cs;
 
-		cs = cf_section_sub_find(conf, "validation");
+		cs = cf_subsection_find(conf, "validation");
 		if (!cs) {
 			cf_log_err_cs(conf, "Missing validation section");
 			return -1;

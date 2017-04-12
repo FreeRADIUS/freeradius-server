@@ -267,7 +267,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 {
 	rlm_eap_ttls_t *inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
 
-	if (!cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server)) {
+	if (!cf_subsection_find_name2(main_config.config, "server", inst->virtual_server)) {
 		cf_log_err_by_name(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}

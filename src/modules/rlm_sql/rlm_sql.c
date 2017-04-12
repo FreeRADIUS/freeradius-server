@@ -1074,7 +1074,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Get the module's subsection or allocate one
 	 */
-	driver_cs = cf_section_sub_find(conf, name);
+	driver_cs = cf_subsection_find(conf, name);
 	if (!driver_cs) {
 		driver_cs = cf_section_alloc(conf, name, NULL);
 		if (!driver_cs) return -1;
@@ -1203,10 +1203,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	configuration.  So if that doesn't exist, we ignore
 	 *	the whole subsection.
 	 */
-	inst->config->accounting.cs = cf_section_sub_find(conf, "accounting");
+	inst->config->accounting.cs = cf_subsection_find(conf, "accounting");
 	inst->config->accounting.reference_cp = (cf_pair_find(inst->config->accounting.cs, "reference") != NULL);
 
-	inst->config->postauth.cs = cf_section_sub_find(conf, "post-auth");
+	inst->config->postauth.cs = cf_subsection_find(conf, "post-auth");
 	inst->config->postauth.reference_cp = (cf_pair_find(inst->config->postauth.cs, "reference") != NULL);
 
 	/*

@@ -141,7 +141,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Suppress certain attributes.
 	 */
-	cs = cf_section_sub_find(conf, "suppress");
+	cs = cf_subsection_find(conf, "suppress");
 	if (cs) {
 		CONF_ITEM	*ci;
 

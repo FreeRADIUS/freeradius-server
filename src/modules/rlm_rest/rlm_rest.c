@@ -756,7 +756,7 @@ static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_ite
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find(parent, name);
+	cs = cf_subsection_find(parent, name);
 	if (!cs) {
 		config->name = NULL;
 		return 0;

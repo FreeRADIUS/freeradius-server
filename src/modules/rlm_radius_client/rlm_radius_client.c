@@ -235,9 +235,9 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *t
 	}
 
 	if (child->reply) {
-		unlang = cf_section_sub_find_name2(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
+		unlang = cf_subsection_find_name2(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
 	} else {
-		unlang = cf_section_sub_find_name2(inst->server_cs, "recv", "timeout");
+		unlang = cf_subsection_find_name2(inst->server_cs, "recv", "timeout");
 	}
 
 	if (!unlang) goto done;
@@ -589,7 +589,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	if (!inst->server_cs) return mod_wait_for_reply(request, inst, ccr);
 
-	unlang = cf_section_sub_find_name2(inst->server_cs, "send", fr_packet_codes[packet->code]);
+	unlang = cf_subsection_find_name2(inst->server_cs, "send", fr_packet_codes[packet->code]);
 
 	if (!unlang) return mod_wait_for_reply(request, inst, ccr);
 
@@ -631,7 +631,7 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find_name2(server_cs, name1, name2);
+	cs = cf_subsection_find_name2(server_cs, name1, name2);
 	if (!cs) return 0;
 
 	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
@@ -689,7 +689,7 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 
 	if (!inst->virtual_server) return RLM_MODULE_OK;
 
-	cs = cf_section_sub_find_name2(main_config.config, "server", inst->virtual_server);
+	cs = cf_subsection_find_name2(main_config.config, "server", inst->virtual_server);
 	if (!cs) {
 		cf_log_err_cs(config, "Unknown virtual server '%s'.", inst->virtual_server);
 		return RLM_MODULE_FAIL;

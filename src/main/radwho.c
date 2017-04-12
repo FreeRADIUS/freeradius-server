@@ -333,13 +333,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	cs = cf_section_sub_find(maincs, "modules");
+	cs = cf_subsection_find(maincs, "modules");
 	if (!cs) {
 		fprintf(stderr, "%s: No modules section found in radiusd.conf\n", argv[0]);
 		exit(1);
 	}
 	/* Read the radutmp section of radiusd.conf */
-	cs = cf_section_sub_find_name2(cs, "radutmp", NULL);
+	cs = cf_subsection_find_name2(cs, "radutmp", NULL);
 	if (!cs) {
 		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf\n", argv[0]);
 		exit(1);

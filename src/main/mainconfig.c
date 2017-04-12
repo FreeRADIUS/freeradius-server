@@ -765,7 +765,7 @@ do {\
 	 *	to manually override the ones set by modules
 	 *	or the server.
 	 */
-	subcs = cf_section_sub_find(cs, "feature");
+	subcs = cf_subsection_find(cs, "feature");
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, "feature", NULL);
 		if (!subcs) return -1;
@@ -779,7 +779,7 @@ do {\
 	 *	We check if it's defined first, this is for
 	 *	backwards compatibility.
 	 */
-	subcs = cf_section_sub_find(cs, "version");
+	subcs = cf_subsection_find(cs, "version");
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, "version", NULL);
 		if (!subcs) return -1;

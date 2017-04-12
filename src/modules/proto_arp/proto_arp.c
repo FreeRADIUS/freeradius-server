@@ -55,7 +55,7 @@ static rlm_rcode_t arp_process(REQUEST *request)
 
 	request->server = request->listener->server;
 	request->server_cs = request->listener->server_cs;
-	unlang = cf_section_sub_find(request->server_cs, "arp");
+	unlang = cf_subsection_find(request->server_cs, "arp");
 
 	request->component = "arp";
 
@@ -277,7 +277,7 @@ static int arp_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *li
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find(server_cs, "arp");
+	cs = cf_subsection_find(server_cs, "arp");
 	if (!cs) {
 		cf_log_err_cs(server_cs, "No 'arp' sub-section found");
 		return -1;
@@ -293,7 +293,7 @@ static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 {
 	CONF_SECTION *cs;
 
-	cs = cf_section_sub_find(server_cs, "arp");
+	cs = cf_subsection_find(server_cs, "arp");
 	if (!cs) {
 		cf_log_err_cs(server_cs, "No 'arp' sub-section found");
 		return -1;

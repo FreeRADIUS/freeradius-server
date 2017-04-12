@@ -91,7 +91,7 @@ static int process_file(char const *filename)
 	/*
 	 *	Always has to be an "update" section.
 	 */
-	cs = cf_section_sub_find(main_config.config, "update");
+	cs = cf_subsection_find(main_config.config, "update");
 	if (!cs) {
 		talloc_free(main_config.config);
 		return -1;

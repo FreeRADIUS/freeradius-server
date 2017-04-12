@@ -309,7 +309,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	 *
 	 *	If there's no "tls" section, that's fine, too.
 	 */
-	tls = cf_section_sub_find(cs, "tls");
+	tls = cf_subsection_find(cs, "tls");
 #ifndef WITH_TCP
 	if (tls) {
 		cf_log_err_cs(cs, "TLS transport is not available in this executable");
@@ -1377,7 +1377,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 #  ifdef WITH_TLS
-		tls = cf_section_sub_find(cs, "tls");
+		tls = cf_subsection_find(cs, "tls");
 		if (tls) {
 			/*
 			 *	If unset, set to default.
@@ -1405,14 +1405,14 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Magical tuning methods!
 	 */
-	subcs = cf_section_sub_find(cs, "performance");
+	subcs = cf_subsection_find(cs, "performance");
 	if (subcs) {
 		rcode = cf_section_parse(subcs, this,
 					 performance_config);
 		if (rcode < 0) return -1;
 	}
 
-	subcs = cf_section_sub_find(cs, "limit");
+	subcs = cf_subsection_find(cs, "limit");
 	if (subcs) {
 		rcode = cf_section_parse(subcs, sock,
 					 limit_config);
@@ -1549,8 +1549,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		/*
 		 *	Explicit list given: use it.
 		 */
-		clients_cs = cf_section_sub_find_name2(parent_cs, "clients", section_name);
-		if (!clients_cs) clients_cs = cf_section_sub_find(main_config.config, section_name);
+		clients_cs = cf_subsection_find_name2(parent_cs, "clients", section_name);
+		if (!clients_cs) clients_cs = cf_subsection_find(main_config.config, section_name);
 		if (!clients_cs) {
 			cf_log_err_cs(cs, "Failed to find clients %s {...}", section_name);
 			return -1;
@@ -1560,7 +1560,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Always cache the CONF_SECTION of the server.
 	 */
-	this->server_cs = cf_section_sub_find_name2(parent_cs, "server", this->server);
+	this->server_cs = cf_subsection_find_name2(parent_cs, "server", this->server);
 	if (!this->server_cs) {
 		cf_log_err_cs(cs, "Failed to find virtual server '%s'", this->server);
 		return -1;
@@ -1573,7 +1573,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	choose the global list of clients.
 	 */
 	if (!clients_cs) {
-		if (cf_section_sub_find(this->server_cs, "client") != NULL) {
+		if (cf_subsection_find(this->server_cs, "client") != NULL) {
 			clients_cs = this->server_cs;
 		} else {
 			clients_cs = parent_cs;

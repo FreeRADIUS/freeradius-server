@@ -572,7 +572,7 @@ int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 
 	cb.rcode = CF_FILE_NONE;
 	cb.callback = callback;
-	cb.modules = cf_section_sub_find(cs, "modules");
+	cb.modules = cf_subsection_find(cs, "modules");
 
 	(void) rbtree_walk(tree, RBTREE_IN_ORDER, file_callback, &cb);
 
@@ -1059,7 +1059,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 
 			*r = '\0';
 			*q = '\0';
-			next = cf_section_sub_find_name2(cs, p, r + 1);
+			next = cf_subsection_find_name2(cs, p, r + 1);
 			*r = '[';
 			*q = ']';
 
@@ -1075,7 +1075,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 
 		} else {
 			*q = '\0';
-			next = cf_section_sub_find(cs, p);
+			next = cf_subsection_find(cs, p);
 			*q = '.';
 		}
 
@@ -1098,7 +1098,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 		return &(cp->item);
 	}
 
-	next = cf_section_sub_find(cs, p);
+	next = cf_subsection_find(cs, p);
 	if (next) return &(next->item);
 
 	/*
@@ -1464,7 +1464,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 		 *	It's a section, recurse!
 		 */
 		if (type == PW_TYPE_SUBSECTION) {
-			CONF_SECTION *subcs = cf_section_sub_find(cs, name);
+			CONF_SECTION *subcs = cf_subsection_find(cs, name);
 
 			if (cf_section_parse_pass2(subcs, (uint8_t *)base + variables[i].offset,
 						   (CONF_PARSER const *)variables[i].dflt) < 0) return -1;
@@ -2247,7 +2247,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 
 			if (!variables[i].dflt) continue;
 
-			subcs = cf_section_sub_find(cs, variables[i].name);
+			subcs = cf_subsection_find(cs, variables[i].name);
 
 			/*
 			 *	Set the is_set field for the subsection.
@@ -2359,7 +2359,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
 
-			subcs = cf_section_sub_find(cs, variables[i].name);
+			for (subcs = cf_subsection_find(cs, variables[i].name);
 			/*
 			 *	Default in this case is overloaded to mean a pointer
 			 *	to the CONF_PARSER struct for the subsection.
@@ -2491,7 +2491,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			subcs1 = cf_item_to_section(ci);
 			rad_assert(subcs1 != NULL);
 
-			subcs2 = cf_section_sub_find_name2(cs, subcs1->name1, subcs1->name2);
+			subcs2 = cf_subsection_find_name2(cs, subcs1->name1, subcs1->name2);
 			if (subcs2) {
 				/*
 				 *	sub-sections get merged.
@@ -2952,7 +2952,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		       parentcs = cf_top_section(current);
 
-		       templatecs = cf_section_sub_find(parentcs, "templates");
+		       templatecs = cf_subsection_find(parentcs, "templates");
 		       if (!templatecs) {
 				ERROR("%s[%d]: No \"templates\" section for reference \"%s\"", filename, *lineno, buff[2]);
 				goto error;
@@ -3788,7 +3788,7 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
  *	This finds ANY section having the same first name.
  *	The second name is ignored.
  */
-CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
+CONF_SECTION *cf_subsection_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_SECTION mycs;
 
@@ -3808,7 +3808,7 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
 /** Find a CONF_SECTION with both names.
  *
  */
-CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
+CONF_SECTION *cf_subsection_find_name2(CONF_SECTION const *cs,
 					char const *name1, char const *name2)
 {
 	CONF_ITEM    *ci;
