@@ -657,8 +657,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
 	if (inst->module->config &&
-	    (cf_section_parse_pass2(inst->cs, inst->data,
-				    inst->module->config) < 0)) {
+	    (cf_section_parse_pass2(inst->data, inst->cs, inst->module->config) < 0)) {
 		return -1;
 	}
 

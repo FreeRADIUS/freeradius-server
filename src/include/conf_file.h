@@ -204,12 +204,29 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p)
+
 #  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | PW_TYPE_IS_SET, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p), \
 	.is_set_ptr = _p ## _is_set
 #  define FR_ITEM_POINTER(_t, _p) _t, FR_CONF_TYPE_CHECK((_t), (_p), _p)
+
+/** A CONF_PARSER multi-subsection
+ *
+ * Parse multiple instance of a subsection.
+ *
+ * @param _n	name of subsection to search for.
+ * @param _s	instance data struct.
+ * @param _f	field in instance data struct.
+ * @param _sub	CONF_PARSER array to use to parse subsection data.
+ */
+#  define FR_CONF_SUBSECTION_MULTI(_n, _s, _f, _sub) \
+	.name = _n, \
+	.type = PW_TYPE_SUBSECTION | PW_TYPE_MULTI, \
+	.offset = FR_CONF_TYPE_CHECK(PW_TYPE_SUBSECTION | PW_TYPE_MULTI, &(((_s *)NULL)->_f), offsetof(_s, _f)), \
+	.subcs = _sub, \
+	.subcs_size = sizeof(**(((_s *)0)->_f))
 #else
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
@@ -230,7 +247,24 @@ _Generic((_ct), \
 	.data = _p, \
 	.is_set_ptr = _p ## _is_set
 #  define FR_ITEM_POINTER(_t, _p) _t, _p
+
+/** A CONF_PARSER multi-subsection
+ *
+ * Parse multiple instance of a subsection.
+ *
+ * @param _n	name of subsection to search for.
+ * @param _s	instance data struct.
+ * @param _f	field in instance data struct.
+ * @param _sub	CONF_PARSER array to use to parse subsection data.
+ */
+#  define FR_CONF_SUBSECTION_MULTI(_n, _s, _f, _sub) \
+	.name = _n, \
+	.type = PW_TYPE_SUBSECTION | PW_TYPE_MULTI, \
+	.offset = offsetof(_s, _f), \
+	.subcs = _sub, \
+	.subcs_size = sizeof(**(((_s *)0)->_f))
 #endif
+
 
 #define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
 	.name = _n, \
@@ -372,9 +406,13 @@ typedef struct CONF_PARSER {
 	union {
 		char const	*dflt;		//!< Default as it would appear in radiusd.conf.
 
-		void const	*subcs;		//!< When type is set to #PW_TYPE_SUBSECTION, should be a pointer
-						//!< to the start of another array of #CONF_PARSER structs, forming
-						//!< the subsection.
+		struct {
+			struct CONF_PARSER const *subcs;	//!< When type is set to #PW_TYPE_SUBSECTION, should
+							//!< be a pointer to the start of another array of
+							//!< #CONF_PARSER structs, forming the subsection.
+			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold
+							//!< the parsed data.
+		};
 	};
 
 	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
@@ -397,10 +435,10 @@ CONF_SECTION	*cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-int		cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name, unsigned int type, void *data,
 			      char const *dflt, FR_TOKEN dflt_quote);
-int		cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables);
-int		cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *variables);
+int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER const *variables);
+int		cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 int		cf_file_read(CONF_SECTION *cs, char const *file);
 void		cf_file_free(CONF_SECTION *cs);

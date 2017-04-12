@@ -318,7 +318,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 
 	conf = conf_alloc(cs);
 
-	if (cf_section_parse(cs, conf, tls_server_config) < 0) {
+	if (cf_section_parse(conf, conf, cs, tls_server_config) < 0) {
 	error:
 		talloc_free(conf);
 		return NULL;
@@ -450,7 +450,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 
 	conf = conf_alloc(cs);
 
-	if (cf_section_parse(cs, conf, tls_client_config) < 0) {
+	if (cf_section_parse(conf, conf, cs, tls_client_config) < 0) {
 	error:
 		talloc_free(conf);
 		return NULL;

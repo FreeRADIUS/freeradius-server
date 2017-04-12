@@ -1398,7 +1398,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 	}
 
 	*config = talloc_zero(inst, ldap_acct_section_t);
-	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
+	if (cf_section_parse(*config, *config, cs, acct_section_config) < 0) {
 		ERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", inst->name, name);
 
 		return -1;

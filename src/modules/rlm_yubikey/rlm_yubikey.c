@@ -174,10 +174,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
 #ifdef HAVE_YKCLIENT
 static int mod_detach(void *instance)
 {

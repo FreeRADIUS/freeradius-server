@@ -570,7 +570,7 @@ int main(int argc, char **argv)
 			/*
 			 *	Now find the socket name (sigh)
 			 */
-			rcode = cf_pair_parse(subcs, "socket",
+			rcode = cf_pair_parse(NULL, subcs, "socket",
 					      FR_ITEM_POINTER(PW_TYPE_STRING, &file), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
@@ -590,7 +590,7 @@ int main(int argc, char **argv)
 			/*
 			 *	Check UID and GID.
 			 */
-			rcode = cf_pair_parse(subcs, "uid",
+			rcode = cf_pair_parse(NULL, subcs, "uid",
 					      FR_ITEM_POINTER(PW_TYPE_STRING, &uid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
@@ -607,7 +607,7 @@ int main(int argc, char **argv)
 
 			if (uid != pwd->pw_uid) continue;
 
-			rcode = cf_pair_parse(subcs, "gid",
+			rcode = cf_pair_parse(NULL, subcs, "gid",
 					      FR_ITEM_POINTER(PW_TYPE_STRING, &gid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);

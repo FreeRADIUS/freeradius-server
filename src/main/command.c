@@ -2541,7 +2541,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 */
 	cf_pair_replace(instance->cs, cp, argv[2]);
 
-	rcode = cf_pair_parse(instance->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
+	rcode = cf_pair_parse(NULL, instance->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) {
 		cprintf_error(listener, "Failed to parse value\n");
 		return 0;
@@ -3174,7 +3174,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	sock = this->data;
 	talloc_set_destructor(sock, _command_socket_free);
 
-	if (cf_section_parse(cs, sock, command_config) < 0) return -1;
+	if (cf_section_parse(sock, sock, cs, command_config) < 0) return -1;
 
 	/*
 	 *	Can't get uid or gid of connecting user, so can't do

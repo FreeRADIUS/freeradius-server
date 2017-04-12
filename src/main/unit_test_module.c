@@ -446,7 +446,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 /*
  *	%{poke:sql.foo=bar}
  */
-static ssize_t xlat_poke(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
@@ -544,7 +544,7 @@ static ssize_t xlat_poke(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_pair_parse(instance->cs, variables[i].name, variables[i].type,
+		ret = cf_pair_parse(ctx, instance->cs, variables[i].name, variables[i].type,
 				    data, variables[i].dflt, variables[i].quote);
 		if (ret < 0) {
 			DEBUG2("Failed inserting new value into module instance data");

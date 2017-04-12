@@ -332,11 +332,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, void *
 }
 #endif
 
-
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
 static int mod_detach(UNUSED void *instance)
 {
 	/* free things here */

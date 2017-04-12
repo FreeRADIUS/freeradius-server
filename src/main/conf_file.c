@@ -1430,14 +1430,14 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *
  * @note Despite the name, this is really the second phase of #cf_pair_parse.
  *
- * @param cs CONF_SECTION to fixup.
- * @param base start of structure to write #vp_tmpl_t s to.
- * @param variables Array of CONF_PARSER structs to process.
+ * @param[out] base start of structure to write #vp_tmpl_t s to.
+ * @param[in] cs CONF_SECTION to fixup.
+ * @param[in] variables Array of CONF_PARSER structs to process.
  * @return
  *	- 0 on success.
  *	- -1 on failure (parse errors etc...).
  */
-int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const variables[])
+int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const variables[])
 {
 
 	int i;
@@ -1464,10 +1464,38 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 		 *	It's a section, recurse!
 		 */
 		if (type == PW_TYPE_SUBSECTION) {
-			CONF_SECTION *subcs = cf_subsection_find(cs, name);
+			uint8_t		*subcs_base;
+			CONF_SECTION	*subcs = cf_subsection_find(cs, name);
 
-			if (cf_section_parse_pass2(subcs, (uint8_t *)base + variables[i].offset,
+			/*
+			 *	Select base by whether this is a nested struct,
+			 *	or a pointer to another struct.
+			 */
+			if (!base) {
+				subcs_base = NULL;
+			} else if (type & PW_TYPE_MULTI) {
+				size_t j, len;
+				uint8_t **array;
+
+				array = (uint8_t **)((uint8_t *)base) + variables[i].offset;
+				len = talloc_array_length(array);
+
+				for (j = 0; j < len; j++) {
+					if (cf_section_parse_pass2(array[j], subcs,
+								   (CONF_PARSER const *)variables[i].dflt) < 0) {
+						return -1;
+					}
+				}
+				continue;
+			} else if (variables[i].subcs_size) {
+				subcs_base = (*(uint8_t **)((uint8_t *)base) + variables[i].offset);
+			} else {
+				subcs_base = (uint8_t *)base + variables[i].offset;
+			}
+
+			if (cf_section_parse_pass2(subcs_base, subcs,
 						   (CONF_PARSER const *)variables[i].dflt) < 0) return -1;
+
 			continue;
 		}
 
@@ -1633,7 +1661,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_PAIR *cp, unsigned int type)
+static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PAIR *cp, unsigned int type)
 {
 	int		rcode = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
@@ -2026,10 +2054,12 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  * | PW_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
  * | PW_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
  *
- * @param cs to search for matching #CONF_PAIR in.
- * @param name of #CONF_PAIR to search for.
- * @param type Data type to parse #CONF_PAIR value as.
- *	Should be one of the following ``data`` types, and one or more of the following ``flag`` types or'd together:
+ * @param[in] ctx	To allocate arrays and values in.
+ * @param[in] cs	to search for matching #CONF_PAIR in.
+ * @param[in] name	of #CONF_PAIR to search for.
+ * @param[in] type	Data type to parse #CONF_PAIR value as.
+ *			Should be one of the following ``data`` types,
+ *			and one or more of the following ``flag`` types or'd together:
  *	- ``data`` #PW_TYPE_TMPL 		- @copybrief PW_TYPE_TMPL
  *					  	  Feeds the value into #tmpl_afrom_str. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
@@ -2055,17 +2085,18 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	- ``flag`` #PW_TYPE_FILE_INPUT		- @copybrief PW_TYPE_FILE_INPUT
  *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
  *	- ``flag`` #PW_TYPE_MULTI		- @copybrief PW_TYPE_MULTI
-  *	- ``flag`` #PW_TYPE_IS_SET		- @copybrief PW_TYPE_IS_SET
- * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
- * @param dflt value to use, if no #CONF_PAIR is found.
- * @param dflt_quote around the dflt value.
+ *	- ``flag`` #PW_TYPE_IS_SET		- @copybrief PW_TYPE_IS_SET
+ * @param[out] out	Pointer to a global variable, or pointer to a field in the struct being populated with values.
+ * @param[in] dflt		value to use, if no #CONF_PAIR is found.
+ * @param[in] dflt_quote	around the dflt value.
  * @return
  *	- 1 if default value was used, or if there was no CONF_PAIR or dflt.
  *	- 0 on success.
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
+		  char const *name, unsigned int type, void *out,
 		  char const *dflt, FR_TOKEN dflt_quote)
 {
 	bool		multi, required, deprecated;
@@ -2126,7 +2157,7 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	Tmpl is outside normal range
 		 */
 		if (type & PW_TYPE_TMPL) {
-			array = (void **)talloc_zero_array(cs, vp_tmpl_t *, count);
+			array = (void **)talloc_zero_array(ctx, vp_tmpl_t *, count);
 		/*
 		 *	Allocate an array of values.
 		 *
@@ -2135,27 +2166,27 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 */
 		} else switch (PW_BASE_TYPE(type)) {
 		case PW_TYPE_BOOLEAN:
-			array = (void **)talloc_zero_array(cs, bool, count);
+			array = (void **)talloc_zero_array(ctx, bool, count);
 			break;
 
 		case PW_TYPE_INTEGER:
-			array = (void **)talloc_zero_array(cs, uint32_t, count);
+			array = (void **)talloc_zero_array(ctx, uint32_t, count);
 			break;
 
 		case PW_TYPE_SHORT:
-			array = (void **)talloc_zero_array(cs, uint16_t, count);
+			array = (void **)talloc_zero_array(ctx, uint16_t, count);
 			break;
 
 		case PW_TYPE_INTEGER64:
-			array = (void **)talloc_zero_array(cs, uint64_t, count);
+			array = (void **)talloc_zero_array(ctx, uint64_t, count);
 			break;
 
 		case PW_TYPE_SIGNED:
-			array = (void **)talloc_zero_array(cs, int32_t, count);
+			array = (void **)talloc_zero_array(ctx, int32_t, count);
 			break;
 
 		case PW_TYPE_STRING:
-			array = (void **)talloc_zero_array(cs, char *, count);
+			array = (void **)talloc_zero_array(ctx, char *, count);
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
@@ -2164,11 +2195,11 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		case PW_TYPE_IPV6_PREFIX:
 		case PW_TYPE_COMBO_IP_ADDR:
 		case PW_TYPE_COMBO_IP_PREFIX:
-			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			array = (void **)talloc_zero_array(ctx, fr_ipaddr_t, count);
 			break;
 
 		case PW_TYPE_TIMEVAL:
-			array = (void **)talloc_zero_array(cs, struct timeval, count);
+			array = (void **)talloc_zero_array(ctx, struct timeval, count);
 			break;
 
 		default:
@@ -2177,14 +2208,14 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		}
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, name)) {
-			if (cf_pair_parse_value(&array[i], array, cs, cp, type) < 0) {
+			if (cf_pair_parse_value(array, &array[i], cs, cp, type) < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);
 				return -1;
 			}
 		}
 
-		*(void **)data = array;
+		*(void **)out = array;
 	/*
 	 *	Single valued config item gets written to
 	 *	the data pointer directly.
@@ -2212,7 +2243,7 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 		if (deprecated) goto deprecated;
 
-		if (cf_pair_parse_value(data, cs, cs, cp, type) < 0) {
+		if (cf_pair_parse_value(ctx, out, cs, cp, type) < 0) {
 			talloc_free(dflt_cp);
 			return -1;
 		}
@@ -2321,23 +2352,133 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 	}
 }
 
-/** Parse a configuration section into user-supplied variables
+/** Parse a subsection
  *
- * @param cs to parse.
- * @param base pointer to a struct to fill with data.  Any buffers will also be talloced
- *	using this parent as a pointer.
- * @param variables mappings between struct fields and #CONF_ITEM s.
+ * @note Turns out using nested structures (instead of pointers) for subsections, was actually
+ *	a pretty bad design decision, and will need to be fixed at some future point.
+ *	For now we have a horrible hack where only multi-subsections get an array of structures
+ *	of the appropriate size.
+ *
+ * @param[in] ctx		to allocate any additional structures under.
+ * @param[out] out		pointer to a struct/pointer to fill with data.
+ * @param[in] cs		to parse.
+ * @param[in] name		of subsection to parse.
+ * @param[in] type		flags.
+ * @param[in] subcs_vars	CONF_PARSER definitions for the subsection.
+ * @param[in] subcs_size	size of subsection structures to allocate.
  * @return
  *	- 0 on success.
  *	- -1 on general error.
  *	- -2 if a deprecated #CONF_ITEM was found.
  */
-int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
+static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
+			       char const *name, PW_TYPE type, CONF_PARSER const *subcs_vars, size_t subcs_size)
 {
-	int ret = 0;
-	int i;
-	void *data;
-	bool *is_set = NULL;
+	CONF_SECTION *subcs;
+	int count, i, ret;
+	uint8_t **array;
+
+	rad_assert(type & PW_TYPE_SUBSECTION);
+
+	subcs = cf_subsection_find(cs, name);
+	if (!subcs) return 0;
+
+	/*
+	 *	Handle the single subsection case (which is simple)
+	 */
+	if (!(type & PW_TYPE_MULTI)) {
+		uint8_t *buff;
+
+		/*
+		 *	FIXME: We shouldn't allow nested structures like this.
+		 *	Each subsection struct should be allocated separately so
+		 *	we have a clean talloc hierarchy.
+		 */
+	 	if (!subcs_size) return cf_section_parse(ctx, out, subcs, subcs_vars);
+
+		buff = talloc_array(ctx, uint8_t, subcs_size);
+		if (!buff) {
+			ERROR("Failed allocating memory for subsection");
+			return -1;
+		}
+
+		ret = cf_section_parse(buff, buff, subcs, subcs_vars);
+		if (ret < 0) {
+			talloc_free(buff);
+			return -1;
+		}
+
+		*((uint8_t **)out) = buff;
+	}
+
+	rad_assert(subcs_size);
+
+	/*
+	 *	Handle the multi subsection case (which is harder)
+	 */
+	for (subcs = cf_subsection_find(cs, name), count = 0;
+	     subcs;
+	     subcs = cf_subsection_find_next(cs, subcs, name), count++);
+
+	/*
+	 *	Allocate an array to hold the subsections
+	 */
+	array = talloc_array(ctx, uint8_t *, count);
+	if (!array) {
+		ERROR("Failed allocating array to hold subsection structures");
+		return -1;
+	}
+
+	/*
+	 *	Start parsing...
+	 *
+	 *	Note, we allocate each subsection structure individually
+	 *	so that they can be used as talloc contexts and we can
+	 *	keep the talloc hierarchy clean.
+	 */
+	for (subcs = cf_subsection_find(cs, name), i = 0;
+	     subcs;
+	     subcs = cf_subsection_find_next(cs, subcs, name), i++) {
+		uint8_t *buff;
+
+		buff = talloc_zero_array(array, uint8_t, subcs_size);
+		if (!buff) {
+			ERROR("Failed allocating memory for subsection");
+			talloc_free(array);
+			return -1;
+		}
+		array[i] = buff;
+
+		ret = cf_section_parse(buff, buff, subcs, subcs_vars);
+		if (ret < 0) {
+			talloc_free(array);
+			return ret;
+		}
+	}
+
+	*((uint8_t ***)out) = array;
+
+	return 0;
+}
+
+/** Parse a configuration section into user-supplied variables
+ *
+ * @param[in] ctx		to allocate any strings, or additional structures in.
+ *				Usually the same as base, unless base is a nested struct.
+ * @param[out] base		pointer to a struct to fill with data.
+ * @param[in] cs		to parse.
+ * @param[in] variables 	mappings between struct fields and #CONF_ITEM s.
+ * @return
+ *	- 0 on success.
+ *	- -1 on general error.
+ *	- -2 if a deprecated #CONF_ITEM was found.
+ */
+int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER const *variables)
+{
+	int	ret = 0;
+	int	i;
+	void	*data;
+	bool	*is_set = NULL;
 
 	cs->variables = variables; /* this doesn't hurt anything */
 
@@ -2357,22 +2498,9 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		 *	Handle subsections specially
 		 */
 		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) {
-			CONF_SECTION *subcs;
-
-			for (subcs = cf_subsection_find(cs, variables[i].name);
-			/*
-			 *	Default in this case is overloaded to mean a pointer
-			 *	to the CONF_PARSER struct for the subsection.
-			 */
-			if (!variables[i].dflt || !subcs) {
-				ERROR("Internal sanity check 1 failed in cf_section_parse %s", variables[i].name);
-				ret = -1;
-				goto finish;
-			}
-
-			ret = cf_section_parse(subcs, (uint8_t *)base + variables[i].offset,
-					       (CONF_PARSER const *) variables[i].dflt);
-			if (ret < 0) goto finish;
+			if (cf_subsection_parse(ctx, (uint8_t *)base + variables[i].offset, cs,
+						variables[i].name, variables[i].type,
+						variables[i].subcs, variables[i].subcs_size) < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
 
@@ -2380,8 +2508,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 			data = variables[i].data; /* prefer this. */
 		} else if (base) {
 			data = ((uint8_t *)base) + variables[i].offset;
-		} else {
-			ERROR("Internal sanity check 2 failed in cf_section_parse");
+		} else if (!rad_cond_assert(0)) {
 			ret = -1;
 			goto finish;
 		}
@@ -2398,7 +2525,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_pair_parse(cs, variables[i].name, variables[i].type, data,
+		ret = cf_pair_parse(ctx, cs, variables[i].name, variables[i].type, data,
 				    variables[i].dflt, variables[i].quote);
 		switch (ret) {
 		case 1:		/* Used default (or not present) */

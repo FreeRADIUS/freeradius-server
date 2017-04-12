@@ -751,7 +751,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, 
 	return unlang_yield(request, mod_post_auth_result, NULL, handle);
 }
 
-static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_items,
+static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER const *config_items,
 			     rlm_rest_section_t *config, char const *name)
 {
 	CONF_SECTION *cs;
@@ -762,7 +762,7 @@ static int parse_sub_section(CONF_SECTION *parent, CONF_PARSER const *config_ite
 		return 0;
 	}
 
-	if (cf_section_parse(cs, config, config_items) < 0) {
+	if (cf_section_parse(inst, config, cs, config_items) < 0) {
 		config->name = NULL;
 		return -1;
 	}
@@ -960,18 +960,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, xlat_config, &inst->xlat, "xlat") < 0) ||
-		(parse_sub_section(conf, section_config, &inst->authorize,
+		(parse_sub_section(inst, conf, xlat_config, &inst->xlat, "xlat") < 0) ||
+		(parse_sub_section(inst, conf, section_config, &inst->authorize,
 				   section_type_value[MOD_AUTHORIZE].section) < 0) ||
-		(parse_sub_section(conf, section_config, &inst->authenticate,
+		(parse_sub_section(inst, conf, section_config, &inst->authenticate,
 				   section_type_value[MOD_AUTHENTICATE].section) < 0) ||
-		(parse_sub_section(conf, section_config, &inst->accounting,
+		(parse_sub_section(inst, conf, section_config, &inst->accounting,
 				   section_type_value[MOD_ACCOUNTING].section) < 0) ||
 
 /* @todo add behaviour for checksimul */
 /*		(parse_sub_section(conf, section_config, &inst->checksimul,
 				   section_type_value[MOD_SESSION].section) < 0) || */
-		(parse_sub_section(conf, section_config, &inst->post_auth,
+		(parse_sub_section(inst, conf, section_config, &inst->post_auth,
 				   section_type_value[MOD_POST_AUTH].section) < 0))
 	{
 		return -1;

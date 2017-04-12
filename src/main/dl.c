@@ -402,7 +402,7 @@ int dl_module_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_module_t cons
 	MEM(*data = talloc_zero_array(ctx, uint8_t, module->common->inst_size));
 
 	talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
-	if (module->common->config && (cf_section_parse(cs, *data, module->common->config) < 0)) {
+	if (module->common->config && (cf_section_parse(*data, *data, cs, module->common->config) < 0)) {
 		cf_log_err_cs(cs, "Invalid configuration for module \"%s\"", module->name);
 		talloc_free(*data);
 		return -1;

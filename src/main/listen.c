@@ -1308,12 +1308,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 
-	rcode = cf_pair_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
-	if (rcode != 0) rcode = cf_pair_parse(cs, "ipv4addr",
+	if (rcode != 0) rcode = cf_pair_parse(NULL, cs, "ipv4addr",
 					      FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
-	if (rcode != 0) rcode = cf_pair_parse(cs, "ipv6addr",
+	if (rcode != 0) rcode = cf_pair_parse(NULL, cs, "ipv6addr",
 					      FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 	/*
@@ -1326,10 +1326,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		ipaddr.ipaddr.ip6addr = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
-	rcode = cf_pair_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 
-	rcode = cf_pair_parse(cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(NULL, cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 	if (recv_buff) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
@@ -1349,7 +1349,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		CONF_SECTION *tls;
 #  endif
 
-		rcode = cf_pair_parse(cs, "proto", FR_ITEM_POINTER(PW_TYPE_STRING, &proto),
+		rcode = cf_pair_parse(NULL, cs, "proto", FR_ITEM_POINTER(PW_TYPE_STRING, &proto),
 				      "udp", T_DOUBLE_QUOTED_STRING);
 		if (rcode < 0) return -1;
 
@@ -1407,15 +1407,13 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	subcs = cf_subsection_find(cs, "performance");
 	if (subcs) {
-		rcode = cf_section_parse(subcs, this,
-					 performance_config);
+		rcode = cf_section_parse(this, this, subcs, performance_config);
 		if (rcode < 0) return -1;
 	}
 
 	subcs = cf_subsection_find(cs, "limit");
 	if (subcs) {
-		rcode = cf_section_parse(subcs, sock,
-					 limit_config);
+		rcode = cf_section_parse(sock, sock, subcs, limit_config);
 		if (rcode < 0) return -1;
 
 		if (sock->max_rate && ((sock->max_rate < 10) || (sock->max_rate > 1000000))) {
@@ -1543,7 +1541,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	clients_cs = NULL;
 	parent_cs = cf_top_section(cs);
-	rcode = cf_pair_parse(cs, "clients", FR_ITEM_POINTER(PW_TYPE_STRING, &section_name), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "clients", FR_ITEM_POINTER(PW_TYPE_STRING, &section_name), NULL, T_INVALID);
 	if (rcode < 0) return -1; /* bad string */
 	if (rcode == 0) {
 		/*
@@ -1556,6 +1554,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 	} /* else there was no "clients = " entry. */
+	talloc_const_free(section_name);
 
 	/*
 	 *	Always cache the CONF_SECTION of the server.
@@ -3094,8 +3093,7 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	cf_log_info(cs, "listen {");
 
 	listen_type = NULL;
-	rcode = cf_pair_parse(cs, "type", FR_ITEM_POINTER(PW_TYPE_STRING, &listen_type), "", T_DOUBLE_QUOTED_STRING);
-	if (rcode < 0) return NULL;
+
 
 	/*
 	 *	Allocate a listener.
@@ -3104,6 +3102,13 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	this->server = lc->server_name;
 	this->fd = -1;
 	this->cs = cs;
+
+	rcode = cf_pair_parse(this, cs, "type", FR_ITEM_POINTER(PW_TYPE_STRING, &listen_type),
+			      "", T_DOUBLE_QUOTED_STRING);
+	if (rcode < 0) {
+		talloc_free(this);
+		return NULL;
+	}
 
 #ifdef WITH_TCP
 	/*
