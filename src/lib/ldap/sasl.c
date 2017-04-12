@@ -157,7 +157,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = fr_ldap_result(conn, -1, identity, timeout, NULL, error, extra);
+			status = fr_ldap_result(conn, -1, 0, identity, timeout, NULL, error, extra);
 			break;		/* Old result gets freed on after exit */
 		}
 
@@ -167,7 +167,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 		 *	If LDAP parse result indicates there was an error
 		 *	then we're done.
 		 */
-		status = fr_ldap_result(conn, msgid, identity, timeout, &result, error, extra);
+		status = fr_ldap_result(conn, msgid, 0, identity, timeout, &result, error, extra);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:

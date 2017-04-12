@@ -149,7 +149,7 @@ struct ldap_inst_s {
 #endif
 
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
-	ldap_handle_config_t handle_config;			//!< Connection configuration instance.
+	ldap_handle_config_t handle_config;		//!< Connection configuration instance.
 
 	/*
 	 *	Global config

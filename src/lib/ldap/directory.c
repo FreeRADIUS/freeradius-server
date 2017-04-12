@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file directory.c
+ * @file lib/ldap/directory.c
  * @brief Determine remote server implementation and capabilities.
  *
  * As described by http://ldapwiki.willeke.com/wiki/Determine%20LDAP%20Server%20Vendor

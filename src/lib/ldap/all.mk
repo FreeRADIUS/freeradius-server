@@ -7,4 +7,4 @@ endif
 SOURCES		:= libfreeradius-ldap.c control.c directory.c edir.c util.c 
 
 SRC_CFLAGS	:=     
-TGT_LDLIBS	:=  -lldap 
+TGT_LDLIBS	:=  -llber  -lldap 

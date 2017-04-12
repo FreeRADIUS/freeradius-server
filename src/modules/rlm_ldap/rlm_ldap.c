@@ -35,40 +35,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/map_proc.h>
 
-/*
- *	Scopes
- */
-FR_NAME_NUMBER const ldap_scope[] = {
-	{ "sub",	LDAP_SCOPE_SUB	},
-	{ "one",	LDAP_SCOPE_ONE	},
-	{ "base",	LDAP_SCOPE_BASE },
-#ifdef LDAP_SCOPE_CHILDREN
-	{ "children",	LDAP_SCOPE_CHILDREN },
-#endif
-	{  NULL , -1 }
-};
-
-#ifdef LDAP_OPT_X_TLS_NEVER
-FR_NAME_NUMBER const ldap_tls_require_cert[] = {
-	{ "never",	LDAP_OPT_X_TLS_NEVER	},
-	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
-	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
-	{ "try",	LDAP_OPT_X_TLS_TRY	},
-	{ "hard",	LDAP_OPT_X_TLS_HARD	},	/* oh yes, just like that */
-
-	{  NULL , -1 }
-};
-#endif
-
-static FR_NAME_NUMBER const ldap_dereference[] = {
-	{ "never",	LDAP_DEREF_NEVER	},
-	{ "searching",	LDAP_DEREF_SEARCHING	},
-	{ "finding",	LDAP_DEREF_FINDING	},
-	{ "always",	LDAP_DEREF_ALWAYS	},
-
-	{  NULL , -1 }
-};
-
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, ldap_sasl_dynamic_t, mech) },
 	{ FR_CONF_OFFSET("proxy", PW_TYPE_TMPL, ldap_sasl_dynamic_t, proxy) },
@@ -1826,7 +1792,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Convert dereference strings to enumerated constants
 	 */
 	if (inst->handle_config.dereference_str) {
-		inst->handle_config.dereference = fr_str2int(ldap_dereference, inst->handle_config.dereference_str, -1);
+		inst->handle_config.dereference = fr_str2int(fr_ldap_derefrence,
+							     inst->handle_config.dereference_str, -1);
 		if (inst->handle_config.dereference < 0) {
 			cf_log_err_cs(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
 				      "'finding' or 'always'", inst->handle_config.dereference_str);
@@ -1850,7 +1817,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Convert scope strings to enumerated constants
 	 */
-	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
+	inst->userobj_scope = fr_str2int(fr_ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
 		cf_log_err_cs(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
@@ -1862,7 +1829,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		goto error;
 	}
 
-	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
+	inst->groupobj_scope = fr_str2int(fr_ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
 		cf_log_err_cs(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
@@ -1874,7 +1841,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		goto error;
 	}
 
-	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
+	inst->clientobj_scope = fr_str2int(fr_ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
 		cf_log_err_cs(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
@@ -1922,7 +1889,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
-		inst->handle_config.tls_require_cert = fr_str2int(ldap_tls_require_cert,
+		inst->handle_config.tls_require_cert = fr_str2int(fr_ldap_tls_require_cert,
 							      inst->handle_config.tls_require_cert_str, -1);
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err_cs(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "

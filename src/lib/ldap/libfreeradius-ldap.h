@@ -118,7 +118,6 @@ ldap_create_session_tracking_control LDAP_P((
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
-
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
 	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
@@ -311,11 +310,28 @@ typedef enum {
 	LDAP_PROC_TIMEOUT = -7				//!< Operation timed out.
 } ldap_rcode_t;
 
+/*
+ *	Tables for resolving strings to LDAP constants
+ */
+extern FR_NAME_NUMBER const fr_ldap_supported_extensions[];
+extern FR_NAME_NUMBER const fr_ldap_derefrence[];
+extern FR_NAME_NUMBER const fr_ldap_scope[];
+extern FR_NAME_NUMBER const fr_ldap_tls_require_cert[];
 
-extern FR_NAME_NUMBER const ldap_supported_extensions[];
-
-extern FR_NAME_NUMBER const ldap_scope[];
-extern FR_NAME_NUMBER const ldap_tls_require_cert[];
+/** Inline function to copy pointers from a berval to a valuebox
+ *
+ * @note This results in a shallow copy of the berval, so if the berval is freed
+ *	the value box becomes invalidated.
+ *
+ * @param[out] value	to write berval values to.
+ * @param[in] berval	to copy pointers/lengths from.
+ */
+inline void fr_ldap_berval_to_value(value_box_t *value, struct berval *berval)
+{
+	value->datum.ptr = berval->bv_val;
+	value->length = berval->bv_len;
+	value->type = PW_TYPE_OCTETS;
+}
 
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
@@ -347,14 +363,23 @@ ldap_rcode_t	fr_ldap_search(LDAPMessage **result, REQUEST *request,
 			       char const *dn, int scope, char const *filter, char const * const * attrs,
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
+ldap_rcode_t	fr_ldap_search_async(int *msgid, REQUEST *request,
+				     ldap_handle_t **pconn,
+				     char const *dn, int scope, char const *filter, char const * const *attrs,
+				     LDAPControl **serverctrls, LDAPControl **clientctrls);
+
 ldap_rcode_t	fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 
-ldap_rcode_t	fr_ldap_result(ldap_handle_t const *conn, int msgid, char const *dn,
+ldap_rcode_t	fr_ldap_result(ldap_handle_t const *conn,
+			       int msgid,
+			       int all,
+			       char const *dn,
 			       struct timeval const *timeout,
-			       LDAPMessage **result, char const **error, char **extra);
+			       LDAPMessage **result,
+			       char const **error, char **extra);
 
 ldap_handle_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, ldap_handle_config_t const *handle_config);
 
@@ -419,6 +444,8 @@ bool		fr_ldap_util_is_dn(char const *in, size_t inlen);
 size_t		fr_ldap_util_normalise_dn(char *out, char const *in);
 
 char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
+
+uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request,
 					     ldap_handle_t *conn, char **extensions);

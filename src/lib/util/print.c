@@ -404,8 +404,9 @@ DIAG_OFF(format-nonliteral)
  * @todo Do something sensible with 'n$', though it's probably not actually used
  *	anywhere in our code base.
  *
- * - %pH takes a talloced binary buffer and prints it as hex. The length of the
- *	 buffer is determined with a call to talloc_array_length()
+ * - %pH takes a buffer and prints it as hex. The length of the
+ *	 buffer is determined with a call to talloc_array_length() if it's not
+ *	 explicitly specified by the fmt string.
  *
  * - %pV prints a value box as a string.
  * - %pS prints a string with FreeRADIUS style escaping, and '"' as the quote char.
@@ -603,7 +604,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			 *	subst types
 			 */
 			switch (*(p + 1)) {
-			case 'H':
+			case 'V':
 			{
 				value_box_t const *in = va_arg(ap_q, value_box_t const *);
 
@@ -656,7 +657,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			}
 				break;
 
-			case 'B':
+			case 'H':
 			{
 				uint8_t const *in = va_arg(ap_q, uint8_t const *);
 

@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file edir.c
+ * @file lib/ldap/edir.c
  * @brief LDAP extension for reading eDirectory universal password.
  *
  * To contact Novell about this file by physical or electronic mail, you may

@@ -353,6 +353,24 @@ char *fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in)
 	return out;
 }
 
+/** Convert a berval to a talloced buffer
+ *
+ * @param ctx to allocate in.
+ * @param in Berval to copy.
+ * @return buffer containing in->bv_val.
+ */
+uint8_t *fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in)
+{
+	uint8_t *out;
+
+	out = talloc_array(ctx, uint8_t, in->bv_len + 1);
+	if (!out) return NULL;
+
+	memcpy(out, in->bv_val, in->bv_len);
+
+	return out;
+}
+
 /** Normalise escape sequences in a DN
  *
  * Characters in a DN can either be escaped as

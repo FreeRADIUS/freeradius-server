@@ -77,6 +77,11 @@ if test x$with_[]modname != xno; then
 		fail="$fail libldap"
 	fi
 
+	FR_SMART_CHECK_LIB(lber, ber_get_next)
+	if test "x$ac_cv_lib_lber_ber_get_next" != "xyes"; then
+		fail="$fail lber"
+	fi
+
 	dnl ############################################################
 	dnl # Check for header files
 	dnl ############################################################
