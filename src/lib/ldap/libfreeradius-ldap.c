@@ -82,7 +82,7 @@ FR_NAME_NUMBER const fr_ldap_tls_require_cert[] = {
 };
 #endif
 
-FR_NAME_NUMBER const ldap_dereference[] = {
+FR_NAME_NUMBER const fr_ldap_dereference[] = {
 	{ "never",	LDAP_DEREF_NEVER	},
 	{ "searching",	LDAP_DEREF_SEARCHING	},
 	{ "finding",	LDAP_DEREF_FINDING	},
