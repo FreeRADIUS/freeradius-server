@@ -151,7 +151,7 @@ int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 		fr_srv = ffi.load(\"freeradius-server\")\
 		fr = ffi.load(\"freeradius-lua\")\
 		debug = function(msg)\
-		   fr_srv.fr_fr_log(16, \"%s\", msg)\
+		   fr_srv.fr_log(16, \"%s\", msg)\
 		end\
 		info = function(msg)\
 		   fr_srv.fr_log(3, \"%s\", msg)\
