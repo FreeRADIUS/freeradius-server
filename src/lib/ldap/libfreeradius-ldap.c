@@ -252,16 +252,28 @@ ldap_rcode_t fr_ldap_result(ldap_handle_t const *conn,
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
 	lib_errno = ldap_result(conn->handle, msgid, all, &tv, result);
-	if (lib_errno == 0) {
+	switch (lib_errno) {
+	case 0:
 		lib_errno = LDAP_TIMEOUT;
-
 		goto process_error;
-	}
 
-	if (lib_errno == -1) {
+	case -1:
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
-
 		goto process_error;
+
+	/*
+	 *	ldap_parse_result only works on:
+	 *	- LDAPResult
+	 *	- BindResponse
+	 *	- ExtendedResponse
+	 */
+	case LDAP_RES_SEARCH_RESULT:
+	case LDAP_RES_BIND:
+	case LDAP_RES_EXTENDED:
+		break;
+
+	default:
+		return LDAP_PROC_SUCCESS;
 	}
 
 	/*
