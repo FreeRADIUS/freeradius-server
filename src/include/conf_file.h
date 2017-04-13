@@ -217,14 +217,15 @@ _Generic((_ct), \
  * Parse multiple instance of a subsection.
  *
  * @param _n	name of subsection to search for.
+ * @param _t	Must be PW_TYPE_SUBSECTION | PW_TYPE_MULTI and any optional flags.
  * @param _s	instance data struct.
  * @param _f	field in instance data struct.
  * @param _sub	CONF_PARSER array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_MULTI(_n, _s, _f, _sub) \
+#  define FR_CONF_SUBSECTION_MULTI(_n, _t, _s, _f, _sub) \
 	.name = _n, \
-	.type = PW_TYPE_SUBSECTION | PW_TYPE_MULTI, \
-	.offset = FR_CONF_TYPE_CHECK(PW_TYPE_SUBSECTION | PW_TYPE_MULTI, &(((_s *)NULL)->_f), offsetof(_s, _f)), \
+	.type = (_t), \
+	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f)), \
 	.subcs = _sub, \
 	.subcs_size = sizeof(**(((_s *)0)->_f))
 #else
@@ -253,13 +254,14 @@ _Generic((_ct), \
  * Parse multiple instance of a subsection.
  *
  * @param _n	name of subsection to search for.
+ * @param _t	Must be PW_TYPE_SUBSECTION | PW_TYPE_MULTI and any optional flags.
  * @param _s	instance data struct.
  * @param _f	field in instance data struct.
  * @param _sub	CONF_PARSER array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_MULTI(_n, _s, _f, _sub) \
+#  define FR_CONF_SUBSECTION_MULTI(_n, _t, _s, _f, _sub) \
 	.name = _n, \
-	.type = PW_TYPE_SUBSECTION | PW_TYPE_MULTI, \
+	.type = _t, \
 	.offset = offsetof(_s, _f), \
 	.subcs = _sub, \
 	.subcs_size = sizeof(**(((_s *)0)->_f))
