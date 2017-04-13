@@ -316,7 +316,7 @@ typedef enum {
  *	Tables for resolving strings to LDAP constants
  */
 extern FR_NAME_NUMBER const fr_ldap_supported_extensions[];
-extern FR_NAME_NUMBER const fr_ldap_derefrence[];
+extern FR_NAME_NUMBER const fr_ldap_dereference[];
 extern FR_NAME_NUMBER const fr_ldap_scope[];
 extern FR_NAME_NUMBER const fr_ldap_tls_require_cert[];
 

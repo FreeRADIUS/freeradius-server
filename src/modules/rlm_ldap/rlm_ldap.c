@@ -1792,7 +1792,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Convert dereference strings to enumerated constants
 	 */
 	if (inst->handle_config.dereference_str) {
-		inst->handle_config.dereference = fr_str2int(fr_ldap_derefrence,
+		inst->handle_config.dereference = fr_str2int(fr_ldap_dereference,
 							     inst->handle_config.dereference_str, -1);
 		if (inst->handle_config.dereference < 0) {
 			cf_log_err_cs(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
