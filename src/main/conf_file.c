@@ -2268,17 +2268,21 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
  * @param base		pointer or variable.
  * @param variables	that may have defaults in this config section.
  */
-static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
+static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 {
 	int i;
 
 	for (i = 0; variables[i].name != NULL; i++) {
-		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) {
+		if ((PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION)) {
 			CONF_SECTION *subcs;
 
 			if (!variables[i].dflt) continue;
 
 			subcs = cf_subsection_find(cs, variables[i].name);
+			if (!subcs && (variables[i].type & PW_TYPE_REQUIRED)) {
+				cf_log_err_cs(cs, "Missing %s {} subsection", variables[i].name);
+				return -1;
+			}
 
 			/*
 			 *	Set the is_set field for the subsection.
@@ -2300,7 +2304,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			 */
 			if (!subcs) {
 				subcs = cf_section_alloc(cs, variables[i].name, NULL);
-				if (!subcs) return;
+				if (!subcs) return -1;
 
 				cf_item_add(cs, &(subcs->item));
 			}
@@ -2322,6 +2326,8 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 			continue;
 		}
 	} /* for all variables in the configuration section */
+
+	return 0;
 }
 
 static void cf_section_parse_warn(CONF_SECTION *cs)
@@ -2381,7 +2387,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 	rad_assert(type & PW_TYPE_SUBSECTION);
 
 	subcs = cf_subsection_find(cs, name);
-	if (!subcs) return 0;
+	rad_assert(subcs);	/* should have been pre-allocated earlier */
 
 	/*
 	 *	Handle the single subsection case (which is simple)
@@ -2396,12 +2402,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 		 */
 	 	if (!subcs_size) return cf_section_parse(ctx, out, subcs, subcs_vars);
 
-		buff = talloc_array(ctx, uint8_t, subcs_size);
-		if (!buff) {
-			ERROR("Failed allocating memory for subsection");
-			return -1;
-		}
-
+		MEM(buff = talloc_array(ctx, uint8_t, subcs_size));
 		ret = cf_section_parse(buff, buff, subcs, subcs_vars);
 		if (ret < 0) {
 			talloc_free(buff);
@@ -2423,11 +2424,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 	/*
 	 *	Allocate an array to hold the subsections
 	 */
-	array = talloc_array(ctx, uint8_t *, count);
-	if (!array) {
-		ERROR("Failed allocating array to hold subsection structures");
-		return -1;
-	}
+	MEM(array = talloc_array(ctx, uint8_t *, count));
 
 	/*
 	 *	Start parsing...
@@ -2441,12 +2438,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 	     subcs = cf_subsection_find_next(cs, subcs, name), i++) {
 		uint8_t *buff;
 
-		buff = talloc_zero_array(array, uint8_t, subcs_size);
-		if (!buff) {
-			ERROR("Failed allocating memory for subsection");
-			talloc_free(array);
-			return -1;
-		}
+		MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
 		array[i] = buff;
 
 		ret = cf_section_parse(buff, buff, subcs, subcs_vars);
@@ -2488,7 +2480,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces, cs->name1, cs->name2);
 	}
 
-	cf_section_parse_init(cs, base, variables);
+	if (cf_section_parse_init(cs, base, variables) < 0) return -1;
 
 	/*
 	 *	Handle the known configuration parameters.
