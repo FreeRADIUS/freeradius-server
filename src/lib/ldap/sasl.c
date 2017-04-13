@@ -157,7 +157,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = fr_ldap_result(conn, -1, 0, identity, timeout, NULL, error, extra);
+			status = fr_ldap_result(conn, LDAP_RES_NONE, 0, identity, timeout, NULL, error, extra);
 			break;		/* Old result gets freed on after exit */
 		}
 

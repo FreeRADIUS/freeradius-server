@@ -180,7 +180,7 @@ char const *fr_ldap_error_str(ldap_handle_t const *conn)
  * sent, and information about partial DN matches.
  *
  * @param[in] conn	Current connection.
- * @param[in] msgid	returned from last operation. May be -1 if no result
+ * @param[in] msgid	returned from last operation. May be LDAP_RES_NONE if no result
  *			processing is required or LDAP_RES_ANY if any outstanding
  *			will do.
  * @param[in] all	Retrieve all outstanding messages (if 1).
@@ -239,7 +239,7 @@ ldap_rcode_t fr_ldap_result(ldap_handle_t const *conn,
 	 */
 	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 	if (lib_errno != LDAP_SUCCESS) goto process_error;
-	if (msgid < 0) return LDAP_SUCCESS;	/* No msgid and no error, return now */
+	if (msgid == LDAP_RES_NONE) return LDAP_SUCCESS;	/* No msgid and no error, return now */
 
 	if (!timeout) {
 		tv = conn->config->res_timeout;
@@ -251,7 +251,7 @@ ldap_rcode_t fr_ldap_result(ldap_handle_t const *conn,
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
-	lib_errno = ldap_result(conn->handle, msgid, all ? 1 : 0, &tv, result);
+	lib_errno = ldap_result(conn->handle, msgid, all, &tv, result);
 	if (lib_errno == 0) {
 		lib_errno = LDAP_TIMEOUT;
 
@@ -756,10 +756,15 @@ ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 
 	if (ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
 			    0, our_serverctrls, our_clientctrls, NULL, 0, msgid) != LDAP_SUCCESS) {
+		int ldap_errno;
+
+		ldap_get_option((*pconn)->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		ERROR("Failed performing search: %s", ldap_err2string(ldap_errno));
+
 		return LDAP_PROC_ERROR;
 	}
 
-	return status;
+	return LDAP_PROC_SUCCESS;
 }
 
 /** Modify something in the LDAP directory
@@ -1006,6 +1011,8 @@ ldap_handle_t *fr_ldap_conn_alloc(TALLOC_CTX *ctx, ldap_handle_config_t const *h
 	LDAP				*handle = NULL;
 
 	int				ldap_errno, ldap_version;
+
+	rad_assert(handle_config->server);
 
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&handle, handle_config->server);

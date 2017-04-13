@@ -118,6 +118,8 @@ ldap_create_session_tracking_control LDAP_P((
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
+#define LDAP_RES_NONE			(LDAP_RES_ANY - 1)
+
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
 	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
