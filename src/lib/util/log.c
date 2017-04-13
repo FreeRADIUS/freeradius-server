@@ -275,7 +275,16 @@ int fr_vlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
 		}
 	}
 
-	if (len < sizeof(buffer)) len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
+	if (len < sizeof(buffer)) {
+		char *tmp;
+
+		/*
+		 *	Fixme - All this code should be reworked to use a dynamic buffer
+		 */
+		tmp = fr_vasprintf(NULL, msg, ap);
+		len += strlcpy(buffer + len, tmp, sizeof(buffer) - len);
+		talloc_free(tmp);
+	}
 
 	/*
 	 *	Filter out control chars and non UTF8 chars
