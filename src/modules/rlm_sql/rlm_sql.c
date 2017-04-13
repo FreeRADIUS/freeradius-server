@@ -586,7 +586,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 
 /*
  * sql groupcmp function. That way we can do group comparisons (in the users file for example)
- * with the group memberships reciding in sql
+ * with the group memberships residing in sql
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
@@ -1234,7 +1234,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Neither group checks or profiles will work without
+	 *	Neither group checks nor profiles will work without
 	 *	a group membership query.
 	 */
 	if (!inst->config->groupmemb_query) goto release;
@@ -1327,7 +1327,7 @@ skipreply:
 	}
 
 	/*
-	 *	At this point the key (user) hasn't be found in the check table, the reply table
+	 *	At this point the key (user) hasn't been found in the check table, the reply table
 	 *	or the group mapping table, and there was no matching profile.
 	 */
 release:
@@ -1463,7 +1463,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		case RLM_SQL_ERROR:
 		/*
 		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
-		 *  were exhausted, and we couldn't create a new connection,
+		 *  were exhausted and we couldn't create a new connection,
 		 *  so we do not need to call fr_connection_release.
 		 */
 		case RLM_SQL_RECONNECT:
@@ -1495,7 +1495,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		(inst->module->sql_finish_query)(handle, inst->config);
 		RDEBUG("%i record(s) updated", numaffected);
 
-		if (numaffected > 0) break;	/* A query succeeded, were done! */
+		if (numaffected > 0) break;	/* A query succeeded, we're done! */
 	next:
 		/*
 		 *  We assume all entries with the same name form a redundant
