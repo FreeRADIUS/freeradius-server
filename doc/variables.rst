@@ -140,6 +140,8 @@ release.  They also do NOT permit the use of conditional syntax
 |%V         |Request-Authenticator      |                       |
 |           |(Verified/None)            |                       |
 +-----------+---------------------------+-----------------------+
+|%v         |Server Version             |                       |
++-----------+---------------------------+-----------------------+
 |%Y         |request year (YYYY)        |                       |
 +-----------+---------------------------+-----------------------+
 |%Z         |All request attributes     |                       |
