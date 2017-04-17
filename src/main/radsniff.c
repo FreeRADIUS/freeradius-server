@@ -1095,7 +1095,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			return;
 		}
 
-#if 0
 		/*
 		 *	It seems many probes add trailing garbage to the end
 		 *	of each capture frame.  This has been observed with
@@ -1104,12 +1103,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Leaving the code here in case it's ever needed for
 		 *	debugging.
 		 */
-		else if (diff < 0) {
+		else if (fr_debug_lvl >= 2 && diff < 0) {
 			REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
 				diff * -1, udp_len);
 			return;
 		}
-#endif
 	}
 	if ((version == 4) && conf->verify_udp_checksum) {
 		uint16_t expected;
@@ -1918,7 +1916,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
 	fprintf(output, "  -v                    Show program version information.\n");
 	fprintf(output, "  -w <file>             Write output packets to file.\n");
-	fprintf(output, "  -x                    Print more debugging information.\n");
+	fprintf(output, "  -x                    Print more debugging information. (-xx gives more debugging)\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>         Periodically write out statistics every <interval> seconds.\n");
 	fprintf(output, "  -T <timeout>          How many milliseconds before the request is counted as lost "
