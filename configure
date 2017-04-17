@@ -12499,6 +12499,7 @@ $as_echo "yes" >&6; }
 
 $as_echo "#define WITH_NDEBUG 1" >>confdefs.h
 
+  CFLAGS="$CFLAGS -DTALLOC_GET_TYPE_ABORT_NOOP"
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }

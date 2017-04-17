@@ -1582,6 +1582,7 @@ AC_MSG_CHECKING([if building with -DNDEBUG])
 if echo "$CFLAGS" | grep '\-DNDEBUG' > /dev/null; then
   AC_MSG_RESULT([yes])
   AC_DEFINE([WITH_NDEBUG], [1], [define if the server was built with -DNDEBUG])
+  CFLAGS="$CFLAGS -DTALLOC_GET_TYPE_ABORT_NOOP"
 else
   AC_MSG_RESULT([no])
 fi
