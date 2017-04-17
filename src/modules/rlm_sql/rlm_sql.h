@@ -74,6 +74,7 @@ typedef struct sql_acct_section {
 	CONF_SECTION		*cs;				//!< The CONF_SECTION representing the group
 								//!< of queries to process.
 
+	char const		*fetchattrs;	//!< query for fetch attributes from database to control list
 	char const		*reference;			//!< Reference string, expanded to point to
 								//!< a group of queries.
 	bool			reference_cp;

@@ -64,6 +64,7 @@ static const CONF_PARSER type_config[] = {
 };
 
 static const CONF_PARSER acct_config[] = {
+	{ FR_CONF_OFFSET("fetchattrs", PW_TYPE_STRING| PW_TYPE_XLAT, rlm_sql_config_t, accounting.fetchattrs) },
 	{ FR_CONF_OFFSET("reference", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
 	{ FR_CONF_OFFSET("logfile", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.logfile) },
 
@@ -1637,6 +1638,80 @@ finish:
 
 #ifdef WITH_ACCOUNTING
 
+/* 
+ * Fetch attributes from sql server and places it to control list
+ * Using fetchattrs query of accounting section of sql config
+ */
+static rlm_rcode_t acct_fetchattrs(void *instance, REQUEST *request, sql_acct_section_t *section)
+{
+	rlm_rcode_t rcode = RLM_MODULE_NOOP;
+
+	rlm_sql_t *inst = instance;
+	rlm_sql_handle_t  *handle;
+
+	VALUE_PAIR		*reply_tmp = NULL;
+	
+	int	rows;
+	
+	char			*expanded = NULL;
+
+	if ( ! section->fetchattrs ) {
+		RDEBUG("Ignoring null query");
+	}
+	
+	handle = fr_connection_get(inst->pool);
+	if (!handle) {
+		rcode = RLM_MODULE_FAIL;
+		
+		goto error;
+	}
+
+	if (radius_axlat(&expanded, request, section->fetchattrs, inst->sql_escape_func, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+
+		goto error;
+	}
+
+	if (!*expanded) {
+		RDEBUG("Ignoring null query");
+		rcode = RLM_MODULE_NOOP;
+		talloc_free(expanded);
+
+		goto error;
+	}
+
+	rlm_sql_query_log(inst, request, section, expanded);
+		
+	rows = sql_getvpdata(request, inst, request, &handle, &reply_tmp, expanded);
+	TALLOC_FREE(expanded);
+	if (rows < 0) {
+		REDEBUG("SQL query error getting CoA attributes");
+		rcode = RLM_MODULE_FAIL;
+		goto error;
+	}
+
+	if (rows == 0) goto error;
+
+	rdebug_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
+
+	radius_pairmove(request, &request->config, reply_tmp, true);
+
+	rcode = RLM_MODULE_OK;
+	
+	reply_tmp = NULL;
+
+	fr_connection_release(inst->pool, request);
+
+	return rcode;
+
+error:
+	fr_pair_list_free(&reply_tmp);
+
+	fr_connection_release(inst->pool, request);
+
+	return rcode;
+}
+
 /*
  *	Accounting: Insert or update session data in our sql table
  */
@@ -1644,6 +1719,10 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) CC_HINT(nonn
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_sql_t *inst = instance;
+
+	if (inst->config->accounting.fetchattrs) {
+		acct_fetchattrs(inst, request, &inst->config->accounting);
+	}
 
 	if (inst->config->accounting.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->accounting);
