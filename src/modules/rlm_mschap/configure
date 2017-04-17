@@ -3053,7 +3053,7 @@ $as_echo "#define HAVE_MEMBERSHIP_H 1" >>confdefs.h
 ac_safe=`echo "wbclient.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
-smart_include_dir="/usr/local/include /opt/include"
+smart_include_dir="/usr/local/include /opt/include /usr/include/samba-4.0"
 
 _smart_try_dir=
 _smart_include_dir=
