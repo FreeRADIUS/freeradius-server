@@ -31,6 +31,18 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 /*
+ * get configuration information at run time. if don't have
+ * the variable name, we return a default value.
+ *
+ * if the 'name' wasn't found, return the 'default_len'
+ */
+size_t rad_getsysconf(int name, size_t default_len) {
+	size_t len = (size_t)sysconf(name);
+
+	return (len > 0) ? len : default_len;
+}
+
+/*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in
  *	sa_flags, which causes grief if signal() is called in the
  *	handler before the cause of the signal has been cleared.
@@ -1179,8 +1191,8 @@ void rad_mode_to_oct(char out[5], mode_t mode)
  */
 int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1192,13 +1204,9 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 	 */
 	if (len == 0) {
 #ifdef _SC_GETPW_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
+		len = rad_getsysconf(_SC_GETPW_R_SIZE_MAX, 1024);
 #else
-		len = 1024;
+		len = rad_getsysconf(-1, 1024);
 #endif
 	}
 
@@ -1244,8 +1252,8 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
  */
 int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1257,13 +1265,9 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 	 */
 	if (len == 0) {
 #ifdef _SC_GETPW_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
+		len = rad_getsysconf(_SC_GETPW_R_SIZE_MAX, 1024);
 #else
-		sc_len = 1024;
+		len = rad_getsysconf(-1, 1024);
 #endif
 	}
 
@@ -1309,8 +1313,8 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
  */
 int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1322,13 +1326,9 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 	 */
 	if (len == 0) {
 #ifdef _SC_GETGR_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
+		len = rad_getsysconf(_SC_GETGR_R_SIZE_MAX, 1024);
 #else
-		sc_len = 1024;
+		len = rad_getsysconf(-1, 1024);
 #endif
 	}
 
@@ -1374,8 +1374,8 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
  */
 int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1387,13 +1387,9 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 	 */
 	if (len == 0) {
 #ifdef _SC_GETGR_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
+		len = rad_getsysconf(_SC_GETGR_R_SIZE_MAX, 1024);
 #else
-		len = 1024;
+		len = rad_getsysconf(-1, 1024);
 #endif
 	}
 
