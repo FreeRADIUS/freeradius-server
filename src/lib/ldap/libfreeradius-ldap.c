@@ -632,7 +632,7 @@ ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 			       0, our_serverctrls, our_clientctrls, NULL, 0, &msgid);
 
 	ROPTIONAL(RDEBUG, DEBUG, "Waiting for search result...");
-	status = fr_ldap_result(*pconn, msgid, 0, dn, NULL, &our_result, &error, &extra);
+	status = fr_ldap_result(*pconn, msgid, 1, dn, NULL, &our_result, &error, &extra);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
