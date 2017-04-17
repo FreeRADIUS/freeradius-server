@@ -221,7 +221,7 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
 	sql_log_entry_t	log[20];
 	size_t		num, i;
 
-	num = (inst->module->sql_error)(handle->log_ctx, log, (sizeof(log) / sizeof(*log)), handle, inst->config);
+	num = (inst->module->sql_error)(handle->log_ctx, log, sizeof(log), handle, inst->config);
 	if (num == 0) {
 		MOD_ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;
