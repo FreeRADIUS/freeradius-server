@@ -2821,7 +2821,8 @@ static int request_will_proxy(REQUEST *request)
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
-		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+		} else if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) ||
+			   (request->packet->code == PW_CODE_ACCOUNTING_STATUS))  {
 			pool = realm->acct_pool;
 #endif
 
