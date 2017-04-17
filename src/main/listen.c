@@ -95,13 +95,6 @@ static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 
 static rad_protocol_t master_listen[];
 
-static int _listen_config_free(listen_config_t *lc)
-{
-	talloc_const_free(lc->handle);
-	return 0;
-}
-
-
 int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
 {
 	rad_protocol_t const *proto;
@@ -352,9 +345,6 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		talloc_free(lc);
 		return -1;
 	}
-
-	if (module) talloc_set_destructor(lc, _listen_config_free);
-
 
 	return 0;
 }
