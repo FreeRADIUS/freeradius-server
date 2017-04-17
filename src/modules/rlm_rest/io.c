@@ -126,11 +126,7 @@ static void _rest_io_timer_expired(UNUSED struct timeval *now, void *ctx)
 {
 	rlm_rest_thread_t *t;
 
-#ifndef NDEBUG
 	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
-#else
-	t = ctx;
-#endif
 
 	DEBUG4("libcurl timer expired");
 
@@ -147,11 +143,7 @@ static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, void *c
 {
 	rlm_rest_thread_t *t;
 
-#ifndef NDEBUG
 	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
-#else
-	t = ctx;
-#endif
 
 	DEBUG4("libcurl fd %i errored", fd);
 
@@ -168,11 +160,7 @@ static void _rest_io_service_writable(UNUSED fr_event_list_t *el, int fd, void *
 {
 	rlm_rest_thread_t *t;
 
-#ifndef NDEBUG
 	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
-#else
-	t = ctx;
-#endif
 
 	DEBUG4("libcurl fd %i now writable", fd);
 
@@ -189,11 +177,7 @@ static void _rest_io_service_readable(UNUSED fr_event_list_t *el, int fd, void *
 {
 	rlm_rest_thread_t *t;
 
-#ifndef NDEBUG
 	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
-#else
-	t = ctx;
-#endif
 
 	DEBUG4("libcurl fd %i now readable", fd);
 

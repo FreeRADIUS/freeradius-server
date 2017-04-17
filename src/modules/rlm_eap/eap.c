@@ -85,16 +85,10 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	eap_packet_t *reply;
 	int rcode;
 
-#ifndef NDEBUG
 	eap_session = talloc_get_type_abort(eap_session, eap_session_t);
 	request = talloc_get_type_abort(eap_session->request, REQUEST);
 	eap_round = talloc_get_type_abort(eap_session->this_round, eap_round_t);
 	reply = talloc_get_type_abort(eap_round->request, eap_packet_t);
-#else
-	request = eap_session->request;
-	eap_round = eap_session->this_round;
-	reply = eap_round->request;
-#endif
 
 	/*
 	 *	The Id for the EAP packet to the NAS wasn't set.
@@ -855,8 +849,8 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		}
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
-#ifdef WITH_VERIFY_PTR
-		eap_session = talloc_get_type_abort(eap_session, eap_session_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+		(void) talloc_get_type_abort(eap_session, eap_session_t);
 #endif
 		eap_session->rounds++;
 		if (eap_session->rounds >= 50) {

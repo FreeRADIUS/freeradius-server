@@ -894,7 +894,7 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	bool cleaned_up;
 	fr_message_t *m;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
@@ -948,7 +948,7 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 {
 	uint8_t *p;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
@@ -1032,7 +1032,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	uint8_t *p;
 	fr_message_t *m2;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
@@ -1145,7 +1145,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	size_t aligned_size;
 
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
@@ -1220,7 +1220,7 @@ int fr_message_set_messages_used(fr_message_set_t *ms)
 {
 	int i, used;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
@@ -1249,7 +1249,7 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	int i;
 	int num_cleaned;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 
@@ -1278,7 +1278,7 @@ void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
 {
 	int i;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 #endif
 

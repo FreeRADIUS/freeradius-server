@@ -424,16 +424,10 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
 		return -1;
 	}
 
-#ifndef NDEBUG
 	/*
 	 *  Validate the event_t struct to detect memory issues early.
 	 */
 	ev = talloc_get_type_abort(*parent, fr_event_timer_t);
-
-#else
-	ev = *parent;
-#endif
-
 	if (ev->parent) {
 		(void)fr_cond_assert(*(ev->parent) == ev);
 		*ev->parent = NULL;
@@ -504,11 +498,7 @@ int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, voi
 	if (*parent) {
 		int ret;
 
-#ifndef NDEBUG
 		ev = talloc_get_type_abort(*parent, fr_event_timer_t);
-#else
-		ev = *parent;
-#endif
 
 		ret = fr_heap_extract(el->times, ev);
 		if (!fr_cond_assert(ret == 1)) return -1;	/* events MUST be in the heap */
@@ -737,11 +727,7 @@ void fr_event_service(fr_event_list_t *el)
 			continue;
 		}
 
-#ifndef NDEBUG
 		ev = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
-#else
-		ev = el->events[i].udata;
-#endif
 
 		if (!fr_cond_assert(ev->is_registered)) continue;
 

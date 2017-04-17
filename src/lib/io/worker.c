@@ -298,7 +298,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	fr_worker_t *worker = ctx;
 	char data[256];
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
@@ -823,14 +823,11 @@ static int fr_worker_idle(void *ctx, struct timeval *wake)
 {
 	bool sleeping;
 	int i;
-	fr_worker_t *worker = ctx;
+	fr_worker_t *worker = talloc_get_type_abort(ctx, fr_worker_t);
 
-#ifndef NDEBUG
-	talloc_get_type_abort(worker, fr_worker_t);
 	rad_assert(worker->runnable != NULL);
 	rad_assert(worker->to_decode.heap != NULL);
 	rad_assert(worker->localized.heap != NULL);
-#endif
 
 	/*
 	 *	The application is polling the event loop, but has
@@ -1199,8 +1196,8 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ct
 {
 	fr_channel_t *ch;
 
-#ifndef NDEBUG
-	talloc_get_type_abort(worker, fr_worker_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
 	rad_assert(worker->control != NULL);
@@ -1231,8 +1228,8 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ct
  */
 void fr_worker_name(fr_worker_t *worker, char const *name)
 {
-#ifndef NDEBUG
-	talloc_get_type_abort(worker, fr_worker_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(worker, fr_worker_t);
 #endif
 
 	worker->name = talloc_strdup(worker, name);

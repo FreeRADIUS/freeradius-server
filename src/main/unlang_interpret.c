@@ -1315,11 +1315,7 @@ static int _unlang_event_free(unlang_event_t *ev)
  */
 static void unlang_event_timeout_handler(struct timeval *now, void *ctx)
 {
-#ifndef NDEBUG
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
-#else
-	unlang_event_t *ev = ctx;
-#endif
 	void *mutable_ctx;
 	void *mutable_inst;
 
@@ -1338,11 +1334,7 @@ static void unlang_event_timeout_handler(struct timeval *now, void *ctx)
  */
 static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
 {
-#ifndef NDEBUG
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
-#else
-	unlang_event_t *ev = ctx;
-#endif
 	void *mutable_ctx;
 	void *mutable_inst;
 

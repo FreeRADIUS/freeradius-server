@@ -682,8 +682,8 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
  */
 int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev)
 {
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	if (fr_control_message_service_kevent(c, kev) == 0) {
@@ -726,8 +726,8 @@ int fr_channel_signal_worker_close(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
 
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	ch->active = false;
@@ -750,8 +750,8 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
 {
 	fr_channel_control_t cc;
 
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	ch->active = false;
@@ -770,8 +770,8 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
  */
 void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx)
 {
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	ch->end[FROM_WORKER].ctx = ctx;
@@ -784,8 +784,8 @@ void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx)
  */
 void *fr_channel_worker_ctx_get(fr_channel_t *ch)
 {
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	return ch->end[FROM_WORKER].ctx;
@@ -799,8 +799,8 @@ void *fr_channel_worker_ctx_get(fr_channel_t *ch)
  */
 void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
 {
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	ch->end[TO_WORKER].ctx = ctx;
@@ -813,8 +813,8 @@ void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
  */
 void *fr_channel_master_ctx_get(fr_channel_t *ch)
 {
-#ifndef NDEBUG
-	talloc_get_type_abort(ch, fr_channel_t);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	(void) talloc_get_type_abort(ch, fr_channel_t);
 #endif
 
 	return ch->end[TO_WORKER].ctx;

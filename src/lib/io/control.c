@@ -188,7 +188,7 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
  */
 void fr_control_free(fr_control_t *c)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
@@ -257,7 +257,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 {
 	fr_control_message_t *m;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
@@ -305,7 +305,7 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	int rcode;
 	struct kevent kev;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
@@ -395,7 +395,7 @@ int fr_control_message_service_kevent(UNUSED fr_control_t *c, struct kevent cons
  */
 int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 
@@ -434,7 +434,7 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
  */
 int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
 #endif
 

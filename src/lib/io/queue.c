@@ -84,7 +84,7 @@ fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size)
  */
 bool fr_queue_push(fr_queue_t *fq, void *data)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 
@@ -108,7 +108,7 @@ bool fr_queue_push(fr_queue_t *fq, void *data)
  */
 bool fr_queue_pop(fr_queue_t *fq, void **p_data)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 
@@ -130,7 +130,7 @@ bool fr_queue_pop(fr_queue_t *fq, void **p_data)
  */
 int fr_queue_size(fr_queue_t *fq)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 
@@ -146,7 +146,7 @@ int fr_queue_size(fr_queue_t *fq)
  */
 int fr_queue_num_elements(fr_queue_t *fq)
 {
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 
@@ -168,7 +168,7 @@ fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size)
 	fr_queue_t *nq;
 	TALLOC_CTX *ctx;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 
@@ -234,7 +234,7 @@ int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq)
 	void *data;
 	int i, room;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(fq, fr_queue_t);
 #endif
 

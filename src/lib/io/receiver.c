@@ -171,11 +171,7 @@ static void fr_receiver_drain_input(fr_receiver_t *rc, fr_channel_t *ch, fr_chan
  */
 static int fr_receiver_idle(void *ctx, struct timeval *wake)
 {
-	fr_receiver_t *rc = ctx;
-
-#ifndef NDEBUG
-	talloc_get_type_abort(rc, fr_receiver_t);
-#endif
+	fr_receiver_t *rc = talloc_get_type_abort(ctx, fr_receiver_t);
 
 	rad_cond_assert(rc->el != NULL); /* temporary until we actually use rc here */
 
@@ -257,7 +253,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	fr_receiver_worker_t *worker;
 	fr_channel_data_t *reply;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
 #endif
 
@@ -270,7 +266,9 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 		return 0;
 	}
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(worker, fr_receiver_worker_t);
+#endif
 
 	/*
 	 *	Send the message to the channel.  If we fail, recurse.
@@ -474,8 +472,9 @@ static void fr_receiver_worker_callback(void *ctx, void const *data, size_t data
 	rad_assert(data_size == sizeof(worker));
 
 	memcpy(&worker, data, data_size);
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-
+#endif
 	w = talloc_zero(rc, fr_receiver_worker_t);
 	if (!w) _exit(1);
 
@@ -498,12 +497,8 @@ static void fr_receiver_worker_callback(void *ctx, void const *data, size_t data
 static void fr_receiver_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
 {
 	fr_time_t now;
-	fr_receiver_t *rc = ctx;
+	fr_receiver_t *rc = talloc_get_type_abort(ctx, fr_receiver_t);
 	uint8_t data[256];
-
-#ifndef NDEBUG
-	talloc_get_type_abort(rc, fr_receiver_t);
-#endif
 
 	if (!fr_control_message_service_kevent(rc->control, kev)) {
 		fr_log(rc->log, L_DBG, "kevent not for us: ignoring");
@@ -647,7 +642,7 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 	fr_receiver_worker_t *worker;
 	fr_channel_data_t *cd;
 
-#ifndef NDEBUG
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
 #endif
 
@@ -770,8 +765,10 @@ int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t 
  */
 int fr_receiver_worker_add(fr_receiver_t *rc, fr_worker_t *worker)
 {
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
+#endif
 
 	return fr_control_message_send(rc->control, rc->rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
 }

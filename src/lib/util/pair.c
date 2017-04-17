@@ -2769,7 +2769,9 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
+#endif
 
 	if (!vp->da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
@@ -2787,7 +2789,9 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		if (!talloc_get_type(vp->vp_ptr, uint8_t)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
 				     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 			(void) talloc_get_type_abort(vp->vp_ptr, uint8_t);
+#endif
 		}
 
 		len = talloc_array_length(vp->vp_octets);
@@ -2816,7 +2820,9 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		if (!talloc_get_type(vp->vp_ptr, char)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" data buffer type should be "
 				     "char but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 			(void) talloc_get_type_abort(vp->vp_ptr, char);
+#endif
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
@@ -2847,9 +2853,12 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		break;
 	}
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (vp->da->flags.is_unknown) {
 		(void) talloc_get_type_abort(vp->da, fr_dict_attr_t);
-	} else {
+	} else
+#endif
+	{
 		fr_dict_attr_t const *da;
 
 		/*
