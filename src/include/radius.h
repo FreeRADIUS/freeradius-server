@@ -5,6 +5,8 @@
  *
  */
 
+#ifndef RADIUS_H_
+#define RADIUS_H_
 /** Internal data types used within libfreeradius
  *
  */
@@ -184,3 +186,5 @@ typedef enum {
 
 #define PW_UKERNA_CHBIND		135
 #define PW_UKERNA_TR_COI 136
+
+#endif /*RADIUS_H_*/

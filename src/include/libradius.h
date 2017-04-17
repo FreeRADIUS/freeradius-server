@@ -23,13 +23,14 @@
  *
  * @copyright 1999-2014 The FreeRADIUS server project
  */
-RCSIDH(libradius_h, "$Id$")
 
 /*
  *  Compiler hinting macros.  Included here for 3rd party consumers
  *  of libradius.h.
  */
 #include <freeradius-devel/build.h>
+
+RCSIDH(libradius_h, "$Id$")
 
 /*
  *  Let any external program building against the library know what
@@ -82,6 +83,8 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/hash.h>
 #include <freeradius-devel/regex.h>
+#include <freeradius-devel/conf.h>
+#include <freeradius-devel/radpaths.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #  if SIZEOF_UNSIGNED_INT != 4

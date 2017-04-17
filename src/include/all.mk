@@ -40,6 +40,9 @@ HEADERS	= \
 	udpfromto.h \
 	base64.h \
 	map.h \
+	threads.h \
+	regex.h \
+	tcp.h \
 	$(HEADERS_DY)
 
 #
@@ -89,9 +92,11 @@ src/include/%.h: share/dictionary.% share/dictionary.vqp
 #
 src/include/features.h: src/include/features-h src/include/autoconf.h
 	@$(ECHO) HEADER $@
-	@cp $< $@
+	@echo "#ifndef FR_FEATURES_H_ /* auto generated */" > $@
+	@cat $< >> $@
 	@grep "^#define[ ]*WITH_" src/include/autoconf.h >> $@
 	@grep "^#define[ ]*RADIUSD_VERSION" src/include/autoconf.h >> $@
+	@echo "#endif /*FR_FEATURES_H_ */" >> $@
 
 #
 #  Use the SED script we built earlier to make permanent substitutions
