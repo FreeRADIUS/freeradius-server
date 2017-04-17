@@ -535,6 +535,14 @@ void *rad_malloc(size_t size)
 	return ptr;
 }
 
+void *rad_calloc(size_t size)
+{
+	void *ptr = rad_malloc(size);
+
+	memset(ptr, 0, size);
+
+	return ptr;
+}
 
 void rad_const_free(void const *ptr)
 {
