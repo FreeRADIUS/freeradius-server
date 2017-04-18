@@ -147,7 +147,7 @@ server dynamic_clients {
 		#	      and then put one file per IP address in
 		#             that directory.
 		#
-		dynamic_clients
+		client
 
 		#
 		#  Example 3: Look the clients up in SQL.

@@ -1,8 +1,34 @@
+# -*- text -*-
 #
-#  Currently takes no configuration.  May be used to load static file definitions
-#  in future...
+#  $Id$
+
+# This module loads RADIUS clients as needed, rather than when the server
+# starts.
 #
-#  For now allows:
+#  There are no configuration entries for this module.  Instead, it
+#  relies on the "client" configuration.  You must:
+#
+#	1) link raddb/sites-enabled/dynamic_clients to
+#	   raddb/sites-available/dynamic_clients
+#
+#	2) Define a client network/mask (see top of the above file)
+#
+#	3) uncomment the "directory" entry in that client definition
+#
+#	4) list "client" in the "authorize" section of the
+#	   "client' virtual server.  The default example already
+#	   does this.
+#
+#	5) put files into the above directory, one per IP.
+#	   e.g. file "192.0.2.1" should contain a normal client definition
+#	   for a client with IP address 192.0.2.1.
+#
+#  For more documentation, see the file:
+#
+#	raddb/sites-available/dynamic-clients
+#
+#
+#  The module also supports maps and the %{client:...} expansion.
 #
 #  map client [<ipaddr>] {
 #	Tmp-String-0 := 'nas_type'
@@ -13,7 +39,6 @@
 # 
 #  "%{client:nas_type}"			# Expands to client's nas_type (or "" if nas_type not set)
 #  "%{client:<ipaddr>.nas_type}"	# Expands to the specified client's nas_type (or "" if nas_type not set or
-#					# client does not exist).
 client {
 
 }
