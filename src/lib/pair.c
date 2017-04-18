@@ -1543,8 +1543,8 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			talloc_free(vp);
 			return NULL;
 		}
-
-		value = NULL;	/* ignore it */
+		/* Ignore? But what about radclient checking oO We use strvalue but if we ignore it - all checks fails!*/
+		//value = NULL;	/* ignore it */
 		break;
 #endif
 	}
