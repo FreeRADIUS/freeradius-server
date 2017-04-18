@@ -67,6 +67,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/threads.h>
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/token.h>
+#include <freeradius-devel/talloc.h>
 #include <freeradius-devel/hash.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/regex.h>

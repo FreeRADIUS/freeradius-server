@@ -5,12 +5,17 @@
 #
 TARGET		:= libfreeradius-util.a
 
-SOURCES		:= cbuff.c \
+SOURCES		:= base64.c \
+		   cbuff.c \
 		   cursor.c \
 		   debug.c \
 		   dict.c \
+		   event.c \
+		   fifo.c \
 		   filters.c \
+		   getaddrinfo.c \
 		   hash.c \
+		   heap.c \
 		   hmacmd5.c \
 		   hmacsha1.c \
 		   inet.c \
@@ -38,18 +43,14 @@ SOURCES		:= cbuff.c \
 		   strlcpy.c \
 		   syserror.c \
 		   socket.c \
+		   talloc.c \
+		   tcp.c \
 		   token.c \
 		   udpfromto.c \
-		   value.c \
-		   fifo.c \
-		   packet.c \
-		   event.c \
-		   getaddrinfo.c \
-		   heap.c \
-		   tcp.c \
 		   udp.c \
-		   base64.c \
-		   version.c
+		   value.c \
+		   version.c \
+		   packet.c
 
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 
