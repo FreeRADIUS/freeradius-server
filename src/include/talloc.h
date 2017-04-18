@@ -18,6 +18,7 @@
 
 #include <talloc.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <ctype.h>
 
 void		*talloc_null_ctx(void);
