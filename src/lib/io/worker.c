@@ -1224,9 +1224,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ct
  */
 void fr_worker_name(fr_worker_t *worker, char const *name)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-#endif
 
 	worker->name = talloc_strdup(worker, name);
 }

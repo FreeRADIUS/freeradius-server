@@ -1028,11 +1028,9 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	uint8_t *p;
 	fr_message_t *m2;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
-#endif
 
 	rad_assert(m->status == FR_MESSAGE_USED);
 	rad_assert(m->rb != NULL);
