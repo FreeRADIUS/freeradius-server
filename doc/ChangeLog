@@ -3,6 +3,9 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Enforce TLS client certificate expiration on
 	  session resumption, and Session-Timeout.
 	* Updated dictionary.cisco.vpn3000
+	* Lowered the log output for failed PEAP sessions.
+	* ALlow utc in rlm_date.  Patch from
+	  Peter Lambrechtsen.
 
 	Bug fixes
 	* radtest uses Cleartext-Password for EAP, not
@@ -23,6 +26,8 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Handle connection error in rlm_ldap_cacheable_groupobj.
 	  Fixes #1951.
 	* Fix endian issues in DHCP.
+	* Multiple minor fixes for Coverity complaints.
+	* Handle unexpected regex.  Fixes #1959.
 
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
