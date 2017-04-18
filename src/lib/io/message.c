@@ -894,9 +894,7 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	bool cleaned_up;
 	fr_message_t *m;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
 
 	if (reserve_size > ms->max_allocation) {
 		fr_strerror_printf("Cannot reserve %zd > max allocation %zd\n", reserve_size, ms->max_allocation);
@@ -948,11 +946,9 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 {
 	uint8_t *p;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
-#endif
 
 	if (!m) {
 		m = fr_message_reserve(ms, actual_packet_size);
@@ -1145,11 +1141,9 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	size_t aligned_size;
 
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
-#endif
 
 	/*
 	 *	No existing message, try allocate enough room to align
@@ -1220,9 +1214,7 @@ int fr_message_set_messages_used(fr_message_set_t *ms)
 {
 	int i, used;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
 
 	used = 0;
 	for (i = 0; i <= ms->mr_max; i++) {
@@ -1249,9 +1241,7 @@ void fr_message_set_gc(fr_message_set_t *ms)
 	int i;
 	int num_cleaned;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
 
 	/*
 	 *	Manually clean up each message ring.
@@ -1278,9 +1268,7 @@ void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
 {
 	int i;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
-#endif
 
 	fprintf(fp, "message arrays = %d\t(current %d)\n", ms->mr_max + 1, ms->mr_current);
 	fprintf(fp, "ring buffers   = %d\t(current %d)\n", ms->rb_max + 1, ms->rb_current);

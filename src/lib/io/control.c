@@ -188,9 +188,7 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
  */
 void fr_control_free(fr_control_t *c)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
-#endif
 
 	talloc_free(c);
 }
@@ -257,9 +255,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 {
 	fr_control_message_t *m;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
-#endif
 
 	MPRINT("CONTROL push aq %p\n", c->aq);
 
@@ -305,9 +301,7 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	int rcode;
 	struct kevent kev;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
-#endif
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) {
 		return -1;
@@ -395,9 +389,7 @@ int fr_control_message_service_kevent(UNUSED fr_control_t *c, struct kevent cons
  */
 int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
-#endif
 
 	if (id >= FR_CONTROL_MAX_IDENT) {
 		fr_strerror_printf("Failed adding unknown ID %d", id);
@@ -434,9 +426,7 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
  */
 int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(c, fr_control_t);
-#endif
 
 	if (id >= FR_CONTROL_MAX_IDENT) {
 		fr_strerror_printf("Failed adding unknown ID %d", id);

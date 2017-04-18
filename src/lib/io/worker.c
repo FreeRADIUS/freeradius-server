@@ -298,9 +298,7 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
 	fr_worker_t *worker = ctx;
 	char data[256];
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	talloc_get_type_abort(worker, fr_worker_t);
-#endif
 
 	if (!fr_control_message_service_kevent(worker->control, kev)) {
 		fr_log(worker->log, L_DBG, "\t%skevent not for us!", worker->name);
@@ -1196,9 +1194,7 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ct
 {
 	fr_channel_t *ch;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-#endif
 
 	rad_assert(worker->control != NULL);
 

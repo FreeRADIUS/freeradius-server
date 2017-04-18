@@ -81,9 +81,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id)
 {
 	fr_tracking_entry_t *entry;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
-#endif
 
 	entry = &ft->packet[id];
 	if (entry->timestamp == 0) return -1;
@@ -119,9 +117,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 {
 	fr_tracking_entry_t *entry;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
-#endif
 
 	entry = &ft->packet[packet[1]];
 
@@ -175,9 +171,7 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, uint8_t id,
 {
 	fr_tracking_entry_t *entry;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
-#endif
 
 	entry = &ft->packet[id];
 

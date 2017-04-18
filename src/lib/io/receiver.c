@@ -253,9 +253,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 	fr_receiver_worker_t *worker;
 	fr_channel_data_t *reply;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
-#endif
 
 	/*
 	 *	Grab the worker with the least total CPU time.
@@ -266,9 +264,7 @@ static int fr_receiver_send_request(fr_receiver_t *rc, fr_channel_data_t *cd)
 		return 0;
 	}
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(worker, fr_receiver_worker_t);
-#endif
 
 	/*
 	 *	Send the message to the channel.  If we fail, recurse.
@@ -472,9 +468,8 @@ static void fr_receiver_worker_callback(void *ctx, void const *data, size_t data
 	rad_assert(data_size == sizeof(worker));
 
 	memcpy(&worker, data, data_size);
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-#endif
+
 	w = talloc_zero(rc, fr_receiver_worker_t);
 	if (!w) _exit(1);
 
@@ -642,9 +637,7 @@ int fr_receiver_destroy(fr_receiver_t *rc)
 	fr_receiver_worker_t *worker;
 	fr_channel_data_t *cd;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
-#endif
 
 	/*
 	 *	Pop all of the workers, and signal them that we're
@@ -765,10 +758,8 @@ int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t 
  */
 int fr_receiver_worker_add(fr_receiver_t *rc, fr_worker_t *worker)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rc, fr_receiver_t);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
-#endif
 
 	return fr_control_message_send(rc->control, rc->rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
 }

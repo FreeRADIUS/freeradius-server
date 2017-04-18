@@ -513,9 +513,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 
 	entry = rbtree_finddata(state->tree, &my_entry);
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
-#endif
 
 	return entry;
 }

@@ -97,9 +97,7 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
  */
 uint8_t *fr_ring_buffer_reserve(fr_ring_buffer_t *rb, size_t size)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	if (rb->closed) {
 		fr_strerror_printf("Allocation request after ring buffer is closed");
@@ -178,9 +176,7 @@ uint8_t *fr_ring_buffer_alloc(fr_ring_buffer_t *rb, size_t size)
 {
 	uint8_t *p;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	if (rb->closed) {
 		fr_strerror_printf("Allocation request after ring buffer is closed");
@@ -305,10 +301,8 @@ uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size
 {
 	uint8_t *p;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(src, fr_ring_buffer_t);
 	(void) talloc_get_type_abort(dst, fr_ring_buffer_t);
-#endif
 
 	if (dst->closed) {
 		fr_strerror_printf("Allocation request after ring buffer is closed");
@@ -365,9 +359,7 @@ int fr_ring_buffer_free(fr_ring_buffer_t *rb, size_t size_to_free)
 {
 	size_t block_size;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	/*
 	 *	Nothing to free, do nothing.
@@ -468,9 +460,7 @@ empty_buffer:
  */
 int fr_ring_buffer_close(fr_ring_buffer_t *rb)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	rb->closed = true;
 	return 0;
@@ -486,9 +476,7 @@ int fr_ring_buffer_close(fr_ring_buffer_t *rb)
  */
 size_t fr_ring_buffer_size(fr_ring_buffer_t *rb)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	return rb->size;
 }
@@ -504,9 +492,7 @@ size_t fr_ring_buffer_used(fr_ring_buffer_t *rb)
 {
 	size_t size;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	if (rb->write_offset < rb->data_start) {
 		size = rb->write_offset;
@@ -531,9 +517,7 @@ size_t fr_ring_buffer_used(fr_ring_buffer_t *rb)
  */
 int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size)
 {
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	(void) talloc_get_type_abort(rb, fr_ring_buffer_t);
-#endif
 
 	*p_start = rb->buffer + rb->data_start;
 

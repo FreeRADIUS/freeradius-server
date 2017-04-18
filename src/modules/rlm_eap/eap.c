@@ -849,9 +849,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		}
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
 		(void) talloc_get_type_abort(eap_session, eap_session_t);
-#endif
 		eap_session->rounds++;
 		if (eap_session->rounds >= 50) {
 			RERROR("Failing EAP session due to too many round trips");
