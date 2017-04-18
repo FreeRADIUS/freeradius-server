@@ -135,6 +135,94 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
 	return 0;
 }
 
+/** Prints string for use as a JSON string: Add "" and escape special chars
+ *
+ *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
+ *  JSON value to.
+ *
+ * @param out Where to write the string.
+ * @param outlen Length of output buffer.
+ * @param s Input string
+ * @param slen Length of the input string
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
+ */
+size_t fr_json_from_string(char *out, size_t outlen, char const *s, size_t slen)
+{
+	char const	*q;
+	size_t len, freespace = outlen;
+
+	if (freespace < 2) return outlen + 1;
+	*out++ = '"';
+	freespace--;
+
+	for (q = s; q < s + slen; q++) {
+		/* Indicate truncation */
+		if (freespace < 3) return outlen + 1;
+
+		if (*q == '"') {
+			*out++ = '\\';
+			*out++ = '"';
+			freespace -= 2;
+		} else if (*q == '\\') {
+			*out++ = '\\';
+			*out++ = '\\';
+			freespace -= 2;
+		} else if (*q == '/') {
+			*out++ = '\\';
+			*out++ = '/';
+			freespace -= 2;
+		} else if (*q >= ' ') {
+			*out++ = *q;
+			freespace--;
+		} else {
+			*out++ = '\\';
+			freespace--;
+
+			switch (*q) {
+			case '\b':
+				*out++ = 'b';
+				freespace--;
+				break;
+
+			case '\f':
+				*out++ = 'f';
+				freespace--;
+				break;
+
+			case '\n':
+				*out++ = 'b';
+				freespace--;
+				break;
+
+			case '\r':
+				*out++ = 'r';
+				freespace--;
+				break;
+
+			case '\t':
+				*out++ = 't';
+				freespace--;
+				break;
+			default:
+				len = snprintf(out, freespace, "u%04X", *q);
+				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+				out += len;
+				freespace -= len;
+			}
+		}
+	}
+
+	/* Indicate truncation */
+	if (freespace < 2) return outlen + 1;
+	*out++ = '"';
+	freespace--;
+	*out = '\0'; // We don't increment out, because the nul byte should not be included in the length
+
+	return outlen - freespace;
+}
+
 /** Prints attribute as string, escaped suitably for use as JSON string
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
@@ -149,7 +237,6 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
  */
 size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	char const	*q;
 	size_t		len, freespace = outlen;
 
 	if (!vp->da->flags.has_tag) {
@@ -177,78 +264,19 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		}
 	}
 
+	if (vp->da->type == PW_TYPE_STRING) {
+		return fr_json_from_string(out, outlen, vp->vp_strvalue, vp->vp_length);
+	}
+
 	/* Indicate truncation */
 	if (freespace < 2) return outlen + 1;
 	*out++ = '"';
 	freespace--;
 
-	switch (vp->da->type) {
-	case PW_TYPE_STRING:
-		for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->vp_length; q++) {
-			/* Indicate truncation */
-			if (freespace < 3) return outlen + 1;
-
-			if (*q == '"') {
-				*out++ = '\\';
-				*out++ = '"';
-				freespace -= 2;
-			} else if (*q == '\\') {
-				*out++ = '\\';
-				*out++ = '\\';
-				freespace -= 2;
-			} else if (*q == '/') {
-				*out++ = '\\';
-				*out++ = '/';
-				freespace -= 2;
-			} else if (*q >= ' ') {
-				*out++ = *q;
-				freespace--;
-			} else {
-				*out++ = '\\';
-				freespace--;
-
-				switch (*q) {
-				case '\b':
-					*out++ = 'b';
-					freespace--;
-					break;
-
-				case '\f':
-					*out++ = 'f';
-					freespace--;
-					break;
-
-				case '\n':
-					*out++ = 'b';
-					freespace--;
-					break;
-
-				case '\r':
-					*out++ = 'r';
-					freespace--;
-					break;
-
-				case '\t':
-					*out++ = 't';
-					freespace--;
-					break;
-				default:
-					len = snprintf(out, freespace, "u%04X", *q);
-					if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-					out += len;
-					freespace -= len;
-				}
-			}
-		}
-		break;
-
-	default:
-		len = fr_pair_value_snprint(out, freespace, vp, 0);
-		if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-		out += len;
-		freespace -= len;
-		break;
-	}
+	len = fr_pair_value_snprint(out, freespace, vp, 0);
+	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+	out += len;
+	freespace -= len;
 
 	/* Indicate truncation */
 	if (freespace < 2) return outlen + 1;
@@ -257,6 +285,30 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 	*out = '\0'; // We don't increment out, because the nul byte should not be included in the length
 
 	return outlen - freespace;
+}
+
+/** Prints dictionary value attribute as string, escaped suitably for use as JSON string. In case
+ *  no dictionary value could be found, the JSON null is returned (not a C NULL)
+ *
+ *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
+ *  JSON value to.
+ *
+ * @param out Where to write the string.
+ * @param outlen Length of output buffer.
+ * @param vp to print.
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
+ */
+size_t fr_json_from_pair_dict_value(char *out, size_t outlen, VALUE_PAIR const *vp)
+{
+	fr_dict_enum_t const *dv;
+
+	dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+	if (dv != NULL) {
+		return fr_json_from_string(out, outlen, dv->name, strlen(dv->name));
+	}
+	return snprintf(out, outlen, "null");
 }
 
 /** Print JSON-C version
