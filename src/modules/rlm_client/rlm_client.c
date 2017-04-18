@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file rlm_dynamic_clients.c
+ * @file rlm_client.c
  * @brief Reads client definitions from flat files as required.
  *
  * @copyright 2008  The FreeRADIUS server project
