@@ -2397,7 +2397,6 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 {
 	char const *name2;
 	unlang_t *c;
-	unlang_group_t *g;
 
 	/*
 	 *	No children?  Die!
@@ -2413,8 +2412,6 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
-
-	g = unlang_generic_to_group(c);
 
 	/*
 	 *	"redundant" is just "group" with different default actions.
