@@ -1499,7 +1499,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		talloc_free(g);
 		return NULL;
 	}
-	g->done_pass2 = true;
 
 	return c;
 
@@ -1550,8 +1549,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		talloc_free(g);
 		return NULL;
 	}
-
-	g->done_pass2 = true;
 
 	return c;
 }

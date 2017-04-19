@@ -133,7 +133,6 @@ typedef struct {
 	fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
 
 	map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
-	bool			done_pass2;
 } unlang_group_t;
 
 /** A call to a module method
