@@ -5409,6 +5409,16 @@ int radius_event_start(bool have_children)
 	}
 
 	/*
+	 *	Perform thread specific module instantiation for single-threaded mode.
+	 */
+	if (!spawn_workers) {
+		if (modules_thread_instantiate(main_config.config, el) < 0) {
+			ERROR("Failed to instantiate thread-specific data for modules");
+			return 0;
+		}
+	}
+
+	/*
 	 *	Child threads need a pipe to signal us, as do the
 	 *	signal handlers.
 	 */
