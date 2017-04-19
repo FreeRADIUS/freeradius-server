@@ -192,13 +192,53 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			}
 
 		} else {
+			uint64_t lowest_active_callers;
+
 		randomly_choose:
+			lowest_active_callers = 0;
+
 			/*
 			 *	Choose a child at random.
 			 */
 			for (frame->redundant.child = frame->redundant.found = g->children;
 			     frame->redundant.child != NULL;
 			     frame->redundant.child = frame->redundant.child->next) {
+				uint64_t active_callers;
+				unlang_t *child = frame->redundant.child;
+
+				if (child->type != UNLANG_TYPE_MODULE_CALL) {
+					active_callers = 0;
+
+				} else {
+					module_thread_instance_t *thread;
+					unlang_module_call_t *sp;
+
+					sp = unlang_generic_to_module_call(child);
+					rad_assert(sp != NULL);
+
+					thread = module_thread_instance_find(sp->module_instance);
+					rad_assert(thread != NULL);
+					
+					active_callers = thread->active_callers;
+				}
+
+				/*
+				 *	Reset the found, and the count
+				 *	of children with this level of
+				 *	activity.
+				 */
+				if (active_callers < lowest_active_callers) {
+					count = 0;
+					frame->redundant.found = frame->redundant.child;
+					continue;
+				}
+
+				/*
+				 *	Skip callers who are busier
+				 *	than the one we found.
+				 */
+				if (active_callers > lowest_active_callers) continue;
+				
 				count++;
 
 				if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
