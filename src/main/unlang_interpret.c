@@ -101,6 +101,57 @@ static void unlang_pop(unlang_stack_t *stack)
 }
 
 
+/*
+ *	Recursively collect active callers.  Slow, but correct.
+ */
+static uint64_t collect_active_callers(unlang_t *instruction)
+{
+	uint64_t active_callers;
+	unlang_t *child;
+	unlang_group_t *g;
+
+	switch (instruction->type) {
+	default:
+		return 0;
+
+	case UNLANG_TYPE_MODULE_CALL:
+	{
+		module_thread_instance_t *thread;
+		unlang_module_call_t *sp;
+
+		sp = unlang_generic_to_module_call(instruction);
+		rad_assert(sp != NULL);
+
+		thread = module_thread_instance_find(sp->module_instance);
+		rad_assert(thread != NULL);
+					
+		return thread->active_callers;
+	}
+	
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_SWITCH:
+	case UNLANG_TYPE_CASE:
+		g = unlang_generic_to_group(instruction);
+
+		active_callers = 0;
+		for (child = g->children;
+		     child != NULL;
+		     child = child->next) {
+			active_callers += collect_active_callers(child);
+		}
+		break;
+	}
+
+	return active_callers;
+}
+
+
 static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *stack,
 					   rlm_rcode_t *presult, int *priority)
 {
@@ -207,8 +258,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				unlang_t *child = frame->redundant.child;
 
 				if (child->type != UNLANG_TYPE_MODULE_CALL) {
-					active_callers = 0;
-
+					active_callers = collect_active_callers(child);
 				} else {
 					module_thread_instance_t *thread;
 					unlang_module_call_t *sp;
