@@ -2538,8 +2538,6 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	unlang_t *c;
-	unlang_t *child;
-	unlang_group_t *g;
 
 	/*
 	 *	No children?  Die!
@@ -2558,26 +2556,6 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	if (!c) return NULL;
 
 	c->name = c->debug_name = unlang_ops[c->type].name;
-
-	/*
-	 *	Check that all children are of the new type.
-	 */
-	g = unlang_generic_to_group(c);
-
-	for (child = g->children; child != NULL; child = child->next) {
-		unlang_module_call_t *single;
-
-		if (child->type != UNLANG_TYPE_MODULE_CALL) {
-			cf_log_err_cs(cs, "%s sections cannot a child of type %s", unlang_ops[mod_type].name, child->debug_name);
-			return NULL;
-		}
-
-		single = unlang_generic_to_module_call(child);
-		if ((single->module_instance->module->type & RLM_TYPE_RESUMABLE) == 0) {
-			cf_log_err_cs(cs, "%s sections cannot a non-resumable child of %s", unlang_ops[mod_type].name, child->debug_name);
-			return NULL;
-		}
-	}
 
 	return c;
 }
