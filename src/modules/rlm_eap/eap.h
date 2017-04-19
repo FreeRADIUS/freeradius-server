@@ -96,7 +96,7 @@ typedef struct rlm_eap_config {
 	eap_type_t		default_method;			//!< Resolved default_method_name.
 
 	bool			ignore_unknown_types;		//!< Ignore unknown types (for later proxying).
-	bool			mod_accounting_username_bug;
+	bool			cisco_accounting_username_bug;
 } rlm_eap_config_t;
 
 /** Instantiate an EAP submodule
