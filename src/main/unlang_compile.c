@@ -2420,16 +2420,60 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	g = unlang_generic_to_group(c);
 
 	/*
-	 *	Allow for keyed load-balance / redundant-load-balance sections.
-	 *
 	 *	"redundant" is just "group" with different default actions.
+	 *
+	 *	Named redundant sections are only allowed in the
+	 *	"instantiate" section.
 	 */
 	name2 = cf_section_name2(cs);
-	if (mod_type == UNLANG_TYPE_GROUP) name2 = NULL;
 
 	/*
 	 *	But only outside of the "instantiate" section.
 	 *	For backwards compatibility.
+	 */
+	if (name2 &&
+	    (strcmp(cf_section_name1(cf_item_parent(cf_section_to_item(cs))), "instantiate") != 0)) {
+		cf_log_err_cs(cs, "%s sections cannot have a name", unlang_ops[mod_type].name);
+		return NULL;
+	}
+
+	c->debug_name = c->name;
+	c->name = unlang_ops[c->type].name;
+
+	return c;
+}
+
+static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+{
+	char const *name2;
+	unlang_t *c;
+	unlang_group_t *g;
+
+	/*
+	 *	No children?  Die!
+	 */
+	if (!cf_item_find_next(cs, NULL)) {
+		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
+		return NULL;
+	}
+
+	if (!all_children_are_modules(cs, cf_section_name1(cs))) {
+		return NULL;
+	}
+
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+
+	/*
+	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 */
+	name2 = cf_section_name2(cs);
+
+	/*
+	 *	Inside of the "instantiate" section, the name is a name, not a key.
 	 */
 	if (name2) {
 		if (strcmp(cf_section_name1(cf_item_parent(cf_section_to_item(cs))), "instantiate") == 0) name2 = NULL;
@@ -2690,8 +2734,8 @@ typedef struct modcall_compile_t {
 static modcall_compile_t compile_table[] = {
 	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP },
 	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_GROUP },
-	{ "load-balance",	compile_redundant, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_LOAD_BALANCE },
-	{ "redundant-load-balance", compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE },
+	{ "load-balance",	compile_load_balance, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_LOAD_BALANCE },
+	{ "redundant-load-balance", compile_load_balance, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE },
 
 	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CASE },
 	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FOREACH },
