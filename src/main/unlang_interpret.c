@@ -709,6 +709,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	For logging unresponsive children.
 	 */
 	request->module = sp->module_instance->name;
+	frame->modcall.thread->total_calls++;
 
 	safe_lock(sp->module_instance);
 	request->rcode = sp->method(sp->module_instance->data, frame->modcall.thread->data, request);
@@ -724,7 +725,9 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
-	if (*presult != RLM_MODULE_YIELD) {
+	if (*presult == RLM_MODULE_YIELD) {
+		frame->modcall.thread->active_callers++;
+	} else {
 		*priority = instruction->actions[*presult];
 	}
 
@@ -872,6 +875,7 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 	}
 
 	if (*presult != RLM_MODULE_YIELD) {
+		frame->modcall.thread->active_callers--;
 		*priority = instruction->actions[*presult];
 	}
 

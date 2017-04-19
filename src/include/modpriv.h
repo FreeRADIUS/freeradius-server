@@ -68,6 +68,9 @@ typedef struct {
 	module_instance_t		*inst;		//!< Non-thread local instance of this
 
 	void				*data;		//!< Thread specific instance data.
+
+	uint64_t			total_calls;	//! total number of times we've been called
+	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 } module_thread_instance_t;
 
 module_instance_t	*module_find_with_method(rlm_components_t *method,
