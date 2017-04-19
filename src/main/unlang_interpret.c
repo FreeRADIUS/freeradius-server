@@ -258,6 +258,12 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		frame->redundant.child = frame->redundant.found;
 
 	} else {
+		/*
+		 *	We are in a resumed frame.  The module we
+		 *	chose failed, so we have to go through the
+		 *	process again.
+		 */
+
 		rad_assert(instruction->type != UNLANG_TYPE_LOAD_BALANCE); /* this is never called again */
 
 		/*
@@ -266,6 +272,15 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		if (frame->redundant.child->actions[*presult] == MOD_ACTION_RETURN) {
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+
+		/*
+		 *	@todo - track the one we chose, and if it
+		 *	fails, do the load-balancing again, except
+		 *	this time skipping the failed module.  AND,
+		 *	keep track of multiple failed modules.
+		 *	Probably in the unlang_resume_t, via a
+		 *	uint64_t and bit mask for simplicity.
+		 */
 
 		frame->redundant.child = frame->redundant.child->next;
 		if (!frame->redundant.child) frame->redundant.child = g->children;
