@@ -40,7 +40,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("timer_expire", PW_TYPE_INTEGER, rlm_eap_config_t, timer_limit), .dflt = "60" },
 	{ FR_CONF_OFFSET("ignore_unknown_eap_types", PW_TYPE_BOOLEAN, rlm_eap_config_t, ignore_unknown_types), .dflt = "no" },
 	{ FR_CONF_OFFSET("cisco_accounting_username_bug", PW_TYPE_BOOLEAN, rlm_eap_config_t,
-			 mod_accounting_username_bug), .dflt = "no" },
+			 cisco_accounting_username_bug), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("max_sessions", PW_TYPE_INTEGER, rlm_eap_config_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
@@ -592,7 +592,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
 		 */
-		if (inst->config.mod_accounting_username_bug) {
+		if (inst->config.cisco_accounting_username_bug) {
 			char *new;
 
 			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
