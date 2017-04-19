@@ -81,6 +81,22 @@ The filtering operators in v4 have been modified.  They no longer
 attribute list, and delete any attributes which do not match.  The
 filtering operators do not *create* any attribute.
 
+## load-balance and redundant-load-balance sections
+
+Before v4, the load-balance sections implemented load balancing by
+picking a child at random.  This meant that load balancing was
+probabilistically fair, but not perfectly fair.
+
+In v4, load-balance sections track how many requests are in each
+child.  This lets them do load balancing across multiple requests,
+which is more fair.
+
+i.e. the load-balance sections now behave like the old home server
+pools of type "load-balance".  Which in turn lets us remove the
+special-case code for home servers, and then just use unlang
+`load-balance` sections.
+
+The user visible changes should be minimal.
 
 ## Connection timeouts
 
