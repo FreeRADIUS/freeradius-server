@@ -34,7 +34,6 @@ required for the new features in v4.
 |				| 
 | Post-Auth-Type Reject		| send Access-Reject
 | Post-Auth-Type Challenge	| send Access-Challenge
-|-------------------------------|----------------------
 
 i.e. instead of the section names being (mostly) randomly named, the
 names are now consistent.  `recv` receives packets from the network.
@@ -56,7 +55,7 @@ In previous versions of the user attributes could be referred to
 by their name only e.g. `if (User-Name == 'foo')`.
 
 To allow for more thorough error checking, the requirement to prefix
-attribute references with '&' is now strictly enforced.
+attribute references with `&` is now strictly enforced.
 
 Common places which will need to be checked and corrected are the
 left and right hand side of `update {}` sections, and conditions.
@@ -93,7 +92,7 @@ In v4.0.x connection timeouts can be configured universally for
 all modules with the `connect_timeout` config item of the
 module's `pool {}` section.
 
-The following modules should honour `connect_timeout`:
+The following modules will apply `connect_timeout`:
 
 - rlm_rest
 - rlm_linelog (network connections only)
@@ -108,7 +107,7 @@ The following modules should honour `connect_timeout`:
 - rlm_sql_unixodbc
 
 Some modules such as rlm_sql_postgresql can have their timeout set via an alternative
-configuration item (`radius_db` in the case of postgresql).
+configuration item (e.g. `radius_db` in the case of postgresql).
 
 ## Changed Modules
 
@@ -134,7 +133,7 @@ immediately after they're parsed from their ASN1 form.
 The certificates are longer added to the `&request:` list.  You are
 advised to update any references during the upgrade to 4.0:
 
-    `s/TLS-Cert-/session-state:TLS-Cert-/`.
+    s/TLS-Cert-/session-state:TLS-Cert-/
 
 The `rlm_eap_ikev2` module was removed.  It does not follow RFC
 5106, and no one was maintaining it.
@@ -181,9 +180,7 @@ before, and then the result is multiplied by one.
 ### rlm_rest
 
 `REST-HTTP-Code` is now inserted into the `&request:` list instead of the `&reply:`
-list, to be compliant with the list _usage guidelines.
-
-.. _usage: http://wiki.freeradius.org/contributing/List-Usage
+list, to be compliant with the [list usage](http://wiki.freeradius.org/contributing/List-Usage) guidelines.
 
 ### rlm_sqlcounter and rlm_counter
 
