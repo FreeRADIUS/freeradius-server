@@ -453,15 +453,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 		/*
 		 *	Cisco AP1230 has a bug and needs a zero
-		 *	terminated string in Access-Accept.
+		 *	terminated string in Access-Accept.  This
+		 *	means it requires 2 trailing zeros.  One to
+		 *	send in the RADIUS packet, and the other to
+		 *	convince the rest of the server that
+		 *	vp->vp_strvalue is still a NUL-terminated C
+		 *	string.
 		 */
 		if (inst->mod_accounting_username_bug) {
 			char const *old = vp->vp_strvalue;
-			char *new = talloc_zero_array(vp, char, vp->vp_length + 1);
+			char *new;
+
+			vp->vp_length++; /* account for an additional zero */
+
+			new = talloc_array(vp, char, vp->vp_length + 1);
 
 			memcpy(new, old, vp->vp_length);
+			new[vp->length + 1] = '\0';
 			vp->vp_strvalue = new;
-			vp->vp_length++;
 
 			rad_const_free(old);
 		}
