@@ -489,17 +489,12 @@ void *module_thread_instance_find(void *instance)
 {
 	module_instance_t		*inst = instance;
 	rbtree_t			*tree = module_thread_inst_tree;
-	module_thread_instance_t	find, *found;
-
-	if (!inst->module->thread_instantiate || !inst->module->thread_inst_size) return NULL;
+	module_thread_instance_t	find;
 
 	memset(&find, 0, sizeof(find));
 	find.inst = inst;
 
-	found = rbtree_finddata(tree, &find);
-	if (!found) return NULL;
-
-	return found->data;
+	return rbtree_finddata(tree, &find);
 }
 
 /** Destructor for module_thread_instance_t

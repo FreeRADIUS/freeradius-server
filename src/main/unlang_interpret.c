@@ -703,6 +703,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	Grab the thread/module specific data if any exists.
 	 */
 	frame->modcall.thread = module_thread_instance_find(sp->module_instance);
+	rad_assert(frame->modcall.thread != NULL);
 
 	/*
 	 *	For logging unresponsive children.
@@ -710,7 +711,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	request->module = sp->module_instance->name;
 
 	safe_lock(sp->module_instance);
-	request->rcode = sp->method(sp->module_instance->data, frame->modcall.thread, request);
+	request->rcode = sp->method(sp->module_instance->data, frame->modcall.thread->data, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
@@ -850,7 +851,7 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
 
 	safe_lock(sp->module_instance);
-	*presult = mr->callback(request, mr->module.module_instance->data, mr->thread, mutable);
+	*presult = mr->callback(request, mr->module.module_instance->data, mr->thread->data, mutable);
 	safe_unlock(sp->module_instance);
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",

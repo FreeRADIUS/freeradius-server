@@ -162,7 +162,7 @@ typedef struct {
  */
 typedef struct {
 	unlang_module_call_t	module;		//!< Module call that returned #RLM_MODULE_YIELD.
-	void			*thread;	//!< data specific to the module.
+	module_thread_instance_t *thread;	//!< thread-local data for this module
 	fr_unlang_resume_t	callback;	//!< Function the yielding module indicated should
 						//!< be called when the request could be resumed.
 	fr_unlang_action_t	action_callback;  //!< Function the yielding module indicated should
@@ -182,7 +182,7 @@ typedef struct {
 } unlang_xlat_inline_t;
 
 typedef struct {
-	void			*thread;	//!< Thread specific module instance.
+	module_thread_instance_t *thread;	//!< thread-local data for this module
 } unlang_stack_entry_modcall_t;
 
 /** State of a foreach loop
