@@ -676,9 +676,6 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stack,
 				     	  rlm_rcode_t *presult, int *priority)
 {
-#if 0
-	int depth = stack->depth;
-#endif
 	unlang_module_call_t		*sp;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
@@ -699,7 +696,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 
 	if (sp->module_instance->force) {
 		request->rcode = sp->module_instance->code;
-		goto fail;
+		goto done;
 	}
 
 	/*
@@ -726,21 +723,10 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
-#if 0
-	/*
-	 *	Child was pushed by the module.
-	 */
-	if (depth < stack->depth) {
-		rad_assert(frame->resume == true);
-		rad_assert((frame + 1)->instruction->type == UNLANG_TYPE_MODULE_CALL);
-		return UNLANG_ACTION_PUSHED_CHILD;
-	}
-#endif
-
-fail:
-	*presult = request->rcode;
 	if (*presult != RLM_MODULE_YIELD) *priority = instruction->actions[*presult];
 
+done:
+	*presult = request->rcode;
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 	return UNLANG_ACTION_CALCULATE_RESULT;
