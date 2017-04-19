@@ -724,7 +724,9 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
-	if (*presult != RLM_MODULE_YIELD) *priority = instruction->actions[*presult];
+	if (*presult != RLM_MODULE_YIELD) {
+		*priority = instruction->actions[*presult];
+	}
 
 done:
 	*presult = request->rcode;
@@ -834,7 +836,7 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack,
-				    	 rlm_rcode_t *presult, UNUSED int *priority)
+					 rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
@@ -849,18 +851,33 @@ static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack
 		sp->module_instance->module->name, request->number);
 
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
+	request->module = sp->module_instance->name;
 
 	safe_lock(sp->module_instance);
 	*presult = mr->callback(request, mr->module.module_instance->data, mr->thread->data, mutable);
 	safe_unlock(sp->module_instance);
 
-	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+	request->module = NULL;
 
 	/*
 	 *	Leave mr alone, it will be freed when the request is done.
 	 */
 
+	/*
+	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		RWARN("Module %s became unblocked for request %" PRIu64 "", sp->module_instance->module->name, request->number);
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	if (*presult != RLM_MODULE_YIELD) {
+		*priority = instruction->actions[*presult];
+	}
+
+	*presult = request->rcode;
+	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
+		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
