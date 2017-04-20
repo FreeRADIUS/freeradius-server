@@ -246,7 +246,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			uint64_t lowest_active_callers;
 
 		randomly_choose:
-			lowest_active_callers = 0;
+			lowest_active_callers = ~(uint64_t ) 0;
 
 			/*
 			 *	Choose a child at random.
