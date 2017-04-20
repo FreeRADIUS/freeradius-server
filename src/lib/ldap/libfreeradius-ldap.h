@@ -66,10 +66,12 @@ ldap_create_session_tracking_control LDAP_P((
  *	Identifiers that are not macros, all evaluate to 0,
  *	which is why this works.
  */
+#define X 0
 #if !defined(LDAP_VENDOR_VERSION_PATCH) || LDAP_VENDOR_VERSION_PATCH == 0
 #  undef LDAP_VENDOR_VERSION_PATCH
 #  define LDAP_VENDOR_VERSION_PATCH 0
 #endif
+#undef X
 
 /*
  *      For compatibility with other LDAP libraries
