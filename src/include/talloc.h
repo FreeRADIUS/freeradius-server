@@ -23,11 +23,11 @@
 
 void		*talloc_null_ctx(void);
 
-char		*talloc_typed_strdup(const void *t, const char *p);
+char		*talloc_typed_strdup(void const *t, char const *p);
 
-char		*talloc_typed_asprintf(const void *t, const char *fmt, ...) CC_HINT(format (printf, 2, 3));
+char		*talloc_typed_asprintf(void const *t, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
-char		*talloc_bstrndup(const void *t, char const *in, size_t inlen);
+char		*talloc_bstrndup(void const *t, char const *in, size_t inlen);
 
 int		talloc_memcmp_array(uint8_t const *a, uint8_t const *b);
 
