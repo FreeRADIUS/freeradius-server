@@ -386,19 +386,79 @@ int fr_vlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
 int fr_log(fr_log_t const *log, log_type_t type, char const *msg, ...)
 {
 	va_list ap;
-	int r = 0;
-
-	va_start(ap, msg);
+	int ret = 0;
 
 	/*
 	 *	Non-debug message, or debugging is enabled.  Log it.
 	 */
-	if (((type & L_DBG) == 0) || (fr_debug_lvl > 0)) {
-		r = fr_vlog(log, type, msg, ap);
-	}
+	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
+
+	va_start(ap, msg);
+	ret = fr_vlog(log, type, msg, ap);
 	va_end(ap);
 
-	return r;
+	return ret;
+}
+
+/** Drain any outstanding messages from the fr_strerror buffers
+ *
+ * This function drains any messages from fr_strerror buffer adding a prefix (msg)
+ * to the first message.
+ *
+ * @param log	destination.
+ * @param type	of log message.
+ * @param msg	with printf style substitution tokens.
+ * @param ...	Substitution arguments.
+ */
+int fr_log_perror(fr_log_t const *log, log_type_t type, char const *msg, ...)
+{
+	char const *strerror;
+	int ret;
+
+	/*
+	 *	Non-debug message, or debugging is enabled.  Log it.
+	 */
+	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
+
+	strerror = fr_strerror_pop();
+	if (!strerror) {
+		va_list ap;
+		if (!msg) return 0;	/* NOOP */
+
+		va_start(ap, msg);
+		ret = fr_vlog(log, type, msg, ap);
+		va_end(ap);
+
+		return ret;		/* DONE */
+	}
+
+	/*
+	 *	Concatenate msg with fr_strerror()
+	 */
+	if (msg) {
+		va_list ap;
+		char *tmp;
+
+		va_start(ap, msg);
+		tmp = talloc_vasprintf(NULL, msg, ap);
+		if (!tmp) return -1;
+		va_end(ap);
+
+		fr_log(log, type, "%s: %s", tmp, strerror);
+		talloc_free(tmp);
+	} else {
+		fr_log(log, type, "%s", strerror);
+	}
+
+	/*
+	 *	Only the first message gets the prefix
+	 */
+	while ((strerror = fr_strerror_pop())) {
+		ret = fr_log(log, type, "%s", strerror);
+		if (ret < 0) return ret;
+	}
+
+	return 0;
 }
 
 static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor

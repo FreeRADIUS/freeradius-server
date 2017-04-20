@@ -117,8 +117,13 @@ int	fr_log_init(fr_log_t *log, bool daemonize);
 
 int	fr_vlog(fr_log_t const *log, log_type_t lvl, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 3, 0)) CC_HINT(nonnull (1,3));
+
 int	fr_log(fr_log_t const *log, log_type_t lvl, char const *fmt, ...)
 	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1,3));
+
+int	fr_log_perror(fr_log_t const *log, log_type_t type, char const *msg, ...)
+	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1));
+
 bool	fr_rate_limit_enabled(void);
 
 

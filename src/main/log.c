@@ -495,6 +495,67 @@ void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char
 	va_end(ap);
 }
 
+/** Drain any outstanding messages from the fr_strerror buffers
+ *
+ * This function drains any messages from fr_strerror buffer adding a prefix (msg)
+ * to the first message.
+ *
+ * @param type the log category.
+ * @param lvl of debugging this message should be logged at.
+ * @param request The current request.
+ * @param msg with printf style substitution tokens.
+ * @param ... Substitution arguments.
+ */
+void radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+{
+	char const *strerror;
+
+	rad_assert(request);
+
+	/*
+	 *	No strerror gets us identical behaviour to radlog_request_error
+	 */
+	strerror = fr_strerror_pop();
+	if (!strerror) {
+		va_list ap;
+
+		if (!msg) return;	/* NOOP */
+
+		va_start(ap, msg);
+		if (request->log.func) request->log.func(type, lvl, request, msg, ap);
+		else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap);
+		vmodule_failure_msg(request, msg, ap);
+		va_end(ap);
+
+		return;			/* DONE */
+	}
+
+	/*
+	 *	Concatenate msg with fr_strerror()
+	 */
+	if (msg) {
+		va_list ap;
+		char *tmp;
+
+		va_start(ap, msg);
+		tmp = talloc_vasprintf(request, msg, ap);
+		if (!tmp) return;
+		va_end(ap);
+
+		radlog_request_error(type, lvl, request, "%s: %s", tmp, strerror);
+		talloc_free(tmp);
+	} else {
+		radlog_request_error(type, lvl, request, "%s", strerror);
+	}
+
+	/*
+	 *	Only the first message gets the prefix
+	 */
+	while ((strerror = fr_strerror_pop())) {
+		radlog_request_error(type, lvl, request, "%s", strerror);
+	}
+}
+
 /** Write the string being parsed, and a marker showing where the parse error occurred
  *
  * @param type the log category.

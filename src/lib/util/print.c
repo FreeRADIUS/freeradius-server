@@ -405,11 +405,11 @@ DIAG_OFF(format-nonliteral)
  *	anywhere in our code base.
  *
  * - %pH takes a buffer and prints it as hex. The length of the
- *	 buffer is determined with a call to talloc_array_length() if it's not
- *	 explicitly specified by the fmt string.
+ *	 buffer is determined with a call to talloc_array_length().
  *
  * - %pV prints a value box as a string.
  * - %pS prints a string with FreeRADIUS style escaping, and '"' as the quote char.
+ *	 The length of the buffer is determined with a call to talloc_array_length() - 1.
  *
  * This breaks strict compatibility with printf but allows us to continue using
  * the static format string and argument type validation.
@@ -681,7 +681,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			{
 				char const *in = va_arg(ap_q, char const *);
 
-				subst = fr_asprint(NULL, in, strlen(in), '"');
+				subst = fr_asprint(NULL, in, talloc_array_length(in) - 1, '"');
 				if (!subst) goto oom;
 
 				goto do_splice;

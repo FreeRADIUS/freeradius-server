@@ -261,13 +261,21 @@ void fr_perror(char const *fmt, ...)
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 
-	error = fr_strerror();
+	error = fr_strerror_pop();
 	if (error && (error[0] != '\0')) {
 		fprintf(stderr, ": %s\n", error);
 	} else {
 		fputs("\n", stderr);
 	}
 
+	/*
+	 *	Only the first line is prefixed
+	 */
+	while ((error = fr_strerror_pop())) {
+		if (error && (error[0] != '\0')) {
+			fprintf(stderr, "%s\n", error);
+		}
+	}
 	va_end(ap);
 }
 

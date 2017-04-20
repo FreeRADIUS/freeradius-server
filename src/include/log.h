@@ -52,6 +52,9 @@ void	radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const
 void	radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
+void	radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3));
+
 void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
@@ -75,9 +78,11 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #endif
 
 #ifdef LOG_PREFIX_ARGS
-#  define _RADLOG(_l, _f, ...) fr_log(&default_log, _l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#  define _FR_LOG(_l, _f, ...) fr_log(&default_log, _l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
+#  define _FR_LOG_PERROR(_l, _f, ...) fr_log_perror(&default_log, _l, LOG_PREFIX _f, LOG_PREFIX_ARGS, ## __VA_ARGS__)
 #else
-#  define _RADLOG(_l, _f, ...) fr_log(&default_log, _l, LOG_PREFIX _f, ## __VA_ARGS__)
+#  define _FR_LOG(_l, _f, ...) fr_log(&default_log, _l, LOG_PREFIX _f, ## __VA_ARGS__)
+#  define _FR_LOG_PERROR(_l, _f, ...) fr_log_perror(&default_log, _l, LOG_PREFIX _f, ## __VA_ARGS__)
 #endif
 
 /** @name Log global messages
@@ -102,13 +107,14 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
  *
  * @{
  */
-#define AUTH(fmt, ...)		_RADLOG(L_AUTH, fmt, ## __VA_ARGS__)
-#define ACCT(fmt, ...)		_RADLOG(L_ACCT, fmt, ## __VA_ARGS__)
-#define PROXY(fmt, ...)		_RADLOG(L_PROXY, fmt, ## __VA_ARGS__)
+#define AUTH(fmt, ...)		_FR_LOG(L_AUTH, fmt, ## __VA_ARGS__)
+#define ACCT(fmt, ...)		_FR_LOG(L_ACCT, fmt, ## __VA_ARGS__)
+#define PROXY(fmt, ...)		_FR_LOG(L_PROXY, fmt, ## __VA_ARGS__)
 
-#define INFO(fmt, ...)		_RADLOG(L_INFO,  fmt, ## __VA_ARGS__)
-#define WARN(fmt, ...)		_RADLOG(L_WARN, fmt, ## __VA_ARGS__)
-#define ERROR(fmt, ...)		_RADLOG(L_ERR, fmt, ## __VA_ARGS__)
+#define INFO(fmt, ...)		_FR_LOG(L_INFO,  fmt, ## __VA_ARGS__)
+#define WARN(fmt, ...)		_FR_LOG(L_WARN, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...)		_FR_LOG(L_ERR, fmt, ## __VA_ARGS__)
+#define PERROR(fmt, ...)	_FR_LOG_PERROR(L_ERR, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -137,7 +143,7 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)			//!< True if global debug level 1-3 messages are enabled
 #define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-4 messages are enabled
 
-#define _DEBUG_LOG(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) _RADLOG(_l, _f, ## __VA_ARGS__)
+#define _DEBUG_LOG(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) _FR_LOG(_l, _f, ## __VA_ARGS__)
 #define DEBUG(fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define DEBUG2(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...)	_DEBUG_LOG(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
@@ -172,6 +178,7 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #define RINFO(fmt, ...)		radlog_request(L_INFO, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define RWARN(fmt, ...)		radlog_request(L_DBG_WARN, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define RERROR(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
+#define RPERROR(fmt, ...)	radlog_request_perror(L_DBG_ERR, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific debug (R*DEBUG*)
@@ -226,6 +233,11 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #define REDEBUG2(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 #define REDEBUG3(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
 #define REDEBUG4(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
+
+#define RPEDEBUG(fmt, ...)	radlog_request_perror(L_DBG_ERR, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RPEDEBUG2(fmt, ...)	radlog_request_perror(L_DBG_ERR, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RPEDEBUG3(fmt, ...)	radlog_request_perror(L_DBG_ERR, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
+#define RPEDEBUG4(fmt, ...)	radlog_request_perror(L_DBG_ERR, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 /** @} */
 
 #ifdef DEBUG_INDENT
