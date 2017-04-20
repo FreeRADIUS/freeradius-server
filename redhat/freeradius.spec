@@ -301,7 +301,7 @@ This plugin provides YubiCloud support for the FreeRADIUS server project.
 %setup -q -n freeradius-server-%{version}
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
-
+find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name 'configure' -o -name 'install-sh' \) -a -perm /0111 -exec chmod a+x {} +
 
 %build
 # Retain CFLAGS from the environment...
