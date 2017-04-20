@@ -43,13 +43,6 @@ static ldap_handle_config_t ldap_global_handle_config = {
 	.name = "global"
 };
 
-/*
- *	Some functions may be called with a NULL request structure, this
- *	simplifies switching certain messages from the request log to
- *	the main log.
- */
-#define LDAP_EXTRA_DEBUG() do { if (extra) { if (request) REDEBUG("%s", extra); else ERROR("%s", extra); }} while (0)
-
 FR_NAME_NUMBER const fr_ldap_supported_extensions[] = {
 	{ "bindname",	LDAP_DEREF_NEVER	},
 	{ "x-bindpw",	LDAP_DEREF_SEARCHING	},
@@ -171,124 +164,89 @@ char const *fr_ldap_error_str(ldap_handle_t const *conn)
 	return ldap_err2string(lib_errno);
 }
 
-/** Parse response from LDAP server dealing with any errors
+/** Perform basic parsing of multiple types of messages, checking for error conditions
  *
- * Should be called after an LDAP operation. Will check result of operation
- * and if it was successful, then attempt to retrieve and parse the result.
+ * @note Error messages should be retrieved with fr_strerror() and fr_strerror_pop()
  *
- * Will also produce extended error output including any messages the server
- * sent, and information about partial DN matches.
- *
- * @param[in] conn	Current connection.
- * @param[in] msgid	returned from last operation. May be LDAP_RES_NONE if no result
- *			processing is required or LDAP_RES_ANY if any outstanding
- *			will do.
- * @param[in] all	Retrieve all outstanding messages (if 1).
- * @param[in] dn	Last search or bind DN.  May be NULL.
- * @param[in] timeout	Override the default result timeout.
- * @param[out] result	Where to write result, if NULL result will be freed.
- * @param[out] error	Where to write the error string, may be NULL, must
- *			not be freed.
- * @param[out] extra	Where to write additional error string to, may be NULL
- *			(faster) or must be freed (with talloc_free).
+ * @param[out] ctrls	Server ctrls returned to the client.  May be NULL if not required.
+ *			Must be freed with ldap_free_ctrls.
+ * @param[in] conn	the message was received on.
+ * @param[in] msg	we're parsing.
+ * @param[in] dn	if processing the result from a search request.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_result(ldap_handle_t const *conn,
-			    int msgid,
-			    int all,
-			    char const *dn,
-			    struct timeval const *timeout,
-			    LDAPMessage **result,
-			    char const **error, char **extra)
+ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn, LDAPMessage *msg, char const *dn)
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
-	int lib_errno = LDAP_SUCCESS;	// errno returned by the library.
-	int srv_errno = LDAP_SUCCESS;	// errno in the result message.
+	int msg_type;
+	int lib_errno = LDAP_SUCCESS;	/* errno returned by the library */
+	int srv_errno = LDAP_SUCCESS;	/* errno in the result message */
 
-	char *part_dn = NULL;		// Partial DN match.
-	char *our_err = NULL;		// Our extended error message.
-	char *srv_err = NULL;		// Server's extended error message.
-	char *p, *a;
+	char *part_dn = NULL;		/* Partial DN match */
+	char *our_err = NULL;		/* Our extended error message */
+	char *srv_err = NULL;		/* Server's extended error message */
 
-	bool freeit = false;		// Whether the message should be freed after being processed.
-	int len;
+	ssize_t len;
 
-	struct timeval tv;		// Holds timeout values.
+	if (ctrls) *ctrls = NULL;
 
-	LDAPMessage *tmp_msg = NULL;	// Temporary message pointer storage if we weren't provided with one.
-
-	char const *tmp_err;		// Temporary error pointer storage if we weren't provided with one.
-
-	if (!error) error = &tmp_err;
-	*error = NULL;
-
-	if (extra) *extra = NULL;
-	if (result) *result = NULL;
-
-	/*
-	 *	We always need the result, but our caller may not
-	 */
-	if (!result) {
-		result = &tmp_msg;
-		freeit = true;
-	}
-
-	/*
-	 *	Check if there was an error sending the request
-	 */
-	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
-	if (lib_errno != LDAP_SUCCESS) goto process_error;
-	if (msgid == LDAP_RES_NONE) return LDAP_SUCCESS;	/* No msgid and no error, return now */
-
-	if (!timeout) {
-		tv = conn->config->res_timeout;
-	} else {
-		tv = *timeout;
-	}
-
-	/*
-	 *	Now retrieve the result and check for errors
-	 *	ldap_result returns -1 on failure, and 0 on timeout
-	 */
-	lib_errno = ldap_result(conn->handle, msgid, all, &tv, result);
-	switch (lib_errno) {
-	case 0:
-		lib_errno = LDAP_TIMEOUT;
-		goto process_error;
-
-	case -1:
+	if (!msg) {
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
-		goto process_error;
+		if (lib_errno != LDAP_SUCCESS) goto process_error;
 
-	/*
-	 *	ldap_parse_result only works on:
-	 *	- LDAPResult
-	 *	- BindResponse
-	 *	- ExtendedResponse
-	 */
-	case LDAP_RES_SEARCH_RESULT:
-	case LDAP_RES_BIND:
-	case LDAP_RES_EXTENDED:
-		break;
-
-	default:
-		return LDAP_PROC_SUCCESS;
+		fr_strerror_printf("No result available");
+		return LDAP_PROC_NO_RESULT;
 	}
 
+	msg_type = ldap_msgtype(msg);
+	switch (msg_type) {
 	/*
 	 *	Parse the result and check for errors sent by the server
 	 */
-	lib_errno = ldap_parse_result(conn->handle, *result,
-				      &srv_errno,
-				      extra ? &part_dn : NULL,
-				      extra ? &srv_err : NULL,
-				      NULL, NULL, freeit);
-	if (freeit) *result = NULL;
+	case LDAP_RES_SEARCH_RESULT:	/* The result of a search */
+	case LDAP_RES_BIND:		/* The result of a bind operation */
+	case LDAP_RES_EXTENDED:
+		lib_errno = ldap_parse_result(conn->handle, msg,
+					      &srv_errno, &part_dn, &srv_err,
+					      NULL, ctrls, 0);
+		break;
 
+	/*
+	 *	These are messages containing objects so unless they're
+	 *	malformed they can't contain errors.
+	 */
+	case LDAP_RES_SEARCH_ENTRY:
+		if (ctrls) lib_errno = ldap_get_entry_controls(conn->handle, msg, ctrls);
+		break;
+
+	/*
+	 *	An intermediate message updating us on the result of an operation
+	 */
+	case LDAP_RES_INTERMEDIATE:
+		lib_errno = ldap_parse_intermediate(conn->handle, msg, NULL, NULL, ctrls, 0);
+		break;
+
+	/*
+	 *	No further processing of references needed.
+	 */
+	case LDAP_RES_SEARCH_REFERENCE:
+		return LDAP_PROC_SUCCESS;
+
+	/*
+	 *	Probably an error in our code
+	 */
+	default:
+		fr_strerror_printf("LDAP msgtype %i not supported by %s", msg_type, __FUNCTION__);
+		return LDAP_PROC_ERROR;
+	}
+
+	/*
+	 *	Stupid messy API
+	 */
 	if (lib_errno != LDAP_SUCCESS) {
+		rad_assert(!ctrls || !*ctrls);
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
-		goto process_error;
 	}
 
 process_error:
@@ -300,54 +258,59 @@ process_error:
 
 	switch (lib_errno) {
 	case LDAP_SUCCESS:
-		*error = "Success";
+		fr_strerror_printf("Success");
 		break;
 
 	case LDAP_SASL_BIND_IN_PROGRESS:
-		*error = "Continuing";
+		fr_strerror_printf("Continuing");
 		status = LDAP_PROC_CONTINUE;
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
-		*error = "The specified DN wasn't found";
+		fr_strerror_printf("The specified DN wasn't found");
 		status = LDAP_PROC_BAD_DN;
-
-		if (!extra) break;
 
 		/*
 		 *	Build our own internal diagnostic string
 		 */
-		if (dn) {
+		if (dn && part_dn) {
+			char *spaces;
+			char *text;
+
 			len = fr_ldap_common_dn(dn, part_dn);
 			if (len < 0) break;
 
-			our_err = talloc_typed_asprintf(conn, "Match stopped here: [%.*s]%s",
-							len, dn, part_dn ? part_dn : "");
+			fr_canonicalize_error(NULL, &spaces, &text, -len, dn);
+			fr_strerror_printf_push("%s", text);
+			fr_strerror_printf_push("%s^ %s", spaces, "match stopped here");
+
+			talloc_free(spaces);
+			talloc_free(text);
 		}
 		goto error_string;
 
 	case LDAP_INSUFFICIENT_ACCESS:
-		*error = "Insufficient access. Check the identity and password configuration directives";
+		fr_strerror_printf("Insufficient access. Check the identity and password configuration directives");
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
 	case LDAP_UNWILLING_TO_PERFORM:
-		*error = "Server was unwilling to perform";
+		fr_strerror_printf("Server was unwilling to perform");
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
 	case LDAP_FILTER_ERROR:
-		*error = "Bad search filter";
+		fr_strerror_printf("Bad search filter");
 		status = LDAP_PROC_ERROR;
 		break;
 
 	case LDAP_TIMEOUT:
-		*error = "Timed out while waiting for server to respond";
+		fr_strerror_printf("Timed out while waiting for server to respond");
 		status = LDAP_PROC_TIMEOUT;
 		break;
 
 	case LDAP_TIMELIMIT_EXCEEDED:
-		*error = "Time limit exceeded";
+		fr_strerror_printf("Time limit exceeded");
 		status = LDAP_PROC_TIMEOUT;
 		break;
 
@@ -363,57 +326,24 @@ process_error:
 		goto error_string;
 
 	case LDAP_OPERATIONS_ERROR:
-		*error = "Please set 'chase_referrals=yes' and 'rebind=yes'. See the ldap module configuration "
-			 "for details";
+		fr_strerror_printf("Please set 'chase_referrals=yes' and 'rebind=yes'. "
+				   "See the ldap module configuration for details");
 
 		/* FALL-THROUGH */
 	default:
 		status = LDAP_PROC_ERROR;
 
 	error_string:
-		if (!*error) *error = ldap_err2string(lib_errno);
-
-		if (!extra || ((lib_errno == srv_errno) && !our_err && !srv_err)) break;
-
-		/*
-		 *	Output the error codes from the library and server
-		 */
-		p = talloc_zero_array(conn, char, 1);
-		if (!p) break;
-
-		if (lib_errno != srv_errno) {
-			a = talloc_asprintf_append(p, "LDAP lib error: %s (%u), srv error: %s (%u). ",
-						   ldap_err2string(lib_errno), lib_errno,
-						   ldap_err2string(srv_errno), srv_errno);
-			if (!a) {
-				talloc_free(p);
-				break;
-			}
-
-			p = a;
+		if (lib_errno == srv_errno) {
+			fr_strerror_printf("lib error: %s (%u)", ldap_err2string(lib_errno), lib_errno);
+		} else {
+			fr_strerror_printf("lib error: %s (%u), srv error: %s (%u)",
+					   ldap_err2string(lib_errno), lib_errno,
+					   ldap_err2string(srv_errno), srv_errno);
 		}
 
-		if (our_err) {
-			a = talloc_asprintf_append_buffer(p, "%s. ", our_err);
-			if (!a) {
-				talloc_free(p);
-				break;
-			}
-
-			p = a;
-		}
-
-		if (srv_err) {
-			a = talloc_asprintf_append_buffer(p, "Server said: %s. ", srv_err);
-			if (!a) {
-				talloc_free(p);
-				break;
-			}
-
-			p = a;
-		}
-
-		*extra = p;
+		if (our_err) fr_strerror_printf("%s. %s", fr_strerror(), our_err);
+		if (srv_err) fr_strerror_printf("%s. Server said: %s", fr_strerror(), srv_err);
 
 		break;
 	}
@@ -424,10 +354,95 @@ process_error:
 	if (srv_err) ldap_memfree(srv_err);
 	if (part_dn) ldap_memfree(part_dn);
 
-	talloc_free(our_err);
+	return status;
+}
 
-	if ((status < 0) && *result) {
-		ldap_msgfree(*result);
+/** Parse response from LDAP server dealing with any errors
+ *
+ * Should be called after an LDAP operation. Will check result of operation and if
+ * it was successful, then attempt to retrieve and parse the result.  Will also produce
+ * extended error output including any messages the server sent, and information about
+ * partial DN matches.
+ *
+ * @note Error messages should be retrieved with fr_strerror() and fr_strerror_pop()
+ *
+ * @param[out] result	Where to write result, if NULL result will be freed.
+ * @param[out] ctrls	Server ctrls returned to the client.  May be NULL if not required.
+ *			Must be freed with ldap_free_ctrls.
+ * @param[in] conn	Current connection.
+ * @param[in] msgid	returned from last operation.
+ *			Special values are:
+ *			- LDAP_RES_ANY - Retrieve any received messages useful for multiplexing.
+ * 			- LDAP_RES_UNSOLICITED - Any unsolicited message.
+ * @param[in] all	How many messages to retrieve:
+ *			- LDAP_MSG_ONE - Retrieve the first message matching msgid (waiting if one is not available).
+ *			- LDAP_MSG_ALL - Retrieve all received messages matching msgid (waiting if none are available).
+ *			- LDAP_MSG_RECEIVED - Retrieve all received messages.
+ * @param[in] dn	Last search or bind DN.  May be NULL.
+ * @param[in] timeout	Override the default result timeout.
+ *
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ */
+ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
+			    ldap_handle_t const *conn, int msgid, int all,
+			    char const *dn,
+			    struct timeval const *timeout)
+{
+	ldap_rcode_t	status = LDAP_PROC_SUCCESS;
+	int		lib_errno;
+
+	struct timeval	tv;			/* Holds timeout values */
+
+	LDAPMessage	*tmp_msg = NULL, *msg;	/* Temporary message pointer storage if we weren't provided with one */
+	LDAPMessage	**result_p = result;
+
+	if (result) *result = NULL;
+	if (ctrls) *ctrls = NULL;
+
+	/*
+	 *	We always need the result, but our caller may not
+	 */
+	if (!result) result_p = &tmp_msg;
+
+	/*
+	 *	Check if there was an error sending the request
+	 */
+	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
+
+	if (!timeout) {
+		tv = conn->config->res_timeout;
+	} else {
+		tv = *timeout;
+	}
+
+	/*
+	 *	Now retrieve the result and check for errors
+	 *	ldap_result returns -1 on failure, and 0 on timeout
+	 */
+	lib_errno = ldap_result(conn->handle, msgid, all, &tv, result_p);
+	switch (lib_errno) {
+	case 0:
+		lib_errno = LDAP_TIMEOUT;
+		fr_strerror_printf("timeout waiting for result");
+		return LDAP_PROC_TIMEOUT;
+
+	case -1:
+		return fr_ldap_error_check(NULL, conn, NULL, dn);
+
+	default:
+		break;
+	}
+
+	for (msg = ldap_first_message(conn->handle, *result_p);
+	     msg;
+	     msg = ldap_next_message(conn->handle, msg)) {
+		status = fr_ldap_error_check(ctrls, conn, msg, dn);
+		if (status != LDAP_PROC_SUCCESS) break;
+	}
+
+	if (*result_p && ((status < 0) || !result)) {
+		ldap_msgfree(*result_p);
 		*result = NULL;
 	}
 
@@ -467,9 +482,6 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
 
 	int				msgid = -1;
 
-	char const			*error = NULL;
-	char 				*extra = NULL;
-
 	rad_assert(*pconn && (*pconn)->handle);
 
 #ifndef WITH_SASL
@@ -488,7 +500,7 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
 #ifdef WITH_SASL
 	if (sasl && sasl->mech) {
 		status = fr_ldap_sasl_interactive(request, *pconn, dn, password, sasl,
-						  serverctrls, clientctrls, timeout, &error, &extra);
+						  serverctrls, clientctrls, timeout);
 	} else
 #endif
 	{
@@ -514,7 +526,7 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
 		/* We got a valid message ID */
 		if ((ret == 0) && (msgid >= 0)) ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 
-		status = fr_ldap_result(*pconn, msgid, 0, dn, NULL, NULL, &error, &extra);
+		status = fr_ldap_result(NULL, NULL, *pconn, msgid, 0, dn, NULL);
 	}
 
 	switch (status) {
@@ -523,20 +535,15 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
 		break;
 
 	case LDAP_PROC_NOT_PERMITTED:
-		ROPTIONAL(REDEBUG, ERROR, "Bind as \"%s\" to \"%s\" not permitted: %s", *dn ? dn : "(anonymous)",
-			  handle_config->server, error);
-		LDAP_EXTRA_DEBUG();
+		ROPTIONAL(RPEDEBUG, RPERROR, "Bind as \"%s\" to \"%s\" not permitted",
+			  *dn ? dn : "(anonymous)", handle_config->server);
 		break;
 
 	default:
-		ROPTIONAL(REDEBUG, ERROR, "Bind as \"%s\" to \"%s\" failed: %s", *dn ? dn : "(anonymous)",
-			  handle_config->server, error);
-		LDAP_EXTRA_DEBUG();
-
+		ROPTIONAL(RPEDEBUG, RPERROR, "Bind as \"%s\" to \"%s\" failed",
+			  *dn ? dn : "(anonymous)", handle_config->server);
 		break;
 	}
-
-	talloc_free(extra);
 
 	return status; /* caller closes the connection */
 }
@@ -574,9 +581,6 @@ ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 	int				count = 0;	// Number of results we got.
 
 	struct timeval			tv;		// Holds timeout values.
-
-	char const 			*error = NULL;
-	char				*extra = NULL;
 
 	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
@@ -632,30 +636,13 @@ ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 			       0, our_serverctrls, our_clientctrls, NULL, 0, &msgid);
 
 	ROPTIONAL(RDEBUG, DEBUG, "Waiting for search result...");
-	status = fr_ldap_result(*pconn, msgid, 1, dn, NULL, &our_result, &error, &extra);
+	status = fr_ldap_result(&our_result, NULL, *pconn, msgid, 1, dn, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
 
-	/*
-	 *	Invalid DN isn't a failure when searching.
-	 *	The DN may be xlat expanded so may point directly
-	 *	to an LDAP object. If that can't be located, it's
-	 *	the same as notfound.
-	 */
-	case LDAP_PROC_BAD_DN:
-		ROPTIONAL(RDEBUG, DEBUG, "%s", error);
-		if (extra) ROPTIONAL(RDEBUG, DEBUG, "%s", extra);
-		break;
-
-	case LDAP_PROC_BAD_CONN:
-		status = LDAP_PROC_ERROR;
-		goto finish;
-
-		/* FALL-THROUGH */
 	default:
-		ROPTIONAL(REDEBUG, ERROR, "Failed performing search: %s", error);
-		if (extra) ROPTIONAL(REDEBUG, ERROR, "%s", extra);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed performing search");
 
 		goto finish;
 	}
@@ -676,7 +663,6 @@ ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 	}
 
 finish:
-	talloc_free(extra);
 
 	/*
 	 *	We always need to get the result to count entries, but the caller
@@ -799,9 +785,6 @@ ldap_rcode_t fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 
 	int		msgid;		// Message id returned by ldap_search_ext.
 
-	char const 	*error = NULL;
-	char		*extra = NULL;
-
 	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
@@ -835,7 +818,7 @@ ldap_rcode_t fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 	(void) ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, &msgid);
 
 	RDEBUG2("Waiting for modify result...");
-	status = fr_ldap_result(*pconn, msgid, 0, dn, NULL, NULL, &error, &extra);
+	status = fr_ldap_result(NULL, NULL, *pconn, msgid, 0, dn, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -845,15 +828,12 @@ ldap_rcode_t fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 
 		/* FALL-THROUGH */
 	default:
-		REDEBUG("Failed modifying object: %s", error);
-		REDEBUG("%s", extra);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object");
 
 		goto finish;
 	}
 
 finish:
-	talloc_free(extra);
-
 	return status;
 }
 

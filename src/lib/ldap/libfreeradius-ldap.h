@@ -120,8 +120,6 @@ ldap_create_session_tracking_control LDAP_P((
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
-#define LDAP_RES_NONE			(LDAP_RES_ANY - 1)
-
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
 	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
@@ -278,6 +276,8 @@ typedef struct ldap_handle {
 	ldap_directory_t *directory;			//!< The type of directory we're connected to.
 
 	ldap_handle_config_t const *config;		//!< rlm_ldap connection configuration.
+
+	void		*user_ctx;			//!< User data associated with the handle.
 } ldap_handle_t;
 
 /** Contains a collection of values
@@ -298,7 +298,7 @@ typedef enum {
 
 	LDAP_PROC_ERROR	= -1,				//!< Unrecoverable library/server error.
 
-	LDAP_PROC_BAD_CONN	= -2,				//!< Transitory error, caller should retry the operation
+	LDAP_PROC_BAD_CONN	= -2,			//!< Transitory error, caller should retry the operation
 							//!< with a new connection.
 
 	LDAP_PROC_NOT_PERMITTED = -3,			//!< Operation was not permitted, either current user was
@@ -311,7 +311,10 @@ typedef enum {
 
 	LDAP_PROC_NO_RESULT = -6,			//!< Got no results.
 
-	LDAP_PROC_TIMEOUT = -7				//!< Operation timed out.
+	LDAP_PROC_TIMEOUT = -7,				//!< Operation timed out.
+
+	LDAP_PROC_REFRESH_REQUIRED = -8			//!< Don't continue with the current refresh phase,
+							//!< exit, and retry the operation with a NULL cookie.
 } ldap_rcode_t;
 
 /*
@@ -376,14 +379,13 @@ ldap_rcode_t	fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
+ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn,
+				    LDAPMessage *msg, char const *dn);
 
-ldap_rcode_t	fr_ldap_result(ldap_handle_t const *conn,
-			       int msgid,
-			       int all,
+ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
+			       ldap_handle_t const *conn, int msgid, int all,
 			       char const *dn,
-			       struct timeval const *timeout,
-			       LDAPMessage **result,
-			       char const **error, char **extra);
+			       struct timeval const *timeout);
 
 ldap_handle_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, ldap_handle_config_t const *handle_config);
 
@@ -435,8 +437,7 @@ ldap_rcode_t	fr_ldap_sasl_interactive(REQUEST *request,
 				      	 ldap_handle_t *pconn, char const *dn,
 				      	 char const *password, ldap_sasl const *sasl,
 				      	 LDAPControl **serverctrls, LDAPControl **clientctrls,
-				      	 struct timeval const *timeout,
-				      	 char const **error, char **error_extra);
+				      	 struct timeval const *timeout);
 
 /*
  *	uti.c - Utility functions

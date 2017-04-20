@@ -102,16 +102,13 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls	Search controls for ldap_sasl_interactive.  May be NULL.
  * @param[in] timeout		Maximum time bind is allowed to take.
- * @param[out] error		message resulting from bind.
- * @param[out] extra		information about the error.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 				      ldap_handle_t *conn, char const *identity,
 				      char const *password, ldap_sasl const *sasl,
 				      LDAPControl **serverctrls, LDAPControl **clientctrls,
-				      struct timeval const *timeout,
-				      char const **error, char **extra)
+				      struct timeval const *timeout)
 {
 	ldap_rcode_t			status;
 	int				ret = 0;
@@ -129,10 +126,6 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
 			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
 			      conn, serverctrls, clientctrls);
-
-	/* rlm_ldap_result may not be called */
-	if (error) *error = NULL;
-	if (extra) *extra = NULL;
 
 	sasl_ctx.request = request;
 	sasl_ctx.identity = identity;
@@ -157,7 +150,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
-			status = fr_ldap_result(conn, LDAP_RES_NONE, 0, identity, timeout, NULL, error, extra);
+			status = fr_ldap_error_check(NULL, conn, NULL, identity);
 			break;		/* Old result gets freed on after exit */
 		}
 
@@ -167,7 +160,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 		 *	If LDAP parse result indicates there was an error
 		 *	then we're done.
 		 */
-		status = fr_ldap_result(conn, msgid, 0, identity, timeout, &result, error, extra);
+		status = fr_ldap_result(&result, NULL, conn, msgid, 0, identity, timeout);
 		switch (status) {
 		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:
@@ -201,6 +194,8 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 	}
 done:
 	ldap_msgfree(result);
+
+	if (status != LDAP_PROC_SUCCESS) ROPTIONAL(RPEDEBUG, RPERROR, "SASL bind failed");
 
 	return status;
 }
