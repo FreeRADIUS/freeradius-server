@@ -26,13 +26,6 @@ notifempty
 }
 
 #
-#  Session database modules
-#
-/var/log/freeradius/radutmp /var/log/freeradius/radwtmp {
-	nocreate
-}
-
-#
 #  SQL log files
 #
 /var/log/freeradius/sqllog.sql {

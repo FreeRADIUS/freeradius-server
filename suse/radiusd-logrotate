@@ -28,14 +28,6 @@ notifempty
 }
 
 #
-#  Session database modules
-#
-/var/log/radius/radutmp /var/log/radius/radwtmp {
-	nocreate
-	size=+2048k
-}
-
-#
 #  SQL log files
 #
 /var/log/radius/sqllog.sql {
