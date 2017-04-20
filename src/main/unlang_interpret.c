@@ -279,6 +279,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				 */
 				if (active_callers < lowest_active_callers) {
 					count = 0;
+					lowest_active_callers = active_callers;
 					frame->redundant.found = frame->redundant.child;
 					continue;
 				}
