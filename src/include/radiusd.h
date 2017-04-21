@@ -432,6 +432,7 @@ void		rad_suid_set_down_uid(uid_t uid);
 void		rad_suid_down(void);
 void		rad_suid_up(void);
 void		rad_suid_down_permanent(void);
+size_t		rad_eap_calculate_mtu(size_t fragment_size, REQUEST *request);
 /* regex.c */
 
 #ifdef HAVE_REGEX

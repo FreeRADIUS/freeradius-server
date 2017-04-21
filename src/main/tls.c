@@ -566,7 +566,6 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	tls_session_t	*state = NULL;
 	SSL		*new_tls = NULL;
 	int		verify_mode = 0;
-	VALUE_PAIR	*vp;
 
 	rad_assert(request != NULL);
 
@@ -668,11 +667,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	of EAP-TLS in order to calculate fragment sizes is
 	 *	just too much.
 	 */
-	state->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
-		state->mtu = vp->vp_integer;
-	}
+	state->mtu = rad_eap_calculate_mtu(conf->fragment_size, request);
 
 	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
 
