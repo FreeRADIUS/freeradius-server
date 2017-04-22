@@ -451,7 +451,7 @@ ldap {
 		#  failures) default: 10
 		#
 		#  LDAP_OPT_NETWORK_TIMEOUT is set to this value.
-		net_timeout = 1
+		#net_timeout = 1
 
 		#  LDAP_OPT_X_KEEPALIVE_IDLE
 		idle = 60
@@ -469,7 +469,7 @@ ldap {
 		#
 		#	default: 0x0000 (no debugging messages)
 		#	Example:(LDAP_DEBUG_FILTER+LDAP_DEBUG_CONNS)
-		ldap_debug = 0x0028
+		#ldap_debug = 0x0028
 	}
 
 	#
