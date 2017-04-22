@@ -132,7 +132,7 @@ typedef struct bfd_auth_basic_t {
 	uint8_t		auth_type;
 	uint8_t		auth_len;
 	uint8_t		key_id;
-} bfd_auth_basic_t;
+} __attribute__ ((packed)) bfd_auth_basic_t;
 
 
 typedef struct bfd_auth_simple_t {
@@ -140,7 +140,7 @@ typedef struct bfd_auth_simple_t {
 	uint8_t		auth_len;
 	uint8_t		key_id;
 	uint8_t		password[16];
-} bfd_auth_simple_t;
+} __attribute__ ((packed)) bfd_auth_simple_t;
 
 typedef struct bfd_auth_md5_t {
 	uint8_t		auth_type;
@@ -149,7 +149,7 @@ typedef struct bfd_auth_md5_t {
 	uint8_t		reserved;
 	uint32_t	sequence_no;
 	uint8_t		digest[MD5_DIGEST_LENGTH];
-} bfd_auth_md5_t;
+} __attribute__ ((packed)) bfd_auth_md5_t;
 
 typedef struct bfd_auth_sha1_t {
 	uint8_t		auth_type;
@@ -158,14 +158,14 @@ typedef struct bfd_auth_sha1_t {
 	uint8_t		reserved;
 	uint32_t	sequence_no;
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
-} bfd_auth_sha1_t;
+} __attribute__ ((packed)) bfd_auth_sha1_t;
 
 typedef union bfd_auth_t {
 	bfd_auth_basic_t        basic;
 	bfd_auth_simple_t	password;
 	bfd_auth_md5_t		md5;
 	bfd_auth_sha1_t		sha1;
-} bfd_auth_t;
+} __attribute__ ((packed)) bfd_auth_t;
 
 
 /*
