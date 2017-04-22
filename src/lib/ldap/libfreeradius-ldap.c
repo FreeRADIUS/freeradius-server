@@ -443,7 +443,7 @@ ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 
 	if (*result_p && ((status < 0) || !result)) {
 		ldap_msgfree(*result_p);
-		*result = NULL;
+		*result_p = NULL;
 	}
 
 	return status;
@@ -535,12 +535,12 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
 		break;
 
 	case LDAP_PROC_NOT_PERMITTED:
-		ROPTIONAL(RPEDEBUG, RPERROR, "Bind as \"%s\" to \"%s\" not permitted",
+		ROPTIONAL(RPEDEBUG, PERROR, "Bind as \"%s\" to \"%s\" not permitted",
 			  *dn ? dn : "(anonymous)", handle_config->server);
 		break;
 
 	default:
-		ROPTIONAL(RPEDEBUG, RPERROR, "Bind as \"%s\" to \"%s\" failed",
+		ROPTIONAL(RPEDEBUG, PERROR, "Bind as \"%s\" to \"%s\" failed",
 			  *dn ? dn : "(anonymous)", handle_config->server);
 		break;
 	}
@@ -642,7 +642,7 @@ ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 		break;
 
 	default:
-		ROPTIONAL(RPEDEBUG, RPERROR, "Failed performing search");
+		ROPTIONAL(RPEDEBUG, PERROR, "Failed performing search");
 
 		goto finish;
 	}

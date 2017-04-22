@@ -195,7 +195,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 done:
 	ldap_msgfree(result);
 
-	if (status != LDAP_PROC_SUCCESS) ROPTIONAL(RPEDEBUG, RPERROR, "SASL bind failed");
+	if (status != LDAP_PROC_SUCCESS) ROPTIONAL(RPEDEBUG, PERROR, "SASL bind failed");
 
 	return status;
 }
