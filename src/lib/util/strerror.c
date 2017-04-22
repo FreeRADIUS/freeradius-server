@@ -233,7 +233,11 @@ char const *fr_strerror(void)
  * Return the first message added to the error stack using #fr_strerror_printf
  * or #fr_strerror_printf_push.
  *
- * @return library error or zero length string.
+ * @note Unlink fr_strerror() will return NULL if no messages are pending.
+ *
+ * @return
+ *	- A library error.
+ *	- NULL if no errors are pending.
  */
 char const *fr_strerror_pop(void)
 {
@@ -241,10 +245,10 @@ char const *fr_strerror_pop(void)
 	fr_log_entry_t		*entry;
 
 	buffer = fr_strerror_buffer;
-	if (!buffer) return "";
+	if (!buffer) return NULL;
 
 	entry = fr_cursor_remove(&buffer->cursor);
-	if (!entry) return "";
+	if (!entry) return NULL;
 
 	return entry->msg;
 }
@@ -282,7 +286,7 @@ void fr_perror(char const *fmt, ...)
 
 #ifdef TESTING_STRERROR
 /*
- *  cc strerror.c cursor.c -g3 -Wall -DTESTING_STRERROR -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
+ *  cc strerror.c cursor.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
  */
 #include <stddef.h>
 #include <freeradius-devel/cutest.h>
@@ -303,8 +307,7 @@ void test_strerror_pop_uninit(void)
 
 	error = fr_strerror_pop();
 
-	TEST_CHECK(error != NULL);
-	TEST_CHECK(error[0] == '\0');
+	TEST_CHECK(error == NULL);
 }
 
 void test_strerror_printf(void)
@@ -334,8 +337,7 @@ void test_strerror_printf_push_pop(void)
 	TEST_CHECK(strcmp(error, "Testing 1") == 0);
 
 	error = fr_strerror_pop();
-	TEST_CHECK(error != NULL);
-	TEST_CHECK(error[0] == '\0');
+	TEST_CHECK(error == NULL);
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
@@ -353,8 +355,7 @@ void test_strerror_printf_push_strerror(void)
 	TEST_CHECK(strcmp(error, "Testing 1") == 0);
 
 	error = fr_strerror_pop();
-	TEST_CHECK(error != NULL);
-	TEST_CHECK(error[0] == '\0');
+	TEST_CHECK(error == NULL);
 }
 
 void test_strerror_printf_push_pop_multi(void)
@@ -373,8 +374,7 @@ void test_strerror_printf_push_pop_multi(void)
 	TEST_CHECK(strcmp(error, "Testing 1") == 0);
 
 	error = fr_strerror_pop();
-	TEST_CHECK(error != NULL);
-	TEST_CHECK(error[0] == '\0');
+	TEST_CHECK(error == NULL);
 
 	error = fr_strerror();
 	TEST_CHECK(error != NULL);
@@ -393,8 +393,7 @@ void test_strerror_printf_push_strerror_multi(void)
 	TEST_CHECK(strcmp(error, "Testing 2") == 0);
 
 	error = fr_strerror_pop();
-	TEST_CHECK(error != NULL);
-	TEST_CHECK(error[0] == '\0');
+	TEST_CHECK(error == NULL);
 }
 
 void test_strerror_printf_strerror_append(void)
