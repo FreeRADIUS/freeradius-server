@@ -880,7 +880,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 	FR_MD5_CTX md5_context;
 	uint8_t digest[128];
 	uint8_t buff[FR_MAX_STRING_LEN];
-	char buff2[FR_MAX_STRING_LEN + 50];
+	uint8_t buff2[FR_MAX_STRING_LEN + 50];
 
 	RDEBUG("Using NT-MTA-MD5-Password");
 
@@ -911,13 +911,13 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 	 *	Set up the algorithm.
 	 */
 	{
-		char *p = buff2;
+		uint8_t *p = buff2;
 
 		memcpy(p, &vp->vp_octets[32], 32);
 		p += 32;
 		*(p++) = 89;
-		strcpy(p, request->password->vp_strvalue);
-		p += strlen(p);
+		memcpy(p, request->password->vp_strvalue, request->password->vp_length);
+		p += request->password->vp_length;
 		*(p++) = 247;
 		memcpy(p, &vp->vp_octets[32], 32);
 		p += 32;
