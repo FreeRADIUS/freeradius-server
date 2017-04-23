@@ -124,10 +124,10 @@ static uint64_t collect_active_callers(unlang_t *instruction)
 
 		thread = module_thread_instance_find(sp->module_instance);
 		rad_assert(thread != NULL);
-					
+
 		return thread->active_callers;
 	}
-	
+
 	case UNLANG_TYPE_GROUP:
 	case UNLANG_TYPE_LOAD_BALANCE:
 	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
@@ -271,7 +271,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 
 					thread = module_thread_instance_find(sp->module_instance);
 					rad_assert(thread != NULL);
-					
+
 					active_callers = thread->active_callers;
 					RDEBUG3("load-balance child %d sub-module has %" PRIu64 " active", num, active_callers);
 				}
@@ -1437,11 +1437,12 @@ static int _unlang_event_free(unlang_event_t *ev)
 
 /** Call the callback registered for a timeout event
  *
+ * @param[in] el	the event timer was inserted into.
  * @param[in] now	The current time, as held by the event_list.
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  *
  */
-static void unlang_event_timeout_handler(struct timeval *now, void *ctx)
+static void unlang_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
 {
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
 	void *mutable_ctx;
@@ -1700,7 +1701,7 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 	return RLM_MODULE_YIELD;
 }
 
-static void unlang_timer_hook(UNUSED struct timeval *now, void *ctx)
+static void unlang_timer_hook(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 #ifdef DEBUG_STATE_MACHINE

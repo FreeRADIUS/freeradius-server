@@ -119,10 +119,11 @@ static inline void _rest_io_service(rlm_rest_thread_t *t, int fd, int event)
 
 /** libcurl's timer expired
  *
+ * @param[in] el	the timer was inserted into.
  * @param[in] now	The current time according to the event loop.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_timer_expired(UNUSED struct timeval *now, void *ctx)
+static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
 {
 	rlm_rest_thread_t *t;
 

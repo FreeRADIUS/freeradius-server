@@ -51,7 +51,7 @@ typedef struct fr_event_timer_t fr_event_timer_t;
  * @param[in] now	The current time.
  * @param[in] ctx	User ctx passed to #fr_event_timer_insert.
  */
-typedef	void (*fr_event_callback_t)(struct timeval *now, void *ctx);
+typedef	void (*fr_event_callback_t)(fr_event_list_t *el, struct timeval *now, void *ctx);
 
 /** Called after each event loop cycle
  *

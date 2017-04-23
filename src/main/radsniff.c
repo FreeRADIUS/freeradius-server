@@ -786,7 +786,7 @@ static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED stru
 /** Process stats for a single interval
  *
  */
-static void rs_stats_process(struct timeval *now, void *ctx)
+static void rs_stats_process(fr_event_list_t *el, struct timeval *now, void *ctx)
 {
 	size_t		i;
 	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
@@ -850,7 +850,7 @@ clear:
 		now->tv_sec += conf->stats.interval;
 		now->tv_usec = 0;
 
-		if (fr_event_timer_insert(this->list, rs_stats_process, ctx, now, &event) < 0) {
+		if (fr_event_timer_insert(el, rs_stats_process, ctx, now, &event) < 0) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -1062,7 +1062,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 	talloc_free(request);
 }
 
-static void _rs_event(UNUSED struct timeval *now, void *ctx)
+static void _rs_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
 {
 	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
 	request->event = NULL;
@@ -2000,9 +2000,8 @@ static void _unmark_link(void *request)
 /** Re-open the collectd socket
  *
  */
-static void rs_collectd_reopen(struct timeval *now, void *ctx)
+static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED void *ctx)
 {
-	fr_event_list_t *list = ctx;
 	static fr_event_timer_t *event;
 	struct timeval when;
 
@@ -2014,7 +2013,7 @@ static void rs_collectd_reopen(struct timeval *now, void *ctx)
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
 	rs_tv_add_ms(now, RS_SOCKET_REOPEN_DELAY, &when);
-	if (fr_event_timer_insert(list, rs_collectd_reopen, list, &when, &event) < 0) {
+	if (fr_event_timer_insert(el, rs_collectd_reopen, el, &when, &event) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}
@@ -2064,7 +2063,7 @@ fr_event_list_t *list, int fd, UNUSED void *ctx)
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
-		rs_collectd_reopen(&now, list);
+		rs_collectd_reopen(list, &now, list);
 	}
 		break;
 #else

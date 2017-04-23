@@ -394,7 +394,7 @@ static int timestamp_cmp(void const *one, void const *two)
 /*
  *	Enforce max_request_time.
  */
-static void max_request_time_hook(UNUSED struct timeval *now, void *ctx)
+static void max_request_time_hook(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 #ifdef DEBUG_STATE_MACHINE

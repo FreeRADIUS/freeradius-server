@@ -1892,7 +1892,7 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 	}
 
 	if (strcmp(argv[last], "alive") == 0) {
-		revive_home_server(NULL, home);
+		revive_home_server(NULL, NULL, home);
 
 	} else if (strcmp(argv[last], "dead") == 0) {
 		struct timeval now;

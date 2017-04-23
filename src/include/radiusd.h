@@ -615,13 +615,13 @@ typedef enum event_corral_t {
 	EVENT_CORRAL_AUX	//!< Maybe main thread or one shared by modules
 } event_corral_t;
 
-fr_event_list_t *radius_event_list_corral(event_corral_t hint);
+fr_event_list_t *process_global_event_list(event_corral_t hint);
 int radius_event_init(TALLOC_CTX *ctx);
 int radius_event_start(bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
 void radius_update_listener(rad_listen_t *listener);
-void revive_home_server(struct timeval *now, void *ctx);
+void revive_home_server(fr_event_list_t *el, struct timeval *now, void *ctx);
 void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 /* evaluate.c */

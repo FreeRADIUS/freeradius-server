@@ -406,7 +406,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	char k[64]; /* To silence const warns until newer unbound in distros */
 
-	inst->el = radius_event_list_corral(EVENT_CORRAL_AUX);
+	inst->el = process_global_event_list(EVENT_CORRAL_AUX);
 	inst->log_pipe_stream[0] = NULL;
 	inst->log_pipe_stream[1] = NULL;
 	inst->log_fd = -1;

@@ -66,7 +66,7 @@ static fr_event_list_t *el = NULL;
 
 static void mark_home_server_alive(REQUEST *request, home_server_t *home);
 
-fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
+fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
 	/* Currently we do not run a second event loop for modules. */
 	return el;
 }
@@ -123,7 +123,7 @@ void request_trace_state_machine(REQUEST *request)
  */
 #define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, fr_state_action_t action)
 
-static void request_timer(struct timeval *now, void *ctx);
+static void request_timer(fr_event_list_t *eel, struct timeval *now, void *ctx);
 
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
  *
@@ -458,7 +458,7 @@ static int request_init_delay(REQUEST *request)
 /*
  *	Callback for ALL timer events related to the request.
  */
-static void request_timer(UNUSED struct timeval *now, void *ctx)
+static void request_timer(UNUSED fr_event_list_t *eel, UNUSED struct timeval *now, void *ctx)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 #ifdef DEBUG_STATE_MACHINE
@@ -1850,7 +1850,7 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 /*
  *	Timer function for all TCP sockets.
  */
-static void tcp_socket_timer(struct timeval *now, void *ctx)
+static void tcp_socket_timer(UNUSED fr_event_list_t *eel, struct timeval *now, void *ctx)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 	listen_socket_t *sock = listener->data;
@@ -3506,7 +3506,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
  *	Called from start of zombie period, OR after control socket
  *	marks the home server dead.
  */
-static void ping_home_server(struct timeval *now, void *ctx)
+static void ping_home_server(UNUSED fr_event_list_t *eel, struct timeval *now, void *ctx)
 {
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	REQUEST *request;
@@ -3774,7 +3774,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 			buffer, sizeof(buffer)),
 	      home->port, (int) response_window->tv_sec, (int) response_window->tv_usec);
 
-	ping_home_server(now, home);
+	ping_home_server(el, now, home);
 }
 
 
@@ -3801,7 +3801,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 			struct timeval now;
 
 			gettimeofday(&now, NULL);
-			ping_home_server(&now, home);
+			ping_home_server(el, &now, home);
 		} else {
 			DEBUG("PING: Already pinging home server %s", home->log_name);
 		}
@@ -3821,7 +3821,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 }
 
 
-void revive_home_server(UNUSED struct timeval *now, void *ctx)
+void revive_home_server(UNUSED fr_event_list_t *eel, UNUSED struct timeval *now, void *ctx)
 {
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	char buffer[INET6_ADDRSTRLEN];

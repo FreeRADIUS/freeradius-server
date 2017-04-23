@@ -687,6 +687,18 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				goto do_splice;
 			}
 
+			case 'T':
+			{
+				struct timeval *in = va_arg(ap_q, struct timeval *);
+
+				subst = talloc_asprintf(NULL, "%" PRIu64 ".%06" PRIu64,
+						        (uint64_t)in->tv_sec,
+							(uint64_t)in->tv_usec);
+				if (!subst) goto oom;
+
+				goto do_splice;
+			}
+
 			default:
 				(void) va_arg(ap_q, void *);					/* void * */
 			}
