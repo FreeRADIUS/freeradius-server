@@ -260,7 +260,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 
 				if (child->type != UNLANG_TYPE_MODULE_CALL) {
 					active_callers = collect_active_callers(child);
-					RDEBUG3("load-balance child %d sub-section has " PRIu64 " active", num, active_callers);
+					RDEBUG3("load-balance child %d sub-section has %" PRIu64 " active", num, active_callers);
 
 				} else {
 					module_thread_instance_t *thread;
@@ -273,7 +273,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 					rad_assert(thread != NULL);
 					
 					active_callers = thread->active_callers;
-					RDEBUG3("load-balance child %d sub-module has " PRIu64 " active", num, active_callers);
+					RDEBUG3("load-balance child %d sub-module has %" PRIu64 " active", num, active_callers);
 				}
 
 
@@ -283,7 +283,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				 *	activity.
 				 */
 				if (active_callers < lowest_active_callers) {
-					RDEBUG3("load-balance choosing child %d as active " PRIu64 " < " PRIu64 "",
+					RDEBUG3("load-balance choosing child %d as active %" PRIu64 " < %" PRIu64 "",
 						num, active_callers, lowest_active_callers);
 
 					count = 1;
@@ -297,16 +297,16 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				 *	than the one we found.
 				 */
 				if (active_callers > lowest_active_callers) {
-					RDEBUG3("load-balance skipping child %d, as active " PRIu64 " > " PRIu64 "",
+					RDEBUG3("load-balance skipping child %d, as active %" PRIu64 " > %" PRIu64 "",
 						num, active_callers, lowest_active_callers);
 					continue;
 				}
 				
 				count++;
-				RDEBUG3("load-balance found %d children with " PRIu64 " active", count, active_callers);
+				RDEBUG3("load-balance found %d children with %" PRIu64 " active", count, active_callers);
 
 				if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-					RDEBUG3("load-balance choosing child %d at random %u", num);
+					RDEBUG3("load-balance choosing random child %d", num);
 					frame->redundant.found = frame->redundant.child;
 				}
 			}
