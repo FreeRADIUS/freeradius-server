@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rbtree.h>
 
-#include <freeradius-devel/io/receiver.h>
+#include <freeradius-devel/io/network.h>
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
@@ -99,17 +99,17 @@ typedef struct fr_schedule_worker_t {
 } fr_schedule_worker_t;
 
 /**
- *	A data structure to track network threads / receivers.
+ *	A data structure to track network threads / networks.
  */
-typedef struct fr_schedule_receiver_t {
-	pthread_t	pthread_id;		//!< the thread of this receiver
+typedef struct fr_schedule_network_t {
+	pthread_t	pthread_id;		//!< the thread of this network
 
 	int		id;			//!< a unique ID
 	fr_schedule_t	*sc;			//!< the scheduler we are running under
 
 	fr_schedule_child_status_t status;	//!< status of the worker
-	fr_receiver_t	*rc;			//!< the receive data structure
-} fr_schedule_receiver_t;
+	fr_network_t	*rc;			//!< the receive data structure
+} fr_schedule_network_t;
 
 
 /**
@@ -138,7 +138,7 @@ struct fr_schedule_t {
 	fr_heap_t	*workers;		//!< heap of workers
 	fr_heap_t	*done_workers;		//!< heap of done workers
 
-	fr_schedule_receiver_t *sr;		//!< pointer to the (one) network thread
+	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 
 	uint32_t	num_transports;		//!< how many transport layers we have
 	fr_transport_t	**transports;		//!< array of active transports.
@@ -237,7 +237,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	sc->num_workers++;
 	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
-	(void) fr_receiver_worker_add(sc->sr->rc, sw->worker);
+	(void) fr_network_worker_add(sc->sn->rc, sw->worker);
 
 	fr_log(sc->log, L_INFO, "Worker %d running\n", sw->id);
 
@@ -295,33 +295,33 @@ fail:
 }
 
 
-/** Initialize and run the receiver thread.
+/** Initialize and run the network thread.
  *
- * @param[in] arg the fr_schedule_receiver_t
+ * @param[in] arg the fr_schedule_network_t
  * @return NULL
  */
-static void *fr_schedule_receiver_thread(void *arg)
+static void *fr_schedule_network_thread(void *arg)
 {
 	TALLOC_CTX *ctx;
-	fr_schedule_receiver_t *sr = arg;
-	fr_schedule_t *sc = sr->sc;
+	fr_schedule_network_t *sn = arg;
+	fr_schedule_t *sc = sn->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 
 	fr_log(sc->log, L_INFO, "Network starting\n");
 
-	ctx = talloc_init("receiver");
+	ctx = talloc_init("network");
 	if (!ctx) {
-		fr_log(sc->log, L_ERR, "Network %d - Failed allocating memory", sr->id);
+		fr_log(sc->log, L_ERR, "Network %d - Failed allocating memory", sn->id);
 		goto fail;
 	}
 
-	sr->rc = fr_receiver_create(ctx, sc->log, sc->num_transports, sc->transports);
-	if (!sr->rc) {
-		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sr->id, fr_strerror());
+	sn->rc = fr_network_create(ctx, sc->log, sc->num_transports, sc->transports);
+	if (!sn->rc) {
+		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sn->id, fr_strerror());
 		goto fail;
 	}
 
-	sr->status = FR_CHILD_RUNNING;
+	sn->status = FR_CHILD_RUNNING;
 
 	/*
 	 *	Tell the originator that the thread has started.
@@ -333,22 +333,22 @@ static void *fr_schedule_receiver_thread(void *arg)
 	/*
 	 *	Do all of the work.
 	 */
-	fr_receiver(sr->rc);
+	fr_network(sn->rc);
 
 	/*
 	 *	Talloc ordering issues. We want to be independent of
 	 *	how talloc walks it's children, and ensure that some
 	 *	things are freed in a specific order.
 	 */
-	fr_receiver_destroy(sr->rc);
-	sr->rc = NULL;
+	fr_network_destroy(sn->rc);
+	sn->rc = NULL;
 
 	status = FR_CHILD_EXITED;
 
 fail:
 	if (ctx) talloc_free(ctx);
 
-	sr->status = status;
+	sn->status = status;
 
 	fr_log(sc->log, L_INFO, "Network exiting");
 
@@ -452,20 +452,20 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	/*
 	 *	Create the network thread first.
 	 */
-	sc->sr = talloc_zero(sc, fr_schedule_receiver_t);
-	sc->sr->sc = sc;
-	sc->sr->id = 0;
+	sc->sn = talloc_zero(sc, fr_schedule_network_t);
+	sc->sn->sc = sc;
+	sc->sn->id = 0;
 
-	rcode = pthread_create(&sc->sr->pthread_id, &attr, fr_schedule_receiver_thread, sc->sr);
+	rcode = pthread_create(&sc->sn->pthread_id, &attr, fr_schedule_network_thread, sc->sn);
 	if (rcode != 0) {
 		fr_strerror_printf("Failed creating network thread: %s", fr_syserror(errno));
 		goto fail;
 	}
 
 	SEM_WAIT_INTR(&sc->semaphore);
-	if (sc->sr->status != FR_CHILD_RUNNING) {
+	if (sc->sn->status != FR_CHILD_RUNNING) {
 	fail:
-		TALLOC_FREE(sc->sr);
+		TALLOC_FREE(sc->sn);
 		fr_schedule_destroy(sc);
 		return NULL;
 	}
@@ -621,8 +621,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	If the network thread is running, tell it to exit.
 	 */
-	if (sc->sr->status == FR_CHILD_RUNNING) {
-		fr_receiver_exit(sc->sr->rc);
+	if (sc->sn->status == FR_CHILD_RUNNING) {
+		fr_network_exit(sc->sn->rc);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
@@ -649,7 +649,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
  */
 int fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_transport_t *transport)
 {
-	return fr_receiver_socket_add(sc->sr->rc, fd, ctx, transport);
+	return fr_network_socket_add(sc->sn->rc, fd, ctx, transport);
 }
 
 

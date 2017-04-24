@@ -229,7 +229,7 @@ check_close:
 			MPRINT1("Master got channel event %d\n", ce);
 			
 			switch (ce) {
-			case FR_CHANNEL_DATA_READY_RECEIVER:
+			case FR_CHANNEL_DATA_READY_NETWORK:
 				MPRINT1("Master got data ready signal\n");
 				rad_assert(new_channel == channel);
 

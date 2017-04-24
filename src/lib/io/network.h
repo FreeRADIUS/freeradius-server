@@ -18,12 +18,12 @@
 /**
  * $Id$
  *
- * @file io/receiver.h
+ * @file io/network.h
  * @brief Receive packets
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
-RCSIDH(receiver_h, "$Id$")
+RCSIDH(network_h, "$Id$")
 
 #include <freeradius-devel/fr_log.h>
 
@@ -31,18 +31,18 @@ RCSIDH(receiver_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_receiver_t fr_receiver_t;
+typedef struct fr_network_t fr_network_t;
 
-fr_receiver_t *fr_receiver_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports);
-void fr_receiver_exit(fr_receiver_t *rc);
-int fr_receiver_destroy(fr_receiver_t *rc) CC_HINT(nonnull);
-void fr_receiver(fr_receiver_t *rc) CC_HINT(nonnull);
+fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports);
+void fr_network_exit(fr_network_t *nr);
+int fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
+void fr_network(fr_network_t *nr) CC_HINT(nonnull);
 
-int fr_receiver_socket_add(fr_receiver_t *rc, int fd, void *ctx, fr_transport_t *transport) CC_HINT(nonnull);
-int fr_receiver_worker_add(fr_receiver_t *rc, fr_worker_t *worker) CC_HINT(nonnull);
+int fr_network_socket_add(fr_network_t *nr, int fd, void *ctx, fr_transport_t *transport) CC_HINT(nonnull);
+int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _FR_RECEIVER_H */
+#endif /* _FR_NETWORK_H */

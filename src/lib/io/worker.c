@@ -208,7 +208,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		fr_log(worker->log, L_DBG, "\t%saq noop", worker->name);
 		return;
 
-	case FR_CHANNEL_DATA_READY_RECEIVER:
+	case FR_CHANNEL_DATA_READY_NETWORK:
 		rad_assert(0 == 1);
 		fr_log(worker->log, L_DBG, "\t%saq data ready ? MASTER ?", worker->name);
 		break;

@@ -355,7 +355,7 @@ check_close:
 			MPRINT1("Master got channel event %d\n", ce);
 			
 			switch (ce) {
-			case FR_CHANNEL_DATA_READY_RECEIVER:
+			case FR_CHANNEL_DATA_READY_NETWORK:
 				MPRINT1("Master got data ready signal\n");
 
 				reply = fr_channel_recv_reply(ch);
