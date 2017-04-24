@@ -243,6 +243,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			}
 
 		} else {
+			int num;
 			uint64_t lowest_active_callers;
 
 		randomly_choose:
@@ -251,14 +252,16 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			/*
 			 *	Choose a child at random.
 			 */
-			for (frame->redundant.child = frame->redundant.found = g->children;
+			for (frame->redundant.child = frame->redundant.found = g->children, num = 0;
 			     frame->redundant.child != NULL;
-			     frame->redundant.child = frame->redundant.child->next) {
+			     frame->redundant.child = frame->redundant.child->next, num++) {
 				uint64_t active_callers;
 				unlang_t *child = frame->redundant.child;
 
 				if (child->type != UNLANG_TYPE_MODULE_CALL) {
 					active_callers = collect_active_callers(child);
+					RDEBUG3("load-balance child %d sub-section has %llu active", num, active_callers);
+
 				} else {
 					module_thread_instance_t *thread;
 					unlang_module_call_t *sp;
@@ -270,7 +273,9 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 					rad_assert(thread != NULL);
 					
 					active_callers = thread->active_callers;
+					RDEBUG3("load-balance child %d sub-module has %llu active", num, active_callers);
 				}
+
 
 				/*
 				 *	Reset the found, and the count
@@ -278,7 +283,10 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				 *	activity.
 				 */
 				if (active_callers < lowest_active_callers) {
-					count = 0;
+					RDEBUG3("load-balance choosing child %d as active %llu < %llu",
+						num, active_callers, lowest_active_callers);
+
+					count = 1;
 					lowest_active_callers = active_callers;
 					frame->redundant.found = frame->redundant.child;
 					continue;
@@ -288,11 +296,17 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				 *	Skip callers who are busier
 				 *	than the one we found.
 				 */
-				if (active_callers > lowest_active_callers) continue;
+				if (active_callers > lowest_active_callers) {
+					RDEBUG3("load-balance skipping child %d, as active %llu > %llu",
+						num, active_callers, lowest_active_callers);
+					continue;
+				}
 				
 				count++;
+				RDEBUG3("load-balance found %d children with %llu active", count, active_callers);
 
 				if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
+					RDEBUG3("load-balance choosing child %d at random %u %u", num);
 					frame->redundant.found = frame->redundant.child;
 				}
 			}
