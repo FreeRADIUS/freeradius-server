@@ -93,7 +93,7 @@ static int mod_detach(void *instance)
 	if (driver->heap) fr_heap_delete(driver->heap);
 	if (driver->cache) {
 		rbtree_walk(driver->cache, RBTREE_DELETE_ORDER, _cache_entry_free, NULL);
-		rbtree_free(driver->cache);
+		talloc_free(driver->cache);
 	}
 
 	pthread_mutex_destroy(&driver->mutex);

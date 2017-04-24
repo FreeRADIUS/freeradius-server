@@ -296,21 +296,21 @@ void realms_free(void)
 {
 #ifdef WITH_PROXY
 #  ifdef WITH_STATS
-	rbtree_free(home_servers_bynumber);
+	talloc_free(home_servers_bynumber);
 	home_servers_bynumber = NULL;
 #  endif
 
-	rbtree_free(home_servers_byname);
+	talloc_free(home_servers_byname);
 	home_servers_byname = NULL;
 
-	rbtree_free(home_servers_byaddr);
+	talloc_free(home_servers_byaddr);
 	home_servers_byaddr = NULL;
 
-	rbtree_free(home_pools_byname);
+	talloc_free(home_pools_byname);
 	home_pools_byname = NULL;
 #endif
 
-	rbtree_free(realms_byname);
+	talloc_free(realms_byname);
 	realms_byname = NULL;
 
 	realm_pool_free(NULL);

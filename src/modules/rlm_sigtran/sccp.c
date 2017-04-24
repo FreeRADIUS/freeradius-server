@@ -396,6 +396,6 @@ void sigtran_sccp_global_free(void)
 {
 	if (--txn_tree_inst > 0) return;
 
-	rbtree_free(txn_tree);
+	talloc_free(txn_tree);
 	txn_tree = NULL;
 }

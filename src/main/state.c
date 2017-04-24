@@ -163,7 +163,7 @@ static int _state_tree_free(fr_state_tree_t *state)
 	/*
 	 *	Free the rbtree
 	 */
-	rbtree_free(state->tree);
+	talloc_free(state->tree);
 
 	if (state == global_state) global_state = NULL;
 

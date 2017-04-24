@@ -410,7 +410,7 @@ static int mod_detach(void *instance)
 
 	/* delete session tree */
 	if (inst->session_tree) {
-		rbtree_free(inst->session_tree);
+		talloc_free(inst->session_tree);
 		inst->session_tree = NULL;
 	}
 

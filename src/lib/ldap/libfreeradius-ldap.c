@@ -965,6 +965,8 @@ static int _mod_conn_free(ldap_handle_t *conn)
 
 	rad_assert(conn->handle);
 
+	talloc_free_children(conn);	/* Force inverted free order */
+
 	fr_ldap_control_clear(conn);
 
 #ifdef HAVE_LDAP_UNBIND_EXT_S

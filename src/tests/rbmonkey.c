@@ -227,7 +227,7 @@ again:
 		}
 	}
 	fprintf(stderr,"matched OK\n");
-	rbtree_free(t);
+	talloc_free(t);
 	goto again;
 
 bad:

@@ -602,7 +602,7 @@ static void _python_thread_tree_free(void *arg)
 	rad_assert(arg == local_thread_state);
 
 	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
-	rbtree_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
+	talloc_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
 
 	local_thread_state = NULL;	/* Prevent double free in unit_test_module env */
 }
@@ -1068,7 +1068,7 @@ static int mod_detach(void *instance)
 	 *	unit_test_module framework, and probably with the server running
 	 *	in debug mode.
 	 */
-	rbtree_free(local_thread_state);
+	talloc_free(local_thread_state);
 	local_thread_state = NULL;
 
 	/*

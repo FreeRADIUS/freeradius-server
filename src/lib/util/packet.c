@@ -450,7 +450,7 @@ void fr_packet_list_free(fr_packet_list_t *pl)
 {
 	if (!pl) return;
 
-	rbtree_free(pl->tree);
+	talloc_free(pl->tree);
 	talloc_free(pl);
 }
 

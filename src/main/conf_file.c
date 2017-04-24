@@ -586,19 +586,19 @@ static int _cf_section_free(CONF_SECTION *cs)
 	 *	cs.
 	 */
 	if (cs->pair_tree) {
-		rbtree_free(cs->pair_tree);
+		talloc_free(cs->pair_tree);
 		cs->pair_tree = NULL;
 	}
 	if (cs->section_tree) {
-		rbtree_free(cs->section_tree);
+		talloc_free(cs->section_tree);
 		cs->section_tree = NULL;
 	}
 	if (cs->name2_tree) {
-		rbtree_free(cs->name2_tree);
+		talloc_free(cs->name2_tree);
 		cs->name2_tree = NULL;
 	}
 	if (cs->data_tree) {
-		rbtree_free(cs->data_tree);
+		talloc_free(cs->data_tree);
 		cs->data_tree = NULL;
 	}
 

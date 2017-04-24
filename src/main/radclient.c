@@ -1613,7 +1613,7 @@ int main(int argc, char **argv)
 		}
 	} while (!done);
 
-	rbtree_free(filename_tree);
+	talloc_free(filename_tree);
 	fr_packet_list_free(pl);
 	while (request_head) TALLOC_FREE(request_head);
 	talloc_free(dict);

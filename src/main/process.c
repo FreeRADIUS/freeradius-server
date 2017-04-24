@@ -5593,7 +5593,7 @@ void radius_event_free(void)
 		}
 	}
 
-	rbtree_free(pl);
+	talloc_free(pl);
 	pl = NULL;
 
 #ifdef WITH_PROXY

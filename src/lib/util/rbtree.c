@@ -54,6 +54,9 @@ struct rbtree_t {
 	bool			replace;
 	bool			lock;
 	pthread_mutex_t		mutex;
+
+	TALLOC_CTX		*node_ctx;	//!< Freed last by the destructor, to ensure
+						//!< the tree is still functional.
 };
 
 #ifndef NDEBUG
@@ -83,19 +86,20 @@ void rbtree_node_talloc_free(void *data)
 	talloc_free(data);
 }
 
-/** Executes the free walker on a tree, and then frees the tree itself
+/** Free the rbtree cleaning up any nodes
  *
- * @note If you don't require the free walker to execute, you can just
- *	talloc_free the tree.  All mutexes will be cleaned up.
+ * Walk the tree deleting nodes, then free any children of the tree.
  *
- * @param tree to free.
+ * @note If the destructor of a talloc descendent needs to lookup any
+ *	information in the tree, it will be unavailable at the point
+ *	of freeing.  We could fix this by introducing a pre-free callback
+ *	which gets called before any of the nodes are deleted.
+ *
+ * @param[in] tree to tree.
+ * @return 0
  */
-void rbtree_free(rbtree_t *tree)
+static int _tree_free(rbtree_t *tree)
 {
-	if (!tree) return;
-
-	if (tree->lock) pthread_mutex_lock(&tree->mutex);
-
 	/*
 	 *	walk the tree, deleting the nodes...
 	 */
@@ -106,13 +110,16 @@ void rbtree_free(rbtree_t *tree)
 #endif
 	tree->root = NULL;
 
-	if (tree->lock) pthread_mutex_unlock(&tree->mutex);
+	/*
+	 *	Ensure all dependents on the tree run their
+	 *	destructors.  The tree at this point should
+	 *	and any tree operations should be empty.
+	 */
+	talloc_free_children(tree);
 
-	talloc_free(tree);
-}
-
-static int _rbtree_free(rbtree_t *tree)
-{
+	/*
+	 *	Clear up locks.
+	 */
 	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
 
 	return 0;
@@ -120,6 +127,7 @@ static int _rbtree_free(rbtree_t *tree)
 
 /** Create a new RED-BLACK tree
  *
+ * @note Due to the node memory being allocated from a different pool to the main
  */
 rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node_free, int flags)
 {
@@ -137,11 +145,10 @@ rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node
 	tree->compare = compare;
 	tree->replace = (flags & RBTREE_FLAG_REPLACE) != 0 ? true : false;
 	tree->lock = (flags & RBTREE_FLAG_LOCK) != 0 ? true : false;
-	if (tree->lock) {
-		pthread_mutex_init(&tree->mutex, NULL);
-	}
+	tree->node_ctx = talloc_new(tree);
+	if (tree->lock) pthread_mutex_init(&tree->mutex, NULL);
 
-	talloc_set_destructor(tree, _rbtree_free);
+	talloc_set_destructor(tree, _tree_free);
 	tree->free = node_free;
 
 	return tree;
@@ -271,6 +278,8 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 {
 	rbnode_t *current, *parent, *x;
 
+	if (!tree->root) return NULL;
+
 	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	/* find where node belongs */
@@ -306,7 +315,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	}
 
 	/* setup new node */
-	x = talloc_zero(tree, rbnode_t);
+	x = talloc_zero(tree->node_ctx, rbnode_t);
 	if (!x) {
 		fr_strerror_printf("No memory for new rbtree node");
 		if (tree->lock) pthread_mutex_unlock(&tree->mutex);
@@ -340,6 +349,8 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 
 bool rbtree_insert(rbtree_t *tree, void *data)
 {
+	if (!tree->root) return NULL;
+
 	if (rbtree_insert_node(tree, data)) return true;
 	return false;
 }
@@ -497,7 +508,11 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 		if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 	}
 }
-void rbtree_delete(rbtree_t *tree, rbnode_t *z) {
+
+void rbtree_delete(rbtree_t *tree, rbnode_t *z)
+{
+	if (!tree->root) return;
+
 	rbtree_delete_internal(tree, z, false);
 }
 
@@ -507,8 +522,11 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *z) {
  */
 bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
-	rbnode_t *node = rbtree_find(tree, data);
+	rbnode_t *node;
 
+	if (!tree->root) return false;
+
+	node = rbtree_find(tree, data);
 	if (!node) return false;
 
 	rbtree_delete(tree, node);
@@ -523,6 +541,8 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 {
 	rbnode_t *current;
+
+	if (!tree->root) return NULL;
 
 	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 	current = tree->root;
@@ -549,6 +569,8 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 void *rbtree_finddata(rbtree_t *tree, void const *data)
 {
 	rbnode_t *x;
+
+	if (!tree->root) return NULL;
 
 	x = rbtree_find(tree, data);
 	if (!x) return NULL;

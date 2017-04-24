@@ -222,7 +222,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				error:
 					pairlist_free(&entry);
 					pairlist_free(&next);
-					rbtree_free(tree);
+					talloc_free(tree);
 					return -1;
 				}
 

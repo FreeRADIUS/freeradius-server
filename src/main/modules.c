@@ -522,7 +522,7 @@ static void _module_thread_inst_tree_free(void *to_free)
 {
 	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
 
-	rbtree_free(thread_inst_tree);
+	talloc_free(thread_inst_tree);
 }
 
 /** Compare two thread instances based on inst pointer
