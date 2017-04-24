@@ -1150,7 +1150,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 #endif
 
 	if (this->server) {
-		ADDSTRING(" bound to server ");
+		ADDSTRING(" bound to virtual-server ");
 		strlcpy(buffer, this->server, bufsize);
 	}
 
