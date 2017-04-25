@@ -1407,6 +1407,52 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	return rcode;
 }
 
+/** Execute an unlang section synchronously
+ *
+ * Create a temporary event loop and swap it out for the one in the request.
+ * Execute unlang operations until we receive a non-yield return code then return.
+ *
+ * @note The use cases for this are very limited.  If you need to use it, chances
+ *	are what you're doing could be done better using one of the thread
+ *	event loops.
+ *
+ * @param[in] request	The current request.
+ * @param[in] cs	Section with compiled unlang associated with it.
+ * @param[in] action	The default return code to use.
+ * @return One of the RLM_MODULE_* macros.
+ */
+rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
+{
+	fr_event_list_t *el, *old;
+	rlm_rcode_t	rcode;
+
+	/*
+	 *	Don't talloc from the request
+	 *	as we'll almost certainly leave holes in the memory pool.
+	 */
+	MEM(el = fr_event_list_alloc(NULL, NULL, NULL));
+
+	old = request->el;
+	request->el = el;
+
+	for (rcode = unlang_interpret(request, cs, action);
+	     rcode == RLM_MODULE_YIELD;
+	     rcode = unlang_interpret_continue(request)) {
+		if (fr_event_corral(el, true) < 0) {
+			RPERROR("Failed retrieving events");
+			rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		fr_event_service(el);
+	}
+
+	talloc_free(request->el);
+	request->el = old;
+
+	return rcode;
+}
+
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
  */
