@@ -5214,7 +5214,7 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
  */
 int radius_event_init(TALLOC_CTX *ctx)
 {
-	el = fr_event_list_create(ctx, event_status, NULL);
+	el = fr_event_list_alloc(ctx, event_status, NULL);
 	if (!el) return 0;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG

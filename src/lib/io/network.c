@@ -535,7 +535,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_
 		return NULL;
 	}
 
-	nr->el = fr_event_list_create(nr, fr_network_idle, nr);
+	nr->el = fr_event_list_alloc(nr, fr_network_idle, nr);
 	if (!nr->el) {
 		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
 		talloc_free(nr);

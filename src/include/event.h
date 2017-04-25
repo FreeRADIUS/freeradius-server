@@ -58,7 +58,7 @@ typedef	void (*fr_event_callback_t)(fr_event_list_t *el, struct timeval *now, vo
  * Called before calling kqueue to put the thread in a sleeping state.
  *
  * @param[in] now	The current time.
- * @param[in] ctx	User ctx passed to #fr_event_list_create.
+ * @param[in] ctx	User ctx passed to #fr_event_list_alloc.
  */
 typedef	int (*fr_event_status_t)(void *ctx, struct timeval *now);
 
@@ -106,7 +106,7 @@ void		fr_event_loop_exit(fr_event_list_t *el, int code);
 bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
-fr_event_list_t	*fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status, void *status_ctx);
+fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, void *status_ctx);
 
 #ifdef __cplusplus
 }

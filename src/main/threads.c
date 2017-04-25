@@ -455,7 +455,7 @@ static void *thread_handler(void *arg)
 
 	ctx = talloc_init("thread");
 
-	el = fr_event_list_create(ctx, NULL, NULL);
+	el = fr_event_list_alloc(ctx, NULL, NULL);
 	rad_assert(el != NULL);
 
 	local_backlog = fr_heap_create(timestamp_cmp, offsetof(REQUEST, heap_id));

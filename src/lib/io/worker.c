@@ -992,7 +992,7 @@ nomem:
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 16);
 
-	worker->el = fr_event_list_create(worker, fr_worker_idle, worker);
+	worker->el = fr_event_list_alloc(worker, fr_worker_idle, worker);
 	if (!worker->el) {
 		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
 		talloc_free(worker);

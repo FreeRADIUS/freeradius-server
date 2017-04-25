@@ -882,7 +882,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Create a dummy event list
 	 */
-	el = fr_event_list_create(NULL, NULL, NULL);
+	el = fr_event_list_alloc(NULL, NULL, NULL);
 	rad_assert(el != NULL);
 
 	/*

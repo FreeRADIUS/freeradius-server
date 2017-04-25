@@ -2787,7 +2787,7 @@ int main(int argc, char *argv[])
 
 		char *buff;
 
-		events = fr_event_list_create(conf, _rs_event_status, NULL);
+		events = fr_event_list_alloc(conf, _rs_event_status, NULL);
 		if (!events) {
 			ERROR();
 			goto finish;
