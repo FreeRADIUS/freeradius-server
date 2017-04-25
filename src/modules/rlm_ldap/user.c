@@ -55,7 +55,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 {
 	static char const *tmp_attrs[] = { NULL };
 
-	ldap_rcode_t	status;
+	fr_ldap_rcode_t	status;
 	VALUE_PAIR	*vp = NULL;
 	LDAPMessage	*tmp_msg = NULL, *entry = NULL;
 	int		ldap_errno;
@@ -277,7 +277,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_
 	    !fr_pair_find_by_num(request->control, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
 	    !fr_pair_find_by_num(request->control, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
 		switch (conn->directory->type) {
-		case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
+		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG("!!! Active Directory does not allow passwords to be read via LDAP");
 			RWDEBUG("!!! Remove the password map and either:");
@@ -292,7 +292,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_
 
 			break;
 
-		case LDAP_DIRECTORY_EDIRECTORY:
+		case FR_LDAP_DIRECTORY_EDIRECTORY:
 			RWDEBUG("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG("!!! eDirectory does not allow passwords to be retrieved via LDAP search");
 			RWDEBUG("!!! Remove the password map and either:");

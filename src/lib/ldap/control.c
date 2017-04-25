@@ -22,9 +22,6 @@
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#define LOG_PREFIX "fr_ldap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
-
 #include "libfreeradius-ldap.h"
 
 /** Merge connection and call specific client and server controls

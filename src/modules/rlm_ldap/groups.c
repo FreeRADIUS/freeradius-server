@@ -49,7 +49,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 					  char **names, char **out, size_t outlen)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	ldap_rcode_t status;
+	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	unsigned int name_cnt = 0;
@@ -196,7 +196,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(rlm_ldap_t const *inst, REQUEST *reque
 					  ldap_handle_t **pconn, char const *dn, char **out)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	ldap_rcode_t status;
+	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	struct berval **values = NULL;
@@ -414,7 +414,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	ldap_rcode_t status;
+	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	LDAPMessage *result = NULL;
@@ -532,7 +532,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 					    VALUE_PAIR *check)
 
 {
-	ldap_rcode_t	status;
+	fr_ldap_rcode_t	status;
 
 	char const	*base_dn;
 	char		base_dn_buff[LDAP_MAX_DN_STR_LEN + 1];
@@ -634,7 +634,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 					   char const *dn, VALUE_PAIR *check)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
-	ldap_rcode_t	status;
+	fr_ldap_rcode_t	status;
 	bool		name_is_dn = false, value_is_dn = false;
 
 	LDAPMessage     *result = NULL;

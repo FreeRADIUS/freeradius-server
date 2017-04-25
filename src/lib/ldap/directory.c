@@ -29,33 +29,33 @@
 
 #include "libfreeradius-ldap.h"
 
-static FR_NAME_NUMBER const ldap_directory_type_table[] = {
-	{ "Unknown",			LDAP_DIRECTORY_UNKNOWN	},
-	{ "Active Directory",		LDAP_DIRECTORY_ACTIVE_DIRECTORY	},
-	{ "eDirectory",			LDAP_DIRECTORY_EDIRECTORY },
-	{ "IBM",			LDAP_DIRECTORY_IBM },
-	{ "NetScape",			LDAP_DIRECTORY_NETSCAPE },
-	{ "OpenLDAP",			LDAP_DIRECTORY_OPENLDAP	},
-	{ "Oracle Internet Directory",	LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY },
-	{ "Oracle Unified Directory",	LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY },
-	{ "Oracle Virtual Directory",	LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY },
-	{ "Sun One Directory",		LDAP_DIRECTORY_SUN_ONE_DIRECTORY },
-	{ "Siemens AG",			LDAP_DIRECTORY_SIEMENS_AG },
-	{ "Unbound ID",			LDAP_DIRECTORY_UNBOUND_ID },
+static FR_NAME_NUMBER const fr_ldap_directory_type_table[] = {
+	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN	},
+	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY	},
+	{ "eDirectory",			FR_LDAP_DIRECTORY_EDIRECTORY },
+	{ "IBM",			FR_LDAP_DIRECTORY_IBM },
+	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE },
+	{ "OpenLDAP",			FR_LDAP_DIRECTORY_OPENLDAP	},
+	{ "Oracle Internet Directory",	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY },
+	{ "Oracle Unified Directory",	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY },
+	{ "Oracle Virtual Directory",	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY },
+	{ "Sun One Directory",		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY },
+	{ "Siemens AG",			FR_LDAP_DIRECTORY_SIEMENS_AG },
+	{ "Unbound ID",			FR_LDAP_DIRECTORY_UNBOUND_ID },
 	{  NULL , -1 }
 };
 
 /** Extract useful information from the rootDSE of the LDAP server
  *
- * @param[in] ctx	to allocate ldap_directory_t in.
- * @param[out] out	where to write pointer to new ldap_directory_t struct.
+ * @param[in] ctx	to allocate fr_ldap_directory_t in.
+ * @param[out] out	where to write pointer to new fr_ldap_directory_t struct.
  * @param[in,out] pconn	connection for querying the directory.
  * @return
  *	- 0 on success.
  *	- 1 if we failed identifying the directory server.
  *	- -1 on error.
  */
-int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle_t **pconn)
+int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, ldap_handle_t **pconn)
 {
 	static char const	*attrs[] = { "vendorname",
 					     "vendorversion",
@@ -63,23 +63,23 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle
 					     "objectClass",
 					     "orcldirectoryversion",
 					     NULL };
-	ldap_rcode_t		status;
+	fr_ldap_rcode_t		status;
 	int			entry_cnt;
 	int			ldap_errno;
 	int			i, num;
 	int			rcode = 0;
 	struct			berval **values = NULL;
-	ldap_directory_t	*directory;
+	fr_ldap_directory_t	*directory;
 
 	LDAPMessage *result = NULL, *entry;
 
 	*out = NULL;
 
-	directory = talloc_zero(ctx, ldap_directory_t);
+	directory = talloc_zero(ctx, fr_ldap_directory_t);
 	if (!directory) return -2;
 	*out = directory;
 
-	directory->type = LDAP_DIRECTORY_UNKNOWN;
+	directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
 
 	status = fr_ldap_search(&result, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)",
 				attrs, NULL, NULL);
@@ -131,7 +131,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle
 
 	if (directory->vendor_str) {
 		if (strcasestr(directory->vendor_str, "International Business Machines")) {
-			directory->type = LDAP_DIRECTORY_EDIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_EDIRECTORY;
 		}
 
 		goto found;
@@ -142,32 +142,32 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle
 		 *	Novell eDirectory vendorversion contains eDirectory
 		 */
 		if (strcasestr(directory->version_str, "eDirectory")) {
-			directory->type = LDAP_DIRECTORY_EDIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_EDIRECTORY;
 		/*
 		 *	Oracle unified directory vendorversion contains Oracle Unified Directory
 		 */
 		} else if (strcasestr(directory->version_str, "Oracle Unified Directory")) {
-			directory->type = LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY;
 		/*
 		 *	Unbound directory vendorversion contains UnboundID
 		 */
 		} else if (strcasestr(directory->version_str, "UnboundID")) {
-			directory->type = LDAP_DIRECTORY_UNBOUND_ID;
+			directory->type = FR_LDAP_DIRECTORY_UNBOUND_ID;
 		/*
 		 *	NetScape directory venderversion contains Netscape-Directory
 		 */
 		} else if (strcasestr(directory->version_str, "Netscape-Directory")) {
-			directory->type = LDAP_DIRECTORY_NETSCAPE;
+			directory->type = FR_LDAP_DIRECTORY_NETSCAPE;
 		/*
 		 *	Siemens AG directory vendorversion contains DirX Directory
 		 */
 		} else if (strcasestr(directory->version_str, "DirX Directory")) {
-			directory->type = LDAP_DIRECTORY_SIEMENS_AG;
+			directory->type = FR_LDAP_DIRECTORY_SIEMENS_AG;
 		/*
 		 *	Sun One Directory vendorversion contains Sun Java
 		 */
 		} else if (strcasestr(directory->version_str, "Sun Java")) {
-			directory->type = LDAP_DIRECTORY_SUN_ONE_DIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY;
 		}
 		goto found;
 	}
@@ -178,7 +178,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle
 	 */
 	values = ldap_get_values_len((*pconn)->handle, entry, "isGlobalCatalogReady");
 	if (values) {
-		directory->type = LDAP_DIRECTORY_ACTIVE_DIRECTORY;
+		directory->type = FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY;
 		ldap_value_free_len(values);
 		goto found;
 	}
@@ -191,7 +191,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle
 		num = ldap_count_values_len(values);
 		for (i = 0; i < num; i++) {
 			if (strncmp("OpenLDAProotDSE", values[i]->bv_val, values[i]->bv_len) == 0) {
-				directory->type = LDAP_DIRECTORY_OPENLDAP;
+				directory->type = FR_LDAP_DIRECTORY_OPENLDAP;
 			}
 		}
 		ldap_value_free_len(values);
@@ -204,19 +204,19 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle
 	values = ldap_get_values_len((*pconn)->handle, entry, "orcldirectoryversion");
 	if (values) {
 		if (memmem(values[0]->bv_val, values[0]->bv_len, "OID", 3)) {
-			directory->type = LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY;
 		} else if (memmem(values[0]->bv_val, values[0]->bv_len, "OVD", 3)) {
-			directory->type = LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY;
 		}
 		ldap_value_free_len(values);
 	}
 
 found:
-	INFO("Directory type: %s", fr_int2str(ldap_directory_type_table, directory->type, "<INVALID>"));
+	INFO("Directory type: %s", fr_int2str(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {
-	case LDAP_DIRECTORY_ACTIVE_DIRECTORY:
-	case LDAP_DIRECTORY_EDIRECTORY:
+	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
+	case FR_LDAP_DIRECTORY_EDIRECTORY:
 		directory->cleartext_password = false;
 		break;
 

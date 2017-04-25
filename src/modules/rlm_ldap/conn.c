@@ -109,9 +109,9 @@ void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *c
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	ldap_rcode_t			status;
+	fr_ldap_rcode_t			status;
 	ldap_handle_t			*conn;
-	ldap_handle_config_t const	*handle_config = instance;	/* Not talloced */
+	fr_ldap_handle_config_t const	*handle_config = instance;	/* Not talloced */
 
 	conn = fr_ldap_conn_alloc(ctx, handle_config);
 	if (!conn) return NULL;

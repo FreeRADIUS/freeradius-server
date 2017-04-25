@@ -23,12 +23,11 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2013 The FreeRADIUS Server Project.
  */
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS handle_config->name
+
 #include <freeradius-devel/rad_assert.h>
-
-#define LOG_PREFIX "rlm_ldap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
-
-#include "rlm_ldap.h"
+#include "libfreeradius-ldap.h"
 
 /** Callback for map_to_request
  *
@@ -36,7 +35,7 @@
  *
  * @see map_to_vp
  */
-int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
+int fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
 	fr_ldap_result_t *self = uctx;
 	VALUE_PAIR *head = NULL, *vp;
@@ -146,10 +145,8 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 	return 0;
 }
 
-int rlm_ldap_map_verify(vp_map_t *map, void *instance)
+int fr_ldap_map_verify(vp_map_t *map, UNUSED void *instance)
 {
-	rlm_ldap_t *inst = instance;
-
 	/*
 	 *	Destinations where we can put the VALUE_PAIRs we
 	 *	create using LDAP values.
@@ -206,39 +203,6 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 		return -1;
 	}
 
-	/*
-	 *	Be smart about whether we warn the user about missing passwords.
-	 *	If there are no password attributes in the mapping, then the user's either an idiot
-	 *	and has no idea what they're doing, or they're authenticating the user using a different
-	 *	method.
-	 */
-	if (!inst->expect_password && (map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) {
-		switch (map->lhs->tmpl_da->attr) {
-		case PW_CLEARTEXT_PASSWORD:
-		case PW_NT_PASSWORD:
-		case PW_USER_PASSWORD:
-		case PW_PASSWORD_WITH_HEADER:
-		case PW_CRYPT_PASSWORD:
-			/*
-			 *	Because you just know someone is going to map NT-Password to the
-			 *	request list, and then complain it's not working...
-			 */
-			if (map->lhs->tmpl_list != PAIR_LIST_CONTROL) {
-				WARN("Mapping LDAP (%s) attribute to \"known good\" password attribute "
-					  "(%s) in %s list. This is probably *NOT* the correct list, "
-					  "you should prepend \"control:\" to password attribute "
-					  "(control:%s)",
-					  map->rhs->name, map->lhs->tmpl_da->name,
-					  fr_int2str(pair_lists, map->lhs->tmpl_list, "<invalid>"),
-					  map->lhs->tmpl_da->name);
-			}
-
-			inst->expect_password = true;
-		default:
-			break;
-		}
-	}
-
 	return 0;
 }
 
@@ -251,7 +215,7 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps)
+int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps)
 {
 	vp_map_t const	*map;
 	unsigned int	total = 0;
@@ -293,19 +257,19 @@ int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t
  *
  * This is *NOT* atomic, but there's no condition for which we should error out...
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in] handle associated with entry.
- * @param[in] expanded attributes (rhs of map).
- * @param[in] entry to retrieve attributes from.
+ * @param[in] request		Current request.
+ * @param[in] conn		associated with entry.
+ * @param[in] valuepair_attr	Treat attribute with this name as holding complete AVP definitions.
+ * @param[in] expanded		attributes (rhs of map).
+ * @param[in] entry		to retrieve attributes from.
  * @return
  *	- Number of maps successfully applied.
  *	- -1 on failure.
  */
-int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
-		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry)
+int fr_ldap_map_do(REQUEST *request, ldap_handle_t *conn,
+		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
-	vp_map_t const 	*map;
+	vp_map_t const		*map;
 	unsigned int		total = 0;
 	int			applied = 0;	/* How many maps have been applied to the current request */
 
@@ -320,7 +284,7 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 		/*
 		 *	Binary safe
 		 */
-		result.values = ldap_get_values_len(handle, entry, name);
+		result.values = ldap_get_values_len(conn->handle, entry, name);
 		if (!result.values) {
 			RDEBUG3("Attribute \"%s\" not found in LDAP object", name);
 
@@ -338,7 +302,7 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 		 *	a case of the dst being incorrect for the current
 		 *	request context
 		 */
-		ret = map_to_request(request, map, rlm_ldap_map_getvalue, &result);
+		ret = map_to_request(request, map, fr_ldap_map_getvalue, &result);
 		if (ret == -1) return -1;	/* Fail */
 
 		/*
@@ -355,11 +319,11 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 	 *	Retrieve any valuepair attributes from the result, these are generic values specifying
 	 *	a radius list, operator and value.
 	 */
-	if (inst->valuepair_attr) {
+	if (valuepair_attr) {
 		struct berval	**values;
 		int		count, i;
 
-		values = ldap_get_values_len(handle, entry, inst->valuepair_attr);
+		values = ldap_get_values_len(conn->handle, entry, valuepair_attr);
 		count = ldap_count_values_len(values);
 
 		for (i = 0; i < count; i++) {
@@ -372,7 +336,7 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 					       REQUEST_CURRENT, PAIR_LIST_REPLY,
 					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair (%s), skipping...",
-					fr_strerror(), inst->valuepair_attr, value);
+					fr_strerror(), valuepair_attr, value);
 				talloc_free(value);
 				continue;
 			}

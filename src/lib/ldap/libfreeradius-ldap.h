@@ -126,11 +126,11 @@ typedef enum {
 	LDAP_EXT_BINDPW,				//!< Specifies the password for an LDAP bind.
 } ldap_supported_extension_t;
 
-typedef struct ldap_sasl {
+typedef struct fr_ldap_sasl_t {
 	char const	*mech;				//!< SASL mech(s) to try.
 	char const	*proxy;				//!< Identity to proxy.
 	char const	*realm;				//!< Kerberos realm.
-} ldap_sasl;
+} fr_ldap_sasl_t;
 
 typedef struct fr_ldap_control {
 	LDAPControl 	*control;			//!< LDAP control.
@@ -139,31 +139,31 @@ typedef struct fr_ldap_control {
 } fr_ldap_control_t;
 
 typedef enum {
-	LDAP_DIRECTORY_UNKNOWN = 0,			//!< We can't determine the directory server.
+	FR_LDAP_DIRECTORY_UNKNOWN = 0,			//!< We can't determine the directory server.
 
-	LDAP_DIRECTORY_ACTIVE_DIRECTORY,		//!< Directory server is Active Directory.
-	LDAP_DIRECTORY_EDIRECTORY,			//!< Directory server is eDir.
-	LDAP_DIRECTORY_IBM,				//!< Directory server is IBM.
-	LDAP_DIRECTORY_NETSCAPE,			//!< Directory server is Netscape.
-	LDAP_DIRECTORY_OPENLDAP,			//!< Directory server is OpenLDAP.
-	LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY,	//!< Directory server is Oracle Internet Directory.
-	LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY,	//!< Directory server is Oracle Unified Directory.
-	LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY,	//!< Directory server is Oracle Virtual Directory.
-	LDAP_DIRECTORY_SUN_ONE_DIRECTORY,		//!< Directory server is Sun One Directory.
-	LDAP_DIRECTORY_SIEMENS_AG,			//!< Directory server is Siemens AG.
-	LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
-} ldap_directory_type_t;
+	FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY,		//!< Directory server is Active Directory.
+	FR_LDAP_DIRECTORY_EDIRECTORY,			//!< Directory server is eDir.
+	FR_LDAP_DIRECTORY_IBM,				//!< Directory server is IBM.
+	FR_LDAP_DIRECTORY_NETSCAPE,			//!< Directory server is Netscape.
+	FR_LDAP_DIRECTORY_OPENLDAP,			//!< Directory server is OpenLDAP.
+	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY,	//!< Directory server is Oracle Internet Directory.
+	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY,	//!< Directory server is Oracle Unified Directory.
+	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY,	//!< Directory server is Oracle Virtual Directory.
+	FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY,		//!< Directory server is Sun One Directory.
+	FR_LDAP_DIRECTORY_SIEMENS_AG,			//!< Directory server is Siemens AG.
+	FR_LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
+} fr_ldap_directory_type_t;
 
-typedef struct ldap_directory {
-	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
+typedef struct fr_ldap_directory {
+	char const	*vendor_str;			//!< As returned from the vendorName attribute in the
 							//!< rootDSE.
-	char const		*version_str;		//!< As returned from the vendorVersion attribute in the
+	char const	*version_str;			//!< As returned from the vendorVersion attribute in the
 							//!< rootDSE.
-	ldap_directory_type_t	type;			//!< Cannonical server implementation.
+	fr_ldap_directory_type_t type;			//!< Cannonical server implementation.
 
-	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
+	bool		cleartext_password;		//!< Whether the server will return the user's plaintext
 							//!< password.
-} ldap_directory_t;
+} fr_ldap_directory_t;
 
 /** Connection configuration
  *
@@ -182,7 +182,7 @@ typedef struct {
 							//!< directory.
 	char const	*admin_password;		//!< Password used in administrative bind.
 
-	ldap_sasl	admin_sasl;			//!< SASL parameters used when binding as the admin.
+	fr_ldap_sasl_t	admin_sasl;			//!< SASL parameters used when binding as the admin.
 
 	int		dereference;			//!< libldap value specifying dereferencing behaviour.
 	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
@@ -254,7 +254,7 @@ typedef struct {
 							//!< happen internally which we can't work around.
 
 	struct timeval	res_timeout;			//!< How long we wait for results.
-} ldap_handle_config_t;
+} fr_ldap_handle_config_t;
 
 /** Tracks the state of a libldap connection handle
  *
@@ -273,9 +273,9 @@ typedef struct ldap_handle {
 	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
 	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
 
-	ldap_directory_t *directory;			//!< The type of directory we're connected to.
+	fr_ldap_directory_t *directory;			//!< The type of directory we're connected to.
 
-	ldap_handle_config_t const *config;		//!< rlm_ldap connection configuration.
+	fr_ldap_handle_config_t const *config;		//!< rlm_ldap connection configuration.
 
 	void		*user_ctx;			//!< User data associated with the handle.
 } ldap_handle_t;
@@ -288,6 +288,18 @@ typedef struct fr_ldap_result {
 							//!< and length bv_len.
 	int		count;				//!< Number of values.
 } fr_ldap_result_t;
+
+/** Result of expanding the RHS of a set of maps
+ *
+ * Used to store the array of attributes we'll be querying for.
+ */
+typedef struct rlm_ldap_map_exp {
+	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
+	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
+							//!< and NULL termination.
+	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.
+	int		count;				//!< Index on next free element.
+} fr_ldap_map_exp_t;
 
 /** Codes returned by fr_ldap internal functions
  *
@@ -315,7 +327,7 @@ typedef enum {
 
 	LDAP_PROC_REFRESH_REQUIRED = -8			//!< Don't continue with the current refresh phase,
 							//!< exit, and retry the operation with a NULL cookie.
-} ldap_rcode_t;
+} fr_ldap_rcode_t;
 
 /*
  *	Tables for resolving strings to LDAP constants
@@ -352,42 +364,42 @@ size_t		fr_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 
 ssize_t		fr_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
-ldap_rcode_t	fr_ldap_bind(REQUEST *request,
+fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
 			     ldap_handle_t **pconn,
 			     char const *dn, char const *password,
 #ifdef WITH_SASL
-			     ldap_sasl const *sasl,
+			     fr_ldap_sasl_t const *sasl,
 #else
-			     NDEBUG_UNUSED ldap_sasl const *sasl,
+			     NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
 #endif
 			     struct timeval const *timeout,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const	*fr_ldap_error_str(ldap_handle_t const *conn);
 
-ldap_rcode_t	fr_ldap_search(LDAPMessage **result, REQUEST *request,
+fr_ldap_rcode_t	fr_ldap_search(LDAPMessage **result, REQUEST *request,
 			       ldap_handle_t **pconn,
 			       char const *dn, int scope, char const *filter, char const * const * attrs,
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-ldap_rcode_t	fr_ldap_search_async(int *msgid, REQUEST *request,
+fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, REQUEST *request,
 				     ldap_handle_t **pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-ldap_rcode_t	fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
+fr_ldap_rcode_t	fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn,
+fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn,
 				    LDAPMessage *msg, char const *dn);
 
-ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
+fr_ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 			       ldap_handle_t const *conn, int msgid, int all,
 			       char const *dn,
 			       struct timeval const *timeout);
 
-ldap_handle_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, ldap_handle_config_t const *handle_config);
+ldap_handle_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, fr_ldap_handle_config_t const *handle_config);
 
 int		fr_ldap_conn_timeout_set(ldap_handle_t const *conn, struct timeval const *timeout);
 
@@ -421,7 +433,7 @@ int		fr_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
-int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, ldap_directory_t **out, ldap_handle_t **pconn);
+int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, ldap_handle_t **pconn);
 
 /*
  *	edir.c - Edirectory integrations
@@ -430,12 +442,26 @@ int		fr_ldap_edir_get_password(LDAP *ld, char const *dn, char *password, size_t 
 
 char const	*fr_ldap_edir_errstr(int code);
 
+
+/*
+ *	map.c - Attribute mapping code.
+ */
+int		fr_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+				     vp_map_t const *map, void *uctx);
+
+int		fr_ldap_map_verify(vp_map_t *map, void *instance);
+
+int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
+
+int		fr_ldap_map_do(REQUEST *request, ldap_handle_t *conn,
+			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);
+
 /*
  *	sasl.c - SASL bind functions
  */
-ldap_rcode_t	fr_ldap_sasl_interactive(REQUEST *request,
+fr_ldap_rcode_t	 fr_ldap_sasl_interactive(REQUEST *request,
 				      	 ldap_handle_t *pconn, char const *dn,
-				      	 char const *password, ldap_sasl const *sasl,
+				      	 char const *password, fr_ldap_sasl_t const *sasl,
 				      	 LDAPControl **serverctrls, LDAPControl **clientctrls,
 				      	 struct timeval const *timeout);
 

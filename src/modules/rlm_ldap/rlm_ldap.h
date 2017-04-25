@@ -25,7 +25,7 @@ typedef struct {
 	vp_tmpl_t	*mech;				//!< SASL mech(s) to try.
 	vp_tmpl_t	*proxy;				//!< Identity to proxy.
 	vp_tmpl_t	*realm;				//!< Kerberos realm.
-} ldap_sasl_dynamic_t;
+} fr_ldap_sasl_t_dynamic_t;
 
 typedef struct ldap_acct_section {
 	CONF_SECTION	*cs;				//!< Section configuration.
@@ -71,7 +71,7 @@ struct ldap_inst_s {
 	bool		access_positive;		//!< If true the presence of the attribute will allow access,
 							//!< else it will deny access.
 
-	ldap_sasl_dynamic_t user_sasl;			//!< SASL parameters used when binding as the user.
+	fr_ldap_sasl_t_dynamic_t user_sasl;			//!< SASL parameters used when binding as the user.
 
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
@@ -149,7 +149,7 @@ struct ldap_inst_s {
 #endif
 
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
-	ldap_handle_config_t handle_config;		//!< Connection configuration instance.
+	fr_ldap_handle_config_t handle_config;		//!< Connection configuration instance.
 
 	/*
 	 *	Global config
@@ -159,18 +159,6 @@ struct ldap_inst_s {
 
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 };
-
-/** Result of expanding the RHS of a set of maps
- *
- * Used to store the array of attributes we'll be querying for.
- */
-typedef struct rlm_ldap_map_exp {
-	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
-	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
-							//!< and NULL termination.
-	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.
-	int		count;				//!< Index on next free element.
-} rlm_ldap_map_exp_t;
 
 /*
  *	user.c - User lookup functions
@@ -207,18 +195,6 @@ ldap_handle_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 void		mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *conn);
 
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
-
-/*
- *	attrmap.c - Attribute mapping code.
- */
-int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx);
-
-int rlm_ldap_map_verify(vp_map_t *map, void *instance);
-
-int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
-
-int rlm_ldap_map_do(rlm_ldap_t const *inst, REQUEST *request, LDAP *handle,
-		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
  *	clients.c - Dynamic clients (bulk load).

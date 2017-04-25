@@ -36,16 +36,16 @@ RCSID("$Id$")
 #include <freeradius-devel/map_proc.h>
 
 static CONF_PARSER sasl_mech_dynamic[] = {
-	{ FR_CONF_OFFSET("mech", PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, ldap_sasl_dynamic_t, mech) },
-	{ FR_CONF_OFFSET("proxy", PW_TYPE_TMPL, ldap_sasl_dynamic_t, proxy) },
-	{ FR_CONF_OFFSET("realm", PW_TYPE_TMPL, ldap_sasl_dynamic_t, realm) },
+	{ FR_CONF_OFFSET("mech", PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
+	{ FR_CONF_OFFSET("proxy", PW_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, proxy) },
+	{ FR_CONF_OFFSET("realm", PW_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, realm) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER sasl_mech_static[] = {
-	{ FR_CONF_OFFSET("mech", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, ldap_sasl, mech) },
-	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING, ldap_sasl, proxy) },
-	{ FR_CONF_OFFSET("realm", PW_TYPE_STRING, ldap_sasl, realm) },
+	{ FR_CONF_OFFSET("mech", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, fr_ldap_sasl_t, mech) },
+	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING, fr_ldap_sasl_t, proxy) },
+	{ FR_CONF_OFFSET("realm", PW_TYPE_STRING, fr_ldap_sasl_t, realm) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -56,20 +56,20 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, ldap_handle_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_file) },
 
-	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, ldap_handle_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_path) },
 
-	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, ldap_handle_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_certificate_file) },
 
-	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, ldap_handle_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_private_key_file) },
 
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("start_tls", PW_TYPE_BOOLEAN, ldap_handle_config_t, start_tls), .dflt = "no" },
+	{ FR_CONF_OFFSET("start_tls", PW_TYPE_BOOLEAN, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("require_cert", PW_TYPE_STRING, ldap_handle_config_t, tls_require_cert_str) },
+	{ FR_CONF_OFFSET("require_cert", PW_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -253,7 +253,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
-	ldap_rcode_t		status;
+	fr_ldap_rcode_t		status;
 	size_t			len = 0;
 	rlm_ldap_t const	*inst = mod_inst;
 
@@ -388,7 +388,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
-	ldap_rcode_t		status;
+	fr_ldap_rcode_t		status;
 
 	LDAPURLDesc		*ldap_url;
 
@@ -401,7 +401,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
-	rlm_ldap_map_exp_t	expanded; /* faster than allocing every time */
+	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
 	if (tmpl_aexpand(request, &url_str, request, url, fr_ldap_escape_func, NULL) < 0) {
 		return RLM_MODULE_FAIL;
@@ -420,7 +420,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	/*
 	 *	Expand the RHS of the maps to get the name of the attributes.
 	 */
-	if (rlm_ldap_map_expand(&expanded, request, maps) < 0) {
+	if (fr_ldap_map_expand(&expanded, request, maps) < 0) {
 		rcode = RLM_MODULE_FAIL;
 		goto free_urldesc;
 	}
@@ -490,7 +490,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 					attr.values = values;
 					attr.count = 1;
 
-					ret = map_to_request(request, map, rlm_ldap_map_getvalue, &attr);
+					ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
 					if (ret == -1) {
 						rcode = RLM_MODULE_FAIL;
 						ldap_memfree(dn);
@@ -505,7 +505,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 			}
 			attr.count = ldap_count_values_len(attr.values);
 
-			ret = map_to_request(request, map, rlm_ldap_map_getvalue, &attr);
+			ret = map_to_request(request, map, fr_ldap_map_getvalue, &attr);
 			ldap_value_free_len(attr.values);
 			if (ret == -1) {
 				rcode = RLM_MODULE_FAIL;
@@ -662,7 +662,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t		rcode;
-	ldap_rcode_t		status;
+	fr_ldap_rcode_t		status;
 	char const		*dn;
 	rlm_ldap_t const	*inst = instance;
 	ldap_handle_t		*conn;
@@ -670,7 +670,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
-	ldap_sasl		sasl;
+	fr_ldap_sasl_t		sasl;
 
 	/*
 	 * Ensure that we're being passed a plain-text password, and not
@@ -802,10 +802,10 @@ information.
  * @return One of the RLM_MODULE_* values.
  */
 static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-					char const *dn, rlm_ldap_map_exp_t const *expanded)
+					char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	ldap_rcode_t	status;
+	fr_ldap_rcode_t	status;
 	LDAPMessage	*result = NULL, *entry = NULL;
 	int		ldap_errno;
 	LDAP		*handle = (*pconn)->handle;
@@ -853,7 +853,7 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request
 
 	RDEBUG("Processing profile attributes");
 	RINDENT();
-	if (rlm_ldap_map_do(inst, request, handle, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
+	if (fr_ldap_map_do(request, *pconn, inst->valuepair_attr, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 	REXDENT();
 
 free_result:
@@ -866,7 +866,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	ldap_rcode_t		status;
+	fr_ldap_rcode_t		status;
 	int			ldap_errno;
 	int			i;
 	rlm_ldap_t const	*inst = instance;
@@ -875,7 +875,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	ldap_handle_t		*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
-	rlm_ldap_map_exp_t	expanded; /* faster than allocing every time */
+	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
 
 	/*
 	 *	Don't be tempted to add a check for request->username
@@ -883,7 +883,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	many things besides searching for users.
 	 */
 
-	if (rlm_ldap_map_expand(&expanded, request, inst->user_map) < 0) return RLM_MODULE_FAIL;
+	if (fr_ldap_map_expand(&expanded, request, inst->user_map) < 0) return RLM_MODULE_FAIL;
 
 	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
@@ -1087,7 +1087,8 @@ skip_edir:
 	if (inst->user_map || inst->valuepair_attr) {
 		RDEBUG("Processing user attributes");
 		RINDENT();
-		if (rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
+		if (fr_ldap_map_do(request, conn, inst->valuepair_attr,
+				   &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 		REXDENT();
 		rlm_ldap_check_reply(inst, request, conn);
 	}
@@ -1112,7 +1113,7 @@ finish:
 static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	ldap_rcode_t	status;
+	fr_ldap_rcode_t	status;
 
 	ldap_handle_t	*conn = NULL;
 
@@ -1535,13 +1536,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #ifndef WITH_SASL
 	if (inst->user_sasl.mech) {
 		cf_log_err_cs(conf, "Configuration item 'user.sasl.mech' not supported.  "
-			      "Linked libldap does not provide ldap_sasl_bind function");
+			      "Linked libldap does not provide fr_ldap_sasl_bind( function");
 		goto error;
 	}
 
 	if (inst->handle_config.admin_sasl.mech) {
 		cf_log_err_cs(conf, "Configuration item 'sasl.mech' not supported.  "
-			      "Linked libldap does not provide ldap_sasl_interactive_bind function");
+			      "Linked libldap does not provide  fr_ldap_sasl_interactive_bind function");
 		goto error;
 	}
 #endif
@@ -1910,7 +1911,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	update = cf_subsection_find(inst->cs, "update");
 	if (update && (map_afrom_cs(&inst->user_map, update,
-				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
+				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, fr_ldap_map_verify, NULL,
 				    LDAP_MAX_ATTRMAP) < 0)) {
 		return -1;
 	}

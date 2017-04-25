@@ -39,7 +39,7 @@ static int instance_count = 0;
 /** Used to set the global log prefix for functions which don't operate on connections
  *
  */
-static ldap_handle_config_t ldap_global_handle_config = {
+static fr_ldap_handle_config_t ldap_global_handle_config = {
 	.name = "global"
 };
 
@@ -94,7 +94,7 @@ void fr_ldap_timeout_debug(REQUEST *request, ldap_handle_t const *conn,
 {
 	struct timeval 			*net = NULL, *client = NULL;
 	int				server = 0;
-	ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_handle_config_t const	*handle_config = conn->config;
 
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
@@ -173,11 +173,11 @@ char const *fr_ldap_error_str(ldap_handle_t const *conn)
  * @param[in] conn	the message was received on.
  * @param[in] msg	we're parsing.
  * @param[in] dn	if processing the result from a search request.
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn, LDAPMessage *msg, char const *dn)
+fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn, LDAPMessage *msg, char const *dn)
 {
-	ldap_rcode_t status = LDAP_PROC_SUCCESS;
+	fr_ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
 	int msg_type;
 	int lib_errno = LDAP_SUCCESS;	/* errno returned by the library */
@@ -381,14 +381,14 @@ process_error:
  * @param[in] dn	Last search or bind DN.  May be NULL.
  * @param[in] timeout	Override the default result timeout.
  *
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
+fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 			    ldap_handle_t const *conn, int msgid, int all,
 			    char const *dn,
 			    struct timeval const *timeout)
 {
-	ldap_rcode_t	status = LDAP_PROC_SUCCESS;
+	fr_ldap_rcode_t	status = LDAP_PROC_SUCCESS;
 	int		lib_errno;
 
 	struct timeval	tv;			/* Holds timeout values */
@@ -464,21 +464,21 @@ ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
  * @param[in] serverctrls	Only used for SASL binds.  May be NULL.
  * @param[in] clientctrls	Search controls for sasl_bind.
  *				Only used for SASL binds. May be NULL.
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_bind(REQUEST *request,
+fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
 			  ldap_handle_t **pconn,
 			  char const *dn, char const *password,
 #ifdef WITH_SASL
-			  ldap_sasl const *sasl,
+			  fr_ldap_sasl_t const *sasl,
 #else
-			  NDEBUG_UNUSED ldap_sasl const *sasl,
+			  NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
 #endif
 			  struct timeval const *timeout,
 			  LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
-	ldap_rcode_t			status = LDAP_PROC_ERROR;
-	ldap_handle_config_t const	*handle_config = (*pconn)->config;
+	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
+	fr_ldap_handle_config_t const	*handle_config = (*pconn)->config;
 
 	int				msgid = -1;
 
@@ -499,8 +499,8 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
 
 #ifdef WITH_SASL
 	if (sasl && sasl->mech) {
-		status = fr_ldap_sasl_interactive(request, *pconn, dn, password, sasl,
-						  serverctrls, clientctrls, timeout);
+		status =  fr_ldap_sasl_interactive(request, *pconn, dn, password, sasl,
+						   serverctrls, clientctrls, timeout);
 	} else
 #endif
 	{
@@ -563,17 +563,17 @@ ldap_rcode_t fr_ldap_bind(REQUEST *request,
  * @param[in] attrs		to retrieve.
  * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls	Search controls for ldap_search.  May be NULL.
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
+fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
 			    ldap_handle_t **pconn,
 			    char const *dn, int scope, char const *filter, char const * const *attrs,
 			    LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
-	ldap_rcode_t			status = LDAP_PROC_ERROR;
+	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
 	LDAPMessage			*our_result = NULL;
 
-	ldap_handle_config_t const	*handle_config = (*pconn)->config;
+	fr_ldap_handle_config_t const	*handle_config = (*pconn)->config;
 
 	int				msgid;		// Message id returned by
 							// ldap_search_ext.
@@ -691,16 +691,16 @@ finish:
  * @param[in] attrs		to retrieve.
  * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls	Search controls for ldap_search.  May be NULL.
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
+fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
 				  ldap_handle_t **pconn,
 				  char const *dn, int scope, char const *filter, char const * const *attrs,
 				  LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
-	ldap_rcode_t			status = LDAP_PROC_ERROR;
+	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
 
-	ldap_handle_config_t const	*handle_config = (*pconn)->config;
+	fr_ldap_handle_config_t const	*handle_config = (*pconn)->config;
 
 	struct timeval			tv;		// Holds timeout values.
 
@@ -775,13 +775,13 @@ ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
  * @param[in] mods		to make, see 'man ldap_modify' for more information.
  * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls	Search controls for ldap_modify.  May be NULL.
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
+fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
 			    char const *dn, LDAPMod *mods[],
 			    LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
-	ldap_rcode_t	status = LDAP_PROC_ERROR;
+	fr_ldap_rcode_t	status = LDAP_PROC_ERROR;
 
 	int		msgid;		// Message id returned by ldap_search_ext.
 
@@ -851,9 +851,9 @@ finish:
 static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 			  UNUSED ber_tag_t request, UNUSED ber_int_t msgid, void *ctx)
 {
-	ldap_rcode_t			status;
+	fr_ldap_rcode_t			status;
 	ldap_handle_t			*conn = talloc_get_type_abort(ctx, ldap_handle_t);
-	ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_handle_config_t const	*handle_config = conn->config;
 
 	char const			*admin_identity = NULL;
 	char const			*admin_password = NULL;
@@ -961,7 +961,7 @@ static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
  */
 static int _mod_conn_free(ldap_handle_t *conn)
 {
-	ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_handle_config_t const	*handle_config = conn->config;
 
 	rad_assert(conn->handle);
 
@@ -999,7 +999,7 @@ static int _mod_conn_free(ldap_handle_t *conn)
  *	- A new handle on success.
  *	- NULL on error.
  */
-ldap_handle_t *fr_ldap_conn_alloc(TALLOC_CTX *ctx, ldap_handle_config_t const *handle_config)
+ldap_handle_t *fr_ldap_conn_alloc(TALLOC_CTX *ctx, fr_ldap_handle_config_t const *handle_config)
 {
 	ldap_handle_t			*conn;
 	LDAP				*handle = NULL;
@@ -1165,7 +1165,7 @@ error:
 int fr_ldap_conn_timeout_set(ldap_handle_t const *conn, struct timeval const *timeout)
 {
 	int				ldap_errno;
-	ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_handle_config_t const	*handle_config = conn->config;
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
@@ -1193,7 +1193,7 @@ error:
 int fr_ldap_conn_timeout_reset(ldap_handle_t const *conn)
 {
 	int				ldap_errno;
-	ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_handle_config_t const	*handle_config = conn->config;
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
@@ -1228,7 +1228,7 @@ error:
 int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 {
 	static bool		done_config;
-	ldap_handle_config_t	*handle_config = &ldap_global_handle_config;
+	fr_ldap_handle_config_t	*handle_config = &ldap_global_handle_config;
 
 	if (done_config) return 0;
 
@@ -1274,7 +1274,7 @@ int fr_ldap_global_init(void)
 {
 	int			ldap_errno;
 	static LDAPAPIInfo	info = { .ldapai_info_version = LDAP_API_INFO_VERSION };	/* static to quiet valgrind about this being uninitialised */
-	ldap_handle_config_t	*handle_config = &ldap_global_handle_config;
+	fr_ldap_handle_config_t	*handle_config = &ldap_global_handle_config;
 
 	if (instance_count > 0) {
 		instance_count++;

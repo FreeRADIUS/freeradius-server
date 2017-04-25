@@ -35,30 +35,30 @@
 /** Data passed to the _sasl interact callback.
  *
  */
-typedef struct fr_ldap_sasl_ctx_t {
+typedef struct fr_ldap_sasl_t_ctx_t {
 	REQUEST			*request;	//!< The current request.
 
 	char const		*identity;	//!< User's DN or identity.
 	char const		*password;	//!< Bind password.
 
-	ldap_sasl const		*extra;		//!< Extra fields (realm and proxy id).
+	fr_ldap_sasl_t const	*extra;		//!< Extra fields (realm and proxy id).
 
 	ldap_handle_t		*conn;		//!< Connection in use.
-} fr_ldap_sasl_ctx_t_t;
+} fr_ldap_sasl_ctx_t;
 
-/** Callback for ldap_sasl_interactive_bind
+/** Callback for  fr_ldap_sasl_interactive_bind
  *
  * @param handle used for the SASL bind.
- * @param flags data as provided to ldap_sasl_interactive_bind.
+ * @param flags data as provided to  fr_ldap_sasl_interactive_bind.
  * @param ctx Our context data, containing the identity, password, realm and various other things.
  * @param sasl_callbacks Array of challenges to provide responses for.
  * @return SASL_OK.
  */
 static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx, void *sasl_callbacks)
 {
-	fr_ldap_sasl_ctx_t_t		*this = ctx;
+	fr_ldap_sasl_ctx_t		*this = ctx;
 	REQUEST				*request = this->request;
-	ldap_handle_config_t const	*handle_config = this->conn->config;
+	fr_ldap_handle_config_t const	*handle_config = this->conn->config;
 	sasl_interact_t			*cb = sasl_callbacks;
 	sasl_interact_t			*cb_p;
 
@@ -100,24 +100,24 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @param[in] password		of the user.
  * @param[in] sasl		mechanism to use for bind, and additional parameters.
  * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
- * @param[in] clientctrls	Search controls for ldap_sasl_interactive.  May be NULL.
+ * @param[in] clientctrls	Search controls for  fr_ldap_sasl_interactive.  May be NULL.
  * @param[in] timeout		Maximum time bind is allowed to take.
- * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
-				      ldap_handle_t *conn, char const *identity,
-				      char const *password, ldap_sasl const *sasl,
-				      LDAPControl **serverctrls, LDAPControl **clientctrls,
-				      struct timeval const *timeout)
+fr_ldap_rcode_t  fr_ldap_sasl_interactive(REQUEST *request,
+					  ldap_handle_t *conn, char const *identity,
+					  char const *password, fr_ldap_sasl_t const *sasl,
+					  LDAPControl **serverctrls, LDAPControl **clientctrls,
+					  struct timeval const *timeout)
 {
-	ldap_rcode_t			status;
+	fr_ldap_rcode_t			status;
 	int				ret = 0;
 	int				msgid;
 	char const			*mech;
 	LDAPMessage			*result = NULL;
-	fr_ldap_sasl_ctx_t_t		sasl_ctx;		/* SASL defaults */
+	fr_ldap_sasl_ctx_t		sasl_ctx;		/* SASL defaults */
 
-	ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_handle_config_t const	*handle_config = conn->config;
 
 	LDAPControl			*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
@@ -135,14 +135,14 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
 	for (;;) {
-		ret = ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
+		ret =  fr_ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
 						 our_serverctrls, our_clientctrls,
 						 LDAP_SASL_AUTOMATIC,
 						 _sasl_interact, &sasl_ctx, result,
 						 &mech, &msgid);
 
 		/*
-		 *	If ldap_sasl_interactive_bind indicates it didn't want
+		 *	If  fr_ldap_sasl_interactive_bind indicates it didn't want
 		 *	to continue, then we're done.
 		 *
 		 *	Calling ldap_result here, results in a timeout in some
@@ -162,7 +162,7 @@ ldap_rcode_t fr_ldap_sasl_interactive(REQUEST *request,
 		 */
 		status = fr_ldap_result(&result, NULL, conn, msgid, 0, identity, timeout);
 		switch (status) {
-		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
+		case LDAP_PROC_SUCCESS:		/*  fr_ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:
 			break;
 

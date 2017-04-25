@@ -105,7 +105,7 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
 int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
 	int 		ret = 0;
-	ldap_rcode_t	status;
+	fr_ldap_rcode_t	status;
 	ldap_handle_t	*conn = NULL;
 
 	char const	**attrs = NULL;
