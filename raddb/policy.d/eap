@@ -83,3 +83,53 @@ remove_reply_message_if_eap {
 	}
 }
 
+
+#	Override Framed-MTU value based on mtu settings for NAS
+
+#	Framed-MTU specifies desired length of EAP payload to send.
+#	For some NAS this could lead to IP packet fragmentation which can
+#	be undesirable. If so, enable this policy in authorize section just
+#	before eap call and set nas attribute for a NAS you need to avoid
+#	IP fragmentation for.
+#	Framed-MTU will be set to a value that eliminates IP fragmentation
+#	if Framed-MTU from NAS is too big.
+
+apply_client_mtu_as_framed_mtu {
+#	We'll set return status to updated when Framed-MTU is altered
+	noop
+#	We use &control:Framed-MTU as temporary storage MTU while calculating
+#	This attribute is deleted from control once it is not needed
+	if (&EAP-Message && "%{client:mtu}") {
+#	Offset includes:
+#	    - IPv4/IPv6 header, 20/40 bytes
+#	    - UDP header, 8 bytes
+#	    - RADIUS:
+#		* RADIUS header, 4 bytes
+#		* Authenticator, 16 bytes
+#		* Message-Authenticator, 2 + 16 bytes
+#		* State, 2 + 16 bytes
+#		* Header for each EAP-Message chunk, 2 bytes
+#		* EAP header, 4 bytes + upto 6 bytes for:
+#		    o EAP-TLS header (type + flags + tls message length), 6 bytes
+#		    o EAP-PWD header, 4 bytes
+
+		if ("%{client:ipv6addr}") {
+			update control {
+				Framed-MTU := "%{expr:%{client:mtu} - 114 - 2*(1+((%{client:mtu} - 114)/253))}"
+			}
+		} else {
+			update control {
+				Framed-MTU := "%{expr:%{client:mtu} - 94 - 2*(1+((%{client:mtu} - 94)/253))}"
+			}
+		}
+		if (!(&request:Framed-MTU) || &control:Framed-MTU < &request:Framed-MTU) {
+			update request {
+				Framed-MTU := &control:Framed-MTU
+			}
+			updated
+		}
+		update control {
+			Framed-MTU !* ANY
+		}
+	}
+}
