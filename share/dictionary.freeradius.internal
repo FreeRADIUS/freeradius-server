@@ -335,6 +335,18 @@ ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short
 ATTRIBUTE	EAP-FAST-PKCS				1191.20	octets
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
 
+ATTRIBUTE	LDAP-Sync-TLV				1193	tlv
+BEGIN-TLV	LDAP-Sync-TLV
+ATTRIBUTE	LDAP-Sync-Cookie			1	octets
+ATTRIBUTE	LDAP-Sync-DN				2	string
+ATTRIBUTE	LDAP-Sync-Filter			3	string
+ATTRIBUTE	LDAP-Sync-Attr				4	string
+ATTRIBUTE	LDAP-Sync-Scope				5	integer
+ATTRIBUTE	LDAP-Sync-Entry-State			6	integer
+ATTRIBUTE	LDAP-Sync-Entry-DN			7	string
+ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
+END-TLV		LDAP-Sync-TLV
+
 #
 #	Range:	1200-1210
 #

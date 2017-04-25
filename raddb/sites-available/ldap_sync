@@ -1,0 +1,19 @@
+server ldap {
+        namespace = ldap
+        listen  {
+                type = sync
+
+                sync {
+
+                }
+
+
+        }
+        load Cookie {
+
+        }
+
+        recv Add {
+                debug_all
+        }
+}

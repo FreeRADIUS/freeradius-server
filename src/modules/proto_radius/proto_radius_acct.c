@@ -406,7 +406,7 @@ rad_protocol_t proto_radius_acct = {
 	.recv		= acct_socket_recv,
 	.send		= NULL,
 	.print		= common_socket_print,
-	.debug = common_packet_debug,
+	.debug		= common_packet_debug,
 	.encode		= NULL,
 	.decode		= NULL,
 };
