@@ -590,7 +590,7 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
  */
 static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl **ctrls)
 {
-	int		ret;
+	int		ret = 0;
 	int		refresh_deletes = 0;
 
 	int		i;
@@ -899,7 +899,7 @@ static int _sync_cmp(void const *one, void const *two)
 void sync_state_destroy(ldap_handle_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
-	rbtree_t	*tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+	rbtree_t	*tree;
 
 	if (!conn->user_ctx) return;
 
@@ -919,7 +919,7 @@ void sync_state_destroy(ldap_handle_t *conn, int msgid)
 sync_config_t const *sync_state_config_get(ldap_handle_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
-	rbtree_t	*tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
+	rbtree_t	*tree;
 
 	if (!conn->user_ctx) return NULL;
 
@@ -1012,10 +1012,13 @@ int sync_state_init(ldap_handle_t *conn, sync_config_t const *config,
 	 */
 	if (cookie) {
 		char *bv_val;
+		struct berval bvc;
 
 		memcpy(&bv_val, &cookie, sizeof(bv_val));
 
-		struct berval bvc = { .bv_val = bv_val, .bv_len = talloc_array_length(cookie) };
+		bvc.bv_val = bv_val;
+		bvc.bv_len = talloc_array_length(cookie);
+
 		ber_printf(ber, "{eOb}",mode, &bvc, reload_hint);
 	} else {
 		ber_printf(ber, "{eb}", mode, reload_hint );

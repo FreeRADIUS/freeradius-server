@@ -853,7 +853,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 
 finish:
 	talloc_free(request);
-	return 0;
+	return ret;
 }
 
 /** De-multiplex incoming LDAP Messages
