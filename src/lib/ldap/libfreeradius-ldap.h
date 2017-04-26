@@ -259,7 +259,7 @@ typedef struct {
 /** Tracks the state of a libldap connection handle
  *
  */
-typedef struct ldap_handle {
+typedef struct fr_ldap_conn {
 	LDAP		*handle;			//!< libldap handle.
 	bool		rebound;			//!< Whether the connection has been rebound to something
 							//!< other than the admin user.
@@ -278,7 +278,7 @@ typedef struct ldap_handle {
 	fr_ldap_handle_config_t const *config;		//!< rlm_ldap connection configuration.
 
 	void		*user_ctx;			//!< User data associated with the handle.
-} ldap_handle_t;
+} fr_ldap_conn_t;
 
 /** Contains a collection of values
  *
@@ -355,7 +355,7 @@ static inline void fr_ldap_berval_to_value(value_box_t *value, struct berval *be
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
-void		fr_ldap_timeout_debug(REQUEST *request, ldap_handle_t const *conn,
+void		fr_ldap_timeout_debug(REQUEST *request, fr_ldap_conn_t const *conn,
 				      struct timeval const *timeout, char const *prefix);
 
 size_t		fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
@@ -365,7 +365,7 @@ size_t		fr_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 ssize_t		fr_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
-			     ldap_handle_t **pconn,
+			     fr_ldap_conn_t **pconn,
 			     char const *dn, char const *password,
 #ifdef WITH_SASL
 			     fr_ldap_sasl_t const *sasl,
@@ -375,35 +375,35 @@ fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
 			     struct timeval const *timeout,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-char const	*fr_ldap_error_str(ldap_handle_t const *conn);
+char const	*fr_ldap_error_str(fr_ldap_conn_t const *conn);
 
 fr_ldap_rcode_t	fr_ldap_search(LDAPMessage **result, REQUEST *request,
-			       ldap_handle_t **pconn,
+			       fr_ldap_conn_t **pconn,
 			       char const *dn, int scope, char const *filter, char const * const * attrs,
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, REQUEST *request,
-				     ldap_handle_t **pconn,
+				     fr_ldap_conn_t **pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_modify(REQUEST *request, ldap_handle_t **pconn,
+fr_ldap_rcode_t	fr_ldap_modify(REQUEST *request, fr_ldap_conn_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, ldap_handle_t const *conn,
+fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_conn_t const *conn,
 				    LDAPMessage *msg, char const *dn);
 
 fr_ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
-			       ldap_handle_t const *conn, int msgid, int all,
+			       fr_ldap_conn_t const *conn, int msgid, int all,
 			       char const *dn,
 			       struct timeval const *timeout);
 
-ldap_handle_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, fr_ldap_handle_config_t const *handle_config);
+fr_ldap_conn_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, fr_ldap_handle_config_t const *handle_config);
 
-int		fr_ldap_conn_timeout_set(ldap_handle_t const *conn, struct timeval const *timeout);
+int		fr_ldap_conn_timeout_set(fr_ldap_conn_t const *conn, struct timeval const *timeout);
 
-int		fr_ldap_conn_timeout_reset(ldap_handle_t const *conn);
+int		fr_ldap_conn_timeout_reset(fr_ldap_conn_t const *conn);
 
 int		fr_ldap_global_config(int debug_level, char const *tls_random_file);
 
@@ -418,22 +418,22 @@ void		fr_ldap_control_merge(LDAPControl *serverctrls_out[],
 				      LDAPControl *clientctrls_out[],
 				      size_t serverctrls_len,
 				      size_t clientctrls_len,
-				      ldap_handle_t *conn,
+				      fr_ldap_conn_t *conn,
 				      LDAPControl *serverctrls_in[],
 				      LDAPControl *clientctrls_in[]);
 
-int		fr_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit);
+int		fr_ldap_control_add_server(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool freeit);
 
-int		fr_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit);
+int		fr_ldap_control_add_client(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool freeit);
 
-void		fr_ldap_control_clear(ldap_handle_t *conn);
+void		fr_ldap_control_clear(fr_ldap_conn_t *conn);
 
-int		fr_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request);
+int		fr_ldap_control_add_session_tracking(fr_ldap_conn_t *conn, REQUEST *request);
 
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
-int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, ldap_handle_t **pconn);
+int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_conn_t **pconn);
 
 /*
  *	edir.c - Edirectory integrations
@@ -453,14 +453,14 @@ int		fr_ldap_map_verify(vp_map_t *map, void *instance);
 
 int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
 
-int		fr_ldap_map_do(REQUEST *request, ldap_handle_t *conn,
+int		fr_ldap_map_do(REQUEST *request, fr_ldap_conn_t *conn,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
  *	sasl.c - SASL bind functions
  */
 fr_ldap_rcode_t	 fr_ldap_sasl_interactive(REQUEST *request,
-				      	 ldap_handle_t *pconn, char const *dn,
+				      	 fr_ldap_conn_t *pconn, char const *dn,
 				      	 char const *password, fr_ldap_sasl_t const *sasl,
 				      	 LDAPControl **serverctrls, LDAPControl **clientctrls,
 				      	 struct timeval const *timeout);
@@ -479,7 +479,7 @@ char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request,
-					     ldap_handle_t *conn, char **extensions);
+					     fr_ldap_conn_t *conn, char **extensions);
 
 
 #endif
