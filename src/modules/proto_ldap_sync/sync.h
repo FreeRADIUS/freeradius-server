@@ -15,10 +15,10 @@
  */
 
 /**
- * @file proto_ldap_sync/proto_ldap_sync.h
+ * @file src/modules/proto_ldap_sync/sync.h
  *
- * @brief Perform persistent searches against LDAP directories,
- *	to perform actions if their contents change.
+ * @brief Perform persistent searches against LDAP directories, to perform actions
+ *	  if their contents change.
  *
  * @author Arran Cudbard-Bell
  *

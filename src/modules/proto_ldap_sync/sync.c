@@ -15,7 +15,7 @@
  */
 
 /**
- * @file sync/sync.c
+ * @file src/modules/proto_ldap_sync/sync.c
  *
  * @brief Synchronisation controls for interacting with directories impliementing
  *	"LDAP Content Sync Operation" (RFC 4533).

@@ -15,7 +15,7 @@
  */
 
 /**
- * @file proto_ldap_conn.c
+ * @file src/modules/proto_ldap_sync/proto_ldap_sync.c
  *
  * @brief Perform persistent searches against LDAP directories.
  *
@@ -687,6 +687,8 @@ static int _proto_ldap_cookie_store(UNUSED ldap_handle_t *conn, sync_config_t co
  * @param[in] phase	Refresh phase the sync is currently in.
  * @param[in] uuid	of the entry.
  * @param[in] msg	containing the entry.
+ * @param[in] state	The type of modification we need to perform to our
+ *			representation of the entry.
  * @param[in] user_ctx	The listener.
  * @return
  *	- 0 on success.
@@ -779,7 +781,9 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
  * FIXME: This should not be synchronous, but integrating it into the event loop
  *	before the server has started processing requests makes my head hurt.
  *
+ * @param[in] ctx	to allocate cookie buffer in.
  * @param[out] cookie	Where to write the cookie we loaded.
+ * @param[in] listen	structure encapsulating the LDAP
  * @param[in] config	of the sync we're loading the cookie for.
  * @return
  *	- -1 on failure.
@@ -871,6 +875,11 @@ finish:
  *	previous LDAP entries being processed, so we may miss updates in some
  *	circumstances.  This needs to be fixed, but is waiting on v4.0.0
  *	re-architecture.
+ *
+ * @param[in] listen	encapsulating the libldap socket.
+ * @return
+ *	- 1 on success.
+ *	- 0 on failure.
  */
 static int proto_ldap_socket_recv(rad_listen_t *listen)
 {
@@ -929,7 +938,8 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
  *
  * @note This is performed synchronously.
  *
- * @param[in] listen	encapsulating the libldap socket.
+ * @param[in] cs	specifying the listener configuration.
+ * @param[in] listen	structure encapsulating the libldap socket.
  * @return
  *	- 0 on success.
  *	- -1 on error.
@@ -1048,6 +1058,11 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 
 /** Parse socket configuration
  *
+ * @param[in] cs	specifying the listener configuration.
+ * @param[in] listen	structure encapsulating the libldap socket.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
  */
 static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 {

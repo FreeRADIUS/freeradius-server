@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file attrmap.c
+ * @file src/lib/ldap/map.c
  * @brief Functions for mapping between LDAP and FreeRADIUS attributes.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
