@@ -228,17 +228,10 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_conn_t const *
 		break;
 
 	/*
-	 *	No further processing of references needed.
-	 */
-	case LDAP_RES_SEARCH_REFERENCE:
-		return LDAP_PROC_SUCCESS;
-
-	/*
-	 *	Probably an error in our code
+	 *	Can't extract any more useful information.
 	 */
 	default:
-		fr_strerror_printf("LDAP msgtype %i not supported by %s", msg_type, __FUNCTION__);
-		return LDAP_PROC_ERROR;
+		return LDAP_PROC_SUCCESS;
 	}
 
 	/*
