@@ -71,7 +71,7 @@ typedef struct sync_config_s sync_config_t;
  *	- 0 on success.
  *	- -1 on error.
  */
-typedef int (*sync_new_cookie_t)(ldap_handle_t *conn, sync_config_t const *config,
+typedef int (*sync_new_cookie_t)(fr_ldap_conn_t *conn, sync_config_t const *config,
 				 int sync_id, uint8_t const *cookie, void *user_ctx);
 
 /** Informed that the refresh phase has changed
@@ -87,7 +87,7 @@ typedef int (*sync_new_cookie_t)(ldap_handle_t *conn, sync_config_t const *confi
  *	- 0 on success.
  *	- -1 on error.
  */
-typedef int (*sync_phase_change_t)(ldap_handle_t *conn, sync_config_t const *config,
+typedef int (*sync_phase_change_t)(fr_ldap_conn_t *conn, sync_config_t const *config,
 				   int sync_id, sync_phases_t phase, void *user_ctx);
 
 /** Received an e-syncRefreshRequired error code
@@ -104,7 +104,7 @@ typedef int (*sync_phase_change_t)(ldap_handle_t *conn, sync_config_t const *con
  *	- 0 on success.
  *	- -1 on error.
  */
-typedef int (*sync_refresh_required_t)(ldap_handle_t *conn, sync_config_t const *config,
+typedef int (*sync_refresh_required_t)(fr_ldap_conn_t *conn, sync_config_t const *config,
 				       int sync_id, sync_phases_t phase, void *user_ctx);
 
 /** Received an update for en entry
@@ -121,7 +121,7 @@ typedef int (*sync_refresh_required_t)(ldap_handle_t *conn, sync_config_t const 
  *	- 0 on success.
  *	- -1 on error.
  */
-typedef int (*sync_entry_t)(ldap_handle_t *conn, sync_config_t const *config,
+typedef int (*sync_entry_t)(fr_ldap_conn_t *conn, sync_config_t const *config,
 			    int sync_id, sync_phases_t phase,
 			    uint8_t const uuid[SYNC_UUID_LENGTH], LDAPMessage *msg, sync_states_t state,
 			    void *user_ctx);
@@ -176,11 +176,11 @@ extern FR_NAME_NUMBER sync_phase_table[];
 extern FR_NAME_NUMBER sync_protocol_op_table[];
 extern FR_NAME_NUMBER sync_info_tag_table[];
 
-int			sync_demux(int *sync_id, ldap_handle_t *conn);
+int			sync_demux(int *sync_id, fr_ldap_conn_t *conn);
 
-void			sync_state_destroy(ldap_handle_t *conn, int msgid);
+void			sync_state_destroy(fr_ldap_conn_t *conn, int msgid);
 
-sync_config_t const	*sync_state_config_get(ldap_handle_t *conn, int msgid);
+sync_config_t const	*sync_state_config_get(fr_ldap_conn_t *conn, int msgid);
 
-int			sync_state_init(ldap_handle_t *conn, sync_config_t const *config,
+int			sync_state_init(fr_ldap_conn_t *conn, sync_config_t const *config,
 					uint8_t const *cookie, bool reload_hint);

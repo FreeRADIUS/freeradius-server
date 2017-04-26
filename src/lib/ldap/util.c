@@ -265,7 +265,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, ldap_handle_t *conn, char **extensions)
+int fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request, fr_ldap_conn_t *conn, char **extensions)
 {
 	int i;
 

@@ -33,7 +33,7 @@
 #include "sync.h"
 
 struct sync_state_s {
-	ldap_handle_t 			*conn;
+	fr_ldap_conn_t 			*conn;
 
 	sync_config_t const		*config;
 
@@ -706,7 +706,7 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
  *	- -1 on sync error.
  *	- -2 on conn error.  Requires the handle to be destroyed.
  */
-int sync_demux(int *sync_id, ldap_handle_t *conn)
+int sync_demux(int *sync_id, fr_ldap_conn_t *conn)
 {
 	struct	timeval		poll = { 1, 0 };	/* Poll */
 	LDAPMessage		*msg, *head = NULL;
@@ -850,7 +850,7 @@ int sync_demux(int *sync_id, ldap_handle_t *conn)
 static int _sync_state_free(sync_state_t *sync)
 {
 
-	ldap_handle_t	*conn = talloc_get_type_abort(sync->conn, ldap_handle_t);	/* check for premature free */
+	fr_ldap_conn_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_conn_t);	/* check for premature free */
 	rbtree_t	*tree = talloc_get_type_abort(conn->user_ctx, rbtree_t);
 	sync_state_t	find = { .msgid = sync->msgid };
 
@@ -896,7 +896,7 @@ static int _sync_cmp(void const *one, void const *two)
  * @param[in] conn	the connection.
  * @param[in] msgid	of the sync to destroy.
  */
-void sync_state_destroy(ldap_handle_t *conn, int msgid)
+void sync_state_destroy(fr_ldap_conn_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
 	rbtree_t	*tree;
@@ -916,7 +916,7 @@ void sync_state_destroy(ldap_handle_t *conn, int msgid)
  * @param[in] conn	the connection.
  * @param[in] msgid	of the sync to return the config for.
  */
-sync_config_t const *sync_state_config_get(ldap_handle_t *conn, int msgid)
+sync_config_t const *sync_state_config_get(fr_ldap_conn_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
 	rbtree_t	*tree;
@@ -961,7 +961,7 @@ sync_config_t const *sync_state_config_get(ldap_handle_t *conn, int msgid)
  * @param[in] reload_hint	If true, hint to the server that we need to be sent all
  *				entries in the directory.
  */
-int sync_state_init(ldap_handle_t *conn, sync_config_t const *config,
+int sync_state_init(fr_ldap_conn_t *conn, sync_config_t const *config,
 		    uint8_t const *cookie, bool reload_hint)
 {
 	static char const	*sync_ctl_oid = LDAP_CONTROL_SYNC;

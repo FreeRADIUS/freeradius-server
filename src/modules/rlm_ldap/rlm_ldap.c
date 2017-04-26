@@ -263,7 +263,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	struct berval		**values;
 
-	ldap_handle_t		*conn;
+	fr_ldap_conn_t		*conn;
 	int			ldap_errno;
 
 	char const		*url;
@@ -397,7 +397,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	vp_map_t const		*map;
 	char			*url_str;
 
-	ldap_handle_t		*conn;
+	fr_ldap_conn_t		*conn;
 
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
@@ -554,7 +554,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	bool			found = false;
 	bool			check_is_dn;
 
-	ldap_handle_t		*conn = NULL;
+	fr_ldap_conn_t		*conn = NULL;
 	char const		*user_dn;
 
 	rad_assert(inst->groupobj_base_dn);
@@ -665,7 +665,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	fr_ldap_rcode_t		status;
 	char const		*dn;
 	rlm_ldap_t const	*inst = instance;
-	ldap_handle_t		*conn;
+	fr_ldap_conn_t		*conn;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
@@ -801,7 +801,7 @@ finish:
 information.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
 					char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -872,7 +872,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	rlm_ldap_t const	*inst = instance;
 	struct berval		**values;
 	VALUE_PAIR		*vp;
-	ldap_handle_t		*conn;
+	fr_ldap_conn_t		*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
@@ -1115,7 +1115,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	fr_ldap_rcode_t	status;
 
-	ldap_handle_t	*conn = NULL;
+	fr_ldap_conn_t	*conn = NULL;
 
 	LDAPMod		*mod_p[LDAP_MAX_ATTRMAP + 1], mod_s[LDAP_MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;

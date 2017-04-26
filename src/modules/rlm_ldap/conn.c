@@ -39,9 +39,9 @@ RCSID("$Id$")
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
+fr_ldap_conn_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 {
-	ldap_handle_t *conn;
+	fr_ldap_conn_t *conn;
 
 	conn = fr_connection_get(inst->pool, request);
 
@@ -72,7 +72,7 @@ ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
  * @param request The current request.
  * @param conn to release.
  */
-void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *conn)
+void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.
@@ -110,7 +110,7 @@ void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t *c
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	fr_ldap_rcode_t			status;
-	ldap_handle_t			*conn;
+	fr_ldap_conn_t			*conn;
 	fr_ldap_handle_config_t const	*handle_config = instance;	/* Not talloced */
 
 	conn = fr_ldap_conn_alloc(ctx, handle_config);

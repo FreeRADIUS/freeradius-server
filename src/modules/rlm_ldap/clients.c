@@ -71,7 +71,7 @@ static int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION
 }
 
 typedef struct ldap_client_data {
-	ldap_handle_t *conn;
+	fr_ldap_conn_t *conn;
 	LDAPMessage *entry;
 } ldap_client_data_t;
 
@@ -106,7 +106,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 {
 	int 		ret = 0;
 	fr_ldap_rcode_t	status;
-	ldap_handle_t	*conn = NULL;
+	fr_ldap_conn_t	*conn = NULL;
 
 	char const	**attrs = NULL;
 

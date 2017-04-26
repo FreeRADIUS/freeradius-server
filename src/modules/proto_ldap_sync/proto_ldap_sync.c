@@ -55,7 +55,7 @@ typedef struct {
 	fr_ipaddr_t			src_ipaddr;		//!< Our src interface.
 	uint16_t			src_port;		//!< Our src port.
 
-	ldap_handle_t			*conn;			//!< Our connection to the LDAP directory.
+	fr_ldap_conn_t			*conn;			//!< Our connection to the LDAP directory.
 
 	RADCLIENT			*client;		//!< Fake client representing the connection.
 
@@ -568,7 +568,7 @@ static void proto_ldap_conn_init(UNUSED fr_event_list_t *el, UNUSED struct timev
  * @param[in] user_ctx	The listener.
  * @return 0.
  */
-static int _proto_ldap_refresh_required(ldap_handle_t *conn, sync_config_t const *config,
+static int _proto_ldap_refresh_required(fr_ldap_conn_t *conn, sync_config_t const *config,
 				        int sync_id, UNUSED sync_phases_t phase, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
@@ -598,7 +598,7 @@ static int _proto_ldap_refresh_required(ldap_handle_t *conn, sync_config_t const
  * @param[in] user_ctx	The listener.
  * @return 0.
  */
-static int _proto_ldap_present(ldap_handle_t *conn, sync_config_t const *config,
+static int _proto_ldap_present(fr_ldap_conn_t *conn, sync_config_t const *config,
 			       int sync_id, sync_phases_t phase, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
@@ -629,7 +629,7 @@ static int _proto_ldap_present(ldap_handle_t *conn, sync_config_t const *config,
  *	- 0 on success.
  *	- -1 on failure
  */
-static int _proto_ldap_cookie_store(UNUSED ldap_handle_t *conn, sync_config_t const *config,
+static int _proto_ldap_cookie_store(UNUSED fr_ldap_conn_t *conn, sync_config_t const *config,
 			      	    int sync_id, uint8_t const *cookie, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
@@ -669,7 +669,7 @@ static int _proto_ldap_cookie_store(UNUSED ldap_handle_t *conn, sync_config_t co
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _proto_ldap_entry(ldap_handle_t *conn,  sync_config_t const *config,
+static int _proto_ldap_entry(fr_ldap_conn_t *conn,  sync_config_t const *config,
 			     int sync_id, UNUSED sync_phases_t phase,
 			     UNUSED uint8_t const uuid[SYNC_UUID_LENGTH], LDAPMessage *msg,
 			     sync_states_t state, void *user_ctx)

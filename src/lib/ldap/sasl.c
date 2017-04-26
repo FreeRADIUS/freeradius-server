@@ -43,7 +43,7 @@ typedef struct fr_ldap_sasl_t_ctx_t {
 
 	fr_ldap_sasl_t const	*extra;		//!< Extra fields (realm and proxy id).
 
-	ldap_handle_t		*conn;		//!< Connection in use.
+	fr_ldap_conn_t		*conn;		//!< Connection in use.
 } fr_ldap_sasl_ctx_t;
 
 /** Callback for  fr_ldap_sasl_interactive_bind
@@ -105,7 +105,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t  fr_ldap_sasl_interactive(REQUEST *request,
-					  ldap_handle_t *conn, char const *identity,
+					  fr_ldap_conn_t *conn, char const *identity,
 					  char const *password, fr_ldap_sasl_t const *sasl,
 					  LDAPControl **serverctrls, LDAPControl **clientctrls,
 					  struct timeval const *timeout)
