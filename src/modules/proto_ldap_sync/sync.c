@@ -171,7 +171,7 @@ static int sync_search_entry_or_refrence(sync_state_t *sync, LDAPMessage *msg, L
 	ber_tag_t		bv_ret;
 	BerElement		*ber = NULL;
 	struct berval		entry_uuid = { 0 };
-	sync_states_t		state = -1;
+	sync_states_t		state = SYNC_STATE_INVALID;
 	bool			new_cookie;
 
 	rad_assert(sync->conn);
@@ -810,21 +810,21 @@ int sync_demux(int *sync_id, ldap_handle_t *conn)
 		case LDAP_RES_SEARCH_ENTRY:
 			ret = sync_search_entry_or_refrence(sync, msg, ctrls);
 			if (ret < 0) goto sync_error;
-			continue;
+			break;
 
 		case LDAP_RES_SEARCH_RESULT:
 			ret = sync_search_result(sync, msg, ctrls);
 			if (ret < 0) goto sync_error;
-			continue;
+			break;
 
 		case LDAP_RES_INTERMEDIATE:
 			ret = sync_intermediate(sync, msg, ctrls);
 			if (ret < 0) goto sync_error;
-			continue;
+			break;
 
 		default:
 			WARN("Ignoring unexpected message type (%i)", type);
-			continue;
+			break;
 		}
 
 		ldap_controls_free(ctrls);

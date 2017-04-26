@@ -86,7 +86,7 @@ typedef enum {
 	LDAP_SYNC_CODE_COOKIE_STORE
 } ldap_sync_packet_code_t;
 
-FR_NAME_NUMBER const ldap_sync_code_table[] = {
+static FR_NAME_NUMBER const ldap_sync_code_table[] = {
 	{ "entry-present",	LDAP_SYNC_CODE_PRESENT		},
 	{ "entry-add",		LDAP_SYNC_CODE_ADD		},
 	{ "entry-modify",	LDAP_SYNC_CODE_MODIFY		},
@@ -96,31 +96,6 @@ FR_NAME_NUMBER const ldap_sync_code_table[] = {
 
 	{  NULL , -1 }
 };
-
-/*
- *	Scopes
- */
-FR_NAME_NUMBER const fr_ldap_scope[] = {
-	{ "sub",	LDAP_SCOPE_SUB	},
-	{ "one",	LDAP_SCOPE_ONE	},
-	{ "base",	LDAP_SCOPE_BASE },
-#ifdef LDAP_SCOPE_CHILDREN
-	{ "children",	LDAP_SCOPE_CHILDREN },
-#endif
-	{  NULL , -1 }
-};
-
-#ifdef LDAP_OPT_X_TLS_NEVER
-FR_NAME_NUMBER const fr_ldap_tls_require_cert[] = {
-	{ "never",	LDAP_OPT_X_TLS_NEVER	},
-	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
-	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
-	{ "try",	LDAP_OPT_X_TLS_TRY	},
-	{ "hard",	LDAP_OPT_X_TLS_HARD	},	/* oh yes, just like that */
-
-	{  NULL , -1 }
-};
-#endif
 
 static CONF_PARSER sasl_mech_static[] = {
 	{ FR_CONF_OFFSET("mech", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, fr_ldap_sasl_t, mech) },
@@ -695,7 +670,7 @@ static int _proto_ldap_cookie_store(UNUSED ldap_handle_t *conn, sync_config_t co
  *	- -1 on failure.
  */
 static int _proto_ldap_entry(ldap_handle_t *conn,  sync_config_t const *config,
-			     UNUSED int sync_id, UNUSED sync_phases_t phase,
+			     int sync_id, UNUSED sync_phases_t phase,
 			     UNUSED uint8_t const uuid[SYNC_UUID_LENGTH], LDAPMessage *msg,
 			     sync_states_t state, void *user_ctx)
 {

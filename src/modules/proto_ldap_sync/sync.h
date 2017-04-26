@@ -32,6 +32,7 @@
 /** Operations to perform on entries
  */
 typedef enum {
+	SYNC_STATE_INVALID		= -1,			//!< Invalid sync state.
 	SYNC_STATE_PRESENT		= 0,			//!< Entry is present on the server.
 	SYNC_STATE_ADD			= 1,			//!< Entry should be added to our copy.
 	SYNC_STATE_MODIFY		= 2,			//!< Entry should be updated in our copy.

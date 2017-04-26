@@ -3,11 +3,20 @@ server ldap {
         listen  {
                 type = sync
 
-                sync {
+        	server = "ldap://127.0.0.1"
+#		port = 389
 
+#		identity = "cn=admin,dc=example,dc=org"
+#		password = "supersecret"
+
+                sync {
+			base_dn = "ou=people,dc=example,dc=org"
                 }
 
-
+                sync {
+                	base_dn = "ou=groups,dc=example,dc=org"
+                	filter = "(objectClass=unixGroup}"
+                }
         }
         load Cookie {
 
