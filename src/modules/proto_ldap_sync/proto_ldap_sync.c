@@ -671,7 +671,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_conn_t *conn, sync_config_t c
  */
 static int _proto_ldap_entry(fr_ldap_conn_t *conn,  sync_config_t const *config,
 			     int sync_id, UNUSED sync_phases_t phase,
-			     UNUSED uint8_t const uuid[SYNC_UUID_LENGTH], LDAPMessage *msg,
+			     uint8_t const uuid[SYNC_UUID_LENGTH], LDAPMessage *msg,
 			     sync_states_t state, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
