@@ -135,7 +135,7 @@ fr_ldap_rcode_t  fr_ldap_sasl_interactive(REQUEST *request,
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
 	for (;;) {
-		ret =  fr_ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
+		ret = ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
 						 our_serverctrls, our_clientctrls,
 						 LDAP_SASL_AUTOMATIC,
 						 _sasl_interact, &sasl_ctx, result,
