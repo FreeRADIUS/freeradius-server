@@ -632,11 +632,17 @@ wait:
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
+			value_box_t boxed_answer = {
+				.datum.strvalue = answer,
+				.length = len,
+				.type = PW_TYPE_STRING
+			};
+
 			status = WEXITSTATUS(status);
 			if ((status != 0) || (ret < 0)) {
-				RERROR("Program returned code (%d) and output \"%pS\"", status, answer);
+				RERROR("Program returned code (%d) and output \"%pV\"", status, &boxed_answer);
 			} else {
-				RDEBUG2("Program returned code (%d) and output \"%pS\"", status, answer);
+				RDEBUG2("Program returned code (%d) and output \"%pV\"", status, &boxed_answer);
 			}
 
 			return ret < 0 ? ret : status;
