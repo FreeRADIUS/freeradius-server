@@ -22,11 +22,11 @@ Version 4.0.x of the server is largely compatible with version 3.0.x,
 but be sure to address any warnings when starting v3.0.x before
 attempting to use en existing configuration with v4.0.x.
 
-For a list of changes in version 4.0, please see [doc/changelog]
-(https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog)
+For a list of changes in version 4.0, please see
+[doc/changelog](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog)
 
-See [raddb/README.rst]
-(https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.rst)
+See 
+[raddb/README.rst](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.rst)
 for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
