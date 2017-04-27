@@ -1,8 +1,5 @@
-Installation
-============
-
-1. INTRODUCTION
----------------
+# Installation
+## Introduction
 
 Ignore the installation instructions in this file if you have a
 pre-installed binary package.  When upgrading from older versions of
@@ -14,27 +11,25 @@ Whether you are installing from source or a pre-built binary
 package, you should read the section below "RUNNING THE SERVER".
 
 
-2. SIMPLE INSTALLATION
-----------------------
+## Simple build
 
 If you do not need to modify the default configuration, then take
-the following steps to build and install the server::
+the following steps to build and install the server:
 
-  $ ./configure
-  $ make
-  $ make install
+```bash
+./configure
+make
+make install
+```
 
-
-3. CUSTOM INSTALLATION
-----------------------
+## Custom build
 
 FreeRADIUS has autoconf support. This means you have to run
 ``./configure``, and then run make.  To see which configuration options
 are supported, run ``./configure --help``, and read it's output.  The
-following list is a selection from the available flags::
+following list is a selection from the available flags:
 
-  --enable-shared[=PKGS]  build shared libraries [default=yes]
-  --enable-static[=PKGS]  build static libraries [default=yes]
+```text
   --with-logdir=DIR       Directory for logfiles [LOCALSTATEDIR/log] 
   --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] 
   --with-raddbdir=DIR     Directory for config files [SYSCONFDIR/raddb] 
@@ -45,6 +40,7 @@ following list is a selection from the available flags::
                                (default=no) 
   --enable-developer      Turns on super-duper-extra-compile-warnings
                           when using gcc, as well as experimental modules.
+```
 
 The ``make install`` stage will install the binaries, the 'man' pages,
 and MAY install the configuration files.  If you have not installed a
@@ -74,9 +70,7 @@ installed was not installed, then the output of the
 was not installed.  Please do NOT post questions to the FreeRADIUS
 users list without first carefully reading the output of this process.
 
-
-4. UPGRADING
-------------
+## Upgrading
 
 The installation process will not over-write your existing
 configuration files.  It will, however, warn you about the files it
@@ -88,16 +82,14 @@ possible to use the older configuration as-is. However, the version
 configuration should not be too difficult.  For details on what has
 changed, see ``raddb/README.rst``.
 
-We STRONGLY recommend that 3.0 be installed in a different location
-than any existing 1.x or 2.x installation.  Any local policies can
-then be migrated gradually to the new 3.0 configuration.  The number
-of differences in the new configuration mean that is is both simpler
-and safer to migrate your configurations rather than to try and just
-get the old configuration to work.
+We STRONGLY recommend that new major versions be installed in a different 
+location than any existing installations.  Any local policies can
+then be migrated gradually to the configuration format of the new major
+version.  The number of differences in the new configuration mean that is
+is both simpler and safer to migrate your configurations rather than to try
+and just get the old configuration to work.
 
-
-5. RUNNING THE SERVER
----------------------
+## Running the server
 
 If the server builds and installs, but doesn't run correctly, then
 you should use debugging mode (radiusd -X) to figure out the problem. 
@@ -124,9 +116,11 @@ down their configuration problems with the server, it's a good idea
 for you to use it, too.  If you don't, there is little hope for you to
 solve ANY configuration problem related to the server.
 
-To start the server in debugging mode, do::
+To start the server in debugging mode, do:
 
-  $ radiusd -X
+```bash
+radiusd -X
+```
 
 You should see a lot of text printed on the screen as it starts up.
 If you don't, or if you see error messages, please read the FAQ:
@@ -134,9 +128,11 @@ If you don't, or if you see error messages, please read the FAQ:
   http://www.freeradius.org/faq/
 
 If the server says "Ready to process requests.", then it is running
-properly.  From another shell (or another window), type::
+properly.  From another shell (or another window), type
 
-  $ radtest test test localhost 0 testing123
+```bash
+radtest test test localhost 0 testing123
+```
 
 You should see the server print out more messages as it receives the
 request, and responds to it.  The 'radtest' program should receive the
