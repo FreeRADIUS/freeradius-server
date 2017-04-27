@@ -4,11 +4,12 @@
 Ignore the installation instructions in this file if you have a
 pre-installed binary package.  When upgrading from older versions of
 FreeRADIUS, you should read ALL of this file, especially the section
-on "UPGRADING" below which gives information on how to update your
-configuration.
+on [Upgrading](#upgrading) below which gives information on how to 
+update your configuration.
 
 Whether you are installing from source or a pre-built binary
-package, you should read the section below "RUNNING THE SERVER".
+package, you should read the section below 
+[Running The Server](#running-the-server).
 
 
 ## Simple build
@@ -76,11 +77,10 @@ The installation process will not over-write your existing
 configuration files.  It will, however, warn you about the files it
 did not install.
 
-For users upgrading from any older version to 3.0, it is *NOT*
-possible to use the older configuration as-is. However, the version
-2.x configuration is largely compatible, so upgrading the
-configuration should not be too difficult.  For details on what has
-changed, see ``raddb/README.rst``.
+It is generally not possible to use to re-use configurations between
+different major versions of the server.
+
+For details on what has changed, see ``raddb/README.md``.
 
 We STRONGLY recommend that new major versions be installed in a different 
 location than any existing installations.  Any local policies can
@@ -92,7 +92,7 @@ and just get the old configuration to work.
 ## Running the server
 
 If the server builds and installs, but doesn't run correctly, then
-you should use debugging mode (radiusd -X) to figure out the problem. 
+you should use debugging mode (``radiusd -X``) to figure out the problem. 
 
 This is your BEST HOPE for understanding the problem.  Read ALL of
 the messages which are printed to the screen, the answer to your
