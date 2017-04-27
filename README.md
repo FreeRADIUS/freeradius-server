@@ -1,14 +1,8 @@
-The FreeRADIUS server
-=====================
+# The FreeRADIUS server
 
-|BuildStatus|_ |CoverityStatus|_
+[![Travis CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink]
 
-.. contents::
-   :local:
-
-Introduction
-------------
-
+## Introduction
 The FreeRADIUS Server Project is a high performance and highly
 configurable multi-protocol policy server, supporting RADIUS, DHCPv4
 and VMPS. It is available under the terms of the GNU GPLv2.
@@ -23,17 +17,16 @@ Directory, Apache Cassandra, Redis, OpenLDAP, and many more.  It is
 used daily to authenticate the Internet access for hundreds of millions
 of people, in sites ranging from 10 to 10 million+ users.
 
-Upgrading
----------
+## Upgrading
 Version 4.0.x of the server is largely compatible with version 3.0.x,
 but be sure to address any warnings when starting v3.0.x before
 attempting to use en existing configuration with v4.0.x.
 
-For a list of changes in version 4.0, please see `doc/changelog
-<https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog>`_
+For a list of changes in version 4.0, please see [doc/changelog]
+(https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog)
 
-See `raddb/README.rst
-<https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.rst>`_
+See [raddb/README.rst]
+(https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.rst)
 for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
@@ -46,14 +39,10 @@ Please see http://freeradius.org and http://wiki.freeradius.org for
 more information.
 
 
-Installation
-------------
+## Installation
+To install the server, please see the INSTALL.md file in this directory.
 
-To install the server, please see the INSTALL file in this directory.
-
-Configuring the server
-----------------------
-
+## Configuring the server
 We understand that the server may be difficult to configure,
 install, or administer.  It is, after all, a complex system with many
 different configuration possibilities.
@@ -68,11 +57,9 @@ following:
 3. Verify that the server starts - in debugging mode (``radiusd -X``).
 4. Send it test packets using "radclient", or a NAS or AP.
 5. Verify that the server does what you expect
-
    - If it does not work, change the configuration, and go to step (3)
    - If you're stuck, revert to using the "last working" configuration.
    - If it works, proceed to step (6).
-  
 6. Save a copy of the working configuration, along with a note of what
    you changed, and why.
 7. Make a SMALL change to the configuration.
@@ -84,8 +71,7 @@ frustrating to proceed via a series of small steps, the alternative
 will always take more time.  The "fast and loose" way will be MORE
 frustrating than quickly making forward progress!
 
-Debugging the Server
---------------------
+## Debugging the Server
 
 Run the server in debugging mode, (``radiusd -X``) and READ the output.
 We cannot emphasize this point strongly enough.  The vast majority of
@@ -109,8 +95,7 @@ Type some key words into the search box, and you should find
 discussions about common problems and solution.
 
 
-Feedback, Defects, and Community Support
-----------------------------------------
+## Feedback, Defects, and Community Support
 
 If you have any comments, or are having difficulty getting FreeRADIUS
 to do what you want, please post to the 'freeradius-users' list
@@ -121,12 +106,11 @@ read documentation relevant to your issue first.
 
 If you suspect a defect in the server, would like to request a feature,
 or submit a code patch, please use the GitHub issue tracker for the
-freeradius-server `repository
-<https://github.com/FreeRADIUS/freeradius-server>`_.
+freeradius-server
+[repository](https://github.com/FreeRADIUS/freeradius-server).
 
 Instructions for gathering data for defect reports can be found in
-``doc/bugs`` or on the `wiki
-<http://wiki.freeradius.org/project/bug-reports>`_.
+``doc/bugs`` or on the [wiki](http://wiki.freeradius.org/project/bug-reports).
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
@@ -156,8 +140,7 @@ someone to address your concerns.  Either way, make sure that any fix
 is contributed back to the project so that no one else runs into the
 same issue.
 
-Books on RADIUS
----------------
+## Books on RADIUS
 
 See ``doc/README`` for more information about FreeRADIUS.
 
@@ -167,17 +150,13 @@ old, and is not much more than a basic introduction to the subject.
 
 http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
 
-Commercial support
-------------------
+## Commercial support
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from `Network RADIUS
-<http://www.networkradius.com>`_.
+are available from [Network RADIUS](http://www.networkradius.com).
 
-
-.. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
-.. _CoverityStatus: https://scan.coverity.com/projects/58
-
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v4.0.x
-.. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
+[CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg? "Coverity Status"
+[CoverityStatusLink]: https://scan.coverity.com/projects/58
+[BuildStatus]: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v4.0.x "Travis CI status"
+[BuildStatusLink]: https://travis-ci.org/FreeRADIUS/freeradius-server
