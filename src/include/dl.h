@@ -47,9 +47,9 @@ typedef enum {
 	DL_TYPE_MODULE = 0,	//!< Standard loadable module.
 	DL_TYPE_PROTO,		//!< Protocol module.
 	DL_TYPE_SUBMODULE	//!< Driver (or method in the case of EAP)
-} dl_module_type_t;
+} dl_type_t;
 
-typedef struct dl_module dl_module_t;
+typedef struct dl_module dl_t;
 
 /** Called when a module is first loaded
  *
@@ -93,22 +93,22 @@ typedef int (*module_detach_t)(void *instance);
 /** Callback to call when a module is first loaded
  *
  * @param[in] module	being loaded.
- * @param[in] symbol	in module's symbol table, who's presence triggered this function.
- * @param[in] user_ctx	passed to dl_module_init_register.
+ * @param[in] symbol	which, if present, will trigger this callback.
+ * @param[in] user_ctx	passed to dl_init_register.
  * @return
  *	- 0 on success.
  *	- -1 on failure
  */
-typedef int (*dl_module_init_t)(dl_module_t const *module, void *symbol, void *user_ctx);
+typedef int (*dl_init_t)(dl_t const *module, void *symbol, void *user_ctx);
 
 
 /** Callback when a module is destroyed
  *
  * @param[in] module	being loaded.
- * @param[in] symbol	in module's symbol table, who's presence triggered this function.
- * @param[in] user_ctx	passed to dl_module_init_register
+ * @param[in] symbol	which, if present, will trigger this callback.
+ * @param[in] user_ctx	passed to dl_init_register
  */
-typedef void (*dl_module_free_t)(dl_module_t const *module, void *symbol, void *user_ctx);
+typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 
 /** Common fields for the interface struct modules export
  *
@@ -126,38 +126,40 @@ typedef void (*dl_module_free_t)(dl_module_t const *module, void *symbol, void *
 
 /** Fields common to all types of loadable modules
  */
-typedef struct dl_module_common {
+typedef struct dl_common {
 	RAD_MODULE_COMMON;
-} dl_module_common_t;
+} dl_common_t;
 
 /** Module handle
  *
  * Contains module's dlhandle, and the functions it exports.
  */
 struct dl_module {
-	char const			*name;		//!< Name of the module e.g. sql.
-	dl_module_t const		*parent;	//!< of this module.
-	dl_module_type_t		type;		//!< The type of module.
-	dl_module_common_t const	*common;	//!< Symbol exported by the module, containing its public
-							//!< functions, name and behaviour control flags.
-	void				*handle;	//!< Handle returned by dlopen.
+	char const		*name;		//!< Name of the module e.g. sql.
+	dl_t const		*parent;	//!< of this module.
+	dl_type_t		type;		//!< The type of module.
+	dl_common_t const	*common;	//!< Symbol exported by the module, containing its public
+						//!< functions, name and behaviour control flags.
+
+	CONF_SECTION		*conf;		//!< The module's configuration (as opposed to the instance,
+						//!< configuration).  May be NULL.
+
+	void			*handle;	//!< Handle returned by dlopen.
 };
 
-int			dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void *ctx);
+int		dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx);
 
-void			dl_module_sym_init_unregister(char const *symbol, dl_module_init_t func);
+void		dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func);
 
-int			dl_module_sym_free_register(char const *symbol, dl_module_free_t func, void *ctx);
+int		dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx);
 
-void			dl_module_sym_free_unregister(char const *symbol, dl_module_free_t func);
+void		dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
 
-int			dl_module_instance_data_alloc(void **out, TALLOC_CTX *ctx,
-						      dl_module_t const *module, CONF_SECTION *cs);
+int		dl_instance_data_alloc(void **out, TALLOC_CTX *ctx, dl_t const *module, CONF_SECTION *cs);
 
-dl_module_t const	*dl_module_by_symbol(void *sym);
+dl_t const	*dl_by_symbol(void *sym);
 
-dl_module_t const	*dl_module(CONF_SECTION *conf, dl_module_t const *parent,
-				   char const *name, dl_module_type_t type);
+dl_t const	*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);
 
 #ifdef __cplusplus
 }

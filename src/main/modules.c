@@ -831,7 +831,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	int			i;
 	char const		*name1, *instance_name;
 	module_instance_t	*instance;
-	dl_module_t const	*module;
+	dl_t const	*module;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -893,7 +893,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Parse the modules configuration.
 	 */
-	if (dl_module_instance_data_alloc(&instance->data, instance, instance->handle, cs) < 0) {
+	if (dl_instance_data_alloc(&instance->data, instance, instance->handle, cs) < 0) {
 		talloc_free(instance);
 		return NULL;
 	}

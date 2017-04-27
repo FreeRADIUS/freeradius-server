@@ -43,7 +43,7 @@ typedef struct {
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	rad_module_t const		*module;	//!< Module this is an instance of.
-	dl_module_t const		*handle;	//!< dlhandle of module.
+	dl_t const		*handle;	//!< dlhandle of module.
 
 	void				*data;		//!< The module's private instance data, containing.
 							//!< its parsed configuration and static state.

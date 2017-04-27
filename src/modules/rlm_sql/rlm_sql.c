@@ -1083,7 +1083,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the driver
 	 */
-	inst->driver_handle = dl_module(driver_cs, dl_module_by_symbol(&rlm_sql), name, DL_TYPE_SUBMODULE);
+	inst->driver_handle = dl_module(driver_cs, dl_by_symbol(&rlm_sql), name, DL_TYPE_SUBMODULE);
 	if (!inst->driver_handle) return -1;
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_handle->common;
 
@@ -1091,7 +1091,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Pre-allocate the driver's instance data,
 	 *	and parse the driver's configuration.
 	 */
-	if (dl_module_instance_data_alloc(&inst->driver_inst, inst, inst->driver_handle, driver_cs) < 0) {
+	if (dl_instance_data_alloc(&inst->driver_inst, inst, inst->driver_handle, driver_cs) < 0) {
 	error:
 		talloc_decrease_ref_count(inst->driver_handle);
 		return -1;

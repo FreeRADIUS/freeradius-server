@@ -97,7 +97,7 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	/*
 	 *	Load the submodule for the specified EAP method
 	 */
-	method->submodule_handle = dl_module(cs, dl_module_by_symbol(&rlm_eap), eap_type2name(num), DL_TYPE_SUBMODULE);
+	method->submodule_handle = dl_module(cs, dl_by_symbol(&rlm_eap), eap_type2name(num), DL_TYPE_SUBMODULE);
 	if (!method->submodule_handle) return -1;
 	method->submodule = (rlm_eap_submodule_t const *)method->submodule_handle->common;
 
@@ -105,7 +105,7 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	 *	Allocate submodule instance data and parse the method's
 	 *	configuration.
 	 */
-	if (dl_module_instance_data_alloc(&method->submodule_inst, method, method->submodule_handle, cs) < 0) {
+	if (dl_instance_data_alloc(&method->submodule_inst, method, method->submodule_handle, cs) < 0) {
 		talloc_free(method);
 		return -1;
 	}

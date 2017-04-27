@@ -15,7 +15,7 @@
  */
 
 /**
- * @file dl.c
+ * @file dl->c
  * @brief Wrappers around dlopen to manage loading shared objects at runtime.
  *
  * @copyright 2016 The FreeRADIUS server project
@@ -50,29 +50,73 @@ RCSID("$Id$")
 #  define DL_EXTENSION ".so"
 #endif
 
+char const	*radlib_dir;
+
+
 /** Symbol dependent initialisation callback
  *
  * Call this function when the module is loaded for the first time.
  */
-typedef struct dl_module_sym_init dl_module_sym_init_t;
-struct dl_module_sym_init {
+typedef struct dl_symbol_init dl_symbol_init_t;
+struct dl_symbol_init {
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
-	dl_module_init_t	func;		//!< to call when symbol is found in a module's symbol table.
+	dl_init_t		func;		//!< to call when symbol is found in a module's symbol table.
 	void			*ctx;		//!< User data to pass to func.
-	dl_module_sym_init_t	*next;
+	dl_symbol_init_t	*next;
 };
 
 /** Symbol dependent free callback
  *
  * Call this function before the module is unloaded.
  */
-typedef struct dl_module_sym_free dl_module_sym_free_t;
-struct dl_module_sym_free {
+typedef struct dl_symbol_free dl_symbol_free_t;
+struct dl_symbol_free {
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
-	dl_module_free_t	func;		//!< to call when symbol is found in a module's symbol table.
+	dl_free_t		func;		//!< to call when symbol is found in a module's symbol table.
 	void			*ctx;		//!< User data to pass to func.
-	dl_module_sym_free_t	*next;
+	dl_symbol_free_t	*next;
 };
+
+/** A dynamic loader
+ *
+ */
+typedef struct dl_loader {
+
+	/** Linked list of symbol init callbacks
+	 *
+	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
+	 *	of callbacks so there shouldn't be efficiency issues.
+	 */
+	dl_symbol_init_t	*sym_init;
+
+	/** Linked list of symbol free callbacks
+	 *
+	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
+	 *	of callbacks so there shouldn't be efficiency issues.
+	 */
+	dl_symbol_free_t	*sym_free;
+
+	/** Tree to map main symbol to dl_handle_t
+	 *
+	 * Used by modules to get their own dl_handle_t for loading submodules.
+	 */
+	rbtree_t		*sym_tree;
+
+	/** Tree of shared objects loaded
+	 */
+	rbtree_t		*tree;
+
+	/** Configuration for module instances
+	 *
+	 */
+	CONF_SECTION		*mod_conf;
+
+	/** Configuration for libraries used by modules in the server.
+	 *
+	 */
+	CONF_SECTION		*lib_conf;
+} dl_loader_t;
+static dl_loader_t *dl;
 
 /** Name prefixes matching the types of loadable module
  */
@@ -83,43 +127,12 @@ static FR_NAME_NUMBER const dl_type_prefix[] = {
 	{  NULL , -1 },
 };
 
-/** Path to search for modules in
- *
- */
-char const *radlib_dir = NULL;
+static int dl_init(CONF_SECTION *cs);
 
-/** Linked list of symbol initialisation callbacks
- *
- * @note Is linked list to retain insertion order.  We don't expect huge numbers
- *	of callbacks so there shouldn't be efficiency issues.
- */
-static dl_module_sym_init_t	*dl_module_sym_init = NULL;
-
-/** Linked list of symbol free callbacks
- *
- * @note Is linked list to retain insertion order.  We don't expect huge numbers
- *	of callbacks so there shouldn't be efficiency issues.
- */
-static dl_module_sym_free_t	*dl_module_sym_free = NULL;
-
-/** Tree to map main symbol to dl_handle_t
- *
- * Used by modules to get their own dl_handle_t for loading submodules.
- */
-static rbtree_t			*dl_module_sym_tree = NULL;
-
-/** Tree of any shared objects loaded
- *
- */
-static rbtree_t			*dl_handle_tree = NULL;
-
-static int dl_init(void);
-static void dl_free(void);
-
-static int dl_module_sym_init_cmp(void const *one, void const *two)
+static int dl_symbol_init_cmp(void const *one, void const *two)
 {
-	dl_module_sym_init_t const *a = one;
-	dl_module_sym_init_t const *b = two;
+	dl_symbol_init_t const *a = one;
+	dl_symbol_init_t const *b = two;
 
 	rad_assert(a && b);
 
@@ -133,10 +146,10 @@ static int dl_module_sym_init_cmp(void const *one, void const *two)
 	return 0;
 }
 
-static int dl_module_sym_free_cmp(void const *one, void const *two)
+static int dl_symbol_free_cmp(void const *one, void const *two)
 {
-	dl_module_sym_free_t const *a = one;
-	dl_module_sym_free_t const *b = two;
+	dl_symbol_free_t const *a = one;
+	dl_symbol_free_t const *b = two;
 
 	rad_assert(a && b);
 
@@ -150,10 +163,10 @@ static int dl_module_sym_free_cmp(void const *one, void const *two)
 	return 0;
 }
 
-static int dl_module_sym_cmp(void const *one, void const *two)
+static int dl_symbol_cmp(void const *one, void const *two)
 {
-	dl_module_t const *a = one;
-	dl_module_t const *b = two;
+	dl_t const *a = one;
+	dl_t const *b = two;
 
 	if (a->common > b->common) return +1;
 	if (a->common < b->common) return -1;
@@ -161,12 +174,12 @@ static int dl_module_sym_cmp(void const *one, void const *two)
 	return 0;
 }
 
-/** Compare the name of two dl_module_t
+/** Compare the name of two dl_t
  *
  */
 static int dl_handle_cmp(void const *one, void const *two)
 {
-	return strcmp(((dl_module_t const *)one)->name, ((dl_module_t const *)two)->name);
+	return strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
 }
 
 /* Call the load() function in a module's exported structure
@@ -178,8 +191,12 @@ static int dl_handle_cmp(void const *one, void const *two)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dl_module_call_load_func(dl_module_t const *dl_module, UNUSED void *symbol, UNUSED void *ctx)
+static int dl_load_func(dl_t const *dl_module, UNUSED void *symbol, UNUSED void *ctx)
 {
+	CONF_SECTION *cs;
+
+	cs = cf_subsection_find(dl->lib_conf, dl_module->name);
+
 	if (dl_module->common->load && (dl_module->common->load() < 0)) {
 		ERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
 		return -1;
@@ -194,7 +211,7 @@ static int dl_module_call_load_func(dl_module_t const *dl_module, UNUSED void *s
  * @param[in] symbol	UNUSED.
  * @param[in] ctx	UNUSED.
  */
-static void dl_module_call_unload_func(dl_module_t const *dl_module, UNUSED void *symbol, UNUSED void *ctx)
+static void dl_unload_func(dl_t const *dl_module, UNUSED void *symbol, UNUSED void *ctx)
 {
 	if (dl_module->common->unload) dl_module->common->unload();
 }
@@ -213,7 +230,7 @@ static void dl_module_call_unload_func(dl_module_t const *dl_module, UNUSED void
  *	- -2 if version mismatch.
  *	- -3 if commit mismatch.
  */
-static int dl_module_verify_magic(CONF_SECTION const *cs, dl_module_common_t const *module)
+static int dl_magic_verify(CONF_SECTION const *cs, dl_common_t const *module)
 {
 #ifdef HAVE_DLADDR
 	Dl_info dl_info;
@@ -389,7 +406,7 @@ static void *dl_by_name(char const *name)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dl_module_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_module_t const *module, CONF_SECTION *cs)
+int dl_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_t const *module, CONF_SECTION *cs)
 {
 	*data = NULL;
 
@@ -428,13 +445,13 @@ int dl_module_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_module_t cons
  *	- 0 continue walking.
  *	- -1 error.
  */
-static int dl_module_sym_init_walk(dl_module_t const *dl_module)
+static int dl_symbol_init_walk(dl_t const *dl_module)
 {
-	dl_module_sym_init_t	*init;
+	dl_symbol_init_t	*init;
 	fr_cursor_t		cursor;
 	void			*sym = NULL;
 
-	for (init = fr_cursor_init(&cursor, &dl_module_sym_init);
+	for (init = fr_cursor_init(&cursor, &dl->sym_init);
 	     init;
 	     init = fr_cursor_next(&cursor)) {
 		if (init->symbol) {
@@ -462,13 +479,13 @@ static int dl_module_sym_init_walk(dl_module_t const *dl_module)
  *
  * @param[in] dl_module	to search for symbols in.
  */
-static void dl_module_sym_free_walk(dl_module_t const *dl_module)
+static void dl_symbol_free_walk(dl_t const *dl_module)
 {
-	dl_module_sym_free_t	*free;
+	dl_symbol_free_t	*free;
 	fr_cursor_t		cursor;
 	void			*sym = NULL;
 
-	for (free = fr_cursor_init(&cursor, &dl_module_sym_free);
+	for (free = fr_cursor_init(&cursor, &dl->sym_free);
 	     free;
 	     free = fr_cursor_next(&cursor)) {
 		if (free->symbol) {
@@ -489,38 +506,38 @@ static void dl_module_sym_free_walk(dl_module_t const *dl_module)
  *
  * Close module's dlhandle, unloading it.
  *
- * @param[in] dl_module to close.
+ * @param[in] module to close.
  * @return 0.
  */
-static int _dl_module_free(dl_module_t *dl_module)
+static int _dl_free(dl_t *module)
 {
-	dl_module = talloc_get_type_abort(dl_module, dl_module_t);
+	module = talloc_get_type_abort(module, dl_t);
 
 	if (DEBUG_ENABLED4) {
 		DEBUG4("%s unloaded.  Handle address %p, symbol address %p",
-		       dl_module->name, dl_module->handle, dl_module->common);
+		       module->name, module->handle, module->common);
 	} else {
-		DEBUG3("%s unloaded", dl_module->name);
+		DEBUG3("%s unloaded", module->name);
 	}
-	dl_module_sym_free_walk(dl_module);
+	dl_symbol_free_walk(module);
 
 	/*
 	 *	Only dlclose() handle if we're *NOT* running under valgrind
 	 *	as it unloads the symbols valgrind needs.
 	 */
-	if (!RUNNING_ON_VALGRIND) dlclose(dl_module->handle);        /* ignore any errors */
+	if (!RUNNING_ON_VALGRIND) dlclose(module->handle);        /* ignore any errors */
 
-	dl_module->handle = NULL;
+	module->handle = NULL;
 
-	rbtree_deletebydata(dl_handle_tree, dl_module);
-	rbtree_deletebydata(dl_module_sym_tree, dl_module);
+	rbtree_deletebydata(dl->tree, module);
+	rbtree_deletebydata(dl->sym_tree, module);
 
-	if (rbtree_num_elements(dl_handle_tree) == 0) dl_free();
+	if (rbtree_num_elements(dl->tree) == 0) talloc_free(dl);
 
 	return 0;
 }
 
-/** Register a callback to execute when a module is first loaded
+/** Register a callback to execute when a module with a particular symbol is first loaded
  *
  * @note Will replace ctx data for callbacks with the same symbol/func.
  *
@@ -535,19 +552,19 @@ static int _dl_module_free(dl_module_t *dl_module)
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
-int dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void *ctx)
+int dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx)
 {
-	dl_module_sym_init_t	*new;
+	dl_symbol_init_t	*new;
 	fr_cursor_t		cursor;
 
-	dl_module_sym_init_unregister(symbol, func);
+	dl_symbol_init_cb_unregister(symbol, func);
 
-	MEM(new = talloc(NULL, dl_module_sym_init_t));
+	MEM(new = talloc(NULL, dl_symbol_init_t));
 	new->symbol = symbol;
 	new->func = func;
 	new->ctx = ctx;
 
-	fr_cursor_init(&cursor, &dl_module_sym_init);
+	fr_cursor_init(&cursor, &dl->sym_init);
 	fr_cursor_append(&cursor, new);
 
 	return 0;
@@ -558,22 +575,22 @@ int dl_module_sym_init_register(char const *symbol, dl_module_init_t func, void 
  * @param[in] symbol	the callback is attached to.
  * @param[in] func	the callback.
  */
-void dl_module_sym_init_unregister(char const *symbol, dl_module_init_t func)
+void dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func)
 {
-	dl_module_sym_init_t	*found, find;
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*found, find;
+	fr_cursor_t	cursor;
 
 	find.symbol = symbol;
 	find.func = func;
 
-	for (found = fr_cursor_init(&cursor, &dl_module_sym_init);
-	     found && (dl_module_sym_init_cmp(&find, found) != 0);
+	for (found = fr_cursor_init(&cursor, &dl->sym_init);
+	     found && (dl_symbol_init_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
 
 	if (found) talloc_free(fr_cursor_remove(&cursor));
 }
 
-/** Register a callback to execute when a module is unloaded
+/** Register a callback to execute when a module with a particular symbol is unloaded
  *
  * @note Will replace ctx data for callbacks with the same symbol/func.
  *
@@ -588,18 +605,18 @@ void dl_module_sym_init_unregister(char const *symbol, dl_module_init_t func)
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
-int dl_module_sym_free_register(char const *symbol, dl_module_free_t func, void *ctx)
+int dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx)
 {
-	dl_module_sym_free_t	*new;
+	dl_symbol_free_t	*new;
 	fr_cursor_t		cursor;
 
-	dl_module_sym_free_unregister(symbol, func);
+	dl_symbol_free_cb_unregister(symbol, func);
 
-	MEM(new = talloc(NULL, dl_module_sym_free_t));
+	MEM(new = talloc(NULL, dl_symbol_free_t));
 	new->symbol = symbol;
 	new->func = func;
 	new->ctx = ctx;
-	fr_cursor_init(&cursor, &dl_module_sym_free);
+	fr_cursor_init(&cursor, &dl->sym_free);
 	fr_cursor_append(&cursor, new);
 
 	return 0;
@@ -610,42 +627,43 @@ int dl_module_sym_free_register(char const *symbol, dl_module_free_t func, void 
  * @param[in] symbol	the callback is attached to.
  * @param[in] func	the callback.
  */
-void dl_module_sym_free_unregister(char const *symbol, dl_module_free_t func)
+void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 {
-	dl_module_sym_free_t	*found, find;
+	dl_symbol_free_t	*found, find;
 	fr_cursor_t		cursor;
 
 	find.symbol = symbol;
 	find.func = func;
 
-	for (found = fr_cursor_init(&cursor, &dl_module_sym_free);
-	     found && (dl_module_sym_free_cmp(&find, found) != 0);
+	for (found = fr_cursor_init(&cursor, &dl->sym_free);
+	     found && (dl_symbol_free_cmp(&find, found) != 0);
 	     found = fr_cursor_next(&cursor));
 
 	if (found) talloc_free(fr_cursor_remove(&cursor));
 }
 
-/** Lookup a dl_module_t via its public symbol
+/** Lookup a dl_t via its public symbol
  *
  */
-dl_module_t const *dl_module_by_symbol(void *sym)
+dl_t const *dl_by_symbol(void *sym)
 {
-	dl_module_t find;
+	dl_t find;
 
 	find.common = sym;
 
-	return rbtree_finddata(dl_module_sym_tree, &find);
+	return rbtree_finddata(dl->sym_tree, &find);
 }
 
 /** Load a module library using dlopen() or return a previously loaded module from the cache
  *
- * When the dl_module_t is no longer used, talloc_free() may be used to free it.
+ * When the dl_t is no longer used, talloc_free() may be used to free it.
  *
  * When all references to the original dlhandle are freed, dlclose() will be called on the
  * dlhandle to unload the module.
  *
- * @param[in] conf	section describing the module's configuration.
- * @param[in] parent	The dl_module_t of the parent module, e.g. rlm_sql for rlm_sql_postgresql.
+ * @param[in] conf	section describing the module's configuration.  This is only used
+ *			to give error messages context, and for initialization.
+ * @param[in] parent	The dl_t of the parent module, e.g. rlm_sql for rlm_sql_postgresql.
  * @param[in] name	of the module e.g. sql for rlm_sql.
  * @param[in] type	Used to determine module name prefixes.  Must be one of:
  *			- DL_TYPE_MODULE
@@ -655,16 +673,16 @@ dl_module_t const *dl_module_by_symbol(void *sym)
  *	- Module handle holding dlhandle, and module's public interface structure.
  *	- NULL if module couldn't be loaded, or some other error occurred.
  */
-dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char const *name, dl_module_type_t type)
+dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type)
 {
-	dl_module_t			to_find;
-	dl_module_t			*dl_module = NULL;
-	void				*handle = NULL;
-	char				*module_name = NULL;
-	char				*p, *q;
-	dl_module_common_t const	*module;
+	dl_t			to_find;
+	dl_t			*dl_module = NULL;
+	void			*handle = NULL;
+	char			*module_name = NULL;
+	char			*p, *q;
+	dl_common_t const	*module;
 
-	if (!dl_handle_tree) dl_init();
+	if (!dl) dl_init(cf_item_root(cf_section_to_item(conf)));
 
 	if (parent) {
 		to_find.name = module_name = talloc_asprintf(NULL, "%s_%s_%s",
@@ -681,7 +699,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	If the module's already been loaded, increment the reference count.
 	 */
-	dl_module = rbtree_finddata(dl_handle_tree, &to_find);
+	dl_module = rbtree_finddata(dl->tree, &to_find);
 	if (dl_module) {
 		talloc_free(module_name);
 		talloc_increase_ref_count(dl_module);
@@ -714,12 +732,12 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
-	if (dl_module_verify_magic(conf, module) < 0) goto error;
+	if (dl_magic_verify(conf, module) < 0) goto error;
 
 	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, handle, module);
 
 	/* make room for the module type */
-	dl_module = talloc_zero(dl_handle_tree, dl_module_t);
+	dl_module = talloc_zero(dl->tree, dl_t);
 	dl_module->parent = parent;
 	dl_module->common = module;
 	dl_module->handle = handle;
@@ -729,7 +747,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	Call initialisation functions
 	 */
-	if (dl_module_sym_init_walk(dl_module) < 0) {
+	if (dl_symbol_init_walk(dl_module) < 0) {
 		cf_log_err_cs(conf, "Module initialisation failed \"%s\"", module_name);
 		goto error;
 	}
@@ -739,12 +757,12 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	Add the module to the dlhandle cache
 	 */
-	if (!rbtree_insert(dl_handle_tree, dl_module) || !rbtree_insert(dl_module_sym_tree, dl_module)) {
+	if (!rbtree_insert(dl->tree, dl_module) || !rbtree_insert(dl->sym_tree, dl_module)) {
 		cf_log_err_cs(conf, "Failed to cache module \"%s\"", module_name);
 		goto error;
 	}
 
-	talloc_set_destructor(dl_module, _dl_module_free);	/* Do this late */
+	talloc_set_destructor(dl_module, _dl_free);	/* Do this late */
 
 	return dl_module;
 }
@@ -752,52 +770,39 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 /** Initialise structures needed by the dynamic linker
  *
  */
-static int dl_init(void)
+static int dl_init(CONF_SECTION *root)
 {
-	if (dl_handle_tree) return 0;
+	if (dl) return 0;
 
-	dl_handle_tree = rbtree_create(NULL, dl_handle_cmp, NULL, 0);
-	if (!dl_handle_tree) {
-		ERROR("Failed initialising dl_handle_tree");
+	dl = talloc_zero(NULL, dl_loader_t);
+
+	/*
+	 *	Cache this for use in the load callback
+	 */
+	dl->lib_conf = cf_section_find_next(root, NULL, "library");
+	dl->mod_conf = cf_section_find_next(root, NULL, "modules");
+
+	dl->tree = rbtree_create(dl, dl_handle_cmp, NULL, 0);
+	if (!dl->tree) {
+		ERROR("Failed initialising dl->tree");
 		return -1;
 	}
 
-	dl_module_sym_tree = rbtree_create(NULL, dl_module_sym_cmp, NULL, 0);
-	if (!dl_module_sym_tree) {
-		ERROR("Failed initialising dl_module_sym_tree");
+	dl->sym_tree = rbtree_create(dl, dl_symbol_cmp, NULL, 0);
+	if (!dl->sym_tree) {
+		ERROR("Failed initialising dl->sym_tree");
 		return -1;
 	}
 
-	if (dl_module_sym_init_register(NULL, dl_module_call_load_func, NULL) < 0) {
+	if (dl_symbol_init_cb_register(NULL, dl_load_func, NULL) < 0) {
 		ERROR("Failed registering load() callback");
 		return -1;
 	}
 
-	if (dl_module_sym_free_register(NULL, dl_module_call_unload_func, NULL) < 0) {
+	if (dl_symbol_free_cb_register(NULL, dl_unload_func, NULL) < 0) {
 		ERROR("Failed registering unload() callback");
 		return -1;
 	}
 
 	return 0;
-}
-
-static void dl_free(void)
-{
-	fr_cursor_t cursor;
-	dl_module_sym_init_t *init;
-	dl_module_sym_free_t *free;
-
-	talloc_free(dl_handle_tree);
-	talloc_free(dl_module_sym_tree);
-
-	/*
-	 *	Free any registered callbacks
-	 */
-	for (init = fr_cursor_init(&cursor, &dl_module_sym_init);
-	     init;
-	     init = fr_cursor_next(&cursor)) talloc_free(fr_cursor_remove(&cursor));
-
-	for (free = fr_cursor_init(&cursor, &dl_module_sym_free);
-	     free;
-	     free = fr_cursor_next(&cursor)) talloc_free(fr_cursor_remove(&cursor));
 }

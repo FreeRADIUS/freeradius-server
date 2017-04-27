@@ -75,7 +75,7 @@ typedef struct listen_config_t {
 	CONF_SECTION		*server;	//!< encapsulating server configuratiuon
 	CONF_SECTION		*cs;		//!< configuration for this listener
 	char const		*server_name;	//!< name of the virtual server (if any)
-	dl_module_t const	*handle;	//!< to dynamically loaded library (if any)
+	dl_t const	*handle;	//!< to dynamically loaded library (if any)
 	RAD_LISTEN_TYPE		type;		//! same as Listen-Socket-Type
 	rad_protocol_t const	*proto;		//!< pointer to the protocol handler.
 
@@ -98,9 +98,9 @@ static rad_protocol_t master_listen[];
 int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
 {
 	rad_protocol_t const *proto;
-	dl_module_t *module;
+	dl_t *module;
 
-	module = cf_data_find(cs, dl_module_t, "proto");
+	module = cf_data_find(cs, dl_t, "proto");
 	if (!module) return 0;
 
 	proto = (rad_protocol_t const *)module->common;
@@ -129,7 +129,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	char const		*value;
 	fr_dict_enum_t const	*dv;
 	rad_protocol_t const	*proto = NULL;
-	dl_module_t const	*module = NULL;
+	dl_t const	*module = NULL;
 
 	if (!listen_ctx) listen_ctx = talloc_init("listen_config_t");
 
@@ -220,7 +220,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			return -1;
 		}
 
-		if (cf_data_find(cs, dl_module_t, "proto") != NULL) {
+		if (cf_data_find(cs, dl_t, "proto") != NULL) {
 			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
 			talloc_const_free(module);
 			return -1;

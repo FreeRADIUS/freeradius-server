@@ -230,7 +230,7 @@ struct sql_inst {
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	dl_module_t const	*driver_handle;		//!< Driver's dl_handle.
+	dl_t const	*driver_handle;		//!< Driver's dl_handle.
 	void			*driver_inst;		//!< Driver's instance data.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
