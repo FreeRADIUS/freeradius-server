@@ -466,51 +466,61 @@ void		*_cf_data_remove(CONF_SECTION *cs, char const *type, char const *name);
 #define		cf_data_walk(_cs, _type, _cb, _ctx) _cf_data_walk(_cs, #_type, _cb, _ctx)
 int		_cf_data_walk(CONF_SECTION *cs, char const *type, cf_walker_t cb, void *ctx);
 
-char const *cf_pair_attr(CONF_PAIR const *pair);
-char const *cf_pair_value(CONF_PAIR const *pair);
-FR_TOKEN cf_pair_operator(CONF_PAIR const *pair);
-FR_TOKEN cf_pair_attr_type(CONF_PAIR const *pair);
-FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair);
-char const *cf_section_name1(CONF_SECTION const *cs);
-char const *cf_section_name2(CONF_SECTION const *cs);
-char const *cf_section_name(CONF_SECTION const *cs);
-char const *cf_section_argv(CONF_SECTION const *cs, int argc);
-FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs);
-FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc);
-int dump_config(CONF_SECTION const *cs);
-CONF_SECTION *cf_subsection_find_next(CONF_SECTION const *section,
+char const	*cf_pair_attr(CONF_PAIR const *pair);
+char const	*cf_pair_value(CONF_PAIR const *pair);
+FR_TOKEN	cf_pair_operator(CONF_PAIR const *pair);
+FR_TOKEN	cf_pair_attr_type(CONF_PAIR const *pair);
+FR_TOKEN	cf_pair_value_type(CONF_PAIR const *pair);
+
+char const	*cf_section_name1(CONF_SECTION const *cs);
+char const	*cf_section_name2(CONF_SECTION const *cs);
+char const	*cf_section_name(CONF_SECTION const *cs);
+char const	*cf_section_argv(CONF_SECTION const *cs, int argc);
+FR_TOKEN	cf_section_name2_type(CONF_SECTION const *cs);
+FR_TOKEN	cf_section_argv_type(CONF_SECTION const *cs, int argc);
+
+CONF_SECTION 	*cf_subsection_find_next(CONF_SECTION const *section,
+					 CONF_SECTION const *subsection,
+					 char const *name1);
+CONF_SECTION	*cf_section_find_next(CONF_SECTION const *section,
 				      CONF_SECTION const *subsection,
 				      char const *name1);
-CONF_SECTION *cf_section_find_next(CONF_SECTION const *section,
-				   CONF_SECTION const *subsection,
-				   char const *name1);
-int cf_section_lineno(CONF_SECTION const *section);
-int cf_pair_lineno(CONF_PAIR const *pair);
-char const *cf_pair_filename(CONF_PAIR const *pair);
-char const *cf_section_filename(CONF_SECTION const *section);
-CONF_ITEM *cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item);
-int cf_pair_count(CONF_SECTION const *cs);
-CONF_SECTION *cf_item_parent(CONF_ITEM const *ci);
-bool cf_item_is_section(CONF_ITEM const *item);
-bool cf_item_is_pair(CONF_ITEM const *item);
-CONF_PAIR *cf_item_to_pair(CONF_ITEM const *item);
-CONF_SECTION *cf_item_to_section(CONF_ITEM const *item);
-CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp);
-CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs);
 
-void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
-void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
-void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
-void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
-void cf_log_warn_cp(CONF_PAIR const *cp, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
-void cf_log_warn(CONF_SECTION const *cs, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
-void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
-void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+int		cf_section_lineno(CONF_SECTION const *section);
+int		cf_pair_lineno(CONF_PAIR const *pair);
+char const	*cf_pair_filename(CONF_PAIR const *pair);
+char const	*cf_section_filename(CONF_SECTION const *section);
+CONF_ITEM	*cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item);
+int		cf_pair_count(CONF_SECTION const *cs);
 
-void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
-CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
-			     CONF_SECTION const *outercs,
-			     char const *ptr);
+CONF_SECTION	*cf_item_parent(CONF_ITEM const *ci);
+CONF_SECTION	*cf_item_root(CONF_ITEM const *ci);
+
+bool		cf_item_is_section(CONF_ITEM const *item);
+bool		cf_item_is_pair(CONF_ITEM const *item);
+CONF_PAIR	*cf_item_to_pair(CONF_ITEM const *item);
+CONF_SECTION	*cf_item_to_section(CONF_ITEM const *item);
+CONF_ITEM	*cf_pair_to_item(CONF_PAIR const *cp);
+CONF_ITEM	*cf_section_to_item(CONF_SECTION const *cs);
+
+/*
+ *	Log an error related to a section
+ */
+void		cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
+void		cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_err_by_name(CONF_SECTION const *parent,
+				   char const *name, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
+void		cf_log_warn_cp(CONF_PAIR const *cp, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_warn(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+
+void		cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
+CONF_ITEM	*cf_reference_item(CONF_SECTION const *parentcs,
+				   CONF_SECTION const *outercs,
+				   char const *ptr);
+
 #ifdef WITH_CONF_WRITE
 size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
 #endif

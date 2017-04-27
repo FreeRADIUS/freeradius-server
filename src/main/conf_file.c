@@ -4102,6 +4102,17 @@ CONF_SECTION *cf_item_parent(CONF_ITEM const *ci)
 	return ci->parent;
 }
 
+CONF_SECTION *cf_item_root(CONF_ITEM const *ci)
+{
+	CONF_SECTION *cs;
+
+	if (!ci) return NULL;
+
+	for (cs = ci->parent; cs->parent; cs = cs->parent);
+
+	return (CONF_SECTION *)cs;
+}
+
 int cf_section_lineno(CONF_SECTION const *section)
 {
 	return section->item.lineno;
