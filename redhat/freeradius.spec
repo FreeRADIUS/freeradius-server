@@ -623,6 +623,7 @@ fi
 %{_libdir}/freeradius/proto_bfd.so
 %{_libdir}/freeradius/proto_detail.so
 %{_libdir}/freeradius/proto_dhcp.so
+%{_libdir}/freeradius/proto_ldap_sync.so
 %{_libdir}/freeradius/proto_radius_acct.so
 %{_libdir}/freeradius/proto_radius_auth.so
 %{_libdir}/freeradius/proto_radius_coa.so
