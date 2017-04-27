@@ -1,5 +1,4 @@
-The mods-config Directory
-=========================
+# The mods-config Directory
 
 This directory contains module-specific configuration files.  These
 files are in a format different from the one used by the main
