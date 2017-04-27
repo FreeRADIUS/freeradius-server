@@ -90,6 +90,12 @@ server buffered-sql {
 		retry_interval = 30
 
 		#
+		#  this option is not yet correctly documented.
+		#  The default is "no".
+		#
+	#	one_shot = yes
+	
+		#
 		#  Track progress through the detail file.  When the detail
 		#  file is large, and the server is re-started, it will
 		#  read from the START of the file.
