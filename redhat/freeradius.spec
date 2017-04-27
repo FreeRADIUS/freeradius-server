@@ -487,7 +487,7 @@ rm -rf $RPM_BUILD_ROOT/%{_includedir}
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
 
 # install doc files omitted by standard install
-for f in COPYRIGHT CREDITS INSTALL.rst README.rst; do
+for f in COPYRIGHT CREDITS INSTALL.md README.md; do
     cp $f $RPM_BUILD_ROOT/%{docdir}
 done
 cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
@@ -715,7 +715,7 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-available
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/README.rst
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/README.md
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/attr_filter
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/attr_filter/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/files
