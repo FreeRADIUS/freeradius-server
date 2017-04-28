@@ -619,6 +619,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	int rcode;
 	fr_channel_data_t *cd;
 	REQUEST *request;
+	fr_dlist_t *entry;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX *ctx;
 #endif
@@ -729,8 +730,41 @@ nak:
 	 *	New requests are inserted into the time order list in
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is freed.
+	 *
+	 *	Requests may be received from multiple network threads
+	 *	out of order.  We should walk the list to insert this
+	 *	one into the right place.
 	 */
-	FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
+	entry = FR_DLIST_FIRST(worker->time_order);
+	if (!entry) {
+		FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
+	} else {
+		REQUEST *old;
+		fr_dlist_t *prev = &worker->time_order;
+
+		/*
+		 *	Requests are orderd by their receive time.
+		 *	Requests which are older (i.e. smaller receive
+		 *	time) are at the tail of the list.
+		 */
+		while (entry) {
+			old = fr_ptr_to_type(REQUEST, time_order, entry);
+
+			/*
+			 *	If entry is older than the new packet,
+			 *	insert the new packet *before* the
+			 *	current entry.
+			 */
+			if (old->recv_time < request->recv_time) {
+				break;
+			}
+
+			prev = entry;
+			entry = FR_DLIST_NEXT(worker->time_order, entry);
+		}
+
+		FR_DLIST_INSERT_HEAD_PTR(prev, request->time_order);
+	}
 
 	/*
 	 *	Bootstrap the async state machine with the initial
