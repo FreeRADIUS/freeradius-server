@@ -147,6 +147,8 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 		}
 
 		vp->da = da;
+		vp->vp_type = da->type;	/* PW_TYPE_OCTETS */
+
 		return vp;
 	}
 
