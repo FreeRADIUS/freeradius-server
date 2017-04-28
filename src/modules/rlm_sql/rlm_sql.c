@@ -408,7 +408,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		 */
 		if (tmpl_expand(&map_rhs, map_rhs_buff, sizeof(map_rhs_buff),
 				request, map->rhs, NULL, NULL) < 0) {
-			RERROR("Failed getting field name: %s", fr_strerror());
+			RPERROR("Failed getting field name");
 			goto error;
 		}
 

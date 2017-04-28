@@ -404,7 +404,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	talloc_free(pool);
 
 	if (s_ret != REDIS_RCODE_SUCCESS) {
-		RERROR("Failed inserting entry: %s", fr_strerror());
+		RPERROR("Failed inserting entry");
 		return CACHE_ERROR;
 	}
 

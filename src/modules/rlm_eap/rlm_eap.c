@@ -505,7 +505,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
-		RERROR("Malformed EAP Message: %s", fr_strerror());
+		RPERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -892,7 +892,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
-		RERROR("Malformed EAP Message: %s", fr_strerror());
+		RPERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 

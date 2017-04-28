@@ -2430,7 +2430,7 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 	if (!request->reply->code) return 0;
 
 	if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
-		RERROR("Failed encoding packet: %s", fr_strerror());
+		RPERROR("Failed encoding packet");
 
 		return -1;
 	}
@@ -2441,7 +2441,7 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 	if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
-		RERROR("Failed signing packet: %s", fr_strerror());
+		RPERROR("Failed signing packet");
 
 		return -1;
 	}
@@ -2489,7 +2489,7 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (fr_radius_encode(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
-		RERROR("Failed encoding proxied packet: %s", fr_strerror());
+		RPERROR("Failed encoding proxied packet");
 
 		return -1;
 	}
@@ -2500,7 +2500,7 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 	if (fr_radius_sign(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
-		RERROR("Failed signing proxied packet: %s", fr_strerror());
+		RPERROR("Failed signing proxied packet");
 
 		return -1;
 	}

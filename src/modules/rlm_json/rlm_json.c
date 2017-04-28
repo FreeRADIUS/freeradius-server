@@ -307,7 +307,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 			char		*to_parse;
 
 			if (tmpl_aexpand(request, &to_parse, request, map->rhs, fr_jpath_escape_func, NULL) < 0) {
-				RERROR("Failed getting jpath data: %s", fr_strerror());
+				RPERROR("Failed getting jpath data");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}

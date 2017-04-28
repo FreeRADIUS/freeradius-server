@@ -396,7 +396,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (fr_radius_encode(request->reply, request->packet,
 			     request->client->secret) < 0) {
-		RERROR("Failed encoding packet: %s", fr_strerror());
+		RPERROR("Failed encoding packet");
 		return 0;
 	}
 
@@ -410,7 +410,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (fr_radius_sign(request->reply, request->packet,
 			   request->client->secret) < 0) {
-		RERROR("Failed signing packet: %s", fr_strerror());
+		RPERROR("Failed signing packet");
 		return 0;
 	}
 

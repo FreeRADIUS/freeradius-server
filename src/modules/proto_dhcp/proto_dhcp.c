@@ -141,7 +141,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	dhcp_packet_debug(request, request->packet, false);
 
 	if (fr_dhcp_encode(request->packet) < 0) {
-		RERROR("Failed encoding DHCP packet: %s", fr_strerror());
+		RPERROR("Failed encoding DHCP packet");
 		return -1;
 	}
 
@@ -257,7 +257,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	dhcp_packet_debug(request, request->packet, false);
 
 	if (fr_dhcp_encode(request->packet) < 0) {
-		RERROR("Failed encoding DHCP packet: %s", fr_strerror());
+		RPERROR("Failed encoding DHCP packet");
 		return -1;
 	}
 
@@ -875,7 +875,7 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 	if (request->reply->code == 0) return 0; /* don't reply */
 
 	if (fr_dhcp_encode(request->reply) < 0) {
-		RERROR("Failed encoding DHCP packet: %s", fr_strerror());
+		RPERROR("Failed encoding DHCP packet");
 		return -1;
 	}
 
