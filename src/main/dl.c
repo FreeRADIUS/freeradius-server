@@ -756,7 +756,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 /** Initialise structures needed by the dynamic linker
  *
  */
-static int dl_init(CONF_SECTION *root)
+static int dl_init(void)
 {
 	if (dl) return 0;
 
