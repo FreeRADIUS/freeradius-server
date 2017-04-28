@@ -189,20 +189,20 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	 */
 	vp = fr_pair_make(ctx, NULL, row[2], NULL, op);
 	if (!vp) {
-		REDEBUG("Failed to create the pair: %s", fr_strerror());
+		RPEDEBUG("Failed to create the pair");
 		return -1;
 	}
 
 	if (do_xlat) {
 		if (fr_pair_mark_xlat(vp, value) < 0) {
-			REDEBUG("Error marking pair for xlat: %s", fr_strerror());
+			RPEDEBUG("Error marking pair for xlat");
 
 			talloc_free(vp);
 			return -1;
 		}
 	} else {
 		if (fr_pair_value_from_str(vp, value, -1) < 0) {
-			REDEBUG("Error parsing value: %s", fr_strerror());
+			RPEDEBUG("Error parsing value");
 
 			talloc_free(vp);
 			return -1;

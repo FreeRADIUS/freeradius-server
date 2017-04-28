@@ -222,7 +222,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		} else {
 			vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-Address */
 			if (!vp) {
-				REDEBUG("Failed to find IP Address for request");
+				RPEDEBUG("Failed to find IP Address for request");
 				return -1;
 			}
 
@@ -244,7 +244,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 					return 1;
 				}
 				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
-					REDEBUG("Failed adding ARP entry: %s", fr_strerror());
+					REDEBUG("Failed adding ARP entry");
 					return -1;
 				}
 			}
@@ -386,7 +386,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 256, TAG_ANY); /* DHCP-Opcode */
 	if (!vp) {
-		REDEBUG("Someone deleted the DHCP-Opcode!");
+		RPEDEBUG("Someone deleted the DHCP-Opcode!");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -507,7 +507,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 		if (fr_ipaddr_from_ifindex(&primary, request->packet->sockfd, request->packet->dst_ipaddr.af,
 					   request->packet->if_index) < 0) {
-			REDEBUG("Failed determining src_ipaddr from if_index: %s", fr_strerror());
+			RPEDEBUG("Failed determining src_ipaddr from if_index");
 			return RLM_MODULE_FAIL;
 		}
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = primary.ipaddr.ip4addr.s_addr;
@@ -641,7 +641,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 		if (!hwvp) return RLM_MODULE_FAIL;
 
 		if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
-			REDEBUG("Failed adding arp entry: %s", fr_strerror());
+			RPEDEBUG("Failed adding arp entry");
 			return RLM_MODULE_FAIL;
 		}
 	}

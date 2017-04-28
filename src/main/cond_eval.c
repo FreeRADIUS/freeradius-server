@@ -211,7 +211,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	case -1:
 		EVAL_DEBUG("REGEX ERROR");
-		REDEBUG("regex failed: %s", fr_strerror());
+		RPEDEBUG("regex failed");
 		break;
 
 	default:

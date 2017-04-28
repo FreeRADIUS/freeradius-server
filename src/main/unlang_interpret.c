@@ -301,7 +301,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 						num, active_callers, lowest_active_callers);
 					continue;
 				}
-				
+
 				count++;
 				RDEBUG3("load-balance found %d children with %" PRIu64 " active", count, active_callers);
 
@@ -1348,7 +1348,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	if (cs) {
 		instruction = (unlang_t *)cf_data_find(cs, unlang_group_t, NULL);
 		if (!instruction) {
-			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
+			RPEDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
 				cf_section_name1(cs), cf_section_name2(cs));
 		}
 	}
@@ -1562,7 +1562,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->ctx = ctx;
 
 	if (fr_event_timer_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
-		REDEBUG("Failed inserting event: %s", fr_strerror());
+		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;
 	}

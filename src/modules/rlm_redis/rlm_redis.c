@@ -189,14 +189,14 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		}
 
 		if (fr_inet_pton_port(&node_addr.ipaddr, &node_addr.port, p, q - p, AF_UNSPEC, true, true) < 0) {
-			REDEBUG("Failed parsing node address: %s", fr_strerror());
+			RPEDEBUG("Failed parsing node address");
 			return -1;
 		}
 
 		p = q + 1;
 
 		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &node_addr, true) < 0) {
-			REDEBUG("Failed locating cluster node: %s", fr_strerror());
+			RPEDEBUG("Failed locating cluster node");
 			return -1;
 		}
 

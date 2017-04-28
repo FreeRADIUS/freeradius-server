@@ -888,7 +888,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 				if (value_box_cast(n, &n->data,
 						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
-					REDEBUG("Attribute conversion failed: %s", fr_strerror());
+					RPEDEBUG("Attribute conversion failed");
 					fr_pair_list_free(&found);
 					fr_pair_list_free(&n);
 					return -1;
@@ -933,7 +933,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		} else {
 			if (value_box_cast(n, &n->data, n->vp_type, n->da,
 					   &map->rhs->tmpl_value_box) < 0) {
-				REDEBUG("Implicit cast failed: %s", fr_strerror());
+				RPEDEBUG("Implicit cast failed");
 				rcode = -1;
 				goto error;
 			}

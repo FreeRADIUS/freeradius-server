@@ -541,7 +541,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		 */
 		if (now.tv_sec == 0) gettimeofday(&now, NULL);
 		if (tls_utils_asn1time_to_epoch(&next, next_update) < 0) {
-			REDEBUG("Failed parsing next_update time: %s", fr_strerror());
+			RPEDEBUG("Failed parsing next_update time");
 			ocsp_status = OCSP_STATUS_SKIPPED;
 			goto finish;
 		}

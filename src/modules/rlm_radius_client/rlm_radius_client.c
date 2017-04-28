@@ -572,13 +572,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	if (!fr_packet_list_id_alloc(conn->pl, IPPROTO_UDP, &ccr->packet, NULL)) {
 		if (mod_fd_add(request->el, conn, inst) < 0) {
 			talloc_free(ccr);
-			REDEBUG("Failed adding more sockets");
+			RPEDEBUG("Failed adding more sockets");
 			return RLM_MODULE_FAIL;
 		}
 
 		if (!fr_packet_list_id_alloc(conn->pl, IPPROTO_UDP, &ccr->packet, NULL)) {
 			talloc_free(ccr);
-			REDEBUG("Failed allocating ID: %s", fr_strerror());
+			RPEDEBUG("Failed allocating ID");
 			return RLM_MODULE_FAIL;
 		}
 	}

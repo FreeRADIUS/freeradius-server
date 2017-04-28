@@ -59,7 +59,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 
 	compare = fr_pair_cmp(check_item, reply_item);
 	if (compare < 0) {
-		REDEBUG("Comparison failed: %s", fr_strerror());
+		RPEDEBUG("Comparison failed");
 	}
 
 	if (compare == 1) {

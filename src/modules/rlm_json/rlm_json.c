@@ -215,7 +215,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	ret = fr_jpath_evaluate_leaf(request, &head, map->lhs->tmpl_da->type, map->lhs->tmpl_da,
 			     	     to_eval->root, to_eval->jpath);
 	if (ret < 0) {
-		REDEBUG("Failed evaluating jpath: %s", fr_strerror());
+		RPEDEBUG("Failed evaluating jpath");
 		return -1;
 	}
 	if (ret == 0) return 0;
@@ -233,7 +233,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 		vp->op = map->op;
 
 		if (value_box_steal(vp, &vp->data, value) < 0) {
-			REDEBUG("Copying data to attribute failed: %s", fr_strerror());
+			RPEDEBUG("Copying data to attribute failed");
 			talloc_free(vp);
 			goto error;
 		}

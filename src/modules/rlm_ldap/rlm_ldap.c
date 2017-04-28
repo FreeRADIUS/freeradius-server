@@ -691,7 +691,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING");
 		RWDEBUG("*********************************************");
 
-		REDEBUG("Attribute \"User-Password\" is required for authentication");
+		RPEDEBUG("Attribute \"User-Password\" is required for authentication");
 
 		return RLM_MODULE_INVALID;
 	}
@@ -713,7 +713,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 		if (tmpl_expand(&sasl.mech, sasl_mech_buff, sizeof(sasl_mech_buff), request,
 				inst->user_sasl.mech, fr_ldap_escape_func, inst) < 0) {
-			REDEBUG("Failed expanding user.sasl.mech: %s", fr_strerror());
+			RPEDEBUG("Failed expanding user.sasl.mech");
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -721,7 +721,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		if (inst->user_sasl.proxy) {
 			if (tmpl_expand(&sasl.proxy, sasl_proxy_buff, sizeof(sasl_proxy_buff), request,
 					inst->user_sasl.proxy, fr_ldap_escape_func, inst) < 0) {
-				REDEBUG("Failed expanding user.sasl.proxy: %s", fr_strerror());
+				RPEDEBUG("Failed expanding user.sasl.proxy");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
@@ -730,7 +730,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		if (inst->user_sasl.realm) {
 			if (tmpl_expand(&sasl.realm, sasl_realm_buff, sizeof(sasl_realm_buff), request,
 					inst->user_sasl.realm, fr_ldap_escape_func, inst) < 0) {
-				REDEBUG("Failed expanding user.sasl.realm: %s", fr_strerror());
+				RPEDEBUG("Failed expanding user.sasl.realm");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}

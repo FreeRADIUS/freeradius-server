@@ -70,7 +70,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->name);
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
-			REDEBUG("Failed to find 'recv' section");
+			RPEDEBUG("Failed to find 'recv' section");
 			goto done;
 		}
 
