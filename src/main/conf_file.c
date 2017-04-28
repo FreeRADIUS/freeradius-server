@@ -4108,7 +4108,7 @@ CONF_SECTION *cf_item_root(CONF_ITEM const *ci)
 
 	if (!ci) return NULL;
 
-	for (cs = ci->parent; cs->parent; cs = cs->parent);
+	for (cs = ci->parent; cs->item.parent; cs = cs->item.parent);
 
 	return (CONF_SECTION *)cs;
 }
