@@ -81,7 +81,6 @@ struct dl_symbol_free {
  *
  */
 typedef struct dl_loader {
-
 	/** Linked list of symbol init callbacks
 	 *
 	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
@@ -117,7 +116,7 @@ static FR_NAME_NUMBER const dl_type_prefix[] = {
 	{  NULL , -1 },
 };
 
-static int dl_init(CONF_SECTION *cs);
+static int dl_init(void);
 
 static int dl_symbol_init_cmp(void const *one, void const *two)
 {
@@ -668,7 +667,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	char			*p, *q;
 	dl_common_t const	*module;
 
-	if (!dl) dl_init(cf_item_root(cf_section_to_item(conf)));
+	if (!dl) dl_init();
 
 	if (parent) {
 		to_find.name = module_name = talloc_asprintf(NULL, "%s_%s_%s",
