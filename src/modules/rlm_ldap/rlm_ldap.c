@@ -1400,7 +1400,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 
 	*config = talloc_zero(inst, ldap_acct_section_t);
 	if (cf_section_parse(*config, *config, cs, acct_section_config) < 0) {
-		ERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", inst->name, name);
+		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", inst->name, name);
 
 		return -1;
 	}
@@ -1442,7 +1442,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
 					false, rlm_ldap_groupcmp, inst) < 0) {
-		ERROR("Error registering group comparison: %s", fr_strerror());
+		PERROR("Error registering group comparison");
 		goto error;
 	}
 
@@ -1457,7 +1457,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		memset(&flags, 0, sizeof(flags));
 		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, PW_TYPE_STRING,
 				     flags) < 0) {
-			ERROR("Error creating cache attribute: %s", fr_strerror());
+			PERROR("Error creating cache attribute");
 		error:
 			return -1;
 

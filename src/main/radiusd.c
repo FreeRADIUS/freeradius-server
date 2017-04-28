@@ -549,7 +549,7 @@ int main(int argc, char *argv[])
 	 *	Initialise the SNMP stats structures
 	 */
 	if (fr_snmp_init() < 0) {
-		ERROR("Failed initialising SNMP: %s", fr_strerror());
+		PERROR("Failed initialising SNMP");
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -566,7 +566,7 @@ int main(int argc, char *argv[])
 	 *  Redirect stderr/stdout as appropriate.
 	 */
 	if (fr_log_init(&default_log, main_config.daemonize) < 0) {
-		ERROR("Failed initialising log: %s", fr_strerror());
+		PERROR("Failed initialising log");
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
 		size = talloc_total_size(main_config.config);
 
 		if (talloc_set_memlimit(main_config.config, size)) {
-			ERROR("Failed setting memory limit for global configuration");
+			PERROR("Failed setting memory limit for global configuration");
 		} else {
 			DEBUG3("Memory limit for global configuration is set to %zd bytes", size);
 		}
@@ -611,7 +611,7 @@ int main(int argc, char *argv[])
 	     || (fr_set_signal(SIGQUIT, sig_fatal) < 0)
 #endif
 	) {
-		ERROR("Failed installing signal handler: %s", fr_strerror());
+		PERROR("Failed installing signal handler");
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
 
 	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
 	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
-		ERROR("Failed installing signal handler: %s", fr_strerror());
+		PERROR("Failed installing signal handler");
 		fr_exit(EXIT_FAILURE);
 	}
 
@@ -700,7 +700,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (status < 0) {
-		ERROR("Exiting due to internal error: %s", fr_strerror());
+		PERROR("Exiting due to internal error");
 		rcode = EXIT_FAILURE;
 	} else {
 		INFO("Exiting normally");

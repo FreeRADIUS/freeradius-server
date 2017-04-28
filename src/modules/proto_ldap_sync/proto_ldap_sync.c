@@ -529,7 +529,7 @@ static void proto_ldap_sync_reinit(fr_event_list_t *el, struct timeval *now, voi
 	 */
 	if (sync_state_init(inst->conn, config, NULL, true) == 0) return;
 
-	ERROR("Failed reinitialising sync, will retry in %pT seconds", &inst->sync_retry_interval);
+	PERROR("Failed reinitialising sync, will retry in %pT seconds", &inst->sync_retry_interval);
 
 	fr_timeval_add(&when, now, &inst->sync_retry_interval);
 	if (fr_event_timer_insert(el, proto_ldap_sync_reinit, user_ctx, &when, &inst->sync_retry_ev) < 0) {
@@ -742,7 +742,7 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
 
 	client = client_afrom_cs(inst, cs, NULL, false);
 	if (!client) {
-		ERROR("Failed creating fake LDAP client: %s", fr_strerror());
+		PERROR("Failed creating fake LDAP client");
 		talloc_free(cs);
 		return NULL;
 	}
@@ -876,7 +876,7 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 		return 1;
 
  	case -1:
-		ERROR("Sync failed - will retry in %pT seconds", &inst->sync_retry_interval);
+		PERROR("Sync failed - will retry in %pT seconds", &inst->sync_retry_interval);
 
  		config = sync_state_config_get(inst->conn, sync_id);
 		sync_state_destroy(inst->conn, sync_id);	/* Destroy the old state */
@@ -893,7 +893,7 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
  		return 1;
 
  	case -2:
- 		ERROR("Connection failed - will retry in %pT seconds", &inst->conn_retry_interval);
+ 		PERROR("Connection failed - will retry in %pT seconds", &inst->conn_retry_interval);
 
 		/*
 		 *	Schedule conn reinit, but don't perform it immediately
@@ -958,7 +958,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 		error:
 			TALLOC_FREE(inst->conn);
 
-			ERROR("Failed (re)initialising connection, will retry in %pT seconds",
+			PERROR("Failed (re)initialising connection, will retry in %pT seconds",
 			      &inst->conn_retry_interval);
 
 			fr_timeval_add(&when, &now, &inst->conn_retry_interval);

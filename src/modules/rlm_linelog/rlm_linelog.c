@@ -205,7 +205,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 		DEBUG2("Opening UNIX socket at \"%s\"", inst->unix_sock.path);
 		sockfd = fr_socket_client_unix(inst->unix_sock.path, true);
 		if (sockfd < 0) {
-			ERROR("Failed opening UNIX socket: %s", fr_strerror());
+			PERROR("Failed opening UNIX socket");
 			return NULL;
 		}
 		break;
@@ -221,7 +221,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 		sockfd = fr_socket_client_tcp(NULL, &inst->tcp.dst_ipaddr, inst->tcp.port, true);
 		if (sockfd < 0) {
-			ERROR("Failed opening TCP socket: %s", fr_strerror());
+			PERROR("Failed opening TCP socket");
 			return NULL;
 		}
 		break;
@@ -237,7 +237,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 		sockfd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (sockfd < 0) {
-			ERROR("Failed opening UDP socket: %s", fr_strerror());
+			PERROR("Failed opening UDP socket");
 			return NULL;
 		}
 		break;

@@ -2305,7 +2305,7 @@ REALM *realm_find(char const *name)
 
 			compare = regex_exec(this->preg, name, strlen(name), NULL, NULL);
 			if (compare < 0) {
-				ERROR("Failed performing realm comparison: %s", fr_strerror());
+				PERROR("Failed performing realm comparison");
 				return NULL;
 			}
 			if (compare == 1) return this->realm;

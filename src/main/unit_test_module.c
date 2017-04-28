@@ -125,7 +125,7 @@ static RADCLIENT *client_alloc(void *ctx, char const *ip, char const *name)
 
 	client = client_afrom_cs(ctx, cs, NULL, false);
 	if (!client) {
-		ERROR("Failed creating test client: %s", fr_strerror());
+		PERROR("Failed creating test client");
 		rad_assert(0);
 	}
 	rad_assert(client);

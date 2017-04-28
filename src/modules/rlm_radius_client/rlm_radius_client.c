@@ -341,7 +341,7 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 	 *	Too many outbound sockets is probably a bad idea.
 	 */
 	if (conn->num_fds > 16) {
-		ERROR("Too many open sockets (%d)", conn->num_fds);
+		PERROR("Too many open sockets (%d)", conn->num_fds);
 		return -1;
 	}
 

@@ -137,7 +137,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	group_da = fr_dict_attr_by_num(fr_dict_internal, 0, PW_GROUP);
 	if (!group_da) {
-		ERROR("&Group attribute not found in dictionary");
+		PERROR("&Group attribute not found in dictionary");
 		return -1;
 	}
 
@@ -169,7 +169,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 				        false,
 					groupcmp,
 					inst) < 0) {
-		ERROR("Failed registering Unix-Group: %s", fr_strerror());
+		PERROR("Failed registering Unix-Group");
 		return -1;
 	}
 

@@ -1906,7 +1906,7 @@ static void tcp_socket_timer(UNUSED fr_event_list_t *eel, struct timeval *now, v
 				pthread_mutex_lock(&proxy_mutex);
 				if (!fr_packet_list_socket_freeze(proxy_list,
 								  listener->fd)) {
-					ERROR("Fatal error freezing socket: %s", fr_strerror());
+					PERROR("Fatal error freezing socket");
 					fr_exit(1);
 				}
 				pthread_mutex_unlock(&proxy_mutex);
@@ -4919,7 +4919,7 @@ static int event_new_fd(rad_listen_t *this)
 		 *	All sockets: add the FD to the event handler.
 		 */
 		if (fr_event_fd_insert(el, this->fd, event_socket_handler, NULL, event_socket_error, this)) {
-			ERROR("Failed adding event handler for socket: %s", fr_strerror());
+			PERROR("Failed adding event handler for socket");
 			fr_exit(1);
 		}
 
@@ -5007,7 +5007,7 @@ static int event_new_fd(rad_listen_t *this)
 			pthread_mutex_lock(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
-				ERROR("Fatal error freezing socket: %s", fr_strerror());
+				PERROR("Fatal error freezing socket");
 				fr_exit(1);
 			}
 
@@ -5439,7 +5439,7 @@ int radius_event_start(bool have_children)
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
 	if (fr_event_fd_insert(el, self_pipe[0], event_signal_handler, NULL, NULL, el) < 0) {
-		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
+		PERROR("Failed creating signal pipe handler");
 		return -1;
 	}
 

@@ -1047,7 +1047,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 		memcpy(&mutable, &cs, sizeof(mutable));
 
 		if (cf_section_parse(pool, pool, mutable, connection_config) < 0) {
-			ERROR("Configuration parsing failed: %s", fr_strerror());
+			PERROR("Configuration parsing failed");
 			goto error;
 		}
 	}

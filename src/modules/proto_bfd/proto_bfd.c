@@ -338,7 +338,7 @@ static int bfd_pthread_create(bfd_state_t *session)
 #endif
 
 	if (fr_event_fd_insert(session->el, session->pipefd[0], bfd_pipe_recv, NULL, NULL, session) < 0) {
-		ERROR("Failed inserting file descriptor into event list: %s", fr_strerror());
+		PERROR("Failed inserting file descriptor into event list");
 		goto close_pipes;
 	}
 

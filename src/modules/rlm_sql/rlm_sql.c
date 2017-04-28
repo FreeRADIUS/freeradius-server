@@ -1137,7 +1137,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		 */
 		if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
 						false, sql_groupcmp, inst) < 0) {
-			ERROR("Failed registering group comparison: %s", fr_strerror());
+			PERROR("Failed registering group comparison");
 			goto error;
 		}
 

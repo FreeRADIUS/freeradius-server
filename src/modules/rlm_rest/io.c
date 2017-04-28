@@ -221,7 +221,7 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 
 	if (timeout_ms < 0) {
 		if (fr_event_timer_delete(t->el, &t->ev) < 0) {
-			ERROR("Failed deleting multi-handle timer: %s", fr_strerror());
+			PERROR("Failed deleting multi-handle timer");
 			return -1;
 		}
 		DEBUG3("multi-handle %p timer removed", mandle);

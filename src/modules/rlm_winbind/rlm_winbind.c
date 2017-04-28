@@ -278,7 +278,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 	*wb_ctx = wbcCtxCreate();
 
 	if (*wb_ctx == NULL) {
-		ERROR("failed to create winbind context");
+		PERROR("failed to create winbind context");
 		talloc_free(wb_ctx);
 		return NULL;
 	}
@@ -327,7 +327,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	if (paircompare_register_byname(group_attribute, user_name_da, false,
 					winbind_group_cmp, inst) < 0) {
-		ERROR("Error registering group comparison: %s", fr_strerror());
+		PERROR("Error registering group comparison");
 		return -1;
 	}
 
