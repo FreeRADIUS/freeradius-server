@@ -43,6 +43,16 @@ server buffered-sql {
 		#  The location where the detail file is located.
 		#  This should be on local disk, and NOT on an NFS
 		#  mounted location!
+		#
+		#  On most systems, this should support file globbing
+		#  e.g. "${radacctdir}/detail-*:*"
+		#  This lets you write many smaller detail files as in
+		#  the example in radiusd.conf: ".../detail-%Y%m%d:%H"
+		#  Writing many small files is often better than writing
+		#  one large file.  File globbing also means that with
+		#  a common naming scheme for detail files, then you can
+		#  have many detail file writers, and only one reader.
+		#
 		filename = "${radacctdir}/detail-*"
 
 		#
@@ -78,6 +88,7 @@ server buffered-sql {
 		#  wake up, and poll for it every N seconds.
 		#
 		#  Useful range of values: 1 to 60
+		#
 		poll_interval = 1
 
 		#
@@ -87,6 +98,7 @@ server buffered-sql {
 		#  home server responds.
 		#
 		#  Useful range of values: 5 to 30
+		#
 		retry_interval = 30
 
 		#
@@ -98,6 +110,17 @@ server buffered-sql {
 		#  have already been processed.  The default is "no".
 		#
 	#	track = yes
+
+		#
+		#  In some circumstances it may be desirable for the
+		#  server to start up, process a detail file, and
+		#  immediately quit. To do this enable the "one_shot"
+		#  option below.
+		#
+		#  Do not enable this for normal server operation. The
+		#  default is "no".
+		#
+	#	one_shot = no
 	}
 
 	#
