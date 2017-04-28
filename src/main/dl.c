@@ -15,7 +15,7 @@
  */
 
 /**
- * @file dl->c
+ * @file src/main/dl.c
  * @brief Wrappers around dlopen to manage loading shared objects at runtime.
  *
  * @copyright 2016 The FreeRADIUS server project
@@ -105,16 +105,6 @@ typedef struct dl_loader {
 	/** Tree of shared objects loaded
 	 */
 	rbtree_t		*tree;
-
-	/** Configuration for module instances
-	 *
-	 */
-	CONF_SECTION		*mod_conf;
-
-	/** Configuration for libraries used by modules in the server.
-	 *
-	 */
-	CONF_SECTION		*lib_conf;
 } dl_loader_t;
 static dl_loader_t *dl;
 
@@ -193,10 +183,6 @@ static int dl_handle_cmp(void const *one, void const *two)
  */
 static int dl_load_func(dl_t const *dl_module, UNUSED void *symbol, UNUSED void *ctx)
 {
-	CONF_SECTION *cs;
-
-	cs = cf_subsection_find(dl->lib_conf, dl_module->name);
-
 	if (dl_module->common->load && (dl_module->common->load() < 0)) {
 		ERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
 		return -1;
@@ -775,13 +761,6 @@ static int dl_init(CONF_SECTION *root)
 	if (dl) return 0;
 
 	dl = talloc_zero(NULL, dl_loader_t);
-
-	/*
-	 *	Cache this for use in the load callback
-	 */
-	dl->lib_conf = cf_section_find_next(root, NULL, "library");
-	dl->mod_conf = cf_section_find_next(root, NULL, "modules");
-
 	dl->tree = rbtree_create(dl, dl_handle_cmp, NULL, 0);
 	if (!dl->tree) {
 		ERROR("Failed initialising dl->tree");
