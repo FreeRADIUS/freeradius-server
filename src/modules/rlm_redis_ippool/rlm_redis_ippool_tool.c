@@ -1489,7 +1489,7 @@ do { \
 		 */
 		len = strlen(argv[1]);
 		MEM(arg = talloc_array(conf, uint8_t, len));
-		len = fr_value_str_unescape(arg, argv[1], len, '"');
+		len = value_str_unescape(arg, argv[1], len, '"');
 		rad_assert(len);
 
 		MEM(pool_arg = talloc_realloc(conf, arg, uint8_t, len));
@@ -1501,7 +1501,7 @@ do { \
 
 		len = strlen(argv[2]);
 		MEM(arg = talloc_array(conf, uint8_t, len));
-		len = fr_value_str_unescape(arg, argv[2], len, '"');
+		len = value_str_unescape(arg, argv[2], len, '"');
 		rad_assert(len);
 
 		MEM(range_arg = talloc_realloc(conf, arg, uint8_t, len));

@@ -17,6 +17,7 @@
 *.substvars
 *-stamp
 *.swp
+*.swo
 *.cache
 *.dist
 *.dylib

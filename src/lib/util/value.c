@@ -105,6 +105,38 @@ static inline void value_box_copy_attrs(value_box_t *dst, value_box_t const *src
 	if (fr_dict_enum_types[dst->type]) dst->datum.enumv = src->datum.enumv;
 }
 
+/** Allocate a value box of a specific type
+ *
+ * Allocates memory for the box, and sets the length of the value
+ * for fixed length types.
+ *
+ * @param[in] ctx	to allocate the value_box in.
+ * @param[in] type	of value.
+ * @return
+ *	- A new value_box_t.
+ *	- NULL on error.
+ */
+value_box_t *value_box_alloc(TALLOC_CTX *ctx, PW_TYPE type)
+{
+	value_box_t *value;
+
+	value = talloc_zero(ctx, value_box_t);
+	if (!value) return NULL;
+
+	switch (type) {
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+		break;
+
+	default:
+		value->length = value_box_field_sizes[type];
+	}
+
+	value->type = type;
+
+	return value;
+}
+
 /** Compare two values
  *
  * @param[in] a Value to compare.
@@ -557,7 +589,7 @@ static char const hextab[] = "0123456789abcdef";
  *
  * @return >= 0 the number of bytes written to out.
  */
-size_t fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
+size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
 {
 	char const	*p = in;
 	uint8_t		*out_p = out;
@@ -746,7 +778,7 @@ void value_box_clear(value_box_t *data)
  * @param[in] inlen		may be < 0 in which case strlen(len) is used to determine
  *				length, else inlen should be the length of the string or
  *				sub string to parse.
- * @param[in] quote		character used set unescape mode.  @see fr_value_str_unescape.
+ * @param[in] quote		character used set unescape mode.  @see value_str_unescape.
  * @return
  *	- 0 on success.
  *	- -1 on parse error.
@@ -791,7 +823,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			goto finish;
 		}
 
-		len = fr_value_str_unescape((uint8_t *)buff, in, len, quote);
+		len = value_str_unescape((uint8_t *)buff, in, len, quote);
 
 		/*
 		 *	Shrink the buffer to the correct size
@@ -1800,6 +1832,24 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
 	if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
 
 	return 0;
+}
+
+/** Perform a shallow copy of a value_box
+ *
+ * Like #value_box_copy, but does not duplicate the buffers of the src value_box.
+ *
+ * @param[out] dst	Where to copy value_box to.
+ * @param[in] src	Where to copy value_box from.
+ */
+void value_box_copy_shallow(value_box_t *dst, const value_box_t *src)
+{
+	memcpy(((uint8_t *)dst) + value_box_offsets[src->type],
+	       ((uint8_t const *)src) + value_box_offsets[src->type],
+	       value_box_field_sizes[src->type]);
+
+	dst->type = src->type;
+	dst->length = src->length;
+	dst->tainted = src->tainted;
 }
 
 /** Copy value data verbatim duplicating any buffers

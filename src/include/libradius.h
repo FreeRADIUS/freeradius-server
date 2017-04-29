@@ -79,6 +79,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/rbtree.h>
 #include <freeradius-devel/fr_log.h>
 #include <freeradius-devel/version.h>
+#include <freeradius-devel/value.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #  if SIZEOF_UNSIGNED_INT != 4
@@ -312,37 +313,6 @@ void		fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_pair_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_pair_cursor_free(vp_cursor_t *cursor);
-
-/* value.c */
-extern size_t const value_box_field_sizes[];
-extern size_t const value_box_offsets[];
-
-int		value_box_cmp(value_box_t const *a, value_box_t const *b);
-
-int		value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b);
-
-size_t		fr_value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
-
-void		value_box_clear(value_box_t *data);
-
-int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
-				   PW_TYPE *type, fr_dict_attr_t const *enumv,
-				   char const *in, ssize_t inlen, char quote);
-
-int		value_box_hton(value_box_t *dst, value_box_t const *src);
-
-int		value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
-			       PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
-			       value_box_t const *src);
-
-int		value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src);
-
-size_t		value_box_snprint(char *out, size_t outlen,
-				  value_box_t const *data, char quote);
-
-int		value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src);
-
-char		*value_box_asprint(TALLOC_CTX *ctx, value_box_t const *data, char quote);
 
 extern uint32_t	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)

@@ -1470,7 +1470,7 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		vd_to_cast.length = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		vd_to_cast.length = value_str_unescape(buff, (char *)buff, slen, '"');
 		vd_to_cast.datum.strvalue = (char *)buff;
 		break;
 
@@ -1493,7 +1493,7 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		vd_to_cast.length = fr_value_str_unescape(buff, (char *)buff, slen, '"');
+		vd_to_cast.length = value_str_unescape(buff, (char *)buff, slen, '"');
 		vd_to_cast.datum.strvalue = (char *)buff;
 
 		break;
