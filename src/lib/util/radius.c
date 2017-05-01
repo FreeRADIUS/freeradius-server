@@ -470,9 +470,11 @@ static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		}
 
 		/*
-		 *	Calculate the HMAC, and put it into the
+		 *	Force Message-Authenticator to be zero,
+		 *	calculate the HMAC, and put it into the
 		 *	Message-Authenticator attribute.
 		 */
+		memset(msg + 2, 0, AUTH_VECTOR_LEN);
 		fr_hmac_md5(msg + 2, packet, packet_len, secret, secret_len);
 		break;
 	}
