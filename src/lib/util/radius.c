@@ -378,37 +378,111 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 			&packet->if_index, &packet->timestamp);
 }
 
+
 /** Sign a previously encoded packet
  *
+ * @param packet the raw RADIUS packet (request or response)
+ * @param packet_len the length of the raw RADIUS packet
+ * @param original the raw original request (if this is a response)
+ * @param secret the shared secret
+ * @param secret_len the length of the secret
+ * @return
+ *	- <0 on error
+ *	- 0 on success
  */
-int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-		   char const *secret)
+static int fr_radius_sign(uint8_t *packet, size_t packet_len,
+			  uint8_t const *original,
+			  uint8_t const *secret, size_t secret_len)
 {
-	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
+	int i;
+	bool done_authenticator = false;
+	uint32_t hash;
+	uint8_t *msg, *end;
+	FR_MD5_CTX	context;
 
-	/*
-	 *	It wasn't assigned an Id, this is bad!
-	 */
-	if (packet->id < 0) {
-		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id");
-		return -1;
-	}
-
-	if (!packet->data || (packet->data_len < RADIUS_HDR_LEN) ||
-	    (packet->offset < 0)) {
-		fr_strerror_printf("ERROR: You must call fr_radius_encode() before fr_radius_packet_sign()");
+	if (packet_len < RADIUS_HDR_LEN) {
+		fr_strerror_printf("Packet must be encoded before calling fr_radius_sign()");
 		return -1;
 	}
 
 	/*
-	 *	Set up the authentication vector with zero, or with
-	 *	the original vector, prior to signing.
+	 *	Find Message-Authenticator.  Its value has to be
+	 *	calculated before we calculate the Request
+	 *	Authenticator or the Response Authenticator.
 	 */
-	switch (packet->code) {
+	msg = packet + RADIUS_HDR_LEN;
+	end = packet + packet_len;
+
+	while (msg < end) {
+		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
+			if ((msg + msg[1]) > end) {
+				fr_strerror_printf("Invalid attribute at offset %zd", msg - packet);
+				return -1;
+			}
+			msg += msg[1];
+			continue;
+		}
+
+		if (msg[1] < 18) {
+			fr_strerror_printf("Message-Authenticator is too small");
+			return -1;
+		}
+
+		switch (packet[0]) {
+		case PW_CODE_ACCOUNTING_RESPONSE:
+			if (!original) goto need_original;
+			if (original[0] == PW_CODE_STATUS_SERVER) goto do_ack;
+			goto do_response;
+
+		case PW_CODE_ACCOUNTING_REQUEST:
+		case PW_CODE_DISCONNECT_REQUEST:
+		case PW_CODE_DISCONNECT_ACK:
+		case PW_CODE_DISCONNECT_NAK:
+		case PW_CODE_COA_REQUEST:
+		case PW_CODE_COA_ACK:
+		case PW_CODE_COA_NAK:
+			if (!original) goto need_original;
+
+		do_response:
+			memset(packet + 4, 0, AUTH_VECTOR_LEN);
+			break;
+
+		case PW_CODE_ACCESS_ACCEPT:
+		case PW_CODE_ACCESS_REJECT:
+		case PW_CODE_ACCESS_CHALLENGE:
+		do_ack:
+			memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
+			break;
+
+		case PW_CODE_ACCESS_REQUEST:
+		case PW_CODE_STATUS_SERVER:
+			for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(hash)) {
+				hash = fr_rand();
+				memcpy(packet + 4 + i, &hash, sizeof(hash));
+			}
+			done_authenticator = true;
+			break;
+
+		default:
+			goto bad_packet;
+		}
+
+		/*
+		 *	Calculate the HMAC, and put it into the
+		 *	Message-Authenticator attribute.
+		 */
+		fr_hmac_md5(msg + 2, packet, packet_len, secret, secret_len);
+		break;
+	}
+
+	/*
+	 *	Initialize the request authenticator.
+	 */
+	switch (packet[0]) {
 	case PW_CODE_ACCOUNTING_REQUEST:
 	case PW_CODE_DISCONNECT_REQUEST:
 	case PW_CODE_COA_REQUEST:
-		memset(packet->vector, 0, AUTH_VECTOR_LEN);
+		memset(packet + 4, 0, AUTH_VECTOR_LEN);
 		break;
 
 	case PW_CODE_ACCESS_ACCEPT:
@@ -420,102 +494,65 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	case PW_CODE_COA_ACK:
 	case PW_CODE_COA_NAK:
 		if (!original) {
-			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
+		need_original:
+			fr_strerror_printf("Cannot sign response packet without a request packet");
 			return -1;
 		}
-		memcpy(packet->vector, original->vector, AUTH_VECTOR_LEN);
+		memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
 		break;
 
+		/*
+		 *	The Request Authenticator is random numbers.
+		 *	We don't need to sign anything else, so
+		 *	return.
+		 */
 	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_STATUS_SERVER:
-		break;		/* packet->vector is already random bytes */
-	}
-
-	/*
-	 *	If there's a Message-Authenticator, update it
-	 *	now.
-	 */
-	if (packet->offset > 0) {
-		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-
-		switch (packet->code) {
-		case PW_CODE_ACCOUNTING_RESPONSE:
-			if (original && original->code == PW_CODE_STATUS_SERVER) {
-				goto do_ack;
+		if (!done_authenticator) {
+			for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(hash)) {
+				hash = fr_rand();
+				memcpy(packet + 4 + i, &hash, sizeof(hash));
 			}
-
-		case PW_CODE_ACCOUNTING_REQUEST:
-		case PW_CODE_DISCONNECT_REQUEST:
-		case PW_CODE_DISCONNECT_ACK:
-		case PW_CODE_DISCONNECT_NAK:
-		case PW_CODE_COA_REQUEST:
-		case PW_CODE_COA_ACK:
-		case PW_CODE_COA_NAK:
-			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
-			break;
-
-		do_ack:
-		case PW_CODE_ACCESS_ACCEPT:
-		case PW_CODE_ACCESS_REJECT:
-		case PW_CODE_ACCESS_CHALLENGE:
-			memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
-			break;
-
-		case PW_CODE_ACCESS_REQUEST:
-		case PW_CODE_STATUS_SERVER:
-			break;
 		}
+		return 0;
 
-		/*
-		 *	Calculate the HMAC, and put it
-		 *	into the Message-Authenticator
-		 *	attribute.
-		 */
-		fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
-			    (uint8_t const *) secret, talloc_array_length(secret) - 1);
-		memcpy(packet->data + packet->offset + 2,
-		       calc_auth_vector, AUTH_VECTOR_LEN);
+	default:
+	bad_packet:
+		fr_strerror_printf("Cannot sign unknown packet code %u", packet[0]);
+		return -1;
 	}
 
 	/*
-	 *	Copy the request authenticator over to the packet.
+	 *	Request / Response Authenticator = MD5(packet + secret)
 	 */
-	memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+	fr_md5_init(&context);
+	fr_md5_update(&context, packet, packet_len);
+	fr_md5_update(&context, secret, secret_len);
+	fr_md5_final(packet + 4, &context);
 
-	/*
-	 *	Switch over the packet code, deciding how to
-	 *	sign the packet.
-	 */
-	switch (packet->code) {
-		/*
-		 *	Request packets are not signed, but
-		 *	have a random authentication vector.
-		 */
-	case PW_CODE_ACCESS_REQUEST:
-	case PW_CODE_STATUS_SERVER:
-		break;
+	return 0;
+}
 
-		/*
-		 *	Reply packets are signed with the
-		 *	authentication vector of the request.
-		 */
-	default:
-		{
-			uint8_t digest[16];
+/** Sign a previously encoded packet
+ *
+ */
+int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			  char const *secret)
+{
+	int rcode;
+	uint8_t const *original_data;
 
-			FR_MD5_CTX	context;
-			fr_md5_init(&context);
-			fr_md5_update(&context, packet->data, packet->data_len);
-			fr_md5_update(&context, (uint8_t const *) secret,
-				     talloc_array_length(secret) - 1);
-			fr_md5_final(digest, &context);
+	if (original) {
+		original_data = original->data;
+	} else {
+		original_data = NULL;
+	}
 
-			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-			break;
-		}
-	}/* switch over packet codes */
+	rcode = fr_radius_sign(packet->data, packet->data_len, original_data,
+			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
+	if (rcode < 0) return rcode;
 
+	memcpy(packet->vector, packet->data + 4, AUTH_VECTOR_LEN);
 	return 0;
 }
 
