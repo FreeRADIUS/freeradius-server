@@ -218,8 +218,6 @@ void		fr_radius_print_hex(RADIUS_PACKET const *packet);
 
 int		fr_radius_packet_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 
-ssize_t		fr_radius_len(uint8_t const *data, size_t data_len);
-
 bool		fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason);
 
 RADIUS_PACKET	*fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma);

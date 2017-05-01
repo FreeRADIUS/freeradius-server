@@ -685,57 +685,6 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 }
 
 
-/** See how big of a packet is in the buffer.
- *
- * Packet is not 'const * const' because we may update data_len, if there's more data
- * in the UDP packet than in the RADIUS packet.
- *
- * @param data pointer to the packet buffer
- * @param data_len length of the packet buffer
- * @return
- *	<= 0 packet is bad.
- *      >0 how much of the data is a packet (can be larger than data_len)
- */
-ssize_t fr_radius_len(uint8_t const *data, size_t data_len)
-{
-	size_t totallen;
-	uint8_t const *attr, *end;
-
-	/*
-	 *	Want at least this much before doing anything else
-	 */
-	if (!data || (data_len < RADIUS_HDR_LEN)) return RADIUS_HDR_LEN;
-
-	/*
-	 *	We want at least this much data for a real RADIUS packet/
-	 */
-	totallen = (data[2] << 8) | data[3];
-	if (data_len < totallen) return totallen;
-
-	if (totallen == RADIUS_HDR_LEN) return totallen;
-
-	attr = data + RADIUS_HDR_LEN;
-	end = data + totallen;
-
-	/*
-	 *	Do a quick pass to sanity check it.
-	 */
-	while (attr < end) {
-		if ((end - attr) < 2) return -(attr - data);
-
-		if (attr[0] == 0) return -(attr - data);
-
-		if (attr[1] < 2) return - (attr + 1 - data);
-
-		if ((attr + attr[1]) > end) return -(attr + 1 - data);
-
-		attr += attr[1];
-	}
-
-	return totallen;
-}
-
-
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
  * Packet is not 'const * const' because we may update data_len, if there's more data
