@@ -215,7 +215,7 @@ void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_trac
 	 *	Insert this request into the TAIL of the worker's list
 	 *	of waiting requests.
 	 */
-	FR_DLIST_INSERT_HEAD(worker->list, tt->list);
+	fr_dlist_insert_head(&worker->list, &tt->list);
 }
 
 

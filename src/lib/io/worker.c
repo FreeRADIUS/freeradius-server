@@ -138,7 +138,7 @@ struct fr_worker_t {
 	} while (0)
 
 #define WORKER_HEAP_INSERT(_name, _var, _member) do { \
-		FR_DLIST_INSERT_HEAD(worker->_name.list, _var->_member); \
+		fr_dlist_insert_head(&worker->_name.list, &_var->_member); \
 		(void) fr_heap_insert(worker->_name.heap, _var);        \
 	} while (0)
 
@@ -737,7 +737,7 @@ nak:
 	 */
 	entry = FR_DLIST_FIRST(worker->time_order);
 	if (!entry) {
-		FR_DLIST_INSERT_HEAD(worker->time_order, request->time_order);
+		fr_dlist_insert_head(&worker->time_order, &request->time_order);
 	} else {
 		REQUEST *old;
 		fr_dlist_t *prev = &worker->time_order;
@@ -763,7 +763,7 @@ nak:
 			entry = FR_DLIST_NEXT(worker->time_order, entry);
 		}
 
-		FR_DLIST_INSERT_HEAD_PTR(prev, request->time_order);
+		fr_dlist_insert_head(prev, &request->time_order);
 	}
 
 	/*

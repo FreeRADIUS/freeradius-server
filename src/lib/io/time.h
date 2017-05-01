@@ -82,8 +82,14 @@ typedef struct fr_time_tracking_t {
  *	Macros to manage a doubly linked list.
  */
 #define FR_DLIST_INIT(head) do { head.prev = head.next = &head; } while (0)
-#define FR_DLIST_INSERT_HEAD(head, entry) do { entry.next = head.next; entry.prev = &head; head.next->prev = &entry; head.next = &entry; } while (0)
-#define FR_DLIST_INSERT_HEAD_PTR(head, entry) do { entry.next = head->next; entry.prev = head; head->next->prev = &entry; head->next = &entry; } while (0)
+static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
+{
+	entry->prev = head;
+	entry->next = head->next;
+	head->next->prev = entry;
+	head->next = entry;
+}
+
 #define FR_DLIST_INSERT_TAIL(head, entry) do { entry.prev = head.prev; entry.next = &head; head.prev->next = &entry; head.prev = &entry; } while (0)
 #define FR_DLIST_INSERT_TAIL_PTR(p_head, entry) do { entry.prev = p_head->prev; entry.next = p_head; p_head->prev->next = &entry; p_head->prev = &entry; } while (0)
 #define FR_DLIST_REMOVE(entry) do { entry.prev->next = entry.next; entry.next->prev = entry.prev; FR_DLIST_INIT(entry); } while (0)
