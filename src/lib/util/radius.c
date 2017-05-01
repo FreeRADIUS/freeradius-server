@@ -650,26 +650,23 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
- * Packet is not 'const * const' because we may update data_len, if there's more data
- * in the UDP packet than in the RADIUS packet.
- *
  * @param packet to check
+ * @param[in,out] packet_len_p the size of the packet data
  * @param require_ma to require Message-Authenticator
  * @param reason if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
+static bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, decode_fail_t *reason)
 {
-	uint8_t			*attr;
+	uint8_t	const		*attr, *end;
 	size_t			totallen;
-	int			count;
-	radius_packet_t		*hdr;
-	char			host_ipaddr[INET6_ADDRSTRLEN];
+	radius_packet_t	const	*hdr;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
+	size_t			packet_len = *packet_len_p;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -678,12 +675,9 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *
 	 *	"The minimum length is 20 ..."
 	 */
-	if (packet->data_len < RADIUS_HDR_LEN) {
-		FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-				     packet->data_len, RADIUS_HDR_LEN);
+	if (packet_len < RADIUS_HDR_LEN) {
+		FR_DEBUG_STRERROR_PRINTF("packet is too short (received %zu < minimum 20)",
+					 packet_len);
 		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
 		goto finish;
 	}
@@ -694,8 +688,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
-	totallen = (packet->data[2] << 8) | packet->data[3];
-	hdr = (radius_packet_t *)packet->data;
+	totallen = (packet[2] << 8) | packet[3];
+	hdr = (radius_packet_t const *)packet;
 
 	/*
 	 *	Code of 0 is not understood.
@@ -703,11 +697,7 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 */
 	if ((hdr->code == 0) ||
 	    (hdr->code >= FR_MAX_PACKET_CODE)) {
-		FR_DEBUG_STRERROR_PRINTF("Bad RADIUS packet from host %s: unknown packet code %d",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   hdr->code);
+		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", hdr->code);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
 	}
@@ -730,11 +720,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < RADIUS_HDR_LEN) {
-		FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-				     totallen, RADIUS_HDR_LEN);
+		FR_DEBUG_STRERROR_PRINTF("length in header is too small (length %zu < minimum 20)",
+					 totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
 		goto finish;
 	}
@@ -762,12 +749,9 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *
 	 *	i.e. No response to the NAS.
 	 */
-	if (packet->data_len < totallen) {
-		FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: received %zu octets, packet length says %zu",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-				     packet->data_len, totallen);
+	if (packet_len < totallen) {
+		FR_DEBUG_STRERROR_PRINTF("packet is truncated (received %zu <  packet header length of %zu)",
+					 packet_len, totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
 		goto finish;
 	}
@@ -778,13 +762,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *	"Octets outside the range of the Length field MUST be
 	 *	treated as padding and ignored on reception."
 	 */
-	if (packet->data_len > totallen) {
-		/*
-		 *	We're shortening the packet below, but just
-		 *	to be paranoid, zero out the extra data.
-		 */
-		memset(packet->data + totallen, 0, packet->data_len - totallen);
-		packet->data_len = totallen;
+	if (packet_len > totallen) {
+		*packet_len_p = packet_len = totallen;
 	}
 
 	/*
@@ -799,20 +778,17 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *	or with an intentional attack.  Either way, we do NOT want
 	 *	to be vulnerable to this problem.
 	 */
-	attr = hdr->data;
-	count = totallen - RADIUS_HDR_LEN;
+	attr = packet + RADIUS_HDR_LEN;
+	end = packet + packet_len;
 	num_attributes = 0;
 
-	while (count > 0) {
+	while (attr < end) {
 		/*
 		 *	We need at least 2 bytes to check the
 		 *	attribute header.
 		 */
-		if (count < 2) {
-			FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: attribute header overflows the packet",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)));
+		if ((end - attr) < 2) {
+			FR_DEBUG_STRERROR_PRINTF("attribute header overflows the packet");
 			failure = DECODE_FAIL_HEADER_OVERFLOW;
 			goto finish;
 		}
@@ -821,10 +797,7 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: Invalid attribute 0",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)));
+			FR_DEBUG_STRERROR_PRINTF("invalid attribute 0 at offset %zd", attr - packet);
 			failure = DECODE_FAIL_INVALID_ATTRIBUTE;
 			goto finish;
 		}
@@ -834,11 +807,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
 		if (attr[1] < 2) {
-			FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: attribute %u too short",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)),
-				   attr[0]);
+			FR_DEBUG_STRERROR_PRINTF("attribute %u is too short at offset %zd",
+						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_TOO_SHORT;
 			goto finish;
 		}
@@ -847,12 +817,9 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 		 *	If there are fewer bytes in the packet than in the
 		 *	attribute, it's a bad packet.
 		 */
-		if (count < attr[1]) {
-			FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: attribute %u data overflows the packet",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)),
-					   attr[0]);
+		if ((attr + attr[1]) > end) {
+			FR_DEBUG_STRERROR_PRINTF("attribute %u data overflows the packet starting at offset %zd",
+					   attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_OVERFLOW;
 			goto finish;
 		}
@@ -864,12 +831,14 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 		default:	/* don't do anything by default */
 			break;
 
+#if 0
 			/*
 			 *	Track this for prioritizing ongoing EAP sessions.
 			 */
 		case PW_STATE:
 			if (attr[1] > 2) packet->rounds = attr[2];
 			break;
+#endif
 
 			/*
 			 *	If there's an EAP-Message, we require
@@ -881,11 +850,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
-				FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     host_ipaddr, sizeof(host_ipaddr)),
-					   attr[1] - 2);
+				FR_DEBUG_STRERROR_PRINTF("Message-Authenticator has invalid length (%d != 18) at offset %zd",
+					   attr[1] - 2, attr - packet);
 				failure = DECODE_FAIL_MA_INVALID_LENGTH;
 				goto finish;
 			}
@@ -893,13 +859,6 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 			break;
 		}
 
-		/*
-		 *	FIXME: Look up the base 255 attributes in the
-		 *	dictionary, and switch over their type.  For
-		 *	integer/date/ip, the attribute length SHOULD
-		 *	be 6.
-		 */
-		count -= attr[1];	/* grab the attribute length */
 		attr += attr[1];
 		num_attributes++;	/* seen one more attribute */
 	}
@@ -909,11 +868,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *
 	 *	If not, we complain, and throw the packet away.
 	 */
-	if (count != 0) {
-		FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)));
+	if (attr != end) {
+		FR_DEBUG_STRERROR_PRINTF("attributes do NOT exactly fill the packet");
 		failure = DECODE_FAIL_ATTRIBUTE_UNDERFLOW;
 		goto finish;
 	}
@@ -925,11 +881,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 */
 	if ((fr_max_attributes > 0) &&
 	    (num_attributes > fr_max_attributes)) {
-		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   num_attributes, fr_max_attributes);
+		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %d, max %d are allowed).",
+					 num_attributes, fr_max_attributes);
 		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
 		goto finish;
 	}
@@ -946,28 +899,52 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_ma && !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)));
+		FR_DEBUG_STRERROR_PRINTF("we equire Message-Authenticator attribute, but it is not in the packet");
 		failure = DECODE_FAIL_MA_MISSING;
 		goto finish;
 	}
 
-	/*
-	 *	Fill RADIUS header fields
-	 */
-	packet->code = hdr->code;
-	packet->id = hdr->id;
-	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
-
-
-	finish:
+finish:
 
 	if (reason) {
 		*reason = failure;
 	}
 	return (failure == DECODE_FAIL_NONE);
+}
+
+
+/** See if the data pointed to by PTR is a valid RADIUS packet.
+ *
+ * Packet is not 'const * const' because we may update data_len, if there's more data
+ * in the UDP packet than in the RADIUS packet.
+ *
+ * @param packet to check
+ * @param require_ma to require Message-Authenticator
+ * @param reason if not NULL, will have the failure reason written to where it points.
+ * @return
+ *	- True on success.
+ *	- False on failure.
+ */
+bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
+{
+	char host_ipaddr[INET6_ADDRSTRLEN];
+
+	if (!fr_radius_ok(packet->data, &packet->data_len, require_ma, reason)) {
+		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
+					 inet_ntop(packet->src_ipaddr.af,
+						   &packet->src_ipaddr.ipaddr,
+						   host_ipaddr, sizeof(host_ipaddr)),
+					 fr_strerror());
+		return false;
+	}
+
+	/*
+	 *	Fill RADIUS header fields
+	 */
+	packet->code = packet->data[0];
+	packet->id = packet->data[1];
+	memcpy(packet->vector, packet->data + 4, sizeof(packet->vector));
+	return true;
 }
 
 /** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
