@@ -870,7 +870,8 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
 		if (len != 16) return 0;
-		fr_radius_make_secret(ptr, ctx->packet->vector, ctx->secret, data);
+
+		fr_radius_ascend_secret(ptr, ctx->packet->vector, ctx->secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
 

@@ -212,7 +212,7 @@ do { \
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
 extern FR_NAME_NUMBER const fr_request_types[];
 
-void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
+void		fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
 
 void		fr_radius_print_hex(RADIUS_PACKET const *packet);
 

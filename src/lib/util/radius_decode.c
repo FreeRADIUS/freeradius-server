@@ -1029,18 +1029,15 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			break;
 
 		/*
-		 *  Ascend-Send-Secret
-		 *  Ascend-Receive-Secret
+		 *	Ascend-Send-Secret
+		 *	Ascend-Receive-Secret
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
 			if (!this->original) goto raw;
-			else {
-				uint8_t my_digest[AUTH_VECTOR_LEN];
-				fr_radius_make_secret(my_digest, this->original->vector, this->secret, p);
-				memcpy(buffer, my_digest, AUTH_VECTOR_LEN );
-				buffer[AUTH_VECTOR_LEN] = '\0';
-				data_len = strlen((char *) buffer);
-			}
+
+			fr_radius_ascend_secret(buffer, this->original->vector, this->secret, p);
+			buffer[AUTH_VECTOR_LEN] = '\0';
+			data_len = strlen((char *) buffer);
 			break;
 
 		default:

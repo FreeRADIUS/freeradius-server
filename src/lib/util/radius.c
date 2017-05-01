@@ -257,14 +257,14 @@ void fr_radius_print_hex(RADIUS_PACKET const *packet)
 }
 
 
-/** Build an encrypted secret value to return in a reply packet
+/**  Do Ascend-Send / Recv-Secret calculation.
  *
  * The secret is hidden by xoring with a MD5 digest created from
- * the shared secret and the authentication vector.
+ * the RADIUS shared secret and the authentication vector.
  * We put them into MD5 in the reverse order from that used when
  * encrypting passwords to RADIUS.
  */
-void fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value)
+void fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value)
 {
 	FR_MD5_CTX context;
 	int	     i;
