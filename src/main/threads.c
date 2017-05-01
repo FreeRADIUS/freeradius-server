@@ -949,6 +949,13 @@ void thread_pool_stop(void)
 		close(thread->pipe_fd[1]);
 	}
 
+	/*
+	 *	Join and free all threads.
+	 */
+	for (thread = thread_pool.thread_head; thread; thread = thread->next) {
+		pthread_join(thread->pthread_id, NULL);
+	}
+
 #  ifdef WNOHANG
 	fr_hash_table_free(thread_pool.waiters);
 #  endif
