@@ -90,8 +90,14 @@ static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
 	head->next = entry;
 }
 
-#define FR_DLIST_INSERT_TAIL(head, entry) do { entry.prev = head.prev; entry.next = &head; head.prev->next = &entry; head.prev = &entry; } while (0)
-#define FR_DLIST_INSERT_TAIL_PTR(p_head, entry) do { entry.prev = p_head->prev; entry.next = p_head; p_head->prev->next = &entry; p_head->prev = &entry; } while (0)
+static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
+{
+	entry->prev = head->prev;
+	entry->next = head;
+	head->prev->next = entry;
+	head->prev = entry;
+}
+
 #define FR_DLIST_REMOVE(entry) do { entry.prev->next = entry.next; entry.next->prev = entry.prev; FR_DLIST_INIT(entry); } while (0)
 #define FR_DLIST_FIRST(head) (head.next == &head) ? NULL : head.next
 #define FR_DLIST_NEXT(head, p_entry) (p_entry->next == &head) ? NULL : p_entry->next

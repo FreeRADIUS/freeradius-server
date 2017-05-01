@@ -567,7 +567,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
 
 		if (final != FR_TRANSPORT_DONE) {
-			FR_DLIST_INSERT_TAIL(worker->waiting_to_die, request->time_order);
+			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
 			continue;
 		}
 
@@ -813,7 +813,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		 */
 		if (final != FR_TRANSPORT_DONE) {
 			FR_DLIST_REMOVE(request->time_order);
-			FR_DLIST_INSERT_TAIL(worker->waiting_to_die, request->time_order);
+			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
 			return;
 		}
 	}
