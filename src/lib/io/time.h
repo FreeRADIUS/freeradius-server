@@ -92,8 +92,8 @@ static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
 
 static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
 {
-	entry->prev = head->prev;
 	entry->next = head;
+	entry->prev = head->prev;
 	head->prev->next = entry;
 	head->prev = entry;
 }
