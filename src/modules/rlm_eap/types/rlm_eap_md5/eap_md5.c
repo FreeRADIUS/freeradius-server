@@ -167,7 +167,7 @@ int eap_md5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	/*
 	 *	The length of the response is always 16 for MD5.
 	 */
-	if (fr_radius_digest_cmp(digest, packet->value, 16) != 0) {
+	if (fr_digest_cmp(digest, packet->value, 16) != 0) {
 		return 0;
 	}
 

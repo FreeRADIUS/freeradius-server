@@ -1130,7 +1130,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t const *inst, 
 		}
 
 		smbdes_mschap(password->vp_octets, challenge, calculated);
-		if (fr_radius_digest_cmp(response, calculated, 24) != 0) {
+		if (fr_digest_cmp(response, calculated, 24) != 0) {
 			return -1;
 		}
 

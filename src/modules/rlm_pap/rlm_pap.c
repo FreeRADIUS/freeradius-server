@@ -527,7 +527,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t const *inst,
 	}
 
 	if ((vp->vp_length != request->password->vp_length) ||
-	    (fr_radius_digest_cmp(vp->vp_octets,
+	    (fr_digest_cmp(vp->vp_octets,
 				  request->password->vp_octets,
 				  vp->vp_length) != 0)) {
 		REDEBUG("Cleartext password \"%s\" does not match \"known good\" password",
@@ -573,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST 
 		     request->password->vp_length);
 	fr_md5_final(digest, &md5_context);
 
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -606,7 +606,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST
 	/*
 	 *	Compare only the MD5 hash results, not the salt.
 	 */
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, 16) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, 16) != 0) {
 		REDEBUG("SMD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -634,7 +634,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t const *inst, REQUEST 
 		      request->password->vp_length);
 	fr_sha1_final(digest,&sha1_context);
 
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -663,7 +663,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t const *inst, REQUEST
 	fr_sha1_update(&sha1_context, &vp->vp_octets[20], vp->vp_length - 20);
 	fr_sha1_final(digest, &sha1_context);
 
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, 20) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, 20) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -727,7 +727,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t const *inst, REQUEST
 
 	rad_assert((size_t) digest_len == vp->vp_length);	/* This would be an OpenSSL bug... */
 
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -799,7 +799,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUES
 	/*
 	 *	Only compare digest_len bytes, the rest is salt.
 	 */
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -836,7 +836,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 
 	fr_md4_calc(digest, (uint8_t *) ucs2_password, len);
 
-	if (fr_radius_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
+	if (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -867,7 +867,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *
 	}
 
 	if ((fr_hex2bin(digest, sizeof(digest), charbuf, len) != vp->vp_length) ||
-	    (fr_radius_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0)) {
+	    (fr_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0)) {
 		REDEBUG("LM digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -927,7 +927,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 		fr_md5_final(buff, &md5_context);
 	}
 
-	if (fr_radius_digest_cmp(digest, buff, 16) != 0) {
+	if (fr_digest_cmp(digest, buff, 16) != 0) {
 		REDEBUG("NS-MTA-MD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}

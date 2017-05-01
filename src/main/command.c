@@ -3561,7 +3561,7 @@ static int command_tcp_recv(rad_listen_t *this)
 			    strlen(sock->client->secret),
 			    data, sizeof(expected));
 
-		if (fr_radius_digest_cmp(expected, data + sizeof(expected), sizeof(expected)) != 0) {
+		if (fr_digest_cmp(expected, data + sizeof(expected), sizeof(expected)) != 0) {
 			ERROR("radmin failed challenge: Closing socket");
 			goto do_close;
 		}

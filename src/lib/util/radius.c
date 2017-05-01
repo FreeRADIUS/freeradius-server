@@ -633,7 +633,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
  *
  * http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
  */
-int fr_radius_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
+int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 {
 	int result = 0;
 	size_t i;
@@ -1140,7 +1140,7 @@ static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 *	fields.
 	 */
 	if ((msg < end) &&
-	    (fr_radius_digest_cmp(message_authenticator, msg + 2, sizeof(message_authenticator)) != 0)) {
+	    (fr_digest_cmp(message_authenticator, msg + 2, sizeof(message_authenticator)) != 0)) {
 		memcpy(msg + 2, message_authenticator, sizeof(message_authenticator));
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 
@@ -1148,7 +1148,7 @@ static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		return -1;
 	}
 
-	if (fr_radius_digest_cmp(request_authenticator, packet + 4, sizeof(request_authenticator)) != 0) {
+	if (fr_digest_cmp(request_authenticator, packet + 4, sizeof(request_authenticator)) != 0) {
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 		if (original) {
 			fr_strerror_printf("invalid Response Authenticator (shared secret is incorrect)");

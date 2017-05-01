@@ -232,7 +232,7 @@ int		fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char
 
 int		fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
 
-int		fr_radius_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
+int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
 
 RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
 RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
