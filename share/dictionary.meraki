@@ -4,9 +4,9 @@
 #       For Meraki.
 #
 
-VENDOR          Meraki                          29671
-BEGIN-VENDOR    Meraki
+VENDOR		Meraki				29671
+BEGIN-VENDOR	Meraki
 
-ATTRIBUTE       Meraki-Device-Name                      1       string
+ATTRIBUTE	Meraki-Device-Name			1	string
 
 END-VENDOR      Meraki

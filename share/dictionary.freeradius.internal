@@ -301,34 +301,34 @@ ATTRIBUTE	EAP-FAST-Vendor-Specific		1191.7	octets
 ATTRIBUTE	EAP-FAST-EAP-Payload			1191.9	octets
 ATTRIBUTE	EAP-FAST-Intermediate-Result		1191.10	octets
 ATTRIBUTE	EAP-FAST-PAC-TLV			1191.11	tlv
-ATTRIBUTE	EAP-FAST-PAC-Key			1191.11.1 octets
-ATTRIBUTE	EAP-FAST-PAC-Opaque-TLV			1191.11.2 tlv
-ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Key		1191.11.2.1 octets
-ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Lifetime	1191.11.2.3 integer
-ATTRIBUTE	EAP-FAST-PAC-Opaque-I-ID		1191.11.2.5 octets
-ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Type		1191.11.2.10 short
+ATTRIBUTE	EAP-FAST-PAC-Key			1191.11.1	octets
+ATTRIBUTE	EAP-FAST-PAC-Opaque-TLV			1191.11.2	tlv
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Key		1191.11.2.1	octets
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Lifetime	1191.11.2.3	integer
+ATTRIBUTE	EAP-FAST-PAC-Opaque-I-ID		1191.11.2.5	octets
+ATTRIBUTE	EAP-FAST-PAC-Opaque-PAC-Type		1191.11.2.10	short
 
-ATTRIBUTE	EAP-FAST-PAC-Lifetime			1191.11.3 integer
-ATTRIBUTE	EAP-FAST-PAC-A-ID			1191.11.4 octets
-ATTRIBUTE	EAP-FAST-PAC-I-ID			1191.11.5 octets
-ATTRIBUTE	EAP-FAST-PAC-A-ID-Info			1191.11.7 octets
-ATTRIBUTE	EAP-FAST-PAC-Acknowledge		1191.11.8 short
-ATTRIBUTE	EAP-FAST-PAC-Info-TLV			1191.11.9 tlv
-ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Lifetime		1191.11.9.3 integer
-ATTRIBUTE	EAP-FAST-PAC-Info-A-ID			1191.11.9.4 octets
-ATTRIBUTE	EAP-FAST-PAC-Info-I-ID			1191.11.9.5 octets
-ATTRIBUTE	EAP-FAST-PAC-Info-A-ID-Info		1191.11.9.7 octets
-ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Type		1191.11.9.10 short
+ATTRIBUTE	EAP-FAST-PAC-Lifetime			1191.11.3	integer
+ATTRIBUTE	EAP-FAST-PAC-A-ID			1191.11.4	octets
+ATTRIBUTE	EAP-FAST-PAC-I-ID			1191.11.5	octets
+ATTRIBUTE	EAP-FAST-PAC-A-ID-Info			1191.11.7	octets
+ATTRIBUTE	EAP-FAST-PAC-Acknowledge		1191.11.8	short
+ATTRIBUTE	EAP-FAST-PAC-Info-TLV			1191.11.9	tlv
+ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Lifetime		1191.11.9.3	integer
+ATTRIBUTE	EAP-FAST-PAC-Info-A-ID			1191.11.9.4	octets
+ATTRIBUTE	EAP-FAST-PAC-Info-I-ID			1191.11.9.5	octets
+ATTRIBUTE	EAP-FAST-PAC-Info-A-ID-Info		1191.11.9.7	octets
+ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Type		1191.11.9.10	short
 
-ATTRIBUTE	EAP-FAST-PAC-Type			1191.11.10 short
+ATTRIBUTE	EAP-FAST-PAC-Type			1191.11.10	short
 
 ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	struct
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1 byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2 byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3 byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4 byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5 octets[32]
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6 octets[20]
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1	byte
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2	byte
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3	byte
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4	byte
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5	octets[32]
+ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6	octets[20]
 
 ATTRIBUTE	EAP-FAST-Trusted-Root			1191.18	octets
 ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short
@@ -618,12 +618,12 @@ ATTRIBUTE	TLS-Client-Cert-Expiration-Time		1935	date
 
 # 1940 - 1949: reserved for TLS session caching
 ATTRIBUTE	TLS-Session-Id				1940	octets
-ATTRIBUTE	TLS-Cache-Action		1941	integer
-VALUE	TLS-Cache-Action	Session-Read			1
-VALUE	TLS-Cache-Action	Session-Write			2
-VALUE	TLS-Cache-Action	Session-Delete			3
-VALUE	TLS-Cache-Action	OCSP-Read			4
-VALUE	TLS-Cache-Action	OCSP-Write			5
+ATTRIBUTE	TLS-Cache-Action			1941	integer
+VALUE	TLS-Cache-Action		Session-Read		1
+VALUE	TLS-Cache-Action		Session-Write		2
+VALUE	TLS-Cache-Action		Session-Delete		3
+VALUE	TLS-Cache-Action		OCSP-Read		4
+VALUE	TLS-Cache-Action		OCSP-Write		5
 
 ATTRIBUTE	TLS-Session-Data			1942	octets
 

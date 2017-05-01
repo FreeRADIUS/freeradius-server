@@ -275,7 +275,7 @@ ATTRIBUTE	BroadSoft-Attr-255			255	string
 #	No other vendor does this, for the simple reason that it's
 #	ridiculous.
 #
-FLAGS		internal
+FLAGS	internal
 ATTRIBUTE	BWAS-Intercept-Group-Routing-Number	256	string
 ATTRIBUTE	BWAS-CB-Activation-Invoke-Time		257	string
 ATTRIBUTE	BWAS-CB-Activation-Fac-Result		258	string

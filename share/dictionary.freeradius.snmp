@@ -56,30 +56,30 @@ ATTRIBUTE	Radius-Auth-Serv-Mib-Objects		67.1.1.1	tlv
 ATTRIBUTE	Radius-Auth-Serv			67.1.1.1.1	tlv
 
 BEGIN-TLV	Radius-Auth-Serv
-ATTRIBUTE	Radius-Auth-Serv-Ident					1		string
-ATTRIBUTE	Radius-Auth-Serv-Up-Time				2		integer
-ATTRIBUTE	Radius-Auth-Serv-Reset-Time				3		integer
-ATTRIBUTE	Radius-Auth-Serv-Config-Reset				4		integer
+ATTRIBUTE	Radius-Auth-Serv-Ident			1	string
+ATTRIBUTE	Radius-Auth-Serv-Up-Time		2	integer
+ATTRIBUTE	Radius-Auth-Serv-Reset-Time		3	integer
+ATTRIBUTE	Radius-Auth-Serv-Config-Reset		4	integer
 
-VALUE		Radius-Auth-Serv-Config-Reset		other			1
-VALUE		Radius-Auth-Serv-Config-Reset		reset			2
-VALUE		Radius-Auth-Serv-Config-Reset		initializing		3
-VALUE		Radius-Auth-Serv-Config-Reset		running			4
+VALUE	Radius-Auth-Serv-Config-Reset	other			1
+VALUE	Radius-Auth-Serv-Config-Reset	reset			2
+VALUE	Radius-Auth-Serv-Config-Reset	initializing		3
+VALUE	Radius-Auth-Serv-Config-Reset	running			4
 
-ATTRIBUTE	Radius-Auth-Serv-Total-Access-Requests			5		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Invalid-Requests			6		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Dup-Access-Requests		7		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Access-Accepts			8		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Access-Rejects			9		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Access-Challenges		10		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Malformed-Access-Requests	11		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Bad-Authenticators		12		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Packets-Dropped			13		integer
-ATTRIBUTE	Radius-Auth-Serv-Total-Unknown-Types			14		integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Access-Requests	5	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Invalid-Requests	6	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Dup-Access-Requests 7	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Access-Accepts	8	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Access-Rejects	9	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Access-Challenges 10	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Malformed-Access-Requests 11	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Bad-Authenticators 12	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Packets-Dropped	13	integer
+ATTRIBUTE	Radius-Auth-Serv-Total-Unknown-Types	14	integer
 
-ATTRIBUTE	Radius-Auth-Client-Table				15		tlv
-ATTRIBUTE	Radius-Auth-Client-Table-Index				15.0		integer
-ATTRIBUTE	Radius-Auth-Client-Entry				15.1		tlv
+ATTRIBUTE	Radius-Auth-Client-Table		15	tlv
+ATTRIBUTE	Radius-Auth-Client-Table-Index		15.0	integer
+ATTRIBUTE	Radius-Auth-Client-Entry		15.1	tlv
 
 # Client statistics
 BEGIN-TLV	Radius-Auth-Client-Entry

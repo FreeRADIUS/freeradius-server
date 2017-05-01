@@ -7,7 +7,7 @@
 #	$Id$
 #
 
-FLAGS		internal
+FLAGS	internal
 
 # TACACS+ Op codes
 ATTRIBUTE	TACACS-Version-Minor			1	byte
@@ -34,70 +34,70 @@ ATTRIBUTE	TACACS-Authentication-Flags		19	byte
 ATTRIBUTE	TACACS-Accounting-Flags			20	byte
 
 # TACACS+ integer mappings
-VALUE		TACACS-Packet-Type			Authentication	1
-VALUE		TACACS-Packet-Type			Authorization	2
-VALUE		TACACS-Packet-Type			Accounting	3
+VALUE	TACACS-Packet-Type		Authentication		1
+VALUE	TACACS-Packet-Type		Authorization		2
+VALUE	TACACS-Packet-Type		Accounting		3
 
-VALUE		TACACS-Action				LOGIN		1
-VALUE		TACACS-Action				CHPASS		2
-VALUE		TACACS-Action				SENDAUTH	3
+VALUE	TACACS-Action			LOGIN			1
+VALUE	TACACS-Action			CHPASS			2
+VALUE	TACACS-Action			SENDAUTH		3
 
-VALUE		TACACS-Privilege-Level			Minimum		0
-VALUE		TACACS-Privilege-Level			User		1
-VALUE		TACACS-Privilege-Level			Root		15
-VALUE		TACACS-Privilege-Level			Maximum		15
+VALUE	TACACS-Privilege-Level		Minimum			0
+VALUE	TACACS-Privilege-Level		User			1
+VALUE	TACACS-Privilege-Level		Root			15
+VALUE	TACACS-Privilege-Level		Maximum			15
 
-VALUE		TACACS-Authentication-Type		ASCII		1
-VALUE		TACACS-Authentication-Type		PAP		2
-VALUE		TACACS-Authentication-Type		CHAP		3
-VALUE		TACACS-Authentication-Type		ARAP		4	# deprecated
-VALUE		TACACS-Authentication-Type		MSCHAP		5
-VALUE		TACACS-Authentication-Type		MSCHAPv2	6
+VALUE	TACACS-Authentication-Type	ASCII			1
+VALUE	TACACS-Authentication-Type	PAP			2
+VALUE	TACACS-Authentication-Type	CHAP			3
+VALUE	TACACS-Authentication-Type	ARAP			4	# deprecated
+VALUE	TACACS-Authentication-Type	MSCHAP			5
+VALUE	TACACS-Authentication-Type	MSCHAPv2		6
 
-VALUE		TACACS-Authentication-Service		None		0
-VALUE		TACACS-Authentication-Service		LOGIN		1
-VALUE		TACACS-Authentication-Service		ENABLE		2
-VALUE		TACACS-Authentication-Service		PPP		3
-VALUE		TACACS-Authentication-Service		ARAP		4
-VALUE		TACACS-Authentication-Service		PT		5
-VALUE		TACACS-Authentication-Service		RCMD		6
-VALUE		TACACS-Authentication-Service		X25		7
-VALUE		TACACS-Authentication-Service		NASI		8
-VALUE		TACACS-Authentication-Service		FWPROXY		9
+VALUE	TACACS-Authentication-Service	None			0
+VALUE	TACACS-Authentication-Service	LOGIN			1
+VALUE	TACACS-Authentication-Service	ENABLE			2
+VALUE	TACACS-Authentication-Service	PPP			3
+VALUE	TACACS-Authentication-Service	ARAP			4
+VALUE	TACACS-Authentication-Service	PT			5
+VALUE	TACACS-Authentication-Service	RCMD			6
+VALUE	TACACS-Authentication-Service	X25			7
+VALUE	TACACS-Authentication-Service	NASI			8
+VALUE	TACACS-Authentication-Service	FWPROXY			9
 
-VALUE		TACACS-Authentication-Status		Pass		1
-VALUE		TACACS-Authentication-Status		Fail		2
-VALUE		TACACS-Authentication-Status		Get-Data	3
-VALUE		TACACS-Authentication-Status		Get-User	4
-VALUE		TACACS-Authentication-Status		Get-Pass	5
-VALUE		TACACS-Authentication-Status		Restart		6
-VALUE		TACACS-Authentication-Status		Error		7
-VALUE		TACACS-Authentication-Status		Follow		33
+VALUE	TACACS-Authentication-Status	Pass			1
+VALUE	TACACS-Authentication-Status	Fail			2
+VALUE	TACACS-Authentication-Status	Get-Data		3
+VALUE	TACACS-Authentication-Status	Get-User		4
+VALUE	TACACS-Authentication-Status	Get-Pass		5
+VALUE	TACACS-Authentication-Status	Restart			6
+VALUE	TACACS-Authentication-Status	Error			7
+VALUE	TACACS-Authentication-Status	Follow			33
 
-VALUE		TACACS-Authentication-Method		Not-Set		0
-VALUE		TACACS-Authentication-Method		None		1
-VALUE		TACACS-Authentication-Method		KRB5		2
-VALUE		TACACS-Authentication-Method		Line		3
-VALUE		TACACS-Authentication-Method		Enable		4
-VALUE		TACACS-Authentication-Method		Local		5
-VALUE		TACACS-Authentication-Method		TACACSPLUS	6
-VALUE		TACACS-Authentication-Method		Guest		8
-VALUE		TACACS-Authentication-Method		RADIUS		16
-VALUE		TACACS-Authentication-Method		KRB4		17
-VALUE		TACACS-Authentication-Method		RCMD		32
+VALUE	TACACS-Authentication-Method	Not-Set			0
+VALUE	TACACS-Authentication-Method	None			1
+VALUE	TACACS-Authentication-Method	KRB5			2
+VALUE	TACACS-Authentication-Method	Line			3
+VALUE	TACACS-Authentication-Method	Enable			4
+VALUE	TACACS-Authentication-Method	Local			5
+VALUE	TACACS-Authentication-Method	TACACSPLUS		6
+VALUE	TACACS-Authentication-Method	Guest			8
+VALUE	TACACS-Authentication-Method	RADIUS			16
+VALUE	TACACS-Authentication-Method	KRB4			17
+VALUE	TACACS-Authentication-Method	RCMD			32
 
-VALUE		TACACS-Authorization-Status		Pass-Add	1
-VALUE		TACACS-Authorization-Status		Pass-Repl	2
-VALUE		TACACS-Authorization-Status		Fail		16
-VALUE		TACACS-Authorization-Status		Error		17
-VALUE		TACACS-Authorization-Status		Follow		33
+VALUE	TACACS-Authorization-Status	Pass-Add		1
+VALUE	TACACS-Authorization-Status	Pass-Repl		2
+VALUE	TACACS-Authorization-Status	Fail			16
+VALUE	TACACS-Authorization-Status	Error			17
+VALUE	TACACS-Authorization-Status	Follow			33
 
-VALUE		TACACS-Accounting-Status		Success		1
-VALUE		TACACS-Accounting-Status		Error		2
-VALUE		TACACS-Accounting-Status		Follow		33
+VALUE	TACACS-Accounting-Status	Success			1
+VALUE	TACACS-Accounting-Status	Error			2
+VALUE	TACACS-Accounting-Status	Follow			33
 
-VALUE		TACACS-Authentication-Flags		No-Echo		1
+VALUE	TACACS-Authentication-Flags	No-Echo			1
 
-VALUE		TACACS-Accounting-Flags			Start		2
-VALUE		TACACS-Accounting-Flags			Stop		4
-VALUE		TACACS-Accounting-Flags			Watchdog	8
+VALUE	TACACS-Accounting-Flags		Start			2
+VALUE	TACACS-Accounting-Flags		Stop			4
+VALUE	TACACS-Accounting-Flags		Watchdog		8

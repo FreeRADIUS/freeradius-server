@@ -38,8 +38,8 @@ ATTRIBUTE	Trapeze-CoA-Username			12	string
 # New attributes for MSS 8.0 and later
 ATTRIBUTE	Trapeze-Audit				13	string
 ATTRIBUTE	Trapeze-NMS-User-Group			14	string
-ATTRIBUTE	Trapeze-NMS-Platform-Local-User 	15	string
-ATTRIBUTE	Trapeze-SIP-Call-Detail-Record  	16	string
+ATTRIBUTE	Trapeze-NMS-Platform-Local-User		15	string
+ATTRIBUTE	Trapeze-SIP-Call-Detail-Record		16	string
 ATTRIBUTE	Trapeze-SmartPass-Access-Control	17	string
 ATTRIBUTE	Trapeze-Device-Profile			18	string
 ATTRIBUTE	Trapeze-Device-Type			19	string

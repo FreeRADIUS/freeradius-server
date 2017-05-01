@@ -10,14 +10,14 @@
 #
 #       $Id$
 #
-VENDOR          Xirrus                          21013
+VENDOR		Xirrus				21013
 
 #
 #       Standard attribute
 #
-BEGIN-VENDOR    Xirrus
+BEGIN-VENDOR	Xirrus
 
-ATTRIBUTE       Xirrus-Admin-Role               1       string
+ATTRIBUTE	Xirrus-Admin-Role			1	string
 
 END-VENDOR      Xirrus
 
