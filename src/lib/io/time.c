@@ -237,7 +237,7 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 	 *	Remove this request into the workers list of waiting
 	 *	requests.
 	 */
-	FR_DLIST_REMOVE(tt->list);
+	fr_dlist_remove(&tt->list);
 }
 
 

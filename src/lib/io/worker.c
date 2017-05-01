@@ -144,12 +144,12 @@ struct fr_worker_t {
 
 #define WORKER_HEAP_POP(_name, _var, _member) do { \
 		_var = fr_heap_pop(worker->_name.heap); \
-		if (_var) FR_DLIST_REMOVE(_var->_member); \
+		if (_var) fr_dlist_remove(&_var->_member); \
 	} while (0)
 
 #define WORKER_HEAP_EXTRACT(_name, _var, _member) do { \
                (void) fr_heap_extract(worker->_name.heap, _var); \
-               FR_DLIST_REMOVE(_var->_member); \
+               fr_dlist_remove(&_var->_member);			 \
        } while (0)
 
 
@@ -471,7 +471,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	@todo Use a talloc pool for the request.  Clean it up,
 	 *	and insert it back into a slab allocator.
 	 */
-	FR_DLIST_REMOVE(request->time_order);
+	fr_dlist_remove(&request->time_order);
 	talloc_free(request);
 }
 
@@ -561,7 +561,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		FR_DLIST_REMOVE(request->time_order);
+		fr_dlist_remove(&request->time_order);
 		(void) fr_heap_extract(worker->runnable, request);
 
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
@@ -593,7 +593,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
 
 		if (final == FR_TRANSPORT_DONE) {
-			FR_DLIST_REMOVE(worker->waiting_to_die);
+			fr_dlist_remove(&worker->waiting_to_die);
 
 			fr_log(worker->log, L_DBG, "(%zd) finally finished", request->number);
 
@@ -812,7 +812,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		 *	async cleanup queue.
 		 */
 		if (final != FR_TRANSPORT_DONE) {
-			FR_DLIST_REMOVE(request->time_order);
+			fr_dlist_remove(&request->time_order);
 			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
 			return;
 		}
@@ -1188,7 +1188,7 @@ void worker_resume_request(REQUEST *request)
 	 *	it isn't resumed (yet) so we don't add CPU time for
 	 *	it.
 	 */
-	FR_DLIST_REMOVE(request->tracking.list);
+	fr_dlist_remove(&request->tracking.list);
 
 	/*
 	 *	It's runnable again.
