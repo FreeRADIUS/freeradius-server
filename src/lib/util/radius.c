@@ -410,6 +410,8 @@ static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	end = packet + packet_len;
 
 	while (msg < end) {
+		if ((end - msg) < 2) goto invalid_attribute;
+
 		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
 			if (msg[1] < 2) goto invalid_attribute;
 
@@ -1102,6 +1104,8 @@ static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	end = packet + packet_len;
 
 	while (msg < end) {
+		if ((end - msg) < 2) goto invalid_attribute;
+
 		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
 			if (msg[1] < 2) goto invalid_attribute;
 
