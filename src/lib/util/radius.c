@@ -382,7 +382,6 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 /** Sign a previously encoded packet
  *
  * @param packet the raw RADIUS packet (request or response)
- * @param packet_len the length of the raw RADIUS packet
  * @param original the raw original request (if this is a response)
  * @param secret the shared secret
  * @param secret_len the length of the secret
@@ -390,14 +389,14 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_radius_sign(uint8_t *packet, size_t packet_len,
-			  uint8_t const *original,
+static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			  uint8_t const *secret, size_t secret_len)
 {
 	int i;
 	bool done_authenticator = false;
 	uint32_t hash;
 	uint8_t *msg, *end;
+	size_t packet_len = (packet[2] << 8) | packet[3];
 	FR_MD5_CTX	context;
 
 	if (packet_len < RADIUS_HDR_LEN) {
@@ -415,7 +414,10 @@ static int fr_radius_sign(uint8_t *packet, size_t packet_len,
 
 	while (msg < end) {
 		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
+			if (msg[1] < 2) goto invalid_attribute;
+
 			if ((msg + msg[1]) > end) {
+			invalid_attribute:
 				fr_strerror_printf("Invalid attribute at offset %zd", msg - packet);
 				return -1;
 			}
@@ -548,7 +550,7 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		original_data = NULL;
 	}
 
-	rcode = fr_radius_sign(packet->data, packet->data_len, original_data,
+	rcode = fr_radius_sign(packet->data, original_data,
 			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	if (rcode < 0) return rcode;
 
