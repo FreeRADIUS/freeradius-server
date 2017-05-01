@@ -310,7 +310,6 @@ rad_protocol_t proto_vmps = {
 	.tls		= false,
 
 	.load		= vmps_load,
-	.size		= vqp_packet_size,
 	.compile	= vqp_listen_compile,
 	.parse		= common_socket_parse,
 	.open		= common_socket_open,

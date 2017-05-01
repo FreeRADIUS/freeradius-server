@@ -37,7 +37,6 @@ extern "C" {
 typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
 typedef int (*rad_listen_unlang_t)(CONF_SECTION *, CONF_SECTION *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
-typedef ssize_t (*rad_listen_size_t)(uint8_t const *data, size_t data_len);
 
 /** Struct exported by a proto_* module
  *
@@ -50,8 +49,6 @@ typedef struct rad_protocol_t {
 
 	uint32_t		transports;		//!< What can transport this protocol.
 	bool			tls;			//!< Whether protocol can be wrapped in TLS.
-
-	rad_listen_size_t	size;
 
 	rad_listen_unlang_t	bootstrap;		//!< Phase1 - Basic validation checks of virtual server.
 	rad_listen_unlang_t	compile;		//!< Phase2 - Compile unlang sections in the virtual
