@@ -646,83 +646,6 @@ int fr_radius_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 }
 
 
-/** Validates the requesting client NAS
- *
- * Calculates the request Authenticator based on the clients private key.
- */
-static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
-{
-	uint8_t		digest[AUTH_VECTOR_LEN];
-	FR_MD5_CTX		context;
-
-	/*
-	 *	Zero out the auth_vector in the received packet.
-	 *	Then append the shared secret to the received packet,
-	 *	and calculate the MD5 sum. This must be the same
-	 *	as the original MD5 sum (packet->vector).
-	 */
-	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
-
-	/*
-	 *  MD5(packet + secret);
-	 */
-	fr_md5_init(&context);
-	fr_md5_update(&context, packet->data, packet->data_len);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	fr_md5_final(digest, &context);
-
-	/*
-	 *	Return 0 if OK, 2 if not OK.
-	 */
-	if (fr_radius_digest_cmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
-	return 0;
-}
-
-
-/** Validates the requesting client NAS
- *
- * Calculates the response Authenticator based on the clients
- * private key.
- */
-static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-			    char const *secret)
-{
-	uint8_t		calc_digest[AUTH_VECTOR_LEN];
-	FR_MD5_CTX		context;
-
-	/*
-	 *	Very bad!
-	 */
-	if (original == NULL) {
-		return 3;
-	}
-
-	/*
-	 *  Copy the original vector in place.
-	 */
-	memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
-
-	/*
-	 *  MD5(packet + secret);
-	 */
-	fr_md5_init(&context);
-	fr_md5_update(&context, packet->data, packet->data_len);
-	fr_md5_update(&context, (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	fr_md5_final(calc_digest, &context);
-
-	/*
-	 *  Copy the packet's vector back to the packet.
-	 */
-	memcpy(packet->data + 4, packet->vector, AUTH_VECTOR_LEN);
-
-	/*
-	 *	Return 0 if OK, 2 if not OK.
-	 */
-	if (fr_radius_digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
-	return 0;
-}
-
-
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
  * Packet is not 'const * const' because we may update data_len, if there's more data
@@ -1139,174 +1062,127 @@ RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_m
 	return packet;
 }
 
+
+/** Verify a request / response packet
+ *
+ *  This function does its work by calling fr_radius_sign(), and then
+ *  comparing the signature in the packet with the one we calculated.
+ *  If they differ, there's a problem.
+ *
+ * @param packet the raw RADIUS packet (request or response)
+ * @param original the raw original request (if this is a response)
+ * @param secret the shared secret
+ * @param secret_len the length of the secret
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
+			    uint8_t const *secret, size_t secret_len)
+{
+	int rcode;
+	uint8_t *msg, *end;
+	size_t packet_len = (packet[2] << 8) | packet[3];
+	uint8_t request_authenticator[AUTH_VECTOR_LEN];
+	uint8_t message_authenticator[AUTH_VECTOR_LEN];
+
+	if (packet_len < RADIUS_HDR_LEN) {
+		fr_strerror_printf("invalid packet length %zd", packet_len);
+		return -1;
+	}
+
+	memcpy(request_authenticator, packet + 4, sizeof(request_authenticator));
+
+	/*
+	 *	Find Message-Authenticator.  Its value has to be
+	 *	calculated before we calculate the Request
+	 *	Authenticator or the Response Authenticator.
+	 */
+	msg = packet + RADIUS_HDR_LEN;
+	end = packet + packet_len;
+
+	while (msg < end) {
+		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
+			if (msg[1] < 2) goto invalid_attribute;
+
+			if ((msg + msg[1]) > end) {
+			invalid_attribute:
+				fr_strerror_printf("invalid attribute at offset %zd", msg - packet);
+				return -1;
+			}
+			msg += msg[1];
+			continue;
+		}
+
+		if (msg[1] < 18) {
+			fr_strerror_printf("too small Message-Authenticator");
+			return -1;
+		}
+
+		/*
+		 *	Found it.  Copy it over.
+		 */
+		memcpy(message_authenticator, msg + 2, sizeof(message_authenticator));
+		break;
+	}
+
+	rcode = fr_radius_sign(packet, original, secret, secret_len);
+	if (rcode < 0) {
+		fr_strerror_printf("unknown packet code");
+		return -1;
+	}
+
+	/*
+	 *	Check the Message-Authenticator first.
+	 *
+	 *	If it's invalid, restore the original
+	 *	Message-Authenticator and Request Authenticator
+	 *	fields.
+	 */
+	if ((msg < end) &&
+	    (fr_radius_digest_cmp(message_authenticator, msg + 2, sizeof(message_authenticator)) != 0)) {
+		memcpy(msg + 2, message_authenticator, sizeof(message_authenticator));
+		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
+
+		fr_strerror_printf("invalid Message-Authenticator (shared secret is incorrect)");
+		return -1;
+	}
+
+	if (fr_radius_digest_cmp(request_authenticator, packet + 4, sizeof(request_authenticator)) != 0) {
+		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
+		if (original) {
+			fr_strerror_printf("invalid Response Authenticator (shared secret is incorrect)");
+		} else {
+			fr_strerror_printf("invalid Request Authenticator (shared secret is incorrect)");
+		}
+	}
+
+	return 0;
+}
+
+
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
 int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
-	uint8_t		*ptr;
-	int		length;
-	int		attrlen;
-	int		rcode;
+	uint8_t const	*original_data;
 	char		buffer[INET6_ADDRSTRLEN];
 
 	if (!packet || !packet->data) return -1;
 
-	/*
-	 *	Before we allocate memory for the attributes, do more
-	 *	sanity checking.
-	 */
-	ptr = packet->data + RADIUS_HDR_LEN;
-	length = packet->data_len - RADIUS_HDR_LEN;
-	while (length > 0) {
-		uint8_t	msg_auth_vector[AUTH_VECTOR_LEN];
-		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-
-		attrlen = ptr[1];
-
-		switch (ptr[0]) {
-		default:	/* don't do anything. */
-			break;
-
-			/*
-			 *	Note that more than one Message-Authenticator
-			 *	attribute is invalid.
-			 */
-		case PW_MESSAGE_AUTHENTICATOR:
-			memcpy(msg_auth_vector, &ptr[2], sizeof(msg_auth_vector));
-			memset(&ptr[2], 0, AUTH_VECTOR_LEN);
-
-			switch (packet->code) {
-			default:
-				break;
-
-			case PW_CODE_ACCOUNTING_RESPONSE:
-				if (original &&
-				    (original->code == PW_CODE_STATUS_SERVER)) {
-					goto do_ack;
-				}
-
-			case PW_CODE_ACCOUNTING_REQUEST:
-			case PW_CODE_DISCONNECT_REQUEST:
-			case PW_CODE_COA_REQUEST:
-				memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
-				break;
-
-		do_ack:
-			case PW_CODE_ACCESS_ACCEPT:
-			case PW_CODE_ACCESS_REJECT:
-			case PW_CODE_ACCESS_CHALLENGE:
-			case PW_CODE_DISCONNECT_ACK:
-			case PW_CODE_DISCONNECT_NAK:
-			case PW_CODE_COA_ACK:
-			case PW_CODE_COA_NAK:
-				if (!original) {
-					fr_strerror_printf("Cannot validate Message-Authenticator in response "
-							   "packet without a request packet");
-					return -1;
-				}
-				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
-				break;
-			}
-
-			fr_hmac_md5(calc_auth_vector, packet->data, packet->data_len,
-				    (uint8_t const *) secret, talloc_array_length(secret) - 1);
-			if (fr_radius_digest_cmp(calc_auth_vector, msg_auth_vector,
-						 sizeof(calc_auth_vector)) != 0) {
-				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  "
-						   "(Shared secret is incorrect.)",
-						   inet_ntop(packet->src_ipaddr.af,
-							     &packet->src_ipaddr.ipaddr,
-							     buffer, sizeof(buffer)));
-				/* Silently drop packet, according to RFC 3579 */
-				return -1;
-			} /* else the message authenticator was good */
-
-			/*
-			 *	Reinitialize Authenticators.
-			 */
-			memcpy(&ptr[2], msg_auth_vector, AUTH_VECTOR_LEN);
-			memcpy(packet->data + 4, packet->vector, AUTH_VECTOR_LEN);
-			break;
-		} /* switch over the attributes */
-
-		ptr += attrlen;
-		length -= attrlen;
-	} /* loop over the packet, sanity checking the attributes */
-
-	/*
-	 *	It looks like a RADIUS packet, but we don't know what it is
-	 *	so can't validate the authenticators.
-	 */
-	if ((packet->code == 0) || (packet->code >= FR_MAX_PACKET_CODE)) {
-		fr_strerror_printf("Received Unknown packet code %d "
-				   "from client %s port %d: Cannot validate Request/Response-Authenticator.",
-				   packet->code,
-				   inet_ntop(packet->src_ipaddr.af,
-				             &packet->src_ipaddr.ipaddr,
-				             buffer, sizeof(buffer)),
-				   packet->src_port);
-		return -1;
+	if (original) {
+		original_data = original->data;
+	} else {
+		original_data = NULL;
 	}
 
-	/*
-	 *	Calculate and/or verify Request or Response Authenticator.
-	 */
-	switch (packet->code) {
-	case PW_CODE_ACCESS_REQUEST:
-	case PW_CODE_STATUS_SERVER:
-		/*
-		 *	The authentication vector is random
-		 *	nonsense, invented by the client.
-		 */
-		break;
-
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
-	case PW_CODE_ACCOUNTING_REQUEST:
-		if (calc_acctdigest(packet, secret) > 1) {
-			fr_strerror_printf("Received %s packet "
-					   "from client %s with invalid Request-Authenticator!  "
-					   "(Shared secret is incorrect.)",
-					   fr_packet_codes[packet->code],
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     buffer, sizeof(buffer)));
-			return -1;
-		}
-		break;
-
-		/* Verify the reply digest */
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_REJECT:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_ACCOUNTING_RESPONSE:
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_DISCONNECT_NAK:
-	case PW_CODE_COA_ACK:
-	case PW_CODE_COA_NAK:
-		rcode = calc_replydigest(packet, original, secret);
-		if (rcode > 1) {
-			fr_strerror_printf("Received %s packet "
-					   "from home server %s port %d with invalid Response-Authenticator!  "
-					   "(Shared secret is incorrect.)",
-					   fr_packet_codes[packet->code],
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     buffer, sizeof(buffer)),
-					   packet->src_port);
-			return -1;
-		}
-		break;
-
-	default:
-		fr_strerror_printf("Received Unknown packet code %d "
-				   "from client %s port %d: Cannot validate Request/Response-Authenticator",
-				   packet->code,
-				   inet_ntop(packet->src_ipaddr.af,
-				             &packet->src_ipaddr.ipaddr,
-				             buffer, sizeof(buffer)),
-				   packet->src_port);
+	if (fr_radius_verify(packet->data, original_data,
+			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
+		fr_strerror_printf("Received packet from %s with %s",
+				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
+					     buffer, sizeof(buffer)),
+				   fr_strerror());
 		return -1;
 	}
 
