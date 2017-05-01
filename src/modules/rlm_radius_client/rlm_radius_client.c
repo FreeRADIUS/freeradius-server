@@ -150,7 +150,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	/*
 	 *	If the reply fails the signature validation, it's not a real reply.
 	 */
-	if (fr_radius_verify(reply, ccr->packet, ccr->inst->home_server->secret) < 0) {
+	if (fr_radius_packet_verify(reply, ccr->packet, ccr->inst->home_server->secret) < 0) {
 		REDEBUG("Reply verification failed for home server %s", ccr->inst->home_server->name);
 		fr_radius_free(&reply);
 		return;
@@ -280,7 +280,7 @@ static void mod_action_dup(REQUEST *request, void *instance, UNUSED void *thread
 			 buffer, sizeof(buffer)),
 	       packet->dst_port, packet->id);
 
-	fr_radius_send(packet, NULL, inst->home_server->secret);
+	fr_radius_packet_send(packet, NULL, inst->home_server->secret);
 	packet->count++;
 }
 
@@ -417,7 +417,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 			 buffer, sizeof(buffer)),
 	       packet->dst_port, packet->id);
 
-	(void) fr_radius_send(packet, NULL, inst->home_server->secret);
+	(void) fr_radius_packet_send(packet, NULL, inst->home_server->secret);
 	packet->count++;
 
 	timeout = ccr->inst->home_server->response_window;

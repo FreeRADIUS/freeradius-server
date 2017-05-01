@@ -759,7 +759,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				ERROR("Failed encoding request: %s", fr_strerror());
 				return EXIT_FAILURE;
 			}
-			if (fr_radius_sign(request, NULL, conf->secret) < 0) {
+			if (fr_radius_packet_sign(request, NULL, conf->secret) < 0) {
 				ERROR("Failed signing request: %s", fr_strerror());
 				return EXIT_FAILURE;
 			}

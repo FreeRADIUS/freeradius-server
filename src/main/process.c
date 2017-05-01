@@ -2393,7 +2393,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 *	ignore it.  This does the MD5 calculations in the
 	 *	server core, but I guess we can fix that later.
 	 */
-	if (!proxy->reply && (fr_radius_verify(reply, proxy->packet, proxy->home_server->secret) != 0)) {
+	if (!proxy->reply && (fr_radius_packet_verify(reply, proxy->packet, proxy->home_server->secret) != 0)) {
 		RWDEBUG("Discarding invalid reply from host %s port %d - ID: %d: %s",
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->src_port, reply->id, fr_strerror());

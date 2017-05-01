@@ -896,7 +896,7 @@ create_attrs:
  *
  * "length" is AT LEAST the length of this attribute, as we
  * expect the caller to have verified the data with
- * fr_radius_ok().  "length" may be up to the length of the
+ * fr_radius_packet_ok().  "length" may be up to the length of the
  * packet.
  *
  * @return

@@ -381,7 +381,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 /** Sign a previously encoded packet
  *
  */
-int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		   char const *secret)
 {
 	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
@@ -396,7 +396,7 @@ int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	if (!packet->data || (packet->data_len < RADIUS_HDR_LEN) ||
 	    (packet->offset < 0)) {
-		fr_strerror_printf("ERROR: You must call fr_radius_encode() before fr_radius_sign()");
+		fr_strerror_printf("ERROR: You must call fr_radius_encode() before fr_radius_packet_sign()");
 		return -1;
 	}
 
@@ -523,7 +523,7 @@ int fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
  *
  * Also attach reply attribute value pairs and any user message provided.
  */
-int fr_radius_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		   char const *secret)
 {
 	/*
@@ -548,7 +548,7 @@ int fr_radius_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Re-sign it, including updating the
 		 *	Message-Authenticator.
 		 */
-		if (fr_radius_sign(packet, original, secret) < 0) {
+		if (fr_radius_packet_sign(packet, original, secret) < 0) {
 			return -1;
 		}
 
@@ -748,7 +748,7 @@ ssize_t fr_radius_len(uint8_t const *data, size_t data_len)
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
+bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
 {
 	uint8_t			*attr;
 	size_t			totallen;
@@ -1124,7 +1124,7 @@ RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_m
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_radius_ok(packet, require_ma, NULL)) {
+	if (!fr_radius_packet_ok(packet, require_ma, NULL)) {
 		fr_radius_free(&packet);
 		return NULL;
 	}
@@ -1155,7 +1155,7 @@ RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_m
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
 	uint8_t		*ptr;
 	int		length;
@@ -1556,7 +1556,7 @@ int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const 
 
 		/*
 		 *	VSA's may not have been counted properly in
-		 *	fr_radius_ok() above, as it is hard to count
+		 *	fr_radius_packet_ok() above, as it is hard to count
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */

@@ -1330,7 +1330,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	current->src_port = ntohs(udp->src);
 	current->dst_port = ntohs(udp->dst);
 
-	if (!fr_radius_ok(current, false, &reason)) {
+	if (!fr_radius_packet_ok(current, false, &reason)) {
 		REDEBUG("%s", fr_strerror());
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
@@ -1375,7 +1375,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_verify(current, original->expect, conf->radius_secret);
+			ret = fr_radius_packet_verify(current, original->expect, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
 				REDEBUG("Failed verifying packet ID %d", current->id);
@@ -1386,7 +1386,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	fr_radius_ok( does checks to verify the packet is actually valid.
+		 *	fr_radius_packet_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;
@@ -1492,7 +1492,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	fr_radius_ok( does checks to verify the packet is actually valid.
+		 *	fr_radius_packet_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;

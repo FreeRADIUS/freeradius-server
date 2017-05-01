@@ -251,7 +251,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	packet->vps = NULL;
 	pthread_mutex_unlock(&sock->mutex);
 
-	if (!fr_radius_ok(packet, 0, NULL)) {
+	if (!fr_radius_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		DEBUG("Closing TLS socket from client");
 		pthread_mutex_lock(&sock->mutex);
@@ -408,7 +408,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Sign the packet.
 	 */
-	if (fr_radius_sign(request->reply, request->packet,
+	if (fr_radius_packet_sign(request->reply, request->packet,
 			   request->client->secret) < 0) {
 		RPERROR("Failed signing packet");
 		return 0;

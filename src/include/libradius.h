@@ -120,7 +120,7 @@ typedef void (*sig_t)(int);
 /*
  *	vector:		Request authenticator from access-request packet
  *			Put in there by rad_decode, and must be put in the
- *			response RADIUS_PACKET as well before calling fr_radius_send
+ *			response RADIUS_PACKET as well before calling fr_radius_packet_send
  *
  *	verified:	Filled in by rad_decode for accounting-request packets
  *
@@ -216,23 +216,23 @@ void		fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector, char const
 
 void		fr_radius_print_hex(RADIUS_PACKET const *packet);
 
-int		fr_radius_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
+int		fr_radius_packet_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 
 ssize_t		fr_radius_len(uint8_t const *data, size_t data_len);
 
-bool		fr_radius_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason);
+bool		fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason);
 
 RADIUS_PACKET	*fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma);
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
-int		fr_radius_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
+int		fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
 
 int		fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
 
 int		fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
 
-int		fr_radius_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
+int		fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
 
 int		fr_radius_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
 

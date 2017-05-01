@@ -213,7 +213,7 @@ static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *reques
 		 *	Encode, sign and then send the packet.
 		 */
 		RDEBUG("Replicating %s list to Realm \"%s\"", fr_int2str(pair_lists, list, "<INVALID>"), realm->name);
-		if (fr_radius_send(packet, NULL, home->secret) < 0) {
+		if (fr_radius_packet_send(packet, NULL, home->secret) < 0) {
 			RPEDEBUG("Failed replicating packet");
 			rcode = RLM_MODULE_FAIL;
 			goto done;

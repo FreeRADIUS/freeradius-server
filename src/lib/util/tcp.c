@@ -140,7 +140,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, bool require_ma)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_radius_ok(packet, require_ma, NULL)) {
+	if (!fr_radius_packet_ok(packet, require_ma, NULL)) {
 		return -1;
 	}
 

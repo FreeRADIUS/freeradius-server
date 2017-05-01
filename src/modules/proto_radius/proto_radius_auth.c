@@ -169,7 +169,7 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 		if (request->reply->code != 0) {
 			gettimeofday(&request->reply->timestamp, NULL);
 
-			if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
+			if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 				RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 				goto done;
 			}
@@ -243,7 +243,7 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 
 		gettimeofday(&request->reply->timestamp, NULL);
-		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 			goto done;
 		}
@@ -771,7 +771,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			goto stop_processing;
 		}
 
-		if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
 
 			/*
@@ -844,7 +844,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			/* else fall through to sending the response immediately. */
 		}
 
-		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 			goto done;
 		}

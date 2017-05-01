@@ -1657,7 +1657,7 @@ static int auth_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
 	}
 #endif
 
-	if (fr_radius_send(request->reply, request->packet,
+	if (fr_radius_packet_send(request->reply, request->packet,
 			   request->client->secret) < 0) {
 		RERROR("Failed sending reply: %s",
 			       fr_strerror());
@@ -1697,7 +1697,7 @@ static int acct_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *reque
 	}
 #  endif
 
-	if (fr_radius_send(request->reply, request->packet,
+	if (fr_radius_packet_send(request->reply, request->packet,
 			   request->client->secret) < 0) {
 		RERROR("Failed sending reply: %s",
 			       fr_strerror());
@@ -1719,7 +1719,7 @@ static int proxy_socket_send(NDEBUG_UNUSED rad_listen_t *listener, REQUEST *requ
 	rad_assert(request->proxy->listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 
-	if (fr_radius_send(request->proxy->packet, NULL,
+	if (fr_radius_packet_send(request->proxy->packet, NULL,
 			   request->proxy->home_server->secret) < 0) {
 		RERROR("Failed sending proxied request: %s",
 			       fr_strerror());
@@ -2440,7 +2440,7 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 			request->reply->data_len, MAX_PACKET_LEN);
 	}
 
-	if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
+	if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 		RPERROR("Failed signing packet");
 
 		return -1;
@@ -2456,7 +2456,7 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	listen_socket_t *sock;
 #endif
 
-	if (fr_radius_verify(request->packet, NULL,
+	if (fr_radius_packet_verify(request->packet, NULL,
 			     request->client->secret) < 0) {
 		return -1;
 	}
@@ -2499,7 +2499,7 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 			request->proxy->packet->data_len, MAX_PACKET_LEN);
 	}
 
-	if (fr_radius_sign(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
+	if (fr_radius_packet_sign(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
 		RPERROR("Failed signing proxied packet");
 
 		return -1;
@@ -2512,7 +2512,7 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	/*
-	 *	fr_radius_verify is run in event.c, received_proxy_response()
+	 *	fr_radius_packet_verify is run in event.c, received_proxy_response()
 	 */
 
 	return fr_radius_decode(request->proxy->reply, request->proxy->packet,

@@ -961,7 +961,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Send the packet.
 	 */
-	if (fr_radius_send(request->packet, NULL, secret) < 0) {
+	if (fr_radius_packet_send(request->packet, NULL, secret) < 0) {
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
 		deallocate_id(request);
 		request->done = true;
@@ -1055,7 +1055,7 @@ static int recv_one_packet(int wait_time)
 	 *	Fails the signature validation: not a real reply.
 	 *	FIXME: Silently drop it and listen for another packet.
 	 */
-	if (fr_radius_verify(reply, request->packet, secret) < 0) {
+	if (fr_radius_packet_verify(reply, request->packet, secret) < 0) {
 		REDEBUG("Reply verification failed");
 		stats.lost++;
 		goto packet_done; /* shared secret is incorrect */

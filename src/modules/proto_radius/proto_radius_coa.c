@@ -253,12 +253,12 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		if (fr_radius_sign(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
 			goto done;
 		}
 
-		if (fr_radius_send(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 		}
 		/* FALL-THROUGH */
