@@ -935,7 +935,7 @@ int thread_pool_init(void)
 void thread_pool_stop(void)
 {
 #ifndef WITH_GCD
-	THREAD_HANDLE *thread;
+	THREAD_HANDLE *thread, *next;
 
 	if (!pool_initialized) return;
 
@@ -952,8 +952,10 @@ void thread_pool_stop(void)
 	/*
 	 *	Join and free all threads.
 	 */
-	for (thread = thread_pool.thread_head; thread; thread = thread->next) {
+	for (thread = thread_pool.thread_head; thread; thread = next) {
+		next = thread->next;
 		pthread_join(thread->pthread_id, NULL);
+		talloc_free(thread);
 	}
 
 #  ifdef WNOHANG
