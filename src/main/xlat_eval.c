@@ -725,7 +725,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request,
-				  xlat_exp_t const *node, xlat_escape_t escape, void const *escape_ctx)
+				   xlat_exp_t const *node, xlat_escape_t escape, void const *escape_ctx)
 {
 	char *buff;
 	ssize_t len;
@@ -759,7 +759,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, R
 }
 
 static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
-			   xlat_escape_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
+			  xlat_escape_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
 
 /** Replace %whatever in a string.
  *
@@ -775,7 +775,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *request, char const *fmt,
-			   xlat_escape_t escape, void const *escape_ctx)
+			  xlat_escape_t escape, void const *escape_ctx)
 {
 	ssize_t len;
 	xlat_exp_t *node;
