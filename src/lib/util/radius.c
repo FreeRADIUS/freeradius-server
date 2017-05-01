@@ -392,9 +392,6 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			  uint8_t const *secret, size_t secret_len)
 {
-	int i;
-	bool done_authenticator = false;
-	uint32_t hash;
 	uint8_t *msg, *end;
 	size_t packet_len = (packet[2] << 8) | packet[3];
 	FR_MD5_CTX	context;
@@ -458,11 +455,7 @@ static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 
 		case PW_CODE_ACCESS_REQUEST:
 		case PW_CODE_STATUS_SERVER:
-			for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(hash)) {
-				hash = fr_rand();
-				memcpy(packet + 4 + i, &hash, sizeof(hash));
-			}
-			done_authenticator = true;
+			/* packet + 4 MUST be the Request Authenticator filled with random data */
 			break;
 
 		default:
@@ -512,12 +505,6 @@ static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		 */
 	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_STATUS_SERVER:
-		if (!done_authenticator) {
-			for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(hash)) {
-				hash = fr_rand();
-				memcpy(packet + 4 + i, &hash, sizeof(hash));
-			}
-		}
 		return 0;
 
 	default:
@@ -550,6 +537,16 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		original_data = original->data;
 	} else {
 		original_data = NULL;
+	}
+
+	/*
+	 *	Copy the random vector to the packet.  Other packet
+	 *	codes have the Request Authenticator be the packet
+	 *	signature.
+	 */
+	if ((packet->code == PW_CODE_ACCESS_REQUEST) ||
+	    (packet->code == PW_CODE_STATUS_SERVER)) {
+		memcpy(packet + 4, packet->vector, sizeof(packet->vector));
 	}
 
 	rcode = fr_radius_sign(packet->data, original_data,
