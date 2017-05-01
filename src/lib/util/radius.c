@@ -546,7 +546,7 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 */
 	if ((packet->code == PW_CODE_ACCESS_REQUEST) ||
 	    (packet->code == PW_CODE_STATUS_SERVER)) {
-		memcpy(packet + 4, packet->vector, sizeof(packet->vector));
+		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 	}
 
 	rcode = fr_radius_sign(packet->data, original_data,
