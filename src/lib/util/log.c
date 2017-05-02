@@ -612,3 +612,20 @@ bool fr_rate_limit_enabled(void)
 
 	return false;
 }
+
+
+void fr_printf_log(char const *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	if ((fr_debug_lvl == 0) || !fr_log_fp) {
+		va_end(ap);
+		return;
+	}
+
+	vfprintf(fr_log_fp, fmt, ap);
+	va_end(ap);
+
+	return;
+}
