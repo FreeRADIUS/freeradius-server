@@ -1626,8 +1626,11 @@ inline int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *
 
 	case PW_TYPE_STRING:
 	{
-		char *str;
+		char *str = NULL;
 
+		/*
+		 *	Zero length strings still have a one byte buffer
+		 */
 		str = talloc_bstrndup(ctx, src->datum.strvalue, src->length);
 		if (!str) {
 			fr_strerror_printf("Failed allocating string buffer");
@@ -1639,11 +1642,16 @@ inline int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *
 
 	case PW_TYPE_OCTETS:
 	{
-		uint8_t *bin;
+		uint8_t *bin = NULL;
 
-		bin = talloc_memdup(ctx, src->datum.octets, src->length);
-		talloc_set_type(bin, uint8_t);
-		if (!bin) return -1;
+		if (src->length) {
+			bin = talloc_memdup(ctx, src->datum.octets, src->length);
+			if (!bin) {
+				fr_strerror_printf("Failed allocating octets buffer");
+				return -1;
+			}
+			talloc_set_type(bin, uint8_t);
+		}
 		dst->datum.octets = bin;
 	}
 		break;
