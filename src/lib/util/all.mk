@@ -35,6 +35,7 @@ SOURCES		:= base64.c \
 		   radius_packet.c \
 		   radius_encode.c \
 		   radius_decode.c \
+		   rand.c \
 		   rbtree.c \
 		   regex.c \
 		   sha1.c \

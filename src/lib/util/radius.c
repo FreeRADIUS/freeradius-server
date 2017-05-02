@@ -79,9 +79,6 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 }
 
-static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
-static _Thread_local bool fr_rand_initialized = false;
-
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"",					//!< 0
 	"Access-Request",
@@ -984,79 +981,3 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	return 0;
 }
 
-
-/** Seed the random number generator
- *
- * May be called any number of times.
- */
-void fr_rand_seed(void const *data, size_t size)
-{
-	uint32_t hash;
-
-	/*
-	 *	Ensure that the pool is initialized.
-	 */
-	if (!fr_rand_initialized) {
-		int fd;
-
-		memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
-
-		fd = open("/dev/urandom", O_RDONLY);
-		if (fd >= 0) {
-			size_t total;
-			ssize_t this;
-
-			total = 0;
-			while (total < sizeof(fr_rand_pool.randrsl)) {
-				this = read(fd, fr_rand_pool.randrsl,
-					    sizeof(fr_rand_pool.randrsl) - total);
-				if ((this < 0) && (errno != EINTR)) break;
-				if (this > 0) total += this;
-			}
-			close(fd);
-		} else {
-			fr_rand_pool.randrsl[0] = fd;
-			fr_rand_pool.randrsl[1] = time(NULL);
-			fr_rand_pool.randrsl[2] = errno;
-		}
-
-		fr_randinit(&fr_rand_pool, 1);
-		fr_rand_pool.randcnt = 0;
-		fr_rand_initialized = 1;
-	}
-
-	if (!data) return;
-
-	/*
-	 *	Hash the user data
-	 */
-	hash = fr_rand();
-	if (!hash) hash = fr_rand();
-	hash = fr_hash_update(data, size, hash);
-
-	fr_rand_pool.randmem[fr_rand_pool.randcnt] ^= hash;
-}
-
-
-/** Return a 32-bit random number
- *
- */
-uint32_t fr_rand(void)
-{
-	uint32_t num;
-
-	/*
-	 *	Ensure that the pool is initialized.
-	 */
-	if (!fr_rand_initialized) {
-		fr_rand_seed(NULL, 0);
-	}
-
-	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++];
-	if (fr_rand_pool.randcnt >= 256) {
-		fr_rand_pool.randcnt = 0;
-		fr_isaac(&fr_rand_pool);
-	}
-
-	return num;
-}
