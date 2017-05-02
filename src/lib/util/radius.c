@@ -363,26 +363,6 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 }
 
 
-/** Do a comparison of two authentication digests by comparing the FULL digest
- *
- * Otherwise, the server can be subject to timing attacks that allow attackers
- * find a valid message authenticator.
- *
- * http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
- */
-int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
-{
-	int result = 0;
-	size_t i;
-
-	for (i = 0; i < length; i++) {
-		result |= a[i] ^ b[i];
-	}
-
-	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
-}
-
-
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
  * @param packet to check

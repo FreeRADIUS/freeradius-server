@@ -224,8 +224,6 @@ void		fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector,
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
-int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
-
 /*
  *	radius_packet.c
  */
@@ -374,6 +372,8 @@ bool		fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs);
 int		fr_size_from_str(size_t *out, char const *str);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
+int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
+
 /*
  *	Define TALLOC_DEBUG to check overflows with talloc.
  *	we can't use valgrind, because the memory used by

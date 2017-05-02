@@ -1248,3 +1248,22 @@ void fr_talloc_verify_cb(UNUSED const void *ptr, UNUSED int depth,
 	/* do nothing */
 }
 #endif
+
+
+/** Do a comparison of two authentication digests by comparing the FULL data.
+ *
+ * Otherwise, the server can be subject to timing attacks.
+ *
+ * http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
+ */
+int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
+{
+	int result = 0;
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		result |= a[i] ^ b[i];
+	}
+
+	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
+}
