@@ -1101,12 +1101,18 @@ static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		}
 
 		/*
-		 *	Found it.  Copy it over.
+		 *	Found it, save a copy.
 		 */
 		memcpy(message_authenticator, msg + 2, sizeof(message_authenticator));
 		break;
 	}
 
+	/*
+	 *	Implement verification as a signature, followed by
+	 *	checking our signature against the sent one.  This is
+	 *	slightly more CPU work than having verify-specific
+	 *	functions, but it ends up being cleaner in the code.
+	 */
 	rcode = fr_radius_sign(packet, original, secret, secret_len);
 	if (rcode < 0) {
 		fr_strerror_printf("unknown packet code");
@@ -1129,6 +1135,17 @@ static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		return -1;
 	}
 
+	/*
+	 *	These are random numbers, so there's no point in
+	 *	comparing them.
+	 */
+	if ((packet[0] == PW_CODE_ACCESS_REQUEST) || (packet[0] == PW_CODE_STATUS_SERVER)) {
+		return 0;
+	}
+
+	/*
+	 *	Check the Request Authenticator.
+	 */
 	if (fr_digest_cmp(request_authenticator, packet + 4, sizeof(request_authenticator)) != 0) {
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 		if (original) {
