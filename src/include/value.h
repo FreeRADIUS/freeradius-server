@@ -52,17 +52,17 @@ int		value_box_copy(TALLOC_CTX *ctx, value_box_t *dst,  const value_box_t *src);
 void		value_box_copy_shallow(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src);
 int		value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src);
 
-int		value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src);
-int		value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src);
-int		value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src);
-int		value_box_strdup_shallow(value_box_t *dst, char const *src);
-int		value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, char const *src);
+int		value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted);
+int		value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted);
+int		value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src, bool tainted);
+int		value_box_strdup_shallow(value_box_t *dst, char const *src, bool tainted);
+int		value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted);
 
-int		value_box_memdup(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, size_t len);
-int		value_box_memdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src);
-int		value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src);
-int		value_box_memdup_shallow(value_box_t *dst, uint8_t *src, size_t len);
-int		value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src);
+int		value_box_memdup(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, size_t len, bool tainted);
+int		value_box_memdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src, bool tainted);
+int		value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, bool tainted);
+int		value_box_memdup_shallow(value_box_t *dst, uint8_t *src, size_t len, bool tainted);
+int		value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src, bool tainted);
 
 /*
  *	Parsing

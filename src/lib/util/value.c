@@ -1336,7 +1336,6 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
 			fr_strerror_printf("Failed allocating string buffer");
 			return -1;
 		}
-		value_box_clear(dst);
 		dst->datum.strvalue = str;
 	}
 		break;
@@ -1348,7 +1347,6 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
 		bin = talloc_memdup(ctx, src->datum.octets, src->length);
 		talloc_set_type(bin, uint8_t);
 		if (!bin) return -1;
-		value_box_clear(dst);
 		dst->datum.octets = bin;
 	}
 		break;
@@ -1374,8 +1372,6 @@ int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
  */
 void value_box_copy_shallow(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
 {
-	value_box_clear(dst);
-
 	switch (src->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -1424,7 +1420,6 @@ int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src)
 			fr_strerror_printf("Failed stealing string buffer");
 			return -1;
 		}
-		value_box_clear(dst);
 		dst->datum.strvalue = str;
 	}
 		break;
@@ -1438,7 +1433,6 @@ int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src)
 			fr_strerror_printf("Failed stealing octets buffer");
 			return -1;
 		}
-		value_box_clear(dst);
 		dst->datum.octets = bin;
 	}
 		break;
@@ -1455,25 +1449,11 @@ int value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src)
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] src 	a nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  */
-int value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
+int value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted)
 {
-	PW_TYPE		type = dst->type;
 	char const	*str;
-
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_STRING;
-		break;
-
-	case PW_TYPE_STRING:
-		break;
-
-	default:
-		fr_strerror_printf("nul terminated buffers can only be assigned to 'string' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, type, "<INVALID>"));
-	   	return -1;
-	}
 
 	str = talloc_typed_strdup(ctx, src);
 	if (!str) {
@@ -1481,8 +1461,8 @@ int value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
 		return -1;
 	}
 
-	if (dst->type != PW_TYPE_INVALID) value_box_clear(dst); /* only clear initialised boxes */
-	dst->type = type;
+	dst->type = PW_TYPE_STRING;
+	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->length = talloc_array_length(str) - 1;
 
@@ -1495,20 +1475,17 @@ int value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
  *
  * The buffer must be \0 terminated, or an error will be returned.
  *
- * Where dst->type == PW_TYPE_OCTETS the \0 byte will be trimmed in the copied buffer.
- *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
- * @param[in] src 	a talloced C string buffer.
+ * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
+int value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted)
 {
-	PW_TYPE	type = dst->type;
+	char	*str;
 	size_t	len;
 
 	len = talloc_array_length(src);
@@ -1517,55 +1494,16 @@ int value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
 		return -1;
 	}
 
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_STRING;
-		break;
-
-	case PW_TYPE_STRING:
-	{
-		char *str;
-
-		str = talloc_memdup(ctx, src, len);
-		if (!str) {
-			fr_strerror_printf("Failed allocating string buffer");
-			return -1;
-		}
-		talloc_set_type(str, char);
-
-		value_box_clear(dst);
-		dst->datum.strvalue = str;
-
-		len--;
-	}
-		break;
-
-	case PW_TYPE_OCTETS:
-	{
-		uint8_t *bin;
-
-		len--;
-
-		bin = talloc_memdup(ctx, src, len); /* Don't copy \0 byte */
-		if (!bin) {
-			fr_strerror_printf("Failed allocating octets buffer");
-			return -1;
-		}
-		talloc_set_type(bin, uint8_t);
-
-		value_box_clear(dst);
-		dst->datum.octets = bin;
-	}
-		break;
-
-	default:
-		fr_strerror_printf("Buffers can only be assigned to 'string' or 'octets' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
+	str = talloc_bstrndup(ctx, src, len - 1);
+	if (!str) {
+		fr_strerror_printf("Failed allocating string buffer");
 		return -1;
 	}
 
-	dst->type = type;
-	dst->length = len;
+	dst->type = PW_TYPE_STRING;
+	dst->tainted = tainted;
+	dst->datum.strvalue = str;
+	dst->length = talloc_array_length(str) - 1;
 
 	return 0;
 }
@@ -1576,18 +1514,16 @@ int value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
  *
  * The buffer must be \0 terminated, or an error will be returned.
  *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src)
+int value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src, bool tainted)
 {
-	PW_TYPE	type = dst->type;
 	size_t	len;
 	char	*str;
 
@@ -1597,28 +1533,15 @@ int value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src)
 		return -1;
 	}
 
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_STRING;
-		break;
-
-	case PW_TYPE_STRING:
-		break;
-
-	default:
-		fr_strerror_printf("nul terminated buffers can only be assigned to 'string' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, type, "<INVALID>"));
-	   	return -1;
-	}
-
 	str = talloc_steal(ctx, src);
 	if (!str) {
 		fr_strerror_printf("Failed stealing string buffer");
 		return -1;
 	}
 
-	if (dst->type != PW_TYPE_INVALID) value_box_clear(dst); /* only clear initialised boxes */
-	dst->type = type;
+	dst->type = PW_TYPE_STRING;
+	dst->tainted = tainted;
+	dst->datum.strvalue = str;
 	dst->length = len - 1;
 
 	return 0;
@@ -1626,41 +1549,17 @@ int value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src)
 
 /** Assign a buffer containing a nul terminated string to a box, but don't copy it
  *
- * @note Will free any exiting buffers associated with the dst #value_box_t.
- *
  * @param[in] dst	to assign string to.
- * @param[in] src	to copy string to
+ * @param[in] src	to copy string to.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_strdup_shallow(value_box_t *dst, char const *src)
+int value_box_strdup_shallow(value_box_t *dst, char const *src, bool tainted)
 {
-	size_t	len;
-	PW_TYPE	type = dst->type;
-
-	len = talloc_array_length(src);
-	if ((len == 1) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
-		return -1;
-	}
-
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_STRING;
-		break;
-
-	case PW_TYPE_STRING:
-		break;
-
-	default:
-		fr_strerror_printf("nul terminated buffers can only be assigned to 'string' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, type, "<INVALID>"));
-	   	return -1;
-	}
-	if (dst->datum.ptr) value_box_clear(dst);
-
-	dst->type = type;
+	dst->type = PW_TYPE_STRING;
+	dst->tainted = tainted;
 	dst->datum.strvalue = src;
 	dst->length = strlen(src);
 
@@ -1671,37 +1570,30 @@ int value_box_strdup_shallow(value_box_t *dst, char const *src)
  *
  * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
  *
- * @note Will free any exiting buffers associated with the dst #value_box_t.
- *
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to assign string to.
  * @param[in] src	to copy string to.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, char const *src)
+int value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted)
 {
-	PW_TYPE	type = dst->type;
+	size_t	len;
 
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_STRING;
-		break;
+	(void) talloc_get_type_abort(src, char);
 
-	case PW_TYPE_STRING:
-		break;
-
-	default:
-		fr_strerror_printf("nul terminated buffers can only be assigned to 'string' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, type, "<INVALID>"));
-	   	return -1;
+	len = talloc_array_length(src);
+	if ((len == 1) || (src[len - 1] != '\0')) {
+		fr_strerror_printf("Input buffer not \\0 terminated");
+		return -1;
 	}
-	if (dst->datum.ptr) value_box_clear(dst);
 
-	dst->type = type;
+	dst->type = PW_TYPE_STRING;
+	dst->tainted = tainted;
 	dst->datum.strvalue = ctx ? talloc_reference(ctx, src) : src;
-	dst->length = talloc_array_length(src) - 1;
+	dst->length = len - 1;
 
 	return 0;
 }
@@ -1712,61 +1604,28 @@ int value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, char cons
  *
  * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
  *
- * @note Will free any exiting buffers associated with the value box.
- *
  * @param[in] ctx	to allocate any new buffers in.
  * @param[in] dst	to assign new buffer to.
  * @param[in] src	a buffer.
  * @param[in] len	of data in the buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_memdup(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, size_t len)
+int value_box_memdup(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
 {
-	PW_TYPE	type = dst->type;
+	uint8_t *bin;
 
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_OCTETS;
-		/* FALL-THROUGH */
-
-	case PW_TYPE_OCTETS:
-	{
-		uint8_t *bin;
-
-		bin = talloc_memdup(ctx, src, len);
-		if (!bin) {
-			fr_strerror_printf("Failed allocating octets buffer");
-			return -1;
-		}
-		if (dst->type != PW_TYPE_INVALID) value_box_clear(dst); /* only clear initialised boxes */
-		dst->datum.octets = bin;
-	}
-		break;
-
-	case PW_TYPE_STRING:
-	{
-		char *str;
-
-		str = talloc_array(ctx, char, len + 1);
-		if (!str) {
-			fr_strerror_printf("Failed allocating string buffer");
-			return -1;
-		}
-		str[len] = '\0';
-		value_box_clear(dst);
-		dst->datum.strvalue = str;
-	}
-		break;
-
-	default:
-		fr_strerror_printf("Buffers can only be assigned to 'string' or 'octets' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
+	bin = talloc_memdup(ctx, src, len);
+	if (!bin) {
+		fr_strerror_printf("Failed allocating octets buffer");
 		return -1;
 	}
 
-	dst->type = type;
+	dst->type = PW_TYPE_OCTETS;
+	dst->tainted = tainted;
+	dst->datum.octets = bin;
 	dst->length = len;
 
 	return 0;
@@ -1776,55 +1635,38 @@ int value_box_memdup(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, size
  *
  * Copy a buffer containing binary data, setting fields in the dst value box appropriately.
  *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
- * @note Will free any exiting buffers associated with the value box.
- *
  * @param[in] ctx	to allocate any new buffers in.
  * @param[in] dst	to assign new buffer to.
  * @param[in] src	a buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_memdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src)
+int value_box_memdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src, bool tainted)
 {
-	return value_box_memdup(ctx, dst, src, talloc_array_length(src));
+	(void) talloc_get_type_abort(src, uint8_t);
+
+	return value_box_memdup(ctx, dst, src, talloc_array_length(src), tainted);
 }
 
 /** Steal a talloced buffer into a specified ctx, and assign to a #value_box_t
  *
  * Steal a talloced buffer, setting fields in the dst value box appropriately.
  *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
- * @note Will free any exiting buffers associated with the value box.
- *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] src 	a talloced nul terminated buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src)
+int value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, bool tainted)
 {
-	PW_TYPE		type = dst->type;
 	uint8_t const	*bin;
 
-	switch (type) {
-	case PW_TYPE_INVALID:
-		type = PW_TYPE_OCTETS;
-		break;
-
-	case PW_TYPE_OCTETS:
-		break;
-
-	default:
-		fr_strerror_printf("Buffers can only be assigned to 'octets' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, type, "<INVALID>"));
-	   	return -1;
-	}
+	(void) talloc_get_type_abort(src, uint8_t);
 
 	bin = talloc_steal(ctx, src);
 	if (!bin) {
@@ -1832,8 +1674,9 @@ int value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src)
 		return -1;
 	}
 
-	if (dst->type != PW_TYPE_INVALID) value_box_clear(dst); /* only clear initialised boxes */
-	dst->type = type;
+	dst->type = PW_TYPE_OCTETS;
+	dst->tainted = tainted;
+	dst->datum.octets = bin;
 	dst->length = talloc_array_length(src);
 
 	return 0;
@@ -1850,20 +1693,15 @@ int value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src)
  * @param[in] dst 	to assign buffer to.
  * @param[in] src	a talloced buffer.
  * @param[in] len	of buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_memdup_shallow(value_box_t *dst, uint8_t *src, size_t len)
+int value_box_memdup_shallow(value_box_t *dst, uint8_t *src, size_t len, bool tainted)
 {
-	if (dst->datum.ptr) value_box_clear(dst);
-
-	if (dst->type != PW_TYPE_OCTETS) {
-		fr_strerror_printf("Buffers can only be assigned to 'octets' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
-		return -1;
-	}
-
+	dst->type = PW_TYPE_OCTETS;
+	dst->tainted = tainted;
 	dst->datum.octets = src;
 	dst->length = len;
 
@@ -1874,27 +1712,20 @@ int value_box_memdup_shallow(value_box_t *dst, uint8_t *src, size_t len)
  *
  * Adds a reference to the src buffer so that it cannot be freed until the ctx is freed.
  *
- * Caller should set dst->taint = true, where the value was acquired from an untrusted source.
- *
- * @note Will free any exiting buffers associated with the value box.
- *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign buffer to.
  * @param[in] src	a talloced buffer.
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src)
+int value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src, bool tainted)
 {
-	if (dst->datum.ptr) value_box_clear(dst);
+	(void) talloc_get_type_abort(src, uint8_t);
 
-	if (dst->type != PW_TYPE_OCTETS) {
-		fr_strerror_printf("Buffers can only be assigned to 'octets' boxes, not '%s' boxes",
-	   			   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
-		return -1;
-	}
-
+	dst->type = PW_TYPE_OCTETS;
+	dst->tainted = tainted;
 	dst->datum.octets = ctx ? talloc_reference(ctx, src) : src;
 	dst->length = talloc_array_length(src);
 
