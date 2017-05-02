@@ -130,7 +130,7 @@ value_box_t *value_box_alloc(TALLOC_CTX *ctx, PW_TYPE type)
  *
  * @param[in] data to clear.
  */
-void inline value_box_clear(value_box_t *data)
+inline void value_box_clear(value_box_t *data)
 {
 	switch (data->type) {
 	case PW_TYPE_OCTETS:
