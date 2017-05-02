@@ -394,7 +394,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Pack the VPs
 	 */
-	if (fr_radius_encode(request->reply, request->packet,
+	if (fr_radius_packet_encode(request->reply, request->packet,
 			     request->client->secret) < 0) {
 		RPERROR("Failed encoding packet");
 		return 0;

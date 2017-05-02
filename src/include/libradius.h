@@ -226,9 +226,9 @@ ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *sr
 
 int		fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
 
-int		fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
+int		fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
 
-int		fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
+int		fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
 
 int		fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original, char const *secret);
 

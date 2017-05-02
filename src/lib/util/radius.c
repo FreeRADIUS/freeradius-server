@@ -580,7 +580,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		/*
 		 *	Encode the packet.
 		 */
-		if (fr_radius_encode(packet, original, secret) < 0) {
+		if (fr_radius_packet_encode(packet, original, secret) < 0) {
 			return -1;
 		}
 
@@ -1190,7 +1190,7 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 /** Encode a packet
  *
  */
-int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		     char const *secret)
 {
 	radius_packet_t		*hdr;
@@ -1366,7 +1366,7 @@ int fr_radius_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int fr_radius_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
 	int			packet_length;
 	uint32_t		num_attributes;

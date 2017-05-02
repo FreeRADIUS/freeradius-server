@@ -1072,7 +1072,7 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_decode(request->reply, request->packet, secret) != 0) {
+	if (fr_radius_packet_decode(request->reply, request->packet, secret) != 0) {
 		REDEBUG("Reply decode failed");
 		stats.lost++;
 		goto packet_done;

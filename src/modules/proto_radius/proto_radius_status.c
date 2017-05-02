@@ -52,7 +52,7 @@ static void status_running(REQUEST *request, fr_state_action_t action)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		if (request->packet->data_len != 0) {
-			if (fr_radius_decode(request->packet, NULL, request->client->secret) < 0) {
+			if (fr_radius_packet_decode(request->packet, NULL, request->client->secret) < 0) {
 				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
 				goto done;
 			}
@@ -209,7 +209,7 @@ static void status_running(REQUEST *request, fr_state_action_t action)
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 
-		if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
+		if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
 			goto done;
 		}

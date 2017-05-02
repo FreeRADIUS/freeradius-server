@@ -2429,7 +2429,7 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (!request->reply->code) return 0;
 
-	if (fr_radius_encode(request->reply, request->packet, request->client->secret) < 0) {
+	if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
 		RPERROR("Failed encoding packet");
 
 		return -1;
@@ -2481,14 +2481,14 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 #endif
 
-	return fr_radius_decode(request->packet, NULL,
+	return fr_radius_packet_decode(request->packet, NULL,
 				request->client->secret);
 }
 
 #ifdef WITH_PROXY
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	if (fr_radius_encode(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
+	if (fr_radius_packet_encode(request->proxy->packet, NULL, request->proxy->home_server->secret) < 0) {
 		RPERROR("Failed encoding proxied packet");
 
 		return -1;
@@ -2515,7 +2515,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	 *	fr_radius_packet_verify is run in event.c, received_proxy_response()
 	 */
 
-	return fr_radius_decode(request->proxy->reply, request->proxy->packet,
+	return fr_radius_packet_decode(request->proxy->reply, request->proxy->packet,
 				request->proxy->home_server->secret);
 }
 #endif
