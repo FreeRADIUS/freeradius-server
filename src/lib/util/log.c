@@ -37,6 +37,8 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
+FILE *fr_log_fp = NULL;
+
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker
  *
  * @note talloc_free must be called on the buffer returned in spaces and text

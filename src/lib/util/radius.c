@@ -62,7 +62,6 @@ FR_NAME_NUMBER const fr_request_types[] = {
  *	even if the end request is rejected.
  */
 uint32_t fr_max_attributes = 0;
-FILE *fr_log_fp = NULL;
 
 
 static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
