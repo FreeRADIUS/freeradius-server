@@ -662,7 +662,6 @@ static bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool requi
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
-	radius_packet_t	const	*hdr;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
@@ -689,15 +688,14 @@ static bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool requi
 	 *	says it's 256 bytes long.
 	 */
 	totallen = (packet[2] << 8) | packet[3];
-	hdr = (radius_packet_t const *)packet;
 
 	/*
 	 *	Code of 0 is not understood.
 	 *	Code of 16 or greate is not understood.
 	 */
-	if ((hdr->code == 0) ||
-	    (hdr->code >= FR_MAX_PACKET_CODE)) {
-		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", hdr->code);
+	if ((packet[0] == 0) ||
+	    (packet[0] >= FR_MAX_PACKET_CODE)) {
+		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", packet[0]);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
 	}
@@ -706,7 +704,7 @@ static bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool requi
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
 	 */
-	if (hdr->code == PW_CODE_STATUS_SERVER) require_ma = true;
+	if (packet[0] == PW_CODE_STATUS_SERVER) require_ma = true;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
