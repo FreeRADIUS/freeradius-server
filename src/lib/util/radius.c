@@ -64,20 +64,6 @@ FR_NAME_NUMBER const fr_request_types[] = {
 uint32_t fr_max_attributes = 0;
 
 
-static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
-{
-	int i;
-	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-
-	for (i = 0; i < attrlen; i++) {
-		if ((i > 0) && ((i & 0x0f) == 0x00))
-			fprintf(fr_log_fp, "%.*s", depth, tabs);
-		fprintf(fr_log_fp, "%02x ", ptr[i]);
-		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
-	}
-	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
-}
-
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"",					//!< 0
 	"Access-Request",
@@ -132,98 +118,6 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"IP-Address-Allocate",
 	"IP-Address-Release",			//!< 50
 };
-
-void fr_radius_print_hex(RADIUS_PACKET const *packet)
-{
-	int i;
-
-	if (!packet->data || !fr_log_fp) return;
-
-	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
-#ifdef WITH_TCP
-	fprintf(fr_log_fp, "  Proto:\t%d\n", packet->proto);
-#endif
-
-	if (packet->src_ipaddr.af == AF_INET) {
-		char buffer[INET6_ADDRSTRLEN];
-
-		fprintf(fr_log_fp, "  Src IP:\t%s\n",
-			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.ipaddr,
-				  buffer, sizeof(buffer)));
-		fprintf(fr_log_fp, "    port:\t%u\n", packet->src_port);
-
-		fprintf(fr_log_fp, "  Dst IP:\t%s\n",
-			inet_ntop(packet->dst_ipaddr.af,
-				  &packet->dst_ipaddr.ipaddr,
-				  buffer, sizeof(buffer)));
-		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
-	}
-
-	if (packet->data[0] < FR_MAX_PACKET_CODE) {
-		fprintf(fr_log_fp, "  Code:\t\t(%d) %s\n", packet->data[0], fr_packet_codes[packet->data[0]]);
-	} else {
-		fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
-	}
-	fprintf(fr_log_fp, "  Id:\t\t%u\n", packet->data[1]);
-	fprintf(fr_log_fp, "  Length:\t%u\n", ((packet->data[2] << 8) |
-				   (packet->data[3])));
-	fprintf(fr_log_fp, "  Vector:\t");
-	for (i = 4; i < 20; i++) {
-		fprintf(fr_log_fp, "%02x", packet->data[i]);
-	}
-	fprintf(fr_log_fp, "\n");
-
-	if (packet->data_len > 20) {
-		int total;
-		uint8_t const *ptr;
-		fprintf(fr_log_fp, "  Data:");
-
-		total = packet->data_len - 20;
-		ptr = packet->data + 20;
-
-		while (total > 0) {
-			int attrlen;
-			unsigned int vendor = 0;
-
-			fprintf(fr_log_fp, "\t\t");
-			if (total < 2) { /* too short */
-				fprintf(fr_log_fp, "%02x\n", *ptr);
-				break;
-			}
-
-			if (ptr[1] > total) { /* too long */
-				for (i = 0; i < total; i++) {
-					fprintf(fr_log_fp, "%02x ", ptr[i]);
-				}
-				break;
-			}
-
-			fprintf(fr_log_fp, "%02x  %02x  ", ptr[0], ptr[1]);
-			attrlen = ptr[1] - 2;
-
-			if ((ptr[0] == PW_VENDOR_SPECIFIC) &&
-			    (attrlen > 4)) {
-				vendor = (ptr[3] << 16) | (ptr[4] << 8) | ptr[5];
-				fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  ",
-				       ptr[2], ptr[3], ptr[4], ptr[5], vendor);
-				attrlen -= 4;
-				ptr += 6;
-				total -= 6;
-
-			} else {
-				ptr += 2;
-				total -= 2;
-			}
-
-			print_hex_data(ptr, attrlen, 3);
-
-			ptr += attrlen;
-			total -= attrlen;
-		}
-	}
-	fflush(stdout);
-}
 
 
 /**  Do Ascend-Send / Recv-Secret calculation.
