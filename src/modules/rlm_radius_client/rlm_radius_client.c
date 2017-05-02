@@ -117,7 +117,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	 *	@fixme: if there's an error in the socket, remove the
 	 *	socket from the packet list.
 	 */
-	reply = fr_radius_recv(conn, fd, 0, false);
+	reply = fr_radius_packet_recv(conn, fd, 0, false);
 	if (!reply) {
 		return;
 	}

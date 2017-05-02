@@ -261,7 +261,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 *	Copied from src/lib/radius.c, fr_radius_recv();
+	 *	Copied from src/lib/radius.c, fr_radius_packet_recv();
 	 */
 	if (fr_debug_lvl) {
 		char host_ipaddr[INET6_ADDRSTRLEN];

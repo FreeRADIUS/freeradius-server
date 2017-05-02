@@ -914,7 +914,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
 		} else
 #endif
-			packet = fr_radius_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE, false);
+			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE, false);
 		if (!packet) continue;
 
 		/*

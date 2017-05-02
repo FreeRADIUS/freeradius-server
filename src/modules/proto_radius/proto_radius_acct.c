@@ -288,7 +288,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	}
 	talloc_set_name_const(ctx, "acct_listener_pool");
 
-	packet = fr_radius_recv(ctx, listener->fd, 0, false);
+	packet = fr_radius_packet_recv(ctx, listener->fd, 0, false);
 	if (!packet) {
 		ERROR("%s", fr_strerror());
 		talloc_free(ctx);

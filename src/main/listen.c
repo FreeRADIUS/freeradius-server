@@ -512,7 +512,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = fr_radius_recv(NULL, listener->fd, UDP_FLAGS_PEEK, false);
+	request->packet = fr_radius_packet_recv(NULL, listener->fd, UDP_FLAGS_PEEK, false);
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1781,7 +1781,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = fr_radius_recv(NULL, listener->fd, UDP_FLAGS_NONE, true); /* require message authenticator */
+	packet = fr_radius_packet_recv(NULL, listener->fd, UDP_FLAGS_NONE, true); /* require message authenticator */
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1875,7 +1875,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = fr_radius_recv(ctx, listener->fd, UDP_FLAGS_NONE, client->message_authenticator);
+	packet = fr_radius_packet_recv(ctx, listener->fd, UDP_FLAGS_NONE, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1892,7 +1892,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *
 	 *	This hack works ONLY if the clients are global.  If
 	 *	each listener has the same client IP, but with
-	 *	different secrets, then it will fail the fr_radius_recv()
+	 *	different secrets, then it will fail the fr_radius_packet_recv()
 	 *	check above, and there's nothing you can do.
 	 */
 	{
@@ -1990,7 +1990,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = fr_radius_recv(ctx, listener->fd, UDP_FLAGS_NONE, false);
+	packet = fr_radius_packet_recv(ctx, listener->fd, UDP_FLAGS_NONE, false);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2267,7 +2267,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = fr_radius_recv(ctx, listener->fd, UDP_FLAGS_NONE, client->message_authenticator);
+	packet = fr_radius_packet_recv(ctx, listener->fd, UDP_FLAGS_NONE, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2298,7 +2298,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #  endif
 	char		buffer[128];
 
-	packet = fr_radius_recv(NULL, listener->fd, UDP_FLAGS_NONE, false);
+	packet = fr_radius_packet_recv(NULL, listener->fd, UDP_FLAGS_NONE, false);
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;

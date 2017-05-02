@@ -452,6 +452,104 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 }
 
 
+/** See if the data pointed to by PTR is a valid RADIUS packet.
+ *
+ * Packet is not 'const * const' because we may update data_len, if there's more data
+ * in the UDP packet than in the RADIUS packet.
+ *
+ * @param packet to check
+ * @param require_ma to require Message-Authenticator
+ * @param reason if not NULL, will have the failure reason written to where it points.
+ * @return
+ *	- True on success.
+ *	- False on failure.
+ */
+bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
+{
+	char host_ipaddr[INET6_ADDRSTRLEN];
+
+	if (!fr_radius_ok(packet->data, &packet->data_len, require_ma, reason)) {
+		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
+					 inet_ntop(packet->src_ipaddr.af,
+						   &packet->src_ipaddr.ipaddr,
+						   host_ipaddr, sizeof(host_ipaddr)),
+					 fr_strerror());
+		return false;
+	}
+
+	/*
+	 *	Fill RADIUS header fields
+	 */
+	packet->code = packet->data[0];
+	packet->id = packet->data[1];
+	memcpy(packet->vector, packet->data + 4, sizeof(packet->vector));
+	return true;
+}
+
+
+/** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
+ *
+ */
+int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+{
+	uint8_t const	*original_data;
+	char		buffer[INET6_ADDRSTRLEN];
+
+	if (!packet->data) return -1;
+
+	if (original) {
+		original_data = original->data;
+	} else {
+		original_data = NULL;
+	}
+
+	if (fr_radius_verify(packet->data, original_data,
+			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
+		fr_strerror_printf("Received packet from %s with %s",
+				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
+					     buffer, sizeof(buffer)),
+				   fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/** Sign a previously encoded packet
+ *
+ */
+int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			  char const *secret)
+{
+	int rcode;
+	uint8_t const *original_data;
+
+	if (original) {
+		original_data = original->data;
+	} else {
+		original_data = NULL;
+	}
+
+	/*
+	 *	Copy the random vector to the packet.  Other packet
+	 *	codes have the Request Authenticator be the packet
+	 *	signature.
+	 */
+	if ((packet->code == PW_CODE_ACCESS_REQUEST) ||
+	    (packet->code == PW_CODE_STATUS_SERVER)) {
+		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
+	}
+
+	rcode = fr_radius_sign(packet->data, original_data,
+			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
+	if (rcode < 0) return rcode;
+
+	memcpy(packet->vector, packet->data + 4, AUTH_VECTOR_LEN);
+	return 0;
+}
+
+
 /** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
  *
  */
@@ -482,7 +580,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 /** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
  *
  */
-RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma)
+RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma)
 {
 	ssize_t data_len;
 	RADIUS_PACKET		*packet;
@@ -578,12 +676,12 @@ RADIUS_PACKET *fr_radius_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_m
  * Also attach reply attribute value pairs and any user message provided.
  */
 int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-		   char const *secret)
+			  char const *secret)
 {
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
 	 */
-	if (!packet || (packet->sockfd < 0)) {
+	if (packet->sockfd < 0) {
 		return 0;
 	}
 

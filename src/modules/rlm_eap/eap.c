@@ -253,7 +253,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	/*
 	 *	http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
 	 *
-	 *	Checks for Message-Authenticator are handled by fr_radius_recv().
+	 *	Checks for Message-Authenticator are handled by fr_radius_packet_recv().
 	 */
 
 	/*

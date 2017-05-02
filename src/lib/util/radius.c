@@ -225,8 +225,8 @@ invalid:
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
-			  uint8_t const *secret, size_t secret_len)
+int fr_radius_sign(uint8_t *packet, uint8_t const *original,
+		   uint8_t const *secret, size_t secret_len)
 {
 	uint8_t *msg, *end;
 	size_t packet_len = (packet[2] << 8) | packet[3];
@@ -362,38 +362,6 @@ static int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	return 0;
 }
 
-/** Sign a previously encoded packet
- *
- */
-int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			  char const *secret)
-{
-	int rcode;
-	uint8_t const *original_data;
-
-	if (original) {
-		original_data = original->data;
-	} else {
-		original_data = NULL;
-	}
-
-	/*
-	 *	Copy the random vector to the packet.  Other packet
-	 *	codes have the Request Authenticator be the packet
-	 *	signature.
-	 */
-	if ((packet->code == PW_CODE_ACCESS_REQUEST) ||
-	    (packet->code == PW_CODE_STATUS_SERVER)) {
-		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
-	}
-
-	rcode = fr_radius_sign(packet->data, original_data,
-			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
-	if (rcode < 0) return rcode;
-
-	memcpy(packet->vector, packet->data + 4, AUTH_VECTOR_LEN);
-	return 0;
-}
 
 /** Do a comparison of two authentication digests by comparing the FULL digest
  *
@@ -425,7 +393,7 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
  *	- True on success.
  *	- False on failure.
  */
-static bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, decode_fail_t *reason)
+bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
@@ -678,41 +646,6 @@ finish:
 }
 
 
-/** See if the data pointed to by PTR is a valid RADIUS packet.
- *
- * Packet is not 'const * const' because we may update data_len, if there's more data
- * in the UDP packet than in the RADIUS packet.
- *
- * @param packet to check
- * @param require_ma to require Message-Authenticator
- * @param reason if not NULL, will have the failure reason written to where it points.
- * @return
- *	- True on success.
- *	- False on failure.
- */
-bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
-{
-	char host_ipaddr[INET6_ADDRSTRLEN];
-
-	if (!fr_radius_ok(packet->data, &packet->data_len, require_ma, reason)) {
-		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
-					 inet_ntop(packet->src_ipaddr.af,
-						   &packet->src_ipaddr.ipaddr,
-						   host_ipaddr, sizeof(host_ipaddr)),
-					 fr_strerror());
-		return false;
-	}
-
-	/*
-	 *	Fill RADIUS header fields
-	 */
-	packet->code = packet->data[0];
-	packet->id = packet->data[1];
-	memcpy(packet->vector, packet->data + 4, sizeof(packet->vector));
-	return true;
-}
-
-
 /** Verify a request / response packet
  *
  *  This function does its work by calling fr_radius_sign(), and then
@@ -727,8 +660,8 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
-			    uint8_t const *secret, size_t secret_len)
+int fr_radius_verify(uint8_t *packet, uint8_t const *original,
+		     uint8_t const *secret, size_t secret_len)
 {
 	int rcode;
 	uint8_t *msg, *end;
@@ -828,33 +761,3 @@ static int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 
 	return 0;
 }
-
-
-/** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
- *
- */
-int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
-{
-	uint8_t const	*original_data;
-	char		buffer[INET6_ADDRSTRLEN];
-
-	if (!packet || !packet->data) return -1;
-
-	if (original) {
-		original_data = original->data;
-	} else {
-		original_data = NULL;
-	}
-
-	if (fr_radius_verify(packet->data, original_data,
-			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
-		fr_strerror_printf("Received packet from %s with %s",
-				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
-					     buffer, sizeof(buffer)),
-				   fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-

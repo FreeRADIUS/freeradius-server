@@ -799,7 +799,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_recv(request, request->sockfd, UDP_FLAGS_NONE, false);
+					reply = fr_radius_packet_recv(request, request->sockfd, UDP_FLAGS_NONE, false);
 					if (!reply) {
 						ERROR("Failed receiving reply: %s", fr_strerror());
 					recv_error:
