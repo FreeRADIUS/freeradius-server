@@ -32,6 +32,7 @@ SOURCES		:= base64.c \
 		   print.c \
 		   proto.c \
 		   radius.c \
+		   radius_packet.c \
 		   radius_encode.c \
 		   radius_decode.c \
 		   rbtree.c \
