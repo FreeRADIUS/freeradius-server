@@ -42,7 +42,6 @@ SOURCES		:= base64.c \
 		   syserror.c \
 		   socket.c \
 		   talloc.c \
-		   tcp.c \
 		   token.c \
 		   udpfromto.c \
 		   udp.c \
