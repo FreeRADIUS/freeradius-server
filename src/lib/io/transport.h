@@ -25,6 +25,10 @@
  */
 RCSIDH(transport_h, "$Id$")
 
+#include <talloc.h>
+
+#include <freeradius-devel/heap.h>
+#include <freeradius-devel/event.h>
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/io/channel.h>
 //#include <freeradius-devel/io/io.h>
