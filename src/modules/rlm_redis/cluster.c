@@ -366,7 +366,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	/*
 	 *	Write out the IP address and Port in string form
 	 */
-	p = inet_ntop(node->pending_addr.ipaddr.af, &node->pending_addr.ipaddr.ipaddr,
+	p = inet_ntop(node->pending_addr.ipaddr.af, &node->pending_addr.ipaddr.addr,
 		      node->name, sizeof(node->name));
 	if (!rad_cond_assert(p)) return CLUSTER_OP_FAILED;
 
@@ -1974,7 +1974,7 @@ int fr_redis_cluster_pool_by_node_addr(fr_connection_pool_t **pool, fr_redis_clu
 		if (!create) {
 			pthread_mutex_unlock(&cluster->mutex);
 
-			hostname = inet_ntop(node_addr->ipaddr.af, &node_addr->ipaddr.ipaddr, buffer, sizeof(buffer));
+			hostname = inet_ntop(node_addr->ipaddr.af, &node_addr->ipaddr.addr, buffer, sizeof(buffer));
 			rad_assert(hostname);	/* addr.ipaddr is probably corrupt */;
 			fr_strerror_printf("No existing node found with address %s, port %i",
 					   hostname, node_addr->port);

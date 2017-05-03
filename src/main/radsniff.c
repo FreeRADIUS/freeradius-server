@@ -296,8 +296,8 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 
 	ssize_t len, s = sizeof(buffer);
 
-	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
-	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
+	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
+	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
 
 	status_str = fr_int2str(rs_events, status, NULL);
 	RS_ASSERT(status_str);
@@ -389,8 +389,8 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 	ssize_t len, s = sizeof(buffer);
 
-	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src, sizeof(src));
-	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
+	inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr, src, sizeof(src));
+	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.addr, dst, sizeof(dst));
 
 	/* Only print out status str if something's not right */
 	if (status != RS_NORMAL) {
@@ -1313,18 +1313,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	if (ip) {
 		current->src_ipaddr.af = AF_INET;
-		current->src_ipaddr.ipaddr.v4.s_addr = ip->ip_src.s_addr;
+		current->src_ipaddr.addr.v4.s_addr = ip->ip_src.s_addr;
 
 		current->dst_ipaddr.af = AF_INET;
-		current->dst_ipaddr.ipaddr.v4.s_addr = ip->ip_dst.s_addr;
+		current->dst_ipaddr.addr.v4.s_addr = ip->ip_dst.s_addr;
 	} else {
 		current->src_ipaddr.af = AF_INET6;
-		memcpy(current->src_ipaddr.ipaddr.v6.s6_addr, ip6->ip_src.s6_addr,
-		       sizeof(current->src_ipaddr.ipaddr.v6.s6_addr));
+		memcpy(current->src_ipaddr.addr.v6.s6_addr, ip6->ip_src.s6_addr,
+		       sizeof(current->src_ipaddr.addr.v6.s6_addr));
 
 		current->dst_ipaddr.af = AF_INET6;
-		memcpy(current->dst_ipaddr.ipaddr.v6.s6_addr, ip6->ip_dst.s6_addr,
-		       sizeof(current->dst_ipaddr.ipaddr.v6.s6_addr));
+		memcpy(current->dst_ipaddr.addr.v6.s6_addr, ip6->ip_dst.s6_addr,
+		       sizeof(current->dst_ipaddr.addr.v6.s6_addr));
 	}
 
 	current->src_port = ntohs(udp->src);

@@ -279,10 +279,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	originator's IP address.
 	 */
 	if (ut.nas_address == htonl(INADDR_NONE)) {
-		ut.nas_address = request->packet->src_ipaddr.ipaddr.v4.s_addr;
+		ut.nas_address = request->packet->src_ipaddr.addr.v4.s_addr;
 		nas = request->client->shortname;
 
-	} else if (request->packet->src_ipaddr.ipaddr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
+	} else if (request->packet->src_ipaddr.addr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
 		nas = request->client->shortname;
 
 	/*

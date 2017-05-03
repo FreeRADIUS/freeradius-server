@@ -1992,7 +1992,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 		if (rad_debug_lvl) {
 			RDEBUG("Injected %s packet to host %s port 0 code=%d, id=%d", what,
 			       inet_ntop(request->reply->src_ipaddr.af,
-					 &request->reply->src_ipaddr.ipaddr,
+					 &request->reply->src_ipaddr.addr,
 					 buffer, sizeof(buffer)),
 					 request->reply->code, request->reply->id);
 		}
@@ -2197,7 +2197,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		DEBUG("Injecting %s packet from host %s port 0 code=%d, id=%d",
 		      fr_packet_codes[packet->code],
 		      inet_ntop(packet->src_ipaddr.af,
-				&packet->src_ipaddr.ipaddr,
+				&packet->src_ipaddr.addr,
 				buffer, sizeof(buffer)),
 		      packet->code, packet->id);
 

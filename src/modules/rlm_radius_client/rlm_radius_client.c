@@ -94,7 +94,7 @@ static void mod_cleanup(REQUEST *request, rlm_radius_client_request_t *ccr)
 		vp = pair_make_request("Failed-Home-Server-IP", NULL, T_OP_ADD);
 		if (vp) {
 			fr_pair_value_snprintf(vp, "%s", inet_ntop(ccr->packet->dst_ipaddr.af,
-								   &ccr->packet->dst_ipaddr.ipaddr,
+								   &ccr->packet->dst_ipaddr.addr,
 								   buffer, sizeof(buffer)));
 		}
 	}
@@ -127,7 +127,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 		DEBUG("Received unknown reply %s packet from home server %s port %d - ID %u - ignoring",
 		       fr_packet_codes[reply->code],
 		       inet_ntop(reply->src_ipaddr.af,
-				 &reply->src_ipaddr.ipaddr,
+				 &reply->src_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       reply->src_port, reply->id);
 		fr_radius_free(&reply);
@@ -143,7 +143,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	RDEBUG("Received reply %s packet from home server %s port %d - ID %u",
 	       fr_packet_codes[reply->code],
 	       inet_ntop(reply->src_ipaddr.af,
-			 &reply->src_ipaddr.ipaddr,
+			 &reply->src_ipaddr.addr,
 			 buffer, sizeof(buffer)),
 	       reply->src_port, reply->id);
 
@@ -276,7 +276,7 @@ static void mod_action_dup(REQUEST *request, void *instance, UNUSED void *thread
 	       fr_packet_codes[packet->code],
 	       ccr->inst->home_server->name,
 	       inet_ntop(packet->dst_ipaddr.af,
-			 &packet->dst_ipaddr.ipaddr,
+			 &packet->dst_ipaddr.addr,
 			 buffer, sizeof(buffer)),
 	       packet->dst_port, packet->id);
 
@@ -413,7 +413,7 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 	       fr_packet_codes[packet->code],
 	       ccr->inst->home_server->name,
 	       inet_ntop(packet->dst_ipaddr.af,
-			 &packet->dst_ipaddr.ipaddr,
+			 &packet->dst_ipaddr.addr,
 			 buffer, sizeof(buffer)),
 	       packet->dst_port, packet->id);
 

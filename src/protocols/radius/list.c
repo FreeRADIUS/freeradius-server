@@ -586,8 +586,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 *	destination is not link local.  Ignore it.
 		 */
 		if (src_any && (ps->src_ipaddr.af == AF_INET) &&
-		    (((ps->src_ipaddr.ipaddr.v4.s_addr >> 24) & 0xff) == 127) &&
-		    (((request->dst_ipaddr.ipaddr.v4.s_addr >> 24) & 0xff) != 127)) continue;
+		    (((ps->src_ipaddr.addr.v4.s_addr >> 24) & 0xff) == 127) &&
+		    (((request->dst_ipaddr.addr.v4.s_addr >> 24) & 0xff) != 127)) continue;
 
 		/*
 		 *	We're sourcing from *, and they asked for a

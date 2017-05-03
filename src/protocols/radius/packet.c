@@ -428,7 +428,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
 					   "(received %d, max %d are allowed)",
 					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
+						     &packet->src_ipaddr.addr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   num_attributes, fr_max_attributes);
 			return -1;
@@ -471,7 +471,7 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *
 	if (!fr_radius_ok(packet->data, &packet->data_len, require_ma, reason)) {
 		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
 					 inet_ntop(packet->src_ipaddr.af,
-						   &packet->src_ipaddr.ipaddr,
+						   &packet->src_ipaddr.addr,
 						   host_ipaddr, sizeof(host_ipaddr)),
 					 fr_strerror());
 		return false;
@@ -506,7 +506,7 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	if (fr_radius_verify(packet->data, original_data,
 			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
 		fr_strerror_printf("Received packet from %s with %s",
-				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
+				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
 					     buffer, sizeof(buffer)),
 				   fr_strerror());
 		return -1;
@@ -771,13 +771,13 @@ void fr_radius_print_hex(RADIUS_PACKET const *packet)
 
 		fprintf(fr_log_fp, "  Src IP:\t%s\n",
 			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.ipaddr,
+				  &packet->src_ipaddr.addr,
 				  buffer, sizeof(buffer)));
 		fprintf(fr_log_fp, "    port:\t%u\n", packet->src_port);
 
 		fprintf(fr_log_fp, "  Dst IP:\t%s\n",
 			inet_ntop(packet->dst_ipaddr.af,
-				  &packet->dst_ipaddr.ipaddr,
+				  &packet->dst_ipaddr.addr,
 				  buffer, sizeof(buffer)));
 		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
 	}

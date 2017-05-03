@@ -174,7 +174,7 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 invalid:
 		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
-					 inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr, buffer, sizeof(buffer)),
+					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)),
 					 fr_strerror());
 		(void) udp_recv_discard(sockfd);
 

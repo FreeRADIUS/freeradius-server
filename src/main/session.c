@@ -138,7 +138,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	fr_ipaddr_t ipaddr;
 
 	ipaddr.af = AF_INET;
-	ipaddr.ipaddr.v4.s_addr = nasaddr;
+	ipaddr.addr.v4.s_addr = nasaddr;
 
 	/*
 	 *	Find NAS type.
@@ -149,7 +149,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 		 *  Unknown NAS, so trusting radutmp.
 		 */
 		DEBUG2("checkrad: Unknown NAS %s, not checking",
-		       inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer)));
+		       inet_ntop(ipaddr.af, &ipaddr.addr, buffer, sizeof(buffer)));
 
 		return 1;
 	}
@@ -202,7 +202,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	 */
 	closefrom(3);
 
-	inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer));
+	inet_ntop(ipaddr.af, &ipaddr.addr, buffer, sizeof(buffer));
 	snprintf(port, 11, "%u", nas_port);
 
 #ifdef __EMX__

@@ -465,7 +465,7 @@ static int add_nas_attr(REQUEST *request)
 		nas = fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_IP_ADDRESS, TAG_ANY);
 		if (!nas) {
 			nas = radius_pair_create(request->packet, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
-			nas->vp_ipv4addr = request->packet->src_ipaddr.ipaddr.v4.s_addr;
+			nas->vp_ipv4addr = request->packet->src_ipaddr.addr.v4.s_addr;
 		}
 		break;
 
@@ -473,8 +473,8 @@ static int add_nas_attr(REQUEST *request)
 		nas = fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_IPV6_ADDRESS, TAG_ANY);
 		if (!nas) {
 			nas = radius_pair_create(request->packet, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
-			memcpy(&nas->vp_ipv6addr, &request->packet->src_ipaddr.ipaddr,
-			       sizeof(request->packet->src_ipaddr.ipaddr));
+			memcpy(&nas->vp_ipv6addr, &request->packet->src_ipaddr.addr,
+			       sizeof(request->packet->src_ipaddr.addr));
 		}
 		break;
 

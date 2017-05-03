@@ -502,7 +502,7 @@ static void proxy_reply_too_late(REQUEST *request)
 	RDEBUG2("Reply from home server %s port %d  - ID: %d arrived too late.  "
 		"Try increasing 'retry_delay' or 'max_request_time'",
 		inet_ntop(request->proxy->packet->dst_ipaddr.af,
-			  &request->proxy->packet->dst_ipaddr.ipaddr,
+			  &request->proxy->packet->dst_ipaddr.addr,
 			  buffer, sizeof(buffer)),
 		request->proxy->packet->dst_port, request->proxy->packet->id);
 }
@@ -2250,7 +2250,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	pthread_mutex_unlock(&proxy_mutex);
 
 	RDEBUG3("proxy: allocating destination %s port %d - Id %d",
-	       inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+	       inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.addr, buffer, sizeof(buffer)),
 	       request->proxy->packet->dst_port,
 	       request->proxy->packet->id);
 
@@ -2361,7 +2361,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 		PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
 		       fr_packet_codes[reply->code],
 		       inet_ntop(reply->src_ipaddr.af,
-				 &reply->src_ipaddr.ipaddr,
+				 &reply->src_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       reply->src_port, reply->id);
 		return 0;
@@ -2395,7 +2395,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 */
 	if (!proxy->reply && (fr_radius_packet_verify(reply, proxy->packet, proxy->home_server->secret) != 0)) {
 		RWDEBUG("Discarding invalid reply from host %s port %d - ID: %d: %s",
-			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.addr, buffer, sizeof(buffer)),
 			reply->src_port, reply->id, fr_strerror());
 		return 0;
 	}
@@ -2407,7 +2407,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	 */
 	if (proxy->reply && (memcmp(proxy->reply->vector, reply->vector, sizeof(proxy->reply->vector)) != 0)) {
 		RWDEBUG("Discarding conflicting reply from host %s port %d - ID: %d",
-			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.addr, buffer, sizeof(buffer)),
 			reply->src_port, reply->id);
 		return 0;
 	}
@@ -2420,7 +2420,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 		proxy->reply->count++;
 
 		RWDEBUG("Discarding duplicate reply from host %s port %d - ID: %d",
-			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.addr, buffer, sizeof(buffer)),
 			reply->src_port, reply->id);
 		return 0;
 	}
@@ -2989,11 +2989,11 @@ static int request_will_proxy(REQUEST *request)
 
 		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
 			dst_ipaddr.af = AF_INET;
-			dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+			dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 			dst_ipaddr.prefix = 32;
 		} else {
 			dst_ipaddr.af = AF_INET6;
-			memcpy(&dst_ipaddr.ipaddr.v6, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+			memcpy(&dst_ipaddr.addr.v6, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 			dst_ipaddr.prefix = 128;
 		}
 
@@ -3028,7 +3028,7 @@ static int request_will_proxy(REQUEST *request)
 			char buffer[INET6_ADDRSTRLEN];
 
 			WARN("No such home server %s port %u",
-			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.addr, buffer, sizeof(buffer)),
 			     (unsigned int) dst_port);
 			return 0;
 		}
@@ -3284,7 +3284,7 @@ static int request_proxy_send(REQUEST *request)
 		if (request->proxy->home_server->tls) {
 			RDEBUG2("Proxying request to home server %s port %d (TLS) timeout %d.%06d",
 				inet_ntop(request->proxy->packet->dst_ipaddr.af,
-					  &request->proxy->packet->dst_ipaddr.ipaddr,
+					  &request->proxy->packet->dst_ipaddr.addr,
 					  buffer, sizeof(buffer)),
 				request->proxy->packet->dst_port,
 				(int) response_window->tv_sec, (int) response_window->tv_usec);
@@ -3292,7 +3292,7 @@ static int request_proxy_send(REQUEST *request)
 #endif
 			RDEBUG2("Proxying request to home server %s port %d timeout %d.%06d",
 				inet_ntop(request->proxy->packet->dst_ipaddr.af,
-					  &request->proxy->packet->dst_ipaddr.ipaddr,
+					  &request->proxy->packet->dst_ipaddr.addr,
 					  buffer, sizeof(buffer)),
 				request->proxy->packet->dst_port,
 				(int) response_window->tv_sec, (int) response_window->tv_usec);
@@ -3442,7 +3442,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		       request->number,
 		       request->proxy->packet->id,
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port);
 		remove_from_proxy_hash(request);
@@ -3715,13 +3715,13 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 	if (old_state == HOME_STATE_UNKNOWN) {
 		RPROXY("Home server %s port %d went from idle -> alive",
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port);
 	} else {
 		RPROXY("Marking home server %s port %d alive",
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port);
 	}
@@ -3770,7 +3770,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	home->num_received_pings = 0;
 
 	PROXY("Marking home server %s port %d as zombie (it has not responded in %d.%06d seconds).",
-	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
+	      inet_ntop(home->ipaddr.af, &home->ipaddr.addr,
 			buffer, sizeof(buffer)),
 	      home->port, (int) response_window->tv_sec, (int) response_window->tv_usec);
 
@@ -3784,7 +3784,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 	char buffer[INET6_ADDRSTRLEN];
 
 	PROXY("Marking home server %s port %d as dead",
-	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
+	      inet_ntop(home->ipaddr.af, &home->ipaddr.addr,
 			buffer, sizeof(buffer)),
 	      home->port);
 
@@ -3839,7 +3839,7 @@ void revive_home_server(UNUSED fr_event_list_t *eel, UNUSED struct timeval *now,
 	fr_event_timer_delete(el, &home->ev);
 
 	PROXY("Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
-	      inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer)),
+	      inet_ntop(home->ipaddr.af, &home->ipaddr.addr, buffer, sizeof(buffer)),
 	      home->port);
 }
 
@@ -3949,13 +3949,13 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 		       "server %s port %d",
 		       request->username->vp_strvalue,
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port);
 	} else {
 		RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port);
 	}
@@ -3994,7 +3994,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	if (fr_timeval_cmp(now, &when) < 0) {
 		DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d proto TCP - ID: %d",
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port,
 		       request->proxy->packet->id);
@@ -4015,7 +4015,7 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 
 	RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
 		inet_ntop(request->proxy->packet->dst_ipaddr.af,
-			  &request->proxy->packet->dst_ipaddr.ipaddr,
+			  &request->proxy->packet->dst_ipaddr.addr,
 			  buffer, sizeof(buffer)),
 		request->proxy->packet->dst_port,
 		request->proxy->packet->id);
@@ -4085,7 +4085,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 		if (home->proto == IPPROTO_TCP) {
 			DEBUG2("Suppressing duplicate proxied request (tcp) to home server %s port %d proto TCP - ID: %d",
 			       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-					 &request->proxy->packet->dst_ipaddr.ipaddr,
+					 &request->proxy->packet->dst_ipaddr.addr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->packet->dst_port,
 			       request->proxy->packet->id);
@@ -4170,11 +4170,11 @@ static void request_coa_originate(REQUEST *request)
 	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		ipaddr.af = AF_INET;
-		ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+		ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 		ipaddr.prefix = 32;
 	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL) {
 		ipaddr.af = AF_INET6;
-		ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
+		ipaddr.addr.v6 = vp->vp_ipv6addr;
 		ipaddr.prefix = 128;
 	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
@@ -4223,7 +4223,7 @@ static void request_coa_originate(REQUEST *request)
 		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
 		if (!coa->home_server) {
 			RWDEBUG2("Unknown destination %s:%d for CoA request",
-				 inet_ntop(ipaddr.af, &ipaddr.ipaddr,
+				 inet_ntop(ipaddr.af, &ipaddr.addr,
 					   buffer, sizeof(buffer)), port);
 			goto fail;
 		}
@@ -4430,7 +4430,7 @@ static bool coa_keep_waiting(REQUEST *request)
 		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
 		       request->proxy->packet->id,
 		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.ipaddr,
+				 &request->proxy->packet->dst_ipaddr.addr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->packet->dst_port);
 		return false;
@@ -4489,7 +4489,7 @@ static bool coa_keep_waiting(REQUEST *request)
 
 	RDEBUG2("Sending duplicate CoA request to home server %s port %d - ID: %d",
 		inet_ntop(request->proxy->packet->dst_ipaddr.af,
-			  &request->proxy->packet->dst_ipaddr.ipaddr,
+			  &request->proxy->packet->dst_ipaddr.addr,
 			  buffer, sizeof(buffer)),
 		request->proxy->packet->dst_port,
 		request->proxy->packet->id);
@@ -4621,7 +4621,7 @@ static void coa_no_reply(REQUEST *request, fr_state_action_t action)
 	case FR_ACTION_PROXY_REPLY: /* too late! */
 		RDEBUG2("Reply from CoA server %s port %d  - ID: %d arrived too late.",
 			inet_ntop(request->proxy->packet->src_ipaddr.af,
-				  &request->proxy->packet->src_ipaddr.ipaddr,
+				  &request->proxy->packet->src_ipaddr.addr,
 				  buffer, sizeof(buffer)),
 			request->proxy->packet->dst_port, request->proxy->packet->id);
 		break;

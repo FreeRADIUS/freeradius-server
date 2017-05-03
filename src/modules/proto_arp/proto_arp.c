@@ -252,7 +252,7 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client = &sock->client;
 	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
-	client->ipaddr.ipaddr.v4.s_addr = INADDR_NONE;
+	client->ipaddr.addr.v4.s_addr = INADDR_NONE;
 	client->ipaddr.prefix = 0;
 	client->longname = client->shortname = sock->lsock.interface;
 	client->secret = client->shortname;

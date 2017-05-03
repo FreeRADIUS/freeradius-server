@@ -513,7 +513,7 @@ void request_stats_reply(REQUEST *request)
 
 			if (server_port) {
 				ipaddr.af = AF_INET;
-				ipaddr.ipaddr.v4.s_addr = server_ip->vp_ipv4addr;
+				ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
 				cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
 
 				/*
@@ -529,7 +529,7 @@ void request_stats_reply(REQUEST *request)
 		if (vp) {
 			memset(&ipaddr, 0, sizeof(ipaddr));
 			ipaddr.af = AF_INET;
-			ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+			ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 			client = client_find(cl, &ipaddr, IPPROTO_UDP);
 #ifdef WITH_TCP
 			if (!client) {
@@ -562,7 +562,7 @@ void request_stats_reply(REQUEST *request)
 						       &request->reply->vps,
 						       PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, VENDORPEC_FREERADIUS);
 				if (vp) {
-					vp->vp_ipv4addr = client->ipaddr.ipaddr.v4.s_addr;
+					vp->vp_ipv4addr = client->ipaddr.addr.v4.s_addr;
 				}
 
 				if (client->ipaddr.prefix != 32) {
@@ -619,7 +619,7 @@ void request_stats_reply(REQUEST *request)
 		if (!server_port) return;
 
 		ipaddr.af = AF_INET;
-		ipaddr.ipaddr.v4.s_addr = server_ip->vp_ipv4addr;
+		ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
 		this = listener_find_byipaddr(&ipaddr,
 					      server_port->vp_integer,
 					      IPPROTO_UDP);
@@ -675,7 +675,7 @@ void request_stats_reply(REQUEST *request)
 		memset(&ipaddr, 0, sizeof(ipaddr));
 #endif
 		ipaddr.af = AF_INET;
-		ipaddr.ipaddr.v4.s_addr = server_ip->vp_ipv4addr;
+		ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
 		home = home_server_find(&ipaddr, server_port->vp_integer,
 					IPPROTO_UDP);
 

@@ -175,13 +175,13 @@ static RADIUS_PACKET *request_init(char const *filename)
 
 		case PW_PACKET_DST_IP_ADDRESS:
 			request->dst_ipaddr.af = AF_INET;
-			request->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+			request->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 			request->dst_ipaddr.prefix = 32;
 			break;
 
 		case PW_PACKET_DST_IPV6_ADDRESS:
 			request->dst_ipaddr.af = AF_INET6;
-			request->dst_ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
+			request->dst_ipaddr.addr.v6 = vp->vp_ipv6addr;
 			request->dst_ipaddr.prefix = 128;
 			break;
 
@@ -191,13 +191,13 @@ static RADIUS_PACKET *request_init(char const *filename)
 
 		case PW_PACKET_SRC_IP_ADDRESS:
 			request->src_ipaddr.af = AF_INET;
-			request->src_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+			request->src_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 			request->src_ipaddr.prefix = 32;
 			break;
 
 		case PW_PACKET_SRC_IPV6_ADDRESS:
 			request->src_ipaddr.af = AF_INET6;
-			request->src_ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
+			request->src_ipaddr.addr.v6 = vp->vp_ipv6addr;
 			request->src_ipaddr.prefix = 128;
 			break;
 
@@ -543,13 +543,13 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 	       packet->id,
 	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->src_ipaddr.af,
-			 &packet->src_ipaddr.ipaddr,
+			 &packet->src_ipaddr.addr,
 			 src_ipaddr, sizeof(src_ipaddr)),
 	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 	       packet->src_port,
 	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->dst_ipaddr.af,
-			 &packet->dst_ipaddr.ipaddr,
+			 &packet->dst_ipaddr.addr,
 			 dst_ipaddr, sizeof(dst_ipaddr)),
 	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 	       packet->dst_port,
@@ -709,7 +709,7 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
-		if (server_ipaddr.ipaddr.v4.s_addr == 0xFFFFFFFF) {
+		if (server_ipaddr.addr.v4.s_addr == 0xFFFFFFFF) {
 			ERROR("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
 			raw_mode = true;
 		}

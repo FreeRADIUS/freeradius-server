@@ -1951,7 +1951,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		dst->datum.ipaddr.s_addr = addr.ipaddr.v4.s_addr;
+		dst->datum.ipaddr.s_addr = addr.addr.v4.s_addr;
 	}
 		goto finish;
 
@@ -1962,7 +1962,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		if (fr_inet_pton4(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->datum.ipv4prefix[1] = addr.prefix;
-		memcpy(&dst->datum.ipv4prefix[2], &addr.ipaddr.v4.s_addr, sizeof(dst->datum.ipv4prefix) - 2);
+		memcpy(&dst->datum.ipv4prefix[2], &addr.addr.v4.s_addr, sizeof(dst->datum.ipv4prefix) - 2);
 	}
 		goto finish;
 
@@ -1982,7 +1982,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			return -1;
 		}
 
-		memcpy(&dst->datum.ipv6addr, addr.ipaddr.v6.s6_addr, sizeof(dst->datum.ipv6addr));
+		memcpy(&dst->datum.ipv6addr, addr.addr.v6.s6_addr, sizeof(dst->datum.ipv6addr));
 	}
 		goto finish;
 
@@ -1993,7 +1993,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		if (fr_inet_pton6(&addr, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->datum.ipv6prefix[1] = addr.prefix;
-		memcpy(&dst->datum.ipv6prefix[2], addr.ipaddr.v6.s6_addr, sizeof(dst->datum.ipv6prefix) - 2);
+		memcpy(&dst->datum.ipv6prefix[2], addr.addr.v6.s6_addr, sizeof(dst->datum.ipv6prefix) - 2);
 	}
 		goto finish;
 
@@ -2283,7 +2283,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 			}
 
 			*dst_type = PW_TYPE_IPV4_ADDR;
-			dst->datum.ipaddr.s_addr = ipaddr.ipaddr.v4.s_addr;
+			dst->datum.ipaddr.s_addr = ipaddr.addr.v4.s_addr;
 			ret = dict_attr_sizes[PW_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 		}
 	}

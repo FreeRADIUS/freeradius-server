@@ -405,7 +405,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 #ifdef WITH_TCP
 		       " proto %s"
 #endif
-		       , name, inet_ntop(ipaddr->af, &ipaddr->ipaddr,
+		       , name, inet_ntop(ipaddr->af, &ipaddr->addr,
 					 buffer, sizeof(buffer)), src_port
 #ifdef WITH_TCP
 		       , (sock->proto == IPPROTO_UDP) ? "udp" : "tcp"
@@ -1073,7 +1073,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 		ADDSTRING(") -> (");
 
 		if ((sock->my_ipaddr.af == AF_INET) &&
-		    (sock->my_ipaddr.ipaddr.v4.s_addr == htonl(INADDR_ANY))) {
+		    (sock->my_ipaddr.addr.v4.s_addr == htonl(INADDR_ANY))) {
 			strlcpy(buffer, "*", bufsize);
 		} else {
 			fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);
@@ -1110,7 +1110,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 		ADDSTRING(") -> home_server (");
 
 		if ((sock->other_ipaddr.af == AF_INET) &&
-		    (sock->other_ipaddr.ipaddr.v4.s_addr == htonl(INADDR_ANY))) {
+		    (sock->other_ipaddr.addr.v4.s_addr == htonl(INADDR_ANY))) {
 			strlcpy(buffer, "*", bufsize);
 		} else {
 			fr_inet_ntoh(&sock->other_ipaddr, buffer, bufsize);
@@ -1131,7 +1131,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 	ADDSTRING(" address ");
 
 	if ((sock->my_ipaddr.af == AF_INET) &&
-	    (sock->my_ipaddr.ipaddr.v4.s_addr == htonl(INADDR_ANY))) {
+	    (sock->my_ipaddr.addr.v4.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
 	} else {
 		fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);
@@ -1296,7 +1296,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Try IPv4 first
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
-	ipaddr.ipaddr.v4.s_addr = htonl(INADDR_NONE);
+	ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
 
 	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
@@ -1313,7 +1313,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		memset(&ipaddr, 0, sizeof(ipaddr));
 		ipaddr.af = AF_INET6;
 		ipaddr.prefix = 128;
-		ipaddr.ipaddr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
+		ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
 	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);

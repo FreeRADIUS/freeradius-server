@@ -743,7 +743,7 @@ open_file:
 	memset(packet, 0, sizeof(*packet));
 	packet->sockfd = -1;
 	packet->src_ipaddr.af = AF_INET;
-	packet->src_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_NONE);
+	packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
 
 	/*
 	 *	If everything's OK, this is a waste of memory.
@@ -769,13 +769,13 @@ open_file:
 	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_SRC_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		packet->src_ipaddr.af = AF_INET;
-		packet->src_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+		packet->src_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 		packet->src_ipaddr.prefix = 32;
 	} else {
 		vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_SRC_IPV6_ADDRESS, TAG_ANY);
 		if (vp) {
 			packet->src_ipaddr.af = AF_INET6;
-			memcpy(&packet->src_ipaddr.ipaddr.v6,
+			memcpy(&packet->src_ipaddr.addr.v6,
 			       &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 			packet->src_ipaddr.prefix = 128;
 		}
@@ -784,13 +784,13 @@ open_file:
 	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		packet->dst_ipaddr.af = AF_INET;
-		packet->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+		packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 		packet->dst_ipaddr.prefix = 32;
 	} else {
 		vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY);
 		if (vp) {
 			packet->dst_ipaddr.af = AF_INET6;
-			memcpy(&packet->dst_ipaddr.ipaddr.v6,
+			memcpy(&packet->dst_ipaddr.addr.v6,
 			       &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 			packet->dst_ipaddr.prefix = 128;
 		}
@@ -804,7 +804,7 @@ open_file:
 	packet->dst_port = 1024 + ((data->counter >> 16) & 0xff);
 
 	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.ipaddr.v4.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | ((data->counter >> 24) & 0xff));
+	packet->dst_ipaddr.addr.v4.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | ((data->counter >> 24) & 0xff));
 
 	/*
 	 *	Create / update accounting attributes.
@@ -1122,7 +1122,7 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client = &data->detail_client;
 	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
-	client->ipaddr.ipaddr.v4.s_addr = INADDR_NONE;
+	client->ipaddr.addr.v4.s_addr = INADDR_NONE;
 	client->ipaddr.prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;

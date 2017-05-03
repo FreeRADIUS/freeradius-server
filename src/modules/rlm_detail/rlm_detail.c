@@ -265,19 +265,19 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_SRC_IP_ADDRESS);
-			src_vp.vp_ipv4addr = packet->src_ipaddr.ipaddr.v4.s_addr;
+			src_vp.vp_ipv4addr = packet->src_ipaddr.addr.v4.s_addr;
 
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_DST_IP_ADDRESS);
-			dst_vp.vp_ipv4addr = packet->dst_ipaddr.ipaddr.v4.s_addr;
+			dst_vp.vp_ipv4addr = packet->dst_ipaddr.addr.v4.s_addr;
 			break;
 
 		case AF_INET6:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_SRC_IPV6_ADDRESS);
-			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.ipaddr.v6,
-			       sizeof(packet->src_ipaddr.ipaddr.v6));
+			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.addr.v6,
+			       sizeof(packet->src_ipaddr.addr.v6));
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_DST_IPV6_ADDRESS);
-			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.ipaddr.v6,
-			       sizeof(packet->dst_ipaddr.ipaddr.v6));
+			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.addr.v6,
+			       sizeof(packet->dst_ipaddr.addr.v6));
 			break;
 
 		default:
@@ -329,7 +329,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		if (request->proxy) {
 			char proxy_buffer[INET6_ADDRSTRLEN];
 
-			inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.ipaddr,
+			inet_ntop(request->proxy->packet->dst_ipaddr.af, &request->proxy->packet->dst_ipaddr.addr,
 				  proxy_buffer, sizeof(proxy_buffer));
 			WRITE("\tFreeradius-Proxied-To = %s\n", proxy_buffer);
 		}

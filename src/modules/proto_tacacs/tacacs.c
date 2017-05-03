@@ -775,7 +775,7 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 
 		if (packet->src_ipaddr.af != AF_UNSPEC) {
 			inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.ipaddr,
+				  &packet->src_ipaddr.addr,
 				  ip_buf, sizeof(ip_buf));
 			snprintf(buffer, sizeof(buffer), "host %s port %d",
 				 ip_buf, packet->src_port);

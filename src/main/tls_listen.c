@@ -270,14 +270,14 @@ static int tls_socket_recv(rad_listen_t *listener)
 			RDEBUG("tls_recv: %s packet from host %s port %d, id=%d, length=%d",
 			       fr_packet_codes[packet->code],
 			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
+					 &packet->src_ipaddr.addr,
 					 host_ipaddr, sizeof(host_ipaddr)),
 			       packet->src_port,
 			       packet->id, (int) packet->data_len);
 		} else {
 			RDEBUG("tls_recv: Packet from host %s port %d code=%d, id=%d, length=%d",
 			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
+					 &packet->src_ipaddr.addr,
 					 host_ipaddr, sizeof(host_ipaddr)),
 			       packet->src_port,
 			       packet->code,

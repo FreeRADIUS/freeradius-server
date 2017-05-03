@@ -538,7 +538,7 @@ bool realm_home_server_add(home_server_t *home)
 	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
 		char buffer[INET6_ADDRSTRLEN];
 
-		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
+		inet_ntop(home->ipaddr.af, &home->ipaddr.addr, buffer, sizeof(buffer));
 
 		cf_log_err_cs(home->cs, "Duplicate home server address%s%s%s: %s:%s%s/%i",
 			      home->name ? " (already in use by " : "",
@@ -2445,13 +2445,13 @@ home_server_t *home_server_ldb(char const *realmname,
 	case HOME_POOL_CLIENT_BALANCE:
 		switch (request->packet->src_ipaddr.af) {
 		case AF_INET:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v4,
-					 sizeof(request->packet->src_ipaddr.ipaddr.v4));
+			hash = fr_hash(&request->packet->src_ipaddr.addr.v4,
+					 sizeof(request->packet->src_ipaddr.addr.v4));
 			break;
 
 		case AF_INET6:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v6,
-					 sizeof(request->packet->src_ipaddr.ipaddr.v6));
+			hash = fr_hash(&request->packet->src_ipaddr.addr.v6,
+					 sizeof(request->packet->src_ipaddr.addr.v6));
 			break;
 
 		default:
@@ -2464,13 +2464,13 @@ home_server_t *home_server_ldb(char const *realmname,
 	case HOME_POOL_CLIENT_PORT_BALANCE:
 		switch (request->packet->src_ipaddr.af) {
 		case AF_INET:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v4,
-					 sizeof(request->packet->src_ipaddr.ipaddr.v4));
+			hash = fr_hash(&request->packet->src_ipaddr.addr.v4,
+					 sizeof(request->packet->src_ipaddr.addr.v4));
 			break;
 
 		case AF_INET6:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v6,
-					 sizeof(request->packet->src_ipaddr.ipaddr.v6));
+			hash = fr_hash(&request->packet->src_ipaddr.addr.v6,
+					 sizeof(request->packet->src_ipaddr.addr.v6));
 			break;
 
 		default:

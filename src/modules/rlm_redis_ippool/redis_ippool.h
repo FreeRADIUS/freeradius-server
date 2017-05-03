@@ -117,7 +117,7 @@ do { \
 #define IPPOOL_SPRINT_IP(_buff, _ip, _prefix) \
 do { \
 	if (_prefix == IPADDR_LEN((_ip)->af)) { \
-		inet_ntop((_ip)->af, &((_ip)->ipaddr), _buff, sizeof(_buff)); \
+		inet_ntop((_ip)->af, &((_ip)->addr), _buff, sizeof(_buff)); \
 	} else { \
 		uint8_t _net = (_ip)->prefix; \
 		(_ip)->prefix = _prefix; \
