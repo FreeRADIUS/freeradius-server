@@ -130,7 +130,6 @@ src/include/radpaths.h: src/include/build-radpaths-h
 src/freeradius-devel:
 	${Q}[ -e $@ ] || ln -s include $@
 	@echo LN-SF src/util src/include
-	@ln -sf ${top_srcdir}/src/util ${top_srcdir}/src/include/
 
 #
 #  Ensure we set up the build environment
