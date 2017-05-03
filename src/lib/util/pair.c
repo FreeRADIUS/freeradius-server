@@ -563,45 +563,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	}
 
 	/*
-	 *	We allow this for stupidity, but it's really a bad idea.
-	 */
-	if (vp->vp_type == PW_TYPE_TLV) {
-		ssize_t			len;
-		VALUE_PAIR		*head = NULL;
-		PW_TYPE			type = PW_TYPE_OCTETS;
-		vp_cursor_t		cursor;
-
-		if (!value) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		if (value_box_from_str(vp, &vp->data, &type, NULL, value, -1, '\0') < 0) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		/*
-		 *	It's badly formatted, then we fail.
-		 */
-		if (fr_radius_decode_tlv_ok(vp->vp_octets, vp->vp_length, 1, 1) < 0) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		fr_pair_cursor_init(&cursor, &head);
-		/*
-		 *	Decode the TLVs
-		 */
-		len = fr_radius_decode_tlv(ctx, &cursor, vp->da, vp->vp_octets, vp->vp_length, NULL);
-		if (len < 0) goto do_add;
-
-		talloc_free(vp);
-		vp = head;
-		goto do_add;
-	}
-
-	/*
 	 *	We probably want to fix fr_pair_value_from_str to accept
 	 *	octets as values for any attribute.
 	 */
@@ -610,7 +571,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		return NULL;
 	}
 
-do_add:
 	if (vps) fr_pair_add(vps, vp);
 	return vp;
 }
