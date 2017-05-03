@@ -93,7 +93,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Conflicts: libfreeradius3
 Description: FreeRADIUS shared library
- The FreeRADIUS projects' libfreeradius-util and libfreeradius-eap, used by
+ The FreeRADIUS projects' libfreeradius-util, libfreeradius-radius and libfreeradius-eap, used by
  the FreeRADIUS server and some of the utilities.
 
 Package: libfreeradius-dev

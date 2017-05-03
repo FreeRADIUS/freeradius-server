@@ -630,10 +630,10 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
 
 		/*
-	 	 *	We can encode multiple sub TLVs, if after
-	 	 *	rebuilding the TLV Stack, the attribute
-	 	 *	at this depth is the same.
-	 	 */
+		 *	We can encode multiple sub TLVs, if after
+		 *	rebuilding the TLV Stack, the attribute
+		 *	at this depth is the same.
+		 */
 		if (da != tlv_stack[depth]) break;
 		vp = fr_pair_cursor_current(cursor);
 
@@ -1705,4 +1705,3 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 
 	return ret;
 }
-

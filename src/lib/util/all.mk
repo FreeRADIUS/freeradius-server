@@ -31,10 +31,6 @@ SOURCES		:= base64.c \
 		   pcap.c \
 		   print.c \
 		   proto.c \
-		   radius.c \
-		   radius_packet.c \
-		   radius_encode.c \
-		   radius_decode.c \
 		   rand.c \
 		   rbtree.c \
 		   regex.c \
@@ -51,8 +47,7 @@ SOURCES		:= base64.c \
 		   udpfromto.c \
 		   udp.c \
 		   value.c \
-		   version.c \
-		   packet.c
+		   version.c
 
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 

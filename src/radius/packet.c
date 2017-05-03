@@ -1019,4 +1019,3 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 		        packet->data_len);
 	}
 }
-
