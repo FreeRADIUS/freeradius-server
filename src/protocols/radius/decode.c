@@ -915,7 +915,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	VALUE_PAIR		*vp;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
-	fr_radius_ctx_t		*this = decoder_ctx;
+	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
 
 	if (!parent || (attr_len > packet_len) || (attr_len > 128 * 1024)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -966,7 +966,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (this && this->secret && this->packet && (parent->flags.encrypt != FLAG_ENCRYPT_NONE)) {
+	if (packet_ctx && (parent->flags.encrypt != FLAG_ENCRYPT_NONE)) {
 		FR_PROTO_TRACE("Decrypting type %u", parent->flags.encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
@@ -983,12 +983,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *  User-Password
 		 */
 		case FLAG_ENCRYPT_USER_PASSWORD:
-			if (this->original) {
+			if (packet_ctx->original) {
 				fr_radius_decode_password((char *)buffer, attr_len,
-							  this->secret, this->original->vector);
+							  packet_ctx->secret, packet_ctx->original->vector);
 			} else {
 				fr_radius_decode_password((char *)buffer, attr_len,
-							  this->secret, this->packet->vector);
+							  packet_ctx->secret, packet_ctx->packet->vector);
 			}
 			buffer[253] = '\0';
 
@@ -1022,8 +1022,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *	not the same as attrlen.
 		 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (fr_radius_decode_tunnel_password(buffer, &data_len, this->secret,
-							     this->original ? this->original->vector : nullvector) < 0) {
+			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx->secret,
+							     packet_ctx->original ? packet_ctx->original->vector : nullvector) < 0) {
 				goto raw;
 			}
 			break;
@@ -1033,9 +1033,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *	Ascend-Receive-Secret
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
-			if (!this->original) goto raw;
+			if (!packet_ctx->original) goto raw;
 
-			fr_radius_ascend_secret(buffer, this->original->vector, this->secret, p);
+			fr_radius_ascend_secret(buffer, packet_ctx->original->vector, packet_ctx->secret, p);
 			buffer[AUTH_VECTOR_LEN] = '\0';
 			data_len = strlen((char *) buffer);
 			break;
