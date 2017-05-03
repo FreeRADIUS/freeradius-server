@@ -521,7 +521,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 
 	/* get client ip address for MPP detection below */
 	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
-		client_ip_addr = vp->vp_ipaddr;
+		client_ip_addr = vp->vp_ipv4addr;
 	}
 
 	/* get calling station id for MPP detection below */

@@ -404,8 +404,8 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 		rad_assert((prefix > 0) && (prefix <= 128));
 
 		/* Don't be tempted to cast */
-		memcpy(&ip_curr, ipaddr->ipaddr.ip6addr.s6_addr, sizeof(ip_curr));
-		memcpy(&ip_end, end->ipaddr.ip6addr.s6_addr, sizeof(ip_curr));
+		memcpy(&ip_curr, ipaddr->ipaddr.v6.s6_addr, sizeof(ip_curr));
+		memcpy(&ip_end, end->ipaddr.v6.s6_addr, sizeof(ip_curr));
 
 		ip_curr = ntohlll(ip_curr);
 		ip_end = ntohlll(ip_end);
@@ -416,7 +416,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 		/* Increment the prefix */
 		ip_curr = uint128_add(ip_curr, uint128_lshift(uint128_new(0, 1), (128 - prefix)));
 		ip_curr = htonlll(ip_curr);
-		memcpy(&ipaddr->ipaddr.ip6addr.s6_addr, &ip_curr, sizeof(ipaddr->ipaddr.ip6addr.s6_addr));
+		memcpy(&ipaddr->ipaddr.v6.s6_addr, &ip_curr, sizeof(ipaddr->ipaddr.v6.s6_addr));
 		return true;
 	}
 
@@ -426,15 +426,15 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 
 		rad_assert((prefix > 0) && (prefix <= 32));
 
-		ip_curr = ntohl(ipaddr->ipaddr.ip4addr.s_addr);
-		ip_end = ntohl(end->ipaddr.ip4addr.s_addr);
+		ip_curr = ntohl(ipaddr->ipaddr.v4.s_addr);
+		ip_end = ntohl(end->ipaddr.v4.s_addr);
 
 		/* We're done */
 		if (ip_curr == ip_end) return false;
 
 		/* Increment the prefix */
 		ip_curr += 1 << (32 - prefix);
-		ipaddr->ipaddr.ip4addr.s_addr = htonl(ip_curr);
+		ipaddr->ipaddr.v4.s_addr = htonl(ip_curr);
 		return true;
 	}
 	}
@@ -1230,8 +1230,8 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		if (start.af == AF_INET6) {
 			uint128_t start_int, end_int;
 
-			memcpy(&start_int, start.ipaddr.ip6addr.s6_addr, sizeof(start_int));
-			memcpy(&end_int, end.ipaddr.ip6addr.s6_addr, sizeof(end_int));
+			memcpy(&start_int, start.ipaddr.v6.s6_addr, sizeof(start_int));
+			memcpy(&end_int, end.ipaddr.v6.s6_addr, sizeof(end_int));
 			if (uint128_gt(ntohlll(start_int), ntohlll(end_int))) {
 				ERROR("End address must be greater than or equal to start address");
 				return -1;
@@ -1240,8 +1240,8 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		 *	IPv4 addresses
 		 */
 		} else {
-			if (ntohl((uint32_t)(start.ipaddr.ip4addr.s_addr)) >
-			    ntohl((uint32_t)(end.ipaddr.ip4addr.s_addr))) {
+			if (ntohl((uint32_t)(start.ipaddr.v4.s_addr)) >
+			    ntohl((uint32_t)(end.ipaddr.v4.s_addr))) {
 			 	ERROR("End address must be greater than or equal to start address");
 			 	return -1;
 			}
@@ -1309,7 +1309,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		if (!rad_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
 
 		/* Don't be tempted to cast */
-		memcpy(&ip, start.ipaddr.ip6addr.s6_addr, sizeof(ip));
+		memcpy(&ip, start.ipaddr.v6.s6_addr, sizeof(ip));
 		ip = ntohlll(ip);
 
 		/* Generate a mask that covers the prefix bits, and sets them high */
@@ -1318,21 +1318,21 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 
 		/* Decrement by one */
 		if (ex_broadcast) ip = uint128_sub(ip, uint128_new(0, 1));
-		memcpy(&end.ipaddr.ip6addr.s6_addr, &ip, sizeof(end.ipaddr.ip6addr.s6_addr));
+		memcpy(&end.ipaddr.v6.s6_addr, &ip, sizeof(end.ipaddr.v6.s6_addr));
 	} else {
 		uint32_t ip;
 
 		/* cond assert to satisfy clang scan */
 		if (!rad_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
 
-		ip = ntohl(start.ipaddr.ip4addr.s_addr);
+		ip = ntohl(start.ipaddr.v4.s_addr);
 
 		/* Generate a mask that covers the prefix bits and sets them high */
 		ip |= uint32_gen_mask(prefix - start.prefix) << (32 - prefix);
 
 		/* Decrement by one */
 		if (ex_broadcast) ip--;
-		end.ipaddr.ip4addr.s_addr = htonl(ip);
+		end.ipaddr.v4.s_addr = htonl(ip);
 	}
 
 	*start_out = start;

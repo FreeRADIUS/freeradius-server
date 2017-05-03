@@ -2989,11 +2989,11 @@ static int request_will_proxy(REQUEST *request)
 
 		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
 			dst_ipaddr.af = AF_INET;
-			dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 			dst_ipaddr.prefix = 32;
 		} else {
 			dst_ipaddr.af = AF_INET6;
-			memcpy(&dst_ipaddr.ipaddr.ip6addr, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+			memcpy(&dst_ipaddr.ipaddr.v6, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 			dst_ipaddr.prefix = 128;
 		}
 
@@ -4170,11 +4170,11 @@ static void request_coa_originate(REQUEST *request)
 	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		ipaddr.af = AF_INET;
-		ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 		ipaddr.prefix = 32;
 	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL) {
 		ipaddr.af = AF_INET6;
-		ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+		ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
 		ipaddr.prefix = 128;
 	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,

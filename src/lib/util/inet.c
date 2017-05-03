@@ -92,11 +92,11 @@ void fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix)
 
 	switch (addr->af) {
 	case AF_INET:
-		addr->ipaddr.ip4addr = fr_inaddr_mask(&addr->ipaddr.ip4addr, prefix);
+		addr->ipaddr.v4 = fr_inaddr_mask(&addr->ipaddr.v4, prefix);
 		break;
 
 	case AF_INET6:
-		addr->ipaddr.ip6addr = fr_in6addr_mask(&addr->ipaddr.ip6addr, prefix);
+		addr->ipaddr.v6 = fr_in6addr_mask(&addr->ipaddr.v6, prefix);
 		break;
 
 	default:
@@ -379,7 +379,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 *	Allow '*' as the wildcard address usually 0.0.0.0
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
-			out->ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+			out->ipaddr.v4.s_addr = htonl(INADDR_ANY);
 
 		/*
 		 *	Convert things which are obviously integers to IP addresses
@@ -388,10 +388,10 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 *	IP address.
 		 */
 		} else if (is_integer(value) || ((value[0] == '0') && (value[1] == 'x'))) {
-			out->ipaddr.ip4addr.s_addr = htonl(strtoul(value, NULL, 0));
+			out->ipaddr.v4.s_addr = htonl(strtoul(value, NULL, 0));
 
 		} else if (!resolve) {
-			if (inet_pton(AF_INET, value, &out->ipaddr.ip4addr.s_addr) <= 0) {
+			if (inet_pton(AF_INET, value, &out->ipaddr.v4.s_addr) <= 0) {
 				fr_strerror_printf("Failed to parse IPv4 addreess string \"%s\"", value);
 				return -1;
 			}
@@ -422,7 +422,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 *
 	 *	@todo we should allow hostnames to be parsed as prefixes.
 	 */
-	if (ip_prefix_addr_from_str(&out->ipaddr.ip4addr, buffer) <= 0) {
+	if (ip_prefix_addr_from_str(&out->ipaddr.v4, buffer) <= 0) {
 		fr_strerror_printf("Failed to parse IPv4 prefix string \"%s\"", value);
 		return -1;
 	}
@@ -440,7 +440,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	}
 
 	if (mask_bits && (mask < 32)) {
-		out->ipaddr.ip4addr = fr_inaddr_mask(&out->ipaddr.ip4addr, mask);
+		out->ipaddr.v4 = fr_inaddr_mask(&out->ipaddr.v4, mask);
 	}
 
 	out->prefix = (uint8_t) mask;
@@ -491,9 +491,9 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 *	Allow '*' as the wildcard address
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
-			memset(out->ipaddr.ip6addr.s6_addr, 0, sizeof(out->ipaddr.ip6addr.s6_addr));
+			memset(out->ipaddr.v6.s6_addr, 0, sizeof(out->ipaddr.v6.s6_addr));
 		} else if (!resolve) {
-			if (inet_pton(AF_INET6, value, out->ipaddr.ip6addr.s6_addr) <= 0) {
+			if (inet_pton(AF_INET6, value, out->ipaddr.v6.s6_addr) <= 0) {
 				fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 				return -1;
 			}
@@ -514,7 +514,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
-		if (inet_pton(AF_INET6, buffer, out->ipaddr.ip6addr.s6_addr) <= 0) {
+		if (inet_pton(AF_INET6, buffer, out->ipaddr.v6.s6_addr) <= 0) {
 			fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 			return -1;
 		}
@@ -534,8 +534,8 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	if (mask && (prefix < 128)) {
 		struct in6_addr addr;
 
-		addr = fr_in6addr_mask(&out->ipaddr.ip6addr, prefix);
-		memcpy(out->ipaddr.ip6addr.s6_addr, addr.s6_addr, sizeof(out->ipaddr.ip6addr.s6_addr));
+		addr = fr_in6addr_mask(&out->ipaddr.v6, prefix);
+		memcpy(out->ipaddr.v6.s6_addr, addr.s6_addr, sizeof(out->ipaddr.v6.s6_addr));
 	}
 
 	out->prefix = (uint8_t) prefix;
@@ -1041,18 +1041,18 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 	switch (a->af) {
 	case AF_INET:
-		return memcmp(&a->ipaddr.ip4addr,
-			      &b->ipaddr.ip4addr,
-			      sizeof(a->ipaddr.ip4addr));
+		return memcmp(&a->ipaddr.v4,
+			      &b->ipaddr.v4,
+			      sizeof(a->ipaddr.v4));
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
 		if (a->zone_id < b->zone_id) return -1;
 		if (a->zone_id > b->zone_id) return +1;
 
-		return memcmp(&a->ipaddr.ip6addr,
-			      &b->ipaddr.ip6addr,
-			      sizeof(a->ipaddr.ip6addr));
+		return memcmp(&a->ipaddr.v6,
+			      &b->ipaddr.v6,
+			      sizeof(a->ipaddr.v6));
 #endif
 
 	default:
@@ -1074,7 +1074,7 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 
 		memset(&s4, 0, sizeof(s4));
 		s4.sin_family = AF_INET;
-		s4.sin_addr = ipaddr->ipaddr.ip4addr;
+		s4.sin_addr = ipaddr->ipaddr.v4;
 		s4.sin_port = htons(port);
 		memset(sa, 0, sizeof(*sa));
 		memcpy(sa, &s4, sizeof(s4));
@@ -1087,7 +1087,7 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 
 		memset(&s6, 0, sizeof(s6));
 		s6.sin6_family = AF_INET6;
-		s6.sin6_addr = ipaddr->ipaddr.ip6addr;
+		s6.sin6_addr = ipaddr->ipaddr.v6;
 		s6.sin6_port = htons(port);
 		s6.sin6_scope_id = ipaddr->zone_id;
 		memset(sa, 0, sizeof(*sa));
@@ -1116,7 +1116,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		memcpy(&s4, sa, sizeof(s4));
 		ipaddr->af = AF_INET;
 		ipaddr->prefix = 32;
-		ipaddr->ipaddr.ip4addr = s4.sin_addr;
+		ipaddr->ipaddr.v4 = s4.sin_addr;
 		if (port) *port = ntohs(s4.sin_port);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
@@ -1131,7 +1131,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		memcpy(&s6, sa, sizeof(s6));
 		ipaddr->af = AF_INET6;
 		ipaddr->prefix = 128;
-		ipaddr->ipaddr.ip6addr = s6.sin6_addr;
+		ipaddr->ipaddr.v6 = s6.sin6_addr;
 		if (port) *port = ntohs(s6.sin6_port);
 		ipaddr->zone_id = s6.sin6_scope_id;
 #endif

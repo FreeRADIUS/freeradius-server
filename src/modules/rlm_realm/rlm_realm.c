@@ -298,7 +298,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 
 		my_ipaddr.af = AF_INET;
 		my_ipaddr.prefix = 32;
-		my_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		my_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 
 		/*
 		 *	Loop over the home accounting servers for this

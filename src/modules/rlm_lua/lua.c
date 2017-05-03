@@ -123,7 +123,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 
 		case PW_TYPE_IPV4_ADDR:
 		case PW_TYPE_COMBO_IP_ADDR:
-			vp->vp_ipaddr = (uint32_t) lua_tointeger(L, -1);
+			vp->vp_ipv4addr = (uint32_t) lua_tointeger(L, -1);
 			vp->vp_length = 4;
 			break;
 

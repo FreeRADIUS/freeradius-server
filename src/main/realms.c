@@ -2445,13 +2445,13 @@ home_server_t *home_server_ldb(char const *realmname,
 	case HOME_POOL_CLIENT_BALANCE:
 		switch (request->packet->src_ipaddr.af) {
 		case AF_INET:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
-					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v4,
+					 sizeof(request->packet->src_ipaddr.ipaddr.v4));
 			break;
 
 		case AF_INET6:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
-					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v6,
+					 sizeof(request->packet->src_ipaddr.ipaddr.v6));
 			break;
 
 		default:
@@ -2464,13 +2464,13 @@ home_server_t *home_server_ldb(char const *realmname,
 	case HOME_POOL_CLIENT_PORT_BALANCE:
 		switch (request->packet->src_ipaddr.af) {
 		case AF_INET:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
-					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v4,
+					 sizeof(request->packet->src_ipaddr.ipaddr.v4));
 			break;
 
 		case AF_INET6:
-			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
-					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.v6,
+					 sizeof(request->packet->src_ipaddr.ipaddr.v6));
 			break;
 
 		default:

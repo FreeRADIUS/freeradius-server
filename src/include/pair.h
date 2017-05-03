@@ -182,7 +182,7 @@ typedef struct value_pair_raw {
 
 #define vp_strvalue	data.datum.strvalue
 #define vp_integer	data.datum.integer
-#define vp_ipaddr	data.datum.ipaddr.s_addr
+#define vp_ipv4addr	data.datum.ipaddr.s_addr
 #define vp_date		data.datum.date
 #define vp_filter	data.datum.filter
 #define vp_octets	data.datum.octets

@@ -91,7 +91,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 * It's invalid to have giaddr=0 AND a relay option
 	 */
 	giaddr = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	if (giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY)) &&
+	if (giaddr && (giaddr->vp_ipv4addr == htonl(INADDR_ANY)) &&
 			fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 82, TAG_ANY)) { /* DHCP-Relay-Agent-Information */
 		RDEBUG2("Received packet with giaddr = 0 and containing relay option: Discarding packet");
 		return 1;
@@ -123,7 +123,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 */
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.my_ipaddr.ipaddr.ip4addr.s_addr;
+	request->packet->src_ipaddr.ipaddr.v4.s_addr = sock->lsock.my_ipaddr.ipaddr.v4.s_addr;
 	request->packet->src_port = sock->lsock.my_port;
 
 	vp = fr_pair_find_by_num(request->control, DHCP_MAGIC_VENDOR, 270, TAG_ANY); /* DHCP-Relay-To-IP-Address */
@@ -131,7 +131,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 
 	/* set DEST ipaddr/port to the next server ipaddr/port */
 	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	request->packet->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 	request->packet->dst_port = sock->lsock.my_port;
 
 	/*
@@ -173,9 +173,9 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	giaddr = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY); /* DHCP-Gateway-IP-Address */
 
 	/* --with-udpfromto is needed just for the following test */
-	if (!giaddr || giaddr->vp_ipaddr != request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr) {
+	if (!giaddr || giaddr->vp_ipv4addr != request->packet->dst_ipaddr.ipaddr.v4.s_addr) {
 		RDEBUG2("Packet received from server was not for us (was for 0x%x). Discarding packet",
-			ntohl(request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
+			ntohl(request->packet->dst_ipaddr.ipaddr.v4.s_addr));
 		return 1;
 	}
 
@@ -189,7 +189,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	/*
 	 *	We're a relay, and send the reply to giaddr.
 	 */
-	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = giaddr->vp_ipaddr;
+	request->reply->dst_ipaddr.ipaddr.v4.s_addr = giaddr->vp_ipv4addr;
 	request->reply->dst_port = request->packet->dst_port;		/* server port */
 
 	if ((request->packet->code == PW_DHCP_NAK) ||
@@ -197,7 +197,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	    ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) /* DHCP-Flags */ &&
 	     (vp->vp_integer & 0x8000) &&
 	     ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
-	      (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
+	      (vp->vp_ipv4addr == htonl(INADDR_ANY))))) {
 		/*
 		 * RFC 2131, page 23
 		 *
@@ -207,7 +207,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		 * - Broadcast flag is set up and ciaddr == NULL
 		 */
 		RDEBUG2("Response will be broadcast");
-		request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+		request->packet->dst_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_BROADCAST);
 	} else {
 		/*
 		 * RFC 2131, page 23
@@ -217,8 +217,8 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		 * otherwise to yiaddr
 		 */
 		if ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
-		    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
-			request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		    (vp->vp_ipv4addr != htonl(INADDR_ANY))) {
+			request->packet->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 		} else {
 			vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-Address */
 			if (!vp) {
@@ -227,7 +227,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 			}
 
 			RDEBUG2("Response will be unicast to &DHCP-Your-IP-Address");
-			request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			request->packet->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 
 			/*
 			 * When sending a DHCP_OFFER, make sure our ARP table
@@ -304,13 +304,13 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	to send the reply.
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+	if (vp && (vp->vp_ipv4addr != htonl(INADDR_ANY))) {
 		VALUE_PAIR *relay;
 
 		/* DHCP-Relay-IP-Address */
 		relay = radius_pair_create(request->reply, &request->reply->vps,
 					  272, DHCP_MAGIC_VENDOR);
-		if (relay) relay->vp_ipaddr = vp->vp_ipaddr;
+		if (relay) relay->vp_ipv4addr = vp->vp_ipv4addr;
 	}
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
@@ -482,21 +482,21 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_SRC_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		request->reply->if_index = 0;	/* Must be 0, we don't know the outbound if_index */
-		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->src_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 	/*
 	 *	The request was unicast (via a relay)
 	 */
-	} else if (request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_BROADCAST) &&
-		   request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
-		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+	} else if (request->packet->dst_ipaddr.ipaddr.v4.s_addr != htonl(INADDR_BROADCAST) &&
+		   request->packet->dst_ipaddr.ipaddr.v4.s_addr != htonl(INADDR_ANY)) {
+		request->reply->src_ipaddr.ipaddr.v4.s_addr = request->packet->dst_ipaddr.ipaddr.v4.s_addr;
 		request->reply->if_index = request->packet->if_index;
 	/*
 	 *	The listener was bound to an IP address, or we determined
 	 *	the address automatically, as it was the only address bound
 	 *	to the interface, and we bound to the interface.
 	 */
-	} else if (sock->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
-		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
+	} else if (sock->src_ipaddr.ipaddr.v4.s_addr != htonl(INADDR_ANY)) {
+		request->reply->src_ipaddr.ipaddr.v4.s_addr = sock->src_ipaddr.ipaddr.v4.s_addr;
 #ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 	/*
 	 *	We built with udpfromto and have the if_index of the receiving
@@ -510,13 +510,13 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 			RPEDEBUG("Failed determining src_ipaddr from if_index");
 			return RLM_MODULE_FAIL;
 		}
-		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = primary.ipaddr.ip4addr.s_addr;
+		request->reply->src_ipaddr.ipaddr.v4.s_addr = primary.ipaddr.v4.s_addr;
 #endif
 	/*
 	 *	There's a Server-Identification attribute
 	 */
 	} else if ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 54, TAG_ANY))) {
-		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->src_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 	} else {
 		REDEBUG("Unable to determine correct src_ipaddr for response");
 		return RLM_MODULE_FAIL;
@@ -532,9 +532,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	public IP, but the gateway a private one.
 	 */
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 272, TAG_ANY); /* DHCP-Relay-IP-Address */
-	if (vp && (vp->vp_ipaddr != ntohl(INADDR_ANY))) {
+	if (vp && (vp->vp_ipv4addr != ntohl(INADDR_ANY))) {
 		RDEBUG2("Reply will be unicast to giaddr from original packet");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 		request->reply->dst_port = request->packet->dst_port;
 
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_DST_PORT, TAG_ANY);
@@ -553,9 +553,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	not the client port.
 	 */
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+	if (vp && (vp->vp_ipv4addr != htonl(INADDR_ANY))) {
 		RDEBUG2("Reply will be unicast to giaddr");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 		request->reply->dst_port = request->packet->dst_port;
 		return RLM_MODULE_OK;
 	}
@@ -568,7 +568,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	    ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) && /* DHCP-Flags */
 	     (vp->vp_integer & 0x8000) &&
 	     ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) && /* DHCP-Client-IP-Address */
-	      (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
+	      (vp->vp_ipv4addr == htonl(INADDR_ANY))))) {
 		/*
 		 * RFC 2131, page 23
 		 *
@@ -578,7 +578,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 		 * - Broadcast flag is set up and ciaddr == NULL
 		 */
 		RDEBUG2("Reply will be broadcast");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_BROADCAST);
 		return RLM_MODULE_OK;
 	}
 
@@ -588,9 +588,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	Unicast to ciaddr if present, otherwise to yiaddr.
 	 */
 	if ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) && /* DHCP-Client-IP-Address */
-	    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+	    (vp->vp_ipv4addr != htonl(INADDR_ANY))) {
 		RDEBUG2("Reply will be sent unicast to &DHCP-Client-IP-Address");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 		return RLM_MODULE_OK;
 	}
 
@@ -619,12 +619,12 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	if (sock->lsock.broadcast && !sock->src_interface) {
 		WARN("You MUST set \"interface\" if you have \"broadcast = yes\"");
 		RDEBUG2("Reply will be broadcast as no interface was defined");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_BROADCAST);
 		return RLM_MODULE_OK;
 	}
 
 	RDEBUG2("Reply will be unicast to &DHCP-Your-IP-Address");
-	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	request->reply->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 
 	/*
 	 *	When sending a DHCP_OFFER, make sure our ARP table
@@ -646,12 +646,12 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 		}
 	}
 #else
-	if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != ntohl(INADDR_NONE)) {
+	if (request->packet->src_ipaddr.ipaddr.v4.s_addr != ntohl(INADDR_NONE)) {
 		RDEBUG2("Reply will be unicast to the unicast source IP address");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = request->packet->src_ipaddr.ipaddr.v4.s_addr;
 	} else {
 		RDEBUG2("Reply will be broadcast as this system does not support ARP updates");
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+		request->reply->dst_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_BROADCAST);
 	}
 #endif
 
@@ -759,7 +759,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	cp = cf_pair_find(cs, "src_ipaddr");
 	if (cp) {
 		memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
-		sock->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+		sock->src_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_NONE);
 		rcode = cf_pair_parse(sock, cs, "src_ipaddr",
 				      FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &sock->src_ipaddr), NULL, T_INVALID);
 		if (rcode < 0) return -1;
@@ -779,7 +779,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				WARN("Will continue, but source address must be set within the DHCP virtual server");
 				goto src_addr_is_bound_addr;
 			}
-			inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr.ipaddr.ip4addr.s_addr, buffer, sizeof(buffer));
+			inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr.ipaddr.v4.s_addr, buffer, sizeof(buffer));
 			rad_assert(sock->src_ipaddr.af == AF_INET);
 		} else {
 		src_addr_is_bound_addr:
@@ -796,7 +796,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			 *	This lets %{config:} work as expected, if we want to set
 			 *	DHCP-DHCP-Server-Identifier.
 			 */
-			inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr.ipaddr.ip4addr.s_addr, buffer, sizeof(buffer));
+			inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr.ipaddr.v4.s_addr, buffer, sizeof(buffer));
 			DEBUG2("\tsrc_ipaddr = \"%s\"", buffer);
 			cp = cf_pair_alloc(cs, "src_ipaddr", buffer, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			if (!cp) return -1;
@@ -810,7 +810,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client = &sock->dhcp_client;
 	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
-	client->ipaddr.ipaddr.ip4addr.s_addr = ntohl(INADDR_NONE);
+	client->ipaddr.ipaddr.v4.s_addr = ntohl(INADDR_NONE);
 	client->ipaddr.prefix = 0;
 	client->longname = client->shortname = "dhcp";
 	client->secret = client->shortname;

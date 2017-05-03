@@ -516,7 +516,7 @@ int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const 
 	 */
 	if (ipaddr->af == AF_INET6) {
 #  ifdef IPV6_V6ONLY
-		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.v6)) {
 			int on = 1;
 
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
@@ -744,7 +744,7 @@ int fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port)
 		 */
 #ifdef IPV6_V6ONLY
 
-		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.v6)) {
 			int on = 1;
 
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
@@ -821,13 +821,13 @@ int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
-		if (ipaddr->ipaddr.ip4addr.s_addr == INADDR_ANY) {
+		if (ipaddr->ipaddr.v4.s_addr == INADDR_ANY) {
 			return 1;
 		}
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.ip6addr))) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.v6))) {
 			return 1;
 		}
 #endif

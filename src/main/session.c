@@ -62,7 +62,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 
 #define INTPAIR(n,v) PAIR(n,v,vp_integer)
 
-#define IPPAIR(n,v) PAIR(n,v,vp_ipaddr)
+#define IPPAIR(n,v) PAIR(n,v,vp_ipv4addr)
 
 #define STRINGPAIR(n,v) do { \
 	if(!(vp = fr_pair_afrom_num(stopreq->packet,0, n))) {	\
@@ -138,7 +138,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	fr_ipaddr_t ipaddr;
 
 	ipaddr.af = AF_INET;
-	ipaddr.ipaddr.ip4addr.s_addr = nasaddr;
+	ipaddr.ipaddr.v4.s_addr = nasaddr;
 
 	/*
 	 *	Find NAS type.

@@ -410,7 +410,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			memcpy(p, &vp->vp_ipaddr, 4); /* network order */
+			memcpy(p, &vp->vp_ipv4addr, 4); /* network order */
 			length = 4;
 			break;
 

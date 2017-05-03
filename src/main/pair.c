@@ -221,7 +221,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			ret = ntohl(vp->vp_ipaddr) - ntohl(check->vp_ipaddr);
+			ret = ntohl(vp->vp_ipv4addr) - ntohl(check->vp_ipv4addr);
 			break;
 
 		case PW_TYPE_IPV6_ADDR:

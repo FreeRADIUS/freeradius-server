@@ -1543,7 +1543,7 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 	 *	Try IPv4 first
 	 */
 	memset(ipaddr, 0, sizeof(*ipaddr));
-	ipaddr->ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+	ipaddr->ipaddr.v4.s_addr = htonl(INADDR_NONE);
 	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 
@@ -1784,7 +1784,7 @@ static int bfd_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 	FORWARD;
 
 	if ((sock->my_ipaddr.af == AF_INET) &&
-	    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
+	    (sock->my_ipaddr.ipaddr.v4.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
 	} else {
 		fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);

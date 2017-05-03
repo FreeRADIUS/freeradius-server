@@ -231,7 +231,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 
 		HMAC_Update(hmac, (uint8_t const *) "PMIP4 MN HA", 11);
-		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipaddr, 4);
+		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipv4addr, 4);
 		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
@@ -281,7 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 
 		HMAC_Update(hmac, (uint8_t const *) "CMIP4 MN HA", 11);
-		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipaddr, 4);
+		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipv4addr, 4);
 		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 

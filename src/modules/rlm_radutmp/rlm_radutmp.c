@@ -224,7 +224,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_LOGIN_IP_HOST:
 		case PW_FRAMED_IP_ADDRESS:
-			ut.framed_address = vp->vp_ipaddr;
+			ut.framed_address = vp->vp_ipv4addr;
 			break;
 
 		case PW_FRAMED_PROTOCOL:
@@ -232,7 +232,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 
 		case PW_NAS_IP_ADDRESS:
-			ut.nas_address = vp->vp_ipaddr;
+			ut.nas_address = vp->vp_ipv4addr;
 			break;
 
 		case PW_NAS_PORT:
@@ -279,10 +279,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	originator's IP address.
 	 */
 	if (ut.nas_address == htonl(INADDR_NONE)) {
-		ut.nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+		ut.nas_address = request->packet->src_ipaddr.ipaddr.v4.s_addr;
 		nas = request->client->shortname;
 
-	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == ut.nas_address) {		/* might be a client, might not be. */
+	} else if (request->packet->src_ipaddr.ipaddr.v4.s_addr == ut.nas_address) {		/* might be a client, might not be. */
 		nas = request->client->shortname;
 
 	/*
@@ -634,7 +634,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, UNUSED void *
 	 *	Setup some stuff, like for MPP detection.
 	 */
 	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
-		ipno = vp->vp_ipaddr;
+		ipno = vp->vp_ipv4addr;
 	}
 
 	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY)) != NULL) {

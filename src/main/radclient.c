@@ -459,13 +459,13 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			case PW_PACKET_DST_IP_ADDRESS:
 				request->packet->dst_ipaddr.af = AF_INET;
-				request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				request->packet->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 				request->packet->dst_ipaddr.prefix = 32;
 				break;
 
 			case PW_PACKET_DST_IPV6_ADDRESS:
 				request->packet->dst_ipaddr.af = AF_INET6;
-				request->packet->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				request->packet->dst_ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
 				request->packet->dst_ipaddr.prefix = 128;
 				break;
 
@@ -480,13 +480,13 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			case PW_PACKET_SRC_IP_ADDRESS:
 				request->packet->src_ipaddr.af = AF_INET;
-				request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				request->packet->src_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 				request->packet->src_ipaddr.prefix = 32;
 				break;
 
 			case PW_PACKET_SRC_IPV6_ADDRESS:
 				request->packet->src_ipaddr.af = AF_INET6;
-				request->packet->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				request->packet->src_ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
 				request->packet->src_ipaddr.prefix = 128;
 				break;
 

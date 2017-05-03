@@ -1801,7 +1801,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 	request->simul_count = 0;
 
 	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
-		ipno = vp->vp_ipaddr;
+		ipno = vp->vp_ipv4addr;
 	}
 
 	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY)) != NULL) {

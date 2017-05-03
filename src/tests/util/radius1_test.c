@@ -531,7 +531,7 @@ int main(int argc, char *argv[])
 
 	memset(&my_ipaddr, 0, sizeof(my_ipaddr));
 	my_ipaddr.af = AF_INET;
-	my_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+	my_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	my_port = 1812;
 
 	while ((c = getopt(argc, argv, "c:hi:qs:w:x")) != EOF) switch (c) {

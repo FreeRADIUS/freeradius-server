@@ -330,7 +330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	/* if no NAS IP address, assign 0 */
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_IP_ADDRESS, TAG_ANY);
 	if (vp) {
-		nasip = ntohl(vp->vp_ipaddr);
+		nasip = ntohl(vp->vp_ipv4addr);
 	}
 	else {
 		nasip = 0;
@@ -581,7 +581,7 @@ fr_connection_release(inst->sql_inst->pool, request, sqlsock);
 
 	/* add IP address to reply packet */
 	vp = radius_pair_create(request->reply, &request->reply->vps, PW_FRAMED_IP_ADDRESS, 0);
-	vp->vp_ipaddr = ip.s_addr;
+	vp->vp_ipv4addr = ip.s_addr;
 
 	RDEBUG2("Returning %s", inet_ntoa(ip));
 	return RLM_MODULE_OK;
@@ -644,7 +644,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			return RLM_MODULE_FAIL;
 		}
 
-		framedip = ntohl(vp->vp_ipaddr);
+		framedip = ntohl(vp->vp_ipv4addr);
 
 		if (!nvp_query(inst, sqlsock,
 		    "UPDATE `%s`.`ips` "
@@ -684,7 +684,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			return RLM_MODULE_FAIL;
 		}
 
-		nasip.s_addr = vp->vp_ipaddr;
+		nasip.s_addr = vp->vp_ipv4addr;
 		strlcpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr));
 
 		if (!nvp_query(inst, sqlsock,

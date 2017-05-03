@@ -1346,7 +1346,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
-		memcpy(&vp->vp_ipaddr, p, 4);
+		memcpy(&vp->vp_ipv4addr, p, 4);
 		break;
 
 	case PW_TYPE_IFID:

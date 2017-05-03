@@ -535,11 +535,11 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	src_port = ntohs(udp->src);
 
 	src_ipaddr.af             = AF_INET;
-	src_ipaddr.ipaddr.ip4addr = ip->ip_src;
+	src_ipaddr.ipaddr.v4 = ip->ip_src;
 	src_ipaddr.prefix         = 32;
 	src_ipaddr.zone_id        = 0;
 	dst_ipaddr.af             = AF_INET;
-	dst_ipaddr.ipaddr.ip4addr = ip->ip_dst;
+	dst_ipaddr.ipaddr.v4 = ip->ip_dst;
 	dst_ipaddr.prefix         = 32;
 	dst_ipaddr.zone_id        = 0;
 
@@ -637,8 +637,8 @@ int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *p
 	ip_hdr->ip_p = 17;
 	ip_hdr->ip_sum = 0; /* Filled later */
 
-	ip_hdr->ip_src.s_addr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+	ip_hdr->ip_src.s_addr = packet->src_ipaddr.ipaddr.v4.s_addr;
+	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.v4.s_addr;
 
 	/* IP header checksum */
 	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
@@ -661,8 +661,8 @@ int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *p
 
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)udp_hdr, ntohs(udp_hdr->len), udp_hdr->checksum,
-					    packet->src_ipaddr.ipaddr.ip4addr,
-					    packet->dst_ipaddr.ipaddr.ip4addr);
+					    packet->src_ipaddr.ipaddr.v4,
+					    packet->dst_ipaddr.ipaddr.v4);
 
 	ret = pcap_inject(pcap->handle, dhcp_packet, (end - dhcp_packet + packet->data_len));
 	if (ret < 0) {
@@ -772,7 +772,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		/*
 		 *	Keep value in Network Order!
 		 */
-		memcpy(&vp->vp_ipaddr, p, 4);
+		memcpy(&vp->vp_ipv4addr, p, 4);
 		vp->vp_length = 4;
 		p += 4;
 		break;
@@ -782,7 +782,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		/*
 		 *	Keep value in Network Order!
 		 */
-		memcpy(&vp->vp_ipaddr, p, 16);
+		memcpy(&vp->vp_ipv4addr, p, 16);
 		vp->vp_length = 16;
 		p += 16;
 		break;
@@ -1181,7 +1181,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			memcpy(&vp->vp_ipaddr, p, 4);
+			memcpy(&vp->vp_ipv4addr, p, 4);
 			vp->vp_length = 4;
 			break;
 
@@ -1401,7 +1401,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
-		memcpy(p, &vp->vp_ipaddr, 4);
+		memcpy(p, &vp->vp_ipv4addr, 4);
 		p += 4;
 		break;
 
@@ -1747,13 +1747,13 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Client-IP-Address */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY))) {
-		memcpy(p, &vp->vp_ipaddr, 4);
+		memcpy(p, &vp->vp_ipv4addr, 4);
 	}
 	p += 4;
 
 	/* DHCP-Your-IP-address */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY))) {
-		lvalue = vp->vp_ipaddr;
+		lvalue = vp->vp_ipv4addr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
 	}
@@ -1763,7 +1763,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	/* DHCP-Server-IP-Address */
 	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 265, TAG_ANY);
 	if (vp) {
-		lvalue = vp->vp_ipaddr;
+		lvalue = vp->vp_ipv4addr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
 	}
@@ -1774,7 +1774,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *	DHCP-Gateway-IP-Address
 	 */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY))) {
-		lvalue = vp->vp_ipaddr;
+		lvalue = vp->vp_ipv4addr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
 	}
@@ -1918,7 +1918,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	memset(&req, 0, sizeof(req));
 	sin = (struct sockaddr_in *) &req.arp_pa;
 	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = ip->vp_ipaddr;
+	sin->sin_addr.s_addr = ip->vp_ipv4addr;
 
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
@@ -2020,10 +2020,10 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 	ip_hdr->ip_sum = 0; /* Filled later */
 
 	/* saddr: Packet-Src-IP-Address (default: 0.0.0.0). */
-	ip_hdr->ip_src.s_addr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+	ip_hdr->ip_src.s_addr = packet->src_ipaddr.ipaddr.v4.s_addr;
 
 	/* daddr: packet destination IP addr (should be 255.255.255.255 for broadcast). */
-	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.v4.s_addr;
 
 	/* IP header checksum */
 	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
@@ -2042,7 +2042,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE),
 					    ntohs(udp_hdr->len), udp_hdr->checksum,
-					    packet->src_ipaddr.ipaddr.ip4addr, packet->dst_ipaddr.ipaddr.ip4addr);
+					    packet->src_ipaddr.ipaddr.v4, packet->dst_ipaddr.ipaddr.v4);
 
 	return sendto(sockfd, dhcp_packet, (ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE + packet->data_len),
 		      0, (struct sockaddr *) link_layer, sizeof(struct sockaddr_ll));
@@ -2223,9 +2223,9 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	packet->dst_port = udp_dst_port;
 
 	packet->src_ipaddr.af = AF_INET;
-	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ip_hdr->ip_src.s_addr;
+	packet->src_ipaddr.ipaddr.v4.s_addr = ip_hdr->ip_src.s_addr;
 	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ip_hdr->ip_dst.s_addr;
+	packet->dst_ipaddr.ipaddr.v4.s_addr = ip_hdr->ip_dst.s_addr;
 
 	return packet;
 }

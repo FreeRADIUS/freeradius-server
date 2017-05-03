@@ -794,7 +794,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 				       lua_update_digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
-				       htonl(ip->ipaddr.ip4addr.s_addr),
+				       htonl(ip->ipaddr.v4.s_addr),
 				       device_id, device_id_len,
 				       gateway_id, gateway_id_len);
 	} else {
@@ -933,7 +933,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t const *inst, REQUE
 				       lua_release_digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
-				       htonl(ip->ipaddr.ip4addr.s_addr),
+				       htonl(ip->ipaddr.v4.s_addr),
 				       device_id, device_id_len);
 	} else {
 		char ip_buff[FR_IPADDR_PREFIX_STRLEN];

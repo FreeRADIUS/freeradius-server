@@ -43,8 +43,8 @@ extern "C" {
 typedef struct fr_ipaddr_t {
 	int		af;			//!< Address family.
 	union {
-		struct in_addr	ip4addr;		//!< IPv4 address.
-		struct in6_addr ip6addr;		//!< IPv6 address.
+		struct in_addr	v4;		//!< IPv4 address.
+		struct in6_addr v6;		//!< IPv6 address.
 	} ipaddr;
 	uint8_t		prefix;	        	//!< Prefix length - Between 0-32 for IPv4 and 0-128 for IPv6.
 	uint32_t	zone_id;		//!< A host may have multiple link-local interfaces

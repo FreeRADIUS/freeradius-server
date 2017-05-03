@@ -433,7 +433,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 
 		case PW_LOGIN_IP_HOST:
 		case PW_FRAMED_IP_ADDRESS:
-			framed_address = vp->vp_ipaddr;
+			framed_address = vp->vp_ipv4addr;
 				break;
 #ifdef USER_PROCESS
 		case PW_FRAMED_PROTOCOL:
@@ -441,7 +441,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 #endif
 		case PW_NAS_IP_ADDRESS:
-			nas_address = vp->vp_ipaddr;
+			nas_address = vp->vp_ipv4addr;
 			break;
 
 		case PW_NAS_PORT:
@@ -450,7 +450,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 
 		case PW_ACCT_DELAY_TIME:
-			delay = vp->vp_ipaddr;
+			delay = vp->vp_ipv4addr;
 			break;
 		}
 	}
@@ -467,7 +467,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	originator's IP address.
 	 */
 	if (nas_address == 0) {
-		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+		nas_address = request->packet->src_ipaddr.ipaddr.v4.s_addr;
 	}
 	s = request->client->shortname;
 	if (!s || s[0] == 0) s = uue(&(nas_address));

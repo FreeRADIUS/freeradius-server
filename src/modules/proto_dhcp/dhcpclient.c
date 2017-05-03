@@ -175,13 +175,13 @@ static RADIUS_PACKET *request_init(char const *filename)
 
 		case PW_PACKET_DST_IP_ADDRESS:
 			request->dst_ipaddr.af = AF_INET;
-			request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			request->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 			request->dst_ipaddr.prefix = 32;
 			break;
 
 		case PW_PACKET_DST_IPV6_ADDRESS:
 			request->dst_ipaddr.af = AF_INET6;
-			request->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			request->dst_ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
 			request->dst_ipaddr.prefix = 128;
 			break;
 
@@ -191,13 +191,13 @@ static RADIUS_PACKET *request_init(char const *filename)
 
 		case PW_PACKET_SRC_IP_ADDRESS:
 			request->src_ipaddr.af = AF_INET;
-			request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			request->src_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
 			request->src_ipaddr.prefix = 32;
 			break;
 
 		case PW_PACKET_SRC_IPV6_ADDRESS:
 			request->src_ipaddr.af = AF_INET6;
-			request->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			request->src_ipaddr.ipaddr.v6 = vp->vp_ipv6addr;
 			request->src_ipaddr.prefix = 128;
 			break;
 
@@ -358,8 +358,8 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 				if (vp1 && vp2) {
 					nb_offer ++;
 					offer_list = talloc_realloc(request_p, offer_list, dc_offer_t, nb_offer);
-					offer_list[nb_offer - 1].server_addr = vp1->vp_ipaddr;
-					offer_list[nb_offer - 1].offered_addr = vp2->vp_ipaddr;
+					offer_list[nb_offer - 1].server_addr = vp1->vp_ipv4addr;
+					offer_list[nb_offer - 1].offered_addr = vp2->vp_ipv4addr;
 				}
 			}
 		}
@@ -709,7 +709,7 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
-		if (server_ipaddr.ipaddr.ip4addr.s_addr == 0xFFFFFFFF) {
+		if (server_ipaddr.ipaddr.v4.s_addr == 0xFFFFFFFF) {
 			ERROR("Using interface: %s (index: %d) in raw packet mode", iface, iface_ind);
 			raw_mode = true;
 		}

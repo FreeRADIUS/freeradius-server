@@ -1313,18 +1313,18 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	if (ip) {
 		current->src_ipaddr.af = AF_INET;
-		current->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
+		current->src_ipaddr.ipaddr.v4.s_addr = ip->ip_src.s_addr;
 
 		current->dst_ipaddr.af = AF_INET;
-		current->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
+		current->dst_ipaddr.ipaddr.v4.s_addr = ip->ip_dst.s_addr;
 	} else {
 		current->src_ipaddr.af = AF_INET6;
-		memcpy(current->src_ipaddr.ipaddr.ip6addr.s6_addr, ip6->ip_src.s6_addr,
-		       sizeof(current->src_ipaddr.ipaddr.ip6addr.s6_addr));
+		memcpy(current->src_ipaddr.ipaddr.v6.s6_addr, ip6->ip_src.s6_addr,
+		       sizeof(current->src_ipaddr.ipaddr.v6.s6_addr));
 
 		current->dst_ipaddr.af = AF_INET6;
-		memcpy(current->dst_ipaddr.ipaddr.ip6addr.s6_addr, ip6->ip_dst.s6_addr,
-		       sizeof(current->dst_ipaddr.ipaddr.ip6addr.s6_addr));
+		memcpy(current->dst_ipaddr.ipaddr.v6.s6_addr, ip6->ip_dst.s6_addr,
+		       sizeof(current->dst_ipaddr.ipaddr.v6.s6_addr));
 	}
 
 	current->src_port = ntohs(udp->src);
