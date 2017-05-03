@@ -510,6 +510,7 @@ unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
 /*
  *	socket.c
  */
+int		fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port);
 int		fr_socket_client_unix(char const *path, bool async);
 int		fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr,
 				     uint16_t dst_port, bool async);
