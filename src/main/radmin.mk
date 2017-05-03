@@ -7,5 +7,5 @@ endif
 SOURCES		:= radmin.c conduit.c
 
 TGT_INSTALLDIR  := ${sbindir}
-TGT_PREREQS	:= libfreeradius-server.a libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a libfreeradius-server.a
 TGT_LDLIBS	:= $(LIBS) $(LIBREADLINE)

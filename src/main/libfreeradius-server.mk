@@ -24,7 +24,7 @@ SOURCES	:=	cond_eval.c \
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_FLAGS) $(GPERFTOOLS_LIBS)
-TGT_PREREQS	:= libfreeradius-util.la libfreeradius-radius.la
+TGT_PREREQS	:= libfreeradius-util.la libfreeradius-radius.a
 
 ifneq ($(MAKECMDGOALS),scan)
 SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"
