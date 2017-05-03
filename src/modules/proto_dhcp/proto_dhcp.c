@@ -510,7 +510,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 			RPEDEBUG("Failed determining src_ipaddr from if_index");
 			return RLM_MODULE_FAIL;
 		}
-		request->reply->src_ipaddr.ipaddr.v4.s_addr = primary.ipaddr.v4.s_addr;
+		request->reply->src_ipaddr.addr.v4.s_addr = primary.addr.v4.s_addr;
 #endif
 	/*
 	 *	There's a Server-Identification attribute
@@ -619,12 +619,12 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	if (sock->lsock.broadcast && !sock->src_interface) {
 		WARN("You MUST set \"interface\" if you have \"broadcast = yes\"");
 		RDEBUG2("Reply will be broadcast as no interface was defined");
-		request->reply->dst_ipaddr.ipaddr.v4.s_addr = htonl(INADDR_BROADCAST);
+		request->reply->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_BROADCAST);
 		return RLM_MODULE_OK;
 	}
 
 	RDEBUG2("Reply will be unicast to &DHCP-Your-IP-Address");
-	request->reply->dst_ipaddr.ipaddr.v4.s_addr = vp->vp_ipv4addr;
+	request->reply->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 
 	/*
 	 *	When sending a DHCP_OFFER, make sure our ARP table
