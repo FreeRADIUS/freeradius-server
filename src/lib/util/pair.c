@@ -319,11 +319,8 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 					char const *attribute, char const *value,
 					FR_TOKEN op)
 {
-	ssize_t			len;
-	VALUE_PAIR		*vp, *vp2;
-	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp;
 	fr_dict_attr_t		*n;
-	vp_cursor_t		cursor;
 
 	vp = fr_pair_alloc(ctx);
 	if (!vp) return NULL;
@@ -355,50 +352,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	}
 
 	vp->op = (op == 0) ? T_OP_EQ : op;
-
-	/*
-	 *	Convert unknowns to knowns
-	 */
-	da = fr_dict_attr_known(fr_dict_internal, vp->da);
-	if (!da) return vp;
-
-	/*
-	 *	Don't convert "Attr-26" to "Vendor-Specific", it's structural.
-	 */
-	if (fr_dict_non_data_types[da->type]) return vp;
-
-	/*
-	 *	Skip decoding if we know it's the wrong size for the
-	 *	data type.
-	 */
-	if ((vp->vp_length < dict_attr_sizes[da->type][0]) ||
-	    (vp->vp_length > dict_attr_sizes[da->type][1])) return vp;
-
-	vp2 = NULL;
-	fr_pair_cursor_init(&cursor, &vp2);
-
-	len = fr_radius_decode_pair_value(ctx, &cursor, da, vp->vp_octets, vp->vp_length, vp->vp_length, NULL);
-	if (len <= 0) return vp; /* it's really unknown */
-
-	if (vp2->da->flags.is_unknown) {
-		fr_pair_list_free(&vp2);
-		return vp;
-	}
-
-	/*
-	 *	Didn't parse all of it.  Return the "unknown" one.
-	 *
-	 *	FIXME: it COULD have parsed 2 attributes and
-	 *	then not the third, so returning 2 "knowns"
-	 *	and 1 "unknown" is likely preferable.
-	 */
-	if ((size_t) len < vp->vp_length) {
-		fr_pair_list_free(&vp2);
-		return vp;
-	}
-
-	fr_pair_list_free(&vp);
-	return vp2;
+	return vp;
 }
 
 /** Create a #VALUE_PAIR from ASCII strings
