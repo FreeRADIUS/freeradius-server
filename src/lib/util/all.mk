@@ -21,6 +21,7 @@ SOURCES		:= base64.c \
 		   inet.c \
 		   isaac.c \
 		   log.c \
+		   mem.c \
 		   misc.c \
 		   missing.c \
 		   md4.c \
