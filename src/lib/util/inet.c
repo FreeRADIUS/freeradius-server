@@ -546,14 +546,17 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 
 /** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser
  *
- * @param[out] out Where to write the ip address value.
- * @param[in] value to parse.
- * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
- *	hostname.
- * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
- *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
- *	we have no idea what it is.
+ * @param[out] out	Where to write the ip address value.
+ * @param[in] value	to parse.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address, try and resolve value
+ *			as a hostname.
+ * @param[in] af	If the address type is not obvious from the format, and resolve is true,
+ *			the DNS record (A or AAAA) we require.  Also controls which parser we pass
+ *			the address to if we have no idea what it is.
+ *			- AF_UNSPEC - Use the server default IP family.
+ *			- AF_INET - Treat value as an IPv4 address.
+ *			- AF_INET6 - Treat value as in IPv6 address.
  * @param[in] mask If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
@@ -616,16 +619,22 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 
 /** Parses IPv4/6 address + port, to fr_ipaddr_t and integer (port)
  *
- * @param[out] out Where to write the ip address value.
- * @param[out] port_out Where to write the port (0 if no port found).
- * @param[in] value to parse.
- * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
- *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
- *	we have no idea what it is.
- * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
- *	hostname.
+ * @param[out] out	Where to write the ip address value.
+ * @param[out] port_out	Where to write the port (0 if no port found).
+ * @param[in] value	to parse.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address, try and resolve value
+ *			as a hostname.
+ * @param[in] af	If the address type is not obvious from the format, and resolve is true,
+ *			the DNS record (A or AAAA) we require.  Also controls which parser we pass
+ *			the address to if we have no idea what it is.
+ *			- AF_UNSPEC - Use the server default IP family.
+ *			- AF_INET - Treat value as an IPv4 address.
+ *			- AF_INET6 - Treat value as in IPv6 address.
  * @param[in] mask If true, set address bits to zero.
+ * @return
+ *	- 0 if ip address was parsed successfully.
+ *	- -1 on failure.
  */
 int fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 		      ssize_t inlen, int af, bool resolve, bool mask)
