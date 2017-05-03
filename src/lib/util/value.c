@@ -2240,6 +2240,16 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 		break;
 
 	case PW_TYPE_BOOLEAN:
+		if ((strcmp(in, "yes") == 0) || strcmp(in, "true") == 0) {
+			dst->datum.boolean = true;
+		} else if ((strcmp(in, "no") == 0) || (strcmp(in, "false") == 0)) {
+			dst->datum.boolean = false;
+		} else {
+			fr_strerror_printf("\"%s\" is not a valid boolean value", in);
+			return -1;
+		}
+		break;
+
 	case PW_TYPE_COMBO_IP_PREFIX:
 		break;
 
