@@ -108,7 +108,6 @@ RADDBDIR	= ${raddbdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
-LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la $(TALLOC_LIBS)
 
 USE_SHARED_LIBS = @USE_SHARED_LIBS@
 bm_shared_libs  = @USE_SHARED_LIBS@
@@ -145,20 +144,18 @@ endif
 OPENSSL_LIBS	= @OPENSSL_LIBS@
 
 ifneq ($(WITH_OPENSSL_MD5),)
-LIBRADIUS_WITH_OPENSSL = 1
+WITH_OPENSSL_DIGEST = 1
 CFLAGS += -DWITH_OPENSSL_MD5
 endif
 
 ifneq ($(WITH_OPENSSL_SHA1),)
-LIBRADIUS_WITH_OPENSSL = 1
+WITH_OPENSSL_DIGEST = 1
 CFLAGS += -DWITH_OPENSSL_SHA1
 endif
 
-ifneq ($(LIBRADIUS_WITH_OPENSSL),)
+ifneq ($(WITH_OPENSSL_DIGEST),)
 ifeq ($(OPENSSL_LIBS),)
 $(error OPENSSL_LIBS must be define in order to use WITH_OPENSSL_*)
-else
-LIBRADIUS += $(OPENSSL_LIBS)
 endif
 endif
 
