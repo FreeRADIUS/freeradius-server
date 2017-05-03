@@ -67,9 +67,11 @@ int		value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t 
 /*
  *	Parsing
  */
+int		value_box_from_ipaddr(value_box_t *dst, fr_ipaddr_t const *ipaddr);
+
 int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
-				    PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
-				    char const *src, ssize_t src_len, char quote);
+				   PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
+				   char const *src, ssize_t src_len, char quote);
 
 /*
  *	Printing

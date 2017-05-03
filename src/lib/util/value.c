@@ -1732,6 +1732,61 @@ int value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *
 	return 0;
 }
 
+/** Assign a #value_box_t value from an #fr_ipaddr_t
+ *
+ * Automatically determines the type of the value box from the ipaddr address family
+ * and the length of the prefix field.
+ *
+ * @param[in] dst	to assign ipaddr to.
+ * @param[in] ipaddr	to copy address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int value_box_from_ipaddr(value_box_t *dst, fr_ipaddr_t const *ipaddr)
+{
+	PW_TYPE type;
+
+	switch (ipaddr->af) {
+	case AF_INET:
+		if (ipaddr->prefix > 32) {
+			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
+			return -1;
+		}
+
+		if (ipaddr->prefix == 32) {
+			type = PW_TYPE_IPV4_ADDR;
+		} else {
+			type = PW_TYPE_IPV4_PREFIX;
+		}
+		break;
+
+	case AF_INET6:
+		if (ipaddr->prefix > 128) {
+			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
+			return -1;
+		}
+
+		if (ipaddr->prefix == 128) {
+			type = PW_TYPE_IPV6_ADDR;
+		} else {
+			type = PW_TYPE_IPV6_PREFIX;
+		}
+		break;
+
+	default:
+		fr_strerror_printf("Invalid address family %i", ipaddr->af);
+		return -1;
+	}
+
+	dst->type = type;
+	dst->tainted = false;	/* Discuss? */
+	dst->datum.ipaddr2 = *ipaddr;
+	dst->length = 0;	/* Length doesn't make sense for fixed length types */
+
+	return 0;
+}
+
 /** Convert string value to a value_box_t type
  *
  * @todo Should take taint param.
