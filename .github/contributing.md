@@ -8,7 +8,7 @@ contributor's desires and practices against what's required for the project to o
 
 This document describes best practices when interacting with members of the FreeRADIUS project team
 via GitHub.  If you follow these guidelines, it is very likely that your bug report or pull request will
-be acted on, and in a timely manner.
+be acted on and in a timely manner.
 
 If you choose to ignore these guidelines our response will be a link to this document.
 
@@ -26,7 +26,7 @@ Raising support requests or questions as issues will result in them being closed
 continue to raise these questions as issues you will be banned from the FreeRADIUS project's GitHub
 repositories.
 
-Security issues should be reported to security@freeradius.org, especially if they can be remotely
+Security issues should be reported to security@freeradius.org especially if they can be remotely
 exploited.  This ensures that patches can be developed before the exploit is made public.
 
 Defect reporting
@@ -36,7 +36,7 @@ Before reporting a defect
 -------------------------
 
 Verify it's still present in the Git HEAD.  Checkout the appropriate branch for the version of the
-server you're working with, as listed [here](http://doc.freeradius.org), build the server, and attempt
+server you're working with, as listed [here](http://doc.freeradius.org), build the server and attempt
 to reproduce your issue.
 
 The [ChangeLog](https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/ChangeLog) for the
@@ -44,8 +44,8 @@ current stable branch may also be used to determine if your issue has already be
 The ChangeLog is updated as fixes are made to the server code, and usually reflects the state of the
 Git HEAD.
 
-Do not report non-security defects for EOL branches (as listed on doc.freeradius.org), or old releases
-they will be closed and locked.
+Do not report non-security defects for EOL branches (as listed on doc.freeradius.org), or old releases.
+Issues reported for these branches will be closed and locked.
 
 
 Contents of a defect report
@@ -56,7 +56,7 @@ on what to include, and how to obtain it.
 
 When logging bug reports using the GitHub issue tracker, pay attention to formatting.  You should
 ensure any log output is surrounded by two sets of triple backticks (```).  If you don't do this
-GitHub will automatically link your issue to other pre-existing issues when it encounters a #<num>
+GitHub will automatically link your issue to other pre-existing issues when it encounters a ``#<num>``
 string.
 
 
@@ -64,7 +64,7 @@ Pull requests and coding standards
 ==================================
 
 If you're developing a new feature, module, or writing large amounts of code to fix a defect, contact
-a member of the FreeRADIUS development team first.  For simpler one or two line fixes, go ahead and
+a member of the FreeRADIUS development team first.  For simpler one or two line fixes go ahead and
 open a pull-request immediately.
 
 The dev team can be contacted via the [devel mailing list](http://freeradius.org/list/devel.html),
@@ -82,8 +82,8 @@ If you're creating a new module you may wish to read the
 
 You may also wish to utilise the [doxygen site](http://doc.freeradius.org) to review code documentation.
 
-The doxygen site contains the complete reference of all API functions with doxygen headers, as well
-as structs, and callback declarations.  http://doc.freeradius.org is updated within one minute of each
+The doxygen site contains the complete reference of all API functions with doxygen headers as well
+as structs and callback declarations.  http://doc.freeradius.org is updated within one minute of each
 commit to the master branch of the freeradius-server repository.
 
 Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
