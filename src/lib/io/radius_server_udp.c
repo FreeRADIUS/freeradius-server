@@ -69,6 +69,8 @@ static ssize_t mod_encode(void const *ctx, REQUEST *request, uint8_t *buffer, si
 
 	RDEBUG("\t\tENCODE >>> request %zd - data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
+	if (buffer_len < 20) return -1;
+
 	buffer[0] = PW_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
 	buffer[2] = 0;
@@ -106,10 +108,17 @@ static ssize_t mod_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_le
 	if (data_size <= 0) return data_size;
 
 	packet_len = data_size;
+
+	/*
+	 *	If it's not a RADIUS packet, ignore it.
+	 */
 	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
 		return 0;
 	}
 
+	/*
+	 *	If the signature fails validation, ignore it.
+	 */
 	if (!fr_radius_verify(buffer, NULL, pc->secret, pc->secret_len)) {
 		return 0;
 	}
