@@ -20,6 +20,62 @@ extern size_t const value_box_offsets[];
 
 #define value_box_foreach(_v, _iv) for (value_box_t *_iv = v; _iv; _iv = _iv->next)
 
+/** Union containing all data types supported by the server
+ *
+ * This union contains all data types that can be represented by VALUE_PAIRs. It may also be used in other parts
+ * of the server where values of different types need to be stored.
+ *
+ * PW_TYPE should be an enumeration of the values in this union.
+ */
+typedef struct value_box value_box_t;
+struct value_box {
+	union {
+		char const	        *strvalue;		//!< Pointer to UTF-8 string.
+		uint8_t const		*octets;		//!< Pointer to binary string.
+		void			*ptr;			//!< generic pointer.
+
+		struct in_addr		ipaddr;			//!< IPv4 Address.
+		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
+		struct in6_addr		ipv6addr;		//!< IPv6 Address.
+		uint8_t			ipv6prefix[18];		//!< IPv6 prefix (should be struct?).
+
+		fr_ipaddr_t		ipaddr2;		//!< IPv4/6 address/prefix.
+
+		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
+		uint8_t			ether[6];		//!< Ethernet (MAC) address.
+
+		bool			boolean;		//!< A truth value.
+
+		struct {
+			union {
+				uint8_t			byte;		//!< 8bit unsigned integer.
+				uint16_t		ushort;		//!< 16bit unsigned integer.
+				uint32_t		integer;	//!< 32bit unsigned integer.
+				uint64_t		integer64;	//!< 64bit unsigned integer.
+				size_t			size;		//!< System specific file/memory size.
+
+				int32_t			sinteger;	//!< 32bit signed integer.
+			};
+			fr_dict_attr_t const		*enumv;		//!< Enumeration values for integer type.
+		};
+
+		struct timeval		timeval;		//!< A time value with usec precision.
+		double			decimal;		//!< Double precision float.
+		uint32_t		date;			//!< Date (32bit Unix timestamp).
+
+		uint8_t			filter[32];		//!< Ascend binary format (a packed data structure).
+
+	} datum;
+
+	PW_TYPE				type;			//!< Type of this value-box.
+
+	size_t				length;			//!< Length of value data.
+
+	bool				tainted;		//!< i.e. did it come from an untrusted source
+
+	value_box_t			*next;			//!< Next in a series of value_box.
+};
+
 /*
  *	Allocation
  */
