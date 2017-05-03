@@ -519,6 +519,7 @@ int		fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_
 int		fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout);
 int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
 int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
+int		fr_is_inaddr_any(fr_ipaddr_t *ipaddr);
 
 #ifdef __cplusplus
 }

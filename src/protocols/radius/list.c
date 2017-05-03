@@ -86,38 +86,6 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	return rcode;
 }
 
-/** Determine if an address is the INADDR_ANY address for its address family
- *
- * @param ipaddr to check.
- * @return
- *	- 0 if it's not.
- *	- 1 if it is.
- *	- -1 on error.
- */
-int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
-{
-
-	if (ipaddr->af == AF_INET) {
-		if (ipaddr->ipaddr.ip4addr.s_addr == INADDR_ANY) {
-			return 1;
-		}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (ipaddr->af == AF_INET6) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.ip6addr))) {
-			return 1;
-		}
-#endif
-
-	} else {
-		fr_strerror_printf("Unknown address family");
-		return -1;
-	}
-
-	return 0;
-}
-
-
 /*
  *	Create a fake "request" from a reply, for later lookup.
  */
