@@ -205,7 +205,7 @@ do { \
 } while (0)
 
 /*
- *	radius.c
+ *	protocols/radius/base.c
  */
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 #define MAX_PASS_LEN (128)
@@ -225,7 +225,7 @@ void		fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector,
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
 /*
- *	radius_packet.c
+ *	protocols/radius/packet.c
  */
 RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
 RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
@@ -259,7 +259,7 @@ typedef struct fr_radius_ctx {
 } fr_radius_ctx_t;
 
 /*
- *	radius_encode.c
+ *	protocols/radius/encode.c
  */
 int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
 
@@ -272,7 +272,7 @@ ssize_t		fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR con
 ssize_t		fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
 
 /*
- *	radius_decode.c
+ *	protocols/radius/decode.c
  */
 int		fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length);
 

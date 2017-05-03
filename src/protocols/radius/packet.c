@@ -1,8 +1,4 @@
 /*
- * packet.c	Generic packet manipulation functions.
- *
- * Version:	$Id$
- *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -16,92 +12,503 @@
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
  *
- * Copyright 2000-2006  The FreeRADIUS server project
+ * @file packet.c
+ * @brief Functions to deal with RADIUS_PACKET data structures.
+ *
+ * @copyright 2000-2017  The FreeRADIUS server project
  */
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/udp.h>
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/udp.h>
 
-#include <fcntl.h>
-
-/*
- *	See if two packets are identical.
- *
- *	Note that we do NOT compare the authentication vectors.
- *	That's because if the authentication vector is different,
- *	it means that the NAS has given up on the earlier request.
- */
-int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
-{
-	int rcode;
-
-	/*
-	 *	256-way fanout.
-	 */
-	if (a->id < b->id) return -1;
-	if (a->id > b->id) return +1;
-
-	if (a->sockfd < b->sockfd) return -1;
-	if (a->sockfd > b->sockfd) return +1;
-
-	/*
-	 *	Source ports are pretty much random.
-	 */
-	rcode = (int) a->src_port - (int) b->src_port;
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Usually many client IPs, and few server IPs
-	 */
-	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	One socket can receive packets for multiple
-	 *	destination IPs, so we check that before checking the
-	 *	file descriptor.
-	 */
-	rcode = fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	At this point, the order of comparing socket FDs
-	 *	and/or destination ports doesn't matter.  One of those
-	 *	fields will make the socket unique, and the other is
-	 *	pretty much redundant.
-	 */
-	rcode = (int) a->dst_port - (int) b->dst_port;
-	return rcode;
-}
-
-/** Determine if an address is the INADDR_ANY address for its address family
- *
- * @param ipaddr to check.
- * @return
- *	- 0 if it's not.
- *	- 1 if it is.
- *	- -1 on error.
- */
-int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
-{
-
-	if (ipaddr->af == AF_INET) {
-		if (ipaddr->ipaddr.ip4addr.s_addr == INADDR_ANY) {
-			return 1;
-		}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (ipaddr->af == AF_INET6) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.ip6addr))) {
-			return 1;
-		}
+#ifdef WITH_UDPFROMTO
+#include <freeradius-devel/udpfromto.h>
 #endif
 
+#include <fcntl.h>
+#include <ctype.h>
+
+typedef struct radius_packet_t {
+	uint8_t	code;
+	uint8_t	id;
+	uint8_t	length[2];
+	uint8_t	vector[AUTH_VECTOR_LEN];
+	uint8_t	data[1];
+} radius_packet_t;
+
+
+/*
+ *	Some messages get printed out only in debugging mode.
+ */
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+
+
+/** Allocate a new RADIUS_PACKET
+ *
+ * @param ctx the context in which the packet is allocated. May be NULL if
+ *	the packet is not associated with a REQUEST.
+ * @param new_vector if true a new request authenticator will be generated.
+ * @return
+ *	- New RADIUS_PACKET.
+ *	- NULL on error.
+ */
+RADIUS_PACKET *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
+{
+	RADIUS_PACKET	*rp;
+
+	rp = talloc_zero(ctx, RADIUS_PACKET);
+	if (!rp) {
+		fr_strerror_printf("out of memory");
+		return NULL;
+	}
+	rp->id = -1;
+	rp->offset = -1;
+
+	if (new_vector) {
+		int i;
+		uint32_t hash, base;
+
+		/*
+		 *	Don't expose the actual contents of the random
+		 *	pool.
+		 */
+		base = fr_rand();
+		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+			hash = fr_rand() ^ base;
+			memcpy(rp->vector + i, &hash, sizeof(hash));
+		}
+	}
+	fr_rand();		/* stir the pool again */
+
+	return rp;
+}
+
+/** Allocate a new RADIUS_PACKET response
+ *
+ * @param ctx the context in which the packet is allocated. May be NULL if
+ *	the packet is not associated with a REQUEST.
+ * @param packet The request packet.
+ * @return
+ *	- New RADIUS_PACKET.
+ *	- NULL on error.
+ */
+RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
+{
+	RADIUS_PACKET *reply;
+
+	if (!packet) return NULL;
+
+	reply = fr_radius_alloc(ctx, false);
+	if (!reply) return NULL;
+
+	/*
+	 *	Initialize the fields from the request.
+	 */
+	reply->sockfd = packet->sockfd;
+	reply->dst_ipaddr = packet->src_ipaddr;
+	reply->src_ipaddr = packet->dst_ipaddr;
+	reply->dst_port = packet->src_port;
+	reply->src_port = packet->dst_port;
+	reply->if_index = packet->if_index;
+	reply->id = packet->id;
+	reply->code = 0; /* UNKNOWN code */
+	memcpy(reply->vector, packet->vector,
+	       sizeof(reply->vector));
+	reply->vps = NULL;
+	reply->data = NULL;
+	reply->data_len = 0;
+
+#ifdef WITH_TCP
+	reply->proto = packet->proto;
+#endif
+	return reply;
+}
+
+
+/** Free a RADIUS_PACKET
+ *
+ */
+void fr_radius_free(RADIUS_PACKET **radius_packet_ptr)
+{
+	RADIUS_PACKET *radius_packet;
+
+	if (!radius_packet_ptr || !*radius_packet_ptr) return;
+	radius_packet = *radius_packet_ptr;
+
+	VERIFY_PACKET(radius_packet);
+
+	fr_pair_list_free(&radius_packet->vps);
+
+	talloc_free(radius_packet);
+	*radius_packet_ptr = NULL;
+}
+
+/** Duplicate a RADIUS_PACKET
+ *
+ * @param ctx the context in which the packet is allocated. May be NULL if
+ *	the packet is not associated with a REQUEST.
+ * @param in The packet to copy
+ * @return
+ *	- New RADIUS_PACKET.
+ *	- NULL on error.
+ */
+RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
+{
+	RADIUS_PACKET *out;
+
+	out = fr_radius_alloc(ctx, false);
+	if (!out) return NULL;
+
+	/*
+	 *	Bootstrap by copying everything.
+	 */
+	memcpy(out, in, sizeof(*out));
+
+	/*
+	 *	Then reset necessary fields
+	 */
+	out->sockfd = -1;
+
+	out->data = NULL;
+	out->data_len = 0;
+
+	out->vps = fr_pair_list_copy(out, in->vps);
+	out->offset = 0;
+
+	return out;
+}
+
+
+/** Encode a packet
+ *
+ */
+int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+		     char const *secret)
+{
+	radius_packet_t		*hdr;
+	uint8_t			*ptr;
+	uint16_t		total_length;
+	int			len;
+	VALUE_PAIR const	*vp;
+	vp_cursor_t		cursor;
+	fr_radius_ctx_t encoder_ctx = { .packet = packet, .original = original, .secret = secret };
+
+	/*
+	 *	A 4K packet, aligned on 64-bits.
+	 */
+	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
+
+	/*
+	 *	Double-check some things based on packet code.
+	 */
+	switch (packet->code) {
+	case PW_CODE_ACCESS_ACCEPT:
+	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_ACCESS_CHALLENGE:
+		if (!original) {
+			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
+			return -1;
+		}
+		break;
+
+		/*
+		 *	These packet vectors start off as all zero.
+		 */
+	case PW_CODE_ACCOUNTING_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+	case PW_CODE_COA_REQUEST:
+		memset(packet->vector, 0, sizeof(packet->vector));
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Use memory on the stack, until we know how
+	 *	large the packet will be.
+	 */
+	hdr = (radius_packet_t *) data;
+
+	/*
+	 *	Build standard header
+	 */
+	hdr->code = packet->code;
+	hdr->id = packet->id;
+
+	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
+
+	total_length = RADIUS_HDR_LEN;
+
+	/*
+	 *	Load up the configuration values for the user
+	 */
+	ptr = hdr->data;
+	packet->offset = 0;
+
+	/*
+	 *	Loop over the reply attributes for the packet.
+	 */
+	fr_pair_cursor_init(&cursor, &packet->vps);
+	while ((vp = fr_pair_cursor_current(&cursor))) {
+		size_t		last_len, room;
+		char const	*last_name = NULL;
+
+		VERIFY_VP(vp);
+
+		room = ((uint8_t *)data) + sizeof(data) - ptr;
+
+		/*
+		 *	Ignore non-wire attributes, but allow extended
+		 *	attributes.
+		 *
+		 *	@fixme We should be able to get rid of this check
+		 *	and just look at da->flags.internal
+		 */
+		if (vp->da->flags.internal || ((vp->da->vendor == 0) && (vp->da->attr >= 256))) {
+#ifndef NDEBUG
+			/*
+			 *	Permit the admin to send BADLY formatted
+			 *	attributes with a debug build.
+			 */
+			if (vp->da->attr == PW_RAW_ATTRIBUTE) {
+				if (vp->vp_length > room) {
+					len = room;
+				} else {
+					len = vp->vp_length;
+				}
+
+				memcpy(ptr, vp->vp_octets, len);
+				fr_pair_cursor_next(&cursor);
+				goto next;
+			}
+#endif
+			fr_pair_cursor_next(&cursor);
+			continue;
+		}
+
+		/*
+		 *	Set the Message-Authenticator to the correct
+		 *	length and initial value.
+		 */
+		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+			/*
+			 *	Cache the offset to the
+			 *	Message-Authenticator
+			 */
+			packet->offset = total_length;
+			last_len = 16;
+		} else {
+			last_len = vp->vp_length;
+		}
+		last_name = vp->da->name;
+
+		if (room <= 2) break;
+
+		len = fr_radius_encode_pair(ptr, room, &cursor, &encoder_ctx);
+		if (len < 0) return -1;
+
+		/*
+		 *	Failed to encode the attribute, likely because
+		 *	the packet is full.
+		 */
+		if (len == 0) {
+			if (last_len != 0) {
+				fr_strerror_printf("WARNING: Failed encoding attribute %s\n", last_name);
+				break;
+			} else {
+				fr_strerror_printf("WARNING: Skipping zero-length attribute %s\n", last_name);
+			}
+		}
+
+#ifndef NDEBUG
+	next:			/* Used only for Raw-Attribute */
+#endif
+		ptr += len;
+		total_length += len;
+	} /* done looping over all attributes */
+
+	/*
+	 *	Fill in the rest of the fields, and copy the data over
+	 *	from the local stack to the newly allocated memory.
+	 *
+	 *	Yes, all this 'memcpy' is slow, but it means
+	 *	that we only allocate the minimum amount of
+	 *	memory for a request.
+	 */
+	packet->data_len = total_length;
+	packet->data = talloc_array(packet, uint8_t, packet->data_len);
+	if (!packet->data) {
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
+
+	memcpy(packet->data, hdr, packet->data_len);
+	hdr = (radius_packet_t *) packet->data;
+
+	total_length = htons(total_length);
+	memcpy(hdr->length, &total_length, sizeof(total_length));
+
+	return 0;
+}
+
+
+/** Calculate/check digest, and decode radius attributes
+ *
+ * @return
+ *	- 0 on success
+ *	- -1 on decoding error.
+ */
+int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+{
+	int			packet_length;
+	uint32_t		num_attributes;
+	uint8_t			*ptr;
+	radius_packet_t		*hdr;
+	VALUE_PAIR		*head = NULL;
+	vp_cursor_t		cursor, out;
+	fr_radius_ctx_t		decoder_ctx = {
+					.original = original,
+					.packet = packet,
+					.secret = secret
+				};
+	/*
+	 *	Extract attribute-value pairs
+	 */
+	hdr = (radius_packet_t *)packet->data;
+	ptr = hdr->data;
+	packet_length = packet->data_len - RADIUS_HDR_LEN;
+	num_attributes = 0;
+
+	fr_pair_cursor_init(&cursor, &head);
+
+	/*
+	 *	Loop over the attributes, decoding them into VPs.
+	 */
+	while (packet_length > 0) {
+		ssize_t my_len;
+
+		/*
+		 *	This may return many VPs
+		 */
+		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal),
+					       ptr, packet_length, &decoder_ctx);
+		if (my_len < 0) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+
+		/*
+		 *	This should really be an assertion.
+		 */
+		if (my_len == 0) break;
+
+		/*
+		 *	Count the ones which were just added
+		 */
+		while (fr_pair_cursor_next(&cursor)) num_attributes++;
+
+		/*
+		 *	VSA's may not have been counted properly in
+		 *	fr_radius_packet_ok() above, as it is hard to count
+		 *	then without using the dictionary.  We
+		 *	therefore enforce the limits here, too.
+		 */
+		if ((fr_max_attributes > 0) && (num_attributes > fr_max_attributes)) {
+			char host_ipaddr[INET6_ADDRSTRLEN];
+
+			fr_pair_list_free(&head);
+			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
+					   "(received %d, max %d are allowed)",
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     host_ipaddr, sizeof(host_ipaddr)),
+					   num_attributes, fr_max_attributes);
+			return -1;
+		}
+
+		ptr += my_len;
+		packet_length -= my_len;
+	}
+
+	fr_pair_cursor_init(&out, &packet->vps);
+	fr_pair_cursor_last(&out);		/* Move insertion point to the end of the list */
+	fr_pair_cursor_merge(&out, head);
+
+	/*
+	 *	Merge information from the outside world into our
+	 *	random pool.
+	 */
+	fr_rand_seed(packet->data, RADIUS_HDR_LEN);
+
+	return 0;
+}
+
+
+/** See if the data pointed to by PTR is a valid RADIUS packet.
+ *
+ * Packet is not 'const * const' because we may update data_len, if there's more data
+ * in the UDP packet than in the RADIUS packet.
+ *
+ * @param packet to check
+ * @param require_ma to require Message-Authenticator
+ * @param reason if not NULL, will have the failure reason written to where it points.
+ * @return
+ *	- True on success.
+ *	- False on failure.
+ */
+bool fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma, decode_fail_t *reason)
+{
+	char host_ipaddr[INET6_ADDRSTRLEN];
+
+	if (!fr_radius_ok(packet->data, &packet->data_len, require_ma, reason)) {
+		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
+					 inet_ntop(packet->src_ipaddr.af,
+						   &packet->src_ipaddr.ipaddr,
+						   host_ipaddr, sizeof(host_ipaddr)),
+					 fr_strerror());
+		return false;
+	}
+
+	/*
+	 *	Fill RADIUS header fields
+	 */
+	packet->code = packet->data[0];
+	packet->id = packet->data[1];
+	memcpy(packet->vector, packet->data + 4, sizeof(packet->vector));
+	return true;
+}
+
+
+/** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
+ *
+ */
+int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
+{
+	uint8_t const	*original_data;
+	char		buffer[INET6_ADDRSTRLEN];
+
+	if (!packet->data) return -1;
+
+	if (original) {
+		original_data = original->data;
 	} else {
-		fr_strerror_printf("Unknown address family");
+		original_data = NULL;
+	}
+
+	if (fr_radius_verify(packet->data, original_data,
+			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
+		fr_strerror_printf("Received packet from %s with %s",
+				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr,
+					     buffer, sizeof(buffer)),
+				   fr_strerror());
 		return -1;
 	}
 
@@ -109,808 +516,333 @@ int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
 }
 
 
-/*
- *	Create a fake "request" from a reply, for later lookup.
+/** Sign a previously encoded packet
+ *
  */
-void fr_request_from_reply(RADIUS_PACKET *request,
-			   RADIUS_PACKET const *reply)
+int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			  char const *secret)
 {
-	request->sockfd = reply->sockfd;
-	request->id = reply->id;
-#ifdef WITH_TCP
-	request->proto = reply->proto;
-#endif
-	request->src_port = reply->dst_port;
-	request->dst_port = reply->src_port;
-	request->src_ipaddr = reply->dst_ipaddr;
-	request->dst_ipaddr = reply->src_ipaddr;
-	request->if_index = reply->if_index;
-}
+	int rcode;
+	uint8_t const *original_data;
 
-/*
- *	We need to keep track of the socket & it's IP/port.
- */
-typedef struct fr_packet_socket_t {
-	int		sockfd;
-	void		*ctx;
-
-	uint32_t	num_outgoing;
-
-	int		src_any;
-	fr_ipaddr_t	src_ipaddr;
-	uint16_t	src_port;
-
-	int		dst_any;
-	fr_ipaddr_t	dst_ipaddr;
-	uint16_t	dst_port;
-
-	bool		dont_use;
-
-#ifdef WITH_TCP
-	int		proto;
-#endif
-
-	uint8_t		id[32];
-} fr_packet_socket_t;
-
-
-#define FNV_MAGIC_PRIME (0x01000193)
-#define MAX_SOCKETS (256)
-#define SOCKOFFSET_MASK (MAX_SOCKETS - 1)
-#define SOCK2OFFSET(sockfd) ((sockfd * FNV_MAGIC_PRIME) & SOCKOFFSET_MASK)
-
-/*
- *	Structure defining a list of packets (incoming or outgoing)
- *	that should be managed.
- */
-struct fr_packet_list_t {
-	rbtree_t	*tree;
-
-	int		alloc_id;
-	uint32_t	num_outgoing;
-	int		last_recv;
-	int		num_sockets;
-
-	fr_packet_socket_t sockets[MAX_SOCKETS];
-};
-
-
-/*
- *	Ugh.  Doing this on every sent/received packet is not nice.
- */
-static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl,
-					  int sockfd)
-{
-	int i, start;
-
-	i = start = SOCK2OFFSET(sockfd);
-
-	do {			/* make this hack slightly more efficient */
-		if (pl->sockets[i].sockfd == sockfd) return &pl->sockets[i];
-
-		i = (i + 1) & SOCKOFFSET_MASK;
-	} while (i != start);
-
-	return NULL;
-}
-
-bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
-{
-	fr_packet_socket_t *ps;
-
-	if (!pl) {
-		fr_strerror_printf("Invalid argument");
-		return false;
+	if (original) {
+		original_data = original->data;
+	} else {
+		original_data = NULL;
 	}
-
-	ps = fr_socket_find(pl, sockfd);
-	if (!ps) {
-		fr_strerror_printf("No such socket");
-		return false;
-	}
-
-	ps->dont_use = true;
-	return true;
-}
-
-bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd)
-{
-	fr_packet_socket_t *ps;
-
-	if (!pl) return false;
-
-	ps = fr_socket_find(pl, sockfd);
-	if (!ps) return false;
-
-	ps->dont_use = false;
-	return true;
-}
-
-
-bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd)
-{
-	fr_packet_socket_t *ps;
-
-	if (!pl) return false;
-
-	ps = fr_socket_find(pl, sockfd);
-	if (!ps) return false;
-
-	if (ps->num_outgoing != 0) return false;
-
-	ps->sockfd = -1;
-	pl->num_sockets--;
-
-	return true;
-}
-
-
-bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
-			      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port,
-			      void *ctx)
-{
-	int i, start;
-	struct sockaddr_storage	src;
-	socklen_t		sizeof_src;
-	fr_packet_socket_t	*ps;
-
-	if (!pl || !dst_ipaddr || (dst_ipaddr->af == AF_UNSPEC)) {
-		fr_strerror_printf("Invalid argument");
-		return false;
-	}
-
-	if (pl->num_sockets >= MAX_SOCKETS) {
-		fr_strerror_printf("Too many open sockets");
-		return false;
-	}
-
-#ifndef WITH_TCP
-	if (proto != IPPROTO_UDP) {
-		fr_strerror_printf("only UDP is supported");
-		return false;
-	}
-#endif
-
-	ps = NULL;
-	i = start = SOCK2OFFSET(sockfd);
-
-	do {
-		if (pl->sockets[i].sockfd == -1) {
-			ps =  &pl->sockets[i];
-			break;
-		}
-
-		i = (i + 1) & SOCKOFFSET_MASK;
-	} while (i != start);
-
-	if (!ps) {
-		fr_strerror_printf("All socket entries are full");
-		return false;
-	}
-
-	memset(ps, 0, sizeof(*ps));
-	ps->ctx = ctx;
-#ifdef WITH_TCP
-	ps->proto = proto;
-#endif
 
 	/*
-	 *	Get address family, etc. first, so we know if we
-	 *	need to do udpfromto.
-	 *
-	 *	FIXME: udpfromto also does this, but it's not
-	 *	a critical problem.
+	 *	Copy the random vector to the packet.  Other packet
+	 *	codes have the Request Authenticator be the packet
+	 *	signature.
 	 */
-	sizeof_src = sizeof(src);
-	memset(&src, 0, sizeof_src);
-	if (getsockname(sockfd, (struct sockaddr *) &src,
-			&sizeof_src) < 0) {
-		fr_strerror_printf("%s", fr_syserror(errno));
-		return false;
+	if ((packet->code == PW_CODE_ACCESS_REQUEST) ||
+	    (packet->code == PW_CODE_STATUS_SERVER)) {
+		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 	}
 
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, &ps->src_ipaddr,
-				&ps->src_port)) {
-		fr_strerror_printf("Failed to get IP");
-		return false;
+	rcode = fr_radius_sign(packet->data, original_data,
+			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
+	if (rcode < 0) return rcode;
+
+	memcpy(packet->vector, packet->data + 4, AUTH_VECTOR_LEN);
+	return 0;
+}
+
+
+/** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
+ *
+ */
+static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
+{
+	ssize_t			data_len;
+
+	data_len = fr_radius_recv_header(sockfd, &packet->src_ipaddr, &packet->src_port, &packet->code);
+	if (data_len < 0) {
+		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
+		return -1;
 	}
 
-	ps->dst_ipaddr = *dst_ipaddr;
-	ps->dst_port = dst_port;
+	if (data_len == 0) return -1; /* invalid packet */
 
-	ps->src_any = fr_is_inaddr_any(&ps->src_ipaddr);
-	if (ps->src_any < 0) return false;
+	packet->data = talloc_array(packet, uint8_t, data_len);
+	if (!packet->data) return -1;
 
-	ps->dst_any = fr_is_inaddr_any(&ps->dst_ipaddr);
-	if (ps->dst_any < 0) return false;
+	packet->data_len = data_len;
+
+	return udp_recv(sockfd, packet->data, packet->data_len, flags,
+			&packet->src_ipaddr, &packet->src_port,
+			&packet->dst_ipaddr, &packet->dst_port,
+			&packet->if_index, &packet->timestamp);
+}
+
+
+/** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
+ *
+ */
+RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma)
+{
+	ssize_t data_len;
+	RADIUS_PACKET		*packet;
 
 	/*
-	 *	As the last step before returning.
+	 *	Allocate the new request data structure
 	 */
-	ps->sockfd = sockfd;
-	pl->num_sockets++;
-
-	return true;
-}
-
-static int packet_entry_cmp(void const *one, void const *two)
-{
-	RADIUS_PACKET const * const *a = one;
-	RADIUS_PACKET const * const *b = two;
-
-	return fr_packet_cmp(*a, *b);
-}
-
-void fr_packet_list_free(fr_packet_list_t *pl)
-{
-	if (!pl) return;
-
-	talloc_free(pl->tree);
-	talloc_free(pl);
-}
-
-
-/*
- *	Caller is responsible for managing the packet entries.
- */
-fr_packet_list_t *fr_packet_list_create(int alloc_id)
-{
-	int i;
-	fr_packet_list_t	*pl;
-
-	pl = talloc_zero(NULL, fr_packet_list_t);
-	if (!pl) return NULL;
-	pl->tree = rbtree_create(pl, packet_entry_cmp, NULL, 0);
-	if (!pl->tree) {
-		fr_packet_list_free(pl);
+	packet = fr_radius_alloc(ctx, false);
+	if (!packet) {
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 
-	for (i = 0; i < MAX_SOCKETS; i++) {
-		pl->sockets[i].sockfd = -1;
+	data_len = rad_recvfrom(fd, packet, flags);
+	if (data_len < 0) {
+		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
+		fr_radius_free(&packet);
+		return NULL;
 	}
 
-	pl->alloc_id = alloc_id;
-
-	return pl;
-}
-
-
-/*
- *	If pl->alloc_id is set, then fr_packet_list_id_alloc() MUST
- *	be called before inserting the packet into the list!
- */
-bool fr_packet_list_insert(fr_packet_list_t *pl,
-			    RADIUS_PACKET **request_p)
-{
-	if (!pl || !request_p || !*request_p) return 0;
-
-	return rbtree_insert(pl->tree, request_p);
-}
-
-RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
-				      RADIUS_PACKET *request)
-{
-	if (!pl || !request) return 0;
-
-	return rbtree_finddata(pl->tree, &request);
-}
-
-
-/*
- *	This presumes that the reply has dst_ipaddr && dst_port set up
- *	correctly (i.e. real IP, or "*").
- */
-RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET *reply)
-{
-	RADIUS_PACKET my_request, *request;
-	fr_packet_socket_t *ps;
-
-	if (!pl || !reply) return NULL;
-
-	ps = fr_socket_find(pl, reply->sockfd);
-	if (!ps) return NULL;
-
+#ifdef WITH_VERIFY_PTR
 	/*
-	 *	Initialize request from reply, AND from the source
-	 *	IP & port of this socket.  The client may have bound
-	 *	the socket to 0, in which case it's some random port,
-	 *	that is NOT in the original request->src_port.
+	 *	Double-check that the fields we want are filled in.
 	 */
-	my_request.sockfd = reply->sockfd;
-	my_request.id = reply->id;
-
-#ifdef WITH_TCP
-	/*
-	 *	TCP sockets are always bound to the correct src/dst IP/port
-	 */
-	if (ps->proto == IPPROTO_TCP) {
-		reply->dst_ipaddr = ps->src_ipaddr;
-		reply->dst_port = ps->src_port;
-		reply->src_ipaddr = ps->dst_ipaddr;
-		reply->src_port = ps->dst_port;
-
-		my_request.src_ipaddr = ps->src_ipaddr;
-		my_request.src_port = ps->src_port;
-		my_request.dst_ipaddr = ps->dst_ipaddr;
-		my_request.dst_port = ps->dst_port;
-
-	} else
+	if ((packet->src_ipaddr.af == AF_UNSPEC) ||
+	    (packet->src_port == 0) ||
+	    (packet->dst_ipaddr.af == AF_UNSPEC) ||
+	    (packet->dst_port == 0)) {
+		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
+		fr_radius_free(&packet);
+		return NULL;
+	}
 #endif
-	{
-		if (ps->src_any) {
-			my_request.src_ipaddr = ps->src_ipaddr;
-		} else {
-			my_request.src_ipaddr = reply->dst_ipaddr;
+
+	packet->data_len = data_len; /* unsigned vs signed */
+
+	/*
+	 *	If the packet is too big, then rad_recvfrom did NOT
+	 *	allocate memory.  Instead, it just discarded the
+	 *	packet.
+	 */
+	if (packet->data_len > MAX_PACKET_LEN) {
+		FR_DEBUG_STRERROR_PRINTF("Discarding packet: Larger than RFC limitation of 4096 bytes");
+		fr_radius_free(&packet);
+		return NULL;
+	}
+
+	/*
+	 *	Read no data.  Continue.
+	 *	This check is AFTER the MAX_PACKET_LEN check above, because
+	 *	if the packet is larger than MAX_PACKET_LEN, we also have
+	 *	packet->data == NULL
+	 */
+	if ((packet->data_len == 0) || !packet->data) {
+		FR_DEBUG_STRERROR_PRINTF("Empty packet: Socket is not ready");
+		fr_radius_free(&packet);
+		return NULL;
+	}
+
+	/*
+	 *	See if it's a well-formed RADIUS packet.
+	 */
+	if (!fr_radius_packet_ok(packet, require_ma, NULL)) {
+		fr_radius_free(&packet);
+		return NULL;
+	}
+
+	/*
+	 *	Remember which socket we read the packet from.
+	 */
+	packet->sockfd = fd;
+
+	/*
+	 *	FIXME: Do even more filtering by only permitting
+	 *	certain IP's.  The problem is that we don't know
+	 *	how to do this properly for all possible clients...
+	 */
+
+	/*
+	 *	Explicitely set the VP list to empty.
+	 */
+	packet->vps = NULL;
+
+#ifndef NDEBUG
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
+#endif
+
+	return packet;
+}
+
+/** Reply to the request
+ *
+ * Also attach reply attribute value pairs and any user message provided.
+ */
+int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			  char const *secret)
+{
+	/*
+	 *	Maybe it's a fake packet.  Don't send it.
+	 */
+	if (packet->sockfd < 0) {
+		return 0;
+	}
+
+	/*
+	 *  First time through, allocate room for the packet
+	 */
+	if (!packet->data) {
+		/*
+		 *	Encode the packet.
+		 */
+		if (fr_radius_packet_encode(packet, original, secret) < 0) {
+			return -1;
 		}
-		my_request.src_port = ps->src_port;
 
-		my_request.dst_ipaddr = reply->src_ipaddr;
-		my_request.dst_port = reply->src_port;
+		/*
+		 *	Re-sign it, including updating the
+		 *	Message-Authenticator.
+		 */
+		if (fr_radius_packet_sign(packet, original, secret) < 0) {
+			return -1;
+		}
+
+		/*
+		 *	If packet->data points to data, then we print out
+		 *	the VP list again only for debugging.
+		 */
 	}
+
+#ifndef NDEBUG
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
+#endif
 
 #ifdef WITH_TCP
-	my_request.proto = reply->proto;
-#endif
-	request = &my_request;
+	/*
+	 *	If the socket is TCP, call write().  Calling sendto()
+	 *	is allowed on some platforms, but it's not nice.  Even
+	 *	worse, if UDPFROMTO is defined, we *can't* use it on
+	 *	TCP sockets.  So... just call write().
+	 */
+	if (packet->proto == IPPROTO_TCP) {
+		ssize_t rcode;
 
-	return rbtree_finddata(pl->tree, &request);
-}
+		rcode = write(packet->sockfd, packet->data, packet->data_len);
+		if (rcode >= 0) return rcode;
 
-
-bool fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
-{
-	rbnode_t *node;
-
-	if (!pl || !request) return false;
-
-	node = rbtree_find(pl->tree, &request);
-	if (!node) return false;
-
-	rbtree_delete(pl->tree, node);
-	return true;
-}
-
-uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl)
-{
-	if (!pl) return 0;
-
-	return rbtree_num_elements(pl->tree);
-}
-
-
-/*
- *	1 == ID was allocated & assigned
- *	0 == couldn't allocate ID.
- *
- *	Note that this ALSO assigns a socket to use, and updates
- *	packet->request->src_ipaddr && packet->request->src_port
- *
- *	In multi-threaded systems, the calls to id_alloc && id_free
- *	should be protected by a mutex.  This does NOT have to be
- *	the same mutex as the one protecting the insert/find/yank
- *	calls!
- *
- *	We assume that the packet has dst_ipaddr && dst_port
- *	already initialized.  We will use those to find an
- *	outgoing socket.  The request MAY also have src_ipaddr set.
- *
- *	We also assume that the sender doesn't care which protocol
- *	should be used.
- */
-bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    RADIUS_PACKET **request_p, void **pctx)
-{
-	int i, j, k, fd, id, start_i, start_j, start_k;
-	int src_any = 0;
-	fr_packet_socket_t *ps= NULL;
-	RADIUS_PACKET *request = *request_p;
-
-	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
-	    (request->dst_port == 0)) {
-		fr_strerror_printf("No destination address/port specified");
-		return false;
-	}
-
-#ifndef WITH_TCP
-	if ((proto != 0) && (proto != IPPROTO_UDP)) {
-		fr_strerror_printf("Invalid destination protocol");
-		return false;
+		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
+		return -1;
 	}
 #endif
 
 	/*
-	 *	Special case: unspec == "don't care"
+	 *	And send it on it's way.
 	 */
-	if (request->src_ipaddr.af == AF_UNSPEC) {
-		memset(&request->src_ipaddr, 0, sizeof(request->src_ipaddr));
-		request->src_ipaddr.af = request->dst_ipaddr.af;
+	return udp_send(packet->sockfd, packet->data, packet->data_len, 0,
+			&packet->src_ipaddr, packet->src_port, packet->if_index,
+			&packet->dst_ipaddr, packet->dst_port);
+}
+
+static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+{
+	int i;
+	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+	for (i = 0; i < attrlen; i++) {
+		if ((i > 0) && ((i & 0x0f) == 0x00))
+			fprintf(fr_log_fp, "%.*s", depth, tabs);
+		fprintf(fr_log_fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 	}
+	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+}
 
-	src_any = fr_is_inaddr_any(&request->src_ipaddr);
-	if (src_any < 0) {
-		fr_strerror_printf("Can't check src_ipaddr");
-		return false;
-	}
 
-	/*
-	 *	MUST specify a destination address.
-	 */
-	if (fr_is_inaddr_any(&request->dst_ipaddr) != 0) {
-		fr_strerror_printf("Must specify a dst_ipaddr");
-		return false;
-	}
+void fr_radius_print_hex(RADIUS_PACKET const *packet)
+{
+	int i;
 
-	/*
-	 *	FIXME: Go to an LRU system.  This prevents ID re-use
-	 *	for as long as possible.  The main problem with that
-	 *	approach is that it requires us to populate the
-	 *	LRU/FIFO when we add a new socket, or a new destination,
-	 *	which can be expensive.
-	 *
-	 *	The LRU can be avoided if the caller takes care to free
-	 *	Id's only when all responses have been received, OR after
-	 *	a timeout.
-	 *
-	 *	Right now, the random approach is almost OK... it's
-	 *	brute-force over all of the available ID's, BUT using
-	 *	random numbers for everything spreads the load a bit.
-	 *
-	 *	The old method had a hash lookup on allocation AND
-	 *	on free.  The new method has brute-force on allocation,
-	 *	and near-zero cost on free.
-	 */
+	if (!packet->data || !fr_log_fp) return;
 
-	id = fd = -1;
-	start_i = fr_rand() & SOCKOFFSET_MASK;
-
-#define ID_i ((i + start_i) & SOCKOFFSET_MASK)
-	for (i = 0; i < MAX_SOCKETS; i++) {
-		if (pl->sockets[ID_i].sockfd == -1) continue; /* paranoia */
-
-		ps = &(pl->sockets[ID_i]);
-
-		/*
-		 *	This socket is marked as "don't use for new
-		 *	packets".  But we can still receive packets
-		 *	that are outstanding.
-		 */
-		if (ps->dont_use) continue;
-
-		/*
-		 *	All IDs are allocated: ignore it.
-		 */
-		if (ps->num_outgoing == 256) continue;
-
+	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
 #ifdef WITH_TCP
-		if (ps->proto != proto) continue;
+	fprintf(fr_log_fp, "  Proto:\t%d\n", packet->proto);
 #endif
 
-		/*
-		 *	Address families don't match, skip it.
-		 */
-		if (ps->src_ipaddr.af != request->dst_ipaddr.af) continue;
+	if (packet->src_ipaddr.af == AF_INET) {
+		char buffer[INET6_ADDRSTRLEN];
 
-		/*
-		 *	MUST match dst port, if we have one.
-		 */
-		if ((ps->dst_port != 0) &&
-		    (ps->dst_port != request->dst_port)) continue;
+		fprintf(fr_log_fp, "  Src IP:\t%s\n",
+			inet_ntop(packet->src_ipaddr.af,
+				  &packet->src_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)));
+		fprintf(fr_log_fp, "    port:\t%u\n", packet->src_port);
 
-		/*
-		 *	MUST match requested src port, if one has been given.
-		 */
-		if ((request->src_port != 0) &&
-		    (ps->src_port != request->src_port)) continue;
+		fprintf(fr_log_fp, "  Dst IP:\t%s\n",
+			inet_ntop(packet->dst_ipaddr.af,
+				  &packet->dst_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)));
+		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
+	}
 
-		/*
-		 *	We don't care about the source IP, but this
-		 *	socket is link local, and the requested
-		 *	destination is not link local.  Ignore it.
-		 */
-		if (src_any && (ps->src_ipaddr.af == AF_INET) &&
-		    (((ps->src_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) == 127) &&
-		    (((request->dst_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) != 127)) continue;
+	if (packet->data[0] < FR_MAX_PACKET_CODE) {
+		fprintf(fr_log_fp, "  Code:\t\t(%d) %s\n", packet->data[0], fr_packet_codes[packet->data[0]]);
+	} else {
+		fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
+	}
+	fprintf(fr_log_fp, "  Id:\t\t%u\n", packet->data[1]);
+	fprintf(fr_log_fp, "  Length:\t%u\n", ((packet->data[2] << 8) |
+				   (packet->data[3])));
+	fprintf(fr_log_fp, "  Vector:\t");
+	for (i = 4; i < 20; i++) {
+		fprintf(fr_log_fp, "%02x", packet->data[i]);
+	}
+	fprintf(fr_log_fp, "\n");
 
-		/*
-		 *	We're sourcing from *, and they asked for a
-		 *	specific source address: ignore it.
-		 */
-		if (ps->src_any && !src_any) continue;
+	if (packet->data_len > 20) {
+		int total;
+		uint8_t const *ptr;
+		fprintf(fr_log_fp, "  Data:");
 
-		/*
-		 *	We're sourcing from a specific IP, and they
-		 *	asked for a source IP that isn't us: ignore
-		 *	it.
-		 */
-		if (!ps->src_any && !src_any &&
-		    (fr_ipaddr_cmp(&request->src_ipaddr,
-				   &ps->src_ipaddr) != 0)) continue;
+		total = packet->data_len - 20;
+		ptr = packet->data + 20;
 
-		/*
-		 *	UDP sockets are allowed to match
-		 *	destination IPs exactly, OR a socket
-		 *	with destination * is allowed to match
-		 *	any requested destination.
-		 *
-		 *	TCP sockets must match the destination
-		 *	exactly.  They *always* have dst_any=0,
-		 *	so the first check always matches.
-		 */
-		if (!ps->dst_any &&
-		    (fr_ipaddr_cmp(&request->dst_ipaddr,
-				   &ps->dst_ipaddr) != 0)) continue;
+		while (total > 0) {
+			int attrlen;
+			unsigned int vendor = 0;
 
-		/*
-		 *	Otherwise, this socket is OK to use.
-		 */
-
-		/*
-		 *	Look for a free Id, starting from a random number.
-		 */
-		start_j = fr_rand() & 0x1f;
-#define ID_j ((j + start_j) & 0x1f)
-		for (j = 0; j < 32; j++) {
-			if (ps->id[ID_j] == 0xff) continue;
-
-
-			start_k = fr_rand() & 0x07;
-#define ID_k ((k + start_k) & 0x07)
-			for (k = 0; k < 8; k++) {
-				if ((ps->id[ID_j] & (1 << ID_k)) != 0) continue;
-
-				ps->id[ID_j] |= (1 << ID_k);
-				id = (ID_j * 8) + ID_k;
-				fd = i;
+			fprintf(fr_log_fp, "\t\t");
+			if (total < 2) { /* too short */
+				fprintf(fr_log_fp, "%02x\n", *ptr);
 				break;
 			}
-			if (fd >= 0) break;
-		}
-#undef ID_i
-#undef ID_j
-#undef ID_k
-		break;
-	}
 
-	/*
-	 *	Ask the caller to allocate a new ID.
-	 */
-	if (fd < 0) {
-		fr_strerror_printf("Failed finding socket, caller must allocate a new one");
-		return false;
-	}
+			if (ptr[1] > total) { /* too long */
+				for (i = 0; i < total; i++) {
+					fprintf(fr_log_fp, "%02x ", ptr[i]);
+				}
+				break;
+			}
 
-	/*
-	 *	Set the ID, source IP, and source port.
-	 */
-	request->id = id;
+			fprintf(fr_log_fp, "%02x  %02x  ", ptr[0], ptr[1]);
+			attrlen = ptr[1] - 2;
 
-	request->sockfd = ps->sockfd;
-	request->src_ipaddr = ps->src_ipaddr;
-	request->src_port = ps->src_port;
+			if ((ptr[0] == PW_VENDOR_SPECIFIC) &&
+			    (attrlen > 4)) {
+				vendor = (ptr[3] << 16) | (ptr[4] << 8) | ptr[5];
+				fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  ",
+				       ptr[2], ptr[3], ptr[4], ptr[5], vendor);
+				attrlen -= 4;
+				ptr += 6;
+				total -= 6;
 
-	/*
-	 *	If we managed to insert it, we're done.
-	 */
-	if (fr_packet_list_insert(pl, request_p)) {
-		if (pctx) *pctx = ps->ctx;
-		ps->num_outgoing++;
-		pl->num_outgoing++;
-		return true;
-	}
+			} else {
+				ptr += 2;
+				total -= 2;
+			}
 
-	/*
-	 *	Mark the ID as free.  This is the one line from
-	 *	id_free() that we care about here.
-	 */
-	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
+			print_hex_data(ptr, attrlen, 3);
 
-	request->id = -1;
-	request->sockfd = -1;
-	request->src_ipaddr.af = AF_UNSPEC;
-	request->src_port = 0;
-
-	return false;
-}
-
-/*
- *	Should be called AFTER yanking it from the list, so that
- *	any newly inserted entries don't collide with this one.
- */
-bool fr_packet_list_id_free(fr_packet_list_t *pl,
-			    RADIUS_PACKET *request, bool yank)
-{
-	fr_packet_socket_t *ps;
-
-	if (!pl || !request) return false;
-
-	if (yank && !fr_packet_list_yank(pl, request)) return false;
-
-	ps = fr_socket_find(pl, request->sockfd);
-	if (!ps) return false;
-
-#if 0
-	if (!ps->id[(request->id >> 3) & 0x1f] & (1 << (request->id & 0x07))) {
-		fr_exit(1);
-	}
-#endif
-
-	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
-
-	ps->num_outgoing--;
-	pl->num_outgoing--;
-
-	request->id = -1;
-	request->src_ipaddr.af = AF_UNSPEC; /* id_alloc checks this */
-	request->src_port = 0;
-
-	return true;
-}
-
-/*
- *	We always walk RBTREE_DELETE_ORDER, which is like RBTREE_IN_ORDER, except that
- *	<0 means error, stop
- *	0  means OK, continue
- *	1  means delete current node and stop
- *	2  means delete current node and continue
- */
-int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx, rb_walker_t callback)
-{
-	if (!pl || !callback) return 0;
-
-	return rbtree_walk(pl->tree, RBTREE_DELETE_ORDER, callback, ctx);
-}
-
-int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
-{
-	int i, maxfd;
-
-	if (!pl || !set) return 0;
-
-	maxfd = -1;
-
-	for (i = 0; i < MAX_SOCKETS; i++) {
-		if (pl->sockets[i].sockfd == -1) continue;
-		FD_SET(pl->sockets[i].sockfd, set);
-		if (pl->sockets[i].sockfd > maxfd) {
-			maxfd = pl->sockets[i].sockfd;
+			ptr += attrlen;
+			total -= attrlen;
 		}
 	}
-
-	if (maxfd < 0) return -1;
-
-	return maxfd + 1;
-}
-
-/*
- *	Round-robins the receivers, without priority.
- *
- *	FIXME: Add sockfd, if -1, do round-robin, else do sockfd
- *		IF in fdset.
- */
-RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
-{
-	int start;
-	RADIUS_PACKET *packet;
-
-	if (!pl || !set) return NULL;
-
-	start = pl->last_recv;
-	do {
-		start++;
-		start &= SOCKOFFSET_MASK;
-
-		if (pl->sockets[start].sockfd == -1) continue;
-
-		if (!FD_ISSET(pl->sockets[start].sockfd, set)) continue;
-
-#ifdef WITH_TCP
-		if (pl->sockets[start].proto == IPPROTO_TCP) {
-			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
-		} else
-#endif
-			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE, false);
-		if (!packet) continue;
-
-		/*
-		 *	Call fr_packet_list_find_byreply().  If it
-		 *	doesn't find anything, discard the reply.
-		 */
-
-		pl->last_recv = start;
-#ifdef WITH_TCP
-		packet->proto = pl->sockets[start].proto;
-#endif
-		return packet;
-	} while (start != pl->last_recv);
-
-	return NULL;
-}
-
-uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl)
-{
-	uint32_t num_elements;
-
-	if (!pl) return 0;
-
-	num_elements = rbtree_num_elements(pl->tree);
-	if (num_elements < pl->num_outgoing) return 0; /* panic! */
-
-	return num_elements - pl->num_outgoing;
-}
-
-uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
-{
-	if (!pl) return 0;
-
-	return pl->num_outgoing;
-}
-
-/*
- *	Debug the packet if requested.
- */
-void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
-{
-	char src_ipaddr[FR_IPADDR_STRLEN];
-	char dst_ipaddr[FR_IPADDR_STRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-	char if_name[IFNAMSIZ];
-#endif
-
-	if (!fp) return;
-	if (!packet) return;
-
-	/*
-	 *	Client-specific debugging re-prints the input
-	 *	packet into the client log.
-	 *
-	 *	This really belongs in a utility library
-	 */
-	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-		       "%s%s%s"
-#endif
-		       "length %zu\n",
-		        received ? "Received" : "Sent",
-		        fr_packet_codes[packet->code],
-		        packet->id,
-		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-			packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->src_port,
-		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-			received ? " " : "",
-#endif
-			packet->data_len);
-	} else {
-		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-		       "%s%s%s"
-#endif
-		       "length %zu\n",
-		        received ? "Received" : "Sent",
-		        packet->code,
-		        packet->id,
-		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-		        packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->src_port,
-		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		        packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
-			received ? "via " : "",
-			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-			received ? " " : "",
-#endif
-		        packet->data_len);
-	}
+	fflush(stdout);
 }

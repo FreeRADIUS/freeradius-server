@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file radius.c
+ * @file encode.c
  * @brief Functions to encode RADIUS attributes
  *
  * @copyright 2000-2003,2006-2015  The FreeRADIUS server project
