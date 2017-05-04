@@ -537,11 +537,11 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	src_ipaddr.af             = AF_INET;
 	src_ipaddr.addr.v4 = ip->ip_src;
 	src_ipaddr.prefix         = 32;
-	src_ipaddr.zone_id        = 0;
 	dst_ipaddr.af             = AF_INET;
+	src_ipaddr.scope_id = 0;
 	dst_ipaddr.addr.v4 = ip->ip_dst;
 	dst_ipaddr.prefix         = 32;
-	dst_ipaddr.zone_id        = 0;
+	dst_ipaddr.scope_id = 0;
 
 	packet = fr_dhcp_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
 	if (packet) {

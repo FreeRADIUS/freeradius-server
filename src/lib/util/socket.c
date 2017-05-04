@@ -649,9 +649,9 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 		 *	the interface.
 		 */
 		if (ipaddr->af == AF_INET6) {
-			if (ipaddr->zone_id == 0) {
-				ipaddr->zone_id = if_nametoindex(interface);
-				if (ipaddr->zone_id == 0) {
+			if (ipaddr->scope_id == 0) {
+				ipaddr->scope_id = if_nametoindex(interface);
+				if (ipaddr->scope_id == 0) {
 					fr_strerror_printf("Failed finding interface %s: %s", interface, fr_syserror(errno));
 					return -1;
 				}

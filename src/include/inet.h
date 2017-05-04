@@ -47,7 +47,7 @@ typedef struct fr_ipaddr_t {
 		struct in6_addr v6;		//!< IPv6 address.
 	} addr;
 	uint8_t		prefix;	        	//!< Prefix length - Between 0-32 for IPv4 and 0-128 for IPv6.
-	uint32_t	zone_id;		//!< A host may have multiple link-local interfaces
+	uint32_t	scope_id;		//!< A host may have multiple link-local interfaces
 						//!< the scope ID allows the application to specify which of
 						//!< those interfaces the IP applies to.  A special scope_id
 						//!< of zero means that any interface of a given scope can

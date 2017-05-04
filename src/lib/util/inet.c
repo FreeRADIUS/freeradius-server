@@ -736,7 +736,7 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const 
 
 	if (inet_ntop(addr->af, &addr->addr, out, outlen) == NULL) return NULL;
 
-	if ((addr->af == AF_INET) || (addr->zone_id == 0)) return out;
+	if ((addr->af == AF_INET) || (addr->scope_id == 0)) return out;
 
 	p = out + strlen(out);
 
@@ -745,7 +745,7 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const 
 		char buffer[IFNAMSIZ];
 		char *ifname;
 
-		ifname = fr_ifname_from_ifindex(buffer, addr->zone_id);
+		ifname = fr_ifname_from_ifindex(buffer, addr->scope_id);
 		if (ifname) {
 			len = snprintf(p, outlen - (p - out), "%%%s", ifname);
 			if (is_truncated(len + (p - out), outlen)) {
@@ -759,7 +759,7 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const 
 	}
 #endif
 
-	len = snprintf(p, outlen - (p - out), "%%%u",  addr->zone_id);
+	len = snprintf(p, outlen - (p - out), "%%%u",  addr->scope_id);
 	if (is_truncated(len + (p - out), outlen)) {
 		fr_strerror_printf("Address buffer too small, needed %zu bytes, have %zu bytes",
 				   (p - out) + len, outlen);
@@ -1059,8 +1059,8 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
-		if (a->zone_id < b->zone_id) return -1;
-		if (a->zone_id > b->zone_id) return +1;
+		if (a->scope_id < b->scope_id) return -1;
+		if (a->scope_id > b->scope_id) return +1;
 
 		return memcmp(&a->addr.v6,
 			      &b->addr.v6,
@@ -1101,7 +1101,7 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 		s6.sin6_family = AF_INET6;
 		s6.sin6_addr = ipaddr->addr.v6;
 		s6.sin6_port = htons(port);
-		s6.sin6_scope_id = ipaddr->zone_id;
+		s6.sin6_scope_id = ipaddr->scope_id;
 		memset(sa, 0, sizeof(*sa));
 		memcpy(sa, &s6, sizeof(s6));
 #endif
@@ -1145,7 +1145,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		ipaddr->prefix = 128;
 		ipaddr->addr.v6 = s6.sin6_addr;
 		if (port) *port = ntohs(s6.sin6_port);
-		ipaddr->zone_id = s6.sin6_scope_id;
+		ipaddr->scope_id = s6.sin6_scope_id;
 #endif
 
 	} else {
