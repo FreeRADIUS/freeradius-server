@@ -632,33 +632,35 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bo
 
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
- * @param[in,out] ctx to allocate #vp_tmpl_t in.
- * @param[out] out Where to write pointer to new #vp_tmpl_t.
- * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
- *	If only #request_refs #pair_lists qualifiers are found, a #TMPL_TYPE_LIST
- *	#vp_tmpl_t will be produced.
- * @param[in] request_def The default #REQUEST to set if no #request_refs qualifiers are
- *	found in name.
- * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
- *	name.
- * @param[in] allow_unknown If true attributes in the format accepted by
- *	#fr_dict_unknown_afrom_oid_substr will be allowed, even if they're not in the main
- *	dictionaries.
- *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
- *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
- *	This #fr_dict_attr_t will have its ``flags.is_unknown`` field set to true.
- *	If #tmpl_afrom_attr_substr is being called on startup, the #vp_tmpl_t may be
- *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
- *	dictionary.
- *	If the unknown attribute is not added to the main dictionary the #vp_tmpl_t
- *	cannot be used to search for a #VALUE_PAIR in a #REQUEST.
- * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
- *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
- *	will be produced.
- * @return <= 0 on error (offset as negative integer), > 0 on success
- *	(number of bytes parsed).
+ * @param[in,out] ctx		to allocate #vp_tmpl_t in.
+ * @param[out] out		Where to write pointer to new #vp_tmpl_t.
+ * @param[in] name		of attribute including #request_refs and #pair_lists qualifiers.
+ *				If only #request_refs #pair_lists qualifiers are found,
+ *				a #TMPL_TYPE_LIST #vp_tmpl_t will be produced.
+ * @param[in] request_def	The default #REQUEST to set if no #request_refs qualifiers
+ *				are found in name.
+ * @param[in] list_def		The default list to set if no #pair_lists qualifiers are found in
+ *				name.
+ * @param[in] allow_unknown	If true attributes in the format accepted by
+ *				#fr_dict_unknown_afrom_oid_substr will be allowed,
+ *				even if they're not in the main dictionaries.
+ *				If an unknown attribute is found a #TMPL_TYPE_ATTR
+ *				#vp_tmpl_t will be produced.
+ *				If #tmpl_afrom_attr_substr is being called on startup,
+ *				the #vp_tmpl_t may be passed to #tmpl_define_unknown_attr to
+ *				add the unknown attribute to the main dictionary.
+ *				If the unknown attribute is not added to the main dictionary
+ *				the #vp_tmpl_t cannot be used to search for a #VALUE_PAIR in
+ *				a #REQUEST.
+ * @param[in] allow_undefined	If true, we don't generate a parse error on unknown attributes.
+ *				If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED
+ *				#vp_tmpl_t will be produced.
  *
  * @see REMARKER to produce pretty error markers from the return value.
+ *
+ * @return
+ *	- <= 0 on error (offset as negative integer)
+ *	- > 0 on success (number of bytes parsed).
  */
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 			       request_refs_t request_def, pair_lists_t list_def,
@@ -919,11 +921,11 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  *
  * @note For details of attribute parsing see #tmpl_afrom_attr_substr.
  *
- * @param[in,out] ctx To allocate #vp_tmpl_t in.
- * @param[out] out Where to write the pointer to the new #vp_tmpl_t.
- * @param[in] in String to convert to a #vp_tmpl_t.
- * @param[in] inlen length of string to convert.
- * @param[in] type of quoting around value. May be one of:
+ * @param[in,out] ctx	To allocate #vp_tmpl_t in.
+ * @param[out] out	Where to write the pointer to the new #vp_tmpl_t.
+ * @param[in] in	String to convert to a #vp_tmpl_t.
+ * @param[in] inlen	length of string to convert.
+ * @param[in] type	of quoting around value. May be one of:
  *	- #T_BARE_WORD - If string begins with ``&`` produces #TMPL_TYPE_ATTR,
  *	  #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST or error.
  *	  If string does not begin with ``&`` produces #TMPL_TYPE_UNPARSED,
