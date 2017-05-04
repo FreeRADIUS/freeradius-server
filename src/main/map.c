@@ -99,7 +99,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	ptr = talloc_array(map, uint8_t, len >> 1);
 	if (!ptr) return false;
 
-	len = fr_hex2bin(ptr, len >> 1, rhs + 2, len);
+	fr_hex2bin(ptr, len >> 1, rhs + 2, len);
 
 	/*
 	 *	Assign but don't dup.
