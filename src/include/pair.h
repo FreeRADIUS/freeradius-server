@@ -127,12 +127,15 @@ typedef struct value_pair_raw {
 
 #define vp_strvalue	data.datum.strvalue
 #define vp_integer	data.datum.integer
-#define vp_ipv4addr	data.datum.ipaddr.s_addr
+
+#define vp_ipv4addr	data.datum.ip.addr.v4.s_addr
+#define vp_ipv6addr	data.datum.ip.addr.v6.s6_addr
+#define vp_ip		data.datum.ip
+
 #define vp_date		data.datum.date
 #define vp_filter	data.datum.filter
 #define vp_octets	data.datum.octets
 #define vp_ifid		data.datum.ifid
-#define vp_ipv6addr	data.datum.ipv6addr
 #define vp_ipv6prefix	data.datum.ipv6prefix
 #define vp_bool		data.datum.boolean
 #define vp_byte		data.datum.byte

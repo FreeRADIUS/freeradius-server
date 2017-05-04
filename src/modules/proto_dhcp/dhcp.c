@@ -534,13 +534,13 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	dst_port = ntohs(udp->dst);
 	src_port = ntohs(udp->src);
 
-	src_ipaddr.af             = AF_INET;
+	src_ipaddr.af = AF_INET;
 	src_ipaddr.addr.v4 = ip->ip_src;
-	src_ipaddr.prefix         = 32;
-	dst_ipaddr.af             = AF_INET;
+	src_ipaddr.prefix = 32;
 	src_ipaddr.scope_id = 0;
+	dst_ipaddr.af = AF_INET;
 	dst_ipaddr.addr.v4 = ip->ip_dst;
-	dst_ipaddr.prefix         = 32;
+	dst_ipaddr.prefix = 32;
 	dst_ipaddr.scope_id = 0;
 
 	packet = fr_dhcp_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
@@ -772,6 +772,9 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		/*
 		 *	Keep value in Network Order!
 		 */
+		vp->vp_ip.af = AF_INET;
+		vp->vp_ip.prefix = 32;
+		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv4addr, p, 4);
 		vp->vp_length = 4;
 		p += 4;
@@ -782,7 +785,10 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		/*
 		 *	Keep value in Network Order!
 		 */
-		memcpy(&vp->vp_ipv4addr, p, 16);
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.prefix = 128;
+		vp->vp_ip.scope_id = 0;
+		memcpy(&vp->vp_ipv6addr, p, 16);
 		vp->vp_length = 16;
 		p += 16;
 		break;

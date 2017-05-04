@@ -1271,16 +1271,12 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPV4_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
-				c->ipaddr.af = AF_INET;
-				c->ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-				c->ipaddr.prefix = 32;
+				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));
 				cp = cf_pair_alloc(c->cs, "ipv4addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
 #ifdef WITH_UDPFROMTO
 				RDEBUG2("src_ipaddr = %s", strvalue);
-				c->src_ipaddr.af = AF_INET;
-				c->src_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-				c->src_ipaddr.prefix = 32;
+				memcpy(&c->src_ipaddr, &vp->vp_ip, sizeof(c->src_ipaddr));
 				cp = cf_pair_alloc(c->cs, "src_ipaddr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 #else
 				RWARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address");
@@ -1291,15 +1287,11 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV6_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_ADDRESS) {
-				c->ipaddr.af = AF_INET6;
-				c->ipaddr.addr.v6 = vp->vp_ipv6addr;
-				c->ipaddr.prefix = 128;
+				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));
 				cp = cf_pair_alloc(c->cs, "ipv6addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
 #ifdef WITH_UDPFROMTO
-				c->src_ipaddr.af = AF_INET6;
-				c->src_ipaddr.addr.v6 = vp->vp_ipv6addr;
-				c->src_ipaddr.prefix = 128;
+				memcpy(&c->src_ipaddr, &vp->vp_ip, sizeof(c->src_ipaddr));
 				cp = cf_pair_alloc(c->cs, "src_addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 #else
 				RWARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");

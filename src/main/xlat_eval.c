@@ -180,7 +180,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	case PW_PACKET_SRC_IP_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			virtual->vp_ipv4addr = packet->src_ipaddr.addr.v4.s_addr;
+			memcpy(&virtual->vp_ip, &packet->src_ipaddr, sizeof(virtual->vp_ip));
 			vp = virtual;
 		}
 		break;
@@ -188,7 +188,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	case PW_PACKET_DST_IP_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			virtual->vp_ipv4addr = packet->dst_ipaddr.addr.v4.s_addr;
+			memcpy(&virtual->vp_ip, &packet->dst_ipaddr, sizeof(virtual->vp_ip));
 			vp = virtual;
 		}
 		break;
@@ -196,9 +196,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	case PW_PACKET_SRC_IPV6_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET6) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			memcpy(&virtual->vp_ipv6addr,
-			       &packet->src_ipaddr.addr.v6,
-			       sizeof(packet->src_ipaddr.addr.v6));
+			memcpy(&virtual->vp_ip, &packet->src_ipaddr, sizeof(virtual->vp_ip));
 			vp = virtual;
 		}
 		break;
@@ -206,9 +204,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	case PW_PACKET_DST_IPV6_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET6) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			memcpy(&virtual->vp_ipv6addr,
-			       &packet->dst_ipaddr.addr.v6,
-			       sizeof(packet->dst_ipaddr.addr.v6));
+			memcpy(&virtual->vp_ip, &packet->dst_ipaddr, sizeof(virtual->vp_ip));
 			vp = virtual;
 		}
 		break;

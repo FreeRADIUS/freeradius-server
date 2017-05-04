@@ -158,6 +158,9 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 		if (!inet_pton(af, hostname, &(out->addr))) return -1;
 
 		out->af = af;
+		out->prefix = 32;
+		out->scope_id = 0;
+
 		return 0;
 	}
 
@@ -204,8 +207,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 		return -1;
 	}
 
-	rcode = fr_ipaddr_from_sockaddr((struct sockaddr_storage *)ai->ai_addr,
-				   ai->ai_addrlen, out, NULL);
+	rcode = fr_ipaddr_from_sockaddr((struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen, out, NULL);
 	freeaddrinfo(res);
 	if (!rcode) {
 		fr_strerror_printf("Failed converting sockaddr to ipaddr");
@@ -550,8 +552,8 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		memcpy(out->addr.v6.s6_addr, addr.s6_addr, sizeof(out->addr.v6.s6_addr));
 	}
 
-	out->prefix = (uint8_t) prefix;
 	out->af = AF_INET6;
+	out->prefix = (uint8_t) prefix;
 
 	return 0;
 }
@@ -719,7 +721,7 @@ do_port:
 
 /** Print the address portion of a #fr_ipaddr_t
  *
- * @note Includes the textual zone_id name (eth0, en0 etc...) if supported.
+ * @note Includes the textual scope_id name (eth0, en0 etc...) if supported.
  *
  * @param[out] out Where to write the resulting IP string.
  *	Should be at least FR_IPADDR_STRLEN bytes.
@@ -734,7 +736,12 @@ char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t const 
 	char	*p;
 	size_t	len;
 
-	if (inet_ntop(addr->af, &addr->addr, out, outlen) == NULL) return NULL;
+	out[0] = '\0';
+
+	if (inet_ntop(addr->af, &addr->addr, out, outlen) == NULL) {
+		fr_strerror_printf("%s", fr_syserror(errno));
+		return NULL;
+	}
 
 	if ((addr->af == AF_INET) || (addr->scope_id == 0)) return out;
 
@@ -1118,7 +1125,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 	memset(ipaddr, 0, sizeof(*ipaddr));
 
 	if (sa->ss_family == AF_INET) {
-		struct sockaddr_in	s4;
+		struct sockaddr_in s4;
 
 		if (salen < sizeof(s4)) {
 			fr_strerror_printf("IPv4 address is too small");
@@ -1130,10 +1137,11 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		ipaddr->prefix = 32;
 		ipaddr->addr.v4 = s4.sin_addr;
 		if (port) *port = ntohs(s4.sin_port);
+		ipaddr->scope_id = 0;
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (sa->ss_family == AF_INET6) {
-		struct sockaddr_in6	s6;
+		struct sockaddr_in6 s6;
 
 		if (salen < sizeof(s6)) {
 			fr_strerror_printf("IPv6 address is too small");
@@ -1149,8 +1157,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 #endif
 
 	} else {
-		fr_strerror_printf("Unsupported address famility %d",
-				   sa->ss_family);
+		fr_strerror_printf("Unsupported address famility %d", sa->ss_family);
 		return 0;
 	}
 

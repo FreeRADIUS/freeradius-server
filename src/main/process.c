@@ -4169,13 +4169,9 @@ static void request_coa_originate(REQUEST *request)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
 	if (vp) {
-		ipaddr.af = AF_INET;
-		ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-		ipaddr.prefix = 32;
+		memcpy(&ipaddr, &vp->vp_ip, sizeof(ipaddr));
 	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL) {
-		ipaddr.af = AF_INET6;
-		ipaddr.addr.v6 = vp->vp_ipv6addr;
-		ipaddr.prefix = 128;
+		memcpy(&ipaddr, &vp->vp_ip, sizeof(ipaddr));
 	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);

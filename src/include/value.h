@@ -18,6 +18,9 @@
 extern size_t const value_box_field_sizes[];
 extern size_t const value_box_offsets[];
 
+#include <freeradius-devel/inet.h>
+#include <freeradius-devel/dict.h>
+
 #define value_box_foreach(_v, _iv) for (value_box_t *_iv = v; _iv; _iv = _iv->next)
 
 /** Union containing all data types supported by the server
@@ -34,12 +37,11 @@ struct value_box {
 		uint8_t const		*octets;		//!< Pointer to binary string.
 		void			*ptr;			//!< generic pointer.
 
-		struct in_addr		ipaddr;			//!< IPv4 Address.
+		fr_ipaddr_t		ip;			//!< IPv4/6 address/prefix.
+
 		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
-		struct in6_addr		ipv6addr;		//!< IPv6 Address.
 		uint8_t			ipv6prefix[18];		//!< IPv6 prefix (should be struct?).
 
-		fr_ipaddr_t		ipaddr2;		//!< IPv4/6 address/prefix.
 
 		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
 		uint8_t			ether[6];		//!< Ethernet (MAC) address.

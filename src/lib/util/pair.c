@@ -2759,6 +2759,40 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 	}
 		break;
 
+	case PW_TYPE_IPV4_ADDR:
+		if (vp->vp_ip.af != AF_INET) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address family is not "
+				     "set correctly for IPv4 address.  Expected %i got %i\n",
+				     file, line, vp->da->name,
+				     AF_INET, vp->vp_ip.af);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
+		if (vp->vp_ip.prefix != 32) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address prefix "
+				     "set correctly for IPv4 address.  Expected %i got %i\n",
+				     file, line, vp->da->name,
+				     32, vp->vp_ip.prefix);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
+		break;
+
+	case PW_TYPE_IPV6_ADDR:
+		if (vp->vp_ip.af != AF_INET6) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address family is not "
+				     "set correctly for IPv6 address.  Expected %i got %i\n",
+				     file, line, vp->da->name,
+				     AF_INET6, vp->vp_ip.af);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
+		if (vp->vp_ip.prefix != 128) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" address prefix "
+				     "set correctly for IPv6 address.  Expected %i got %i\n",
+				     file, line, vp->da->name,
+				     128, vp->vp_ip.prefix);
+			if (!fr_cond_assert(0)) fr_exit_now(1);
+		}
+		break;
+
 	default:
 		break;
 	}

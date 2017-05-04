@@ -1346,6 +1346,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
+		vp->vp_ip.af = AF_INET;
+		vp->vp_ip.prefix = 32;
+		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv4addr, p, 4);
 		break;
 
@@ -1354,6 +1357,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.prefix = 128;
+		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv6addr, p, 16);
 		break;
 

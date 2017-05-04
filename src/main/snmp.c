@@ -208,8 +208,7 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	 *	address.
 	 */
 	if (client->ipaddr.af != AF_INET) return 0;
-
-	out->datum.ipaddr = client->ipaddr.addr.v4;
+	memcpy(&out->datum.ip, &client->ipaddr, sizeof(out->datum.ip));
 	out->length = dict_attr_sizes[PW_TYPE_IPV4_ADDR][0];
 
 	return 0;

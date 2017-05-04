@@ -380,7 +380,6 @@ done:
 	return p - out;
 }
 
-
 /** Convert both operands to the same type
  *
  * If casting is successful, we call cond_cmp_values to do the comparison

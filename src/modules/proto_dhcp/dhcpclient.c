@@ -174,15 +174,8 @@ static RADIUS_PACKET *request_init(char const *filename)
 			break;
 
 		case PW_PACKET_DST_IP_ADDRESS:
-			request->dst_ipaddr.af = AF_INET;
-			request->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-			request->dst_ipaddr.prefix = 32;
-			break;
-
 		case PW_PACKET_DST_IPV6_ADDRESS:
-			request->dst_ipaddr.af = AF_INET6;
-			request->dst_ipaddr.addr.v6 = vp->vp_ipv6addr;
-			request->dst_ipaddr.prefix = 128;
+			memcpy(&request->dst_ipaddr, &vp->vp_ip, sizeof(request->src_ipaddr));
 			break;
 
 		case PW_PACKET_SRC_PORT:
@@ -190,15 +183,8 @@ static RADIUS_PACKET *request_init(char const *filename)
 			break;
 
 		case PW_PACKET_SRC_IP_ADDRESS:
-			request->src_ipaddr.af = AF_INET;
-			request->src_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-			request->src_ipaddr.prefix = 32;
-			break;
-
 		case PW_PACKET_SRC_IPV6_ADDRESS:
-			request->src_ipaddr.af = AF_INET6;
-			request->src_ipaddr.addr.v6 = vp->vp_ipv6addr;
-			request->src_ipaddr.prefix = 128;
+			memcpy(&request->src_ipaddr, &vp->vp_ip, sizeof(request->src_ipaddr));
 			break;
 
 		default:
