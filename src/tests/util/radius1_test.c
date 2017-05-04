@@ -121,7 +121,7 @@ static ssize_t test_encode(void const *packet_ctx, REQUEST *request, uint8_t *bu
 	buffer[3] = 20;
 
 	memcpy(buffer + 4, pc->vector, 16);
-	
+
 	fr_md5_init(&context);
 	fr_md5_update(&context, buffer, 20);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
@@ -179,7 +179,7 @@ static void *worker_thread(void *arg)
 
 	sw->worker = NULL;
 	MPRINT1("\tWorker %d exiting.\n", sw->id);
-	
+
 	talloc_free(ctx);
 	return NULL;
 }
@@ -294,7 +294,7 @@ static void master_process(TALLOC_CTX *ctx)
 		}
 	}
 
-	MPRINT1("Master created all channels.\n");	
+	MPRINT1("Master created all channels.\n");
 
 	which_worker = 0;
 	running = true;
@@ -429,7 +429,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			ce = fr_channel_service_message(now, &ch, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
-			
+
 			switch (ce) {
 			case FR_CHANNEL_DATA_READY_NETWORK:
 				MPRINT1("Master got data ready signal\n");
@@ -486,7 +486,7 @@ static void master_process(TALLOC_CTX *ctx)
 		fr_time_t now = fr_time();
 
 		num_outstanding = num_workers;
-	
+
 		for (i = 0; i < num_workers; i++) {
 			if (!workers[i].worker) num_outstanding--;
 		}

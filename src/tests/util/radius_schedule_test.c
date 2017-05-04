@@ -91,7 +91,7 @@ static ssize_t test_encode(void const *ctx, REQUEST *request, uint8_t *buffer, s
 	buffer[3] = 20;
 
 	memcpy(buffer + 4, pc->vector, 16);
-	
+
 	fr_md5_init(&context);
 	fr_md5_update(&context, buffer, 20);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
