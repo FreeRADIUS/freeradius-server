@@ -612,7 +612,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, value_box_t *data, bo
 	vpt = talloc(ctx, vp_tmpl_t);
 	name = value_box_asprint(vpt, data, '\0');
 	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name),
-		  (data->type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
+		  (data->type == PW_TYPE_STRING) ? T_SINGLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
 		if (value_box_steal(vpt, &vpt->tmpl_value_box, data) < 0) {
