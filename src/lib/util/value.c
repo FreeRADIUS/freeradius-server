@@ -1613,7 +1613,7 @@ int value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
  *	- 0 on success.
  *	- -1 on failure.
  */
-inline int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
+int value_box_copy(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src)
 {
 	if (!fr_cond_assert(src->type != PW_TYPE_INVALID)) return -1;
 
