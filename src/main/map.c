@@ -56,16 +56,15 @@ static void map_dump(REQUEST *request, vp_map_t const *map)
  */
 bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 {
-	size_t len;
-	ssize_t rlen;
-	uint8_t *ptr;
-	char const *p;
-	pair_lists_t list;
+	size_t			len;
+	uint8_t			*ptr;
+	char const		*p;
+	pair_lists_t		list;
 
-	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp = NULL;
-	vp_cursor_t cursor;
-	vp_tmpl_t *vpt;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp = NULL;
+	vp_tmpl_t		*vpt;
+	value_box_t		bin = { .type = PW_TYPE_STRING }, cast;
 
 	rad_assert(map != NULL);
 
@@ -97,56 +96,31 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	if (!rhs[2]) return false;
 
 	len = strlen(rhs + 2);
-
 	ptr = talloc_array(map, uint8_t, len >> 1);
 	if (!ptr) return false;
 
 	len = fr_hex2bin(ptr, len >> 1, rhs + 2, len);
 
 	/*
-	 *	If we can't parse it, or if it's malformed,
-	 *	it's still unknown.
+	 *	Assign but don't dup.
 	 */
-	fr_pair_cursor_init(&cursor, &vp);
-	rlen = fr_radius_decode_pair_value(map, &cursor, da, ptr, len, len, NULL);
-	talloc_free(ptr);
+	value_box_memdup_buffer_shallow(NULL, &bin, ptr, false);
 
-	if (rlen < 0) return false;
-
-	if ((size_t) rlen < len) {
-	free_vp:
-		fr_pair_list_free(&vp);
+	/*
+	 *	Convert to da->type (if possible);
+	 */
+	if (value_box_cast(map, &cast, da->type, da, &bin) < 0) {
+		talloc_free(bin.datum.ptr);
 		return false;
 	}
 
 	/*
-	 *	Was still parsed as a raw / malformed attribute.
+	 *	Package the #value_box_t as a #vp_tmpl_t
 	 */
-	if (vp->da->flags.is_raw) goto free_vp;
-
-	/*
-	 *	Set the RHS to the PARSED name, not the crap octet
-	 *	string which was input.
-	 */
-	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0, T_INVALID);
-	if (!map->rhs) goto free_vp;
-
-	map->rhs->tmpl_value_box_type = da->type;
-	map->rhs->tmpl_value_box_length = vp->vp_length;
-	if (vp->da->flags.is_pointer) {
-		if (vp->vp_type == PW_TYPE_STRING) {
-			map->rhs->tmpl_value_box_datum.ptr = talloc_bstrndup(map->rhs, vp->vp_ptr, vp->vp_length);
-			map->rhs->quote = T_SINGLE_QUOTED_STRING;
-		} else {
-			map->rhs->tmpl_value_box_datum.ptr = talloc_memdup(map->rhs, vp->vp_ptr, vp->vp_length);
-			map->rhs->quote = T_BARE_WORD;
-		}
-	} else {
-		value_box_copy(map->rhs, &map->rhs->tmpl_value_box, &vp->data);
-		map->rhs->quote = T_BARE_WORD;
+	if (tmpl_afrom_value_box(map, &map->rhs, &cast, true) < 0) {
+		talloc_free(bin.datum.ptr);
+		return false;
 	}
-	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);
-	map->rhs->len = talloc_array_length(map->rhs->name) - 1;
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
