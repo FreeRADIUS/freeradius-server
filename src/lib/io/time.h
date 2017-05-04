@@ -86,7 +86,7 @@ static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
 {
 	entry->prev = head;
 	entry->next = head->next;
-	head->next->prev = entry;
+	if (head->next) head->next->prev = entry; /* Head may be the only node in the list */
 	head->next = entry;
 }
 
