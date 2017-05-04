@@ -935,8 +935,8 @@ static inline int value_box_cast_octets(TALLOC_CTX *ctx, value_box_t *dst,
  * @param dst_enumv	unused.
  * @param src		Input data.
  */
-static inline int value_box_cast_ipv4addr(UNUSED TALLOC_CTX *ctx, value_box_t *dst,
-					  PW_TYPE dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
+static inline int value_box_cast_ipv4addr(TALLOC_CTX *ctx, value_box_t *dst,
+					  PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
 					  value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == PW_TYPE_IPV4_ADDR)) return -1;
@@ -1038,8 +1038,8 @@ static inline int value_box_cast_ipv4addr(UNUSED TALLOC_CTX *ctx, value_box_t *d
  * @param dst_enumv	unused.
  * @param src		Input data.
  */
-static inline int value_box_cast_ipv6addr(UNUSED TALLOC_CTX *ctx, value_box_t *dst,
-					  PW_TYPE dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
+static inline int value_box_cast_ipv6addr(TALLOC_CTX *ctx, value_box_t *dst,
+					  PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
 					  value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == PW_TYPE_IPV6_ADDR)) return -1;
