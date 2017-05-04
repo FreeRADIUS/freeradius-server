@@ -354,6 +354,12 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	char		buffer[256];	/* As per RFC1035 */
 
 	/*
+	 *	Zero out output so we don't have invalid fields
+	 *	like scope_id hanging around with garbage values.
+	 */
+	memset(out, 0, sizeof(*out));
+
+	/*
 	 *	Copy to intermediary buffer if we were given a length
 	 */
 	if (inlen >= 0) {
@@ -468,6 +474,12 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	unsigned int	prefix;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
+
+	/*
+	 *	Zero out output so we don't have fields
+	 *	like scope_id hanging around with garbage values.
+	 */
+	memset(out, 0, sizeof(*out));
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
