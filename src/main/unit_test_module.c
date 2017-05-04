@@ -188,10 +188,12 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	request->packet->code = PW_CODE_ACCESS_REQUEST;
 
 	request->packet->src_ipaddr.af = AF_INET;
+	request->packet->src_ipaddr.prefix = 32;
 	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->src_port = 18120;
 
 	request->packet->dst_ipaddr.af = AF_INET;
+	request->packet->dst_ipaddr.prefix = 32;
 	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->dst_port = 1812;
 
@@ -374,10 +376,12 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	request->packet->code = PW_CODE_ACCESS_REQUEST;
 
 	request->packet->src_ipaddr.af = AF_INET;
+	request->packet->src_ipaddr.prefix = 32;
 	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->src_port = 18120;
 
 	request->packet->dst_ipaddr.af = AF_INET;
+	request->packet->dst_ipaddr.prefix = 32;
 	request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_LOOPBACK);
 	request->packet->dst_port = 1812;
 
