@@ -21,7 +21,7 @@ update request {
 	Tmp-Cast-IPv6Prefix := '::3938:3739/128'
 	Tmp-Cast-Byte       := 58
 	Tmp-Cast-Short      := 14139
-	Tmp-Cast-Ether   := 00:00:39:38:37:3c
+	Tmp-Cast-Ether      := 00:00:39:38:37:3c
 	Tmp-Cast-Integer64  := 1152921505566832445
 	Tmp-Cast-IPv4Prefix := 57.56.55.62/32
 }
@@ -67,12 +67,15 @@ if ("%{integer:Tmp-String-2}" != '') {
 update request {
 	Tmp-Integer-0 := "%{integer:Tmp-Octets-0}"
 }
-if (Tmp-Octets-0 != "0x%{hex:Tmp-Integer-0}") {
-	update reply {
-		Filter-Id += 'fail 4a'
-	}
-}
 
+#
+#  Disabled until xlats can return binary data
+#
+#if (Tmp-Octets-0 != "%{hex:Tmp-Integer-0}") {
+#	update reply {
+#		Filter-Id += 'fail 4a'
+#	}
+#}
 if (Tmp-Integer-0 != 959985457) {
 	update reply {
 		Filter-Id += 'fail 4b'
@@ -83,11 +86,15 @@ if (Tmp-Integer-0 != 959985457) {
 update request {
 	Tmp-Integer64-0 := "%{integer:Tmp-Octets-1}"
 }
-if (Tmp-Octets-1 != "0x%{hex:Tmp-Integer64-0}") {
-	update reply {
-		Filter-Id += 'fail 5a'
-	}
-}
+
+#
+#  Disabled until xlats can return binary data
+#
+#if (Tmp-Octets-1 != "%{hex:Tmp-Integer64-0}") {
+#	update reply {
+#		Filter-Id += 'fail 5a'
+#	}
+#}
 
 if (Tmp-Integer64-0 != 4123106143410599729) {
 	update reply {
