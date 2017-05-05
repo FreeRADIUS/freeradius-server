@@ -5217,7 +5217,7 @@ int radius_event_init(TALLOC_CTX *ctx)
 		struct timeval now;
 
 		fr_event_list_time(&now, el);
-		sd_watchdog_event(&now, NULL);
+		sd_watchdog_event(el, &now, NULL);
 	}
 #endif
 
