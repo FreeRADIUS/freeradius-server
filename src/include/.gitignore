@@ -19,6 +19,7 @@ protocol/*
 
 # Symlinks
 util
+radius
 
 # Build scripts
 build-radpaths-h
