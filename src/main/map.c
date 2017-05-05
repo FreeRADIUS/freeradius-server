@@ -864,7 +864,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
 					RPEDEBUG("Attribute conversion failed");
 					fr_pair_list_free(&found);
-					fr_pair_list_free(&n);
+					talloc_free(n);
 					return -1;
 				}
 				vp = fr_pair_cursor_remove(&from);
