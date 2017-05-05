@@ -555,7 +555,7 @@ int value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b)
  * @note This should be used for switch statements in printing and casting
  *	functions that need to deal with all types representing values
  */
-#define PW_TYPE_BOUNDED \
+#define PW_TYPE_FIXED_SIZE \
 	     PW_TYPE_BYTE: \
 	case PW_TYPE_SHORT: \
 	case PW_TYPE_INTEGER: \
@@ -576,7 +576,7 @@ int value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b)
  * @note This should be used for switch statements in printing and casting
  *	functions that need to deal with all types representing values
  */
-#define PW_TYPE_UNBOUNDED \
+#define PW_TYPE_VARIABLE_SIZE \
 	     PW_TYPE_STRING: \
 	case PW_TYPE_OCTETS: \
 	case PW_TYPE_ABINARY: \
@@ -2297,7 +2297,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	/*
 	 *	Dealt with below
 	 */
-	case PW_TYPE_BOUNDED:
+	case PW_TYPE_FIXED_SIZE:
 		break;
 
 	case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
@@ -2606,7 +2606,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	case PW_TYPE_COMBO_IP_PREFIX:
 		break;
 
-	case PW_TYPE_UNBOUNDED:		/* Should have been dealt with above */
+	case PW_TYPE_VARIABLE_SIZE:		/* Should have been dealt with above */
 	case PW_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
 	case PW_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
