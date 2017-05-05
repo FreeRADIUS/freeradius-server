@@ -1217,7 +1217,7 @@ static ssize_t hmac_md5_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * Example: "%{hmacsha1:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_sha1_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t hmac_sha1_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
