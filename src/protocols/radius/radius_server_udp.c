@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief RADIUS Server UDP front-end
- * @file io/radius_server_udp.c
+ * @file protocols/radius/radius_server_udp.c
  *
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
