@@ -189,6 +189,20 @@ BuildRequires: openldap-devel
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
 
+%package libfreeradius-util
+Summary: Utility library used by all other FreeRADIUS libraries
+
+%description libfreeradius-util
+Provides common functions used by other FreeRADIUS libraries and modules.
+
+%package libfreeradius-radius
+Summary: RADIUS protocol library for FreeRADIUS
+Requires: %{name} = %{version}-%{release}
+Requires: freeradius-libfreeradius-util = %{version}-%{release}
+
+%description libfreeradius-radius
+Provides protocol encoders and decoders for the RADIUS protocol.
+
 %package libfreeradius-json
 Summary: Internal support library for FreeRADIUS modules using json-c
 Group: System Environment/Daemons
@@ -817,6 +831,14 @@ fi
 %files json
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_json.so
+
+%files libfreeradius-util
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-util.so
+
+%files libfreeradius-radius
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-radius.so
 
 %files libfreeradius-json
 %defattr(-,root,root)
