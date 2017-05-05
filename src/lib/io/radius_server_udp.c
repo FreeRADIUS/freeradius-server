@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/rad_assert.h>
 
 #ifndef RDEBUG
 #define RDEBUG(fmt, ...) fprintf(stderr, fmt, ## __VA_ARGS__)

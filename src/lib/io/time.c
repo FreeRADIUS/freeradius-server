@@ -25,7 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/io/time.h>
 
 /*

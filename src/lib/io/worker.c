@@ -64,7 +64,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/message.h>
-#include <freeradius-devel/rad_assert.h>
 
 /**
  *  Track things by priority and time.
