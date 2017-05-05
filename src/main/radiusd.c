@@ -70,7 +70,7 @@ char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
-uint64_t sd_watchdog_interval = 0;
+struct timeval sd_watchdog_interval;
 #endif
 
 
@@ -420,10 +420,15 @@ int main(int argc, char *argv[])
 	 */
 #ifdef HAVE_SYSTEMD_WATCHDOG
 	if (!check_config) {
-		if (sd_watchdog_enabled(0, &sd_watchdog_interval) > 0) {
-			INFO("systemd watchdog interval is %d secs.\n", (int) sd_watchdog_interval / 1000000);
+		uint64_t usec;
+
+		if ((sd_watchdog_enabled(0, &usec) > 0) && (usec > 0)) {
+			usec /= 2;
+			fr_timeval_from_usec(&sd_watchdog_interval, usec);
+
+			INFO("systemd watchdog interval is %pT secs", &sd_watchdog_interval);
 		} else {
-			INFO("systemd watchdog is disabled.\n");
+			INFO("systemd watchdog is disabled");
 		}
 	}
 #endif

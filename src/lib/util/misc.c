@@ -948,6 +948,17 @@ void fr_timeval_from_ms(struct timeval *out, uint64_t ms)
 	out->tv_usec = (ms % 1000) * 1000;
 }
 
+/** Convert a time specified in microseconds to a timeval
+ *
+ * @param[out] out	Where to write the result.
+ * @param[in] usec	To convert to a timeval struct.
+ */
+void fr_timeval_from_usec(struct timeval *out, uint64_t usec)
+{
+	out->tv_sec = usec / USEC;
+	out->tv_usec = (usec % USEC) * USEC;
+}
+
 /** Subtract one timeval from another
  *
  * @param[out] out Where to write difference.
