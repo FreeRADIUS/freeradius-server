@@ -782,6 +782,7 @@ int value_box_hton(value_box_t *dst, value_box_t const *src)
 	switch (src->type) {
 	case PW_TYPE_INTEGER64:
 		dst->datum.integer64 = htonll(src->datum.integer64);
+		value_box_copy_meta(dst, src);
 		break;
 
 	/* 4 byte integers */
@@ -789,11 +790,13 @@ int value_box_hton(value_box_t *dst, value_box_t const *src)
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
 		dst->datum.integer = htonl(src->datum.integer);
+		value_box_copy_meta(dst, src);
 		break;
 
 	/* 2 byte integers */
 	case PW_TYPE_SHORT:
 		dst->datum.ushort = htons(src->datum.ushort);
+		value_box_copy_meta(dst, src);
 		break;
 
 	case PW_TYPE_OCTETS:
@@ -804,8 +807,6 @@ int value_box_hton(value_box_t *dst, value_box_t const *src)
 		value_box_copy(NULL, dst, src);
 		break;
 	}
-
-	value_box_copy_meta(dst, src);
 
 	return 0;
 }
