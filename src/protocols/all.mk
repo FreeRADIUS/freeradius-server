@@ -15,7 +15,7 @@ define PROTO_INCLUDE
 #
 #  So, we instead depend on a library which has already been defined.
 #
-$${libfreeradius-util.la_OBJS}: | src/include/${1}
+$${libfreeradius-io.la_OBJS}: | src/include/${1}
 
 src/include/${1}:
 	$${Q}[ -e $$@ ] || ln -s $${top_srcdir}/src/protocols/${1} $$@
