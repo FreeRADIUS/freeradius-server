@@ -2847,11 +2847,16 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 	} else if (vp->da->type != vp->data.type) {
+		char data_type_int[10], da_type_int[10];
+
+		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
+		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
+
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 			     "data type (%s) does not match da type (%s)",
 			     file, line, vp->da, vp->da->name,
-			     fr_int2str(dict_attr_types, vp->data.type, "<INVALID>"),
-			     fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
+			     fr_int2str(dict_attr_types, vp->data.type, data_type_int),
+			     fr_int2str(dict_attr_types, vp->da->type, da_type_int));
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 }
