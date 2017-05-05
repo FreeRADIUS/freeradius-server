@@ -39,10 +39,6 @@ struct value_box {
 
 		fr_ipaddr_t		ip;			//!< IPv4/6 address/prefix.
 
-		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
-		uint8_t			ipv6prefix[18];		//!< IPv6 prefix (should be struct?).
-
-
 		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
 		uint8_t			ether[6];		//!< Ethernet (MAC) address.
 

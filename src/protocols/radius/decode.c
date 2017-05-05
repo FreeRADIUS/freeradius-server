@@ -916,6 +916,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
+	fr_ipaddr_t		tmp_prefix;
 
 	if (!parent || (attr_len > packet_len) || (attr_len > 128 * 1024)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -1082,9 +1083,48 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if (data_len != 16) goto raw;
 		break;
 
+	case PW_TYPE_IPV4_PREFIX:
+		if (data_len != 6) goto raw;
+		if (p[0] != 0) goto raw;
+		if ((p[1] & 0x3f) > 32) goto raw;
+
+		memset(&tmp_prefix, 0, sizeof(tmp_prefix));
+
+		tmp_prefix.af = AF_INET;
+		memcpy((uint8_t *)&tmp_prefix.addr.v4.s_addr, p + 2, data_len - 2);
+		fr_ipaddr_mask(&tmp_prefix, p[1] & 0x3f);
+
+		/*
+		 *	Check the prefix data is the same before
+		 *	and after casting (it should be).
+		 */
+		if (memcmp(p + 2, (uint8_t *)&tmp_prefix.addr.v4.s_addr, data_len - 2) != 0) goto raw;
+		break;
+
 	case PW_TYPE_IPV6_PREFIX:
+	{
 		if ((data_len < 2) || (data_len > 18)) goto raw;
+		if (p[0] != 0) goto raw;	/* First byte is always 0 */
 		if (p[1] > 128) goto raw;
+
+		/*
+		 *	Convert prefix bits to bytes to check that
+		 *	we have sufficient data.
+		 */
+		if ((p[1] >> 3) > (data_len - 2)) goto raw;
+
+		memset(&tmp_prefix, 0, sizeof(tmp_prefix));
+
+		tmp_prefix.af = AF_INET6;
+		memcpy((uint8_t *)tmp_prefix.addr.v6.s6_addr, p + 2, data_len - 2);
+		fr_ipaddr_mask(&tmp_prefix, p[1]);
+
+		/*
+		 *	Check the prefix data is the same before
+		 *	and after casting (it should be).
+		 */
+		if (memcmp(p + 2, (uint8_t *)tmp_prefix.addr.v6.s6_addr, data_len - 2) != 0) goto raw;
+	}
 		break;
 
 	case PW_TYPE_BYTE:
@@ -1109,11 +1149,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		}
 		if (!child) goto raw;
 		parent = child;	/* re-write it */
-		break;
-
-	case PW_TYPE_IPV4_PREFIX:
-		if (data_len != 6) goto raw;
-		if ((p[1] & 0x3f) > 32) goto raw;
 		break;
 
 		/*
@@ -1363,38 +1398,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		memcpy(&vp->vp_ipv6addr, p, 16);
 		break;
 
-	case PW_TYPE_IPV6_PREFIX:
-		/*
-		 *	FIXME: double-check that
-		 *	(vp->vp_octets[1] >> 3) matches vp->vp_length + 2
-		 */
-		memcpy(vp->vp_ipv6prefix, p, vp->vp_length);
-		if (vp->vp_length < 18) {
-			memset(((uint8_t *)vp->vp_ipv6prefix) + vp->vp_length, 0,
-			       18 - vp->vp_length);
-		}
-		break;
-
 	case PW_TYPE_IPV4_PREFIX:
-		/* FIXME: do the same double-check as for IPv6Prefix */
-		memcpy(vp->vp_ipv4prefix, p, vp->vp_length);
-
-		/*
-		 *	/32 means "keep all bits".  Otherwise, mask
-		 *	them out.
-		 */
-		if ((p[1] & 0x3f) > 32) {
-			uint32_t addr, mask;
-
-			memcpy(&addr, vp->vp_octets + 2, sizeof(addr));
-			mask = 1;
-			mask <<= (32 - (p[1] & 0x3f));
-			mask--;
-			mask = ~mask;
-			mask = htonl(mask);
-			addr &= mask;
-			memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
-		}
+	case PW_TYPE_IPV6_PREFIX:
+		memcpy(&vp->vp_ip, &tmp_prefix, sizeof(vp->vp_ip));
 		break;
 
 	case PW_TYPE_SIGNED:	/* overloaded with vp_integer */

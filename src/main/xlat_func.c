@@ -119,10 +119,8 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	is bigendian and will convert it for us.
 	 */
 	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:	/* Same addr field */
 		return snprintf(*out, outlen, "%u", htonl(vp->vp_ipv4addr));
-
-	case PW_TYPE_IPV4_PREFIX:
-		return snprintf(*out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
 
 	case PW_TYPE_INTEGER:
 		return snprintf(*out, outlen, "%u", vp->vp_integer);
@@ -148,10 +146,8 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return snprintf(*out, outlen, "%i", vp->vp_signed);
 
 	case PW_TYPE_IPV6_ADDR:
-		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
-
 	case PW_TYPE_IPV6_PREFIX:
-		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6prefix[2]));
+		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
 
 	default:
 		break;

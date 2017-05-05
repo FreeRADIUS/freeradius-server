@@ -207,7 +207,7 @@ redundant {
 		}
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			update reply {
 				Filter-Id += 'Fail 14.5'
 			}
@@ -232,7 +232,7 @@ redundant {
 		}
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
 			update reply {
 				Filter-Id += 'Fail 15.5'
 			}
@@ -282,7 +282,7 @@ redundant {
 		}
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
 			update reply {
 				Filter-Id += 'Fail 17.5'
 			}
@@ -303,13 +303,13 @@ redundant {
 			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv4Prefix
 		}
 		update reply {
-			Filter-Id += 'Fail 17'
+			Filter-Id += 'Fail 17.1'
 		}
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
 			update reply {
-				Filter-Id += 'Fail 17.5'
+				Filter-Id += 'Fail 17.6'
 			}
 		}
 		update request {
@@ -332,7 +332,7 @@ redundant {
 		}
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			update reply {
 				Filter-Id += 'Fail 18.5'
 			}

@@ -1302,10 +1302,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV4_PREFIX:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
-				c->ipaddr.af = AF_INET;
-				memcpy(&c->ipaddr.addr.v4, &vp->vp_ipv4prefix[2],
-				       sizeof(c->ipaddr.addr.v4.s_addr));
-				fr_ipaddr_mask(&c->ipaddr, (vp->vp_ipv4prefix[1] & 0x3f));
+				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));
 				cp = cf_pair_alloc(c->cs, "ipv4addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			}
 
@@ -1313,10 +1310,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV6_PREFIX:
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
-				c->ipaddr.af = AF_INET6;
-				memcpy(&c->ipaddr.addr.v6, &vp->vp_ipv6prefix[2],
-				       sizeof(c->ipaddr.addr.v6));
-				fr_ipaddr_mask(&c->ipaddr, vp->vp_ipv6prefix[1]);
+				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));;
 				cp = cf_pair_alloc(c->cs, "ipv6addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			}
 

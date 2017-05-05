@@ -134,7 +134,7 @@ if (Tmp-String-2 != '100000003938373d') {
 }
 
 # ipv4prefix
-if (Tmp-String-3 != '00203938373e') {
+if (Tmp-String-3 != '203938373e') {
 	update reply {
 		Filter-Id += 'fail 14'
 	}

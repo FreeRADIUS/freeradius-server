@@ -136,7 +136,6 @@ typedef struct value_pair_raw {
 #define vp_filter	data.datum.filter
 #define vp_octets	data.datum.octets
 #define vp_ifid		data.datum.ifid
-#define vp_ipv6prefix	data.datum.ipv6prefix
 #define vp_bool		data.datum.boolean
 #define vp_byte		data.datum.byte
 #define vp_short	data.datum.ushort
@@ -144,7 +143,6 @@ typedef struct value_pair_raw {
 #define vp_signed	data.datum.sinteger
 #define vp_integer64	data.datum.integer64
 #define vp_size		data.datum.size
-#define vp_ipv4prefix	data.datum.ipv4prefix
 #define vp_decimal	data.datum.decimal
 #define vp_ptr		data.datum.ptr				//!< Either octets or strvalue
 

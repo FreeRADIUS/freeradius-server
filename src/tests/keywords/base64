@@ -133,8 +133,8 @@ if (Tmp-String-2 != 'EAAAADk4Nz0=') {
 	}
 }
 
-# ipv4prefix - bin 0x00203938373e
-if (Tmp-String-3 != 'ACA5ODc+') {
+# ipv4prefix - bin 0x203938373e
+if (Tmp-String-3 != 'IDk4Nz4=') {
 	update reply {
 		Filter-Id += 'fail 12'
 	}
