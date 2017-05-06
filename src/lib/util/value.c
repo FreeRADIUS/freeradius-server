@@ -30,9 +30,9 @@
  *
  * - NETWORK format is the format we receive on the wire.  It is not a perfect representation of data
  *   packing for all protocols, so you will likely need to overload conversion for some types.
- *   - #value_box_to_network is used to covert INTERNAL format data to generic NETWORK format data.
+ *   - value_box_to_network is used to covert INTERNAL format data to generic NETWORK format data.
  *     For integers, IP addresses etc... This means BIG ENDIAN byte ordering.
- *   - #value_box_from_network is used to convert packet buffer fragments in NETWORK format to
+ *   - value_box_from_network is used to convert packet buffer fragments in NETWORK format to
  *     INTERNAL format.
  *
  * - PRESENTATION format is what we print to the screen, and what we read from the user, databases
