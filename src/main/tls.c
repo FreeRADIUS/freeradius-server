@@ -3056,9 +3056,9 @@ post_ca:
 		}
 
 		/*
-		 *	Cache it, and DON'T auto-clear it.
+		 *	Cache it, DON'T auto-clear it, and disable the internal OpenSSL session cache.
 		 */
-		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
+		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR | SSL_SESS_CACHE_NO_INTERNAL);
 
 		SSL_CTX_set_session_id_context(ctx,
 					       (unsigned char *) conf->session_context_id,
