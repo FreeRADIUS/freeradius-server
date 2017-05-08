@@ -117,43 +117,6 @@ typedef void (*sig_t)(int);
 #  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
 
-/*
- *	vector:		Request authenticator from access-request packet
- *			Put in there by rad_decode, and must be put in the
- *			response RADIUS_PACKET as well before calling fr_radius_packet_send
- *
- *	verified:	Filled in by rad_decode for accounting-request packets
- *
- *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
- */
-typedef struct radius_packet {
-	int			sockfd;			//!< Socket this packet was read from.
-	int			if_index;		//!< Index of receiving interface.
-	fr_ipaddr_t		src_ipaddr;		//!< Src IP address of packet.
-	fr_ipaddr_t		dst_ipaddr;		//!< Dst IP address of packet.
-	uint16_t		src_port;		//!< Src port of packet.
-	uint16_t		dst_port;		//!< DST Port of packet.
-
-	int			id;			//!< Packet ID (used to link requests/responses).
-	unsigned int		code;			//!< Packet code (type).
-
-	uint8_t			vector[AUTH_VECTOR_LEN];//!< RADIUS authentication vector.
-
-	uint32_t       		count;			//!< Number of times we've seen this packet
-	struct timeval		timestamp;		//!< When we received the packet.
-	uint8_t			*data;			//!< Packet data (body).
-	size_t			data_len;		//!< Length of packet data.
-	VALUE_PAIR		*vps;			//!< Result of decoding the packet into VALUE_PAIRs.
-	ssize_t			offset;
-
-	uint32_t       		rounds;			//!< for State[0]
-
-#ifdef WITH_TCP
-	size_t			partial;
-	int			proto;
-#endif
-} RADIUS_PACKET;
-
 typedef enum {
 	DECODE_FAIL_NONE = 0,
 	DECODE_FAIL_MIN_LENGTH_PACKET,
