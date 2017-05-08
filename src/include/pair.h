@@ -25,7 +25,6 @@
  */
 RCSIDH(pair_h, "$Id$")
 
-#include <freeradius-devel/libradius.h>
 #include <freeradius-devel/value.h>
 
 #ifdef __cplusplus
