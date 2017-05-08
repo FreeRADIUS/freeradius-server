@@ -23,6 +23,22 @@
  *
  * @copyright 1999-2017 The FreeRADIUS server project
  */
+#include <freeradius-devel/radius.h>
+#include <freeradius-devel/cursor.h>
+#include <freeradius-devel/packet.h>
+#include <freeradius-devel/fr_log.h>
+
+#define AUTH_VECTOR_LEN		16
+#define CHAP_VALUE_LENGTH       16
+#define FR_MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
+
+#ifdef _LIBRADIUS
+#  define RADIUS_HDR_LEN	20
+#  define VENDORPEC_USR		429
+#  define VENDORPEC_LUCENT	4846
+#  define VENDORPEC_STARENT	8164
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
+#endif
 
 /*
  *	protocols/radius/base.c
@@ -30,6 +46,7 @@
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 #define MAX_PASS_LEN (128)
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
+extern size_t const fr_radius_attr_sizes[PW_TYPE_MAX + 1][2];
 extern FR_NAME_NUMBER const fr_request_types[];
 
 typedef enum {
@@ -49,6 +66,16 @@ typedef enum {
 	DECODE_FAIL_MAX
 } decode_fail_t;
 
+/*
+ *	protocols/radius/base.c
+ */
+#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
+#define MAX_PASS_LEN (128)
+#define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
+extern FR_NAME_NUMBER const fr_request_types[];
+size_t		fr_radius_attr_len(VALUE_PAIR const *vp);
+
+
 int		fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
 int		fr_radius_verify(uint8_t *packet, uint8_t const *original,
@@ -60,5 +87,75 @@ void		fr_radius_ascend_secret(uint8_t *digest, uint8_t const *vector,
 					char const *secret, uint8_t const *value) CC_HINT(nonnull);
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
+/*
+ *	protocols/radius/packet.c
+ */
+RADIUS_PACKET	*fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector);
+RADIUS_PACKET	*fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
+RADIUS_PACKET	*fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
+void		fr_radius_free(RADIUS_PACKET **);
+
+int		fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+					char const *secret) CC_HINT(nonnull (1,3));
+int		fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+					char const *secret) CC_HINT(nonnull (1,3));
+
+bool		fr_radius_packet_ok(RADIUS_PACKET *packet, bool require_ma,
+				    decode_fail_t *reason) CC_HINT(nonnull (1));
+
+int		fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+					char const *secret) CC_HINT(nonnull (1,3));
+int		fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+				      char const *secret) CC_HINT(nonnull (1,3));
+
+RADIUS_PACKET	*fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool require_ma);
+int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+				      char const *secret) CC_HINT(nonnull (1,3));
+
+void		fr_radius_print_hex(RADIUS_PACKET const *packet) CC_HINT(nonnull);
+
+
+typedef struct fr_radius_ctx {
+	RADIUS_PACKET const	*packet;
+	RADIUS_PACKET const	*original;
+	char const		*secret;
+} fr_radius_ctx_t;
+
+/*
+ *	protocols/radius/encode.c
+ */
+int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
+
+int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
+
+int		fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR *password);
+
+ssize_t		fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR const *vp);
+
+ssize_t		fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
+
+/*
+ *	protocols/radius/decode.c
+ */
+int		fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length);
+
+ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, uint8_t const *vector);
+
+extern bool fr_tunnel_password_zeros; /* security check */
+
+ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
+						 uint8_t const *vector);
+
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
+					    void *decoder_ctx);
+
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t data_len,
+				     void *decoder_ctx);
+
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,  vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				      uint8_t const *data, size_t data_len,
+				      void *decoder_ctx);
 
 #endif	/* _FR_RADIUS_RADIUS_H */
