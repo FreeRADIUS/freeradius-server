@@ -6,6 +6,10 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Lowered the log output for failed PEAP sessions.
 	* ALlow utc in rlm_date.  Patch from
 	  Peter Lambrechtsen.
+	* The internal OpenSSL session cache has been
+	  disabled.  Please see mods-available/eap
+	* Update detail reader documentation.
+	  Patch from Matthew Newton.  Fixes #1973.
 
 	Bug fixes
 	* radtest uses Cleartext-Password for EAP, not
@@ -28,6 +32,10 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Fix endian issues in DHCP.
 	* Multiple minor fixes for Coverity complaints.
 	* Handle unexpected regex.  Fixes #1959.
+	* Fix minor issues in dictionaries.
+	* Fix typos and grammar.  Patches from Alan Buxey.
+	* Fix erroneous VP creation in rlm_preproces.
+	* Fix MIB.  Patch from Jeff Gehlbach.
 
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
