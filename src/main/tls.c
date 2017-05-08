@@ -1382,7 +1382,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		/* open output file */
 		snprintf(filename, sizeof(filename), "%s%c%s.asn1",
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
-		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
+		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, S_IWUSR);
 		if (fd < 0) {
 			if (request) RERROR("Session serialisation failed, failed opening session file %s: %s",
 					    filename, fr_syserror(errno));
@@ -1400,8 +1400,6 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 				fr_pair_value_strcpy(vp, filename);
 				fr_pair_add(&request->state, vp);
 			}
-
-			(void) fchmod(fd, S_IWUSR);
 		}
 
 		todo = blob_len;
