@@ -2391,7 +2391,7 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	/*
 	 *	Dealt with below
 	 */
-	case PW_TYPE_FIXED_SIZE:
+	default:
 		break;
 
 	case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
@@ -2417,6 +2417,13 @@ int value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 	}
 
 	switch (*dst_type) {
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+		break;
+
+
 	case PW_TYPE_BYTE:
 	{
 		char *p;
