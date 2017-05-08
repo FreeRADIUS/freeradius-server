@@ -65,14 +65,18 @@ RCSIDH(libradius_h, "$Id$")
 #endif
 
 #include <freeradius-devel/threads.h>
-#include <freeradius-devel/radius.h>
+#include <freeradius-devel/inet.h>
+#include <freeradius-devel/dict.h>
 #include <freeradius-devel/token.h>
+#include <freeradius-devel/pair.h>
+#include <freeradius-devel/pair_cursor.h>
+
+#include <freeradius-devel/packet.h>
+#include <freeradius-devel/radius.h>
+#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/talloc.h>
 #include <freeradius-devel/hash.h>
-#include <freeradius-devel/inet.h>
 #include <freeradius-devel/regex.h>
-#include <freeradius-devel/dict.h>
-#include <freeradius-devel/pair.h>
 #include <freeradius-devel/proto.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
@@ -337,7 +341,6 @@ int		fr_is_inaddr_any(fr_ipaddr_t *ipaddr);
 }
 #endif
 
-#include <freeradius-devel/packet.h>
 
 #ifdef WITH_TCP
 #  include <freeradius-devel/tcp.h>
