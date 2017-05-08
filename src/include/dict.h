@@ -23,7 +23,8 @@
  *
  * @copyright 2015  The FreeRADIUS server project
  */
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/token.h>
+#include <freeradius-devel/types.h>
 
 #ifdef __cplusplus
 extern "C" {

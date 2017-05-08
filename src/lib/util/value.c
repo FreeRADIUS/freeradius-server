@@ -555,41 +555,6 @@ int value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b)
 	}
 }
 
-/** Match all fixed length types in case statements
- *
- * @note This should be used for switch statements in printing and casting
- *	functions that need to deal with all types representing values
- */
-#define PW_TYPE_FIXED_SIZE \
-	     PW_TYPE_BYTE: \
-	case PW_TYPE_SHORT: \
-	case PW_TYPE_INTEGER: \
-	case PW_TYPE_INTEGER64: \
-	case PW_TYPE_SIZE: \
-	case PW_TYPE_DATE: \
-	case PW_TYPE_IFID: \
-	case PW_TYPE_ETHERNET: \
-	case PW_TYPE_COMBO_IP_ADDR: \
-	case PW_TYPE_COMBO_IP_PREFIX: \
-	case PW_TYPE_SIGNED: \
-	case PW_TYPE_TIMEVAL: \
-	case PW_TYPE_BOOLEAN: \
-	case PW_TYPE_DECIMAL
-
-/** Match all variable length types in case statements
- *
- * @note This should be used for switch statements in printing and casting
- *	functions that need to deal with all types representing values
- */
-#define PW_TYPE_VARIABLE_SIZE \
-	     PW_TYPE_STRING: \
-	case PW_TYPE_OCTETS: \
-	case PW_TYPE_ABINARY: \
-	case PW_TYPE_IPV4_ADDR: \
-	case PW_TYPE_IPV4_PREFIX: \
-	case PW_TYPE_IPV6_ADDR: \
-	case PW_TYPE_IPV6_PREFIX
-
 static char const hextab[] = "0123456789abcdef";
 
 /** Convert a string value with escape sequences into its binary form

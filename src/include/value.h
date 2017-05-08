@@ -15,11 +15,12 @@
  */
 #ifndef _FR_VALUE_H
 #define _FR_VALUE_H
+#include <freeradius-devel/inet.h>
+#include <freeradius-devel/types.h>
+#include <freeradius-devel/dict.h>
+
 extern size_t const value_box_field_sizes[];
 extern size_t const value_box_offsets[];
-
-#include <freeradius-devel/inet.h>
-#include <freeradius-devel/dict.h>
 
 #define value_box_foreach(_v, _iv) for (value_box_t *_iv = v; _iv; _iv = _iv->next)
 
