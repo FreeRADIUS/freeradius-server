@@ -186,14 +186,14 @@ typedef struct vp_tmpl_t {
 
 			fr_dict_attr_t const	*da;			//!< Resolved dictionary attribute.
 			union {
-				fr_dict_attr_t		*da;		//!< Unknown dictionary 
+				fr_dict_attr_t		*da;		//!< Unknown dictionary
 									//!< attribute buffer.
 				char			*name;
 			} unknown;
 			int			num;			 //!< For array references.
 			int8_t			tag;			 //!< For tag references.
 		} attribute;
-		
+
 		/*
 		 *  Attribute value. Typically used as the RHS of an update map.
 		 */
