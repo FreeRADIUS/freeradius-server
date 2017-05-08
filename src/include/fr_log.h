@@ -31,9 +31,13 @@
  * @copyright 2016  The FreeRADIUS server project
  */
 
+extern FILE	*fr_log_fp;
+
 /*
  *	Error functions.
  */
+void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
+
 void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_strerror_printf_push(char const *fmt, ...)  CC_HINT(format (printf, 1, 2));
 
