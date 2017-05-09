@@ -1907,7 +1907,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 		return -1;
 	}
 
-	if (macaddr->type == PW_TYPE_OCTETS) {
+	if (macaddr->vp_type == PW_TYPE_OCTETS) {
 		if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
 			fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
 					   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
