@@ -61,24 +61,34 @@ struct value_box {
 				uint16_t	uint16;		//!< 16bit unsigned integer.
 				uint32_t	uint32;		//!< 32bit unsigned integer.
 				uint64_t	uint64;		//!< 64bit unsigned integer.
+				uint128_t	uint128;	//!< 128bit unsigned integer.
 
+				int8_t		int8;		//!< 8bit signed integer.
+				int16_t		int16;		//!< 16bit signed integer.
 				int32_t		int32;		//!< 32bit signed integer.
+				int64_t		int64;		//!< 64bit signed integer;
 			};
 			fr_dict_attr_t const	*enumv;		//!< Enumeration values for integer type.
 		};
 
+		float			float32;		//!< Single precision float.
 		double			float64;		//!< Double precision float.
 
+		uint32_t		date;			//!< Date (32bit Unix timestamp).
+		uint64_t		date_miliseconds;	//!< milliseconds since the epoch.
+		uint64_t		date_microseconds;	//!< microseconds since the epoch.
+		uint64_t		date_nanoseconds;	//!< nanoseconds since the epoch.
+
+		/*
+		 *	System specific - Used for runtime
+		 *	configuration only.
+		 */
 		size_t			size;			//!< System specific file/memory size.
 		struct timeval		timeval;		//!< A time value with usec precision.
 
-
-		uint32_t		date;			//!< Date (32bit Unix timestamp).
-
-
 	} datum;
 
-	fr_type_t				type;			//!< Type of this value-box.
+	fr_type_t			type;			//!< Type of this value-box.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 
