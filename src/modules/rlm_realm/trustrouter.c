@@ -180,7 +180,12 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	hs->secret = talloc_strdup(hs, "radsec");
 	hs->response_window.tv_sec = 30;
 	hs->last_packet_recv = time(NULL);
-
+	/* 
+	 *  We want sockets using these servers to close as soon as possible, 
+	 *  to make sure that whenever a pool is replaced, sockets using old ones 
+	 *  will not last long (hopefully less than 300s).
+	 */
+	hs->limit.idle_timeout = 5;
 	hs->tls = construct_tls(inst, hs, blk);
 	if (!hs->tls) {
 		talloc_free(hs);
