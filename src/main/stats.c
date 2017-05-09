@@ -184,18 +184,46 @@ void request_stats_final(REQUEST *request)
 		 *	authenticator.
 		 */
 	case 0:
-		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-			if (request->reply->offset == -2) {
+		switch (request->packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			if (request->reply->id == -1) {
 				INC_AUTH(total_bad_authenticators);
 			} else {
 				INC_AUTH(total_packets_dropped);
 			}
-		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-			if (request->reply->offset == -2) {
+			break;
+
+
+#ifdef WITH_ACCOUNTING
+		case PW_CODE_ACCOUNTING_REQUEST:
+			if (request->reply->id == -1) {
 				INC_ACCT(total_bad_authenticators);
 			} else {
 				INC_ACCT(total_packets_dropped);
 			}
+			break;
+#endif
+
+#ifdef WITH_COA
+		case PW_CODE_COA_REQUEST:
+			if (request->reply->id == -1) {
+				INC_COA(total_bad_authenticators);
+			} else {
+				INC_COA(total_packets_dropped);
+			}
+			break;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			if (request->reply->id == -1) {
+				INC_DSC(total_bad_authenticators);
+			} else {
+				INC_DSC(total_packets_dropped);
+			}
+			break;
+#endif
+
+			default:
+				break;
 		}
 		break;
 

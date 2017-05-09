@@ -43,7 +43,6 @@ RADIUS_PACKET *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 		return NULL;
 	}
 	rp->id = -1;
-	rp->offset = -1;
 
 	if (new_vector) {
 		int i;
@@ -154,7 +153,6 @@ RADIUS_PACKET *fr_radius_copy(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 	out->data_len = 0;
 
 	out->vps = fr_pair_list_copy(out, in->vps);
-	out->offset = 0;
 
 	return out;
 }

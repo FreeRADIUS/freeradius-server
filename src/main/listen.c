@@ -2458,6 +2458,7 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 	if (fr_radius_packet_verify(request->packet, NULL,
 			     request->client->secret) < 0) {
+		if (request->reply) request->reply->id = -1;
 		return -1;
 	}
 

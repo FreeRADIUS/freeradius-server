@@ -62,7 +62,6 @@ typedef struct radius_packet {
 	uint8_t			*data;			//!< Packet data (body).
 	size_t			data_len;		//!< Length of packet data.
 	VALUE_PAIR		*vps;			//!< Result of decoding the packet into VALUE_PAIRs.
-	ssize_t			offset;
 
 	uint32_t       		rounds;			//!< for State[0]
 

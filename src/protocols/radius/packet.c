@@ -115,7 +115,6 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	 *	Load up the configuration values for the user
 	 */
 	ptr = hdr->data;
-	packet->offset = 0;
 
 	/*
 	 *	Loop over the reply attributes for the packet.
@@ -163,11 +162,6 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 		 *	length and initial value.
 		 */
 		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
-			/*
-			 *	Cache the offset to the
-			 *	Message-Authenticator
-			 */
-			packet->offset = total_length;
 			last_len = 16;
 		} else {
 			last_len = vp->vp_length;
