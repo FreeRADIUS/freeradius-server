@@ -98,14 +98,14 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.boolean) == 1,
 	      "datum.boolean has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.byte) == 1,
 	      "datum.byte has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ushort) == 2,
-	      "datum.ushort has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint16) == 2,
+	      "datum.uint16 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.integer) == 4,
 	      "datum.integer has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.integer64) == 8,
-	      "datum.integer64 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.sinteger) == 4,
-	      "datum.sinteger has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint64) == 8,
+	      "datum.uint64 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int32) == 4,
+	      "datum.int32 has unexpected length");
 
 
 /** How many bytes wide each of the value data fields are
@@ -124,14 +124,14 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_IFID]				= SIZEOF_MEMBER(fr_value_box_t, datum.ifid),
 	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, datum.ether),
 
-	[FR_TYPE_BOOL]			= SIZEOF_MEMBER(fr_value_box_t, datum.boolean),
+	[FR_TYPE_BOOL]				= SIZEOF_MEMBER(fr_value_box_t, datum.boolean),
 	[FR_TYPE_UINT8]				= SIZEOF_MEMBER(fr_value_box_t, datum.byte),
-	[FR_TYPE_UINT16]				= SIZEOF_MEMBER(fr_value_box_t, datum.ushort),
+	[FR_TYPE_UINT16]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint16),
 	[FR_TYPE_UINT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer),
-	[FR_TYPE_UINT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer64),
+	[FR_TYPE_UINT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint64),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
-	[FR_TYPE_INT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.sinteger),
+	[FR_TYPE_INT32]				= SIZEOF_MEMBER(fr_value_box_t, datum.int32),
 
 	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
 	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.decimal),
@@ -155,14 +155,14 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, datum.ifid),
 	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, datum.ether),
 
-	[FR_TYPE_BOOL]			= offsetof(fr_value_box_t, datum.boolean),
+	[FR_TYPE_BOOL]				= offsetof(fr_value_box_t, datum.boolean),
 	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, datum.byte),
-	[FR_TYPE_UINT16]				= offsetof(fr_value_box_t, datum.ushort),
+	[FR_TYPE_UINT16]			= offsetof(fr_value_box_t, datum.uint16),
 	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, datum.integer),
-	[FR_TYPE_UINT64]			= offsetof(fr_value_box_t, datum.integer64),
+	[FR_TYPE_UINT64]			= offsetof(fr_value_box_t, datum.uint64),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, datum.size),
 
-	[FR_TYPE_INT32]			= offsetof(fr_value_box_t, datum.sinteger),
+	[FR_TYPE_INT32]				= offsetof(fr_value_box_t, datum.int32),
 
 	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, datum.timeval),
 	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, datum.decimal),
@@ -310,7 +310,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_UINT16:
-		CHECK(ushort);
+		CHECK(uint16);
 		break;
 
 	case FR_TYPE_DATE:
@@ -322,11 +322,11 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_INT32:
-		CHECK(sinteger);
+		CHECK(int32);
 		break;
 
 	case FR_TYPE_UINT64:
-		CHECK(integer64);
+		CHECK(uint64);
 		break;
 
 	case FR_TYPE_SIZE:
@@ -803,7 +803,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	/* 8 byte integers */
 	switch (src->type) {
 	case FR_TYPE_UINT64:
-		dst->datum.integer64 = htonll(src->datum.integer64);
+		dst->datum.uint64 = htonll(src->datum.uint64);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
@@ -817,7 +817,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	/* 2 byte integers */
 	case FR_TYPE_UINT16:
-		dst->datum.ushort = htons(src->datum.ushort);
+		dst->datum.uint16 = htons(src->datum.uint16);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
@@ -1446,8 +1446,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	if ((src->type == FR_TYPE_IFID) &&
 	    (dst_type == FR_TYPE_UINT64)) {
-		memcpy(&dst->datum.integer64, src->datum.ifid, sizeof(src->datum.ifid));
-		dst->datum.integer64 = htonll(dst->datum.integer64);
+		memcpy(&dst->datum.uint64, src->datum.ifid, sizeof(src->datum.ifid));
+		dst->datum.uint64 = htonll(dst->datum.uint64);
 
 	fixed_length:
 		dst->type = dst_type;
@@ -1461,7 +1461,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		uint8_t array[8];
 		uint64_t i;
 
-		i = htonll(src->datum.integer64);
+		i = htonll(src->datum.uint64);
 		memcpy(array, &i, 8);
 
 		/*
@@ -1476,7 +1476,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_UINT16) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.ushort = src->datum.byte;
+			dst->datum.uint16 = src->datum.byte;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1499,16 +1499,16 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.integer = src->datum.ushort;
+			dst->datum.integer = src->datum.uint16;
 			break;
 
 		case FR_TYPE_INT32:
-			if (src->datum.sinteger < 0 ) {
+			if (src->datum.int32 < 0 ) {
 				fr_strerror_printf("Invalid cast: From signed to integer.  "
-						   "signed value %d is negative ", src->datum.sinteger);
+						   "signed value %d is negative ", src->datum.int32);
 				return -1;
 			}
-			dst->datum.integer = (uint32_t)src->datum.sinteger;
+			dst->datum.integer = (uint32_t)src->datum.int32;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1527,19 +1527,19 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_UINT64) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.integer64 = src->datum.byte;
+			dst->datum.uint64 = src->datum.byte;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.integer64 = src->datum.ushort;
+			dst->datum.uint64 = src->datum.uint16;
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->datum.integer64 = src->datum.integer;
+			dst->datum.uint64 = src->datum.integer;
 			break;
 
 		case FR_TYPE_DATE:
-			dst->datum.integer64 = src->datum.date;
+			dst->datum.uint64 = src->datum.date;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1562,11 +1562,11 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_INT32) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.sinteger = src->datum.byte;
+			dst->datum.int32 = src->datum.byte;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.sinteger = src->datum.ushort;
+			dst->datum.int32 = src->datum.uint16;
 			break;
 
 		case FR_TYPE_UINT32:
@@ -1575,16 +1575,16 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 						   "than max signed int and would overflow", src->datum.integer);
 				return -1;
 			}
-			dst->datum.sinteger = (int)src->datum.integer;
+			dst->datum.int32 = (int)src->datum.integer;
 			break;
 
 		case FR_TYPE_UINT64:
 			if (src->datum.integer > INT_MAX) {
-				fr_strerror_printf("Invalid cast: From integer64 to signed.  integer64 value %" PRIu64
-						   " is larger than max signed int and would overflow", src->datum.integer64);
+				fr_strerror_printf("Invalid cast: From uint64 to signed.  uint64 value %" PRIu64
+						   " is larger than max signed int and would overflow", src->datum.uint64);
 				return -1;
 			}
-			dst->datum.sinteger = (int)src->datum.integer64;
+			dst->datum.int32 = (int)src->datum.uint64;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1604,7 +1604,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.timeval.tv_sec = src->datum.ushort;
+			dst->datum.timeval.tv_sec = src->datum.uint16;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
@@ -1622,7 +1622,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			 *	but you never know...
 			 */
 			if (sizeof(uint64_t) > SIZEOF_MEMBER(struct timeval, tv_sec)) goto invalid_cast;
-			dst->datum.timeval.tv_sec = src->datum.integer64;
+			dst->datum.timeval.tv_sec = src->datum.uint64;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
@@ -2483,14 +2483,14 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				return -1;
 			}
 
-			dst->datum.ushort = dval->value;
+			dst->datum.uint16 = dval->value;
 		} else {
 			if (i > 65535) {
 				fr_strerror_printf("Short value \"%s\" is larger than 65535", in);
 				return -1;
 			}
 
-			dst->datum.ushort = i;
+			dst->datum.uint16 = i;
 		}
 		break;
 	}
@@ -2564,7 +2564,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", in);
 			return -1;
 		}
-		dst->datum.integer64 = i;
+		dst->datum.uint64 = i;
 	}
 		break;
 
@@ -2695,7 +2695,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	case FR_TYPE_INT32:
 		/* Damned code for 1 WiMAX attribute */
-		dst->datum.sinteger = (int32_t)strtol(in, NULL, 10);
+		dst->datum.int32 = (int32_t)strtol(in, NULL, 10);
 		break;
 
 	case FR_TYPE_BOOL:
@@ -2855,7 +2855,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_UINT16:
-		p = talloc_typed_asprintf(ctx, "%u", data->datum.ushort);
+		p = talloc_typed_asprintf(ctx, "%u", data->datum.uint16);
 		break;
 
 	case FR_TYPE_UINT32:
@@ -2863,7 +2863,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_UINT64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.integer64);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.uint64);
 		break;
 
 	case FR_TYPE_SIZE:
@@ -2871,7 +2871,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_INT32:
-		p = talloc_typed_asprintf(ctx, "%d", data->datum.sinteger);
+		p = talloc_typed_asprintf(ctx, "%d", data->datum.int32);
 		break;
 
 	case FR_TYPE_TIMEVAL:
@@ -2998,19 +2998,19 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		return snprintf(out, outlen, "%u", data->datum.byte);
 
 	case FR_TYPE_UINT16:
-		return snprintf(out, outlen, "%u", data->datum.ushort);
+		return snprintf(out, outlen, "%u", data->datum.uint16);
 
 	case FR_TYPE_UINT32:
 		return snprintf(out, outlen, "%u", data->datum.integer);
 
 	case FR_TYPE_UINT64:
-		return snprintf(out, outlen, "%" PRIu64, data->datum.integer64);
+		return snprintf(out, outlen, "%" PRIu64, data->datum.uint64);
 
 	case FR_TYPE_SIZE:
 		return snprintf(out, outlen, "%zu", data->datum.size);
 
 	case FR_TYPE_INT32: /* Damned code for 1 WiMAX attribute */
-		len = snprintf(buf, sizeof(buf), "%d", data->datum.sinteger);
+		len = snprintf(buf, sizeof(buf), "%d", data->datum.int32);
 		a = buf;
 		break;
 

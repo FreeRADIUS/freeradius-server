@@ -367,8 +367,8 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
 	}
 	talloc_free(expanded);
 
-	if (counter < check->vp_integer64) return -1;
-	if (counter > check->vp_integer64) return 1;
+	if (counter < check->vp_uint64) return -1;
+	if (counter > check->vp_uint64) return 1;
 	return 0;
 }
 
@@ -454,21 +454,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *	Check if check item > counter
 	 */
-	if (limit->vp_integer64 <= counter) {
+	if (limit->vp_uint64 <= counter) {
 		/* User is denied access, send back a reply message */
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 		pair_make_reply("Reply-Message", msg, T_OP_EQ);
 
 		REDEBUG2("Maximum %s usage time reached", inst->reset);
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
-			 inst->limit_attr->name, limit->vp_integer64, counter);
+			 inst->limit_attr->name, limit->vp_uint64, counter);
 
 		return RLM_MODULE_REJECT;
 	}
 
-	res = limit->vp_integer64 - counter;
+	res = limit->vp_uint64 - counter;
 	RDEBUG2("Allowing user, %s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
-		inst->limit_attr->name, limit->vp_integer64, counter);
+		inst->limit_attr->name, limit->vp_uint64, counter);
 
 	/*
 	 *	We are assuming that simultaneous-use=1. But
@@ -501,9 +501,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			break;
 
 		case 0:		/* found */
-			if (reply_item->vp_integer64 <= res) {
+			if (reply_item->vp_uint64 <= res) {
 				RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
-					reply_item->vp_integer64);
+					reply_item->vp_uint64);
 				return RLM_MODULE_OK;
 			}
 			break;
@@ -516,7 +516,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
 			return RLM_MODULE_OK;
 		}
-		reply_item->vp_integer64 = res;
+		reply_item->vp_uint64 = res;
 		rdebug_pair(L_DBG_LVL_2, request, reply_item, NULL);
 
 		return RLM_MODULE_UPDATED;
@@ -588,7 +588,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err_cs(conf, "Counter attribute %s MUST be integer64",
+		cf_log_err_cs(conf, "Counter attribute %s MUST be uint64",
 			      inst->paircmp_attr->tmpl_da->name);
 		return -1;
 	}
@@ -600,7 +600,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	if (inst->limit_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err_cs(conf, "Check attribute %s MUST be integer64",
+		cf_log_err_cs(conf, "Check attribute %s MUST be uint64",
 			      inst->limit_attr->tmpl_da->name);
 		return -1;
 	}

@@ -88,11 +88,11 @@ typedef struct rlm_test_t {
 	uint8_t		ethernet[6];
 	uint8_t		ethernet_m[6];
 
-	int32_t		sinteger;
-	int32_t		*sinteger_m;
+	int32_t		int32;
+	int32_t		*int32_m;
 
-	uint64_t	integer64;
-	uint64_t	*integer64_m;
+	uint64_t	uint64;
+	uint64_t	*uint64_m;
 
 	_timeval_t	timeval;
 	_timeval_t	*timeval_m;
@@ -154,11 +154,11 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("ethernet", FR_TYPE_ETHERNET, rlm_test_t, ethernet) },
 	{ FR_CONF_OFFSET("ethernet_m", FR_TYPE_ETHERNET | FR_TYPE_MULTI, rlm_test_t, ethernet_m) },
 
-	{ FR_CONF_OFFSET("signed", FR_TYPE_INT32, rlm_test_t, sinteger) },
-	{ FR_CONF_OFFSET("signed_m", FR_TYPE_INT32 | FR_TYPE_MULTI, rlm_test_t, sinteger_m) },
+	{ FR_CONF_OFFSET("signed", FR_TYPE_INT32, rlm_test_t, int32) },
+	{ FR_CONF_OFFSET("signed_m", FR_TYPE_INT32 | FR_TYPE_MULTI, rlm_test_t, int32_m) },
 
-	{ FR_CONF_OFFSET("uint64", FR_TYPE_UINT64, rlm_test_t, integer64) },
-	{ FR_CONF_OFFSET("uint64_m", FR_TYPE_UINT64 | FR_TYPE_MULTI, rlm_test_t, integer64_m) },
+	{ FR_CONF_OFFSET("uint64", FR_TYPE_UINT64, rlm_test_t, uint64) },
+	{ FR_CONF_OFFSET("uint64_m", FR_TYPE_UINT64 | FR_TYPE_MULTI, rlm_test_t, uint64_m) },
 
 	{ FR_CONF_OFFSET("timeval", FR_TYPE_TIMEVAL, rlm_test_t, timeval) },
 	{ FR_CONF_OFFSET("timeval_m", FR_TYPE_TIMEVAL | FR_TYPE_MULTI, rlm_test_t, timeval_m) },

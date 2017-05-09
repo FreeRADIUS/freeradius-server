@@ -475,7 +475,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		break;
 
 	case FR_TYPE_UINT64:
-		lvalue64 = htonll(vp->vp_integer64);
+		lvalue64 = htonll(vp->vp_uint64);
 		memcpy(out, &lvalue64, sizeof(lvalue64));
 		break;
 

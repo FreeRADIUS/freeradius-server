@@ -432,7 +432,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			/* debug */
 			RDEBUG3("creating new int64 for 64 bit integer '%s'", vp->da->name);
 			/* return as 64 bit int - because it is a 64 bit int */
-			return json_object_new_int64(vp->vp_integer64);
+			return json_object_new_int64(vp->vp_uint64);
 #else
 			/* warning */
 			RWARN("skipping 64 bit integer attribute '%s' - please upgrade json-c to 0.10+", vp->da->name);

@@ -919,7 +919,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
-		src.datum.sinteger = json_object_get_int(leaf);
+		src.datum.int32 = json_object_get_int(leaf);
 		src.type = FR_TYPE_INT32;
 		break;
 

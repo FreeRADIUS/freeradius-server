@@ -382,7 +382,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_UINT64:
-		value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
+		value = PyLong_FromUnsignedLongLong(vp->vp_uint64);
 		break;
 
 	case FR_TYPE_SIZE:

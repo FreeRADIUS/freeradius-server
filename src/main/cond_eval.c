@@ -410,7 +410,7 @@ do {\
 	    _r && (_r->type == FR_TYPE_STRING) &&\
 	    all_digits(lhs->datum.strvalue) && all_digits(rhs->datum.strvalue)) {\
 	    	cast_type = FR_TYPE_UINT64;\
-	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO integer64");\
+	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO uint64");\
 	}\
 } while (0)
 

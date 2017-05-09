@@ -83,18 +83,18 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		}
 		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
 			in.type = FR_TYPE_UINT64;
-			in.datum.integer64 = (uint64_t) num;
+			in.datum.uint64 = (uint64_t) num;
 		} else
 #endif
 		if (num < 0) {			/* 32bit signed (supported) */
 			in.type = FR_TYPE_INT32;
-			in.datum.sinteger = num;
+			in.datum.int32 = num;
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = FR_TYPE_UINT32;
 			in.datum.integer = (uint32_t) num;
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = FR_TYPE_UINT16;
-			in.datum.ushort = (uint16_t) num;
+			in.datum.uint16 = (uint16_t) num;
 		} else {		/* 8bit unsigned (supported) */
 			in.type = FR_TYPE_UINT8;
 			in.datum.byte = (uint8_t) num;
@@ -151,17 +151,17 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 		return json_object_new_int(data->datum.byte);
 
 	case FR_TYPE_UINT16:
-		return json_object_new_int(data->datum.ushort);
+		return json_object_new_int(data->datum.uint16);
 
 	case FR_TYPE_UINT32:
-		return json_object_new_int64((int64_t)data->datum.integer64);	/* uint32_t (max) > int32_t (max) */
+		return json_object_new_int64((int64_t)data->datum.uint64);	/* uint32_t (max) > int32_t (max) */
 
 	case FR_TYPE_UINT64:
-		if (data->datum.integer64 > INT64_MAX) goto do_string;
-		return json_object_new_int64(data->datum.integer64);
+		if (data->datum.uint64 > INT64_MAX) goto do_string;
+		return json_object_new_int64(data->datum.uint64);
 
 	case FR_TYPE_INT32:
-		return json_object_new_int(data->datum.sinteger);
+		return json_object_new_int(data->datum.int32);
 	}
 }
 

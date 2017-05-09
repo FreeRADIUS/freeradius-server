@@ -1354,8 +1354,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_UINT64:
-		memcpy(&vp->vp_integer64, p, 8);
-		vp->vp_integer64 = ntohll(vp->vp_integer64);
+		memcpy(&vp->vp_uint64, p, 8);
+		vp->vp_uint64 = ntohll(vp->vp_uint64);
 		break;
 
 	case FR_TYPE_DATE:

@@ -265,21 +265,21 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 						vpt->name, fr_strerror());
 					return false;
 				}
-				if (value.datum.integer64 > INT64_MAX) {
+				if (value.datum.uint64 > INT64_MAX) {
 				overflow:
 					if (vpt) talloc_free(vpt);
 					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.datum.integer64);
+						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.datum.uint64);
 					return false;
 				}
-				y = (int64_t)value.datum.integer64;
+				y = (int64_t)value.datum.uint64;
 
 				RINDENT();
 				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt->len, vpt->name, y);
 				REXDENT();
 			} else {
-				if (vp->vp_integer64 > INT64_MAX) goto overflow;
-				y = (int64_t)vp->vp_integer64;
+				if (vp->vp_uint64 > INT64_MAX) goto overflow;
+				y = (int64_t)vp->vp_uint64;
 			}
 
 			/*

@@ -196,9 +196,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			/*
 			 *	Don't want integer overflow!
 			 */
-			if (vp->vp_integer64 < check->vp_integer64) {
+			if (vp->vp_uint64 < check->vp_uint64) {
 				ret = -1;
-			} else if (vp->vp_integer64 > check->vp_integer64) {
+			} else if (vp->vp_uint64 > check->vp_uint64) {
 				ret = +1;
 			} else {
 				ret = 0;

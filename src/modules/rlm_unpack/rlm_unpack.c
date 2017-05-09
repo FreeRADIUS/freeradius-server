@@ -168,7 +168,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 
 	case FR_TYPE_UINT64:
-		cast->vp_integer64 = ntohll(cast->vp_integer64);
+		cast->vp_uint64 = ntohll(cast->vp_uint64);
 		break;
 
 	default:

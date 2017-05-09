@@ -108,7 +108,7 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "byte",		FR_TYPE_UINT8 },
 	{ "short",		FR_TYPE_UINT16 },
 	{ "integer",		FR_TYPE_UINT32 },
-	{ "integer64",		FR_TYPE_UINT64 },
+	{ "uint64",		FR_TYPE_UINT64 },
 	{ "size",		FR_TYPE_SIZE },
 	{ "signed",        	FR_TYPE_INT32 },
 

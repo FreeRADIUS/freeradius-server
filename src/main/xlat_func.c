@@ -112,7 +112,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return snprintf(*out, outlen, "%i", htonl(int32));
 
 	case FR_TYPE_UINT64:
-		return snprintf(*out, outlen, "%" PRIu64, vp->vp_integer64);
+		return snprintf(*out, outlen, "%" PRIu64, vp->vp_uint64);
 
 	/*
 	 *	IP addresses are treated specially, as parsing functions assume the value

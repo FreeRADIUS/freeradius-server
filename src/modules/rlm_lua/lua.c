@@ -149,7 +149,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 
 		case FR_TYPE_UINT64:
-			vp->vp_integer64 = (uint64_t) lua_tointeger(L, -1);
+			vp->vp_uint64 = (uint64_t) lua_tointeger(L, -1);
 			break;
 
 		default:

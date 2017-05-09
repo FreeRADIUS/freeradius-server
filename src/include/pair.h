@@ -137,12 +137,12 @@ typedef struct value_pair_raw {
 
 #define vp_bool		data.datum.boolean
 #define vp_byte		data.datum.byte
-#define vp_short	data.datum.ushort
+#define vp_short	data.datum.uint16
 #define vp_integer	data.datum.integer
-#define vp_integer64	data.datum.integer64
+#define vp_uint64	data.datum.uint64
 #define vp_size		data.datum.size
 
-#define vp_signed	data.datum.sinteger
+#define vp_signed	data.datum.int32
 #define vp_decimal	data.datum.decimal
 
 #define vp_date		data.datum.date

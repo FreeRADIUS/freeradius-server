@@ -404,7 +404,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 			break;
 
 		case FR_TYPE_UINT64:
-			attr64 = htonll(vp->vp_integer64); /* stored in host order */
+			attr64 = htonll(vp->vp_uint64); /* stored in host order */
 			memcpy(p, &attr64, sizeof(attr64));
 			length = 8;
 			break;

@@ -918,7 +918,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					}
 
 					/*
-					 *	ifid to integer64 is OK
+					 *	ifid to uint64 is OK
 					 */
 					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IFID) &&
 					    (c->cast->type == FR_TYPE_UINT64)) {
@@ -942,7 +942,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					}
 
 					/*
-					 *	integer64 to ethernet is OK.
+					 *	uint64 to ethernet is OK.
 					 */
 					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_UINT64) &&
 					    (c->cast->type == FR_TYPE_ETHERNET)) {
