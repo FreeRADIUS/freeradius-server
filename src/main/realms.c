@@ -1156,7 +1156,7 @@ void realm_pool_free(home_pool_t *pool)
 	}
 
 	this->next = NULL;
-	this->when = now + 60;
+	this->when = now + 300;
 	this->pool = pool;
 	pthread_mutex_unlock(&pool_free_mutex);
 }
