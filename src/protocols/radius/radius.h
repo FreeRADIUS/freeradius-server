@@ -69,12 +69,7 @@ typedef enum {
 /*
  *	protocols/radius/base.c
  */
-#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
-#define MAX_PASS_LEN (128)
-#define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-extern FR_NAME_NUMBER const fr_request_types[];
 size_t		fr_radius_attr_len(VALUE_PAIR const *vp);
-
 
 int		fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
