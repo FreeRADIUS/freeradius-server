@@ -239,6 +239,13 @@ listen {
 		      #  Deleting the entire "cache" subsection
 		      #  Also disables caching.
 		      #
+			#
+			#  As of version 3.0.14, the session cache requires the use
+			#  of the "name" and "persist_dir" configuration items, below.
+			#
+			#  The internal OpenSSL session cache has been permanently
+			#  disabled.
+			#
 		      #  You can disallow resumption for a
 		      #  particular user by adding the following
 		      #  attribute to the control item list:
@@ -257,15 +264,6 @@ listen {
 		      #  time.
 		      #
 		      lifetime = 24 # hours
-
-		      #
-		      #  The maximum number of entries in the
-		      #  cache.  Set to "0" for "infinite".
-		      #
-		      #  This could be set to the number of users
-		      #  who are logged in... which can be a LOT.
-		      #
-		      max_entries = 255
 
 		      #
 		      #  Internal "name" of the session cache.
