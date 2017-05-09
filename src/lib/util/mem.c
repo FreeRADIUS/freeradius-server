@@ -92,7 +92,7 @@ RADIUS_PACKET *fr_radius_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->if_index = packet->if_index;
 	reply->id = packet->id;
 	reply->code = 0; /* UNKNOWN code */
-	memcpy(reply->vector, packet->vector,
+	memset(reply->vector, 0,
 	       sizeof(reply->vector));
 	reply->vps = NULL;
 	reply->data = NULL;

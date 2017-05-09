@@ -1830,7 +1830,7 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 	request->reply->if_index = request->packet->if_index;
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
-	memcpy(request->reply->vector, request->packet->vector,
+	memset(request->reply->vector, 0,
 	       sizeof(request->reply->vector));
 	request->reply->vps = NULL;
 	request->reply->data = NULL;
