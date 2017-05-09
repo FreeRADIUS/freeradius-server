@@ -111,9 +111,8 @@ void		fr_radius_print_hex(RADIUS_PACKET const *packet) CC_HINT(nonnull);
 
 
 typedef struct fr_radius_ctx {
-	RADIUS_PACKET const	*packet;
-	RADIUS_PACKET const	*original;
-	char const		*secret;
+	uint8_t const		*vector;		//!< vector for encryption / decryption of data
+	char const		*secret;		//!< shared secret.  MUST be talloc'd
 } fr_radius_ctx_t;
 
 /*

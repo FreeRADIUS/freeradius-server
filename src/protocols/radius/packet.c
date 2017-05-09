@@ -43,6 +43,15 @@ typedef struct radius_packet_t {
 	uint8_t	data[1];
 } radius_packet_t;
 
+/*
+ *	For request packets which have the Request Authenticator being
+ *	all zeros.  We need to decode attributes using a Request
+ *	Authenticator of all zeroes, but the actual Request
+ *	Authenticator contains the signature of the packet, so we
+ *	can't use that.
+ */
+static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 
 /*
  *	Some messages get printed out only in debugging mode.
@@ -62,37 +71,55 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	int			len;
 	VALUE_PAIR const	*vp;
 	vp_cursor_t		cursor;
-	fr_radius_ctx_t encoder_ctx = { .packet = packet, .original = original, .secret = secret };
+	fr_radius_ctx_t		packet_ctx;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
 	 */
 	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
 
-	/*
-	 *	Double-check some things based on packet code.
-	 */
+	packet_ctx.secret = secret;
+	packet_ctx.vector = packet->vector;
+
 	switch (packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		break;
+		
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_RESPONSE:
+#endif
+#ifdef WITH_COA
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+#endif
 		if (!original) {
-			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
+			fr_strerror_printf("Cannot encode response without request");
 			return -1;
 		}
+		packet_ctx.vector = original->vector;
 		break;
 
-		/*
-		 *	These packet vectors start off as all zero.
-		 */
+#ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
-	case PW_CODE_COA_REQUEST:
-		memset(packet->vector, 0, sizeof(packet->vector));
+		packet_ctx.vector = nullvector;
 		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		packet_ctx.vector = nullvector;
+		break;
+#endif
 
 	default:
-		break;
+		fr_strerror_printf("Cannot decode unknown packet code %d", packet->code);
+		return -1;
 	}
 
 	/*
@@ -170,7 +197,7 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 
 		if (room <= 2) break;
 
-		len = fr_radius_encode_pair(ptr, room, &cursor, &encoder_ctx);
+		len = fr_radius_encode_pair(ptr, room, &cursor, &packet_ctx);
 		if (len < 0) return -1;
 
 		/*
@@ -232,11 +259,52 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	radius_packet_t		*hdr;
 	VALUE_PAIR		*head = NULL;
 	vp_cursor_t		cursor, out;
-	fr_radius_ctx_t		decoder_ctx = {
-					.original = original,
-					.packet = packet,
-					.secret = secret
-				};
+	fr_radius_ctx_t		packet_ctx;
+
+	packet_ctx.secret = secret;
+	packet_ctx.vector = packet->vector;
+
+	switch (packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		break;
+		
+	case PW_CODE_ACCESS_ACCEPT:
+	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_ACCESS_CHALLENGE:
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_RESPONSE:
+#endif
+#ifdef WITH_COA
+	case PW_CODE_COA_ACK:
+	case PW_CODE_COA_NAK:
+	case PW_CODE_DISCONNECT_ACK:
+	case PW_CODE_DISCONNECT_NAK:
+#endif
+		if (!original) {
+			fr_strerror_printf("Cannot decode response without request");
+			return -1;
+		}
+		packet_ctx.vector = original->vector;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_REQUEST:
+		memset(packet->vector, 0, sizeof(packet->vector));
+		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		memset(packet->vector, 0, sizeof(packet->vector));
+		break;
+#endif
+
+	default:
+		fr_strerror_printf("Cannot decode unknown packet code %d", packet->code);
+		return -1;
+	}
+
 	/*
 	 *	Extract attribute-value pairs
 	 */
@@ -257,7 +325,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		 *	This may return many VPs
 		 */
 		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal),
-					       ptr, packet_length, &decoder_ctx);
+					       ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;

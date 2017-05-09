@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
 
-static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
-
 bool fr_tunnel_password_zeros = true;
 
 /** Decode Tunnel-Password encrypted attributes
@@ -984,13 +982,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *  User-Password
 		 */
 		case FLAG_ENCRYPT_USER_PASSWORD:
-			if (packet_ctx->original) {
-				fr_radius_decode_password((char *)buffer, attr_len,
-							  packet_ctx->secret, packet_ctx->original->vector);
-			} else {
-				fr_radius_decode_password((char *)buffer, attr_len,
-							  packet_ctx->secret, packet_ctx->packet->vector);
-			}
+			fr_radius_decode_password((char *)buffer, attr_len,
+						  packet_ctx->secret, packet_ctx->vector);
 			buffer[253] = '\0';
 
 			/*
@@ -1018,13 +1011,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			break;
 
 		/*
-		 *	Tunnel-Password's may go ONLY in response
-		 *	packets.  They can have a tag, so data_len is
-		 *	not the same as attrlen.
+		 *	Tunnel-Password's go in response packets,
+		 *	except for CoA-Requests.  They can have a tag,
+		 *	so data_len is not the same as attrlen.
 		 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx->secret,
-							     packet_ctx->original ? packet_ctx->original->vector : nullvector) < 0) {
+			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx->secret, packet_ctx->vector) < 0) {
 				goto raw;
 			}
 			break;
@@ -1034,9 +1026,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *	Ascend-Receive-Secret
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
-			if (!packet_ctx->original) goto raw;
-
-			fr_radius_ascend_secret(buffer, packet_ctx->original->vector, packet_ctx->secret, p);
+			fr_radius_ascend_secret(buffer, packet_ctx->vector, packet_ctx->secret, p);
 			buffer[AUTH_VECTOR_LEN] = '\0';
 			data_len = strlen((char *) buffer);
 			break;

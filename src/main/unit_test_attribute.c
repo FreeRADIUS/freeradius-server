@@ -71,14 +71,6 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 	return 0;
 }
 
-static RADIUS_PACKET my_original = {
-	.sockfd = -1,
-	.id = 0,
-	.code = PW_CODE_ACCESS_REQUEST,
-	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
-};
-
-
 static RADIUS_PACKET my_packet = {
 	.sockfd = -1,
 	.id = 0,
@@ -687,9 +679,8 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 		if (strncmp(p, "encode ", 7) == 0) {
 			vp_cursor_t cursor;
-			fr_radius_ctx_t encoder_ctx = { .packet = &my_packet,
-								.original = &my_original,
-								.secret = my_secret };
+			fr_radius_ctx_t encoder_ctx = { .vector = my_packet.vector,
+							.secret = my_secret };
 
 			/*
 			 *	Encode the previous output
@@ -727,8 +718,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		if (strncmp(p, "decode ", 7) == 0) {
 			ssize_t		my_len;
 			vp_cursor_t 	cursor;
-			fr_radius_ctx_t decoder_ctx = { .packet = &my_packet,
-							.original = &my_original,
+			fr_radius_ctx_t decoder_ctx = { .vector = my_packet.vector,
 							.secret = my_secret };
 			if (strcmp(p + 7, "-") == 0) {
 				attr = data;

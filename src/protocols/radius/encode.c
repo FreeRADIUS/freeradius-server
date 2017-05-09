@@ -818,7 +818,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	if (len > (ssize_t)outlen) len = outlen;
 
 	if (vp->da->flags.encrypt && !packet_ctx) {
-	no_ctx_error:
 		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
 		return -1;
 	}
@@ -830,7 +829,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (da->type != PW_TYPE_STRUCT) switch (vp->da->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
-		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->packet->vector);
+		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->vector);
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
@@ -846,26 +845,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 */
 		if (outlen < (18 + offset)) return 0;
 
-		switch (packet_ctx->packet->code) {
-		case PW_CODE_ACCESS_ACCEPT:
-		case PW_CODE_ACCESS_REJECT:
-		case PW_CODE_ACCESS_CHALLENGE:
-		default:
-			if (!packet_ctx->original) goto no_ctx_error;
+		if (offset) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 
-			if (offset) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
-			encode_tunnel_password(ptr + offset, &len, data, len,
-					       outlen - offset, packet_ctx->secret, packet_ctx->original->vector);
-			len += offset;
-			break;
-		case PW_CODE_ACCOUNTING_REQUEST:
-		case PW_CODE_DISCONNECT_REQUEST:
-		case PW_CODE_COA_REQUEST:
-			ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
-			encode_tunnel_password(ptr + 1, &len, data, len, outlen - 1, packet_ctx->secret, packet_ctx->packet->vector);
-			len += offset;
-			break;
-		}
+		encode_tunnel_password(ptr + offset, &len, data, len,
+				       outlen - offset, packet_ctx->secret, packet_ctx->vector);
+		len += offset;
 		break;
 
 		/*
@@ -875,7 +859,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FLAG_ENCRYPT_ASCEND_SECRET:
 		if (len != 16) return 0;
 
-		fr_radius_ascend_secret(ptr, packet_ctx->packet->vector, packet_ctx->secret, data);
+		fr_radius_ascend_secret(ptr, packet_ctx->vector, packet_ctx->secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
 
