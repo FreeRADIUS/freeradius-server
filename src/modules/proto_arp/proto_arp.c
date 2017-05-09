@@ -186,17 +186,13 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		fr_dict_attr_t const	*da;
 		VALUE_PAIR		*vp = NULL;;
 		vp_cursor_t		cursor;
-		fr_radius_ctx_t		decoder_ctx = {
-						.packet = request->packet,
-						.original = request->packet
-					};
 
 		da = fr_dict_attr_by_name(NULL, header_names[i].name);
 		if (!da) return 0;
 
 		fr_pair_cursor_init(&cursor, &vp);
 		len = fr_radius_decode_pair_value(request->packet, &cursor, da, p, header_names[i].len,
-						  header_names[i].len, &decoder_ctx);
+						  header_names[i].len, NULL);
 		if (len <= 0) {
 			RDEBUG("Failed decoding %s: %s",
 			       header_names[i].name, fr_strerror());
