@@ -180,7 +180,7 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **e
 			 */
 			value_box_t data;
 			char quote = *start;
-			PW_TYPE src_type = PW_TYPE_STRING;
+			fr_type_t src_type = FR_TYPE_STRING;
 
 			/*
 			 *	Regex compilers can handle escapes.  So we don't do it.
@@ -282,7 +282,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 {
 	char const *p = start;
 	char const *q;
-	PW_TYPE cast;
+	fr_type_t cast;
 
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
@@ -292,8 +292,8 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	q = p;
 	while (*q && *q != '>') q++;
 
-	cast = fr_substr2int(dict_attr_types, p, PW_TYPE_INVALID, q - p);
-	if (cast == PW_TYPE_INVALID) {
+	cast = fr_substr2int(dict_attr_types, p, FR_TYPE_INVALID, q - p);
+	if (cast == FR_TYPE_INVALID) {
 		*error = "Invalid data type in cast";
 		return -(p - start);
 	}
@@ -320,7 +320,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 	return q - start;
 }
 
-static bool cond_type_check(fr_cond_t *c, PW_TYPE lhs_type)
+static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 {
 	/*
 	 *	SOME integer mismatch is OK.  If the LHS has a large type,
@@ -329,57 +329,57 @@ static bool cond_type_check(fr_cond_t *c, PW_TYPE lhs_type)
 	 *	If the LHS has a small type, and the RHS has a large type,
 	 *	then add a cast to the LHS.
 	 */
-	if (lhs_type == PW_TYPE_INTEGER64) {
-		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
-		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
+	if (lhs_type == FR_TYPE_INTEGER64) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_SHORT) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_BYTE)) {
 			c->cast = NULL;
 			return true;
 		}
 	}
 
-	if (lhs_type == PW_TYPE_INTEGER) {
-		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
-		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
+	if (lhs_type == FR_TYPE_INTEGER) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_SHORT) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_BYTE)) {
 			c->cast = NULL;
 			return true;
 		}
 
-		if (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) {
+		if (c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER64) {
 			c->cast = c->data.map->rhs->tmpl_da;
 			return true;
 		}
 	}
 
-	if (lhs_type == PW_TYPE_SHORT) {
-		if (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE) {
+	if (lhs_type == FR_TYPE_SHORT) {
+		if (c->data.map->rhs->tmpl_da->type == FR_TYPE_BYTE) {
 			c->cast = NULL;
 			return true;
 		}
 
-		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
-		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER)) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER64) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER)) {
 			c->cast = c->data.map->rhs->tmpl_da;
 			return true;
 		}
 	}
 
-	if (lhs_type == PW_TYPE_BYTE) {
-		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
-		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT)) {
+	if (lhs_type == FR_TYPE_BYTE) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER64) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_SHORT)) {
 			c->cast = c->data.map->rhs->tmpl_da;
 			return true;
 		}
 	}
 
-	if ((lhs_type == PW_TYPE_IPV4_PREFIX) &&
-	    (c->data.map->rhs->tmpl_da->type == PW_TYPE_IPV4_ADDR)) {
+	if ((lhs_type == FR_TYPE_IPV4_PREFIX) &&
+	    (c->data.map->rhs->tmpl_da->type == FR_TYPE_IPV4_ADDR)) {
 		return true;
 	}
 
-	if ((lhs_type == PW_TYPE_IPV6_PREFIX) &&
-	    (c->data.map->rhs->tmpl_da->type == PW_TYPE_IPV6_ADDR)) {
+	if ((lhs_type == FR_TYPE_IPV6_PREFIX) &&
+	    (c->data.map->rhs->tmpl_da->type == FR_TYPE_IPV6_ADDR)) {
 		return true;
 	}
 
@@ -387,14 +387,14 @@ static bool cond_type_check(fr_cond_t *c, PW_TYPE lhs_type)
 	 *	Same checks as above, but with the types swapped, and
 	 *	with explicit cast for the interpretor.
 	 */
-	if ((lhs_type == PW_TYPE_IPV4_ADDR) &&
-	    (c->data.map->rhs->tmpl_da->type == PW_TYPE_IPV4_PREFIX)) {
+	if ((lhs_type == FR_TYPE_IPV4_ADDR) &&
+	    (c->data.map->rhs->tmpl_da->type == FR_TYPE_IPV4_PREFIX)) {
 		c->cast = c->data.map->rhs->tmpl_da;
 		return true;
 	}
 
-	if ((lhs_type == PW_TYPE_IPV6_ADDR) &&
-	    (c->data.map->rhs->tmpl_da->type == PW_TYPE_IPV6_PREFIX)) {
+	if ((lhs_type == FR_TYPE_IPV6_ADDR) &&
+	    (c->data.map->rhs->tmpl_da->type == FR_TYPE_IPV6_PREFIX)) {
 		c->cast = c->data.map->rhs->tmpl_da;
 		return true;
 	}
@@ -524,7 +524,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				return_P("Empty octet string is invalid");
 			}
 
-			c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + PW_TYPE_OCTETS);
+			c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + FR_TYPE_OCTETS);
 		}
 
 		while (isspace((int)*p)) p++; /* skip spaces after LHS */
@@ -792,12 +792,12 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				}
 
 				if ((map->lhs->type != TMPL_TYPE_ATTR) ||
-				    !((map->lhs->tmpl_da->type == PW_TYPE_OCTETS) ||
-				      (map->lhs->tmpl_da->type == PW_TYPE_BYTE) ||
-				      (map->lhs->tmpl_da->type == PW_TYPE_SHORT) ||
-				      (map->lhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-				      (map->lhs->tmpl_da->type == PW_TYPE_INTEGER64))) {
-					c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + PW_TYPE_OCTETS);
+				    !((map->lhs->tmpl_da->type == FR_TYPE_OCTETS) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_BYTE) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_SHORT) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_INTEGER) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_INTEGER64))) {
+					c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + FR_TYPE_OCTETS);
 				}
 			}
 
@@ -912,40 +912,40 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					 *	Run-time parsing of strings.
 					 *	Run-time copying of octets.
 					 */
-					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_STRING) ||
-					    (c->data.map->lhs->tmpl_da->type == PW_TYPE_OCTETS)) {
+					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
+					    (c->data.map->lhs->tmpl_da->type == FR_TYPE_OCTETS)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	ifid to integer64 is OK
 					 */
-					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IFID) &&
-					    (c->cast->type == PW_TYPE_INTEGER64)) {
+					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IFID) &&
+					    (c->cast->type == FR_TYPE_INTEGER64)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	ipaddr to ipv4prefix is OK
 					 */
-					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV4_ADDR) &&
-					    (c->cast->type == PW_TYPE_IPV4_PREFIX)) {
+					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) &&
+					    (c->cast->type == FR_TYPE_IPV4_PREFIX)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	ipv6addr to ipv6prefix is OK
 					 */
-					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV6_ADDR) &&
-					    (c->cast->type == PW_TYPE_IPV6_PREFIX)) {
+					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) &&
+					    (c->cast->type == FR_TYPE_IPV6_PREFIX)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	integer64 to ethernet is OK.
 					 */
-					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_INTEGER64) &&
-					    (c->cast->type == PW_TYPE_ETHERNET)) {
+					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_INTEGER64) &&
+					    (c->cast->type == FR_TYPE_ETHERNET)) {
 						goto cast_ok;
 					}
 
@@ -1011,7 +1011,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->rhs->type != TMPL_TYPE_ATTR) &&
-				    (c->data.map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
+				    (c->data.map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
 				    (c->data.map->op != T_OP_CMP_TRUE) &&
 				    (c->data.map->op != T_OP_CMP_FALSE) &&
 				    (map->rhs->quote == T_BARE_WORD)) {
@@ -1025,9 +1025,9 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->rhs->type != TMPL_TYPE_ATTR) &&
-				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_STRING) &&
-				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_OCTETS) &&
-				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_DATE) &&
+				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_STRING) &&
+				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_OCTETS) &&
+				    (c->data.map->lhs->tmpl_da->type != FR_TYPE_DATE) &&
 				    (rhs_type == T_SINGLE_QUOTED_STRING)) {
 					*error = "Comparison value must be an unquoted string";
 				return_rhs:
@@ -1058,19 +1058,19 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    ((c->data.map->rhs->type == TMPL_TYPE_UNPARSED) ||
 				     (c->data.map->rhs->type == TMPL_TYPE_DATA))) {
-					PW_TYPE type = c->data.map->lhs->tmpl_da->type;
+					fr_type_t type = c->data.map->lhs->tmpl_da->type;
 
 					switch (c->data.map->lhs->tmpl_da->type) {
-					case PW_TYPE_IPV4_ADDR:
+					case FR_TYPE_IPV4_ADDR:
 						if (strchr(c->data.map->rhs->name, '/') != NULL) {
-							type = PW_TYPE_IPV4_PREFIX;
+							type = FR_TYPE_IPV4_PREFIX;
 							c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + type);
 						}
 						break;
 
-					case PW_TYPE_IPV6_ADDR:
+					case FR_TYPE_IPV6_ADDR:
 						if (strchr(c->data.map->rhs->name, '/') != NULL) {
-							type = PW_TYPE_IPV6_PREFIX;
+							type = FR_TYPE_IPV6_PREFIX;
 							c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + type);
 						}
 						break;
@@ -1109,7 +1109,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					 *	Cast the LHS to the
 					 *	type of the RHS.
 					 */
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_COMBO_IP_ADDR) {
+					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_COMBO_IP_ADDR) {
 						fr_dict_attr_t const *da;
 
 						da = fr_dict_attr_by_type(c->data.map->lhs->tmpl_da,
@@ -1129,14 +1129,14 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				    ((c->data.map->rhs->type == TMPL_TYPE_XLAT) ||
 				     (c->data.map->rhs->type == TMPL_TYPE_XLAT_STRUCT) ||
 				     (c->data.map->rhs->type == TMPL_TYPE_EXEC))) {
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV4_ADDR) {
+					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) {
 						c->cast = fr_dict_attr_by_num(NULL, 0,
-									      PW_CAST_BASE + PW_TYPE_IPV4_PREFIX);
+									      PW_CAST_BASE + FR_TYPE_IPV4_PREFIX);
 					}
 
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV6_ADDR) {
+					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) {
 						c->cast = fr_dict_attr_by_num(NULL, 0,
-									      PW_CAST_BASE + PW_TYPE_IPV6_PREFIX);
+									      PW_CAST_BASE + FR_TYPE_IPV6_PREFIX);
 					}
 				}
 

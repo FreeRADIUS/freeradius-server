@@ -54,24 +54,24 @@ typedef struct rlm_rediswho {
 } rlm_rediswho_t;
 
 static CONF_PARSER section_config[] = {
-	{ FR_CONF_OFFSET("insert", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert) },
-	{ FR_CONF_OFFSET("trim", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
-	{ FR_CONF_OFFSET("expire", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire) },
+	{ FR_CONF_OFFSET("insert", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_rediswho_t, insert) },
+	{ FR_CONF_OFFSET("trim", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
+	{ FR_CONF_OFFSET("expire", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_rediswho_t, expire) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
 
-	{ FR_CONF_OFFSET("trim_count", PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), .dflt = "-1" },
+	{ FR_CONF_OFFSET("trim_count", FR_TYPE_SIGNED, rlm_rediswho_t, trim_count), .dflt = "-1" },
 
 	/*
 	 *	These all smash the same variables, because we don't care about them right now.
 	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
 	 */
-	{ FR_CONF_POINTER("Start", PW_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Interim-Update", PW_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Stop", PW_TYPE_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Start", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Interim-Update", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Stop", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
 
 	CONF_PARSER_TERMINATOR
 };

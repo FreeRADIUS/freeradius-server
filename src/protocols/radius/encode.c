@@ -437,73 +437,73 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	if (outlen > len) outlen = len;
 
 	switch (vp->vp_type) {
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
 		memcpy(out, vp->vp_ptr, outlen);
 		return outlen;
 
 		/*
 		 *	All of these values are at the same location.
 		 */
-	case PW_TYPE_IFID:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_ABINARY:
-	case PW_TYPE_ETHERNET:
-	case PW_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_IFID:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_ABINARY:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_COMBO_IP_ADDR:
 		memcpy(out, &vp->data.datum, outlen);
 		break;
 
-	case PW_TYPE_BOOLEAN:
+	case FR_TYPE_BOOLEAN:
 		out[0] = vp->vp_byte & 0x01;
 		break;
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		out[0] = vp->vp_byte & 0xff;
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		out[0] = (vp->vp_short >> 8) & 0xff;
 		out[1] = vp->vp_short & 0xff;
 		break;
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		lvalue = htonl(vp->vp_integer);
 		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		lvalue64 = htonll(vp->vp_integer64);
 		memcpy(out, &lvalue64, sizeof(lvalue64));
 		break;
 
-	case PW_TYPE_DATE:
+	case FR_TYPE_DATE:
 		lvalue = htonl(vp->vp_date);
 		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_SIGNED:
 	{
 		int32_t slvalue = htonl(vp->vp_signed);
 		memcpy(out, &slvalue, sizeof(slvalue));
 		break;
 	}
 
-	case PW_TYPE_INVALID:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_COMBO_IP_PREFIX:
-	case PW_TYPE_EVS:
-	case PW_TYPE_VSA:
-	case PW_TYPE_VENDOR:
-	case PW_TYPE_TLV:
-	case PW_TYPE_STRUCT:
-	case PW_TYPE_SIZE:
-	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_DECIMAL:
-	case PW_TYPE_MAX:
+	case FR_TYPE_INVALID:
+	case FR_TYPE_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_EVS:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_DECIMAL:
+	case FR_TYPE_MAX:
 		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->vp_type);
 		return -1;
 
@@ -526,7 +526,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 	VERIFY_VP(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (tlv_stack[depth]->type != PW_TYPE_STRUCT) {
+	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
@@ -617,7 +617,7 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
-		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
+		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
 			len = encode_tlv_hdr(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		} else {
 			len = encode_rfc_hdr_internal(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
@@ -656,7 +656,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	VERIFY_VP(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (tlv_stack[depth]->type != PW_TYPE_TLV) {
+	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
@@ -712,14 +712,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	It's a little weird to consider a TLV as a value,
 	 *	but it seems to work OK.
 	 */
-	if (da->type == PW_TYPE_TLV) {
+	if (da->type == FR_TYPE_TLV) {
 		return encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
 	/*
 	 *	This has special requirements.
 	 */
-	if (da->type == PW_TYPE_STRUCT) {
+	if (da->type == FR_TYPE_STRUCT) {
 		len = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 		if (len < 0) return len;
 
@@ -743,7 +743,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 
 	switch (da->type) {
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
@@ -758,7 +758,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	len = fr_radius_attr_len(vp);
 
 	switch (da->type) {
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		/*
 		 *	If asked to encode more data than allowed, we
 		 *	encode only the allowed data.
@@ -768,7 +768,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		}
 		/* FALL-THROUGH */
 
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		data = vp->vp_ptr;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL data");
@@ -779,20 +779,20 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		/*
 		 *	Simple data types use the common encoder.
 		 */
-	case PW_TYPE_IFID:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_ABINARY:
-	case PW_TYPE_ETHERNET:	/* just in case */
-	case PW_TYPE_BYTE:
-	case PW_TYPE_BOOLEAN:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_INTEGER64:
-	case PW_TYPE_DATE:
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_IFID:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_ABINARY:
+	case FR_TYPE_ETHERNET:	/* just in case */
+	case FR_TYPE_BYTE:
+	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_SHORT:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_INTEGER64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_SIGNED:
 		len = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
 		if (len < 0) return -1;
 		data = buffer;
@@ -827,7 +827,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	if (da->type != PW_TYPE_STRUCT) switch (vp->da->flags.encrypt) {
+	if (da->type != FR_TYPE_STRUCT) switch (vp->da->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		encode_password(ptr, &len, data, len, packet_ctx->secret, packet_ctx->vector);
 		break;
@@ -865,11 +865,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
-			if (vp->vp_type == PW_TYPE_STRING) {
+			if (vp->vp_type == FR_TYPE_STRING) {
 				if (len > ((ssize_t) (outlen - 1))) len = outlen - 1;
 				ptr[0] = vp->tag;
 				ptr++;
-			} else if (vp->vp_type == PW_TYPE_INTEGER) {
+			} else if (vp->vp_type == FR_TYPE_INTEGER) {
 				buffer[0] = vp->tag;
 			} /* else it can't be any other type */
 		}
@@ -949,9 +949,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
-	PW_TYPE			attr_type;
+	fr_type_t			attr_type;
 #ifndef NDEBUG
-	PW_TYPE			vsa_type;
+	fr_type_t			vsa_type;
 #endif
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
@@ -959,7 +959,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	VERIFY_VP(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if ((tlv_stack[depth]->type != PW_TYPE_EXTENDED) && (tlv_stack[depth]->type != PW_TYPE_LONG_EXTENDED)) {
+	if ((tlv_stack[depth]->type != FR_TYPE_EXTENDED) && (tlv_stack[depth]->type != FR_TYPE_LONG_EXTENDED)) {
 		fr_strerror_printf("%s : Called for non-extended attribute type %s",
 				   __FUNCTION__, fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
@@ -981,7 +981,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Encode the header for "short" or "long" attributes
 	 */
-	if (attr_type == PW_TYPE_EXTENDED) {
+	if (attr_type == FR_TYPE_EXTENDED) {
 		if (outlen < 3) return 0;
 
 		out[1] = 3;
@@ -1001,7 +1001,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Handle EVS
 	 */
-	if (tlv_stack[depth]->type == PW_TYPE_EVS) {
+	if (tlv_stack[depth]->type == FR_TYPE_EVS) {
 		uint8_t *evs = out + out[1];
 		uint32_t lvalue;
 
@@ -1025,9 +1025,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 *	"outlen" can be larger than 255 here, but only for the
 	 *	"long" extended type.
 	 */
-	if ((attr_type == PW_TYPE_EXTENDED) && (outlen > 255)) outlen = 255;
+	if ((attr_type == FR_TYPE_EXTENDED) && (outlen > 255)) outlen = 255;
 
-	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
+	if (tlv_stack[depth]->type == FR_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 	} else {
 		len = encode_value(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
@@ -1051,7 +1051,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		int jump = 3;
 
 		fprintf(fr_log_fp, "\t\t%02x %02x  ", out[0], out[1]);
-		if (attr_type == PW_TYPE_EXTENDED) {
+		if (attr_type == FR_TYPE_EXTENDED) {
 			fprintf(fr_log_fp, "%02x  ", out[2]);
 
 		} else {
@@ -1059,7 +1059,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			jump = 4;
 		}
 
-		if (vsa_type == PW_TYPE_EVS) {
+		if (vsa_type == FR_TYPE_EVS) {
 			fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  %02x  ",
 				out[jump], out[jump + 1],
 				out[jump + 2], out[jump + 3],
@@ -1151,7 +1151,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	switch (tlv_stack[depth]->type) {
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
@@ -1205,14 +1205,14 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	dv = tlv_stack[depth++];
 
-	if (dv->type != PW_TYPE_VENDOR) {
+	if (dv->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("Expected Vendor");
 		return -1;
 	}
 
 	da = tlv_stack[depth];
 
-	if ((da->type != PW_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
+	if ((da->type != FR_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
 		return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
@@ -1270,7 +1270,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 *	if this is a TLV, we must process it via the
 	 *	internal tlv function, else we get a double TLV header.
 	 */
-	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
+	if (tlv_stack[depth]->type == FR_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + hdr_len, outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 	} else {
 		len = encode_value(out + hdr_len, outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
@@ -1378,7 +1378,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 *	"outlen" can be larger than 255 because of the "continuation" byte.
 	 */
 
-	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
+	if (tlv_stack[depth]->type == FR_TYPE_TLV) {
 		len = encode_tlv_hdr_internal(out + out[1], outlen - out[1], tlv_stack, depth, cursor, encoder_ctx);
 		if (len <= 0) return len;
 	} else {
@@ -1426,7 +1426,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (da->type != PW_TYPE_VSA) {
+	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 		return -1;
@@ -1454,7 +1454,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	da = tlv_stack[++depth];
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (da->type != PW_TYPE_VENDOR) {
+	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 		return -1;
@@ -1497,7 +1497,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	switch (tlv_stack[depth]->type) {
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
@@ -1611,7 +1611,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	/*
 	 *	Fast path for the common case.
 	 */
-	if (vp->da->parent->flags.is_root && !vp->da->flags.concat && (vp->vp_type != PW_TYPE_TLV)) {
+	if (vp->da->parent->flags.is_root && !vp->da->flags.concat && (vp->vp_type != FR_TYPE_TLV)) {
 		tlv_stack[0] = vp->da;
 		tlv_stack[1] = NULL;
 		FR_PROTO_STACK_PRINT(tlv_stack, 0);
@@ -1640,7 +1640,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 		ret = encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
-	case PW_TYPE_VSA:
+	case FR_TYPE_VSA:
 		if (vp->da->vendor == VENDORPEC_WIMAX) {
 			/*
 			 *	WiMAX has a non-standard format for
@@ -1654,15 +1654,15 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 		ret = encode_vsa_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
-	case PW_TYPE_TLV:
+	case FR_TYPE_TLV:
 		ret = encode_tlv_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
-	case PW_TYPE_EXTENDED:
+	case FR_TYPE_EXTENDED:
 		ret = encode_extended_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
-	case PW_TYPE_LONG_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
 		/*
 		 *	These attributes can be longer than 253
 		 *	octets.  We therefore fragment the data across
@@ -1671,12 +1671,12 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 		ret = encode_extended_hdr(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
-	case PW_TYPE_INVALID:
-	case PW_TYPE_VENDOR:
-	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_DECIMAL:
-	case PW_TYPE_EVS:
-	case PW_TYPE_MAX:
+	case FR_TYPE_INVALID:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_DECIMAL:
+	case FR_TYPE_EVS:
+	case FR_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
 		return -1;
 	}

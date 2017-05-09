@@ -49,7 +49,7 @@ typedef struct rlm_expr_t {
 } rlm_expr_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("safe_characters", PW_TYPE_STRING, rlm_expr_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
+	{ FR_CONF_OFFSET("safe_characters", FR_TYPE_STRING, rlm_expr_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -257,10 +257,10 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		     i++, vp = tmpl_cursor_next(&cursor, vpt)) {
 			int64_t y;
 
-			if (vp->vp_type != PW_TYPE_INTEGER64) {
+			if (vp->vp_type != FR_TYPE_INTEGER64) {
 				value_box_t	value;
 
-				if (value_box_cast(vp, &value, PW_TYPE_INTEGER64, NULL, &vp->data) < 0) {
+				if (value_box_cast(vp, &value, FR_TYPE_INTEGER64, NULL, &vp->data) < 0) {
 					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt->len,
 						vpt->name, fr_strerror());
 					return false;
@@ -991,7 +991,7 @@ static int value_box_from_fmt(value_box_t *out, REQUEST *request, char const *fm
 		memset(out, 0, sizeof(*out));
 		out->datum.strvalue = fmt;
 		out->datum.length = talloc_array_length(fmt) - 1;
-		out->type = PW_TYPE_STRING;
+		out->type = FR_TYPE_STRING;
 		return 0;
 	}
 
@@ -1016,14 +1016,14 @@ static int value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, si
 	value_box_t bin;
 
 	switch (in->type) {
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
 		memcpy(out, &in->datum.ptr, sizeof(in));
 		*outlen = in->datum.length;
 		return 0;
 
 	default:
-		if (value_box_cast(ctx, &bin, PW_TYPE_OCTETS, NULL, in) < 0) {
+		if (value_box_cast(ctx, &bin, FR_TYPE_OCTETS, NULL, in) < 0) {
 			RPERROR("Failed casting xlat input to 'octets'");
 			return -1;
 		}
@@ -1443,8 +1443,8 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *	so we need to check the type of each attribute.
 		 */
 		switch (vp->vp_type) {
-		case PW_TYPE_OCTETS:
-		case PW_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
 			break;
 
 		default:
@@ -1475,7 +1475,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			new->tag = vp->tag;
 
 			switch (vp->vp_type) {
-			case PW_TYPE_OCTETS:
+			case FR_TYPE_OCTETS:
 			{
 				uint8_t *buff;
 
@@ -1485,7 +1485,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			}
 				break;
 
-			case PW_TYPE_STRING:
+			case FR_TYPE_STRING:
 			{
 				char *buff;
 

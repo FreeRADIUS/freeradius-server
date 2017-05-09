@@ -254,7 +254,7 @@ char const	*fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20]);
 size_t		fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
 void		fr_pair_list_fprint(FILE *, VALUE_PAIR const *vp);
-char		*fr_pair_type_asprint(TALLOC_CTX *ctx, PW_TYPE type);
+char		*fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type);
 char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 void		fr_pair_list_tainted(VALUE_PAIR *vp);

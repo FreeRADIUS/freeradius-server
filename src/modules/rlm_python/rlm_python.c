@@ -100,8 +100,8 @@ typedef struct python_thread_state {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { FR_CONF_OFFSET("mod_" #x, PW_TYPE_STRING, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
-	{ FR_CONF_OFFSET("func_" #x, PW_TYPE_STRING, rlm_python_t, x.function_name) },
+#define A(x) { FR_CONF_OFFSET("mod_" #x, FR_TYPE_STRING, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
+	{ FR_CONF_OFFSET("func_" #x, FR_TYPE_STRING, rlm_python_t, x.function_name) },
 
 	A(instantiate)
 	A(authorize)
@@ -120,8 +120,8 @@ static CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ FR_CONF_OFFSET("python_path", PW_TYPE_STRING, rlm_python_t, python_path) },
-	{ FR_CONF_OFFSET("cext_compat", PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), .dflt = false },
+	{ FR_CONF_OFFSET("python_path", FR_TYPE_STRING, rlm_python_t, python_path) },
+	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOLEAN, rlm_python_t, cext_compat), .dflt = false },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -357,57 +357,57 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	PyTuple_SET_ITEM(pp, 0, attribute);
 
 	switch (vp->vp_type) {
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		value = PyString_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		value = PyLong_FromUnsignedLong(vp->vp_integer);
 		break;
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		value = PyLong_FromUnsignedLong(vp->vp_byte);
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		value =  PyLong_FromUnsignedLong(vp->vp_short);
 		break;
 
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_SIGNED:
 		value = PyLong_FromLong(vp->vp_signed);
 		break;
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
 		break;
 
-	case PW_TYPE_SIZE:
+	case FR_TYPE_SIZE:
 		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
 		break;
 
-	case PW_TYPE_DECIMAL:
+	case FR_TYPE_DECIMAL:
 		value = PyFloat_FromDouble(vp->vp_decimal);
 		break;
 
-	case PW_TYPE_BOOLEAN:
+	case FR_TYPE_BOOLEAN:
 		value = PyBool_FromLong(vp->vp_bool);
 		break;
 
-	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_DATE:
-	case PW_TYPE_ABINARY:
-	case PW_TYPE_IFID:
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-	case PW_TYPE_ETHERNET:
-	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_DATE:
+	case FR_TYPE_ABINARY:
+	case FR_TYPE_IFID:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_COMBO_IP_PREFIX:
 	{
 		size_t len;
 		char buffer[256];
@@ -417,8 +417,8 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	}
 		break;
 
-	case PW_TYPE_STRUCTURAL:
-	case PW_TYPE_BAD:
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_BAD:
 		rad_assert(0);
 		return -1;
 	}

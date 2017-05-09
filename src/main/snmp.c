@@ -82,7 +82,7 @@ static int reset_state = PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RUNNING;
 static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				     UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == PW_TYPE_STRING);
+	rad_assert(map->da->type == FR_TYPE_STRING);
 
 	out->datum.strvalue = talloc_typed_asprintf(ctx, "FreeRADIUS %s", radiusd_version_short);
 	out->datum.length = talloc_array_length(out->datum.strvalue) - 1;
@@ -95,7 +95,7 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBU
 	struct timeval now;
 	struct timeval diff;
 
-	rad_assert(map->da->type == PW_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &uptime);
@@ -112,7 +112,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, 
 	struct timeval now;
 	struct timeval diff;
 
-	rad_assert(map->da->type == PW_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &reset_time);
@@ -126,7 +126,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, 
 static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				 UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == PW_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
 	out->datum.integer = reset_state;
 
@@ -135,7 +135,7 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBU
 
 static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED void *snmp_ctx, value_box_t *in)
 {
-	rad_assert(map->da->type == PW_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
 	switch (in->datum.integer) {
 	case PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
@@ -152,7 +152,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 				      fr_snmp_map_t const *map, UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == PW_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
 	out->datum.integer = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
 
@@ -193,7 +193,7 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	RADCLIENT *client = snmp_ctx;
 
 	rad_assert(client);
-	rad_assert(map->da->type == PW_TYPE_IPV4_ADDR);
+	rad_assert(map->da->type == FR_TYPE_IPV4_ADDR);
 
 	/*
 	 *	The old SNMP MIB only allowed access
@@ -215,7 +215,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, value_box_t *out,
 	size_t len;
 
 	rad_assert(client);
-	rad_assert(map->da->type == PW_TYPE_STRING);
+	rad_assert(map->da->type == FR_TYPE_STRING);
 
 	len = talloc_array_length(client->longname) - 1;
 
@@ -231,7 +231,7 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_box_t
 	RADCLIENT *client = snmp_ctx;
 
 	rad_assert(client);
-	rad_assert(map->da->type == PW_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
 	out->datum.integer = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
 
@@ -613,7 +613,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 		goto error;
 	}
 
-	if (tlv_stack[depth]->type != PW_TYPE_INTEGER) {
+	if (tlv_stack[depth]->type != FR_TYPE_INTEGER) {
 		fr_strerror_printf("Bad index attribute: Index attribute \"%s\" should be a integer, "
 				   "but is a %s", tlv_stack[depth]->name,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
@@ -866,7 +866,7 @@ static ssize_t snmp_process(vp_cursor_t *out, REQUEST *request,
 	 *	matching the next deepest DA in the
 	 *	tlv_stack.
 	 */
-	if (tlv_stack[depth]->type == PW_TYPE_TLV) return snmp_process_tlv(out, request, tlv_stack, depth, cursor,
+	if (tlv_stack[depth]->type == FR_TYPE_TLV) return snmp_process_tlv(out, request, tlv_stack, depth, cursor,
 									   map, snmp_ctx, snmp_op);
 
 	/*
@@ -923,10 +923,10 @@ int fr_snmp_process(REQUEST *request)
 		/*
 		 *	Clear out any junk values
 		 */
-		if (da->type == PW_TYPE_TLV) {
+		if (da->type == FR_TYPE_TLV) {
 			switch (vp->vp_type) {
-			case PW_TYPE_OCTETS:
-			case PW_TYPE_STRING:
+			case FR_TYPE_OCTETS:
+			case FR_TYPE_STRING:
 				talloc_free(vp->data.datum.ptr);
 
 			/* FALL-THROUGH */

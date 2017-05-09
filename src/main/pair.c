@@ -82,13 +82,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		char *expr = NULL, *value = NULL;
 		char const *expr_p, *value_p;
 
-		if (check->vp_type == PW_TYPE_STRING) {
+		if (check->vp_type == FR_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
 			expr_p = expr = fr_pair_value_asprint(check, check, '\0');
 		}
 
-		if (vp->vp_type == PW_TYPE_STRING) {
+		if (vp->vp_type == FR_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
 			value_p = value = fr_pair_value_asprint(vp, vp, '\0');
@@ -167,9 +167,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		 *	Ascend binary attributes can be treated
 		 *	as opaque objects, I guess...
 		 */
-		case PW_TYPE_ABINARY:
+		case FR_TYPE_ABINARY:
 #endif
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			if (vp->vp_length != check->vp_length) {
 				ret = 1; /* NOT equal */
 				break;
@@ -177,22 +177,22 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			ret = memcmp(vp->vp_strvalue, check->vp_strvalue, vp->vp_length);
 			break;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			ret = strcmp(vp->vp_strvalue,
 				     check->vp_strvalue);
 			break;
 
-		case PW_TYPE_BYTE:
+		case FR_TYPE_BYTE:
 			ret = vp->vp_byte - check->vp_byte;
 			break;
-		case PW_TYPE_SHORT:
+		case FR_TYPE_SHORT:
 			ret = vp->vp_short - check->vp_short;
 			break;
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			ret = vp->vp_integer - check->vp_integer;
 			break;
 
-		case PW_TYPE_INTEGER64:
+		case FR_TYPE_INTEGER64:
 			/*
 			 *	Don't want integer overflow!
 			 */
@@ -205,7 +205,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			}
 			break;
 
-		case PW_TYPE_SIGNED:
+		case FR_TYPE_SIGNED:
 			if (vp->vp_signed < check->vp_signed) {
 				ret = -1;
 			} else if (vp->vp_signed > check->vp_signed) {
@@ -215,25 +215,25 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			}
 			break;
 
-		case PW_TYPE_DATE:
+		case FR_TYPE_DATE:
 			ret = vp->vp_date - check->vp_date;
 			break;
 
-		case PW_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_ADDR:
 			ret = ntohl(vp->vp_ipv4addr) - ntohl(check->vp_ipv4addr);
 			break;
 
-		case PW_TYPE_IPV6_ADDR:
+		case FR_TYPE_IPV6_ADDR:
 			ret = memcmp(vp->vp_ip.addr.v6.s6_addr, check->vp_ip.addr.v6.s6_addr,
 				     sizeof(vp->vp_ip.addr.v6.s6_addr));
 			break;
 
-		case PW_TYPE_IPV4_PREFIX:
-		case PW_TYPE_IPV6_PREFIX:
+		case FR_TYPE_IPV4_PREFIX:
+		case FR_TYPE_IPV6_PREFIX:
 			ret = memcmp(&vp->vp_ip, &check->vp_ip, sizeof(vp->vp_ip));
 			break;
 
-		case PW_TYPE_IFID:
+		case FR_TYPE_IFID:
 			ret = memcmp(vp->vp_ifid, check->vp_ifid, sizeof(vp->vp_ifid));
 			break;
 

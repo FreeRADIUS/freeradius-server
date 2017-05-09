@@ -95,12 +95,12 @@ typedef struct fr_command_socket_t {
 } fr_command_socket_t;
 
 static const CONF_PARSER command_config[] = {
-	{ FR_CONF_OFFSET("socket", PW_TYPE_STRING, fr_command_socket_t, path), .dflt = "${run_dir}/radiusd.sock" },
-	{ FR_CONF_DEPRECATED("uid", PW_TYPE_STRING, fr_command_socket_t, NULL) },
-	{ FR_CONF_OFFSET("gid", PW_TYPE_STRING, fr_command_socket_t, gid_name) },
-	{ FR_CONF_OFFSET("mode", PW_TYPE_STRING, fr_command_socket_t, mode_name) },
-	{ FR_CONF_OFFSET("peercred", PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), .dflt = "yes" },
-	{ FR_CONF_OFFSET("blocking", PW_TYPE_BOOLEAN, fr_command_socket_t, blocking),  },
+	{ FR_CONF_OFFSET("socket", FR_TYPE_STRING, fr_command_socket_t, path), .dflt = "${run_dir}/radiusd.sock" },
+	{ FR_CONF_DEPRECATED("uid", FR_TYPE_STRING, fr_command_socket_t, NULL) },
+	{ FR_CONF_OFFSET("gid", FR_TYPE_STRING, fr_command_socket_t, gid_name) },
+	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, fr_command_socket_t, mode_name) },
+	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOLEAN, fr_command_socket_t, peercred), .dflt = "yes" },
+	{ FR_CONF_OFFSET("blocking", FR_TYPE_BOOLEAN, fr_command_socket_t, blocking),  },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -957,28 +957,28 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 				variables[i].name);
 			break;
 
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			cprintf(listener, "%.*s%s = %u\n", indent, tabs,
 				variables[i].name, *(int const *) data);
 			break;
 
-		case PW_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_ADDR:
 			inet_ntop(AF_INET, data, buffer, sizeof(buffer));
 			break;
 
-		case PW_TYPE_IPV6_ADDR:
+		case FR_TYPE_IPV6_ADDR:
 			inet_ntop(AF_INET6, data, buffer, sizeof(buffer));
 			break;
 
-		case PW_TYPE_BOOLEAN:
+		case FR_TYPE_BOOLEAN:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
 				variables[i].name,
 				((*(bool const *) data) == false) ? "no" : "yes");
 			break;
 
-		case PW_TYPE_STRING:
-		case PW_TYPE_FILE_INPUT:
-		case PW_TYPE_FILE_OUTPUT:
+		case FR_TYPE_STRING:
+		case FR_TYPE_FILE_INPUT:
+		case FR_TYPE_FILE_OUTPUT:
 			/*
 			 *	FIXME: Escape things in the string!
 			 */
@@ -2502,7 +2502,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		/*
 		 *	FIXME: Recurse into sub-types somehow...
 		 */
-		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) continue;
+		if (PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
 
 		if (strcmp(variables[i].name, argv[1]) == 0) {
 			rcode = i;

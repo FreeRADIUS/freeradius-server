@@ -93,17 +93,17 @@ static rbtree_t	*home_pools_byname = NULL;
  *  Map the proxy server configuration parameters to variables.
  */
 static const CONF_PARSER proxy_config[] = {
-	{ FR_CONF_OFFSET("retry_delay", PW_TYPE_INTEGER, realm_config_t, retry_delay), .dflt = STRINGIFY(RETRY_DELAY) },
+	{ FR_CONF_OFFSET("retry_delay", FR_TYPE_INTEGER, realm_config_t, retry_delay), .dflt = STRINGIFY(RETRY_DELAY) },
 
-	{ FR_CONF_OFFSET("retry_count", PW_TYPE_INTEGER, realm_config_t, retry_count), .dflt = STRINGIFY(RETRY_COUNT) },
+	{ FR_CONF_OFFSET("retry_count", FR_TYPE_INTEGER, realm_config_t, retry_count), .dflt = STRINGIFY(RETRY_COUNT) },
 
-	{ FR_CONF_OFFSET("default_fallback", PW_TYPE_BOOLEAN, realm_config_t, fallback), .dflt = "no" },
+	{ FR_CONF_OFFSET("default_fallback", FR_TYPE_BOOLEAN, realm_config_t, fallback), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("dynamic", PW_TYPE_BOOLEAN, realm_config_t, dynamic) },
+	{ FR_CONF_OFFSET("dynamic", FR_TYPE_BOOLEAN, realm_config_t, dynamic) },
 
-	{ FR_CONF_OFFSET("dead_time", PW_TYPE_INTEGER, realm_config_t, dead_time), .dflt = STRINGIFY(DEAD_TIME) },
+	{ FR_CONF_OFFSET("dead_time", FR_TYPE_INTEGER, realm_config_t, dead_time), .dflt = STRINGIFY(DEAD_TIME) },
 
-	{ FR_CONF_OFFSET("wake_all_if_all_dead", PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), .dflt = "no" },
+	{ FR_CONF_OFFSET("wake_all_if_all_dead", FR_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -322,73 +322,73 @@ void realms_free(void)
 
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("max_connections", PW_TYPE_INTEGER, home_server_t, limit.max_connections), .dflt = "16" },
-	{ FR_CONF_OFFSET("max_requests", PW_TYPE_INTEGER, home_server_t, limit.max_requests), .dflt = "0" },
-	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, home_server_t, limit.lifetime), .dflt = "0" },
-	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), .dflt = "0" },
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_INTEGER, home_server_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("max_requests", FR_TYPE_INTEGER, home_server_t, limit.max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_INTEGER, home_server_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_INTEGER, home_server_t, limit.idle_timeout), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
-	{ FR_CONF_OFFSET("irt", PW_TYPE_INTEGER, home_server_t, coa_irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", PW_TYPE_INTEGER, home_server_t, coa_mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("mrc", PW_TYPE_INTEGER, home_server_t, coa_mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("mrd", PW_TYPE_INTEGER, home_server_t, coa_mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("irt", FR_TYPE_INTEGER, home_server_t, coa_irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_INTEGER, home_server_t, coa_mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_INTEGER, home_server_t, coa_mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", FR_TYPE_INTEGER, home_server_t, coa_mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv4addr", PW_TYPE_IPV4_ADDR, home_server_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv6addr", PW_TYPE_IPV6_ADDR, home_server_t, ipaddr) },
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, home_server_t, server) },
 
-	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, home_server_t, port), .dflt = "0" },
+	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, home_server_t, port), .dflt = "0" },
 
-	{ FR_CONF_OFFSET("type", PW_TYPE_STRING, home_server_t, type_str) },
+	{ FR_CONF_OFFSET("type", FR_TYPE_STRING, home_server_t, type_str) },
 
 #ifdef WITH_TCP
-	{ FR_CONF_OFFSET("proto", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, proto_str) },
+	{ FR_CONF_OFFSET("proto", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, home_server_t, proto_str) },
 #endif
 
-	{ FR_CONF_OFFSET("secret", PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret) },
+	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_SECRET, home_server_t, secret) },
 
-	{ FR_CONF_OFFSET("src_ipaddr", PW_TYPE_STRING, home_server_t, src_ipaddr_str) },
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_STRING, home_server_t, src_ipaddr_str) },
 
-	{ FR_CONF_OFFSET("response_window", PW_TYPE_TIMEVAL, home_server_t, response_window), .dflt = "30" },
-	{ FR_CONF_OFFSET("response_timeouts", PW_TYPE_INTEGER, home_server_t, max_response_timeouts), .dflt = "1" },
-	{ FR_CONF_OFFSET("max_outstanding", PW_TYPE_INTEGER, home_server_t, max_outstanding), .dflt = "65536" },
+	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIMEVAL, home_server_t, response_window), .dflt = "30" },
+	{ FR_CONF_OFFSET("response_timeouts", FR_TYPE_INTEGER, home_server_t, max_response_timeouts), .dflt = "1" },
+	{ FR_CONF_OFFSET("max_outstanding", FR_TYPE_INTEGER, home_server_t, max_outstanding), .dflt = "65536" },
 
-	{ FR_CONF_OFFSET("zombie_period", PW_TYPE_INTEGER, home_server_t, zombie_period), .dflt = "40" },
+	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_INTEGER, home_server_t, zombie_period), .dflt = "40" },
 
-	{ FR_CONF_OFFSET("status_check", PW_TYPE_STRING, home_server_t, ping_check_str), .dflt = "none" },
-	{ FR_CONF_OFFSET("ping_check", PW_TYPE_STRING, home_server_t, ping_check_str) },
+	{ FR_CONF_OFFSET("status_check", FR_TYPE_STRING, home_server_t, ping_check_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("ping_check", FR_TYPE_STRING, home_server_t, ping_check_str) },
 
-	{ FR_CONF_OFFSET("ping_interval", PW_TYPE_INTEGER, home_server_t, ping_interval), .dflt = "30" },
-	{ FR_CONF_OFFSET("check_interval", PW_TYPE_INTEGER, home_server_t, ping_interval) },
+	{ FR_CONF_OFFSET("ping_interval", FR_TYPE_INTEGER, home_server_t, ping_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("check_interval", FR_TYPE_INTEGER, home_server_t, ping_interval) },
 
-	{ FR_CONF_OFFSET("check_timeout", PW_TYPE_INTEGER, home_server_t, ping_timeout), .dflt = "4" },
-	{ FR_CONF_OFFSET("status_check_timeout", PW_TYPE_INTEGER, home_server_t, ping_timeout) },
+	{ FR_CONF_OFFSET("check_timeout", FR_TYPE_INTEGER, home_server_t, ping_timeout), .dflt = "4" },
+	{ FR_CONF_OFFSET("status_check_timeout", FR_TYPE_INTEGER, home_server_t, ping_timeout) },
 
-	{ FR_CONF_OFFSET("num_answers_to_alive", PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), .dflt = "3" },
-	{ FR_CONF_OFFSET("revive_interval", PW_TYPE_INTEGER, home_server_t, revive_interval), .dflt = "300" },
+	{ FR_CONF_OFFSET("num_answers_to_alive", FR_TYPE_INTEGER, home_server_t, num_pings_to_alive), .dflt = "3" },
+	{ FR_CONF_OFFSET("revive_interval", FR_TYPE_INTEGER, home_server_t, revive_interval), .dflt = "300" },
 
-	{ FR_CONF_OFFSET("username", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name) },
-	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password) },
+	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, home_server_t, ping_user_name) },
+	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, home_server_t, ping_user_password) },
 
 #ifdef WITH_STATS
-	{ FR_CONF_OFFSET("historic_average_window", PW_TYPE_INTEGER, home_server_t, ema.window) },
+	{ FR_CONF_OFFSET("historic_average_window", FR_TYPE_INTEGER, home_server_t, ema.window) },
 #endif
 
-	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 #ifdef WITH_COA
-	{ FR_CONF_POINTER("coa", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) home_server_coa },
+	{ FR_CONF_POINTER("coa", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) home_server_coa },
 #endif
 
-	{ FR_CONF_OFFSET("self", PW_TYPE_BOOLEAN, home_server_t, is_ourself), },
+	{ FR_CONF_OFFSET("self", FR_TYPE_BOOLEAN, home_server_t, is_ourself), },
 
 	CONF_PARSER_TERMINATOR
 };

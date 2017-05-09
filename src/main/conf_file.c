@@ -398,7 +398,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 /** Set the euid/egid used when performing file checks
  *
  * Sets the euid, and egid used when cf_file_check is called to check
- * permissions on conf items of type #PW_TYPE_FILE_INPUT.
+ * permissions on conf items of type #FR_TYPE_FILE_INPUT.
  *
  * @note This is probably only useful for the freeradius daemon itself.
  *
@@ -1380,7 +1380,7 @@ static char const parse_spaces[] = "                                            
 /** Validation function for ipaddr conf_file types
  *
  */
-static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW_TYPE type, char const *value,
+static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, fr_type_t type, char const *value,
 					  fr_ipaddr_t *ipaddr)
 {
 	char ipbuf[128];
@@ -1395,9 +1395,9 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 	}
 
 	switch (type) {
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:
 		switch (ipaddr->af) {
 		case AF_INET:
 		if (ipaddr->prefix != 32) {
@@ -1453,17 +1453,17 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const varia
 		char const	*name = variables[i].name;
 		int		type = variables[i].type;
 
-		is_tmpl = (type & PW_TYPE_TMPL);
-		is_xlat = (type & PW_TYPE_XLAT);
-		attribute = (type & PW_TYPE_ATTRIBUTE);
-		multi = (type & PW_TYPE_MULTI);
+		is_tmpl = (type & FR_TYPE_TMPL);
+		is_xlat = (type & FR_TYPE_XLAT);
+		attribute = (type & FR_TYPE_ATTRIBUTE);
+		multi = (type & FR_TYPE_MULTI);
 
 		type = PW_BASE_TYPE(type);		/* normal types are small */
 
 		/*
 		 *	It's a section, recurse!
 		 */
-		if (type == PW_TYPE_SUBSECTION) {
+		if (type == FR_TYPE_SUBSECTION) {
 			uint8_t		*subcs_base;
 			CONF_SECTION	*subcs = cf_subsection_find(cs, name);
 
@@ -1473,7 +1473,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const varia
 			 */
 			if (!base) {
 				subcs_base = NULL;
-			} else if (type & PW_TYPE_MULTI) {
+			} else if (type & FR_TYPE_MULTI) {
 				size_t j, len;
 				uint8_t **array;
 
@@ -1521,7 +1521,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const varia
 			 *	Ignore %{... in shared secrets.
 			 *	They're never dynamically expanded.
 			 */
-			if ((variables[i].type & PW_TYPE_SECRET) != 0) continue;
+			if ((variables[i].type & FR_TYPE_SECRET) != 0) continue;
 
 			if (strstr(cp->value, "%{") != NULL) {
 				cf_log_err(&cp->item, "Found dynamic expansion in string which "
@@ -1534,8 +1534,8 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const varia
 		/*
 		 *	Parse (and throw away) the xlat string (for validation).
 		 *
-		 *	FIXME: All of these should be converted from PW_TYPE_XLAT
-		 *	to PW_TYPE_TMPL.
+		 *	FIXME: All of these should be converted from FR_TYPE_XLAT
+		 *	to FR_TYPE_TMPL.
 		 */
 		if (is_xlat) {
 			char const	*error;
@@ -1671,16 +1671,16 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 
 	if (!cs) return -1;
 
-	attribute = (type & PW_TYPE_ATTRIBUTE);
-	required = (type & PW_TYPE_REQUIRED);
-	secret = (type & PW_TYPE_SECRET);
-	file_input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
-	file_exists = (type == PW_TYPE_FILE_EXISTS);	/* check, not and */
-	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
-	tmpl = (type & PW_TYPE_TMPL);
+	attribute = (type & FR_TYPE_ATTRIBUTE);
+	required = (type & FR_TYPE_REQUIRED);
+	secret = (type & FR_TYPE_SECRET);
+	file_input = (type == FR_TYPE_FILE_INPUT);	/* check, not and */
+	file_exists = (type == FR_TYPE_FILE_EXISTS);	/* check, not and */
+	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
+	tmpl = (type & FR_TYPE_TMPL);
 
 	rad_assert(cp);
-	rad_assert(!(type & PW_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
+	rad_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
 
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
 
@@ -1741,7 +1741,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 
 	switch (type) {
-	case PW_TYPE_BOOLEAN:
+	case FR_TYPE_BOOLEAN:
 		/*
 		 *	Allow yes/no, true/false, and on/off
 		 */
@@ -1762,7 +1762,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, cf_pair_attr(cp), cp->value);
 		break;
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 	{
 		unsigned long v = strtoul(cp->value, 0, 0);
 
@@ -1785,7 +1785,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 	{
 		unsigned long v = strtoul(cp->value, 0, 0);
 
@@ -1800,7 +1800,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 	{
 		unsigned long v = strtoul(cp->value, 0, 0);
 
@@ -1815,12 +1815,12 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		*(uint64_t *)out = strtoull(cp->value, NULL, 10);
 		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
 		break;
 
-	case PW_TYPE_SIZE:
+	case FR_TYPE_SIZE:
 	{
 		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
 			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s: %s", cp->value,
@@ -1832,12 +1832,12 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		break;
 	}
 
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_SIGNED:
 		*(int32_t *)out = strtol(cp->value, NULL, 10);
 		cf_log_info(cs, "%.*s\t%s = %d", cs->depth, parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
 		break;
 
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 	{
 		char **str = out;
 
@@ -1874,8 +1874,8 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
 		ipaddr = out;
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
@@ -1890,8 +1890,8 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		}
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
 		ipaddr = out;
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
@@ -1906,8 +1906,8 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		}
 		break;
 
-	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
 		ipaddr = out;
 
 		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
@@ -1922,7 +1922,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		}
 		break;
 
-	case PW_TYPE_TIMEVAL:
+	case FR_TYPE_TIMEVAL:
 	{
 		struct timeval tv;
 
@@ -1943,8 +1943,8 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		 *	It's not an error parsing the configuration
 		 *	file.
 		 */
-		rad_assert(type > PW_TYPE_INVALID);
-		rad_assert(type < PW_TYPE_MAX);
+		rad_assert(type > FR_TYPE_INVALID);
+		rad_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(&(cp->item), "type '%s' (%i) is not supported in the configuration files",
 			   fr_int2str(dict_attr_types, type, "?Unknown?"), type);
@@ -1998,12 +1998,12 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	 */
 	if (dflt_quote == T_INVALID) {
 		switch (type) {
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			dflt_quote = T_DOUBLE_QUOTED_STRING;
 			break;
 
-		case PW_TYPE_FILE_INPUT:
-		case PW_TYPE_FILE_OUTPUT:
+		case FR_TYPE_FILE_INPUT:
+		case FR_TYPE_FILE_OUTPUT:
 			dflt_quote = T_DOUBLE_QUOTED_STRING;
 			break;
 
@@ -2036,23 +2036,23 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  * @note The dflt value will only be used if no matching #CONF_PAIR is found. Empty strings will not
  *	 result in the dflt value being used.
  *
- * **PW_TYPE to data type mappings**
- * | PW_TYPE                 | Data type          | Dynamically allocated  |
+ * **fr_type_t to data type mappings**
+ * | fr_type_t                 | Data type          | Dynamically allocated  |
  * | ----------------------- | ------------------ | ---------------------- |
- * | PW_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
- * | PW_TYPE_BOOLEAN         | ``bool``           | No                     |
- * | PW_TYPE_INTEGER         | ``uint32_t``       | No                     |
- * | PW_TYPE_SHORT           | ``uint16_t``       | No                     |
- * | PW_TYPE_INTEGER64       | ``uint64_t``       | No                     |
- * | PW_TYPE_SIGNED          | ``int32_t``        | No                     |
- * | PW_TYPE_STRING          | ``char const *``   | Yes                    |
- * | PW_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
- * | PW_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
- * | PW_TYPE_IPV6_ADDR       | ``fr_ipaddr_t``    | No                     |
- * | PW_TYPE_IPV6_PREFIX     | ``fr_ipaddr_t``    | No                     |
- * | PW_TYPE_COMBO_IP_ADDR   | ``fr_ipaddr_t``    | No                     |
- * | PW_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
- * | PW_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
+ * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
+ * | FR_TYPE_BOOLEAN         | ``bool``           | No                     |
+ * | FR_TYPE_INTEGER         | ``uint32_t``       | No                     |
+ * | FR_TYPE_SHORT           | ``uint16_t``       | No                     |
+ * | FR_TYPE_INTEGER64       | ``uint64_t``       | No                     |
+ * | FR_TYPE_SIGNED          | ``int32_t``        | No                     |
+ * | FR_TYPE_STRING          | ``char const *``   | Yes                    |
+ * | FR_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_IPV6_ADDR       | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_IPV6_PREFIX     | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_COMBO_IP_ADDR   | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
  *
  * @param[in] ctx	To allocate arrays and values in.
  * @param[in] cs	to search for matching #CONF_PAIR in.
@@ -2060,32 +2060,32 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  * @param[in] type	Data type to parse #CONF_PAIR value as.
  *			Should be one of the following ``data`` types,
  *			and one or more of the following ``flag`` types or'd together:
- *	- ``data`` #PW_TYPE_TMPL 		- @copybrief PW_TYPE_TMPL
+ *	- ``data`` #FR_TYPE_TMPL 		- @copybrief FR_TYPE_TMPL
  *					  	  Feeds the value into #tmpl_afrom_str. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
- *	- ``data`` #PW_TYPE_BOOLEAN		- @copybrief PW_TYPE_BOOLEAN
- *	- ``data`` #PW_TYPE_INTEGER		- @copybrief PW_TYPE_INTEGER
- *	- ``data`` #PW_TYPE_SHORT		- @copybrief PW_TYPE_SHORT
- *	- ``data`` #PW_TYPE_INTEGER64		- @copybrief PW_TYPE_INTEGER64
- *	- ``data`` #PW_TYPE_SIGNED		- @copybrief PW_TYPE_SIGNED
- *	- ``data`` #PW_TYPE_STRING		- @copybrief PW_TYPE_STRING
- *	- ``data`` #PW_TYPE_IPV4_ADDR		- @copybrief PW_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
- *	- ``data`` #PW_TYPE_IPV4_PREFIX		- @copybrief PW_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
- *	- ``data`` #PW_TYPE_IPV6_ADDR		- @copybrief PW_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
- *	- ``data`` #PW_TYPE_IPV6_PREFIX		- @copybrief PW_TYPE_IPV6_PREFIX (IPv6 address with variable prefix).
- *	- ``data`` #PW_TYPE_COMBO_IP_ADDR 	- @copybrief PW_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
+ *	- ``data`` #FR_TYPE_BOOLEAN		- @copybrief FR_TYPE_BOOLEAN
+ *	- ``data`` #FR_TYPE_INTEGER		- @copybrief FR_TYPE_INTEGER
+ *	- ``data`` #FR_TYPE_SHORT		- @copybrief FR_TYPE_SHORT
+ *	- ``data`` #FR_TYPE_INTEGER64		- @copybrief FR_TYPE_INTEGER64
+ *	- ``data`` #FR_TYPE_SIGNED		- @copybrief FR_TYPE_SIGNED
+ *	- ``data`` #FR_TYPE_STRING		- @copybrief FR_TYPE_STRING
+ *	- ``data`` #FR_TYPE_IPV4_ADDR		- @copybrief FR_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
+ *	- ``data`` #FR_TYPE_IPV4_PREFIX		- @copybrief FR_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
+ *	- ``data`` #FR_TYPE_IPV6_ADDR		- @copybrief FR_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
+ *	- ``data`` #FR_TYPE_IPV6_PREFIX		- @copybrief FR_TYPE_IPV6_PREFIX (IPv6 address with variable prefix).
+ *	- ``data`` #FR_TYPE_COMBO_IP_ADDR 	- @copybrief FR_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
  *						  prefix 32/128).
- *	- ``data`` #PW_TYPE_COMBO_IP_PREFIX	- @copybrief PW_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
+ *	- ``data`` #FR_TYPE_COMBO_IP_PREFIX	- @copybrief FR_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
  *						  variable prefix).
- *	- ``data`` #PW_TYPE_TIMEVAL		- @copybrief PW_TYPE_TIMEVAL
- *	- ``flag`` #PW_TYPE_DEPRECATED		- @copybrief PW_TYPE_DEPRECATED
- *	- ``flag`` #PW_TYPE_REQUIRED		- @copybrief PW_TYPE_REQUIRED
- *	- ``flag`` #PW_TYPE_ATTRIBUTE		- @copybrief PW_TYPE_ATTRIBUTE
- *	- ``flag`` #PW_TYPE_SECRET		- @copybrief PW_TYPE_SECRET
- *	- ``flag`` #PW_TYPE_FILE_INPUT		- @copybrief PW_TYPE_FILE_INPUT
- *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
- *	- ``flag`` #PW_TYPE_MULTI		- @copybrief PW_TYPE_MULTI
- *	- ``flag`` #PW_TYPE_IS_SET		- @copybrief PW_TYPE_IS_SET
+ *	- ``data`` #FR_TYPE_TIMEVAL		- @copybrief FR_TYPE_TIMEVAL
+ *	- ``flag`` #FR_TYPE_DEPRECATED		- @copybrief FR_TYPE_DEPRECATED
+ *	- ``flag`` #FR_TYPE_REQUIRED		- @copybrief FR_TYPE_REQUIRED
+ *	- ``flag`` #FR_TYPE_ATTRIBUTE		- @copybrief FR_TYPE_ATTRIBUTE
+ *	- ``flag`` #FR_TYPE_SECRET		- @copybrief FR_TYPE_SECRET
+ *	- ``flag`` #FR_TYPE_FILE_INPUT		- @copybrief FR_TYPE_FILE_INPUT
+ *	- ``flag`` #FR_TYPE_NOT_EMPTY		- @copybrief FR_TYPE_NOT_EMPTY
+ *	- ``flag`` #FR_TYPE_MULTI		- @copybrief FR_TYPE_MULTI
+ *	- ``flag`` #FR_TYPE_IS_SET		- @copybrief FR_TYPE_IS_SET
  * @param[out] out	Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param[in] dflt		value to use, if no #CONF_PAIR is found.
  * @param[in] dflt_quote	around the dflt value.
@@ -2103,11 +2103,11 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	size_t		count = 0;
 	CONF_PAIR	*cp, *dflt_cp = NULL;
 
-	rad_assert(!(type & PW_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
+	rad_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
-	multi = (type & PW_TYPE_MULTI);
-	required = (type & PW_TYPE_REQUIRED);
-	deprecated = (type & PW_TYPE_DEPRECATED);
+	multi = (type & FR_TYPE_MULTI);
+	required = (type & FR_TYPE_REQUIRED);
+	deprecated = (type & FR_TYPE_DEPRECATED);
 
 	/*
 	 *	If the item is multi-valued we allocate an array
@@ -2156,7 +2156,7 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		/*
 		 *	Tmpl is outside normal range
 		 */
-		if (type & PW_TYPE_TMPL) {
+		if (type & FR_TYPE_TMPL) {
 			array = (void **)talloc_zero_array(ctx, vp_tmpl_t *, count);
 		/*
 		 *	Allocate an array of values.
@@ -2165,40 +2165,40 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		 *	talloc_array_length().
 		 */
 		} else switch (PW_BASE_TYPE(type)) {
-		case PW_TYPE_BOOLEAN:
+		case FR_TYPE_BOOLEAN:
 			array = (void **)talloc_zero_array(ctx, bool, count);
 			break;
 
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			array = (void **)talloc_zero_array(ctx, uint32_t, count);
 			break;
 
-		case PW_TYPE_SHORT:
+		case FR_TYPE_SHORT:
 			array = (void **)talloc_zero_array(ctx, uint16_t, count);
 			break;
 
-		case PW_TYPE_INTEGER64:
+		case FR_TYPE_INTEGER64:
 			array = (void **)talloc_zero_array(ctx, uint64_t, count);
 			break;
 
-		case PW_TYPE_SIGNED:
+		case FR_TYPE_SIGNED:
 			array = (void **)talloc_zero_array(ctx, int32_t, count);
 			break;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			array = (void **)talloc_zero_array(ctx, char *, count);
 			break;
 
-		case PW_TYPE_IPV4_ADDR:
-		case PW_TYPE_IPV4_PREFIX:
-		case PW_TYPE_IPV6_ADDR:
-		case PW_TYPE_IPV6_PREFIX:
-		case PW_TYPE_COMBO_IP_ADDR:
-		case PW_TYPE_COMBO_IP_PREFIX:
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_PREFIX:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_IPV6_PREFIX:
+		case FR_TYPE_COMBO_IP_ADDR:
+		case FR_TYPE_COMBO_IP_PREFIX:
 			array = (void **)talloc_zero_array(ctx, fr_ipaddr_t, count);
 			break;
 
-		case PW_TYPE_TIMEVAL:
+		case FR_TYPE_TIMEVAL:
 			array = (void **)talloc_zero_array(ctx, struct timeval, count);
 			break;
 
@@ -2273,13 +2273,13 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 	int i;
 
 	for (i = 0; variables[i].name != NULL; i++) {
-		if ((PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION)) {
+		if ((PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION)) {
 			CONF_SECTION *subcs;
 
 			if (!variables[i].dflt) continue;
 
 			subcs = cf_subsection_find(cs, variables[i].name);
-			if (!subcs && (variables[i].type & PW_TYPE_REQUIRED)) {
+			if (!subcs && (variables[i].type & FR_TYPE_REQUIRED)) {
 				cf_log_err_cs(cs, "Missing %s {} subsection", variables[i].name);
 				return -1;
 			}
@@ -2287,7 +2287,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 			/*
 			 *	Set the is_set field for the subsection.
 			 */
-			if (variables[i].type & PW_TYPE_IS_SET) {
+			if (variables[i].type & FR_TYPE_IS_SET) {
 				bool *is_set;
 
 				is_set = variables[i].data ? variables[i].is_set_ptr :
@@ -2312,9 +2312,9 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 			continue;
 		}
 
-		if ((PW_BASE_TYPE(variables[i].type) != PW_TYPE_STRING) &&
-		    (variables[i].type != PW_TYPE_FILE_INPUT) &&
-		    (variables[i].type != PW_TYPE_FILE_OUTPUT)) {
+		if ((PW_BASE_TYPE(variables[i].type) != FR_TYPE_STRING) &&
+		    (variables[i].type != FR_TYPE_FILE_INPUT) &&
+		    (variables[i].type != FR_TYPE_FILE_OUTPUT)) {
 			continue;
 		}
 
@@ -2378,13 +2378,13 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
  *	- -2 if a deprecated #CONF_ITEM was found.
  */
 static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
-			       char const *name, PW_TYPE type, CONF_PARSER const *subcs_vars, size_t subcs_size)
+			       char const *name, fr_type_t type, CONF_PARSER const *subcs_vars, size_t subcs_size)
 {
 	CONF_SECTION *subcs;
 	int count, i, ret;
 	uint8_t **array;
 
-	rad_assert(type & PW_TYPE_SUBSECTION);
+	rad_assert(type & FR_TYPE_SUBSECTION);
 
 	subcs = cf_subsection_find(cs, name);
 	rad_assert(subcs);	/* should have been pre-allocated earlier */
@@ -2392,7 +2392,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 	/*
 	 *	Handle the single subsection case (which is simple)
 	 */
-	if (!(type & PW_TYPE_MULTI)) {
+	if (!(type & FR_TYPE_MULTI)) {
 		uint8_t *buff;
 
 		/*
@@ -2489,7 +2489,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		/*
 		 *	Handle subsections specially
 		 */
-		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) {
+		if (PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) {
 			if (cf_subsection_parse(ctx, (uint8_t *)base + variables[i].offset, cs,
 						variables[i].name, variables[i].type,
 						variables[i].subcs, variables[i].subcs_size) < 0) goto finish;
@@ -2509,7 +2509,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		 *	Get pointer to where we need to write out
 		 *	whether the pointer was set.
 		 */
-		if (variables[i].type & PW_TYPE_IS_SET) {
+		if (variables[i].type & FR_TYPE_IS_SET) {
 			is_set = variables[i].data ? variables[i].is_set_ptr :
 						     ((uint8_t *)base) + variables[i].is_set_offset;
 		}

@@ -1235,19 +1235,19 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	}
 }
 static CONF_PARSER performance_config[] = {
-	{ FR_CONF_OFFSET("skip_duplicate_checks", PW_TYPE_BOOLEAN, rad_listen_t, nodup) },
+	{ FR_CONF_OFFSET("skip_duplicate_checks", FR_TYPE_BOOLEAN, rad_listen_t, nodup) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("max_pps", PW_TYPE_INTEGER, listen_socket_t, max_rate) },
+	{ FR_CONF_OFFSET("max_pps", FR_TYPE_INTEGER, listen_socket_t, max_rate) },
 
 #ifdef WITH_TCP
-	{ FR_CONF_OFFSET("max_connections", PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), .dflt = "16" },
-	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, listen_socket_t, limit.lifetime), .dflt = "0" },
-	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_INTEGER, listen_socket_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_INTEGER, listen_socket_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), .dflt = STRINGIFY(30) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -1298,13 +1298,13 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
 
-	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(FR_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 	if (rcode != 0) rcode = cf_pair_parse(NULL, cs, "ipv4addr",
-					      FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &ipaddr), NULL, T_INVALID);
+					      FR_ITEM_POINTER(FR_TYPE_IPV4_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 	if (rcode != 0) rcode = cf_pair_parse(NULL, cs, "ipv6addr",
-					      FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
+					      FR_ITEM_POINTER(FR_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 	/*
 	 *	Default to all IPv6 interfaces (it's the future)
@@ -1316,10 +1316,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(FR_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 
-	rcode = cf_pair_parse(NULL, cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(NULL, cs, "recv_buff", FR_ITEM_POINTER(FR_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 	if (recv_buff) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
@@ -1339,7 +1339,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		CONF_SECTION *tls;
 #  endif
 
-		rcode = cf_pair_parse(NULL, cs, "proto", FR_ITEM_POINTER(PW_TYPE_STRING, &proto),
+		rcode = cf_pair_parse(NULL, cs, "proto", FR_ITEM_POINTER(FR_TYPE_STRING, &proto),
 				      "udp", T_DOUBLE_QUOTED_STRING);
 		if (rcode < 0) return -1;
 
@@ -1531,7 +1531,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	clients_cs = NULL;
 	parent_cs = cf_top_section(cs);
-	rcode = cf_pair_parse(NULL, cs, "clients", FR_ITEM_POINTER(PW_TYPE_STRING, &section_name), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "clients", FR_ITEM_POINTER(FR_TYPE_STRING, &section_name), NULL, T_INVALID);
 	if (rcode < 0) return -1; /* bad string */
 	if (rcode == 0) {
 		/*
@@ -3090,7 +3090,7 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	this->fd = -1;
 	this->cs = cs;
 
-	rcode = cf_pair_parse(this, cs, "type", FR_ITEM_POINTER(PW_TYPE_STRING, &listen_type),
+	rcode = cf_pair_parse(this, cs, "type", FR_ITEM_POINTER(FR_TYPE_STRING, &listen_type),
 			      "", T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) {
 		talloc_free(this);

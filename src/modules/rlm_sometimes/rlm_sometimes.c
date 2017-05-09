@@ -40,10 +40,10 @@ typedef struct rlm_sometimes_t {
 } rlm_sometimes_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("rcode", PW_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
-	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("start", PW_TYPE_INTEGER, rlm_sometimes_t, start), .dflt = "0" },
-	{ FR_CONF_OFFSET("end", PW_TYPE_INTEGER, rlm_sometimes_t, end), .dflt = "127" },
+	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("start", FR_TYPE_INTEGER, rlm_sometimes_t, start), .dflt = "0" },
+	{ FR_CONF_OFFSET("end", FR_TYPE_INTEGER, rlm_sometimes_t, end), .dflt = "127" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -85,16 +85,16 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 	if (!vp) return RLM_MODULE_NOOP;
 
 	switch (vp->vp_type) {
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
 		hash = fr_hash(vp->data.datum.ptr, vp->vp_length);
 		break;
 
-	case PW_TYPE_ABINARY:
+	case FR_TYPE_ABINARY:
 		hash = fr_hash(vp->vp_filter, vp->vp_length);
 		break;
 
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		return RLM_MODULE_FAIL;
 
 	default:

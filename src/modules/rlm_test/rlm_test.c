@@ -106,62 +106,62 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("tmpl", PW_TYPE_TMPL, rlm_test_t, tmpl), .dflt = "&User-Name", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("tmpl_m", PW_TYPE_TMPL | PW_TYPE_MULTI, rlm_test_t, tmpl_m), .dflt = "%{User-Name}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("tmpl", FR_TYPE_TMPL, rlm_test_t, tmpl), .dflt = "&User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("tmpl_m", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_test_t, tmpl_m), .dflt = "%{User-Name}", .quote = T_DOUBLE_QUOTED_STRING },
 
-	{ FR_CONF_OFFSET("string", PW_TYPE_STRING, rlm_test_t, string) },
-	{ FR_CONF_OFFSET("string_m", PW_TYPE_STRING | PW_TYPE_MULTI, rlm_test_t, string_m) },
+	{ FR_CONF_OFFSET("string", FR_TYPE_STRING, rlm_test_t, string) },
+	{ FR_CONF_OFFSET("string_m", FR_TYPE_STRING | FR_TYPE_MULTI, rlm_test_t, string_m) },
 
-	{ FR_CONF_OFFSET("boolean", PW_TYPE_BOOLEAN, rlm_test_t, boolean), .dflt = "no" },
-	{ FR_CONF_OFFSET("boolean_m", PW_TYPE_BOOLEAN | PW_TYPE_MULTI, rlm_test_t, boolean_m), .dflt = "no" },
+	{ FR_CONF_OFFSET("boolean", FR_TYPE_BOOLEAN, rlm_test_t, boolean), .dflt = "no" },
+	{ FR_CONF_OFFSET("boolean_m", FR_TYPE_BOOLEAN | FR_TYPE_MULTI, rlm_test_t, boolean_m), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("integer", PW_TYPE_INTEGER, rlm_test_t, integer), .dflt = "1" },
-	{ FR_CONF_OFFSET("integer_m", PW_TYPE_INTEGER | PW_TYPE_MULTI, rlm_test_t, integer_m), .dflt = "2" },
+	{ FR_CONF_OFFSET("integer", FR_TYPE_INTEGER, rlm_test_t, integer), .dflt = "1" },
+	{ FR_CONF_OFFSET("integer_m", FR_TYPE_INTEGER | FR_TYPE_MULTI, rlm_test_t, integer_m), .dflt = "2" },
 
-	{ FR_CONF_OFFSET("ipv4_addr", PW_TYPE_IPV4_ADDR, rlm_test_t, ipv4_addr), .dflt = "*" },
-	{ FR_CONF_OFFSET("ipv4_addr_m", PW_TYPE_IPV4_ADDR | PW_TYPE_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "*" },
+	{ FR_CONF_OFFSET("ipv4_addr", FR_TYPE_IPV4_ADDR, rlm_test_t, ipv4_addr), .dflt = "*" },
+	{ FR_CONF_OFFSET("ipv4_addr_m", FR_TYPE_IPV4_ADDR | FR_TYPE_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "*" },
 
-	{ FR_CONF_OFFSET("ipv4_prefix", PW_TYPE_IPV4_PREFIX, rlm_test_t, ipv4_addr), .dflt = "192.168.0.1/24" },
-	{ FR_CONF_OFFSET("ipv4_prefix_m", PW_TYPE_IPV4_PREFIX | PW_TYPE_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET("ipv4_prefix", FR_TYPE_IPV4_PREFIX, rlm_test_t, ipv4_addr), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX | FR_TYPE_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "192.168.0.1/24" },
 
-	{ FR_CONF_OFFSET("ipv6_addr", PW_TYPE_IPV6_ADDR, rlm_test_t, ipv6_addr), .dflt = "*" },
-	{ FR_CONF_OFFSET("ipv6_addr_m", PW_TYPE_IPV6_ADDR | PW_TYPE_MULTI, rlm_test_t, ipv6_addr_m), .dflt = "*" },
+	{ FR_CONF_OFFSET("ipv6_addr", FR_TYPE_IPV6_ADDR, rlm_test_t, ipv6_addr), .dflt = "*" },
+	{ FR_CONF_OFFSET("ipv6_addr_m", FR_TYPE_IPV6_ADDR | FR_TYPE_MULTI, rlm_test_t, ipv6_addr_m), .dflt = "*" },
 
-	{ FR_CONF_OFFSET("ipv6_prefix", PW_TYPE_IPV6_PREFIX, rlm_test_t, ipv6_prefix), .dflt = "::1/128" },
-	{ FR_CONF_OFFSET("ipv6_prefix_m", PW_TYPE_IPV6_PREFIX | PW_TYPE_MULTI, rlm_test_t, ipv6_prefix_m), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET("ipv6_prefix", FR_TYPE_IPV6_PREFIX, rlm_test_t, ipv6_prefix), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET("ipv6_prefix_m", FR_TYPE_IPV6_PREFIX | FR_TYPE_MULTI, rlm_test_t, ipv6_prefix_m), .dflt = "::1/128" },
 
-	{ FR_CONF_OFFSET("combo", PW_TYPE_COMBO_IP_ADDR, rlm_test_t, combo_ipaddr), .dflt = "::1/128" },
-	{ FR_CONF_OFFSET("combo_m", PW_TYPE_COMBO_IP_ADDR | PW_TYPE_MULTI, rlm_test_t, combo_ipaddr_m), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET("combo", FR_TYPE_COMBO_IP_ADDR, rlm_test_t, combo_ipaddr), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET("combo_m", FR_TYPE_COMBO_IP_ADDR | FR_TYPE_MULTI, rlm_test_t, combo_ipaddr_m), .dflt = "::1/128" },
 
-	{ FR_CONF_OFFSET("date", PW_TYPE_DATE, rlm_test_t, date) },
-	{ FR_CONF_OFFSET("date_m", PW_TYPE_DATE | PW_TYPE_MULTI, rlm_test_t, date_m) },
+	{ FR_CONF_OFFSET("date", FR_TYPE_DATE, rlm_test_t, date) },
+	{ FR_CONF_OFFSET("date_m", FR_TYPE_DATE | FR_TYPE_MULTI, rlm_test_t, date_m) },
 
-	{ FR_CONF_OFFSET("abinary", PW_TYPE_ABINARY, rlm_test_t, abinary) },
-	{ FR_CONF_OFFSET("abinary_m", PW_TYPE_ABINARY | PW_TYPE_MULTI, rlm_test_t, abinary_m) },
+	{ FR_CONF_OFFSET("abinary", FR_TYPE_ABINARY, rlm_test_t, abinary) },
+	{ FR_CONF_OFFSET("abinary_m", FR_TYPE_ABINARY | FR_TYPE_MULTI, rlm_test_t, abinary_m) },
 
-	{ FR_CONF_OFFSET("octets", PW_TYPE_OCTETS, rlm_test_t, octets) },
-	{ FR_CONF_OFFSET("octets_m", PW_TYPE_OCTETS | PW_TYPE_MULTI, rlm_test_t, octets_m) },
+	{ FR_CONF_OFFSET("octets", FR_TYPE_OCTETS, rlm_test_t, octets) },
+	{ FR_CONF_OFFSET("octets_m", FR_TYPE_OCTETS | FR_TYPE_MULTI, rlm_test_t, octets_m) },
 
-	{ FR_CONF_OFFSET("bytes", PW_TYPE_BYTE, rlm_test_t, byte) },
-	{ FR_CONF_OFFSET("bytes_m", PW_TYPE_BYTE | PW_TYPE_MULTI, rlm_test_t, byte_m) },
+	{ FR_CONF_OFFSET("bytes", FR_TYPE_BYTE, rlm_test_t, byte) },
+	{ FR_CONF_OFFSET("bytes_m", FR_TYPE_BYTE | FR_TYPE_MULTI, rlm_test_t, byte_m) },
 
-	{ FR_CONF_OFFSET("ifid", PW_TYPE_IFID, rlm_test_t, ifid) },
-	{ FR_CONF_OFFSET("ifid_m", PW_TYPE_IFID | PW_TYPE_MULTI, rlm_test_t, ifid_m) },
+	{ FR_CONF_OFFSET("ifid", FR_TYPE_IFID, rlm_test_t, ifid) },
+	{ FR_CONF_OFFSET("ifid_m", FR_TYPE_IFID | FR_TYPE_MULTI, rlm_test_t, ifid_m) },
 
-	{ FR_CONF_OFFSET("short", PW_TYPE_SHORT, rlm_test_t, shortint) },
-	{ FR_CONF_OFFSET("short_m", PW_TYPE_SHORT | PW_TYPE_MULTI, rlm_test_t, shortint_m) },
+	{ FR_CONF_OFFSET("short", FR_TYPE_SHORT, rlm_test_t, shortint) },
+	{ FR_CONF_OFFSET("short_m", FR_TYPE_SHORT | FR_TYPE_MULTI, rlm_test_t, shortint_m) },
 
-	{ FR_CONF_OFFSET("ethernet", PW_TYPE_ETHERNET, rlm_test_t, ethernet) },
-	{ FR_CONF_OFFSET("ethernet_m", PW_TYPE_ETHERNET | PW_TYPE_MULTI, rlm_test_t, ethernet_m) },
+	{ FR_CONF_OFFSET("ethernet", FR_TYPE_ETHERNET, rlm_test_t, ethernet) },
+	{ FR_CONF_OFFSET("ethernet_m", FR_TYPE_ETHERNET | FR_TYPE_MULTI, rlm_test_t, ethernet_m) },
 
-	{ FR_CONF_OFFSET("signed", PW_TYPE_SIGNED, rlm_test_t, sinteger) },
-	{ FR_CONF_OFFSET("signed_m", PW_TYPE_SIGNED | PW_TYPE_MULTI, rlm_test_t, sinteger_m) },
+	{ FR_CONF_OFFSET("signed", FR_TYPE_SIGNED, rlm_test_t, sinteger) },
+	{ FR_CONF_OFFSET("signed_m", FR_TYPE_SIGNED | FR_TYPE_MULTI, rlm_test_t, sinteger_m) },
 
-	{ FR_CONF_OFFSET("uint64", PW_TYPE_INTEGER64, rlm_test_t, integer64) },
-	{ FR_CONF_OFFSET("uint64_m", PW_TYPE_INTEGER64 | PW_TYPE_MULTI, rlm_test_t, integer64_m) },
+	{ FR_CONF_OFFSET("uint64", FR_TYPE_INTEGER64, rlm_test_t, integer64) },
+	{ FR_CONF_OFFSET("uint64_m", FR_TYPE_INTEGER64 | FR_TYPE_MULTI, rlm_test_t, integer64_m) },
 
-	{ FR_CONF_OFFSET("timeval", PW_TYPE_TIMEVAL, rlm_test_t, timeval) },
-	{ FR_CONF_OFFSET("timeval_m", PW_TYPE_TIMEVAL | PW_TYPE_MULTI, rlm_test_t, timeval_m) },
+	{ FR_CONF_OFFSET("timeval", FR_TYPE_TIMEVAL, rlm_test_t, timeval) },
+	{ FR_CONF_OFFSET("timeval_m", FR_TYPE_TIMEVAL | FR_TYPE_MULTI, rlm_test_t, timeval_m) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -169,7 +169,7 @@ static const CONF_PARSER module_config[] = {
 static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rad_assert(check->vp_type == PW_TYPE_STRING);
+	rad_assert(check->vp_type == FR_TYPE_STRING);
 
 	RINFO("test-Paircmp called with \"%s\"", check->vp_strvalue);
 

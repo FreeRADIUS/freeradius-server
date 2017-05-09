@@ -252,7 +252,7 @@ static bool already_hex(VALUE_PAIR *vp)
 {
 	size_t i;
 
-	if (!vp || (vp->vp_type != PW_TYPE_OCTETS)) return true;
+	if (!vp || (vp->vp_type != FR_TYPE_OCTETS)) return true;
 
 	/*
 	 *	If it's 17 octets, it *might* be already encoded.
@@ -527,7 +527,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				talloc_free(q);
 
 				vp->vp_octets = talloc_steal(vp, p);
-				vp->data.type = PW_TYPE_OCTETS;
+				vp->data.type = FR_TYPE_OCTETS;
 				vp->type = VT_DATA;
 
 				VERIFY_VP(vp);

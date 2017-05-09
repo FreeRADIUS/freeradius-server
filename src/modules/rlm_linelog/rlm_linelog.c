@@ -125,63 +125,63 @@ typedef struct linelog_conn {
 
 
 static const CONF_PARSER file_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_XLAT, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER, linelog_instance_t, file.permissions), .dflt = "0600" },
-	{ FR_CONF_OFFSET("group", PW_TYPE_STRING, linelog_instance_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, linelog_instance_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, linelog_instance_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_INTEGER, linelog_instance_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, linelog_instance_t, file.group_str) },
+	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOLEAN, linelog_instance_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER syslog_config[] = {
-	{ FR_CONF_OFFSET("facility", PW_TYPE_STRING, linelog_instance_t, syslog.facility) },
-	{ FR_CONF_OFFSET("severity", PW_TYPE_STRING, linelog_instance_t, syslog.severity), .dflt = "info" },
+	{ FR_CONF_OFFSET("facility", FR_TYPE_STRING, linelog_instance_t, syslog.facility) },
+	{ FR_CONF_OFFSET("severity", FR_TYPE_STRING, linelog_instance_t, syslog.severity), .dflt = "info" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER unix_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT, linelog_instance_t, unix_sock.path) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, linelog_instance_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER udp_config[] = {
-	{ FR_CONF_OFFSET("server", PW_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", PW_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, linelog_net_t, port) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER tcp_config[] = {
-	{ FR_CONF_OFFSET("server", PW_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", PW_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, linelog_net_t, port) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("destination", PW_TYPE_STRING | PW_TYPE_REQUIRED, linelog_instance_t, log_dst_str) },
+	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, linelog_instance_t, log_dst_str) },
 
-	{ FR_CONF_OFFSET("delimiter", PW_TYPE_STRING, linelog_instance_t, delimiter), .dflt = "\n" },
-	{ FR_CONF_OFFSET("format", PW_TYPE_TMPL, linelog_instance_t, log_src) },
-	{ FR_CONF_OFFSET("reference", PW_TYPE_TMPL, linelog_instance_t, log_ref) },
+	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, linelog_instance_t, delimiter), .dflt = "\n" },
+	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, linelog_instance_t, log_src) },
+	{ FR_CONF_OFFSET("reference", FR_TYPE_TMPL, linelog_instance_t, log_ref) },
 
 	/*
 	 *	Log destinations
 	 */
-	{ FR_CONF_POINTER("file", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) file_config },
-	{ FR_CONF_POINTER("syslog", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) syslog_config },
-	{ FR_CONF_POINTER("unix", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) unix_config },
-	{ FR_CONF_OFFSET("tcp", PW_TYPE_SUBSECTION, linelog_instance_t, tcp), .subcs= (void const *) tcp_config },
-	{ FR_CONF_OFFSET("udp", PW_TYPE_SUBSECTION, linelog_instance_t, udp), .subcs = (void const *) udp_config },
+	{ FR_CONF_POINTER("file", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) file_config },
+	{ FR_CONF_POINTER("syslog", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) syslog_config },
+	{ FR_CONF_POINTER("unix", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) unix_config },
+	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, linelog_instance_t, tcp), .subcs= (void const *) tcp_config },
+	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, linelog_instance_t, udp), .subcs = (void const *) udp_config },
 
 	/*
 	 *	Deprecated config items
 	 */
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, linelog_instance_t, file.permissions) },
-	{ FR_CONF_OFFSET("group", PW_TYPE_STRING | PW_TYPE_DEPRECATED, linelog_instance_t, file.group_str) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, linelog_instance_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_INTEGER | FR_TYPE_DEPRECATED, linelog_instance_t, file.permissions) },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, file.group_str) },
 
-	{ FR_CONF_OFFSET("syslog_facility", PW_TYPE_STRING | PW_TYPE_DEPRECATED, linelog_instance_t, syslog.facility) },
-	{ FR_CONF_OFFSET("syslog_severity", PW_TYPE_STRING | PW_TYPE_DEPRECATED, linelog_instance_t, syslog.severity) },
+	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.facility) },
+	{ FR_CONF_OFFSET("syslog_severity", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.severity) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -585,8 +585,8 @@ build_vector:
 			}
 
 			switch (vp->vp_type) {
-			case PW_TYPE_OCTETS:
-			case PW_TYPE_STRING:
+			case FR_TYPE_OCTETS:
+			case FR_TYPE_STRING:
 				vector[i].iov_base = vp->vp_ptr;
 				vector[i].iov_len = vp->vp_length;
 				break;

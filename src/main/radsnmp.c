@@ -224,7 +224,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 			break;
 		}
 
-		if (index_attr->type != PW_TYPE_INTEGER) {
+		if (index_attr->type != FR_TYPE_INTEGER) {
 			fr_strerror_printf("Index is not a \"integer\"");
 			break;
 		}
@@ -241,7 +241,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		/*
 		 *	Entry must be a TLV type
 		 */
-		if (parent->type != PW_TYPE_TLV) {
+		if (parent->type != FR_TYPE_TLV) {
 			fr_strerror_printf("Entry is not \"tlv\"");
 			break;
 		}
@@ -298,15 +298,15 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		 *	of conveying information, so empty TLVs are
 		 *	disallowed.
 		 */
-		case PW_TYPE_TLV:
+		case FR_TYPE_TLV:
 			vp->da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
 			/* FALL-THROUGH */
 
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1);
 			break;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			fr_pair_value_bstrncpy(vp, "\0", 1);
 			break;
 
@@ -321,7 +321,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		return slen;
 	}
 
-	if (da->type == PW_TYPE_TLV) {
+	if (da->type == FR_TYPE_TLV) {
 		fr_strerror_printf("TLVs cannot hold values");
 		return -(slen);
 	}
@@ -433,7 +433,7 @@ static int radsnmp_get_response(int fd,
 			slen = dict_print_attr_oid(p, end - p, parent, vp->da->parent);
 			if (slen < 0) return -1;
 
-			if (vp->vp_type != PW_TYPE_INTEGER) {
+			if (vp->vp_type != FR_TYPE_INTEGER) {
 				fr_strerror_printf("Index attribute \"%s\" is not of type \"integer\"", vp->da->name);
 				return -1;
 			}
@@ -489,12 +489,12 @@ static int radsnmp_get_response(int fd,
 		io_vector[3].iov_len = 1;
 
 		switch (vp->vp_type) {
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			memcpy(&io_vector[4].iov_base, &vp->vp_strvalue, sizeof(io_vector[4].iov_base));
 			io_vector[4].iov_len = vp->vp_length;
 			break;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			memcpy(&io_vector[4].iov_base, &vp->vp_strvalue, sizeof(io_vector[4].iov_base));
 			io_vector[4].iov_len = vp->vp_length;
 			break;

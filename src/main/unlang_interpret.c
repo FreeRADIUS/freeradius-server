@@ -184,10 +184,10 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 			 *	select which frame is being used.
 			 */
 			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
-			    ((g->vpt->tmpl_da->type == PW_TYPE_BYTE) ||
-			     (g->vpt->tmpl_da->type == PW_TYPE_SHORT) ||
-			     (g->vpt->tmpl_da->type == PW_TYPE_INTEGER) ||
-			     (g->vpt->tmpl_da->type == PW_TYPE_INTEGER64))) {
+			    ((g->vpt->tmpl_da->type == FR_TYPE_BYTE) ||
+			     (g->vpt->tmpl_da->type == FR_TYPE_SHORT) ||
+			     (g->vpt->tmpl_da->type == FR_TYPE_INTEGER) ||
+			     (g->vpt->tmpl_da->type == FR_TYPE_INTEGER64))) {
 				VALUE_PAIR *vp;
 
 				slen = tmpl_find_vp(&vp, request, g->vpt);
@@ -197,19 +197,19 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 				}
 
 				switch (g->vpt->tmpl_da->type) {
-				case PW_TYPE_BYTE:
+				case FR_TYPE_BYTE:
 					start = ((uint32_t) vp->vp_byte) % g->num_children;
 					break;
 
-				case PW_TYPE_SHORT:
+				case FR_TYPE_SHORT:
 					start = ((uint32_t) vp->vp_short) % g->num_children;
 					break;
 
-				case PW_TYPE_INTEGER:
+				case FR_TYPE_INTEGER:
 					start = vp->vp_integer % g->num_children;
 					break;
 
-				case PW_TYPE_INTEGER64:
+				case FR_TYPE_INTEGER64:
 					start = (uint32_t) (vp->vp_integer64 % ((uint64_t) g->num_children));
 					break;
 

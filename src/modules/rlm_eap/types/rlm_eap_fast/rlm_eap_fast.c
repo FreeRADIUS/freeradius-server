@@ -53,17 +53,17 @@ typedef struct rlm_eap_fast_t {
 
 
 static CONF_PARSER submodule_config[] = {
-	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_fast_t, tls_conf_name) },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_fast_t, tls_conf_name) },
 
-	{ FR_CONF_OFFSET("default_provisioning_eap_type", PW_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
+	{ FR_CONF_OFFSET("default_provisioning_eap_type", FR_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
 
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
 
-	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOLEAN, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("pac_lifetime", PW_TYPE_INTEGER, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
-	{ FR_CONF_OFFSET("authority_identity", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_fast_t, authority_identity) },
-	{ FR_CONF_OFFSET("pac_opaque_key", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_fast_t, pac_opaque_key) },
+	{ FR_CONF_OFFSET("pac_lifetime", FR_TYPE_INTEGER, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
+	{ FR_CONF_OFFSET("authority_identity", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_fast_t, authority_identity) },
+	{ FR_CONF_OFFSET("pac_opaque_key", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_fast_t, pac_opaque_key) },
 
 	CONF_PARSER_TERMINATOR
 };

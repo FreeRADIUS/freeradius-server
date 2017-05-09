@@ -75,13 +75,13 @@ typedef struct detail_instance {
 } rlm_detail_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
-	{ FR_CONF_OFFSET("header", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
-	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER, rlm_detail_t, perm), .dflt = "0600" },
-	{ FR_CONF_OFFSET("group", PW_TYPE_STRING, rlm_detail_t, group) },
-	{ FR_CONF_OFFSET("locking", PW_TYPE_BOOLEAN, rlm_detail_t, locking), .dflt = "no" },
-	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, rlm_detail_t, escape), .dflt = "no" },
-	{ FR_CONF_OFFSET("log_packet_header", PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), .dflt = "no" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
+	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_INTEGER, rlm_detail_t, perm), .dflt = "0600" },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_detail_t, group) },
+	{ FR_CONF_OFFSET("locking", FR_TYPE_BOOLEAN, rlm_detail_t, locking), .dflt = "no" },
+	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOLEAN, rlm_detail_t, escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("log_packet_header", FR_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

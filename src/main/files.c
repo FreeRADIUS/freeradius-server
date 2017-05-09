@@ -235,7 +235,7 @@ parse_again:
 			     vp = fr_pair_cursor_next(&cursor)) {
 				if (((vp->op == T_OP_REG_EQ) ||
 				     (vp->op == T_OP_REG_NE)) &&
-				    (vp->vp_type != PW_TYPE_STRING)) {
+				    (vp->vp_type != FR_TYPE_STRING)) {
 					pairlist_free(&pl);
 					talloc_free(check_tmp);
 					ERROR("%s[%d]: Cannot use regular expressions for non-string attributes in entry %s",

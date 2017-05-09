@@ -508,10 +508,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	This is really the reverse of fr_snprint().
 		 */
 		if (*child) {
-			PW_TYPE type;
+			fr_type_t type;
 			value_box_t data;
 
-			type = PW_TYPE_STRING;
+			type = FR_TYPE_STRING;
 			if (value_box_from_str(ctx, &data, &type, NULL, child,
 						talloc_array_length(child) - 1, '"') < 0) {
 				talloc_free(child);

@@ -43,9 +43,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define MSK_EMSK_LEN    (2 * MPPE_KEY_LEN)
 
 static CONF_PARSER submodule_config[] = {
-	{ FR_CONF_OFFSET("group", PW_TYPE_INTEGER, rlm_eap_pwd_t, group), .dflt = "19" },
-	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
-	{ FR_CONF_OFFSET("server_id", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_pwd_t, server_id) },
+	{ FR_CONF_OFFSET("group", FR_TYPE_INTEGER, rlm_eap_pwd_t, group), .dflt = "19" },
+	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_INTEGER, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
+	{ FR_CONF_OFFSET("server_id", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_pwd_t, server_id) },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -82,22 +82,22 @@ typedef struct rlm_sql_mysql_config {
 } rlm_sql_mysql_t;
 
 static CONF_PARSER tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
 
 	/*
 	 *	MySQL Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("cipher", PW_TYPE_STRING, rlm_sql_mysql_t, tls_cipher) },
+	{ FR_CONF_OFFSET("cipher", FR_TYPE_STRING, rlm_sql_mysql_t, tls_cipher) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER driver_config[] = {
-	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 
-	{ FR_CONF_OFFSET("warnings", PW_TYPE_STRING, rlm_sql_mysql_t, warnings_str), .dflt = "auto" },
+	{ FR_CONF_OFFSET("warnings", FR_TYPE_STRING, rlm_sql_mysql_t, warnings_str), .dflt = "auto" },
 	CONF_PARSER_TERMINATOR
 };
 

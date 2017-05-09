@@ -724,8 +724,8 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 			    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 				if ((map->rhs->len > 0) ||
 				    (map->op != T_OP_CMP_EQ) ||
-				    (map->lhs->tmpl_da->type == PW_TYPE_STRING) ||
-				    (map->lhs->tmpl_da->type == PW_TYPE_OCTETS)) {
+				    (map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
+				    (map->lhs->tmpl_da->type == FR_TYPE_OCTETS)) {
 
 					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %s",

@@ -541,10 +541,10 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 
 
 static const CONF_PARSER passchange_config[] = {
-	{ FR_CONF_OFFSET("ntlm_auth", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw) },
-	{ FR_CONF_OFFSET("ntlm_auth_username", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username) },
-	{ FR_CONF_OFFSET("ntlm_auth_domain", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
-	{ FR_CONF_OFFSET("local_cpw", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, local_cpw) },
+	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw) },
+	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username) },
+	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
+	{ FR_CONF_OFFSET("local_cpw", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, local_cpw) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -552,22 +552,22 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
 	 */
-	{ FR_CONF_OFFSET("use_mppe", PW_TYPE_BOOLEAN, rlm_mschap_t, use_mppe), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_encryption", PW_TYPE_BOOLEAN, rlm_mschap_t, require_encryption), .dflt = "no" },
-	{ FR_CONF_OFFSET("require_strong", PW_TYPE_BOOLEAN, rlm_mschap_t, require_strong), .dflt = "no" },
-	{ FR_CONF_OFFSET("with_ntdomain_hack", PW_TYPE_BOOLEAN, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
-	{ FR_CONF_OFFSET("ntlm_auth", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
-	{ FR_CONF_OFFSET("ntlm_auth_timeout", PW_TYPE_INTEGER, rlm_mschap_t, ntlm_auth_timeout) },
-	{ FR_CONF_POINTER("passchange", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
-	{ FR_CONF_OFFSET("allow_retry", PW_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), .dflt = "yes" },
-	{ FR_CONF_OFFSET("retry_msg", PW_TYPE_STRING, rlm_mschap_t, retry_msg) },
-	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", PW_TYPE_TMPL, rlm_mschap_t, wb_domain) },
+	{ FR_CONF_OFFSET("use_mppe", FR_TYPE_BOOLEAN, rlm_mschap_t, use_mppe), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_encryption", FR_TYPE_BOOLEAN, rlm_mschap_t, require_encryption), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOLEAN, rlm_mschap_t, require_strong), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOLEAN, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
+	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_INTEGER, rlm_mschap_t, ntlm_auth_timeout) },
+	{ FR_CONF_POINTER("passchange", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
+	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), .dflt = "yes" },
+	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, rlm_mschap_t, retry_msg) },
+	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", PW_TYPE_BOOLEAN, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", FR_TYPE_BOOLEAN, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
 #endif
 #ifdef __APPLE__
-	{ FR_CONF_OFFSET("use_open_directory", PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), .dflt = "yes" },
+	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOLEAN, rlm_mschap_t, open_directory), .dflt = "yes" },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -694,7 +694,7 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 		return;
 	}
 
-	if (vp->vp_type == PW_TYPE_STRING) {
+	if (vp->vp_type == FR_TYPE_STRING) {
 		char *p;
 
 		p = talloc_array(vp, char, len + 1 + 1);	/* Account for the ident byte */

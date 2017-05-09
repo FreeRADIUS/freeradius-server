@@ -64,7 +64,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL;
 	vp_tmpl_t		*vpt;
-	value_box_t		bin = { .type = PW_TYPE_STRING }, cast;
+	value_box_t		bin = { .type = FR_TYPE_STRING }, cast;
 
 	rad_assert(map != NULL);
 
@@ -870,7 +870,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				vp = fr_pair_cursor_remove(&from);
 				talloc_free(vp);
 
-				rad_assert((n->vp_type != PW_TYPE_STRING) || (n->vp_strvalue != NULL));
+				rad_assert((n->vp_type != FR_TYPE_STRING) || (n->vp_strvalue != NULL));
 
 				n->op = map->op;
 				n->tag = map->lhs->tmpl_tag;
@@ -1401,7 +1401,7 @@ update:
 			if (!vp->da->parent->flags.is_root) continue;
 			if (vp->da->vendor != 0) continue;
 			if (vp->da->flags.has_tag) continue;
-			if (vp->vp_type != PW_TYPE_STRING) continue;
+			if (vp->vp_type != FR_TYPE_STRING) continue;
 
 			if (!context->username && (vp->da->attr == PW_USER_NAME)) {
 				context->username = vp;
@@ -1482,7 +1482,7 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 	if (!rad_cond_assert(map->rhs != NULL)) return -1;
 
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
+	    (map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
 	    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		*(p++) = '\'';
 		len = tmpl_snprint(p, (end - p) - 1, map->rhs);	/* -1 for proceeding '\'' */
@@ -1539,7 +1539,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		vp_tmpl_t	vpt;
 		char const	*quote;
 
-		quote = (vp->vp_type == PW_TYPE_STRING) ? "\"" : "";
+		quote = (vp->vp_type == FR_TYPE_STRING) ? "\"" : "";
 
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
@@ -1566,7 +1566,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	{
 		char const *quote;
 
-		quote = (vp->vp_type == PW_TYPE_STRING) ? "\"" : "";
+		quote = (vp->vp_type == FR_TYPE_STRING) ? "\"" : "";
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting

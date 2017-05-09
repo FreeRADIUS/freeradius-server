@@ -89,11 +89,11 @@ typedef struct rlm_perl_t {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-#define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), PW_TYPE_STRING, rlm_perl_t, func_##_x), \
+#define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), FR_TYPE_STRING, rlm_perl_t, func_##_x), \
 			   .data = NULL, .dflt = STRINGIFY(_x), .quote = T_INVALID }
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_perl_t, module) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_perl_t, module) },
 
 	RLM_PERL_CONF(authorize),
 	RLM_PERL_CONF(authenticate),
@@ -112,11 +112,11 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(recv_coa),
 	RLM_PERL_CONF(send_coa),
 #endif
-	{ FR_CONF_OFFSET("perl_flags", PW_TYPE_STRING, rlm_perl_t, perl_flags) },
+	{ FR_CONF_OFFSET("perl_flags", FR_TYPE_STRING, rlm_perl_t, perl_flags) },
 
-	{ FR_CONF_OFFSET("func_start_accounting", PW_TYPE_STRING, rlm_perl_t, func_start_accounting) },
+	{ FR_CONF_OFFSET("func_start_accounting", FR_TYPE_STRING, rlm_perl_t, func_start_accounting) },
 
-	{ FR_CONF_OFFSET("func_stop_accounting", PW_TYPE_STRING, rlm_perl_t, func_stop_accounting) },
+	{ FR_CONF_OFFSET("func_stop_accounting", FR_TYPE_STRING, rlm_perl_t, func_stop_accounting) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -625,13 +625,13 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 	char buffer[1024];
 
 	switch (vp->vp_type) {
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, vp->vp_strvalue);
 		av_push(av, newSVpvn(vp->vp_strvalue, vp->vp_length));
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		if (RDEBUG_ENABLED) {
 			char *hex;
 
@@ -716,13 +716,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 *	It's a normal single valued attribute
 		 */
 		switch (vp->vp_type) {
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
 			       vp->da->name, vp->vp_strvalue);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			if (RDEBUG_ENABLED) {
 				char *hex;
 
@@ -772,11 +772,11 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 	}
 
 	switch (vp->vp_type) {
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		fr_pair_value_bstrncpy(vp, val, len);
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		fr_pair_value_memcpy(vp, (uint8_t const *)val, len);
 		break;
 

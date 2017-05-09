@@ -244,7 +244,7 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
 	 *	Could be an array of bytes, integers, etc.
 	 */
 	switch (da->type) {
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		if (da->flags.length == 0) return 1;
 		element_len = da->flags.length;
 		break;
@@ -418,7 +418,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	block cipher (16 in the case of AES-128-CBC).
 	 */
 	case PW_SIM_PADDING:
-		if (!parent->parent || (parent->parent->type != PW_TYPE_TLV) || (!parent->parent->flags.encrypt)) {
+		if (!parent->parent || (parent->parent->type != FR_TYPE_TLV) || (!parent->parent->flags.encrypt)) {
 			fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV", __FUNCTION__);
 			return -1;
 		}
@@ -450,15 +450,15 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
 	switch (parent->type) {
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		if (attr_len != 2) goto raw;
 		break;
 
-	case PW_TYPE_TLV:
+	case FR_TYPE_TLV:
 		/*
 		 *	We presume that the TLVs all fit into one
 		 *	attribute, OR they've already been grouped
@@ -500,7 +500,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	Strings have a two byte 'real length' field in front of the
 	 *	actual value, and that gives us the length of the string value.
 	 */
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 	{
 		uint16_t str_len = (p[0] << 8) | p[1];
 
@@ -514,7 +514,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	}
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		fr_pair_value_memcpy(vp, p, attr_len);
 		vp->vp_length = attr_len;
 		break;
@@ -529,11 +529,11 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
 	 *	+---------------+---------------+-------------------------------+
 	 */
-	case PW_TYPE_BOOLEAN:
+	case FR_TYPE_BOOLEAN:
 		vp->vp_bool = true;
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		vp->vp_short = (p[0] << 8) | p[1];
 		break;
 
@@ -795,7 +795,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		/*
 		 *	String attributes have a 16bit "Actual Length" field at the start.
 		 */
-		} else if (vp->vp_type == PW_TYPE_STRING) {
+		} else if (vp->vp_type == FR_TYPE_STRING) {
 			vp_len = vp->vp_length + 2;
 		/*
 		 *	All other attributes we trust the length.
@@ -852,7 +852,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		/*
 		 *	For strings we have an 'actual' value field.
 		 */
-		if (vp->vp_type == PW_TYPE_STRING) {
+		if (vp->vp_type == FR_TYPE_STRING) {
 			vp_len = vp->vp_length + 2;
 		/*
 		 *	All other attributes we trust the length.
@@ -871,7 +871,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		p[1] = rounded_len >> 2;
 
 		switch (vp->vp_type) {
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			memcpy(&p[2], vp->vp_octets, vp->vp_length);
 			break;
 
@@ -892,7 +892,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *	|                                                               |
 		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 		{
 			uint16_t actual_len = htons((vp->vp_length & UINT16_MAX));
 
@@ -912,7 +912,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
 		 *	+---------------+---------------+-------------------------------+
 		 */
-		case PW_TYPE_BOOLEAN:
+		case FR_TYPE_BOOLEAN:
 			break;
 
 		/*
@@ -927,11 +927,11 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *	|   AT_<SHORT>  | Length = 1    |    Short 1    |    Short 2    |
 		 *	+---------------+---------------+-------------------------------+
 		 */
-		case PW_TYPE_BYTE:			//!< 8 Bit unsigned integer.
-		case PW_TYPE_SHORT:			//!< 16 Bit unsigned integer.
-		case PW_TYPE_INTEGER:			//!< 32 Bit unsigned integer.
-		case PW_TYPE_INTEGER64:			//!< 64 Bit unsigned integer.
-		case PW_TYPE_SIGNED:			//!< 32 Bit signed integer.
+		case FR_TYPE_BYTE:			//!< 8 Bit unsigned integer.
+		case FR_TYPE_SHORT:			//!< 16 Bit unsigned integer.
+		case FR_TYPE_INTEGER:			//!< 32 Bit unsigned integer.
+		case FR_TYPE_INTEGER64:			//!< 64 Bit unsigned integer.
+		case FR_TYPE_SIGNED:			//!< 32 Bit signed integer.
 		{
 			value_box_t data;
 

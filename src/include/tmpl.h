@@ -56,9 +56,9 @@
  *
  * If you just need the string value of whatever the VPT refers to, the tmpl_*expand
  * functions may be used. These functions evaluate the VPT, execing, and xlat expanding
- * as necessary. In the case of #TMPL_TYPE_ATTR, and #PW_TYPE_STRING or #PW_TYPE_OCTETS
+ * as necessary. In the case of #TMPL_TYPE_ATTR, and #FR_TYPE_STRING or #FR_TYPE_OCTETS
  * #tmpl_expand will return a pointer to the raw #VALUE_PAIR buffer. This can be very
- * useful when using the #PW_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
+ * useful when using the #FR_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
  * user to determine whether they want the module to sanitise the value using presentation
  * format specific #xlat_escape_t function, or to operate on the raw value.
  *
@@ -307,7 +307,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
    value.strvalue = talloc_strdup(NULL, "my new username");
    value.length = talloc_array_length(value.strvalue) - 1;
 
-   if (fr_pair_update_by_num(ctx, head, PW_USERNAME, 0, TAG_ANY, PW_TYPE_STRING, &value) < 0) return -1; // error
+   if (fr_pair_update_by_num(ctx, head, PW_USERNAME, 0, TAG_ANY, FR_TYPE_STRING, &value) < 0) return -1; // error
  @endcode
  *
  * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.
@@ -331,17 +331,17 @@ do {\
 /** Map ptr type to a boxed type
  *
  */
-#define	PW_TYPE_FROM_PTR(_ptr) \
+#define	FR_TYPE_FROM_PTR(_ptr) \
 	_Generic((_ptr), \
-		 char **: PW_TYPE_STRING, \
-		 char const **: PW_TYPE_STRING, \
-		 uint8_t **: PW_TYPE_OCTETS, \
-		 uint8_t const **: PW_TYPE_OCTETS, \
-		 uint8_t *: PW_TYPE_BYTE, \
-		 uint16_t *: PW_TYPE_SHORT, \
-		 uint32_t *: PW_TYPE_INTEGER, \
-		 uint64_t *: PW_TYPE_INTEGER64, \
-		 struct timeval *: PW_TYPE_TIMEVAL)
+		 char **: FR_TYPE_STRING, \
+		 char const **: FR_TYPE_STRING, \
+		 uint8_t **: FR_TYPE_OCTETS, \
+		 uint8_t const **: FR_TYPE_OCTETS, \
+		 uint8_t *: FR_TYPE_BYTE, \
+		 uint16_t *: FR_TYPE_SHORT, \
+		 uint32_t *: FR_TYPE_INTEGER, \
+		 uint64_t *: FR_TYPE_INTEGER64, \
+		 struct timeval *: FR_TYPE_TIMEVAL)
 
 /** Expand a tmpl to a C type, using existing storage to hold variably sized types
  *
@@ -351,7 +351,7 @@ do {\
  */
 #define	tmpl_expand(_out, _buff, _buff_len, _request, _vpt, _escape, _escape_ctx) \
 	_tmpl_to_type((void *)(_out), (uint8_t *)_buff, _buff_len, \
-		      _request, _vpt, _escape, _escape_ctx, PW_TYPE_FROM_PTR(_out))
+		      _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
 
 /** Expand a tmpl to a C type, allocing a new buffer to hold the string
  *
@@ -360,7 +360,7 @@ do {\
  * @see _tmpl_to_atype
  */
 #define	tmpl_aexpand(_ctx, _out, _request, _vpt, _escape, _escape_ctx) \
-	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, PW_TYPE_FROM_PTR(_out))
+	_tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
 
 
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
@@ -398,7 +398,7 @@ ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);
 
-int			tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv);
+int			tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
 
 void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
 
@@ -412,14 +412,14 @@ ssize_t			_tmpl_to_type(void *out,
 				      REQUEST *request,
 				      vp_tmpl_t const *vpt,
 				      xlat_escape_t escape, void const *escape_ctx,
-				      PW_TYPE dst_type)
+				      fr_type_t dst_type)
 			CC_HINT(nonnull (1, 4, 5));
 
 ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       		       REQUEST *request,
 				       vp_tmpl_t const *vpt,
 				       xlat_escape_t escape, void const *escape_ctx,
-				       PW_TYPE dst_type)
+				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
@@ -436,7 +436,7 @@ int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *v
 
 int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
-int			tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_flags_t const *flags);
+int			tmpl_define_undefined_attr(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 #ifdef __cplusplus
 }

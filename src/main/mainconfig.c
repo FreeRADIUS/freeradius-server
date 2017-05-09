@@ -107,13 +107,13 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
  *	Log destinations
  */
 static const CONF_PARSER startup_log_config[] = {
-	{ FR_CONF_POINTER("destination", PW_TYPE_STRING, &radlog_dest), .dflt = "files" },
-	{ FR_CONF_POINTER("syslog_facility", PW_TYPE_STRING, &syslog_facility), .dflt = STRINGIFY(0) },
+	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &radlog_dest), .dflt = "files" },
+	{ FR_CONF_POINTER("syslog_facility", FR_TYPE_STRING, &syslog_facility), .dflt = STRINGIFY(0) },
 
-	{ FR_CONF_POINTER("localstatedir", PW_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
-	{ FR_CONF_POINTER("logdir", PW_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
-	{ FR_CONF_POINTER("file", PW_TYPE_STRING, &main_config.log_file), .dflt = "${logdir}/radius.log" },
-	{ FR_CONF_POINTER("requests", PW_TYPE_STRING | PW_TYPE_DEPRECATED, &default_log.file) },
+	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
+	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
+	{ FR_CONF_POINTER("file", FR_TYPE_STRING, &main_config.log_file), .dflt = "${logdir}/radius.log" },
+	{ FR_CONF_POINTER("requests", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &default_log.file) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -122,15 +122,15 @@ static const CONF_PARSER startup_log_config[] = {
  *	Basic configuration for the server.
  */
 static const CONF_PARSER startup_server_config[] = {
-	{ FR_CONF_POINTER("log", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) startup_log_config },
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) startup_log_config },
 
-	{ FR_CONF_POINTER("name", PW_TYPE_STRING, &my_name), .dflt = "radiusd" },
-	{ FR_CONF_POINTER("prefix", PW_TYPE_STRING, &prefix), .dflt = "/usr/local" },
+	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
+	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 
-	{ FR_CONF_POINTER("log_file", PW_TYPE_STRING, &main_config.log_file) },
-	{ FR_CONF_POINTER("log_destination", PW_TYPE_STRING, &radlog_dest) },
-	{ FR_CONF_POINTER("use_utc", PW_TYPE_BOOLEAN, &log_dates_utc) },
-	{ FR_CONF_IS_SET_POINTER("timestamp", PW_TYPE_BOOLEAN, &log_timestamp) },
+	{ FR_CONF_POINTER("log_file", FR_TYPE_STRING, &main_config.log_file) },
+	{ FR_CONF_POINTER("log_destination", FR_TYPE_STRING, &radlog_dest) },
+	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOLEAN, &log_dates_utc) },
+	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOLEAN, &log_timestamp) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -142,18 +142,18 @@ static const CONF_PARSER startup_server_config[] = {
  *
  **********************************************************************/
 static const CONF_PARSER log_config[] = {
-	{ FR_CONF_POINTER("stripped_names", PW_TYPE_BOOLEAN, &log_stripped_names), .dflt = "no" },
-	{ FR_CONF_POINTER("auth", PW_TYPE_BOOLEAN, &main_config.log_auth), .dflt = "no" },
-	{ FR_CONF_POINTER("auth_badpass", PW_TYPE_BOOLEAN, &main_config.log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_POINTER("auth_goodpass", PW_TYPE_BOOLEAN, &main_config.log_auth_goodpass), .dflt = "no" },
-	{ FR_CONF_POINTER("msg_badpass", PW_TYPE_STRING, &main_config.auth_badpass_msg) },
-	{ FR_CONF_POINTER("msg_goodpass", PW_TYPE_STRING, &main_config.auth_goodpass_msg) },
-	{ FR_CONF_POINTER("colourise", PW_TYPE_BOOLEAN, &do_colourise) },
-	{ FR_CONF_POINTER("timestamp", PW_TYPE_BOOLEAN, &log_timestamp) },
-	{ FR_CONF_POINTER("use_utc", PW_TYPE_BOOLEAN, &log_dates_utc) },
-	{ FR_CONF_POINTER("msg_denied", PW_TYPE_STRING, &main_config.denied_msg), .dflt = "You are already logged in - access denied" },
+	{ FR_CONF_POINTER("stripped_names", FR_TYPE_BOOLEAN, &log_stripped_names), .dflt = "no" },
+	{ FR_CONF_POINTER("auth", FR_TYPE_BOOLEAN, &main_config.log_auth), .dflt = "no" },
+	{ FR_CONF_POINTER("auth_badpass", FR_TYPE_BOOLEAN, &main_config.log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_POINTER("auth_goodpass", FR_TYPE_BOOLEAN, &main_config.log_auth_goodpass), .dflt = "no" },
+	{ FR_CONF_POINTER("msg_badpass", FR_TYPE_STRING, &main_config.auth_badpass_msg) },
+	{ FR_CONF_POINTER("msg_goodpass", FR_TYPE_STRING, &main_config.auth_goodpass_msg) },
+	{ FR_CONF_POINTER("colourise", FR_TYPE_BOOLEAN, &do_colourise) },
+	{ FR_CONF_POINTER("timestamp", FR_TYPE_BOOLEAN, &log_timestamp) },
+	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOLEAN, &log_dates_utc) },
+	{ FR_CONF_POINTER("msg_denied", FR_TYPE_STRING, &main_config.denied_msg), .dflt = "You are already logged in - access denied" },
 #ifdef WITH_CONF_WRITE
-	{ FR_CONF_POINTER("write_dir", PW_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
+	{ FR_CONF_POINTER("write_dir", FR_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -163,19 +163,19 @@ static const CONF_PARSER log_config[] = {
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
-	{ FR_CONF_POINTER("max_attributes", PW_TYPE_INTEGER, &fr_max_attributes), .dflt = STRINGIFY(0) },
-	{ FR_CONF_POINTER("reject_delay", PW_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
-	{ FR_CONF_POINTER("status_server", PW_TYPE_BOOLEAN, &main_config.status_server), .dflt = "no" },
+	{ FR_CONF_POINTER("max_attributes", FR_TYPE_INTEGER, &fr_max_attributes), .dflt = STRINGIFY(0) },
+	{ FR_CONF_POINTER("reject_delay", FR_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
+	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOLEAN, &main_config.status_server), .dflt = "no" },
 
 	/*
 	 *	No default, so it isn't printed in debug mode.
 	 */
-	{ FR_CONF_POINTER("tunnel_password_zeros", PW_TYPE_BOOLEAN, &fr_tunnel_password_zeros) },
+	{ FR_CONF_POINTER("tunnel_password_zeros", FR_TYPE_BOOLEAN, &fr_tunnel_password_zeros) },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
-	{ FR_CONF_POINTER("allow_vulnerable_openssl", PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
+	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
 #endif
-	{ FR_CONF_POINTER("server_id", PW_TYPE_BYTE, &main_config.state_server_id) },
+	{ FR_CONF_POINTER("server_id", FR_TYPE_BYTE, &main_config.state_server_id) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -185,9 +185,9 @@ static const CONF_PARSER resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_POINTER("talloc_pool_size", PW_TYPE_SIZE, &main_config.talloc_pool_size) },			/* DO NOT SET DEFAULT */
-	{ FR_CONF_POINTER("talloc_memory_limit", PW_TYPE_SIZE, &main_config.talloc_memory_limit) },		/* DO NOT SET DEFAULT */
-	{ FR_CONF_POINTER("talloc_memory_report", PW_TYPE_BOOLEAN, &main_config.talloc_memory_report) },	/* DO NOT SET DEFAULT */
+	{ FR_CONF_POINTER("talloc_pool_size", FR_TYPE_SIZE, &main_config.talloc_pool_size) },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_POINTER("talloc_memory_limit", FR_TYPE_SIZE, &main_config.talloc_memory_limit) },		/* DO NOT SET DEFAULT */
+	{ FR_CONF_POINTER("talloc_memory_report", FR_TYPE_BOOLEAN, &main_config.talloc_memory_report) },	/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
@@ -199,31 +199,31 @@ static const CONF_PARSER server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
-	{ FR_CONF_POINTER("name", PW_TYPE_STRING, &my_name), .dflt = "radiusd" },
-	{ FR_CONF_POINTER("prefix", PW_TYPE_STRING, &prefix), .dflt = "/usr/local" },
-	{ FR_CONF_POINTER("localstatedir", PW_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
-	{ FR_CONF_POINTER("sbindir", PW_TYPE_STRING, &sbindir), .dflt = "${prefix}/sbin"},
-	{ FR_CONF_POINTER("logdir", PW_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
-	{ FR_CONF_POINTER("run_dir", PW_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
-	{ FR_CONF_POINTER("libdir", PW_TYPE_STRING, &radlib_dir), .dflt = "${prefix}/lib"},
-	{ FR_CONF_POINTER("radacctdir", PW_TYPE_STRING, &radacct_dir), .dflt = "${logdir}/radacct" },
-	{ FR_CONF_POINTER("panic_action", PW_TYPE_STRING, &main_config.panic_action) },
-	{ FR_CONF_POINTER("hostname_lookups", PW_TYPE_BOOLEAN, &fr_dns_lookups), .dflt = "no" },
-	{ FR_CONF_POINTER("max_request_time", PW_TYPE_INTEGER, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
-	{ FR_CONF_POINTER("cleanup_delay", PW_TYPE_INTEGER, &main_config.cleanup_delay), .dflt = STRINGIFY(CLEANUP_DELAY) },
-	{ FR_CONF_POINTER("continuation_timeout", PW_TYPE_INTEGER, &main_config.continuation_timeout), .dflt = "15" },
-	{ FR_CONF_POINTER("max_requests", PW_TYPE_INTEGER, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
-	{ FR_CONF_POINTER("pidfile", PW_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
-	{ FR_CONF_POINTER("checkrad", PW_TYPE_STRING, &main_config.checkrad), .dflt = "${sbindir}/checkrad" },
+	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
+	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
+	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
+	{ FR_CONF_POINTER("sbindir", FR_TYPE_STRING, &sbindir), .dflt = "${prefix}/sbin"},
+	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
+	{ FR_CONF_POINTER("run_dir", FR_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
+	{ FR_CONF_POINTER("libdir", FR_TYPE_STRING, &radlib_dir), .dflt = "${prefix}/lib"},
+	{ FR_CONF_POINTER("radacctdir", FR_TYPE_STRING, &radacct_dir), .dflt = "${logdir}/radacct" },
+	{ FR_CONF_POINTER("panic_action", FR_TYPE_STRING, &main_config.panic_action) },
+	{ FR_CONF_POINTER("hostname_lookups", FR_TYPE_BOOLEAN, &fr_dns_lookups), .dflt = "no" },
+	{ FR_CONF_POINTER("max_request_time", FR_TYPE_INTEGER, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
+	{ FR_CONF_POINTER("cleanup_delay", FR_TYPE_INTEGER, &main_config.cleanup_delay), .dflt = STRINGIFY(CLEANUP_DELAY) },
+	{ FR_CONF_POINTER("continuation_timeout", FR_TYPE_INTEGER, &main_config.continuation_timeout), .dflt = "15" },
+	{ FR_CONF_POINTER("max_requests", FR_TYPE_INTEGER, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
+	{ FR_CONF_POINTER("pidfile", FR_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
+	{ FR_CONF_POINTER("checkrad", FR_TYPE_STRING, &main_config.checkrad), .dflt = "${sbindir}/checkrad" },
 
-	{ FR_CONF_POINTER("debug_level", PW_TYPE_INTEGER, &main_config.debug_level), .dflt = "0" },
+	{ FR_CONF_POINTER("debug_level", FR_TYPE_INTEGER, &main_config.debug_level), .dflt = "0" },
 
 #ifdef WITH_PROXY
-	{ FR_CONF_POINTER("proxy_requests", PW_TYPE_BOOLEAN, &main_config.proxy_requests), .dflt = "yes" },
+	{ FR_CONF_POINTER("proxy_requests", FR_TYPE_BOOLEAN, &main_config.proxy_requests), .dflt = "yes" },
 #endif
-	{ FR_CONF_POINTER("log", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
-	{ FR_CONF_POINTER("resources", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
+	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -233,12 +233,12 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ FR_CONF_POINTER("log_auth", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth) },
-	{ FR_CONF_POINTER("log_auth_badpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth_badpass) },
-	{ FR_CONF_POINTER("log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
-	{ FR_CONF_POINTER("log_stripped_names", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &log_stripped_names) },
+	{ FR_CONF_POINTER("log_auth", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &main_config.log_auth) },
+	{ FR_CONF_POINTER("log_auth_badpass", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &main_config.log_auth_badpass) },
+	{ FR_CONF_POINTER("log_auth_goodpass", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
+	{ FR_CONF_POINTER("log_stripped_names", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &log_stripped_names) },
 
-	{ FR_CONF_POINTER("security", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
+	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -258,33 +258,33 @@ static const CONF_PARSER server_config[] = {
  **********************************************************************/
 static const CONF_PARSER bootstrap_security_config[] = {
 #ifdef HAVE_SETUID
-	{ FR_CONF_POINTER("user", PW_TYPE_STRING, &uid_name) },
-	{ FR_CONF_POINTER("group", PW_TYPE_STRING, &gid_name) },
+	{ FR_CONF_POINTER("user", FR_TYPE_STRING, &uid_name) },
+	{ FR_CONF_POINTER("group", FR_TYPE_STRING, &gid_name) },
 #endif
-	{ FR_CONF_POINTER("chroot", PW_TYPE_STRING, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", PW_TYPE_BOOLEAN, &allow_core_dumps), .dflt = "no" },
+	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING, &chroot_dir) },
+	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOLEAN, &allow_core_dumps), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER bootstrap_config[] = {
-	{ FR_CONF_POINTER("security", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) bootstrap_security_config },
+	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) bootstrap_security_config },
 
-	{ FR_CONF_POINTER("name", PW_TYPE_STRING, &my_name), .dflt = "radiusd" },
-	{ FR_CONF_POINTER("prefix", PW_TYPE_STRING, &prefix), .dflt = "/usr/local" },
-	{ FR_CONF_POINTER("localstatedir", PW_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
+	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
+	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
+	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
 
-	{ FR_CONF_POINTER("logdir", PW_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
-	{ FR_CONF_POINTER("run_dir", PW_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
+	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
+	{ FR_CONF_POINTER("run_dir", FR_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
 
 	/*
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ FR_CONF_POINTER("user", PW_TYPE_STRING | PW_TYPE_DEPRECATED, &uid_name) },
-	{ FR_CONF_POINTER("group", PW_TYPE_STRING | PW_TYPE_DEPRECATED, &gid_name) },
+	{ FR_CONF_POINTER("user", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &uid_name) },
+	{ FR_CONF_POINTER("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &gid_name) },
 #endif
-	{ FR_CONF_POINTER("chroot", PW_TYPE_STRING | PW_TYPE_DEPRECATED, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &allow_core_dumps) },
+	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &chroot_dir) },
+	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &allow_core_dumps) },
 	CONF_PARSER_TERMINATOR
 };
 

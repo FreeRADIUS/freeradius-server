@@ -92,92 +92,92 @@ struct fr_dict {
 /** Map data types to names representing those types
  */
 FR_NAME_NUMBER const dict_attr_types[] = {
-	{ "string",		PW_TYPE_STRING },
-	{ "octets",		PW_TYPE_OCTETS },
+	{ "string",		FR_TYPE_STRING },
+	{ "octets",		FR_TYPE_OCTETS },
 
-	{ "ipaddr",		PW_TYPE_IPV4_ADDR },
-	{ "ipv4prefix",		PW_TYPE_IPV4_PREFIX },
-	{ "ipv6addr",		PW_TYPE_IPV6_ADDR },
-	{ "ipv6prefix",		PW_TYPE_IPV6_PREFIX },
-	{ "ifid",		PW_TYPE_IFID },
-	{ "combo-ip",		PW_TYPE_COMBO_IP_ADDR },
-	{ "combo-prefix",	PW_TYPE_COMBO_IP_PREFIX },
-	{ "ether",		PW_TYPE_ETHERNET },
+	{ "ipaddr",		FR_TYPE_IPV4_ADDR },
+	{ "ipv4prefix",		FR_TYPE_IPV4_PREFIX },
+	{ "ipv6addr",		FR_TYPE_IPV6_ADDR },
+	{ "ipv6prefix",		FR_TYPE_IPV6_PREFIX },
+	{ "ifid",		FR_TYPE_IFID },
+	{ "combo-ip",		FR_TYPE_COMBO_IP_ADDR },
+	{ "combo-prefix",	FR_TYPE_COMBO_IP_PREFIX },
+	{ "ether",		FR_TYPE_ETHERNET },
 
-	{ "bool",		PW_TYPE_BOOLEAN },
-	{ "byte",		PW_TYPE_BYTE },
-	{ "short",		PW_TYPE_SHORT },
-	{ "integer",		PW_TYPE_INTEGER },
-	{ "integer64",		PW_TYPE_INTEGER64 },
-	{ "size",		PW_TYPE_SIZE },
-	{ "signed",        	PW_TYPE_SIGNED },
+	{ "bool",		FR_TYPE_BOOLEAN },
+	{ "byte",		FR_TYPE_BYTE },
+	{ "short",		FR_TYPE_SHORT },
+	{ "integer",		FR_TYPE_INTEGER },
+	{ "integer64",		FR_TYPE_INTEGER64 },
+	{ "size",		FR_TYPE_SIZE },
+	{ "signed",        	FR_TYPE_SIGNED },
 
-	{ "decimal",		PW_TYPE_DECIMAL },
-	{ "timeval",		PW_TYPE_TIMEVAL },
-	{ "date",		PW_TYPE_DATE },
+	{ "decimal",		FR_TYPE_DECIMAL },
+	{ "timeval",		FR_TYPE_TIMEVAL },
+	{ "date",		FR_TYPE_DATE },
 
-	{ "abinary",		PW_TYPE_ABINARY },
+	{ "abinary",		FR_TYPE_ABINARY },
 
-	{ "tlv",		PW_TYPE_TLV },
-	{ "struct",        	PW_TYPE_STRUCT },
+	{ "tlv",		FR_TYPE_TLV },
+	{ "struct",        	FR_TYPE_STRUCT },
 
-	{ "extended",      	PW_TYPE_EXTENDED },
-	{ "long-extended", 	PW_TYPE_LONG_EXTENDED },
+	{ "extended",      	FR_TYPE_EXTENDED },
+	{ "long-extended", 	FR_TYPE_LONG_EXTENDED },
 
-	{ "vsa",          	PW_TYPE_VSA },
-	{ "evs",           	PW_TYPE_EVS },
-	{ "vendor",        	PW_TYPE_VENDOR },
+	{ "vsa",          	FR_TYPE_VSA },
+	{ "evs",           	FR_TYPE_EVS },
+	{ "vendor",        	FR_TYPE_VENDOR },
 
 	/*
 	 *	Alternative names
 	 */
-	{ "cidr",         	PW_TYPE_IPV4_PREFIX },
-	{ "uint8",        	PW_TYPE_BYTE },
-	{ "uint16",        	PW_TYPE_SHORT },
-	{ "uint32",		PW_TYPE_INTEGER },
-	{ "uint64",		PW_TYPE_INTEGER64 },
-	{ "int32",         	PW_TYPE_SIGNED },
+	{ "cidr",         	FR_TYPE_IPV4_PREFIX },
+	{ "uint8",        	FR_TYPE_BYTE },
+	{ "uint16",        	FR_TYPE_SHORT },
+	{ "uint32",		FR_TYPE_INTEGER },
+	{ "uint64",		FR_TYPE_INTEGER64 },
+	{ "int32",         	FR_TYPE_SIGNED },
 
 	{ NULL,			0 }
 };
 
 /** Map data types to min / max data sizes
  */
-size_t const dict_attr_sizes[PW_TYPE_MAX + 1][2] = {
-	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
+size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
+	[FR_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
-	[PW_TYPE_STRING]	= {0, ~0},
-	[PW_TYPE_OCTETS]	= {0, ~0},
+	[FR_TYPE_STRING]	= {0, ~0},
+	[FR_TYPE_OCTETS]	= {0, ~0},
 
-	[PW_TYPE_IPV4_ADDR]	= {4, 4},
-	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
-	[PW_TYPE_IPV6_ADDR]	= {16, 16},
-	[PW_TYPE_IPV6_PREFIX]	= {2, 18},
-	[PW_TYPE_COMBO_IP_ADDR]	= {4, 16},
-	[PW_TYPE_IFID]		= {8, 8},
-	[PW_TYPE_ETHERNET]	= {6, 6},
+	[FR_TYPE_IPV4_ADDR]	= {4, 4},
+	[FR_TYPE_IPV4_PREFIX]	= {6, 6},
+	[FR_TYPE_IPV6_ADDR]	= {16, 16},
+	[FR_TYPE_IPV6_PREFIX]	= {2, 18},
+	[FR_TYPE_COMBO_IP_ADDR]	= {4, 16},
+	[FR_TYPE_IFID]		= {8, 8},
+	[FR_TYPE_ETHERNET]	= {6, 6},
 
-	[PW_TYPE_BOOLEAN]	= {1, 1},
-	[PW_TYPE_BYTE]		= {1, 1},
-	[PW_TYPE_SHORT]		= {2, 2},
-	[PW_TYPE_INTEGER]	= {4, 4},
-	[PW_TYPE_INTEGER64]	= {8, 8},
-	[PW_TYPE_SIZE]		= {sizeof(size_t), sizeof(size_t)},
-	[PW_TYPE_SIGNED]	= {4, 4},
+	[FR_TYPE_BOOLEAN]	= {1, 1},
+	[FR_TYPE_BYTE]		= {1, 1},
+	[FR_TYPE_SHORT]		= {2, 2},
+	[FR_TYPE_INTEGER]	= {4, 4},
+	[FR_TYPE_INTEGER64]	= {8, 8},
+	[FR_TYPE_SIZE]		= {sizeof(size_t), sizeof(size_t)},
+	[FR_TYPE_SIGNED]	= {4, 4},
 
-	[PW_TYPE_DATE]		= {4, 4},
-	[PW_TYPE_ABINARY]	= {32, ~0},
+	[FR_TYPE_DATE]		= {4, 4},
+	[FR_TYPE_ABINARY]	= {32, ~0},
 
-	[PW_TYPE_TLV]		= {2, ~0},
-	[PW_TYPE_STRUCT]	= {1, ~0},
+	[FR_TYPE_TLV]		= {2, ~0},
+	[FR_TYPE_STRUCT]	= {1, ~0},
 
-	[PW_TYPE_EXTENDED]	= {2, ~0},
-	[PW_TYPE_LONG_EXTENDED]	= {3, ~0},
+	[FR_TYPE_EXTENDED]	= {2, ~0},
+	[FR_TYPE_LONG_EXTENDED]	= {3, ~0},
 
-	[PW_TYPE_VSA]		= {4, ~0},
-	[PW_TYPE_EVS]		= {6, ~0},
+	[FR_TYPE_VSA]		= {4, ~0},
+	[FR_TYPE_EVS]		= {6, ~0},
 
-	[PW_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
+	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
 };
 
 /** Characters allowed in dictionary names
@@ -204,27 +204,27 @@ bool const fr_dict_attr_allowed_chars[UINT8_MAX] = {
 /** Structural data types
  *
  */
-bool const fr_dict_non_data_types[PW_TYPE_MAX + 1] = {
-	[PW_TYPE_TLV] = true,
-	[PW_TYPE_STRUCT] = true,
-	[PW_TYPE_EXTENDED] = true,
-	[PW_TYPE_LONG_EXTENDED] = true,
-	[PW_TYPE_VSA] = true,
-	[PW_TYPE_EVS] = true,
-	[PW_TYPE_VENDOR] = true
+bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
+	[FR_TYPE_TLV] = true,
+	[FR_TYPE_STRUCT] = true,
+	[FR_TYPE_EXTENDED] = true,
+	[FR_TYPE_LONG_EXTENDED] = true,
+	[FR_TYPE_VSA] = true,
+	[FR_TYPE_EVS] = true,
+	[FR_TYPE_VENDOR] = true
 };
 
 /** Numeric dictionary types
  *
  * @note Must be updated to match the anonymous enum types union in value_box_t
  */
-bool const fr_dict_enum_types[PW_TYPE_MAX + 1] = {
-	[PW_TYPE_BYTE] = true,
-	[PW_TYPE_SHORT] = true,
-	[PW_TYPE_INTEGER] = true,
-	[PW_TYPE_INTEGER64] = true,
-	[PW_TYPE_SIZE] = true,
-	[PW_TYPE_SIGNED] = true
+bool const fr_dict_enum_types[FR_TYPE_MAX + 1] = {
+	[FR_TYPE_BYTE] = true,
+	[FR_TYPE_SHORT] = true,
+	[FR_TYPE_INTEGER] = true,
+	[FR_TYPE_INTEGER64] = true,
+	[FR_TYPE_SIZE] = true,
+	[FR_TYPE_SIGNED] = true
 };
 
 /*
@@ -639,7 +639,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 		 *	Structural attributes always take priority.
 		 */
 		switch (child->type) {
-		case PW_TYPE_STRUCTURAL:
+		case FR_TYPE_STRUCTURAL:
 			child_is_struct = true;
 			break;
 
@@ -648,7 +648,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 		}
 
 		switch ((*bin)->type) {
-		case PW_TYPE_STRUCTURAL:
+		case FR_TYPE_STRUCTURAL:
 			bin_is_struct = true;
 			break;
 
@@ -770,7 +770,7 @@ static int fr_dict_attr_set_name(fr_dict_attr_t **da, char const *name)
 static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 					  fr_dict_attr_t const *parent,
 				   	  char const *name, unsigned int vendor, int attr,
-				   	  PW_TYPE type, fr_dict_attr_flags_t const *flags)
+				   	  fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t *da;
 
@@ -833,7 +833,7 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
  *	- NULL on failure
  */
 static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t const *parent,
-						char const *name, int attr, PW_TYPE type, fr_dict_attr_flags_t flags)
+						char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
 {
 	unsigned int		vendor;
 	size_t			namelen;
@@ -858,7 +858,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
 	 */
 	if (flags.type_size) {
-		if ((type != PW_TYPE_TLV) && (type != PW_TYPE_VENDOR)) {
+		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
 			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
 			goto error;
 		}
@@ -921,7 +921,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		} else
 
 		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == PW_TYPE_TLV) || (v->type == PW_TYPE_VENDOR)) {
+			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
 				if ((v->flags.type_size < 4) &&
 				    (attr >= (1 << (8 * v->flags.type_size)))) {
 					fr_strerror_printf("Attributes must have value between 1..%u",
@@ -954,15 +954,15 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	Tags can only be used in a few limited situations.
 	 */
 	if (flags.has_tag) {
-		if ((type != PW_TYPE_INTEGER) && (type != PW_TYPE_STRING)) {
+		if ((type != FR_TYPE_INTEGER) && (type != FR_TYPE_STRING)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
 					   "or 'string'");
 			goto error;
 		}
 
 		if (!(parent->flags.is_root ||
-		      ((parent->type == PW_TYPE_VENDOR) &&
-		       (parent->parent && parent->parent->type == PW_TYPE_VSA)))) {
+		      ((parent->type == FR_TYPE_VENDOR) &&
+		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
 			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
 			goto error;
 		}
@@ -983,7 +983,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	'concat' can only be used in a few limited situations.
 	 */
 	if (flags.concat) {
-		if (type != PW_TYPE_OCTETS) {
+		if (type != FR_TYPE_OCTETS) {
 			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
 			goto error;
 		}
@@ -1014,7 +1014,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 			return NULL;
 		}
 
-		if ((type == PW_TYPE_TLV) || (type == PW_TYPE_VENDOR)) {
+		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_VENDOR)) {
 			if ((flags.length != 1) &&
 			    (flags.length != 2) &&
 			    (flags.length != 4)) {
@@ -1022,13 +1022,13 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 				goto error;
 			}
 
-		} else if ((type != PW_TYPE_OCTETS) &&
-			   (type != PW_TYPE_STRUCT)) {
+		} else if ((type != FR_TYPE_OCTETS) &&
+			   (type != FR_TYPE_STRUCT)) {
 			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
 			goto error;
 		}
 
-		if (type == PW_TYPE_STRUCT) {
+		if (type == FR_TYPE_STRUCT) {
 			if (flags.type_size != 0) {
 				fr_strerror_printf("Invalid initializer for type_size");
 				goto error;
@@ -1050,7 +1050,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 */
 	if (flags.array) {
 		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type != PW_TYPE_VENDOR) continue;
+			if (v->type != FR_TYPE_VENDOR) continue;
 
 			if ((v->attr != 34673) && /* freedhcp */
 			    (v->attr != DHCP_MAGIC_VENDOR)) {
@@ -1066,13 +1066,13 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
 			goto error;
 
-		case PW_TYPE_IPV4_ADDR:
-		case PW_TYPE_IPV6_ADDR:
-		case PW_TYPE_BYTE:
-		case PW_TYPE_SHORT:
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_DATE:
-		case PW_TYPE_STRING:
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_BYTE:
+		case FR_TYPE_SHORT:
+		case FR_TYPE_INTEGER:
+		case FR_TYPE_DATE:
+		case FR_TYPE_STRING:
 			break;
 		}
 
@@ -1087,7 +1087,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	caller sets it, we still sanity check it.
 	 */
 	if (flags.has_value) {
-		if (type != PW_TYPE_INTEGER) {
+		if (type != FR_TYPE_INTEGER) {
 			fr_strerror_printf("The 'has_value' flag can only be used with attributes "
 					   "of type 'integer'");
 			goto error;
@@ -1108,8 +1108,8 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
 		 *	MUST specify a length in the dictionary.
 		 */
-		if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != PW_TYPE_STRING)) {
-			if (type != PW_TYPE_OCTETS) {
+		if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != FR_TYPE_STRING)) {
+			if (type != FR_TYPE_OCTETS) {
 				fr_strerror_printf("The 'encrypt=1' flag can only be used with "
 						   "attributes of type 'string'");
 				goto error;
@@ -1136,9 +1136,9 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		if ((flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags.internal && !parent->flags.internal) {
 			for (v = parent; v != NULL; v = v->parent) {
 				switch (v->type) {
-				case PW_TYPE_EXTENDED:
-				case PW_TYPE_LONG_EXTENDED:
-				case PW_TYPE_EVS:
+				case FR_TYPE_EXTENDED:
+				case FR_TYPE_LONG_EXTENDED:
+				case FR_TYPE_EVS:
 					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
 							   "of type '%s'", flags.encrypt,
 							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
@@ -1152,7 +1152,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		}
 
 		switch (type) {
-		case PW_TYPE_TLV:
+		case FR_TYPE_TLV:
 			if (flags.internal || parent->flags.internal) break;
 			/* FALL-THROUGH */
 
@@ -1162,12 +1162,12 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
 			goto error;
 
-		case PW_TYPE_IPV4_ADDR:
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_INTEGER:
+		case FR_TYPE_OCTETS:
 			if (flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			break;
 		}
 	}
@@ -1181,9 +1181,9 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	/*
 	 *	These types may only be parented from the root of the dictionary
 	 */
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_VSA:
+	case FR_TYPE_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
+	case FR_TYPE_VSA:
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
 					   fr_int2str(dict_attr_types, type, "?Unknown?"));
@@ -1194,23 +1194,23 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	/*
 	 *	EVS may only occur under extended and long extended.
 	 */
-	case PW_TYPE_EVS:
-		if ((parent->type != PW_TYPE_EXTENDED) && (parent->type != PW_TYPE_LONG_EXTENDED)) {
+	case FR_TYPE_EVS:
+		if ((parent->type != FR_TYPE_EXTENDED) && (parent->type != FR_TYPE_LONG_EXTENDED)) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
 					   "instead of '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 			goto error;
 		}
 		break;
 
-	case PW_TYPE_VENDOR:
-		if ((parent->type != PW_TYPE_VSA) && (parent->type != PW_TYPE_EVS)) {
+	case FR_TYPE_VENDOR:
+		if ((parent->type != FR_TYPE_VSA) && (parent->type != FR_TYPE_EVS)) {
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
 					   "'evs', instead of '%s'",
 					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 			goto error;
 		}
 
-		if (parent->type == PW_TYPE_VSA) {
+		if (parent->type == FR_TYPE_VSA) {
 			fr_dict_vendor_t const *dv;
 
 			dv = fr_dict_vendor_by_num(dict, attr);
@@ -1227,18 +1227,18 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		}
 		break;
 
-	case PW_TYPE_TLV:
+	case FR_TYPE_TLV:
 		/*
 		 *	Ensure that type_size and length are set.
 		 */
 		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == PW_TYPE_TLV) || (v->type == PW_TYPE_VENDOR)) {
+			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
 				break;
 			}
 		}
 
 		/*
-		 *	root is always PW_TYPE_TLV, so we're OK.
+		 *	root is always FR_TYPE_TLV, so we're OK.
 		 */
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
@@ -1254,12 +1254,12 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		flags.length = v->flags.length;
 		break;
 
-	case PW_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:
 		/*
 		 *	RFC 6929 says that this is a terrible idea.
 		 */
 		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type == PW_TYPE_VSA) {
+			if (v->type == FR_TYPE_VSA) {
 				break;
 			}
 		}
@@ -1271,10 +1271,10 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		}
 		break;
 
-	case PW_TYPE_INVALID:
-	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_DECIMAL:
-	case PW_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_INVALID:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_DECIMAL:
+	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_int2str(dict_attr_types, type, "?Unknown?"));
 		goto error;
@@ -1287,43 +1287,43 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	Force "length" for data types of fixed length;
 	 */
 	switch (type) {
-	case PW_TYPE_BYTE:
-	case PW_TYPE_BOOLEAN:
+	case FR_TYPE_BYTE:
+	case FR_TYPE_BOOLEAN:
 		flags.length = 1;
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		flags.length = 2;
 		break;
 
-	case PW_TYPE_DATE:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_DATE:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_SIGNED:
 		flags.length = 4;
 		break;
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		flags.length = 8;
 		break;
 
-	case PW_TYPE_SIZE:
+	case FR_TYPE_SIZE:
 		flags.length = sizeof(size_t);
 		break;
 
-	case PW_TYPE_ETHERNET:
+	case FR_TYPE_ETHERNET:
 		flags.length = 6;
 		break;
 
-	case PW_TYPE_IFID:
+	case FR_TYPE_IFID:
 		flags.length = 8;
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_ADDR:
 		flags.length = 16;
 		break;
 
-	case PW_TYPE_EXTENDED:
+	case FR_TYPE_EXTENDED:
 		if (!parent->flags.is_root || (attr < 241)) {
 			fr_strerror_printf("Attributes of type 'extended' MUST be "
 					   "RFC attributes with value >= 241.");
@@ -1332,7 +1332,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		flags.length = 0;
 		break;
 
-	case PW_TYPE_LONG_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
 		if (!parent->flags.is_root || (attr < 241)) {
 			fr_strerror_printf("Attributes of type 'long-extended' MUST "
 					   "be RFC attributes with value >= 241.");
@@ -1342,7 +1342,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		flags.length = 0;
 		break;
 
-	case PW_TYPE_EVS:
+	case FR_TYPE_EVS:
 		if (attr != PW_VENDOR_SPECIFIC) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have attribute code 26, got %i", attr);
 			goto error;
@@ -1355,13 +1355,13 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		 *	The length is calculated from th children, not
 		 *	input as the flags.
 		 */
-	case PW_TYPE_STRUCT:
+	case FR_TYPE_STRUCT:
 		flags.length = 0;
 		break;
 
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_TLV:
 		flags.is_pointer = true;
 		break;
 
@@ -1372,13 +1372,13 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	/*
 	 *	Validate attribute based on parent.
 	 */
-	if (parent->type == PW_TYPE_STRUCT) {
+	if (parent->type == FR_TYPE_STRUCT) {
 		fr_dict_attr_t *mutable;
 
 		/*
 		 *	STRUCTs will have their length filled in later.
 		 */
-		if ((type != PW_TYPE_STRUCT) && (flags.length == 0)) {
+		if ((type != FR_TYPE_STRUCT) && (flags.length == 0)) {
 			fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
 			goto error;
 		}
@@ -1407,7 +1407,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	/*
 	 *	Propogate vendor down the attribute tree.
 	 */
-	if (parent->type == PW_TYPE_VENDOR) {
+	if (parent->type == FR_TYPE_VENDOR) {
 		vendor = parent->attr;
 	} else {
 		vendor = parent->vendor;
@@ -1458,7 +1458,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	/*
 	 *	Hacks for combo-IP
 	 */
-	if (n->type == PW_TYPE_COMBO_IP_ADDR) {
+	if (n->type == FR_TYPE_COMBO_IP_ADDR) {
 		fr_dict_attr_t *v4, *v6;
 
 		v4 = (fr_dict_attr_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*v4) + namelen);
@@ -1470,10 +1470,10 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		talloc_set_type(v6, fr_dict_attr_t);
 
 		memcpy(v4, n, sizeof(*v4) + namelen);
-		v4->type = PW_TYPE_IPV4_ADDR;
+		v4->type = FR_TYPE_IPV4_ADDR;
 
 		memcpy(v6, n, sizeof(*v6) + namelen);
-		v6->type = PW_TYPE_IPV6_ADDR;
+		v6->type = FR_TYPE_IPV6_ADDR;
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
 			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
 			goto error;
@@ -1504,7 +1504,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
  *	- -1 on failure.
  */
 int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
-		     char const *name, int attr, PW_TYPE type, fr_dict_attr_flags_t flags)
+		     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
 {
 	fr_dict_attr_t *n;
 	fr_dict_attr_t *mutable;
@@ -1580,7 +1580,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		 *	Don't worry about fixups...
 		 */
 		switch (da->type) {
-		case PW_TYPE_BYTE:
+		case FR_TYPE_BYTE:
 			if (value > UINT8_MAX) {
 				talloc_free(dval);
 				fr_strerror_printf("%s: ATTRIBUTEs of type 'byte' cannot have "
@@ -1588,7 +1588,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 				return -1;
 			}
 			break;
-		case PW_TYPE_SHORT:
+		case FR_TYPE_SHORT:
 			if (value > UINT16_MAX) {
 				talloc_free(dval);
 				fr_strerror_printf("%s: ATTRIBUTEs of type 'short' cannot have "
@@ -1597,7 +1597,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 			}
 			break;
 
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			break;
 
 		default:
@@ -2438,7 +2438,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 
-			if (da->type != PW_TYPE_TLV) {
+			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf("Attribute '%s' should be a 'tlv', but is a '%s'",
 						   argv[1],
 						   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
@@ -2447,8 +2447,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 			common = fr_dict_parent_common(ctx->parent, da, true);
 			if (!common ||
-			    (common->type == PW_TYPE_VSA) ||
-			    (common->type == PW_TYPE_EVS)) {
+			    (common->type == FR_TYPE_VSA) ||
+			    (common->type == FR_TYPE_EVS)) {
 				fr_strerror_printf("Attribute '%s' is not a child of '%s'", argv[1], ctx->parent->name);
 				goto error;
 			}
@@ -2525,7 +2525,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 					goto error;
 				}
 
-				if (da->type != PW_TYPE_EVS) {
+				if (da->type != FR_TYPE_EVS) {
 					fr_strerror_printf("Invalid format for BEGIN-VENDOR.  Attribute '%s' should "
 							   "be 'evs' but is '%s'", p,
 							   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
@@ -2547,7 +2547,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 					memcpy(&mutable, &ctx->parent, sizeof(mutable));
 					new = fr_dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific", 0,
-								 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, &flags);
+								 PW_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
 					fr_dict_attr_child_add(mutable, new);
 					vsa_da = new;
 				}
@@ -2561,7 +2561,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (!vendor_da) {
 				memset(&flags, 0, sizeof(flags));
 
-				if (vsa_da->type == PW_TYPE_VSA) {
+				if (vsa_da->type == FR_TYPE_VSA) {
 					fr_dict_vendor_t const *dv;
 
 					dv = fr_dict_vendor_by_num(ctx->dict, vendor);
@@ -2581,7 +2581,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
 				new = fr_dict_attr_alloc(mutable, ctx->parent,
-							 argv[1], 0, vendor, PW_TYPE_VENDOR, &flags);
+							 argv[1], 0, vendor, FR_TYPE_VENDOR, &flags);
 				fr_dict_attr_child_add(mutable, new);
 
 				vendor_da = new;
@@ -2727,7 +2727,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	strcpy(dict->root->name, name);
 	talloc_set_type(dict->root, fr_dict_attr_t);
 	dict->root->flags.is_root = 1;
-	dict->root->type = PW_TYPE_TLV;
+	dict->root->type = FR_TYPE_TLV;
 	dict->root->flags.type_size = 1;
 	dict->root->flags.length = 1;
 
@@ -2803,8 +2803,8 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 			 *	prefer the new name when printing
 			 *	values.
 			 */
-			if (a->parent->flags.is_root || ((a->parent->type == PW_TYPE_VENDOR) &&
-			    (a->parent->parent->type == PW_TYPE_VSA))) {
+			if (a->parent->flags.is_root || ((a->parent->type == FR_TYPE_VENDOR) &&
+			    (a->parent->parent->type == FR_TYPE_VSA))) {
 				if (!fr_hash_table_finddata(dict->values_by_da, this->dval)) {
 					fr_hash_table_replace(dict->values_by_da, this->dval);
 				}
@@ -2958,7 +2958,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 *	Ensure the vendor is present in the
 	 *	vendor hash.
 	 */
-	if (old->type == PW_TYPE_VENDOR) if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
+	if (old->type == FR_TYPE_VENDOR) if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
 	/*
 	 *	Look up the attribute by number.  If it doesn't exist,
@@ -3041,7 +3041,7 @@ static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const 
 
 	da->attr = attr;
 	da->vendor = vendor;
-	da->type = PW_TYPE_OCTETS;
+	da->type = FR_TYPE_OCTETS;
 	da->flags.is_unknown = true;
 	da->flags.is_raw = true;
 	da->flags.is_pointer = true;
@@ -3096,7 +3096,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	 *	a TLV, in which case the vendor should be known
 	 *	and we don't need to modify the parent.
 	 */
-	if (vendor && ((parent->type == PW_TYPE_VSA) || (parent->type == PW_TYPE_EVS))) {
+	if (vendor && ((parent->type == FR_TYPE_VSA) || (parent->type == FR_TYPE_EVS))) {
 		da = fr_dict_attr_child_by_num(parent, vendor);
 		if (!da) {
 			if (fr_dict_unknown_vendor_afrom_num(ctx, &new_parent, parent, vendor) < 0) return NULL;
@@ -3199,15 +3199,15 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	 *	Vendor attributes can occur under VSA or EVS attributes.
 	 */
 	switch (parent->type) {
-	case PW_TYPE_VSA:
-	case PW_TYPE_EVS:
+	case FR_TYPE_VSA:
+	case FR_TYPE_EVS:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 
-		*out = fr_dict_attr_alloc(ctx, parent, NULL, 0, vendor, PW_TYPE_VENDOR, &flags);
+		*out = fr_dict_attr_alloc(ctx, parent, NULL, 0, vendor, FR_TYPE_VENDOR, &flags);
 
 		return 0;
 
-	case PW_TYPE_VENDOR:
+	case FR_TYPE_VENDOR:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 		fr_strerror_printf("Unknown vendor cannot be parented by another vendor");
 		return -1;
@@ -3253,9 +3253,9 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	*out = NULL;
 
-	if (parent->type == PW_TYPE_VENDOR) vendor = parent->attr;
+	if (parent->type == FR_TYPE_VENDOR) vendor = parent->attr;
 
-	da = fr_dict_attr_alloc(ctx, parent, NULL, vendor, num, PW_TYPE_OCTETS, &flags);
+	da = fr_dict_attr_alloc(ctx, parent, NULL, vendor, num, FR_TYPE_OCTETS, &flags);
 	if (!da) return -1;
 
 	*out = da;
@@ -3331,10 +3331,10 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				if (!our_parent) goto is_root;
 
 				switch (our_parent->type) {
-				case PW_TYPE_EVS:
-				case PW_TYPE_VSA:
+				case FR_TYPE_EVS:
+				case FR_TYPE_VSA:
 					da = fr_dict_attr_child_by_num(our_parent, num);
-					if (!fr_cond_assert(!da || (da->type == PW_TYPE_VENDOR))) goto error;
+					if (!fr_cond_assert(!da || (da->type == FR_TYPE_VENDOR))) goto error;
 
 					if (!da) {
 						if (fr_dict_unknown_vendor_afrom_num(our_ctx, &n,
@@ -3345,9 +3345,9 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					}
 					break;
 
-				case PW_TYPE_TLV:
-				case PW_TYPE_EXTENDED:
-				case PW_TYPE_LONG_EXTENDED:
+				case FR_TYPE_TLV:
+				case FR_TYPE_EXTENDED:
+				case FR_TYPE_LONG_EXTENDED:
 				is_root:
 					if (fr_dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) {
 						goto error;
@@ -3357,8 +3357,8 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 					break;
 
 				/*
-				 *	Can't have a PW_TYPE_STRING inside a
-				 *	PW_TYPE_STRING (for example)
+				 *	Can't have a FR_TYPE_STRING inside a
+				 *	FR_TYPE_STRING (for example)
 				 */
 				default:
 					fr_strerror_printf("Parent OID component (%s) in \"%.*s\" specified a "
@@ -3543,31 +3543,31 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 	fr_dict_snprint_flags(buff, sizeof(buff), da->flags);
 
 	switch (da->type) {
-	case PW_TYPE_VSA:
+	case FR_TYPE_VSA:
 		name = "VSA";
 		break;
 
-	case PW_TYPE_EXTENDED:
+	case FR_TYPE_EXTENDED:
 		name = "EXTENDED";
 		break;
 
-	case PW_TYPE_TLV:
+	case FR_TYPE_TLV:
 		name = "TLV";
 		break;
 
-	case PW_TYPE_EVS:
+	case FR_TYPE_EVS:
 		name = "EVS";
 		break;
 
-	case PW_TYPE_VENDOR:
+	case FR_TYPE_VENDOR:
 		name = "VENDOR";
 		break;
 
-	case PW_TYPE_LONG_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
 		name = "LONG EXTENDED";
 		break;
 
-	case PW_TYPE_STRUCT:
+	case FR_TYPE_STRUCT:
 		name = "STRUCT";
 		break;
 
@@ -3751,7 +3751,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	}
 
 	switch ((*parent)->type) {
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		break;
 
 	default:
@@ -3765,7 +3765,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	 *
 	 *	@fixme: find the TLV parent, and check it's size
 	 */
-	if (((*parent)->type != PW_TYPE_VENDOR) && !(*parent)->flags.is_root &&
+	if (((*parent)->type != FR_TYPE_VENDOR) && !(*parent)->flags.is_root &&
 	    (num > UINT8_MAX)) {
 		fr_strerror_printf("TLV attributes must be between 0..255 inclusive");
 		return 0;
@@ -3904,10 +3904,10 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 	fr_dict_attr_t const *da_p = da;
 
 	while (da_p->parent) {
-		if (da_p->type == PW_TYPE_VENDOR) break;
+		if (da_p->type == FR_TYPE_VENDOR) break;
 		da_p = da_p->parent;
 	}
-	if (da_p->type != PW_TYPE_VENDOR) return NULL;
+	if (da_p->type != FR_TYPE_VENDOR) return NULL;
 
 	return da_p;
 }
@@ -3934,14 +3934,14 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned
 	}
 
 	switch (da->type) {
-	case PW_TYPE_VSA:	/* Vendor specific attribute */
-	case PW_TYPE_EVS:	/* Extended vendor specific attribute */
+	case FR_TYPE_VSA:	/* Vendor specific attribute */
+	case FR_TYPE_EVS:	/* Extended vendor specific attribute */
 		break;
 
 	default:
 		fr_strerror_printf("Wrong type for vendor root, expected '%s' or '%s' got '%s'",
-				   fr_int2str(dict_attr_types, PW_TYPE_VSA, "<INVALID>"),
-				   fr_int2str(dict_attr_types, PW_TYPE_EVS, "<INVALID>"),
+				   fr_int2str(dict_attr_types, FR_TYPE_VSA, "<INVALID>"),
+				   fr_int2str(dict_attr_types, FR_TYPE_EVS, "<INVALID>"),
 				   fr_int2str(dict_attr_types, da->type, "<INVALID>"));
 		return NULL;
 	}
@@ -3952,10 +3952,10 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned
 		return NULL;
 	}
 
-	if (da->type != PW_TYPE_VENDOR) {
+	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("Wrong type for vendor, expected '%s' got '%s'",
 				   fr_int2str(dict_attr_types, da->type, "<INVALID>"),
-				   fr_int2str(dict_attr_types, PW_TYPE_VENDOR, "<INVALID>"));
+				   fr_int2str(dict_attr_types, FR_TYPE_VENDOR, "<INVALID>"));
 		return NULL;
 	}
 
@@ -4076,7 +4076,7 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
 
 /** Lookup a attribute by its its vendor and attribute numbers and data type
  *
- * @note Only works with PW_TYPE_COMBO_IP
+ * @note Only works with FR_TYPE_COMBO_IP
  *
  * @param[in] da	to look for type variant of.
  * @param[in] type	Variant of attribute to lookup.
@@ -4084,7 +4084,7 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
  * 	- Attribute matching parent/attr/type.
  * 	- NULL if no matching attribute could be found.
  */
-fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, PW_TYPE type)
+fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type)
 {
 	fr_dict_t	*dict = fr_dict_by_da(da);
 	fr_dict_attr_t	find = {
@@ -4117,7 +4117,7 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *pare
 	default:
 		return NULL;
 
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		break;
 	}
 
@@ -4158,7 +4158,7 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
 	default:
 		return NULL;
 
-	case PW_TYPE_STRUCTURAL:
+	case FR_TYPE_STRUCTURAL:
 		break;
 	}
 

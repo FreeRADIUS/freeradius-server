@@ -55,41 +55,41 @@ typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary 
 typedef struct timeval _timeval_t;
 
 #ifdef HAVE_BUILTIN_CHOOSE_EXPR
-typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_vp_tmpl_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_char;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_char_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_bool;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_bool_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint32;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint32_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_fripaddr;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_fripaddr_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_time;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_time_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_abinary;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_abinary_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint8;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint8_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint8_m_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_ifid;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_ifid_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint16;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint16_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_ethernet;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_ethernet_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_int32;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_int32_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint64;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_uint64_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_size;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_size_m;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_timeval;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_timeval_m;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void _mismatch_default;		//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
+typedef void _mismatch_vp_tmpl;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_vp_tmpl_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_char;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_char_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_bool;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_bool_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint32;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint32_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_fripaddr;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_fripaddr_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_time_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_abinary;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_abinary_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint8;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint8_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint8_m_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ifid;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ifid_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint16;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint16_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ethernet;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_ethernet_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_int32;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_int32_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint64;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_uint64_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_size;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_size_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_timeval;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_timeval_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 
-typedef void conf_type_mismatch;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
-typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid PW_TYPE_*.
+typedef void conf_type_mismatch;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYPE_*.
 
 /** Check if two types are compatible (the C11 way)
  *
@@ -110,84 +110,84 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid PW_TYP
  *
  * @note The warnings/errors emitted are usually awful.
  *
- * @param _t a #PW_TYPE value with optional PW_TYPE_* flags.
+ * @param _t a #fr_type_t value with optional FR_TYPE_* flags.
  * @param _ct data type of global or struct field, obtained with ``__typeof__``.
  * @param _p Pointer or offset.
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
-__builtin_choose_expr((_t) & PW_TYPE_SUBSECTION, _p, \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && !((_t) & PW_TYPE_MULTI), \
+__builtin_choose_expr((_t) & FR_TYPE_SUBSECTION, _p, \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIZE) && ((_t) & PW_TYPE_MULTI), \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t **), _p, (_mismatch_size_m) 0), \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_DATE) && !((_t) & PW_TYPE_MULTI), \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_DATE) && !((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), time_t *), _p, (_mismatch_time) 0), \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_DATE) && ((_t) & PW_TYPE_MULTI), \
+__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_DATE) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), time_t **), _p, (_mismatch_time_m) 0), \
 _Generic((_ct), \
-	vp_tmpl_t **	: __builtin_choose_expr(((_t) & PW_TYPE_TMPL) && !((_t) & PW_TYPE_MULTI), \
+	vp_tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
-	vp_tmpl_t ***	: __builtin_choose_expr(((_t) & PW_TYPE_TMPL) && ((_t) & PW_TYPE_MULTI), \
+	vp_tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl_m) 0), \
-	char const **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_STRING) && !((_t) & PW_TYPE_MULTI), \
+	char const **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_STRING) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char) 0), \
-	char const ***	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_STRING) && ((_t) & PW_TYPE_MULTI), \
+	char const ***	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char_m) 0), \
-	bool *		: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_BOOLEAN) && !((_t) & PW_TYPE_MULTI), \
+	bool *		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOLEAN) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_bool) 0), \
-	bool **		: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_BOOLEAN) && ((_t) & PW_TYPE_MULTI), \
+	bool **		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOLEAN) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_bool_m) 0), \
-	uint32_t * 	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_INTEGER) && !((_t) & PW_TYPE_MULTI), \
+	uint32_t * 	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint32) 0), \
-	uint32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_INTEGER) && ((_t) & PW_TYPE_MULTI), \
+	uint32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint32_m) 0), \
-	fr_ipaddr_t *	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == PW_TYPE_IPV4_ADDR) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_IPV4_PREFIX) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_IPV6_ADDR) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_IPV6_PREFIX) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_COMBO_IP_ADDR)) || \
-						!((_t) & PW_TYPE_MULTI), _p, (_mismatch_fripaddr) 0), \
-	fr_ipaddr_t **	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == PW_TYPE_IPV4_ADDR) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_IPV4_PREFIX) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_IPV6_ADDR) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_IPV6_PREFIX) || \
-						(PW_BASE_TYPE(_t) == PW_TYPE_COMBO_IP_ADDR)) && \
-						((_t) & PW_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
-	size_t[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_ABINARY) && !((_t) & PW_TYPE_MULTI), \
+	fr_ipaddr_t *	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) || \
+						!((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr) 0), \
+	fr_ipaddr_t **	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
+						(PW_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) && \
+						((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
+	size_t[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ABINARY) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_abinary) 0), \
-	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_ABINARY) && ((_t) & PW_TYPE_MULTI), \
+	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ABINARY) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_abinary_m) 0), \
-	uint8_t const *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_OCTETS) && !((_t) & PW_TYPE_MULTI), \
+	uint8_t const *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t const **: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_OCTETS) && ((_t) & PW_TYPE_MULTI), \
+	uint8_t const **: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_BYTE) && !((_t) & PW_TYPE_MULTI), \
+	uint8_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BYTE) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_BYTE) && ((_t) & PW_TYPE_MULTI), \
+	uint8_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BYTE) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_IFID) && !(_t & PW_TYPE_MULTI), \
+	uint8_t[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_IFID) && !(_t & FR_TYPE_MULTI), \
 			_p, (_mismatch_ifid) 0), \
-	uint8_t*[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_IFID) && ((_t) & PW_TYPE_MULTI), \
+	uint8_t*[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ifid_m) 0), \
-	uint16_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SHORT) && !((_t) & PW_TYPE_MULTI), \
+	uint16_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SHORT) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16) 0), \
-	uint16_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SHORT) && ((_t) & PW_TYPE_MULTI), \
+	uint16_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SHORT) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16_m) 0), \
-	uint8_t[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_ETHERNET) && !((_t) & PW_TYPE_MULTI), \
+	uint8_t[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ethernet) 0), \
-	uint8_t*[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_ETHERNET) && ((_t) & PW_TYPE_MULTI), \
+	uint8_t*[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ethernet_m) 0), \
-	int32_t	*	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIGNED) && !((_t) & PW_TYPE_MULTI), \
+	int32_t	*	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIGNED) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32) 0), \
-	int32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_SIGNED) && ((_t) & PW_TYPE_MULTI), \
+	int32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIGNED) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32_m) 0), \
-	uint64_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_INTEGER64) && !((_t) & PW_TYPE_MULTI), \
+	uint64_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER64) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64) 0), \
-	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_INTEGER64) && ((_t) & PW_TYPE_MULTI), \
+	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	_timeval_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && !((_t) & PW_TYPE_MULTI), \
+	_timeval_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval) 0), \
-	_timeval_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == PW_TYPE_TIMEVAL) && ((_t) & PW_TYPE_MULTI), \
+	_timeval_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
 	default: (conf_type_mismatch)0))))))
 
@@ -197,7 +197,7 @@ _Generic((_ct), \
 	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f))
 #  define FR_CONF_IS_SET_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
-	.type = (_t) | PW_TYPE_IS_SET, \
+	.type = (_t) | FR_TYPE_IS_SET, \
 	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f)), \
 	.is_set_offset = offsetof(_s, _f ## _is_set)
 #  define FR_CONF_POINTER(_n, _t, _p) \
@@ -207,7 +207,7 @@ _Generic((_ct), \
 
 #  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
 	.name = _n, \
-	.type = (_t) | PW_TYPE_IS_SET, \
+	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p), \
 	.is_set_ptr = _p ## _is_set
 #  define FR_ITEM_POINTER(_t, _p) _t, FR_CONF_TYPE_CHECK((_t), (_p), _p)
@@ -217,7 +217,7 @@ _Generic((_ct), \
  * Parse multiple instance of a subsection.
  *
  * @param _n	name of subsection to search for.
- * @param _t	Must be PW_TYPE_SUBSECTION | PW_TYPE_MULTI and any optional flags.
+ * @param _t	Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
  * @param _s	instance data struct.
  * @param _f	field in instance data struct.
  * @param _sub	CONF_PARSER array to use to parse subsection data.
@@ -235,7 +235,7 @@ _Generic((_ct), \
 	.offset = offsetof(_s, _f)
 #  define FR_CONF_IS_SET_OFFSET(_n, _t, _s, _f) \
 	.name = _n, \
-	.type = (_t) | PW_TYPE_IS_SET, \
+	.type = (_t) | FR_TYPE_IS_SET, \
 	.offset = offsetof(_s, _f), \
 	.is_set_offset = offsetof(_s, _f ## _is_set)
 #  define FR_CONF_POINTER(_n, _t, _p) \
@@ -244,7 +244,7 @@ _Generic((_ct), \
 	.data = _p
 #  define FR_CONF_IS_SET_POINTER(_n, _t, _p) \
 	.name = _n, \
-	.type = (_t) | PW_TYPE_IS_SET, \
+	.type = (_t) | FR_TYPE_IS_SET, \
 	.data = _p, \
 	.is_set_ptr = _p ## _is_set
 #  define FR_ITEM_POINTER(_t, _p) _t, _p
@@ -254,7 +254,7 @@ _Generic((_ct), \
  * Parse multiple instance of a subsection.
  *
  * @param _n	name of subsection to search for.
- * @param _t	Must be PW_TYPE_SUBSECTION | PW_TYPE_MULTI and any optional flags.
+ * @param _t	Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
  * @param _s	instance data struct.
  * @param _f	field in instance data struct.
  * @param _sub	CONF_PARSER array to use to parse subsection data.
@@ -270,46 +270,46 @@ _Generic((_ct), \
 
 #define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
 	.name = _n, \
-	.type = (_t) | PW_TYPE_DEPRECATED
+	.type = (_t) | FR_TYPE_DEPRECATED
 
 /*
  *  Instead of putting the information into a configuration structure,
  *  the configuration file routines MAY just parse it directly into
  *  user-supplied variables.
  */
-#define PW_TYPE_SUBSECTION	102
+#define FR_TYPE_SUBSECTION	102
 
 /** @name #CONF_PARSER type flags
  *
- * These flags should be or'd with another PW_TYPE_* value to create validation
+ * These flags should be or'd with another FR_TYPE_* value to create validation
  * rules for the #cf_pair_parse function.
  *
- * @note File PW_TYPE_FILE_* types have a base type of string, so they're validated
+ * @note File FR_TYPE_FILE_* types have a base type of string, so they're validated
  *	 correctly by the config parser.
  * @{
  */
-#define PW_TYPE_DEPRECATED		(1 << 10) 			//!< If a matching #CONF_PAIR is found,
+#define FR_TYPE_DEPRECATED		(1 << 10) 			//!< If a matching #CONF_PAIR is found,
 									//!< error out with a deprecated message.
-#define PW_TYPE_REQUIRED		(1 << 11) 			//!< Error out if no matching #CONF_PAIR
+#define FR_TYPE_REQUIRED		(1 << 11) 			//!< Error out if no matching #CONF_PAIR
 									//!< is found, and no dflt value is set.
-#define PW_TYPE_ATTRIBUTE		(1 << 12) 			//!< Value must resolve to attribute in dict
-									//!< (deprecated, use #PW_TYPE_TMPL).
-#define PW_TYPE_SECRET			(1 << 13)			 //!< Only print value if debug level >= 3.
+#define FR_TYPE_ATTRIBUTE		(1 << 12) 			//!< Value must resolve to attribute in dict
+									//!< (deprecated, use #FR_TYPE_TMPL).
+#define FR_TYPE_SECRET			(1 << 13)			 //!< Only print value if debug level >= 3.
 
-#define PW_TYPE_FILE_INPUT		((1 << 14) | PW_TYPE_STRING)	//!< File matching value must exist,
+#define FR_TYPE_FILE_INPUT		((1 << 14) | FR_TYPE_STRING)	//!< File matching value must exist,
 								     	//!< and must be readable.
-#define PW_TYPE_FILE_OUTPUT		((1 << 15) | PW_TYPE_STRING)	//!< File matching value must exist,
+#define FR_TYPE_FILE_OUTPUT		((1 << 15) | FR_TYPE_STRING)	//!< File matching value must exist,
 									//!< and must be writeable.
 
-#define PW_TYPE_XLAT			(1 << 16) 			//!< string will be dynamically expanded.
-#define PW_TYPE_TMPL			(1 << 17) 			//!< CONF_PAIR should be parsed as a template.
+#define FR_TYPE_XLAT			(1 << 16) 			//!< string will be dynamically expanded.
+#define FR_TYPE_TMPL			(1 << 17) 			//!< CONF_PAIR should be parsed as a template.
 
-#define PW_TYPE_MULTI			(1 << 18) 			//!< CONF_PAIR can have multiple copies.
-#define PW_TYPE_NOT_EMPTY		(1 << 19)			//!< CONF_PAIR is required to have a non zero
+#define FR_TYPE_MULTI			(1 << 18) 			//!< CONF_PAIR can have multiple copies.
+#define FR_TYPE_NOT_EMPTY		(1 << 19)			//!< CONF_PAIR is required to have a non zero
 									//!< length value.
-#define PW_TYPE_FILE_EXISTS		((1 << 20) | PW_TYPE_STRING)	//!< File matching value must exist
+#define FR_TYPE_FILE_EXISTS		((1 << 20) | FR_TYPE_STRING)	//!< File matching value must exist
 
-#define PW_TYPE_IS_SET			(1 << 21)			//!< Write whether this config item was
+#define FR_TYPE_IS_SET			(1 << 21)			//!< Write whether this config item was
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
 
@@ -361,7 +361,7 @@ extern bool check_config;
  * Example with #FR_CONF_OFFSET :
  @code{.c}
    static CONF_PARSER module_config[] = {
-   	{ FR_CONF_OFFSET("example", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), .dflt = "default_value" },
+   	{ FR_CONF_OFFSET("example", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, example_instance_t, example), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode
@@ -369,7 +369,7 @@ extern bool check_config;
  * Example with #FR_CONF_POINTER :
  @code{.c}
    static CONF_PARSER global_config[] = {
-   	{ FR_CONF_POINTER("example", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), .dflt = "default_value" },
+   	{ FR_CONF_POINTER("example", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, &my_global), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode
@@ -381,11 +381,11 @@ extern bool check_config;
  */
 typedef struct CONF_PARSER {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
-	uint32_t	type;			//!< A #PW_TYPE value, may be or'd with one or more PW_TYPE_* flags.
+	uint32_t	type;			//!< A #fr_type_t value, may be or'd with one or more FR_TYPE_* flags.
 						//!< @see cf_pair_parse.
 
 	size_t		offset;			//!< Relative offset of field or structure to write the parsed value to.
-						//!< When #type is set to #PW_TYPE_SUBSECTION, may be used to specify
+						//!< When #type is set to #FR_TYPE_SUBSECTION, may be used to specify
 						//!< a base offset to add to all offsets contained within the
 						//!< subsection.
 						//!< @note Must be used exclusively to #data.
@@ -393,15 +393,15 @@ typedef struct CONF_PARSER {
 	void		*data;			//!< Pointer to a static variable to write the parsed value to.
 						//!< @note Must be used exclusively to #offset.
 
-	/** Where to write status if PW_TYPE_IS_DEFAULT is set
+	/** Where to write status if FR_TYPE_IS_DEFAULT is set
 	 *
 	 * @note Which field is used, is determined by whether
 	 *	data ptr is set.
 	 */
 	union {
-		size_t		is_set_offset;	//!< If type contains PW_TYPE_IS_DEFAULT write status to bool.
+		size_t		is_set_offset;	//!< If type contains FR_TYPE_IS_DEFAULT write status to bool.
 						//!< at this address.
-		void		*is_set_ptr;	//!< If type contains PW_TYPE_IS_DEFAULT write status to ptr
+		void		*is_set_ptr;	//!< If type contains FR_TYPE_IS_DEFAULT write status to ptr
 						//!< at this address.
 	};
 
@@ -409,7 +409,7 @@ typedef struct CONF_PARSER {
 		char const	*dflt;		//!< Default as it would appear in radiusd.conf.
 
 		struct {
-			struct CONF_PARSER const *subcs;	//!< When type is set to #PW_TYPE_SUBSECTION, should
+			struct CONF_PARSER const *subcs;	//!< When type is set to #FR_TYPE_SUBSECTION, should
 							//!< be a pointer to the start of another array of
 							//!< #CONF_PARSER structs, forming the subsection.
 			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold

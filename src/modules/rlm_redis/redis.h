@@ -102,13 +102,13 @@ typedef struct redis_common_conf {
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
-	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_MULTI, fr_redis_conf_t, hostname) }, \
-	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, fr_redis_conf_t, port), .dflt = "6379" }, \
-	{ FR_CONF_OFFSET("database", PW_TYPE_INTEGER, fr_redis_conf_t, database), .dflt = "0" }, \
-	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_SECRET, fr_redis_conf_t, password) }, \
-	{ FR_CONF_OFFSET("max_nodes", PW_TYPE_BYTE, fr_redis_conf_t, max_nodes), .dflt = "20" }, \
-	{ FR_CONF_OFFSET("max_alt", PW_TYPE_INTEGER, fr_redis_conf_t, max_alt), .dflt = "3" }, \
-	{ FR_CONF_OFFSET("max_redirects", PW_TYPE_INTEGER, fr_redis_conf_t, max_redirects), .dflt = "2" }
+	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_MULTI, fr_redis_conf_t, hostname) }, \
+	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, fr_redis_conf_t, port), .dflt = "6379" }, \
+	{ FR_CONF_OFFSET("database", FR_TYPE_INTEGER, fr_redis_conf_t, database), .dflt = "0" }, \
+	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_redis_conf_t, password) }, \
+	{ FR_CONF_OFFSET("max_nodes", FR_TYPE_BYTE, fr_redis_conf_t, max_nodes), .dflt = "20" }, \
+	{ FR_CONF_OFFSET("max_alt", FR_TYPE_INTEGER, fr_redis_conf_t, max_alt), .dflt = "3" }, \
+	{ FR_CONF_OFFSET("max_redirects", FR_TYPE_INTEGER, fr_redis_conf_t, max_redirects), .dflt = "2" }
 
 void		fr_redis_version_print(void);
 
@@ -120,7 +120,7 @@ fr_redis_rcode_t	fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 void			fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx);
 
 int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *reply,
-						    PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv);
+						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
 
 int			fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
 					      REQUEST *request, redisReply *key, redisReply *op, redisReply *value);

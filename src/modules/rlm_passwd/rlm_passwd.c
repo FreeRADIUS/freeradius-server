@@ -364,17 +364,17 @@ typedef struct rlm_passwd_t {
 } rlm_passwd_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_passwd_t, filename) },
-	{ FR_CONF_OFFSET("format", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_passwd_t, format) },
-	{ FR_CONF_OFFSET("delimiter", PW_TYPE_STRING, rlm_passwd_t, delimiter), .dflt = ":" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_passwd_t, filename) },
+	{ FR_CONF_OFFSET("format", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_passwd_t, format) },
+	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_passwd_t, delimiter), .dflt = ":" },
 
-	{ FR_CONF_OFFSET("ignore_nislike", PW_TYPE_BOOLEAN, rlm_passwd_t, ignore_nislike), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ignore_nislike", FR_TYPE_BOOLEAN, rlm_passwd_t, ignore_nislike), .dflt = "yes" },
 
-	{ FR_CONF_OFFSET("ignore_empty", PW_TYPE_BOOLEAN, rlm_passwd_t, ignore_empty), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ignore_empty", FR_TYPE_BOOLEAN, rlm_passwd_t, ignore_empty), .dflt = "yes" },
 
-	{ FR_CONF_OFFSET("allow_multiple_keys", PW_TYPE_BOOLEAN, rlm_passwd_t, allow_multiple), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_multiple_keys", FR_TYPE_BOOLEAN, rlm_passwd_t, allow_multiple), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("hash_size", PW_TYPE_INTEGER, rlm_passwd_t, hash_size), .dflt = "100" },
+	{ FR_CONF_OFFSET("hash_size", FR_TYPE_INTEGER, rlm_passwd_t, hash_size), .dflt = "100" },
 	CONF_PARSER_TERMINATOR
 };
 

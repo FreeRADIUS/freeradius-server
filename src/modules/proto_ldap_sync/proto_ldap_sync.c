@@ -98,55 +98,55 @@ static FR_NAME_NUMBER const ldap_sync_code_table[] = {
 };
 
 static CONF_PARSER sasl_mech_static[] = {
-	{ FR_CONF_OFFSET("mech", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, fr_ldap_sasl_t, mech) },
+	{ FR_CONF_OFFSET("mech", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t, mech) },
 
-	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING, fr_ldap_sasl_t, proxy) },
+	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, fr_ldap_sasl_t, proxy) },
 
-	{ FR_CONF_OFFSET("realm", PW_TYPE_STRING, fr_ldap_sasl_t, realm) },
+	{ FR_CONF_OFFSET("realm", FR_TYPE_STRING, fr_ldap_sasl_t, realm) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER ldap_sync_search_config[] = {
-	{ FR_CONF_OFFSET("base_dn", PW_TYPE_STRING, sync_config_t, base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("base_dn", FR_TYPE_STRING, sync_config_t, base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
 
-	{ FR_CONF_OFFSET("filter", PW_TYPE_STRING, sync_config_t, filter) },
+	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, sync_config_t, filter) },
 
-	{ FR_CONF_OFFSET("scope", PW_TYPE_STRING, sync_config_t, scope_str), .dflt = "sub" },
+	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, sync_config_t, scope_str), .dflt = "sub" },
 
-	{ FR_CONF_OFFSET("attrs", PW_TYPE_STRING | PW_TYPE_MULTI, sync_config_t, attrs) },
+	{ FR_CONF_OFFSET("attrs", FR_TYPE_STRING | FR_TYPE_MULTI, sync_config_t, attrs) },
 
-	{ FR_CONF_OFFSET("allow_refresh", PW_TYPE_BOOLEAN, sync_config_t, allow_refresh), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_refresh", FR_TYPE_BOOLEAN, sync_config_t, allow_refresh), .dflt = "no" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER option_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{ FR_CONF_OFFSET("idle", PW_TYPE_INTEGER, fr_ldap_handle_config_t, keepalive_idle), .dflt = "60" },
+	{ FR_CONF_OFFSET("idle", FR_TYPE_INTEGER, fr_ldap_handle_config_t, keepalive_idle), .dflt = "60" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	{ FR_CONF_OFFSET("probes", PW_TYPE_INTEGER, fr_ldap_handle_config_t, keepalive_probes), .dflt = "3" },
+	{ FR_CONF_OFFSET("probes", FR_TYPE_INTEGER, fr_ldap_handle_config_t, keepalive_probes), .dflt = "3" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{ FR_CONF_OFFSET("interval", PW_TYPE_INTEGER, fr_ldap_handle_config_t, keepalive_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("interval", FR_TYPE_INTEGER, fr_ldap_handle_config_t, keepalive_interval), .dflt = "30" },
 #endif
-	{ FR_CONF_OFFSET("dereference", PW_TYPE_STRING, fr_ldap_handle_config_t, dereference_str) },
+	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, fr_ldap_handle_config_t, dereference_str) },
 	/* allow server unlimited time for search (server-side limit) */
-	{ FR_CONF_OFFSET("srv_timelimit", PW_TYPE_INTEGER, fr_ldap_handle_config_t, srv_timelimit), .dflt = "20" },
+	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_INTEGER, fr_ldap_handle_config_t, srv_timelimit), .dflt = "20" },
 	/* timeout for search results */
-	{ FR_CONF_OFFSET("res_timeout", PW_TYPE_TIMEVAL, fr_ldap_handle_config_t, res_timeout), .dflt = "20" },
+	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIMEVAL, fr_ldap_handle_config_t, res_timeout), .dflt = "20" },
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
-	{ FR_CONF_DEPRECATED("net_timeout", PW_TYPE_INTEGER, fr_ldap_handle_config_t, net_timeout), .dflt = "10" },
+	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_INTEGER, fr_ldap_handle_config_t, net_timeout), .dflt = "10" },
 #endif
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER global_config[] = {
-	{ FR_CONF_OFFSET("random_file", PW_TYPE_FILE_EXISTS, proto_ldap_inst_t, tls_random_file) },
-	{ FR_CONF_OFFSET("ldap_debug", PW_TYPE_INTEGER, proto_ldap_inst_t, ldap_debug), .dflt = "0x0000" },		/* Debugging flags to the server */
+	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, proto_ldap_inst_t, tls_random_file) },
+	{ FR_CONF_OFFSET("ldap_debug", FR_TYPE_INTEGER, proto_ldap_inst_t, ldap_debug), .dflt = "0x0000" },		/* Debugging flags to the server */
 
 	CONF_PARSER_TERMINATOR
 };
@@ -155,12 +155,12 @@ static const CONF_PARSER global_config[] = {
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET("start_tls", PW_TYPE_BOOLEAN, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
-	{ FR_CONF_OFFSET("require_cert", PW_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOLEAN, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -169,26 +169,26 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	LDAP server definition
 	 */
-	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_MULTI | PW_TYPE_REQUIRED, proto_ldap_inst_t, handle_config.server_str) },
-	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, proto_ldap_inst_t, handle_config.port) },
-	{ FR_CONF_OFFSET("identity", PW_TYPE_STRING, proto_ldap_inst_t, handle_config.admin_identity) },
-	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_SECRET, proto_ldap_inst_t, handle_config.admin_password) },
-	{ FR_CONF_OFFSET("sasl", PW_TYPE_SUBSECTION, proto_ldap_inst_t, handle_config.admin_sasl), .subcs = (void const *) sasl_mech_static },
+	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_MULTI | FR_TYPE_REQUIRED, proto_ldap_inst_t, handle_config.server_str) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, proto_ldap_inst_t, handle_config.port) },
+	{ FR_CONF_OFFSET("identity", FR_TYPE_STRING, proto_ldap_inst_t, handle_config.admin_identity) },
+	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, proto_ldap_inst_t, handle_config.admin_password) },
+	{ FR_CONF_OFFSET("sasl", FR_TYPE_SUBSECTION, proto_ldap_inst_t, handle_config.admin_sasl), .subcs = (void const *) sasl_mech_static },
 
-	{ FR_CONF_OFFSET("sync_retry_interval", PW_TYPE_TIMEVAL, proto_ldap_inst_t, sync_retry_interval), .dflt = "5" },
-	{ FR_CONF_OFFSET("conn_retry_interval", PW_TYPE_TIMEVAL, proto_ldap_inst_t, conn_retry_interval), .dflt = "5" },
+	{ FR_CONF_OFFSET("sync_retry_interval", FR_TYPE_TIMEVAL, proto_ldap_inst_t, sync_retry_interval), .dflt = "5" },
+	{ FR_CONF_OFFSET("conn_retry_interval", FR_TYPE_TIMEVAL, proto_ldap_inst_t, conn_retry_interval), .dflt = "5" },
 
 	/*
 	 *	Areas of the DIT to listen on
 	 */
-	{ FR_CONF_SUBSECTION_MULTI("sync", PW_TYPE_SUBSECTION | PW_TYPE_MULTI | PW_TYPE_REQUIRED, proto_ldap_inst_t, sync_config, ldap_sync_search_config) },
+	{ FR_CONF_SUBSECTION_MULTI("sync", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_REQUIRED, proto_ldap_inst_t, sync_config, ldap_sync_search_config) },
 
 	/*
 	 *	Extra configuration items
 	 */
-	{ FR_CONF_POINTER("options", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) option_config },
-	{ FR_CONF_POINTER("global", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) global_config },
-	{ FR_CONF_OFFSET("tls", PW_TYPE_SUBSECTION, proto_ldap_inst_t, handle_config), .subcs = (void const *) tls_config },
+	{ FR_CONF_POINTER("options", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) option_config },
+	{ FR_CONF_POINTER("global", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) global_config },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, proto_ldap_inst_t, handle_config), .subcs = (void const *) tls_config },
 
 	CONF_PARSER_TERMINATOR
 };

@@ -54,31 +54,31 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 	if (!vp) return -1;
 
 	switch (vp->vp_type) {
-	case PW_TYPE_DATE:
-	case PW_TYPE_ETHERNET:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_IPV6_PREFIX:
-	case PW_TYPE_IFID:
-	case PW_TYPE_TLV:
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_TLV:
+	case FR_TYPE_INTEGER64:
 		fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
 		lua_pushstring(L, buffer);
 		break;
 
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		lua_pushlstring(L, vp->vp_strvalue, vp->vp_length);
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		lua_pushlstring(L, (char const *)vp->vp_octets, vp->vp_length); /* lstring variant is embedded NULL safe */
 		break;
 
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_BYTE:
+	case FR_TYPE_SHORT:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_SIGNED:
 		lua_pushinteger(L, vp->vp_integer);
 		break;
 
@@ -108,7 +108,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 	switch (lua_type(L, -1)) {
 	case LUA_TNUMBER:
 		switch (vp->vp_type) {
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 		{
 			char *p;
 			p = talloc_asprintf(vp, "%f", lua_tonumber(L, -1));
@@ -116,39 +116,39 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 		}
 
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			vp->vp_integer = (uint32_t) lua_tointeger(L, -1);
 			break;
 
-		case PW_TYPE_IPV4_ADDR:
-		case PW_TYPE_COMBO_IP_ADDR:
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_COMBO_IP_ADDR:
 			vp->vp_ipv4addr = (uint32_t) lua_tointeger(L, -1);
 			break;
 
-		case PW_TYPE_DATE:
+		case FR_TYPE_DATE:
 			vp->vp_date = (uint32_t) lua_tointeger(L, -1);
 			break;
 
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 		{
 			lua_Number number = lua_tonumber(L, -1);
 			fr_pair_value_memcpy(vp, (uint8_t*) &number, sizeof(number));
 		}
 			break;
 
-		case PW_TYPE_BYTE:
+		case FR_TYPE_BYTE:
 			vp->vp_byte = (uint8_t) lua_tointeger(L, -1);
 			break;
 
-		case PW_TYPE_SHORT:
+		case FR_TYPE_SHORT:
 			vp->vp_short = (uint16_t) lua_tointeger(L, -1);
 			break;
 
-		case PW_TYPE_SIGNED:
+		case FR_TYPE_SIGNED:
 			vp->vp_signed = (int32_t) lua_tointeger(L, -1);
 			break;
 
-		case PW_TYPE_INTEGER64:
+		case FR_TYPE_INTEGER64:
 			vp->vp_integer64 = (uint64_t) lua_tointeger(L, -1);
 			break;
 
@@ -165,7 +165,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		 *	any other unprintable chars any different from those in a plaintext
 		 *	string.
 		 */
-		if (da->type == PW_TYPE_OCTETS) {
+		if (da->type == FR_TYPE_OCTETS) {
 			uint8_t const *p;
 			size_t len;
 

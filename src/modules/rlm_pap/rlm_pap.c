@@ -54,7 +54,7 @@ typedef struct rlm_pap_t {
 } rlm_pap_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("normalise", PW_TYPE_BOOLEAN, rlm_pap_t, normify), .dflt = "yes" },
+	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOLEAN, rlm_pap_t, normify), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -140,7 +140,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_len)
 
 	if (min_len >= sizeof(buffer)) return; /* paranoia */
 
-	rad_assert((vp->da->type == PW_TYPE_OCTETS) || (vp->da->type == PW_TYPE_STRING));
+	rad_assert((vp->da->type == FR_TYPE_OCTETS) || (vp->da->type == FR_TYPE_STRING));
 
 	/*
 	 *	Hex encoding. Length is even, and it's greater than
@@ -212,7 +212,7 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 	 *	Ensure this is only ever called with a
 	 *	string type attribute.
 	 */
-	rad_assert(vp->da->type == PW_TYPE_STRING);
+	rad_assert(vp->da->type == FR_TYPE_STRING);
 
 redo:
 	p = vp->vp_strvalue;
@@ -253,7 +253,7 @@ redo:
 		 *	we ensure that there's a trailing zero, too.
 		 */
 		new = fr_pair_afrom_num(request, 0, attr);
-		if (new->da->type == PW_TYPE_OCTETS) {
+		if (new->da->type == FR_TYPE_OCTETS) {
 			fr_pair_value_memcpy(new, (uint8_t const *) q + 1, (len - hlen) + 1);
 			new->vp_length = (len - hlen);	/* lie about the length */
 		} else {

@@ -41,26 +41,26 @@ RCSID("$Id$")
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_lua_t, module), NULL},
-	{ FR_CONF_OFFSET("threads", PW_TYPE_BOOLEAN, rlm_lua_t, threads), .dflt = "no"},
-	{ FR_CONF_OFFSET("func_instantiate", PW_TYPE_STRING, rlm_lua_t, func_instantiate), NULL},
-	{ FR_CONF_OFFSET("func_detach", PW_TYPE_STRING, rlm_lua_t, func_detach), NULL},
-	{ FR_CONF_OFFSET("func_authorize", PW_TYPE_STRING, rlm_lua_t, func_authorize), NULL},
-	{ FR_CONF_OFFSET("func_authenticate", PW_TYPE_STRING, rlm_lua_t, func_authenticate), NULL},
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_lua_t, module), NULL},
+	{ FR_CONF_OFFSET("threads", FR_TYPE_BOOLEAN, rlm_lua_t, threads), .dflt = "no"},
+	{ FR_CONF_OFFSET("func_instantiate", FR_TYPE_STRING, rlm_lua_t, func_instantiate), NULL},
+	{ FR_CONF_OFFSET("func_detach", FR_TYPE_STRING, rlm_lua_t, func_detach), NULL},
+	{ FR_CONF_OFFSET("func_authorize", FR_TYPE_STRING, rlm_lua_t, func_authorize), NULL},
+	{ FR_CONF_OFFSET("func_authenticate", FR_TYPE_STRING, rlm_lua_t, func_authenticate), NULL},
 #ifdef WITH_ACCOUNTING
-	{ FR_CONF_OFFSET("func_accounting", PW_TYPE_STRING, rlm_lua_t, func_accounting), NULL},
-	{ FR_CONF_OFFSET("func_preacct", PW_TYPE_STRING, rlm_lua_t, func_preacct), NULL},
+	{ FR_CONF_OFFSET("func_accounting", FR_TYPE_STRING, rlm_lua_t, func_accounting), NULL},
+	{ FR_CONF_OFFSET("func_preacct", FR_TYPE_STRING, rlm_lua_t, func_preacct), NULL},
 #endif
-	{ FR_CONF_OFFSET("func_checksimul", PW_TYPE_STRING, rlm_lua_t, func_checksimul), NULL},
-	{ FR_CONF_OFFSET("func_xlat", PW_TYPE_STRING, rlm_lua_t, func_xlat), NULL},
+	{ FR_CONF_OFFSET("func_checksimul", FR_TYPE_STRING, rlm_lua_t, func_checksimul), NULL},
+	{ FR_CONF_OFFSET("func_xlat", FR_TYPE_STRING, rlm_lua_t, func_xlat), NULL},
 #ifdef WITH_PROXY
-	{ FR_CONF_OFFSET("func_pre_proxy", PW_TYPE_STRING, rlm_lua_t, func_pre_proxy), NULL},
-	{ FR_CONF_OFFSET("func_post_proxy", PW_TYPE_STRING, rlm_lua_t, func_post_proxy), NULL},
+	{ FR_CONF_OFFSET("func_pre_proxy", FR_TYPE_STRING, rlm_lua_t, func_pre_proxy), NULL},
+	{ FR_CONF_OFFSET("func_post_proxy", FR_TYPE_STRING, rlm_lua_t, func_post_proxy), NULL},
 #endif
-	{ FR_CONF_OFFSET("func_post_auth", PW_TYPE_STRING, rlm_lua_t, func_post_auth), NULL},
+	{ FR_CONF_OFFSET("func_post_auth", FR_TYPE_STRING, rlm_lua_t, func_post_auth), NULL},
 #ifdef WITH_COA
-	{ FR_CONF_OFFSET("func_recv_coa", PW_TYPE_STRING, rlm_lua_t, func_recv_coa), NULL},
-	{ FR_CONF_OFFSET("func_send_coa", PW_TYPE_STRING, rlm_lua_t, func_send_coa), NULL},
+	{ FR_CONF_OFFSET("func_recv_coa", FR_TYPE_STRING, rlm_lua_t, func_recv_coa), NULL},
+	{ FR_CONF_OFFSET("func_send_coa", FR_TYPE_STRING, rlm_lua_t, func_send_coa), NULL},
 #endif
 
 	CONF_PARSER_TERMINATOR

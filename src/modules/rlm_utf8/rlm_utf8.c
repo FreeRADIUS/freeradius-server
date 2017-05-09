@@ -38,7 +38,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, UNUSED
 	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
-		if (vp->vp_type != PW_TYPE_STRING) continue;
+		if (vp->vp_type != FR_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {
 			len = fr_utf8_char(&vp->vp_octets[i], -1);

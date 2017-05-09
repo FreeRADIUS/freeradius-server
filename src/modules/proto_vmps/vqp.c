@@ -70,16 +70,16 @@ RCSID("$Id$")
 #define VQP_VERSION (1)
 #define VQP_MAX_ATTRIBUTES (12)
 
-static size_t const fr_vqp_attr_sizes[PW_TYPE_MAX + 1][2] = {
-	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
+static size_t const fr_vqp_attr_sizes[FR_TYPE_MAX + 1][2] = {
+	[FR_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
-	[PW_TYPE_STRING]	= {0, ~0},
-	[PW_TYPE_OCTETS]	= {0, ~0},
+	[FR_TYPE_STRING]	= {0, ~0},
+	[FR_TYPE_OCTETS]	= {0, ~0},
 
-	[PW_TYPE_IPV4_ADDR]	= {4, 4},
-	[PW_TYPE_ETHERNET]	= {6, 6},
+	[FR_TYPE_IPV4_ADDR]	= {4, 4},
+	[FR_TYPE_ETHERNET]	= {6, 6},
 
-	[PW_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
+	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
 };
 
 static ssize_t vqp_recv_header(int sockfd)
@@ -320,13 +320,13 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->vp_type) {
-		case PW_TYPE_ETHERNET:
+		case FR_TYPE_ETHERNET:
 			if (attr_len != fr_vqp_attr_sizes[vp->vp_type][0]) goto unknown;
 
 			memcpy(&vp->vp_ether, ptr, 6);
 			break;
 
-		case PW_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_ADDR:
 			if (attr_len == fr_vqp_attr_sizes[vp->vp_type][0]) {
 				memcpy(&vp->vp_ipv4addr, ptr, 4);
 				break;
@@ -343,11 +343,11 @@ int vqp_decode(RADIUS_PACKET *packet)
 			/* FALL-THROUGH */
 
 		default:
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			fr_pair_value_memcpy(vp, ptr, attr_len);
 			break;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			fr_pair_value_bstrncpy(vp, ptr, attr_len);
 			break;
 		}
@@ -513,16 +513,16 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		debug_pair(vp);
 
 		switch (vp->vp_type) {
-		case PW_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_ADDR:
 			len = fr_vqp_attr_sizes[vp->vp_type][0];
 			break;
 
-		case PW_TYPE_ETHERNET:
+		case FR_TYPE_ETHERNET:
 			len = fr_vqp_attr_sizes[vp->vp_type][0];
 			break;
 
-		case PW_TYPE_OCTETS:
-		case PW_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
 			len = vp->vp_length;
 			break;
 
@@ -548,18 +548,18 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		/* Data */
 		switch (vp->vp_type) {
-		case PW_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_ADDR:
 			memcpy(out, &vp->vp_ipv4addr, len);
 			out += len;
 			break;
 
-		case PW_TYPE_ETHERNET:
+		case FR_TYPE_ETHERNET:
 			memcpy(out, vp->vp_ether, len);
 			out += len;
 			break;
 
-		case PW_TYPE_OCTETS:
-		case PW_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRING:
 			memcpy(out, vp->vp_octets, len);
 			out += len;
 			break;

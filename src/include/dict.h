@@ -71,7 +71,7 @@ typedef struct attr_flags {
 } fr_dict_attr_flags_t;
 
 extern const FR_NAME_NUMBER dict_attr_types[];
-extern const size_t dict_attr_sizes[PW_TYPE_MAX + 1][2];
+extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 
 typedef struct dict_attr fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
@@ -82,7 +82,7 @@ extern fr_dict_t *fr_dict_internal;
 struct dict_attr {
 	unsigned int		vendor;				//!< Vendor that defines this attribute.
 	unsigned int		attr;				//!< Attribute number.
-	PW_TYPE			type;				//!< Value type.
+	fr_type_t			type;				//!< Value type.
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
@@ -150,8 +150,8 @@ typedef struct dict_vendor {
  *
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX];
-extern bool const	fr_dict_non_data_types[PW_TYPE_MAX + 1];
-extern bool const	fr_dict_enum_types[PW_TYPE_MAX + 1];
+extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
+extern bool const	fr_dict_enum_types[FR_TYPE_MAX + 1];
 
 /*
  *	Dictionary debug
@@ -164,7 +164,7 @@ void			fr_dict_dump(fr_dict_t *dict);
 int			fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int value);
 
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
-					 PW_TYPE type, fr_dict_attr_flags_t flags);
+					 fr_type_t type, fr_dict_attr_flags_t flags);
 
 int			fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int value);
 
@@ -239,7 +239,7 @@ fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t const *dict, char const *at
 
 fr_dict_attr_t const	*fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr);
 
-fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, PW_TYPE type);
+fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t type);
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
 

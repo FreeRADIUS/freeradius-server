@@ -40,9 +40,9 @@ typedef struct rlm_delay_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("delay", PW_TYPE_TMPL, rlm_delay_t, delay) },
-	{ FR_CONF_OFFSET("relative", PW_TYPE_BOOLEAN, rlm_delay_t, relative), .dflt = "no" },
-	{ FR_CONF_OFFSET("force_reschedule", PW_TYPE_BOOLEAN, rlm_delay_t, force_reschedule), .dflt = "no" },
+	{ FR_CONF_OFFSET("delay", FR_TYPE_TMPL, rlm_delay_t, delay) },
+	{ FR_CONF_OFFSET("relative", FR_TYPE_BOOLEAN, rlm_delay_t, relative), .dflt = "no" },
+	{ FR_CONF_OFFSET("force_reschedule", FR_TYPE_BOOLEAN, rlm_delay_t, force_reschedule), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

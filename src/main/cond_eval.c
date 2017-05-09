@@ -171,7 +171,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
 	if (!rad_cond_assert(lhs != NULL)) return -1;
-	if (!rad_cond_assert(lhs->type == PW_TYPE_STRING)) return -1;
+	if (!rad_cond_assert(lhs->type == FR_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX %s %s",
 		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
@@ -183,7 +183,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 
 	default:
-		if (!rad_cond_assert(rhs && rhs->type == PW_TYPE_STRING)) return -1;
+		if (!rad_cond_assert(rhs && rhs->type == FR_TYPE_STRING)) return -1;
 		if (!rad_cond_assert(rhs && rhs->datum.strvalue)) return -1;
 		slen = regex_compile(request, &rreg, rhs->datum.strvalue, rhs->datum.length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
@@ -228,7 +228,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 static void cond_print_operands(value_box_t const *lhs, value_box_t const *rhs)
 {
 	if (lhs) {
-		if (lhs->type == PW_TYPE_STRING) {
+		if (lhs->type == FR_TYPE_STRING) {
 			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->datum.strvalue, lhs->datum.length);
 		} else {
 			EVAL_DEBUG("LHS: 0x%pH (%zu)", lhs->datum.octets, lhs->datum.length);
@@ -238,7 +238,7 @@ static void cond_print_operands(value_box_t const *lhs, value_box_t const *rhs)
 	}
 
 	if (rhs) {
-		if (rhs->type == PW_TYPE_STRING) {
+		if (rhs->type == FR_TYPE_STRING) {
 			EVAL_DEBUG("RHS: \"%s\" (%zu)", rhs->datum.strvalue, rhs->datum.length);
 		} else {
 			EVAL_DEBUG("RHS: 0x%pH (%zu)", rhs->datum.octets, rhs->datum.length);
@@ -372,7 +372,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, value_bo
 	value_box_t		*rhs = NULL;
 
 	fr_dict_attr_t const	*cast = NULL;
-	PW_TYPE			cast_type = PW_TYPE_INVALID;
+	fr_type_t			cast_type = FR_TYPE_INVALID;
 
 	value_box_t		lhs_cast, rhs_cast;
 	void			*lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
@@ -389,7 +389,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, value_bo
 	 */
 #define CAST(_s) \
 do {\
-	if ((cast_type != PW_TYPE_INVALID) && _s && (_s ->type != PW_TYPE_INVALID) && (cast_type != _s->type)) {\
+	if ((cast_type != FR_TYPE_INVALID) && _s && (_s ->type != FR_TYPE_INVALID) && (cast_type != _s->type)) {\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_int2str(dict_attr_types, _s->type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
@@ -405,11 +405,11 @@ do {\
 
 #define CHECK_INT_CAST(_l, _r) \
 do {\
-	if ((cast_type == PW_TYPE_INVALID) &&\
-	    _l && (_l->type == PW_TYPE_STRING) &&\
-	    _r && (_r->type == PW_TYPE_STRING) &&\
+	if ((cast_type == FR_TYPE_INVALID) &&\
+	    _l && (_l->type == FR_TYPE_STRING) &&\
+	    _r && (_r->type == FR_TYPE_STRING) &&\
 	    all_digits(lhs->datum.strvalue) && all_digits(rhs->datum.strvalue)) {\
-	    	cast_type = PW_TYPE_INTEGER64;\
+	    	cast_type = FR_TYPE_INTEGER64;\
 	    	EVAL_DEBUG("OPERANDS ARE NUMBER STRINGS, SETTING CAST TO integer64");\
 	}\
 } while (0)
@@ -419,7 +419,7 @@ do {\
 	 */
 #ifdef HAVE_REGEX
 	if (map->op == T_OP_REG_EQ) {
-		cast_type = PW_TYPE_STRING;
+		cast_type = FR_TYPE_STRING;
 
 		if (map->rhs->type == TMPL_TYPE_XLAT_STRUCT) escape = regex_escape;
 	}
@@ -531,7 +531,7 @@ do {\
 			data.datum.strvalue = map->rhs->name;
 			data.datum.length = map->rhs->len;
 		}
-		data.type = PW_TYPE_STRING;
+		data.type = FR_TYPE_STRING;
 
 		rad_assert(data.datum.strvalue);
 
@@ -658,7 +658,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 			data.datum.length = map->lhs->len;
 		}
 		rad_assert(data.datum.strvalue);
-		data.type = PW_TYPE_STRING;
+		data.type = FR_TYPE_STRING;
 
 		rcode = cond_normalise_and_cmp(request, c, &data);
 		if (p) talloc_free(p);

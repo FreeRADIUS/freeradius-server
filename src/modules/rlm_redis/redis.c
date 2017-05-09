@@ -170,9 +170,9 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
 
 /** Convert a string or integer type to #value_box_t of specified type
  *
- * Will work with REDIS_REPLY_STRING (which is converted to #PW_TYPE_STRING
+ * Will work with REDIS_REPLY_STRING (which is converted to #FR_TYPE_STRING
  * then cast to dst_type), or REDIS_REPLY_INTEGER (which is converted to
- * #PW_TYPE_INTEGER64, then cast to dst_type).
+ * #FR_TYPE_INTEGER64, then cast to dst_type).
  *
  * @note Any unsupported types will trigger an assert. You must check the
  *	reply type prior to calling this function.
@@ -189,7 +189,7 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
  *	- -1 on cast or parse failure.
  */
 int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *reply,
-				 PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
+				 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	value_box_t	in;
 
@@ -210,29 +210,29 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 			return -1;
 		}
 		if (reply->integer < 0) {		/* 32bit signed (supported) */
-			in.type = PW_TYPE_SIGNED;
+			in.type = FR_TYPE_SIGNED;
 			in.datum.sinteger = (int32_t) reply->integer;
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
-			in.type = PW_TYPE_INTEGER64;
+			in.type = FR_TYPE_INTEGER64;
 			in.datum.integer64 = (uint64_t) reply->integer;
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			in.type = PW_TYPE_INTEGER;
+			in.type = FR_TYPE_INTEGER;
 			in.datum.integer = (uint32_t) reply->integer;
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			in.type = PW_TYPE_SHORT;
+			in.type = FR_TYPE_SHORT;
 			in.datum.ushort = (uint16_t) reply->integer;
 		}
 		else {		/* 8bit unsigned (supported) */
-			in.type = PW_TYPE_BYTE;
+			in.type = FR_TYPE_BYTE;
 			in.datum.byte = (uint8_t) reply->integer;
 		}
 		break;
 
 	case REDIS_REPLY_STRING:
-		in.type = PW_TYPE_STRING;
+		in.type = FR_TYPE_STRING;
 		in.datum.ptr = reply->str;
 		in.datum.length = reply->len;
 		break;
@@ -379,8 +379,8 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	if (!key) return -1;
 
 	switch (map->rhs->tmpl_value_box_type) {
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
 		out[2] = map->rhs->tmpl_value_box_datum.ptr;
 		out_len[2] = map->rhs->tmpl_value_box_length;
 		break;

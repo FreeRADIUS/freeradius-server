@@ -74,20 +74,20 @@ typedef struct rlm_sqlcounter_t {
 } rlm_sqlcounter_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("sql_module_instance", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlcounter_t, sqlmod_inst) },
+	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, sqlmod_inst) },
 
 
-	{ FR_CONF_OFFSET("query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlcounter_t, query) },
-	{ FR_CONF_OFFSET("reset", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
+	{ FR_CONF_OFFSET("query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlcounter_t, query) },
+	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
 
-	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_sqlcounter_t, key_attr), .dflt = "&request:User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, key_attr), .dflt = "&request:User-Name", .quote = T_BARE_WORD },
 
 	/* Just used to register a paircompare against */
-	{ FR_CONF_OFFSET("counter_name", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
-	{ FR_CONF_OFFSET("check_name", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_sqlcounter_t, limit_attr) },
+	{ FR_CONF_OFFSET("counter_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
+	{ FR_CONF_OFFSET("check_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, limit_attr) },
 
 	/* Attribute to write remaining session to */
-	{ FR_CONF_OFFSET("reply_name", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_sqlcounter_t, reply_attr) },
+	{ FR_CONF_OFFSET("reply_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, reply_attr) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -576,18 +576,18 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;	/* ugly hack */
-	if (tmpl_define_undefined_attr(inst->paircmp_attr, PW_TYPE_INTEGER64, &flags) < 0) {
+	if (tmpl_define_undefined_attr(inst->paircmp_attr, FR_TYPE_INTEGER64, &flags) < 0) {
 		cf_log_err_cs(conf, "Failed defining counter attribute: %s", fr_strerror());
 		return -1;
 	}
 
 	flags.compare = 0;
-	if (tmpl_define_undefined_attr(inst->limit_attr, PW_TYPE_INTEGER64, &flags) < 0) {
+	if (tmpl_define_undefined_attr(inst->limit_attr, FR_TYPE_INTEGER64, &flags) < 0) {
 		cf_log_err_cs(conf, "Failed defining check attribute: %s", fr_strerror());
 		return -1;
 	}
 
-	if (inst->paircmp_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
+	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_INTEGER64) {
 		cf_log_err_cs(conf, "Counter attribute %s MUST be integer64",
 			      inst->paircmp_attr->tmpl_da->name);
 		return -1;
@@ -599,7 +599,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (inst->limit_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
+	if (inst->limit_attr->tmpl_da->type != FR_TYPE_INTEGER64) {
 		cf_log_err_cs(conf, "Check attribute %s MUST be integer64",
 			      inst->limit_attr->tmpl_da->name);
 		return -1;

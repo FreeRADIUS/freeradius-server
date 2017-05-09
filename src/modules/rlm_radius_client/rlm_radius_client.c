@@ -42,14 +42,14 @@ typedef struct radius_client_instance {
 } rlm_radius_client_instance_t;
 
 static const CONF_PARSER listen_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", PW_TYPE_IPV4_ADDR, rlm_radius_client_instance_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_radius_client_instance_t, src_ipaddr) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_POINTER("listen", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) listen_config },
+	{ FR_CONF_POINTER("listen", FR_TYPE_SUBSECTION, NULL), .dflt = (void const *) listen_config },
 
-	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_radius_client_instance_t, virtual_server) },
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_radius_client_instance_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 

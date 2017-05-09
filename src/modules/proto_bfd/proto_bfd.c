@@ -425,7 +425,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 	size_t len;
 	char const *value = NULL;
 
-	rcode = cf_pair_parse(NULL, cs, "secret", FR_ITEM_POINTER(PW_TYPE_STRING, &value), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "secret", FR_ITEM_POINTER(FR_TYPE_STRING, &value), NULL, T_INVALID);
 	if (rcode != 0) return 0;
 
 	len = strlen(value);
@@ -495,26 +495,26 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	/*
 	 *	Allow over-riding of variables per session.
 	 */
-	rcode = cf_pair_parse(NULL, cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &flag), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "demand", FR_ITEM_POINTER(FR_TYPE_BOOLEAN, &flag), NULL, T_INVALID);
 	if (rcode == 0) {
 		session->demand_mode = flag;
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "min_transmit_interval", FR_ITEM_POINTER(FR_TYPE_INTEGER, &number), NULL, T_INVALID);
 	if (rcode == 0) {
 		if (number < 100) number = 100;
 		if (number > 10000) number = 10000;
 
 		session->desired_min_tx_interval = number * 1000;
 	}
-	rcode = cf_pair_parse(NULL, cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_INTEGER, &number), NULL, T_INVALID);
 	if (rcode == 0) {
 		if (number < 100) number = 100;
 		if (number > 10000) number = 10000;
 
 		session->required_min_rx_interval = number * 1000;
 	}
-	rcode = cf_pair_parse(NULL, cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_INTEGER, &number), NULL, T_INVALID);
 	if (rcode == 0) {
 		if (number == 0) number = 1;
 		if (number > 10) number = 10;
@@ -1544,14 +1544,14 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 	 */
 	memset(ipaddr, 0, sizeof(*ipaddr));
 	ipaddr->addr.v4.s_addr = htonl(INADDR_NONE);
-	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, ipaddr), NULL, T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(FR_TYPE_IPV4_ADDR, ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		ipaddr->af = AF_INET;
 
 	} else {	/* maybe IPv6? */
-		rcode = cf_pair_parse(NULL, cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, ipaddr), NULL, T_INVALID);
+		rcode = cf_pair_parse(NULL, cs, "ipv6addr", FR_ITEM_POINTER(FR_TYPE_IPV6_ADDR, ipaddr), NULL, T_INVALID);
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
@@ -1562,7 +1562,7 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 		ipaddr->af = AF_INET6;
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, port), "0", T_INVALID);
+	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(FR_TYPE_SHORT, port), "0", T_INVALID);
 	if (rcode < 0) return -1;
 
 	return 0;
@@ -1667,15 +1667,15 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
 
-	cf_pair_parse(sock, cs, "interface", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->interface), NULL, T_INVALID);
+	cf_pair_parse(sock, cs, "interface", FR_ITEM_POINTER(FR_TYPE_STRING, &sock->interface), NULL, T_INVALID);
 
-	cf_pair_parse(sock, cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000", T_BARE_WORD);
-	cf_pair_parse(sock, cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3", T_BARE_WORD);
-	cf_pair_parse(sock, cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no", T_DOUBLE_QUOTED_STRING);
-	cf_pair_parse(NULL, cs, "auth_type", FR_ITEM_POINTER(PW_TYPE_STRING, &auth_type_str), NULL, T_INVALID);
+	cf_pair_parse(sock, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_INTEGER, &sock->min_rx_interval), "1000", T_BARE_WORD);
+	cf_pair_parse(sock, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_INTEGER, &sock->max_timeouts), "3", T_BARE_WORD);
+	cf_pair_parse(sock, cs, "demand", FR_ITEM_POINTER(FR_TYPE_BOOLEAN, &sock->demand), "no", T_DOUBLE_QUOTED_STRING);
+	cf_pair_parse(NULL, cs, "auth_type", FR_ITEM_POINTER(FR_TYPE_STRING, &auth_type_str), NULL, T_INVALID);
 
 	if (!this->server) {
-		cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->server), NULL, T_INVALID);
+		cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(FR_TYPE_STRING, &sock->server), NULL, T_INVALID);
 	} else {
 		sock->server = this->server;
 	}

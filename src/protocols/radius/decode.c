@@ -505,7 +505,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Parent must be a vendor
 	 */
-	if (!fr_cond_assert(parent->type == PW_TYPE_VENDOR)) {
+	if (!fr_cond_assert(parent->type == FR_TYPE_VENDOR)) {
 		fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 	}
@@ -776,7 +776,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	/*
 	 *	Container must be a VSA
 	 */
-	if (!fr_cond_assert(parent->type == PW_TYPE_VSA)) return -1;
+	if (!fr_cond_assert(parent->type == FR_TYPE_VSA)) return -1;
 
 	if (attr_len > packet_len) return -1;
 	if (attr_len < 5) return -1; /* vid, value */
@@ -945,12 +945,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 */
 		if (data_len >= sizeof(buffer)) return -1;
 
-		if (parent->type == PW_TYPE_STRING) {
+		if (parent->type == FR_TYPE_STRING) {
 			memcpy(buffer, p + 1, data_len - 1);
 			tag = p[0];
 			data_len -= 1;
 
-		} else if (parent->type == PW_TYPE_INTEGER) {
+		} else if (parent->type == FR_TYPE_INTEGER) {
 			memcpy(buffer, p, attr_len);
 			tag = buffer[0];
 			buffer[0] = 0;
@@ -1035,7 +1035,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			/*
 			 *	Chop the attribute to its maximum length.
 			 */
-			if ((parent->type == PW_TYPE_OCTETS) &&
+			if ((parent->type == FR_TYPE_OCTETS) &&
 			    (parent->flags.length && (data_len > parent->flags.length))) {
 				    data_len = parent->flags.length;
 			    }
@@ -1049,31 +1049,31 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 */
 	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
 	switch (parent->type) {
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
 		break;
 
-	case PW_TYPE_ABINARY:
+	case FR_TYPE_ABINARY:
 		if (data_len > sizeof(vp->vp_filter)) goto raw;
 		break;
 
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_DATE:
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_DATE:
+	case FR_TYPE_SIGNED:
 		if (data_len != 4) goto raw;
 		break;
 
-	case PW_TYPE_INTEGER64:
-	case PW_TYPE_IFID:
+	case FR_TYPE_INTEGER64:
+	case FR_TYPE_IFID:
 		if (data_len != 8) goto raw;
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_ADDR:
 		if (data_len != 16) goto raw;
 		break;
 
-	case PW_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV4_PREFIX:
 		if (data_len != 6) goto raw;
 		if (p[0] != 0) goto raw;
 		if ((p[1] & 0x3f) > 32) goto raw;
@@ -1091,7 +1091,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if (memcmp(p + 2, (uint8_t *)&tmp_prefix.addr.v4.s_addr, data_len - 2) != 0) goto raw;
 		break;
 
-	case PW_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
 	{
 		if ((data_len < 2) || (data_len > 18)) goto raw;
 		if (p[0] != 0) goto raw;	/* First byte is always 0 */
@@ -1117,23 +1117,23 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	}
 		break;
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		if (data_len != 1) goto raw;
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		if (data_len != 2) goto raw;
 		break;
 
-	case PW_TYPE_ETHERNET:
+	case FR_TYPE_ETHERNET:
 		if (data_len != 6) goto raw;
 		break;
 
-	case PW_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:
 		if (data_len == 4) {
-			child = fr_dict_attr_by_type(parent, PW_TYPE_IPV4_ADDR);
+			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV4_ADDR);
 		} else if (data_len == 16) {
-			child = fr_dict_attr_by_type(parent, PW_TYPE_IPV6_ADDR);
+			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
 		}
@@ -1146,7 +1146,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *	recursion!  Ask yourself, "is recursion OK?"
 		 */
 
-	case PW_TYPE_EXTENDED:
+	case FR_TYPE_EXTENDED:
 		if (data_len < 2) goto raw; /* etype, value */
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
@@ -1164,7 +1164,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if (rcode < 0) goto raw;
 		return 1 + rcode;
 
-	case PW_TYPE_LONG_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
 		if (data_len < 3) goto raw; /* etype, flags, value */
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
@@ -1207,7 +1207,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 */
 		return decode_extended(ctx, cursor, child, data, attr_len, packet_len, decoder_ctx);
 
-	case PW_TYPE_EVS:
+	case FR_TYPE_EVS:
 	{
 		fr_dict_attr_t const *vendor_child;
 
@@ -1263,7 +1263,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		return 5 + rcode;
 	}
 
-	case PW_TYPE_TLV:
+	case FR_TYPE_TLV:
 		/*
 		 *	We presume that the TLVs all fit into one
 		 *	attribute, OR they've already been grouped
@@ -1273,7 +1273,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if (rcode < 0) goto raw;
 		return rcode;
 
-	case PW_TYPE_STRUCT:
+	case FR_TYPE_STRUCT:
 		/*
 		 *	We presume that the struct fits into one
 		 *	attribute, OR it's already been grouped
@@ -1283,7 +1283,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if (rcode < 0) goto raw;
 		return rcode;
 
-	case PW_TYPE_VSA:
+	case FR_TYPE_VSA:
 		/*
 		 *	VSAs can be WiMAX, in which case they don't
 		 *	fit into one attribute.
@@ -1309,7 +1309,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		/*
 		 *	Fix for Coverity.
 		 */
-		if (parent->type != PW_TYPE_OCTETS) {
+		if (parent->type != FR_TYPE_OCTETS) {
 			fr_dict_unknown_free(&parent);
 			return -1;
 		}
@@ -1326,71 +1326,71 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	vp->tag = tag;
 
 	switch (parent->type) {
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		fr_pair_value_bstrncpy(vp, p, data_len);	/* sets vp_length */
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		fr_pair_value_memcpy(vp, p, data_len);		/* sets vp_length */
 		break;
 
-	case PW_TYPE_ABINARY:
+	case FR_TYPE_ABINARY:
 		if (data_len > sizeof(vp->vp_filter)) data_len = sizeof(vp->vp_filter);
 		memcpy(vp->vp_filter, p, data_len);
 		vp->vp_length = data_len;
 		break;
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		vp->vp_byte = p[0];
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		vp->vp_short = (p[0] << 8) | p[1];
 		break;
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		memcpy(&vp->vp_integer64, p, 8);
 		vp->vp_integer64 = ntohll(vp->vp_integer64);
 		break;
 
-	case PW_TYPE_DATE:
+	case FR_TYPE_DATE:
 		memcpy(&vp->vp_date, p, 4);
 		vp->vp_date = ntohl(vp->vp_date);
 		break;
 
-	case PW_TYPE_ETHERNET:
+	case FR_TYPE_ETHERNET:
 		memcpy(vp->vp_ether, p, 6);
 		break;
 
-	case PW_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_ADDR:
 		vp->vp_ip.af = AF_INET;
 		vp->vp_ip.prefix = 32;
 		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv4addr, p, 4);
 		break;
 
-	case PW_TYPE_IFID:
+	case FR_TYPE_IFID:
 		memcpy(vp->vp_ifid, p, 8);
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_ADDR:
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.prefix = 128;
 		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv6addr, p, 16);
 		break;
 
-	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
 		memcpy(&vp->vp_ip, &tmp_prefix, sizeof(vp->vp_ip));
 		break;
 
-	case PW_TYPE_SIGNED:	/* overloaded with vp_integer */
+	case FR_TYPE_SIGNED:	/* overloaded with vp_integer */
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;

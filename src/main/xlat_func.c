@@ -97,8 +97,8 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->vp_type) {
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
 		if (vp->vp_length > 8) {
 			break;
 		}
@@ -111,42 +111,42 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		memcpy(&int32, vp->vp_octets, vp->vp_length);
 		return snprintf(*out, outlen, "%i", htonl(int32));
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		return snprintf(*out, outlen, "%" PRIu64, vp->vp_integer64);
 
 	/*
 	 *	IP addresses are treated specially, as parsing functions assume the value
 	 *	is bigendian and will convert it for us.
 	 */
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV4_PREFIX:	/* Same addr field */
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:	/* Same addr field */
 		return snprintf(*out, outlen, "%u", htonl(vp->vp_ipv4addr));
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		return snprintf(*out, outlen, "%u", vp->vp_integer);
 
-	case PW_TYPE_DATE:
+	case FR_TYPE_DATE:
 		return snprintf(*out, outlen, "%u", vp->vp_date);
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_byte);
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_short);
 
 	/*
 	 *	Ethernet is weird... It's network related, so we assume to it should be
 	 *	bigendian.
 	 */
-	case PW_TYPE_ETHERNET:
+	case FR_TYPE_ETHERNET:
 		memcpy(&int64, vp->vp_ether, sizeof(vp->vp_ether));
 		return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
 
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_SIGNED:
 		return snprintf(*out, outlen, "%i", vp->vp_signed);
 
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
 		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
 
 	default:
@@ -182,7 +182,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	The easy case.
 	 */
-	if (vp->vp_type == PW_TYPE_OCTETS) {
+	if (vp->vp_type == FR_TYPE_OCTETS) {
 		p = vp->vp_octets;
 		len = vp->vp_length;
 	/*
@@ -190,7 +190,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	print that as hex.
 	 */
 	} else {
-		if (value_box_cast(request, &dst, PW_TYPE_OCTETS, NULL, &vp->data) < 0) {
+		if (value_box_cast(request, &dst, FR_TYPE_OCTETS, NULL, &vp->data) < 0) {
 			REDEBUG("%s", fr_strerror());
 			goto error;
 		}
@@ -369,7 +369,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 
 		switch (vp->vp_type) {
-		case PW_TYPE_VARIABLE_SIZE:
+		case FR_TYPE_VARIABLE_SIZE:
 			RIDEBUG2("Length : %zu", vp->vp_length);
 			break;
 
@@ -385,15 +385,15 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 			value_box_t *dst = NULL;
 
-			if ((PW_TYPE) type->number == vp->vp_type) goto next_type;
+			if ((fr_type_t) type->number == vp->vp_type) goto next_type;
 
 			switch (type->number) {
-			case PW_TYPE_INVALID:		/* Not real type */
-			case PW_TYPE_MAX:		/* Not real type */
-			case PW_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
-			case PW_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
-			case PW_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
-			case PW_TYPE_STRUCTURAL:
+			case FR_TYPE_INVALID:		/* Not real type */
+			case FR_TYPE_MAX:		/* Not real type */
+			case FR_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
+			case FR_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
+			case FR_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
+			case FR_TYPE_STRUCTURAL:
 				goto next_type;
 
 			default:
@@ -546,14 +546,14 @@ static ssize_t xlat_string(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	These are printed specially.
 	 */
 	switch (vp->vp_type) {
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		return fr_snprint(*out, outlen, (char const *) vp->vp_octets, vp->vp_length, '"');
 
 		/*
 		 *	Note that "%{string:...}" is NOT binary safe!
 		 *	It is explicitly used to get rid of embedded zeros.
 		 */
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		return strlcpy(*out, vp->vp_strvalue, outlen);
 
 	default:
@@ -593,7 +593,7 @@ static ssize_t xlat_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 *	If it's a string, expand it again
 	 */
-	if (vp->vp_type == PW_TYPE_STRING) {
+	if (vp->vp_type == FR_TYPE_STRING) {
 		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
 		if (slen <= 0) return slen;
 	/*

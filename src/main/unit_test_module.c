@@ -326,7 +326,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 			talloc_free(q);
 
 			vp->vp_octets = talloc_steal(vp, p);
-			vp->data.type = PW_TYPE_OCTETS;
+			vp->data.type = FR_TYPE_OCTETS;
 			vp->type = VT_DATA;
 
 			VERIFY_VP(vp);
@@ -514,7 +514,7 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 	for (i = 0; variables[i].name != NULL; i++) {
 		int ret;
 
-		if (PW_BASE_TYPE(variables[i].type) == PW_TYPE_SUBSECTION) continue;
+		if (PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
 		/* else it's a CONF_PAIR */
 
 		/*

@@ -37,16 +37,16 @@ RCSID("$Id$")
 #include <wbclient.h>
 
 static const CONF_PARSER group_config[] = {
-	{ FR_CONF_OFFSET("group_search_username", PW_TYPE_TMPL, rlm_winbind_t, group_username) },
-	{ FR_CONF_OFFSET("group_add_domain", PW_TYPE_BOOLEAN, rlm_winbind_t, group_add_domain), .dflt = "yes" },
-	{ FR_CONF_OFFSET("group_attribute", PW_TYPE_STRING, rlm_winbind_t, group_attribute) },
+	{ FR_CONF_OFFSET("group_search_username", FR_TYPE_TMPL, rlm_winbind_t, group_username) },
+	{ FR_CONF_OFFSET("group_add_domain", FR_TYPE_BOOLEAN, rlm_winbind_t, group_add_domain), .dflt = "yes" },
+	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_winbind_t, group_attribute) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_TMPL, rlm_winbind_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", PW_TYPE_TMPL, rlm_winbind_t, wb_domain) },
-	{ FR_CONF_POINTER("group", PW_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },
+	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL, rlm_winbind_t, wb_username) },
+	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL, rlm_winbind_t, wb_domain) },
+	{ FR_CONF_POINTER("group", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },
 	CONF_PARSER_TERMINATOR
 };
 

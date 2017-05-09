@@ -74,7 +74,7 @@ static int presufcmp(UNUSED void *instance,
 
 	VERIFY_VP(req);
 	VERIFY_VP(check);
-	rad_assert(req->vp_type == PW_TYPE_STRING);
+	rad_assert(req->vp_type == FR_TYPE_STRING);
 
 	name = req->vp_strvalue;
 

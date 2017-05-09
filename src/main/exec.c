@@ -635,7 +635,7 @@ wait:
 			value_box_t boxed_answer = {
 				.datum.strvalue = answer,
 				.datum.length = len,
-				.type = PW_TYPE_STRING
+				.type = FR_TYPE_STRING
 			};
 
 			status = WEXITSTATUS(status);

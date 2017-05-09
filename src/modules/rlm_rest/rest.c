@@ -920,13 +920,13 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	case json_type_int:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
 		src.datum.sinteger = json_object_get_int(leaf);
-		src.type = PW_TYPE_SIGNED;
+		src.type = FR_TYPE_SIGNED;
 		break;
 
 	case json_type_double:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
 		src.datum.decimal = json_object_get_double(leaf);
-		src.type = PW_TYPE_DECIMAL;
+		src.type = FR_TYPE_DECIMAL;
 		break;
 
 	case json_type_string:
@@ -939,7 +939,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 			src.datum.strvalue = value;
 			src.datum.length = json_object_get_string_len(leaf);
 		}
-		src.type = PW_TYPE_STRING;
+		src.type = FR_TYPE_STRING;
 
 		break;
 
@@ -957,7 +957,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 
 			return NULL;
 		}
-		src.type = PW_TYPE_STRING;
+		src.type = FR_TYPE_STRING;
 		src.datum.length = strlen(src.datum.strvalue);
 	}
 

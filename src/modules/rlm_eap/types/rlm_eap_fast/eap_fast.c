@@ -464,7 +464,7 @@ VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 		da = fr_dict_attr_child_by_num(fast_da, attr);
 		if (!da) goto next_attr;
 
-		if (da->type == PW_TYPE_TLV) {
+		if (da->type == FR_TYPE_TLV) {
 			eap_fast_fast2vp(request, ssl, data, length, da, out);
 			goto next_attr;
 		}

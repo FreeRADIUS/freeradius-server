@@ -35,7 +35,7 @@ typedef struct rlm_date_t {
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("format", PW_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
+	{ FR_CONF_OFFSET("format", FR_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -59,12 +59,12 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	to a time structure, and then output it in the specified
 	 *	format as a string.
 	 */
-	case PW_TYPE_DATE:
+	case FR_TYPE_DATE:
 		date = vp->vp_date;
 		goto encode;
 
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_INTEGER64:
 		date = (time_t) vp->vp_integer;
 
 	encode:
@@ -79,7 +79,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	into a time structure, and then output it as an integer
 	 *	unix timestamp.
 	 */
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		if (strptime(vp->vp_strvalue, inst->fmt, &tminfo) == NULL) {
 			REDEBUG("Failed to parse time string \"%s\" as format '%s'", vp->vp_strvalue, inst->fmt);
 			goto error;

@@ -29,7 +29,7 @@ extern size_t const value_box_offsets[];
  * This union contains all data types that can be represented by VALUE_PAIRs. It may also be used in other parts
  * of the server where values of different types need to be stored.
  *
- * PW_TYPE should be an enumeration of the values in this union.
+ * fr_type_t should be an enumeration of the values in this union.
  */
 typedef struct value_box value_box_t;
 struct value_box {
@@ -75,7 +75,7 @@ struct value_box {
 
 	} datum;
 
-	PW_TYPE				type;			//!< Type of this value-box.
+	fr_type_t				type;			//!< Type of this value-box.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 
@@ -85,7 +85,7 @@ struct value_box {
 /*
  *	Allocation
  */
-value_box_t	*value_box_alloc(TALLOC_CTX *ctx, PW_TYPE type);
+value_box_t	*value_box_alloc(TALLOC_CTX *ctx, fr_type_t type);
 
 void		value_box_clear(value_box_t *data);
 
@@ -104,7 +104,7 @@ size_t		value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quot
 int		value_box_hton(value_box_t *dst, value_box_t const *src);
 
 int		value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
-			       PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
+			       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			       value_box_t const *src);
 
 /*
@@ -132,7 +132,7 @@ int		value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t 
 int		value_box_from_ipaddr(value_box_t *dst, fr_ipaddr_t const *ipaddr);
 
 int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
-				   PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
+				   fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
 				   char const *src, ssize_t src_len, char quote);
 
 /*

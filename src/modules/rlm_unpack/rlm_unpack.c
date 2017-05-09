@@ -44,7 +44,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	char *p;
 	size_t len, input_len;
 	int offset;
-	PW_TYPE type;
+	fr_type_t type;
 	fr_dict_attr_t const *da;
 	VALUE_PAIR *vp, *cast;
 	uint8_t const *input;
@@ -92,8 +92,8 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if (*data_name == '&') {
 		if (radius_get_vp(&vp, request, data_name) < 0) goto nothing;
 
-		if ((vp->vp_type != PW_TYPE_OCTETS) &&
-		    (vp->vp_type != PW_TYPE_STRING)) {
+		if ((vp->vp_type != FR_TYPE_OCTETS) &&
+		    (vp->vp_type != FR_TYPE_STRING)) {
 			REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
 			goto nothing;
 		}
@@ -122,8 +122,8 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto nothing;
 	}
 
-	type = fr_str2int(dict_attr_types, data_type, PW_TYPE_INVALID);
-	if (type == PW_TYPE_INVALID) {
+	type = fr_str2int(dict_attr_types, data_type, FR_TYPE_INVALID);
+	if (type == FR_TYPE_INVALID) {
 		REDEBUG("Invalid data type '%s'", data_type);
 		goto nothing;
 	}
@@ -157,17 +157,17 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Hacks
 	 */
 	switch (type) {
-	case PW_TYPE_SIGNED:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_DATE:
+	case FR_TYPE_SIGNED:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_DATE:
 		cast->vp_integer = ntohl(cast->vp_integer);
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		cast->vp_short = ((input[offset] << 8) | input[offset + 1]);
 		break;
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		cast->vp_integer64 = ntohll(cast->vp_integer64);
 		break;
 

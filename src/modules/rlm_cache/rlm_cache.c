@@ -37,14 +37,14 @@ RCSID("$Id$")
 extern rad_module_t rlm_cache;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("driver", PW_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
-	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_cache_config_t, key) },
-	{ FR_CONF_OFFSET("ttl", PW_TYPE_INTEGER, rlm_cache_config_t, ttl), .dflt = "500" },
-	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER, rlm_cache_config_t, max_entries), .dflt = "0" },
+	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_cache_config_t, key) },
+	{ FR_CONF_OFFSET("ttl", FR_TYPE_INTEGER, rlm_cache_config_t, ttl), .dflt = "500" },
+	{ FR_CONF_OFFSET("max_entries", FR_TYPE_INTEGER, rlm_cache_config_t, max_entries), .dflt = "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
-	{ FR_CONF_OFFSET("epoch", PW_TYPE_SIGNED, rlm_cache_config_t, epoch), .dflt = "0" },
-	{ FR_CONF_OFFSET("add_stats", PW_TYPE_BOOLEAN, rlm_cache_config_t, stats), .dflt = "no" },
+	{ FR_CONF_OFFSET("epoch", FR_TYPE_SIGNED, rlm_cache_config_t, epoch), .dflt = "0" },
+	{ FR_CONF_OFFSET("add_stats", FR_TYPE_BOOLEAN, rlm_cache_config_t, stats), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -383,7 +383,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 					return RLM_MODULE_FAIL;
 				}
 				c_map->rhs->tmpl_value_box_type = vp->vp_type;
-				if (vp->vp_type == PW_TYPE_STRING) {
+				if (vp->vp_type == FR_TYPE_STRING) {
 					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
 						T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
 				}

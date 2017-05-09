@@ -693,24 +693,24 @@ static int fr_dhcp_array_members(size_t *out, size_t len, fr_dict_attr_t const *
 	 *	Could be an array of bytes, integers, etc.
 	 */
 	if (da->flags.array) switch (da->type) {
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		num_entries = len;
 		*out = 1;
 		break;
 
-	case PW_TYPE_SHORT: /* ignore any trailing data */
+	case FR_TYPE_SHORT: /* ignore any trailing data */
 		num_entries = len >> 1;
 		*out = 2;
 		break;
 
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_DATE: /* ignore any trailing data */
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_DATE: /* ignore any trailing data */
 		num_entries = len >> 2;
 		*out = 4;
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_ADDR:
 		num_entries = len >> 4;
 		*out = 16;
 		break;
@@ -747,27 +747,27 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	if (da->flags.is_unknown) talloc_steal(vp, da);
 
 	switch (da->type) {
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		if (data_len != 1) goto raw;
 		vp->vp_byte = p[0];
 		p++;
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		if (data_len != 2) goto raw;
 		memcpy(&vp->vp_short, p, 2);
 		vp->vp_short = ntohs(vp->vp_short);
 		p += 2;
 		break;
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		if (data_len != 4) goto raw;
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		p += 4;
 		break;
 
-	case PW_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_ADDR:
 		if (data_len != 4) goto raw;
 		/*
 		 *	Keep value in Network Order!
@@ -779,7 +779,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		p += 4;
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_ADDR:
 		if (data_len != 16) goto raw;
 		/*
 		 *	Keep value in Network Order!
@@ -795,7 +795,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	In DHCPv4, string options which can also be arrays,
 	 *	have their values '\0' delimited.
 	 */
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 	{
 		uint8_t const *q, *end;
 
@@ -832,7 +832,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	}
 		break;
 
-	case PW_TYPE_ETHERNET:
+	case FR_TYPE_ETHERNET:
 		memcpy(vp->vp_ether, data, sizeof(vp->vp_ether));
 		p += sizeof(vp->vp_ether);
 		break;
@@ -845,7 +845,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		FR_PROTO_TRACE("decoding as unknown type");
 		if (fr_pair_to_unknown(vp) < 0) return -1;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		if (data_len > UINT8_MAX) return -1;
 		fr_pair_value_memcpy(vp, data, data_len);
 		p += data_len;
@@ -994,7 +994,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	TLVs can't be coalesced as they're variable length
 	 */
-	if (parent->type == PW_TYPE_TLV) return decode_tlv(ctx, cursor, parent, data, data_len);
+	if (parent->type == FR_TYPE_TLV) return decode_tlv(ctx, cursor, parent, data, data_len);
 
 	/*
 	 *	Values with a fixed length may be coalesced into a single option
@@ -1167,24 +1167,24 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->vp_type) {
-		case PW_TYPE_BYTE:
+		case FR_TYPE_BYTE:
 			vp->vp_byte = p[0];
 			break;
 
-		case PW_TYPE_SHORT:
+		case FR_TYPE_SHORT:
 			vp->vp_short = (p[0] << 8) | p[1];
 			break;
 
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			memcpy(&vp->vp_integer, p, 4);
 			vp->vp_integer = ntohl(vp->vp_integer);
 			break;
 
-		case PW_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_ADDR:
 			memcpy(&vp->vp_ipv4addr, p, 4);
 			break;
 
-		case PW_TYPE_STRING:
+		case FR_TYPE_STRING:
 			/*
 			 *	According to RFC 2131, these are null terminated strings.
 			 *	We don't trust everyone to abide by the RFC, though.
@@ -1199,13 +1199,13 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if (vp->vp_length == 0) fr_pair_list_free(&vp);
 			break;
 
-		case PW_TYPE_OCTETS:
+		case FR_TYPE_OCTETS:
 			if (packet->data[2] == 0) break;
 
 			fr_pair_value_memcpy(vp, p, packet->data[2]);
 			break;
 
-		case PW_TYPE_ETHERNET:
+		case FR_TYPE_ETHERNET:
 			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
 			break;
 
@@ -1334,10 +1334,10 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != PW_TYPE_TLV) && (my_a->da->attr == PW_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type == PW_TYPE_TLV) || (my_b->da->attr != PW_DHCP_MESSAGE_TYPE))) return -1;
-	if (((my_a->da->parent->type == PW_TYPE_TLV) || (my_a->da->attr != PW_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type != PW_TYPE_TLV) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE))) return +1;
+	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == PW_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != PW_DHCP_MESSAGE_TYPE))) return -1;
+	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != PW_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE))) return +1;
 
 	/*
 	 *	Relay-Agent is last.
@@ -1381,44 +1381,44 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	if (outlen < vp->vp_length) return 0;
 
 	switch (tlv_stack[depth]->type) {
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		p[0] = vp->vp_byte;
 		p ++;
 		break;
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		p[0] = (vp->vp_short >> 8) & 0xff;
 		p[1] = vp->vp_short & 0xff;
 		p += 2;
 		break;
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		lvalue = htonl(vp->vp_integer);
 		memcpy(p, &lvalue, 4);
 		p += 4;
 		break;
 
-	case PW_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_ADDR:
 		memcpy(p, &vp->vp_ipv4addr, 4);
 		p += 4;
 		break;
 
-	case PW_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_ADDR:
 		memcpy(p, &vp->vp_ipv6addr, 16);
 		p += 16;
 		break;
 
-	case PW_TYPE_ETHERNET:
+	case FR_TYPE_ETHERNET:
 		memcpy(p, vp->vp_ether, 6);
 		p += 6;
 		break;
 
-	case PW_TYPE_STRING:
+	case FR_TYPE_STRING:
 		memcpy(p, vp->vp_strvalue, vp->vp_length);
 		p += vp->vp_length;
 		break;
 
-	case PW_TYPE_OCTETS:
+	case FR_TYPE_OCTETS:
 		memcpy(p, vp->vp_octets, vp->vp_length);
 		p += vp->vp_length;
 		break;
@@ -1556,7 +1556,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		/*
 		 *	Determine the nested type and call the appropriate encoder
 		 */
-		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
+		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
 			len = encode_tlv_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor);
 		} else {
 			len = encode_rfc_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor);
@@ -1632,7 +1632,7 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	 *	We only have two types of options in DHCPv4
 	 */
 	switch (tlv_stack[depth]->type) {
-	case PW_TYPE_TLV:
+	case FR_TYPE_TLV:
 		len = encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor);
 		break;
 
@@ -1781,7 +1781,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 267, TAG_ANY))) {
-		if (vp->vp_type == PW_TYPE_ETHERNET) {
+		if (vp->vp_type == FR_TYPE_ETHERNET) {
 			/*
 			 *	Ensure that we mark the packet as being Ethernet.
 			 *	This is mainly for DHCP-Lease-Query responses.
@@ -1901,13 +1901,13 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 #endif
 
 	if (!fr_cond_assert(macaddr) ||
-	    !fr_cond_assert((macaddr->vp_type == PW_TYPE_ETHERNET) || (macaddr->vp_type == PW_TYPE_OCTETS))) {
+	    !fr_cond_assert((macaddr->vp_type == FR_TYPE_ETHERNET) || (macaddr->vp_type == FR_TYPE_OCTETS))) {
 		fr_strerror_printf("Wrong VP type (%s) for chaddr",
 				   fr_int2str(dict_attr_types, macaddr->vp_type, "<invalid>"));
 		return -1;
 	}
 
-	if (macaddr->vp_type == PW_TYPE_OCTETS) {
+	if (macaddr->vp_type == FR_TYPE_OCTETS) {
 		if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
 			fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
 					   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
@@ -1922,7 +1922,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
-	if (macaddr->vp_type == PW_TYPE_ETHERNET) {
+	if (macaddr->vp_type == FR_TYPE_ETHERNET) {
 		memcpy(&req.arp_ha.sa_data, macaddr->vp_ether, sizeof(macaddr->vp_ether));
 	} else {
 		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->vp_length);
@@ -2001,7 +2001,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
 	if ((vp = fr_pair_find_by_num(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->vp_type == PW_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
+		if (vp->vp_type == FR_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
 	}
 
 	/* fill in Ethernet layer (L2) */
@@ -2119,7 +2119,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
 	    (vp = fr_pair_find_by_num(request->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY)) &&
-	    ((vp->vp_type == PW_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0))) {
+	    ((vp->vp_type == FR_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0))) {
 		char eth_dest[17 + 1];
 		char eth_req_src[17 + 1];
 

@@ -40,7 +40,7 @@
  *	- -1 on failure.
  */
 int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *object,
-				PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
+				fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	value_box_t in;
 
@@ -48,13 +48,13 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 
 	switch (fr_json_object_get_type(object)) {
 	case json_type_string:
-		in.type = PW_TYPE_STRING;
+		in.type = FR_TYPE_STRING;
 		in.datum.strvalue = json_object_get_string(object);
 		in.datum.length = json_object_get_string_len(object);
 		break;
 
 	case json_type_double:
-		in.type = PW_TYPE_DECIMAL;
+		in.type = FR_TYPE_DECIMAL;
 		in.datum.decimal = json_object_get_double(object);
 		break;
 
@@ -66,7 +66,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 		int32_t num;
 #endif
 #ifndef HAVE_JSON_OBJECT_GET_INT64
-		if (dst_type == PW_TYPE_INTEGER64) {
+		if (dst_type == FR_TYPE_INTEGER64) {
 			fr_strerror_printf("64bit integers are not supported by linked json-c.  "
 					   "Upgrade to json-c > 0.10 to use this feature");
 			return -1;
@@ -82,35 +82,35 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 			return -1;
 		}
 		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
-			in.type = PW_TYPE_INTEGER64;
+			in.type = FR_TYPE_INTEGER64;
 			in.datum.integer64 = (uint64_t) num;
 		} else
 #endif
 		if (num < 0) {			/* 32bit signed (supported) */
-			in.type = PW_TYPE_SIGNED;
+			in.type = FR_TYPE_SIGNED;
 			in.datum.sinteger = num;
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			in.type = PW_TYPE_INTEGER;
+			in.type = FR_TYPE_INTEGER;
 			in.datum.integer = (uint32_t) num;
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			in.type = PW_TYPE_SHORT;
+			in.type = FR_TYPE_SHORT;
 			in.datum.ushort = (uint16_t) num;
 		} else {		/* 8bit unsigned (supported) */
-			in.type = PW_TYPE_BYTE;
+			in.type = FR_TYPE_BYTE;
 			in.datum.byte = (uint8_t) num;
 		}
 	}
 		break;
 
 	case json_type_boolean:
-		in.type = PW_TYPE_BOOLEAN;
+		in.type = FR_TYPE_BOOLEAN;
 		in.datum.boolean = json_object_get_boolean(object);
 		break;
 
 	case json_type_null:
 	case json_type_array:
 	case json_type_object:
-		in.type = PW_TYPE_STRING;
+		in.type = FR_TYPE_STRING;
 		in.datum.strvalue = json_object_to_json_string(object);
 		in.datum.length = strlen(in.datum.strvalue);
 		break;
@@ -144,23 +144,23 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, value_box_t const *data
 		return obj;
 	}
 
-	case PW_TYPE_BOOLEAN:
+	case FR_TYPE_BOOLEAN:
 		return json_object_new_boolean(data->datum.byte);
 
-	case PW_TYPE_BYTE:
+	case FR_TYPE_BYTE:
 		return json_object_new_int(data->datum.byte);
 
-	case PW_TYPE_SHORT:
+	case FR_TYPE_SHORT:
 		return json_object_new_int(data->datum.ushort);
 
-	case PW_TYPE_INTEGER:
+	case FR_TYPE_INTEGER:
 		return json_object_new_int64((int64_t)data->datum.integer64);	/* uint32_t (max) > int32_t (max) */
 
-	case PW_TYPE_INTEGER64:
+	case FR_TYPE_INTEGER64:
 		if (data->datum.integer64 > INT64_MAX) goto do_string;
 		return json_object_new_int64(data->datum.integer64);
 
-	case PW_TYPE_SIGNED:
+	case FR_TYPE_SIGNED:
 		return json_object_new_int(data->datum.sinteger);
 	}
 }
@@ -214,22 +214,22 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 	if (!vp->da->flags.has_tag) {
 		switch (vp->vp_type) {
-		case PW_TYPE_INTEGER:
+		case FR_TYPE_INTEGER:
 			if (vp->da->flags.has_value) break;
 
 			return snprintf(out, freespace, "%u", vp->vp_integer);
 
-		case PW_TYPE_SHORT:
+		case FR_TYPE_SHORT:
 			if (vp->da->flags.has_value) break;
 
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_short);
 
-		case PW_TYPE_BYTE:
+		case FR_TYPE_BYTE:
 			if (vp->da->flags.has_value) break;
 
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_byte);
 
-		case PW_TYPE_SIGNED:
+		case FR_TYPE_SIGNED:
 			return snprintf(out, freespace, "%d", vp->vp_signed);
 
 		default:
@@ -237,7 +237,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		}
 	}
 
-	if (vp->vp_type == PW_TYPE_STRING) {
+	if (vp->vp_type == FR_TYPE_STRING) {
 		char *tmp = fr_json_from_string(NULL, vp->vp_strvalue, true);
 
 		/* Indicate truncation */
