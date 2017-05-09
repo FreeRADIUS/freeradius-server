@@ -366,11 +366,11 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_UINT32:
-		value = PyLong_FromUnsignedLong(vp->vp_integer);
+		value = PyLong_FromUnsignedLong(vp->vp_uint32);
 		break;
 
 	case FR_TYPE_UINT8:
-		value = PyLong_FromUnsignedLong(vp->vp_byte);
+		value = PyLong_FromUnsignedLong(vp->vp_uint8);
 		break;
 
 	case FR_TYPE_UINT16:
@@ -390,7 +390,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_FLOAT64:
-		value = PyFloat_FromDouble(vp->vp_decimal);
+		value = PyFloat_FromDouble(vp->vp_float64);
 		break;
 
 	case FR_TYPE_BOOL:

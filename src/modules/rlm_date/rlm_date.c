@@ -65,7 +65,7 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
-		date = (time_t) vp->vp_integer;
+		date = (time_t) vp->vp_uint32;
 
 	encode:
 		if (localtime_r(&date, &tminfo) == NULL) {

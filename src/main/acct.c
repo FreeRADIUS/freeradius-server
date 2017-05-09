@@ -86,7 +86,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 		 */
 		vp = fr_pair_find_by_num(request->control, 0, PW_ACCT_TYPE, TAG_ANY);
 		if (vp) {
-			acct_type = vp->vp_integer;
+			acct_type = vp->vp_uint32;
 			DEBUG2("  Found Acct-Type %s",
 			       fr_dict_enum_name_by_da(NULL, vp->da, acct_type));
 		}

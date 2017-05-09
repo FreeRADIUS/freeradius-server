@@ -177,12 +177,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	timeout = fr_pair_find_by_num(request->reply->vps, 0, PW_SESSION_TIMEOUT, TAG_ANY);
 	if (timeout) {	/* just update... */
-		if (timeout->vp_integer > (unsigned int) left) {
-			timeout->vp_integer = left;
+		if (timeout->vp_uint32 > (unsigned int) left) {
+			timeout->vp_uint32 = left;
 		}
 	} else {
 		timeout = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
-		timeout->vp_integer = left;
+		timeout->vp_uint32 = left;
 	}
 
 	RDEBUG("reply:Session-Timeout set to %d", left);

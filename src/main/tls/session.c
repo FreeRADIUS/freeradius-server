@@ -1683,9 +1683,9 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 */
 	session->mtu = conf->fragment_size;
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_MTU, TAG_ANY);
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) {
+	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < session->mtu)) {
 		RDEBUG2("Setting fragment_len from &Framed-MTU");
-		session->mtu = vp->vp_integer;
+		session->mtu = vp->vp_uint32;
 	}
 
 	if (conf->session_cache_server) session->allow_session_resumption = true; /* otherwise it's false */

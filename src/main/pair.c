@@ -183,13 +183,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 
 		case FR_TYPE_UINT8:
-			ret = vp->vp_byte - check->vp_byte;
+			ret = vp->vp_uint8 - check->vp_uint8;
 			break;
 		case FR_TYPE_UINT16:
 			ret = vp->vp_short - check->vp_short;
 			break;
 		case FR_TYPE_UINT32:
-			ret = vp->vp_integer - check->vp_integer;
+			ret = vp->vp_uint32 - check->vp_uint32;
 			break;
 
 		case FR_TYPE_UINT64:

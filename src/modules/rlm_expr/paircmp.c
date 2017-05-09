@@ -43,7 +43,7 @@ static int connectcmp(UNUSED void *instance,
 	VERIFY_VP(check);
 
 	rate = atoi(req->vp_strvalue);
-	return rate - check->vp_integer;
+	return rate - check->vp_uint32;
 }
 
 /*
@@ -106,7 +106,7 @@ static int presufcmp(UNUSED void *instance,
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
 	vp = fr_pair_find_by_num(check_pairs, 0, PW_STRIP_USER_NAME, TAG_ANY);
-	if (vp && !vp->vp_integer) return ret;
+	if (vp && !vp->vp_uint32) return ret;
 
 	/*
 	 *	See where to put the stripped user name.
@@ -140,7 +140,7 @@ static int packetcmp(UNUSED void *instance,
 {
 	VERIFY_VP(check);
 
-	if (request->packet->code == check->vp_integer) {
+	if (request->packet->code == check->vp_uint32) {
 		return 0;
 	}
 
@@ -159,7 +159,7 @@ static int responsecmp(UNUSED void *instance,
 {
 	VERIFY_VP(check);
 
-	if (request->reply->code == check->vp_integer) {
+	if (request->reply->code == check->vp_uint32) {
 		return 0;
 	}
 

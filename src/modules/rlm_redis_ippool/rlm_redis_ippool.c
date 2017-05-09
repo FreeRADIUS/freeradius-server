@@ -641,7 +641,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 
 				memset(&tmp, 0, sizeof(tmp));
 
-				tmp.datum.integer = ntohl((uint32_t)reply->element[1]->integer);
+				tmp.datum.uint32 = ntohl((uint32_t)reply->element[1]->integer);
 				tmp.type = FR_TYPE_UINT32;
 
 				if (fr_value_box_cast(NULL, &ip_map.rhs->tmpl_value_box, FR_TYPE_IPV4_ADDR,
@@ -651,7 +651,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 					goto finish;
 				}
 			} else {
-				ip_map.rhs->tmpl_fr_value_box_datum.integer = ntohl((uint32_t)reply->element[1]->integer);
+				ip_map.rhs->tmpl_fr_value_box_datum.uint32 = ntohl((uint32_t)reply->element[1]->integer);
 				ip_map.rhs->tmpl_fr_value_box_type = FR_TYPE_UINT32;
 			}
 		}
@@ -743,7 +743,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 			goto finish;
 		}
 
-		expiry_map.rhs->tmpl_fr_value_box_datum.integer = reply->element[3]->integer;
+		expiry_map.rhs->tmpl_fr_value_box_datum.uint32 = reply->element[3]->integer;
 		expiry_map.rhs->tmpl_fr_value_box_type = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -885,7 +885,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 			.rhs = &expiry_rhs
 		};
 
-		expiry_map.rhs->tmpl_fr_value_box_datum.integer = expires;
+		expiry_map.rhs->tmpl_fr_value_box_datum.uint32 = expires;
 		expiry_map.rhs->tmpl_fr_value_box_type = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -1233,7 +1233,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	 *	Pool-Action override
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_POOL_ACTION, TAG_ANY);
-	if (vp) return mod_action(inst, request, vp->vp_integer);
+	if (vp) return mod_action(inst, request, vp->vp_uint32);
 
 	/*
 	 *	Otherwise, guess the action by Acct-Status-Type
@@ -1244,7 +1244,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 		return RLM_MODULE_NOOP;
 	}
 
-	switch (vp->vp_integer) {
+	switch (vp->vp_uint32) {
 	case PW_STATUS_START:
 	case PW_STATUS_ALIVE:
 		return mod_action(inst, request, POOL_ACTION_UPDATE);
@@ -1272,7 +1272,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	when called in Post-Auth.
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_POOL_ACTION, TAG_ANY);
-	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
+	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
@@ -1286,7 +1286,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	when called in Post-Auth.
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_POOL_ACTION, TAG_ANY);
-	return mod_action(inst, request, vp ? vp->vp_integer : POOL_ACTION_ALLOCATE);
+	return mod_action(inst, request, vp ? vp->vp_uint32 : POOL_ACTION_ALLOCATE);
 }
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)

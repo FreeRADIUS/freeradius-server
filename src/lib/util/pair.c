@@ -37,7 +37,7 @@ RCSID("$Id$")
 static int _fr_pair_free(NDEBUG_UNUSED VALUE_PAIR *vp)
 {
 #ifndef NDEBUG
-	vp->vp_integer = FREE_MAGIC;
+	vp->vp_uint32 = FREE_MAGIC;
 #endif
 
 #ifdef TALLOC_DEBUG
@@ -2267,7 +2267,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 		return vp->vp_bool ? "yes" : "no";
 
 	case FR_TYPE_UINT8:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_byte);
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint8);
 		break;
 
 	case FR_TYPE_UINT16:
@@ -2275,7 +2275,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 		break;
 
 	case FR_TYPE_UINT32:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 		break;
 
 	case FR_TYPE_UINT64:

@@ -457,11 +457,11 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		break;
 
 	case FR_TYPE_BOOL:
-		out[0] = vp->vp_byte & 0x01;
+		out[0] = vp->vp_uint8 & 0x01;
 		break;
 
 	case FR_TYPE_UINT8:
-		out[0] = vp->vp_byte & 0xff;
+		out[0] = vp->vp_uint8 & 0xff;
 		break;
 
 	case FR_TYPE_UINT16:
@@ -470,7 +470,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		break;
 
 	case FR_TYPE_UINT32:
-		lvalue = htonl(vp->vp_integer);
+		lvalue = htonl(vp->vp_uint32);
 		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 

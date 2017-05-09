@@ -46,7 +46,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
 	}
 
 	if ((pair = fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_PORT, TAG_ANY)) != NULL) {
-		port = pair->vp_integer;
+		port = pair->vp_uint32;
 	}
 
 	if (request->packet->dst_port == 0) {
@@ -115,7 +115,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
-					 fr_dict_enum_name_by_da(NULL, auth_type->da, auth_type->vp_integer));
+					 fr_dict_enum_name_by_da(NULL, auth_type->da, auth_type->vp_uint32));
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
@@ -181,7 +181,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 */
 	fr_pair_cursor_init(&cursor, &request->control);
 	while ((auth_type_pair = fr_pair_cursor_next_by_num(&cursor, 0, PW_AUTH_TYPE, TAG_ANY))) {
-		auth_type = auth_type_pair->vp_integer;
+		auth_type = auth_type_pair->vp_uint32;
 		auth_type_count++;
 
 		RDEBUG2("Using 'Auth-Type = %s' for authenticate {...}", fr_dict_enum_name_by_da(NULL, auth_type_pair->da, auth_type));
@@ -295,7 +295,7 @@ rlm_rcode_t rad_postauth(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
 	if (vp) {
-		postauth_type = vp->vp_integer;
+		postauth_type = vp->vp_uint32;
 		RDEBUG2("Using Post-Auth-Type %s",
 			fr_dict_enum_name_by_da(NULL, vp->da, postauth_type));
 	}
@@ -380,7 +380,7 @@ rlm_rcode_t rad_authenticate(REQUEST *request)
 			tmp = radius_pair_create(request,
 						&request->control,
 						PW_AUTH_TYPE, 0);
-			if (tmp) tmp->vp_integer = PW_AUTH_TYPE_ACCEPT;
+			if (tmp) tmp->vp_uint32 = PW_AUTH_TYPE_ACCEPT;
 			rcode = RLM_MODULE_OK;
 			goto authenticate;
 
@@ -462,7 +462,7 @@ autz_redo:
 	if (!autz_retry) {
 		tmp = fr_pair_find_by_num(request->control, 0, PW_AUTZ_TYPE, TAG_ANY);
 		if (tmp) {
-			autz_type = tmp->vp_integer;
+			autz_type = tmp->vp_uint32;
 			RDEBUG2("Using Autz-Type %s",
 				fr_dict_enum_name_by_da(NULL, tmp->da, autz_type));
 			autz_retry = 1;
@@ -574,7 +574,7 @@ authenticate:
 
 		tmp = fr_pair_find_by_num(request->control, 0, PW_SESSION_TYPE, TAG_ANY);
 		if (tmp) {
-			session_type = tmp->vp_integer;
+			session_type = tmp->vp_uint32;
 			RDEBUG2("Using Session-Type %s",
 				fr_dict_enum_name_by_da(NULL, tmp->da, session_type));
 		}
@@ -584,7 +584,7 @@ authenticate:
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (request->username &&
-		    (r = process_checksimul(session_type, request, check_item->vp_integer)) != 0) {
+		    (r = process_checksimul(session_type, request, check_item->vp_uint32)) != 0) {
 			char mpp_ok = 0;
 
 			if (r == 2){
@@ -593,15 +593,15 @@ authenticate:
 
 				if ((port_limit = fr_pair_find_by_num(request->reply->vps, 0, PW_PORT_LIMIT,
 								      TAG_ANY)) != NULL &&
-					port_limit->vp_integer > check_item->vp_integer){
+					port_limit->vp_uint32 > check_item->vp_uint32){
 					RDEBUG2("MPP is OK");
 					mpp_ok = 1;
 				}
 			}
 			if (!mpp_ok){
-				if (check_item->vp_integer > 1) {
+				if (check_item->vp_uint32 > 1) {
 					snprintf(umsg, sizeof(umsg), "%s (%u)", main_config.denied_msg,
-						 check_item->vp_integer);
+						 check_item->vp_uint32);
 				} else {
 					strlcpy(umsg, main_config.denied_msg, sizeof(umsg));
 				}
@@ -616,7 +616,7 @@ authenticate:
 				pair_make_reply("Reply-Message", umsg, T_OP_SET);
 
 				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
-					check_item->vp_integer,
+					check_item->vp_uint32,
 					r == 2 ? "[MPP attempt]" : "");
 				rad_authlog(logstr, request, 1);
 

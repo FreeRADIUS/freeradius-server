@@ -251,7 +251,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		 *	the index number should be available in attr.
 		 */
 		vp = fr_pair_afrom_da(ctx, index_attr);
-		vp->vp_integer = attr;
+		vp->vp_uint32 = attr;
 
 		fr_pair_cursor_append(cursor, vp);
 	}
@@ -333,7 +333,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 	}
 
 	vp = fr_pair_afrom_da(ctx, conf->snmp_type);
-	vp->vp_integer = type;
+	vp->vp_uint32 = type;
 
 	fr_pair_cursor_append(cursor, vp);
 
@@ -445,7 +445,7 @@ static int radsnmp_get_response(int fd,
 			 *	Add the value of the index attribute as the next
 			 *	OID component.
 			 */
-			len = snprintf(p, end - p, ".%i.", vp->vp_integer);
+			len = snprintf(p, end - p, ".%i.", vp->vp_uint32);
 			if (is_truncated(len, end - p)) goto oob;
 
 			p += len;
@@ -727,7 +727,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			ERROR("Failed allocating SNMP operation attribute");
 			return EXIT_FAILURE;
 		}
-		vp->vp_integer = (unsigned int)command;	/* Commands must match dictionary */
+		vp->vp_uint32 = (unsigned int)command;	/* Commands must match dictionary */
 		fr_pair_cursor_append(&cursor, vp);
 
 		/*

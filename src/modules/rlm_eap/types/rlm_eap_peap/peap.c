@@ -197,7 +197,7 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 	if (rv<0) {
 		RDEBUG("SoH - error decoding payload: %s", fr_strerror());
 	} else {
-		vp->vp_integer = 1;
+		vp->vp_uint32 = 1;
 	}
 }
 

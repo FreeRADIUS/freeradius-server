@@ -1341,7 +1341,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_UINT8:
-		vp->vp_byte = p[0];
+		vp->vp_uint8 = p[0];
 		break;
 
 	case FR_TYPE_UINT16:
@@ -1349,8 +1349,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_UINT32:
-		memcpy(&vp->vp_integer, p, 4);
-		vp->vp_integer = ntohl(vp->vp_integer);
+		memcpy(&vp->vp_uint32, p, 4);
+		vp->vp_uint32 = ntohl(vp->vp_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
@@ -1390,9 +1390,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		memcpy(&vp->vp_ip, &tmp_prefix, sizeof(vp->vp_ip));
 		break;
 
-	case FR_TYPE_INT32:	/* overloaded with vp_integer */
-		memcpy(&vp->vp_integer, p, 4);
-		vp->vp_integer = ntohl(vp->vp_integer);
+	case FR_TYPE_INT32:	/* overloaded with vp_uint32 */
+		memcpy(&vp->vp_uint32, p, 4);
+		vp->vp_uint32 = ntohl(vp->vp_uint32);
 		break;
 
 	default:

@@ -390,7 +390,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 
 		switch (vp->vp_type) {
 		case FR_TYPE_UINT32:
-			i = vp->vp_integer;
+			i = vp->vp_uint32;
 			goto print_int;
 
 		case FR_TYPE_UINT16:
@@ -398,7 +398,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			goto print_int;
 
 		case FR_TYPE_UINT8:
-			i = vp->vp_byte;
+			i = vp->vp_uint8;
 
 		print_int:
 			/* skip if we have flags */
@@ -513,7 +513,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	/* get elapsed session time */
 	if ((vp = fr_pair_find_by_num(vps, 0, PW_ACCT_SESSION_TIME, TAG_ANY)) != NULL) {
 		/* calculate diff */
-		ts = (ts - vp->vp_integer);
+		ts = (ts - vp->vp_uint32);
 		/* calculate start time */
 		size_t length = strftime(value, sizeof(value), "%b %e %Y %H:%M:%S %Z", localtime_r(&ts, &tm));
 		/* check length */

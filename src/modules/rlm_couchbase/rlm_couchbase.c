@@ -197,7 +197,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	}
 
 	/* set status */
-	status = vp->vp_integer;
+	status = vp->vp_uint32;
 
 	/* acknowledge the request but take no action */
 	if (status == PW_STATUS_ACCOUNTING_ON || status == PW_STATUS_ACCOUNTING_OFF) {

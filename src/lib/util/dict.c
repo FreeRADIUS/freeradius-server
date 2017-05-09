@@ -112,7 +112,7 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "size",		FR_TYPE_SIZE },
 	{ "signed",        	FR_TYPE_INT32 },
 
-	{ "decimal",		FR_TYPE_FLOAT64 },
+	{ "float64",		FR_TYPE_FLOAT64 },
 	{ "timeval",		FR_TYPE_TIMEVAL },
 	{ "date",		FR_TYPE_DATE },
 

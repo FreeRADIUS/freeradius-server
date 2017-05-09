@@ -100,8 +100,8 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &uptime);
 
-	out->datum.integer = diff.tv_sec * 100;
-	out->datum.integer += diff.tv_usec / 10000;
+	out->datum.uint32 = diff.tv_sec * 100;
+	out->datum.uint32 += diff.tv_usec / 10000;
 
 	return 0;
 }
@@ -117,8 +117,8 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &reset_time);
 
-	out->datum.integer = diff.tv_sec * 100;
-	out->datum.integer += diff.tv_usec / 10000;
+	out->datum.uint32 = diff.tv_sec * 100;
+	out->datum.uint32 += diff.tv_usec / 10000;
 
 	return 0;
 }
@@ -128,7 +128,7 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 {
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	out->datum.integer = reset_state;
+	out->datum.uint32 = reset_state;
 
 	return 0;
 }
@@ -137,7 +137,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 {
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	switch (in->datum.integer) {
+	switch (in->datum.uint32) {
 	case PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
 		gettimeofday(&reset_time, NULL);
@@ -154,7 +154,7 @@ static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 {
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	out->datum.integer = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
+	out->datum.uint32 = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
 
 	return 0;
 }
@@ -182,7 +182,7 @@ static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 
 	rad_assert(client);
 
-	out->datum.integer = client->number + 1;		/* Clients indexed from 0 */
+	out->datum.uint32 = client->number + 1;		/* Clients indexed from 0 */
 
 	return 0;
 }
@@ -233,7 +233,7 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	rad_assert(client);
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	out->datum.integer = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
+	out->datum.uint32 = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
 
 	return 0;
 }
@@ -574,7 +574,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 		}
 
 		vp = fr_pair_afrom_da(request->reply, da);
-		vp->vp_integer = i;
+		vp->vp_uint32 = i;
 		fr_pair_cursor_prepend(out, vp);
 
 		return 0;			/* done */
@@ -624,7 +624,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 	 *	Get the index from the index attribute's value.
 	 */
 	vp = fr_pair_cursor_current(cursor);
-	index_num = vp->vp_integer;
+	index_num = vp->vp_uint32;
 
 	/*
 	 *	Advance the cursor to the next index attribute
@@ -775,7 +775,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		fr_pair_cursor_append(out, vp);
 
 		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);
-		vp->vp_integer = map_p->type;
+		vp->vp_uint32 = map_p->type;
 		fr_pair_cursor_append(out, vp);
 	}
 		return 0;
@@ -786,7 +786,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 		if (!map_p->set || (map_p->type == PW_FREERADIUS_SNMP_TYPE_OBJECT)) {
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
-			vp->vp_integer = PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
+			vp->vp_uint32 = PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
 			fr_pair_cursor_append(out, vp);
 			return 0;
 		}
@@ -800,7 +800,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		case PW_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE:
 		case PW_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
-			vp->vp_integer = -(ret);
+			vp->vp_uint32 = -(ret);
 			fr_pair_cursor_append(out, vp);
 			break;
 
@@ -963,7 +963,7 @@ int fr_snmp_process(REQUEST *request)
 			return -1;
 		}
 
-		switch (op->vp_integer) {
+		switch (op->vp_uint32) {
 		case PW_FREERADIUS_SNMP_OPERATION_VALUE_PING:
 		case PW_FREERADIUS_SNMP_OPERATION_VALUE_GET:
 		case PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT:
@@ -971,7 +971,7 @@ int fr_snmp_process(REQUEST *request)
 			break;
 
 		default:
-			ERROR("Invalid operation %u", vp->vp_integer);
+			ERROR("Invalid operation %u", vp->vp_uint32);
 			return -1;
 		}
 
@@ -979,7 +979,7 @@ int fr_snmp_process(REQUEST *request)
 		 *	Returns depth (as negative integer) at which the error occurred
 		 */
 		ret = snmp_process(&out_cursor, request, tlv_stack, depth,
-				   &request_cursor, snmp_iso, NULL, op->vp_integer);
+				   &request_cursor, snmp_iso, NULL, op->vp_uint32);
 		if (ret < 0) {
 			fr_pair_list_free(&head);
 

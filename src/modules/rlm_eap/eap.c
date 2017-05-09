@@ -245,7 +245,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	this allows you to NOT do EAP for some users.
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
-	if (vp && vp->vp_integer == 0) {
+	if (vp && vp->vp_uint32 == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -347,7 +347,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 */
 	vp = fr_pair_afrom_num(request->packet, 0, PW_EAP_TYPE);
 	if (vp) {
-		vp->vp_integer = eap_msg->vp_octets[4];
+		vp->vp_uint32 = eap_msg->vp_octets[4];
 		fr_pair_add(&(request->packet->vps), vp);
 	}
 

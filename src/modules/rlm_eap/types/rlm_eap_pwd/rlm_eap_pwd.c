@@ -466,7 +466,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	The fragmentation code deals with the included length
 	 *	so we don't need to subtract that here.
 	 */
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) session->mtu = vp->vp_integer - 9;
+	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < session->mtu)) session->mtu = vp->vp_uint32 - 9;
 
 	session->state = PWD_STATE_ID_REQ;
 	session->out_pos = 0;

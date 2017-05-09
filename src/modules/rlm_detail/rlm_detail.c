@@ -288,9 +288,9 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_SRC_PORT);
-		src_vp.vp_integer = packet->src_port;
+		src_vp.vp_uint32 = packet->src_port;
 		dst_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_DST_PORT);
-		dst_vp.vp_integer = packet->dst_port;
+		dst_vp.vp_uint32 = packet->dst_port;
 
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);

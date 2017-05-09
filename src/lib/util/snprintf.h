@@ -135,7 +135,7 @@ struct DATA {
   PRIVATE void conv_flag(char *, struct DATA *);
   PRIVATE void floating(struct DATA *, double);
   PRIVATE void exponent(struct DATA *, double);
-  PRIVATE void decimal(struct DATA *, double);
+  PRIVATE void float64(struct DATA *, double);
   PRIVATE void octal(struct DATA *, double);
   PRIVATE void hexa(struct DATA *, double);
   PRIVATE void strings(struct DATA *, char *);
@@ -151,7 +151,7 @@ struct DATA {
   PRIVATE void conv_flag();
   PRIVATE void floating();
   PRIVATE void exponent();
-  PRIVATE void decimal();
+  PRIVATE void float64();
   PRIVATE void octal();
   PRIVATE void hexa();
   PRIVATE void strings();

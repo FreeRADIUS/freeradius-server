@@ -67,7 +67,7 @@ static int fall_through(VALUE_PAIR *vp)
 	VALUE_PAIR *tmp;
 	tmp = fr_pair_find_by_num(vp, 0, PW_FALL_THROUGH, TAG_ANY);
 
-	return tmp ? tmp->vp_integer : 0;
+	return tmp ? tmp->vp_uint32 : 0;
 }
 
 /*
@@ -85,11 +85,11 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
 		return;
 	}
 
-	if (nas_port->vp_integer > 9999) {
-		service = nas_port->vp_integer/10000; /* 1=digital 2=analog */
-		line = (nas_port->vp_integer - (10000 * service)) / 100;
-		channel = nas_port->vp_integer - ((10000 * service) + (100 * line));
-		nas_port->vp_integer = (channel - 1) + ((line - 1) * channels_per_line);
+	if (nas_port->vp_uint32 > 9999) {
+		service = nas_port->vp_uint32/10000; /* 1=digital 2=analog */
+		line = (nas_port->vp_uint32 - (10000 * service)) / 100;
+		channel = nas_port->vp_uint32 - ((10000 * service) + (100 * line));
+		nas_port->vp_uint32 = (channel - 1) + ((line - 1) * channels_per_line);
 	}
 }
 
@@ -288,7 +288,7 @@ static void rad_mangle(rlm_preprocess_t const *inst, REQUEST *request)
 	if (fr_pair_find_by_num(request_pairs, 0, PW_FRAMED_PROTOCOL, TAG_ANY) != NULL &&
 	    fr_pair_find_by_num(request_pairs, 0, PW_SERVICE_TYPE, TAG_ANY) == NULL) {
 		tmp = radius_pair_create(request->packet, &request->packet->vps, PW_SERVICE_TYPE, 0);
-		tmp->vp_integer = PW_FRAMED_USER;
+		tmp->vp_uint32 = PW_FRAMED_USER;
 	}
 
 	num_proxy_state = 0;
@@ -663,10 +663,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, UNUSED voi
 
 		delay = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY);
 		if (delay) {
-			if ((delay->vp_integer >= vp->vp_date) || (delay->vp_integer == UINT32_MAX)) {
-				RWARN("Ignoring invalid Acct-Delay-time of %u seconds", delay->vp_integer);
+			if ((delay->vp_uint32 >= vp->vp_date) || (delay->vp_uint32 == UINT32_MAX)) {
+				RWARN("Ignoring invalid Acct-Delay-time of %u seconds", delay->vp_uint32);
 			} else {
-				vp->vp_date -= delay->vp_integer;
+				vp->vp_date -= delay->vp_uint32;
 			}
 		}
 	}

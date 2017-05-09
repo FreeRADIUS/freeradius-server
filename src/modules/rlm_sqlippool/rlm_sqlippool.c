@@ -641,7 +641,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
 	}
-	acct_status_type = vp->vp_integer;
+	acct_status_type = vp->vp_uint32;
 
 	switch (acct_status_type) {
 	case PW_STATUS_START:

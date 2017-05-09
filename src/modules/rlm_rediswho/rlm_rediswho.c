@@ -180,9 +180,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		return RLM_MODULE_NOOP;
 	}
 
-	dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+	dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 	if (!dv) {
-		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_integer);
+		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_uint32);
 		return RLM_MODULE_NOOP;
 	}
 

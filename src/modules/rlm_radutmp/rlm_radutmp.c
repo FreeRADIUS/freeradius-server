@@ -176,7 +176,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		RDEBUG2("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
-	status = vp->vp_integer;
+	status = vp->vp_uint32;
 
 	/*
 	 *	Look for weird reboot packets.
@@ -228,7 +228,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 
 		case PW_FRAMED_PROTOCOL:
-			protocol = vp->vp_integer;
+			protocol = vp->vp_uint32;
 			break;
 
 		case PW_NAS_IP_ADDRESS:
@@ -236,12 +236,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 
 		case PW_NAS_PORT:
-			ut.nas_port = vp->vp_integer;
+			ut.nas_port = vp->vp_uint32;
 			port_seen = true;
 			break;
 
 		case PW_ACCT_DELAY_TIME:
-			ut.delay = vp->vp_integer;
+			ut.delay = vp->vp_uint32;
 			break;
 
 		case PW_ACCT_SESSION_ID:
@@ -264,8 +264,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 
 		case PW_NAS_PORT_TYPE:
-			if (vp->vp_integer <= 4)
-				ut.porttype = porttypes[vp->vp_integer];
+			if (vp->vp_uint32 <= 4)
+				ut.porttype = porttypes[vp->vp_uint32];
 			break;
 
 		case PW_CALLING_STATION_ID:

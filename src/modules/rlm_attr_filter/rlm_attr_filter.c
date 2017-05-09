@@ -201,12 +201,12 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		     check_item = fr_pair_cursor_next(&check)) {
 			if (!check_item->da->vendor &&
 			    (check_item->da->attr == PW_FALL_THROUGH) &&
-				(check_item->vp_integer == 1)) {
+				(check_item->vp_uint32 == 1)) {
 				fall_through = 1;
 				continue;
 			}
 			else if (!check_item->da->vendor && check_item->da->attr == PW_RELAX_FILTER) {
-				relax_filter = check_item->vp_integer;
+				relax_filter = check_item->vp_uint32;
 				continue;
 			}
 

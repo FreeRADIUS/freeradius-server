@@ -132,7 +132,7 @@ static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 	VALUE_PAIR *tmp;
 	tmp = fr_pair_find_by_num(vp, 0, PW_FALL_THROUGH, TAG_ANY);
 
-	return tmp ? tmp->vp_integer : FALL_THROUGH_DEFAULT;
+	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
 
 /*

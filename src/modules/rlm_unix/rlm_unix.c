@@ -397,7 +397,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		RDEBUG("no Accounting-Status-Type attribute in request");
 		return RLM_MODULE_NOOP;
 	}
-	status = vp->vp_integer;
+	status = vp->vp_uint32;
 
 	/*
 	 *	FIXME: handle PW_STATUS_ALIVE like 1.5.4.3 did.
@@ -437,7 +437,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 				break;
 #ifdef USER_PROCESS
 		case PW_FRAMED_PROTOCOL:
-			protocol = vp->vp_integer;
+			protocol = vp->vp_uint32;
 			break;
 #endif
 		case PW_NAS_IP_ADDRESS:
@@ -445,7 +445,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 
 		case PW_NAS_PORT:
-			nas_port = vp->vp_integer;
+			nas_port = vp->vp_uint32;
 			port_seen = true;
 			break;
 

@@ -489,7 +489,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
 				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
-			res = to_reset + limit->vp_integer;
+			res = to_reset + limit->vp_uint32;
 		}
 
 		/*

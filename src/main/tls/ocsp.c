@@ -296,7 +296,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 	 *	Allow us to cache the OCSP verified state externally
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_TLS_OCSP_CERT_VALID, TAG_ANY);
-	if (vp) switch (vp->vp_integer) {
+	if (vp) switch (vp->vp_uint32) {
 	case 0:	/* no */
 		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
 		return OCSP_STATUS_FAILED;
@@ -549,7 +549,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 			RDEBUG2("Adding OCSP TTL attribute");
 			RINDENT();
 			vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
-			vp->vp_integer = next - now.tv_sec;
+			vp->vp_uint32 = next - now.tv_sec;
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			REXDENT();
 		} else {
@@ -605,7 +605,7 @@ finish:
 		}
 
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
-		vp->vp_integer = 1;	/* yes */
+		vp->vp_uint32 = 1;	/* yes */
 		ocsp_status = OCSP_STATUS_OK;
 
 		break;
@@ -614,7 +614,7 @@ finish:
 	skipped:
 		SSL_DRAIN_ERROR_QUEUE(RWDEBUG, "", ssl_log);
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
-		vp->vp_integer = 2;	/* skipped */
+		vp->vp_uint32 = 2;	/* skipped */
 		if (conf->softfail) {
 			RWDEBUG("Unable to check certificate: %s",
 				staple_response ?
@@ -634,7 +634,7 @@ finish:
 	default:
 		SSL_DRAIN_ERROR_QUEUE(REDEBUG, "", ssl_log);
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
-		vp->vp_integer = 0;	/* no */
+		vp->vp_uint32 = 0;	/* no */
 		REDEBUG("Failed to validate certificate");
 		break;
 	}

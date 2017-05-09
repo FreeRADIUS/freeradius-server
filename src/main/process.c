@@ -1167,11 +1167,11 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
 	if (vp) {
-		if (vp->vp_integer == 256) {
+		if (vp->vp_uint32 == 256) {
 			RDEBUG2("Not responding to request");
 			request->reply->code = 0;
 		} else {
-			request->reply->code = vp->vp_integer;
+			request->reply->code = vp->vp_uint32;
 		}
 	}
 	/*
@@ -1180,7 +1180,7 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		if (request->reply->code == 0) {
 			vp = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
-			if (!vp || (vp->vp_integer != 5)) {
+			if (!vp || (vp->vp_uint32 != 5)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
@@ -1308,8 +1308,8 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
 		if (vp) {
-			if (vp->vp_integer <= 10) {
-				request->response_delay.tv_sec = vp->vp_integer;
+			if (vp->vp_uint32 <= 10) {
+				request->response_delay.tv_sec = vp->vp_uint32;
 			} else {
 				request->response_delay.tv_sec = 10;
 			}
@@ -1317,9 +1317,9 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 		} else {
 			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
 			if (vp) {
-				if (vp->vp_integer <= 10 * USEC) {
-					request->response_delay.tv_sec = vp->vp_integer / USEC;
-					request->response_delay.tv_usec = vp->vp_integer % USEC;
+				if (vp->vp_uint32 <= 10 * USEC) {
+					request->response_delay.tv_sec = vp->vp_uint32 / USEC;
+					request->response_delay.tv_usec = vp->vp_uint32 % USEC;
 				} else {
 					request->response_delay.tv_sec = 10;
 					request->response_delay.tv_usec = 0;
@@ -2276,7 +2276,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 
 			if (dval) {
 				vp = radius_pair_create(request, &request->control, PW_POST_PROXY_TYPE, 0);
-				vp->vp_integer = dval->value;
+				vp->vp_uint32 = dval->value;
 			}
 			break;
 
@@ -2285,7 +2285,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		}
 	}
 
-	if (vp) RDEBUG2("Found Post-Proxy-Type %s", fr_dict_enum_name_by_da(NULL, vp->da, vp->vp_integer));
+	if (vp) RDEBUG2("Found Post-Proxy-Type %s", fr_dict_enum_name_by_da(NULL, vp->da, vp->vp_uint32));
 
 	/*
 	 *	Remove it from the proxy hash, if there's no reply, or
@@ -2304,12 +2304,12 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 
 		RDEBUG2("server %s {", request->server);
 		RINDENT();
-		rcode = process_post_proxy(vp ? vp->vp_integer : 0, request);
+		rcode = process_post_proxy(vp ? vp->vp_uint32 : 0, request);
 		REXDENT();
 		RDEBUG2("}");
 		request->server = old_server;
 	} else {
-		rcode = process_post_proxy(vp ? vp->vp_integer : 0, request);
+		rcode = process_post_proxy(vp ? vp->vp_uint32 : 0, request);
 	}
 
 	switch (rcode) {
@@ -2546,7 +2546,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	vp = fr_pair_find_by_num(request->control, 0, PW_POST_PROXY_TYPE, TAG_ANY);
 	if (!vp) vp = radius_pair_create(request, &request->control,
 					PW_POST_PROXY_TYPE, 0);
-	vp->vp_integer = dval->value;
+	vp->vp_uint32 = dval->value;
 
 	return 1;
 }
@@ -2694,9 +2694,9 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 			 *	one.
 			 */
 			vp = fr_pair_find_by_num(request->control, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
-			if (vp && (vp->vp_integer != 256)) {
+			if (vp && (vp->vp_uint32 != 256)) {
 				request->proxy->reply = fr_radius_alloc_reply(request, request->proxy->packet);
-				request->proxy->reply->code = vp->vp_integer;
+				request->proxy->reply->code = vp->vp_uint32;
 				fr_pair_delete_by_num(&request->control, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
 			}
 
@@ -2998,7 +2998,7 @@ static int request_will_proxy(REQUEST *request)
 			}
 
 		} else {
-			dst_port = vp->vp_integer;
+			dst_port = vp->vp_uint32;
 		}
 
 		/*
@@ -3109,11 +3109,11 @@ do_home:
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_PRE_PROXY_TYPE, TAG_ANY);
 	if (vp) {
-		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 		/* Must be a validation issue */
 		rad_assert(dval);
 		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
-		pre_proxy_type = vp->vp_integer;
+		pre_proxy_type = vp->vp_uint32;
 	}
 
 	/*
@@ -3363,7 +3363,7 @@ static int request_proxy_anew(REQUEST *request)
 			struct timeval now;
 
 			gettimeofday(&now, NULL);
-			vp->vp_integer += now.tv_sec - request->proxy->packet->timestamp.tv_sec;
+			vp->vp_uint32 += now.tv_sec - request->proxy->packet->timestamp.tv_sec;
 		}
 	}
 #endif
@@ -4135,7 +4135,7 @@ static void request_coa_originate(REQUEST *request)
 	}
 
 	if (vp) {
-		if (vp->vp_integer == 0) {
+		if (vp->vp_uint32 == 0) {
 		fail:
 			TALLOC_FREE(request->coa);
 			return;
@@ -4195,7 +4195,7 @@ static void request_coa_originate(REQUEST *request)
 		char buffer[INET6_ADDRSTRLEN];
 
 		vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_PORT, TAG_ANY);
-		if (vp) port = vp->vp_integer;
+		if (vp) port = vp->vp_uint32;
 
 		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
 		if (!coa->home_server) {
@@ -4208,15 +4208,15 @@ static void request_coa_originate(REQUEST *request)
 
 	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_TYPE, TAG_ANY);
 	if (vp) {
-		switch (vp->vp_integer) {
+		switch (vp->vp_uint32) {
 		case PW_CODE_COA_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
-			coa->proxy->packet->code = vp->vp_integer;
+			coa->proxy->packet->code = vp->vp_uint32;
 			break;
 
 		default:
 			DEBUG("Cannot set CoA Packet-Type to code %d",
-			      vp->vp_integer);
+			      vp->vp_uint32);
 			goto fail;
 		}
 	}
@@ -4245,11 +4245,11 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_PRE_PROXY_TYPE, TAG_ANY);
 	if (vp) {
-		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 		/* Must be a validation issue */
 		rad_assert(dval);
 		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
-		pre_proxy_type = vp->vp_integer;
+		pre_proxy_type = vp->vp_uint32;
 	}
 
 	if (coa->home_pool && coa->home_pool->virtual_server) {

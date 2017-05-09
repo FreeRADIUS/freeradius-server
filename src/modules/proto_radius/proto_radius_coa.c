@@ -125,10 +125,10 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		 */
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_TYPE, TAG_ANY);
 		if (vp) {
-			if (vp->vp_integer == 256) {
+			if (vp->vp_uint32 == 256) {
 				request->reply->code = 0;
 			} else {
-				request->reply->code = vp->vp_integer;
+				request->reply->code = vp->vp_uint32;
 			}
 		}
 

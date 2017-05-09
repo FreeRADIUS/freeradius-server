@@ -407,7 +407,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				case PW_RESPONSE_PACKET_TYPE:
 				case PW_PACKET_TYPE:
 					fr_pair_cursor_remove(&cursor);	/* so we don't break the filter */
-					request->filter_code = vp->vp_integer;
+					request->filter_code = vp->vp_uint32;
 					talloc_free(vp);
 
 				default:
@@ -446,15 +446,15 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 *	the attributes read from the file.
 			 */
 			case PW_PACKET_TYPE:
-				request->packet->code = vp->vp_integer;
+				request->packet->code = vp->vp_uint32;
 				break;
 
 			case PW_RESPONSE_PACKET_TYPE:
-				request->filter_code = vp->vp_integer;
+				request->filter_code = vp->vp_uint32;
 				break;
 
 			case PW_PACKET_DST_PORT:
-				request->packet->dst_port = (vp->vp_integer & 0xffff);
+				request->packet->dst_port = (vp->vp_uint32 & 0xffff);
 				break;
 
 			case PW_PACKET_DST_IP_ADDRESS:
@@ -463,12 +463,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case PW_PACKET_SRC_PORT:
-				if ((vp->vp_integer < 1024) ||
-				    (vp->vp_integer > 65535)) {
-					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_integer);
+				if ((vp->vp_uint32 < 1024) ||
+				    (vp->vp_uint32 > 65535)) {
+					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_uint32);
 					goto error;
 				}
-				request->packet->src_port = (vp->vp_integer & 0xffff);
+				request->packet->src_port = (vp->vp_uint32 & 0xffff);
 				break;
 
 			case PW_PACKET_SRC_IP_ADDRESS:

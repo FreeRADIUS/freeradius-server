@@ -1414,7 +1414,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
 
 	if ((mschap_result == -648) ||
 	    ((mschap_result == 0) &&
-	     (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0)))) {
+	     (smb_ctrl && ((smb_ctrl->vp_uint32 & ACB_PW_EXPIRED) != 0)))) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
 
@@ -1432,8 +1432,8 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
 		 *	return 'not found'.
 		 */
 	} else if ((mschap_result == -691) ||
-		   (smb_ctrl && (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
-				 ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)))) {
+		   (smb_ctrl && (((smb_ctrl->vp_uint32 & ACB_DISABLED) != 0) ||
+				 ((smb_ctrl->vp_uint32 & (ACB_NORMAL|ACB_WSTRUST)) == 0)))) {
 		REDEBUG("SMB-Account-Ctrl (or ntlm_auth) "
 			"says that the account is disabled, "
 			"or is not a normal or workstation trust account");
@@ -1446,7 +1446,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t const *inst, REQUEST *request, unsi
 		 *	User is locked out.
 		 */
 	} else if ((mschap_result == -647) ||
-		   (smb_ctrl && ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0))) {
+		   (smb_ctrl && ((smb_ctrl->vp_uint32 & ACB_AUTOLOCK) != 0))) {
 		REDEBUG("SMB-Account-Ctrl (or ntlm_auth) "
 			"says that the account is locked out");
 		error = 647;
@@ -1796,7 +1796,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (auth_method != AUTH_INTERNAL) {
 		VALUE_PAIR *vp = fr_pair_find_by_num(request->control, 0, PW_MS_CHAP_USE_NTLM_AUTH, TAG_ANY);
-		if (vp && vp->vp_integer == 0) auth_method = AUTH_INTERNAL;
+		if (vp && vp->vp_uint32 == 0) auth_method = AUTH_INTERNAL;
 	}
 
 	/*
@@ -1809,7 +1809,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		if (password) {
 			smb_ctrl = pair_make_config("SMB-Account-CTRL", "0", T_OP_SET);
 			if (smb_ctrl) {
-				smb_ctrl->vp_integer = pdb_decode_acct_ctrl(password->vp_strvalue);
+				smb_ctrl->vp_uint32 = pdb_decode_acct_ctrl(password->vp_strvalue);
 			}
 		}
 	}
@@ -1822,7 +1822,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/*
 		 *	Password is not required.
 		 */
-		if ((smb_ctrl->vp_integer & ACB_PWNOTREQ) != 0) {
+		if ((smb_ctrl->vp_uint32 & ACB_PWNOTREQ) != 0) {
 			RDEBUG2("SMB-Account-Ctrl says no password is required");
 			return RLM_MODULE_OK;
 		}
@@ -1867,9 +1867,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	obviously the password change action will need
 		 *	to have cleared this bit in the config/SQL/wherever.
 		 */
-		if (smb_ctrl && smb_ctrl->vp_integer & ACB_PW_EXPIRED) {
+		if (smb_ctrl && smb_ctrl->vp_uint32 & ACB_PW_EXPIRED) {
 			RDEBUG("Clearing expiry bit in SMB-Acct-Ctrl to allow authentication");
-			smb_ctrl->vp_integer &= ~ACB_PW_EXPIRED;
+			smb_ctrl->vp_uint32 &= ~ACB_PW_EXPIRED;
 		}
 
 		/*

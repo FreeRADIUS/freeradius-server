@@ -88,7 +88,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 
 	/* set the EAP_ID - new value */
 	newvp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
-	newvp->vp_integer = eap_sim_session->sim_id++;
+	newvp->vp_uint32 = eap_sim_session->sim_id++;
 	fr_pair_replace(vps, newvp);
 
 	/* record it in the ess */
@@ -105,7 +105,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 
 	/* the SUBTYPE, set to start. */
 	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
-	newvp->vp_integer = EAP_SIM_START;
+	newvp->vp_uint32 = EAP_SIM_START;
 	fr_pair_replace(vps, newvp);
 
 	return 0;
@@ -172,7 +172,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Set the EAP_ID - new value
 	 */
 	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
-	vp->vp_integer = eap_sim_session->sim_id++;
+	vp->vp_uint32 = eap_sim_session->sim_id++;
 	fr_pair_replace(to_client, vp);
 
 	/*
@@ -220,7 +220,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Set subtype to challenge.
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
-	vp->vp_integer = EAP_SIM_CHALLENGE;
+	vp->vp_uint32 = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_client, vp);
 
 	return 0;
@@ -247,7 +247,7 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 
 	/* set the EAP_ID - new value */
 	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
-	vp->vp_integer = eap_sim_session->sim_id++;
+	vp->vp_uint32 = eap_sim_session->sim_id++;
 	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
 	p = eap_sim_session->keys.msk;
@@ -455,7 +455,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		REDEBUG2("No subtype attribute was created, message dropped");
 		return 0;
 	}
-	subtype = vp->vp_integer;
+	subtype = vp->vp_uint32;
 
 	/*
 	 *	Client error supersedes anything else.

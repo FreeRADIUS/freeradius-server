@@ -213,7 +213,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		RWDEBUG("Not calculating MN-HA keys");
 	}
 
-	if (vp) switch (vp->vp_integer) {
+	if (vp) switch (vp->vp_uint32) {
 	case 2:			/* PMIP4 */
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
@@ -261,7 +261,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-SPI");
 			break;
 		}
-		vp->vp_integer = mip_spi + 1;
+		vp->vp_uint32 = mip_spi + 1;
 		break;
 
 	case 3:			/* CMIP4 */
@@ -311,7 +311,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-SPI");
 			break;
 		}
-		vp->vp_integer = mip_spi;
+		vp->vp_uint32 = mip_spi;
 		break;
 
 	case 4:			/* CMIP6 */
@@ -361,7 +361,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP6-SPI");
 			break;
 		}
-		vp->vp_integer = mip_spi + 2;
+		vp->vp_uint32 = mip_spi + 2;
 		break;
 
 	default:
@@ -397,7 +397,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		if (!vp) {
 			RWDEBUG("Failed creating WiMAX-FA-RK-SPI");
 		} else {
-			vp->vp_integer = mip_spi;
+			vp->vp_uint32 = mip_spi;
 		}
 	}
 
@@ -425,7 +425,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		 *	WiMAX-HA-RK-Key-Requested
 		 */
 		vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_WIMAX, 58, TAG_ANY);
-		if (vp && (vp->vp_integer == 1)) {
+		if (vp && (vp->vp_uint32 == 1)) {
 			RDEBUG("Client requested HA-RK: Should use IP to look it up from storage");
 		}
 	}

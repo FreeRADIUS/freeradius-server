@@ -452,7 +452,7 @@ static void request_stats_addvp(REQUEST *request,
 		if (!vp) continue;
 
 		counter = *(fr_uint_t *) (((uint8_t *) stats) + table[i].offset);
-		vp->vp_integer = counter;
+		vp->vp_uint32 = counter;
 	}
 }
 
@@ -468,13 +468,13 @@ void request_stats_reply(REQUEST *request)
 	rad_assert(request->listener->type == RAD_LISTEN_NONE);
 
 	flag = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS, PW_FREERADIUS_STATISTICS_TYPE, TAG_ANY);
-	if (!flag || (flag->vp_integer == 0)) return;
+	if (!flag || (flag->vp_uint32 == 0)) return;
 
 	/*
 	 *	Authentication.
 	 */
-	if (((flag->vp_integer & 0x01) != 0) &&
-	    ((flag->vp_integer & 0xc0) == 0)) {
+	if (((flag->vp_uint32 & 0x01) != 0) &&
+	    ((flag->vp_uint32 & 0xc0) == 0)) {
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 
@@ -482,8 +482,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Accounting
 	 */
-	if (((flag->vp_integer & 0x02) != 0) &&
-	    ((flag->vp_integer & 0xc0) == 0)) {
+	if (((flag->vp_uint32 & 0x02) != 0) &&
+	    ((flag->vp_uint32 & 0xc0) == 0)) {
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
 	}
 #endif
@@ -492,8 +492,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Proxied authentication requests.
 	 */
-	if (((flag->vp_integer & 0x04) != 0) &&
-	    ((flag->vp_integer & 0x20) == 0)) {
+	if (((flag->vp_uint32 & 0x04) != 0) &&
+	    ((flag->vp_uint32 & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_authvp, &proxy_auth_stats);
 	}
 
@@ -501,8 +501,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Proxied accounting requests.
 	 */
-	if (((flag->vp_integer & 0x08) != 0) &&
-	    ((flag->vp_integer & 0x20) == 0)) {
+	if (((flag->vp_uint32 & 0x08) != 0) &&
+	    ((flag->vp_uint32 & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_acctvp, &proxy_acct_stats);
 	}
 #endif
@@ -511,7 +511,7 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Internal server statistics
 	 */
-	if ((flag->vp_integer & 0x10) != 0) {
+	if ((flag->vp_uint32 & 0x10) != 0) {
 		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       PW_FREERADIUS_STATS_START_TIME, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = start_time.tv_sec;
@@ -523,7 +523,7 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	For a particular client.
 	 */
-	if ((flag->vp_integer & 0x20) != 0) {
+	if ((flag->vp_uint32 & 0x20) != 0) {
 		fr_ipaddr_t ipaddr;
 		VALUE_PAIR *server_ip, *server_port = NULL;
 		RADCLIENT *client = NULL;
@@ -542,7 +542,7 @@ void request_stats_reply(REQUEST *request)
 			if (server_port) {
 				ipaddr.af = AF_INET;
 				ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
-				cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+				cl = listener_find_client_list(&ipaddr, server_port->vp_uint32, IPPROTO_UDP);
 
 				/*
 				 *	Not found: don't do anything
@@ -570,7 +570,7 @@ void request_stats_reply(REQUEST *request)
 			 */
 		} else if ((vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
 						     PW_FREERADIUS_STATS_CLIENT_NUMBER, TAG_ANY)) != NULL) {
-			client = client_findbynumber(cl, vp->vp_integer);
+			client = client_findbynumber(cl, vp->vp_uint32);
 		}
 
 		if (client) {
@@ -598,7 +598,7 @@ void request_stats_reply(REQUEST *request)
 							       &request->reply->vps,
 							       PW_FREERADIUS_STATS_CLIENT_NETMASK, VENDORPEC_FREERADIUS);
 					if (vp) {
-						vp->vp_integer = client->ipaddr.prefix;
+						vp->vp_uint32 = client->ipaddr.prefix;
 					}
 				}
 			}
@@ -612,12 +612,12 @@ void request_stats_reply(REQUEST *request)
 					fr_pair_copy(request->reply, server_port));
 			}
 
-			if ((flag->vp_integer & 0x01) != 0) {
+			if ((flag->vp_uint32 & 0x01) != 0) {
 				request_stats_addvp(request, client_authvp,
 						    &client->auth);
 			}
 #ifdef WITH_ACCOUNTING
-			if ((flag->vp_integer & 0x02) != 0) {
+			if ((flag->vp_uint32 & 0x02) != 0) {
 				request_stats_addvp(request, client_acctvp,
 						    &client->acct);
 			}
@@ -628,8 +628,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	For a particular "listen" socket.
 	 */
-	if (((flag->vp_integer & 0x40) != 0) &&
-	    ((flag->vp_integer & 0x03) != 0)) {
+	if (((flag->vp_uint32 & 0x40) != 0) &&
+	    ((flag->vp_uint32 & 0x03) != 0)) {
 		rad_listen_t *this;
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
@@ -649,7 +649,7 @@ void request_stats_reply(REQUEST *request)
 		ipaddr.af = AF_INET;
 		ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
 		this = listener_find_byipaddr(&ipaddr,
-					      server_port->vp_integer,
+					      server_port->vp_uint32,
 					      IPPROTO_UDP);
 
 		/*
@@ -662,14 +662,14 @@ void request_stats_reply(REQUEST *request)
 		fr_pair_add(&request->reply->vps,
 			fr_pair_copy(request->reply, server_port));
 
-		if (((flag->vp_integer & 0x01) != 0) &&
+		if (((flag->vp_uint32 & 0x01) != 0) &&
 		    ((request->listener->type == RAD_LISTEN_AUTH) ||
 		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, authvp, &this->stats);
 		}
 
 #ifdef WITH_ACCOUNTING
-		if (((flag->vp_integer & 0x02) != 0) &&
+		if (((flag->vp_uint32 & 0x02) != 0) &&
 		    ((request->listener->type == RAD_LISTEN_ACCT) ||
 		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, acctvp, &this->stats);
@@ -681,8 +681,8 @@ void request_stats_reply(REQUEST *request)
 	/*
 	 *	Home servers.
 	 */
-	if (((flag->vp_integer & 0x80) != 0) &&
-	    ((flag->vp_integer & 0x03) != 0)) {
+	if (((flag->vp_uint32 & 0x80) != 0) &&
+	    ((flag->vp_uint32 & 0x03) != 0)) {
 		home_server_t *home;
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
@@ -704,7 +704,7 @@ void request_stats_reply(REQUEST *request)
 #endif
 		ipaddr.af = AF_INET;
 		ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
-		home = home_server_find(&ipaddr, server_port->vp_integer,
+		home = home_server_find(&ipaddr, server_port->vp_uint32,
 					IPPROTO_UDP);
 
 		/*
@@ -719,11 +719,11 @@ void request_stats_reply(REQUEST *request)
 
 		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       PW_FREERADIUS_STATS_SERVER_OUTSTANDING_REQUESTS, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_integer = home->currently_outstanding;
+		if (vp) vp->vp_uint32 = home->currently_outstanding;
 
 		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       PW_FREERADIUS_STATS_SERVER_STATE, VENDORPEC_FREERADIUS);
-		if (vp) vp->vp_integer = home->state;
+		if (vp) vp->vp_uint32 = home->state;
 
 		if ((home->state == HOME_STATE_ALIVE) &&
 		    (home->revive_time.tv_sec != 0)) {
@@ -737,15 +737,15 @@ void request_stats_reply(REQUEST *request)
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
 						       PW_FREERADIUS_SERVER_EMA_WINDOW, VENDORPEC_FREERADIUS);
-				if (vp) vp->vp_integer = home->ema.window;
+				if (vp) vp->vp_uint32 = home->ema.window;
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
 						       PW_FREERADIUS_SERVER_EMA_USEC_WINDOW_1, VENDORPEC_FREERADIUS);
-				if (vp) vp->vp_integer = home->ema.ema1 / EMA_SCALE;
+				if (vp) vp->vp_uint32 = home->ema.ema1 / EMA_SCALE;
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
 						       PW_FREERADIUS_SERVER_EMA_USEC_WINDOW_10, VENDORPEC_FREERADIUS);
-				if (vp) vp->vp_integer = home->ema.ema10 / EMA_SCALE;
+				if (vp) vp->vp_uint32 = home->ema.ema10 / EMA_SCALE;
 
 		}
 
@@ -768,14 +768,14 @@ void request_stats_reply(REQUEST *request)
 				       PW_FREERADIUS_STATS_LAST_PACKET_SENT, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_sent;
 
-		if (((flag->vp_integer & 0x01) != 0) &&
+		if (((flag->vp_uint32 & 0x01) != 0) &&
 		    (home->type == HOME_TYPE_AUTH)) {
 			request_stats_addvp(request, proxy_authvp,
 					    &home->stats);
 		}
 
 #ifdef WITH_ACCOUNTING
-		if (((flag->vp_integer & 0x02) != 0) &&
+		if (((flag->vp_uint32 & 0x02) != 0) &&
 		    (home->type == HOME_TYPE_ACCT)) {
 			request_stats_addvp(request, proxy_acctvp,
 					    &home->stats);

@@ -748,7 +748,7 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 		n[h] = ((n[h] << 1) & 0xffffffffffffffff) + (n[l] >= 0x8000000000000000);
 		n[l] = ((n[l] << 1) & 0xffffffffffffffff);
 
-		// Add s[] to itself in decimal, doubling it
+		// Add s[] to itself in float64, doubling it
 		for (j = sizeof(buff) - 2; j >= 0; j--) {
 			buff[j] += buff[j] - '0' + carry;
 			carry = (buff[j] > '9');
@@ -1055,7 +1055,7 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 
 	sec = strtoul(in, &end, 10);
 	if (in == end) {
-		fr_strerror_printf("Failed parsing \"%s\" as decimal", in);
+		fr_strerror_printf("Failed parsing \"%s\" as float64", in);
 		return -1;
 	}
 	tv.tv_sec = sec;
@@ -1076,7 +1076,7 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 		 */
 		sec = strtoul(end + 1, &end, 10);
 		if (in == end) {
-			fr_strerror_printf("Failed parsing fractional component \"%s\" of decimal ", in);
+			fr_strerror_printf("Failed parsing fractional component \"%s\" of float64 ", in);
 			return -1;
 		}
 		while (len < 6) {

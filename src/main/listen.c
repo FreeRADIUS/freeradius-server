@@ -2088,7 +2088,7 @@ rlm_rcode_t rad_coa_recv(REQUEST *request)
 		 */
 		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_SERVICE_TYPE, TAG_ANY);
 		if (request->packet->code == PW_CODE_COA_REQUEST) {
-			if (vp && (vp->vp_integer == PW_AUTHORIZE_ONLY)) {
+			if (vp && (vp->vp_uint32 == PW_AUTHORIZE_ONLY)) {
 				vp = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
 				if (!vp || (vp->vp_length == 0)) {
 					REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST "

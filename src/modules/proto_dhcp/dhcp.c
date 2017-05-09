@@ -749,7 +749,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	switch (da->type) {
 	case FR_TYPE_UINT8:
 		if (data_len != 1) goto raw;
-		vp->vp_byte = p[0];
+		vp->vp_uint8 = p[0];
 		p++;
 		break;
 
@@ -762,8 +762,8 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 	case FR_TYPE_UINT32:
 		if (data_len != 4) goto raw;
-		memcpy(&vp->vp_integer, p, 4);
-		vp->vp_integer = ntohl(vp->vp_integer);
+		memcpy(&vp->vp_uint32, p, 4);
+		vp->vp_uint32 = ntohl(vp->vp_uint32);
 		p += 4;
 		break;
 
@@ -1168,7 +1168,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		switch (vp->vp_type) {
 		case FR_TYPE_UINT8:
-			vp->vp_byte = p[0];
+			vp->vp_uint8 = p[0];
 			break;
 
 		case FR_TYPE_UINT16:
@@ -1176,8 +1176,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case FR_TYPE_UINT32:
-			memcpy(&vp->vp_integer, p, 4);
-			vp->vp_integer = ntohl(vp->vp_integer);
+			memcpy(&vp->vp_uint32, p, 4);
+			vp->vp_uint32 = ntohl(vp->vp_uint32);
 			break;
 
 		case FR_TYPE_IPV4_ADDR:
@@ -1264,7 +1264,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	DHCP Opcode is request
 		 */
 		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
-		if (vp && vp->vp_integer == 3) {
+		if (vp && vp->vp_uint32 == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
@@ -1294,7 +1294,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	maxms = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 57, TAG_ANY);
 	mtu = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 26, TAG_ANY);
 
-	if (mtu && (mtu->vp_integer < DEFAULT_PACKET_SIZE)) {
+	if (mtu && (mtu->vp_uint32 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
 		return -1;
 	}
@@ -1303,12 +1303,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	Client says maximum message size is smaller than minimum permitted
 	 *	by the specification: fixing it.
 	 */
-	if (maxms && (maxms->vp_integer < DEFAULT_PACKET_SIZE)) maxms->vp_integer = DEFAULT_PACKET_SIZE;
+	if (maxms && (maxms->vp_uint32 < DEFAULT_PACKET_SIZE)) maxms->vp_uint32 = DEFAULT_PACKET_SIZE;
 
 	/*
 	 *	Client says MTU is smaller than maximum message size: fixing it
 	 */
-	if (maxms && mtu && (maxms->vp_integer > mtu->vp_integer)) maxms->vp_integer = mtu->vp_integer;
+	if (maxms && mtu && (maxms->vp_uint32 > mtu->vp_uint32)) maxms->vp_uint32 = mtu->vp_uint32;
 
 	return 0;
 }
@@ -1382,7 +1382,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	switch (tlv_stack[depth]->type) {
 	case FR_TYPE_UINT8:
-		p[0] = vp->vp_byte;
+		p[0] = vp->vp_uint8;
 		p ++;
 		break;
 
@@ -1393,7 +1393,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	case FR_TYPE_UINT32:
-		lvalue = htonl(vp->vp_integer);
+		lvalue = htonl(vp->vp_uint32);
 		memcpy(p, &lvalue, 4);
 		p += 4;
 		break;
@@ -1669,7 +1669,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* store xid */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 260, TAG_ANY))) {
-		packet->id = vp->vp_integer;
+		packet->id = vp->vp_uint32;
 	} else {
 		packet->id = fr_rand();
 	}
@@ -1690,8 +1690,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-DHCP-Maximum-Msg-Size */
 	vp = fr_pair_find_by_num(packet->vps, 57, DHCP_MAGIC_VENDOR, TAG_ANY);
-	if (vp && (vp->vp_integer > mms)) {
-		mms = vp->vp_integer;
+	if (vp && (vp->vp_uint32 > mms)) {
+		mms = vp->vp_uint32;
 
 		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
 	}
@@ -1699,28 +1699,28 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
 	if (vp) {
-		*p++ = vp->vp_integer & 0xff;
+		*p++ = vp->vp_uint32 & 0xff;
 	} else {
 		*p++ = 1;	/* client message */
 	}
 
 	/* DHCP-Hardware-Type */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 257, TAG_ANY))) {
-		*p++ = vp->vp_byte;
+		*p++ = vp->vp_uint8;
 	} else {
 		*p++ = 1;		/* hardware type = ethernet */
 	}
 
 	/* DHCP-Hardware-Address-len */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 258, TAG_ANY))) {
-		*p++ = vp->vp_byte;
+		*p++ = vp->vp_uint8;
 	} else {
 		*p++ = 6;		/* 6 bytes of ethernet */
 	}
 
 	/* DHCP-Hop-Count */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 259, TAG_ANY))) {
-		*p = vp->vp_byte;
+		*p = vp->vp_uint8;
 	}
 	p++;
 

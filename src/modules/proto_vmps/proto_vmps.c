@@ -61,7 +61,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
 			goto done;
@@ -83,10 +83,10 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 		if (vp) {
 			da = vp->da;
 
-			if (vp->vp_integer == 256) {
+			if (vp->vp_uint32 == 256) {
 				request->reply->code = 0;
 			} else {
-				request->reply->code = vp->vp_integer;
+				request->reply->code = vp->vp_uint32;
 			}
 
 		} else if (rcode != RLM_MODULE_HANDLED) {

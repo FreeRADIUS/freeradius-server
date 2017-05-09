@@ -754,7 +754,7 @@ open_file:
 
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
 	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_TYPE, TAG_ANY);
-	if (vp) packet->code = vp->vp_integer;
+	if (vp) packet->code = vp->vp_uint32;
 
 	gettimeofday(&packet->timestamp, NULL);
 
@@ -818,7 +818,7 @@ open_file:
 		 */
 		vp = fr_pair_find_by_num(packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY);
 		if (vp) {
-			data->timestamp = vp->vp_integer;
+			data->timestamp = vp->vp_uint32;
 		}
 
 		/*
@@ -832,7 +832,7 @@ open_file:
 			fr_pair_add(&packet->vps, vp);
 		}
 		if (data->timestamp != 0) {
-			vp->vp_integer += time(NULL) - data->timestamp;
+			vp->vp_uint32 += time(NULL) - data->timestamp;
 		}
 	}
 
@@ -845,7 +845,7 @@ open_file:
 		rad_assert(vp != NULL);
 		fr_pair_add(&packet->vps, vp);
 	}
-	vp->vp_integer = data->tries;
+	vp->vp_uint32 = data->tries;
 
 	data->entry_state = STATE_RUNNING;
 	data->running = packet->timestamp.tv_sec;

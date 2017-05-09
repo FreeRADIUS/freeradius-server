@@ -219,7 +219,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = FR_TYPE_UINT32;
-			in.datum.integer = (uint32_t) reply->integer;
+			in.datum.uint32 = (uint32_t) reply->integer;
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = FR_TYPE_UINT16;
@@ -227,7 +227,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		}
 		else {		/* 8bit unsigned (supported) */
 			in.type = FR_TYPE_UINT8;
-			in.datum.byte = (uint8_t) reply->integer;
+			in.datum.uint8 = (uint8_t) reply->integer;
 		}
 		break;
 

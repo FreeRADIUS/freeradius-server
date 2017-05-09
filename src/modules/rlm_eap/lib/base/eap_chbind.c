@@ -64,7 +64,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_CHBIND_RESPONSE_CODE, TAG_ANY);
 	if (vp) {
-		ptr[0] = vp->vp_integer;
+		ptr[0] = vp->vp_uint32;
 	} else {
 		ptr[0] = CHBIND_CODE_FAILURE;
 	}

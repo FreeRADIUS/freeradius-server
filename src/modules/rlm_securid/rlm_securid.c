@@ -508,7 +508,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		vp = fr_pair_afrom_num(request->reply, 0, PW_PROMPT);
 
 		rad_assert(vp != NULL);
-		vp->vp_integer = 0; /* no echo */
+		vp->vp_uint32 = 0; /* no echo */
 		fr_pair_add(&request->reply->vps, vp);
 
 		/* Mark the packet as a Acceess-Challenge Packet */

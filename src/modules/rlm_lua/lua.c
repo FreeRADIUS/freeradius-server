@@ -79,7 +79,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_INT32:
-		lua_pushinteger(L, vp->vp_integer);
+		lua_pushinteger(L, vp->vp_uint32);
 		break;
 
 	default:
@@ -117,7 +117,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		}
 
 		case FR_TYPE_UINT32:
-			vp->vp_integer = (uint32_t) lua_tointeger(L, -1);
+			vp->vp_uint32 = (uint32_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_IPV4_ADDR:
@@ -137,7 +137,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 
 		case FR_TYPE_UINT8:
-			vp->vp_byte = (uint8_t) lua_tointeger(L, -1);
+			vp->vp_uint8 = (uint8_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_UINT16:

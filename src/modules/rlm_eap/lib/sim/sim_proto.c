@@ -726,7 +726,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 			fr_strerror_printf("Failed allocating subtype attribute");
 			goto error;
 		}
-		vp->vp_integer = data[0];
+		vp->vp_uint32 = data[0];
 		fr_pair_cursor_append(decoded, vp);
 	}
 
@@ -762,10 +762,10 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	subtype = vp->vp_short;
 
 	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_ID, TAG_ANY);
-	id = vp ? vp->vp_integer : ((int)getpid() & 0xff);
+	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);
 
 	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_CODE, TAG_ANY);
-	eap_code = vp ? vp->vp_integer : PW_EAP_REQUEST;
+	eap_code = vp ? vp->vp_uint32 : PW_EAP_REQUEST;
 
 	/*
 	 *	Fill in some bits in the EAP packet

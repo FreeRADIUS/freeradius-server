@@ -152,7 +152,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	switch (authtype->vp_integer){
+	switch (authtype->vp_uint32){
 		case 2:				/*	CRAM-MD5	*/
 			if (challenge->vp_length < 5 || response->vp_length != 16) {
 				REDEBUG("Invalid MD5 challenge/response length");

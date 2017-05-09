@@ -226,11 +226,11 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 			 *	the attributes read from the file.
 			 */
 		case PW_PACKET_TYPE:
-			request->packet->code = vp->vp_integer;
+			request->packet->code = vp->vp_uint32;
 			break;
 
 		case PW_PACKET_DST_PORT:
-			request->packet->dst_port = (vp->vp_integer & 0xffff);
+			request->packet->dst_port = (vp->vp_uint32 & 0xffff);
 			break;
 
 		case PW_PACKET_DST_IP_ADDRESS:
@@ -239,7 +239,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 			break;
 
 		case PW_PACKET_SRC_PORT:
-			request->packet->src_port = (vp->vp_integer & 0xffff);
+			request->packet->src_port = (vp->vp_uint32 & 0xffff);
 			break;
 
 		case PW_PACKET_SRC_IP_ADDRESS:
@@ -998,7 +998,7 @@ int main(int argc, char *argv[])
 	 *	Update the list with the response type.
 	 */
 	vp = radius_pair_create(request->reply, &request->reply->vps, PW_RESPONSE_PACKET_TYPE, 0);
-	vp->vp_integer = request->reply->code;
+	vp->vp_uint32 = request->reply->code;
 
 	{
 		VALUE_PAIR const *failed[2];

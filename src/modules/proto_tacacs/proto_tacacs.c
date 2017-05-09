@@ -131,7 +131,7 @@ static void state_add(REQUEST *request, RADIUS_PACKET *packet)
 	uint32_t session_id;
 	uint8_t buf[16] = {0};	/* FIXME state.c:sizeof(struct state_comp) */
 
-	rad_assert(sizeof(request->listener) + sizeof(vp->vp_integer) <= sizeof(buf));
+	rad_assert(sizeof(request->listener) + sizeof(vp->vp_uint32) <= sizeof(buf));
 
 	/* session_id is per TCP connection */
 	memcpy(&buf[0], &request->listener, sizeof(request->listener));
@@ -246,7 +246,7 @@ stop_processing:
 				continue;
 			}
 
-			RWDEBUG("Ignoring extra Auth-Type = %s", fr_dict_enum_name_by_da(NULL, auth_type->da, vp->vp_integer));
+			RWDEBUG("Ignoring extra Auth-Type = %s", fr_dict_enum_name_by_da(NULL, auth_type->da, vp->vp_uint32));
 		}
 
 		/*
@@ -261,13 +261,13 @@ stop_processing:
 		/*
 		 *	Handle hard-coded Accept and Reject.
 		 */
-		if (auth_type->vp_integer == PW_AUTH_TYPE_ACCEPT) {
+		if (auth_type->vp_uint32 == PW_AUTH_TYPE_ACCEPT) {
 			RDEBUG2("Auth-Type = Accept, allowing user");
 			tacacs_status(request, RLM_MODULE_OK);
 			goto setup_send;
 		}
 
-		if (auth_type->vp_integer == PW_AUTH_TYPE_REJECT) {
+		if (auth_type->vp_uint32 == PW_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
 			tacacs_status(request, RLM_MODULE_REJECT);
 			goto setup_send;
@@ -277,9 +277,9 @@ stop_processing:
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 		if (!dv) {
-			REDEBUG2("Unknown Auth-Type %d found: rejecting the user.", vp->vp_integer);
+			REDEBUG2("Unknown Auth-Type %d found: rejecting the user.", vp->vp_uint32);
 			tacacs_status(request, RLM_MODULE_FAIL);
 			goto setup_send;
 		}
@@ -367,7 +367,7 @@ send_reply:
 			vp = fr_pair_find_by_da(request->reply->vps, authda, TAG_ANY);
 
 			if (vp) {
-				switch ((tacacs_authen_reply_status_t)vp->vp_byte) {
+				switch ((tacacs_authen_reply_status_t)vp->vp_uint8) {
 				case TAC_PLUS_AUTHEN_STATUS_PASS:
 				case TAC_PLUS_AUTHEN_STATUS_FAIL:
 				case TAC_PLUS_AUTHEN_STATUS_RESTART:
@@ -382,14 +382,14 @@ send_reply:
 					rad_assert(vp != NULL);
 
 					/* authentication would continue but seq_no cannot continue */
-					if (vp->vp_byte == 253) {
+					if (vp->vp_uint8 == 253) {
 						RWARN("Sequence number would wrap, restarting authentication");
 						fr_state_discard(global_state, request, request->packet);
 						fr_pair_list_free(&request->reply->vps);
 
 						vp = fr_pair_afrom_da(request->reply, authda);
 						rad_assert(vp != NULL);
-						vp->vp_byte = (tacacs_authen_reply_status_t)TAC_PLUS_AUTHEN_STATUS_RESTART;
+						vp->vp_uint8 = (tacacs_authen_reply_status_t)TAC_PLUS_AUTHEN_STATUS_RESTART;
 						fr_pair_add(&request->reply->vps, vp);
 					} else {
 						state_add(request, request->reply);

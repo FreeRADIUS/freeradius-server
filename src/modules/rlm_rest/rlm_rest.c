@@ -115,7 +115,7 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
 	REXDENT();
 
-	value.datum.integer = code;
+	value.datum.uint32 = code;
 
 	/*
 	 *	Find the reply list, and appropriate context in the

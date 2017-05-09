@@ -115,7 +115,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Set the EAP_ID - new value
 	 */
 	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
-	vp->vp_integer = eap_aka_session->aka_id++;
+	vp->vp_uint32 = eap_aka_session->aka_id++;
 	fr_pair_replace(to_client, vp);
 
 	/*
@@ -150,7 +150,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 
 	/* the SUBTYPE, set to challenge. */
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, PW_EAP_AKA_SUBTYPE);
-	vp->vp_integer = PW_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
+	vp->vp_uint32 = PW_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
 	fr_pair_replace(to_client, vp);
 
 	return 1;
@@ -177,7 +177,7 @@ static void eap_aka_send_success(eap_session_t *eap_session)
 
 	/* set the EAP_ID - new value */
 	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
-	vp->vp_integer = eap_aka_session->aka_id++;
+	vp->vp_uint32 = eap_aka_session->aka_id++;
 	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
 	p = eap_aka_session->keys.msk;
@@ -323,7 +323,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	}
 
 	MEM(vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_SUBTYPE, TAG_ANY));
-	subtype = vp->vp_integer;
+	subtype = vp->vp_uint32;
 
 	switch (eap_aka_session->state) {
 	case EAP_AKA_SERVER_CHALLENGE:

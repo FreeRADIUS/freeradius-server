@@ -123,13 +123,13 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return snprintf(*out, outlen, "%u", htonl(vp->vp_ipv4addr));
 
 	case FR_TYPE_UINT32:
-		return snprintf(*out, outlen, "%u", vp->vp_integer);
+		return snprintf(*out, outlen, "%u", vp->vp_uint32);
 
 	case FR_TYPE_DATE:
 		return snprintf(*out, outlen, "%u", vp->vp_date);
 
 	case FR_TYPE_UINT8:
-		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_byte);
+		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint8);
 
 	case FR_TYPE_UINT16:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_short);

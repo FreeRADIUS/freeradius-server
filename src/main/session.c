@@ -60,7 +60,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 		fr_pair_add(&(stopreq->packet->vps), vp); \
 	} while(0)
 
-#define INTPAIR(n,v) PAIR(n,v,vp_integer)
+#define INTPAIR(n,v) PAIR(n,v,vp_uint32)
 
 #define IPPAIR(n,v) PAIR(n,v,vp_ipv4addr)
 

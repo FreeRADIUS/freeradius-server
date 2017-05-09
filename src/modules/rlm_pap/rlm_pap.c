@@ -447,8 +447,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			 *	Auth-Type := Accept
 			 *	Auth-Type := Reject
 			 */
-			if ((vp->vp_integer == 254) ||
-			    (vp->vp_integer == 4)) {
+			if ((vp->vp_uint32 == 254) ||
+			    (vp->vp_uint32 == 4)) {
 			    found_pw = true;
 			}
 			break;
@@ -477,9 +477,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 */
 		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
 		if (vp &&
-		    ((vp->vp_integer == 13) || /* EAP-TLS */
-		     (vp->vp_integer == 21) || /* EAP-TTLS */
-		     (vp->vp_integer == 25))) {	/* PEAP */
+		    ((vp->vp_uint32 == 13) || /* EAP-TLS */
+		     (vp->vp_uint32 == 21) || /* EAP-TTLS */
+		     (vp->vp_uint32 == 25))) {	/* PEAP */
 			return RLM_MODULE_NOOP;
 		}
 
@@ -508,7 +508,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	if (inst->auth_type) {
 		vp = radius_pair_create(request, &request->control,
 				       PW_AUTH_TYPE, 0);
-		vp->vp_integer = inst->auth_type;
+		vp->vp_uint32 = inst->auth_type;
 	}
 
 	return RLM_MODULE_UPDATED;

@@ -22,8 +22,8 @@
  * There are three notional data formats used in the server:
  *
  * - #fr_value_box_t are the INTERNAL format.  This is usually close to the in-memory representation
- *   of the data, though integers and IPs are always converted to/from octets with BIG ENDIAN
- *   byte ordering for consistency.
+ *   of the data, though uint32s and IPs are always converted to/from octets with BIG ENDIAN
+ *   uint8 ordering for consistency.
  *   - #fr_value_box_cast is used to convert (cast) #fr_value_box_t between INTERNAL formats.
  *   - #fr_value_box_strdup* is used to ingest nul terminated strings into the INTERNAL format.
  *   - #fr_value_box_memdup* is used to ingest binary data into the INTERNAL format.
@@ -31,7 +31,7 @@
  * - NETWORK format is the format we send/receive on the wire.  It is not a perfect representation
  *   of data packing for all protocols, so you will likely need to overload conversion for some types.
  *   - fr_value_box_to_network is used to covert INTERNAL format data to generic NETWORK format data.
- *     For integers, IP addresses etc... This means BIG ENDIAN byte ordering.
+ *     For uint32s, IP addresses etc... This means BIG ENDIAN uint8 ordering.
  *   - fr_value_box_from_network is used to convert packet buffer fragments in NETWORK format to
  *     INTERNAL format.
  *
@@ -49,7 +49,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <ctype.h>
 
-/** How many bytes on-the-wire would a #fr_value_box_t value consume
+/** How many uint8s on-the-wire would a #fr_value_box_t value consume
  *
  * This is for the generic NETWORK format.  For field sizes in the in-memory
  * structure use #fr_value_box_field_sizes.
@@ -96,19 +96,19 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ether) == 6,
 	      "datum.ether has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.boolean) == 1,
 	      "datum.boolean has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.byte) == 1,
-	      "datum.byte has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint8) == 1,
+	      "datum.uint8 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint16) == 2,
 	      "datum.uint16 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.integer) == 4,
-	      "datum.integer has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint32) == 4,
+	      "datum.uint32 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint64) == 8,
 	      "datum.uint64 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int32) == 4,
 	      "datum.int32 has unexpected length");
 
 
-/** How many bytes wide each of the value data fields are
+/** How many uint8s wide each of the value data fields are
  *
  * This is useful when copying a value from a fr_value_box_t to a memory
  * location passed as a void *.
@@ -125,16 +125,16 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, datum.ether),
 
 	[FR_TYPE_BOOL]				= SIZEOF_MEMBER(fr_value_box_t, datum.boolean),
-	[FR_TYPE_UINT8]				= SIZEOF_MEMBER(fr_value_box_t, datum.byte),
+	[FR_TYPE_UINT8]				= SIZEOF_MEMBER(fr_value_box_t, datum.uint8),
 	[FR_TYPE_UINT16]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint16),
-	[FR_TYPE_UINT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer),
+	[FR_TYPE_UINT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint32),
 	[FR_TYPE_UINT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint64),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
 	[FR_TYPE_INT32]				= SIZEOF_MEMBER(fr_value_box_t, datum.int32),
 
 	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
-	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.decimal),
+	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.float64),
 	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, datum.date),
 
 	[FR_TYPE_ABINARY]			= SIZEOF_MEMBER(fr_value_box_t, datum.filter),
@@ -156,16 +156,16 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, datum.ether),
 
 	[FR_TYPE_BOOL]				= offsetof(fr_value_box_t, datum.boolean),
-	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, datum.byte),
+	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, datum.uint8),
 	[FR_TYPE_UINT16]			= offsetof(fr_value_box_t, datum.uint16),
-	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, datum.integer),
+	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, datum.uint32),
 	[FR_TYPE_UINT64]			= offsetof(fr_value_box_t, datum.uint64),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, datum.size),
 
 	[FR_TYPE_INT32]				= offsetof(fr_value_box_t, datum.int32),
 
 	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, datum.timeval),
-	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, datum.decimal),
+	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, datum.float64),
 
 	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, datum.date),
 
@@ -306,7 +306,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 
 	case FR_TYPE_BOOL:	/* this isn't a RADIUS type, and shouldn't really ever be used */
 	case FR_TYPE_UINT8:
-		CHECK(byte);
+		CHECK(uint8);
 		break;
 
 	case FR_TYPE_UINT16:
@@ -318,7 +318,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_UINT32:
-		CHECK(integer);
+		CHECK(int32);
 		break;
 
 	case FR_TYPE_INT32:
@@ -338,7 +338,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_FLOAT64:
-		CHECK(decimal);
+		CHECK(float64);
 		break;
 
 	case FR_TYPE_ETHERNET:
@@ -383,7 +383,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
  *
  *	reserved, prefix-len, data...
  */
-static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int bytes,
+static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int uint8s,
 				 uint8_t a_net, uint8_t const *a,
 				 uint8_t b_net, uint8_t const *b)
 {
@@ -396,7 +396,7 @@ static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int bytes,
 	if (a_net == b_net) {
 		int compare;
 
-		compare = memcmp(a, b, bytes);
+		compare = memcmp(a, b, uint8s);
 
 		/*
 		 *	If they're identical return true for
@@ -455,14 +455,14 @@ static int fr_value_box_cidr_cmp_op(FR_TOKEN op, int bytes,
 	}
 
 	/*
-	 *	Do the check byte by byte.  If the bytes are
+	 *	Do the check uint8 by uint8.  If the uint8s are
 	 *	identical, it MAY be a match.  If they're different,
 	 *	it is NOT a match.
 	 */
 	i = 0;
-	while (i < bytes) {
+	while (i < uint8s) {
 		/*
-		 *	All leading bytes are identical.
+		 *	All leading uint8s are identical.
 		 */
 		if (common == 0) return true;
 
@@ -640,7 +640,7 @@ static char const hextab[] = "0123456789abcdef";
  * @param[in] inlen	Length of input string.
  * @param[in] quote	Character around the string, determines unescaping mode.
  *
- * @return >= 0 the number of bytes written to out.
+ * @return >= 0 the number of uint8s written to out.
  */
 size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote)
 {
@@ -788,10 +788,10 @@ size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote
 	return out_p - out;
 }
 
-/** Performs byte order reversal for types that need it
+/** Performs uint8 order reversal for types that need it
  *
  * @param[in] dst	Where to write the result.  May be the same as src.
- * @param[in] src	#fr_value_box_t containing an integer value.
+ * @param[in] src	#fr_value_box_t containing an uint32 value.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -800,22 +800,22 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
-	/* 8 byte integers */
+	/* 8 uint8 uint32s */
 	switch (src->type) {
 	case FR_TYPE_UINT64:
 		dst->datum.uint64 = htonll(src->datum.uint64);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
-	/* 4 byte integers */
+	/* 4 uint8 uint32s */
 	case FR_TYPE_UINT32:
 	case FR_TYPE_DATE:
 	case FR_TYPE_INT32:
-		dst->datum.integer = htonl(src->datum.integer);
+		dst->datum.uint32 = htonl(src->datum.uint32);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
-	/* 2 byte integers */
+	/* 2 uint8 uint32s */
 	case FR_TYPE_UINT16:
 		dst->datum.uint16 = htons(src->datum.uint16);
 		fr_value_box_copy_meta(dst, src);
@@ -908,7 +908,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	/*
-	 *	<4 bytes address>
+	 *	<4 uint8s address>
 	 */
 	case FR_TYPE_IPV4_ADDR:
 	{
@@ -918,7 +918,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	/*
-	 *	<1 byte prefix> + <4 bytes address>
+	 *	<1 uint8 prefix> + <4 uint8s address>
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 		bin = talloc_array(ctx, uint8_t, sizeof(src->datum.ip.addr.v4.s_addr) + 1);
@@ -927,7 +927,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	/*
-	 *	<16 bytes address>
+	 *	<16 uint8s address>
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		bin = talloc_memdup(ctx, (uint8_t const *)src->datum.ip.addr.v6.s6_addr,
@@ -935,7 +935,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		break;
 
 	/*
-	 *	<1 byte prefix> + <1 byte scope> + <16 bytes address>
+	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 uint8s address>
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 		bin = talloc_array(ctx, uint8_t, sizeof(src->datum.ip.addr.v6.s6_addr) + 2);
@@ -947,7 +947,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	Get the raw binary in memory representation
 	 */
 	default:
-		fr_value_box_hton(dst, src);	/* Flip any integer representations */
+		fr_value_box_hton(dst, src);	/* Flip any uint32 representations */
 		bin = talloc_memdup(ctx, ((uint8_t *)&dst->datum) + fr_value_box_offsets[src->type],
 				    fr_value_box_field_sizes[src->type]);
 		break;
@@ -1031,7 +1031,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->datum.ip.addr.v4.s_addr)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu byte octet strings "
+			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
@@ -1045,7 +1045,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	{
 		uint32_t net;
 
-		net = ntohl(src->datum.integer);
+		net = ntohl(src->datum.uint32);
 		memcpy(&dst->datum.ip.addr.v4, (uint8_t *)&net, sizeof(dst->datum.ip.addr.v4.s_addr));
 	}
 		break;
@@ -1091,7 +1091,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	/*
-	 *	Copy the last four bytes, to make an IPv4prefix
+	 *	Copy the last four uint8s, to make an IPv4prefix
 	 */
 	case FR_TYPE_IPV6_ADDR:
 		if (memcmp(src->datum.ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
@@ -1133,7 +1133,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->datum.ip.addr.v4.s_addr) + 1) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu byte octet strings "
+			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
@@ -1148,7 +1148,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	{
 		uint32_t net;
 
-		net = ntohl(src->datum.integer);
+		net = ntohl(src->datum.uint32);
 		memcpy(&dst->datum.ip.addr.v4, (uint8_t *)&net, sizeof(dst->datum.ip.addr.v4.s_addr));
 		dst->datum.ip.prefix = 32;
 	}
@@ -1242,7 +1242,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != sizeof(dst->datum.ip.addr.v6.s6_addr)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu byte octet strings "
+			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
@@ -1325,7 +1325,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_OCTETS:
 		if (src->datum.length != (sizeof(dst->datum.ip.addr.v6.s6_addr) + 2)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu byte octet strings "
+			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
@@ -1357,7 +1357,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
  * @param ctx		to allocate buffers in (usually the same as dst)
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	Enumerated values used to converts strings to integers.
+ * @param dst_enumv	Enumerated values used to converts strings to uint32s.
  * @param src		Input data.
  * @return
  *	- 0 on success.
@@ -1476,7 +1476,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_UINT16) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.uint16 = src->datum.byte;
+			dst->datum.uint16 = src->datum.uint8;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1489,26 +1489,26 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 
 	/*
-	 *	We can cast LONG integers to SHORTER ones, so long
+	 *	We can cast LONG uint32s to SHORTER ones, so long
 	 *	as the long one is on the LHS.
 	 */
 	if (dst_type == FR_TYPE_UINT32) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.integer = src->datum.byte;
+			dst->datum.uint32 = src->datum.uint8;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.integer = src->datum.uint16;
+			dst->datum.uint32 = src->datum.uint16;
 			break;
 
 		case FR_TYPE_INT32:
 			if (src->datum.int32 < 0 ) {
-				fr_strerror_printf("Invalid cast: From signed to integer.  "
+				fr_strerror_printf("Invalid cast: From signed to uint32.  "
 						   "signed value %d is negative ", src->datum.int32);
 				return -1;
 			}
-			dst->datum.integer = (uint32_t)src->datum.int32;
+			dst->datum.uint32 = (uint32_t)src->datum.int32;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1521,13 +1521,13 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 
 	/*
-	 *	For integers, we allow the casting of a SMALL type to
+	 *	For uint32s, we allow the casting of a SMALL type to
 	 *	a larger type, but not vice-versa.
 	 */
 	if (dst_type == FR_TYPE_UINT64) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.uint64 = src->datum.byte;
+			dst->datum.uint64 = src->datum.uint8;
 			break;
 
 		case FR_TYPE_UINT16:
@@ -1535,7 +1535,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->datum.uint64 = src->datum.integer;
+			dst->datum.uint64 = src->datum.uint32;
 			break;
 
 		case FR_TYPE_DATE:
@@ -1557,12 +1557,12 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 
 	/*
-	 *	We can cast integers less that < INT_MAX to signed
+	 *	We can cast uint32s less that < INT_MAX to signed
 	 */
 	if (dst_type == FR_TYPE_INT32) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.int32 = src->datum.byte;
+			dst->datum.int32 = src->datum.uint8;
 			break;
 
 		case FR_TYPE_UINT16:
@@ -1570,16 +1570,16 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			break;
 
 		case FR_TYPE_UINT32:
-			if (src->datum.integer > INT_MAX) {
-				fr_strerror_printf("Invalid cast: From integer to signed.  integer value %u is larger "
-						   "than max signed int and would overflow", src->datum.integer);
+			if (src->datum.uint32 > INT_MAX) {
+				fr_strerror_printf("Invalid cast: From uint32 to signed.  uint32 value %u is larger "
+						   "than max signed int and would overflow", src->datum.uint32);
 				return -1;
 			}
-			dst->datum.int32 = (int)src->datum.integer;
+			dst->datum.int32 = (int)src->datum.uint32;
 			break;
 
 		case FR_TYPE_UINT64:
-			if (src->datum.integer > INT_MAX) {
+			if (src->datum.uint32 > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From uint64 to signed.  uint64 value %" PRIu64
 						   " is larger than max signed int and would overflow", src->datum.uint64);
 				return -1;
@@ -1599,7 +1599,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_TIMEVAL) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.timeval.tv_sec = src->datum.byte;
+			dst->datum.timeval.tv_sec = src->datum.uint8;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
@@ -1609,7 +1609,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->datum.timeval.tv_sec = src->datum.integer;
+			dst->datum.timeval.tv_sec = src->datum.uint32;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
@@ -1657,7 +1657,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 		/*
 		 *	Copy the raw octets into the datum of a value_box
-		 *	inverting bytesex for integers (if LE).
+		 *	inverting uint8sex for uint32s (if LE).
 		 */
 		memcpy(&tmp.datum, src->datum.octets, fr_value_box_field_sizes[dst_type]);
 		tmp.type = dst_type;
@@ -1689,7 +1689,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 
 	/*
-	 *	Convert host order to network byte order.
+	 *	Convert host order to network uint8 order.
 	 */
 	if ((dst_type == FR_TYPE_IPV4_ADDR) &&
 	    ((src->type == FR_TYPE_UINT32) ||
@@ -1698,15 +1698,15 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	     	dst->datum.ip.af = AF_INET;
 	     	dst->datum.ip.prefix = 32;
 	     	dst->datum.ip.scope_id = 0;
-		dst->datum.ip.addr.v4.s_addr = htonl(src->datum.integer);
+		dst->datum.ip.addr.v4.s_addr = htonl(src->datum.uint32);
 
 	} else if ((src->type == FR_TYPE_IPV4_ADDR) &&
 		   ((dst_type == FR_TYPE_UINT32) ||
 		    (dst_type == FR_TYPE_DATE) ||
 		    (dst_type == FR_TYPE_INT32))) {
-		dst->datum.integer = htonl(src->datum.ip.addr.v4.s_addr);
+		dst->datum.uint32 = htonl(src->datum.ip.addr.v4.s_addr);
 
-	} else {		/* they're of the same byte order */
+	} else {		/* they're of the same uint8 order */
 		memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
 	}
 
@@ -1743,7 +1743,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		char *str = NULL;
 
 		/*
-		 *	Zero length strings still have a one byte buffer
+		 *	Zero length strings still have a one uint8 buffer
 		 */
 		str = talloc_bstrndup(ctx, src->datum.strvalue, src->datum.length);
 		if (!str) {
@@ -2204,7 +2204,7 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr)
  * @param[in] ctx		to alloc strings in.
  * @param[out] dst		where to write parsed value.
  * @param[in,out] dst_type	of value data to create/dst_type of value created.
- * @param[in] dst_enumv		fr_dict_attr_t with string aliases for integer values.
+ * @param[in] dst_enumv		fr_dict_attr_t with string aliases for uint32 values.
  * @param[in] in		String to convert. Binary safe for variable length values
  *				if len is provided.
  * @param[in] inlen		may be < 0 in which case strlen(len) is used to determine
@@ -2297,7 +2297,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	Invalid.
 		 */
 		if ((len & 0x01) != 0) {
-			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", len);
+			fr_strerror_printf("Length of Hex String is not even, got %zu uint8s", len);
 			return -1;
 		}
 
@@ -2435,7 +2435,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		unsigned int i;
 
 		/*
-		 *	Note that ALL integers are unsigned!
+		 *	Note that ALL uint32s are unsigned!
 		 */
 		i = fr_strtoul(in, &p);
 
@@ -2450,14 +2450,14 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				return -1;
 			}
 
-			dst->datum.byte = dval->value;
+			dst->datum.uint8 = dval->value;
 		} else {
 			if (i > 255) {
 				fr_strerror_printf("Byte value \"%s\" is larger than 255", in);
 				return -1;
 			}
 
-			dst->datum.byte = i;
+			dst->datum.uint8 = i;
 		}
 		break;
 	}
@@ -2468,7 +2468,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		unsigned int i;
 
 		/*
-		 *	Note that ALL integers are unsigned!
+		 *	Note that ALL uint32s are unsigned!
 		 */
 		i = fr_strtoul(in, &p);
 
@@ -2501,7 +2501,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 		/*
 		 *	 If we have an enum, and the value isn't an
-		 *	 integer or hex string, try to parse it as a
+		 *	 uint32 or hex string, try to parse it as a
 		 *	 named value.  Some VALUE names begin with
 		 *	 numbers, so we have to be a bit flexible
 		 *	 here.
@@ -2514,7 +2514,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				return -1;
 			}
 
-			dst->datum.integer = dval->value;
+			dst->datum.uint32 = dval->value;
 
 		} else {
 			unsigned long i;
@@ -2526,7 +2526,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			 *	compatability.
 			 */
 			if (!*in || !isdigit((int) *in)) {
-				dst->datum.integer = 0;
+				dst->datum.uint32 = 0;
 				break;
 			}
 
@@ -2548,7 +2548,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			/*
 			 *	Value is always within the limits
 			 */
-			dst->datum.integer = (uint32_t) i;
+			dst->datum.uint32 = (uint32_t) i;
 		}
 	}
 		break;
@@ -2558,10 +2558,10 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		uint64_t i;
 
 		/*
-		 *	Note that ALL integers are unsigned!
+		 *	Note that ALL uint32s are unsigned!
 		 */
 		if (sscanf(in, "%" PRIu64, &i) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit integer", in);
+			fr_strerror_printf("Failed parsing \"%s\" as unsigned 64bit uint32", in);
 			return -1;
 		}
 		dst->datum.uint64 = i;
@@ -2589,10 +2589,10 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		double d;
 
 		if (sscanf(in, "%lf", &d) != 1) {
-			fr_strerror_printf("Failed parsing \"%s\" as a decimal", in);
+			fr_strerror_printf("Failed parsing \"%s\" as a float64", in);
 			return -1;
 		}
-		dst->datum.decimal = d;
+		dst->datum.float64 = d;
 	}
 		break;
 
@@ -2627,15 +2627,15 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		size_t p_len = 0;
 
 		/*
-		 *	Convert things which are obviously integers to Ethernet addresses
+		 *	Convert things which are obviously uint32s to Ethernet addresses
 		 *
 		 *	We assume the number is the bigendian representation of the
 		 *	ethernet address.
 		 */
 		if (is_integer(in)) {
-			uint64_t integer = htonll(atoll(in));
+			uint64_t uint32 = htonll(atoll(in));
 
-			memcpy(dst->datum.ether, &integer, sizeof(dst->datum.ether));
+			memcpy(dst->datum.ether, &uint32, sizeof(dst->datum.ether));
 			break;
 		}
 
@@ -2761,7 +2761,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 		fr_value_box_cast(ctx, &tmp, FR_TYPE_UINT32, NULL, data);
 
-		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.integer);
+		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.uint32);
 		if (dv) return talloc_typed_strdup(ctx, dv->name);
 	}
 
@@ -2847,11 +2847,11 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_BOOL:
-		p = talloc_typed_strdup(ctx, data->datum.byte ? "yes" : "no");
+		p = talloc_typed_strdup(ctx, data->datum.uint8 ? "yes" : "no");
 		break;
 
 	case FR_TYPE_UINT8:
-		p = talloc_typed_asprintf(ctx, "%u", data->datum.byte);
+		p = talloc_typed_asprintf(ctx, "%u", data->datum.uint8);
 		break;
 
 	case FR_TYPE_UINT16:
@@ -2859,7 +2859,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_UINT32:
-		p = talloc_typed_asprintf(ctx, "%u", data->datum.integer);
+		p = talloc_typed_asprintf(ctx, "%u", data->datum.uint32);
 		break;
 
 	case FR_TYPE_UINT64:
@@ -2880,7 +2880,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_FLOAT64:
-		p = talloc_typed_asprintf(ctx, "%g", data->datum.decimal);
+		p = talloc_typed_asprintf(ctx, "%g", data->datum.float64);
 		break;
 
 	case FR_TYPE_DATE:
@@ -2930,7 +2930,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
  * @param data to print.
  * @param quote char to escape in string output.
  * @return
- *	- The number of bytes written to the out buffer.
+ *	- The number of uint8s written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
 size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote)
@@ -2958,7 +2958,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 		fr_value_box_cast(NULL, &tmp, FR_TYPE_UINT32, NULL, data);
 
-		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.integer);
+		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.uint32);
 		if (dv) return strlcpy(out, dv->name, outlen);
 	}
 
@@ -2995,13 +2995,13 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		return fr_snprint(out, outlen, data->datum.strvalue, data->datum.length, quote);
 
 	case FR_TYPE_UINT8:
-		return snprintf(out, outlen, "%u", data->datum.byte);
+		return snprintf(out, outlen, "%u", data->datum.uint8);
 
 	case FR_TYPE_UINT16:
 		return snprintf(out, outlen, "%u", data->datum.uint16);
 
 	case FR_TYPE_UINT32:
-		return snprintf(out, outlen, "%u", data->datum.integer);
+		return snprintf(out, outlen, "%u", data->datum.uint32);
 
 	case FR_TYPE_UINT64:
 		return snprintf(out, outlen, "%" PRIu64, data->datum.uint64);
@@ -3059,7 +3059,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	{
 		size_t max;
 
-		/* Return the number of bytes we would have written */
+		/* Return the number of uint8s we would have written */
 		len = (data->datum.length * 2) + 2;
 		if (freespace <= 1) {
 			return len;
@@ -3080,7 +3080,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 			return len;
 		}
 
-		/* Get maximum number of bytes we can encode given freespace */
+		/* Get maximum number of uint8s we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
 		fr_bin2hex(out, data->datum.octets,
 			   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
@@ -3099,7 +3099,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 				data->datum.ether[4], data->datum.ether[5]);
 
 	case FR_TYPE_FLOAT64:
-		return snprintf(out, outlen, "%g", data->datum.decimal);
+		return snprintf(out, outlen, "%g", data->datum.float64);
 
 	/*
 	 *	Don't add default here
@@ -3122,6 +3122,6 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	if (a) strlcpy(out, a, outlen);
 
-	return len;	/* Return the number of bytes we would of written (for truncation detection) */
+	return len;	/* Return the number of uint8s we would of written (for truncation detection) */
 }
 

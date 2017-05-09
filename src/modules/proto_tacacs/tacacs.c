@@ -40,7 +40,7 @@ tacacs_type_t tacacs_type(RADIUS_PACKET const * const packet)
 	vp = fr_pair_find_by_child_num(packet->vps, dict_tacacs_root, PW_TACACS_PACKET_TYPE, TAG_ANY);
 	rad_assert(vp != NULL);
 
-	return (tacacs_type_t)vp->vp_byte;
+	return (tacacs_type_t)vp->vp_uint8;
 }
 
 char const * tacacs_lookup_packet_code(RADIUS_PACKET const * const packet)
@@ -66,7 +66,7 @@ uint32_t tacacs_session_id(RADIUS_PACKET const * const packet)
 	vp = fr_pair_find_by_child_num(packet->vps, dict_tacacs_root, PW_TACACS_SESSION_ID, TAG_ANY);
 	rad_assert(vp != NULL);
 
-	return vp->vp_integer;
+	return vp->vp_uint32;
 }
 
 static bool tacacs_ok(RADIUS_PACKET const * const packet, bool from_client)
@@ -273,31 +273,31 @@ int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret)
 
 		switch (vp->da->attr) {
 		case PW_TACACS_VERSION_MINOR:
-			pkt->hdr.ver.minor = vp->vp_byte;
+			pkt->hdr.ver.minor = vp->vp_uint8;
 			break;
 		case PW_TACACS_PACKET_TYPE:
-			pkt->hdr.type = vp->vp_byte;
+			pkt->hdr.type = vp->vp_uint8;
 			break;
 		case PW_TACACS_SEQUENCE_NUMBER:
-			pkt->hdr.seq_no = vp->vp_byte;
+			pkt->hdr.seq_no = vp->vp_uint8;
 			break;
 		case PW_TACACS_SESSION_ID:
-			pkt->hdr.session_id = htonl(vp->vp_integer);
+			pkt->hdr.session_id = htonl(vp->vp_uint32);
 			break;
 		case PW_TACACS_AUTHENTICATION_STATUS:
-			pkt->authen.reply.status = vp->vp_byte;
-			status = vp->vp_byte;
+			pkt->authen.reply.status = vp->vp_uint8;
+			status = vp->vp_uint8;
 			break;
 		case PW_TACACS_AUTHENTICATION_FLAGS:
-			authen_reply_flags |= vp->vp_byte;
+			authen_reply_flags |= vp->vp_uint8;
 			break;
 		case PW_TACACS_AUTHORIZATION_STATUS:
-			pkt->author.res.status = vp->vp_byte;
-			status = vp->vp_byte;
+			pkt->author.res.status = vp->vp_uint8;
+			status = vp->vp_uint8;
 			break;
 		case PW_TACACS_ACCOUNTING_STATUS:
-			pkt->acct.res.status = vp->vp_byte;
-			status = vp->vp_byte;
+			pkt->acct.res.status = vp->vp_uint8;
+			status = vp->vp_uint8;
 			break;
 		case PW_TACACS_SERVER_MESSAGE:
 			length_body += vp->vp_length;
@@ -422,26 +422,26 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 
 	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_VERSION_MINOR);
 	if (!vp) return -1;
-	vp->vp_byte = pkt->hdr.ver.minor;
+	vp->vp_uint8 = pkt->hdr.ver.minor;
 	fr_pair_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PACKET_TYPE);
 	if (!vp) return -1;
-	vp->vp_byte = pkt->hdr.type;
+	vp->vp_uint8 = pkt->hdr.type;
 	fr_pair_cursor_append(&cursor, vp);
 
 	packet->code = pkt->hdr.type;
 
 	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_SEQUENCE_NUMBER);
 	if (!vp) return -1;
-	vp->vp_byte = pkt->hdr.seq_no;
+	vp->vp_uint8 = pkt->hdr.seq_no;
 	fr_pair_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_SESSION_ID);
 	if (!vp) return -1;
-	vp->vp_integer = ntohl(pkt->hdr.session_id);
+	vp->vp_uint32 = ntohl(pkt->hdr.session_id);
 	fr_pair_cursor_append(&cursor, vp);
-	session_id = vp->vp_integer;
+	session_id = vp->vp_uint32;
 
 	switch ((tacacs_type_t)pkt->hdr.type) {
 	case TAC_PLUS_AUTHEN:
@@ -451,22 +451,22 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACTION);
 			if (!vp) return -1;
-			vp->vp_byte = pkt->authen.start.action;
+			vp->vp_uint8 = pkt->authen.start.action;
 			fr_pair_cursor_append(&cursor, vp);
 
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PRIVILEGE_LEVEL);
 			if (!vp) return -1;
-			vp->vp_byte = pkt->authen.start.priv_lvl;
+			vp->vp_uint8 = pkt->authen.start.priv_lvl;
 			fr_pair_cursor_append(&cursor, vp);
 
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_TYPE);
 			if (!vp) return -1;
-			vp->vp_byte = pkt->authen.start.authen_type;
+			vp->vp_uint8 = pkt->authen.start.authen_type;
 			fr_pair_cursor_append(&cursor, vp);
 
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_SERVICE);
 			if (!vp) return -1;
-			vp->vp_byte = pkt->authen.start.authen_service;
+			vp->vp_uint8 = pkt->authen.start.authen_service;
 			fr_pair_cursor_append(&cursor, vp);
 
 			if (pkt->authen.start.user_len) {
@@ -533,22 +533,22 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_METHOD);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->author.req.authen_method;
+		vp->vp_uint8 = pkt->author.req.authen_method;
 		fr_pair_cursor_append(&cursor, vp);
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PRIVILEGE_LEVEL);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->author.req.priv_lvl;
+		vp->vp_uint8 = pkt->author.req.priv_lvl;
 		fr_pair_cursor_append(&cursor, vp);
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_TYPE);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->author.req.authen_type;
+		vp->vp_uint8 = pkt->author.req.authen_type;
 		fr_pair_cursor_append(&cursor, vp);
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_SERVICE);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->author.req.authen_service;
+		vp->vp_uint8 = pkt->author.req.authen_service;
 		fr_pair_cursor_append(&cursor, vp);
 
 		if (pkt->author.req.user_len) {
@@ -584,40 +584,40 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		if (pkt->acct.req.flags & TAC_PLUS_ACCT_FLAG_START) {
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACCOUNTING_FLAGS);
 			if (!vp) return -1;
-			vp->vp_byte = TAC_PLUS_ACCT_FLAG_START;
+			vp->vp_uint8 = TAC_PLUS_ACCT_FLAG_START;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 		if (pkt->acct.req.flags & TAC_PLUS_ACCT_FLAG_STOP) {
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACCOUNTING_FLAGS);
 			if (!vp) return -1;
-			vp->vp_byte = TAC_PLUS_ACCT_FLAG_STOP;
+			vp->vp_uint8 = TAC_PLUS_ACCT_FLAG_STOP;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 		if (pkt->acct.req.flags & TAC_PLUS_ACCT_FLAG_WATCHDOG) {
 			vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_ACCOUNTING_FLAGS);
 			if (!vp) return -1;
-			vp->vp_byte = TAC_PLUS_ACCT_FLAG_WATCHDOG;
+			vp->vp_uint8 = TAC_PLUS_ACCT_FLAG_WATCHDOG;
 			fr_pair_cursor_append(&cursor, vp);
 		}
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_METHOD);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->acct.req.authen_method;
+		vp->vp_uint8 = pkt->acct.req.authen_method;
 		fr_pair_cursor_append(&cursor, vp);
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PRIVILEGE_LEVEL);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->acct.req.priv_lvl;
+		vp->vp_uint8 = pkt->acct.req.priv_lvl;
 		fr_pair_cursor_append(&cursor, vp);
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_TYPE);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->acct.req.authen_type;
+		vp->vp_uint8 = pkt->acct.req.authen_type;
 		fr_pair_cursor_append(&cursor, vp);
 
 		vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_AUTHENTICATION_SERVICE);
 		if (!vp) return -1;
-		vp->vp_byte = pkt->acct.req.authen_service;
+		vp->vp_uint8 = pkt->acct.req.authen_service;
 		fr_pair_cursor_append(&cursor, vp);
 
 		if (pkt->acct.req.user_len) {
@@ -800,31 +800,31 @@ int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const origin
 
 	vp = fr_pair_find_by_child_num(original->vps, dict_tacacs_root, PW_TACACS_VERSION_MINOR, TAG_ANY);
 	rad_assert(vp != NULL);
-	vminor = vp->vp_byte;
+	vminor = vp->vp_uint8;
 
 	vp = fr_pair_afrom_da(packet, vp->da);
 	if (!vp) return -1;
-	vp->vp_byte = vminor;
+	vp->vp_uint8 = vminor;
 	fr_pair_add(&packet->vps, vp);
 
 	type = tacacs_type(original);
 
 	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_PACKET_TYPE);
-	vp->vp_byte = type;
+	vp->vp_uint8 = type;
 	fr_pair_add(&packet->vps, vp);
 
 	vp = fr_pair_find_by_child_num(original->vps, dict_tacacs_root, PW_TACACS_SEQUENCE_NUMBER, TAG_ANY);
 	rad_assert(vp != NULL);
-	seq_no = vp->vp_byte + 1;	/* we catch client 255 on ingress */
+	seq_no = vp->vp_uint8 + 1;	/* we catch client 255 on ingress */
 
 	vp = fr_pair_afrom_da(packet, vp->da);
 	if (!vp) return -1;	
-	vp->vp_byte = seq_no;
+	vp->vp_uint8 = seq_no;
 	fr_pair_add(&packet->vps, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_tacacs_root, PW_TACACS_SESSION_ID);
 	if (!vp) return -1;
-	vp->vp_integer = tacacs_session_id(original);
+	vp->vp_uint32 = tacacs_session_id(original);
 	fr_pair_add(&packet->vps, vp);
 
 	if (tacacs_encode(packet, secret) < 0) {

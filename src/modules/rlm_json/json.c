@@ -55,7 +55,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 
 	case json_type_double:
 		in.type = FR_TYPE_FLOAT64;
-		in.datum.decimal = json_object_get_double(object);
+		in.datum.float64 = json_object_get_double(object);
 		break;
 
 	case json_type_int:
@@ -91,13 +91,13 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 			in.datum.int32 = num;
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = FR_TYPE_UINT32;
-			in.datum.integer = (uint32_t) num;
+			in.datum.uint32 = (uint32_t) num;
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = FR_TYPE_UINT16;
 			in.datum.uint16 = (uint16_t) num;
 		} else {		/* 8bit unsigned (supported) */
 			in.type = FR_TYPE_UINT8;
-			in.datum.byte = (uint8_t) num;
+			in.datum.uint8 = (uint8_t) num;
 		}
 	}
 		break;
@@ -145,10 +145,10 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 	}
 
 	case FR_TYPE_BOOL:
-		return json_object_new_boolean(data->datum.byte);
+		return json_object_new_boolean(data->datum.uint8);
 
 	case FR_TYPE_UINT8:
-		return json_object_new_int(data->datum.byte);
+		return json_object_new_int(data->datum.uint8);
 
 	case FR_TYPE_UINT16:
 		return json_object_new_int(data->datum.uint16);
@@ -217,7 +217,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		case FR_TYPE_UINT32:
 			if (vp->da->flags.has_value) break;
 
-			return snprintf(out, freespace, "%u", vp->vp_integer);
+			return snprintf(out, freespace, "%u", vp->vp_uint32);
 
 		case FR_TYPE_UINT16:
 			if (vp->da->flags.has_value) break;
@@ -227,7 +227,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		case FR_TYPE_UINT8:
 			if (vp->da->flags.has_value) break;
 
-			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_byte);
+			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_uint8);
 
 		case FR_TYPE_INT32:
 			return snprintf(out, freespace, "%d", vp->vp_signed);
@@ -373,7 +373,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 				json_object_object_add(vp_object, "mapping", mapping);
 			}
 
-			dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
+			dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
 			if (dv) {
 				struct json_object *mapped_value;
 

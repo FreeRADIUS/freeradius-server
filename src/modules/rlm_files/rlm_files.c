@@ -73,7 +73,7 @@ static int fall_through(VALUE_PAIR *vp)
 	VALUE_PAIR *tmp;
 	tmp = fr_pair_find_by_num(vp, 0, PW_FALL_THROUGH, TAG_ANY);
 
-	return tmp ? tmp->vp_integer : 0;
+	return tmp ? tmp->vp_uint32 : 0;
 }
 
 static const CONF_PARSER module_config[] = {

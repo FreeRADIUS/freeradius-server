@@ -90,7 +90,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 
 		return RLM_MODULE_FAIL;
 	}
-	vp->vp_integer = timestamp;
+	vp->vp_uint32 = timestamp;
 
 	/*
 	 *	Token random
@@ -101,7 +101,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 
 		return RLM_MODULE_FAIL;
 	}
-	vp->vp_integer = token.rnd;
+	vp->vp_uint32 = token.rnd;
 
 	/*
 	 *	Combine the two counter fields together so we can do
@@ -113,7 +113,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 
 		return RLM_MODULE_FAIL;
 	}
-	vp->vp_integer = counter;
+	vp->vp_uint32 = counter;
 
 	/*
 	 *	Now we check for replay attacks
@@ -124,9 +124,9 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t const *inst, REQUEST *request, cha
 		return RLM_MODULE_OK;
 	}
 
-	if (counter <= vp->vp_integer) {
+	if (counter <= vp->vp_uint32) {
 		REDEBUG("Replay attack detected! Counter value %u, is lt or eq to last known counter value %u",
-			counter, vp->vp_integer);
+			counter, vp->vp_uint32);
 		return RLM_MODULE_REJECT;
 	}
 

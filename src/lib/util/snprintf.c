@@ -249,9 +249,9 @@ char ** fract;
  */
 PRIVATE void
 #ifdef __STDC__
-decimal(struct DATA *p, double d)
+float64(struct DATA *p, double d)
 #else
-decimal(p, d)
+float64(p, d)
 struct DATA *p;
 double d;
 #endif
@@ -294,7 +294,7 @@ double d;
 	PAD_LEFT(p);
 }
 
-/* for %x %X hexadecimal representation */
+/* for %x %X hexafloat64 representation */
 PRIVATE void
 #ifdef __STDC__
 hexa(struct DATA *p, double d)
@@ -572,7 +572,7 @@ va_list args;
 			exponent(&data, d);
 			state = 0;
 			break;
-		case 'u':	/* unsigned decimal */
+		case 'u':	/* unsigned float64 */
 			STAR_ARGS(&data);
 			if (data.a_longlong == FOUND)
 				d = va_arg(args, unsigned LONG_LONG);
@@ -580,10 +580,10 @@ va_list args;
 				d = va_arg(args, unsigned long);
 			else
 				d = va_arg(args, unsigned int);
-			decimal(&data, d);
+			float64(&data, d);
 			state = 0;
 			break;
-		case 'd':	/* decimal */
+		case 'd':	/* float64 */
 			STAR_ARGS(&data);
 			if (data.a_longlong == FOUND)
 				d = va_arg(args, LONG_LONG);
@@ -591,7 +591,7 @@ va_list args;
 				d = va_arg(args, long);
 			else
 				d = va_arg(args, int);
-			decimal(&data, d);
+			float64(&data, d);
 			state = 0;
 			break;
 		case 'o':	/* octal */
@@ -606,7 +606,7 @@ va_list args;
 			state = 0;
 			break;
 		case 'x':
-		case 'X':	/* hexadecimal */
+		case 'X':	/* hexafloat64 */
 			STAR_ARGS(&data);
 			if (data.a_longlong == FOUND)
 				d = va_arg(args, LONG_LONG);

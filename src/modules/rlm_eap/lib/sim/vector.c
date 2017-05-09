@@ -63,7 +63,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 		keys->gsm.vector[idx].rand[i] = fr_rand();
 	}
 
-	switch (version->vp_integer) {
+	switch (version->vp_uint32) {
 	case 1:
 		comp128v1(keys->gsm.vector[idx].sres,
 			  keys->gsm.vector[idx].kc, vp->vp_octets,
@@ -89,7 +89,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 		return 1;
 
 	default:
-		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
+		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_uint32);
 		return -1;
 	}
 	return 0;
@@ -363,7 +363,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 		keys->umts.vector.rand[i] = fr_rand();
 	}
 
-	switch (version->vp_integer) {
+	switch (version->vp_uint32) {
 	case 1:
 		comp128v1(keys->umts.vector.sres,
 			  keys->umts.vector.kc, vp->vp_octets,
@@ -389,7 +389,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 		return 1;
 
 	default:
-		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_integer);
+		REDEBUG("Unknown/unsupported algorithm Comp128-%i", version->vp_uint32);
 		return -1;
 	}
 	return 0;

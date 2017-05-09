@@ -664,7 +664,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		VALUE_PAIR *tvp;
 
 		tvp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
-		tvp->vp_integer = t->default_provisioning_method;
+		tvp->vp_uint32 = t->default_provisioning_method;
 		fr_pair_add(&fake->control, tvp);
 
 		/*
@@ -864,16 +864,16 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			 */
 			switch (vp->da->attr) {
 			case 1:	/* PW_EAP_FAST_CRYPTO_BINDING_RESERVED */
-				binding->reserved = vp->vp_integer;
+				binding->reserved = vp->vp_uint32;
 				break;
 			case 2:	/* PW_EAP_FAST_CRYPTO_BINDING_VERSION */
-				binding->version = vp->vp_integer;
+				binding->version = vp->vp_uint32;
 				break;
 			case 3:	/* PW_EAP_FAST_CRYPTO_BINDING_RECV_VERSION */
-				binding->received_version = vp->vp_integer;
+				binding->received_version = vp->vp_uint32;
 				break;
 			case 4:	/* PW_EAP_FAST_CRYPTO_BINDING_SUB_TYPE */
-				binding->subtype = vp->vp_integer;
+				binding->subtype = vp->vp_uint32;
 				break;
 			case 5:	/* PW_EAP_FAST_CRYPTO_BINDING_NONCE */
 				memcpy(binding->nonce, vp->vp_octets, vp->vp_length);
@@ -886,7 +886,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 		case EAP_FAST_TLV_PAC:
 			switch (vp->da->attr) {
 			case PAC_INFO_PAC_ACK:
-				if (vp->vp_integer == EAP_FAST_TLV_RESULT_SUCCESS) {
+				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = PW_CODE_ACCESS_ACCEPT;
 					t->pac.expires = UINT32_MAX;
 					t->pac.expired = false;
@@ -894,7 +894,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 				}
 				break;
 			case PAC_INFO_PAC_TYPE:
-				if (vp->vp_integer != PAC_TYPE_TUNNEL) {
+				if (vp->vp_uint32 != PAC_TYPE_TUNNEL) {
 					RDEBUG("only able to serve Tunnel PAC's, ignoring request");
 					continue;
 				}

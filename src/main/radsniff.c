@@ -2539,7 +2539,7 @@ int main(int argc, char *argv[])
 		type = fr_pair_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
 		if (type) {
 			fr_pair_cursor_remove(&cursor);
-			conf->filter_request_code = type->vp_integer;
+			conf->filter_request_code = type->vp_uint32;
 			talloc_free(type);
 		}
 	}
@@ -2556,7 +2556,7 @@ int main(int argc, char *argv[])
 		type = fr_pair_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
 		if (type) {
 			fr_pair_cursor_remove(&cursor);
-			conf->filter_response_code = type->vp_integer;
+			conf->filter_response_code = type->vp_uint32;
 			talloc_free(type);
 		}
 	}

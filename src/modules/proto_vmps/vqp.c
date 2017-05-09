@@ -269,7 +269,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	vp->vp_integer = packet->data[1];
+	vp->vp_uint32 = packet->data[1];
 	vp->vp_tainted = true;
 	debug_pair(vp);
 	fr_pair_cursor_append(&cursor, vp);
@@ -279,7 +279,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	vp->vp_integer = packet->data[2];
+	vp->vp_uint32 = packet->data[2];
 	vp->vp_tainted = true;
 	debug_pair(vp);
 	fr_pair_cursor_append(&cursor, vp);
@@ -289,7 +289,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	vp->vp_integer = packet->id; /* already set by vqp_recv */
+	vp->vp_uint32 = packet->id; /* already set by vqp_recv */
 	vp->vp_tainted = true;
 	debug_pair(vp);
 	fr_pair_cursor_append(&cursor, vp);
@@ -404,7 +404,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			return -1;
 		}
 
-		code = vp->vp_integer;
+		code = vp->vp_uint32;
 		if ((code < 1) || (code > 4)) {
 			fr_strerror_printf("Invalid value %d for VQP-Packet-Type", code);
 			return -1;
@@ -427,7 +427,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		out[0] = VQP_VERSION;
 		out[1] = code;
 
-		out[2] = vp->vp_integer & 0xff;
+		out[2] = vp->vp_uint32 & 0xff;
 		return 0;
 	}
 

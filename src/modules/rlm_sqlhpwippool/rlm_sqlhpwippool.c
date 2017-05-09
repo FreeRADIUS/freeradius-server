@@ -611,7 +611,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 
 	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY);
 	if (vp) {
-		acct_type = vp->vp_integer;
+		acct_type = vp->vp_uint32;
 	}
 	else {
 		REDEBUG("Couldn't find type of accounting packet");

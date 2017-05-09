@@ -169,32 +169,32 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 			vp = pair_make_request("SoH-MS-Machine-OS-version", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = soh_pull_be_32(p); p+=4;
+			vp->vp_uint32 = soh_pull_be_32(p); p+=4;
 
 			vp = pair_make_request("SoH-MS-Machine-OS-release", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = soh_pull_be_32(p); p+=4;
+			vp->vp_uint32 = soh_pull_be_32(p); p+=4;
 
 			vp = pair_make_request("SoH-MS-Machine-OS-build", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = soh_pull_be_32(p); p+=4;
+			vp->vp_uint32 = soh_pull_be_32(p); p+=4;
 
 			vp = pair_make_request("SoH-MS-Machine-SP-version", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = soh_pull_be_16(p); p+=2;
+			vp->vp_uint32 = soh_pull_be_16(p); p+=2;
 
 			vp = pair_make_request("SoH-MS-Machine-SP-release", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = soh_pull_be_16(p); p+=2;
+			vp->vp_uint32 = soh_pull_be_16(p); p+=2;
 
 			vp = pair_make_request("SoH-MS-Machine-Processor", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = soh_pull_be_16(p); p+=2;
+			vp->vp_uint32 = soh_pull_be_16(p); p+=2;
 			break;
 
 		case 2:
@@ -294,7 +294,7 @@ static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int d
 			vp = pair_make_request("SoH-MS-Machine-Role", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
-			vp->vp_integer = *p;
+			vp->vp_uint32 = *p;
 			p++;
 			data_len -= 5;
 			break;

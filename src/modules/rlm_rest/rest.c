@@ -925,7 +925,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 
 	case json_type_double:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
-		src.datum.decimal = json_object_get_double(leaf);
+		src.datum.float64 = json_object_get_double(leaf);
 		src.type = FR_TYPE_FLOAT64;
 		break;
 

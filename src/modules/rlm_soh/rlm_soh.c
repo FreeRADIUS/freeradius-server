@@ -62,11 +62,11 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		vp[4] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_SP_VERSION, TAG_ANY);
 		vp[5] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_SP_RELEASE, TAG_ANY);
 
-		if (vp[0] && vp[0]->vp_integer == VENDORPEC_MICROSOFT) {
+		if (vp[0] && vp[0]->vp_uint32 == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
 				snprintf(*out, outlen, "Windows unknown");
 			} else {
-				switch (vp[1]->vp_integer) {
+				switch (vp[1]->vp_uint32) {
 				case 7:
 					osname = "7";
 					break;
@@ -83,11 +83,11 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 					osname = "Other";
 					break;
 				}
-				snprintf(*out, outlen, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_integer,
-					 vp[2] ? vp[2]->vp_integer : 0,
-					 vp[3] ? vp[3]->vp_integer : 0,
-					 vp[4] ? vp[4]->vp_integer : 0,
-					 vp[5] ? vp[5]->vp_integer : 0);
+				snprintf(*out, outlen, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_uint32,
+					 vp[2] ? vp[2]->vp_uint32 : 0,
+					 vp[3] ? vp[3]->vp_uint32 : 0,
+					 vp[4] ? vp[4]->vp_uint32 : 0,
+					 vp[5] ? vp[5]->vp_uint32 : 0);
 			}
 			return strlen(*out);
 		}

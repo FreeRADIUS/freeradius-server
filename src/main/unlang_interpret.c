@@ -198,7 +198,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 
 				switch (g->vpt->tmpl_da->type) {
 				case FR_TYPE_UINT8:
-					start = ((uint32_t) vp->vp_byte) % g->num_children;
+					start = ((uint32_t) vp->vp_uint8) % g->num_children;
 					break;
 
 				case FR_TYPE_UINT16:
@@ -206,7 +206,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 					break;
 
 				case FR_TYPE_UINT32:
-					start = vp->vp_integer % g->num_children;
+					start = vp->vp_uint32 % g->num_children;
 					break;
 
 				case FR_TYPE_UINT64:

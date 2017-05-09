@@ -118,7 +118,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	offset = (int) strtoul(data_size, &p, 10);
 	if (*p) {
-		REDEBUG("unpack requires a decimal number, not '%s'", data_size);
+		REDEBUG("unpack requires a float64 number, not '%s'", data_size);
 		goto nothing;
 	}
 
@@ -160,7 +160,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	case FR_TYPE_INT32:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_DATE:
-		cast->vp_integer = ntohl(cast->vp_integer);
+		cast->vp_uint32 = ntohl(cast->vp_uint32);
 		break;
 
 	case FR_TYPE_UINT16:

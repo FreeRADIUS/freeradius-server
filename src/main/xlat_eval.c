@@ -211,13 +211,13 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_PACKET_SRC_PORT:
 		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-		virtual->vp_integer = packet->src_port;
+		virtual->vp_uint32 = packet->src_port;
 		vp = virtual;
 		break;
 
 	case PW_PACKET_DST_PORT:
 		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-		virtual->vp_integer = packet->dst_port;
+		virtual->vp_uint32 = packet->dst_port;
 		vp = virtual;
 		break;
 	}

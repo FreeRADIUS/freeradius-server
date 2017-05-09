@@ -103,16 +103,16 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 * Drop requests if hop-count > 16 or admin specified another value
 	 */
 	if ((vp = fr_pair_find_by_num(request->control, DHCP_MAGIC_VENDOR, 271, TAG_ANY))) { /* DHCP-Relay-Max-Hop-Count */
-	    maxhops = vp->vp_integer;
+	    maxhops = vp->vp_uint32;
 	}
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 259, TAG_ANY); /* DHCP-Hop-Count */
 	rad_assert(vp != NULL);
-	if (vp->vp_byte > maxhops) {
+	if (vp->vp_uint8 > maxhops) {
 		RDEBUG2("Number of hops is greater than %d: not relaying", maxhops);
 		return 1;
 	} else {
 	    /* Increment hop count */
-	    vp->vp_byte++;
+	    vp->vp_uint8++;
 	}
 
 	sock = request->listener->data;
@@ -195,7 +195,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	if ((request->packet->code == PW_DHCP_NAK) ||
 	    !sock->src_interface ||
 	    ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) /* DHCP-Flags */ &&
-	     (vp->vp_integer & 0x8000) &&
+	     (vp->vp_uint32 & 0x8000) &&
 	     ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
 	      (vp->vp_ipv4addr == htonl(INADDR_ANY))))) {
 		/*
@@ -315,7 +315,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_byte);
+		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint8);
 
 		if (dv) {
 			CONF_SECTION *server, *unlang;
@@ -327,7 +327,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 			unlang = cf_subsection_find_name2(server, "dhcp", dv->name);
 			rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
 		} else {
-			REDEBUG("Unknown DHCP-Message-Type %d", vp->vp_byte);
+			REDEBUG("Unknown DHCP-Message-Type %d", vp->vp_uint8);
 			rcode = RLM_MODULE_FAIL;
 		}
 	} else {
@@ -337,7 +337,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		request->reply->code = vp->vp_byte;
+		request->reply->code = vp->vp_uint8;
 		if ((request->reply->code != 0) &&
 		    (request->reply->code < PW_DHCP_OFFSET)) {
 			request->reply->code += PW_DHCP_OFFSET;
@@ -391,7 +391,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	}
 
 	/* BOOTREPLY received on port 67 (i.e. from a server) */
-	if (vp->vp_byte == 2) {
+	if (vp->vp_uint8 == 2) {
 		return dhcprelay_process_server_reply(request);
 	}
 
@@ -401,7 +401,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	}
 
 	/* else it's a packet from a client, without relaying */
-	rad_assert(vp->vp_byte == 1); /* BOOTREQUEST */
+	rad_assert(vp->vp_uint8 == 1); /* BOOTREQUEST */
 
 	sock = request->listener->data;
 
@@ -439,7 +439,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 256, TAG_ANY); /* DHCP-Opcode */
 	rad_assert(vp != NULL);
-	vp->vp_byte = 2; /* BOOTREPLY */
+	vp->vp_uint8 = 2; /* BOOTREPLY */
 
 	/*
 	 *	Allow NAKs to be delayed for a short period of time.
@@ -447,8 +447,8 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	if (request->reply->code == PW_DHCP_NAK) {
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
 		if (vp) {
-			if (vp->vp_integer <= 10) {
-				request->response_delay.tv_sec = vp->vp_integer;
+			if (vp->vp_uint32 <= 10) {
+				request->response_delay.tv_sec = vp->vp_uint32;
 				request->response_delay.tv_usec = 0;
 			} else {
 				request->response_delay.tv_sec = 10;
@@ -458,9 +458,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 #define USEC 1000000
 			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
 			if (vp) {
-				if (vp->vp_integer <= 10 * USEC) {
-					request->response_delay.tv_sec = vp->vp_integer / USEC;
-					request->response_delay.tv_usec = vp->vp_integer % USEC;
+				if (vp->vp_uint32 <= 10 * USEC) {
+					request->response_delay.tv_sec = vp->vp_uint32 / USEC;
+					request->response_delay.tv_usec = vp->vp_uint32 % USEC;
 				} else {
 					request->response_delay.tv_sec = 10;
 					request->response_delay.tv_usec = 0;
@@ -538,7 +538,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 		request->reply->dst_port = request->packet->dst_port;
 
 		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_DST_PORT, TAG_ANY);
-		if (vp) request->reply->dst_port = vp->vp_integer;
+		if (vp) request->reply->dst_port = vp->vp_uint32;
 
 		return RLM_MODULE_OK;
 	}
@@ -566,7 +566,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 */
 	if ((request->reply->code == PW_DHCP_NAK) ||
 	    ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) && /* DHCP-Flags */
-	     (vp->vp_integer & 0x8000) &&
+	     (vp->vp_uint32 & 0x8000) &&
 	     ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) && /* DHCP-Client-IP-Address */
 	      (vp->vp_ipv4addr == htonl(INADDR_ANY))))) {
 		/*

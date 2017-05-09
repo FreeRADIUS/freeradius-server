@@ -158,7 +158,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
 		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == PW_DHCP_MESSAGE_TYPE) {
-			request->code = vp->vp_integer + PW_DHCP_OFFSET;
+			request->code = vp->vp_uint32 + PW_DHCP_OFFSET;
 		} else if (!vp->da->vendor) switch (vp->da->attr) {
 		/*
 		 *	Allow it to set the packet type in
@@ -166,11 +166,11 @@ static RADIUS_PACKET *request_init(char const *filename)
 		 *	(this takes precedence over the command argument.)
 		 */
 		case PW_PACKET_TYPE:
-			request->code = vp->vp_integer;
+			request->code = vp->vp_uint32;
 			break;
 
 		case PW_PACKET_DST_PORT:
-			request->dst_port = (vp->vp_integer & 0xffff);
+			request->dst_port = (vp->vp_uint32 & 0xffff);
 			break;
 
 		case PW_PACKET_DST_IP_ADDRESS:
@@ -179,7 +179,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 			break;
 
 		case PW_PACKET_SRC_PORT:
-			request->src_port = (vp->vp_integer & 0xffff);
+			request->src_port = (vp->vp_uint32 & 0xffff);
 			break;
 
 		case PW_PACKET_SRC_IP_ADDRESS:

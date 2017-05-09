@@ -57,19 +57,22 @@ struct value_box {
 
 		struct {
 			union {
-				uint8_t		byte;		//!< 8bit unsigned integer.
+				uint8_t		uint8;		//!< 8bit unsigned integer.
 				uint16_t	uint16;		//!< 16bit unsigned integer.
-				uint32_t	integer;	//!< 32bit unsigned integer.
-				uint64_t	uint64;	//!< 64bit unsigned integer.
-				size_t		size;		//!< System specific file/memory size.
+				uint32_t	uint32;		//!< 32bit unsigned integer.
+				uint64_t	uint64;		//!< 64bit unsigned integer.
 
-				int32_t		int32;	//!< 32bit signed integer.
+				int32_t		int32;		//!< 32bit signed integer.
 			};
 			fr_dict_attr_t const	*enumv;		//!< Enumeration values for integer type.
 		};
 
+		double			float64;		//!< Double precision float.
+
+		size_t			size;			//!< System specific file/memory size.
 		struct timeval		timeval;		//!< A time value with usec precision.
-		double			decimal;		//!< Double precision float.
+
+
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
 
 

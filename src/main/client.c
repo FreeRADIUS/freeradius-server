@@ -1356,7 +1356,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			CONF_PARSER const *parse;
 
 			pi = (int *) ((bool *) ((char *) c + dynamic_config[i].offset));
-			*pi = vp->vp_integer;
+			*pi = vp->vp_uint32;
 
 			/*
 			 *	Same nastiness as above.
