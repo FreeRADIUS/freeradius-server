@@ -337,10 +337,10 @@ do {\
 		 char const **: FR_TYPE_STRING, \
 		 uint8_t **: FR_TYPE_OCTETS, \
 		 uint8_t const **: FR_TYPE_OCTETS, \
-		 uint8_t *: FR_TYPE_BYTE, \
-		 uint16_t *: FR_TYPE_SHORT, \
-		 uint32_t *: FR_TYPE_INTEGER, \
-		 uint64_t *: FR_TYPE_INTEGER64, \
+		 uint8_t *: FR_TYPE_UINT8, \
+		 uint16_t *: FR_TYPE_UINT16, \
+		 uint32_t *: FR_TYPE_UINT32, \
+		 uint64_t *: FR_TYPE_UINT64, \
 		 struct timeval *: FR_TYPE_TIMEVAL)
 
 /** Expand a tmpl to a C type, using existing storage to hold variably sized types

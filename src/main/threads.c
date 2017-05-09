@@ -171,17 +171,17 @@ static THREAD_HANDLE *thread_spawn(time_t now, int do_trigger);
  *	A mapping of configuration file names to internal integers
  */
 static const CONF_PARSER thread_config[] = {
-	{ FR_CONF_POINTER("start_servers", FR_TYPE_INTEGER, &thread_pool.start_threads), .dflt = "5" },
-	{ FR_CONF_POINTER("max_servers", FR_TYPE_INTEGER, &thread_pool.max_threads), .dflt = "32" },
-	{ FR_CONF_POINTER("min_spare_servers", FR_TYPE_INTEGER, &thread_pool.min_spare_threads), .dflt = "3" },
-	{ FR_CONF_POINTER("max_spare_servers", FR_TYPE_INTEGER, &thread_pool.max_spare_threads), .dflt = "10" },
-	{ FR_CONF_POINTER("max_requests_per_server", FR_TYPE_INTEGER, &thread_pool.max_requests_per_thread), .dflt = "0" },
-	{ FR_CONF_POINTER("cleanup_delay", FR_TYPE_INTEGER, &thread_pool.cleanup_delay), .dflt = "5" },
-	{ FR_CONF_POINTER("max_queue_size", FR_TYPE_INTEGER, &thread_pool.max_queue_size), .dflt = "65536" },
+	{ FR_CONF_POINTER("start_servers", FR_TYPE_UINT32, &thread_pool.start_threads), .dflt = "5" },
+	{ FR_CONF_POINTER("max_servers", FR_TYPE_UINT32, &thread_pool.max_threads), .dflt = "32" },
+	{ FR_CONF_POINTER("min_spare_servers", FR_TYPE_UINT32, &thread_pool.min_spare_threads), .dflt = "3" },
+	{ FR_CONF_POINTER("max_spare_servers", FR_TYPE_UINT32, &thread_pool.max_spare_threads), .dflt = "10" },
+	{ FR_CONF_POINTER("max_requests_per_server", FR_TYPE_UINT32, &thread_pool.max_requests_per_thread), .dflt = "0" },
+	{ FR_CONF_POINTER("cleanup_delay", FR_TYPE_UINT32, &thread_pool.cleanup_delay), .dflt = "5" },
+	{ FR_CONF_POINTER("max_queue_size", FR_TYPE_UINT32, &thread_pool.max_queue_size), .dflt = "65536" },
 	{ FR_CONF_POINTER("queue_priority", FR_TYPE_STRING, &thread_pool.queue_priority), .dflt = NULL },
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
-	{ FR_CONF_POINTER("auto_limit_acct", FR_TYPE_BOOLEAN, &thread_pool.auto_limit_acct) },
+	{ FR_CONF_POINTER("auto_limit_acct", FR_TYPE_BOOL, &thread_pool.auto_limit_acct) },
 #endif
 #endif
 	CONF_PARSER_TERMINATOR

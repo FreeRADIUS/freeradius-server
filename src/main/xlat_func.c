@@ -111,7 +111,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		memcpy(&int32, vp->vp_octets, vp->vp_length);
 		return snprintf(*out, outlen, "%i", htonl(int32));
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		return snprintf(*out, outlen, "%" PRIu64, vp->vp_integer64);
 
 	/*
@@ -122,16 +122,16 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	case FR_TYPE_IPV4_PREFIX:	/* Same addr field */
 		return snprintf(*out, outlen, "%u", htonl(vp->vp_ipv4addr));
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		return snprintf(*out, outlen, "%u", vp->vp_integer);
 
 	case FR_TYPE_DATE:
 		return snprintf(*out, outlen, "%u", vp->vp_date);
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_byte);
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_short);
 
 	/*
@@ -142,7 +142,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		memcpy(&int64, vp->vp_ether, sizeof(vp->vp_ether));
 		return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		return snprintf(*out, outlen, "%i", vp->vp_signed);
 
 	case FR_TYPE_IPV6_ADDR:

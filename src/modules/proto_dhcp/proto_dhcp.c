@@ -736,7 +736,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	cp = cf_pair_find(cs, "suppress_responses");
 	if (cp) {
 		rcode = cf_pair_parse(sock, cs, "suppress_responses",
-				      FR_ITEM_POINTER(FR_TYPE_BOOLEAN, &sock->suppress_responses), NULL, T_INVALID);
+				      FR_ITEM_POINTER(FR_TYPE_BOOL, &sock->suppress_responses), NULL, T_INVALID);
 		if (rcode < 0) return -1;
 	}
 

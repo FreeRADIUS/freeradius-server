@@ -49,8 +49,8 @@ typedef struct rlm_always_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, rlm_always_t, rcode_str), .dflt = "fail" },
-	{ FR_CONF_OFFSET("simulcount", FR_TYPE_INTEGER, rlm_always_t, simulcount), .dflt = "0" },
-	{ FR_CONF_OFFSET("mpp", FR_TYPE_BOOLEAN, rlm_always_t, mpp), .dflt = "no" },
+	{ FR_CONF_OFFSET("simulcount", FR_TYPE_UINT32, rlm_always_t, simulcount), .dflt = "0" },
+	{ FR_CONF_OFFSET("mpp", FR_TYPE_BOOL, rlm_always_t, mpp), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

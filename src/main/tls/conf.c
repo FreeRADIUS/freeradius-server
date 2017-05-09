@@ -42,16 +42,16 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
 	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, fr_tls_conf_t, session_id_name) },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_INTEGER, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
-	{ FR_CONF_OFFSET("verify", FR_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_verify), .dflt = "no" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
+	{ FR_CONF_OFFSET("verify", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_verify), .dflt = "no" },
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_require_extms), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", FR_TYPE_BOOLEAN, fr_tls_conf_t, session_cache_require_pfs), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_extended_master_secret", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_require_extms), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_require_pfs), .dflt = "no" },
 #endif
 
-	{ FR_CONF_DEPRECATED("enable", FR_TYPE_BOOLEAN, fr_tls_conf_t, NULL) },
-	{ FR_CONF_DEPRECATED("max_entries", FR_TYPE_INTEGER, fr_tls_conf_t, NULL) },
+	{ FR_CONF_DEPRECATED("enable", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
+	{ FR_CONF_DEPRECATED("max_entries", FR_TYPE_UINT32, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("persist_dir", FR_TYPE_STRING, fr_tls_conf_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
@@ -65,24 +65,24 @@ static CONF_PARSER verify_config[] = {
 
 #ifdef HAVE_OPENSSL_OCSP_H
 static CONF_PARSER ocsp_config[] = {
-	{ FR_CONF_OFFSET("enable", FR_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, enable), .dflt = "no" },
+	{ FR_CONF_OFFSET("enable", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, enable), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_ocsp_conf_t, cache_server) },
 
-	{ FR_CONF_OFFSET("override_cert_url", FR_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, override_url), .dflt = "no" },
+	{ FR_CONF_OFFSET("override_cert_url", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, override_url), .dflt = "no" },
 	{ FR_CONF_OFFSET("url", FR_TYPE_STRING, fr_tls_ocsp_conf_t, url) },
-	{ FR_CONF_OFFSET("use_nonce", FR_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, use_nonce), .dflt = "yes" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_INTEGER, fr_tls_ocsp_conf_t, timeout), .dflt = "yes" },
-	{ FR_CONF_OFFSET("softfail", FR_TYPE_BOOLEAN, fr_tls_ocsp_conf_t, softfail), .dflt = "no" },
+	{ FR_CONF_OFFSET("use_nonce", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, use_nonce), .dflt = "yes" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, fr_tls_ocsp_conf_t, timeout), .dflt = "yes" },
+	{ FR_CONF_OFFSET("softfail", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, softfail), .dflt = "no" },
 
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
 static CONF_PARSER tls_server_config[] = {
-	{ FR_CONF_OFFSET("verify_depth", FR_TYPE_INTEGER, fr_tls_conf_t, verify_depth), .dflt = "0" },
+	{ FR_CONF_OFFSET("verify_depth", FR_TYPE_UINT32, fr_tls_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_tls_conf_t, ca_path) },
-	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOLEAN, fr_tls_conf_t, file_type), .dflt = "yes" },
+	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_t, file_type), .dflt = "yes" },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, private_key_file) },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, certificate_file) },
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, ca_file) },
@@ -94,22 +94,22 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 	{ FR_CONF_OFFSET("dh_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, fr_tls_conf_t, random_file) },
-	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_INTEGER, fr_tls_conf_t, fragment_size), .dflt = "1024" },
-	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOLEAN, fr_tls_conf_t, auto_chain), .dflt = "yes" },
-	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_single_dh_use) },
-	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOLEAN, fr_tls_conf_t, check_crl), .dflt = "no" },
+	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
+	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "yes" },
+	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOL, fr_tls_conf_t, disable_single_dh_use) },
+	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
-	{ FR_CONF_DEPRECATED("check_all_crl", FR_TYPE_BOOLEAN, fr_tls_conf_t, NULL) },
+	{ FR_CONF_DEPRECATED("check_all_crl", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
 #endif
-	{ FR_CONF_OFFSET("allow_expired_crl", FR_TYPE_BOOLEAN, fr_tls_conf_t, allow_expired_crl) },
+	{ FR_CONF_OFFSET("allow_expired_crl", FR_TYPE_BOOL, fr_tls_conf_t, allow_expired_crl) },
 	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, fr_tls_conf_t, cipher_list) },
-	{ FR_CONF_OFFSET("cipher_server_preference", FR_TYPE_BOOLEAN, fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
+	{ FR_CONF_OFFSET("cipher_server_preference", FR_TYPE_BOOL, fr_tls_conf_t, cipher_server_preference), .dflt = "yes" },
 #ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
-	{ FR_CONF_OFFSET("allow_renegotiation", FR_TYPE_BOOLEAN, fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_renegotiation", FR_TYPE_BOOL, fr_tls_conf_t, allow_renegotiation), .dflt = "no" },
 #endif
 	{ FR_CONF_OFFSET("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
-	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOLEAN, fr_tls_conf_t, require_client_cert) },
+	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, fr_tls_conf_t, require_client_cert) },
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -118,15 +118,15 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 
 #ifdef SSL_OP_NO_TLSv1
-	{ FR_CONF_OFFSET("disable_tlsv1", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_tlsv1) },
+	{ FR_CONF_OFFSET("disable_tlsv1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1) },
 #endif
 
 #ifdef SSL_OP_NO_TLSv1_1
-	{ FR_CONF_OFFSET("disable_tlsv1_1", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_tlsv1_1) },
+	{ FR_CONF_OFFSET("disable_tlsv1_1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_1) },
 #endif
 
 #ifdef SSL_OP_NO_TLSv1_2
-	{ FR_CONF_OFFSET("disable_tlsv1_2", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_tlsv1_2) },
+	{ FR_CONF_OFFSET("disable_tlsv1_2", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_2) },
 #endif
 
 	{ FR_CONF_POINTER("cache", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) cache_config },
@@ -142,17 +142,17 @@ static CONF_PARSER tls_server_config[] = {
 };
 
 static CONF_PARSER tls_client_config[] = {
-	{ FR_CONF_OFFSET("verify_depth", FR_TYPE_INTEGER, fr_tls_conf_t, verify_depth), .dflt = "0" },
+	{ FR_CONF_OFFSET("verify_depth", FR_TYPE_UINT32, fr_tls_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_tls_conf_t, ca_path) },
-	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOLEAN, fr_tls_conf_t, file_type), .dflt = "yes" },
+	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_t, file_type), .dflt = "yes" },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, private_key_file) },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, certificate_file) },
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, ca_file) },
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_t, private_key_password) },
 	{ FR_CONF_OFFSET("dh_file", FR_TYPE_STRING, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, fr_tls_conf_t, random_file) },
-	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_INTEGER, fr_tls_conf_t, fragment_size), .dflt = "1024" },
-	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOLEAN, fr_tls_conf_t, check_crl), .dflt = "no" },
+	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
+	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
 	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_STRING, fr_tls_conf_t, check_cert_cn) },
 	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, fr_tls_conf_t, cipher_list) },
 	{ FR_CONF_OFFSET("check_cert_issuer", FR_TYPE_STRING, fr_tls_conf_t, check_cert_issuer) },
@@ -164,15 +164,15 @@ static CONF_PARSER tls_client_config[] = {
 #endif
 
 #ifdef SSL_OP_NO_TLSv1
-	{ FR_CONF_OFFSET("disable_tlsv1", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_tlsv1) },
+	{ FR_CONF_OFFSET("disable_tlsv1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1) },
 #endif
 
 #ifdef SSL_OP_NO_TLSv1_1
-	{ FR_CONF_OFFSET("disable_tlsv1_1", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_tlsv1_1) },
+	{ FR_CONF_OFFSET("disable_tlsv1_1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_1) },
 #endif
 
 #ifdef SSL_OP_NO_TLSv1_2
-	{ FR_CONF_OFFSET("disable_tlsv1_2", FR_TYPE_BOOLEAN, fr_tls_conf_t, disable_tlsv1_2) },
+	{ FR_CONF_OFFSET("disable_tlsv1_2", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_2) },
 #endif
 	CONF_PARSER_TERMINATOR
 };

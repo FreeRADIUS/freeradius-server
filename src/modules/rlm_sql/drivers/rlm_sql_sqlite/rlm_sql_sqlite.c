@@ -62,7 +62,7 @@ typedef struct rlm_sql_sqlite {
 
 static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, rlm_sql_sqlite_t, filename) },
-	{ FR_CONF_OFFSET("busy_timeout", FR_TYPE_INTEGER, rlm_sql_sqlite_t, busy_timeout), .dflt = "200" },
+	{ FR_CONF_OFFSET("busy_timeout", FR_TYPE_UINT32, rlm_sql_sqlite_t, busy_timeout), .dflt = "200" },
 	CONF_PARSER_TERMINATOR
 };
 

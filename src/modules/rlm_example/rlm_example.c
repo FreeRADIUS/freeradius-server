@@ -46,8 +46,8 @@ typedef struct rlm_example_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("integer", FR_TYPE_INTEGER, rlm_example_t, value), .dflt = "1" },
-	{ FR_CONF_OFFSET("boolean", FR_TYPE_BOOLEAN, rlm_example_t, boolean), .dflt = "no" },
+	{ FR_CONF_OFFSET("integer", FR_TYPE_UINT32, rlm_example_t, value), .dflt = "1" },
+	{ FR_CONF_OFFSET("boolean", FR_TYPE_BOOL, rlm_example_t, boolean), .dflt = "no" },
 	{ FR_CONF_OFFSET("string", FR_TYPE_STRING, rlm_example_t, string) },
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_example_t, ipaddr), .dflt = "*" },
 	CONF_PARSER_TERMINATOR

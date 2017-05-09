@@ -84,14 +84,14 @@ static const CONF_PARSER postauth_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_sql_config_t, sql_driver_name), .dflt = "rlm_sql_null" },
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
-	{ FR_CONF_OFFSET("port", FR_TYPE_INTEGER, rlm_sql_config_t, sql_port), .dflt = "0" },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT32, rlm_sql_config_t, sql_port), .dflt = "0" },
 	{ FR_CONF_OFFSET("login", FR_TYPE_STRING, rlm_sql_config_t, sql_login), .dflt = "" },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_sql_config_t, sql_password), .dflt = "" },
 	{ FR_CONF_OFFSET("radius_db", FR_TYPE_STRING, rlm_sql_config_t, sql_db), .dflt = "radius" },
-	{ FR_CONF_OFFSET("read_groups", FR_TYPE_BOOLEAN, rlm_sql_config_t, read_groups), .dflt = "yes" },
-	{ FR_CONF_OFFSET("read_profiles", FR_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), .dflt = "yes" },
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), .dflt = "no" },
-	{ FR_CONF_OFFSET("delete_stale_sessions", FR_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), .dflt = "yes" },
+	{ FR_CONF_OFFSET("read_groups", FR_TYPE_BOOL, rlm_sql_config_t, read_groups), .dflt = "yes" },
+	{ FR_CONF_OFFSET("read_profiles", FR_TYPE_BOOL, rlm_sql_config_t, read_profiles), .dflt = "yes" },
+	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_sql_config_t, do_clients), .dflt = "no" },
+	{ FR_CONF_OFFSET("delete_stale_sessions", FR_TYPE_BOOL, rlm_sql_config_t, delete_stale_sessions), .dflt = "yes" },
 	{ FR_CONF_OFFSET("sql_user_name", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_sql_config_t, group_attribute) },
 	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, logfile) },
@@ -114,7 +114,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_INTEGER, rlm_sql_config_t, query_timeout) },
+	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_UINT32, rlm_sql_config_t, query_timeout) },
 
 	{ FR_CONF_POINTER("accounting", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
 

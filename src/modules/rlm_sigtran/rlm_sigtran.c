@@ -73,30 +73,30 @@ static const FR_NAME_NUMBER m3ua_traffic_mode_table[] = {
 
 static const CONF_PARSER sctp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, rlm_sigtran_t, conn_conf.sctp_dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, rlm_sigtran_t, conn_conf.sctp_dst_port), .dflt = "2905" },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_sigtran_t, conn_conf.sctp_dst_port), .dflt = "2905" },
 
 	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_sigtran_t, conn_conf.sctp_src_ipaddr ) },
-	{ FR_CONF_OFFSET("src_port", FR_TYPE_SHORT, rlm_sigtran_t, conn_conf.sctp_src_port), .dflt = "0" },
+	{ FR_CONF_OFFSET("src_port", FR_TYPE_UINT16, rlm_sigtran_t, conn_conf.sctp_src_port), .dflt = "0" },
 
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_INTEGER, rlm_sigtran_t, conn_conf.sctp_timeout), .dflt = "5" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.sctp_timeout), .dflt = "5" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER m3ua_route[] = {
-	{ FR_CONF_IS_SET_OFFSET("dpc", FR_TYPE_INTEGER, sigtran_m3ua_route_t, dpc) },
-	{ FR_CONF_OFFSET("opc", FR_TYPE_INTEGER | FR_TYPE_MULTI, sigtran_m3ua_route_t, opc) },
-	{ FR_CONF_OFFSET("si", FR_TYPE_INTEGER | FR_TYPE_MULTI, sigtran_m3ua_route_t, si) },
+	{ FR_CONF_IS_SET_OFFSET("dpc", FR_TYPE_UINT32, sigtran_m3ua_route_t, dpc) },
+	{ FR_CONF_OFFSET("opc", FR_TYPE_UINT32 | FR_TYPE_MULTI, sigtran_m3ua_route_t, opc) },
+	{ FR_CONF_OFFSET("si", FR_TYPE_UINT32 | FR_TYPE_MULTI, sigtran_m3ua_route_t, si) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER m3ua_config[] = {
-	{ FR_CONF_OFFSET("link_index", FR_TYPE_SHORT, rlm_sigtran_t, conn_conf.m3ua_link_index) },
-	{ FR_CONF_OFFSET("routing_ctx", FR_TYPE_SHORT, rlm_sigtran_t, conn_conf.m3ua_routing_context) },
+	{ FR_CONF_OFFSET("link_index", FR_TYPE_UINT16, rlm_sigtran_t, conn_conf.m3ua_link_index) },
+	{ FR_CONF_OFFSET("routing_ctx", FR_TYPE_UINT16, rlm_sigtran_t, conn_conf.m3ua_routing_context) },
 	{ FR_CONF_OFFSET("traffic_mode", FR_TYPE_STRING, rlm_sigtran_t, conn_conf.m3ua_traffic_mode_str), .dflt = "loadshare" },
-	{ FR_CONF_OFFSET("ack_timeout", FR_TYPE_INTEGER, rlm_sigtran_t, conn_conf.m3ua_ack_timeout), .dflt = "2" },
-	{ FR_CONF_OFFSET("beat_interval", FR_TYPE_INTEGER, rlm_sigtran_t, conn_conf.m3ua_beat_interval), .dflt = "0" },
+	{ FR_CONF_OFFSET("ack_timeout", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.m3ua_ack_timeout), .dflt = "2" },
+	{ FR_CONF_OFFSET("beat_interval", FR_TYPE_UINT32, rlm_sigtran_t, conn_conf.m3ua_beat_interval), .dflt = "0" },
 
 	{ FR_CONF_IS_SET_OFFSET("route", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.m3ua_routes), .subcs = (void const *) m3ua_route },
 
@@ -104,33 +104,33 @@ static const CONF_PARSER m3ua_config[] = {
 };
 
 static const CONF_PARSER mtp3_config[] = {
-	{ FR_CONF_OFFSET("dpc", FR_TYPE_INTEGER | FR_TYPE_REQUIRED, rlm_sigtran_t, conn_conf.mtp3_dpc) },
-	{ FR_CONF_OFFSET("opc", FR_TYPE_INTEGER | FR_TYPE_REQUIRED, rlm_sigtran_t, conn_conf.mtp3_opc) },
+	{ FR_CONF_OFFSET("dpc", FR_TYPE_UINT32 | FR_TYPE_REQUIRED, rlm_sigtran_t, conn_conf.mtp3_dpc) },
+	{ FR_CONF_OFFSET("opc", FR_TYPE_UINT32 | FR_TYPE_REQUIRED, rlm_sigtran_t, conn_conf.mtp3_opc) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER sccp_global_title[] = {
 	{ FR_CONF_OFFSET("address", FR_TYPE_STRING, sigtran_sccp_global_title_t, address) },
-	{ FR_CONF_IS_SET_OFFSET("tt", FR_TYPE_BYTE, sigtran_sccp_global_title_t, tt) },
-	{ FR_CONF_IS_SET_OFFSET("nai", FR_TYPE_BYTE, sigtran_sccp_global_title_t, nai) },
-	{ FR_CONF_IS_SET_OFFSET("np", FR_TYPE_BYTE, sigtran_sccp_global_title_t, np) },
-	{ FR_CONF_IS_SET_OFFSET("es", FR_TYPE_BYTE, sigtran_sccp_global_title_t, es) },
+	{ FR_CONF_IS_SET_OFFSET("tt", FR_TYPE_UINT8, sigtran_sccp_global_title_t, tt) },
+	{ FR_CONF_IS_SET_OFFSET("nai", FR_TYPE_UINT8, sigtran_sccp_global_title_t, nai) },
+	{ FR_CONF_IS_SET_OFFSET("np", FR_TYPE_UINT8, sigtran_sccp_global_title_t, np) },
+	{ FR_CONF_IS_SET_OFFSET("es", FR_TYPE_UINT8, sigtran_sccp_global_title_t, es) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER sccp_address[] = {
-	{ FR_CONF_IS_SET_OFFSET("pc", FR_TYPE_INTEGER, sigtran_sccp_address_t, pc) },
-	{ FR_CONF_IS_SET_OFFSET("ssn", FR_TYPE_BYTE, sigtran_sccp_address_t, ssn) },
+	{ FR_CONF_IS_SET_OFFSET("pc", FR_TYPE_UINT32, sigtran_sccp_address_t, pc) },
+	{ FR_CONF_IS_SET_OFFSET("ssn", FR_TYPE_UINT8, sigtran_sccp_address_t, ssn) },
 	{ FR_CONF_IS_SET_OFFSET("gt", FR_TYPE_SUBSECTION, sigtran_sccp_address_t, gt), .subcs = (void const *) sccp_global_title },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER sccp_config[] = {
-	{ FR_CONF_OFFSET("ai8", FR_TYPE_BOOLEAN, rlm_sigtran_t, conn_conf.sccp_ai8) },
-	{ FR_CONF_OFFSET("route_on_ssn", FR_TYPE_BOOLEAN, rlm_sigtran_t, conn_conf.sccp_route_on_ssn) },
+	{ FR_CONF_OFFSET("ai8", FR_TYPE_BOOL, rlm_sigtran_t, conn_conf.sccp_ai8) },
+	{ FR_CONF_OFFSET("route_on_ssn", FR_TYPE_BOOL, rlm_sigtran_t, conn_conf.sccp_route_on_ssn) },
 
 	{ FR_CONF_OFFSET("called", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.sccp_called), .subcs = (void const *) sccp_address },
 	{ FR_CONF_OFFSET("calling", FR_TYPE_SUBSECTION, rlm_sigtran_t, conn_conf.sccp_calling), .subcs = (void const *) sccp_address },

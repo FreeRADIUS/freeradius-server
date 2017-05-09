@@ -576,18 +576,18 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;	/* ugly hack */
-	if (tmpl_define_undefined_attr(inst->paircmp_attr, FR_TYPE_INTEGER64, &flags) < 0) {
+	if (tmpl_define_undefined_attr(inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_err_cs(conf, "Failed defining counter attribute: %s", fr_strerror());
 		return -1;
 	}
 
 	flags.compare = 0;
-	if (tmpl_define_undefined_attr(inst->limit_attr, FR_TYPE_INTEGER64, &flags) < 0) {
+	if (tmpl_define_undefined_attr(inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_err_cs(conf, "Failed defining check attribute: %s", fr_strerror());
 		return -1;
 	}
 
-	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_INTEGER64) {
+	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_UINT64) {
 		cf_log_err_cs(conf, "Counter attribute %s MUST be integer64",
 			      inst->paircmp_attr->tmpl_da->name);
 		return -1;
@@ -599,7 +599,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (inst->limit_attr->tmpl_da->type != FR_TYPE_INTEGER64) {
+	if (inst->limit_attr->tmpl_da->type != FR_TYPE_UINT64) {
 		cf_log_err_cs(conf, "Check attribute %s MUST be integer64",
 			      inst->limit_attr->tmpl_da->name);
 		return -1;

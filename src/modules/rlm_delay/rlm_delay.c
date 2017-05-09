@@ -41,8 +41,8 @@ typedef struct rlm_delay_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("delay", FR_TYPE_TMPL, rlm_delay_t, delay) },
-	{ FR_CONF_OFFSET("relative", FR_TYPE_BOOLEAN, rlm_delay_t, relative), .dflt = "no" },
-	{ FR_CONF_OFFSET("force_reschedule", FR_TYPE_BOOLEAN, rlm_delay_t, force_reschedule), .dflt = "no" },
+	{ FR_CONF_OFFSET("relative", FR_TYPE_BOOL, rlm_delay_t, relative), .dflt = "no" },
+	{ FR_CONF_OFFSET("force_reschedule", FR_TYPE_BOOL, rlm_delay_t, force_reschedule), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

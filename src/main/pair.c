@@ -182,17 +182,17 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 				     check->vp_strvalue);
 			break;
 
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			ret = vp->vp_byte - check->vp_byte;
 			break;
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			ret = vp->vp_short - check->vp_short;
 			break;
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			ret = vp->vp_integer - check->vp_integer;
 			break;
 
-		case FR_TYPE_INTEGER64:
+		case FR_TYPE_UINT64:
 			/*
 			 *	Don't want integer overflow!
 			 */
@@ -205,7 +205,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			}
 			break;
 
-		case FR_TYPE_SIGNED:
+		case FR_TYPE_INT32:
 			if (vp->vp_signed < check->vp_signed) {
 				ret = -1;
 			} else if (vp->vp_signed > check->vp_signed) {

@@ -63,8 +63,8 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		date = vp->vp_date;
 		goto encode;
 
-	case FR_TYPE_INTEGER:
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
 		date = (time_t) vp->vp_integer;
 
 	encode:

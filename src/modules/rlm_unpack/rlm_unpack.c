@@ -157,17 +157,17 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Hacks
 	 */
 	switch (type) {
-	case FR_TYPE_SIGNED:
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_INT32:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_DATE:
 		cast->vp_integer = ntohl(cast->vp_integer);
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		cast->vp_short = ((input[offset] << 8) | input[offset + 1]);
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		cast->vp_integer64 = ntohll(cast->vp_integer64);
 		break;
 

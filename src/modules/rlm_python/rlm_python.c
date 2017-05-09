@@ -121,7 +121,7 @@ static CONF_PARSER module_config[] = {
 #undef A
 
 	{ FR_CONF_OFFSET("python_path", FR_TYPE_STRING, rlm_python_t, python_path) },
-	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOLEAN, rlm_python_t, cext_compat), .dflt = false },
+	{ FR_CONF_OFFSET("cext_compat", FR_TYPE_BOOL, rlm_python_t, cext_compat), .dflt = false },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -365,23 +365,23 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		value = PyString_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		value = PyLong_FromUnsignedLong(vp->vp_integer);
 		break;
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		value = PyLong_FromUnsignedLong(vp->vp_byte);
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		value =  PyLong_FromUnsignedLong(vp->vp_short);
 		break;
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		value = PyLong_FromLong(vp->vp_signed);
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		value = PyLong_FromUnsignedLongLong(vp->vp_integer64);
 		break;
 
@@ -389,11 +389,11 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
 		break;
 
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 		value = PyFloat_FromDouble(vp->vp_decimal);
 		break;
 
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		value = PyBool_FromLong(vp->vp_bool);
 		break;
 

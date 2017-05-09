@@ -1017,11 +1017,11 @@ static void *detail_handler_thread(void *arg)
 static const CONF_PARSER detail_config[] = {
 	{ FR_CONF_OFFSET("detail", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, listen_detail_t, filename) },
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, listen_detail_t, filename) },
-	{ FR_CONF_OFFSET("load_factor", FR_TYPE_INTEGER, listen_detail_t, load_factor), .dflt = STRINGIFY(10) },
-	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_INTEGER, listen_detail_t, poll_interval), .dflt = STRINGIFY(1) },
-	{ FR_CONF_OFFSET("retry_interval", FR_TYPE_INTEGER, listen_detail_t, retry_interval), .dflt = STRINGIFY(30) },
-	{ FR_CONF_OFFSET("one_shot", FR_TYPE_BOOLEAN, listen_detail_t, one_shot), .dflt = "no" },
-	{ FR_CONF_OFFSET("track", FR_TYPE_BOOLEAN, listen_detail_t, track), .dflt = "no" },
+	{ FR_CONF_OFFSET("load_factor", FR_TYPE_UINT32, listen_detail_t, load_factor), .dflt = STRINGIFY(10) },
+	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, listen_detail_t, poll_interval), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("retry_interval", FR_TYPE_UINT32, listen_detail_t, retry_interval), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("one_shot", FR_TYPE_BOOL, listen_detail_t, one_shot), .dflt = "no" },
+	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, listen_detail_t, track), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

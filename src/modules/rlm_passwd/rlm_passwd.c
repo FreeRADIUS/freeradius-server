@@ -368,13 +368,13 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_passwd_t, format) },
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_passwd_t, delimiter), .dflt = ":" },
 
-	{ FR_CONF_OFFSET("ignore_nislike", FR_TYPE_BOOLEAN, rlm_passwd_t, ignore_nislike), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ignore_nislike", FR_TYPE_BOOL, rlm_passwd_t, ignore_nislike), .dflt = "yes" },
 
-	{ FR_CONF_OFFSET("ignore_empty", FR_TYPE_BOOLEAN, rlm_passwd_t, ignore_empty), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ignore_empty", FR_TYPE_BOOL, rlm_passwd_t, ignore_empty), .dflt = "yes" },
 
-	{ FR_CONF_OFFSET("allow_multiple_keys", FR_TYPE_BOOLEAN, rlm_passwd_t, allow_multiple), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_multiple_keys", FR_TYPE_BOOL, rlm_passwd_t, allow_multiple), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("hash_size", FR_TYPE_INTEGER, rlm_passwd_t, hash_size), .dflt = "100" },
+	{ FR_CONF_OFFSET("hash_size", FR_TYPE_UINT32, rlm_passwd_t, hash_size), .dflt = "100" },
 	CONF_PARSER_TERMINATOR
 };
 

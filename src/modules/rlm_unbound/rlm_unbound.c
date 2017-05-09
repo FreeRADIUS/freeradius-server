@@ -58,7 +58,7 @@ typedef struct rlm_unbound_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_INTEGER, rlm_unbound_t, timeout), .dflt = "3000" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_unbound_t, timeout), .dflt = "3000" },
 	CONF_PARSER_TERMINATOR
 };
 

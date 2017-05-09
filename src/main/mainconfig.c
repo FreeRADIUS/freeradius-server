@@ -129,8 +129,8 @@ static const CONF_PARSER startup_server_config[] = {
 
 	{ FR_CONF_POINTER("log_file", FR_TYPE_STRING, &main_config.log_file) },
 	{ FR_CONF_POINTER("log_destination", FR_TYPE_STRING, &radlog_dest) },
-	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOLEAN, &log_dates_utc) },
-	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOLEAN, &log_timestamp) },
+	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
+	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -142,15 +142,15 @@ static const CONF_PARSER startup_server_config[] = {
  *
  **********************************************************************/
 static const CONF_PARSER log_config[] = {
-	{ FR_CONF_POINTER("stripped_names", FR_TYPE_BOOLEAN, &log_stripped_names), .dflt = "no" },
-	{ FR_CONF_POINTER("auth", FR_TYPE_BOOLEAN, &main_config.log_auth), .dflt = "no" },
-	{ FR_CONF_POINTER("auth_badpass", FR_TYPE_BOOLEAN, &main_config.log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_POINTER("auth_goodpass", FR_TYPE_BOOLEAN, &main_config.log_auth_goodpass), .dflt = "no" },
+	{ FR_CONF_POINTER("stripped_names", FR_TYPE_BOOL, &log_stripped_names), .dflt = "no" },
+	{ FR_CONF_POINTER("auth", FR_TYPE_BOOL, &main_config.log_auth), .dflt = "no" },
+	{ FR_CONF_POINTER("auth_badpass", FR_TYPE_BOOL, &main_config.log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_POINTER("auth_goodpass", FR_TYPE_BOOL, &main_config.log_auth_goodpass), .dflt = "no" },
 	{ FR_CONF_POINTER("msg_badpass", FR_TYPE_STRING, &main_config.auth_badpass_msg) },
 	{ FR_CONF_POINTER("msg_goodpass", FR_TYPE_STRING, &main_config.auth_goodpass_msg) },
-	{ FR_CONF_POINTER("colourise", FR_TYPE_BOOLEAN, &do_colourise) },
-	{ FR_CONF_POINTER("timestamp", FR_TYPE_BOOLEAN, &log_timestamp) },
-	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOLEAN, &log_dates_utc) },
+	{ FR_CONF_POINTER("colourise", FR_TYPE_BOOL, &do_colourise) },
+	{ FR_CONF_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
+	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
 	{ FR_CONF_POINTER("msg_denied", FR_TYPE_STRING, &main_config.denied_msg), .dflt = "You are already logged in - access denied" },
 #ifdef WITH_CONF_WRITE
 	{ FR_CONF_POINTER("write_dir", FR_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
@@ -163,19 +163,19 @@ static const CONF_PARSER log_config[] = {
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
-	{ FR_CONF_POINTER("max_attributes", FR_TYPE_INTEGER, &fr_max_attributes), .dflt = STRINGIFY(0) },
+	{ FR_CONF_POINTER("max_attributes", FR_TYPE_UINT32, &fr_max_attributes), .dflt = STRINGIFY(0) },
 	{ FR_CONF_POINTER("reject_delay", FR_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
-	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOLEAN, &main_config.status_server), .dflt = "no" },
+	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOL, &main_config.status_server), .dflt = "no" },
 
 	/*
 	 *	No default, so it isn't printed in debug mode.
 	 */
-	{ FR_CONF_POINTER("tunnel_password_zeros", FR_TYPE_BOOLEAN, &fr_tunnel_password_zeros) },
+	{ FR_CONF_POINTER("tunnel_password_zeros", FR_TYPE_BOOL, &fr_tunnel_password_zeros) },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
 #endif
-	{ FR_CONF_POINTER("server_id", FR_TYPE_BYTE, &main_config.state_server_id) },
+	{ FR_CONF_POINTER("server_id", FR_TYPE_UINT8, &main_config.state_server_id) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -187,7 +187,7 @@ static const CONF_PARSER resources[] = {
 	 */
 	{ FR_CONF_POINTER("talloc_pool_size", FR_TYPE_SIZE, &main_config.talloc_pool_size) },			/* DO NOT SET DEFAULT */
 	{ FR_CONF_POINTER("talloc_memory_limit", FR_TYPE_SIZE, &main_config.talloc_memory_limit) },		/* DO NOT SET DEFAULT */
-	{ FR_CONF_POINTER("talloc_memory_report", FR_TYPE_BOOLEAN, &main_config.talloc_memory_report) },	/* DO NOT SET DEFAULT */
+	{ FR_CONF_POINTER("talloc_memory_report", FR_TYPE_BOOL, &main_config.talloc_memory_report) },	/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
@@ -208,18 +208,18 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("libdir", FR_TYPE_STRING, &radlib_dir), .dflt = "${prefix}/lib"},
 	{ FR_CONF_POINTER("radacctdir", FR_TYPE_STRING, &radacct_dir), .dflt = "${logdir}/radacct" },
 	{ FR_CONF_POINTER("panic_action", FR_TYPE_STRING, &main_config.panic_action) },
-	{ FR_CONF_POINTER("hostname_lookups", FR_TYPE_BOOLEAN, &fr_dns_lookups), .dflt = "no" },
-	{ FR_CONF_POINTER("max_request_time", FR_TYPE_INTEGER, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
-	{ FR_CONF_POINTER("cleanup_delay", FR_TYPE_INTEGER, &main_config.cleanup_delay), .dflt = STRINGIFY(CLEANUP_DELAY) },
-	{ FR_CONF_POINTER("continuation_timeout", FR_TYPE_INTEGER, &main_config.continuation_timeout), .dflt = "15" },
-	{ FR_CONF_POINTER("max_requests", FR_TYPE_INTEGER, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
+	{ FR_CONF_POINTER("hostname_lookups", FR_TYPE_BOOL, &fr_dns_lookups), .dflt = "no" },
+	{ FR_CONF_POINTER("max_request_time", FR_TYPE_UINT32, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
+	{ FR_CONF_POINTER("cleanup_delay", FR_TYPE_UINT32, &main_config.cleanup_delay), .dflt = STRINGIFY(CLEANUP_DELAY) },
+	{ FR_CONF_POINTER("continuation_timeout", FR_TYPE_UINT32, &main_config.continuation_timeout), .dflt = "15" },
+	{ FR_CONF_POINTER("max_requests", FR_TYPE_UINT32, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
 	{ FR_CONF_POINTER("pidfile", FR_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
 	{ FR_CONF_POINTER("checkrad", FR_TYPE_STRING, &main_config.checkrad), .dflt = "${sbindir}/checkrad" },
 
-	{ FR_CONF_POINTER("debug_level", FR_TYPE_INTEGER, &main_config.debug_level), .dflt = "0" },
+	{ FR_CONF_POINTER("debug_level", FR_TYPE_UINT32, &main_config.debug_level), .dflt = "0" },
 
 #ifdef WITH_PROXY
-	{ FR_CONF_POINTER("proxy_requests", FR_TYPE_BOOLEAN, &main_config.proxy_requests), .dflt = "yes" },
+	{ FR_CONF_POINTER("proxy_requests", FR_TYPE_BOOL, &main_config.proxy_requests), .dflt = "yes" },
 #endif
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -233,10 +233,10 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ FR_CONF_POINTER("log_auth", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &main_config.log_auth) },
-	{ FR_CONF_POINTER("log_auth_badpass", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &main_config.log_auth_badpass) },
-	{ FR_CONF_POINTER("log_auth_goodpass", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
-	{ FR_CONF_POINTER("log_stripped_names", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &log_stripped_names) },
+	{ FR_CONF_POINTER("log_auth", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth) },
+	{ FR_CONF_POINTER("log_auth_badpass", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth_badpass) },
+	{ FR_CONF_POINTER("log_auth_goodpass", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
+	{ FR_CONF_POINTER("log_stripped_names", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &log_stripped_names) },
 
 	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 	CONF_PARSER_TERMINATOR
@@ -262,7 +262,7 @@ static const CONF_PARSER bootstrap_security_config[] = {
 	{ FR_CONF_POINTER("group", FR_TYPE_STRING, &gid_name) },
 #endif
 	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOLEAN, &allow_core_dumps), .dflt = "no" },
+	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL, &allow_core_dumps), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -284,7 +284,7 @@ static const CONF_PARSER bootstrap_config[] = {
 	{ FR_CONF_POINTER("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &gid_name) },
 #endif
 	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOLEAN | FR_TYPE_DEPRECATED, &allow_core_dumps) },
+	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &allow_core_dumps) },
 	CONF_PARSER_TERMINATOR
 };
 

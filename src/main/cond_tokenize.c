@@ -329,45 +329,45 @@ static bool cond_type_check(fr_cond_t *c, fr_type_t lhs_type)
 	 *	If the LHS has a small type, and the RHS has a large type,
 	 *	then add a cast to the LHS.
 	 */
-	if (lhs_type == FR_TYPE_INTEGER64) {
-		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER) ||
-		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_SHORT) ||
-		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_BYTE)) {
+	if (lhs_type == FR_TYPE_UINT64) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT32) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT16) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT8)) {
 			c->cast = NULL;
 			return true;
 		}
 	}
 
-	if (lhs_type == FR_TYPE_INTEGER) {
-		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_SHORT) ||
-		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_BYTE)) {
+	if (lhs_type == FR_TYPE_UINT32) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT16) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT8)) {
 			c->cast = NULL;
 			return true;
 		}
 
-		if (c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER64) {
+		if (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT64) {
 			c->cast = c->data.map->rhs->tmpl_da;
 			return true;
 		}
 	}
 
-	if (lhs_type == FR_TYPE_SHORT) {
-		if (c->data.map->rhs->tmpl_da->type == FR_TYPE_BYTE) {
+	if (lhs_type == FR_TYPE_UINT16) {
+		if (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT8) {
 			c->cast = NULL;
 			return true;
 		}
 
-		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER64) ||
-		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER)) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT64) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT32)) {
 			c->cast = c->data.map->rhs->tmpl_da;
 			return true;
 		}
 	}
 
-	if (lhs_type == FR_TYPE_BYTE) {
-		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER64) ||
-		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_INTEGER) ||
-		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_SHORT)) {
+	if (lhs_type == FR_TYPE_UINT8) {
+		if ((c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT64) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT32) ||
+		    (c->data.map->rhs->tmpl_da->type == FR_TYPE_UINT16)) {
 			c->cast = c->data.map->rhs->tmpl_da;
 			return true;
 		}
@@ -793,10 +793,10 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 
 				if ((map->lhs->type != TMPL_TYPE_ATTR) ||
 				    !((map->lhs->tmpl_da->type == FR_TYPE_OCTETS) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_BYTE) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_SHORT) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_INTEGER) ||
-				      (map->lhs->tmpl_da->type == FR_TYPE_INTEGER64))) {
+				      (map->lhs->tmpl_da->type == FR_TYPE_UINT8) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_UINT16) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_UINT32) ||
+				      (map->lhs->tmpl_da->type == FR_TYPE_UINT64))) {
 					c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + FR_TYPE_OCTETS);
 				}
 			}
@@ -921,7 +921,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					 *	ifid to integer64 is OK
 					 */
 					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_IFID) &&
-					    (c->cast->type == FR_TYPE_INTEGER64)) {
+					    (c->cast->type == FR_TYPE_UINT64)) {
 						goto cast_ok;
 					}
 
@@ -944,7 +944,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					/*
 					 *	integer64 to ethernet is OK.
 					 */
-					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_INTEGER64) &&
+					if ((c->data.map->lhs->tmpl_da->type == FR_TYPE_UINT64) &&
 					    (c->cast->type == FR_TYPE_ETHERNET)) {
 						goto cast_ok;
 					}

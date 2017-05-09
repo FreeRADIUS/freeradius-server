@@ -126,9 +126,9 @@ typedef struct linelog_conn {
 
 static const CONF_PARSER file_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_INTEGER, linelog_instance_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, linelog_instance_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, linelog_instance_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOLEAN, linelog_instance_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, linelog_instance_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -145,14 +145,14 @@ static const CONF_PARSER unix_config[] = {
 
 static const CONF_PARSER udp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, linelog_net_t, port) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, linelog_net_t, port) },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER tcp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, linelog_net_t, port) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, linelog_net_t, port) },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
@@ -177,7 +177,7 @@ static const CONF_PARSER module_config[] = {
 	 *	Deprecated config items
 	 */
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_DEPRECATED, linelog_instance_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_INTEGER | FR_TYPE_DEPRECATED, linelog_instance_t, file.permissions) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32 | FR_TYPE_DEPRECATED, linelog_instance_t, file.permissions) },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, file.group_str) },
 
 	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_STRING | FR_TYPE_DEPRECATED, linelog_instance_t, syslog.facility) },

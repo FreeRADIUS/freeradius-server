@@ -42,7 +42,7 @@ RCSID("$Id$")
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_lua_t, module), NULL},
-	{ FR_CONF_OFFSET("threads", FR_TYPE_BOOLEAN, rlm_lua_t, threads), .dflt = "no"},
+	{ FR_CONF_OFFSET("threads", FR_TYPE_BOOL, rlm_lua_t, threads), .dflt = "no"},
 	{ FR_CONF_OFFSET("func_instantiate", FR_TYPE_STRING, rlm_lua_t, func_instantiate), NULL},
 	{ FR_CONF_OFFSET("func_detach", FR_TYPE_STRING, rlm_lua_t, func_detach), NULL},
 	{ FR_CONF_OFFSET("func_authorize", FR_TYPE_STRING, rlm_lua_t, func_authorize), NULL},

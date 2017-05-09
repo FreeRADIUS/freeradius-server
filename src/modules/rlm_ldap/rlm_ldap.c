@@ -67,7 +67,7 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOLEAN, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
+	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
 
@@ -92,7 +92,7 @@ static CONF_PARSER user_config[] = {
 	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, rlm_ldap_t, userobj_sort_by) },
 
 	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
-	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOLEAN, rlm_ldap_t, access_positive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, rlm_ldap_t, access_positive), .dflt = "yes" },
 
 	/* Should be deprecated */
 	{ FR_CONF_OFFSET("sasl", FR_TYPE_SUBSECTION, rlm_ldap_t, user_sasl), .subcs = (void const *) sasl_mech_dynamic },
@@ -110,8 +110,8 @@ static CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("name_attribute", FR_TYPE_STRING, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
 	{ FR_CONF_OFFSET("membership_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_membership_attr) },
 	{ FR_CONF_OFFSET("membership_filter", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_ldap_t, groupobj_membership_filter) },
-	{ FR_CONF_OFFSET("cacheable_name", FR_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_name), .dflt = "no" },
-	{ FR_CONF_OFFSET("cacheable_dn", FR_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
+	{ FR_CONF_OFFSET("cacheable_name", FR_TYPE_BOOL, rlm_ldap_t, cacheable_group_name), .dflt = "no" },
+	{ FR_CONF_OFFSET("cacheable_dn", FR_TYPE_BOOL, rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
 	{ FR_CONF_OFFSET("cache_attribute", FR_TYPE_STRING, rlm_ldap_t, cache_attribute) },
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_ldap_t, group_attribute) },
 	CONF_PARSER_TERMINATOR
@@ -141,31 +141,31 @@ static CONF_PARSER option_config[] = {
 	/*
 	 *	Pool config items
 	 */
-	{ FR_CONF_OFFSET("chase_referrals", FR_TYPE_BOOLEAN, rlm_ldap_t, handle_config.chase_referrals) },
+	{ FR_CONF_OFFSET("chase_referrals", FR_TYPE_BOOL, rlm_ldap_t, handle_config.chase_referrals) },
 
-	{ FR_CONF_OFFSET("use_referral_credentials", FR_TYPE_BOOLEAN, rlm_ldap_t, handle_config.use_referral_credentials), .dflt = "no" },
+	{ FR_CONF_OFFSET("use_referral_credentials", FR_TYPE_BOOL, rlm_ldap_t, handle_config.use_referral_credentials), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("rebind", FR_TYPE_BOOLEAN, rlm_ldap_t, handle_config.rebind) },
+	{ FR_CONF_OFFSET("rebind", FR_TYPE_BOOL, rlm_ldap_t, handle_config.rebind) },
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
-	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_INTEGER, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
+	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_UINT32, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{ FR_CONF_OFFSET("idle", FR_TYPE_INTEGER, rlm_ldap_t, handle_config.keepalive_idle), .dflt = "60" },
+	{ FR_CONF_OFFSET("idle", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_idle), .dflt = "60" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	{ FR_CONF_OFFSET("probes", FR_TYPE_INTEGER, rlm_ldap_t, handle_config.keepalive_probes), .dflt = "3" },
+	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_probes), .dflt = "3" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{ FR_CONF_OFFSET("interval", FR_TYPE_INTEGER, rlm_ldap_t, handle_config.keepalive_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("interval", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_interval), .dflt = "30" },
 #endif
 
 	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, rlm_ldap_t, handle_config.dereference_str) },
 
 	/* allow server unlimited time for search (server-side limit) */
-	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_INTEGER, rlm_ldap_t, handle_config.srv_timelimit), .dflt = "20" },
+	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_UINT32, rlm_ldap_t, handle_config.srv_timelimit), .dflt = "20" },
 
 	/*
 	 *	Instance config items
@@ -179,7 +179,7 @@ static CONF_PARSER option_config[] = {
 static const CONF_PARSER global_config[] = {
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, rlm_ldap_t, tls_random_file) },
 
-	{ FR_CONF_OFFSET("ldap_debug", FR_TYPE_INTEGER, rlm_ldap_t, ldap_debug), .dflt = "0x0000" },		/* Debugging flags to the server */
+	{ FR_CONF_OFFSET("ldap_debug", FR_TYPE_UINT32, rlm_ldap_t, ldap_debug), .dflt = "0x0000" },		/* Debugging flags to the server */
 
 	CONF_PARSER_TERMINATOR
 };
@@ -190,7 +190,7 @@ static const CONF_PARSER module_config[] = {
 	 */
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_SHORT, rlm_ldap_t, handle_config.port) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_ldap_t, handle_config.port) },
 
 	{ FR_CONF_OFFSET("identity", FR_TYPE_STRING, rlm_ldap_t, handle_config.admin_identity) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_ldap_t, handle_config.admin_password) },
@@ -200,21 +200,21 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("valuepair_attribute", FR_TYPE_STRING, rlm_ldap_t, valuepair_attr) },
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
-	{ FR_CONF_OFFSET("session_tracking", FR_TYPE_BOOLEAN, rlm_ldap_t, session_tracking), .dflt = "no" },
+	{ FR_CONF_OFFSET("session_tracking", FR_TYPE_BOOL, rlm_ldap_t, session_tracking), .dflt = "no" },
 #endif
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
-	{ FR_CONF_OFFSET("edir", FR_TYPE_BOOLEAN, rlm_ldap_t, edir) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("edir", FR_TYPE_BOOL, rlm_ldap_t, edir) }, /* NULL defaults to "no" */
 
 	/*
 	 *	Attempt to bind with the cleartext password we got from eDirectory
 	 *	Universal password for additional authorization checks.
 	 */
-	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOLEAN, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOL, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
 #endif
 
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOLEAN, rlm_ldap_t, do_clients) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_ldap_t, do_clients) }, /* NULL defaults to "no" */
 
 	{ FR_CONF_POINTER("user", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) user_config },
 

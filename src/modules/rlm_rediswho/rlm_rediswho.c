@@ -63,7 +63,7 @@ static CONF_PARSER section_config[] = {
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
 
-	{ FR_CONF_OFFSET("trim_count", FR_TYPE_SIGNED, rlm_rediswho_t, trim_count), .dflt = "-1" },
+	{ FR_CONF_OFFSET("trim_count", FR_TYPE_INT32, rlm_rediswho_t, trim_count), .dflt = "-1" },
 
 	/*
 	 *	These all smash the same variables, because we don't care about them right now.

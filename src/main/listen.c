@@ -1235,19 +1235,19 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	}
 }
 static CONF_PARSER performance_config[] = {
-	{ FR_CONF_OFFSET("skip_duplicate_checks", FR_TYPE_BOOLEAN, rad_listen_t, nodup) },
+	{ FR_CONF_OFFSET("skip_duplicate_checks", FR_TYPE_BOOL, rad_listen_t, nodup) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("max_pps", FR_TYPE_INTEGER, listen_socket_t, max_rate) },
+	{ FR_CONF_OFFSET("max_pps", FR_TYPE_UINT32, listen_socket_t, max_rate) },
 
 #ifdef WITH_TCP
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_INTEGER, listen_socket_t, limit.max_connections), .dflt = "16" },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_INTEGER, listen_socket_t, limit.lifetime), .dflt = "0" },
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, listen_socket_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, listen_socket_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, listen_socket_t, limit.idle_timeout), .dflt = STRINGIFY(30) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -1316,10 +1316,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(FR_TYPE_SHORT, &sock->my_port), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(FR_TYPE_UINT16, &sock->my_port), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 
-	rcode = cf_pair_parse(NULL, cs, "recv_buff", FR_ITEM_POINTER(FR_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(NULL, cs, "recv_buff", FR_ITEM_POINTER(FR_TYPE_UINT32, &recv_buff), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 	if (recv_buff) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);

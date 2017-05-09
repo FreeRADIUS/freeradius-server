@@ -42,8 +42,8 @@ typedef struct rlm_sometimes_t {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("start", FR_TYPE_INTEGER, rlm_sometimes_t, start), .dflt = "0" },
-	{ FR_CONF_OFFSET("end", FR_TYPE_INTEGER, rlm_sometimes_t, end), .dflt = "127" },
+	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, rlm_sometimes_t, start), .dflt = "0" },
+	{ FR_CONF_OFFSET("end", FR_TYPE_UINT32, rlm_sometimes_t, end), .dflt = "127" },
 	CONF_PARSER_TERMINATOR
 };
 

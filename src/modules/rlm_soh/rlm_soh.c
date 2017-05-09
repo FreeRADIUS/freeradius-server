@@ -101,7 +101,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 * Do SoH over DHCP?
 	 */
-	{ FR_CONF_OFFSET("dhcp", FR_TYPE_BOOLEAN, rlm_soh_t, dhcp), .dflt = "no" },
+	{ FR_CONF_OFFSET("dhcp", FR_TYPE_BOOL, rlm_soh_t, dhcp), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

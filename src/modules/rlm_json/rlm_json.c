@@ -135,7 +135,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		char const	*p;
 
 #ifndef HAVE_JSON_OBJECT_GET_INT64
-		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->tmpl_da->type == FR_TYPE_INTEGER64)) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->tmpl_da->type == FR_TYPE_UINT64)) {
 			cf_log_err_cp(cp, "64bit integers are not supported by linked json-c.  "
 				      "Upgrade to json-c >= 0.10 to use this feature");
 			return -1;

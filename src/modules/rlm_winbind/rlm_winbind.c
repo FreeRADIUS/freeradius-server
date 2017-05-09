@@ -38,7 +38,7 @@ RCSID("$Id$")
 
 static const CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("group_search_username", FR_TYPE_TMPL, rlm_winbind_t, group_username) },
-	{ FR_CONF_OFFSET("group_add_domain", FR_TYPE_BOOLEAN, rlm_winbind_t, group_add_domain), .dflt = "yes" },
+	{ FR_CONF_OFFSET("group_add_domain", FR_TYPE_BOOL, rlm_winbind_t, group_add_domain), .dflt = "yes" },
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_winbind_t, group_attribute) },
 	CONF_PARSER_TERMINATOR
 };

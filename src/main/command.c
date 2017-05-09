@@ -99,8 +99,8 @@ static const CONF_PARSER command_config[] = {
 	{ FR_CONF_DEPRECATED("uid", FR_TYPE_STRING, fr_command_socket_t, NULL) },
 	{ FR_CONF_OFFSET("gid", FR_TYPE_STRING, fr_command_socket_t, gid_name) },
 	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, fr_command_socket_t, mode_name) },
-	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOLEAN, fr_command_socket_t, peercred), .dflt = "yes" },
-	{ FR_CONF_OFFSET("blocking", FR_TYPE_BOOLEAN, fr_command_socket_t, blocking),  },
+	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, fr_command_socket_t, peercred), .dflt = "yes" },
+	{ FR_CONF_OFFSET("blocking", FR_TYPE_BOOL, fr_command_socket_t, blocking),  },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -957,7 +957,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 				variables[i].name);
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			cprintf(listener, "%.*s%s = %u\n", indent, tabs,
 				variables[i].name, *(int const *) data);
 			break;
@@ -970,7 +970,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			inet_ntop(AF_INET6, data, buffer, sizeof(buffer));
 			break;
 
-		case FR_TYPE_BOOLEAN:
+		case FR_TYPE_BOOL:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
 				variables[i].name,
 				((*(bool const *) data) == false) ? "no" : "yes");

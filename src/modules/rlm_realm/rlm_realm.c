@@ -49,14 +49,14 @@ typedef struct rlm_realm_t {
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_STRING, rlm_realm_t, format_string), .dflt = "suffix" },
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_realm_t, delim), .dflt = "@" },
-	{ FR_CONF_OFFSET("ignore_default", FR_TYPE_BOOLEAN, rlm_realm_t, ignore_default), .dflt = "no" },
-	{ FR_CONF_OFFSET("ignore_null", FR_TYPE_BOOLEAN, rlm_realm_t, ignore_null), .dflt = "no" },
+	{ FR_CONF_OFFSET("ignore_default", FR_TYPE_BOOL, rlm_realm_t, ignore_default), .dflt = "no" },
+	{ FR_CONF_OFFSET("ignore_null", FR_TYPE_BOOL, rlm_realm_t, ignore_null), .dflt = "no" },
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	{ FR_CONF_OFFSET("default_community", FR_TYPE_STRING, rlm_realm_t, default_community) },
 	{ FR_CONF_OFFSET("rp_realm", FR_TYPE_STRING, rlm_realm_t, rp_realm) },
 	{ FR_CONF_OFFSET("trust_router", FR_TYPE_STRING, rlm_realm_t, trust_router) },
-	{ FR_CONF_OFFSET("tr_port", FR_TYPE_INTEGER, rlm_realm_t, tr_port), .dflt = "0" },
+	{ FR_CONF_OFFSET("tr_port", FR_TYPE_UINT32, rlm_realm_t, tr_port), .dflt = "0" },
 #endif
 	CONF_PARSER_TERMINATOR
 };

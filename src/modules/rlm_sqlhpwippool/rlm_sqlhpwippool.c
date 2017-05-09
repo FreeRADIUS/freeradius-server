@@ -73,9 +73,9 @@ typedef struct rlm_sqlhpwippool_t {
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlhpwippool_t, sql_instance_name), .dflt = "sql" },
 	{ FR_CONF_OFFSET("db_name", FR_TYPE_STRING, rlm_sqlhpwippool_t, db_name), .dflt = "netvim" },
-	{ FR_CONF_OFFSET("no_free_fail", FR_TYPE_BOOLEAN, rlm_sqlhpwippool_t, no_free_fail), .dflt = "yes" },
-	{ FR_CONF_OFFSET("free_after", FR_TYPE_INTEGER, rlm_sqlhpwippool_t, free_after), .dflt = "300" },
-	{ FR_CONF_OFFSET("sync_after", FR_TYPE_INTEGER, rlm_sqlhpwippool_t, sync_after), .dflt = "25" },
+	{ FR_CONF_OFFSET("no_free_fail", FR_TYPE_BOOL, rlm_sqlhpwippool_t, no_free_fail), .dflt = "yes" },
+	{ FR_CONF_OFFSET("free_after", FR_TYPE_UINT32, rlm_sqlhpwippool_t, free_after), .dflt = "300" },
+	{ FR_CONF_OFFSET("sync_after", FR_TYPE_UINT32, rlm_sqlhpwippool_t, sync_after), .dflt = "25" },
 	CONF_PARSER_TERMINATOR
 };
 

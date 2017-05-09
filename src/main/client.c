@@ -467,11 +467,11 @@ static char const *hs_proto = NULL;
 
 #ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_INTEGER, RADCLIENT, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, RADCLIENT, limit.max_connections), .dflt = "16" },
 
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_INTEGER, RADCLIENT, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, RADCLIENT, limit.lifetime), .dflt = "0" },
 
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_INTEGER, RADCLIENT, limit.idle_timeout), .dflt = "30" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, RADCLIENT, limit.idle_timeout), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -483,7 +483,7 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_POINTER("src_ipaddr", FR_TYPE_STRING, &cl_srcipaddr) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOLEAN, RADCLIENT, message_authenticator), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, RADCLIENT, message_authenticator), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_SECRET, RADCLIENT, secret) },
 	{ FR_CONF_OFFSET("shortname", FR_TYPE_STRING, RADCLIENT, shortname) },
@@ -502,8 +502,8 @@ static const CONF_PARSER client_config[] = {
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_STRING, RADCLIENT, client_server) },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_INTEGER, RADCLIENT, lifetime) },
-	{ FR_CONF_OFFSET("rate_limit", FR_TYPE_BOOLEAN, RADCLIENT, rate_limit) },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, RADCLIENT, lifetime) },
+	{ FR_CONF_OFFSET("rate_limit", FR_TYPE_BOOL, RADCLIENT, rate_limit) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -692,7 +692,7 @@ static const CONF_PARSER dynamic_config[] = {
 	{ FR_CONF_OFFSET("FreeRADIUS-Client-Src-IP-Address", FR_TYPE_IPV4_ADDR, RADCLIENT, src_ipaddr) },
 	{ FR_CONF_OFFSET("FreeRADIUS-Client-Src-IPv6-Address", FR_TYPE_IPV6_ADDR, RADCLIENT, src_ipaddr) },
 
-	{ FR_CONF_OFFSET("FreeRADIUS-Client-Require-MA", FR_TYPE_BOOLEAN, RADCLIENT, message_authenticator) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Require-MA", FR_TYPE_BOOL, RADCLIENT, message_authenticator) },
 
 	{ FR_CONF_OFFSET("FreeRADIUS-Client-Secret", FR_TYPE_STRING, RADCLIENT, secret), .dflt = "" },
 	{ FR_CONF_OFFSET("FreeRADIUS-Client-Shortname", FR_TYPE_STRING, RADCLIENT, shortname), .dflt = "" },
@@ -1351,7 +1351,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		}
 			break;
 
-		case FR_TYPE_BOOLEAN:
+		case FR_TYPE_BOOL:
 		{
 			CONF_PARSER const *parse;
 

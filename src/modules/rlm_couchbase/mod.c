@@ -389,15 +389,15 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 		unsigned int i;
 
 		switch (vp->vp_type) {
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			i = vp->vp_integer;
 			goto print_int;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			i = vp->vp_short;
 			goto print_int;
 
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			i = vp->vp_byte;
 
 		print_int:
@@ -415,7 +415,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			return json_object_new_int(i);
 #endif
 
-		case FR_TYPE_SIGNED:
+		case FR_TYPE_INT32:
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
 			RDEBUG3("creating new int64 for signed 32 bit integer '%s'", vp->da->name);
@@ -427,7 +427,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			return json_object_new_int(vp->vp_signed);
 #endif
 
-		case FR_TYPE_INTEGER64:
+		case FR_TYPE_UINT64:
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
 			RDEBUG3("creating new int64 for 64 bit integer '%s'", vp->da->name);

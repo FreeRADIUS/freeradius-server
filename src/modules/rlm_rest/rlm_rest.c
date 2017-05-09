@@ -41,9 +41,9 @@ static CONF_PARSER tls_config[] = {
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file) },
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_rest_section_t, tls_private_key_password) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, rlm_rest_section_t, tls_random_file) },
-	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert), .dflt = "yes" },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert_cn), .dflt = "yes" },
-	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOLEAN, rlm_rest_section_t, tls_extract_cert_attrs), .dflt = "no" },
+	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOL, rlm_rest_section_t, tls_check_cert), .dflt = "yes" },
+	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOL, rlm_rest_section_t, tls_check_cert_cn), .dflt = "yes" },
+	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOL, rlm_rest_section_t, tls_extract_cert_attrs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -59,11 +59,11 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("auth", FR_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
-	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_INTEGER, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
 	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
@@ -77,11 +77,11 @@ static const CONF_PARSER xlat_config[] = {
 	{ FR_CONF_OFFSET("auth", FR_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
-	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_INTEGER, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
 	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },

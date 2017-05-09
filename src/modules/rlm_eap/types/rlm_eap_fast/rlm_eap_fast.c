@@ -59,9 +59,9 @@ static CONF_PARSER submodule_config[] = {
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
 
-	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOLEAN, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("pac_lifetime", FR_TYPE_INTEGER, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
+	{ FR_CONF_OFFSET("pac_lifetime", FR_TYPE_UINT32, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
 	{ FR_CONF_OFFSET("authority_identity", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_fast_t, authority_identity) },
 	{ FR_CONF_OFFSET("pac_opaque_key", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_fast_t, pac_opaque_key) },
 

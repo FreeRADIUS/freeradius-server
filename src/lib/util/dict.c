@@ -104,15 +104,15 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "combo-prefix",	FR_TYPE_COMBO_IP_PREFIX },
 	{ "ether",		FR_TYPE_ETHERNET },
 
-	{ "bool",		FR_TYPE_BOOLEAN },
-	{ "byte",		FR_TYPE_BYTE },
-	{ "short",		FR_TYPE_SHORT },
-	{ "integer",		FR_TYPE_INTEGER },
-	{ "integer64",		FR_TYPE_INTEGER64 },
+	{ "bool",		FR_TYPE_BOOL },
+	{ "byte",		FR_TYPE_UINT8 },
+	{ "short",		FR_TYPE_UINT16 },
+	{ "integer",		FR_TYPE_UINT32 },
+	{ "integer64",		FR_TYPE_UINT64 },
 	{ "size",		FR_TYPE_SIZE },
-	{ "signed",        	FR_TYPE_SIGNED },
+	{ "signed",        	FR_TYPE_INT32 },
 
-	{ "decimal",		FR_TYPE_DECIMAL },
+	{ "decimal",		FR_TYPE_FLOAT64 },
 	{ "timeval",		FR_TYPE_TIMEVAL },
 	{ "date",		FR_TYPE_DATE },
 
@@ -132,11 +132,11 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	 *	Alternative names
 	 */
 	{ "cidr",         	FR_TYPE_IPV4_PREFIX },
-	{ "uint8",        	FR_TYPE_BYTE },
-	{ "uint16",        	FR_TYPE_SHORT },
-	{ "uint32",		FR_TYPE_INTEGER },
-	{ "uint64",		FR_TYPE_INTEGER64 },
-	{ "int32",         	FR_TYPE_SIGNED },
+	{ "uint8",        	FR_TYPE_UINT8 },
+	{ "uint16",        	FR_TYPE_UINT16 },
+	{ "uint32",		FR_TYPE_UINT32 },
+	{ "uint64",		FR_TYPE_UINT64 },
+	{ "int32",         	FR_TYPE_INT32 },
 
 	{ NULL,			0 }
 };
@@ -157,13 +157,13 @@ size_t const dict_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_IFID]		= {8, 8},
 	[FR_TYPE_ETHERNET]	= {6, 6},
 
-	[FR_TYPE_BOOLEAN]	= {1, 1},
-	[FR_TYPE_BYTE]		= {1, 1},
-	[FR_TYPE_SHORT]		= {2, 2},
-	[FR_TYPE_INTEGER]	= {4, 4},
-	[FR_TYPE_INTEGER64]	= {8, 8},
+	[FR_TYPE_BOOL]	= {1, 1},
+	[FR_TYPE_UINT8]		= {1, 1},
+	[FR_TYPE_UINT16]		= {2, 2},
+	[FR_TYPE_UINT32]	= {4, 4},
+	[FR_TYPE_UINT64]	= {8, 8},
 	[FR_TYPE_SIZE]		= {sizeof(size_t), sizeof(size_t)},
-	[FR_TYPE_SIGNED]	= {4, 4},
+	[FR_TYPE_INT32]	= {4, 4},
 
 	[FR_TYPE_DATE]		= {4, 4},
 	[FR_TYPE_ABINARY]	= {32, ~0},
@@ -219,12 +219,12 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
  * @note Must be updated to match the anonymous enum types union in fr_value_box_t
  */
 bool const fr_dict_enum_types[FR_TYPE_MAX + 1] = {
-	[FR_TYPE_BYTE] = true,
-	[FR_TYPE_SHORT] = true,
-	[FR_TYPE_INTEGER] = true,
-	[FR_TYPE_INTEGER64] = true,
+	[FR_TYPE_UINT8] = true,
+	[FR_TYPE_UINT16] = true,
+	[FR_TYPE_UINT32] = true,
+	[FR_TYPE_UINT64] = true,
 	[FR_TYPE_SIZE] = true,
-	[FR_TYPE_SIGNED] = true
+	[FR_TYPE_INT32] = true
 };
 
 /*
@@ -954,7 +954,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	Tags can only be used in a few limited situations.
 	 */
 	if (flags.has_tag) {
-		if ((type != FR_TYPE_INTEGER) && (type != FR_TYPE_STRING)) {
+		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
 					   "or 'string'");
 			goto error;
@@ -1068,9 +1068,9 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 
 		case FR_TYPE_IPV4_ADDR:
 		case FR_TYPE_IPV6_ADDR:
-		case FR_TYPE_BYTE:
-		case FR_TYPE_SHORT:
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
 		case FR_TYPE_DATE:
 		case FR_TYPE_STRING:
 			break;
@@ -1087,7 +1087,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	caller sets it, we still sanity check it.
 	 */
 	if (flags.has_value) {
-		if (type != FR_TYPE_INTEGER) {
+		if (type != FR_TYPE_UINT32) {
 			fr_strerror_printf("The 'has_value' flag can only be used with attributes "
 					   "of type 'integer'");
 			goto error;
@@ -1163,7 +1163,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 			goto error;
 
 		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 		case FR_TYPE_OCTETS:
 			if (flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
 
@@ -1273,7 +1273,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_TIMEVAL:
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 	case FR_TYPE_COMBO_IP_PREFIX:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_int2str(dict_attr_types, type, "?Unknown?"));
@@ -1287,23 +1287,23 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	Force "length" for data types of fixed length;
 	 */
 	switch (type) {
-	case FR_TYPE_BYTE:
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_BOOL:
 		flags.length = 1;
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		flags.length = 2;
 		break;
 
 	case FR_TYPE_DATE:
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_INTEGER:
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_INT32:
 		flags.length = 4;
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		flags.length = 8;
 		break;
 
@@ -1580,7 +1580,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		 *	Don't worry about fixups...
 		 */
 		switch (da->type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			if (value > UINT8_MAX) {
 				talloc_free(dval);
 				fr_strerror_printf("%s: ATTRIBUTEs of type 'byte' cannot have "
@@ -1588,7 +1588,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 				return -1;
 			}
 			break;
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			if (value > UINT16_MAX) {
 				talloc_free(dval);
 				fr_strerror_printf("%s: ATTRIBUTEs of type 'short' cannot have "
@@ -1597,7 +1597,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 			}
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			break;
 
 		default:

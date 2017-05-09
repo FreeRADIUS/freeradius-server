@@ -110,7 +110,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("offer_time", FR_TYPE_TMPL, rlm_redis_ippool_t, offer_time) },
 	{ FR_CONF_OFFSET("lease_time", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, lease_time) },
 
-	{ FR_CONF_OFFSET("wait_num", FR_TYPE_INTEGER, rlm_redis_ippool_t, wait_num) },
+	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIMEVAL, rlm_redis_ippool_t, wait_timeout) },
 
 	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, requested_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
@@ -122,8 +122,8 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("range_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply:Pool-Range", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("expiry_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
 
-	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOLEAN, rlm_redis_ippool_t, ipv4_integer) },
-	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOLEAN, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, rlm_redis_ippool_t, ipv4_integer) },
+	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOL, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
 
 	/*
 	 *	Split out to allow conversion to universal ippool module with
@@ -642,7 +642,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				memset(&tmp, 0, sizeof(tmp));
 
 				tmp.datum.integer = ntohl((uint32_t)reply->element[1]->integer);
-				tmp.type = FR_TYPE_INTEGER;
+				tmp.type = FR_TYPE_UINT32;
 
 				if (fr_value_box_cast(NULL, &ip_map.rhs->tmpl_value_box, FR_TYPE_IPV4_ADDR,
 						    NULL, &tmp)) {
@@ -652,7 +652,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				}
 			} else {
 				ip_map.rhs->tmpl_fr_value_box_datum.integer = ntohl((uint32_t)reply->element[1]->integer);
-				ip_map.rhs->tmpl_fr_value_box_type = FR_TYPE_INTEGER;
+				ip_map.rhs->tmpl_fr_value_box_type = FR_TYPE_UINT32;
 			}
 		}
 			goto do_ip_map;
@@ -744,7 +744,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		}
 
 		expiry_map.rhs->tmpl_fr_value_box_datum.integer = reply->element[3]->integer;
-		expiry_map.rhs->tmpl_fr_value_box_type = FR_TYPE_INTEGER;
+		expiry_map.rhs->tmpl_fr_value_box_type = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
@@ -886,7 +886,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		};
 
 		expiry_map.rhs->tmpl_fr_value_box_datum.integer = expires;
-		expiry_map.rhs->tmpl_fr_value_box_type = FR_TYPE_INTEGER;
+		expiry_map.rhs->tmpl_fr_value_box_type = FR_TYPE_UINT32;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;

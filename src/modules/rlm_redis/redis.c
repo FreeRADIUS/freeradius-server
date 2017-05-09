@@ -172,7 +172,7 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
  *
  * Will work with REDIS_REPLY_STRING (which is converted to #FR_TYPE_STRING
  * then cast to dst_type), or REDIS_REPLY_INTEGER (which is converted to
- * #FR_TYPE_INTEGER64, then cast to dst_type).
+ * #FR_TYPE_UINT64, then cast to dst_type).
  *
  * @note Any unsupported types will trigger an assert. You must check the
  *	reply type prior to calling this function.
@@ -210,23 +210,23 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			return -1;
 		}
 		if (reply->integer < 0) {		/* 32bit signed (supported) */
-			in.type = FR_TYPE_SIGNED;
+			in.type = FR_TYPE_INT32;
 			in.datum.sinteger = (int32_t) reply->integer;
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
-			in.type = FR_TYPE_INTEGER64;
+			in.type = FR_TYPE_UINT64;
 			in.datum.integer64 = (uint64_t) reply->integer;
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			in.type = FR_TYPE_INTEGER;
+			in.type = FR_TYPE_UINT32;
 			in.datum.integer = (uint32_t) reply->integer;
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			in.type = FR_TYPE_SHORT;
+			in.type = FR_TYPE_UINT16;
 			in.datum.ushort = (uint16_t) reply->integer;
 		}
 		else {		/* 8bit unsigned (supported) */
-			in.type = FR_TYPE_BYTE;
+			in.type = FR_TYPE_UINT8;
 			in.datum.byte = (uint8_t) reply->integer;
 		}
 		break;

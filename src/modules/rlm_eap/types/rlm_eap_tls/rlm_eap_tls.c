@@ -44,8 +44,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
-	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOLEAN, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
-	{ FR_CONF_OFFSET("include_length", FR_TYPE_BOOLEAN, rlm_eap_tls_t, include_length), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
+	{ FR_CONF_OFFSET("include_length", FR_TYPE_BOOL, rlm_eap_tls_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_tls_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };

@@ -72,13 +72,13 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_IFID]		= {8, 8},
 	[FR_TYPE_ETHERNET]	= {6, 6},
 
-	[FR_TYPE_BOOLEAN]	= {1, 1},
-	[FR_TYPE_BYTE]		= {1, 1},
-	[FR_TYPE_SHORT]		= {2, 2},
-	[FR_TYPE_INTEGER]	= {4, 4},
-	[FR_TYPE_INTEGER64]	= {8, 8},
+	[FR_TYPE_BOOL]	= {1, 1},
+	[FR_TYPE_UINT8]		= {1, 1},
+	[FR_TYPE_UINT16]		= {2, 2},
+	[FR_TYPE_UINT32]	= {4, 4},
+	[FR_TYPE_UINT64]	= {8, 8},
 
-	[FR_TYPE_SIGNED]	= {4, 4},
+	[FR_TYPE_INT32]	= {4, 4},
 
 	[FR_TYPE_DATE]		= {4, 4},		//!< 64bit on most machines.
 
@@ -124,17 +124,17 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_IFID]				= SIZEOF_MEMBER(fr_value_box_t, datum.ifid),
 	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, datum.ether),
 
-	[FR_TYPE_BOOLEAN]			= SIZEOF_MEMBER(fr_value_box_t, datum.boolean),
-	[FR_TYPE_BYTE]				= SIZEOF_MEMBER(fr_value_box_t, datum.byte),
-	[FR_TYPE_SHORT]				= SIZEOF_MEMBER(fr_value_box_t, datum.ushort),
-	[FR_TYPE_INTEGER]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer),
-	[FR_TYPE_INTEGER64]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer64),
+	[FR_TYPE_BOOL]			= SIZEOF_MEMBER(fr_value_box_t, datum.boolean),
+	[FR_TYPE_UINT8]				= SIZEOF_MEMBER(fr_value_box_t, datum.byte),
+	[FR_TYPE_UINT16]				= SIZEOF_MEMBER(fr_value_box_t, datum.ushort),
+	[FR_TYPE_UINT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer),
+	[FR_TYPE_UINT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.integer64),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
-	[FR_TYPE_SIGNED]			= SIZEOF_MEMBER(fr_value_box_t, datum.sinteger),
+	[FR_TYPE_INT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.sinteger),
 
 	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
-	[FR_TYPE_DECIMAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.decimal),
+	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.decimal),
 	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, datum.date),
 
 	[FR_TYPE_ABINARY]			= SIZEOF_MEMBER(fr_value_box_t, datum.filter),
@@ -155,17 +155,17 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, datum.ifid),
 	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, datum.ether),
 
-	[FR_TYPE_BOOLEAN]			= offsetof(fr_value_box_t, datum.boolean),
-	[FR_TYPE_BYTE]				= offsetof(fr_value_box_t, datum.byte),
-	[FR_TYPE_SHORT]				= offsetof(fr_value_box_t, datum.ushort),
-	[FR_TYPE_INTEGER]			= offsetof(fr_value_box_t, datum.integer),
-	[FR_TYPE_INTEGER64]			= offsetof(fr_value_box_t, datum.integer64),
+	[FR_TYPE_BOOL]			= offsetof(fr_value_box_t, datum.boolean),
+	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, datum.byte),
+	[FR_TYPE_UINT16]				= offsetof(fr_value_box_t, datum.ushort),
+	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, datum.integer),
+	[FR_TYPE_UINT64]			= offsetof(fr_value_box_t, datum.integer64),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, datum.size),
 
-	[FR_TYPE_SIGNED]			= offsetof(fr_value_box_t, datum.sinteger),
+	[FR_TYPE_INT32]			= offsetof(fr_value_box_t, datum.sinteger),
 
 	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, datum.timeval),
-	[FR_TYPE_DECIMAL]			= offsetof(fr_value_box_t, datum.decimal),
+	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, datum.decimal),
 
 	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, datum.date),
 
@@ -304,12 +304,12 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 #define CHECK(_type) if (a->datum._type < b->datum._type)   { compare = -1; \
 		} else if (a->datum._type > b->datum._type) { compare = +1; }
 
-	case FR_TYPE_BOOLEAN:	/* this isn't a RADIUS type, and shouldn't really ever be used */
-	case FR_TYPE_BYTE:
+	case FR_TYPE_BOOL:	/* this isn't a RADIUS type, and shouldn't really ever be used */
+	case FR_TYPE_UINT8:
 		CHECK(byte);
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		CHECK(ushort);
 		break;
 
@@ -317,15 +317,15 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		CHECK(date);
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		CHECK(integer);
 		break;
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		CHECK(sinteger);
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		CHECK(integer64);
 		break;
 
@@ -337,7 +337,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		compare = fr_timeval_cmp(&a->datum.timeval, &b->datum.timeval);
 		break;
 
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 		CHECK(decimal);
 		break;
 
@@ -802,21 +802,21 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	/* 8 byte integers */
 	switch (src->type) {
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		dst->datum.integer64 = htonll(src->datum.integer64);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
 	/* 4 byte integers */
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_DATE:
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		dst->datum.integer = htonl(src->datum.integer);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
 	/* 2 byte integers */
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		dst->datum.ushort = htons(src->datum.ushort);
 		fr_value_box_copy_meta(dst, src);
 		break;
@@ -969,7 +969,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
  * - FR_TYPE_IPV4_PREFIX (with 32bit mask).
  * - FR_TYPE_IPV6_PREFIX (with v4 prefix and 128bit mask).
  * - FR_TYPE_OCTETS (of length 4).
- * - FR_TYPE_INTEGER
+ * - FR_TYPE_UINT32
  *
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
@@ -1041,7 +1041,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		memcpy(&dst->datum.ip.addr.v4, src->datum.octets, sizeof(dst->datum.ip.addr.v4.s_addr));
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	{
 		uint32_t net;
 
@@ -1144,7 +1144,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		memcpy(&dst->datum.ip.addr.v4, &src->datum.octets[1], sizeof(dst->datum.ip.addr.v4.s_addr));
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	{
 		uint32_t net;
 
@@ -1416,15 +1416,15 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_ETHERNET:
-	case FR_TYPE_BOOLEAN:
-	case FR_TYPE_BYTE:
-	case FR_TYPE_SHORT:
-	case FR_TYPE_INTEGER:
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 	case FR_TYPE_TIMEVAL:
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 	case FR_TYPE_DATE:
 	case FR_TYPE_ABINARY:
 		break;
@@ -1445,7 +1445,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 								   src->datum.strvalue, src->datum.length, '\0');
 
 	if ((src->type == FR_TYPE_IFID) &&
-	    (dst_type == FR_TYPE_INTEGER64)) {
+	    (dst_type == FR_TYPE_UINT64)) {
 		memcpy(&dst->datum.integer64, src->datum.ifid, sizeof(src->datum.ifid));
 		dst->datum.integer64 = htonll(dst->datum.integer64);
 
@@ -1456,7 +1456,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		return 0;
 	}
 
-	if ((src->type == FR_TYPE_INTEGER64) &&
+	if ((src->type == FR_TYPE_UINT64) &&
 	    (dst_type == FR_TYPE_ETHERNET)) {
 		uint8_t array[8];
 		uint64_t i;
@@ -1473,9 +1473,9 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		goto fixed_length;
 	}
 
-	if (dst_type == FR_TYPE_SHORT) {
+	if (dst_type == FR_TYPE_UINT16) {
 		switch (src->type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			dst->datum.ushort = src->datum.byte;
 			break;
 
@@ -1492,17 +1492,17 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	We can cast LONG integers to SHORTER ones, so long
 	 *	as the long one is on the LHS.
 	 */
-	if (dst_type == FR_TYPE_INTEGER) {
+	if (dst_type == FR_TYPE_UINT32) {
 		switch (src->type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			dst->datum.integer = src->datum.byte;
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			dst->datum.integer = src->datum.ushort;
 			break;
 
-		case FR_TYPE_SIGNED:
+		case FR_TYPE_INT32:
 			if (src->datum.sinteger < 0 ) {
 				fr_strerror_printf("Invalid cast: From signed to integer.  "
 						   "signed value %d is negative ", src->datum.sinteger);
@@ -1524,17 +1524,17 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	For integers, we allow the casting of a SMALL type to
 	 *	a larger type, but not vice-versa.
 	 */
-	if (dst_type == FR_TYPE_INTEGER64) {
+	if (dst_type == FR_TYPE_UINT64) {
 		switch (src->type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			dst->datum.integer64 = src->datum.byte;
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			dst->datum.integer64 = src->datum.ushort;
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			dst->datum.integer64 = src->datum.integer;
 			break;
 
@@ -1559,17 +1559,17 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	We can cast integers less that < INT_MAX to signed
 	 */
-	if (dst_type == FR_TYPE_SIGNED) {
+	if (dst_type == FR_TYPE_INT32) {
 		switch (src->type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			dst->datum.sinteger = src->datum.byte;
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			dst->datum.sinteger = src->datum.ushort;
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			if (src->datum.integer > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From integer to signed.  integer value %u is larger "
 						   "than max signed int and would overflow", src->datum.integer);
@@ -1578,7 +1578,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			dst->datum.sinteger = (int)src->datum.integer;
 			break;
 
-		case FR_TYPE_INTEGER64:
+		case FR_TYPE_UINT64:
 			if (src->datum.integer > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From integer64 to signed.  integer64 value %" PRIu64
 						   " is larger than max signed int and would overflow", src->datum.integer64);
@@ -1598,22 +1598,22 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	if (dst_type == FR_TYPE_TIMEVAL) {
 		switch (src->type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			dst->datum.timeval.tv_sec = src->datum.byte;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			dst->datum.timeval.tv_sec = src->datum.ushort;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			dst->datum.timeval.tv_sec = src->datum.integer;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
-		case FR_TYPE_INTEGER64:
+		case FR_TYPE_UINT64:
 			/*
 			 *	tv_sec is a time_t, which is variable in size
 			 *	depending on the system.
@@ -1692,18 +1692,18 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Convert host order to network byte order.
 	 */
 	if ((dst_type == FR_TYPE_IPV4_ADDR) &&
-	    ((src->type == FR_TYPE_INTEGER) ||
+	    ((src->type == FR_TYPE_UINT32) ||
 	     (src->type == FR_TYPE_DATE) ||
-	     (src->type == FR_TYPE_SIGNED))) {
+	     (src->type == FR_TYPE_INT32))) {
 	     	dst->datum.ip.af = AF_INET;
 	     	dst->datum.ip.prefix = 32;
 	     	dst->datum.ip.scope_id = 0;
 		dst->datum.ip.addr.v4.s_addr = htonl(src->datum.integer);
 
 	} else if ((src->type == FR_TYPE_IPV4_ADDR) &&
-		   ((dst_type == FR_TYPE_INTEGER) ||
+		   ((dst_type == FR_TYPE_UINT32) ||
 		    (dst_type == FR_TYPE_DATE) ||
-		    (dst_type == FR_TYPE_SIGNED))) {
+		    (dst_type == FR_TYPE_INT32))) {
 		dst->datum.integer = htonl(src->datum.ip.addr.v4.s_addr);
 
 	} else {		/* they're of the same byte order */
@@ -2429,7 +2429,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		break;
 
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 	{
 		char *p;
 		unsigned int i;
@@ -2462,7 +2462,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		break;
 	}
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 	{
 		char *p;
 		unsigned int i;
@@ -2495,7 +2495,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		break;
 	}
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	{
 		char *p;
 
@@ -2553,7 +2553,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 	{
 		uint64_t i;
 
@@ -2584,7 +2584,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		if (fr_timeval_from_str(&dst->datum.timeval, in) < 0) return -1;
 		break;
 
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 	{
 		double d;
 
@@ -2693,12 +2693,12 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 		break;
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		/* Damned code for 1 WiMAX attribute */
 		dst->datum.sinteger = (int32_t)strtol(in, NULL, 10);
 		break;
 
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		if ((strcmp(in, "yes") == 0) || strcmp(in, "true") == 0) {
 			dst->datum.boolean = true;
 		} else if ((strcmp(in, "no") == 0) || (strcmp(in, "false") == 0)) {
@@ -2759,7 +2759,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		fr_dict_enum_t const	*dv;
 		fr_value_box_t		tmp;
 
-		fr_value_box_cast(ctx, &tmp, FR_TYPE_INTEGER, NULL, data);
+		fr_value_box_cast(ctx, &tmp, FR_TYPE_UINT32, NULL, data);
 
 		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.integer);
 		if (dv) return talloc_typed_strdup(ctx, dv->name);
@@ -2846,23 +2846,23 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 					  data->datum.ether[4], data->datum.ether[5]);
 		break;
 
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		p = talloc_typed_strdup(ctx, data->datum.byte ? "yes" : "no");
 		break;
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		p = talloc_typed_asprintf(ctx, "%u", data->datum.byte);
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		p = talloc_typed_asprintf(ctx, "%u", data->datum.ushort);
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		p = talloc_typed_asprintf(ctx, "%u", data->datum.integer);
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.integer64);
 		break;
 
@@ -2870,7 +2870,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		p = talloc_typed_asprintf(ctx, "%zu", data->datum.size);
 		break;
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		p = talloc_typed_asprintf(ctx, "%d", data->datum.sinteger);
 		break;
 
@@ -2879,7 +2879,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 					  (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
 		break;
 
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 		p = talloc_typed_asprintf(ctx, "%g", data->datum.decimal);
 		break;
 
@@ -2956,7 +2956,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		fr_dict_enum_t const	*dv;
 		fr_value_box_t		tmp;
 
-		fr_value_box_cast(NULL, &tmp, FR_TYPE_INTEGER, NULL, data);
+		fr_value_box_cast(NULL, &tmp, FR_TYPE_UINT32, NULL, data);
 
 		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.integer);
 		if (dv) return strlcpy(out, dv->name, outlen);
@@ -2994,22 +2994,22 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 		return fr_snprint(out, outlen, data->datum.strvalue, data->datum.length, quote);
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		return snprintf(out, outlen, "%u", data->datum.byte);
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		return snprintf(out, outlen, "%u", data->datum.ushort);
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		return snprintf(out, outlen, "%u", data->datum.integer);
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		return snprintf(out, outlen, "%" PRIu64, data->datum.integer64);
 
 	case FR_TYPE_SIZE:
 		return snprintf(out, outlen, "%zu", data->datum.size);
 
-	case FR_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
+	case FR_TYPE_INT32: /* Damned code for 1 WiMAX attribute */
 		len = snprintf(buf, sizeof(buf), "%d", data->datum.sinteger);
 		a = buf;
 		break;
@@ -3098,7 +3098,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 				data->datum.ether[2], data->datum.ether[3],
 				data->datum.ether[4], data->datum.ether[5]);
 
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 		return snprintf(out, outlen, "%g", data->datum.decimal);
 
 	/*
@@ -3112,7 +3112,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_EVS:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_MAX:
 		(void)fr_cond_assert(0);

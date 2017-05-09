@@ -456,25 +456,25 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		memcpy(out, &vp->data.datum, outlen);
 		break;
 
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		out[0] = vp->vp_byte & 0x01;
 		break;
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		out[0] = vp->vp_byte & 0xff;
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		out[0] = (vp->vp_short >> 8) & 0xff;
 		out[1] = vp->vp_short & 0xff;
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		lvalue = htonl(vp->vp_integer);
 		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		lvalue64 = htonll(vp->vp_integer64);
 		memcpy(out, &lvalue64, sizeof(lvalue64));
 		break;
@@ -484,7 +484,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		memcpy(out, &lvalue, sizeof(lvalue));
 		break;
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 	{
 		int32_t slvalue = htonl(vp->vp_signed);
 		memcpy(out, &slvalue, sizeof(slvalue));
@@ -502,7 +502,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->vp_type);
 		return -1;
@@ -786,13 +786,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_ETHERNET:	/* just in case */
-	case FR_TYPE_BYTE:
-	case FR_TYPE_BOOLEAN:
-	case FR_TYPE_SHORT:
-	case FR_TYPE_INTEGER:
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
 	case FR_TYPE_DATE:
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		len = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
 		if (len < 0) return -1;
 		data = buffer;
@@ -869,7 +869,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 				if (len > ((ssize_t) (outlen - 1))) len = outlen - 1;
 				ptr[0] = vp->tag;
 				ptr++;
-			} else if (vp->vp_type == FR_TYPE_INTEGER) {
+			} else if (vp->vp_type == FR_TYPE_UINT32) {
 				buffer[0] = vp->tag;
 			} /* else it can't be any other type */
 		}
@@ -1674,7 +1674,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_TIMEVAL:
-	case FR_TYPE_DECIMAL:
+	case FR_TYPE_FLOAT64:
 	case FR_TYPE_EVS:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);

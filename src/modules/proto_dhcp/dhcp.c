@@ -693,18 +693,18 @@ static int fr_dhcp_array_members(size_t *out, size_t len, fr_dict_attr_t const *
 	 *	Could be an array of bytes, integers, etc.
 	 */
 	if (da->flags.array) switch (da->type) {
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		num_entries = len;
 		*out = 1;
 		break;
 
-	case FR_TYPE_SHORT: /* ignore any trailing data */
+	case FR_TYPE_UINT16: /* ignore any trailing data */
 		num_entries = len >> 1;
 		*out = 2;
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_DATE: /* ignore any trailing data */
 		num_entries = len >> 2;
 		*out = 4;
@@ -747,20 +747,20 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	if (da->flags.is_unknown) talloc_steal(vp, da);
 
 	switch (da->type) {
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		if (data_len != 1) goto raw;
 		vp->vp_byte = p[0];
 		p++;
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		if (data_len != 2) goto raw;
 		memcpy(&vp->vp_short, p, 2);
 		vp->vp_short = ntohs(vp->vp_short);
 		p += 2;
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		if (data_len != 4) goto raw;
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
@@ -1167,15 +1167,15 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->vp_type) {
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			vp->vp_byte = p[0];
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			vp->vp_short = (p[0] << 8) | p[1];
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			memcpy(&vp->vp_integer, p, 4);
 			vp->vp_integer = ntohl(vp->vp_integer);
 			break;
@@ -1381,18 +1381,18 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	if (outlen < vp->vp_length) return 0;
 
 	switch (tlv_stack[depth]->type) {
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		p[0] = vp->vp_byte;
 		p ++;
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		p[0] = (vp->vp_short >> 8) & 0xff;
 		p[1] = vp->vp_short & 0xff;
 		p += 2;
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		lvalue = htonl(vp->vp_integer);
 		memcpy(p, &lvalue, 4);
 		p += 4;

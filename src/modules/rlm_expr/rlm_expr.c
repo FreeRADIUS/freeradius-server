@@ -257,10 +257,10 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		     i++, vp = tmpl_cursor_next(&cursor, vpt)) {
 			int64_t y;
 
-			if (vp->vp_type != FR_TYPE_INTEGER64) {
+			if (vp->vp_type != FR_TYPE_UINT64) {
 				fr_value_box_t	value;
 
-				if (fr_value_box_cast(vp, &value, FR_TYPE_INTEGER64, NULL, &vp->data) < 0) {
+				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
 					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt->len,
 						vpt->name, fr_strerror());
 					return false;

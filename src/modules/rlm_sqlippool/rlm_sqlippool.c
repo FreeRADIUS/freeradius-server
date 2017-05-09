@@ -108,14 +108,14 @@ static CONF_PARSER message_config[] = {
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlippool_t, sql_instance_name), .dflt = "sql" },
 
-	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_INTEGER, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
+	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name), .dflt = "" },
 
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
 
-	{ FR_CONF_OFFSET("ipv6", FR_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6) },
+	{ FR_CONF_OFFSET("ipv6", FR_TYPE_BOOL, rlm_sqlippool_t, ipv6) },
 
 	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
 

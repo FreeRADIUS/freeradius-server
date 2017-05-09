@@ -39,12 +39,12 @@ extern rad_module_t rlm_cache;
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_cache_config_t, key) },
-	{ FR_CONF_OFFSET("ttl", FR_TYPE_INTEGER, rlm_cache_config_t, ttl), .dflt = "500" },
-	{ FR_CONF_OFFSET("max_entries", FR_TYPE_INTEGER, rlm_cache_config_t, max_entries), .dflt = "0" },
+	{ FR_CONF_OFFSET("ttl", FR_TYPE_UINT32, rlm_cache_config_t, ttl), .dflt = "500" },
+	{ FR_CONF_OFFSET("max_entries", FR_TYPE_UINT32, rlm_cache_config_t, max_entries), .dflt = "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
-	{ FR_CONF_OFFSET("epoch", FR_TYPE_SIGNED, rlm_cache_config_t, epoch), .dflt = "0" },
-	{ FR_CONF_OFFSET("add_stats", FR_TYPE_BOOLEAN, rlm_cache_config_t, stats), .dflt = "no" },
+	{ FR_CONF_OFFSET("epoch", FR_TYPE_INT32, rlm_cache_config_t, epoch), .dflt = "0" },
+	{ FR_CONF_OFFSET("add_stats", FR_TYPE_BOOL, rlm_cache_config_t, stats), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

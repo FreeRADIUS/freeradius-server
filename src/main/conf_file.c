@@ -1741,7 +1741,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 
 	switch (type) {
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		/*
 		 *	Allow yes/no, true/false, and on/off
 		 */
@@ -1762,7 +1762,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, cf_pair_attr(cp), cp->value);
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	{
 		unsigned long v = strtoul(cp->value, 0, 0);
 
@@ -1785,7 +1785,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 	{
 		unsigned long v = strtoul(cp->value, 0, 0);
 
@@ -1800,7 +1800,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 	{
 		unsigned long v = strtoul(cp->value, 0, 0);
 
@@ -1815,7 +1815,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	}
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		*(uint64_t *)out = strtoull(cp->value, NULL, 10);
 		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
 		break;
@@ -1832,7 +1832,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		break;
 	}
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		*(int32_t *)out = strtol(cp->value, NULL, 10);
 		cf_log_info(cs, "%.*s\t%s = %d", cs->depth, parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
 		break;
@@ -2040,11 +2040,11 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  * | fr_type_t                 | Data type          | Dynamically allocated  |
  * | ----------------------- | ------------------ | ---------------------- |
  * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
- * | FR_TYPE_BOOLEAN         | ``bool``           | No                     |
- * | FR_TYPE_INTEGER         | ``uint32_t``       | No                     |
- * | FR_TYPE_SHORT           | ``uint16_t``       | No                     |
- * | FR_TYPE_INTEGER64       | ``uint64_t``       | No                     |
- * | FR_TYPE_SIGNED          | ``int32_t``        | No                     |
+ * | FR_TYPE_BOOL         | ``bool``           | No                     |
+ * | FR_TYPE_UINT32         | ``uint32_t``       | No                     |
+ * | FR_TYPE_UINT16           | ``uint16_t``       | No                     |
+ * | FR_TYPE_UINT64       | ``uint64_t``       | No                     |
+ * | FR_TYPE_INT32          | ``int32_t``        | No                     |
  * | FR_TYPE_STRING          | ``char const *``   | Yes                    |
  * | FR_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
  * | FR_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
@@ -2063,11 +2063,11 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	- ``data`` #FR_TYPE_TMPL 		- @copybrief FR_TYPE_TMPL
  *					  	  Feeds the value into #tmpl_afrom_str. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
- *	- ``data`` #FR_TYPE_BOOLEAN		- @copybrief FR_TYPE_BOOLEAN
- *	- ``data`` #FR_TYPE_INTEGER		- @copybrief FR_TYPE_INTEGER
- *	- ``data`` #FR_TYPE_SHORT		- @copybrief FR_TYPE_SHORT
- *	- ``data`` #FR_TYPE_INTEGER64		- @copybrief FR_TYPE_INTEGER64
- *	- ``data`` #FR_TYPE_SIGNED		- @copybrief FR_TYPE_SIGNED
+ *	- ``data`` #FR_TYPE_BOOL		- @copybrief FR_TYPE_BOOL
+ *	- ``data`` #FR_TYPE_UINT32		- @copybrief FR_TYPE_UINT32
+ *	- ``data`` #FR_TYPE_UINT16		- @copybrief FR_TYPE_UINT16
+ *	- ``data`` #FR_TYPE_UINT64		- @copybrief FR_TYPE_UINT64
+ *	- ``data`` #FR_TYPE_INT32		- @copybrief FR_TYPE_INT32
  *	- ``data`` #FR_TYPE_STRING		- @copybrief FR_TYPE_STRING
  *	- ``data`` #FR_TYPE_IPV4_ADDR		- @copybrief FR_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
  *	- ``data`` #FR_TYPE_IPV4_PREFIX		- @copybrief FR_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
@@ -2165,23 +2165,23 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		 *	talloc_array_length().
 		 */
 		} else switch (PW_BASE_TYPE(type)) {
-		case FR_TYPE_BOOLEAN:
+		case FR_TYPE_BOOL:
 			array = (void **)talloc_zero_array(ctx, bool, count);
 			break;
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			array = (void **)talloc_zero_array(ctx, uint32_t, count);
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			array = (void **)talloc_zero_array(ctx, uint16_t, count);
 			break;
 
-		case FR_TYPE_INTEGER64:
+		case FR_TYPE_UINT64:
 			array = (void **)talloc_zero_array(ctx, uint64_t, count);
 			break;
 
-		case FR_TYPE_SIGNED:
+		case FR_TYPE_INT32:
 			array = (void **)talloc_zero_array(ctx, int32_t, count);
 			break;
 

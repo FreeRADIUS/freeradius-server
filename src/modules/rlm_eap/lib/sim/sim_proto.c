@@ -454,7 +454,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	case FR_TYPE_OCTETS:
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		if (attr_len != 2) goto raw;
 		break;
 
@@ -529,11 +529,11 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
 	 *	+---------------+---------------+-------------------------------+
 	 */
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		vp->vp_bool = true;
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		vp->vp_short = (p[0] << 8) | p[1];
 		break;
 
@@ -912,7 +912,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
 		 *	+---------------+---------------+-------------------------------+
 		 */
-		case FR_TYPE_BOOLEAN:
+		case FR_TYPE_BOOL:
 			break;
 
 		/*
@@ -927,11 +927,11 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *	|   AT_<SHORT>  | Length = 1    |    Short 1    |    Short 2    |
 		 *	+---------------+---------------+-------------------------------+
 		 */
-		case FR_TYPE_BYTE:			//!< 8 Bit unsigned integer.
-		case FR_TYPE_SHORT:			//!< 16 Bit unsigned integer.
-		case FR_TYPE_INTEGER:			//!< 32 Bit unsigned integer.
-		case FR_TYPE_INTEGER64:			//!< 64 Bit unsigned integer.
-		case FR_TYPE_SIGNED:			//!< 32 Bit signed integer.
+		case FR_TYPE_UINT8:			//!< 8 Bit unsigned integer.
+		case FR_TYPE_UINT16:			//!< 16 Bit unsigned integer.
+		case FR_TYPE_UINT32:			//!< 32 Bit unsigned integer.
+		case FR_TYPE_UINT64:			//!< 64 Bit unsigned integer.
+		case FR_TYPE_INT32:			//!< 32 Bit signed integer.
 		{
 			fr_value_box_t data;
 

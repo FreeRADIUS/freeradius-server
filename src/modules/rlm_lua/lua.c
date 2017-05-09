@@ -62,7 +62,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_TLV:
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
 		lua_pushstring(L, buffer);
 		break;
@@ -75,10 +75,10 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		lua_pushlstring(L, (char const *)vp->vp_octets, vp->vp_length); /* lstring variant is embedded NULL safe */
 		break;
 
-	case FR_TYPE_BYTE:
-	case FR_TYPE_SHORT:
-	case FR_TYPE_INTEGER:
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_INT32:
 		lua_pushinteger(L, vp->vp_integer);
 		break;
 
@@ -116,7 +116,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 		}
 
-		case FR_TYPE_INTEGER:
+		case FR_TYPE_UINT32:
 			vp->vp_integer = (uint32_t) lua_tointeger(L, -1);
 			break;
 
@@ -136,19 +136,19 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		}
 			break;
 
-		case FR_TYPE_BYTE:
+		case FR_TYPE_UINT8:
 			vp->vp_byte = (uint8_t) lua_tointeger(L, -1);
 			break;
 
-		case FR_TYPE_SHORT:
+		case FR_TYPE_UINT16:
 			vp->vp_short = (uint16_t) lua_tointeger(L, -1);
 			break;
 
-		case FR_TYPE_SIGNED:
+		case FR_TYPE_INT32:
 			vp->vp_signed = (int32_t) lua_tointeger(L, -1);
 			break;
 
-		case FR_TYPE_INTEGER64:
+		case FR_TYPE_UINT64:
 			vp->vp_integer64 = (uint64_t) lua_tointeger(L, -1);
 			break;
 

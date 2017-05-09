@@ -2263,26 +2263,26 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 	}
 
 	if (vp->da->flags.has_value) switch (vp->vp_type) {
-	case FR_TYPE_BOOLEAN:
+	case FR_TYPE_BOOL:
 		return vp->vp_bool ? "yes" : "no";
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_byte);
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_short);
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer64);
 		break;
 
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_signed);
 		break;
 
@@ -2306,12 +2306,12 @@ char *fr_pair_type_asprint(TALLOC_CTX *ctx, fr_type_t type)
 	case FR_TYPE_STRING :
 		return talloc_typed_strdup(ctx, "_");
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 	case FR_TYPE_SIZE:
-	case FR_TYPE_SIGNED:
-	case FR_TYPE_BYTE:
-	case FR_TYPE_SHORT:
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_INT32:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_DATE :
 		return talloc_typed_strdup(ctx, "0");
 

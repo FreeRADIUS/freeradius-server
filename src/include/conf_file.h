@@ -133,13 +133,13 @@ _Generic((_ct), \
 			_p, (_mismatch_char) 0), \
 	char const ***	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char_m) 0), \
-	bool *		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOLEAN) && !((_t) & FR_TYPE_MULTI), \
+	bool *		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_bool) 0), \
-	bool **		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOLEAN) && ((_t) & FR_TYPE_MULTI), \
+	bool **		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_bool_m) 0), \
-	uint32_t * 	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER) && !((_t) & FR_TYPE_MULTI), \
+	uint32_t * 	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT32) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint32) 0), \
-	uint32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER) && ((_t) & FR_TYPE_MULTI), \
+	uint32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT32) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint32_m) 0), \
 	fr_ipaddr_t *	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
 						(PW_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
@@ -161,29 +161,29 @@ _Generic((_ct), \
 			_p, (_mismatch_uint8) 0), \
 	uint8_t const **: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BYTE) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT8) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BYTE) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT8) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
 	uint8_t[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_IFID) && !(_t & FR_TYPE_MULTI), \
 			_p, (_mismatch_ifid) 0), \
 	uint8_t*[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ifid_m) 0), \
-	uint16_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SHORT) && !((_t) & FR_TYPE_MULTI), \
+	uint16_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT16) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16) 0), \
-	uint16_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SHORT) && ((_t) & FR_TYPE_MULTI), \
+	uint16_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT16) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16_m) 0), \
 	uint8_t[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ethernet) 0), \
 	uint8_t*[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ethernet_m) 0), \
-	int32_t	*	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIGNED) && !((_t) & FR_TYPE_MULTI), \
+	int32_t	*	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INT32) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32) 0), \
-	int32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIGNED) && ((_t) & FR_TYPE_MULTI), \
+	int32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INT32) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32_m) 0), \
-	uint64_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER64) && !((_t) & FR_TYPE_MULTI), \
+	uint64_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT64) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64) 0), \
-	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INTEGER64) && ((_t) & FR_TYPE_MULTI), \
+	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
 	_timeval_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval) 0), \

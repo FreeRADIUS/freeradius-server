@@ -950,7 +950,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			tag = p[0];
 			data_len -= 1;
 
-		} else if (parent->type == FR_TYPE_INTEGER) {
+		} else if (parent->type == FR_TYPE_UINT32) {
 			memcpy(buffer, p, attr_len);
 			tag = buffer[0];
 			buffer[0] = 0;
@@ -1057,14 +1057,14 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if (data_len > sizeof(vp->vp_filter)) goto raw;
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_DATE:
-	case FR_TYPE_SIGNED:
+	case FR_TYPE_INT32:
 		if (data_len != 4) goto raw;
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 	case FR_TYPE_IFID:
 		if (data_len != 8) goto raw;
 		break;
@@ -1117,11 +1117,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	}
 		break;
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		if (data_len != 1) goto raw;
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		if (data_len != 2) goto raw;
 		break;
 
@@ -1340,20 +1340,20 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		vp->vp_length = data_len;
 		break;
 
-	case FR_TYPE_BYTE:
+	case FR_TYPE_UINT8:
 		vp->vp_byte = p[0];
 		break;
 
-	case FR_TYPE_SHORT:
+	case FR_TYPE_UINT16:
 		vp->vp_short = (p[0] << 8) | p[1];
 		break;
 
-	case FR_TYPE_INTEGER:
+	case FR_TYPE_UINT32:
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
-	case FR_TYPE_INTEGER64:
+	case FR_TYPE_UINT64:
 		memcpy(&vp->vp_integer64, p, 8);
 		vp->vp_integer64 = ntohll(vp->vp_integer64);
 		break;
@@ -1390,7 +1390,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		memcpy(&vp->vp_ip, &tmp_prefix, sizeof(vp->vp_ip));
 		break;
 
-	case FR_TYPE_SIGNED:	/* overloaded with vp_integer */
+	case FR_TYPE_INT32:	/* overloaded with vp_integer */
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;

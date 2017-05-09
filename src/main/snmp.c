@@ -95,7 +95,7 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 	struct timeval now;
 	struct timeval diff;
 
-	rad_assert(map->da->type == FR_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &uptime);
@@ -112,7 +112,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 	struct timeval now;
 	struct timeval diff;
 
-	rad_assert(map->da->type == FR_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &reset_time);
@@ -126,7 +126,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				 UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == FR_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	out->datum.integer = reset_state;
 
@@ -135,7 +135,7 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 
 static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED void *snmp_ctx, fr_value_box_t *in)
 {
-	rad_assert(map->da->type == FR_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	switch (in->datum.integer) {
 	case PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
@@ -152,7 +152,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				      fr_snmp_map_t const *map, UNUSED void *snmp_ctx)
 {
-	rad_assert(map->da->type == FR_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	out->datum.integer = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
 
@@ -231,7 +231,7 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	RADCLIENT *client = snmp_ctx;
 
 	rad_assert(client);
-	rad_assert(map->da->type == FR_TYPE_INTEGER);
+	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	out->datum.integer = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
 
@@ -613,7 +613,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 		goto error;
 	}
 
-	if (tlv_stack[depth]->type != FR_TYPE_INTEGER) {
+	if (tlv_stack[depth]->type != FR_TYPE_UINT32) {
 		fr_strerror_printf("Bad index attribute: Index attribute \"%s\" should be a integer, "
 				   "but is a %s", tlv_stack[depth]->name,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));

@@ -55,11 +55,11 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_IFID]		= {8, 8},
 	[FR_TYPE_ETHERNET]	= {6, 6},
 
-	[FR_TYPE_BOOLEAN]	= {1, 1},
-	[FR_TYPE_BYTE]		= {1, 1},
-	[FR_TYPE_SHORT]		= {2, 2},
-	[FR_TYPE_INTEGER]	= {4, 4},
-	[FR_TYPE_INTEGER64]	= {8, 8},
+	[FR_TYPE_BOOL]	= {1, 1},
+	[FR_TYPE_UINT8]		= {1, 1},
+	[FR_TYPE_UINT16]		= {2, 2},
+	[FR_TYPE_UINT32]	= {4, 4},
+	[FR_TYPE_UINT64]	= {8, 8},
 
 	[FR_TYPE_DATE]		= {4, 4},
 	[FR_TYPE_ABINARY]	= {32, ~0},

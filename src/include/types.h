@@ -43,17 +43,18 @@ typedef enum {
 	FR_TYPE_COMBO_IP_PREFIX,		//!< IPv4 or IPv6 address prefix depending on length.
 	FR_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
 
-	FR_TYPE_BOOLEAN,			//!< A truth value.
-	FR_TYPE_BYTE,				//!< 8 Bit unsigned integer.
-	FR_TYPE_SHORT,				//!< 16 Bit unsigned integer.
-	FR_TYPE_INTEGER,			//!< 32 Bit unsigned integer.
-	FR_TYPE_INTEGER64,			//!< 64 Bit unsigned integer.
+	FR_TYPE_BOOL,				//!< A truth value.
+	FR_TYPE_UINT8,				//!< 8 Bit unsigned integer.
+	FR_TYPE_UINT16,				//!< 16 Bit unsigned integer.
+	FR_TYPE_UINT32,				//!< 32 Bit unsigned integer.
+	FR_TYPE_UINT64,				//!< 64 Bit unsigned integer.
+	FR_TYPE_INT32,				//!< 32 Bit signed integer.
+	FR_TYPE_FLOAT64,			//!< Double precision floating point.
+
 	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
 						//!< address on the local system.
-	FR_TYPE_SIGNED,				//!< 32 Bit signed integer.
 
 	FR_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
-	FR_TYPE_DECIMAL,			//!< Double precision floating point.
 	FR_TYPE_DATE,				//!< 32 Bit Unix timestamp.
 
 	FR_TYPE_ABINARY,			//!< Ascend binary format a packed data structure.
@@ -77,10 +78,10 @@ typedef enum {
  *	functions that need to deal with all types representing values
  */
 #define FR_TYPE_FIXED_SIZE \
-	     FR_TYPE_BYTE: \
-	case FR_TYPE_SHORT: \
-	case FR_TYPE_INTEGER: \
-	case FR_TYPE_INTEGER64: \
+	     FR_TYPE_UINT8: \
+	case FR_TYPE_UINT16: \
+	case FR_TYPE_UINT32: \
+	case FR_TYPE_UINT64: \
 	case FR_TYPE_SIZE: \
 	case FR_TYPE_DATE: \
 	case FR_TYPE_IFID: \
@@ -91,10 +92,10 @@ typedef enum {
 	case FR_TYPE_IPV6_PREFIX: \
 	case FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
-	case FR_TYPE_SIGNED: \
+	case FR_TYPE_INT32: \
 	case FR_TYPE_TIMEVAL: \
-	case FR_TYPE_BOOLEAN: \
-	case FR_TYPE_DECIMAL
+	case FR_TYPE_BOOL: \
+	case FR_TYPE_FLOAT64
 
 /** Match all variable length types in case statements
  *
@@ -137,13 +138,13 @@ typedef enum {
  *
  */
 #define FR_TYPE_NUMERIC \
-	FR_TYPE_BOOLEAN: \
-	case FR_TYPE_BYTE: \
-	case FR_TYPE_SHORT: \
-	case FR_TYPE_INTEGER: \
-	case FR_TYPE_INTEGER64: \
+	FR_TYPE_BOOL: \
+	case FR_TYPE_UINT8: \
+	case FR_TYPE_UINT16: \
+	case FR_TYPE_UINT32: \
+	case FR_TYPE_UINT64: \
 	case FR_TYPE_SIZE: \
-	case FR_TYPE_SIGNED: \
+	case FR_TYPE_INT32: \
 	case FR_TYPE_DATE
 
 #endif /* _FR_TYPES_H */
