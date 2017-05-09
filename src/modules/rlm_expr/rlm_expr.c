@@ -258,9 +258,9 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 			int64_t y;
 
 			if (vp->vp_type != FR_TYPE_INTEGER64) {
-				value_box_t	value;
+				fr_value_box_t	value;
 
-				if (value_box_cast(vp, &value, FR_TYPE_INTEGER64, NULL, &vp->data) < 0) {
+				if (fr_value_box_cast(vp, &value, FR_TYPE_INTEGER64, NULL, &vp->data) < 0) {
 					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt->len,
 						vpt->name, fr_strerror());
 					return false;
@@ -970,7 +970,7 @@ static ssize_t toupper_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  * This needs to die, and hopefully will die, when xlat functions accept
  * xlat node structures.
  *
- * @param out		value_box_t containing a shallow copy of the attribute,
+ * @param out		fr_value_box_t containing a shallow copy of the attribute,
  *			or the fmt string.
  * @param request	current request.
  * @param fmt		string.
@@ -978,7 +978,7 @@ static ssize_t toupper_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *	- The length of the data.
  *	- -1 on failure.
  */
-static int value_box_from_fmt(value_box_t *out, REQUEST *request, char const *fmt)
+static int fr_value_box_from_fmt(fr_value_box_t *out, REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -1006,14 +1006,14 @@ static int value_box_from_fmt(value_box_t *out, REQUEST *request, char const *fm
 	 *	These are large types.  Return pointers to the
 	 *	data instead of copying the data.
 	 */
-	value_box_copy_shallow(NULL, out, &vp->data);
+	fr_value_box_copy_shallow(NULL, out, &vp->data);
 
 	return 0;
 }
 
-static int value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, size_t *outlen, value_box_t const *in)
+static int fr_value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, size_t *outlen, fr_value_box_t const *in)
 {
-	value_box_t bin;
+	fr_value_box_t bin;
 
 	switch (in->type) {
 	case FR_TYPE_STRING:
@@ -1023,7 +1023,7 @@ static int value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, si
 		return 0;
 
 	default:
-		if (value_box_cast(ctx, &bin, FR_TYPE_OCTETS, NULL, in) < 0) {
+		if (fr_value_box_cast(ctx, &bin, FR_TYPE_OCTETS, NULL, in) < 0) {
 			RPERROR("Failed casting xlat input to 'octets'");
 			return -1;
 		}
@@ -1034,10 +1034,10 @@ static int value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, si
 }
 
 #define VALUE_FROM_FMT(_tmp_ctx, _p, _len, _request, _fmt) \
-	value_box_t _value; \
-	if (value_box_from_fmt(&_value, _request, _fmt) < 0) return -1; \
+	fr_value_box_t _value; \
+	if (fr_value_box_from_fmt(&_value, _request, _fmt) < 0) return -1; \
 	if (!_tmp_ctx) _tmp_ctx = talloc_new(_request); \
-	if (value_box_to_bin(_tmp_ctx, _request, &_p, &_len, &_value) < 0) { \
+	if (fr_value_box_to_bin(_tmp_ctx, _request, &_p, &_len, &_value) < 0) { \
 		talloc_free(_tmp_ctx); \
 		return -1; \
 	}

@@ -168,7 +168,7 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
 	}
 }
 
-/** Convert a string or integer type to #value_box_t of specified type
+/** Convert a string or integer type to #fr_value_box_t of specified type
  *
  * Will work with REDIS_REPLY_STRING (which is converted to #FR_TYPE_STRING
  * then cast to dst_type), or REDIS_REPLY_INTEGER (which is converted to
@@ -188,10 +188,10 @@ void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, in
  *	- 0 on success.
  *	- -1 on cast or parse failure.
  */
-int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *reply,
+int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
 				 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 {
-	value_box_t	in;
+	fr_value_box_t	in;
 
 	memset(&in, 0, sizeof(in));
 
@@ -243,7 +243,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 		rad_assert(0);
 	}
 
-	if (value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
+	if (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
 
 	return 0;
 }
@@ -312,7 +312,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_INTEGER:
 	{
-		value_box_t vpt;
+		fr_value_box_t vpt;
 
 		/* Logs own errors */
 		if (fr_redis_reply_to_value_box(map, &vpt, value,
@@ -378,11 +378,11 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	key = talloc_bstrndup(pool, key_buf, key_len);
 	if (!key) return -1;
 
-	switch (map->rhs->tmpl_value_box_type) {
+	switch (map->rhs->tmpl_fr_value_box_type) {
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_value_box_datum.ptr;
-		out_len[2] = map->rhs->tmpl_value_box_length;
+		out[2] = map->rhs->tmpl_fr_value_box_datum.ptr;
+		out_len[2] = map->rhs->tmpl_fr_value_box_length;
 		break;
 
 	/*
@@ -393,7 +393,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		char	value[256];
 		size_t	len;
 
-		len = value_box_snprint(value, sizeof(value), &map->rhs->tmpl_value_box, '\0');
+		len = fr_value_box_snprint(value, sizeof(value), &map->rhs->tmpl_value_box, '\0');
 		new = talloc_bstrndup(pool, value, len);
 		if (!new) {
 			talloc_free(key);

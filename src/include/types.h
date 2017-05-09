@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file include/types.h
- * @brief #value_box_t types
+ * @brief #fr_value_box_t types
  *
  * @copyright 2017  The FreeRADIUS server project
  */

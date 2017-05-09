@@ -274,7 +274,7 @@ static int sync_search_entry_or_refrence(sync_state_t *sync, LDAPMessage *msg, L
 
 	if (DEBUG_ENABLED3) {
 		char		*entry_dn;
-		value_box_t	uuid_box;
+		fr_value_box_t	uuid_box;
 
 		entry_dn = ldap_get_dn(sync->conn->handle, msg);
 		fr_ldap_berval_to_value(&uuid_box, &entry_uuid);

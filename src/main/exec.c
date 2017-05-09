@@ -632,7 +632,7 @@ wait:
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
-			value_box_t boxed_answer = {
+			fr_value_box_t boxed_answer = {
 				.datum.strvalue = answer,
 				.datum.length = len,
 				.type = FR_TYPE_STRING

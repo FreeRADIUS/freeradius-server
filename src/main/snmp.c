@@ -37,8 +37,8 @@ RCSID("$Id$")
 
 typedef struct fr_snmp_map fr_snmp_map_t;
 
-typedef int (*fr_snmp_get_func_t)(TALLOC_CTX *ctx, value_box_t *out, fr_snmp_map_t const *map, void *snmp_ctx);
-typedef int (*fr_snmp_set_func_t)(fr_snmp_map_t const *map, void *snmp_ctx, value_box_t *data);
+typedef int (*fr_snmp_get_func_t)(TALLOC_CTX *ctx, fr_value_box_t *out, fr_snmp_map_t const *map, void *snmp_ctx);
+typedef int (*fr_snmp_set_func_t)(fr_snmp_map_t const *map, void *snmp_ctx, fr_value_box_t *data);
 typedef int (*fr_snmp_index_func_t)(TALLOC_CTX *ctx, void **snmp_ctx_out,
 				    fr_snmp_map_t const *map, void const *snmp_ctx_in, uint32_t index);
 
@@ -79,7 +79,7 @@ static struct timeval uptime;
 static struct timeval reset_time;
 static int reset_state = PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RUNNING;
 
-static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
+static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				     UNUSED void *snmp_ctx)
 {
 	rad_assert(map->da->type == FR_TYPE_STRING);
@@ -89,7 +89,7 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, value_box_t *out, NDEBUG_U
 	return 0;
 }
 
-static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
+static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				 UNUSED void *snmp_ctx)
 {
 	struct timeval now;
@@ -106,7 +106,7 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBU
 	return 0;
 }
 
-static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
+static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				      UNUSED void *snmp_ctx)
 {
 	struct timeval now;
@@ -123,7 +123,7 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, 
 	return 0;
 }
 
-static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
+static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				 UNUSED void *snmp_ctx)
 {
 	rad_assert(map->da->type == FR_TYPE_INTEGER);
@@ -133,7 +133,7 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBU
 	return 0;
 }
 
-static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED void *snmp_ctx, value_box_t *in)
+static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED void *snmp_ctx, fr_value_box_t *in)
 {
 	rad_assert(map->da->type == FR_TYPE_INTEGER);
 
@@ -149,7 +149,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 
 }
 
-static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
+static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				      fr_snmp_map_t const *map, UNUSED void *snmp_ctx)
 {
 	rad_assert(map->da->type == FR_TYPE_INTEGER);
@@ -175,7 +175,7 @@ static int snmp_client_index(UNUSED TALLOC_CTX *ctx, void **snmp_ctx_out,
 	return 0;
 }
 
-static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
+static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				 UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
 	RADCLIENT *client = snmp_ctx;
@@ -187,7 +187,7 @@ static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	return 0;
 }
 
-static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
+static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				    NDEBUG_UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
 	RADCLIENT *client = snmp_ctx;
@@ -208,7 +208,7 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	return 0;
 }
 
-static int snmp_client_id_get(TALLOC_CTX *ctx, value_box_t *out,
+static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 			      NDEBUG_UNUSED fr_snmp_map_t const *map, void *snmp_ctx)
 {
 	RADCLIENT *client = snmp_ctx;
@@ -225,7 +225,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, value_box_t *out,
 	return 0;
 }
 
-static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
+static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 				  	     fr_snmp_map_t const *map, void *snmp_ctx)
 {
 	RADCLIENT *client = snmp_ctx;
@@ -743,7 +743,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 	case PW_FREERADIUS_SNMP_OPERATION_VALUE_GET:
 	{
-		value_box_t data;
+		fr_value_box_t data;
 
 		memset(&data, 0, sizeof(data));
 
@@ -765,13 +765,13 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		 *	attribute.  To reduce boilerplate code
 		 *	in callbacks, we handled allocating and
 		 *	inserting VALUE_PAIRs, and pass in a
-		 *	value_box_t struct for the callback
+		 *	fr_value_box_t struct for the callback
 		 *	to complete.
 		 */
 		if (map_p->get(request->reply, &data, map_p, snmp_ctx) < 0) goto error;
 
 		vp = fr_pair_afrom_da(request->reply, map_p->da);
-		value_box_steal(vp, &vp->data, &data);
+		fr_value_box_steal(vp, &vp->data, &data);
 		fr_pair_cursor_append(out, vp);
 
 		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);

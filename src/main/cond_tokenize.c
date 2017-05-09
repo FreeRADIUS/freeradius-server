@@ -178,7 +178,7 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **e
 			/*
 			 *	Call the STANDARD parse function to figure out what the string is.
 			 */
-			value_box_t data;
+			fr_value_box_t data;
 			char quote = *start;
 			fr_type_t src_type = FR_TYPE_STRING;
 
@@ -187,7 +187,7 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **e
 			 */
 			if (quote == '/') quote = '\0';
 
-			if (value_box_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), quote) < 0) {
+			if (fr_value_box_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), quote) < 0) {
 				*error = "error parsing string";
 				return -1;
 			}
@@ -1113,7 +1113,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 						fr_dict_attr_t const *da;
 
 						da = fr_dict_attr_by_type(c->data.map->lhs->tmpl_da,
-									  c->data.map->rhs->tmpl_value_box_type);
+									  c->data.map->rhs->tmpl_fr_value_box_type);
 						if (!da) {
 							return_rhs("Cannot find type for attribute");
 						}

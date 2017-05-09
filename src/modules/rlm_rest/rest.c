@@ -899,7 +899,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 
 	VALUE_PAIR	*vp;
 
-	value_box_t	src;
+	fr_value_box_t	src;
 
 	if (fr_json_object_is_type(leaf, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\", skipping...", da->name);
@@ -961,7 +961,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		src.datum.length = strlen(src.datum.strvalue);
 	}
 
-	ret = value_box_cast(vp, &vp->data, da->type, da, &src);
+	ret = fr_value_box_cast(vp, &vp->data, da->type, da, &src);
 	talloc_free(expanded);
 	if (ret < 0) {
 		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping): %s", da->name, fr_strerror());

@@ -85,7 +85,7 @@ void fr_cursor_list_free(fr_cursor_t *cursor) CC_HINT(nonnull);
  * @param[in] _head	of item list.
  * @param[in] _iter	function.
  * @param[in] _ctx	_iter function _ctx.
- * @param[in] _type	Talloc type i.e. VALUE_PAIR or value_box_t.
+ * @param[in] _type	Talloc type i.e. VALUE_PAIR or fr_value_box_t.
  * @return
  *	- NULL if _head does not point to any items, or the iterator matches no items
  *	  in the current list.
@@ -112,7 +112,7 @@ void fr_cursor_list_free(fr_cursor_t *cursor) CC_HINT(nonnull);
  *
  * @param[in] _cursor	to initialise.
  * @param[in] _head	of item list.
- * @param[in] _type	Talloc type i.e. VALUE_PAIR or value_box_t.
+ * @param[in] _type	Talloc type i.e. VALUE_PAIR or fr_value_box_t.
  * @return
  *	- NULL if _head does not point to any items.
  *	- The first item in the list.

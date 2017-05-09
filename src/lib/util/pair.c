@@ -770,7 +770,7 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
  */
 int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 			  unsigned int vendor, unsigned int attr, int8_t tag,
-			  value_box_t *value)
+			  fr_value_box_t *value)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -779,14 +779,14 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 	vp = fr_pair_cursor_next_by_num(&cursor, vendor, attr, tag);
 	if (vp) {
 		VERIFY_VP(vp);
-		if (value_box_steal(vp, &vp->data, value) < 0) return -1;
+		if (fr_value_box_steal(vp, &vp->data, value) < 0) return -1;
 		return 0;
 	}
 
 	vp = fr_pair_afrom_num(ctx, vendor, attr);
 	if (!vp) return -1;
 	vp->tag = tag;
-	if (value_box_steal(vp, &vp->data, value) < 0) return -1;
+	if (fr_value_box_steal(vp, &vp->data, value) < 0) return -1;
 
 	fr_pair_cursor_append(&cursor, vp);
 
@@ -1066,7 +1066,7 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			return 1;
 		}
 
-		ret = value_box_cmp(&a_p->data, &b_p->data);
+		ret = fr_value_box_cmp(&a_p->data, &b_p->data);
 		if (ret != 0) {
 			(void)fr_cond_assert(ret >= -1); 	/* Comparison error */
 			return ret;
@@ -1977,7 +1977,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
-	if (value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
+	if (fr_value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
 
 	/*
 	 *	If we parsed to a different type than the DA associated with
@@ -2020,7 +2020,7 @@ void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 	p = talloc_memdup(vp, src, size);
 	if (!p) return;
 
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	vp->vp_octets = p;
 	vp->vp_length = size;
@@ -2039,7 +2039,7 @@ void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
  */
 void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src)
 {
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	vp->vp_octets = talloc_steal(vp, src);
 	vp->vp_length = talloc_array_length(vp->vp_octets);
@@ -2060,7 +2060,7 @@ void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
 {
 	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
 
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	vp->vp_strvalue = talloc_steal(vp, src);
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
@@ -2089,7 +2089,7 @@ void fr_pair_value_strnsteal(VALUE_PAIR *vp, char *src, size_t len)
 
 	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return;
 
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	buf_len = talloc_array_length(src);
 	if (buf_len > (len + 1)) {
@@ -2125,7 +2125,7 @@ void fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
 	p = talloc_strdup(vp, src);
 	if (!p) return;
 
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
@@ -2159,7 +2159,7 @@ void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 	memcpy(p, src, len);	/* embdedded \0 safe */
 	p[len] = '\0';
 
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
 	vp->vp_length = len;
@@ -2190,7 +2190,7 @@ void fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	va_end(ap);
 	if (!p) return;
 
-	value_box_clear(&vp->data);
+	fr_value_box_clear(&vp->data);
 
 	vp->vp_strvalue = p;
 	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
@@ -2219,7 +2219,7 @@ size_t fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, cha
 
 	if (vp->type == VT_XLAT) return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
 
-	return value_box_snprint(out, outlen, &vp->data, quote);
+	return fr_value_box_snprint(out, outlen, &vp->data, quote);
 }
 
 /** Print one attribute value to a string
@@ -2235,7 +2235,7 @@ char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 
 	if (vp->type == VT_XLAT) return fr_asprint(ctx, vp->xlat, talloc_array_length(vp->xlat) - 1, quote);
 
-	return value_box_asprint(ctx, &vp->data, quote);
+	return fr_value_box_asprint(ctx, &vp->data, quote);
 }
 
 /** Return a const buffer for an enum type attribute

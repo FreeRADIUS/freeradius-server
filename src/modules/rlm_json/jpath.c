@@ -131,8 +131,8 @@ size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 
 /** Recursive function for jpath_expr_evaluate
  *
- * @param[in,out] ctx to allocate value_box_t in.
- * @param[out] tail Where to write value_box_t (**).
+ * @param[in,out] ctx to allocate fr_value_box_t in.
+ * @param[out] tail Where to write fr_value_box_t (**).
  * @param[in] dst_type FreeRADIUS type to convert to.
  * @param[in] dst_enumv Enumeration values to allow string to integer conversions.
  * @param[in] object current node in the json tree.
@@ -142,11 +142,11 @@ size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  *	- 0 on no match.
  *	- -1 on error.
  */
-static int jpath_evaluate(TALLOC_CTX *ctx, value_box_t ***tail,
+static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			  json_object *object, fr_jpath_node_t const *jpath)
 {
-	value_box_t		*value;
+	fr_value_box_t		*value;
 	fr_jpath_node_t const	*node;
 	jpath_selector_t const	*selector;
 	bool			child_matched = false;
@@ -350,7 +350,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_box_t ***tail,
 	 *	we now attempt conversion of the leaf to
 	 *	the specified value.
 	 */
-	value = talloc_zero(ctx, value_box_t);
+	value = talloc_zero(ctx, fr_value_box_t);
 	if (fr_json_object_to_value_box(value, value, object, dst_type, dst_enumv) < 0) {
 		talloc_free(value);
 		return -1;
@@ -362,11 +362,11 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_box_t ***tail,
 
 /** Evaluate a parsed jpath expression against a json-c tree
  *
- * Will produce one or more value_box_t structures of the desired type,
+ * Will produce one or more fr_value_box_t structures of the desired type,
  * or error out if the conversion between types fails.
  *
- * @param[in,out] ctx to allocate value_box_t in.
- * @param[out] out Where to write value_box_t.
+ * @param[in,out] ctx to allocate fr_value_box_t in.
+ * @param[out] out Where to write fr_value_box_t.
  * @param[in] dst_type FreeRADIUS type to convert to.
  * @param[in] dst_enumv Enumeration values to allow string to integer conversions.
  * @param[in] root of the json-c tree.
@@ -376,11 +376,11 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_box_t ***tail,
  *	- 0 on no match.
  *	- -1 on error.
  */
-int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, value_box_t **out,
+int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
 			   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			   json_object *root, fr_jpath_node_t const *jpath)
 {
-	value_box_t **tail = out;
+	fr_value_box_t **tail = out;
 
 	*tail = NULL;
 

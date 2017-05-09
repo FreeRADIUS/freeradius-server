@@ -952,7 +952,7 @@ static int ascend_parse_generic(int argc, char **argv,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int ascend_parse_filter(value_box_t *out, char const *value, size_t len)
+int ascend_parse_filter(fr_value_box_t *out, char const *value, size_t len)
 {
 	int		token, type;
 	int		rcode;

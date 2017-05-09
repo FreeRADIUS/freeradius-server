@@ -28,7 +28,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include "json.h"
 
-/** Convert json object to value_box_t
+/** Convert json object to fr_value_box_t
  *
  * @param[in] ctx	to allocate any value buffers in (should usually be the same as out).
  * @param[in] out	Where to write value_box.
@@ -39,10 +39,10 @@
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *object,
+int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_object *object,
 				fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 {
-	value_box_t in;
+	fr_value_box_t in;
 
 	memset(&in, 0, sizeof(in));
 
@@ -116,7 +116,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 		break;
 	}
 
-	if (value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
+	if (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
 
 	return 0;
 }
@@ -126,7 +126,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
  * @param[in] ctx	to allocate temporary buffers in
  * @param[in] data	to convert.
  */
-json_object *json_object_from_value_box(TALLOC_CTX *ctx, value_box_t const *data)
+json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *data)
 {
 	switch (data->type) {
 	default:
@@ -135,7 +135,7 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, value_box_t const *data
 		char		*p;
 		json_object	*obj;
 
-		p = value_box_asprint(ctx, data, '\0');
+		p = fr_value_box_asprint(ctx, data, '\0');
 		if (!p) return NULL;
 
 		obj = json_object_new_string(p);

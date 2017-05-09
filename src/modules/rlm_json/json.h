@@ -49,7 +49,7 @@ typedef struct fr_jpath_node fr_jpath_node_t;
 size_t		fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 				     char const *in, UNUSED void *arg);
 
-int		fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, value_box_t **out,
+int		fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
 				       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				       json_object *root, fr_jpath_node_t const *jpath);
 
@@ -58,10 +58,10 @@ char		*fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head);
 ssize_t		fr_jpath_parse(TALLOC_CTX *ctx, fr_jpath_node_t **head, char const *in, size_t inlen);
 
 /* json.c */
-int		fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *object,
+int		fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_object *object,
 					    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
 
-json_object	*json_object_from_value_box(TALLOC_CTX *ctx, value_box_t const *data);
+json_object	*json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *data);
 
 char		*fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes);
 

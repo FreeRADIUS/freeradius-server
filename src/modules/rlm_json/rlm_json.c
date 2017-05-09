@@ -163,12 +163,12 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 			break;
 
 		case TMPL_TYPE_DATA:
-			if (map->rhs->tmpl_value_box_type != FR_TYPE_STRING) {
+			if (map->rhs->tmpl_fr_value_box_type != FR_TYPE_STRING) {
 				cf_log_err_cp(cp, "Right side of map must be a string");
 				return -1;
 			}
-			p = map->rhs->tmpl_value_box_datum.strvalue;
-			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_value_box_length);
+			p = map->rhs->tmpl_fr_value_box_datum.strvalue;
+			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_fr_value_box_length);
 			if (slen <= 0) goto error;
 			break;
 
@@ -207,7 +207,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
-	value_box_t			*head, *value;
+	fr_value_box_t			*head, *value;
 	int				ret;
 
 	*out = NULL;
@@ -232,7 +232,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
 		}
 		vp->op = map->op;
 
-		if (value_box_steal(vp, &vp->data, value) < 0) {
+		if (fr_value_box_steal(vp, &vp->data, value) < 0) {
 			RPEDEBUG("Copying data to attribute failed");
 			talloc_free(vp);
 			goto error;

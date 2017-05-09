@@ -2031,7 +2031,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  * Takes fields from a #CONF_PARSER struct and uses them to parse the string value
  * of a #CONF_PAIR into a C data type matching the type argument.
  *
- * The format of the types are the same as #value_box_t types.
+ * The format of the types are the same as #fr_value_box_t types.
  *
  * @note The dflt value will only be used if no matching #CONF_PAIR is found. Empty strings will not
  *	 result in the dflt value being used.

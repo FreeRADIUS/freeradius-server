@@ -64,7 +64,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL;
 	vp_tmpl_t		*vpt;
-	value_box_t		bin = { .type = FR_TYPE_STRING }, cast;
+	fr_value_box_t		bin = { .type = FR_TYPE_STRING }, cast;
 
 	rad_assert(map != NULL);
 
@@ -104,18 +104,18 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	/*
 	 *	Assign but don't dup.
 	 */
-	value_box_memdup_buffer_shallow(NULL, &bin, ptr, false);
+	fr_value_box_memdup_buffer_shallow(NULL, &bin, ptr, false);
 
 	/*
 	 *	Convert to da->type (if possible);
 	 */
-	if (value_box_cast(map, &cast, da->type, da, &bin) < 0) {
+	if (fr_value_box_cast(map, &cast, da->type, da, &bin) < 0) {
 		talloc_free(bin.datum.ptr);
 		return false;
 	}
 
 	/*
-	 *	Package the #value_box_t as a #vp_tmpl_t
+	 *	Package the #fr_value_box_t as a #vp_tmpl_t
 	 */
 	if (tmpl_afrom_value_box(map, &map->rhs, &cast, true) < 0) {
 		talloc_free(bin.datum.ptr);
@@ -860,7 +860,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!n) return -1;
 
-				if (value_box_cast(n, &n->data,
+				if (fr_value_box_cast(n, &n->data,
 						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
 					RPEDEBUG("Attribute conversion failed");
 					fr_pair_list_free(&found);
@@ -899,13 +899,13 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!n) return -1;
 
-		if (map->lhs->tmpl_da->type == map->rhs->tmpl_value_box_type) {
-			if (value_box_copy(n, &n->data, &map->rhs->tmpl_value_box) < 0) {
+		if (map->lhs->tmpl_da->type == map->rhs->tmpl_fr_value_box_type) {
+			if (fr_value_box_copy(n, &n->data, &map->rhs->tmpl_value_box) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
-			if (value_box_cast(n, &n->data, n->vp_type, n->da,
+			if (fr_value_box_cast(n, &n->data, n->vp_type, n->da,
 					   &map->rhs->tmpl_value_box) < 0) {
 				RPEDEBUG("Implicit cast failed");
 				rcode = -1;
@@ -1361,7 +1361,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 				if (cmp > 0) break;
 				else if (cmp < 0) continue;
 
-				cmp = (value_box_cmp_op(map->op, &a->data, &b->data) == 0);
+				cmp = (fr_value_box_cmp_op(map->op, &a->data, &b->data) == 0);
 				if (cmp != 0) {
 					a = fr_pair_cursor_remove(&dst_list);
 					talloc_free(a);

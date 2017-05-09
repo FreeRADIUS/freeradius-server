@@ -345,7 +345,7 @@ extern FR_NAME_NUMBER const fr_ldap_tls_require_cert[];
  * @param[out] value	to write berval values to.
  * @param[in] berval	to copy pointers/lengths from.
  */
-static inline void fr_ldap_berval_to_value(value_box_t *value, struct berval *berval)
+static inline void fr_ldap_berval_to_value(fr_value_box_t *value, struct berval *berval)
 {
 	value->datum.ptr = berval->bv_val;
 	value->datum.length = berval->bv_len;

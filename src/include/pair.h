@@ -86,13 +86,13 @@ typedef struct value_pair {
 	//	VALUE_SET	*set;				//!< Set of child attributes.
 	//	VALUE_LIST	*list;				//!< List of values for
 								//!< multivalued attribute.
-	//	value_box_t	*data;				//!< Value data for this attribute.
+	//	fr_value_box_t	*data;				//!< Value data for this attribute.
 
 		char const 	*xlat;				//!< Source string for xlat expansion.
 	};
 
 	value_type_t		type;				//!< Type of pointer in value union.
-	value_box_t		data;
+	fr_value_box_t		data;
 } VALUE_PAIR;
 
 /** Abstraction to allow iterating over different configurations of VALUE_PAIRs
@@ -198,7 +198,7 @@ void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
 
 int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 				      unsigned int vendor, unsigned int attr, int8_t tag,
-				      value_box_t *value);
+				      fr_value_box_t *value);
 
 void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
 
@@ -212,7 +212,7 @@ typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
  *	- 0 if not equal.
  *	- -1 on failure.
  */
-#define		fr_pair_cmp_op(_op, _a, _b)	value_box_cmp_op(_op, &_a->data, &_b->data)
+#define		fr_pair_cmp_op(_op, _a, _b)	fr_value_box_cmp_op(_op, &_a->data, &_b->data)
 int8_t		fr_pair_cmp_by_da_tag(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num_tag(void const *a, void const *b);
 int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);

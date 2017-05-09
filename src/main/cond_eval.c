@@ -83,7 +83,7 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
 {
 	int rcode;
 	int modcode;
-	value_box_t data;
+	fr_value_box_t data;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
@@ -158,8 +158,8 @@ int cond_eval_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t 
  *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         value_box_t const *lhs,
-		         value_box_t const *rhs)
+		         fr_value_box_t const *lhs,
+		         fr_value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 
@@ -225,7 +225,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 #endif
 
 #ifdef WITH_EVAL_DEBUG
-static void cond_print_operands(value_box_t const *lhs, value_box_t const *rhs)
+static void cond_print_operands(fr_value_box_t const *lhs, fr_value_box_t const *rhs)
 {
 	if (lhs) {
 		if (lhs->type == FR_TYPE_STRING) {
@@ -259,7 +259,7 @@ static void cond_print_operands(value_box_t const *lhs, value_box_t const *rhs)
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, value_box_t const *lhs, value_box_t const *rhs)
+static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t const *lhs, fr_value_box_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 	int rcode;
@@ -290,7 +290,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, value_box_t con
 		vp = fr_pair_afrom_da(request, map->lhs->tmpl_da);
 		vp->op = c->data.map->op;
 
-		value_box_copy(vp, &vp->data, rhs);
+		fr_value_box_copy(vp, &vp->data, rhs);
 
 		rcode = paircompare(request, request->packet->vps, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
@@ -299,7 +299,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, value_box_t con
 	}
 
 	EVAL_DEBUG("CMP WITH VALUE DATA");
-	rcode = value_box_cmp_op(map->op, lhs, rhs);
+	rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
 finish:
 	switch (rcode) {
 	case 0:
@@ -363,18 +363,18 @@ done:
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, value_box_t const *lhs)
+static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value_box_t const *lhs)
 {
 	vp_map_t const		*map = c->data.map;
 
 	int			rcode;
 
-	value_box_t		*rhs = NULL;
+	fr_value_box_t		*rhs = NULL;
 
 	fr_dict_attr_t const	*cast = NULL;
 	fr_type_t			cast_type = FR_TYPE_INVALID;
 
-	value_box_t		lhs_cast, rhs_cast;
+	fr_value_box_t		lhs_cast, rhs_cast;
 	void			*lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
 
 	xlat_escape_t		escape = NULL;
@@ -393,7 +393,7 @@ do {\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_int2str(dict_attr_types, _s->type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
-		if (value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
+		if (fr_value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
 			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
 			rcode = -1;\
 			goto finish;\
@@ -459,11 +459,11 @@ do {\
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
 			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
 	} else if (map->lhs->type == TMPL_TYPE_DATA) {
-		cast_type = map->lhs->tmpl_value_box_type;
+		cast_type = map->lhs->tmpl_fr_value_box_type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
 	} else if (map->rhs->type == TMPL_TYPE_DATA) {
-		cast_type = map->rhs->tmpl_value_box_type;
+		cast_type = map->rhs->tmpl_fr_value_box_type;
 		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
 	}
@@ -513,7 +513,7 @@ do {\
 	case TMPL_TYPE_XLAT_STRUCT:
 	{
 		ssize_t ret;
-		value_box_t data;
+		fr_value_box_t data;
 
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
@@ -643,7 +643,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	{
 		char *p = NULL;
 		ssize_t ret;
-		value_box_t data;
+		fr_value_box_t data;
 
 		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);

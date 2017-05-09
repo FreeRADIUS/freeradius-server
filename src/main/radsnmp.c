@@ -501,11 +501,11 @@ static int radsnmp_get_response(int fd,
 
 		default:
 			/*
-			 *	We call value_box_snprint with a NULL da pointer
+			 *	We call fr_value_box_snprint with a NULL da pointer
 			 *	because we always need return integer values not
 			 *	value aliases.
 			 */
-			len = value_box_snprint(value_buff, sizeof(value_buff), &vp->data, '\0');
+			len = fr_value_box_snprint(value_buff, sizeof(value_buff), &vp->data, '\0');
 			if (is_truncated(len, sizeof(value_buff))) {
 				fr_strerror_printf("Insufficient fixed value buffer");
 				return -1;

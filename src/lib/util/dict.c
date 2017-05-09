@@ -216,7 +216,7 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 
 /** Numeric dictionary types
  *
- * @note Must be updated to match the anonymous enum types union in value_box_t
+ * @note Must be updated to match the anonymous enum types union in fr_value_box_t
  */
 bool const fr_dict_enum_types[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_BYTE] = true,

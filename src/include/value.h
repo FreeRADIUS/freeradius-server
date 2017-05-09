@@ -19,10 +19,10 @@
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/dict.h>
 
-extern size_t const value_box_field_sizes[];
-extern size_t const value_box_offsets[];
+extern size_t const fr_value_box_field_sizes[];
+extern size_t const fr_value_box_offsets[];
 
-#define value_box_foreach(_v, _iv) for (value_box_t *_iv = v; _iv; _iv = _iv->next)
+#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = v; _iv; _iv = _iv->next)
 
 /** Union containing all data types supported by the server
  *
@@ -31,7 +31,7 @@ extern size_t const value_box_offsets[];
  *
  * fr_type_t should be an enumeration of the values in this union.
  */
-typedef struct value_box value_box_t;
+typedef struct value_box fr_value_box_t;
 struct value_box {
 	union {
 		/*
@@ -79,68 +79,68 @@ struct value_box {
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 
-	value_box_t			*next;			//!< Next in a series of value_box.
+	fr_value_box_t			*next;			//!< Next in a series of value_box.
 };
 
 /*
  *	Allocation
  */
-value_box_t	*value_box_alloc(TALLOC_CTX *ctx, fr_type_t type);
+fr_value_box_t	*fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type);
 
-void		value_box_clear(value_box_t *data);
+void		fr_value_box_clear(fr_value_box_t *data);
 
 /*
  *	Comparison
  */
-int		value_box_cmp(value_box_t const *a, value_box_t const *b);
+int		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b);
 
-int		value_box_cmp_op(FR_TOKEN op, value_box_t const *a, value_box_t const *b);
+int		fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t const *b);
 
 /*
  *	Conversion
  */
 size_t		value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote);
 
-int		value_box_hton(value_box_t *dst, value_box_t const *src);
+int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 
-int		value_box_cast(TALLOC_CTX *ctx, value_box_t *dst,
+int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-			       value_box_t const *src);
+			       fr_value_box_t const *src);
 
 /*
  *	Assignment
  */
-int		value_box_copy(TALLOC_CTX *ctx, value_box_t *dst,  const value_box_t *src);
-void		value_box_copy_shallow(TALLOC_CTX *ctx, value_box_t *dst, const value_box_t *src);
-int		value_box_steal(TALLOC_CTX *ctx, value_box_t *dst, value_box_t const *src);
+int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst,  const fr_value_box_t *src);
+void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
+int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src);
 
-int		value_box_strdup(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted);
-int		value_box_strdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted);
-int		value_box_strsteal(TALLOC_CTX *ctx, value_box_t *dst, char *src, bool tainted);
-int		value_box_strdup_shallow(value_box_t *dst, char const *src, bool tainted);
-int		value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool tainted);
+int		fr_value_box_strdup_shallow(fr_value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
 
-int		value_box_memdup(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, size_t len, bool tainted);
-int		value_box_memdup_buffer(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src, bool tainted);
-int		value_box_memsteal(TALLOC_CTX *ctx, value_box_t *dst, uint8_t const *src, bool tainted);
-int		value_box_memdup_shallow(value_box_t *dst, uint8_t *src, size_t len, bool tainted);
-int		value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, value_box_t *dst, uint8_t *src, bool tainted);
+int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted);
+int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *src, bool tainted);
+int		fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted);
+int		fr_value_box_memdup_shallow(fr_value_box_t *dst, uint8_t *src, size_t len, bool tainted);
+int		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *src, bool tainted);
 
 /*
  *	Parsing
  */
-int		value_box_from_ipaddr(value_box_t *dst, fr_ipaddr_t const *ipaddr);
+int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr);
 
-int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
+int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				   fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
 				   char const *src, ssize_t src_len, char quote);
 
 /*
  *	Printing
  */
-size_t		value_box_network_length(value_box_t *value);
+size_t		fr_value_box_network_length(fr_value_box_t *value);
 
-char		*value_box_asprint(TALLOC_CTX *ctx, value_box_t const *data, char quote);
+char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
-size_t		value_box_snprint(char *out, size_t outlen, value_box_t const *data, char quote);
+size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
 #endif /* _FR_VALUE_H */

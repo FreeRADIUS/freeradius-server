@@ -606,14 +606,14 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			switch (*(p + 1)) {
 			case 'V':
 			{
-				value_box_t const *in = va_arg(ap_q, value_box_t const *);
+				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
 
 				/*
 				 *	Allocations that are not part of the output
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				subst = value_box_asprint(NULL, in, '"');
+				subst = fr_value_box_asprint(NULL, in, '"');
 				if (!subst) {
 					talloc_free(out);
 					va_end(ap_p);

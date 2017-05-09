@@ -98,7 +98,7 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 		return RLM_MODULE_FAIL;
 
 	default:
-		hash = fr_hash(&vp->data.datum, value_box_field_sizes[vp->vp_type]);
+		hash = fr_hash(&vp->data.datum, fr_value_box_field_sizes[vp->vp_type]);
 		break;
 	}
 	hash &= 0xff;		/* ensure it's 0..255 */
