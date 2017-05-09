@@ -845,7 +845,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
  *	offset:		A Number. Specifies an offset into a frame
  *			to start comparing.
  *
- *	mask:		A hexafloat64 mask of bits to compare.
+ *	mask:		A hexadecimal mask of bits to compare.
  *
  *	value:		A value to compare with the masked data.
  *

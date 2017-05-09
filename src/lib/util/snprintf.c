@@ -294,7 +294,7 @@ double d;
 	PAD_LEFT(p);
 }
 
-/* for %x %X hexafloat64 representation */
+/* for %x %X hexadecimal representation */
 PRIVATE void
 #ifdef __STDC__
 hexa(struct DATA *p, double d)
@@ -606,7 +606,7 @@ va_list args;
 			state = 0;
 			break;
 		case 'x':
-		case 'X':	/* hexafloat64 */
+		case 'X':	/* hexadecimal */
 			STAR_ARGS(&data);
 			if (data.a_longlong == FOUND)
 				d = va_arg(args, LONG_LONG);

@@ -130,7 +130,7 @@ void mschap_auth_response(char const *username,
 
 	/*
 	 *	Encode the value of 'Digest' as "S=" followed by
-	 *	40 ASCII hexafloat64 digits and return it in
+	 *	40 ASCII hexadecimal digits and return it in
 	 *	AuthenticatorResponse.
 	 *	For example,
 	 *	"S=0123456789ABCDEF0123456789ABCDEF01234567"
@@ -139,7 +139,7 @@ void mschap_auth_response(char const *username,
 	response[1] = '=';
 
 	/*
-	 *	The hexafloat64 digits [A-F] MUST be uppercase.
+	 *	The hexadecimal digits [A-F] MUST be uppercase.
 	 */
 	for (i = 0; i < sizeof(digest); i++) {
 		response[2 + (i * 2)] = hex[(digest[i] >> 4) & 0x0f];
