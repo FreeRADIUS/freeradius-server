@@ -318,12 +318,6 @@ static bool update_required(REALM const *r)
 		}
 
 		/*
-		 *	This server has received a packet in the last
-		 *	5 minutes.  It doesn't need an update.
-		 */
-		if ((now - server->last_packet_recv) < 300) return false;
-
-		/*
 		 *	If we've opened in the last 10 minutes, then
 		 *	open rather than update.
 		 */
