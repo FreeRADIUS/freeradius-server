@@ -105,14 +105,17 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "ether",		FR_TYPE_ETHERNET },
 
 	{ "bool",		FR_TYPE_BOOL },
-	{ "byte",		FR_TYPE_UINT8 },
-	{ "short",		FR_TYPE_UINT16 },
-	{ "integer",		FR_TYPE_UINT32 },
+
+	{ "uint8",        	FR_TYPE_UINT8 },
+	{ "uint16",        	FR_TYPE_UINT16 },
+	{ "uint32",		FR_TYPE_UINT32 },
 	{ "uint64",		FR_TYPE_UINT64 },
+	{ "int32",         	FR_TYPE_INT32 },
+
 	{ "size",		FR_TYPE_SIZE },
 	{ "signed",        	FR_TYPE_INT32 },
 
-	{ "float64",		FR_TYPE_FLOAT64 },
+	{ "decimal",		FR_TYPE_FLOAT64 },
 	{ "timeval",		FR_TYPE_TIMEVAL },
 	{ "date",		FR_TYPE_DATE },
 
@@ -132,11 +135,10 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	 *	Alternative names
 	 */
 	{ "cidr",         	FR_TYPE_IPV4_PREFIX },
-	{ "uint8",        	FR_TYPE_UINT8 },
-	{ "uint16",        	FR_TYPE_UINT16 },
-	{ "uint32",		FR_TYPE_UINT32 },
-	{ "uint64",		FR_TYPE_UINT64 },
-	{ "int32",         	FR_TYPE_INT32 },
+	{ "byte",		FR_TYPE_UINT8 },
+	{ "short",		FR_TYPE_UINT16 },
+	{ "integer",		FR_TYPE_UINT32 },
+	{ "integer64",		FR_TYPE_UINT64 },
 
 	{ NULL,			0 }
 };

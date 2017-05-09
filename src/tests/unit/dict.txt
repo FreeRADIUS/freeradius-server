@@ -18,7 +18,7 @@ dictionary VALUE	Unit-Short	Too-Big	65537
 data fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535
 
 dictionary VALUE	Unit-Integer64	Not-OK	   1
-data fr_dict_enum_add: VALUEs cannot be defined for attributes of type 'integer64'
+data fr_dict_enum_add: VALUEs cannot be defined for attributes of type 'uint64'
 
 dictionary VALUE	Unit-Octets	Porridge	1
 data fr_dict_enum_add: VALUEs cannot be defined for attributes of type 'octets'
