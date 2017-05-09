@@ -1818,24 +1818,6 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 	 *	packet.
 	 */
 
-	/*
-	 *	Build the reply template from the request.
-	 */
-
-	request->reply->sockfd = request->packet->sockfd;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
-	request->reply->src_ipaddr = request->packet->dst_ipaddr;
-	request->reply->dst_port = request->packet->src_port;
-	request->reply->src_port = request->packet->dst_port;
-	request->reply->if_index = request->packet->if_index;
-	request->reply->id = request->packet->id;
-	request->reply->code = 0; /* UNKNOWN code */
-	memset(request->reply->vector, 0,
-	       sizeof(request->reply->vector));
-	request->reply->vps = NULL;
-	request->reply->data = NULL;
-	request->reply->data_len = 0;
-
 	return request;
 }
 
