@@ -289,7 +289,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 */
 	tmpl_init(&created_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
 	created_value.tmpl_value_box_type = PW_TYPE_DATE;
-	created_value.tmpl_value_box_length = sizeof(created_value.tmpl_value_box_datum.date);
 	created_value.tmpl_value_box_datum.date = c->created;
 
 	/*
@@ -300,7 +299,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 */
 	tmpl_init(&expires_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
 	expires_value.tmpl_value_box_type = PW_TYPE_DATE;
-	expires_value.tmpl_value_box_length = sizeof(expires_value.tmpl_value_box_datum.date);
 	expires_value.tmpl_value_box_datum.date = c->expires;
 	expires.next = c->maps;	/* Head of the list */
 

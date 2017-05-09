@@ -115,7 +115,6 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
 	REXDENT();
 
-	value.length = sizeof(value.datum.integer);
 	value.datum.integer = code;
 
 	/*

@@ -185,7 +185,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	default:
 		if (!rad_cond_assert(rhs && rhs->type == PW_TYPE_STRING)) return -1;
 		if (!rad_cond_assert(rhs && rhs->datum.strvalue)) return -1;
-		slen = regex_compile(request, &rreg, rhs->datum.strvalue, rhs->length,
+		slen = regex_compile(request, &rreg, rhs->datum.strvalue, rhs->datum.length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->datum.strvalue, -slen, fr_strerror());
@@ -197,7 +197,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	ret = regex_exec(preg, lhs->datum.strvalue, lhs->length, rxmatch, &nmatch);
+	ret = regex_exec(preg, lhs->datum.strvalue, lhs->datum.length, rxmatch, &nmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -206,7 +206,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, lhs->datum.strvalue, lhs->length, rxmatch, nmatch);
+		regex_sub_to_request(request, &preg, lhs->datum.strvalue, lhs->datum.length, rxmatch, nmatch);
 		break;
 
 	case -1:
@@ -225,27 +225,13 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 #endif
 
 #ifdef WITH_EVAL_DEBUG
-static void cond_print_operands(REQUEST *request,
-			   	value_box_t const *lhs,
-			   	value_box_t const *rhs)
+static void cond_print_operands(value_box_t const *lhs, value_box_t const *rhs)
 {
 	if (lhs) {
 		if (lhs->type == PW_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->datum.strvalue, lhs->length);
+			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->datum.strvalue, lhs->datum.length);
 		} else {
-			char *lhs_hex;
-
-			lhs_hex = talloc_array(request, char, (lhs->length * 2) + 1);
-
-			if (lhs->type == PW_TYPE_OCTETS) {
-				fr_bin2hex(lhs_hex, lhs->datum.octets, lhs->length);
-			} else {
-				fr_bin2hex(lhs_hex, (uint8_t const *)&lhs->datum, lhs->length);
-			}
-
-			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs->length);
-
-			talloc_free(lhs_hex);
+			EVAL_DEBUG("LHS: 0x%pH (%zu)", lhs->datum.octets, lhs->datum.length);
 		}
 	} else {
 		EVAL_DEBUG("LHS: VIRTUAL");
@@ -253,21 +239,9 @@ static void cond_print_operands(REQUEST *request,
 
 	if (rhs) {
 		if (rhs->type == PW_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->datum.strvalue, rhs->length);
+			EVAL_DEBUG("RHS: \"%s\" (%zu)", rhs->datum.strvalue, rhs->datum.length);
 		} else {
-			char *rhs_hex;
-
-			rhs_hex = talloc_array(request, char, (rhs->length * 2) + 1);
-
-			if (rhs->type == PW_TYPE_OCTETS) {
-				fr_bin2hex(rhs_hex, rhs->datum.octets, rhs->length);
-			} else {
-				fr_bin2hex(rhs_hex, (uint8_t const *)&rhs->datum, rhs->length);
-			}
-
-			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs->length);
-
-			talloc_free(rhs_hex);
+			EVAL_DEBUG("RHS: 0x%pH (%zu)", rhs->datum.octets, rhs->datum.length);
 		}
 	} else {
 		EVAL_DEBUG("RHS: COMPILED");
@@ -292,7 +266,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, value_box_t con
 
 #ifdef WITH_EVAL_DEBUG
 	EVAL_DEBUG("CMP OPERANDS");
-	cond_print_operands(request, lhs, rhs);
+	cond_print_operands(lhs, rhs);
 #endif
 
 #ifdef HAVE_REGEX
@@ -551,11 +525,11 @@ do {\
 				goto finish;
 			}
 			data.datum.strvalue = p;
-			data.length = ret;
+			data.datum.length = ret;
 
 		} else {
 			data.datum.strvalue = map->rhs->name;
-			data.length = map->rhs->len;
+			data.datum.length = map->rhs->len;
 		}
 		data.type = PW_TYPE_STRING;
 
@@ -678,10 +652,10 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 				return ret;
 			}
 			data.datum.strvalue = p;
-			data.length = (size_t)ret;
+			data.datum.length = (size_t)ret;
 		} else {
 			data.datum.strvalue = map->lhs->name;
-			data.length = map->lhs->len;
+			data.datum.length = map->lhs->len;
 		}
 		rad_assert(data.datum.strvalue);
 		data.type = PW_TYPE_STRING;

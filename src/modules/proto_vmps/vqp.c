@@ -70,6 +70,17 @@ RCSID("$Id$")
 #define VQP_VERSION (1)
 #define VQP_MAX_ATTRIBUTES (12)
 
+static size_t const fr_vqp_attr_sizes[PW_TYPE_MAX + 1][2] = {
+	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
+
+	[PW_TYPE_STRING]	= {0, ~0},
+	[PW_TYPE_OCTETS]	= {0, ~0},
+
+	[PW_TYPE_IPV4_ADDR]	= {4, 4},
+	[PW_TYPE_ETHERNET]	= {6, 6},
+
+	[PW_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
+};
 
 static ssize_t vqp_recv_header(int sockfd)
 {
@@ -242,10 +253,11 @@ int vqp_send(RADIUS_PACKET *packet)
 
 int vqp_decode(RADIUS_PACKET *packet)
 {
-	uint8_t *ptr, *end;
-	int attr, attr_len;
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
+	uint8_t		*ptr, *end;
+	int		attr;
+	size_t		attr_len;
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*vp;
 
 	if (!packet || !packet->data) return -1;
 
@@ -309,16 +321,14 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		switch (vp->vp_type) {
 		case PW_TYPE_ETHERNET:
-			if (attr_len != 6) goto unknown;
+			if (attr_len != fr_vqp_attr_sizes[vp->vp_type][0]) goto unknown;
 
 			memcpy(&vp->vp_ether, ptr, 6);
-			vp->vp_length = 6;
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			if (attr_len == 4) {
+			if (attr_len == fr_vqp_attr_sizes[vp->vp_type][0]) {
 				memcpy(&vp->vp_ipv4addr, ptr, 4);
-				vp->vp_length = 4;
 				break;
 			}
 
@@ -447,7 +457,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		}
 
 		length += 6;	/* header */
-		length += vps[i]->vp_length;
+		length += fr_vqp_attr_sizes[vps[i]->vp_type][0];
 	}
 
 	packet->data = talloc_array(packet, uint8_t, length);
@@ -493,12 +503,32 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 *	Encode the VP's.
 	 */
 	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
+		size_t len;
+
 		if (!vps[i]) break;
 		if (out >= (packet->data + packet->data_len)) break;
 
 		vp = vps[i];
 
 		debug_pair(vp);
+
+		switch (vp->vp_type) {
+		case PW_TYPE_IPV4_ADDR:
+			len = fr_vqp_attr_sizes[vp->vp_type][0];
+			break;
+
+		case PW_TYPE_ETHERNET:
+			len = fr_vqp_attr_sizes[vp->vp_type][0];
+			break;
+
+		case PW_TYPE_OCTETS:
+		case PW_TYPE_STRING:
+			len = vp->vp_length;
+			break;
+
+		default:
+			return -1;
+		}
 
 		/*
 		 *	Type.  Note that we look at only the lower 8
@@ -512,29 +542,32 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		/* Length */
 		out[4] = 0;
-		out[5] = vp->vp_length & 0xff;
+		out[5] = len & 0xff;
 
 		out += 6;
 
 		/* Data */
 		switch (vp->vp_type) {
 		case PW_TYPE_IPV4_ADDR:
-			memcpy(out, &vp->vp_ipv4addr, 4);
+			memcpy(out, &vp->vp_ipv4addr, len);
+			out += len;
 			break;
 
 		case PW_TYPE_ETHERNET:
-			memcpy(out, vp->vp_ether, vp->vp_length);
+			memcpy(out, vp->vp_ether, len);
+			out += len;
 			break;
 
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
-			memcpy(out, vp->vp_octets, vp->vp_length);
+			memcpy(out, vp->vp_octets, len);
+			out += len;
 			break;
 
 		default:
 			return -1;
 		}
-		out += vp->vp_length;
+
 	}
 
 	return 0;

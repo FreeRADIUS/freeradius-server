@@ -828,7 +828,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 		return RLM_MODULE_INVALID;
 	}
 
-	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), request->password->vp_strvalue, request->password->vp_length);
+	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password),
+			      request->password->vp_strvalue, request->password->vp_length);
 	if (len < 0) {
 		REDEBUG("User-Password is not in UCS2 format");
 		return RLM_MODULE_INVALID;
@@ -963,7 +964,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Login attempt with password \"%s\" (%zd)", request->password->vp_strvalue, request->password->vp_length);
+		RDEBUG3("Login attempt with password \"%s\" (%zd)",
+			request->password->vp_strvalue, request->password->vp_length);
 	} else {
 		RDEBUG("Login attempt with password");
 	}

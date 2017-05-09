@@ -34,9 +34,19 @@ extern size_t const value_box_offsets[];
 typedef struct value_box value_box_t;
 struct value_box {
 	union {
-		char const	        *strvalue;		//!< Pointer to UTF-8 string.
-		uint8_t const		*octets;		//!< Pointer to binary string.
-		void			*ptr;			//!< generic pointer.
+		/*
+		 *	Variable length values
+		 */
+		struct {
+			union {
+				char const	*strvalue;	//!< Pointer to UTF-8 string.
+				uint8_t const	*octets;	//!< Pointer to binary string.
+				void		*ptr;		//!< generic pointer.
+				uint8_t		filter[32];	//!< Ascend binary format (a packed data structure).
+
+			};
+			size_t length;
+		};
 
 		fr_ipaddr_t		ip;			//!< IPv4/6 address/prefix.
 
@@ -47,28 +57,25 @@ struct value_box {
 
 		struct {
 			union {
-				uint8_t			byte;		//!< 8bit unsigned integer.
-				uint16_t		ushort;		//!< 16bit unsigned integer.
-				uint32_t		integer;	//!< 32bit unsigned integer.
-				uint64_t		integer64;	//!< 64bit unsigned integer.
-				size_t			size;		//!< System specific file/memory size.
+				uint8_t		byte;		//!< 8bit unsigned integer.
+				uint16_t	ushort;		//!< 16bit unsigned integer.
+				uint32_t	integer;	//!< 32bit unsigned integer.
+				uint64_t	integer64;	//!< 64bit unsigned integer.
+				size_t		size;		//!< System specific file/memory size.
 
-				int32_t			sinteger;	//!< 32bit signed integer.
+				int32_t		sinteger;	//!< 32bit signed integer.
 			};
-			fr_dict_attr_t const		*enumv;		//!< Enumeration values for integer type.
+			fr_dict_attr_t const	*enumv;		//!< Enumeration values for integer type.
 		};
 
 		struct timeval		timeval;		//!< A time value with usec precision.
 		double			decimal;		//!< Double precision float.
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
 
-		uint8_t			filter[32];		//!< Ascend binary format (a packed data structure).
 
 	} datum;
 
 	PW_TYPE				type;			//!< Type of this value-box.
-
-	size_t				length;			//!< Length of value data.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 
@@ -131,6 +138,8 @@ int		value_box_from_str(TALLOC_CTX *ctx, value_box_t *dst,
 /*
  *	Printing
  */
+size_t		value_box_network_length(value_box_t *value);
+
 char		*value_box_asprint(TALLOC_CTX *ctx, value_box_t const *data, char quote);
 
 size_t		value_box_snprint(char *out, size_t outlen, value_box_t const *data, char quote);

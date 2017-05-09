@@ -348,7 +348,7 @@ extern FR_NAME_NUMBER const fr_ldap_tls_require_cert[];
 static inline void fr_ldap_berval_to_value(value_box_t *value, struct berval *berval)
 {
 	value->datum.ptr = berval->bv_val;
-	value->length = berval->bv_len;
+	value->datum.length = berval->bv_len;
 	value->type = PW_TYPE_OCTETS;
 }
 

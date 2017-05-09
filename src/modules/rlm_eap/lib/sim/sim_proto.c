@@ -531,12 +531,10 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 */
 	case PW_TYPE_BOOLEAN:
 		vp->vp_bool = true;
-		vp->vp_length = 1;
 		break;
 
 	case PW_TYPE_SHORT:
 		vp->vp_short = (p[0] << 8) | p[1];
-		vp->vp_length = sizeof(uint16_t);
 		break;
 
 	default:
@@ -729,7 +727,6 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 			goto error;
 		}
 		vp->vp_integer = data[0];
-		vp->vp_length = 1;
 		fr_pair_cursor_append(decoded, vp);
 	}
 

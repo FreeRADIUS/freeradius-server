@@ -84,7 +84,23 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 	tmpl_find_vp(&vp, request, inst->key);
 	if (!vp) return RLM_MODULE_NOOP;
 
-	hash = fr_hash(&vp->data.datum, vp->vp_length);
+	switch (vp->vp_type) {
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_STRING:
+		hash = fr_hash(vp->data.datum.ptr, vp->vp_length);
+		break;
+
+	case PW_TYPE_ABINARY:
+		hash = fr_hash(vp->vp_filter, vp->vp_length);
+		break;
+
+	case PW_TYPE_STRUCTURAL:
+		return RLM_MODULE_FAIL;
+
+	default:
+		hash = fr_hash(&vp->data.datum, value_box_field_sizes[vp->vp_type]);
+		break;
+	}
 	hash &= 0xff;		/* ensure it's 0..255 */
 	value = hash;
 

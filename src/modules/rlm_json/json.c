@@ -50,13 +50,12 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 	case json_type_string:
 		in.type = PW_TYPE_STRING;
 		in.datum.strvalue = json_object_get_string(object);
-		in.length = json_object_get_string_len(object);
+		in.datum.length = json_object_get_string_len(object);
 		break;
 
 	case json_type_double:
 		in.type = PW_TYPE_DECIMAL;
 		in.datum.decimal = json_object_get_double(object);
-		in.length = sizeof(in.datum.decimal);
 		break;
 
 	case json_type_int:
@@ -85,25 +84,20 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
 			in.type = PW_TYPE_INTEGER64;
 			in.datum.integer64 = (uint64_t) num;
-			in.length = sizeof(in.datum.integer64);
 		} else
 #endif
 		if (num < 0) {			/* 32bit signed (supported) */
 			in.type = PW_TYPE_SIGNED;
 			in.datum.sinteger = num;
-			in.length = sizeof(in.datum.sinteger);
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = PW_TYPE_INTEGER;
 			in.datum.integer = (uint32_t) num;
-			in.length = sizeof(in.datum.integer);
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = PW_TYPE_SHORT;
 			in.datum.ushort = (uint16_t) num;
-			in.length = sizeof(in.datum.ushort);
 		} else {		/* 8bit unsigned (supported) */
 			in.type = PW_TYPE_BYTE;
 			in.datum.byte = (uint8_t) num;
-			in.length = sizeof(in.datum.byte);
 		}
 	}
 		break;
@@ -111,7 +105,6 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 	case json_type_boolean:
 		in.type = PW_TYPE_BOOLEAN;
 		in.datum.boolean = json_object_get_boolean(object);
-		in.length = sizeof(in.datum.boolean);
 		break;
 
 	case json_type_null:
@@ -119,7 +112,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, value_box_t *out, json_object *
 	case json_type_object:
 		in.type = PW_TYPE_STRING;
 		in.datum.strvalue = json_object_to_json_string(object);
-		in.length = strlen(in.datum.strvalue);
+		in.datum.length = strlen(in.datum.strvalue);
 		break;
 	}
 

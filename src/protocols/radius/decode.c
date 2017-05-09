@@ -356,7 +356,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 	total = 0;
 	ptr = data;
-	while (total < vp->vp_length) {
+	while (total < fr_radius_attr_len(vp)) {
 		memcpy(p, ptr + 2, ptr[1] - 2);
 		p += ptr[1] - 2;
 		total += ptr[1] - 2;
@@ -1333,24 +1333,21 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 */
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
-
-	vp->vp_length = data_len;
 	vp->tag = tag;
 
 	switch (parent->type) {
 	case PW_TYPE_STRING:
-		fr_pair_value_bstrncpy(vp, p, data_len);
+		fr_pair_value_bstrncpy(vp, p, data_len);	/* sets vp_length */
 		break;
 
 	case PW_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, p, data_len);
+		fr_pair_value_memcpy(vp, p, data_len);		/* sets vp_length */
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (vp->vp_length > sizeof(vp->vp_filter)) {
-			vp->vp_length = sizeof(vp->vp_filter);
-		}
-		memcpy(vp->vp_filter, p, vp->vp_length);
+		if (data_len > sizeof(vp->vp_filter)) data_len = sizeof(vp->vp_filter);
+		memcpy(vp->vp_filter, p, data_len);
+		vp->vp_length = data_len;
 		break;
 
 	case PW_TYPE_BYTE:

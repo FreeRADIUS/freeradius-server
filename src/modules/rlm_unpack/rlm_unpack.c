@@ -152,7 +152,6 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if (!cast) goto nothing;
 
 	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
-	cast->vp_length = dict_attr_sizes[type][0];
 
 	/*
 	 *	Hacks

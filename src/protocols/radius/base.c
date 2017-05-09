@@ -33,6 +33,49 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <ctype.h>
 
+/** RADIUS on-the-wire format attribute sizes
+ *
+ * Holds the min/max sizes of all supported RADIUS attribute values as they
+ * would be found in a RADIUS packet.
+ *
+ * These sizes may be different than the sizes of INTERNAL formats, PRESENTATION
+ * formats and generic NETWORK formats.
+ */
+size_t const fr_radius_attr_sizes[PW_TYPE_MAX + 1][2] = {
+	[PW_TYPE_INVALID]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
+
+	[PW_TYPE_STRING]	= {0, ~0},
+	[PW_TYPE_OCTETS]	= {0, ~0},
+
+	[PW_TYPE_IPV4_ADDR]	= {4, 4},
+	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
+	[PW_TYPE_IPV6_ADDR]	= {16, 16},
+	[PW_TYPE_IPV6_PREFIX]	= {2, 18},
+	[PW_TYPE_COMBO_IP_ADDR]	= {4, 16},
+	[PW_TYPE_IFID]		= {8, 8},
+	[PW_TYPE_ETHERNET]	= {6, 6},
+
+	[PW_TYPE_BOOLEAN]	= {1, 1},
+	[PW_TYPE_BYTE]		= {1, 1},
+	[PW_TYPE_SHORT]		= {2, 2},
+	[PW_TYPE_INTEGER]	= {4, 4},
+	[PW_TYPE_INTEGER64]	= {8, 8},
+
+	[PW_TYPE_DATE]		= {4, 4},
+	[PW_TYPE_ABINARY]	= {32, ~0},
+
+	[PW_TYPE_TLV]		= {2, ~0},
+	[PW_TYPE_STRUCT]	= {1, ~0},
+
+	[PW_TYPE_EXTENDED]	= {2, ~0},
+	[PW_TYPE_LONG_EXTENDED]	= {3, ~0},
+
+	[PW_TYPE_VSA]		= {4, ~0},
+	[PW_TYPE_EVS]		= {6, ~0},
+
+	[PW_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
+};
+
 /*
  *	Some messages get printed out only in debugging mode.
  */
@@ -119,6 +162,24 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"IP-Address-Release",			//!< 50
 };
 
+/** Return the on-the-wire length of an attribute value
+ *
+ * @param[in] vp to return the length of.
+ * @return the length of the attribute.
+ */
+size_t fr_radius_attr_len(VALUE_PAIR const *vp)
+{
+	switch (vp->vp_type) {
+	case PW_TYPE_VARIABLE_SIZE:
+		return vp->vp_length;
+
+	default:
+		return fr_radius_attr_sizes[vp->vp_type][0];
+
+	case PW_TYPE_STRUCTURAL:
+		if (!fr_cond_assert(0)) return 0;
+	}
+}
 
 /**  Do Ascend-Send / Recv-Secret calculation.
  *

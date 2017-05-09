@@ -174,8 +174,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 				ret = 1; /* NOT equal */
 				break;
 			}
-			ret = memcmp(vp->vp_strvalue, check->vp_strvalue,
-				     vp->vp_length);
+			ret = memcmp(vp->vp_strvalue, check->vp_strvalue, vp->vp_length);
 			break;
 
 		case PW_TYPE_STRING:

@@ -990,7 +990,7 @@ static int value_box_from_fmt(value_box_t *out, REQUEST *request, char const *fm
 	if (*fmt != '&') {
 		memset(out, 0, sizeof(*out));
 		out->datum.strvalue = fmt;
-		out->length = talloc_array_length(fmt) - 1;
+		out->datum.length = talloc_array_length(fmt) - 1;
 		out->type = PW_TYPE_STRING;
 		return 0;
 	}
@@ -1019,7 +1019,7 @@ static int value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, si
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 		memcpy(out, &in->datum.ptr, sizeof(in));
-		*outlen = in->length;
+		*outlen = in->datum.length;
 		return 0;
 
 	default:
@@ -1028,7 +1028,7 @@ static int value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out, si
 			return -1;
 		}
 		memcpy(out, &bin.datum.ptr, sizeof(in));
-		*outlen = bin.length;
+		*outlen = bin.datum.length;
 		return 0;
 	}
 }

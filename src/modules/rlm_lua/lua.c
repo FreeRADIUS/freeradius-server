@@ -118,18 +118,15 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 
 		case PW_TYPE_INTEGER:
 			vp->vp_integer = (uint32_t) lua_tointeger(L, -1);
-			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
 		case PW_TYPE_COMBO_IP_ADDR:
 			vp->vp_ipv4addr = (uint32_t) lua_tointeger(L, -1);
-			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_DATE:
 			vp->vp_date = (uint32_t) lua_tointeger(L, -1);
-			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -141,23 +138,20 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 
 		case PW_TYPE_BYTE:
 			vp->vp_byte = (uint8_t) lua_tointeger(L, -1);
-			vp->vp_length = 1;
-
 			break;
+
 		case PW_TYPE_SHORT:
 			vp->vp_short = (uint16_t) lua_tointeger(L, -1);
-			vp->vp_length = 2;
-
 			break;
+
 		case PW_TYPE_SIGNED:
 			vp->vp_signed = (int32_t) lua_tointeger(L, -1);
-			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_INTEGER64:
 			vp->vp_integer64 = (uint64_t) lua_tointeger(L, -1);
-			vp->vp_length = 8;
 			break;
+
 		default:
 			REDEBUG("Invalid attribute type");
 			return -1;

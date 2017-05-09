@@ -1,3 +1,6 @@
+condition &Attr-26.24757.84.9.5.7 == 0x1a99
+data &Attr-26.24757.84.9.5.7 == 0x1a99
+
 #
 #  Tests for parsing conditional expressions.
 #
@@ -527,8 +530,6 @@ data &WiMAX-PFDv2-Src-Port == 6809
 #  Allow it so that we can look for malformed attributes
 #  in packets.
 #
-condition &Attr-26.24757.84.9.5.7 == 0x1a99
-data &Attr-26.24757.84.9.5.7 == 0x1a99
 
 #  This one is really unknown
 condition &Attr-26.24757.84.9.5.15 == 0x1a99

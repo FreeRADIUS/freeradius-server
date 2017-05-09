@@ -85,7 +85,7 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, value_box_t *out, NDEBUG_U
 	rad_assert(map->da->type == PW_TYPE_STRING);
 
 	out->datum.strvalue = talloc_typed_asprintf(ctx, "FreeRADIUS %s", radiusd_version_short);
-	out->length = talloc_array_length(out->datum.strvalue) - 1;
+	out->datum.length = talloc_array_length(out->datum.strvalue) - 1;
 	return 0;
 }
 
@@ -102,7 +102,6 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBU
 
 	out->datum.integer = diff.tv_sec * 100;
 	out->datum.integer += diff.tv_usec / 10000;
-	out->length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 
 	return 0;
 }
@@ -120,7 +119,6 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, 
 
 	out->datum.integer = diff.tv_sec * 100;
 	out->datum.integer += diff.tv_usec / 10000;
-	out->length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 
 	return 0;
 }
@@ -131,7 +129,6 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out, NDEBU
 	rad_assert(map->da->type == PW_TYPE_INTEGER);
 
 	out->datum.integer = reset_state;
-	out->length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 
 	return 0;
 }
@@ -158,7 +155,6 @@ static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	rad_assert(map->da->type == PW_TYPE_INTEGER);
 
 	out->datum.integer = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
-	out->length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 
 	return 0;
 }
@@ -187,7 +183,6 @@ static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	rad_assert(client);
 
 	out->datum.integer = client->number + 1;		/* Clients indexed from 0 */
-	out->length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 
 	return 0;
 }
@@ -209,7 +204,6 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, value_box_t *out,
 	 */
 	if (client->ipaddr.af != AF_INET) return 0;
 	memcpy(&out->datum.ip, &client->ipaddr, sizeof(out->datum.ip));
-	out->length = dict_attr_sizes[PW_TYPE_IPV4_ADDR][0];
 
 	return 0;
 }
@@ -226,7 +220,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, value_box_t *out,
 	len = talloc_array_length(client->longname) - 1;
 
 	out->datum.strvalue = talloc_bstrndup(ctx, client->longname, len);
-	out->length = len;
+	out->datum.length = len;
 
 	return 0;
 }
@@ -240,7 +234,6 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, value_box_t
 	rad_assert(map->da->type == PW_TYPE_INTEGER);
 
 	out->datum.integer = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
-	out->length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 
 	return 0;
 }
@@ -582,7 +575,6 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 
 		vp = fr_pair_afrom_da(request->reply, da);
 		vp->vp_integer = i;
-		vp->vp_length = dict_attr_sizes[PW_TYPE_INTEGER][0];
 		fr_pair_cursor_prepend(out, vp);
 
 		return 0;			/* done */
@@ -795,7 +787,6 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		if (!map_p->set || (map_p->type == PW_FREERADIUS_SNMP_TYPE_OBJECT)) {
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
 			vp->vp_integer = PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
-			vp->vp_length = sizeof(vp->vp_integer);
 			fr_pair_cursor_append(out, vp);
 			return 0;
 		}
@@ -810,7 +801,6 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		case PW_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
 			vp->vp_integer = -(ret);
-			vp->vp_length = sizeof(vp->vp_integer);
 			fr_pair_cursor_append(out, vp);
 			break;
 

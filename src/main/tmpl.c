@@ -1415,10 +1415,10 @@ ssize_t _tmpl_to_type(void *out,
 		      xlat_escape_t escape, void const *escape_ctx,
 		      PW_TYPE dst_type)
 {
-	value_box_t		vd_to_cast;
-	value_box_t		vd_from_cast;
-	value_box_t const	*to_cast = &vd_to_cast;
-	value_box_t const	*from_cast = &vd_from_cast;
+	value_box_t		value_to_cast;
+	value_box_t		value_from_cast;
+	value_box_t const	*to_cast = &value_to_cast;
+	value_box_t const	*from_cast = &value_from_cast;
 
 	VALUE_PAIR		*vp = NULL;
 
@@ -1431,14 +1431,14 @@ ssize_t _tmpl_to_type(void *out,
 	rad_assert(vpt->type != TMPL_TYPE_LIST);
 	rad_assert(!buff || (bufflen >= 2));
 
-	memset(&vd_to_cast, 0, sizeof(vd_to_cast));
-	memset(&vd_from_cast, 0, sizeof(vd_from_cast));
+	memset(&value_to_cast, 0, sizeof(value_to_cast));
+	memset(&value_from_cast, 0, sizeof(value_from_cast));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL UNPARSED");
-		vd_to_cast.datum.strvalue = vpt->name;
-		vd_to_cast.length = vpt->len;
+		value_to_cast.datum.strvalue = vpt->name;
+		value_to_cast.datum.length = vpt->len;
 		break;
 
 	case TMPL_TYPE_EXEC:
@@ -1451,8 +1451,8 @@ ssize_t _tmpl_to_type(void *out,
 
 		if (radius_exec_program(request, (char *)buff, bufflen, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) return -1;
-		vd_to_cast.datum.strvalue = (char *)buff;
-		vd_to_cast.length = strlen((char *)buff);
+		value_to_cast.datum.strvalue = (char *)buff;
+		value_to_cast.datum.length = strlen((char *)buff);
 	}
 		break;
 
@@ -1472,8 +1472,8 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		vd_to_cast.length = value_str_unescape(buff, (char *)buff, slen, '"');
-		vd_to_cast.datum.strvalue = (char *)buff;
+		value_to_cast.datum.length = value_str_unescape(buff, (char *)buff, slen, '"');
+		value_to_cast.datum.strvalue = (char *)buff;
 		break;
 
 	case TMPL_TYPE_XLAT_STRUCT:
@@ -1495,8 +1495,8 @@ ssize_t _tmpl_to_type(void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		vd_to_cast.length = value_str_unescape(buff, (char *)buff, slen, '"');
-		vd_to_cast.datum.strvalue = (char *)buff;
+		value_to_cast.datum.length = value_str_unescape(buff, (char *)buff, slen, '"');
+		value_to_cast.datum.strvalue = (char *)buff;
 
 		break;
 
@@ -1566,15 +1566,16 @@ ssize_t _tmpl_to_type(void *out,
 				fr_strerror_printf("Missing expansion buffer for octet->string cast");
 				return -1;
 			}
-			if (bufflen <= to_cast->length) {
+			if (bufflen <= to_cast->datum.length) {
 				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen, to_cast->length + 1);
+						   "Have %zu bytes, need %zu bytes", bufflen,
+						   to_cast->datum.length + 1);
 				return -1;
 			}
-			memcpy(buff, to_cast->datum.octets, to_cast->length);
-			buff[to_cast->length] = '\0';
-			vd_from_cast.datum.strvalue = (char *)buff;
-			vd_from_cast.length = to_cast->length;
+			memcpy(buff, to_cast->datum.octets, to_cast->datum.length);
+			buff[to_cast->datum.length] = '\0';
+			value_from_cast.datum.strvalue = (char *)buff;
+			value_from_cast.datum.length = to_cast->datum.length;
 			break;
 
 		/*
@@ -1604,19 +1605,19 @@ ssize_t _tmpl_to_type(void *out,
 
 		MEM(ctx = talloc_new(request));
 
-		from_cast = &vd_from_cast;
+		from_cast = &value_from_cast;
 
 		/*
 		 *	Data type conversion...
 		 */
-		ret = value_box_cast(ctx, &vd_from_cast, dst_type, NULL, to_cast);
+		ret = value_box_cast(ctx, &value_from_cast, dst_type, NULL, to_cast);
 		if (ret < 0) return -1;
 
 
 		/*
 		 *	For the dynamic types we need to copy the output
 		 *	to the buffer.  Really we need a version of value_box_cast
-		 *	that works with buffers, but its not a high priority...
+		 *	that works with buffers, but it's not a high priority...
 		 */
 		switch (dst_type) {
 		case PW_TYPE_STRING:
@@ -1626,14 +1627,15 @@ ssize_t _tmpl_to_type(void *out,
 				talloc_free(ctx);
 				return -1;
 			}
-			if (from_cast->length >= bufflen) {
+			if (from_cast->datum.length >= bufflen) {
 				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->length + 1);
+						   "Have %zu bytes, need %zu bytes", bufflen,
+						   from_cast->datum.length + 1);
 				goto error;
 			}
-			memcpy(buff, from_cast->datum.strvalue, from_cast->length);
-			buff[from_cast->length] = '\0';
-			vd_from_cast.datum.strvalue = (char *)buff;
+			memcpy(buff, from_cast->datum.strvalue, from_cast->datum.length);
+			buff[from_cast->datum.length] = '\0';
+			value_from_cast.datum.strvalue = (char *)buff;
 			break;
 
 		case PW_TYPE_OCTETS:
@@ -1641,13 +1643,13 @@ ssize_t _tmpl_to_type(void *out,
 				fr_strerror_printf("Missing expansion buffer to store cast output");
 				goto error;
 			}
-			if (from_cast->length > bufflen) {
+			if (from_cast->datum.length > bufflen) {
 				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->length);
+						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->datum.length);
 				goto error;
 			}
-			memcpy(buff, vd_from_cast.datum.octets, from_cast->length);
-			vd_from_cast.datum.octets = buff;
+			memcpy(buff, from_cast->datum.octets, from_cast->datum.length);
+			value_from_cast.datum.octets = buff;
 			break;
 
 		default:
@@ -1663,7 +1665,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	memcpy(out, ((uint8_t const *) from_cast) + value_box_offsets[dst_type], value_box_field_sizes[dst_type]);
 
-	return from_cast->length;
+	return from_cast->datum.length;
 }
 
 /** Expand a template to a string, allocing a new buffer to hold the string
@@ -1711,7 +1713,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	value_box_t		from_cast;
 
 	VALUE_PAIR		*vp = NULL;
-	value_box_t		vd;
+	value_box_t		value;
 	bool			needs_dup = false;
 
 	ssize_t			slen = -1;
@@ -1721,34 +1723,34 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 	VERIFY_TMPL(vpt);
 
-	memset(&vd, 0, sizeof(vd));
+	memset(&value, 0, sizeof(value));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL UNPARSED");
 
-		vd.length = vpt->len;
-		vd.datum.strvalue = vpt->name;
-		vd.type = PW_TYPE_STRING;
-		to_cast = &vd;
+		value.datum.length = vpt->len;
+		value.datum.strvalue = vpt->name;
+		value.type = PW_TYPE_STRING;
+		to_cast = &value;
 		needs_dup = true;
 		break;
 
 	case TMPL_TYPE_EXEC:
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		MEM(vd.datum.strvalue = talloc_array(tmp_ctx, char, 1024));
-		if (radius_exec_program(request, (char *)vd.datum.ptr, 1024, NULL, request, vpt->name, NULL,
+		MEM(value.datum.strvalue = talloc_array(tmp_ctx, char, 1024));
+		if (radius_exec_program(request, (char *)value.datum.ptr, 1024, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) {
 		error:
 			talloc_free(tmp_ctx);
 			return slen;
 		}
-		vd.length = strlen(vd.datum.strvalue);
-		vd.type = PW_TYPE_STRING;
-		MEM(vd.datum.strvalue = talloc_realloc(tmp_ctx, vd.datum.ptr, char, vd.length + 1));	/* Trim */
-		rad_assert(vd.datum.strvalue[vd.length] == '\0');
-		to_cast = &vd;
+		value.datum.length = strlen(value.datum.strvalue);
+		value.type = PW_TYPE_STRING;
+		MEM(value.datum.strvalue = talloc_realloc(tmp_ctx, value.datum.ptr, char, value.datum.length + 1));	/* Trim */
+		rad_assert(value.datum.strvalue[value.datum.length] == '\0');
+		to_cast = &value;
 		break;
 
 	case TMPL_TYPE_XLAT:
@@ -1759,9 +1761,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL XLAT");
 
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = xlat_aeval(tmp_ctx, (char **)&vd.datum.ptr, request, vpt->name, escape, escape_ctx);
+		slen = xlat_aeval(tmp_ctx, (char **)&value.datum.ptr, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) goto error;
-		vd.length = slen;
+		value.datum.length = slen;
 
 		/*
 		 *	Undo any of the escaping that was done by the
@@ -1769,13 +1771,13 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = value_box_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.datum.strvalue, vd.length, '"');
+		ret = value_box_from_str(tmp_ctx, &tmp, &src_type, NULL, value.datum.strvalue, value.datum.length, '"');
 		if (ret < 0) goto error;
 
-		vd.datum.strvalue = tmp.datum.strvalue;
-		vd.length = tmp.length;
-		vd.type = PW_TYPE_STRING;
-		to_cast = &vd;
+		value.datum.strvalue = tmp.datum.strvalue;
+		value.datum.length = tmp.datum.length;
+		value.type = PW_TYPE_STRING;
+		to_cast = &value;
 	}
 		break;
 
@@ -1788,10 +1790,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
 
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = xlat_aeval_compiled(tmp_ctx, (char **)&vd.datum.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
+		slen = xlat_aeval_compiled(tmp_ctx, (char **)&value.datum.ptr, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) return slen;
 
-		vd.length = slen;
+		value.datum.length = slen;
 
 		/*
 		 *	Undo any of the escaping that was done by the
@@ -1799,15 +1801,16 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = value_box_from_str(tmp_ctx, &tmp, &src_type, NULL, vd.datum.strvalue, vd.length, '"');
+		ret = value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
+					 value.datum.strvalue, value.datum.length, '"');
 		if (ret < 0) goto error;
 
-		vd.datum.strvalue = tmp.datum.strvalue;
-		vd.length = tmp.length;
-		vd.type = PW_TYPE_STRING;
-		to_cast = &vd;
+		value.datum.strvalue = tmp.datum.strvalue;
+		value.datum.length = tmp.datum.length;
+		value.type = PW_TYPE_STRING;
+		to_cast = &value;
 
-		RDEBUG2("   --> %s", vd.datum.strvalue);	/* Print post-unescaping */
+		RDEBUG2("   --> %s", value.datum.strvalue);	/* Print post-unescaping */
 	}
 		break;
 
@@ -1877,8 +1880,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			 *	Ensure we don't free the output buffer when the
 			 *	tmp_ctx is freed.
 			 */
-			if (vd.datum.ptr && (talloc_parent(vd.datum.ptr) == tmp_ctx)) {
-				vd.datum.ptr = talloc_reparent(tmp_ctx, ctx, vd.datum.ptr);
+			if (value.datum.ptr && (talloc_parent(value.datum.ptr) == tmp_ctx)) {
+				value.datum.ptr = talloc_reparent(tmp_ctx, ctx, value.datum.ptr);
 			}
 			break;
 
@@ -1899,7 +1902,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	talloc_free(tmp_ctx);
 
-	return from_cast.length;
+	return from_cast.datum.length;
 }
 
 /** Print a #vp_tmpl_t to a string
@@ -2603,15 +2606,8 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				     file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 
-		case PW_TYPE_OCTETS:
-			break;
-
 		default:
-			if (vpt->tmpl_value_box_length == 0) {
-				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA data pointer not NULL "
-				             "but len field is zero", file, line);
-				if (!fr_cond_assert(0)) fr_exit_now(1);
-			}
+			break;
 		}
 
 		break;

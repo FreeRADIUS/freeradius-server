@@ -341,7 +341,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 *	Double check the nonce size.
 	 */
 	if (nonce_vp->vp_length != 18) {
-		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu", nonce_vp->vp_length);
+		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu bytes", nonce_vp->vp_length);
 		return -1;
 	}
 	memcpy(eap_sim_session->keys.gsm.nonce_mt, nonce_vp->vp_octets + 2, 16);

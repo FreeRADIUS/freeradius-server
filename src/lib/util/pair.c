@@ -101,7 +101,6 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	 *	Use the 'da' to initialize more fields.
 	 */
 	vp->da = da;
-	vp->vp_length = da->flags.length;
 	vp->vp_type = da->type;
 	if (fr_dict_enum_types[da->type]) vp->data.datum.enumv = da;
 

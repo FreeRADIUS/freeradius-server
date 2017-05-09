@@ -125,28 +125,30 @@ typedef struct value_pair_raw {
 } VALUE_PAIR_RAW;
 
 #define vp_strvalue	data.datum.strvalue
-#define vp_integer	data.datum.integer
+#define vp_octets	data.datum.octets
+#define vp_ptr		data.datum.ptr				//!< Either octets or strvalue
+#define vp_length	data.datum.length
 
 #define vp_ipv4addr	data.datum.ip.addr.v4.s_addr
 #define vp_ipv6addr	data.datum.ip.addr.v6.s6_addr
 #define vp_ip		data.datum.ip
-
-#define vp_date		data.datum.date
-#define vp_filter	data.datum.filter
-#define vp_octets	data.datum.octets
 #define vp_ifid		data.datum.ifid
+#define vp_ether	data.datum.ether
+
 #define vp_bool		data.datum.boolean
 #define vp_byte		data.datum.byte
 #define vp_short	data.datum.ushort
-#define vp_ether	data.datum.ether
-#define vp_signed	data.datum.sinteger
+#define vp_integer	data.datum.integer
 #define vp_integer64	data.datum.integer64
 #define vp_size		data.datum.size
+
+#define vp_signed	data.datum.sinteger
 #define vp_decimal	data.datum.decimal
-#define vp_ptr		data.datum.ptr				//!< Either octets or strvalue
+
+#define vp_date		data.datum.date
+#define vp_filter	data.datum.filter
 
 #define vp_type		data.type
-#define vp_length	data.length
 #define vp_tainted	data.tainted
 
 #  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \

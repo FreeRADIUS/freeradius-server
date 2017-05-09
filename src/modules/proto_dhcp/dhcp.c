@@ -776,7 +776,6 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		vp->vp_ip.prefix = 32;
 		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv4addr, p, 4);
-		vp->vp_length = 4;
 		p += 4;
 		break;
 
@@ -789,7 +788,6 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		vp->vp_ip.prefix = 128;
 		vp->vp_ip.scope_id = 0;
 		memcpy(&vp->vp_ipv6addr, p, 16);
-		vp->vp_length = 16;
 		p += 16;
 		break;
 
@@ -836,7 +834,6 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 	case PW_TYPE_ETHERNET:
 		memcpy(vp->vp_ether, data, sizeof(vp->vp_ether));
-		vp->vp_length = sizeof(vp->vp_ether);
 		p += sizeof(vp->vp_ether);
 		break;
 
@@ -1172,23 +1169,19 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		switch (vp->vp_type) {
 		case PW_TYPE_BYTE:
 			vp->vp_byte = p[0];
-			vp->vp_length = 1;
 			break;
 
 		case PW_TYPE_SHORT:
 			vp->vp_short = (p[0] << 8) | p[1];
-			vp->vp_length = 2;
 			break;
 
 		case PW_TYPE_INTEGER:
 			memcpy(&vp->vp_integer, p, 4);
 			vp->vp_integer = ntohl(vp->vp_integer);
-			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
 			memcpy(&vp->vp_ipv4addr, p, 4);
-			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_STRING:
@@ -1214,7 +1207,6 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		case PW_TYPE_ETHERNET:
 			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
-			vp->vp_length = sizeof(vp->vp_ether);
 			break;
 
 		default:
@@ -1789,7 +1781,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 267, TAG_ANY))) {
-		if (vp->vp_length == sizeof(vp->vp_ether)) {
+		if (vp->vp_type == PW_TYPE_ETHERNET) {
 			/*
 			 *	Ensure that we mark the packet as being Ethernet.
 			 *	This is mainly for DHCP-Lease-Query responses.
@@ -1797,7 +1789,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 			packet->data[1] = 1;
 			packet->data[2] = 6;
 
-			memcpy(p, vp->vp_ether, vp->vp_length);
+			memcpy(p, vp->vp_ether, sizeof(vp->vp_ether));
 		} /* else ignore it */
 	}
 	p += DHCP_CHADDR_LEN;
@@ -1915,10 +1907,12 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 		return -1;
 	}
 
-	if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
-		fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
-				   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
-		return -1;
+	if (macaddr->type == PW_TYPE_OCTETS) {
+		if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
+			fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
+					   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
+			return -1;
+		}
 	}
 
 	memset(&req, 0, sizeof(req));
@@ -2007,7 +2001,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
 	if ((vp = fr_pair_find_by_num(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->vp_length == sizeof(vp->vp_ether)) memcpy(dhmac, vp->vp_ether, vp->vp_length);
+		if (vp->vp_type == PW_TYPE_ETHERNET) memcpy(dhmac, vp->vp_ether, sizeof(vp->vp_ether));
 	}
 
 	/* fill in Ethernet layer (L2) */
@@ -2125,7 +2119,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
 	    (vp = fr_pair_find_by_num(request->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY)) &&
-	    (vp->vp_length == sizeof(vp->vp_ether)) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0)) {
+	    ((vp->vp_type == PW_TYPE_ETHERNET) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0))) {
 		char eth_dest[17 + 1];
 		char eth_req_src[17 + 1];
 

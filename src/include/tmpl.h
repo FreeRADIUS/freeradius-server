@@ -233,8 +233,8 @@ typedef struct vp_tmpl_t {
  */
 #define tmpl_value_box		data.literal
 #define tmpl_value_box_datum	data.literal.datum
+#define tmpl_value_box_length	data.literal.datum.length
 #define tmpl_value_box_type	data.literal.type
-#define tmpl_value_box_length	data.literal.length
 /* @} **/
 
 /** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX

@@ -634,7 +634,7 @@ wait:
 		if (WIFEXITED(status)) {
 			value_box_t boxed_answer = {
 				.datum.strvalue = answer,
-				.length = len,
+				.datum.length = len,
 				.type = PW_TYPE_STRING
 			};
 

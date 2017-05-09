@@ -934,10 +934,10 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		if (flags->do_xlat) {
 			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
 			src.datum.strvalue = expanded;
-			src.length = talloc_array_length(src.datum.strvalue) - 1;
+			src.datum.length = talloc_array_length(src.datum.strvalue) - 1;
 		} else {
 			src.datum.strvalue = value;
-			src.length = json_object_get_string_len(leaf);
+			src.datum.length = json_object_get_string_len(leaf);
 		}
 		src.type = PW_TYPE_STRING;
 
@@ -958,7 +958,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 			return NULL;
 		}
 		src.type = PW_TYPE_STRING;
-		src.length = strlen(src.datum.strvalue);
+		src.datum.length = strlen(src.datum.strvalue);
 	}
 
 	ret = value_box_cast(vp, &vp->data, da->type, da, &src);

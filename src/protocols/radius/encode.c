@@ -41,6 +41,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      vp_cursor_t *cursor, void *encoder_ctx);
 
+
 /** Determine if the current attribute is encodable, or find the first one that is
  *
  * @param cursor to iterate over.
@@ -424,13 +425,16 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 {
 	uint32_t	lvalue;
 	uint64_t	lvalue64;
+	size_t		len;
 
 	VERIFY_VP(vp);
+
+	len = fr_radius_attr_len(vp);
 
 	/*
 	 *	Mash outlen down to size.
 	 */
-	if (outlen > vp->vp_length) outlen = vp->vp_length;
+	if (outlen > len) outlen = len;
 
 	switch (vp->vp_type) {
 	case PW_TYPE_STRING:
@@ -751,7 +755,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Set up the default sources for the data.
 	 */
-	len = vp->vp_length;
+	len = fr_radius_attr_len(vp);
 
 	switch (da->type) {
 	case PW_TYPE_OCTETS:
@@ -1106,7 +1110,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	p = vp->vp_octets;
-	len = vp->vp_length;
+	len = fr_radius_attr_len(vp);
 
 	while (len > 0) {
 		if (outlen <= 2) break;
@@ -1531,7 +1535,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	 *	Only CUI is allowed to have zero length.
 	 *	Thank you, WiMAX!
 	 */
-	if ((vp->vp_length == 0) &&  (vp->da->attr == PW_CHARGEABLE_USER_IDENTITY)) {
+	if ((vp->da->attr == PW_CHARGEABLE_USER_IDENTITY) && (vp->vp_length == 0)) {
 		out[0] = PW_CHARGEABLE_USER_IDENTITY;
 		out[1] = 2;
 
@@ -1604,7 +1608,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	 *	them (except for CUI, thanks WiMAX!) on all other
 	 *	attributes.
 	 */
-	if (vp->vp_length == 0) {
+	if (fr_radius_attr_len(vp) == 0) {
 		if ((vp->da->vendor != 0) ||
 		    ((vp->da->attr != PW_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != PW_MESSAGE_AUTHENTICATOR))) {

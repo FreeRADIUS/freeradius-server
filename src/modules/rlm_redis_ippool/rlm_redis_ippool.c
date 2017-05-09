@@ -642,7 +642,6 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				memset(&tmp, 0, sizeof(tmp));
 
 				tmp.datum.integer = ntohl((uint32_t)reply->element[1]->integer);
-				tmp.length = sizeof(ip_map.rhs->tmpl_value_box_datum.integer);
 				tmp.type = PW_TYPE_INTEGER;
 
 				if (value_box_cast(NULL, &ip_map.rhs->tmpl_value_box, PW_TYPE_IPV4_ADDR,
@@ -653,7 +652,6 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 				}
 			} else {
 				ip_map.rhs->tmpl_value_box_datum.integer = ntohl((uint32_t)reply->element[1]->integer);
-				ip_map.rhs->tmpl_value_box_length = sizeof(ip_map.rhs->tmpl_value_box_datum.integer);
 				ip_map.rhs->tmpl_value_box_type = PW_TYPE_INTEGER;
 			}
 		}
@@ -746,7 +744,6 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, REQU
 		}
 
 		expiry_map.rhs->tmpl_value_box_datum.integer = reply->element[3]->integer;
-		expiry_map.rhs->tmpl_value_box_length = sizeof(expiry_map.rhs->tmpl_value_box_datum.integer);
 		expiry_map.rhs->tmpl_value_box_type = PW_TYPE_INTEGER;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
@@ -889,7 +886,6 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, REQUES
 		};
 
 		expiry_map.rhs->tmpl_value_box_datum.integer = expires;
-		expiry_map.rhs->tmpl_value_box_length = sizeof(expiry_map.rhs->tmpl_value_box_datum.integer);
 		expiry_map.rhs->tmpl_value_box_type = PW_TYPE_INTEGER;
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;

@@ -212,34 +212,29 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, value_box_t *out, redisReply *r
 		if (reply->integer < 0) {		/* 32bit signed (supported) */
 			in.type = PW_TYPE_SIGNED;
 			in.datum.sinteger = (int32_t) reply->integer;
-			in.length = sizeof(in.datum.sinteger);
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
 			in.type = PW_TYPE_INTEGER64;
 			in.datum.integer64 = (uint64_t) reply->integer;
-			in.length = sizeof(in.datum.integer64);
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = PW_TYPE_INTEGER;
 			in.datum.integer = (uint32_t) reply->integer;
-			in.length = sizeof(in.datum.integer);
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = PW_TYPE_SHORT;
 			in.datum.ushort = (uint16_t) reply->integer;
-			in.length = sizeof(in.datum.ushort);
 		}
 		else {		/* 8bit unsigned (supported) */
 			in.type = PW_TYPE_BYTE;
 			in.datum.byte = (uint8_t) reply->integer;
-			in.length = sizeof(in.datum.byte);
 		}
 		break;
 
 	case REDIS_REPLY_STRING:
 		in.type = PW_TYPE_STRING;
 		in.datum.ptr = reply->str;
-		in.length = reply->len;
+		in.datum.length = reply->len;
 		break;
 
 	case REDIS_REPLY_ARRAY:

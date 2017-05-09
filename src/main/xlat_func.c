@@ -76,7 +76,7 @@ static ssize_t xlat_length(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	snprintf(*out, outlen, "%zu", vp->vp_length);
+	snprintf(*out, outlen, "%zu", value_box_network_length(&vp->data));
 	return strlen(*out);
 }
 
@@ -139,7 +139,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	bigendian.
 	 */
 	case PW_TYPE_ETHERNET:
-		memcpy(&int64, vp->vp_ether, vp->vp_length);
+		memcpy(&int64, vp->vp_ether, sizeof(vp->vp_ether));
 		return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
 
 	case PW_TYPE_SIGNED:
@@ -153,8 +153,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 	}
 
-	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
-		fr_int2str(dict_attr_types, vp->vp_type, "???"), vp->vp_length);
+	REDEBUG("Type '%s' cannot be converted to integer", fr_int2str(dict_attr_types, vp->vp_type, "???"));
 
 	return -1;
 }
@@ -195,7 +194,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			REDEBUG("%s", fr_strerror());
 			goto error;
 		}
-		len = (size_t)dst.length;
+		len = (size_t)dst.datum.length;
 		p = buff = dst.datum.octets;
 	}
 
@@ -368,7 +367,15 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
 		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
-		RIDEBUG2("Length : %zu", vp->vp_length);
+
+		switch (vp->vp_type) {
+		case PW_TYPE_VARIABLE_SIZE:
+			RIDEBUG2("Length : %zu", vp->vp_length);
+			break;
+
+		default:
+			break;
+		}
 
 		if (!RDEBUG_ENABLED4) continue;
 
