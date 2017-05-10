@@ -21,6 +21,8 @@ INSTALL_CERT_FILES :=	Makefile README xpextensions \
 LOCAL_CERT_FILES :=	ca.key ca.pem client.key client.pem ocsp.key ocsp.pem \
 			server.key server.pem
 
+GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
+
 INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(LOCAL_CERT_FILES))
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
@@ -138,6 +140,12 @@ endef
 
 $(foreach x,$(LOCAL_CERT_FILES),$(eval $(call CP_FILE,${x})))
 endif
+else
+#
+#  We're not packaging, but we do need to create the test certificates
+#
+$(GENERATED_CERTIFICATE_FILES):
+	@$(MAKE) -C raddb/certs
 endif
 
 #

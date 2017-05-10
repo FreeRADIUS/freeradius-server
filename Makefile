@@ -51,8 +51,7 @@ raddb/test.conf:
 #
 # Only redirect STDOUT, which should contain details of why the test failed.
 # Don't molest STDERR as this may be used to receive output from a debugger.
-$(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.raddb
-	@$(MAKE) -C raddb/certs
+$(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERTIFICATE_FILES) | build.raddb
 	@printf "radiusd -C... "
 	@if ! FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCMd ./raddb -n debug -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
 		rm -f raddb/test.conf; \
@@ -64,7 +63,7 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.r
 	@echo "ok"
 	@touch $@
 
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c tests.eap | build.raddb
+test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c tests.eap $(GENERATED_CERTIFICATE_FILES) | build.raddb
 	@$(MAKE) -C src/tests tests
 
 #  Tests specifically for Travis.  We do a LOT more than just
