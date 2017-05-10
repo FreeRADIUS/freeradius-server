@@ -15,11 +15,13 @@ DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
-LOCAL_CERT_FILES :=	Makefile README xpextensions \
+INSTALL_CERT_FILES :=	Makefile README xpextensions \
 			ca.cnf server.cnf ocsp.cnf client.cnf bootstrap
 
-LOCAL_CERT_PRODUCTS :=	$(addprefix $(R)$(raddbdir)/certs/,ca.key ca.pem \
-			client.key client.pem ocsp.key ocsp.pem server.key server.pem)
+LOCAL_CERT_FILES :=	ca.key ca.pem client.key client.pem ocsp.key ocsp.pem \
+			server.key server.pem
+
+INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(LOCAL_CERT_FILES))
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
@@ -33,7 +35,7 @@ INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, $(RADDB_DIR
 # Grab files from the various subdirectories
 INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
 			$(addprefix raddb/,$(LOCAL_FILES)) \
-			$(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
+			$(addprefix raddb/certs/,$(INSTALL_CERT_FILES)) \
 			$(shell find raddb/mods-config -type f -print) \
 			$(shell find raddb/policy.d -type f -print)
 
@@ -113,19 +115,38 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 ifeq ("$(PACKAGE)","")
-$(LOCAL_CERT_PRODUCTS):
+ifeq ("$(TEST_CERTS)","")
+#
+#  Generate local certificate products when doing a normal developer
+#  build.  This takes a LONG time!
+#
+$(INSTALL_CERT_PRODUCTS):
 	${Q}echo BOOTSTRAP raddb/certs/
 	${Q}$(MAKE) -C $(R)$(raddbdir)/certs/
-
-# Bootstrap is special
-$(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap $(LOCAL_CERT_PRODUCTS)
-	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	${Q}$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 else
-$(R)$(raddbdir)/certs/bootstrap:
+#
+#  Using test certs: just copy them over.
+#  See src/tests/certs/README.md for further information.
+#
+build.raddb: $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
+
+define CP_FILE
+${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1}
+	@${Q}echo TEST_CERTS cp src/tests/certs/${1} raddb/certs/${1}
+	@${Q}cp src/tests/certs/${1} raddb/certs/${1}
+endef
+
+$(foreach x,$(LOCAL_CERT_FILES),$(eval $(call CP_FILE,${x})))
+endif
+endif
+
+#
+#  Install the bootstrap script so that installations can run it
+#  to generate test certs.
+#
+$(R)$(raddbdir)/certs/bootstrap: raddb/certs/bootstrap
 	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	${Q}$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
-endif
 
 #  List directories before the file targets.
 #  It's not clear why GNU Make doesn't deal well with this.
