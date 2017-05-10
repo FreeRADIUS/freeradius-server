@@ -12,4 +12,4 @@ all:
 	@sed 's/^default_days.*= 60/default_days = 365/' < tmp/server.cnf > tmp/foo
 	@mv tmp/foo tmp/server.cnf
 	@$(MAKE) -C tmp
-	@cp tmp/ca.* tmp/server.* tmp/client.* tmp/ocsp.* .
+	@cp tmp/ca.* tmp/server.* tmp/client.* tmp/ocsp.* tmp/dh .
