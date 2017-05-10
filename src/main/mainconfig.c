@@ -901,12 +901,11 @@ do {\
 
 	/*
 	 *	Set the same debug level for the global log
-	 *	for requests, and for libfreeradius.
+	 *	for requests, and for libfreeradius, and for requests.
 	 */
-	fr_debug_lvl = rad_debug_lvl;
-	if (rad_debug_lvl > req_debug_lvl) req_debug_lvl = rad_debug_lvl;
+	fr_debug_lvl = req_debug_lvl = rad_debug_lvl;
 
-		INFO("Switching to configured log settings");
+	INFO("Switching to configured log settings");
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);
