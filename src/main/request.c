@@ -104,7 +104,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	/*
 	 *	These may be changed later by request_pre_handler
 	 */
-	request->log.lvl = rad_debug_lvl;	/* Default to global debug level */
+	request->log.lvl = req_debug_lvl;	/* Default to global debug level */
 	request->log.func = vradlog_request;
 	request->log.output = &default_log;
 
