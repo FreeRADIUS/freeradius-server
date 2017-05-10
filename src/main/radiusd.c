@@ -227,7 +227,9 @@ int main(int argc, char *argv[])
 			if (strcmp(optarg, "stdout") == 0) {
 				goto do_stdout;
 			}
+
 			main_config.log_file = talloc_typed_strdup(autofree, optarg);
+			default_log.file = talloc_typed_strdup(autofree, optarg);
 			default_log.dst = L_DST_FILES;
 			default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
