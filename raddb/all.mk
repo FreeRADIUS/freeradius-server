@@ -140,6 +140,14 @@ $(GENERATED_CERT_FILES):
 	${Q}echo BOOTSTRAP raddb/certs/
 	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
 endif
+
+#
+#  If we're not packaging the server, install the various
+#  certificate files
+#
+INSTALL_RADDB += $(INSTALL_CERT_PRODUCTS)
+
+else
 #
 #  If we are packaging, don't generate any certs,
 #  and don't copy the testing certs over.
