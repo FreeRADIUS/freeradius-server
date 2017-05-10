@@ -18,7 +18,7 @@ LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 INSTALL_CERT_FILES :=	Makefile README xpextensions \
 			ca.cnf server.cnf ocsp.cnf client.cnf bootstrap
 
-LOCAL_CERT_FILES :=	ca.key ca.pem client.key client.pem ocsp.key ocsp.pem \
+LOCAL_CERT_FILES :=	ca.key ca.pem client.key client.pem dh ocsp.key ocsp.pem \
 			server.key server.pem
 
 GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
@@ -117,20 +117,12 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 ifeq ("$(PACKAGE)","")
-ifeq ("$(TEST_CERTS)","")
-#
-#  Generate local certificate products when doing a normal developer
-#  build.  This takes a LONG time!
-#
-$(INSTALL_CERT_PRODUCTS):
-	${Q}echo BOOTSTRAP raddb/certs/
-	${Q}$(MAKE) -C $(R)$(raddbdir)/certs/
-else
+ifeq ("$(TEST_CERTS)","yes")
 #
 #  Using test certs: just copy them over.
 #  See src/tests/certs/README.md for further information.
 #
-build.raddb: $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
+build.raddb: $(GENERATED_CERT_FILES)
 
 define CP_FILE
 ${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1}
@@ -139,13 +131,19 @@ ${top_srcdir}/raddb/certs/${1}: ${top_srcdir}/src/tests/certs/${1}
 endef
 
 $(foreach x,$(LOCAL_CERT_FILES),$(eval $(call CP_FILE,${x})))
-endif
 else
 #
-#  We're not packaging, but we do need to create the test certificates
+#  Generate local certificate products when doing a non-package
+#  (i.e. developer) build.  This takes a LONG time!
 #
-$(GENERATED_CERTIFICATE_FILES):
-	@$(MAKE) -C raddb/certs
+$(GENERATED_CERT_FILES):
+	${Q}echo BOOTSTRAP raddb/certs/
+	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/
+endif
+#
+#  If we are packaging, don't generate any certs,
+#  and don't copy the testing certs over.
+#
 endif
 
 #
