@@ -18,8 +18,8 @@ LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 INSTALL_CERT_FILES :=	Makefile README xpextensions \
 			ca.cnf server.cnf ocsp.cnf client.cnf bootstrap
 
-LOCAL_CERT_FILES :=	ca.key ca.pem client.key client.pem dh ocsp.key ocsp.pem \
-			server.key server.pem
+LOCAL_CERT_FILES :=	ca.crt ca.key ca.pem client.crt client.key client.pem dh \
+			ocsp.key ocsp.pem server.crt server.key server.pem
 
 GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
 
