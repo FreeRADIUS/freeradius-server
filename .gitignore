@@ -42,12 +42,6 @@ icon.png
 # OS specific cruft
 .DS_Store
 
-# Certificates and signing requests
-*.pem
-*.der
-*.csr
-*.key
-
 # Archives
 freeradius-server-*tar*
 
