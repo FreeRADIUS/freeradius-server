@@ -286,7 +286,7 @@ static int _conf_server_free(fr_tls_conf_t *conf)
 	return 0;
 }
 
-static fr_tls_conf_t *conf_alloc(TALLOC_CTX *ctx)
+fr_tls_conf_t *tls_conf_alloc(TALLOC_CTX *ctx)
 {
 	fr_tls_conf_t *conf;
 
@@ -316,7 +316,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 		return conf;
 	}
 
-	conf = conf_alloc(cs);
+	conf = tls_conf_alloc(cs);
 
 	if (cf_section_parse(conf, conf, cs, tls_server_config) < 0) {
 	error:
@@ -448,7 +448,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 		return conf;
 	}
 
-	conf = conf_alloc(cs);
+	conf = tls_conf_alloc(cs);
 
 	if (cf_section_parse(conf, conf, cs, tls_client_config) < 0) {
 	error:

@@ -408,6 +408,8 @@ void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, ui
 /*
  *	tls/conf.c
  */
+fr_tls_conf_t	*tls_conf_alloc(TALLOC_CTX *ctx);
+
 fr_tls_conf_t	*tls_conf_parse_server(CONF_SECTION *cs);
 
 fr_tls_conf_t	*tls_conf_parse_client(CONF_SECTION *cs);
