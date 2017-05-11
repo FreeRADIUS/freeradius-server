@@ -259,6 +259,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	conn->row = NULL;
 
 	SQLFreeStmt(conn->stmt, SQL_DROP);
+	conn->stmt = NULL;
 
 	return 0;
 }

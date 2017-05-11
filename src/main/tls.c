@@ -3104,7 +3104,7 @@ static int _tls_server_conf_free(fr_tls_server_conf_t *conf)
 	return 0;
 }
 
-static fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
+fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
 {
 	fr_tls_server_conf_t *conf;
 
