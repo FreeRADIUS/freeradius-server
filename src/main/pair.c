@@ -79,6 +79,8 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		char *expr = NULL, *value = NULL;
 		char const *expr_p, *value_p;
 
+		if (!vp) return -2;
+
 		if (check->da->type == PW_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {

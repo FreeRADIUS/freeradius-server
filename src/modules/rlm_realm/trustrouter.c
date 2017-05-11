@@ -70,7 +70,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	char *hexbuf = NULL;
 	DH *aaa_server_dh;
 
-	tls = talloc_zero( hs, fr_tls_server_conf_t);
+	tls = fr_tls_server_conf_alloc(hs);
 	if (!tls) return NULL;
 
 	aaa_server_dh = tid_srvr_get_dh(server);
@@ -181,7 +181,12 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	hs->secret = talloc_strdup(hs, "radsec");
 	hs->response_window.tv_sec = 30;
 	hs->last_packet_recv = time(NULL);
-
+	/* 
+	 *  We want sockets using these servers to close as soon as possible, 
+	 *  to make sure that whenever a pool is replaced, sockets using old ones 
+	 *  will not last long (hopefully less than 300s).
+	 */
+	hs->limit.idle_timeout = 5;
 	hs->tls = construct_tls(inst, hs, blk);
 	if (!hs->tls) goto error;
 
@@ -318,14 +323,6 @@ static bool update_required(REALM const *r)
 		if ((server->last_packet_recv > (now + 5)) || 
 		    (server->last_failed_open > (now + 5))) {
 			continue;
-		}
-
-		/*
-		 *	This server has received a packet in the last
-		 *	5 minutes.  It doesn't need an update.
-		 */
-		if ((now - server->last_packet_recv) < 300) {
-			return false;
 		}
 
 		/*

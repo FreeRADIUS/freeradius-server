@@ -25,13 +25,6 @@ delaycompress
 }
 
 #
-#  Session database modules
-#
-/var/log/radius/radutmp /var/log/radius/radwtmp {
-	nocreate
-}
-
-#
 #  SQL log files
 #
 /var/log/radius/sqllog.sql {

@@ -743,15 +743,18 @@ VALUE	EAP-Type			Identity		1
 VALUE	EAP-Type			Notification		2
 VALUE	EAP-Type			NAK			3
 VALUE	EAP-Type			MD5-Challenge		4
+VALUE	EAP-Type			EAP-MD5			4
 VALUE	EAP-Type			MD5			4
 VALUE	EAP-Type			One-Time-Password	5
 VALUE	EAP-Type			OTP			5
 VALUE	EAP-Type			Generic-Token-Card	6
+VALUE	EAP-Type			EAP-GTC			6
 VALUE	EAP-Type			GTC			6
 VALUE	EAP-Type			RSA-Public-Key		9
 VALUE	EAP-Type			DSS-Unilateral		10
 VALUE	EAP-Type			KEA			11
 VALUE	EAP-Type			KEA-Validate		12
+VALUE	EAP-Type			EAP-TLS			13
 VALUE	EAP-Type			TLS			13
 VALUE	EAP-Type			Defender-Token		14
 VALUE	EAP-Type			RSA-SecurID-EAP		15
@@ -759,11 +762,14 @@ VALUE	EAP-Type			Arcot-Systems-EAP	16
 VALUE	EAP-Type			Cisco-LEAP		17
 VALUE	EAP-Type			LEAP			17
 VALUE	EAP-Type			Nokia-IP-Smart-Card	18
+VALUE	EAP-Type			EAP-SIM			18
 VALUE	EAP-Type			SIM			18
 VALUE	EAP-Type			SRP-SHA1		19
 # 20 is unassigned
+VALUE	EAP-Type			EAP-TTLS		21
 VALUE	EAP-Type			TTLS			21
 VALUE	EAP-Type			Remote-Access-Service	22
+VALUE	EAP-Type			EAP-AKA			23
 VALUE	EAP-Type			AKA			23
 VALUE	EAP-Type			3Com-Wireless		24
 VALUE	EAP-Type			PEAP			25
@@ -785,12 +791,14 @@ VALUE	EAP-Type			SecuriSuite-EAP		39
 VALUE	EAP-Type			DeviceConnect-EAP	40
 VALUE	EAP-Type			SPEKE			41
 VALUE	EAP-Type			MOBAC			42
+VALUE	EAP-Type			EAP-FAST		43
 VALUE	EAP-Type			FAST			43
 VALUE	EAP-Type			Zonelabs		44
 VALUE	EAP-Type			Link			45
 VALUE	EAP-Type			PAX			46
 VALUE	EAP-Type			PSK			47
 VALUE	EAP-Type			SAKE			48
+VALUE	EAP-Type			EAP-IKEv2		49
 VALUE	EAP-Type			IKEv2			49
 VALUE	EAP-Type			AKA2			50
 VALUE	EAP-Type			GPSK			51
@@ -800,6 +808,7 @@ VALUE	EAP-Type			EKEv1			53
 #
 #	And this is what most people mean by MS-CHAPv2
 #
+VALUE	EAP-Type			EAP-MSCHAPv2		26
 VALUE	EAP-Type			MSCHAPv2		26
 
 #

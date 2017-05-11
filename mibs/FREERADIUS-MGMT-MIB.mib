@@ -5,7 +5,9 @@ IMPORTS
 	OBJECT-IDENTITY
 		FROM SNMPv2-SMI
 	freeRadiusMgmt
-		FROM FREERADIUS-SMI;
+		FROM FREERADIUS-SMI
+	SnmpAdminString
+		FROM SNMP-FRAMEWORK-MIB;
 
 freeradiusObjects MODULE-IDENTITY
 	LAST-UPDATED "200712170000Z"
@@ -25,7 +27,9 @@ freeradiusObjects MODULE-IDENTITY
 		"Generic objects used by notification MIBs"
 	::= { freeRadiusMgmt 1 }
 
-radiusObject OBJECT-IDENTITY
+radiusObject OBJECT-TYPE
+	SYNTAX  SnmpAdminString
+	MAX-ACCESS accessible-for-notify
 	STATUS  current
 	DESCRIPTION
 		"A generic object"
