@@ -8,6 +8,13 @@ case "$1" in
         purge)
                update-rc.d -f freeradius remove >/dev/null
 
+               # Remove dangling links from sites-enabled.
+               for link in /etc/freeradius/sites-enabled/*; do
+                 if [ -L "$link" ] && [ ! -e "$link" ]; then
+                   rm -f "$link"
+                 fi
+               done
+
 	       if [ -L /etc/freeradius/certs/server.pem ]; then
 	         rm -f /etc/freeradius/certs/server.pem
 	       fi

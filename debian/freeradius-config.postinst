@@ -21,28 +21,6 @@ case "$1" in
 
           # Create snakoil certificates on initial install
           make -C /etc/freeradius/certs/
-
-          # Create links for default modules
-          for mod in always attr_filter cache_eap chap \
-              detail detail.log digest dynamic_clients eap \
-              eap_inner echo exec expiration expr files linelog logintime \
-              mschap ntlm_auth pap passwd preprocess radutmp realm \
-              replicate soh sradutmp unix unpack utf8 ; do
-            if [ ! -e /etc/freeradius/mods-enabled/$mod ]; then
-              ln -s ../mods-available/$mod /etc/freeradius/mods-enabled/$mod
-            fi
-          done
-        fi
-
-        # Create links for default sites, but only if this is an initial
-        # install or an upgrade from before there were links; users may
-        # want to remove them...
-        if [ -z "$2" ] || dpkg --compare-versions "$2" lt 2.0.4+dfsg-4; then
-          for site in default inner-tunnel; do
-            if [ ! -e /etc/freeradius/sites-enabled/$site ]; then
-              ln -s ../sites-available/$site /etc/freeradius/sites-enabled/$site
-            fi
-          done
         fi
         ;;
 esac
