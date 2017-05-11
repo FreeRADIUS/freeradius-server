@@ -1810,7 +1810,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	if (slen < 0) {
 		talloc_free(tokens);
 
-		rad_assert(error != NULL);
+		if (!error) error = "Unknown error";
 
 		REMARKER(fmt, -slen, error);
 		return slen;
