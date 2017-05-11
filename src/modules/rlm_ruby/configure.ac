@@ -3,15 +3,16 @@ AC_INIT(rlm_ruby.c)
 AC_REVISION($Revision: 1.9 $)
 AC_DEFUN(modname,[rlm_ruby])
 
-m4_include([ax_with_prog.m4])
+m4_include([m4/ax_with_prog.m4])
 
 AC_DEFUN([AX_WITH_RUBY],[
     AX_WITH_PROG([RUBY],[ruby],[not-found],[${PATH}:/usr/bin:/usr/local/bin])
 ])
 
-m4_include([ax_compare_version.m4])
-m4_include([ax_prog_ruby_version.m4])
-m4_include([ax_ruby_devel.m4])
+
+m4_include([m4/ax_compare_version.m4])
+m4_include([m4/ax_prog_ruby_version.m4])
+m4_include([m4/ax_ruby_devel.m4])
 
 targetname=modname
 mod_cflags=
