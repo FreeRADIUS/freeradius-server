@@ -817,6 +817,15 @@ post-auth {
 		#  Remove reply message if the response contains an EAP-Message
 		remove_reply_message_if_eap
 	}
+
+        #
+        #  Filter access challenges.
+        #
+        Post-Auth-Type Challenge {
+#               remove_reply_message_if_eap
+#               attr_filter.access_challenge.post-auth
+        }
+
 }
 
 #
