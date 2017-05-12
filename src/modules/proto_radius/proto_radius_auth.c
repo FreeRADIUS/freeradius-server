@@ -172,7 +172,6 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 				RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 				goto done;
 			}
-			request->listener->send(request->listener, request);
 		} else {
 			RDEBUG("No reply.  Ignoring retransmit");
 		}
