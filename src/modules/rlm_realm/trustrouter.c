@@ -70,7 +70,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	char *hexbuf = NULL;
 	DH *aaa_server_dh;
 
-	tls = fr_tls_server_conf_alloc(hs);
+	tls = tls_server_conf_alloc(hs);
 	if (!tls) return NULL;
 
 	aaa_server_dh = tid_srvr_get_dh(server);
