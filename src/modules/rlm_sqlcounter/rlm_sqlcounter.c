@@ -113,12 +113,13 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 	char sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
-	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
 	rad_assert(inst->reset != NULL);
 
+	/*
+	 *	Reset every N hours, days, weeks, months.
+	 */
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
 		if (len == 0) return -1;
@@ -169,6 +170,9 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 	}
 
 	if (!request || (rad_debug_lvl < 2)) return ret;
+
+	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sCurrentTime = '\0';
 
 	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
