@@ -2218,7 +2218,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (lookup == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		ext_list = X509_get0_extensions(client_cert);
 #else
 		X509_CINF	*client_inf;
