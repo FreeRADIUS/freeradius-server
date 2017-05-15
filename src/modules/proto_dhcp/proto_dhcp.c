@@ -315,7 +315,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
+		fr_dict_enum_t *dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 
 		if (dv) {
 			CONF_SECTION *server, *unlang;

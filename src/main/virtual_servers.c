@@ -96,7 +96,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
 		if (!da) return RLM_MODULE_FAIL;
 
-		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32((uint32_t)idx));
+		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32((uint32_t)idx));
 		if (!dv) return RLM_MODULE_FAIL;
 
 		subcs = cf_subsection_find_name2(cs, da->name, dv->alias);
@@ -263,7 +263,7 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 	 */
 	do {
 		value.datum.uint32 = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_enum_by_da(NULL, da, &value));
+	} while (fr_dict_enum_by_value(NULL, da, &value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
 	if (fr_dict_enum_add_alias(da, name, &value, true, false) < 0) {

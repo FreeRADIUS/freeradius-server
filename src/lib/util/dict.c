@@ -4203,7 +4203,7 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
  * 	- Matching #fr_dict_enum_t.
  * 	- NULL if no matching #fr_dict_enum_t could be found.
  */
-fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, fr_value_box_t const *value)
+fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_t *dict, fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_enum_t enumv, *dv;
 
@@ -4241,7 +4241,7 @@ fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, fr
  * 	- Name of value.
  * 	- NULL if no matching value could be found.
  */
-char const *fr_dict_enum_alias_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, fr_value_box_t const *value)
+char const *fr_dict_enum_alias_by_value(fr_dict_t *dict, fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_enum_t *dv;
 
@@ -4249,7 +4249,7 @@ char const *fr_dict_enum_alias_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, 
 
 	INTERNAL_IF_NULL(dict);
 
-	dv = fr_dict_enum_by_da(dict, da, value);
+	dv = fr_dict_enum_by_value(dict, da, value);
 	if (!dv) return "";
 
 	return dv->alias;

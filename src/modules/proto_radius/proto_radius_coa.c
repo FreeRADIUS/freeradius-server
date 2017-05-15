@@ -71,7 +71,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->packet->code));
+		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
 			goto done;
@@ -135,7 +135,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 		rad_assert(da != NULL);
 
-		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) {
 			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
@@ -187,12 +187,12 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 				rad_assert(da != NULL);
 
-				dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying corresponding NAK section.", dv->alias);
 
 				request->reply->code = request->packet->code + 2;
 
-				dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 

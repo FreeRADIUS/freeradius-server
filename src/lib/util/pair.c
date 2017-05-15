@@ -2271,7 +2271,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
 	case FR_TYPE_INT32:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
+		enumv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		break;
 
 	default:

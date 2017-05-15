@@ -53,7 +53,7 @@ char const * tacacs_lookup_packet_code(RADIUS_PACKET const * const packet)
 
 	da = fr_dict_attr_child_by_num(dict_tacacs_root, PW_TACACS_PACKET_TYPE);
 	rad_assert(da != NULL);
-	dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(type));
+	dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(type));
 	rad_assert(dv != NULL);
 
 	return dv->alias;

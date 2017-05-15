@@ -95,7 +95,7 @@ char const *eap_type2name(eap_type_t method)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_da(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), fr_box_uint32(method));
+	dv = fr_dict_enum_by_value(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), fr_box_uint32(method));
 	if (dv) return dv->alias;
 
 	return "unknown";

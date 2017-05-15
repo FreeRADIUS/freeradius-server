@@ -2220,8 +2220,8 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr)
  *	- -1 on parse error.
  */
 int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
-		       fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
-		       char const *in, ssize_t inlen, char quote)
+			  fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
+			  char const *in, ssize_t inlen, char quote)
 {
 	fr_dict_enum_t	*dval;
 	size_t		len;
@@ -2757,7 +2757,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	if (data->enumv) {
 		fr_dict_enum_t const	*dv;
 
-		dv = fr_dict_enum_by_da(NULL, data->enumv, data);
+		dv = fr_dict_enum_by_value(NULL, data->enumv, data);
 		if (dv) return talloc_typed_strdup(ctx, dv->alias);
 	}
 
@@ -2951,7 +2951,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	if (data->enumv) {
 		fr_dict_enum_t const	*dv;
 
-		dv = fr_dict_enum_by_da(NULL, data->enumv, data);
+		dv = fr_dict_enum_by_value(NULL, data->enumv, data);
 		if (dv) return strlcpy(out, dv->alias, outlen);
 	}
 

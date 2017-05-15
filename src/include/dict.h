@@ -249,13 +249,13 @@ fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_enum_t		*fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da,
-					    fr_value_box_t const *value);
+fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_t *dict, fr_dict_attr_t const *da,
+					       fr_value_box_t const *value);
 
-char const		*fr_dict_enum_alias_by_da(fr_dict_t *dict, fr_dict_attr_t const *da,
-						  fr_value_box_t const *value);
+char const		*fr_dict_enum_alias_by_value(fr_dict_t *dict, fr_dict_attr_t const *da,
+						     fr_value_box_t const *value);
 
-fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
+fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_t *dict, fr_dict_attr_t const *da, char const *alias);
 
 /*
  *	Validation

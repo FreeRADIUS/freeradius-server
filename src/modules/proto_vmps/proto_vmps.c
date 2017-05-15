@@ -61,7 +61,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
+		dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
 			goto done;
@@ -101,7 +101,7 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			}
 		}
 
-		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) {
 			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);

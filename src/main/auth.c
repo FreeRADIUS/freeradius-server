@@ -115,7 +115,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
-					 fr_dict_enum_alias_by_da(NULL, auth_type->da, &auth_type->data));
+					 fr_dict_enum_alias_by_value(NULL, auth_type->da, &auth_type->data));
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
@@ -185,7 +185,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 		auth_type_count++;
 
 		RDEBUG2("Using 'Auth-Type = %s' for authenticate {...}",
-			fr_dict_enum_alias_by_da(NULL, auth_type_pair->da, fr_box_uint32(auth_type)));
+			fr_dict_enum_alias_by_value(NULL, auth_type_pair->da, fr_box_uint32(auth_type)));
 		if (auth_type == PW_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
 
@@ -298,7 +298,7 @@ rlm_rcode_t rad_postauth(REQUEST *request)
 	if (vp) {
 		postauth_type = vp->vp_uint32;
 		RDEBUG2("Using Post-Auth-Type %s",
-			fr_dict_enum_alias_by_da(NULL, vp->da, fr_box_uint32(postauth_type)));
+			fr_dict_enum_alias_by_value(NULL, vp->da, fr_box_uint32(postauth_type)));
 	}
 	rcode = process_post_auth(postauth_type, request);
 	switch (rcode) {
@@ -465,7 +465,7 @@ autz_redo:
 		if (tmp) {
 			autz_type = tmp->vp_uint32;
 			RDEBUG2("Using Autz-Type %s",
-				fr_dict_enum_alias_by_da(NULL, tmp->da, fr_box_uint32(autz_type)));
+				fr_dict_enum_alias_by_value(NULL, tmp->da, fr_box_uint32(autz_type)));
 			autz_retry = 1;
 			goto autz_redo;
 		}
@@ -577,7 +577,7 @@ authenticate:
 		if (tmp) {
 			session_type = tmp->vp_uint32;
 			RDEBUG2("Using Session-Type %s",
-				fr_dict_enum_alias_by_da(NULL, tmp->da, fr_box_uint32(session_type)));
+				fr_dict_enum_alias_by_value(NULL, tmp->da, fr_box_uint32(session_type)));
 		}
 
 		/*

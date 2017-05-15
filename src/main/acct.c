@@ -85,7 +85,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 		 *	that we log the packet, even if the proxy never does.
 		 */
 		vp = fr_pair_find_by_num(request->control, 0, PW_ACCT_TYPE, TAG_ANY);
-		if (vp) DEBUG2("  Found Acct-Type %s", fr_dict_enum_alias_by_da(NULL, vp->da, &vp->data));
+		if (vp) DEBUG2("  Found Acct-Type %s", fr_dict_enum_alias_by_value(NULL, vp->da, &vp->data));
 
 		rcode = process_accounting(acct_type, request);
 		switch (rcode) {

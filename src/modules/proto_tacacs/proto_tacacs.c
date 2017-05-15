@@ -247,7 +247,7 @@ stop_processing:
 			}
 
 			RWDEBUG("Ignoring extra Auth-Type = %s",
-				fr_dict_enum_alias_by_da(NULL, auth_type->da, &vp->data));
+				fr_dict_enum_alias_by_value(NULL, auth_type->da, &vp->data));
 		}
 
 		/*
@@ -278,7 +278,7 @@ stop_processing:
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
+		dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
 			tacacs_status(request, RLM_MODULE_FAIL);
