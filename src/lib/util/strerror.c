@@ -136,7 +136,7 @@ void fr_strerror_printf(char const *fmt, ...)
 		}
 
 		va_start(ap, fmt);
-		entry->msg = talloc_vasprintf(entry, fmt, ap);
+		entry->msg = fr_vasprintf(entry, fmt, ap);
 		va_end(ap);
 		if (!entry->msg) goto oom;
 
@@ -151,7 +151,7 @@ void fr_strerror_printf(char const *fmt, ...)
 		if (!entry) goto oom;
 
 		va_start(ap, fmt);
-		entry->msg = talloc_vasprintf(entry, fmt, ap);
+		entry->msg = fr_vasprintf(entry, fmt, ap);
 		va_end(ap);
 		if (!entry->msg) goto oom;
 
@@ -193,7 +193,7 @@ void fr_strerror_printf_push(char const *fmt, ...)
 	}
 
 	va_start(ap, fmt);
-	entry->msg = talloc_vasprintf(entry, fmt, ap);
+	entry->msg = fr_vasprintf(entry, fmt, ap);
 	va_end(ap);
 	if (!entry->msg) goto oom;
 
