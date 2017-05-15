@@ -692,7 +692,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 {
 	size_t			offset;
 	ssize_t			len;
-	uint8_t	const		*data;
+	uint8_t	const		*data = NULL;
 	uint8_t			*ptr = out;
 	uint8_t			buffer[64];
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
