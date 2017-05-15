@@ -2223,7 +2223,6 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			  fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
 			  char const *in, ssize_t inlen, char quote)
 {
-	fr_dict_enum_t	*dval;
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
@@ -2239,6 +2238,50 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	ret = dict_attr_sizes[*dst_type][1];	/* Max length */
 
+	/*
+	 *	Lookup any aliases before continuing
+	 */
+	if (dst_enumv) {
+		char		*tmp = NULL;
+		char		*alias;
+		size_t		alias_len;
+		fr_dict_enum_t	*enumv;
+
+		if (len > (sizeof(buffer) - 1)) {
+			tmp = talloc_array(NULL, char, len);
+			if (!tmp) return -1;
+
+			alias_len = value_str_unescape((uint8_t *)tmp, in, len, quote);
+			alias = tmp;
+		} else {
+			alias_len = value_str_unescape((uint8_t *)buffer, in, len, quote);
+			alias = buffer;
+		}
+		alias[alias_len] = '\0';
+
+		/*
+		 *	Check the alias name is valid first before bothering
+		 *	it look up up.
+		 *
+		 *	Catches any embedded \0 bytes that might cause
+		 *	incorrect results.
+		 */
+		if (fr_dict_valid_name(alias, alias_len) < 0) {
+			if (tmp) talloc_free(tmp);
+			goto parse;
+		}
+
+		enumv = fr_dict_enum_by_alias(NULL, dst_enumv, alias);
+		if (tmp) talloc_free(tmp);
+		if (!enumv) goto parse;
+
+		fr_value_box_copy(ctx, dst, enumv->value);
+		dst->enumv = dst_enumv;
+
+		return 0;
+	}
+
+parse:
 	/*
 	 *	It's a variable ret src->dst_type so we just alloc a new buffer
 	 *	of size len and copy.
@@ -2447,21 +2490,12 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	Look for the named in for the given
 		 *	attribute.
 		 */
-		if (dst_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_alias(NULL, dst_enumv, in)) == NULL) {
-				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   in, dst_enumv->name);
-				return -1;
-			}
-			fr_value_box_copy_shallow(NULL, dst, dval->value);
-		} else {
-			if (i > 255) {
-				fr_strerror_printf("Byte value \"%s\" is larger than 255", in);
-				return -1;
-			}
-
-			dst->datum.uint8 = i;
+		if (i > 255) {
+			fr_strerror_printf("Byte value \"%s\" is larger than 255", in);
+			return -1;
 		}
+
+		dst->datum.uint8 = i;
 		break;
 	}
 
@@ -2479,76 +2513,45 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	Look for the named in for the given
 		 *	attribute.
 		 */
-		if (dst_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_alias(NULL, dst_enumv, in)) == NULL) {
-				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   in, dst_enumv->name);
-				return -1;
-			}
-
-			fr_value_box_copy_shallow(NULL, dst, dval->value);
-		} else {
-			if (i > 65535) {
-				fr_strerror_printf("Short value \"%s\" is larger than 65535", in);
-				return -1;
-			}
-
-			dst->datum.uint16 = i;
+		if (i > 65535) {
+			fr_strerror_printf("Short value \"%s\" is larger than 65535", in);
+			return -1;
 		}
+		dst->datum.uint16 = i;
 		break;
 	}
 
 	case FR_TYPE_UINT32:
 	{
 		char *p;
+		unsigned long i;
+		int base = 10;
 
 		/*
-		 *	 If we have an enum, and the value isn't an
-		 *	 uint32 or hex string, try to parse it as a
-		 *	 named value.  Some VALUE names begin with
-		 *	 numbers, so we have to be a bit flexible
-		 *	 here.
+		 *	Hex strings are base 16.
 		 */
-		if (dst_enumv &&
-		    (!is_integer(in) || (!(in[0] == '0') && (in[1] == 'x')))) {
-			if ((dval = fr_dict_enum_by_alias(NULL, dst_enumv, in)) == NULL) {
-				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
-						   in, dst_enumv->name);
-				return -1;
-			}
+		if ((in[0] == '0') && in[1] == 'x') base = 16;
 
-			fr_value_box_copy_shallow(NULL, dst, dval->value);
+		i = strtoul(in, &p, base);
 
-		} else {
-			unsigned long i;
-			int base = 10;
-
-			/*
-			 *	Hex strings are base 16.
-			 */
-			if ((in[0] == '0') && in[1] == 'x') base = 16;
-
-			i = strtoul(in, &p, base);
-
-			if ((size_t)(p - in) != len) {
-				fr_strerror_printf("Invalid value \"%s\" for %s type", in,
-						   fr_int2str(dict_attr_types, *dst_type, "<INVALID>"));
-				return -1;
-			}
-
-			/*
-			 *	Catch and complain on overflows.
-			 */
-			if ((i == ULONG_MAX) || (i >= ((unsigned long) 1) << 32)) {
-				fr_strerror_printf("Integer value \"%s\" is larger than 1<<32", in);
-				return -1;
-			}
-
-			/*
-			 *	Value is always within the limits
-			 */
-			dst->datum.uint32 = (uint32_t) i;
+		if ((size_t)(p - in) != len) {
+			fr_strerror_printf("Invalid value \"%s\" for %s type", in,
+					   fr_int2str(dict_attr_types, *dst_type, "<INVALID>"));
+			return -1;
 		}
+
+		/*
+		 *	Catch and complain on overflows.
+		 */
+		if ((i == ULONG_MAX) || (i >= ((unsigned long) 1) << 32)) {
+			fr_strerror_printf("Integer value \"%s\" is larger than 1<<32", in);
+			return -1;
+		}
+
+		/*
+		 *	Value is always within the limits
+		 */
+		dst->datum.uint32 = (uint32_t) i;
 	}
 		break;
 
