@@ -197,8 +197,8 @@ size_t		value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quot
 int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
-			       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-			       fr_value_box_t const *src);
+				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+				  fr_value_box_t const *src);
 
 /*
  *	Assignment
@@ -225,8 +225,8 @@ int		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, ui
 int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr);
 
 int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
-				   fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
-				   char const *src, ssize_t src_len, char quote);
+				      fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
+				      char const *src, ssize_t src_len, char quote);
 
 /*
  *	Printing
