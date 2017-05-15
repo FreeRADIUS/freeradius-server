@@ -2469,7 +2469,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		fr_dict_enum_t	*enumv;
 
 		if (len > (sizeof(buffer) - 1)) {
-			tmp = talloc_array(NULL, char, len);
+			tmp = talloc_array(NULL, char, len + 1);
 			if (!tmp) return -1;
 
 			alias_len = value_str_unescape((uint8_t *)tmp, in, len, quote);
