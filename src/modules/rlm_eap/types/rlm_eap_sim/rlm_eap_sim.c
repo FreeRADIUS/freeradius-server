@@ -325,7 +325,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 		return 0;
 	}
 
-	eap_sim_version = selected_version_vp->vp_short;
+	eap_sim_version = selected_version_vp->vp_uint16;
 	if (eap_sim_version != EAP_SIM_VERSION) {
 		REDEBUG("EAP-SIM version %i is unknown", eap_sim_version);
 		return -1;

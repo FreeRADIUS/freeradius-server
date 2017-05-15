@@ -350,7 +350,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 					"has not supplied a client error code");
 			} else {
 				REDEBUG("Client rejected AKA-Challenge with error: %s (%i)",
-					fr_pair_value_enum(vp, &buff[0]), vp->vp_short);
+					fr_pair_value_enum(vp, &buff[0]), vp->vp_uint16);
 			}
 			return RLM_MODULE_REJECT;
 		}

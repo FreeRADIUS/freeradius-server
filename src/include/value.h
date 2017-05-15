@@ -78,9 +78,10 @@ struct value_box {
 		double			float64;		//!< Double precision float.
 
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
-		uint64_t		date_miliseconds;	//!< Milliseconds since the epoch.
-		uint64_t		date_microseconds;	//!< Microseconds since the epoch.
-		uint64_t		date_nanoseconds;	//!< Nanoseconds since the epoch.
+
+		uint64_t		date_milliseconds;	//!< milliseconds since the epoch.
+		uint64_t		date_microseconds;	//!< microseconds since the epoch.
+		uint64_t		date_nanoseconds;	//!< nanoseconds since the epoch.
 
 		/*
 		 *	System specific - Used for runtime configuration only.
@@ -138,7 +139,7 @@ struct value_box {
 #define fr_box_float64(_val)			_fr_box(FR_TYPE_FLOAT64, .datum.float64, _val)
 
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, date, _val)
-#define fr_box_date_miliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, date_miliseconds, _val)
+#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, date_milliseconds, _val)
 #define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, date_microseconds, _val)
 #define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, date_nanoseconds, _val)
 
@@ -174,7 +175,7 @@ struct value_box {
 #define fr_unbox_float64(_box)			_box->datum.float64
 
 #define fr_unbox_date(_val)			_box->datum.date
-#define fr_unbox_date_miliseconds(_val)		_box->datum.date_miliseconds
+#define fr_unbox_date_milliseconds(_val)		_box->datum.date_milliseconds
 #define fr_unbox_date_microseconds(_val)	_box->datum.date_microseconds
 #define fr_unbox_date_nanoseconds(_val)		_box->datum.date_nanoseconds
 

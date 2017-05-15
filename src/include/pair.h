@@ -124,32 +124,41 @@ typedef struct value_pair_raw {
 	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
-#define vp_strvalue	data.datum.strvalue
-#define vp_octets	data.datum.octets
-#define vp_ptr		data.datum.ptr				//!< Either octets or strvalue
-#define vp_length	data.datum.length
+#define vp_strvalue		data.datum.strvalue
+#define vp_octets		data.datum.octets
+#define vp_ptr			data.datum.ptr				//!< Either octets or strvalue
+#define vp_length		data.datum.length
 
-#define vp_ipv4addr	data.datum.ip.addr.v4.s_addr
-#define vp_ipv6addr	data.datum.ip.addr.v6.s6_addr
-#define vp_ip		data.datum.ip
-#define vp_ifid		data.datum.ifid
-#define vp_ether	data.datum.ether
+#define vp_ipv4addr		data.datum.ip.addr.v4.s_addr
+#define vp_ipv6addr		data.datum.ip.addr.v6.s6_addr
+#define vp_ip			data.datum.ip
+#define vp_ifid			data.datum.ifid
+#define vp_ether		data.datum.ether
 
-#define vp_bool		data.datum.boolean
-#define vp_uint8	data.datum.uint8
-#define vp_short	data.datum.uint16
-#define vp_uint32	data.datum.uint32
-#define vp_uint64	data.datum.uint64
-#define vp_size		data.datum.size
+#define vp_bool			data.datum.boolean
+#define vp_uint8		data.datum.uint8
+#define vp_uint16		data.datum.uint16
+#define vp_uint32		data.datum.uint32
+#define vp_uint64		data.datum.uint64
 
-#define vp_signed	data.datum.int32
-#define vp_float64	data.datum.float64
+#define vp_int8			data.datum.int8
+#define vp_int16		data.datum.int16
+#define vp_int32		data.datum.int32
+#define vp_int64		data.datum.int64
 
-#define vp_date		data.datum.date
-#define vp_filter	data.datum.filter
+#define vp_float32		data.datum.float32
+#define vp_float64		data.datum.float64
 
-#define vp_type		data.type
-#define vp_tainted	data.tainted
+#define vp_date			data.datum.date
+#define vp_date_milliseconds	data.datum.date_milliseconds
+#define vp_date_microseconds	data.datum.date_microseconds
+#define vp_date_nanoseconds	data.datum.date_nanoseconds
+
+#define vp_size			data.datum.size
+#define vp_filter		data.datum.filter
+
+#define vp_type			data.type
+#define vp_tainted		data.tainted
 
 #  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
 					fr_pair_fprint(fr_log_fp, vp); \

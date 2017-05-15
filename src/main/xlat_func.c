@@ -132,7 +132,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint8);
 
 	case FR_TYPE_UINT16:
-		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_short);
+		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_uint16);
 
 	/*
 	 *	Ethernet is weird... It's network related, so we assume to it should be
@@ -143,7 +143,7 @@ static ssize_t xlat_integer(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
 
 	case FR_TYPE_INT32:
-		return snprintf(*out, outlen, "%i", vp->vp_signed);
+		return snprintf(*out, outlen, "%i", vp->vp_int32);
 
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:

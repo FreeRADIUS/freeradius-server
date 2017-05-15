@@ -54,15 +54,14 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 	if (!vp) return -1;
 
 	switch (vp->vp_type) {
-	case FR_TYPE_DATE:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IFID:
-	case FR_TYPE_TLV:
-	case FR_TYPE_UINT64:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_ABINARY:
 		fr_pair_value_snprint(buffer, sizeof(buffer), vp, '\0');
 		lua_pushstring(L, buffer);
 		break;
@@ -75,14 +74,71 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		lua_pushlstring(L, (char const *)vp->vp_octets, vp->vp_length); /* lstring variant is embedded NULL safe */
 		break;
 
+	case FR_TYPE_BOOL:
+		lua_pushinteger(L, vp->vp_bool ? 1 : 0);
+		break;
+
 	case FR_TYPE_UINT8:
+		lua_pushinteger(L, vp->vp_uint8);
+		break;
+
 	case FR_TYPE_UINT16:
+		lua_pushinteger(L, vp->vp_uint16);
+		break;
+
 	case FR_TYPE_UINT32:
-	case FR_TYPE_INT32:
 		lua_pushinteger(L, vp->vp_uint32);
 		break;
 
-	default:
+	case FR_TYPE_UINT64:
+		lua_pushinteger(L, vp->vp_uint64);
+		break;
+
+	case FR_TYPE_INT8:
+		lua_pushinteger(L, vp->vp_int8);
+		break;
+
+	case FR_TYPE_INT16:
+		lua_pushinteger(L, vp->vp_int16);
+		break;
+
+	case FR_TYPE_INT32:
+		lua_pushinteger(L, vp->vp_int32);
+		break;
+
+	case FR_TYPE_INT64:
+		lua_pushinteger(L, vp->vp_int64);
+		break;
+
+	case FR_TYPE_DATE:
+		lua_pushinteger(L, vp->vp_date);
+		break;
+
+	case FR_TYPE_DATE_MILLISECONDS:
+		lua_pushinteger(L, vp->vp_date_milliseconds);
+		break;
+
+	case FR_TYPE_DATE_MICROSECONDS:
+		lua_pushinteger(L, vp->vp_date_microseconds);
+		break;
+
+	case FR_TYPE_DATE_NANOSECONDS:
+		lua_pushinteger(L, vp->vp_date_nanoseconds);
+		break;
+
+	case FR_TYPE_FLOAT32:
+		lua_pushnumber(L, vp->vp_float32);
+		break;
+
+	case FR_TYPE_FLOAT64:
+		lua_pushnumber(L, vp->vp_float64);
+		break;
+
+	case FR_TYPE_SIZE:
+		lua_pushnumber(L, vp->vp_size);
+		break;
+
+	case FR_TYPE_NOT_VALUES:
 		ERROR("Cannot convert %s to Lua type", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 		return -1;
 	}
@@ -116,17 +172,9 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 		}
 
-		case FR_TYPE_UINT32:
-			vp->vp_uint32 = (uint32_t) lua_tointeger(L, -1);
-			break;
-
 		case FR_TYPE_IPV4_ADDR:
 		case FR_TYPE_COMBO_IP_ADDR:
 			vp->vp_ipv4addr = (uint32_t) lua_tointeger(L, -1);
-			break;
-
-		case FR_TYPE_DATE:
-			vp->vp_date = (uint32_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -136,20 +184,63 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		}
 			break;
 
+		/*
+		 *	FIXME: Check to see if values overflow
+		 */
 		case FR_TYPE_UINT8:
 			vp->vp_uint8 = (uint8_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_UINT16:
-			vp->vp_short = (uint16_t) lua_tointeger(L, -1);
+			vp->vp_uint16 = (uint16_t) lua_tointeger(L, -1);
 			break;
 
-		case FR_TYPE_INT32:
-			vp->vp_signed = (int32_t) lua_tointeger(L, -1);
+		case FR_TYPE_UINT32:
+			vp->vp_uint32 = (uint32_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_UINT64:
 			vp->vp_uint64 = (uint64_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_INT8:
+			vp->vp_int32 = (int8_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_INT16:
+			vp->vp_int32 = (int16_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_INT32:
+			vp->vp_int32 = (int32_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_INT64:
+			vp->vp_int64 = (int64_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_FLOAT32:
+			vp->vp_float32 = (float) lua_tonumber(L, -1);
+			break;
+
+		case FR_TYPE_FLOAT64:
+			vp->vp_float64 = (double) lua_tonumber(L, -1);
+			break;
+
+		case FR_TYPE_DATE:
+			vp->vp_date = (uint32_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_DATE_MILLISECONDS:
+			vp->vp_date_milliseconds = (uint64_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_DATE_MICROSECONDS:
+			vp->vp_date_microseconds = (uint64_t) lua_tointeger(L, -1);
+			break;
+
+		case FR_TYPE_DATE_NANOSECONDS:
+			vp->vp_date_nanoseconds = (uint64_t) lua_tointeger(L, -1);
 			break;
 
 		default:

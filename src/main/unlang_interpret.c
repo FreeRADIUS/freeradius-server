@@ -202,7 +202,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 					break;
 
 				case FR_TYPE_UINT16:
-					start = ((uint32_t) vp->vp_short) % g->num_children;
+					start = ((uint32_t) vp->vp_uint16) % g->num_children;
 					break;
 
 				case FR_TYPE_UINT32:

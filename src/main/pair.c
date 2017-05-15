@@ -186,7 +186,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			ret = vp->vp_uint8 - check->vp_uint8;
 			break;
 		case FR_TYPE_UINT16:
-			ret = vp->vp_short - check->vp_short;
+			ret = vp->vp_uint16 - check->vp_uint16;
 			break;
 		case FR_TYPE_UINT32:
 			ret = vp->vp_uint32 - check->vp_uint32;
@@ -206,9 +206,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 
 		case FR_TYPE_INT32:
-			if (vp->vp_signed < check->vp_signed) {
+			if (vp->vp_int32 < check->vp_int32) {
 				ret = -1;
-			} else if (vp->vp_signed > check->vp_signed) {
+			} else if (vp->vp_int32 > check->vp_int32) {
 				ret = +1;
 			} else {
 				ret = 0;

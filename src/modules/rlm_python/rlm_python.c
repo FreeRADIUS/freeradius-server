@@ -365,8 +365,8 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		value = PyString_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
-	case FR_TYPE_UINT32:
-		value = PyLong_FromUnsignedLong(vp->vp_uint32);
+	case FR_TYPE_BOOL:
+		value = PyBool_FromLong(vp->vp_bool);
 		break;
 
 	case FR_TYPE_UINT8:
@@ -374,27 +374,55 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_UINT16:
-		value =  PyLong_FromUnsignedLong(vp->vp_short);
+		value = PyLong_FromUnsignedLong(vp->vp_uint16);
 		break;
 
-	case FR_TYPE_INT32:
-		value = PyLong_FromLong(vp->vp_signed);
+	case FR_TYPE_UINT32:
+		value = PyLong_FromUnsignedLong(vp->vp_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
 		value = PyLong_FromUnsignedLongLong(vp->vp_uint64);
 		break;
 
-	case FR_TYPE_SIZE:
-		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
+	case FR_TYPE_INT8:
+		value = PyLong_FromLong(vp->vp_int8);
+		break;
+
+	case FR_TYPE_INT16:
+		value = PyLong_FromLong(vp->vp_int16);
+		break;
+
+	case FR_TYPE_INT32:
+		value = PyLong_FromLong(vp->vp_int32);
+		break;
+
+	case FR_TYPE_INT64:
+		value = PyLong_FromLongLong(vp->vp_int64);
+		break;
+
+	case FR_TYPE_FLOAT32:
+		value = PyFloat_FromDouble(vp->vp_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
 		value = PyFloat_FromDouble(vp->vp_float64);
 		break;
 
-	case FR_TYPE_BOOL:
-		value = PyBool_FromLong(vp->vp_bool);
+	case FR_TYPE_DATE_MILLISECONDS:
+		value = PyLong_FromLongLong(vp->vp_date_milliseconds);
+		break;
+
+	case FR_TYPE_DATE_MICROSECONDS:
+		value = PyLong_FromLongLong(vp->vp_date_microseconds);
+		break;
+
+	case FR_TYPE_DATE_NANOSECONDS:
+		value = PyLong_FromLongLong(vp->vp_date_nanoseconds);
+		break;
+
+	case FR_TYPE_SIZE:
+		value = PyLong_FromUnsignedLongLong((unsigned long long)vp->vp_size);
 		break;
 
 	case FR_TYPE_TIMEVAL:
@@ -405,9 +433,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_ETHERNET:
-	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_COMBO_IP_PREFIX:
 	{
 		size_t len;
 		char buffer[256];
@@ -417,8 +443,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	}
 		break;
 
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_BAD:
+	case FR_TYPE_NOT_VALUES:
 		rad_assert(0);
 		return -1;
 	}

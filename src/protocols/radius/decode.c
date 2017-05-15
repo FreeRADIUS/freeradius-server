@@ -1345,7 +1345,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		break;
 
 	case FR_TYPE_UINT16:
-		vp->vp_short = (p[0] << 8) | p[1];
+		vp->vp_uint16 = (p[0] << 8) | p[1];
 		break;
 
 	case FR_TYPE_UINT32:

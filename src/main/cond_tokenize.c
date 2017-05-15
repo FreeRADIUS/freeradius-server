@@ -274,6 +274,7 @@ static ssize_t cond_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out
 	*out = talloc_array(ctx, char, len + 1);
 	memcpy(*out, start, len);
 	(*out)[len] = '\0';
+
 	return len;
 }
 

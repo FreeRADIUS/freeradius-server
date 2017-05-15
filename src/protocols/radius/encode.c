@@ -423,8 +423,6 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
  */
 ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	uint32_t	lvalue;
-	uint64_t	lvalue64;
 	size_t		len;
 
 	VERIFY_VP(vp);
@@ -442,9 +440,9 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		memcpy(out, vp->vp_ptr, outlen);
 		return outlen;
 
-		/*
-		 *	All of these values are at the same location.
-		 */
+	/*
+	 *	All of these values are at the same location.
+	 */
 	case FR_TYPE_IFID:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
@@ -457,39 +455,31 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 		break;
 
 	case FR_TYPE_BOOL:
-		out[0] = vp->vp_uint8 & 0x01;
+		out[0] = vp->vp_bool ? 1 : 0;
 		break;
 
 	case FR_TYPE_UINT8:
-		out[0] = vp->vp_uint8 & 0xff;
+		out[0] = vp->vp_uint8;
+		break;
+
+	case FR_TYPE_INT8:
+		out[0] = vp->vp_int8;
 		break;
 
 	case FR_TYPE_UINT16:
-		out[0] = (vp->vp_short >> 8) & 0xff;
-		out[1] = vp->vp_short & 0xff;
-		break;
-
 	case FR_TYPE_UINT32:
-		lvalue = htonl(vp->vp_uint32);
-		memcpy(out, &lvalue, sizeof(lvalue));
-		break;
-
 	case FR_TYPE_UINT64:
-		lvalue64 = htonll(vp->vp_uint64);
-		memcpy(out, &lvalue64, sizeof(lvalue64));
-		break;
-
-	case FR_TYPE_DATE:
-		lvalue = htonl(vp->vp_date);
-		memcpy(out, &lvalue, sizeof(lvalue));
-		break;
-
+	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_DATE:
 	{
-		int32_t slvalue = htonl(vp->vp_signed);
-		memcpy(out, &slvalue, sizeof(slvalue));
-		break;
+		fr_value_box_t network;
+
+		fr_value_box_hton(&network, &vp->data);
+		memcpy(out, (uint8_t *)&network.datum, len);
 	}
+		break;
 
 	case FR_TYPE_INVALID:
 	case FR_TYPE_EXTENDED:
@@ -502,9 +492,13 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE_MILLISECONDS:
+	case FR_TYPE_DATE_MICROSECONDS:
+	case FR_TYPE_DATE_NANOSECONDS:
 	case FR_TYPE_MAX:
-		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->vp_type);
+		fr_strerror_printf("Cannot encode data for VALUE_PAIR type %i", vp->vp_type);
 		return -1;
 
 	/* Don't add default */
@@ -786,20 +780,40 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_ETHERNET:	/* just in case */
-	case FR_TYPE_UINT8:
 	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
-	case FR_TYPE_DATE:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_DATE:
 		len = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
 		if (len < 0) return -1;
 		data = buffer;
 		break;
 
-	default:		/* unknown type: ignore it */
-		fr_strerror_printf("ERROR: Unknown attribute type %d", da->type);
+	case FR_TYPE_INVALID:
+	case FR_TYPE_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
+	case FR_TYPE_COMBO_IP_ADDR:	/* Should have been converted to concrete equivalent */
+	case FR_TYPE_COMBO_IP_PREFIX:	/* Should have been converted to concrete equivalent */
+	case FR_TYPE_EVS:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE_MILLISECONDS:
+	case FR_TYPE_DATE_MICROSECONDS:
+	case FR_TYPE_DATE_NANOSECONDS:
+	case FR_TYPE_MAX:
+		fr_strerror_printf("ERROR: Unsupported attribute type %d", da->type);
 		return -1;
 	}
 

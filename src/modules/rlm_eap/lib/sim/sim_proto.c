@@ -534,7 +534,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		break;
 
 	case FR_TYPE_UINT16:
-		vp->vp_short = (p[0] << 8) | p[1];
+		vp->vp_uint16 = (p[0] << 8) | p[1];
 		break;
 
 	default:
@@ -759,7 +759,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		REDEBUG("Missing subtype attribute");
 		return -1;
 	}
-	subtype = vp->vp_short;
+	subtype = vp->vp_uint16;
 
 	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_ID, TAG_ANY);
 	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);

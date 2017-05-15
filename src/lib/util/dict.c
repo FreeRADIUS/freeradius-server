@@ -116,16 +116,24 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "uint16",        	FR_TYPE_UINT16 },
 	{ "uint32",		FR_TYPE_UINT32 },
 	{ "uint64",		FR_TYPE_UINT64 },
+
+	{ "int8",		FR_TYPE_INT8 },
+	{ "int16",		FR_TYPE_INT16 },
 	{ "int32",         	FR_TYPE_INT32 },
+	{ "int64",		FR_TYPE_INT64 },
 
-	{ "size",		FR_TYPE_SIZE },
-	{ "signed",        	FR_TYPE_INT32 },
+	{ "float32",		FR_TYPE_FLOAT32 },
+	{ "float64",		FR_TYPE_FLOAT64 },
 
-	{ "decimal",		FR_TYPE_FLOAT64 },
 	{ "timeval",		FR_TYPE_TIMEVAL },
 	{ "date",		FR_TYPE_DATE },
+	{ "date_milliseconds",	FR_TYPE_DATE_MILLISECONDS },
+	{ "date_microseconds",	FR_TYPE_DATE_MICROSECONDS },
+	{ "date_nanoseconds",	FR_TYPE_DATE_NANOSECONDS },
 
 	{ "abinary",		FR_TYPE_ABINARY },
+
+	{ "size",		FR_TYPE_SIZE },
 
 	{ "tlv",		FR_TYPE_TLV },
 	{ "struct",        	FR_TYPE_STRUCT },
@@ -145,6 +153,8 @@ FR_NAME_NUMBER const dict_attr_types[] = {
 	{ "short",		FR_TYPE_UINT16 },
 	{ "integer",		FR_TYPE_UINT32 },
 	{ "integer64",		FR_TYPE_UINT64 },
+	{ "decimal",		FR_TYPE_FLOAT64 },
+	{ "signed",        	FR_TYPE_INT32 },
 
 	{ NULL,			0 }
 };

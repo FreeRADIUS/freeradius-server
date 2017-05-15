@@ -2266,15 +2266,8 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 	case FR_TYPE_BOOL:
 		return vp->vp_bool ? "yes" : "no";
 
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT32:
-		enumv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
-		break;
-
 	default:
+		enumv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		break;
 	}
 

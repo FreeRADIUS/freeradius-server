@@ -164,7 +164,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 
 	case FR_TYPE_UINT16:
-		cast->vp_short = ((input[offset] << 8) | input[offset + 1]);
+		cast->vp_uint16 = ((input[offset] << 8) | input[offset + 1]);
 		break;
 
 	case FR_TYPE_UINT64:

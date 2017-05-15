@@ -334,7 +334,7 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 	fr_pair_cursor_append(&cursor, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
-	vp->vp_short = port;
+	vp->vp_uint16 = port;
 	fr_pair_cursor_append(&cursor, vp);
 
 	return out;

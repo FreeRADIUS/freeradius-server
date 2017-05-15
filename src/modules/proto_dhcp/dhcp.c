@@ -755,8 +755,8 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 	case FR_TYPE_UINT16:
 		if (data_len != 2) goto raw;
-		memcpy(&vp->vp_short, p, 2);
-		vp->vp_short = ntohs(vp->vp_short);
+		memcpy(&vp->vp_uint16, p, 2);
+		vp->vp_uint16 = ntohs(vp->vp_uint16);
 		p += 2;
 		break;
 
@@ -1172,7 +1172,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case FR_TYPE_UINT16:
-			vp->vp_short = (p[0] << 8) | p[1];
+			vp->vp_uint16 = (p[0] << 8) | p[1];
 			break;
 
 		case FR_TYPE_UINT32:
@@ -1275,7 +1275,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				/*
 				 *	Reply should be broadcast.
 				 */
-				if (vp) vp->vp_short |= 0x8000;
+				if (vp) vp->vp_uint16 |= 0x8000;
 				packet->data[10] |= 0x80;
 			}
 		}
@@ -1387,8 +1387,8 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	case FR_TYPE_UINT16:
-		p[0] = (vp->vp_short >> 8) & 0xff;
-		p[1] = vp->vp_short & 0xff;
+		p[0] = (vp->vp_uint16 >> 8) & 0xff;
+		p[1] = vp->vp_uint16 & 0xff;
 		p += 2;
 		break;
 
@@ -1731,14 +1731,14 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Number-of-Seconds */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 261, TAG_ANY))) {
-		svalue = htons(vp->vp_short);
+		svalue = htons(vp->vp_uint16);
 		memcpy(p, &svalue, 2);
 	}
 	p += 2;
 
 	/* DHCP-Flags */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY))) {
-		svalue = htons(vp->vp_short);
+		svalue = htons(vp->vp_uint16);
 		memcpy(p, &svalue, 2);
 	}
 	p += 2;

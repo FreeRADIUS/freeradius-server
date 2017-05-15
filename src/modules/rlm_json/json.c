@@ -222,7 +222,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		case FR_TYPE_UINT16:
 			if (vp->da->flags.has_value) break;
 
-			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_short);
+			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_uint16);
 
 		case FR_TYPE_UINT8:
 			if (vp->da->flags.has_value) break;
@@ -230,7 +230,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_uint8);
 
 		case FR_TYPE_INT32:
-			return snprintf(out, freespace, "%d", vp->vp_signed);
+			return snprintf(out, freespace, "%d", vp->vp_int32);
 
 		default:
 			break;

@@ -599,15 +599,15 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 
 	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_TTL, TAG_ANY);
 	if (vp) {
-		if (vp->vp_signed == 0) {
+		if (vp->vp_int32 == 0) {
 			expire = true;
-		} else if (vp->vp_signed < 0) {
+		} else if (vp->vp_int32 < 0) {
 			expire = true;
-			ttl = -(vp->vp_signed);
+			ttl = -(vp->vp_int32);
 		/* Updating the TTL */
 		} else {
 			set_ttl = true;
-			ttl = vp->vp_signed;
+			ttl = vp->vp_int32;
 		}
 	}
 

@@ -333,17 +333,38 @@ char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
 
 /** Consume the integer (or hex) portion of a value string
  *
- * @param value string to parse.
- * @param end pointer to the first non numeric char.
+ * Allows integer or hex representations of integers (but not octal,
+ * as octal is deemed to be confusing).
+ *
+ * @param[in] value	string to parse.
+ * @param[out] end	pointer to the first non numeric char.
  * @return integer value.
  */
-uint32_t fr_strtoul(char const *value, char **end)
+uint64_t fr_strtoull(char const *value, char **end)
 {
 	if ((value[0] == '0') && (value[1] == 'x')) {
-		return strtoul(value, end, 16);
+		return strtoull(value, end, 16);
 	}
 
-	return strtoul(value, end, 10);
+	return strtoull(value, end, 10);
+}
+
+/** Consume the integer (or hex) portion of a value string
+ *
+ * Allows integer or hex representations of integers (but not octal,
+ * as octal is deemed to be confusing).
+ *
+ * @param[in] value	string to parse.
+ * @param[out] end	pointer to the first non numeric char.
+ * @return integer value.
+ */
+int64_t fr_strtoll(char const *value, char **end)
+{
+	if ((value[0] == '0') && (value[1] == 'x')) {
+		return strtoll(value, end, 16);
+	}
+
+	return strtoll(value, end, 10);
 }
 
 /** Check whether the string is all whitespace
