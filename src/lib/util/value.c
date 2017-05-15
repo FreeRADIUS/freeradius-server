@@ -2301,8 +2301,8 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr)
  */
 static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, char const *in)
 {
-	uint64_t	uinteger;
-	int64_t		sinteger;
+	uint64_t	uinteger = 0;
+	int64_t		sinteger = 0;
 	char 		*p = NULL;
 
 	switch (dst_type) {
@@ -2380,21 +2380,6 @@ static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, cha
 		dst->datum.uint64 = (uint64_t)uinteger;
 		break;
 
-	case FR_TYPE_DATE_MILLISECONDS:
-		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.date_milliseconds = (uint64_t)uinteger;
-		break;
-
-	case FR_TYPE_DATE_MICROSECONDS:
-		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.date_microseconds = (uint64_t)uinteger;
-		break;
-
-	case FR_TYPE_DATE_NANOSECONDS:
-		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.date_nanoseconds = (uint64_t)uinteger;
-		break;
-
 	case FR_TYPE_INT8:
 		IN_RANGE_SIGNED(INT8);
 		dst->datum.int8 = (int8_t)sinteger;
@@ -2413,6 +2398,21 @@ static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, cha
 	case FR_TYPE_INT64:
 		IN_RANGE_SIGNED(INT64);
 		dst->datum.int64 = (int64_t)sinteger;
+		break;
+
+	case FR_TYPE_DATE_MILLISECONDS:
+		IN_RANGE_UNSIGNED(UINT64);
+		dst->datum.date_milliseconds = (uint64_t)uinteger;
+		break;
+
+	case FR_TYPE_DATE_MICROSECONDS:
+		IN_RANGE_UNSIGNED(UINT64);
+		dst->datum.date_microseconds = (uint64_t)uinteger;
+		break;
+
+	case FR_TYPE_DATE_NANOSECONDS:
+		IN_RANGE_UNSIGNED(UINT64);
+		dst->datum.date_nanoseconds = (uint64_t)uinteger;
 		break;
 
 	default:
