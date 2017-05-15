@@ -246,7 +246,8 @@ stop_processing:
 				continue;
 			}
 
-			RWDEBUG("Ignoring extra Auth-Type = %s", fr_dict_enum_name_by_da(NULL, auth_type->da, vp->vp_uint32));
+			RWDEBUG("Ignoring extra Auth-Type = %s",
+				fr_dict_enum_alias_by_da(NULL, auth_type->da, &vp->data));
 		}
 
 		/*
@@ -277,16 +278,16 @@ stop_processing:
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+		dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 		if (!dv) {
-			REDEBUG2("Unknown Auth-Type %d found: rejecting the user.", vp->vp_uint32);
+			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
 			tacacs_status(request, RLM_MODULE_FAIL);
 			goto setup_send;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->name);
+		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->alias);
 		if (!unlang) {
-			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->name);
+			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->alias);
 			tacacs_status(request, RLM_MODULE_FAIL);
 			goto setup_send;
 		}

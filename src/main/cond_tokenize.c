@@ -1079,7 +1079,14 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 						break;
 					}
 
-					if (tmpl_cast_in_place(c->data.map->rhs, type, c->data.map->lhs->tmpl_da) < 0) {
+					/*
+					 *	Do not pass LHS as enumv if we're casting
+					 *	as that means there's now a type mismatch between
+					 *	lhs and rhs, which means the enumerations
+					 *	can never match.
+					 */
+					if (tmpl_cast_in_place(c->data.map->rhs, type,
+							       c->cast ? NULL : c->data.map->lhs->tmpl_da) < 0) {
 						fr_dict_attr_t const *da = c->data.map->lhs->tmpl_da;
 
 						if ((da->vendor == 0) &&

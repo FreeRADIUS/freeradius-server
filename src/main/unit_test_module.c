@@ -327,6 +327,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 
 			vp->vp_octets = talloc_steal(vp, p);
 			vp->data.type = FR_TYPE_OCTETS;
+			vp->data.enumv = NULL;
 			vp->type = VT_DATA;
 
 			VERIFY_VP(vp);

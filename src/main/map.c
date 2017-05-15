@@ -64,7 +64,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	fr_dict_attr_t const	*da;
 	VALUE_PAIR		*vp = NULL;
 	vp_tmpl_t		*vpt;
-	fr_value_box_t		bin = { .type = FR_TYPE_STRING }, cast;
+	fr_value_box_t		cast;
 
 	rad_assert(map != NULL);
 
@@ -102,15 +102,10 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	fr_hex2bin(ptr, len >> 1, rhs + 2, len);
 
 	/*
-	 *	Assign but don't dup.
-	 */
-	fr_value_box_memdup_buffer_shallow(NULL, &bin, ptr, false);
-
-	/*
 	 *	Convert to da->type (if possible);
 	 */
-	if (fr_value_box_cast(map, &cast, da->type, da, &bin) < 0) {
-		talloc_free(bin.datum.ptr);
+	if (fr_value_box_cast(map, &cast, da->type, da, fr_box_octets_buffer(ptr)) < 0) {
+		talloc_free(ptr);
 		return false;
 	}
 
@@ -118,9 +113,11 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	Package the #fr_value_box_t as a #vp_tmpl_t
 	 */
 	if (tmpl_afrom_value_box(map, &map->rhs, &cast, true) < 0) {
-		talloc_free(bin.datum.ptr);
+		talloc_free(ptr);
 		return false;
 	}
+
+	talloc_free(ptr);
 
 	/*
 	 *	Set the LHS to the REAL attribute name.

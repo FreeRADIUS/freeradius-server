@@ -174,20 +174,23 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, PW_DHCP_PARAMETER_REQUEST_LIST);
 	if (da) {
-		fr_dict_attr_t const *value;
-		int i;
+		fr_value_box_t	value = { .type = FR_TYPE_UINT8 };
+		uint8_t		i;
 
 		/* No padding or termination options */
 		DEBUG3("Adding values for %s", da->name);
 		for (i = 1; i < 255; i++) {
-			value = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, i);
-			if (!value) {
+			fr_dict_attr_t const *attr;
+
+			attr = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, i);
+			if (!attr) {
 				DEBUG3("No DHCP RFC space attribute at %i", i);
 				continue;
 			}
+			value.datum.uint8 = i;
 
-			DEBUG3("Adding %s value %i %s", da->name, i, value->name);
-			if (fr_dict_enum_add(NULL, da->name, value->name, i) < 0) {
+			DEBUG3("Adding %s value %i %s", da->name, i, attr->name);
+			if (fr_dict_enum_add_alias(da, attr->name, &value, true, false) < 0) {
 				DEBUG3("Failed adding value: %s", fr_strerror());
 			}
 		}

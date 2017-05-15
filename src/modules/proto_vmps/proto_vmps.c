@@ -61,13 +61,13 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			goto done;
 		}
 
-		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+		dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
 			goto done;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->name);
+		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			RPEDEBUG("Failed to find 'recv' section");
@@ -101,10 +101,10 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			}
 		}
 
-		dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
+		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->name);
+			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
 		}
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "send", "*");
 

@@ -67,7 +67,7 @@ typedef enum fr_token {
 
 typedef struct FR_NAME_NUMBER {
 	char const	*name;
-	int		number;
+	int32_t		number;
 } FR_NAME_NUMBER;
 
 extern const FR_NAME_NUMBER fr_tokens_table[];

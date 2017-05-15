@@ -373,12 +373,12 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 				json_object_object_add(vp_object, "mapping", mapping);
 			}
 
-			dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+			dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 			if (dv) {
 				struct json_object *mapped_value;
 
 				/* Add to mapping array */
-				MEM(mapped_value = json_object_new_string(dv->name));
+				MEM(mapped_value = json_object_new_string(dv->alias));
 				json_object_array_add(mapping, mapped_value);
 			/*
 			 *	Add NULL value to mapping array

@@ -180,15 +180,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		return RLM_MODULE_NOOP;
 	}
 
-	dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+	dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_uint32);
 		return RLM_MODULE_NOOP;
 	}
 
-	cs = cf_subsection_find(inst->cs, dv->name);
+	cs = cf_subsection_find(inst->cs, dv->alias);
 	if (!cs) {
-		RDEBUG("No subsection %s", dv->name);
+		RDEBUG("No subsection %s", dv->alias);
 		return RLM_MODULE_NOOP;
 	}
 

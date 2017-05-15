@@ -1131,10 +1131,10 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  * @note Irrespective of whether the #vp_tmpl_t was #TMPL_TYPE_UNPARSED or #TMPL_TYPE_DATA,
  *	on successful cast it will be #TMPL_TYPE_DATA.
  *
- * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_UNPARSED
- *	or #TMPL_TYPE_DATA.
- * @param[in] type to cast to.
- * @param[in] enumv Enumerated dictionary values associated with a #fr_dict_attr_t.
+ * @param[in,out] vpt	The template to modify. Must be of type #TMPL_TYPE_UNPARSED
+ *			or #TMPL_TYPE_DATA.
+ * @param[in] type	to cast to.
+ * @param[in] enumv	Enumerated dictionary values associated with a #fr_dict_attr_t.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

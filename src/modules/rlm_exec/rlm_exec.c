@@ -242,13 +242,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	} else {
 		fr_dict_enum_t	*dval;
 
-		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE), inst->packet_type);
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE), inst->packet_type);
 		if (!dval) {
 			cf_log_err_cs(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
 				      "share/dictionary", inst->packet_type);
 			return -1;
 		}
-		inst->packet_code = dval->value;
+		inst->packet_code = fr_unbox_uint32(dval->value);
 	}
 
 	/*

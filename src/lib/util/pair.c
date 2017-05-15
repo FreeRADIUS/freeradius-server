@@ -102,7 +102,7 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	 */
 	vp->da = da;
 	vp->vp_type = da->type;
-	if (fr_dict_enum_types[da->type]) vp->data.datum.enumv = da;
+	vp->data.enumv = da;
 
 	return vp;
 }
@@ -1998,7 +1998,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 			return -1;
 		}
 		vp->da = da;
-		if (fr_dict_enum_types[da->type]) vp->data.datum.enumv = da;
+		vp->data.enumv = da;
 	}
 	vp->type = VT_DATA;
 
@@ -2267,23 +2267,11 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 		return vp->vp_bool ? "yes" : "no";
 
 	case FR_TYPE_UINT8:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint8);
-		break;
-
 	case FR_TYPE_UINT16:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_short);
-		break;
-
 	case FR_TYPE_UINT32:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
-		break;
-
 	case FR_TYPE_UINT64:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint64);
-		break;
-
 	case FR_TYPE_INT32:
-		enumv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_signed);
+		enumv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 		break;
 
 	default:
@@ -2294,7 +2282,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 		fr_pair_value_snprint(buff, 20, vp, '\0');
 		str = buff;
 	} else {
-		str = enumv->name;
+		str = enumv->alias;
 	}
 
 	return str;

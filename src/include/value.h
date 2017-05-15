@@ -17,6 +17,12 @@
 #define _FR_VALUE_H
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/types.h>
+
+/*
+ *	Avoid circular type references.
+ */
+typedef struct value_box fr_value_box_t;
+
 #include <freeradius-devel/dict.h>
 
 extern size_t const fr_value_box_field_sizes[];
@@ -31,7 +37,6 @@ extern size_t const fr_value_box_offsets[];
  *
  * fr_type_t should be an enumeration of the values in this union.
  */
-typedef struct value_box fr_value_box_t;
 struct value_box {
 	union {
 		/*
@@ -45,9 +50,12 @@ struct value_box {
 				uint8_t		filter[32];	//!< Ascend binary format (a packed data structure).
 
 			};
-			size_t length;
+			size_t		length;
 		};
 
+		/*
+		 *	Fixed length values
+		 */
 		fr_ipaddr_t		ip;			//!< IPv4/6 address/prefix.
 
 		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
@@ -55,38 +63,33 @@ struct value_box {
 
 		bool			boolean;		//!< A truth value.
 
-		struct {
-			union {
-				uint8_t		uint8;		//!< 8bit unsigned integer.
-				uint16_t	uint16;		//!< 16bit unsigned integer.
-				uint32_t	uint32;		//!< 32bit unsigned integer.
-				uint64_t	uint64;		//!< 64bit unsigned integer.
-				uint128_t	uint128;	//!< 128bit unsigned integer.
+		uint8_t			uint8;			//!< 8bit unsigned integer.
+		uint16_t		uint16;			//!< 16bit unsigned integer.
+		uint32_t		uint32;			//!< 32bit unsigned integer.
+		uint64_t		uint64;			//!< 64bit unsigned integer.
+		uint128_t		uint128;		//!< 128bit unsigned integer.
 
-				int8_t		int8;		//!< 8bit signed integer.
-				int16_t		int16;		//!< 16bit signed integer.
-				int32_t		int32;		//!< 32bit signed integer.
-				int64_t		int64;		//!< 64bit signed integer;
-			};
-			fr_dict_attr_t const	*enumv;		//!< Enumeration values for integer type.
-		};
+		int8_t			int8;			//!< 8bit signed integer.
+		int16_t			int16;			//!< 16bit signed integer.
+		int32_t			int32;			//!< 32bit signed integer.
+		int64_t			int64;			//!< 64bit signed integer;
 
 		float			float32;		//!< Single precision float.
 		double			float64;		//!< Double precision float.
 
 		uint32_t		date;			//!< Date (32bit Unix timestamp).
-		uint64_t		date_miliseconds;	//!< milliseconds since the epoch.
-		uint64_t		date_microseconds;	//!< microseconds since the epoch.
-		uint64_t		date_nanoseconds;	//!< nanoseconds since the epoch.
+		uint64_t		date_miliseconds;	//!< Milliseconds since the epoch.
+		uint64_t		date_microseconds;	//!< Microseconds since the epoch.
+		uint64_t		date_nanoseconds;	//!< Nanoseconds since the epoch.
 
 		/*
-		 *	System specific - Used for runtime
-		 *	configuration only.
+		 *	System specific - Used for runtime configuration only.
 		 */
 		size_t			size;			//!< System specific file/memory size.
 		struct timeval		timeval;		//!< A time value with usec precision.
-
 	} datum;
+
+	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
 
 	fr_type_t			type;			//!< Type of this value-box.
 

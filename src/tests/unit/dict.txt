@@ -6,29 +6,30 @@
 #  VALUEs
 #
 dictionary VALUE	Service-Type	Foo	bar
-data Invalid number in VALUE
+data Invalid VALUE for ATTRIBUTE "Service-Type"
 
 dictionary VALUE	Unit-Byte	TooBig	256
-data fr_dict_enum_add: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255
+data Invalid VALUE for ATTRIBUTE "Unit-Byte"
 
 dictionary VALUE	Unit-Byte	Too-Small	-1
-data Invalid number in VALUE
+data Invalid VALUE for ATTRIBUTE "Unit-Byte"
 
 dictionary VALUE	Unit-Short	Too-Big	65537
-data fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535
+data Invalid VALUE for ATTRIBUTE "Unit-Short"
 
-dictionary VALUE	Unit-Integer64	Not-OK	   1
-data fr_dict_enum_add: VALUEs cannot be defined for attributes of type 'uint64'
+# Check non-uint32 types
+dictionary VALUE	Unit-Integer64	OK	   1
+data ok
 
 dictionary VALUE	Unit-Octets	Porridge	1
-data fr_dict_enum_add: VALUEs cannot be defined for attributes of type 'octets'
+data ok
 
 dictionary VALUE	Unit-Byte	Life	42
 data ok
 
 # re-defining it is not OK
 dictionary VALUE	Unit-Byte	Life	43
-data Duplicate VALUE name 'Life' for attribute 'Unit-Byte'
+data Duplicate VALUE alias "Life" for attribute "Unit-Byte". Old value was "42", new value was "43"
 
 
 #

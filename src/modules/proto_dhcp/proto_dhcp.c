@@ -315,16 +315,16 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint8);
+		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 
 		if (dv) {
 			CONF_SECTION *server, *unlang;
 
-			RDEBUG("Trying sub-section dhcp %s {...}", dv->name);
+			RDEBUG("Trying sub-section dhcp %s {...}", dv->alias);
 
 			server = cf_item_parent(cf_section_to_item(request->listener->cs));
 
-			unlang = cf_subsection_find_name2(server, "dhcp", dv->name);
+			unlang = cf_subsection_find_name2(server, "dhcp", dv->alias);
 			rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
 		} else {
 			REDEBUG("Unknown DHCP-Message-Type %d", vp->vp_uint8);
@@ -1026,7 +1026,7 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 			cf_log_module(cs, "Loading dhcp {...}");
 		}
 
-		dv = fr_dict_enum_by_name(NULL, da, name2);
+		dv = fr_dict_enum_by_alias(NULL, da, name2);
 		if (!dv) {
 			cf_log_err_cs(cs, "Server contains 'dhcp %s {...}, but there is no such value for DHCP-Message-Type",
 				      name2);

@@ -528,6 +528,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 				vp->vp_octets = talloc_steal(vp, p);
 				vp->data.type = FR_TYPE_OCTETS;
+				vp->data.enumv = NULL;
 				vp->type = VT_DATA;
 
 				VERIFY_VP(vp);

@@ -675,14 +675,14 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 
 			strlcpy(type_str, value, (p - value) + 1);
 
-			type = fr_dict_enum_by_name(NULL, conf->snmp_type, type_str);
+			type = fr_dict_enum_by_alias(NULL, conf->snmp_type, type_str);
 			if (!type) {
 				ERROR("Unknown type \"%s\"", type_str);
 				RESPOND_STATIC("NONE");
 				continue;
 			}
 
-			slen = radsnmp_pair_from_oid(conf, conf, &cursor, line, type->value, p + 1);
+			slen = radsnmp_pair_from_oid(conf, conf, &cursor, line, fr_unbox_int32(type->value), p + 1);
 		}
 			break;
 

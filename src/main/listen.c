@@ -126,7 +126,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	CONF_PAIR		*cp;
 	CONF_SECTION		*tls;
 	int			transports;
-	char const		*value;
+	char const		*type;
 	fr_dict_enum_t const	*dv;
 	rad_protocol_t const	*proto = NULL;
 	dl_t const	*module = NULL;
@@ -141,8 +141,8 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		return -1;
 	}
 
-	value = cf_pair_value(cp);
-	if (!value) {
+	type = cf_pair_value(cp);
+	if (!type) {
 		cf_log_err_cs(cs, "Invalid 'type' specified in listen section");
 		return -1;
 	}
@@ -152,16 +152,16 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	 *	Only control sockets and proxy sockets are global for now.
 	 */
 	if (!server_name) {
-		if ((strcmp(value, "control") != 0) &&
-		    (strcmp(value, "proxy") != 0)) {
-			cf_log_err_cs(cs, "Listeners of type '%s' MUST be defined in a server.", value);
+		if ((strcmp(type, "control") != 0) &&
+		    (strcmp(type, "proxy") != 0)) {
+			cf_log_err_cs(cs, "Listeners of type '%s' MUST be defined in a server", type);
 			return -1;
 		}
 
 	} else {
-		if ((strcmp(value, "control") == 0) ||
-		    (strcmp(value, "proxy") == 0)) {
-			cf_log_err_cs(cs, "Listeners of type '%s' MUST NOT be defined in a server.", value);
+		if ((strcmp(type, "control") == 0) ||
+		    (strcmp(type, "proxy") == 0)) {
+			cf_log_err_cs(cs, "Listeners of type '%s' MUST NOT be defined in a server", type);
 			return -1;
 		}
 	}
@@ -177,33 +177,42 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	 *
 	 *	At some point, we'll move all of these to plugins.
 	 */
-	if (cp || !((strcmp(value, "control") == 0) ||
-		    (strcmp(value, "status") == 0) ||
-		    (strcmp(value, "coa") == 0) ||
-		    (strcmp(value, "auth") == 0) ||
-		    (strcmp(value, "acct") == 0) ||
-		    (strcmp(value, "auth+acct") == 0))) {
-		static int	max_listener = 256;
+	if (cp || !((strcmp(type, "control") == 0) ||
+		    (strcmp(type, "status") == 0) ||
+		    (strcmp(type, "coa") == 0) ||
+		    (strcmp(type, "auth") == 0) ||
+		    (strcmp(type, "acct") == 0) ||
+		    (strcmp(type, "auth+acct") == 0))) {
+		static uint32_t	max_listener = 256;
 		char		buffer[256];
 
 		if (cp) {
-			snprintf(buffer, sizeof(buffer), "%s_%s", cf_pair_value(cp), value);
-			value = buffer;
+			snprintf(buffer, sizeof(buffer), "%s_%s", cf_pair_value(cp), type);
+			type = buffer;
 		}
 
-		module = dl_module(cs, NULL, value, DL_TYPE_PROTO);
+		module = dl_module(cs, NULL, type, DL_TYPE_PROTO);
 		if (!module) return -1;
 		proto = (rad_protocol_t const *)module->common;
 
 		/*
 		 *	We need numbers for internal use.
 		 */
-		dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), value);
+		dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), type);
 		if (!dv) {
-			if (fr_dict_enum_add(NULL, "Listen-Socket-Type", value, max_listener++) < 0) {
+			fr_dict_attr_t const	*da;
+
+			da = fr_dict_attr_by_name(NULL, "Listen-Socket-Type");
+			if (!da) {
+				ERROR("Listen-Socket-Type attribute not defined");
+				talloc_const_free(module);
+				return -1;
+			}
+
+			if (fr_dict_enum_add_alias(da, type, fr_box_uint32(max_listener), true, false) < 0) {
 				cf_log_err_cs(cs,
 					      "Failed adding dictionary entry for protocol %s: %s",
-					      value, fr_strerror());
+					      type, fr_strerror());
 				talloc_const_free(module);
 				return -1;
 			}
@@ -215,7 +224,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 *	the protocol-specific processing sections.
 		 */
 		if (proto->bootstrap && (proto->bootstrap(server, cs) < 0)) {
-			cf_log_err_cs(cs, "Failed loading protocol %s", value);
+			cf_log_err_cs(cs, "Failed loading protocol %s", type);
 			talloc_const_free(module);
 			return -1;
 		}
@@ -232,14 +241,14 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	/*
 	 *	The type MUST now be defined in the dictionaries.
 	 */
-	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), value);
+	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), type);
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s", value);
+		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s", type);
 		talloc_const_free(module);
 		return -1;
 	}
 
-	if (!proto) proto = &master_listen[dv->value];
+	if (!proto) proto = &master_listen[fr_unbox_uint32(dv->value)];
 
 	/*
 	 *	Check the allowed transport protocols.  For most
@@ -251,23 +260,23 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		cp = cf_pair_find(cs, "proto");
 		if (!cp) {
 			transports = TRANSPORT_UDP;
-			value = "udp";
+			type = "udp";
 
 		} else {
-			value = cf_pair_value(cp);
-			if (!value) {
+			type = cf_pair_value(cp);
+			if (!type) {
 				cf_log_err_cs(cs, "No value for 'proto'");
 				return -1;
 			}
 
-			if (strcmp(value, "udp") == 0) {
+			if (strcmp(type, "udp") == 0) {
 				transports = TRANSPORT_UDP;
 
-			} else if (strcmp(value, "tcp") == 0) {
+			} else if (strcmp(type, "tcp") == 0) {
 				transports = TRANSPORT_TCP;
 
 			} else {
-				cf_log_err_cs(cs, "Unknown transport protocol 'proto = %s'", value);
+				cf_log_err_cs(cs, "Unknown transport protocol 'proto = %s'", type);
 				return -1;
 			}
 		}
@@ -277,7 +286,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 */
 		if ((transports & proto->transports) == 0) {
 			cf_log_err_cs(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
-				      value, proto->name);
+				      type, proto->name);
 				return -1;
 		}
 
@@ -290,7 +299,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 */
 		if ((strcmp(proto->name, "proxy") == 0) && (transports == TRANSPORT_TCP)) {
 			cf_log_err_cs(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
-				      value, proto->name);
+				      type, proto->name);
 				return -1;
 		}
 #endif
@@ -337,7 +346,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	lc->cs = cs;
 	lc->server_name = server_name;
 	lc->handle = module;
-	lc->type = dv->value;
+	lc->type = fr_unbox_uint32(dv->value);
 	lc->proto = proto;
 
 	lc->listener = listen_parse(lc);
@@ -618,9 +627,9 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 	case RAD_LISTEN_NONE:
 #endif
 	case RAD_LISTEN_AUTH:
-		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTZ_TYPE), "Status-Server");
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTZ_TYPE), "Status-Server");
 		if (dval) {
-			rcode = process_authorize(dval->value, request);
+			rcode = process_authorize(fr_unbox_uint32(dval->value), request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -645,9 +654,9 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
-		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_ACCT_TYPE), "Status-Server");
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_ACCT_TYPE), "Status-Server");
 		if (dval) {
-			rcode = process_accounting(dval->value, request);
+			rcode = process_accounting(fr_unbox_uint32(dval->value), request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -672,9 +681,9 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 		 *	the WG.  We like it, so it goes in here.
 		 */
 	case RAD_LISTEN_COA:
-		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_RECV_COA_TYPE), "Status-Server");
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_RECV_COA_TYPE), "Status-Server");
 		if (dval) {
-			rcode = process_recv_coa(dval->value, request);
+			rcode = process_recv_coa(fr_unbox_uint32(dval->value), request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -2556,7 +2565,7 @@ static rad_protocol_t master_listen[] = {
 		.name = "proxy",
 		.inst_size = sizeof(listen_socket_t),
 		.transports = TRANSPORT_DUAL,
-		.tls = true,		
+		.tls = true,
 		.parse = common_socket_parse,
 		.open = common_socket_open,
 		.recv = proxy_socket_recv,

@@ -2272,11 +2272,11 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_DISCONNECT_NAK:
 		case PW_CODE_COA_NAK:
-			dval = fr_dict_enum_by_name(NULL, da, fr_packet_codes[reply->code]);
+			dval = fr_dict_enum_by_alias(NULL, da, fr_packet_codes[reply->code]);
 
 			if (dval) {
 				vp = radius_pair_create(request, &request->control, PW_POST_PROXY_TYPE, 0);
-				vp->vp_uint32 = dval->value;
+				fr_value_box_copy(NULL, &vp->data, dval->value);
 			}
 			break;
 
@@ -2285,7 +2285,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		}
 	}
 
-	if (vp) RDEBUG2("Found Post-Proxy-Type %s", fr_dict_enum_name_by_da(NULL, vp->da, vp->vp_uint32));
+	if (vp) RDEBUG2("Found Post-Proxy-Type %s", fr_dict_enum_alias_by_da(NULL, vp->da, &vp->data));
 
 	/*
 	 *	Remove it from the proxy hash, if there's no reply, or
@@ -2534,9 +2534,9 @@ static int setup_post_proxy_fail(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	snprintf(buffer, sizeof(buffer), "Fail-%s", fr_packet_codes[request->proxy->packet->code]);
-	dval = fr_dict_enum_by_name(NULL, da, buffer);
+	dval = fr_dict_enum_by_alias(NULL, da, buffer);
 
-	if (!dval) dval = fr_dict_enum_by_name(NULL, da, "Fail");
+	if (!dval) dval = fr_dict_enum_by_alias(NULL, da, "Fail");
 
 	if (!dval) {
 		fr_pair_delete_by_num(&request->control, 0, PW_POST_PROXY_TYPE, TAG_ANY);
@@ -2546,7 +2546,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	vp = fr_pair_find_by_num(request->control, 0, PW_POST_PROXY_TYPE, TAG_ANY);
 	if (!vp) vp = radius_pair_create(request, &request->control,
 					PW_POST_PROXY_TYPE, 0);
-	vp->vp_uint32 = dval->value;
+	fr_value_box_copy(NULL, &vp->data, dval->value);
 
 	return 1;
 }
@@ -3109,10 +3109,10 @@ do_home:
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_PRE_PROXY_TYPE, TAG_ANY);
 	if (vp) {
-		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 		/* Must be a validation issue */
 		rad_assert(dval);
-		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
+		RDEBUG2("Found Pre-Proxy-Type %s", dval->alias);
 		pre_proxy_type = vp->vp_uint32;
 	}
 
@@ -4245,10 +4245,10 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, PW_PRE_PROXY_TYPE, TAG_ANY);
 	if (vp) {
-		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+		fr_dict_enum_t const *dval = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 		/* Must be a validation issue */
 		rad_assert(dval);
-		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
+		RDEBUG2("Found Pre-Proxy-Type %s", dval->alias);
 		pre_proxy_type = vp->vp_uint32;
 	}
 

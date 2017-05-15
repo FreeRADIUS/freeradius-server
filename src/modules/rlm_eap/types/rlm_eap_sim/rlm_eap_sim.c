@@ -568,7 +568,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, UNUSED void *i
 			return -1;
 		}
 
-		dv = fr_dict_enum_by_name(NULL, da, name2);
+		dv = fr_dict_enum_by_alias(NULL, da, name2);
 		if (!dv) {
 			cf_log_err_cs(subcs, "Unknown EAP-SIM-Subtype %s", name2);
 			return -1;

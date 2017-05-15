@@ -241,7 +241,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 		break;
 	}
 
-	if (fr_dict_enum_types[src->type]) dst->datum.enumv = src->datum.enumv;
+	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
 }
@@ -264,7 +264,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	if (!fr_cond_assert(b->type != FR_TYPE_INVALID)) return -1;
 
 	if (a->type != b->type) {
-		fr_strerror_printf("Can't compare values of different types");
+		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
 		return -2;
 	}
 
@@ -851,8 +851,8 @@ static uint8_t const v4_v6_map[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					     fr_type_t dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
-					     fr_value_box_t const *src)
+						fr_type_t dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
+						fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_STRING)) return -1;
 
@@ -892,8 +892,8 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					   fr_type_t dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
-					   fr_value_box_t const *src)
+					      fr_type_t dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
+					      fr_value_box_t const *src)
 {
 	uint8_t *bin;
 
@@ -978,8 +978,8 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					     fr_value_box_t const *src)
+						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_IPV4_ADDR)) return -1;
 
@@ -1080,8 +1080,8 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					       fr_value_box_t const *src)
+						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						  fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_IPV4_PREFIX)) return -1;
 
@@ -1179,8 +1179,8 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					     fr_value_box_t const *src)
+						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_IPV6_ADDR)) return -1;
 
@@ -1281,8 +1281,8 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					       fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					       fr_value_box_t const *src)
+						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						  fr_value_box_t const *src)
 {
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -1352,20 +1352,22 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
  * This should be the canonical function used to convert between INTERNAL data formats.
  *
  * - If you want to convert from PRESENTATION format, use #fr_value_box_from_str.
-
+ *
  *
  * @param ctx		to allocate buffers in (usually the same as dst)
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	Enumerated values used to converts strings to uint32s.
+ * @param dst_enumv	Aliases for values contained within this fr_value_box_t.
+ *			If #fr_value_box_t is passed to #fr_value_box_asprint
+ *			aliases will be printed instead of actual value.
  * @param src		Input data.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
-		   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-		   fr_value_box_t const *src)
+		      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+		      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type != FR_TYPE_INVALID)) return -1;
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
@@ -1442,7 +1444,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Deserialise a fr_value_box_t
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-								   src->datum.strvalue, src->datum.length, '\0');
+								      src->datum.strvalue, src->datum.length, '\0');
 
 	if ((src->type == FR_TYPE_IFID) &&
 	    (dst_type == FR_TYPE_UINT64)) {
@@ -1451,7 +1453,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	fixed_length:
 		dst->type = dst_type;
-		if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
+		dst->enumv = dst_enumv;
 
 		return 0;
 	}
@@ -1655,13 +1657,15 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			return -1;
 		}
 
+		memset(&tmp, 0, sizeof(tmp));
+
 		/*
 		 *	Copy the raw octets into the datum of a value_box
-		 *	inverting uint8sex for uint32s (if LE).
+		 *	inverting bytesex for uint32s (if LE).
 		 */
 		memcpy(&tmp.datum, src->datum.octets, fr_value_box_field_sizes[dst_type]);
 		tmp.type = dst_type;
-		if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
+		dst->enumv = dst_enumv;
 
 		fr_value_box_hton(dst, &tmp);
 
@@ -1711,7 +1715,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	}
 
 	dst->type = dst_type;
-	if (fr_dict_enum_types[dst_type]) dst->datum.enumv = dst_enumv;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2444,13 +2448,12 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	attribute.
 		 */
 		if (dst_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
+			if ((dval = fr_dict_enum_by_alias(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   in, dst_enumv->name);
 				return -1;
 			}
-
-			dst->datum.uint8 = dval->value;
+			fr_value_box_copy_shallow(NULL, dst, dval->value);
 		} else {
 			if (i > 255) {
 				fr_strerror_printf("Byte value \"%s\" is larger than 255", in);
@@ -2477,13 +2480,13 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	attribute.
 		 */
 		if (dst_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
+			if ((dval = fr_dict_enum_by_alias(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   in, dst_enumv->name);
 				return -1;
 			}
 
-			dst->datum.uint16 = dval->value;
+			fr_value_box_copy_shallow(NULL, dst, dval->value);
 		} else {
 			if (i > 65535) {
 				fr_strerror_printf("Short value \"%s\" is larger than 65535", in);
@@ -2508,27 +2511,17 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 */
 		if (dst_enumv &&
 		    (!is_integer(in) || (!(in[0] == '0') && (in[1] == 'x')))) {
-			if ((dval = fr_dict_enum_by_name(NULL, dst_enumv, in)) == NULL) {
+			if ((dval = fr_dict_enum_by_alias(NULL, dst_enumv, in)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   in, dst_enumv->name);
 				return -1;
 			}
 
-			dst->datum.uint32 = dval->value;
+			fr_value_box_copy_shallow(NULL, dst, dval->value);
 
 		} else {
 			unsigned long i;
 			int base = 10;
-
-			/*
-			 *	Empty strings or invalid strings get
-			 *	parsed as zero for backwards
-			 *	compatability.
-			 */
-			if (!*in || !isdigit((int) *in)) {
-				dst->datum.uint32 = 0;
-				break;
-			}
 
 			/*
 			 *	Hex strings are base 16.
@@ -2537,11 +2530,17 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 			i = strtoul(in, &p, base);
 
+			if ((size_t)(p - in) != len) {
+				fr_strerror_printf("Invalid value \"%s\" for %s type", in,
+						   fr_int2str(dict_attr_types, *dst_type, "<INVALID>"));
+				return -1;
+			}
+
 			/*
 			 *	Catch and complain on overflows.
 			 */
 			if ((i == ULONG_MAX) || (i >= ((unsigned long) 1) << 32)) {
-				fr_strerror_printf("Integer Value \"%s\" is larger than 1<<32", in);
+				fr_strerror_printf("Integer value \"%s\" is larger than 1<<32", in);
 				return -1;
 			}
 
@@ -2599,7 +2598,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_DATE:
 	{
 		/*
-		 *	time_t may be 64 bits, whule vp_date MUST be 32-bits.  We need an
+		 *	time_t may be 64 bits, while vp_date MUST be 32-bits.  We need an
 		 *	intermediary variable to handle the conversions.
 		 */
 		time_t date;
@@ -2726,7 +2725,7 @@ finish:
 	/*
 	 *	Fixup enumv
 	 */
-	if (fr_dict_enum_types[dst->type]) dst->datum.enumv = dst_enumv;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -2755,14 +2754,11 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return NULL;
 
-	if (fr_dict_enum_types[data->type] && data->datum.enumv) {
+	if (data->enumv) {
 		fr_dict_enum_t const	*dv;
-		fr_value_box_t		tmp;
 
-		fr_value_box_cast(ctx, &tmp, FR_TYPE_UINT32, NULL, data);
-
-		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.uint32);
-		if (dv) return talloc_typed_strdup(ctx, dv->name);
+		dv = fr_dict_enum_by_da(NULL, data->enumv, data);
+		if (dv) return talloc_typed_strdup(ctx, dv->alias);
 	}
 
 	switch (data->type) {
@@ -2952,14 +2948,11 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	p = out;
 
-	if (fr_dict_enum_types[data->type] && data->datum.enumv) {
+	if (data->enumv) {
 		fr_dict_enum_t const	*dv;
-		fr_value_box_t		tmp;
 
-		fr_value_box_cast(NULL, &tmp, FR_TYPE_UINT32, NULL, data);
-
-		dv = fr_dict_enum_by_da(NULL, data->datum.enumv, tmp.datum.uint32);
-		if (dv) return strlcpy(out, dv->name, outlen);
+		dv = fr_dict_enum_by_da(NULL, data->enumv, data);
+		if (dv) return strlcpy(out, dv->alias, outlen);
 	}
 
 	switch (data->type) {

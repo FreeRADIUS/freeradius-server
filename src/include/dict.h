@@ -26,6 +26,14 @@
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/types.h>
 
+/*
+ *	Avoid circular type references.
+ */
+typedef struct dict_attr fr_dict_attr_t;
+typedef struct fr_dict fr_dict_t;
+
+#include <freeradius-devel/value.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -72,9 +80,6 @@ typedef struct attr_flags {
 
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
-
-typedef struct dict_attr fr_dict_attr_t;
-typedef struct fr_dict fr_dict_t;
 extern fr_dict_t *fr_dict_internal;
 
 /** Dictionary attribute
@@ -82,7 +87,7 @@ extern fr_dict_t *fr_dict_internal;
 struct dict_attr {
 	unsigned int		vendor;				//!< Vendor that defines this attribute.
 	unsigned int		attr;				//!< Attribute number.
-	fr_type_t			type;				//!< Value type.
+	fr_type_t		type;				//!< Value type.
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
@@ -100,8 +105,8 @@ struct dict_attr {
  */
 typedef struct dict_enum {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
-	int64_t			value;				//!< Enum value
-	char			name[1];			//!< Enum name.
+	char const		*alias;				//!< Enum name.
+	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
 } fr_dict_enum_t;
 
 /** Private enterprise
@@ -151,7 +156,6 @@ typedef struct dict_vendor {
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX];
 extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
-extern bool const	fr_dict_enum_types[FR_TYPE_MAX + 1];
 
 /*
  *	Dictionary debug
@@ -166,12 +170,13 @@ int			fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int value);
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t flags);
 
-int			fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int value);
+int			fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
+					       fr_value_box_t const *value, bool coerce, bool replace);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
 int			fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out,
-				     char const *dir, char const *fn, char const *name);
+					  char const *dir, char const *fn, char const *name);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 
@@ -183,7 +188,6 @@ fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 /*
  *	Unknown ephemeral attributes
  */
-
 fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old);
@@ -245,11 +249,13 @@ fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_enum_t		*fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int64_t value);
+fr_dict_enum_t		*fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da,
+					    fr_value_box_t const *value);
 
-char const		*fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int64_t value);
+char const		*fr_dict_enum_alias_by_da(fr_dict_t *dict, fr_dict_attr_t const *da,
+						  fr_value_box_t const *value);
 
-fr_dict_enum_t		*fr_dict_enum_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
+fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
 
 /*
  *	Validation

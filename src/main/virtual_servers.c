@@ -96,18 +96,18 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
 		if (!da) return RLM_MODULE_FAIL;
 
-		dv = fr_dict_enum_by_da(NULL, da, idx);
+		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32((uint32_t)idx));
 		if (!dv) return RLM_MODULE_FAIL;
 
-		subcs = cf_subsection_find_name2(cs, da->name, dv->name);
+		subcs = cf_subsection_find_name2(cs, da->name, dv->alias);
 		if (!subcs) {
 			RDEBUG2("%s %s sub-section not found.  Using default return values.",
-				da->name, dv->name);
+				da->name, dv->alias);
 			return default_component_results[comp];
 		}
 
 		RDEBUG("Running %s %s from file %s",
-		       da->name, dv->name, cf_section_filename(subcs));
+		       da->name, dv->alias, cf_section_filename(subcs));
 		cs = subcs;
 	}
 
@@ -237,14 +237,14 @@ rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 
 static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
 {
-	uint32_t value;
-	fr_dict_enum_t *dval;
+	fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
+	fr_dict_enum_t	*dval;
 
 	/*
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = fr_dict_enum_by_name(NULL, da, name);
+	dval = fr_dict_enum_by_alias(NULL, da, name);
 	if (dval) {
 		if (dval->value == 0) {
 			ERROR("The dictionaries must not define VALUE %s %s 0",
@@ -262,11 +262,11 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 	 *	is that it's unique.
 	 */
 	do {
-		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_enum_by_da(NULL, da, value));
+		value.datum.uint32 = (fr_rand() & 0x00ffffff) + 1;
+	} while (fr_dict_enum_by_da(NULL, da, &value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (fr_dict_enum_add(NULL, da->name, name, value) < 0) {
+	if (fr_dict_enum_add_alias(da, name, &value, true, false) < 0) {
 		ERROR("%s", fr_strerror());
 		return false;
 	}
@@ -279,7 +279,7 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
  *	block
  */
 static bool load_subcomponent_section(CONF_SECTION *cs,
-				     fr_dict_attr_t const *da, rlm_components_t comp)
+				      fr_dict_attr_t const *da, rlm_components_t comp)
 {
 	fr_dict_enum_t *dval;
 	char const *name2 = cf_section_name2(cs);
@@ -295,7 +295,7 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = fr_dict_enum_by_name(NULL, da, name2);
+	dval = fr_dict_enum_by_alias(NULL, da, name2);
 	if (!dval) {
 		cf_log_err_cs(cs,
 			      "The %s attribute has no VALUE defined for %s",

@@ -77,9 +77,8 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 
 			auth_type = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
 			if (auth_type) {
-				snprintf(clean_password, sizeof(clean_password),
-					 "<via Auth-Type = %s>",
-					 fr_dict_enum_name_by_da(NULL, auth_type->da, auth_type->vp_uint32));
+				snprintf(clean_password, sizeof(clean_password), "<via Auth-Type = %s>",
+					 fr_dict_enum_alias_by_da(NULL, auth_type->da, &auth_type->data));
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
@@ -342,14 +341,14 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_da(NULL, da, request->packet->code);
+		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
 			request->reply->code = PW_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->name);
+		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
@@ -426,7 +425,8 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 				continue;
 			}
 
-			RWDEBUG("Ignoring extra Auth-Type = %s", fr_dict_enum_name_by_da(NULL, auth_type->da, vp->vp_uint32));
+			RWDEBUG("Ignoring extra Auth-Type = %s",
+				fr_dict_enum_alias_by_da(NULL, auth_type->da, &vp->data));
 		}
 
 		/*
@@ -457,16 +457,16 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_uint32);
+		dv = fr_dict_enum_by_da(NULL, vp->da, &vp->data);
 		if (!dv) {
-			REDEBUG2("Unknown Auth-Type %d found: rejecting the user.", vp->vp_uint32);
+			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
 			request->reply->code = PW_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->name);
+		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->alias);
 		if (!unlang) {
-			REDEBUG2("No 'process %s' section found: rejecting the user.", dv->name);
+			REDEBUG2("No 'process %s' section found: rejecting the user", dv->alias);
 			request->reply->code = PW_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
@@ -628,10 +628,10 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 		rad_assert(da != NULL);
 
-		dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
+		dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->name);
+			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
 		}
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "send", "*");
 
@@ -673,19 +673,19 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
 				rad_assert(da != NULL);
 
-				dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
-				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->name);
+				dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
+				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
 
 				request->reply->code = PW_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_da(NULL, da, request->reply->code);
+				dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_subsection_find_name2(request->server_cs, "send", dv->name);
+				unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
 				if (unlang) goto rerun_nak;
 
-				RWDEBUG("Not running 'send %s' section as it does not exist", dv->name);
+				RWDEBUG("Not running 'send %s' section as it does not exist", dv->alias);
 			}
 
 			/*
@@ -835,7 +835,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 				RDEBUG2("Delaying Access-Reject for %d.%06d seconds",
 					(int) delay.tv_sec, (int) delay.tv_usec);
-				
+
 				if (unlang_delay(request, &delay, auth_reject_delay) == 0) {
 					return;
 				}
@@ -1086,9 +1086,9 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	for (subcs = cf_subsection_find_next(server_cs, NULL, "process");
 	     subcs != NULL;
 	     subcs = cf_subsection_find_next(server_cs, subcs, "process")) {
-		char const *name2;
-		uint32_t value;
-		fr_dict_enum_t *dv;
+		char const	*name2;
+		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
+		fr_dict_enum_t	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
@@ -1105,7 +1105,7 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 		 *	If the value already exists, don't
 		 *	create it again.
 		 */
-		dv = fr_dict_enum_by_name(NULL, da, name2);
+		dv = fr_dict_enum_by_alias(NULL, da, name2);
 		if (dv) continue;
 
 		/*
@@ -1115,11 +1115,11 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 		 *	requirement is that it's unique.
 		 */
 		do {
-			value = (fr_rand() & 0x00ffffff) + 1;
-		} while (fr_dict_enum_by_da(NULL, da, value));
+			value.datum.uint32 = (fr_rand() & 0x00ffffff) + 1;
+		} while (fr_dict_enum_by_da(NULL, da, &value));
 
 		cf_log_module(subcs, "Creating %s = %s", da->name, name2);
-		if (fr_dict_enum_add(NULL, da->name, name2, value) < 0) {
+		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;
 		}

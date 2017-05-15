@@ -53,10 +53,10 @@ char const * tacacs_lookup_packet_code(RADIUS_PACKET const * const packet)
 
 	da = fr_dict_attr_child_by_num(dict_tacacs_root, PW_TACACS_PACKET_TYPE);
 	rad_assert(da != NULL);
-	dv = fr_dict_enum_by_da(NULL, da, type);
+	dv = fr_dict_enum_by_da(NULL, da, fr_box_uint32(type));
 	rad_assert(dv != NULL);
 
-	return dv->name;
+	return dv->alias;
 }
 
 uint32_t tacacs_session_id(RADIUS_PACKET const * const packet)
@@ -818,7 +818,7 @@ int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const origin
 	seq_no = vp->vp_uint8 + 1;	/* we catch client 255 on ingress */
 
 	vp = fr_pair_afrom_da(packet, vp->da);
-	if (!vp) return -1;	
+	if (!vp) return -1;
 	vp->vp_uint8 = seq_no;
 	fr_pair_add(&packet->vps, vp);
 
