@@ -95,6 +95,86 @@ struct value_box {
 	fr_value_box_t			*next;			//!< Next in a series of value_box.
 };
 
+
+/*
+ *	Argument boxing macros
+ *
+ *	These macros allow C types to be passed to functions which take
+ *	boxed arguments, without needing to declare a fr_value_box_t
+ *	explicitly on the stack.
+ */
+#define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .datum.length = _len }
+
+#define fr_box_strvalue(_val)			-fr_box_with_len(FR_TYPE_STRING, .datum.strvalue, _val, strlen(_val))
+#define fr_box_octets(_val, _len)		_fr_box_with_len(FR_TYPE_OCTETS, .datum.octets, _val, _len)
+#define fr_box_strvalue_buffer(_val)		_fr_box_with_len(FR_TYPE_STRING, .datum.strvalue, _val, talloc_array_length(_val) - 1)
+#define fr_box_octets_buffer(_val)		_fr_box_with_len(FR_TYPE_OCTETS, .datum.octets, _val, talloc_array_length(_val))
+
+#define _fr_box(_type, _field, _val) &(fr_value_box_t){ .type = _type, _field = _val }
+
+#define fr_box_ipv4addr(_val)			_fr_box(FR_TYPE_IPV4_ADDR, .datum.ip, _val)
+#define fr_box_ipv4prefix(_val)			_fr_box(FR_TYPE_IPV4_PREFIX, .datum.ip, _val)
+#define fr_box_ipv6addr(_val)			_fr_box(FR_TYPE_IPV6_ADDR, .datum.ip, _val)
+#define fr_box_ipv6prefix(_val)			_fr_box(FR_TYPE_IPV6_PREFIX, .datum.ip, _val)
+
+#define fr_box_ifid(_val)			_fr_box(FR_TYPE_IFID, .datum.ifid, _val)
+#define fr_box_ether(_val)			_fr_box(FR_TYPE_ETHERNET, .datum.ether, _val)
+
+#define fr_box_uint8(_val)			_fr_box(FR_TYPE_UINT8, .datum.uint8, _val)
+#define fr_box_uint16(_val)			_fr_box(FR_TYPE_UINT16, .datum.uint16, _val)
+#define fr_box_uint32(_val)			_fr_box(FR_TYPE_UINT32, .datum.uint32, _val)
+#define fr_box_uint64(_val)			_fr_box(FR_TYPE_UINT64, .datum.uint64, _val)
+#define fr_box_uint128(_val)			_fr_box(FR_TYPE_UINT128, .datum.uint128, _val)
+
+#define fr_box_int8(_val)			_fr_box(FR_TYPE_INT8, .datum.int8, _val)
+#define fr_box_int16(_val)			_fr_box(FR_TYPE_INT16, .datum.int16, _val)
+#define fr_box_int32(_val)			_fr_box(FR_TYPE_INT32, .datum.int32, _val)
+#define fr_box_int64(_val)			_fr_box(FR_TYPE_INT64, .datum.int64, _val)
+
+#define fr_box_float32(_val)			_fr_box(FR_TYPE_FLOAT32, .datum.float32, _val)
+#define fr_box_float64(_val)			_fr_box(FR_TYPE_FLOAT64, .datum.float64, _val)
+
+#define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, date, _val)
+#define fr_box_date_miliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, date_miliseconds, _val)
+#define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, date_microseconds, _val)
+#define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, date_nanoseconds, _val)
+
+/*
+ *	Unboxing macros
+ *
+ *	These macros will in future do type checking in developer builds,
+ *	in addition to getting the box value.
+ */
+#define fr_unbox_strvalue(_box)			_box->datum.strvalue
+#define fr_unbox_octets(_box)			_box->datum.octets
+
+#define fr_unbox_ipv4addr(_box)			_box->datum.ip
+#define fr_unbox_ipv4prefix(_box)		_box->datum.ip
+#define fr_unbox_ipv6addr(_box)			_box->datum.ip
+#define fr_unbox_ipv6prefix(_box)		_box->datum.ip
+
+#define fr_unbox_ifid(_box)			_box->datum.ifid
+#define fr_unbox_ether(_box)			_box->datum.ether
+
+#define fr_unbox_uint8(_box)			_box->datum.uint8
+#define fr_unbox_uint16(_box)			_box->datum.uint16
+#define fr_unbox_uint32(_box)			_box->datum.uint32
+#define fr_unbox_uint64(_box)			_box->datum.uint64
+#define fr_unbox_uint128(_box)			_box->datum.uint128
+
+#define fr_unbox_int8(_box)			_box->datum.int8
+#define fr_unbox_int16(_box)			_box->datum.int16
+#define fr_unbox_int32(_box)			_box->datum.int32
+#define fr_unbox_int64(_box)			_box->datum.int64
+
+#define fr_unbox_float32(_box)			_box->datum.float32
+#define fr_unbox_float64(_box)			_box->datum.float64
+
+#define fr_unbox_date(_val)			_box->datum.date
+#define fr_unbox_date_miliseconds(_val)		_box->datum.date_miliseconds
+#define fr_unbox_date_microseconds(_val)	_box->datum.date_microseconds
+#define fr_unbox_date_nanoseconds(_val)		_box->datum.date_nanoseconds
+
 /*
  *	Allocation
  */
