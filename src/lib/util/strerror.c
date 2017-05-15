@@ -259,15 +259,17 @@ char const *fr_strerror_pop(void)
  */
 void fr_perror(char const *fmt, ...)
 {
-	char const *error;
-	va_list ap;
+	char const	*error;
+	char		*prefix;
+	va_list		ap;
 
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	prefix = talloc_vasprintf(NULL, fmt, ap);
+	va_end(ap);
 
 	error = fr_strerror_pop();
 	if (error && (error[0] != '\0')) {
-		fprintf(stderr, ": %s\n", error);
+		fprintf(stderr, "%s: %s\n", prefix, error);
 	} else {
 		fputs("\n", stderr);
 	}
@@ -277,10 +279,10 @@ void fr_perror(char const *fmt, ...)
 	 */
 	while ((error = fr_strerror_pop())) {
 		if (error && (error[0] != '\0')) {
-			fprintf(stderr, "%s\n", error);
+			fprintf(stderr, "%s: %s\n", prefix, error);
 		}
 	}
-	va_end(ap);
+	talloc_free(prefix);
 }
 
 
