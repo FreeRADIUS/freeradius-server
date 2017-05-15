@@ -260,7 +260,7 @@ fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_t *dict, fr_dict_attr_t const *da
 /*
  *	Validation
  */
-int			fr_dict_valid_name(char const *name);
+ssize_t			fr_dict_valid_name(char const *name, ssize_t len);
 
 void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 #ifdef __cplusplus

@@ -843,7 +843,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		return NULL;
 	}
 
-	if (fr_dict_valid_name(name) < 0) return NULL;
+	if (fr_dict_valid_name(name, -1) < 0) return NULL;
 
 	/*
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
@@ -3315,7 +3315,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	*out = NULL;
 
-	if (fr_dict_valid_name(oid_str) < 0) return -1;
+	if (fr_dict_valid_name(oid_str, -1) < 0) return -1;
 
 	/*
 	 *	All unknown attributes are of the form "Attr-#-#-#-#"
@@ -4284,11 +4284,14 @@ fr_dict_enum_t *fr_dict_enum_by_alias(fr_dict_t *dict, fr_dict_attr_t const *da,
 /*
  *	[a-zA-Z0-9_-:.]+
  */
-int fr_dict_valid_name(char const *name)
+ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 {
-	uint8_t const *p;
+	uint8_t const *p = (uint8_t const *)name, *end;
 
-	for (p = (uint8_t const *)name; *p != '\0'; p++) {
+	if (len < 0) len = strlen(name);
+	end = p + len;
+
+	do {
 		if (!fr_dict_attr_allowed_chars[*p]) {
 			char buff[5];
 
@@ -4297,7 +4300,8 @@ int fr_dict_valid_name(char const *name)
 
 			return -(p - (uint8_t const *)name);
 		}
-	}
+		p++;
+	} while (p < end);
 
 	return 0;
 }
