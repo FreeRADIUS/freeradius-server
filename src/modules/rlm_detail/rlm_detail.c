@@ -379,7 +379,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	 *	suppress the write.  This check prevents an infinite
 	 *	loop.
 	 */
-	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
 	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
 		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
 		RWDEBUG2("Suppressing infinite loop");
@@ -440,7 +440,7 @@ skip_group:
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
 #ifdef WITH_DETAIL
-	if (request->listener->type == RAD_LISTEN_DETAIL &&
+	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
 	    strcmp(((rlm_detail_t const *)instance)->filename,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
