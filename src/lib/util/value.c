@@ -103,6 +103,7 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ifid) == 8,
 	      "datum.ifid has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ether) == 6,
 	      "datum.ether has unexpected length");
+
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.boolean) == 1,
 	      "datum.boolean has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint8) == 1,
@@ -113,9 +114,20 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint32) == 4,
 	      "datum.uint32 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint64) == 8,
 	      "datum.uint64 has unexpected length");
+
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int8) == 1,
+	      "datum.int16 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int16) == 2,
+	      "datum.int16 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int32) == 4,
 	      "datum.int32 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int64) == 8,
+	      "datum.int64 has unexpected length");
 
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.float32) == 4,
+	      "datum.float32 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.float64) == 8,
+	      "datum.float64 has unexpected length");
 
 /** How many uint8s wide each of the value data fields are
  *
@@ -855,7 +867,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
-
 	switch (src->type) {
 	/* 2 uint8 uint32s */
 	case FR_TYPE_UINT16:
@@ -873,15 +884,23 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_INT16:
-		dst->datum.int16 = htons((uint16_t) src->datum.int16);
+		dst->datum.uint16 = htons(src->datum.uint16);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_INT32:
-		dst->datum.int32 = htonl((uint32_t) src->datum.int32);
+		dst->datum.uint32 = htonl(src->datum.uint32);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_INT64:
-		dst->datum.int64 = htonll((uint64_t) src->datum.int64);
+		dst->datum.uint64 = htonll(src->datum.uint64);	/* Not a typo, uses the union to avoid memcpy */
+		break;
+
+	case FR_TYPE_FLOAT32:
+		dst->datum.uint32 = htonl(dst->datum.uint32);	/* Not a typo, uses the union to avoid memcpy */
+		break;
+
+	case FR_TYPE_FLOAT64:
+		dst->datum.uint64 = htonll(dst->datum.uint64);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_DATE:
