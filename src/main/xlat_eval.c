@@ -513,7 +513,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 			type = FR_TYPE_STRING;
 			if (fr_value_box_from_str(ctx, &data, &type, NULL, child,
-						talloc_array_length(child) - 1, '"') < 0) {
+						  talloc_array_length(child) - 1, '"') < 0) {
 				talloc_free(child);
 				return NULL;
 			}
