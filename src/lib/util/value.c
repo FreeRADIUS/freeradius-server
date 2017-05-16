@@ -947,6 +947,309 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 	}
 }
 
+/** Encode a single value box, serializing its contents in generic network format
+ *
+ * The serialized form of #fr_value_box_t may not match the requirements of your protocol
+ * completely.  In cases where they do not, you should overload specific types in the
+ * function calling #fr_value_box_to_network.
+ *
+ * The general serialization rules are:
+ *
+ * - Octets are encoded in binary form (not hex).
+ * - Strings are encoded without the trailing \0 byte.
+ * - Integers are encoded big-endian.
+ * - Bools are encoded using one byte, with value 0x00 (false) or 0x01 (true).
+ * - Signed integers are encoded two's complement, with the MSB as the sign bit.
+ *   Byte order is big-endian.
+ * - Network addresses are encoded big-endian.
+ * - IPv4 prefixes are encoded with 1 byte for the prefix, then 4 bytes of address.
+ * - IPv6 prefixes are encoded with 1 byte for the scope_id, 1 byte for the prefix,
+ *   and 16 bytes of address.
+ * - Floats are encoded in IEEE-754 format with a big-endian byte order.  We rely
+ *   on the fact that the C standards require floats to be represented in IEEE-754
+ *   format in memory.
+ * - Dates are encoded as 32bit unsigned UNIX timestamps.
+ *
+ * #FR_TYPE_TIMEVAL and #FR_TYPE_SIZE are not encodable, as they're system specific.
+ * #FR_TYPE_ABINARY is RADIUS specific and should be encoded by the RADIUS encoder.
+ *
+ * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
+ * specific to the protocol anyway.
+ *
+ * @param[out] need	if not NULL, how many bytes are required to serialize
+ *			the remainder of the boxed data.
+ *			Note: Only variable length types will be partially
+ *			encoded. Fixed length types will not be partially encoded.
+ * @param[out] dst	Where to write serialized data.
+ * @param[in] dst_len	The length of the output buffer, or maximum value fragment
+ *			size.
+ * @param[in] value	to encode.
+ * @return
+ *	- 0 no bytes were written, see need value to determine if it was because
+ *	  the fr_value_box_t was #FR_TYPE_OCTETS/#FR_TYPE_STRING and was
+ *	  NULL (which is unfortunately valid)
+ *	- >0 the number of bytes written to out.
+ *	- <0 on error.
+ */
+ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value)
+{
+	size_t min, max;
+
+	/*
+	 *	Variable length types
+	 */
+	switch (value->type) {
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	{
+		size_t len;
+
+		/*
+		 *	Figure dst if we'd overflow
+		 */
+		if (value->datum.length > dst_len) {
+			if (need) *need = value->datum.length;
+			len = dst_len;
+		} else {
+			if (need) *need = 0;
+			len = value->datum.length;
+		}
+
+		if (value->datum.length > 0) memcpy(dst, value->datum.ptr, len);
+
+		return len;
+	}
+
+	default:
+		break;
+	}
+
+	min = fr_value_box_network_sizes[value->type][0];
+	max = fr_value_box_network_sizes[value->type][1];
+
+	/*
+	 *	It's an unsupported type
+	 */
+	if ((min == 0) && (max == 0)) {
+	unsupported:
+		fr_strerror_printf("Cannot encode type \"%s\"",
+				   fr_int2str(dict_attr_types, value->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Fixed type would overflow dstput buffer
+	 */
+	if (max > dst_len) {
+		if (need) *need = max;
+		return 0;
+	}
+
+	switch (value->type) {
+	/*
+	 *	Needs special mangling
+	 */
+	case FR_TYPE_IPV4_PREFIX:
+	 	dst[0] = value->datum.ip.prefix;
+		memcpy(&dst[1], (uint8_t const *)&value->datum.ip.addr.v4.s_addr, sizeof(value->datum.ip.addr.v4.s_addr));
+		break;
+
+	case FR_TYPE_IPV6_PREFIX:
+		dst[0] = value->datum.ip.scope_id;
+		dst[1] = value->datum.ip.prefix;
+		memcpy(&dst[2], value->datum.ip.addr.v6.s6_addr, sizeof(value->datum.ip.addr.v6.s6_addr));
+		break;
+
+	case FR_TYPE_BOOL:
+		dst[0] = value->datum.boolean ? 0x01 : 0x00;
+		break;
+
+	/*
+	 *	Already in network byte-order
+	 */
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_INT8:
+		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
+		memcpy(dst, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
+		break;
+
+	/*
+	 *	Needs a bytesex operation
+	 */
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE_MILLISECONDS:
+	case FR_TYPE_DATE_MICROSECONDS:
+	case FR_TYPE_DATE_NANOSECONDS:
+	{
+		fr_value_box_t tmp;
+
+		if (!fr_cond_assert(fr_value_box_field_sizes[value->type] == min)) return -1;
+
+		fr_value_box_hton(&tmp, value);
+		memcpy(dst, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
+	}
+		break;
+
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_ABINARY:
+	case FR_TYPE_NON_VALUES:
+		goto unsupported;
+	}
+
+	if (need) *need = 0;
+
+	return min;
+}
+
+/** Decode a #fr_value_box_t from serialized binary data
+ *
+ * The general deserialization rules are:
+ *
+ * - Octets are decoded in binary form (not hex).
+ * - Strings are decoded without the trailing \0 byte. Strings must consist only of valid UTF8 chars.
+ * - Integers are decoded big-endian.
+ * - Bools are decoded using one byte, with value 0x00 (false) or 0x01 (true).
+ * - Signed integers are decoded two's complement, with the MSB as the sign bit.
+ *   Byte order is big-endian.
+ * - Network addresses are decoded big-endian.
+ * - IPv4 prefixes are decoded with 1 byte for the prefix, then 4 bytes of address.
+ * - IPv6 prefixes are decoded with 1 byte for the scope_id, 1 byte for the prefix,
+ *   and 16 bytes of address.
+ * - Floats are decoded in IEEE-754 format with a big-endian byte order.  We rely
+ *   on the fact that the C standards require floats to be represented in IEEE-754
+ *   format in memory.
+ * - Dates are decoded as 32bit unsigned UNIX timestamps.
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[out] dst	value_box to write the result to.
+ * @param[in] src	Binary data to decode.
+ * @param[in] len	Length of data to decode.  For fixed length types we only
+ *			decode complete values.
+ * @param[in] type	to decode data to.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- >= 0 The number of bytes consumed.
+ *	- <0 on error.
+ */
+ssize_t fr_value_box_from_network(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len,
+				  fr_type_t type, bool tainted)
+{
+	if (len < fr_value_box_network_sizes[type][0]) {
+		fr_strerror_printf("Got truncated value parsing type \"%s\". "
+				   "Expected length >= %zu bytes, got %zu bytes",
+				   fr_int2str(dict_attr_types, type, "<INVALID>"),
+				   fr_value_box_network_sizes[type][0], len);
+		return -1;
+	}
+	if (len > fr_value_box_network_sizes[type][1]) {
+		fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
+				   "Expected length <= %zu bytes, got %zu bytes",
+				   fr_int2str(dict_attr_types, type, "<INVALID>"),
+				   fr_value_box_network_sizes[type][1], len);
+		return -1;
+	}
+
+	switch (type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_bstrndup(ctx, dst, (char const *)src, len, tainted) < 0) return -1;
+		return len;
+
+	case FR_TYPE_OCTETS:
+		if (fr_value_box_memdup(ctx, dst, src, len, tainted) < 0) return -1;
+		return len;
+
+	/*
+	 *	Already in network byte order
+	 */
+	case FR_TYPE_IPV4_ADDR:
+		memcpy(&dst->datum.ip.addr.v4, src, len);
+		dst->datum.ip.af = AF_INET;
+		dst->datum.ip.scope_id = 0;
+		dst->datum.ip.prefix = 32;
+		break;
+
+	case FR_TYPE_IPV4_PREFIX:
+		memcpy(&dst->datum.ip.addr.v4, src + 1, len - 1);
+		dst->datum.ip.af = AF_INET;
+		dst->datum.ip.scope_id = 0;
+		dst->datum.ip.prefix = src[0];
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		memcpy(&dst->datum.ip.addr.v6, src, len - 1);
+		dst->datum.ip.af = AF_INET6;
+		dst->datum.ip.scope_id = 0;
+		dst->datum.ip.prefix = 128;
+		break;
+
+	case FR_TYPE_IPV6_PREFIX:
+		memcpy(&dst->datum.ip.addr.v6, src + 2, len - 2);
+		dst->datum.ip.af = AF_INET6;
+		dst->datum.ip.scope_id = src[0];
+		dst->datum.ip.prefix = src[1];
+		break;
+
+	case FR_TYPE_BOOL:
+		dst->datum.boolean = src[0] > 0 ? true : false;
+		break;
+
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_INT8:
+		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
+		break;
+
+	/*
+	 *	Needs a bytesex operation
+	 */
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE_MILLISECONDS:
+	case FR_TYPE_DATE_MICROSECONDS:
+	case FR_TYPE_DATE_NANOSECONDS:
+		memcpy(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], src, len);
+		fr_value_box_hton(dst, dst);	/* Operate in-place */
+		break;
+
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_ABINARY:
+	case FR_TYPE_NON_VALUES:
+		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
+				   fr_int2str(dict_attr_types, type, "<INVALID>"));
+		break;
+	}
+
+	dst->type = type;
+	dst->tainted = tainted;
+	dst->enumv = NULL;
+	dst->next = NULL;
+
+	return len;
+}
 
 /** v4 to v6 mapping prefix
  *
@@ -1141,7 +1444,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				       src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1242,7 +1545,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				       src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
 		break;
 
 
@@ -1352,7 +1655,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				       src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1435,7 +1738,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				       src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1466,8 +1769,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
  *
  * This should be the canonical function used to convert between INTERNAL data formats.
  *
- * - If you want to convert from PRESENTATION format, use #fr_value_box_from_str.
- *
+ * If you want to convert from PRESENTATION format, use #fr_value_box_from_str.
  *
  * @param ctx		to allocate buffers in (usually the same as dst)
  * @param dst		Where to write result of casting.
@@ -1843,6 +2145,63 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	return 0;
 }
 
+/** Assign a #fr_value_box_t value from an #fr_ipaddr_t
+ *
+ * Automatically determines the type of the value box from the ipaddr address family
+ * and the length of the prefix field.
+ *
+ * @param[in] dst	to assign ipaddr to.
+ * @param[in] ipaddr	to copy address from.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr, bool tainted)
+{
+	fr_type_t type;
+
+	switch (ipaddr->af) {
+	case AF_INET:
+		if (ipaddr->prefix > 32) {
+			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
+			return -1;
+		}
+
+		if (ipaddr->prefix == 32) {
+			type = FR_TYPE_IPV4_ADDR;
+		} else {
+			type = FR_TYPE_IPV4_PREFIX;
+		}
+		break;
+
+	case AF_INET6:
+		if (ipaddr->prefix > 128) {
+			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
+			return -1;
+		}
+
+		if (ipaddr->prefix == 128) {
+			type = FR_TYPE_IPV6_ADDR;
+		} else {
+			type = FR_TYPE_IPV6_PREFIX;
+		}
+		break;
+
+	default:
+		fr_strerror_printf("Invalid address family %i", ipaddr->af);
+		return -1;
+	}
+
+	dst->type = type;
+	dst->tainted = tainted;
+	dst->datum.ip = *ipaddr;
+	dst->enumv = NULL;
+	dst->next = NULL;
+
+	return 0;
+}
+
 /** Copy value data verbatim duplicating any buffers
  *
  * @note Will free any exiting buffers associated with the dst #fr_value_box_t.
@@ -1982,8 +2341,6 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 /** Copy a nul terminated string to a #fr_value_box_t
  *
- * @note Will free any exiting buffers associated with the dst #fr_value_box_t.
- *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
  * @param[in] src 	a nul terminated buffer.
@@ -2003,6 +2360,36 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, b
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = talloc_array_length(str) - 1;
+	dst->enumv = NULL;
+	dst->next = NULL;
+
+	return 0;
+}
+
+/** Copy a string to to a #fr_value_box_t
+ *
+ * @param[in] ctx 	to allocate any new buffers in.
+ * @param[in] dst 	to assign new buffer to.
+ * @param[in] src 	a string.
+ * @param[in] len	of src.
+ * @param[in] tainted	Whether the value came from a trusted source.
+ */
+int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+{
+	char const	*str;
+
+	str = talloc_bstrndup(ctx, src, len);
+	if (!str) {
+		fr_strerror_printf("Failed allocating string buffer");
+		return -1;
+	}
+
+	dst->type = FR_TYPE_STRING;
+	dst->tainted = tainted;
+	dst->datum.strvalue = str;
+	dst->datum.length = len;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2042,6 +2429,8 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const 
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = talloc_array_length(str) - 1;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2081,6 +2470,8 @@ int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool 
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = len - 1;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2100,6 +2491,8 @@ int fr_value_box_strdup_shallow(fr_value_box_t *dst, char const *src, bool taint
 	dst->tainted = tainted;
 	dst->datum.strvalue = src;
 	dst->datum.length = strlen(src);
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2132,6 +2525,8 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, cha
 	dst->tainted = tainted;
 	dst->datum.strvalue = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = len - 1;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2165,6 +2560,8 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src
 	dst->tainted = tainted;
 	dst->datum.octets = bin;
 	dst->datum.length = len;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2216,6 +2613,8 @@ int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *s
 	dst->tainted = tainted;
 	dst->datum.octets = bin;
 	dst->datum.length = talloc_array_length(src);
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2242,6 +2641,8 @@ int fr_value_box_memdup_shallow(fr_value_box_t *dst, uint8_t *src, size_t len, b
 	dst->tainted = tainted;
 	dst->datum.octets = src;
 	dst->datum.length = len;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2266,60 +2667,8 @@ int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, uin
 	dst->tainted = tainted;
 	dst->datum.octets = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = talloc_array_length(src);
-
-	return 0;
-}
-
-/** Assign a #fr_value_box_t value from an #fr_ipaddr_t
- *
- * Automatically determines the type of the value box from the ipaddr address family
- * and the length of the prefix field.
- *
- * @param[in] dst	to assign ipaddr to.
- * @param[in] ipaddr	to copy address from.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr)
-{
-	fr_type_t type;
-
-	switch (ipaddr->af) {
-	case AF_INET:
-		if (ipaddr->prefix > 32) {
-			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
-			return -1;
-		}
-
-		if (ipaddr->prefix == 32) {
-			type = FR_TYPE_IPV4_ADDR;
-		} else {
-			type = FR_TYPE_IPV4_PREFIX;
-		}
-		break;
-
-	case AF_INET6:
-		if (ipaddr->prefix > 128) {
-			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
-			return -1;
-		}
-
-		if (ipaddr->prefix == 128) {
-			type = FR_TYPE_IPV6_ADDR;
-		} else {
-			type = FR_TYPE_IPV6_PREFIX;
-		}
-		break;
-
-	default:
-		fr_strerror_printf("Invalid address family %i", ipaddr->af);
-		return -1;
-	}
-
-	dst->type = type;
-	dst->tainted = false;	/* Discuss? */
-	dst->datum.ip = *ipaddr;
+	dst->enumv = NULL;
+	dst->next = NULL;
 
 	return 0;
 }
@@ -2909,6 +3258,7 @@ finish:
 	 *	Fixup enumv
 	 */
 	dst->enumv = dst_enumv;
+	dst->next = NULL;
 
 	return 0;
 }

@@ -175,7 +175,7 @@ struct value_box {
 #define fr_unbox_float64(_box)			_box->datum.float64
 
 #define fr_unbox_date(_val)			_box->datum.date
-#define fr_unbox_date_milliseconds(_val)		_box->datum.date_milliseconds
+#define fr_unbox_date_milliseconds(_val)	_box->datum.date_milliseconds
 #define fr_unbox_date_microseconds(_val)	_box->datum.date_microseconds
 #define fr_unbox_date_nanoseconds(_val)		_box->datum.date_nanoseconds
 
@@ -202,9 +202,16 @@ int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 
 size_t		fr_value_box_network_length(fr_value_box_t *value);
 
+ssize_t		fr_value_box_to_network(size_t *need, uint8_t *out, size_t outlen, fr_value_box_t const *value);
+
+ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len,
+					  fr_type_t type, bool tainted);
+
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src);
+
+int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr, bool tainted);
 
 /*
  *	Assignment
@@ -214,6 +221,7 @@ void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_v
 int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src);
 
 int		fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted);
 int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
 int		fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool tainted);
 int		fr_value_box_strdup_shallow(fr_value_box_t *dst, char const *src, bool tainted);
@@ -228,8 +236,6 @@ int		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, ui
 /*
  *	Parsing
  */
-int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr);
-
 int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
 				      char const *src, ssize_t src_len, char quote);
