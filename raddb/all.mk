@@ -23,7 +23,7 @@ LOCAL_CERT_FILES :=	ca.key ca.pem client.crt client.key client.pem dh \
 
 GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
 
-INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(LOCAL_CERT_FILES))
+INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(INSTALL_CERT_FILES))
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
