@@ -200,6 +200,8 @@ size_t		value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quot
 
 int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
 
+size_t		fr_value_box_network_length(fr_value_box_t *value);
+
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src);
@@ -235,8 +237,6 @@ int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 /*
  *	Printing
  */
-size_t		fr_value_box_network_length(fr_value_box_t *value);
-
 char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);

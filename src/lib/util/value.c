@@ -49,52 +49,10 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <ctype.h>
 
-/** How many uint8s on-the-wire would a #fr_value_box_t value consume
+/** Sanity checks
  *
- * This is for the generic NETWORK format.  For field sizes in the in-memory
- * structure use #fr_value_box_field_sizes.
- *
- * @note Don't use this array directly when determining the length
- *	 that would be consumed by the on-the-wire representation.
- *	 Use #fr_value_box_network_length instead, as that deals with variable
- *	 length attributes too.
+ * There should never be an instance where these fail.
  */
-static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_INVALID]		= {~0, 0},
-
-	[FR_TYPE_STRING]		= {0, ~0},
-	[FR_TYPE_OCTETS]		= {0, ~0},
-
-	[FR_TYPE_IPV4_ADDR]		= {4, 4},
-	[FR_TYPE_IPV4_PREFIX]		= {6, 6},
-	[FR_TYPE_IPV6_ADDR]		= {16, 16},
-	[FR_TYPE_IPV6_PREFIX]		= {18, 18},
-	[FR_TYPE_IFID]			= {8, 8},
-	[FR_TYPE_ETHERNET]		= {6, 6},
-
-	[FR_TYPE_BOOL]			= {1, 1},
-	[FR_TYPE_UINT8]			= {1, 1},
-	[FR_TYPE_UINT16]		= {2, 2},
-	[FR_TYPE_UINT32]		= {4, 4},
-	[FR_TYPE_UINT64]		= {8, 8},
-
-	[FR_TYPE_INT8]			= {1, 1},
-	[FR_TYPE_INT16]			= {2, 2},
-	[FR_TYPE_INT32]			= {4, 4},
-	[FR_TYPE_INT64]			= {8, 8},
-
-	[FR_TYPE_FLOAT32]		= {4, 4},
-	[FR_TYPE_FLOAT64]		= {8, 8},
-
-	[FR_TYPE_DATE]			= {4, 4},
-	[FR_TYPE_DATE_MILLISECONDS]	= {8, 8},
-	[FR_TYPE_DATE_MICROSECONDS]	= {8, 8},
-	[FR_TYPE_DATE_NANOSECONDS]	= {8, 8},
-
-	[FR_TYPE_ABINARY]		= {32, ~0},
-	[FR_TYPE_MAX]			= {~0, 0}		//!< Ensure array covers all types.
-};
-
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ip.addr.v4.s_addr) == 4,
 	      "in_addr.s_addr has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ip.addr.v6.s6_addr) == 16,
@@ -128,6 +86,52 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.float32) == 4,
 	      "datum.float32 has unexpected length");
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.float64) == 8,
 	      "datum.float64 has unexpected length");
+
+/** How many bytes on-the-wire would a #fr_value_box_t value consume
+ *
+ * This is for the generic NETWORK format.  For field sizes in the in-memory
+ * structure use #fr_value_box_field_sizes.
+ *
+ * @note Don't use this array directly when determining the length
+ *	 that would be consumed by the on-the-wire representation.
+ *	 Use #fr_value_box_network_length instead, as that deals with variable
+ *	 length attributes too.
+ */
+static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
+	[FR_TYPE_INVALID]			= {~0, 0},
+
+	[FR_TYPE_STRING]			= {0, ~0},
+	[FR_TYPE_OCTETS]			= {0, ~0},
+
+	[FR_TYPE_IPV4_ADDR]			= {4, 4},
+	[FR_TYPE_IPV4_PREFIX]			= {6, 6},
+	[FR_TYPE_IPV6_ADDR]			= {16, 16},
+	[FR_TYPE_IPV6_PREFIX]			= {18, 18},
+	[FR_TYPE_IFID]				= {8, 8},
+	[FR_TYPE_ETHERNET]			= {6, 6},
+
+	[FR_TYPE_BOOL]				= {1, 1},
+	[FR_TYPE_UINT8]				= {1, 1},
+	[FR_TYPE_UINT16]			= {2, 2},
+	[FR_TYPE_UINT32]			= {4, 4},
+	[FR_TYPE_UINT64]			= {8, 8},
+
+	[FR_TYPE_INT8]				= {1, 1},
+	[FR_TYPE_INT16]				= {2, 2},
+	[FR_TYPE_INT32]				= {4, 4},
+	[FR_TYPE_INT64]				= {8, 8},
+
+	[FR_TYPE_FLOAT32]			= {4, 4},
+	[FR_TYPE_FLOAT64]			= {8, 8},
+
+	[FR_TYPE_DATE]				= {4, 4},
+	[FR_TYPE_DATE_MILLISECONDS]		= {8, 8},
+	[FR_TYPE_DATE_MICROSECONDS]		= {8, 8},
+	[FR_TYPE_DATE_NANOSECONDS]		= {8, 8},
+
+	[FR_TYPE_ABINARY]			= {32, ~0},
+	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
+};
 
 /** How many uint8s wide each of the value data fields are
  *
@@ -342,7 +346,9 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 #define CHECK(_type) if (a->datum._type < b->datum._type)   { compare = -1; \
 		} else if (a->datum._type > b->datum._type) { compare = +1; }
 
-	case FR_TYPE_BOOL:	/* this isn't a RADIUS type, and shouldn't really ever be used */
+	case FR_TYPE_BOOL:
+		CHECK(boolean);
+		break;
 
 	case FR_TYPE_DATE:
 		CHECK(date);
@@ -426,10 +432,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	/*
 	 *	These should be handled at some point
 	 */
-	case FR_TYPE_COMBO_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
-	case FR_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_BAD:
+	case FR_TYPE_NON_VALUES:
 		(void)fr_cond_assert(0);	/* unknown type */
 		return -2;
 
@@ -855,7 +858,7 @@ size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote
 	return out_p - out;
 }
 
-/** Performs uint8 order reversal for types that need it
+/** Performs byte order reversal for types that need it
  *
  * @param[in] dst	Where to write the result.  May be the same as src.
  * @param[in] src	#fr_value_box_t containing an uint32 value.
@@ -863,22 +866,19 @@ size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
+inline int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
 	switch (src->type) {
-	/* 2 uint8 uint32s */
 	case FR_TYPE_UINT16:
 		dst->datum.uint16 = htons(src->datum.uint16);
 		break;
 
-	/* 4 uint8 uint32s */
 	case FR_TYPE_UINT32:
 		dst->datum.uint32 = htonl(src->datum.uint32);
 		break;
 
-	/* 8 uint8 uint32s */
 	case FR_TYPE_UINT64:
 		dst->datum.uint64 = htonll(src->datum.uint64);
 		break;
@@ -928,10 +928,25 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		return 0;
 	}
 
-	fr_value_box_copy_meta(dst, src);
+	if (dst != src) fr_value_box_copy_meta(dst, src);
 
 	return 0;
 }
+/** Get the size of the value held by the fr_value_box_t
+ *
+ * This is the length of the NETWORK presentation
+ */
+size_t fr_value_box_network_length(fr_value_box_t *value)
+{
+	switch (value->type) {
+	case FR_TYPE_VARIABLE_SIZE:
+		return value->datum.length;
+
+	default:
+		return fr_value_box_network_sizes[value->type][0];
+	}
+}
+
 
 /** v4 to v6 mapping prefix
  *
@@ -2896,21 +2911,6 @@ finish:
 	dst->enumv = dst_enumv;
 
 	return 0;
-}
-
-/** Get the size of the value held by the fr_value_box_t
- *
- * This is the length of the NETWORK presentation
- */
-size_t fr_value_box_network_length(fr_value_box_t *value)
-{
-	switch (value->type) {
-	case FR_TYPE_VARIABLE_SIZE:
-		return value->datum.length;
-
-	default:
-		return fr_value_box_network_sizes[value->type][0];
-	}
 }
 
 /** Print one attribute value to a string
