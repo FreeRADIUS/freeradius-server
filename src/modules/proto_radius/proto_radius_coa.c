@@ -26,9 +26,12 @@
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/udp.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/io/transport.h>
 #include <freeradius-devel/rad_assert.h>
 
-static void coa_running(REQUEST *request, fr_state_action_t action)
+
+static fr_transport_final_t coa_process(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rcode;
@@ -38,24 +41,12 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 	VERIFY_REQUEST(request);
 
-	TRACE_STATE_MACHINE;
-
-	/*
-	 *	Async (in the same thread, tho) signal to be done.
-	 */
-	if (action == FR_ACTION_DONE) goto done;
-
-	/*
-	 *	We ignore all other actions.
-	 */
-	if (action != FR_ACTION_RUN) return;
-
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		if (request->packet->data_len != 0) {
 			if (fr_radius_packet_decode(request->packet, NULL, request->client->secret) < 0) {
 				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
-				goto done;
+				return FR_TRANSPORT_FAIL;
 			}
 
 			if (RDEBUG_ENABLED) common_packet_debug(request, request->packet, true);
@@ -65,8 +56,6 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 		}
 
-		request->server = request->listener->server;
-		request->server_cs = request->listener->server_cs;
 		request->component = "radius";
 
 		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
@@ -74,14 +63,14 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
-			goto done;
+			return FR_TRANSPORT_FAIL;
 		}
 
 		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
-			goto done;
+			return FR_TRANSPORT_FAIL;
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
@@ -93,9 +82,9 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return;
+		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -161,9 +150,9 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return;
+		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -221,7 +210,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 		 */
 		if (!request->reply->code) {
 			RDEBUG("Not sending reply to client.");
-			goto done;
+			return FR_TRANSPORT_DONE;
 		}
 
 		/*
@@ -231,7 +220,7 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			goto done;
+			return FR_TRANSPORT_DONE;
 		}
 
 #ifdef WITH_UDPFROMTO
@@ -250,16 +239,54 @@ static void coa_running(REQUEST *request, fr_state_action_t action)
 
 		if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
-			goto done;
+			return FR_TRANSPORT_FAIL;
 		}
 
 		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
-			goto done;
+			return FR_TRANSPORT_FAIL;
 		}
+		break;
 
-		if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
-			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
+	default:
+		return FR_TRANSPORT_FAIL;
+	}
+
+	return FR_TRANSPORT_REPLY;
+}
+
+
+static void coa_running(REQUEST *request, fr_state_action_t action)
+{
+	fr_transport_final_t rcode;
+
+	TRACE_STATE_MACHINE;
+
+	/*
+	 *	Async (in the same thread, tho) signal to be done.
+	 */
+	if (action == FR_ACTION_DONE) goto done;
+
+	/*
+	 *	We ignore all other actions.
+	 */
+	if (action != FR_ACTION_RUN) return;
+
+	switch (request->request_state) {
+	case REQUEST_INIT:
+		request->server = request->listener->server;
+		request->server_cs = request->listener->server_cs;
+		/* FALL-THROUGH */
+
+	case REQUEST_RECV:
+	case REQUEST_SEND:
+		rcode = coa_process(request);
+		if (rcode == FR_TRANSPORT_YIELD) return;
+
+		if (rcode == FR_TRANSPORT_REPLY) {
+			if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
+				RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
+			}
 		}
 		/* FALL-THROUGH */
 

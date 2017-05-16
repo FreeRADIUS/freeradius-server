@@ -27,6 +27,8 @@
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/udp.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/io/transport.h>
 #include <freeradius-devel/rad_assert.h>
 
 #define REQUEST_SIMULTANEOUS_USE (REQUEST_OTHER_1)
@@ -277,7 +279,7 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 }
 
 
-static void auth_running(REQUEST *request, fr_state_action_t action)
+static fr_transport_final_t auth_process(REQUEST *request)
 {
 	VALUE_PAIR *vp, *auth_type;
 	rlm_rcode_t rcode;
@@ -288,43 +290,12 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 	VERIFY_REQUEST(request);
 
-	TRACE_STATE_MACHINE;
-
-	switch (action) {
-		/*
-		 *	Async (in the same thread, tho) signal to be done.
-		 */
-	case FR_ACTION_DONE:
-		goto done;
-
-		/*
-		 *	DUP: go poke the request, but don't do anything else.
-		 */
-	case FR_ACTION_DUP:
-#if 0
-		unlang_action(request, FR_ACTION_DUP);
-#endif
-		return;
-
-		/*
-		 *	Running: continue.
-		 */
-	case FR_ACTION_RUN:
-		break;
-
-		/*
-		 *	We ignore all other actions.
-		 */
-	default:
-		break;
-	}
-
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		if (request->packet->data_len != 0) {
 			if (fr_radius_packet_decode(request->packet, NULL, request->client->secret) < 0) {
 				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
-				goto done; /* don't reject it, Message-Authenticator might be wrong */
+				return FR_TRANSPORT_FAIL;
 			}
 
 			if (RDEBUG_ENABLED) common_packet_debug(request, request->packet, true);
@@ -334,8 +305,6 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 		}
 
-		request->server = request->listener->server;
-		request->server_cs = request->listener->server_cs;
 		request->component = "radius";
 
 		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
@@ -378,9 +347,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return;
+		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -479,9 +448,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_PROCESS:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return;
+		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -568,9 +537,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		case REQUEST_SIMULTANEOUS_USE:
 			rcode = unlang_interpret_continue(request);
 
-			if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
+			if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
 
-			if (rcode == RLM_MODULE_YIELD) return;
+			if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
 
 			request->log.unlang_indent = 0;
 
@@ -646,9 +615,9 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto stop_processing;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return;
+		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -729,16 +698,12 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 		/*
 		 *	Check for "do not respond".
+		 *
+		 *	Not that we return REPLY here, specifically for cleanup_delay!
 		 */
 		if (!request->reply->code) {
 			RDEBUG("Not sending reply to client.");
-
-			/*
-			 *	If it's an internally generated request, clean it up now.
-			 */
-			if (request->packet->data_len == 0) goto done;
-
-			goto cleanup_delay;
+			return FR_TRANSPORT_REPLY;
 		}
 
 		/*
@@ -750,7 +715,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			goto done;
+			return FR_TRANSPORT_DONE;
 		}
 
 #ifdef WITH_UDPFROMTO
@@ -765,31 +730,89 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		}
 #endif
 
+		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+
 		if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
-			goto stop_processing;
+			return FR_TRANSPORT_FAIL;
 		}
 
 		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
+			return FR_TRANSPORT_FAIL;
+		}
+		break;
 
-			/*
-			 *	We can't do anything with the packet.
-			 *	Mark it as "no reply", discard any
-			 *	state we have, and clean up the packet
-			 *	immediately.
-			 */
-		stop_processing:
+	default:
+		return FR_TRANSPORT_FAIL;
+	}
+
+	return FR_TRANSPORT_REPLY;
+}
+
+
+static void auth_running(REQUEST *request, fr_state_action_t action)
+{
+	fr_transport_final_t rcode;
+
+	TRACE_STATE_MACHINE;
+
+	/*
+	 *	Async (in the same thread, tho) signal to be done.
+	 */
+	if (action == FR_ACTION_DONE) goto done;
+
+	/*
+	 *	We ignore all other actions.
+	 */
+	if (action != FR_ACTION_RUN) return;
+
+	switch (request->request_state) {
+	case REQUEST_INIT:
+		request->server = request->listener->server;
+		request->server_cs = request->listener->server_cs;
+		/* FALL-THROUGH */
+
+	case REQUEST_RECV:
+	case REQUEST_SEND:
+		rcode = auth_process(request);
+		if (rcode == FR_TRANSPORT_YIELD) return;
+
+		/*
+		 *	We can't do anything with the packet.
+		 *	Mark it as "no reply", discard any
+		 *	state we have, and clean up the packet
+		 *	immediately.
+		 */
+		if (rcode == FR_TRANSPORT_FAIL) {
 			request->reply->code = 0;
 			fr_state_discard(global_state, request, request->packet);
 			goto done;
 		}
 
 		/*
-		 *	@fixme: on Access-Reject, set up reject_delay, and associated states.
+		 *	Forcibly done, don't do anything else.
 		 */
+		if (rcode == FR_TRANSPORT_DONE) {
+			request->reply->code = 0;
+			fr_state_discard(global_state, request, request->packet);
+			goto done;
+		}
 
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+		rad_assert(rcode == FR_TRANSPORT_REPLY);
+
+		/*
+		 *	If we're not replying, we still have cleanup_delay.
+		 */
+		if (request->reply->code == 0) {
+			/*
+			 *	Internally generated request: clean it
+			 *	up now.
+			 */
+			if (request->packet->data_len == 0) goto done;
+
+			goto cleanup_delay;
+		}
 
 		/*
 		 *	If we delay rejects, then calculate the
@@ -799,6 +822,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		    ((request->root->reject_delay.tv_sec > 0) ||
 		     (request->root->reject_delay.tv_usec > 0))) {
 			struct timeval when, delay;
+			VALUE_PAIR *vp;
 
 			delay = request->root->reject_delay;
 
@@ -839,19 +863,19 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 					return;
 				}
 			}
-
-			/* else fall through to sending the response immediately. */
-		}
+		} /* else send the response immediately */
 
 		if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
-			goto done;
 		}
 
-	cleanup_delay:
+		/*
+		 *	And do any necessary cleanup delay.
+		 */
 		if (request->root->cleanup_delay) {
 			struct timeval when;
 
+cleanup_delay:
 			when.tv_sec = request->root->cleanup_delay;
 			when.tv_usec = 0;
 
@@ -860,8 +884,8 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		}
 		/* FALL-THROUGH */
 
-	done:
 	default:
+	done:
 		(void) fr_heap_extract(request->backlog, request);
 		auth_dup_extract(request);
 		request_thread_done(request);
