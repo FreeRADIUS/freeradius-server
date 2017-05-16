@@ -112,7 +112,8 @@ typedef void (*sig_t)(int);
 /*
  *	Printing functions.
  */
-int		fr_utf8_char(uint8_t const *str, ssize_t inlen);
+size_t		fr_utf8_char(uint8_t const *str, ssize_t inlen);
+ssize_t		fr_utf8_str(uint8_t const *str, ssize_t inlen);
 char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
 size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
 size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);

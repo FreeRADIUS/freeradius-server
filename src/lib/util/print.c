@@ -28,10 +28,14 @@ RCSID("$Id$")
 
 /** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *
- * @param str input string.
- * @param inlen length of input string.  May be -1 if str is \0 terminated.
+ * @param[in] str	input string.
+ * @param[in] inlen	length of input string.  May be -1 if str
+ *			is \0 terminated.
+ * @return
+ *	- 0 if the character is invalid.
+ *	- >0 the number of bytes the character consists of.
  */
-int fr_utf8_char(uint8_t const *str, ssize_t inlen)
+inline size_t fr_utf8_char(uint8_t const *str, ssize_t inlen)
 {
 	if (inlen == 0) return 0;
 
@@ -126,6 +130,36 @@ int fr_utf8_char(uint8_t const *str, ssize_t inlen)
 	 *	Invalid UTF-8 Character
 	 */
 	return 0;
+}
+
+/** Validate a complete UTF8 string
+ *
+ * @param[in] str	input string.
+ * @param[in] inlen	length of input string.  May be -1 if str
+ *			is \0 terminated.
+ * @return The number of bytes validated.  If ret == inlen the entire
+ *	   string is valid.  Else ret gives the offset at which the
+ *	   first invalid byte sequence was found.
+ */
+ssize_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
+{
+	uint8_t const *p, *end;
+	size_t len;
+
+	len = inlen < 0 ? strlen((char const *)str) : inlen;
+
+	p = str;
+	end = p + len;
+
+	do {
+		size_t clen;
+
+		clen = fr_utf8_char(p, end - p);
+		if (clen == 0) return end - p;
+		p += clen;
+	} while (p < end);
+
+	return inlen;
 }
 
 /** Return a pointer to the first UTF8 char in a string.
