@@ -362,8 +362,6 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		case '[':	/* we don't list close braces */
 		case '{':
 		case '(':
-			if (outlen < 3) goto done;
-
 			*(p++) = '\\';
 			outlen--;
 			/* FALL-THROUGH */
@@ -375,7 +373,6 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		}
 	}
 
-done:
 	*(p++) = '\0';
 	return p - out;
 }

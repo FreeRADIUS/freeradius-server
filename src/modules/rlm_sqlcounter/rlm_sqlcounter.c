@@ -103,7 +103,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
+static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t timeval)
 {
 	int ret = 0;
 	size_t len;
@@ -113,28 +113,33 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	char sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
-	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
 	rad_assert(inst->reset != NULL);
 
+	/*
+	 *	Reset every N hours, days, weeks, months.
+	 */
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
-		if (len == 0)
-			return -1;
+		if (len == 0) return -1;
+
 		last = inst->reset[len - 1];
-		if (!isalpha((int) last))
+		if (!isalpha((int) last)) {
 			last = 'd';
+		}
+
 		num = atoi(inst->reset);
 		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
 	}
+
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
 		 *  Round up to the next nearest hour.
 		 */
 		tm->tm_hour += num;
 		inst->reset_time = mktime(tm);
+
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round up to the next nearest day.
@@ -142,6 +147,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		tm->tm_hour = 0;
 		tm->tm_mday += num;
 		inst->reset_time = mktime(tm);
+
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
@@ -149,21 +155,29 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		tm->tm_hour = 0;
 		tm->tm_mday += (7 - tm->tm_wday) +(7*(num-1));
 		inst->reset_time = mktime(tm);
+
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon += num;
 		inst->reset_time = mktime(tm);
+
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = 0;
+
 	} else {
 		return -1;
 	}
 
+	if (!request || (rad_debug_lvl < 2)) return ret;
+
+	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sCurrentTime = '\0';
+
 	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
-	DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
+	RDEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
+		(int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
 
 	return ret;
 }
@@ -205,6 +219,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		 */
 		tm->tm_hour -= num - 1;
 		inst->last_reset = mktime(tm);
+
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round down to the prev nearest day.
@@ -212,6 +227,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		tm->tm_hour = 0;
 		tm->tm_mday -= num - 1;
 		inst->last_reset = mktime(tm);
+
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round down to the prev nearest week.
@@ -219,13 +235,16 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		tm->tm_hour = 0;
 		tm->tm_mday -= tm->tm_wday +(7*(num-1));
 		inst->last_reset = mktime(tm);
+
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon -= num - 1;
 		inst->last_reset = mktime(tm);
+
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = 0;
+
 	} else {
 		return -1;
 	}
@@ -463,7 +482,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	now = time(NULL);
 	inst->reset_time = 0;
 
-	if (find_next_reset(inst, now) == -1) {
+	if (find_next_reset(inst, NULL, now) < 0) {
 		cf_log_err_cs(conf, "Invalid reset '%s'", inst->reset);
 		return -1;
 	}
@@ -511,7 +530,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	Re-set the next time and prev_time for this counters range
 		 */
 		inst->last_reset = inst->reset_time;
-		find_next_reset(inst,request->timestamp);
+		find_next_reset(inst, request, request->timestamp);
 	}
 
 	/*
