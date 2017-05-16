@@ -31,8 +31,6 @@
 #include <freeradius-devel/io/transport.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define REQUEST_SIMULTANEOUS_USE (REQUEST_OTHER_1)
-
 #ifndef USEC
 #define USEC (1000000)
 #endif
@@ -515,59 +513,6 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			goto setup_send;
 		}
 
-		/*
-		 *	When the user has been successfully
-		 *	authenticated, ook for Simultaneous-Use.  But
-		 *	only if we have a User-Name.
-		 */
-		vp = fr_pair_find_by_num(request->control, 0, PW_SIMULTANEOUS_USE, TAG_ANY);
-		if (vp && request->username) {
-			unlang = cf_subsection_find_name2(request->server_cs, "process", "Simultaneous-Use");
-			if (!unlang) {
-				REDEBUG2("No 'process Simultaneous' section found.");
-				goto post_simul;
-			}
-
-			RDEBUG("Running 'process %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
-			unlang_push_section(request, unlang, RLM_MODULE_NOTFOUND);
-
-			request->request_state = REQUEST_SIMULTANEOUS_USE;
-			/* FALL-THROUGH */
-
-		case REQUEST_SIMULTANEOUS_USE:
-			rcode = unlang_interpret_continue(request);
-
-			if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
-
-			if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
-
-			request->log.unlang_indent = 0;
-
-			switch (rcode) {
-			default:
-				RDEBUG2("Simultaneous-Use checks failed.");
-				request->reply->code = PW_CODE_ACCESS_REJECT;
-
-				if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
-					char msg[FR_MAX_STRING_LEN+19];
-
-					snprintf(msg, sizeof(msg), "Login limit exceeded (%s)",
-						 vp->vp_strvalue);
-					auth_message(msg, request, 0);
-				} else {
-					auth_message("Login limit exceeded", request, 0);
-				}
-				goto setup_send;
-
-			case RLM_MODULE_NOOP:
-			case RLM_MODULE_OK:
-			case RLM_MODULE_UPDATED:
-			case RLM_MODULE_HANDLED:
-				break;
-			}
-		} /* else there's no Simultaneous-Use checking */
-
-	post_simul:
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
@@ -1073,17 +1018,6 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 
 		cf_log_module(subcs, "Loading process %s {...}", name2);
 
-		/*
-		 *	Simultaneous-Use is special.
-		 */
-		if (strcmp(name2, "Simultaneous-Use") == 0) {
-			if (unlang_compile(subcs, MOD_SESSION) < 0) {
-				cf_log_err_cs(subcs, "Failed compiling 'process %s { ... }' section", name2);
-				return -1;
-			}
-			continue;
-		}
-
 		if (unlang_compile(subcs, MOD_AUTHENTICATE) < 0) {
 			cf_log_err_cs(subcs, "Failed compiling 'process %s { ... }' section", name2);
 			return -1;
@@ -1116,11 +1050,6 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 			cf_log_err_cs(subcs, "Invalid 'process { ... }' section, it must have a name");
 			return -1;
 		}
-
-		/*
-		 *	No Auth-Type for this.
-		 */
-		if (strcmp(name2, "Simultaneous-Use") == 0) continue;
 
 		/*
 		 *	If the value already exists, don't
