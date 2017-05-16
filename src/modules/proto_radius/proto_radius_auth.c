@@ -715,7 +715,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_TRANSPORT_DONE;
+			return FR_TRANSPORT_REPLY;
 		}
 
 #ifdef WITH_UDPFROMTO
@@ -802,17 +802,15 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		rad_assert(rcode == FR_TRANSPORT_REPLY);
 
 		/*
+		 *	Internally generated request: clean it
+		 *	up now.
+		 */
+		if (request->packet->data_len == 0) goto done;
+
+		/*
 		 *	If we're not replying, we still have cleanup_delay.
 		 */
-		if (request->reply->code == 0) {
-			/*
-			 *	Internally generated request: clean it
-			 *	up now.
-			 */
-			if (request->packet->data_len == 0) goto done;
-
-			goto cleanup_delay;
-		}
+		if (request->reply->code == 0) goto cleanup_delay;
 
 		/*
 		 *	If we delay rejects, then calculate the
