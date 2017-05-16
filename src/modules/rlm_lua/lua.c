@@ -138,7 +138,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		lua_pushnumber(L, vp->vp_size);
 		break;
 
-	case FR_TYPE_NOT_VALUES:
+	case FR_TYPE_NON_VALUES:
 		ERROR("Cannot convert %s to Lua type", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 		return -1;
 	}

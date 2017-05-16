@@ -443,7 +443,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 	}
 		break;
 
-	case FR_TYPE_NOT_VALUES:
+	case FR_TYPE_NON_VALUES:
 		rad_assert(0);
 		return -1;
 	}

@@ -148,7 +148,7 @@ typedef enum {
 /** Types which do not represent concrete values
  *
  */
-#define FR_TYPE_NOT_VALUES \
+#define FR_TYPE_NON_VALUES \
 	FR_TYPE_COMBO_IP_ADDR: \
 	case FR_TYPE_COMBO_IP_PREFIX: \
 	case FR_TYPE_STRUCTURAL: \

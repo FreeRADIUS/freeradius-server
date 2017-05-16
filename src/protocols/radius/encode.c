@@ -450,7 +450,6 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_ABINARY:
 	case FR_TYPE_ETHERNET:
-	case FR_TYPE_COMBO_IP_ADDR:
 		memcpy(out, &vp->data.datum, outlen);
 		break;
 
@@ -481,23 +480,14 @@ ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR cons
 	}
 		break;
 
-	case FR_TYPE_INVALID:
-	case FR_TYPE_EXTENDED:
-	case FR_TYPE_LONG_EXTENDED:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_EVS:
-	case FR_TYPE_VSA:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_TLV:
-	case FR_TYPE_STRUCT:
-	case FR_TYPE_SIZE:
 	case FR_TYPE_TIMEVAL:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
 	case FR_TYPE_DATE_MILLISECONDS:
 	case FR_TYPE_DATE_MICROSECONDS:
 	case FR_TYPE_DATE_NANOSECONDS:
-	case FR_TYPE_MAX:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_NON_VALUES:
 		fr_strerror_printf("Cannot encode data for VALUE_PAIR type %i", vp->vp_type);
 		return -1;
 
