@@ -866,7 +866,7 @@ size_t value_str_unescape(uint8_t *out, char const *in, size_t inlen, char quote
  *	- 0 on success.
  *	- -1 on failure.
  */
-inline int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
+int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src->type != FR_TYPE_INVALID)) return -1;
 
