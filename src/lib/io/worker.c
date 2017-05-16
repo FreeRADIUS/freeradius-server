@@ -827,6 +827,12 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		 */
 		break;
 
+	case FR_TRANSPORT_FAIL:
+		/*
+		 *	Something went wrong.  It's done, but we don't send a reply.
+		 */
+		break;
+
 	case FR_TRANSPORT_YIELD:
 		fr_time_tracking_yield(&request->tracking, fr_time(), &worker->tracking);
 		return;
