@@ -1183,7 +1183,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		if (req->response) {
 			RDEBUG("sending chbind response");
 			fr_pair_add(&fake->reply->vps,
-				eap_chbind_packet2vp(fake, req->response));
+				    eap_chbind_packet2vp(fake->reply, req->response));
 		} else {
 			RDEBUG("no chbind response");
 		}
