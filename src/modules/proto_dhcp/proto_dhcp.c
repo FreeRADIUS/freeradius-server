@@ -455,7 +455,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 				request->response_delay.tv_usec = 0;
 			}
 		} else {
+#ifndef USEC
 #define USEC 1000000
+#endif
 			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
 			if (vp) {
 				if (vp->vp_uint32 <= 10 * USEC) {
