@@ -428,7 +428,7 @@ unexpected:
  */
 ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
 			     uint8_t const *data, size_t data_len,
-			     UNUSED void *decoder_ctx)
+			     void *decoder_ctx)
 {
 	fr_dict_attr_t const	*da;
 	uint8_t	const		*p = data, *end = p + data_len;
