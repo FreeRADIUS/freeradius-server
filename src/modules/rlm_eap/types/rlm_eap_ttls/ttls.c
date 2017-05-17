@@ -771,6 +771,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	fr_pair_cursor_init(&cursor, &fake->packet->vps);
 	if (eap_ttls_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
 				 data, data_len, tls_session->ssl) < 0) {
+		RPEDEBUG("Decoding TTLS TLVs failed");
 		code = PW_CODE_ACCESS_REJECT;
 		goto finish;
 	}
