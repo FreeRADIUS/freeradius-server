@@ -442,15 +442,14 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_
 		uint16_t	len;
 		VALUE_PAIR	*vp;
 
-		attr = ntohs(*((uint16_t const *)p)) & EAP_FAST_TLV_TYPE;
+		attr = fr_ntoh16_bin(p) & EAP_FAST_TLV_TYPE;
 		p += 2;
-		len = ntohs(*((uint16_t const *)p));
+		len = fr_ntoh16_bin(p);
 		p += 2;
 
 		da = fr_dict_attr_child_by_num(parent, attr);
 		if (!da) {
-			MEM(vp = fr_pair_alloc(ctx));
-			MEM(vp->da = fr_dict_unknown_afrom_fields(vp, parent, parent->vendor, attr));
+			MEM(vp = fr_pair_afrom_child_num(ctx, parent, attr));
 		} else if (da->type != FR_TYPE_TLV) {
 			p += (size_t) eap_fast_decode_pair(ctx, cursor, parent, data, data_len, decoder_ctx);
 			continue;
