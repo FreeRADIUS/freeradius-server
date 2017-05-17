@@ -186,7 +186,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 		len = header_names[i].len;
 
-		rad_assert((size_t)(end - p) < len);	/* Should have been detected in socket_recv */
+		if (!rad_cond_assert((size_t)(end - p) < len)) return -1; /* Should have been detected in socket_recv */
 
 		da = fr_dict_attr_by_name(NULL, header_names[i].name);
 		if (!da) return 0;
