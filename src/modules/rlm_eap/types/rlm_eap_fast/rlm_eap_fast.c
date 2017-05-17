@@ -278,6 +278,7 @@ error:
 
 	fr_pair_cursor_init(&cursor, &fast_vps);
 	if (eap_fast_decode_pair(tls_session, &cursor, fast_da, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
+		errmsg = fr_strerror();
 		goto error;
 	}
 
