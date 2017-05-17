@@ -213,13 +213,6 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 do_value:
 		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, value_len, true);
-		/*
-		 *	The length does NOT include the padding, so
-		 *	we've got to account for it here by rounding up
-		 *	to the nearest 4-byte boundary.
-		 */
-		p += (value_len + 0x03) & ~0x03;
-
 		if (ret < 0) {
 			/*
 			 *	Mandatory bit is set, and the attribute
@@ -232,11 +225,18 @@ do_value:
 			}
 
 			fr_pair_to_unknown(vp);
-			fr_pair_value_memcpy(vp, data, value_len);
-			fr_pair_cursor_append(cursor, vp);
-			continue;
+			fr_pair_value_memcpy(vp, p, value_len);
 		}
+
+		/*
+		 *	The length does NOT include the padding, so
+		 *	we've got to account for it here by rounding up
+		 *	to the nearest 4-byte boundary.
+		 */
+		p += (value_len + 0x03) & ~0x03;
 		fr_pair_cursor_append(cursor, vp);
+
+		if (vp->da->flags.is_unknown) continue;
 
 		/*
 		 *	Ensure that the client is using the correct challenge.
