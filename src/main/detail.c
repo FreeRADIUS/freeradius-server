@@ -385,6 +385,8 @@ int detail_recv(rad_listen_t *listener)
 	rcode = read(data->master_pipe[0], &packet, sizeof(packet));
 	if (rcode <= 0) return rcode;
 
+	rad_assert(packet != NULL);
+
 	if (DEBUG_ENABLED2) {
 		VALUE_PAIR *vp;
 		vp_cursor_t cursor;
@@ -396,7 +398,6 @@ int detail_recv(rad_listen_t *listener)
 			debug_pair(vp);
 		}
 	}
-	rad_assert(packet != NULL);
 
 	switch (packet->code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
