@@ -183,6 +183,7 @@ typedef struct value_pair_raw {
 #define NUM_LAST		(INT_MIN + 3)
 
 /* Allocation and management */
+VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
 VALUE_PAIR	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr);

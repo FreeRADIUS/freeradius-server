@@ -47,7 +47,7 @@ static int _fr_pair_free(NDEBUG_UNUSED VALUE_PAIR *vp)
 }
 
 
-static VALUE_PAIR *fr_pair_alloc(TALLOC_CTX *ctx)
+VALUE_PAIR *fr_pair_alloc(TALLOC_CTX *ctx)
 {
 	VALUE_PAIR *vp;
 
