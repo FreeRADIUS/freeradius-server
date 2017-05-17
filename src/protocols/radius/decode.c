@@ -914,7 +914,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
-	fr_ipaddr_t		tmp_prefix;
+	size_t			min, max;
 
 	if (!parent || (attr_len > packet_len) || (attr_len > 128 * 1024)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -925,12 +925,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
+	data_len = attr_len;
 	/*
 	 *	Silently ignore zero-length attributes.
 	 */
 	if (attr_len == 0) return 0;
 
-	data_len = attr_len;
 
 	/*
 	 *	Hacks for tags.  If the attribute is capable of
@@ -1016,7 +1016,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 *	so data_len is not the same as attrlen.
 		 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx->secret, packet_ctx->vector) < 0) {
+			if (fr_radius_decode_tunnel_password(buffer, &data_len,
+							     packet_ctx->secret, packet_ctx->vector) < 0) {
 				goto raw;
 			}
 			break;
@@ -1049,92 +1050,21 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 */
 	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
 
+	min = fr_radius_attr_sizes[parent->type][0];
+	max = fr_radius_attr_sizes[parent->type][1];
+
+	if (data_len < min) goto raw;
+	if (data_len > max) goto raw;
+
 	switch (parent->type) {
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
+	case FR_TYPE_VALUES:
 		break;
 
-	case FR_TYPE_ABINARY:
-		if (data_len > sizeof(vp->vp_filter)) goto raw;
-		break;
-
-	case FR_TYPE_UINT32:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_DATE:
-	case FR_TYPE_INT32:
-		if (data_len != 4) goto raw;
-		break;
-
-	case FR_TYPE_UINT64:
-	case FR_TYPE_IFID:
-		if (data_len != 8) goto raw;
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-		if (data_len != 16) goto raw;
-		break;
-
-	case FR_TYPE_IPV4_PREFIX:
-		if (data_len != 6) goto raw;
-		if (p[0] != 0) goto raw;
-		if ((p[1] & 0x3f) > 32) goto raw;
-
-		memset(&tmp_prefix, 0, sizeof(tmp_prefix));
-
-		tmp_prefix.af = AF_INET;
-		memcpy((uint8_t *)&tmp_prefix.addr.v4.s_addr, p + 2, data_len - 2);
-		fr_ipaddr_mask(&tmp_prefix, p[1] & 0x3f);
-
-		/*
-		 *	Check the prefix data is the same before
-		 *	and after casting (it should be).
-		 */
-		if (memcmp(p + 2, (uint8_t *)&tmp_prefix.addr.v4.s_addr, data_len - 2) != 0) goto raw;
-		break;
-
-	case FR_TYPE_IPV6_PREFIX:
-	{
-		if ((data_len < 2) || (data_len > 18)) goto raw;
-		if (p[0] != 0) goto raw;	/* First byte is always 0 */
-		if (p[1] > 128) goto raw;
-
-		/*
-		 *	Convert prefix bits to bytes to check that
-		 *	we have sufficient data.
-		 */
-		if ((p[1] >> 3) > (data_len - 2)) goto raw;
-
-		memset(&tmp_prefix, 0, sizeof(tmp_prefix));
-
-		tmp_prefix.af = AF_INET6;
-		memcpy((uint8_t *)tmp_prefix.addr.v6.s6_addr, p + 2, data_len - 2);
-		fr_ipaddr_mask(&tmp_prefix, p[1]);
-
-		/*
-		 *	Check the prefix data is the same before
-		 *	and after casting (it should be).
-		 */
-		if (memcmp(p + 2, (uint8_t *)tmp_prefix.addr.v6.s6_addr, data_len - 2) != 0) goto raw;
-	}
-		break;
-
-	case FR_TYPE_UINT8:
-		if (data_len != 1) goto raw;
-		break;
-
-	case FR_TYPE_UINT16:
-		if (data_len != 2) goto raw;
-		break;
-
-	case FR_TYPE_ETHERNET:
-		if (data_len != 6) goto raw;
-		break;
-
-	case FR_TYPE_COMBO_IP_ADDR:
-		if (data_len == 4) {
-			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV4_ADDR);
-		} else if (data_len == 16) {
-			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_ADDR);
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if (data_len == min) {
+			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV4_PREFIX);
+		} else if (data_len == max) {
+			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_PREFIX);
 		} else {
 			goto raw;
 		}
@@ -1142,10 +1072,17 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		parent = child;	/* re-write it */
 		break;
 
-		/*
-		 *	The rest of the p types can cause
-		 *	recursion!  Ask yourself, "is recursion OK?"
-		 */
+	case FR_TYPE_COMBO_IP_ADDR:
+		if (data_len == min) {
+			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV4_ADDR);
+		} else if (data_len == max) {
+			child = fr_dict_attr_by_type(parent, FR_TYPE_IPV6_ADDR);
+		} else {
+			goto raw;
+		}
+		if (!child) goto raw;
+		parent = child;	/* re-write it */
+		break;
 
 	case FR_TYPE_EXTENDED:
 		if (data_len < 2) goto raw; /* etype, value */
@@ -1328,12 +1265,107 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	switch (parent->type) {
 	case FR_TYPE_STRING:
-		fr_pair_value_bstrncpy(vp, p, data_len);	/* sets vp_length */
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IFID:
+	case FR_TYPE_DATE_MILLISECONDS:
+	case FR_TYPE_DATE_MICROSECONDS:
+	case FR_TYPE_DATE_NANOSECONDS:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIMEVAL:
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {
+			/*
+			 *	Paranoid loop prevention
+			 */
+			if (vp->da->flags.is_unknown) {
+				talloc_free(vp);
+				return -1;
+			}
+			goto raw;
+		}
+		break;
+	/*
+	 *  Magic RADIUS format IPv4 prefix
+	 *
+	 *  0                   1                   2                   3
+	 *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 * |    Reserved   | Prefix-Length |  Prefix ...
+	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *      ... Prefix                 |
+	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *
+	 * RFC does not require non-masked bits to be zero.
+	 */
+	case FR_TYPE_IPV4_PREFIX:
+		if (data_len != min) goto raw;
+		if (p[0] != 0) goto raw;
+		if ((p[1] & 0x3f) > 32) goto raw;
+
+		vp->vp_ip.af = AF_INET;
+		vp->vp_ip.scope_id = 0;
+		vp->vp_ip.prefix = p[1] & 0x3f;
+		memcpy((uint8_t *)&vp->vp_ipv4addr, p + 2, data_len - 2);
+		fr_ipaddr_mask(&vp->vp_ip, p[1] & 0x3f);
 		break;
 
-	case FR_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, p, data_len);		/* sets vp_length */
-		break;
+	/*
+	 *  Magic RADIUS format IPv6 prefix
+	 *
+	 *   0                   1                   2                   3
+	 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *  |     Type      |    Length     |  Reserved     | Prefix-Length |
+	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *                               Prefix
+	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *                               Prefix
+	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *                               Prefix
+	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *                               Prefix                             |
+	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *
+	 *  RFC says non-masked bits MUST be zero.
+	 */
+	case FR_TYPE_IPV6_PREFIX:
+	{
+		if (p[0] != 0) goto raw;	/* First byte is always 0 */
+		if (p[1] > 128) goto raw;
+
+		/*
+		 *	Convert prefix bits to bytes to check that
+		 *	we have sufficient data.
+		 */
+		if ((p[1] >> 3) > (data_len - 2)) goto raw;
+
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.scope_id = 0;
+		vp->vp_ip.prefix = p[1] >> 3;
+
+		memcpy((uint8_t *)&vp->vp_ipv6addr, p + 2, data_len - 2);
+		fr_ipaddr_mask(&vp->vp_ip, p[1]);
+
+		/*
+		 *	Check the prefix data is the same before
+		 *	and after casting (it should be).
+		 */
+		if (memcmp(p + 2, (uint8_t *)&vp->vp_ipv6addr, data_len - 2) != 0) goto raw;
+	}
 
 	case FR_TYPE_ABINARY:
 		if (data_len > sizeof(vp->vp_filter)) data_len = sizeof(vp->vp_filter);
@@ -1341,62 +1373,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		vp->vp_length = data_len;
 		break;
 
-	case FR_TYPE_UINT8:
-		vp->vp_uint8 = p[0];
-		break;
-
-	case FR_TYPE_UINT16:
-		vp->vp_uint16 = (p[0] << 8) | p[1];
-		break;
-
-	case FR_TYPE_UINT32:
-		memcpy(&vp->vp_uint32, p, 4);
-		vp->vp_uint32 = ntohl(vp->vp_uint32);
-		break;
-
-	case FR_TYPE_UINT64:
-		memcpy(&vp->vp_uint64, p, 8);
-		vp->vp_uint64 = ntohll(vp->vp_uint64);
-		break;
-
-	case FR_TYPE_DATE:
-		memcpy(&vp->vp_date, p, 4);
-		vp->vp_date = ntohl(vp->vp_date);
-		break;
-
-	case FR_TYPE_ETHERNET:
-		memcpy(vp->vp_ether, p, 6);
-		break;
-
-	case FR_TYPE_IPV4_ADDR:
-		vp->vp_ip.af = AF_INET;
-		vp->vp_ip.prefix = 32;
-		vp->vp_ip.scope_id = 0;
-		memcpy(&vp->vp_ipv4addr, p, 4);
-		break;
-
-	case FR_TYPE_IFID:
-		memcpy(vp->vp_ifid, p, 8);
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.prefix = 128;
-		vp->vp_ip.scope_id = 0;
-		memcpy(&vp->vp_ipv6addr, p, 16);
-		break;
-
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-		memcpy(&vp->vp_ip, &tmp_prefix, sizeof(vp->vp_ip));
-		break;
-
-	case FR_TYPE_INT32:	/* overloaded with vp_uint32 */
-		memcpy(&vp->vp_uint32, p, 4);
-		vp->vp_uint32 = ntohl(vp->vp_uint32);
-		break;
-
-	default:
+	case FR_TYPE_NON_VALUES:
 		fr_pair_list_free(&vp);
 		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 		return -1;

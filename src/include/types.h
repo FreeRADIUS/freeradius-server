@@ -108,6 +108,27 @@ typedef enum {
 	case FR_TYPE_BOOL: \
 	case FR_TYPE_FLOAT64
 
+/** Naturally numeric types
+ *
+ */
+#define FR_TYPE_NUMERIC \
+	FR_TYPE_BOOL: \
+	case FR_TYPE_UINT8: \
+	case FR_TYPE_UINT16: \
+	case FR_TYPE_UINT32: \
+	case FR_TYPE_UINT64: \
+	case FR_TYPE_INT8: \
+	case FR_TYPE_INT16: \
+	case FR_TYPE_INT32: \
+	case FR_TYPE_INT64: \
+	case FR_TYPE_FLOAT32: \
+	case FR_TYPE_FLOAT64: \
+	case FR_TYPE_DATE: \
+	case FR_TYPE_DATE_MILLISECONDS: \
+	case FR_TYPE_DATE_MICROSECONDS: \
+	case FR_TYPE_DATE_NANOSECONDS: \
+	case FR_TYPE_SIZE
+
 /** Match all variable length types in case statements
  *
  * @note This should be used for switch statements in printing and casting
@@ -154,25 +175,19 @@ typedef enum {
 	case FR_TYPE_STRUCTURAL: \
 	case FR_TYPE_BAD
 
-/** Naturally numeric types
+/** Types which do represent concrete values
  *
  */
-#define FR_TYPE_NUMERIC \
-	FR_TYPE_BOOL: \
-	case FR_TYPE_UINT8: \
-	case FR_TYPE_UINT16: \
-	case FR_TYPE_UINT32: \
-	case FR_TYPE_UINT64: \
-	case FR_TYPE_INT8: \
-	case FR_TYPE_INT16: \
-	case FR_TYPE_INT32: \
-	case FR_TYPE_INT64: \
-	case FR_TYPE_FLOAT32: \
-	case FR_TYPE_FLOAT64: \
-	case FR_TYPE_DATE: \
-	case FR_TYPE_DATE_MILLISECONDS: \
-	case FR_TYPE_DATE_MICROSECONDS: \
-	case FR_TYPE_DATE_NANOSECONDS: \
-	case FR_TYPE_SIZE
+#define FR_TYPE_VALUES \
+	FR_TYPE_NUMERIC: \
+	case FR_TYPE_STRING: \
+	case FR_TYPE_OCTETS: \
+	case FR_TYPE_IPV4_ADDR: \
+	case FR_TYPE_IPV4_PREFIX: \
+	case FR_TYPE_IPV6_ADDR: \
+	case FR_TYPE_IPV6_PREFIX: \
+	case FR_TYPE_ETHERNET: \
+	case FR_TYPE_IFID: \
+	case FR_TYPE_ABINARY
 
 #endif /* _FR_TYPES_H */
