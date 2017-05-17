@@ -115,7 +115,8 @@ struct value_box {
  */
 #define _fr_box_with_len(_type, _field, _val, _len) &(fr_value_box_t){ .type = _type, _field = _val, .datum.length = _len }
 
-#define fr_box_strvalue(_val)			-fr_box_with_len(FR_TYPE_STRING, .datum.strvalue, _val, strlen(_val))
+#define fr_box_strvalue(_val)			_fr_box_with_len(FR_TYPE_STRING, .datum.strvalue, _val, strlen(_val))
+#define fr_box_strvalue_len(_val, _len)		_fr_box_with_len(FR_TYPE_STRING, .datum.strvalue, _val, _len)
 #define fr_box_octets(_val, _len)		_fr_box_with_len(FR_TYPE_OCTETS, .datum.octets, _val, _len)
 #define fr_box_strvalue_buffer(_val)		_fr_box_with_len(FR_TYPE_STRING, .datum.strvalue, _val, talloc_array_length(_val) - 1)
 #define fr_box_octets_buffer(_val)		_fr_box_with_len(FR_TYPE_OCTETS, .datum.octets, _val, talloc_array_length(_val))
