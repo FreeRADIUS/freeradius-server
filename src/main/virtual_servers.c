@@ -533,6 +533,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "listen");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "listen")) {
+		if (cf_pair_find(cs, "namespace") != NULL) continue;
+
 		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
 	}
 
@@ -590,6 +592,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			name1 = cf_section_name1(subcs);
 
 			if (strcmp(name1, "listen") == 0) {
+				if (cf_pair_find(cs, "namespace") != NULL) continue;
+
 				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
 				continue;
 			}
