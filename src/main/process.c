@@ -485,6 +485,8 @@ static struct timeval *request_response_window(REQUEST *request)
 {
 	VERIFY_REQUEST(request);
 
+	rad_assert(request->home_server != NULL);
+
 	if (request->client) {
 		/*
 		 *	The client hasn't set the response window.  Return
@@ -500,7 +502,6 @@ static struct timeval *request_response_window(REQUEST *request)
 		}
 	}
 
-	rad_assert(request->home_server != NULL);
 	return &request->home_server->response_window;
 }
 
